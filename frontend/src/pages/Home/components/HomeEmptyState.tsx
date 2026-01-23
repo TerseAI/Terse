@@ -1,14 +1,11 @@
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, Check, MessageSquare, Zap, GitBranch, Bot, Sparkles } from "lucide-react";
+import { Check, MessageSquare, GitBranch, Zap, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useTemplates } from "@/hooks/api/useTemplates";
 import { useIntegrations } from "@/hooks/api/useIntegrations";
-import { TemplateCard } from "@/components/Agents/TemplateCard";
 import { FrontendRoutes } from "@/shared/FrontendRoutes";
 
 export function HomeEmptyState() {
     const navigate = useNavigate();
-    const { templates, isLoading: isLoadingTemplates } = useTemplates();
     const { integrations: activeIntegrations } = useIntegrations();
 
     const hasSlackIntegration = activeIntegrations?.some(
@@ -16,178 +13,133 @@ export function HomeEmptyState() {
     );
     const hasOtherIntegrations = activeIntegrations && activeIntegrations.length > (hasSlackIntegration ? 1 : 0);
 
+    // Determine current step (1-indexed for display)
+    const currentStep = !hasSlackIntegration ? 1 : !hasOtherIntegrations ? 2 : 3;
+
+    const steps = [
+        {
+            number: 1,
+            title: "Connect Slack",
+            description: "Chat with your agents and receive notifications directly in Slack. Manage everything through natural conversation.",
+            icon: <MessageSquare className="h-5 w-5" />,
+            completed: hasSlackIntegration,
+            action: () => navigate(FrontendRoutes.INTEGRATIONS),
+            buttonText: "Connect Slack",
+        },
+        {
+            number: 2,
+            title: "Add an integration",
+            description: "Connect GitHub, Linear, or other tools. These integrations trigger your agents and let them take action.",
+            icon: <GitBranch className="h-5 w-5" />,
+            completed: hasOtherIntegrations,
+            action: () => navigate(FrontendRoutes.INTEGRATIONS),
+            buttonText: "Add Integration",
+        },
+        {
+            number: 3,
+            title: "Create your first agent",
+            description: "Build an AI agent that listens for events and automates your workflows. Start from scratch or use a template.",
+            icon: <Zap className="h-5 w-5" />,
+            completed: false,
+            action: () => navigate(FrontendRoutes.AGENTS.SETUP),
+            buttonText: "Create Agent",
+        },
+    ];
+
     return (
-        <div className="mx-auto px-6 py-10 max-w-5xl">
-            {/* Header */}
-            <div className="flex items-start justify-between mb-8">
-                <div>
-                    <h1 className="text-2xl font-semibold tracking-tight mb-1">Get started with Terse</h1>
+        <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center p-6">
+            <div className="w-full max-w-lg">
+                {/* Header */}
+                <div className="text-center mb-10">
+                    <h1 className="text-2xl font-semibold tracking-tight mb-2">
+                        Welcome to Terse
+                    </h1>
                     <p className="text-muted-foreground text-sm">
-                        AI agents that automate your software workflows
+                        Let's get your workspace set up in a few steps
                     </p>
                 </div>
-                <Button onClick={() => navigate(FrontendRoutes.AGENTS.SETUP)}>
-                    <Zap className="h-4 w-4" />
-                    Create Agent
-                </Button>
-            </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Left column - Setup */}
-                <div className="lg:col-span-2 space-y-4">
-                    {/* Setup cards */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <SetupCard
-                            icon={<MessageSquare className="h-5 w-5" />}
-                            title="Connect Slack"
-                            description="Chat with your agents and get notifications directly in Slack"
-                            done={hasSlackIntegration}
-                            buttonText={hasSlackIntegration ? "Connected" : "Connect"}
-                            onClick={() => navigate(FrontendRoutes.INTEGRATIONS)}
-                            highlight={!hasSlackIntegration}
-                        />
-                        <SetupCard
-                            icon={<GitBranch className="h-5 w-5" />}
-                            title="Add integrations"
-                            description="Connect GitHub, Linear, and other tools to trigger automations"
-                            done={hasOtherIntegrations}
-                            buttonText="Add"
-                            onClick={() => navigate(FrontendRoutes.INTEGRATIONS)}
-                        />
-                    </div>
+                {/* Steps */}
+                <div className="space-y-3">
+                    {steps.map((step, index) => {
+                        const isActive = step.number === currentStep;
+                        const isPast = step.number < currentStep;
+                        const isFuture = step.number > currentStep;
 
-                    {/* Templates */}
-                    {!isLoadingTemplates && templates.length > 0 && (
-                        <div className="border border-border rounded-lg p-4">
-                            <div className="flex items-center justify-between mb-4">
-                                <div className="flex items-center gap-2">
-                                    <Sparkles className="h-4 w-4 text-muted-foreground" />
-                                    <span className="font-medium text-sm">Start from a template</span>
+                        return (
+                            <div
+                                key={step.number}
+                                className={`
+                                    relative border rounded-xl p-5 transition-all
+                                    ${isActive ? 'border-foreground/20 bg-muted/30' : 'border-border'}
+                                    ${isFuture ? 'opacity-50' : ''}
+                                `}
+                            >
+                                <div className="flex gap-4">
+                                    {/* Step indicator */}
+                                    <div className={`
+                                        flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-medium
+                                        ${step.completed ? 'bg-foreground text-background' : isActive ? 'bg-foreground text-background' : 'bg-muted text-muted-foreground'}
+                                    `}>
+                                        {step.completed ? <Check className="h-4 w-4" /> : step.number}
+                                    </div>
+
+                                    {/* Content */}
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <h3 className="font-medium">{step.title}</h3>
+                                            {step.completed && (
+                                                <span className="text-xs text-muted-foreground">Complete</span>
+                                            )}
+                                        </div>
+                                        <p className="text-sm text-muted-foreground mb-4">
+                                            {step.description}
+                                        </p>
+
+                                        {isActive && (
+                                            <Button onClick={step.action} size="sm">
+                                                {step.buttonText}
+                                                <ArrowRight className="h-3.5 w-3.5" />
+                                            </Button>
+                                        )}
+
+                                        {step.completed && (
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={step.action}
+                                                className="text-muted-foreground"
+                                            >
+                                                Manage
+                                                <ArrowRight className="h-3.5 w-3.5" />
+                                            </Button>
+                                        )}
+                                    </div>
                                 </div>
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => navigate(FrontendRoutes.AGENTS.SETUP)}
-                                    className="text-muted-foreground h-7 text-xs"
-                                >
-                                    View all
-                                    <ArrowRight className="h-3 w-3" />
-                                </Button>
+
+                                {/* Connector line */}
+                                {index < steps.length - 1 && (
+                                    <div className={`
+                                        absolute left-[2.05rem] top-[4.25rem] w-0.5 h-[calc(100%-2.5rem)]
+                                        ${isPast ? 'bg-foreground' : 'bg-border'}
+                                    `} />
+                                )}
                             </div>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                {templates.slice(0, 4).map((template, index) => (
-                                    <TemplateCard
-                                        key={index}
-                                        template={template}
-                                        templateIndex={index}
-                                    />
-                                ))}
-                            </div>
-                        </div>
-                    )}
+                        );
+                    })}
                 </div>
 
-                {/* Right column - What are agents */}
-                <div className="space-y-4">
-                    <div className="border border-border rounded-lg p-4">
-                        <div className="flex items-center gap-2 mb-3">
-                            <Bot className="h-4 w-4 text-muted-foreground" />
-                            <span className="font-medium text-sm">What are agents?</span>
-                        </div>
-                        <p className="text-sm text-muted-foreground mb-4">
-                            Agents are AI-powered automations that listen for events and take action on your behalf.
-                        </p>
-                        <div className="space-y-3">
-                            <FeatureItem
-                                title="Event-driven"
-                                description="Trigger on GitHub PRs, Linear issues, Slack messages"
-                            />
-                            <FeatureItem
-                                title="AI-powered"
-                                description="Agents understand context and make smart decisions"
-                            />
-                            <FeatureItem
-                                title="Slack-native"
-                                description="Manage everything through natural conversation"
-                            />
-                        </div>
-                    </div>
-
-                    {/* Quick tip */}
-                    <div className="bg-muted/50 rounded-lg p-4">
-                        <p className="text-xs text-muted-foreground">
-                            <span className="font-medium text-foreground">Tip:</span> Connect Slack first to manage your agents via chat commands like <code className="bg-muted px-1 py-0.5 rounded text-[11px]">/terse create</code>
-                        </p>
-                    </div>
+                {/* Skip link */}
+                <div className="text-center mt-8">
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => navigate(FrontendRoutes.AGENTS.SETUP)}
+                        className="text-muted-foreground text-xs"
+                    >
+                        Skip setup and create an agent
+                    </Button>
                 </div>
-            </div>
-        </div>
-    );
-}
-
-function SetupCard({
-    icon,
-    title,
-    description,
-    done,
-    buttonText,
-    onClick,
-    highlight,
-}: {
-    icon: React.ReactNode;
-    title: string;
-    description: string;
-    done?: boolean;
-    buttonText: string;
-    onClick: () => void;
-    highlight?: boolean;
-}) {
-    return (
-        <div
-            className={`
-                border rounded-lg p-4 flex flex-col gap-3
-                ${highlight ? 'border-foreground/20 bg-muted/30' : 'border-border'}
-            `}
-        >
-            <div className="flex items-start justify-between">
-                <div className={`
-                    flex h-9 w-9 items-center justify-center rounded-lg
-                    ${done ? 'bg-foreground text-background' : 'bg-muted text-muted-foreground'}
-                `}>
-                    {done ? <Check className="h-4 w-4" /> : icon}
-                </div>
-                {highlight && (
-                    <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
-                        Recommended
-                    </span>
-                )}
-            </div>
-            <div>
-                <h3 className="font-medium text-sm mb-1">{title}</h3>
-                <p className="text-xs text-muted-foreground leading-relaxed">{description}</p>
-            </div>
-            <Button
-                variant={done ? "outline" : highlight ? "default" : "outline"}
-                size="sm"
-                onClick={onClick}
-                className="w-full mt-auto"
-                disabled={done}
-            >
-                {done && <Check className="h-3 w-3" />}
-                {buttonText}
-                {!done && <ArrowRight className="h-3 w-3" />}
-            </Button>
-        </div>
-    );
-}
-
-function FeatureItem({ title, description }: { title: string; description: string }) {
-    return (
-        <div className="flex gap-3">
-            <div className="h-1.5 w-1.5 rounded-full bg-muted-foreground mt-1.5 shrink-0" />
-            <div>
-                <div className="text-sm font-medium">{title}</div>
-                <div className="text-xs text-muted-foreground">{description}</div>
             </div>
         </div>
     );
