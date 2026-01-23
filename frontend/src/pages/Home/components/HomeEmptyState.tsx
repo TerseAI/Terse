@@ -1,12 +1,16 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Check, MessageSquare, GitBranch, Zap, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useIntegrations } from "@/hooks/api/useIntegrations";
 import { FrontendRoutes } from "@/shared/FrontendRoutes";
+import { BackendProvider } from "@/services/backend";
+import { IntegrationType } from "@/shared/Integrations";
 
 export function HomeEmptyState() {
     const navigate = useNavigate();
     const { integrations: activeIntegrations } = useIntegrations();
+    const [isConnectingSlack, setIsConnectingSlack] = useState(false);
 
     const hasSlackIntegration = activeIntegrations?.some(
         (integration) => integration.type.toLowerCase() === 'slack'
@@ -16,6 +20,26 @@ export function HomeEmptyState() {
     // Determine current step (1-indexed for display)
     const currentStep = !hasSlackIntegration ? 1 : !hasOtherIntegrations ? 2 : 3;
 
+    const connectSlack = async () => {
+        setIsConnectingSlack(true);
+        try {
+            const installationDetails = await BackendProvider.getIntegrationInstallationDetails(
+                IntegrationType.SLACK,
+                { isBotUser: true }
+            );
+
+            if (installationDetails?.oauthUrl) {
+                window.open(installationDetails.oauthUrl, 'oauth-popup', 'width=600,height=700');
+            } else {
+                console.error('OAuth URL not available');
+            }
+        } catch (error) {
+            console.error('Error initiating Slack OAuth:', error);
+        } finally {
+            setIsConnectingSlack(false);
+        }
+    };
+
     const steps = [
         {
             number: 1,
@@ -23,8 +47,9 @@ export function HomeEmptyState() {
             description: "Chat with your agents and receive notifications directly in Slack. Manage everything through natural conversation.",
             icon: <MessageSquare className="h-5 w-5" />,
             completed: hasSlackIntegration,
-            action: () => navigate(FrontendRoutes.INTEGRATIONS),
-            buttonText: "Connect Slack",
+            action: connectSlack,
+            buttonText: isConnectingSlack ? "Connecting..." : "Connect Slack",
+            disabled: isConnectingSlack,
         },
         {
             number: 2,
@@ -97,7 +122,11 @@ export function HomeEmptyState() {
                                         </p>
 
                                         {isActive && (
-                                            <Button onClick={step.action} size="sm">
+                                            <Button
+                                                onClick={step.action}
+                                                size="sm"
+                                                disabled={step.disabled}
+                                            >
                                                 {step.buttonText}
                                                 <ArrowRight className="h-3.5 w-3.5" />
                                             </Button>
@@ -107,7 +136,7 @@ export function HomeEmptyState() {
                                             <Button
                                                 variant="ghost"
                                                 size="sm"
-                                                onClick={step.action}
+                                                onClick={() => navigate(FrontendRoutes.INTEGRATIONS)}
                                                 className="text-muted-foreground"
                                             >
                                                 Manage
