@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Background -->
+  <rect width="64" height="64" fill="#ffffff" rx="8"/>
+
+  <!-- T shape -->
+  <path d="M8 8 h32 v10 h-11 v38 h-10 v-38 h-11 z" fill="#2a8a8a" rx="3"/>
+
+  <!-- Yellow dot -->
+  <circle cx="50" cy="14" r="7" fill="#f5c542"/>
+
+  <!-- Teal dot -->
+  <circle cx="52" cy="30" r="5.5" fill="#2a8a8a"/>
+
+  <!-- Red/coral dot -->
+  <circle cx="50" cy="44" r="6" fill="#e85a5a"/>
+</svg>
