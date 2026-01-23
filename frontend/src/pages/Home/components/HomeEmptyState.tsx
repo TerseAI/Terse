@@ -175,10 +175,10 @@ export function HomeEmptyState() {
                                     </div>
                                 </div>
 
-                                {/* Connector line */}
+                                {/* Connector line - centered on the 40px circle: p-5 (20px) + half of w-10 (20px) - half of line width (1px) */}
                                 {index < steps.length - 1 && (
                                     <div className={`
-                                        absolute left-[2.05rem] top-[4.25rem] w-0.5 h-[calc(100%-2.5rem)]
+                                        absolute left-[calc(1.25rem+1.25rem-1px)] top-[4.25rem] w-0.5 h-[calc(100%-2.5rem)]
                                         ${isPast ? 'bg-foreground' : 'bg-border'}
                                     `} />
                                 )}
