@@ -6,10 +6,21 @@ export const randomString = (length: number) => {
 
 export const isValidEpochTimestamp = (str: string): boolean => {
     const num = Number(str);
-    if (!Number.isInteger(num) || num < 0) {
+    if (isNaN(num) || num < 0) {
         return false;
     }
-    const ms = str.length === 10 ? num * 1000 : num;
+    // Handle both Unix timestamps and Slack's decimal format (seconds.microseconds)
+    let ms: number;
+    if (str.includes('.')) {
+        // Slack format: seconds.microseconds - convert to milliseconds
+        ms = num * 1000;
+    } else if (str.length === 10) {
+        // Unix seconds (10 digits)
+        ms = num * 1000;
+    } else {
+        // Unix milliseconds (13+ digits)
+        ms = num;
+    }
     const date = new Date(ms);
     return !isNaN(date.getTime()) && date.getFullYear() >= 1970 && date.getFullYear() <= 2100;
 }
