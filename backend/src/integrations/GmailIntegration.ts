@@ -18,7 +18,7 @@ import { IntegrationCompletedTask } from "./IntegrationCompletedTask";
 import { createOAuthStateToken, decodeOAuthStateToken, OAuthStateEncodingFormat } from "../utility/oauth";
 import { FrontendRoutes } from "../shared/FrontendRoutes";
 import { ConfigType, GmailConfig } from "../shared/Configs";
-import { SampleEvent } from "../shared/SampleEvents";
+import { SampleEvent, GmailEventData } from "../shared/SampleEvents";
 
 
 // OAuth2 scopes for Gmail
@@ -897,23 +897,6 @@ export type GmailWebhookEvent = {
     emailAddress: string;
     historyId: number;
 };
-
-/**
- * Parse email message to extract useful information
- */
-export interface GmailEventData {
-    id: string;
-    threadId: string;
-    subject: string;
-    from: string;
-    to: string;
-    date: string; // Header date string (for display)
-    internalDate: string; // Gmail's internal timestamp (milliseconds since epoch)
-    messageId: string;
-    body: string;
-    snippet: string;
-    labelIds: string[];
-}
 
 type ProcessedWebhookClaim = {
     shouldProcess: true;

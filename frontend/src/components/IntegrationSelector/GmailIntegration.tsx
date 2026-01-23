@@ -134,7 +134,7 @@ export function GmailIntegration({
                 <Plus className="w-4 h-4" />
                 {isOAuthConnecting ? 'Connecting...' : "Connect Another Gmail"}
             </Button>
-            {selectedOption &&
+            {selectedOption && agentId &&
                 <SampleEventsButton selectedOption={selectedOption} setSampleEvents={setSampleEvents} setShowSampleEvents={setShowSampleEvents} isLoading={isSampleLoading} setIsLoading={setIsSampleLoading} />
             }
         </div>

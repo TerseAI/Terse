@@ -23,7 +23,8 @@
  */
 
 import { EventProcessor } from '../agent/AgentRunner/EventProcessor';
-import { GmailEvent, GmailEventData } from '../integrations/GmailIntegration';
+import { GmailEvent } from '../integrations/GmailIntegration';
+import { GmailEventData } from '../shared/SampleEvents';
 import { db } from '../prismaClient';
 import { User } from '../types/prisma';
 import * as readline from 'readline';
