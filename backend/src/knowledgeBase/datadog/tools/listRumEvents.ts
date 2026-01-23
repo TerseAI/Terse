@@ -8,6 +8,7 @@ import { RunHistoryActionType } from "@prisma/client";
 import { Session } from "../../../server";
 import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner";
 import { getDatadogCredentialsByIntegrationId } from "../datadogApiClient";
+import { ToolName } from "../../../tools/ToolNames";
 
 /**
  * Tool for listing Datadog RUM events using the simple GET endpoint.
@@ -16,7 +17,7 @@ import { getDatadogCredentialsByIntegrationId } from "../datadogApiClient";
  * Great for exploration before crafting specific search queries.
  */
 export const listRumEventsTool = tool({
-    name: 'listRumEvents',
+    name: ToolName.DATADOG_LIST_RUM_EVENTS,
     description: 'List recent Datadog RUM events. Use for discovery when unsure what to query. Returns sessions, views, actions, errors, resources, long tasks.',
     parameters: z.object({
         integrationId: z.string().describe('The integration ID of the Datadog knowledge base to use.'),

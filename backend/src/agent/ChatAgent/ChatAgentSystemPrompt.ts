@@ -53,6 +53,7 @@ export async function buildChatAgentSystemPrompt(userId: string, userTimezone?: 
         },
         include: {
             prompt: true,
+            tool_approvals: true,
             inputs: {
                 include: getInputConfigInclude()
             },

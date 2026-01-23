@@ -13,9 +13,9 @@ import { IntegrationType } from "../../shared/Integrations";
 export class LinearTicketOutput extends Output<LinearOutputConfig> {
     constructor() {
         const toolbox: ToolboxEntry[] = [
-            { tool: linearSearchTicketTool as Tool, isReadOnly: true, integration: IntegrationType.LINEAR },
-            { tool: linearCreateTicketTool as Tool, isReadOnly: false, integration: IntegrationType.LINEAR },
-            { tool: linearUpdateTicketTool as Tool, isReadOnly: false, integration: IntegrationType.LINEAR },
+            { tool: linearSearchTicketTool as Tool, isReadOnly: true, integration: IntegrationType.LINEAR, displayName: 'Search tickets' },
+            { tool: linearCreateTicketTool as Tool, isReadOnly: false, integration: IntegrationType.LINEAR, displayName: 'Create ticket' },
+            { tool: linearUpdateTicketTool as Tool, isReadOnly: false, integration: IntegrationType.LINEAR, displayName: 'Update ticket' },
         ];
         super(OutputConfigType.LINEAR_TICKET, toolbox);
     }

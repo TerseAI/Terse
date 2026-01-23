@@ -7,13 +7,15 @@ import { IntegrationType } from "../../../shared/Integrations";
 import { RunHistoryActionType } from "@prisma/client";
 import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner";
 import { Session } from "../../../server";
+import { ToolName } from "../../../tools/ToolNames";
+import { createNeedsApprovalFunction } from "../../../tools/toolUtils";
 
 /**
  * Tool for sending messages to Slack channels or DMs.
  * Messages are sent as the Terse bot.
  */
 export const slackSendMessageTool = tool({
-    name: "slack_send_message",
+    name: ToolName.SLACK_SEND_MESSAGE,
     description: `Send message to Slack channel. Supports plain text (mrkdwn) or Block Kit (JSON blocks).`,
     parameters: z.object({
         integrationId: z.string().describe('The integration ID of the Slack workspace to use.'),
@@ -22,6 +24,7 @@ export const slackSendMessageTool = tool({
         thread_ts: z.string().nullable().optional().describe("Thread timestamp to reply to existing thread"),
         blocks: z.string().nullable().optional().describe("Block Kit JSON array string for interactive messages with buttons, structured layouts"),
     }),
+    needsApproval: createNeedsApprovalFunction(ToolName.SLACK_SEND_MESSAGE),
     execute: async ({ integrationId, channelId, message, thread_ts, blocks: blocksJson }, runContext?: RunContext<SessionWithTracking<Session>>) => {
         if (!runContext?.context) {
             throw new Error("No context provided");

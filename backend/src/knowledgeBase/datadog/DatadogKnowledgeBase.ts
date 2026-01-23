@@ -21,26 +21,10 @@ import logger from "../../logger";
 export class DatadogKnowledgeBase extends KnowledgeBase<DatadogConfig> {
     constructor() {
         const toolbox: ToolboxEntry[] = [
-            {
-                tool: searchDatadogLogsTool as Tool,
-                isReadOnly: true,
-                integration: IntegrationType.DATADOG
-            },
-            {
-                tool: listRumEventsTool as Tool,
-                isReadOnly: true,
-                integration: IntegrationType.DATADOG
-            },
-            {
-                tool: searchRumEventsTool as Tool,
-                isReadOnly: true,
-                integration: IntegrationType.DATADOG
-            },
-            {
-                tool: aggregateRumEventsTool as Tool,
-                isReadOnly: true,
-                integration: IntegrationType.DATADOG
-            }
+            { tool: searchDatadogLogsTool as Tool, isReadOnly: true, integration: IntegrationType.DATADOG, displayName: 'Search logs' },
+            { tool: listRumEventsTool as Tool, isReadOnly: true, integration: IntegrationType.DATADOG, displayName: 'List events' },
+            { tool: searchRumEventsTool as Tool, isReadOnly: true, integration: IntegrationType.DATADOG, displayName: 'Search RUM events' },
+            { tool: aggregateRumEventsTool as Tool, isReadOnly: true, integration: IntegrationType.DATADOG, displayName: 'Aggregate RUM events' },
         ];
 
         super(KnowledgeBaseConfigType.DATADOG, toolbox);

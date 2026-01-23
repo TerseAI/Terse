@@ -414,6 +414,7 @@ export type Agent = {
     outputs: AgentOutput[];
     knowledgeBases?: AgentKnowledgeBase[];
     notificationSettings?: AgentNotificationSettings;
+    toolApprovals?: string[];
     updatedAt?: string;
 };
 
@@ -431,6 +432,7 @@ export type AgentUpdate = {
     requireApproval?: boolean;
     knowledgeBases?: AgentKnowledgeBase[];
     notificationSettings?: AgentNotificationSettings;
+    toolApprovals?: string[];
 };
 
 export type AgentsResponse = {
