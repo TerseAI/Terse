@@ -179,10 +179,12 @@ export const gmailSendEmailTool = tool({
             const emailType = thread_id ? 'reply' : 'new email';
             const emailPreview = body.length > 100 ? body.substring(0, 100) + '...' : body;
             
-            // Build Gmail message URL
-            const gmailUrl = thread_id
-                ? `https://mail.google.com/mail/u/0/#inbox/${thread_id}`
-                : `https://mail.google.com/mail/u/0/#inbox/${messageId}`;
+            // Build Gmail message URL using the thread ID with #all
+            // Format: https://mail.google.com/mail/u/0/#all/{threadId}
+            // Using #all instead of #inbox ensures the link works regardless of label
+            // Fallback to messageId if threadId is not available (rare but possible edge case)
+            const sentThreadId = thread_id || result.data.threadId || messageId;
+            const gmailUrl = `https://mail.google.com/mail/u/0/#all/${sentThreadId}`;
             
             // Return action as part of the result
             const action = {
