@@ -59,11 +59,14 @@ export function createNeedsApprovalFunction(toolName: string) {
         if (!agent) return false;
         
         // Check granular settings first (new system)
-        if (toolName && agent.toolApprovals && agent.toolApprovals.length > 0) {
+        // If toolApprovals is defined (even if empty array), use granular system
+        // Empty array means user explicitly selected no tools to require approval
+        if (toolName && agent.toolApprovals !== undefined) {
             return agent.toolApprovals.includes(toolName);
         }
         
         // Fallback to legacy boolean (backward compatibility)
+        // Only used when toolApprovals is undefined (not set)
         return agent.requireApproval ?? false;
     };
 }
