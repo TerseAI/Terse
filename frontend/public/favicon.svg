@@ -3,11 +3,11 @@
   <path d="M2 4 h38 v12 h-13 v44 h-12 v-44 h-13 z" fill="#2a8a8a"/>
 
   <!-- Yellow dot -->
-  <circle cx="52" cy="12" r="9" fill="#f5c542"/>
+  <circle cx="50" cy="14" r="7" fill="#f5c542"/>
 
   <!-- Teal dot -->
-  <circle cx="54" cy="32" r="7" fill="#2a8a8a"/>
+  <circle cx="50" cy="32" r="7" fill="#2a8a8a"/>
 
   <!-- Red/coral dot -->
-  <circle cx="52" cy="52" r="8" fill="#e85a5a"/>
+  <circle cx="50" cy="50" r="7" fill="#e85a5a"/>
 </svg>
