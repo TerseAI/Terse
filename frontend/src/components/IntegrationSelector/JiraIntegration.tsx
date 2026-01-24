@@ -87,7 +87,7 @@ export function JiraIntegration({
             );
         }
         return (
-            <div className="max-w-xs flex flex-col gap-3 p-4 rounded-lg border border-dashed border-input bg-card">
+            <div className="flex flex-col items-center gap-3 p-4 rounded-lg border border-dashed border-input bg-card text-center">
                 <div className="text-sm text-muted-foreground">
                     No Jira accounts connected
                 </div>
