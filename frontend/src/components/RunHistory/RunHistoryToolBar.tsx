@@ -15,7 +15,7 @@ import { TestTube } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 import { SampleEventsModal } from './SampleEventsModal';
-import { TransientAgentTrigger } from "../../shared/types";
+import { AgentTrigger } from "../../shared/types";
 
 type DateRangeType = { from: Date | undefined; to: Date | undefined };
 
@@ -41,7 +41,7 @@ type Props = {
     onPageChange: (page: number) => void;
 
     agentId: string | null;
-    agentInputs: TransientAgentTrigger[];
+    agentInputs: AgentTrigger[];
     isAgentSaved: boolean;
 };
 

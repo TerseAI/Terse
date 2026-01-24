@@ -5,7 +5,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '.
 import RunHistoryItemTriggerHeader from './RunHistoryItem/RunHistoryItemTriggerHeader';
 import { BackendProvider } from '../../services/backend';
 import { SampleEvent } from '../../shared/SampleEvents';
-import { TransientAgentTrigger } from '../../shared/types';
+import { AgentTrigger } from '../../shared/types';
 import { CONFIG_DETAILS } from '../../shared/Configs';
 import { toast } from 'sonner';
 import Spin from '../loading/Spin';
@@ -14,7 +14,7 @@ interface SampleEventsModalProps {
   isOpen: boolean;
   onClose: () => void;
   agentId: string;
-  inputConfigs: TransientAgentTrigger[];
+  inputConfigs: AgentTrigger[];
 }
 
 export function SampleEventsModal({ isOpen, onClose, agentId, inputConfigs }: SampleEventsModalProps) {
@@ -69,7 +69,7 @@ export function SampleEventsModal({ isOpen, onClose, agentId, inputConfigs }: Sa
   };
 
   // Helper to get display name for input config
-  const getInputDisplayName = (input: TransientAgentTrigger, index: number) => {
+  const getInputDisplayName = (input: AgentTrigger, index: number) => {
     const configType = input.config?.configType;
     return configType ? `${CONFIG_DETAILS[configType].name} Input ${index + 1}` : `Input ${index + 1}`;
   };

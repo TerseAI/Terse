@@ -351,7 +351,7 @@ export default function AgentSetupTab({
                     <div className="h-full min-h-0 overflow-y-auto pr-1">
                         {activeSection === 'triggers' && (
                             <div className="max-w-3xl flex flex-col gap-4">
-                                <InputLayout inputs={inputs} setInputs={setInputs} isIncomplete={triggersIncomplete} agentId={agentId} />
+                                <InputLayout inputs={inputs} setInputs={setInputs} isIncomplete={triggersIncomplete} />
                             </div>
                         )}
 
@@ -378,7 +378,7 @@ export default function AgentSetupTab({
 
                         {activeSection === 'skills' && (
                             <div className="max-w-3xl flex flex-col gap-4 pr-6">
-                                <OutputLayout outputs={outputs} setOutputs={setOutputs} isIncomplete={skillsIncomplete} agentId={agentId} />
+                                <OutputLayout outputs={outputs} setOutputs={setOutputs} isIncomplete={skillsIncomplete} />
                             </div>
                         )}
 
