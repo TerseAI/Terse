@@ -425,31 +425,17 @@ function InputCard({ input, inputs, setInputs, handleRemove }: { input: Transien
     const needsConfiguration = !input.config || !input.config.isComplete();
     const [showDetailsDialog, setShowDetailsDialog] = useState(false);
     const [draftConfig, setDraftConfig] = useState<ConfigInstance | undefined>(input.config);
-    const [dialogJustOpened, setDialogJustOpened] = useState(false);
 
     const draftInput = { ...input, config: draftConfig };
     const isDraftValid = draftConfig?.isComplete() ?? false;
 
-    // Auto-apply config when dialog just opened, draft becomes valid, and input wasn't already configured
-    // This handles the case where there's only one integration option
-    useEffect(() => {
-        if (dialogJustOpened && isDraftValid && needsConfiguration && draftConfig) {
-            setDialogJustOpened(false);
-            // Apply immediately and close dialog
-            setInputs(inputs.map(i => i.id === input.id ? { ...i, config: draftConfig, configType: draftConfig.configType } : i));
-            setShowDetailsDialog(false);
-        }
-    }, [dialogJustOpened, isDraftValid, needsConfiguration, draftConfig, input.id, inputs, setInputs]);
-
     const handleOpenDialog = () => {
         setDraftConfig(input.config);
-        setDialogJustOpened(true);
         setShowDetailsDialog(true);
     };
 
     const handleCancel = () => {
         setDraftConfig(input.config);
-        setDialogJustOpened(false);
         setShowDetailsDialog(false);
     };
 
@@ -457,7 +443,6 @@ function InputCard({ input, inputs, setInputs, handleRemove }: { input: Transien
         if (draftConfig) {
             setInputs(inputs.map(i => i.id === input.id ? { ...i, config: draftConfig, configType: draftConfig.configType } : i));
         }
-        setDialogJustOpened(false);
         setShowDetailsDialog(false);
     };
 
@@ -573,31 +558,17 @@ function SkillCard({ output, outputs, setOutputs, handleRemove }: { output: Tran
     const [showDetailsDialog, setShowDetailsDialog] = useState(false);
     const needsConfiguration = !output.config || !output.config.isComplete();
     const [draftConfig, setDraftConfig] = useState<ConfigInstance | undefined>(output.config);
-    const [dialogJustOpened, setDialogJustOpened] = useState(false);
 
     const draftOutput = { ...output, config: draftConfig };
     const isDraftValid = draftConfig?.isComplete() ?? false;
 
-    // Auto-apply config when dialog just opened, draft becomes valid, and output wasn't already configured
-    // This handles the case where there's only one integration option
-    useEffect(() => {
-        if (dialogJustOpened && isDraftValid && needsConfiguration && draftConfig) {
-            setDialogJustOpened(false);
-            // Apply immediately and close dialog
-            setOutputs(outputs.map(o => o.id === output.id ? { ...o, config: draftConfig, configType: draftConfig.configType } : o));
-            setShowDetailsDialog(false);
-        }
-    }, [dialogJustOpened, isDraftValid, needsConfiguration, draftConfig, output.id, outputs, setOutputs]);
-
     const handleOpenDialog = () => {
         setDraftConfig(output.config);
-        setDialogJustOpened(true);
         setShowDetailsDialog(true);
     };
 
     const handleCancel = () => {
         setDraftConfig(output.config);
-        setDialogJustOpened(false);
         setShowDetailsDialog(false);
     };
 
@@ -605,7 +576,6 @@ function SkillCard({ output, outputs, setOutputs, handleRemove }: { output: Tran
         if (draftConfig) {
             setOutputs(outputs.map(o => o.id === output.id ? { ...o, config: draftConfig, configType: draftConfig.configType } : o));
         }
-        setDialogJustOpened(false);
         setShowDetailsDialog(false);
     };
 
@@ -711,31 +681,17 @@ function KnowledgeBaseCard({ knowledgeBase, knowledgeBases, setKnowledgeBases, h
     const [showDetailsDialog, setShowDetailsDialog] = useState(false);
     const needsConfiguration = !knowledgeBase.config || !knowledgeBase.config.isComplete();
     const [draftConfig, setDraftConfig] = useState<ConfigInstance | undefined>(knowledgeBase.config);
-    const [dialogJustOpened, setDialogJustOpened] = useState(false);
 
     const draftKnowledgeBase = { ...knowledgeBase, config: draftConfig };
     const isDraftValid = draftConfig?.isComplete() ?? false;
 
-    // Auto-apply config when dialog just opened, draft becomes valid, and knowledge base wasn't already configured
-    // This handles the case where there's only one integration option
-    useEffect(() => {
-        if (dialogJustOpened && isDraftValid && needsConfiguration && draftConfig) {
-            setDialogJustOpened(false);
-            // Apply immediately and close dialog
-            setKnowledgeBases(knowledgeBases.map(kb => kb.id === knowledgeBase.id ? { ...kb, config: draftConfig, configType: draftConfig.configType } : kb));
-            setShowDetailsDialog(false);
-        }
-    }, [dialogJustOpened, isDraftValid, needsConfiguration, draftConfig, knowledgeBase.id, knowledgeBases, setKnowledgeBases]);
-
     const handleOpenDialog = () => {
         setDraftConfig(knowledgeBase.config);
-        setDialogJustOpened(true);
         setShowDetailsDialog(true);
     };
 
     const handleCancel = () => {
         setDraftConfig(knowledgeBase.config);
-        setDialogJustOpened(false);
         setShowDetailsDialog(false);
     };
 
@@ -743,7 +699,6 @@ function KnowledgeBaseCard({ knowledgeBase, knowledgeBases, setKnowledgeBases, h
         if (draftConfig) {
             setKnowledgeBases(knowledgeBases.map(kb => kb.id === knowledgeBase.id ? { ...kb, config: draftConfig, configType: draftConfig.configType } : kb));
         }
-        setDialogJustOpened(false);
         setShowDetailsDialog(false);
     };
 
