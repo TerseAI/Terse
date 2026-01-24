@@ -7,7 +7,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
-import { Maximize2Icon, Sparkles, Info, AlertTriangleIcon } from "lucide-react";
+import { Maximize2Icon, Sparkles, Info } from "lucide-react";
 import { AgentTrigger, AgentOutput, AgentKnowledgeBase, AgentPrompt } from "@/shared/types";
 import { PromptBuilderModal } from "../../../components/PromptBuilder/PromptBuilderModal";
 import { Switch } from "../../../components/ui/switch";
@@ -38,7 +38,7 @@ interface InstructionsEditorProps {
     isIncomplete?: boolean;
 }
 
-export function InstructionsEditor({ prompt, setPrompt, agentInputs, agentOutputs, knowledgeBases, isIncomplete }: InstructionsEditorProps) {
+export function InstructionsEditor({ prompt, setPrompt, agentInputs, agentOutputs, knowledgeBases }: InstructionsEditorProps) {
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [showPromptBuilder, setShowPromptBuilder] = useState(false);
     const [showMarkdown, setShowMarkdown] = useState(false);
