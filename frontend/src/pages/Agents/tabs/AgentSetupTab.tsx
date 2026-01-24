@@ -18,13 +18,12 @@ import { CONFIG_DETAILS, ConfigInstance, ConfigType } from "../../../shared/Conf
 import { v4 as uuidv4 } from 'uuid';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../../components/ui/dialog";
 import { InputConfigSelectorProps, IntegrationSelector } from "../../../components/IntegrationSelector";
-import { AlertTriangleIcon, PlusIcon, XIcon, Zap, FileText, Wrench, Bell, Database, ChevronRight, Check } from "lucide-react";
+import { PlusIcon, XIcon, Zap, FileText, Wrench, Bell, Database, ChevronRight, Check } from "lucide-react";
 import { cn } from "../../../lib/utils";
 import { Badge } from "../../../components/ui/badge";
 import AgentNotificationSettings from "../AgentNotificationSettings";
 import AgentApprovalSettings from "../AgentApprovalSettings";
 import { InstructionsEditor } from "../components/InstructionsEditor";
-import { Tooltip, TooltipTrigger, TooltipContent } from "../../../components/ui/tooltip";
 import { IconForConfigType } from "../components/Integration";
 
 export type AgentSetupTabProps = {
@@ -181,17 +180,8 @@ export default function AgentSetupTab({
 
     const triggersIncomplete =
         inputs.length === 0 || inputs.some((i) => !i || !i.config || !i.config.isComplete());
-    const knowledgeBaseIncomplete = knowledgeBases.some((kb) => !kb || !kb.config || !kb.config.isComplete());
     const promptIncomplete = !prompt?.text || prompt.text.trim() === '';
     const skillsIncomplete = outputs.length === 0 || outputs.some((o) => !o || !o.config || !o.config.isComplete());
-
-    // Check if automation is complete (same logic as SaveAgentButton)
-    const isComplete =
-        inputs.length > 0 &&
-        inputs.every(i => i != null && i.config != null && i.config.isComplete()) &&
-        outputs.length > 0 &&
-        outputs.every(o => o != null && o.config != null && o.config.isComplete()) &&
-        !!prompt?.text;
 
     // Step definitions for the builder flow
     const steps = [
