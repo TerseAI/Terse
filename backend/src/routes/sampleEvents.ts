@@ -1,8 +1,12 @@
 import { Request, Response } from "express";
-import { ConfigInstance, ConfigType, SlackConfig } from "../shared/Configs";
+import { ConfigInstance, ConfigType, FigmaConfig, GitHubConfig, JiraConfig, LinearInputConfig, SlackConfig } from "../shared/Configs";
 import { GmailEvent } from "../integrations/GmailIntegration";
-import { SampleEvent, GmailSampleEvent, AgentSampleEvent, SlackSampleEvent } from "../shared/SampleEvents";
+import { SampleEvent, GmailSampleEvent, AgentSampleEvent, SlackSampleEvent, JiraSampleEvent, LinearSampleEvent, GithubSampleEvent, FigmaSampleEvent } from "../shared/SampleEvents";
 import { SlackEvent } from "../integrations/SlackIntegration";
+import { JiraEvent } from "../integrations/AtlassianIntegration";
+import { LinearEvent } from "../integrations/LinearIntegration";
+import { GithubEvent } from "../integrations/GithubIntegration";
+import { FigmaCommentEvent } from "../integrations/FigmaIntegration";
 
 
 export async function getSampleEvents(req: Request, res: Response) {
@@ -17,6 +21,14 @@ export async function getSampleEvents(req: Request, res: Response) {
                 return res.status(200).json(await GmailEvent.getSampleEvents(config));
             case ConfigType.SLACK:
                 return res.status(200).json(await SlackEvent.getSampleEvents(config as SlackConfig));
+            case ConfigType.JIRA:
+                return res.status(200).json(await JiraEvent.getSampleEvents(config as JiraConfig));
+            case ConfigType.LINEAR_INPUT:
+                return res.status(200).json(await LinearEvent.getSampleEvents(config as LinearInputConfig));
+            case ConfigType.GITHUB:
+                return res.status(200).json(await GithubEvent.getSampleEvents(config as GitHubConfig));
+            case ConfigType.FIGMA:
+                return res.status(200).json(await FigmaCommentEvent.getSampleEvents(config as FigmaConfig));
             default:
                 return res.status(400).json({ error: 'Unsupported integration type' });
         }
@@ -46,6 +58,18 @@ export async function sendSampleEventToAgent(req: Request, res: Response) {
                 return res.status(200).json({ message: 'Sample event sent to agent' });
             case ConfigType.SLACK:
                 await SlackEvent.sendSampleEventToAgent(sampleEvent as SlackSampleEvent, agentId, req.session.user)
+                return res.status(200).json({ message: 'Sample event sent to agent' });
+            case ConfigType.JIRA:
+                await JiraEvent.sendSampleEventToAgent(sampleEvent as JiraSampleEvent, agentId, req.session.user)
+                return res.status(200).json({ message: 'Sample event sent to agent' });
+            case ConfigType.LINEAR_INPUT:
+                await LinearEvent.sendSampleEventToAgent(sampleEvent as LinearSampleEvent, agentId, req.session.user)
+                return res.status(200).json({ message: 'Sample event sent to agent' });
+            case ConfigType.GITHUB:
+                await GithubEvent.sendSampleEventToAgent(sampleEvent as GithubSampleEvent, agentId, req.session.user)
+                return res.status(200).json({ message: 'Sample event sent to agent' });
+            case ConfigType.FIGMA:
+                await FigmaCommentEvent.sendSampleEventToAgent(sampleEvent as FigmaSampleEvent, agentId, req.session.user)
                 return res.status(200).json({ message: 'Sample event sent to agent' });
             default:
                 return res.status(400).json({ error: 'Unsupported integration type' });
