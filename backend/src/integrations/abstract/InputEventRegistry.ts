@@ -10,7 +10,7 @@ import { FigmaCommentEvent } from '../FigmaIntegration';
 
 // Type for event classes with required static methods
 interface InputEventClass {
-    getSampleEvents(config: any): Promise<SampleEvent[]>;
+    getSampleEvents(config: any, userId?: string): Promise<SampleEvent[]>;
     sendSampleEventToAgent(sampleEvent: SampleEvent, agentId: string, user: User): Promise<void>;
 }
 

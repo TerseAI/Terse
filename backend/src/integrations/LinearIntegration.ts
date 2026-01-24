@@ -590,7 +590,7 @@ export class LinearEvent extends InputEvent {
         return [];
     }
 
-    static async getSampleEvents(config: LinearInputConfig): Promise<LinearSampleEvent[]> {
+    static async getSampleEvents(config: LinearInputConfig, userId?: string): Promise<LinearSampleEvent[]> {
         const prisma = db();
 
         const linearIntegration = await prisma.linear_integrations.findUnique({

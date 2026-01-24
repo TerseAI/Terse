@@ -1355,7 +1355,7 @@ export class JiraEvent extends InputEvent {
         };
     }
 
-    static async getSampleEvents(config: JiraConfig): Promise<JiraSampleEvent[]> {
+    static async getSampleEvents(config: JiraConfig, userId?: string): Promise<JiraSampleEvent[]> {
         const prisma = db();
 
         const atlassianIntegration = await prisma.atlassian_integrations.findUnique({

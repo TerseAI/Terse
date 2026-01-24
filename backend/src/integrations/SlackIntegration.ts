@@ -747,7 +747,7 @@ export class SlackEvent extends InputEvent implements Identifiable {
         });
     }
 
-    static async getSampleEvents(config: SlackConfig): Promise<SlackSampleEvent[]> {
+    static async getSampleEvents(config: SlackConfig, userId?: string): Promise<SlackSampleEvent[]> {
         const prisma = db();
 
         try {

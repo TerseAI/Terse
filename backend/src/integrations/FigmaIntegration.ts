@@ -1014,7 +1014,7 @@ export class FigmaCommentEvent extends InputEvent {
     return urls;
   }
 
-  static async getSampleEvents(config: FigmaConfig): Promise<FigmaSampleEvent[]> {
+  static async getSampleEvents(config: FigmaConfig, userId?: string): Promise<FigmaSampleEvent[]> {
     const prisma = db();
 
     const figmaIntegration = await prisma.figma_integrations.findUnique({

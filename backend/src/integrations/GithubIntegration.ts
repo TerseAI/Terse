@@ -371,122 +371,88 @@ export class GithubEvent extends InputEvent {
         return [];
     }
 
-    static async getSampleEvents(config: GitHubConfig): Promise<GithubSampleEvent[]> {
-        // TODO: Implement GitHub sample events
-        // Requires proper GitHub App installation lookup and access token generation
-        throw new Error('GitHub sample events not yet implemented');
-        /*
-        const prisma = db();
-
-        const githubIntegration = await prisma.github_app_installations.findUnique({
-            where: { id: config.integrationId },
-        });
-
-        if (!githubIntegration) {
-            throw new Error(`GitHub integration ${config.integrationId} not found`);
+    static async getSampleEvents(config: GitHubConfig, userId?: string): Promise<GithubSampleEvent[]> {
+        if (!userId) {
+            throw createError('User ID is required for GitHub sample events', 400);
         }
 
-        const sampleEvents: GithubSampleEvent[] = [];
+        const prisma = db();
+
+        // 1. Verify the installation_id from config.integrationId exists and belongs to user
+        const installationId = parseInt(config.integrationId);
+        if (isNaN(installationId)) {
+            throw createError('Invalid installation ID', 400);
+        }
+
+        // 2. Get user's GitHub OAuth token first
+        const githubToken = await prisma.github_app_tokens.findFirst({
+            where: { user_id: userId }
+        });
+
+        if (!githubToken) {
+            throw createError('No GitHub token found for user. Please connect your GitHub account.', 404);
+        }
+
+        const accessToken = githubToken.access_token;
+
+        // 3. Verify user has access to this installation via their OAuth token
+        // We check this by fetching the user's installations from GitHub API
+        const userInstallations = await getAppInstallationsForUser(accessToken);
+        const hasAccess = userInstallations.installations.some(inst => inst.id === installationId);
+
+        if (!hasAccess) {
+            throw createError('Installation not found or access denied. You may not have access to this GitHub App installation.', 403);
+        }
+
+        // 4. Determine which repositories to fetch events from
+        let repositoriesToFetch: Array<{ id: number, owner: string, name: string, defaultBranch: string }> = [];
 
         try {
-            // Get installation access token
-            const accessToken = await getInstallationAccessToken(githubIntegration.installation_id);
-
-            // For each repository in the config, fetch last 3 commits
-            const repositories = config.repositoryIds || [];
-
-            for (const repoId of repositories.slice(0, 1)) { // Just fetch from first repo for samples
-                // Get repository details
-                const repoDetailsResponse = await axios.get(
-                    `https://api.github.com/repositories/${repoId}`,
-                    {
-                        headers: {
-                            Authorization: `Bearer ${accessToken}`,
-                            Accept: 'application/vnd.github+json',
-                        },
-                    }
-                );
-
-                const repo = repoDetailsResponse.data;
-                const owner = repo.owner.login;
-                const repoName = repo.name;
-
-                // Fetch last 3 commits
-                const commitsResponse = await axios.get(
-                    `https://api.github.com/repos/${owner}/${repoName}/commits`,
-                    {
-                        params: { per_page: 3 },
-                        headers: {
-                            Authorization: `Bearer ${accessToken}`,
-                            Accept: 'application/vnd.github+json',
-                        },
-                    }
-                );
-
-                const commits = commitsResponse.data || [];
-
-                for (const commit of commits) {
-                    // Fetch commit details to get file diffs
-                    const commitDetailsResponse = await axios.get(
-                        `https://api.github.com/repos/${owner}/${repoName}/commits/${commit.sha}`,
-                        {
-                            headers: {
-                                Authorization: `Bearer ${accessToken}`,
-                                Accept: 'application/vnd.github.diff',
-                            },
-                        }
-                    );
-
-                    const eventData: GithubEventData = {
-                        username: commit.commit.author.name,
-                        installationId: githubIntegration.installation_id,
-                        repositoryName: `${owner}/${repoName}`,
-                        eventType: 'push',
-                        branch: repo.default_branch,
-                        commits: [{
-                            sha: commit.sha,
-                            name: commit.commit.message,
-                            fileDiffs: [{
-                                filename: 'diff',
-                                diff: String(commitDetailsResponse.data).substring(0, 1000), // Truncate for sample
-                            }],
-                        }],
-                        repository: {
-                            id: repo.id,
-                            name: repoName,
-                            owner: owner,
-                            defaultBranch: repo.default_branch,
-                        },
-                        sender: {
-                            login: commit.commit.author.name,
-                            email: commit.commit.author.email,
-                        },
-                    };
-
-                    const event = new GithubEvent(eventData);
-                    sampleEvents.push({
-                        configType: ConfigType.GITHUB,
-                        eventData,
-                        trigger: event.createTriggerMetadata(),
-                        integrationId: config.integrationId,
-                    });
-
-                    if (sampleEvents.length >= 3) {
-                        break;
+            if (config.repositoryIds && config.repositoryIds.length > 0) {
+                // Use specified repositories from the config
+                for (const repoId of config.repositoryIds.slice(0, 2)) {
+                    const repo = await fetchRepositoryDetails(accessToken, repoId);
+                    if (repo) {
+                        repositoriesToFetch.push(repo);
                     }
                 }
-
-                if (sampleEvents.length >= 3) {
-                    break;
-                }
+            } else {
+                // Fetch repositories from this installation
+                const installationRepos = await getAppInstallationRepositories(accessToken, installationId);
+                repositoriesToFetch = installationRepos.slice(0, 2).map(r => ({
+                    id: r.id,
+                    owner: r.owner.login,
+                    name: r.name,
+                    defaultBranch: r.default_branch || 'main'
+                }));
             }
 
-            return sampleEvents;
+            // 5. Fetch sample events (commits and PRs) from repositories
+            const sampleEvents: GithubSampleEvent[] = [];
+
+            for (const repo of repositoriesToFetch) {
+                // Fetch last 2 commits
+                const commits = await fetchRecentCommits(accessToken, repo.owner, repo.name, 2);
+                for (const commit of commits) {
+                    const event = await createPushSampleEvent(commit, repo, installationId, accessToken);
+                    if (event) sampleEvents.push(event);
+                }
+
+                // Fetch last 2 pull requests (all states)
+                const pullRequests = await fetchRecentPullRequests(accessToken, repo.owner, repo.name, 2);
+                for (const pr of pullRequests) {
+                    const event = await createPullRequestSampleEvent(pr, repo, installationId, accessToken);
+                    if (event) sampleEvents.push(event);
+                }
+
+                if (sampleEvents.length >= 6) break;
+            }
+
+            return sampleEvents.slice(0, 6); // Return max 6 sample events
         } catch (error) {
             logger.error('Error fetching GitHub sample events', { error, config });
             throw error;
         }
-        */
     }
 
     static async sendSampleEventToAgent(sampleEvent: GithubSampleEvent, agentId: string, user: User): Promise<void> {
@@ -504,6 +470,271 @@ export class GithubEvent extends InputEvent {
         }).catch((error) => {
             logger.error(`Error sending sample GitHub event to agent`, { error, agentId });
         });
+    }
+}
+
+// MARK: - Helper Functions for Sample Events
+
+/**
+ * Create an error with a status code for proper HTTP responses
+ */
+function createError(message: string, statusCode: number): Error & { statusCode: number } {
+    const error = new Error(message) as Error & { statusCode: number };
+    error.statusCode = statusCode;
+    return error;
+}
+
+/**
+ * Fetch repository details by repository ID
+ */
+async function fetchRepositoryDetails(accessToken: string, repoId: number): Promise<{ id: number, owner: string, name: string, defaultBranch: string } | null> {
+    try {
+        const response = await axios.get(`https://api.github.com/repositories/${repoId}`, {
+            headers: {
+                Authorization: `Bearer ${accessToken}`,
+                Accept: 'application/vnd.github+json',
+            },
+        });
+
+        return {
+            id: response.data.id,
+            owner: response.data.owner.login,
+            name: response.data.name,
+            defaultBranch: response.data.default_branch || 'main',
+        };
+    } catch (error) {
+        logger.error('Error fetching repository details', { error, repoId });
+        return null;
+    }
+}
+
+/**
+ * Fetch recent commits from a repository
+ */
+async function fetchRecentCommits(accessToken: string, owner: string, repo: string, count: number): Promise<any[]> {
+    try {
+        const response = await axios.get(`https://api.github.com/repos/${owner}/${repo}/commits`, {
+            params: { per_page: count },
+            headers: {
+                Authorization: `Bearer ${accessToken}`,
+                Accept: 'application/vnd.github+json',
+            },
+        });
+
+        return response.data || [];
+    } catch (error) {
+        logger.error('Error fetching recent commits', { error, owner, repo });
+        return [];
+    }
+}
+
+/**
+ * Fetch full commit details including diffs
+ */
+async function fetchCommitDiff(accessToken: string, owner: string, repo: string, sha: string): Promise<any> {
+    try {
+        const response = await axios.get(`https://api.github.com/repos/${owner}/${repo}/commits/${sha}`, {
+            headers: {
+                Authorization: `Bearer ${accessToken}`,
+                Accept: 'application/vnd.github+json',
+            },
+        });
+
+        return response.data;
+    } catch (error) {
+        logger.error('Error fetching commit diff', { error, owner, repo, sha });
+        return null;
+    }
+}
+
+/**
+ * Fetch recent pull requests from a repository
+ */
+async function fetchRecentPullRequests(accessToken: string, owner: string, repo: string, count: number): Promise<any[]> {
+    try {
+        const response = await axios.get(`https://api.github.com/repos/${owner}/${repo}/pulls`, {
+            params: {
+                state: 'all',
+                sort: 'updated',
+                direction: 'desc',
+                per_page: count
+            },
+            headers: {
+                Authorization: `Bearer ${accessToken}`,
+                Accept: 'application/vnd.github+json',
+            },
+        });
+
+        return response.data || [];
+    } catch (error) {
+        logger.error('Error fetching recent pull requests', { error, owner, repo });
+        return [];
+    }
+}
+
+/**
+ * Fetch commits for a specific pull request
+ */
+async function fetchPullRequestCommits(accessToken: string, owner: string, repo: string, prNumber: number): Promise<any[]> {
+    try {
+        const response = await axios.get(`https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}/commits`, {
+            headers: {
+                Authorization: `Bearer ${accessToken}`,
+                Accept: 'application/vnd.github+json',
+            },
+        });
+
+        return response.data || [];
+    } catch (error) {
+        logger.error('Error fetching PR commits', { error, owner, repo, prNumber });
+        return [];
+    }
+}
+
+/**
+ * Create a push sample event from a commit
+ */
+async function createPushSampleEvent(
+    commit: any,
+    repo: { id: number, owner: string, name: string, defaultBranch: string },
+    installationId: number,
+    accessToken: string
+): Promise<GithubSampleEvent | null> {
+    try {
+        // Fetch full commit details with file diffs
+        const commitDetails = await fetchCommitDiff(accessToken, repo.owner, repo.name, commit.sha);
+        if (!commitDetails) {
+            return null;
+        }
+
+        // Process files and diffs
+        const fileDiffs = (commitDetails.files || []).map((file: any) => ({
+            filename: file.filename,
+            diff: file.patch || '', // GitHub provides the patch/diff
+        }));
+
+        const eventData: GithubEventData = {
+            username: commit.commit.author.name || commit.author?.login || 'unknown',
+            installationId: installationId,
+            repositoryName: repo.name,
+            eventType: 'push',
+            branch: repo.defaultBranch,
+            commits: [{
+                sha: commit.sha,
+                name: commit.commit.message,
+                fileDiffs: fileDiffs,
+            }],
+            repository: {
+                id: repo.id,
+                name: repo.name,
+                owner: repo.owner,
+                defaultBranch: repo.defaultBranch,
+            },
+            sender: {
+                login: commit.commit.author.name || commit.author?.login || 'unknown',
+                email: commit.commit.author.email,
+            },
+        };
+
+        const event = new GithubEvent(eventData);
+        return {
+            configType: ConfigType.GITHUB,
+            eventData,
+            trigger: event.createTriggerMetadata(),
+            integrationId: installationId.toString(),
+        };
+    } catch (error) {
+        logger.error('Error creating push sample event', { error, commit: commit.sha });
+        return null;
+    }
+}
+
+/**
+ * Create a pull request sample event from a PR
+ */
+async function createPullRequestSampleEvent(
+    pr: any,
+    repo: { id: number, owner: string, name: string, defaultBranch: string },
+    installationId: number,
+    accessToken: string
+): Promise<GithubSampleEvent | null> {
+    try {
+        // Determine event type based on PR state
+        let eventType: 'pull_request.opened' | 'pull_request.merged' | 'pull_request.closed';
+        if (pr.merged_at) {
+            eventType = 'pull_request.merged';
+        } else if (pr.state === 'closed') {
+            eventType = 'pull_request.closed';
+        } else {
+            eventType = 'pull_request.opened';
+        }
+
+        // Fetch commits for this PR
+        const prCommits = await fetchPullRequestCommits(accessToken, repo.owner, repo.name, pr.number);
+
+        // Transform commits to our format
+        const commits = await Promise.all(prCommits.slice(0, 3).map(async (commit: any) => {
+            const commitDetails = await fetchCommitDiff(accessToken, repo.owner, repo.name, commit.sha);
+            const fileDiffs = (commitDetails?.files || []).map((file: any) => ({
+                filename: file.filename,
+                diff: file.patch || '',
+            }));
+
+            return {
+                sha: commit.sha,
+                name: commit.commit.message,
+                fileDiffs: fileDiffs,
+            };
+        }));
+
+        const eventData: GithubEventData = {
+            username: pr.user.login,
+            installationId: installationId,
+            repositoryName: repo.name,
+            eventType: eventType,
+            commits: commits,
+            pullRequest: {
+                id: pr.id.toString(),
+                number: pr.number,
+                title: pr.title,
+                body: pr.body || '',
+                state: pr.state,
+                merged: pr.merged_at !== null,
+                head: {
+                    ref: pr.head.ref,
+                    sha: pr.head.sha,
+                },
+                base: {
+                    ref: pr.base.ref,
+                    sha: pr.base.sha,
+                },
+                user: {
+                    login: pr.user.login,
+                    email: pr.user.email,
+                },
+            },
+            repository: {
+                id: repo.id,
+                name: repo.name,
+                owner: repo.owner,
+                defaultBranch: repo.defaultBranch,
+            },
+            sender: {
+                login: pr.user.login,
+                email: pr.user.email,
+            },
+        };
+
+        const event = new GithubEvent(eventData);
+        return {
+            configType: ConfigType.GITHUB,
+            eventData,
+            trigger: event.createTriggerMetadata(),
+            integrationId: installationId.toString(),
+        };
+    } catch (error) {
+        logger.error('Error creating PR sample event', { error, pr: pr.number });
+        return null;
     }
 }
 

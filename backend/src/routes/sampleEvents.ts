@@ -6,13 +6,21 @@ import { InputEventRegistry } from "../integrations/abstract/InputEventRegistry"
 
 export async function getSampleEvents(req: Request, res: Response) {
     const config = req.body as ConfigInstance;
-    if (!config.integrationType || !config.integrationId) {
-        return res.status(400).json({ error: 'config is required' });
+    const userId = req.session?.user?.id; // Get userId from authenticated session
+
+    if (!config.integrationType) {
+        return res.status(400).json({ error: 'integrationType is required' });
+    }
+
+    // GitHub integration requires userId from session
+    if (config.integrationType === 'github' && !userId) {
+        return res.status(401).json({ error: 'Authentication required for GitHub sample events' });
     }
 
     try {
         const handler = InputEventRegistry.getEventHandler(config.configType);
-        return res.status(200).json(await handler.getSampleEvents(config));
+        // Pass userId for integrations that need it (like GitHub)
+        return res.status(200).json(await handler.getSampleEvents(config, userId));
     } catch (error: any) {
         // Use status code from error if available, otherwise default to 500
         const statusCode = error.statusCode || 500;

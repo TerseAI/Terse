@@ -540,7 +540,7 @@ export class GmailEvent extends InputEvent {
      * 
      * Get sample events for the given config that can be used for testing.
      */
-    static async getSampleEvents(config: GmailConfig): Promise<SampleEvent[]> {
+    static async getSampleEvents(config: GmailConfig, userId?: string): Promise<SampleEvent[]> {
         const prisma = db();
 
         const gmailIntegration = await prisma.gmail_integrations.findUnique({
