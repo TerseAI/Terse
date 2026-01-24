@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FrontendRoutes } from "@/shared/FrontendRoutes";
 import EditableTextField from '../../../components/ui/EditableTextField';
