@@ -2,7 +2,7 @@ import { Integration, OAuthIntegrationInstallation, ConfigurationFieldDefinition
 import { db } from "../prismaClient";
 import { LinearIntegration, LinearIntegrationMetadata } from "../shared/Integrations";
 import { IntegrationType, InstallationOptionsFor, AdditionalStateParams } from "../shared/Integrations";
-import { AgentTriggerWithConfigs } from "../types/prisma";
+import { AgentTriggerWithConfigs, User } from "../types/prisma";
 import { OAuthInstallationDetails } from "../shared/types";
 import jwt from "jsonwebtoken";
 import { settings, OAUTH_TOKEN_REFRESH_THRESHOLD_MS } from "../config/settings";
@@ -19,6 +19,9 @@ import { createOAuthStateToken } from "../utility/oauth";
 import { integrationTaskQueue } from "./IntegrationTaskQueues";
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask";
 import { FrontendRoutes } from "../shared/FrontendRoutes";
+import { ConfigType, LinearInputConfig } from "../shared/Configs";
+import { LinearSampleEvent, LinearEventData } from "../shared/SampleEvents";
+import { LinearClient } from "@linear/sdk";
 
 export class LinearIntegrationManager implements Integration<LinearIntegration, LinearWebhookPayload, typeof LinearIntegrationMetadata>, OAuthIntegrationInstallation<IntegrationType.LINEAR> {
     constructor() { }
@@ -585,5 +588,128 @@ export class LinearEvent extends InputEvent {
     getImageUrls(): string[] {
         // Linear events don't include images yet
         return [];
+    }
+
+    static async getSampleEvents(config: LinearInputConfig): Promise<LinearSampleEvent[]> {
+        const prisma = db();
+
+        const linearIntegration = await prisma.linear_integrations.findUnique({
+            where: { id: config.integrationId },
+        });
+
+        if (!linearIntegration) {
+            throw new Error(`Linear integration ${config.integrationId} not found`);
+        }
+
+        const adapter = new LinearAdapter(linearIntegration.access_token);
+        const sampleEvents: LinearSampleEvent[] = [];
+
+        try {
+            // Use Linear SDK to fetch recent issues
+            const client = new LinearClient({ apiKey: linearIntegration.access_token });
+
+            // Fetch last 3 issues
+            const issues = await client.issues({
+                first: 3,
+                orderBy: "updatedAt" as any,
+            });
+
+            for (const issue of issues.nodes) {
+                // Fetch team, state, assignee, and creator details
+                const [team, state, assignee, creator] = await Promise.all([
+                    issue.team,
+                    issue.state,
+                    issue.assignee,
+                    issue.creator,
+                ]);
+
+                // Create a webhook payload-like structure from the issue data
+                const eventData: LinearEventData = {
+                    action: 'create',
+                    actor: {
+                        id: creator?.id || 'unknown',
+                        name: creator?.name || 'Unknown',
+                        email: creator?.email || '',
+                        url: '',
+                        type: 'user',
+                    },
+                    createdAt: issue.createdAt.toISOString(),
+                    data: {
+                        id: issue.id,
+                        createdAt: issue.createdAt.toISOString(),
+                        updatedAt: issue.updatedAt.toISOString(),
+                        number: issue.number,
+                        title: issue.title,
+                        priority: issue.priority,
+                        sortOrder: issue.sortOrder,
+                        prioritySortOrder: 0,
+                        slaType: '',
+                        addedToTeamAt: issue.createdAt.toISOString(),
+                        trashed: false,
+                        labelIds: [],
+                        teamId: team?.id || '',
+                        previousIdentifiers: [],
+                        stateId: state?.id || '',
+                        reactionData: [],
+                        priorityLabel: issue.priorityLabel || '',
+                        identifier: issue.identifier,
+                        url: issue.url,
+                        subscriberIds: [],
+                        state: {
+                            id: state?.id || '',
+                            color: state?.color || '',
+                            name: state?.name || '',
+                            type: state?.type || '',
+                        },
+                        team: {
+                            id: team?.id || '',
+                            key: team?.key || '',
+                            name: team?.name || '',
+                        },
+                        labels: [],
+                        description: issue.description,
+                        assignee: assignee ? {
+                            id: assignee.id,
+                            name: assignee.name,
+                        } : undefined,
+                    },
+                    type: 'Issue',
+                    url: issue.url,
+                    organizationId: linearIntegration.workspace_id,
+                    webhookTimestamp: Date.now(),
+                    webhookId: `sample-${issue.id}`,
+                };
+
+                const event = new LinearEvent(eventData, config.integrationId);
+                sampleEvents.push({
+                    configType: ConfigType.LINEAR_INPUT,
+                    eventData,
+                    trigger: event.createTriggerMetadata(),
+                    integrationId: config.integrationId,
+                });
+            }
+
+            return sampleEvents;
+        } catch (error) {
+            logger.error('Error fetching Linear sample events', { error, config });
+            throw error;
+        }
+    }
+
+    static async sendSampleEventToAgent(sampleEvent: LinearSampleEvent, agentId: string, user: User): Promise<void> {
+        const event = new LinearEvent(sampleEvent.eventData, sampleEvent.integrationId);
+        const eventProcessor = new EventProcessor(event, user);
+
+        const agent = await eventProcessor.findAgent(agentId);
+        if (!agent) {
+            throw new Error(`Agent ${agentId} not found`);
+        }
+
+        // Process asynchronously
+        eventProcessor.processAgent(agent).then(() => {
+            logger.info(`Sample Linear event sent to agent`, { agentId, issueId: sampleEvent.eventData.data.id });
+        }).catch((error) => {
+            logger.error(`Error sending sample Linear event to agent`, { error, agentId });
+        });
     }
 }

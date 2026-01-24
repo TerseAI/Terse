@@ -18,7 +18,7 @@ import { IntegrationCompletedTask } from "./IntegrationCompletedTask";
 import { createOAuthStateToken, decodeOAuthStateToken, OAuthStateEncodingFormat } from "../utility/oauth";
 import { FrontendRoutes } from "../shared/FrontendRoutes";
 import { ConfigType, GmailConfig } from "../shared/Configs";
-import { SampleEvent, GmailEventData } from "../shared/SampleEvents";
+import { SampleEvent, GmailEventData, GmailSampleEvent } from "../shared/SampleEvents";
 
 
 // OAuth2 scopes for Gmail
@@ -577,8 +577,8 @@ export class GmailEvent extends InputEvent {
             }
             return new GmailEvent(eventData, config.integrationId);
         }));
-        const sampleEventsFiltered = sampleEvents.filter(event => event !== null).map(event => ({
-            configType: ConfigType.GMAIL,
+        const sampleEventsFiltered: GmailSampleEvent[] = sampleEvents.filter(event => event !== null).map(event => ({
+            configType: ConfigType.GMAIL as ConfigType.GMAIL,
             eventData: event.data,
             trigger: event.createTriggerMetadata(),
             integrationId: config.integrationId,
@@ -592,7 +592,7 @@ export class GmailEvent extends InputEvent {
         return sampleEventsFiltered;
     }
 
-    static async sendSampleEventToAgent(sampleEvent: SampleEvent, agentId: string, user: User): Promise<void> {
+    static async sendSampleEventToAgent(sampleEvent: GmailSampleEvent, agentId: string, user: User): Promise<void> {
         const { eventData, integrationId } = sampleEvent;
         const integration = await db().gmail_integrations.findUnique({
             where: { id: integrationId },
@@ -600,7 +600,7 @@ export class GmailEvent extends InputEvent {
         if (!integration) {
             throw new Error(`Gmail integration ${integrationId} not found`);
         }
-        const event = new GmailEvent(eventData, integrationId);
+        const event = new GmailEvent(eventData as GmailEventData, integrationId);
         const eventProcessor = new EventProcessor(event, user);
 
         const agent = await eventProcessor.findAgent(agentId);
@@ -610,9 +610,9 @@ export class GmailEvent extends InputEvent {
 
         // Process asynchronously
         eventProcessor.processAgent(agent).then(() => {
-            logger.info(`Sample event ${sampleEvent.eventData.messageId} sent to agent`, { sampleEvent });
+            logger.info(`Sample event ${eventData.messageId} sent to agent`, { sampleEvent });
         }).catch((error) => {
-            logger.error(`Error sending sample event ${sampleEvent.eventData.messageId} to agent`, { error, sampleEvent });
+            logger.error(`Error sending sample event ${eventData.messageId} to agent`, { error, sampleEvent });
         });
     }
 }

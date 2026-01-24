@@ -1,7 +1,8 @@
 import { Hydrator, Identifiable, HydrationContext } from "../Hydrator";
 import { db } from "../../prismaClient";
 import { HydratorType } from "../../types/rag";
-import { SlackEvent, SlackEventData, initializeSlackWebClient } from "../../integrations/SlackIntegration";
+import { SlackEvent, initializeSlackWebClient } from "../../integrations/SlackIntegration";
+import { SlackEventData } from "../../shared/SampleEvents";
 import logger from "../../logger";
 
 // Parse Slack permalink: https://workspace.slack.com/archives/CHANNEL_ID/p1234567890123456

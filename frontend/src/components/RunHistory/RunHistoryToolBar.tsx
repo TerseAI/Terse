@@ -11,6 +11,11 @@ import {
     SelectTrigger,
     SelectValue,
 } from "../ui/select";
+import { TestTube } from 'lucide-react';
+import { Button } from '../ui/button';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
+import { SampleEventsModal } from './SampleEventsModal';
+import { TransientAgentTrigger } from "../../shared/types";
 
 type DateRangeType = { from: Date | undefined; to: Date | undefined };
 
@@ -34,6 +39,10 @@ type Props = {
     currentPage: number;
     totalPages: number;
     onPageChange: (page: number) => void;
+
+    agentId: string | null;
+    agentInputs: TransientAgentTrigger[];
+    isAgentSaved: boolean;
 };
 
 export default function RunHistoryToolBar({
@@ -50,16 +59,51 @@ export default function RunHistoryToolBar({
     onRunsPerPageChange,
     currentPage,
     totalPages,
-    onPageChange
+    onPageChange,
+    agentId,
+    agentInputs,
+    isAgentSaved
 }: Props) {
     const [isDateOpen, setIsDateOpen] = useState(false);
     const [isStatusOpen, setIsStatusOpen] = useState(false);
+    const [showSampleEventsModal, setShowSampleEventsModal] = useState(false);
 
     return (
         <div className="mb-6 space-y-4 relative">
             <div className="mb-4 flex justify-between">
-                <div className="flex items-center gap-2 text-muted-foreground">
-                    Showing {filteredCount === 0 ? 0 : startIndex + 1}-{Math.min(startIndex + runsPerPage, filteredCount)} of {filteredCount} events
+                <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                        Showing {filteredCount === 0 ? 0 : startIndex + 1}-{Math.min(startIndex + runsPerPage, filteredCount)} of {filteredCount} events
+                    </div>
+
+                    {/* Test with Sample Event Button */}
+                    {agentId && (
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <span>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => setShowSampleEventsModal(true)}
+                                            disabled={!isAgentSaved || agentInputs.length === 0}
+                                            className="gap-2"
+                                        >
+                                            <TestTube className="h-4 w-4" />
+                                            Test with Sample Event
+                                        </Button>
+                                    </span>
+                                </TooltipTrigger>
+                                {(!isAgentSaved || agentInputs.length === 0) && (
+                                    <TooltipContent>
+                                        {!isAgentSaved
+                                            ? 'Save your agent to test with sample events'
+                                            : 'Add an input trigger to test with sample events'}
+                                    </TooltipContent>
+                                )}
+                            </Tooltip>
+                        </TooltipProvider>
+                    )}
                 </div>
                 <div className="flex items-center gap-2">
                     <span className="text-muted-foreground text-sm">Events per page:</span>
@@ -118,6 +162,16 @@ export default function RunHistoryToolBar({
                     />
                 </div>
             </div>
+
+            {/* Sample Events Modal */}
+            {agentId && agentInputs.length > 0 && (
+                <SampleEventsModal
+                    isOpen={showSampleEventsModal}
+                    onClose={() => setShowSampleEventsModal(false)}
+                    agentId={agentId}
+                    inputConfigs={agentInputs}
+                />
+            )}
         </div>
     );
 }

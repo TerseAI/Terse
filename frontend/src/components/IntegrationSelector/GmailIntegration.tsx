@@ -1,4 +1,4 @@
-import { Plus, AlertTriangleIcon, TestTube } from 'lucide-react';
+import { Plus, AlertTriangleIcon } from 'lucide-react';
 import { Button } from '../ui/button';
 import DropdownSelect from '../ui/DropdownSelect';
 import { IntegrationType, GmailIntegration as GmailIntegrationType } from "@/shared/Integrations"
@@ -8,16 +8,9 @@ import { useOAuthConnection } from '@/hooks/useOAuthConnection';
 import { useIntegrationId } from '@/hooks/useIntegrationId';
 import { GmailConfig, ConfigType } from '@/shared/Configs';
 import { StatusOption } from '../ui/DropdownSelect';
-import { BackendProvider } from '../../services/backend';
-import { useState } from 'react';
-import RunHistoryItemTriggerHeader from '../RunHistory/RunHistoryItem/RunHistoryItemTriggerHeader';
-import { SampleEvent } from '../../shared/SampleEvents';
-import Spin from '../loading/Spin';
-import { toast } from 'sonner';
 
 export function GmailIntegration({
     input,
-    agentId,
     variant,
     setConfig
 }: InputConfigSelectorProps) {
@@ -25,9 +18,6 @@ export function GmailIntegration({
     const { connect: connectOAuth, isConnecting: isOAuthConnecting } = useOAuthConnection<IntegrationType.GMAIL>(IntegrationType.GMAIL, {});
     const currentConfig = input.config as GmailConfig | undefined;
     const [selectedIntegrationId] = useIntegrationId(currentConfig, ConfigType.GMAIL);
-    const [sampleEvents, setSampleEvents] = useState<SampleEvent[]>([]);
-    const [showSampleEvents, setShowSampleEvents] = useState(false);
-    const [isSampleLoading, setIsSampleLoading] = useState(false);
 
     function onSelect(value: string) {
         const integration = integrations.find((integration: GmailIntegrationType) => integration.id === value);
@@ -103,14 +93,6 @@ export function GmailIntegration({
         );
     }
 
-    if (showSampleEvents) {
-        return (
-            <div className="flex flex-col gap-3">
-                <SampleEventsDialog sampleEvents={sampleEvents} onClose={() => setShowSampleEvents(false)} isLoading={isSampleLoading} setIsLoading={setIsSampleLoading} agentId={agentId} />
-            </div>
-        );
-    }
-
     // Dialog variant: full view
     return (
         <div className="flex flex-col gap-3">
@@ -134,89 +116,6 @@ export function GmailIntegration({
                 <Plus className="w-4 h-4" />
                 {isOAuthConnecting ? 'Connecting...' : "Connect Another Gmail"}
             </Button>
-            {selectedOption && agentId &&
-                <SampleEventsButton selectedOption={selectedOption} setSampleEvents={setSampleEvents} setShowSampleEvents={setShowSampleEvents} isLoading={isSampleLoading} setIsLoading={setIsSampleLoading} />
-            }
         </div>
     );
-}
-
-
-function SampleEventsDialog(props: { sampleEvents: SampleEvent[], onClose: () => void, isLoading: boolean, setIsLoading: (isLoading: boolean) => void, agentId: string | null }) {
-    const { sampleEvents, onClose, isLoading, setIsLoading, agentId } = props;
-    const [selectedSampleEventIndex, setSelectedSampleEventIndex] = useState<number | undefined>(undefined);
-
-    const onClick = (index: number) => {
-        setSelectedSampleEventIndex(index);
-    }
-
-    const onCloseDialog = () => {
-        setSelectedSampleEventIndex(undefined);
-        onClose();
-    }
-
-    const onSelectSampleEvent = () => {
-        if (selectedSampleEventIndex !== undefined && agentId) {
-            setIsLoading(true);
-            const sampleEvent = sampleEvents[selectedSampleEventIndex];
-            BackendProvider.sendSampleEvent({
-                agentId: agentId,
-                sampleEvent: sampleEvent
-            }).then(() => {
-                setIsLoading(false);
-                toast.success('Sample event sent to agent, check out the activity log to see it running')
-            }).catch((error) => {
-                setIsLoading(false);
-                toast.error('Error sending sample event to agent', { description: error.message });
-            });
-        }
-    }
-
-    return (
-        <div className="flex flex-col gap-3">
-            <div className="flex items-center gap-3">
-                <Button className="w-20 bg-secondary" onClick={onCloseDialog}>Back</Button>
-                {selectedSampleEventIndex !== undefined && (
-                    <Button className="w-30 bg-primary" onClick={onSelectSampleEvent} disabled={isLoading}>
-                        Send to Agent
-                    </Button>
-                )}
-            </div>
-            <div className="flex flex-col gap-5 max-w-md">
-                <label className="font-medium">Sample Events</label>
-                {isLoading ? <Spin /> : null}
-                {!isLoading && sampleEvents.map((sampleEvent, index) => (
-                    <RunHistoryItemTriggerHeader key={index} trigger={sampleEvent.trigger} onClick={onClick} selected={selectedSampleEventIndex === index} index={index} />
-                ))}
-            </div>
-        </div>
-    );
-}
-
-
-function SampleEventsButton(
-    props: { selectedOption: StatusOption, setSampleEvents: (sampleEvents: SampleEvent[]) => void, setShowSampleEvents: (showSampleEvents: boolean) => void, isLoading: boolean, setIsLoading: (isLoading: boolean) => void }
-) {
-    const { selectedOption, setSampleEvents, setShowSampleEvents, isLoading, setIsLoading } = props;
-    const onClick = async () => {
-        setShowSampleEvents(true);
-        setIsLoading(true);
-        BackendProvider.getSampleEvents(new GmailConfig(selectedOption.value)).then((sampleEvents) => {
-            setSampleEvents(sampleEvents);
-            setIsLoading(false);
-        }).catch(() => {
-            toast.error('Error getting sample events');
-            setIsLoading(false);
-        });
-    }
-
-    return (
-        <Button
-            onClick={onClick}
-            variant="outline"
-        >
-            {isLoading ? <Spin /> : <TestTube className="w-4 h-4" />}
-            Get Sample Events
-        </Button>
-    )
 }

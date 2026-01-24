@@ -27,6 +27,9 @@ import { integrationTaskQueue } from "./IntegrationTaskQueues";
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask";
 import { FrontendRoutes } from "../shared/FrontendRoutes";
 import { ApiRoutes } from "../shared/ApiRoutes";
+import { ConfigType, FigmaConfig } from "../shared/Configs";
+import { FigmaSampleEvent } from "../shared/SampleEvents";
+import axios from 'axios';
 
 export class FigmaIntegrationManager implements Integration<FigmaIntegration, FigmaWebhookEvent, typeof FigmaIntegrationMetadata>, OAuthIntegrationInstallation<IntegrationType.FIGMA> {
   constructor() { }
@@ -1009,6 +1012,107 @@ export class FigmaCommentEvent extends InputEvent {
       }
     }
     return urls;
+  }
+
+  static async getSampleEvents(config: FigmaConfig): Promise<FigmaSampleEvent[]> {
+    const prisma = db();
+
+    const figmaIntegration = await prisma.figma_integrations.findUnique({
+      where: { id: config.integrationId },
+    });
+
+    if (!figmaIntegration) {
+      throw new Error(`Figma integration ${config.integrationId} not found`);
+    }
+
+    const sampleEvents: FigmaSampleEvent[] = [];
+
+    try {
+      
+
+      // Fetch comments from the configured Figma file
+      const response = await axios.get(
+        `https://api.figma.com/v1/files/${config.fileKey}/comments`,
+        {
+          headers: {
+            'X-Figma-Token': figmaIntegration.access_token,
+          },
+        }
+      );
+
+      const comments = response.data.comments || [];
+
+      // Take the last 3 comments
+      const recentComments = comments.slice(-3).reverse();
+
+      for (const comment of recentComments) {
+        // Fetch file metadata
+        let fileMetadata: any;
+        try {
+          const fileResponse = await axios.get(
+            `https://api.figma.com/v1/files/${config.fileKey}`,
+            {
+              headers: {
+                'X-Figma-Token': figmaIntegration.access_token,
+              },
+            }
+          );
+          fileMetadata = {
+            name: fileResponse.data.name,
+            folder_name: fileResponse.data.document?.name,
+          };
+        } catch (error) {
+          logger.debug('Error fetching file metadata for sample event', { error });
+        }
+
+        const eventData: FigmaCommentEventData = {
+          commentId: comment.id,
+          fileKey: config.fileKey,
+          fileUrl: `https://www.figma.com/file/${config.fileKey}`,
+          nodeId: comment.client_meta?.node_id,
+          message: comment.message,
+          author: {
+            id: comment.user.id,
+            handle: comment.user.handle,
+            email: comment.user.email || '',
+            img_url: comment.user.img_url || '',
+          },
+          createdAt: comment.created_at,
+          resolved: comment.resolved_at ? true : false,
+          fileMetadata,
+        };
+
+        const event = new FigmaCommentEvent(eventData);
+        sampleEvents.push({
+          configType: ConfigType.FIGMA,
+          eventData,
+          trigger: event.createTriggerMetadata(),
+          integrationId: config.integrationId,
+        });
+      }
+
+      return sampleEvents;
+    } catch (error) {
+      logger.error('Error fetching Figma sample events', { error, config });
+      throw error;
+    }
+  }
+
+  static async sendSampleEventToAgent(sampleEvent: FigmaSampleEvent, agentId: string, user: User): Promise<void> {
+    const event = new FigmaCommentEvent(sampleEvent.eventData);
+    const eventProcessor = new EventProcessor(event, user);
+
+    const agent = await eventProcessor.findAgent(agentId);
+    if (!agent) {
+      throw new Error(`Agent ${agentId} not found`);
+    }
+
+    // Process asynchronously
+    eventProcessor.processAgent(agent).then(() => {
+      logger.info(`Sample Figma event sent to agent`, { agentId, fileKey: sampleEvent.eventData.fileKey });
+    }).catch((error) => {
+      logger.error(`Error sending sample Figma event to agent`, { error, agentId });
+    });
   }
 }
 

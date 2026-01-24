@@ -6,6 +6,7 @@ import RunHistoryItem from "./RunHistoryItem";
 import RunHistoryLoadingState from "./RunHistoryLoadingState";
 import { RunHistoryStatus, RunHistoryRecord } from "../../shared/RunHistoryTypes";
 import { useRunHistory } from "../../hooks/api/useRunHistory";
+import { useAgent } from "../../hooks/api/useAgents";
 
 // Remote data source only; no local mock
 
@@ -26,15 +27,18 @@ export default function RunHistory({ agentId }: RunHistoryProps) {
         from: undefined,
         to: undefined
     });
-    
+
     // Get runId from URL params for deep linking
     const urlRunId = searchParams.get('runId');
     const [openDrawerRunId, setOpenDrawerRunId] = useState<string | null>(urlRunId || null);
     const [isDrawerFullscreen, setIsDrawerFullscreen] = useState(false); // Keep drawer partially open when opened via deep link (e.g., from Slack)
     const [isInitialDrawerOpen, setIsInitialDrawerOpen] = useState(!!urlRunId);
-    
+
     // Keep a reference to the currently viewed run so it doesn't disappear if filtered out
     const pinnedRunRef = useRef<RunHistoryRecord | null>(null);
+
+    // Fetch agent data to get inputs and saved state
+    const { agent } = useAgent(agentId);
 
     const { runs: remoteRuns, total, isLoading } = useRunHistory({
         agentId,
@@ -144,6 +148,9 @@ export default function RunHistory({ agentId }: RunHistoryProps) {
                 currentPage={currentPage}
                 totalPages={totalPages}
                 onPageChange={setCurrentPage}
+                agentId={agentId}
+                agentInputs={agent?.triggers || []}
+                isAgentSaved={!!agent?.updatedAt}
             />
 
             {isLoading ? (

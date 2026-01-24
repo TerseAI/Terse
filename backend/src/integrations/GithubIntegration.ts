@@ -19,6 +19,8 @@ import { integrationTaskQueue } from "./IntegrationTaskQueues";
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask";
 import { createOAuthStateToken, decodeOAuthStateToken, OAuthStatePayload, OAuthStateEncodingFormat } from "../utility/oauth";
 import { FrontendRoutes } from "../shared/FrontendRoutes";
+import { ConfigType, GitHubConfig } from "../shared/Configs";
+import { GithubSampleEvent, GithubEventData } from "../shared/SampleEvents";
 
 export class GithubIntegrationManager implements Integration<GithubIntegration, GithubAppUnifiedEventRequest, typeof GithubIntegrationMetadata>, OAuthIntegrationInstallation<IntegrationType.GITHUB> {
     constructor() { }
@@ -367,6 +369,141 @@ export class GithubEvent extends InputEvent {
 
     getImageUrls(): string[] {
         return [];
+    }
+
+    static async getSampleEvents(config: GitHubConfig): Promise<GithubSampleEvent[]> {
+        // TODO: Implement GitHub sample events
+        // Requires proper GitHub App installation lookup and access token generation
+        throw new Error('GitHub sample events not yet implemented');
+        /*
+        const prisma = db();
+
+        const githubIntegration = await prisma.github_app_installations.findUnique({
+            where: { id: config.integrationId },
+        });
+
+        if (!githubIntegration) {
+            throw new Error(`GitHub integration ${config.integrationId} not found`);
+        }
+
+        const sampleEvents: GithubSampleEvent[] = [];
+
+        try {
+            // Get installation access token
+            const accessToken = await getInstallationAccessToken(githubIntegration.installation_id);
+
+            // For each repository in the config, fetch last 3 commits
+            const repositories = config.repositoryIds || [];
+
+            for (const repoId of repositories.slice(0, 1)) { // Just fetch from first repo for samples
+                // Get repository details
+                const repoDetailsResponse = await axios.get(
+                    `https://api.github.com/repositories/${repoId}`,
+                    {
+                        headers: {
+                            Authorization: `Bearer ${accessToken}`,
+                            Accept: 'application/vnd.github+json',
+                        },
+                    }
+                );
+
+                const repo = repoDetailsResponse.data;
+                const owner = repo.owner.login;
+                const repoName = repo.name;
+
+                // Fetch last 3 commits
+                const commitsResponse = await axios.get(
+                    `https://api.github.com/repos/${owner}/${repoName}/commits`,
+                    {
+                        params: { per_page: 3 },
+                        headers: {
+                            Authorization: `Bearer ${accessToken}`,
+                            Accept: 'application/vnd.github+json',
+                        },
+                    }
+                );
+
+                const commits = commitsResponse.data || [];
+
+                for (const commit of commits) {
+                    // Fetch commit details to get file diffs
+                    const commitDetailsResponse = await axios.get(
+                        `https://api.github.com/repos/${owner}/${repoName}/commits/${commit.sha}`,
+                        {
+                            headers: {
+                                Authorization: `Bearer ${accessToken}`,
+                                Accept: 'application/vnd.github.diff',
+                            },
+                        }
+                    );
+
+                    const eventData: GithubEventData = {
+                        username: commit.commit.author.name,
+                        installationId: githubIntegration.installation_id,
+                        repositoryName: `${owner}/${repoName}`,
+                        eventType: 'push',
+                        branch: repo.default_branch,
+                        commits: [{
+                            sha: commit.sha,
+                            name: commit.commit.message,
+                            fileDiffs: [{
+                                filename: 'diff',
+                                diff: String(commitDetailsResponse.data).substring(0, 1000), // Truncate for sample
+                            }],
+                        }],
+                        repository: {
+                            id: repo.id,
+                            name: repoName,
+                            owner: owner,
+                            defaultBranch: repo.default_branch,
+                        },
+                        sender: {
+                            login: commit.commit.author.name,
+                            email: commit.commit.author.email,
+                        },
+                    };
+
+                    const event = new GithubEvent(eventData);
+                    sampleEvents.push({
+                        configType: ConfigType.GITHUB,
+                        eventData,
+                        trigger: event.createTriggerMetadata(),
+                        integrationId: config.integrationId,
+                    });
+
+                    if (sampleEvents.length >= 3) {
+                        break;
+                    }
+                }
+
+                if (sampleEvents.length >= 3) {
+                    break;
+                }
+            }
+
+            return sampleEvents;
+        } catch (error) {
+            logger.error('Error fetching GitHub sample events', { error, config });
+            throw error;
+        }
+        */
+    }
+
+    static async sendSampleEventToAgent(sampleEvent: GithubSampleEvent, agentId: string, user: User): Promise<void> {
+        const event = new GithubEvent(sampleEvent.eventData);
+        const eventProcessor = new EventProcessor(event, user);
+
+        const agent = await eventProcessor.findAgent(agentId);
+        if (!agent) {
+            throw new Error(`Agent ${agentId} not found`);
+        }
+
+        // Process asynchronously
+        eventProcessor.processAgent(agent).then(() => {
+            logger.info(`Sample GitHub event sent to agent`, { agentId, repository: sampleEvent.eventData.repositoryName });
+        }).catch((error) => {
+            logger.error(`Error sending sample GitHub event to agent`, { error, agentId });
+        });
     }
 }
 

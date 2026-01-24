@@ -16,7 +16,7 @@ import { TimeTriggerIntegration } from './TimeTriggerIntegration';
 export function IntegrationSelector(props: InputConfigSelectorProps) {
     switch (props.input.config?.configType || props.input.configType) {
         case ConfigType.GMAIL:
-            return <GmailIntegration input={props.input} variant={props.variant} setConfig={props.setConfig} agentId={props.agentId} />;
+            return <GmailIntegration input={props.input} variant={props.variant} setConfig={props.setConfig} />;
 
         case ConfigType.GMAIL_OUTPUT:
             return (
@@ -24,7 +24,6 @@ export function IntegrationSelector(props: InputConfigSelectorProps) {
                     input={props.input}
                     variant={props.variant}
                     setConfig={props.setConfig}
-                    agentId={props.agentId}
                 />
             );
 
@@ -35,7 +34,6 @@ export function IntegrationSelector(props: InputConfigSelectorProps) {
                     input={props.input}
                     variant={props.variant}
                     setConfig={props.setConfig}
-                    agentId={props.agentId}
                 />
             );
 
@@ -45,7 +43,6 @@ export function IntegrationSelector(props: InputConfigSelectorProps) {
                     input={props.input}
                     variant={props.variant}
                     setConfig={props.setConfig}
-                    agentId={props.agentId}
                 />
             );
 
@@ -55,7 +52,6 @@ export function IntegrationSelector(props: InputConfigSelectorProps) {
                     input={props.input}
                     variant={props.variant}
                     setConfig={props.setConfig}
-                    agentId={props.agentId}
                 />
             );
 
@@ -65,7 +61,6 @@ export function IntegrationSelector(props: InputConfigSelectorProps) {
                     input={props.input}
                     variant={props.variant}
                     setConfig={props.setConfig}
-                    agentId={props.agentId}
                 />
             );
 
@@ -75,7 +70,6 @@ export function IntegrationSelector(props: InputConfigSelectorProps) {
                     input={props.input}
                     variant={props.variant}
                     setConfig={props.setConfig}
-                    agentId={props.agentId}
                 />
             );
 
@@ -85,7 +79,6 @@ export function IntegrationSelector(props: InputConfigSelectorProps) {
                     input={props.input}
                     variant={props.variant}
                     setConfig={props.setConfig}
-                    agentId={props.agentId}
                 />
             );
         case ConfigType.LINEAR_OUTPUT:
@@ -94,7 +87,6 @@ export function IntegrationSelector(props: InputConfigSelectorProps) {
                     input={props.input}
                     variant={props.variant}
                     setConfig={props.setConfig}
-                    agentId={props.agentId}
                 />
             );
 
@@ -104,7 +96,6 @@ export function IntegrationSelector(props: InputConfigSelectorProps) {
                     input={props.input}
                     variant={props.variant}
                     setConfig={props.setConfig}
-                    agentId={props.agentId}
                 />
             );
 
@@ -114,17 +105,15 @@ export function IntegrationSelector(props: InputConfigSelectorProps) {
                     input={props.input}
                     variant={props.variant}
                     setConfig={props.setConfig}
-                    agentId={props.agentId}
                 />
             );
-        
+
         case ConfigType.TIME_TRIGGER:
             return (
                 <TimeTriggerIntegration
                     input={props.input}
                     variant={props.variant}
                     setConfig={props.setConfig}
-                    agentId={props.agentId}
                 />
             );
 

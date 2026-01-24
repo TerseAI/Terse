@@ -1,5 +1,7 @@
 import { SlackChannelType, OAuthInstallationDetails } from "../shared/types";
 import { SlackInstallationOptions, SlackIntegration, SlackIntegrationMetadata, IntegrationType, InstallationOptionsFor, AdditionalStateParams } from "../shared/Integrations";
+import { SlackEventData, SlackSampleEvent } from "../shared/SampleEvents";
+import { ConfigType, SlackConfig } from "../shared/Configs";
 import { Integration, OAuthIntegrationInstallation, ConfigurationFieldDefinition } from "./abstract/Integration";
 import { Request, Response } from "express";
 import { slack as slackConfig, jwt as jwtConfig, urls } from '../config/settings';
@@ -10,7 +12,7 @@ import { EventProcessor } from "../agent/AgentRunner/EventProcessor";
 import { db } from "../prismaClient";
 import { LogLevel, WebClient } from "@slack/web-api";
 import { RunHistoryTrigger } from "../shared/RunHistoryTypes";
-import { AgentTriggerWithConfigs, UserSlackIntegration, UserSlackIntegrationWithUser } from "../types/prisma";
+import { AgentTriggerWithConfigs, UserSlackIntegration, UserSlackIntegrationWithUser, User } from "../types/prisma";
 import { InputEvent } from "./abstract/InputEvent";
 import jwt from "jsonwebtoken";
 import axios from "axios";
@@ -570,6 +572,152 @@ export class SlackEvent extends InputEvent implements Identifiable {
             url: this.data.permalink,
         };
     }
+
+    static async getSampleEvents(config: SlackConfig): Promise<SlackSampleEvent[]> {
+        const prisma = db();
+
+        // Get the Slack integration
+        const userSlackIntegration = await prisma.user_slack_integrations.findUnique({
+            where: { id: config.integrationId },
+            include: { slack_integration: true, user: true }
+        });
+
+        if (!userSlackIntegration) {
+            throw new Error(`Slack integration ${config.integrationId} not found`);
+        }
+
+        // TODO: Implement this properly.
+        // complication depending on if it's private dms or not.
+        // if it's private dms, we need the user's access token, not the integration's access token.
+        // if it's public channels, we can use the integration's access token.
+        // we also need to check if we need to add additional permissions to the slack app in order
+        // for this to work.
+        const client = new WebClient(userSlackIntegration.slack_integration.access_token);
+        const sampleEvents: SlackSampleEvent[] = [];
+
+        try {
+            let messages: any[] = [];
+
+            // Determine what to fetch based on config
+            if (config.channelId) {
+                // Fetch from specific channel (public or private)
+                const result = await client.conversations.history({
+                    channel: config.channelId,
+                    limit: 3
+                });
+                messages = result.messages || [];
+            } else if (config.listenToUserDms) {
+                // Fetch from DMs - get list of DM conversations and fetch from each
+                const conversations = await client.conversations.list({
+                    types: 'im',
+                    limit: 10
+                });
+
+                const allDmMessages: any[] = [];
+                for (const conv of (conversations.channels || [])) {
+                    if (conv.id) {
+                        try {
+                            const result = await client.conversations.history({
+                                channel: conv.id,
+                                limit: 1
+                            });
+                            if (result.messages && result.messages.length > 0) {
+                                allDmMessages.push(...result.messages.map(msg => ({
+                                    ...msg,
+                                    channel: conv.id
+                                })));
+                            }
+                        } catch (error) {
+                            logger.debug(`Could not fetch messages from DM ${conv.id}`, { error });
+                        }
+                    }
+                }
+
+                // Sort by timestamp and take the 3 most recent
+                messages = allDmMessages
+                    .sort((a, b) => parseFloat(b.ts) - parseFloat(a.ts))
+                    .slice(0, 3);
+            }
+
+            // Transform messages into SampleEvents
+            for (const message of messages) {
+                // Skip bot messages and system messages
+                if (message.subtype || message.bot_id) {
+                    continue;
+                }
+
+                const channelId = message.channel || config.channelId || '';
+                let channelName = config.channelName;
+                let userName: string | undefined;
+
+                // Fetch channel and user info
+                try {
+                    const [channelInfo, userInfo] = await Promise.all([
+                        client.conversations.info({ channel: channelId }).catch(() => null),
+                        message.user ? client.users.info({ user: message.user }).catch(() => null) : null
+                    ]);
+
+                    if (channelInfo && 'channel' in channelInfo) {
+                        channelName = (channelInfo.channel as any).name || channelName;
+                    }
+
+                    if (userInfo && 'user' in userInfo) {
+                        userName = (userInfo.user as any).real_name || (userInfo.user as any).name;
+                    }
+                } catch (error) {
+                    logger.debug('Error fetching channel/user info for sample event', { error });
+                }
+
+                const eventData: SlackEventData = {
+                    channelId,
+                    channelName,
+                    userId: message.user || 'unknown',
+                    userName,
+                    text: message.text || '',
+                    timestamp: message.ts,
+                    threadTimestamp: message.thread_ts,
+                    teamId: userSlackIntegration.slack_integration.team_id,
+                    blocks: message.blocks,
+                    attachments: message.attachments,
+                    files: message.files,
+                };
+
+                const event = new SlackEvent(eventData);
+                sampleEvents.push({
+                    configType: ConfigType.SLACK,
+                    eventData,
+                    trigger: event.createTriggerMetadata(),
+                    integrationId: config.integrationId,
+                });
+
+                if (sampleEvents.length >= 3) {
+                    break;
+                }
+            }
+
+            return sampleEvents;
+        } catch (error) {
+            logger.error('Error fetching Slack sample events', { error, config });
+            throw error;
+        }
+    }
+
+    static async sendSampleEventToAgent(sampleEvent: SlackSampleEvent, agentId: string, user: User): Promise<void> {
+        const event = new SlackEvent(sampleEvent.eventData);
+        const eventProcessor = new EventProcessor(event, user);
+
+        const agent = await eventProcessor.findAgent(agentId);
+        if (!agent) {
+            throw new Error(`Agent ${agentId} not found`);
+        }
+
+        // Process asynchronously
+        eventProcessor.processAgent(agent).then(() => {
+            logger.info(`Sample Slack event sent to agent`, { agentId, channelId: sampleEvent.eventData.channelId });
+        }).catch((error) => {
+            logger.error(`Error sending sample Slack event to agent`, { error, agentId });
+        });
+    }
 }
 
 async function markWorkspaceUninstalled(team_id: string) {
@@ -1005,28 +1153,6 @@ type SlackFullMessageResponse = {
  * Slack event data
  * Processed Slack message event data used for channel events
  */
-export interface SlackEventData {
-    channelId: string;
-    channelName?: string;
-    userId: string;
-    userName?: string;
-    text: string;
-    timestamp: string;
-    threadTimestamp?: string;
-    teamId: string;
-    // Permalink for the message (if available)
-    permalink?: string;
-    channelType?: SlackChannelType;
-    // Block Kit content from third-party apps
-    blocks?: KnownBlock[];
-    // Legacy attachments
-    attachments?: SlackAttachment[];
-    // File attachments (including images)
-    files?: SlackFile[];
-}
-
-
-
 /**
  * Slack user profile object from users.info API
  */

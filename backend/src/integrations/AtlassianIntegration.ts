@@ -2,7 +2,7 @@ import { Integration, OAuthIntegrationInstallation, ConfigurationFieldDefinition
 import { db } from "../prismaClient";
 import { AtlassianIntegration, AtlassianIntegrationMetadata } from "../shared/Integrations";
 import { IntegrationType, InstallationOptionsFor, AdditionalStateParams } from "../shared/Integrations";
-import { AgentTriggerWithConfigs } from "../types/prisma";
+import { AgentTriggerWithConfigs, User } from "../types/prisma";
 import { OAuthInstallationDetails } from "../shared/types";
 import jwt from "jsonwebtoken";
 import { settings } from "../config/settings";
@@ -20,6 +20,9 @@ import { integrationTaskQueue } from "./IntegrationTaskQueues";
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask";
 import { FrontendRoutes } from "../shared/FrontendRoutes";
 import { ApiRoutes } from "../shared/ApiRoutes";
+import { ConfigType, JiraConfig } from "../shared/Configs";
+import { JiraSampleEvent, JiraEventData } from "../shared/SampleEvents";
+import axios from 'axios';
 
 const OAUTH_TOKEN_REFRESH_THRESHOLD_MS = 1000 * 60 * 30; // 30 minutes (expires access token after 1 hour)
 
@@ -1190,6 +1193,106 @@ export class JiraEvent extends InputEvent {
         // Jira webhooks don't typically include images
         // But we could extract attachment URLs if needed in the future
         return [];
+    }
+
+    static async getSampleEvents(config: JiraConfig): Promise<JiraSampleEvent[]> {
+        const prisma = db();
+
+        const atlassianIntegration = await prisma.atlassian_integrations.findUnique({
+            where: { id: config.integrationId },
+        });
+
+        if (!atlassianIntegration) {
+            throw new Error(`Atlassian integration ${config.integrationId} not found`);
+        }
+
+        const sampleEvents: JiraSampleEvent[] = [];
+
+        try {
+            
+
+            // Fetch last 3 issues from the configured project
+            const response = await axios.get(
+                `${atlassianIntegration.cloud_id}/rest/api/3/search`,
+                {
+                    params: {
+                        jql: config.projectKey ? `project = ${config.projectKey} ORDER BY created DESC` : 'ORDER BY created DESC',
+                        maxResults: 3,
+                    },
+                    headers: {
+                        'Authorization': `Bearer ${atlassianIntegration.access_token}`,
+                        'Accept': 'application/json',
+                    },
+                }
+            );
+
+            const issues = response.data.issues || [];
+
+            for (const issue of issues) {
+                // Create a webhook payload-like structure from the issue data
+                const eventData: JiraEventData = {
+                    timestamp: Date.now(),
+                    webhookEvent: 'jira:issue_created',
+                    user: issue.fields.creator || {
+                        self: '',
+                        name: 'Unknown',
+                        key: '',
+                        emailAddress: '',
+                        avatarUrls: { "48x48": "", "24x24": "", "16x16": "", "32x32": "" },
+                        displayName: 'Unknown',
+                        active: true,
+                    },
+                    issue: {
+                        id: issue.id,
+                        self: issue.self,
+                        key: issue.key,
+                        fields: {
+                            summary: issue.fields.summary,
+                            description: issue.fields.description,
+                            status: issue.fields.status,
+                            priority: issue.fields.priority,
+                            issuetype: issue.fields.issuetype,
+                            project: issue.fields.project,
+                            assignee: issue.fields.assignee,
+                            created: issue.fields.created,
+                            updated: issue.fields.updated,
+                            labels: issue.fields.labels || [],
+                            duedate: issue.fields.duedate,
+                        },
+                    },
+                };
+
+                const event = new JiraEvent(eventData as any, config.integrationId);
+                sampleEvents.push({
+                    configType: ConfigType.JIRA,
+                    eventData,
+                    trigger: event.createTriggerMetadata(),
+                    integrationId: config.integrationId,
+                });
+            }
+
+            return sampleEvents;
+        } catch (error) {
+            logger.error('Error fetching Jira sample events', { error, config });
+            throw error;
+        }
+    }
+
+    static async sendSampleEventToAgent(sampleEvent: JiraSampleEvent, agentId: string, user: User): Promise<void> {
+        const event = new JiraEvent(sampleEvent.eventData as any, sampleEvent.integrationId);
+        const eventProcessor = new EventProcessor(event, user);
+
+        const agent = await eventProcessor.findAgent(agentId);
+        if (!agent) {
+            throw new Error(`Agent ${agentId} not found`);
+        }
+
+        // Process asynchronously
+        eventProcessor.processAgent(agent).then(() => {
+            logger.info(`Sample Jira event sent to agent`, { agentId, issueKey: sampleEvent.eventData.issue.key });
+        }).catch((error) => {
+            logger.error(`Error sending sample Jira event to agent`, { error, agentId });
+        });
     }
 }
 
