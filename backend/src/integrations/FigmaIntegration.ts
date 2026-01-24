@@ -1035,7 +1035,7 @@ export class FigmaCommentEvent extends InputEvent {
         `https://api.figma.com/v1/files/${config.fileKey}/comments`,
         {
           headers: {
-            'X-Figma-Token': figmaIntegration.access_token,
+            'Authorization': `Bearer ${figmaIntegration.access_token}`,
           },
         }
       );
@@ -1053,7 +1053,7 @@ export class FigmaCommentEvent extends InputEvent {
             `https://api.figma.com/v1/files/${config.fileKey}`,
             {
               headers: {
-                'X-Figma-Token': figmaIntegration.access_token,
+                'Authorization': `Bearer ${figmaIntegration.access_token}`,
               },
             }
           );
