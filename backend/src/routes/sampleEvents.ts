@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { ConfigInstance, ConfigType, SlackConfig } from "../shared/Configs";
 import { GmailEvent } from "../integrations/GmailIntegration";
-import { SampleEvent, GmailSampleEvent, AgentSampleEvent } from "../shared/SampleEvents";
+import { SampleEvent, GmailSampleEvent, AgentSampleEvent, SlackSampleEvent } from "../shared/SampleEvents";
 import { SlackEvent } from "../integrations/SlackIntegration";
 
 
@@ -43,6 +43,9 @@ export async function sendSampleEventToAgent(req: Request, res: Response) {
         switch (sampleEvent.configType) {
             case ConfigType.GMAIL:
                 await GmailEvent.sendSampleEventToAgent(sampleEvent as GmailSampleEvent, agentId, req.session.user)
+                return res.status(200).json({ message: 'Sample event sent to agent' });
+            case ConfigType.SLACK:
+                await SlackEvent.sendSampleEventToAgent(sampleEvent as SlackSampleEvent, agentId, req.session.user)
                 return res.status(200).json({ message: 'Sample event sent to agent' });
             default:
                 return res.status(400).json({ error: 'Unsupported integration type' });
