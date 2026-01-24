@@ -25,6 +25,11 @@ import { fetchLaunchDarklyProjects, fetchLaunchDarklyEnvironments } from "../../
 import { LaunchDarklyIntegrationManager } from "../../integrations/LaunchDarklyIntegration";
 import { uuidv4 } from "zod/v4";
 import { FrontendRoutes } from "../../shared/FrontendRoutes";
+import { InputEventRegistry } from "../../integrations/abstract/InputEventRegistry";
+import { SampleEvent } from "../../shared/SampleEvents";
+import { db } from "../../prismaClient";
+import { getInputConfigInclude } from "../../utility/prismaIncludes";
+import { convertPrismaConfigToConfigInstance } from "../../utility/typeConverters";
 
 export type ChatAgentContext = {
     chatInterface: ChatInterface;
@@ -86,6 +91,47 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
                     throw new Error("User ID is required to fetch resources");
                 }
                 return await fetchResourcesForIntegrationType(integrationType, userId, query ?? undefined);
+            },
+        }),
+        tool({
+            name: 'fetchSampleEvents',
+            description: 'Fetch recent sample events from integrations to test an agent with real data.',
+            parameters: z.object({
+                agentId: z.string().min(1).describe('The ID of the agent to fetch sample events for'),
+            }),
+            execute: async ({ agentId }, runContext?: RunContext<ChatAgentContext>): Promise<string> => {
+                const userId = runContext?.context?.userId;
+                if (!userId) throw new Error("User ID is required");
+                const result = await fetchAgentSampleEvents(agentId, userId);
+                return JSON.stringify(result, null, 2);
+            },
+        }),
+        tool({
+            name: 'sendSampleEventToAgent',
+            description: 'Send a sample event to an agent for testing. Results appear in run history.',
+            parameters: z.object({
+                agentId: z.string().min(1).describe('Agent ID'),
+                triggerIndex: z.number().min(0).describe('Trigger index from fetchSampleEvents'),
+                sampleEventIndex: z.number().min(0).describe('Sample event index from fetchSampleEvents'),
+            }),
+            execute: async ({ agentId, triggerIndex, sampleEventIndex }, runContext?: RunContext<ChatAgentContext>): Promise<string> => {
+                const userId = runContext?.context?.userId;
+                if (!userId) throw new Error("User ID is required");
+
+                const result = await fetchAgentSampleEvents(agentId, userId);
+                if (triggerIndex >= result.triggers.length) throw new Error(`Invalid trigger index`);
+
+                const trigger = result.triggers[triggerIndex];
+                if (sampleEventIndex >= trigger.sampleEvents.length) throw new Error(`Invalid event index`);
+
+                const sampleEvent = trigger.sampleEvents[sampleEventIndex].fullEvent;
+                const user = await db().users.findUnique({ where: { id: userId } });
+                if (!user) throw new Error("User not found");
+
+                const handler = InputEventRegistry.getEventHandler(sampleEvent.configType);
+                await handler.sendSampleEventToAgent(sampleEvent, agentId, user);
+
+                return `Test started. Check run history for results.`;
             },
         }),
     ];
@@ -467,3 +513,42 @@ async function fetchResourcesForIntegrationType(
         }
     }
 }
+
+async function fetchAgentSampleEvents(agentId: string, userId: string) {
+    const agent = await db().automations.findUnique({
+        where: { id: agentId, user_id: userId },
+        include: { inputs: { include: getInputConfigInclude() } }
+    });
+
+    if (!agent) throw new Error("Agent not found");
+    if (agent.inputs.length === 0) throw new Error("Agent has no input triggers");
+
+    const triggers = await Promise.all(agent.inputs.map(async (input, triggerIndex) => {
+        try {
+            const config = convertPrismaConfigToConfigInstance(input as any);
+            const handler = InputEventRegistry.getEventHandler(config.configType);
+            const sampleEvents = await handler.getSampleEvents(config, userId);
+            return {
+                triggerIndex,
+                configType: config.configType,
+                description: `${config.integrationType}: ${(config as any).channelName || (config as any).fileName || 'Input'}`,
+                sampleEvents: sampleEvents.map((event, index) => ({
+                    index,
+                    preview: event.preview,
+                    timestamp: event.timestamp,
+                    fullEvent: event
+                }))
+            };
+        } catch (error) {
+            return {
+                triggerIndex,
+                configType: input.config_type as any,
+                description: `${input.config_type}: Error fetching events`,
+                sampleEvents: []
+            };
+        }
+    }));
+
+    return { agentId, agentName: agent.name, triggers };
+}
+

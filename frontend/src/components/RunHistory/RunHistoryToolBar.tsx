@@ -75,7 +75,8 @@ export default function RunHistoryToolBar({
                     <div className="flex items-center gap-2 text-muted-foreground">
                         Showing {filteredCount === 0 ? 0 : startIndex + 1}-{Math.min(startIndex + runsPerPage, filteredCount)} of {filteredCount} events
                     </div>
-
+                </div>
+                <div className="flex items-center gap-4">
                     {/* Test with Sample Event Button */}
                     {agentId && (
                         <TooltipProvider>
@@ -90,7 +91,7 @@ export default function RunHistoryToolBar({
                                             className="gap-2"
                                         >
                                             <TestTube className="h-4 w-4" />
-                                            Test with Sample Event
+                                            Test E2E
                                         </Button>
                                     </span>
                                 </TooltipTrigger>
@@ -104,22 +105,22 @@ export default function RunHistoryToolBar({
                             </Tooltip>
                         </TooltipProvider>
                     )}
-                </div>
-                <div className="flex items-center gap-2">
-                    <span className="text-muted-foreground text-sm">Events per page:</span>
-                    <Select
-                        value={String(runsPerPageValue)}
-                        onValueChange={(value) => onRunsPerPageChange(Number(value))}
-                    >
-                        <SelectTrigger className="w-20">
-                            <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="10">10</SelectItem>
-                            <SelectItem value="25">25</SelectItem>
-                            <SelectItem value="100">100</SelectItem>
-                        </SelectContent>
-                    </Select>
+                    <div className="flex items-center gap-2">
+                        <span className="text-muted-foreground text-sm">Events per page:</span>
+                        <Select
+                            value={String(runsPerPageValue)}
+                            onValueChange={(value) => onRunsPerPageChange(Number(value))}
+                        >
+                            <SelectTrigger className="w-20">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="10">10</SelectItem>
+                                <SelectItem value="25">25</SelectItem>
+                                <SelectItem value="100">100</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
                 </div>
             </div>
 

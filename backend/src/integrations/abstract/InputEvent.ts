@@ -41,6 +41,13 @@ export abstract class InputEvent {
     abstract getImageUrls(): string[];
 
     /**
+     * Get the timestamp of this event as an ISO string.
+     * Each event subclass extracts the timestamp from its event-specific data.
+     * @returns ISO timestamp string
+     */
+    abstract getEventTimestamp(): string;
+
+    /**
      * 
      * Get sample events for the given config that can be used for testing.
      */

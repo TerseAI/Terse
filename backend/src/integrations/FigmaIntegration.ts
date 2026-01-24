@@ -1014,6 +1014,19 @@ export class FigmaCommentEvent extends InputEvent {
     return urls;
   }
 
+  getEventTimestamp(): string {
+    return FigmaCommentEvent.getTimestampFromEventData(this.data);
+  }
+
+  static getTimestampFromEventData(data: FigmaCommentEventData): string {
+    // Figma comment createdAt is already an ISO string
+    return data.createdAt;
+  }
+
+  static formatPreviewFromEventData(data: FigmaCommentEventData): string {
+    return `Comment by ${data.author?.handle || 'user'}: "${(data.message || '').substring(0, 60)}..."`;
+  }
+
   static async getSampleEvents(config: FigmaConfig, userId?: string): Promise<FigmaSampleEvent[]> {
     const prisma = db();
 
@@ -1088,6 +1101,8 @@ export class FigmaCommentEvent extends InputEvent {
           eventData,
           trigger: event.createTriggerMetadata(),
           integrationId: config.integrationId,
+          timestamp: FigmaCommentEvent.getTimestampFromEventData(eventData),
+          preview: FigmaCommentEvent.formatPreviewFromEventData(eventData),
         });
       }
 

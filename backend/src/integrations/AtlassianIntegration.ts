@@ -1207,6 +1207,19 @@ export class JiraEvent extends InputEvent {
         return [];
     }
 
+    getEventTimestamp(): string {
+        return JiraEvent.getTimestampFromEventData(this.data);
+    }
+
+    static getTimestampFromEventData(data: JiraWebhookPayload | JiraEventData): string {
+        // Jira webhook timestamp is milliseconds since epoch
+        return new Date(data.timestamp).toISOString();
+    }
+
+    static formatPreviewFromEventData(data: JiraEventData): string {
+        return `Issue: ${data.issue?.fields?.summary || 'Update'}`;
+    }
+
     private static buildJqlQuery(projectKey: string | undefined, projectKeys: string[]): string {
         if (projectKey) {
             return `project = ${projectKey} ORDER BY created DESC`;
@@ -1437,6 +1450,8 @@ export class JiraEvent extends InputEvent {
                     eventData,
                     trigger: event.createTriggerMetadata(),
                     integrationId: config.integrationId,
+                    timestamp: JiraEvent.getTimestampFromEventData(eventData),
+                    preview: JiraEvent.formatPreviewFromEventData(eventData),
                 };
             });
 

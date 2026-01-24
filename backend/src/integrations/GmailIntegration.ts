@@ -536,8 +536,21 @@ export class GmailEvent extends InputEvent {
         return [];
     }
 
+    getEventTimestamp(): string {
+        return GmailEvent.getTimestampFromEventData(this.data);
+    }
+
+    static getTimestampFromEventData(data: GmailEventData): string {
+        // Gmail internalDate is milliseconds since epoch
+        return new Date(parseInt(data.internalDate, 10)).toISOString();
+    }
+
+    static formatPreviewFromEventData(data: GmailEventData): string {
+        return `Email from ${data.from}: "${data.subject}"`;
+    }
+
     /**
-     * 
+     *
      * Get sample events for the given config that can be used for testing.
      */
     static async getSampleEvents(config: GmailConfig, userId?: string): Promise<SampleEvent[]> {
@@ -582,6 +595,8 @@ export class GmailEvent extends InputEvent {
             eventData: event.data,
             trigger: event.createTriggerMetadata(),
             integrationId: config.integrationId,
+            timestamp: GmailEvent.getTimestampFromEventData(event.data),
+            preview: GmailEvent.formatPreviewFromEventData(event.data),
         }));
 
         // Sort by date descending

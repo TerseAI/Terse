@@ -12,8 +12,7 @@ export function OutputCard({
     output, 
     handleRemove,
     setOutput,
-    agentId
-}: { output: TransientAgentOutput, handleRemove: () => void, setOutput: (output: TransientAgentOutput) => void, agentId: string | null }) {
+}: { output: TransientAgentOutput, handleRemove: () => void, setOutput: (output: TransientAgentOutput) => void }) {
 
     function onSelect(config: ConfigInstance) {
         setOutput({ ...output, config: config, configType: config.configType });
@@ -36,7 +35,7 @@ export function OutputCard({
                 </CardTitle>
             </CardHeader>
             <CardContent className="max-w-xs">
-                <IntegrationSelector input={output} variant="dialog" setConfig={onSelect} agentId={agentId} />
+                <IntegrationSelector input={output} variant="dialog" setConfig={onSelect} />
             </CardContent>
             <CardFooter>
                 <Button variant="destructive" onClick={handleRemove}>

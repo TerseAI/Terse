@@ -371,6 +371,20 @@ export class GithubEvent extends InputEvent {
         return [];
     }
 
+    getEventTimestamp(): string {
+        return GithubEvent.getTimestampFromEventData();
+    }
+
+    static getTimestampFromEventData(): string {
+        // GitHub webhook events don't include a timestamp in the unified format
+        // Return current time as these events are processed in real-time
+        return new Date().toISOString();
+    }
+
+    static formatPreviewFromEventData(data: GithubEventData): string {
+        return `${data.eventType || 'Event'}: ${data.pullRequest?.title || data.commits?.[0]?.name || 'Update'}`;
+    }
+
     static async getSampleEvents(config: GitHubConfig, userId?: string): Promise<GithubSampleEvent[]> {
         if (!userId) {
             throw createError('User ID is required for GitHub sample events', 400);
@@ -642,6 +656,8 @@ async function createPushSampleEvent(
             eventData,
             trigger: event.createTriggerMetadata(),
             integrationId: installationId.toString(),
+            timestamp: GithubEvent.getTimestampFromEventData(),
+            preview: GithubEvent.formatPreviewFromEventData(eventData),
         };
     } catch (error) {
         logger.error('Error creating push sample event', { error, commit: commit.sha });
@@ -731,6 +747,8 @@ async function createPullRequestSampleEvent(
             eventData,
             trigger: event.createTriggerMetadata(),
             integrationId: installationId.toString(),
+            timestamp: GithubEvent.getTimestampFromEventData(),
+            preview: GithubEvent.formatPreviewFromEventData(eventData),
         };
     } catch (error) {
         logger.error('Error creating PR sample event', { error, pr: pr.number });

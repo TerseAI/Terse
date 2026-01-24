@@ -590,6 +590,19 @@ export class LinearEvent extends InputEvent {
         return [];
     }
 
+    getEventTimestamp(): string {
+        return LinearEvent.getTimestampFromEventData(this.data);
+    }
+
+    static getTimestampFromEventData(data: LinearWebhookPayload | LinearEventData): string {
+        // Linear webhook payloads include createdAt as an ISO string
+        return data.createdAt;
+    }
+
+    static formatPreviewFromEventData(data: LinearEventData): string {
+        return `Issue: ${data.data?.title || 'Update'}`;
+    }
+
     static async getSampleEvents(config: LinearInputConfig, userId?: string): Promise<LinearSampleEvent[]> {
         const prisma = db();
 
@@ -686,6 +699,8 @@ export class LinearEvent extends InputEvent {
                     eventData,
                     trigger: event.createTriggerMetadata(),
                     integrationId: config.integrationId,
+                    timestamp: LinearEvent.getTimestampFromEventData(eventData),
+                    preview: LinearEvent.formatPreviewFromEventData(eventData),
                 });
             }
 

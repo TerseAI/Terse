@@ -523,6 +523,20 @@ export class SlackEvent extends InputEvent implements Identifiable {
             .map(img => img.url);
     }
 
+    getEventTimestamp(): string {
+        return SlackEvent.getTimestampFromEventData(this.data);
+    }
+
+    static getTimestampFromEventData(data: SlackEventData): string {
+        // Slack timestamps are Unix timestamps with microseconds (e.g., "1234567890.123456")
+        const unixSeconds = parseFloat(data.timestamp);
+        return new Date(unixSeconds * 1000).toISOString();
+    }
+
+    static formatPreviewFromEventData(data: SlackEventData): string {
+        return `Message from ${data.userName || 'user'} in ${data.channelName || 'channel'}: "${(data.text || '').substring(0, 60)}..."`;
+    }
+
     debugLog(): string {
         const isDM = this.data.channelType === SlackChannelType.IM;
         return `Slack Event: ${isDM ? 'DM' : this.data.channelName || this.data.channelId} - ${this.data.userName || this.data.userId}}`;
@@ -743,6 +757,8 @@ export class SlackEvent extends InputEvent implements Identifiable {
                 eventData,
                 trigger: event.createTriggerMetadata(),
                 integrationId: config.integrationId,
+                timestamp: SlackEvent.getTimestampFromEventData(eventData),
+                preview: SlackEvent.formatPreviewFromEventData(eventData),
             };
         });
     }

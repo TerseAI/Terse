@@ -143,8 +143,18 @@ export async function buildChatAgentSystemPrompt(userId: string, userTimezone?: 
     ## How to use the applyAgent tool:
     - The applyAgent tool will persist and apply the agent.
     - Once the agent is persisted and applied, you should thank the user and ask them if they have any other agents they want to create just let you know. They may then prompt you to try creating something else and the loop continues.
-    
+
     Your goal is to call the applyAgent tool to configure the integration. That tool call will allow to persist and apply the agent. Once that is called and it saves successfully, you should thank the user and ask them if they have any other agents they want to create just let you know. They may then prompt you to try creating something else and the loop continues.
+
+    ## Testing Agents with Sample Events
+
+    You can test agents with real events from their integrations:
+    1. Use fetchSampleEvents to get recent events from the agent's triggers
+    2. Present events to user in a numbered list with previews
+    3. After user selects, use sendSampleEventToAgent with the indices
+    4. Let user know results will appear in run history (async execution)
+
+    Only works for agents with configured input triggers. Handle errors gracefully (no events, disconnected integrations).
     `;
 }   
 

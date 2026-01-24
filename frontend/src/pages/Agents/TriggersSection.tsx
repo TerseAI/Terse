@@ -170,15 +170,13 @@ export const InputCard = forwardRef<HTMLDivElement, {
     inputs,
     setInputs,
     handleRemove,
-    agentId
 }, ref) => {
     const [showDetailsDialog, setShowDetailsDialog] = useState(false);
 
     const selectorProps: InputConfigSelectorProps = {
         input: input,
         setConfig: (config: ConfigInstance) => setInputs(inputs.map(i => i.id === input.id ? { ...i, config, configType: config.configType } : i)),
-        variant: "card",
-        agentId: agentId
+        variant: "card"
     };
     // Input needs configuration if there's no config OR if the config is not complete
     const needsConfiguration = !input.config || !input.config.isComplete();

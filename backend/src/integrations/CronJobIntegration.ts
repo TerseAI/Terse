@@ -297,4 +297,9 @@ export class CronJobEvent extends InputEvent {
     getImageUrls(): string[] {
         return [];
     }
+
+    getEventTimestamp(): string {
+        // Cron jobs are processed in real-time, return current time
+        return new Date().toISOString();
+    }
 }

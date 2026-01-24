@@ -1,4 +1,4 @@
-import { ConfigType } from '../../shared/Configs';
+import { ConfigInstance, ConfigType } from '../../shared/Configs';
 import { SampleEvent } from '../../shared/SampleEvents';
 import { User } from '../../types/prisma';
 import { GmailEvent } from '../GmailIntegration';
@@ -8,9 +8,9 @@ import { LinearEvent } from '../LinearIntegration';
 import { GithubEvent } from '../GithubIntegration';
 import { FigmaCommentEvent } from '../FigmaIntegration';
 
-// Type for event classes with required static methods
+
 interface InputEventClass {
-    getSampleEvents(config: any, userId?: string): Promise<SampleEvent[]>;
+    getSampleEvents(config: ConfigInstance, userId?: string): Promise<SampleEvent[]>;
     sendSampleEventToAgent(sampleEvent: SampleEvent, agentId: string, user: User): Promise<void>;
 }
 

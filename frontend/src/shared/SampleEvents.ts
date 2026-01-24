@@ -183,46 +183,43 @@ export interface GithubEventData {
     };
 }
 
-export type GmailSampleEvent = {
+// Common fields for all sample events
+export type BaseSampleEvent = {
+    trigger: RunHistoryTrigger;
+    integrationId: string;
+    // Standardized fields set by each integration's getSampleEvents
+    timestamp: string; // ISO timestamp string
+    preview: string;   // Human-readable preview of the event
+}
+
+export type GmailSampleEvent = BaseSampleEvent & {
     configType: ConfigType.GMAIL;
     eventData: GmailEventData;
-    trigger: RunHistoryTrigger;
-    integrationId: string;
 }
 
-export type SlackSampleEvent = {
+export type SlackSampleEvent = BaseSampleEvent & {
     configType: ConfigType.SLACK;
     eventData: SlackEventData;
-    trigger: RunHistoryTrigger;
-    integrationId: string;
 }
 
-export type LinearSampleEvent = {
+export type LinearSampleEvent = BaseSampleEvent & {
     configType: ConfigType.LINEAR_INPUT;
     eventData: LinearEventData;
-    trigger: RunHistoryTrigger;
-    integrationId: string;
 }
 
-export type JiraSampleEvent = {
+export type JiraSampleEvent = BaseSampleEvent & {
     configType: ConfigType.JIRA;
     eventData: JiraEventData;
-    trigger: RunHistoryTrigger;
-    integrationId: string;
 }
 
-export type GithubSampleEvent = {
+export type GithubSampleEvent = BaseSampleEvent & {
     configType: ConfigType.GITHUB;
     eventData: GithubEventData;
-    trigger: RunHistoryTrigger;
-    integrationId: string;
 }
 
-export type FigmaSampleEvent = {
+export type FigmaSampleEvent = BaseSampleEvent & {
     configType: ConfigType.FIGMA;
     eventData: FigmaCommentEventData;
-    trigger: RunHistoryTrigger;
-    integrationId: string;
 }
 
 // union type for all sample event data
