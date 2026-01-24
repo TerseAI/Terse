@@ -5,12 +5,13 @@ import { IntegrationCardFooter } from "./helpers/IntegrationCardFooter";
 import { IntegrationItem } from "./helpers/IntegrationItem";
 import { cn } from "@/lib/utils";
 import { useLinearIntegrations } from "@/hooks/api/useLinearIntegrations";
+import { useOAuthConnection } from "@/hooks/useOAuthConnection";
 import { Skeleton } from "../ui/skeleton";
 import { Target } from "lucide-react";
 
 function LinearIntegrationCard({ className, isActive = true }: { className?: string; isActive?: boolean }) {
-    // Linear uses API key, not OAuth
     const { integrations, isLoading } = useLinearIntegrations();
+    const { connect, isConnecting } = useOAuthConnection<IntegrationType.LINEAR>(IntegrationType.LINEAR, {});
 
     return (
         <Card className={cn(className)}>
@@ -18,7 +19,7 @@ function LinearIntegrationCard({ className, isActive = true }: { className?: str
             <CardContent>
                 <LinearCardContent integrations={integrations} isLoading={isLoading} />
             </CardContent>
-            <IntegrationCardFooter />
+            <IntegrationCardFooter connect={connect} isConnecting={isConnecting} />
         </Card>
     )
 }
