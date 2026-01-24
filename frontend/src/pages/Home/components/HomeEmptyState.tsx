@@ -47,12 +47,12 @@ export function HomeEmptyState() {
 
     // Monitor popup closure to reset connecting state if user closes without completing
     useEffect(() => {
-        if (!isConnectingSlack || !popupRef.current) return;
+        if (!isConnectingSlack) return;
 
         const checkPopupClosed = setInterval(() => {
-            if (popupRef.current?.closed) {
+            // Check if popup exists and is closed
+            if (popupRef.current && popupRef.current.closed) {
                 clearInterval(checkPopupClosed);
-                // Only reset if we haven't received oauth-success (which would have already reset it)
                 setIsConnectingSlack(false);
                 popupRef.current = null;
             }
@@ -70,7 +70,14 @@ export function HomeEmptyState() {
             );
 
             if (installationDetails?.oauthUrl) {
-                popupRef.current = window.open(installationDetails.oauthUrl, 'oauth-popup', 'width=600,height=700');
+                const popup = window.open(installationDetails.oauthUrl, 'oauth-popup', 'width=600,height=700');
+                popupRef.current = popup;
+
+                // If popup was blocked, reset state immediately
+                if (!popup) {
+                    console.error('Popup was blocked');
+                    setIsConnectingSlack(false);
+                }
             } else {
                 console.error('OAuth URL not available');
                 setIsConnectingSlack(false);
