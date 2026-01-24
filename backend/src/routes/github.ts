@@ -102,6 +102,31 @@ export async function githubAppUnifiedEvent(req: Request, res: Response) {
         logger.error('Error processing GitHub event in integration manager', { error, eventType: body.eventType, repositoryName, username });
     });
 
+    let user: User | null = await db().users.findFirst({ where: { github_username: username } });
+
+    if (!user) {
+        logger.error('User not found, skipping event processing', { username, repositoryName, eventType: body.eventType });
+        res.status(200).json({ message: 'User not found. Event processing skipped.' });
+        return;
+    }
+
+     // Check feature flag before processing
+     const featureFlagService = FeatureFlagService.getInstance();
+     const hasBirdsEyeFlag = await featureFlagService.isFeatureFlagEnabled(FeatureFlag.BIRDS_EYE_VIEW_HOMEPAGE, user.id, {
+         email: user.email,
+         github_username: user.github_username
+     });
+
+     if (!hasBirdsEyeFlag) {
+         logger.info('Feature flag not enabled, skipping event processing', { 
+             userId: user.id, 
+             githubUsername: user.github_username,
+             eventType: body.eventType 
+         });
+         res.status(200).json({ message: 'Feature flag not enabled. Event processing skipped.' });
+         return;
+     }
+
     try {
         // get the user with transaction safety
         let user: User | null = await db().$transaction(async (tx) => {
@@ -121,23 +146,6 @@ export async function githubAppUnifiedEvent(req: Request, res: Response) {
             }
             return foundUser;
         });
-
-        // Check feature flag before processing
-        const featureFlagService = FeatureFlagService.getInstance();
-        const hasBirdsEyeFlag = await featureFlagService.isFeatureFlagEnabled(FeatureFlag.BIRDS_EYE_VIEW_HOMEPAGE, user.id, {
-            email: user.email,
-            github_username: user.github_username
-        });
-
-        if (!hasBirdsEyeFlag) {
-            logger.info('Feature flag not enabled, skipping event processing', { 
-                userId: user.id, 
-                githubUsername: user.github_username,
-                eventType: body.eventType 
-            });
-            res.status(200).json({ message: 'Feature flag not enabled. Event processing skipped.' });
-            return;
-        }
 
         // resolve the user github relation
         const repository: GithubRepository = await resolveUserGithubRelation(user, username, repositoryName, installationId);

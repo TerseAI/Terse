@@ -98,6 +98,8 @@ import { handleScheduleWebhook, handleManualTrigger } from "./routes/schedule";
 import { getTemplates } from "./routes/templates";
 import "./integrations/IntegrationTaskHandler"; // Import to trigger listener registration
 import { ApiRoutes } from "./shared/ApiRoutes";
+import { runStartupValidations } from "./tools/validateToolNames";
+import { toolsThatRequireApprovalsRoute } from "./routes/tools";
 
 export type Session = {
   user: User;
@@ -566,6 +568,12 @@ app.delete(ApiRoutes.NOTIFICATION_DESTINATIONS.BY_ID.pattern, authMiddleware, as
   deleteNotificationDestination(req, res);
 });
 
+// MARK: TOOLS THAT REQUIRE APPROVALS
+
+app.post(ApiRoutes.TOOLS.THAT_REQUIRE_APPROVALS, authMiddleware, async (req, res) => {
+  toolsThatRequireApprovalsRoute(req, res);
+});
+
 /**
  * Express error handling middleware - MUST be last, after all routes
  * This catches errors from async route handlers
@@ -593,6 +601,13 @@ process.on("unhandledRejection", (reason: unknown, promise: Promise<unknown>) =>
   });
   // Log but don't crash - this is a safety net for promises we might have missed
 });
+
+try {
+  runStartupValidations();
+} catch (error) {
+  logger.error("❌ Startup validation failed", { error });
+  process.exit(1);
+}
 
 server.listen(3001, () => {
   logger.info("🚀 Express backend running on http://localhost:3001");

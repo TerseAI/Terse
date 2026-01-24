@@ -8,6 +8,7 @@ import { RunHistoryActionType } from "@prisma/client";
 import { Session } from "../../../server";
 import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner";
 import { getDatadogCredentialsByIntegrationId } from "../datadogApiClient";
+import { ToolName } from "../../../tools/ToolNames";
 
 /**
  * Tool for querying Datadog RUM events with flexible filtering options.
@@ -15,7 +16,7 @@ import { getDatadogCredentialsByIntegrationId } from "../datadogApiClient";
  * Use this to investigate frontend issues, user behavior, performance problems, or errors in the browser/mobile app.
  */
 export const searchRumEventsTool = tool({
-    name: 'searchRumEvents',
+    name: ToolName.DATADOG_SEARCH_RUM_EVENTS,
     description: 'Query Datadog RUM events. Filter by query string, time range. Returns sessions, views, actions, errors, resources, long tasks.',
     parameters: z.object({
         integrationId: z.string().describe('The integration ID of the Datadog knowledge base to use.'),

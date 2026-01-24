@@ -42,6 +42,7 @@ import { GetRunHistoryParams, GetRunHistoryResponse } from '../shared/RunHistory
 import { deserializeConfig } from '../utility/ConfigUtils';
 import { CreateNotificationDestinationRequest, NotificationDestination } from '../shared/Notifications';
 import { ApiRoutes } from '../shared/ApiRoutes';
+import { GetToolsThatRequireApprovalsRequest, GetToolsThatRequireApprovalsResponse } from '../shared/ToolsTypes';
 
 const backendBaseUrl = '/api';
 
@@ -379,6 +380,11 @@ interface BackendService {
      * @param context - Optional context explaining why the trigger is being run manually
      */
     triggerManually(triggerId: string, context?: string): Promise<{ received: boolean; message: string }>;
+
+    /**
+     * Gets write-only tools that require approval for the given skills and knowledge bases
+     */
+    getToolsThatRequireApprovals(request: GetToolsThatRequireApprovalsRequest): Promise<GetToolsThatRequireApprovalsResponse>;
 }
 
 export const BackendProvider: BackendService = {
@@ -1066,6 +1072,15 @@ export const BackendProvider: BackendService = {
             .then(response => response.data)
             .catch(error => {
                 console.error('Error triggering manually:', error);
+                throw error;
+            });
+    },
+
+    getToolsThatRequireApprovals: (request: GetToolsThatRequireApprovalsRequest) => {
+        return axios.post<GetToolsThatRequireApprovalsResponse>(`${backendBaseUrl}${ApiRoutes.TOOLS.THAT_REQUIRE_APPROVALS}`, request, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error getting tools that require approvals:', error);
                 throw error;
             });
     },

@@ -11,9 +11,9 @@ import { jiraCreateTicketTool } from "./tools/createTicket";
 export class JiraTicketOutput extends Output<JiraConfig> {
     constructor() {
         const toolbox: ToolboxEntry[] = [
-            { tool: jiraSearchTicketTool as Tool, isReadOnly: true, integration: IntegrationType.ATLASSIAN },
-            { tool: jiraCreateTicketTool as Tool, isReadOnly: false, integration: IntegrationType.ATLASSIAN },
-            { tool: jiraUpdateTicketTool as Tool, isReadOnly: false, integration: IntegrationType.ATLASSIAN },
+            { tool: jiraSearchTicketTool as Tool, isReadOnly: true, integration: IntegrationType.ATLASSIAN, displayName: 'Search tickets' },
+            { tool: jiraCreateTicketTool as Tool, isReadOnly: false, integration: IntegrationType.ATLASSIAN, displayName: 'Create ticket' },
+            { tool: jiraUpdateTicketTool as Tool, isReadOnly: false, integration: IntegrationType.ATLASSIAN, displayName: 'Update ticket' },
         ];
         super(OutputConfigType.JIRA_TICKET, toolbox);
     }

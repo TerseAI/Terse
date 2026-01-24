@@ -6,13 +6,14 @@ import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner";
 import type { IssueFilter, SearchIssuesQueryVariables, PaginationOrderBy as PaginationOrderByType } from "@linear/sdk/dist/_generated_documents";
 import { RunHistoryActionType } from "@prisma/client";
 import { formatError } from "../../../tools/toolUtils";
+import { ToolName } from "../../../tools/ToolNames";
 import logger from "../../../logger";
 import { Session } from "../../../server";
 import { LinearIntegrationManager } from "../../../integrations/LinearIntegration";
 
 
 export const linearSearchTicketTool = tool({
-    name: 'linear_search_ticket',
+    name: ToolName.LINEAR_SEARCH_TICKET,
     description: `Search for Linear issues/tickets by description or query. Returns issues that match the search criteria, excluding completed issues by default unless specified otherwise.
 
 Use this tool to find existing Linear issues before creating new ones or to look up ticket information.`,

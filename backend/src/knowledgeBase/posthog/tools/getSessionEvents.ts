@@ -7,6 +7,7 @@ import { RunHistoryActionType } from "@prisma/client";
 import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner.js";
 import { Session } from "../../../server.js";
 import { getPosthogApiKeyByIntegrationId } from "../posthogApiClient.js";
+import { ToolName } from "../../../tools/ToolNames.js";
 
 /**
  * Tool for fetching and decoding PostHog session replay events.
@@ -14,7 +15,7 @@ import { getPosthogApiKeyByIntegrationId } from "../posthogApiClient.js";
  * that can be analyzed by the AI directly.
  */
 export const getSessionEventsTool = tool({
-    name: 'getPosthogSessionEvents',
+    name: ToolName.POSTHOG_GET_SESSION_EVENTS,
     description: 'Fetch and decode session replay events from PostHog. Returns summarized meaningful events (clicks, inputs, scroll, console logs, network errors, navigation) within a specified time window. Use this to investigate what a user did during a session - what they clicked, what they typed, any errors that occurred, etc. The events are decoded and summarized for easy analysis.',
     parameters: z.object({
         integrationId: z.string().describe('The integration ID of the PostHog knowledge base to use.'),

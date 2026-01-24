@@ -513,10 +513,11 @@ export class GmailEvent extends InputEvent {
     }
 
     createTriggerMetadata(): RunHistoryTrigger {
-        // Construct Gmail message URL using the thread ID
-        // Format: https://mail.google.com/mail/u/0/#inbox/{threadId}
+        // Construct Gmail message URL using the thread ID with #all
+        // Format: https://mail.google.com/mail/u/0/#all/{threadId}
+        // Using #all instead of #inbox ensures the link works regardless of label
         const gmailUrl = this.data.threadId
-            ? `https://mail.google.com/mail/u/0/#inbox/${this.data.threadId}`
+            ? `https://mail.google.com/mail/u/0/#all/${this.data.threadId}`
             : undefined;
 
         return {

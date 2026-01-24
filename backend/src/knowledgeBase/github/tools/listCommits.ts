@@ -6,12 +6,13 @@ import { IntegrationType } from "../../../shared/Integrations";
 import { RunHistoryActionType } from "@prisma/client";
 import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner";
 import { Session } from "../../../server";
+import { ToolName } from "../../../tools/ToolNames";
 
 /**
  * Tool for listing commits in GitHub repositories within a time window.
  */
 export const listGitHubCommitsTool = tool({
-    name: 'listGitHubCommits',
+    name: ToolName.GITHUB_LIST_COMMITS,
     description: `List commits in GitHub repositories within a time window. Use this to:
 - Review recent changes and development activity
 - Track what code was modified in a specific period

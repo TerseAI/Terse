@@ -8,13 +8,14 @@ import { RunHistoryActionType } from "@prisma/client";
 import { Session } from "../../../server";
 import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner";
 import { getDatadogCredentialsByIntegrationId } from "../datadogApiClient";
+import { ToolName } from "../../../tools/ToolNames";
 
 /**
  * Tool for querying Datadog logs with flexible filtering options.
  * This tool queries the Datadog Logs API v2 to find logs. You can filter by query string, indexes, time range, or combinations.
  */
 export const searchDatadogLogsTool = tool({
-    name: 'searchDatadogLogs',
+    name: ToolName.DATADOG_SEARCH_LOGS,
     description: 'Query Datadog logs. Filter by query string, indexes, time range. Returns logs with timestamps, status, messages, hosts, services, tags.',
     parameters: z.object({
         integrationId: z.string().describe('The integration ID of the Datadog knowledge base to use.'),

@@ -1,4 +1,4 @@
-import { Tool, webSearchTool } from "@openai/agents";
+import { Tool } from "@openai/agents";
 import { AgentOutputWithConfigs, PrismaTransaction, User } from "../../types/prisma";
 import { OutputConfigType } from "@prisma/client";
 import { ConfigInstance } from "../../shared/Configs";
@@ -8,6 +8,7 @@ export interface ToolboxEntry {
     tool: Tool;
     isReadOnly: boolean;
     integration: IntegrationType;
+    displayName: string;
 }
 
 export abstract class Output<TConfig extends ConfigInstance> {
@@ -17,7 +18,7 @@ export abstract class Output<TConfig extends ConfigInstance> {
 
     constructor(integration: OutputConfigType, toolbox: readonly ToolboxEntry[]) {
         this.integration = integration;
-        this.toolbox = [...defaultToolbox, ...toolbox]
+        this.toolbox = toolbox;
     }
 
     abstract validateConfig(output: TConfig, userId: string): Promise<void>;
@@ -38,13 +39,3 @@ export abstract class Output<TConfig extends ConfigInstance> {
      */
     protected abstract getSystemInstructionsForConfigs(configs: AgentOutputWithConfigs[]): string;
 }
-
-export const defaultToolbox: readonly ToolboxEntry[] = [
-    {
-        tool: webSearchTool({
-            searchContextSize: 'medium',
-        }),
-        isReadOnly: true,
-        integration: IntegrationType.TERSE
-    }
-]

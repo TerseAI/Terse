@@ -20,21 +20,9 @@ import logger from "../../logger";
 export class PosthogKnowledgeBase extends KnowledgeBase<PosthogConfig> {
     constructor() {
         const toolbox: ToolboxEntry[] = [
-            {
-                tool: searchLogsTool as Tool,
-                isReadOnly: true,
-                integration: IntegrationType.POSTHOG
-            },
-            {
-                tool: searchSessionsTool as Tool,
-                isReadOnly: true,
-                integration: IntegrationType.POSTHOG
-            },
-            {
-                tool: getSessionEventsTool as Tool,
-                isReadOnly: true,
-                integration: IntegrationType.POSTHOG
-            }
+            { tool: searchLogsTool as Tool, isReadOnly: true, integration: IntegrationType.POSTHOG, displayName: 'Search logs' },
+            { tool: searchSessionsTool as Tool, isReadOnly: true, integration: IntegrationType.POSTHOG, displayName: 'Search sessions' },
+            { tool: getSessionEventsTool as Tool, isReadOnly: true, integration: IntegrationType.POSTHOG, displayName: 'Get session events' },
         ];
 
         super(KnowledgeBaseConfigType.POSTHOG, toolbox);
