@@ -7,7 +7,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
-import { Maximize2Icon, Sparkles, Info, AlertTriangleIcon } from "lucide-react";
+import { Maximize2Icon, Sparkles, Info } from "lucide-react";
 import { AgentTrigger, AgentOutput, AgentKnowledgeBase, AgentPrompt } from "@/shared/types";
 import { PromptBuilderModal } from "../../../components/PromptBuilder/PromptBuilderModal";
 import { Switch } from "../../../components/ui/switch";
@@ -38,7 +38,7 @@ interface InstructionsEditorProps {
     isIncomplete?: boolean;
 }
 
-export function InstructionsEditor({ prompt, setPrompt, agentInputs, agentOutputs, knowledgeBases, isIncomplete }: InstructionsEditorProps) {
+export function InstructionsEditor({ prompt, setPrompt, agentInputs, agentOutputs, knowledgeBases }: InstructionsEditorProps) {
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [showPromptBuilder, setShowPromptBuilder] = useState(false);
     const [showMarkdown, setShowMarkdown] = useState(false);
@@ -51,17 +51,10 @@ export function InstructionsEditor({ prompt, setPrompt, agentInputs, agentOutput
                     <SectionHeader>Prompt</SectionHeader>
                     <Tooltip>
                         <TooltipTrigger asChild>
-                            {isIncomplete ? (
-                                <AlertTriangleIcon className="size-3 text-yellow-500 cursor-help relative -top-1" />
-                            ) : (
-                                <Info className="size-3 text-muted-foreground hover:text-foreground cursor-help relative -top-1" />
-                            )}
+                            <Info className="size-3 text-muted-foreground hover:text-foreground cursor-help relative -top-1" />
                         </TooltipTrigger>
                         <TooltipContent side="right" className="max-w-xs whitespace-pre-line">
-                            {isIncomplete 
-                                ? "Add a prompt describing what the AI should do with incoming events to remove this warning.\n\nThe prompt describes what the AI should do with incoming events. Be specific about what information to extract, how to format output, and any rules for filtering or prioritizing."
-                                : "The prompt describes what the AI should do with incoming events. Be specific about what information to extract, how to format output, and any rules for filtering or prioritizing."
-                            }
+                            The prompt describes what the AI should do with incoming events. Be specific about what information to extract, how to format output, and any rules for filtering or prioritizing.
                         </TooltipContent>
                     </Tooltip>
                 </div>

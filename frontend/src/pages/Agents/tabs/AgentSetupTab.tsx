@@ -16,18 +16,15 @@ import { AddOutputModal } from "../components/AddOutputModal";
 import { KnowledgeBaseSelector } from "../components/KnowledgeBaseSelector";
 import { CONFIG_DETAILS, ConfigInstance, ConfigType } from "../../../shared/Configs";
 import { v4 as uuidv4 } from 'uuid';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../../components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "../../../components/ui/dialog";
 import { InputConfigSelectorProps, IntegrationSelector } from "../../../components/IntegrationSelector";
-import { AlertTriangleIcon, PlusIcon, XIcon, Zap, FileText, Wrench, Bell, Info, Database } from "lucide-react";
+import { PlusIcon, XIcon, Zap, FileText, Wrench, Bell, Database, ChevronRight, Check } from "lucide-react";
 import { cn } from "../../../lib/utils";
 import { Badge } from "../../../components/ui/badge";
-import { SectionHeader } from "@/components/ui/section-header";
 import AgentNotificationSettings from "../AgentNotificationSettings";
 import AgentApprovalSettings from "../AgentApprovalSettings";
 import { InstructionsEditor } from "../components/InstructionsEditor";
-import { Tooltip, TooltipTrigger, TooltipContent } from "../../../components/ui/tooltip";
 import { IconForConfigType } from "../components/Integration";
-import { AppsList } from "../../../components/Agents";
 
 export type AgentSetupTabProps = {
     agentId: string | null;
@@ -181,213 +178,195 @@ export default function AgentSetupTab({
     const agentOutputs = outputs.map(toAgentOutput).filter((o): o is AgentOutput => o != null);
     const agentKnowledgeBases = knowledgeBases.map(toAgentKnowledgeBase).filter((kb): kb is AgentKnowledgeBase => kb != null);
 
-    type SetupSection = 'triggers' | 'knowledgeBase' | 'prompt' | 'skills' | 'alerts';
-    const [activeSection, setActiveSection] = useState<SetupSection>('triggers');
-
     const triggersIncomplete =
         inputs.length === 0 || inputs.some((i) => !i || !i.config || !i.config.isComplete());
-    const knowledgeBaseIncomplete = knowledgeBases.some((kb) => !kb || !kb.config || !kb.config.isComplete());
     const promptIncomplete = !prompt?.text || prompt.text.trim() === '';
     const skillsIncomplete = outputs.length === 0 || outputs.some((o) => !o || !o.config || !o.config.isComplete());
 
-    // Check if automation is complete (same logic as SaveAgentButton)
-    const isComplete =
-        inputs.length > 0 &&
-        inputs.every(i => i != null && i.config != null && i.config.isComplete()) &&
-        outputs.length > 0 &&
-        outputs.every(o => o != null && o.config != null && o.config.isComplete()) &&
-        !!prompt?.text;
+    // Step definitions for the builder flow
+    const steps = [
+        {
+            id: 'triggers' as const,
+            label: 'Triggers',
+            description: 'What starts this agent',
+            icon: Zap,
+            isComplete: !triggersIncomplete,
+            count: inputs.length,
+        },
+        {
+            id: 'prompt' as const,
+            label: 'Instructions',
+            description: 'What the agent does',
+            icon: FileText,
+            isComplete: !promptIncomplete,
+        },
+        {
+            id: 'skills' as const,
+            label: 'Skills',
+            description: 'What the agent can use',
+            icon: Wrench,
+            isComplete: !skillsIncomplete,
+            count: outputs.length,
+        },
+    ];
 
-    // Create a minimal agent-like object for AppsList
-    // Only create if we have outputs (required by Agent type)
-    const agentForAppsList = agentOutputs.length > 0 ? {
-        id: agentId || '',
-        name: name || defaultName || '',
-        isActive,
-        requireApproval,
-        prompt: prompt || { text: '' },
-        triggers: agentInputs,
-        outputs: agentOutputs,
-        knowledgeBases: agentKnowledgeBases,
-        notificationSettings,
-    } : null;
+    type SetupSection = 'triggers' | 'knowledgeBase' | 'prompt' | 'skills' | 'alerts';
+    const [activeSection, setActiveSection] = useState<SetupSection>('triggers');
 
     return (
-        <div className="flex flex-col h-full min-h-0 gap-0">
-            <div className="py-6">
-                <div className="grid grid-cols-3 gap-4 items-center">
-                    <div className="flex justify-start min-w-0 pl-2">
-                        <SaveAgentButton
-                            defaultName={defaultName}
-                            agentId={agentId}
-                            name={name}
-                            inputs={agentInputs}
-                            outputs={agentOutputs}
-                            knowledgeBases={agentKnowledgeBases}
-                            prompt={prompt}
-                            isActive={isActive}
-                            requireApproval={requireApproval}
-                            notificationSettings={notificationSettings}
-                            mutate={mutate}
+        <div className="flex flex-col h-full min-h-0">
+            {/* Header */}
+            <div className="border-b border-border px-6 py-4">
+                <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-4 min-w-0">
+                        <EditableTextField
+                            className="text-lg font-medium"
+                            value={name || ''}
+                            placeholder={defaultName}
+                            onSave={(value) => setName(value)}
                         />
                     </div>
-                    <div className="flex justify-center items-center min-w-0">
-                        <EditableTextField className="text-center max-w-fit" value={name || ''} placeholder={defaultName} onSave={(value) => setName(value)} />
-                    </div>
-                    <div className="flex justify-end min-w-0 items-center gap-3 px-2">
-                        {isComplete && agentForAppsList ? (
-                            <>
-                                <AppsList agent={agentForAppsList} />
-                            </>
-                        ) : (
-                            <div className="text-sm text-muted-foreground text-right">
-                                Complete your automation to see connected apps
-                            </div>
-                        )}
-                    </div>
+                    <SaveAgentButton
+                        defaultName={defaultName}
+                        agentId={agentId}
+                        name={name}
+                        inputs={agentInputs}
+                        outputs={agentOutputs}
+                        knowledgeBases={agentKnowledgeBases}
+                        prompt={prompt}
+                        isActive={isActive}
+                        requireApproval={requireApproval}
+                        notificationSettings={notificationSettings}
+                        mutate={mutate}
+                    />
                 </div>
             </div>
 
-            <div className="flex-1 min-h-0 flex flex-col md:flex-row gap-0 overflow-hidden relative">
-                <nav className="shrink-0 md:w-46 h-full relative md:-mt-2 z-10 border-t border-r border-border">
-                    <div className="flex md:flex-col gap-4 md:pr-4 overflow-x-auto md:overflow-visible pt-4 h-full">
-                        <Button
-                            type="button"
-                            variant={activeSection === 'triggers' ? "secondary" : "ghost"}
-                            size="sm"
-                            className={cn("w-auto md:w-full justify-start text-base", activeSection === 'triggers' && "font-medium")}
-                            onClick={() => setActiveSection('triggers')}
-                            aria-current={activeSection === 'triggers' ? 'page' : undefined}
-                        >
-                            <span className="flex items-center gap-2 w-full">
-                                <Zap className="size-4" />
-                                <span>Triggers</span>
-                                {triggersIncomplete && (
-                                    <div className="ml-auto">
-                                        <WarningIcon content="Add at least one trigger integration and complete its configuration to remove this warning." />
+            {/* Builder Steps - Horizontal flow */}
+            <div className="border-b border-border px-6 py-4 bg-muted/30">
+                <div className="flex items-center gap-2">
+                    {steps.map((step, index) => {
+                        const isActive = activeSection === step.id;
+                        const StepIcon = step.icon;
+
+                        return (
+                            <div key={step.id} className="flex items-center">
+                                <button
+                                    onClick={() => setActiveSection(step.id)}
+                                    className={cn(
+                                        "flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all",
+                                        isActive
+                                            ? "bg-background border border-border shadow-sm"
+                                            : "hover:bg-background/50",
+                                    )}
+                                >
+                                    <div className={cn(
+                                        "flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium transition-colors",
+                                        step.isComplete
+                                            ? "bg-foreground text-background"
+                                            : isActive
+                                                ? "bg-foreground/10 text-foreground border border-foreground/20"
+                                                : "bg-muted text-muted-foreground"
+                                    )}>
+                                        {step.isComplete ? (
+                                            <Check className="w-4 h-4" />
+                                        ) : (
+                                            <StepIcon className="w-4 h-4" />
+                                        )}
                                     </div>
-                                )}
-                            </span>
-                        </Button>
-                        <Button
-                            type="button"
-                            variant={activeSection === 'prompt' ? "secondary" : "ghost"}
-                            size="sm"
-                            className={cn("w-auto md:w-full justify-start text-base", activeSection === 'prompt' && "font-medium")}
-                            onClick={() => setActiveSection('prompt')}
-                            aria-current={activeSection === 'prompt' ? 'page' : undefined}
-                        >
-                            <span className="flex items-center gap-2 w-full">
-                                <FileText className="size-4" />
-                                <span>Prompt</span>
-                                {promptIncomplete && (
-                                    <div className="ml-auto">
-                                        <WarningIcon content="Add a prompt describing what the AI should do with incoming events to remove this warning." />
+                                    <div className="text-left">
+                                        <div className={cn(
+                                            "text-sm font-medium",
+                                            isActive ? "text-foreground" : "text-muted-foreground"
+                                        )}>
+                                            {step.label}
+                                            {step.count !== undefined && step.count > 0 && (
+                                                <span className="ml-1.5 text-xs text-muted-foreground">({step.count})</span>
+                                            )}
+                                        </div>
+                                        <div className="text-xs text-muted-foreground">{step.description}</div>
                                     </div>
+                                </button>
+                                {index < steps.length - 1 && (
+                                    <ChevronRight className="w-4 h-4 text-muted-foreground/50 mx-1" />
                                 )}
-                            </span>
-                        </Button>
-                        <Button
-                            type="button"
-                            variant={activeSection === 'skills' ? "secondary" : "ghost"}
-                            size="sm"
-                            className={cn("w-auto md:w-full justify-start text-base", activeSection === 'skills' && "font-medium")}
-                            onClick={() => setActiveSection('skills')}
-                            aria-current={activeSection === 'skills' ? 'page' : undefined}
-                        >
-                            <span className="flex items-center gap-2 w-full">
-                                <Wrench className="size-4" />
-                                <span>Skills</span>
-                                {skillsIncomplete && (
-                                    <div className="ml-auto">
-                                        <WarningIcon content="Select a skill destination and complete its configuration to remove this warning." />
-                                    </div>
-                                )}
-                            </span>
-                        </Button>
-                        <Button
-                            type="button"
-                            variant={activeSection === 'knowledgeBase' ? "secondary" : "ghost"}
-                            size="sm"
-                            className={cn("w-auto md:w-full justify-start text-base", activeSection === 'knowledgeBase' && "font-medium")}
-                            onClick={() => setActiveSection('knowledgeBase')}
-                            aria-current={activeSection === 'knowledgeBase' ? 'page' : undefined}
-                        >
-                            <span className="flex items-center gap-2 w-full">
-                                <Database className="size-4" />
-                                <span>Knowledge Base</span>
-                                {knowledgeBaseIncomplete && knowledgeBases.length > 0 && (
-                                    <div className="ml-auto">
-                                        <WarningIcon content="Complete knowledge base configuration to remove this warning." />
-                                    </div>
-                                )}
-                            </span>
-                        </Button>
-                        <Button
-                            type="button"
-                            variant={activeSection === 'alerts' ? "secondary" : "ghost"}
-                            size="sm"
-                            className={cn("w-auto md:w-full justify-start text-base", activeSection === 'alerts' && "font-medium")}
-                            onClick={() => setActiveSection('alerts')}
-                            aria-current={activeSection === 'alerts' ? 'page' : undefined}
-                        >
-                            <span className="flex items-center gap-2 w-full">
-                                <Bell className="size-4" />
-                                <span>Alerts</span>
-                            </span>
-                        </Button>
+                            </div>
+                        );
+                    })}
+
+                    {/* Separator */}
+                    <div className="w-px h-8 bg-border mx-2" />
+
+                    {/* Optional sections */}
+                    <button
+                        onClick={() => setActiveSection('knowledgeBase')}
+                        className={cn(
+                            "flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all",
+                            activeSection === 'knowledgeBase'
+                                ? "bg-background border border-border shadow-sm text-foreground"
+                                : "text-muted-foreground hover:bg-background/50 hover:text-foreground",
+                        )}
+                    >
+                        <Database className="w-4 h-4" />
+                        <span>Knowledge</span>
+                        {knowledgeBases.length > 0 && (
+                            <Badge variant="secondary" className="ml-1 text-xs px-1.5 py-0">
+                                {knowledgeBases.length}
+                            </Badge>
+                        )}
+                    </button>
+                    <button
+                        onClick={() => setActiveSection('alerts')}
+                        className={cn(
+                            "flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all",
+                            activeSection === 'alerts'
+                                ? "bg-background border border-border shadow-sm text-foreground"
+                                : "text-muted-foreground hover:bg-background/50 hover:text-foreground",
+                        )}
+                    >
+                        <Bell className="w-4 h-4" />
+                        <span>Alerts</span>
+                    </button>
+                </div>
+            </div>
+
+            {/* Main Content */}
+            <div className="flex-1 min-h-0 overflow-y-auto">
+                <div className="p-6 max-w-4xl">
+                    <div className={activeSection === 'triggers' ? 'block' : 'hidden'}>
+                        <InputLayout inputs={inputs} setInputs={setInputs} isIncomplete={triggersIncomplete} />
                     </div>
-                </nav>
 
-                <div className="flex-1 min-h-0 overflow-hidden pl-6">
-                    <div className="h-full min-h-0 overflow-y-auto pr-1">
-                        {activeSection === 'triggers' && (
-                            <div className="max-w-3xl flex flex-col gap-4">
-                                <InputLayout inputs={inputs} setInputs={setInputs} isIncomplete={triggersIncomplete} />
-                            </div>
-                        )}
+                    <div className={activeSection === 'knowledgeBase' ? 'block' : 'hidden'}>
+                        <KnowledgeBaseLayout knowledgeBases={knowledgeBases} setKnowledgeBases={setKnowledgeBases} />
+                    </div>
 
-                        {activeSection === 'knowledgeBase' && (
-                            <div className="max-w-3xl flex flex-col gap-4">
-                                <KnowledgeBaseLayout knowledgeBases={knowledgeBases} setKnowledgeBases={setKnowledgeBases} isIncomplete={knowledgeBaseIncomplete} />
-                            </div>
-                        )}
+                    <div className={activeSection === 'prompt' ? 'block' : 'hidden'}>
+                        <div className="h-[calc(100vh-16rem)] min-h-[420px]">
+                            <InstructionsEditor
+                                prompt={prompt}
+                                setPrompt={setPrompt}
+                                agentInputs={agentInputs}
+                                agentOutputs={agentOutputs}
+                                knowledgeBases={agentKnowledgeBases}
+                                isIncomplete={promptIncomplete}
+                            />
+                        </div>
+                    </div>
 
-                        {activeSection === 'prompt' && (
-                            <div className="max-w-4xl flex flex-col gap-4">
-                                <div className="h-[70vh] min-h-[420px] overflow-hidden">
-                                    <InstructionsEditor
-                                        prompt={prompt}
-                                        setPrompt={setPrompt}
-                                        agentInputs={agentInputs}
-                                        agentOutputs={agentOutputs}
-                                        knowledgeBases={agentKnowledgeBases}
-                                        isIncomplete={promptIncomplete}
-                                    />
-                                </div>
-                            </div>
-                        )}
+                    <div className={activeSection === 'skills' ? 'block' : 'hidden'}>
+                        <OutputLayout outputs={outputs} setOutputs={setOutputs} isIncomplete={skillsIncomplete} />
+                    </div>
 
-                        {activeSection === 'skills' && (
-                            <div className="max-w-3xl flex flex-col gap-4 pr-6">
-                                <OutputLayout outputs={outputs} setOutputs={setOutputs} isIncomplete={skillsIncomplete} />
-                            </div>
-                        )}
-
-                        {activeSection === 'alerts' && (
-                            <div className="max-w-3xl flex flex-col gap-4">
-                                <div className="flex flex-row gap-2 items-center mb-2">
-                                    <SectionHeader>Alerts</SectionHeader>
-                                    <SectionInfoIcon
-                                        isIncomplete={false}
-                                        alertMessage=""
-                                        infoMessage="Configure approval requirements and notification settings for when the AI takes actions on your behalf."
-                                    />
-                                </div>
-                                <AgentApprovalSettings requireApproval={requireApproval} onChange={setRequireApproval} />
-                                <AgentNotificationSettings settings={notificationSettings} onChange={setNotificationSettings} />
-                            </div>
-                        )}
+                    <div className={cn(activeSection === 'alerts' ? 'block' : 'hidden', 'space-y-6')}>
+                        <div>
+                            <h2 className="text-lg font-medium mb-1">Alerts & Approval</h2>
+                            <p className="text-sm text-muted-foreground mb-4">
+                                Configure when you want to be notified and whether actions need your approval.
+                            </p>
+                        </div>
+                        <AgentApprovalSettings requireApproval={requireApproval} onChange={setRequireApproval} />
+                        <AgentNotificationSettings settings={notificationSettings} onChange={setNotificationSettings} />
                     </div>
                 </div>
             </div>
@@ -395,49 +374,7 @@ export default function AgentSetupTab({
     )
 }
 
-function SectionInfoIcon({
-    isIncomplete,
-    alertMessage,
-    infoMessage
-}: {
-    isIncomplete: boolean;
-    alertMessage: string;
-    infoMessage: string;
-}) {
-    const tooltipContent = isIncomplete
-        ? `${alertMessage}\n\n${infoMessage}`
-        : infoMessage;
-
-    return (
-        <Tooltip>
-            <TooltipTrigger asChild>
-                {isIncomplete ? (
-                    <AlertTriangleIcon className="size-3 text-yellow-500 cursor-help relative -top-1" />
-                ) : (
-                    <Info className="size-3 text-muted-foreground hover:text-foreground cursor-help relative -top-1" />
-                )}
-            </TooltipTrigger>
-            <TooltipContent side="right" className="max-w-xs whitespace-pre-line">
-                {tooltipContent}
-            </TooltipContent>
-        </Tooltip>
-    );
-}
-
-function WarningIcon({ content }: { content: string }) {
-    return (
-        <Tooltip>
-            <TooltipTrigger asChild>
-                <AlertTriangleIcon className="size-4 text-yellow-500 cursor-help" />
-            </TooltipTrigger>
-            <TooltipContent side="right" className="max-w-xs">
-                {content}
-            </TooltipContent>
-        </Tooltip>
-    );
-}
-
-function InputLayout({ inputs, setInputs, isIncomplete }: { inputs: TransientAgentTrigger[], setInputs: (inputs: TransientAgentTrigger[]) => void, isIncomplete: boolean }) {
+function InputLayout({ inputs, setInputs }: { inputs: TransientAgentTrigger[], setInputs: (inputs: TransientAgentTrigger[]) => void, isIncomplete: boolean }) {
     const [showAddModal, setShowAddModal] = useState(false);
 
     const handleSelectPlatform = (config: ConfigType) => {
@@ -453,117 +390,120 @@ function InputLayout({ inputs, setInputs, isIncomplete }: { inputs: TransientAge
     };
 
     return (
-        <div className="flex flex-col gap-3">
-            <div className="flex flex-row gap-2 items-center mb-2">
-                <SectionHeader>Triggers</SectionHeader>
-                <SectionInfoIcon
-                    isIncomplete={isIncomplete}
-                    alertMessage="Add at least one trigger integration and complete its configuration to remove this warning."
-                    infoMessage="Triggers define where events come from. Add integrations like Slack, GitHub, or Gmail to monitor for new activity."
-                />
+        <div className="space-y-4">
+            <div>
+                <h2 className="text-lg font-medium mb-1">Triggers</h2>
+                <p className="text-sm text-muted-foreground">
+                    Events that will activate this agent. Add integrations like Slack, GitHub, or Gmail to listen for activity.
+                </p>
             </div>
-            <div className="grid grid-cols-[repeat(auto-fill,minmax(10rem,1fr))] gap-4 items-stretch">
+
+            <div className="space-y-2">
                 {inputs.map((input) => (
-                    <Input key={input.id} input={input} inputs={inputs} setInputs={setInputs} handleRemove={handleRemove} />
+                    <InputCard key={input.id} input={input} inputs={inputs} setInputs={setInputs} handleRemove={handleRemove} />
                 ))}
-                <Button variant="outline" onClick={() => setShowAddModal(true)} className="w-full aspect-square h-auto">
-                    <PlusIcon className={cn("size-5", inputs.length > 0 ? "text-primary" : "text-muted-foreground")} />
+                <Button
+                    variant="outline"
+                    onClick={() => setShowAddModal(true)}
+                    className="w-full h-14 border-dashed hover:border-solid hover:bg-muted/50"
+                >
+                    <PlusIcon className="size-4 mr-2" />
+                    Add trigger
                 </Button>
-                <AddTriggerModal
-                    isOpen={showAddModal}
-                    onClose={() => setShowAddModal(false)}
-                    onSelectIntegration={handleSelectPlatform}
-                />
             </div>
+
+            <AddTriggerModal
+                isOpen={showAddModal}
+                onClose={() => setShowAddModal(false)}
+                onSelectIntegration={handleSelectPlatform}
+            />
         </div>
     )
 }
 
-function Input({ input, inputs, setInputs, handleRemove }: { input: TransientAgentTrigger, inputs: TransientAgentTrigger[], setInputs: (inputs: TransientAgentTrigger[]) => void, handleRemove: (id: string) => void }) {
-    const isPlaceholder = input.config === undefined;
+function InputCard({ input, inputs, setInputs, handleRemove }: { input: TransientAgentTrigger, inputs: TransientAgentTrigger[], setInputs: (inputs: TransientAgentTrigger[]) => void, handleRemove: (id: string) => void }) {
     const needsConfiguration = !input.config || !input.config.isComplete();
     const [showDetailsDialog, setShowDetailsDialog] = useState(false);
+    const [draftConfig, setDraftConfig] = useState<ConfigInstance | undefined>(input.config);
 
-    console.log("input", input);
+    const draftInput = { ...input, config: draftConfig };
+    const isDraftValid = draftConfig?.isComplete() ?? false;
+
+    const handleOpenDialog = () => {
+        setDraftConfig(input.config);
+        setShowDetailsDialog(true);
+    };
+
+    const handleCancel = () => {
+        setDraftConfig(input.config);
+        setShowDetailsDialog(false);
+    };
+
+    const handleDone = () => {
+        if (draftConfig) {
+            setInputs(inputs.map(i => i.id === input.id ? { ...i, config: draftConfig, configType: draftConfig.configType } : i));
+        }
+        setShowDetailsDialog(false);
+    };
 
     const selectorProps: InputConfigSelectorProps = {
-        input: input,
-        setConfig: (config: ConfigInstance) => setInputs(inputs.map(i => i.id === input.id ? { ...i, config, configType: config.configType } : i)),
+        input: draftInput,
+        setConfig: setDraftConfig,
         variant: "card",
     };
 
-    let cardContent;
-    if (isPlaceholder) {
-        cardContent = (
-            <div
-                className="w-full aspect-square px-4 pb-4 pt-1 border rounded-lg cursor-pointer hover:bg-accent/30 transition-colors flex flex-col gap-2"
-                onClick={() => setShowDetailsDialog(true)}
-            >
-                <div className="flex flex-row justify-between items-center gap-2">
-                    <div className="min-w-0 flex-1 text-sm font-medium leading-none truncate">
-                        {CONFIG_DETAILS[input.configType].name}
-                    </div>
-                    <Button variant="ghost" size="icon-sm" onClick={(e) => { e.stopPropagation(); handleRemove(input.id); }} className="hover:text-destructive">
-                        <XIcon />
-                    </Button>
-                </div>
-
-                <div className="flex-1 flex items-center justify-center">
-                    <div className="size-16">
-                        <IconForConfigType type={input.configType} />
-                    </div>
-                </div>
-
-                <Badge variant="outline" className="mt-auto self-center max-w-full px-3 py-1 border-yellow-500 text-yellow-600 dark:text-yellow-500 whitespace-normal text-center">
-                    <IntegrationSelector {...selectorProps} variant="card" />
-                </Badge>
-            </div>
-        );
-    } else {
-        cardContent = (
-            <div
-                className="w-full aspect-square px-4 pb-4 pt-2 border rounded-lg cursor-pointer hover:bg-accent/30 transition-colors flex flex-col gap-2"
-                onClick={() => setShowDetailsDialog(true)}
-            >
-                <div className="flex flex-row justify-between items-center gap-2">
-                    <div className="min-w-0 flex-1 text-sm font-medium leading-none truncate">
-                        {CONFIG_DETAILS[input.configType].name}
-                    </div>
-                    <Button variant="ghost" size="icon-sm" onClick={(e) => { e.stopPropagation(); handleRemove(input.id); }} className="hover:text-destructive">
-                        <XIcon />
-                    </Button>
-                </div>
-
-                <div className="flex-1 flex items-center justify-center">
-                    <div className="w-16 h-16">
-                        <IconForConfigType type={input.configType} />
-                    </div>
-                </div>
-
-                <Badge variant="outline" className="mt-auto self-center max-w-full px-3 py-1 whitespace-normal text-center">
-                    <IntegrationSelector {...selectorProps} variant="card" />
-                </Badge>
-            </div>
-        );
-    }
-
     return (
         <>
-            {cardContent}
+            <div
+                className={cn(
+                    "flex items-center gap-4 p-4 border rounded-lg cursor-pointer transition-colors hover:bg-muted/50",
+                    needsConfiguration && "border-yellow-500/50"
+                )}
+                onClick={handleOpenDialog}
+            >
+                <div className="w-10 h-10 shrink-0">
+                    <IconForConfigType type={input.configType} />
+                </div>
+                <div className="flex-1 min-w-0">
+                    <div className="font-medium text-sm">
+                        {CONFIG_DETAILS[input.configType].name}
+                    </div>
+                    <div className="text-xs text-muted-foreground truncate">
+                        <IntegrationSelector {...selectorProps} variant="card" />
+                    </div>
+                </div>
+                {needsConfiguration && (
+                    <Badge variant="outline" className="border-yellow-500 text-yellow-600 dark:text-yellow-500 shrink-0">
+                        Configure
+                    </Badge>
+                )}
+                <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={(e) => { e.stopPropagation(); handleRemove(input.id); }}
+                    className="shrink-0 hover:text-destructive"
+                >
+                    <XIcon className="w-4 h-4" />
+                </Button>
+            </div>
 
-            <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
+            <Dialog open={showDetailsDialog} onOpenChange={(open) => { if (!open) handleCancel(); }}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>{needsConfiguration ? "Configure Integration" : "Integration Details"}</DialogTitle>
+                        <DialogTitle>{needsConfiguration ? "Configure Trigger" : "Trigger Details"}</DialogTitle>
                     </DialogHeader>
                     <IntegrationSelector {...selectorProps} variant="dialog" />
+                    <DialogFooter>
+                        <Button variant="outline" onClick={handleCancel}>Cancel</Button>
+                        <Button onClick={handleDone} disabled={!isDraftValid}>Done</Button>
+                    </DialogFooter>
                 </DialogContent>
             </Dialog>
         </>
     )
 }
 
-function OutputLayout({ outputs, setOutputs, isIncomplete }: { outputs: TransientAgentOutput[], setOutputs: (outputs: TransientAgentOutput[]) => void, isIncomplete: boolean }) {
+function OutputLayout({ outputs, setOutputs }: { outputs: TransientAgentOutput[], setOutputs: (outputs: TransientAgentOutput[]) => void, isIncomplete: boolean }) {
     const [showAddModal, setShowAddModal] = useState(false);
 
     const handleSelectOutput = (configType: ConfigType) => {
@@ -583,115 +523,120 @@ function OutputLayout({ outputs, setOutputs, isIncomplete }: { outputs: Transien
     };
 
     return (
-        <div className="flex flex-col gap-3">
-            <div className="flex flex-row gap-2 items-center mb-2">
-                <SectionHeader>Skills</SectionHeader>
-                <SectionInfoIcon
-                    isIncomplete={isIncomplete}
-                    alertMessage="Select at least one skill destination and complete its configuration to remove this warning."
-                    infoMessage="Skills define where the AI will continuously update content. Choose destinations like Notion, Linear, or Slack where updates will be posted."
-                />
+        <div className="space-y-4">
+            <div>
+                <h2 className="text-lg font-medium mb-1">Skills</h2>
+                <p className="text-sm text-muted-foreground">
+                    Tools and integrations the agent can use to take action. Add skills like GitHub, Linear, or Slack.
+                </p>
             </div>
-            <div className="grid grid-cols-[repeat(auto-fill,minmax(10rem,1fr))] gap-4 items-stretch">
+
+            <div className="space-y-2">
                 {outputs.map((output) => (
-                    <OutputCard key={output.id} output={output} outputs={outputs} setOutputs={setOutputs} handleRemove={handleRemove} />
+                    <SkillCard key={output.id} output={output} outputs={outputs} setOutputs={setOutputs} handleRemove={handleRemove} />
                 ))}
-                <Button variant="outline" onClick={() => setShowAddModal(true)} className="w-full aspect-square h-auto">
-                    <PlusIcon className={cn("size-5", outputs.length > 0 ? "text-primary" : "text-muted-foreground")} />
+                <Button
+                    variant="outline"
+                    onClick={() => setShowAddModal(true)}
+                    className="w-full h-14 border-dashed hover:border-solid hover:bg-muted/50"
+                >
+                    <PlusIcon className="size-4 mr-2" />
+                    Add skill
                 </Button>
-                <AddOutputModal
-                    isOpen={showAddModal}
-                    onClose={() => setShowAddModal(false)}
-                    onSelectOutput={handleSelectOutput}
-                />
             </div>
+
+            <AddOutputModal
+                isOpen={showAddModal}
+                onClose={() => setShowAddModal(false)}
+                onSelectOutput={handleSelectOutput}
+            />
         </div>
     )
 }
 
-function OutputCard({ output, outputs, setOutputs, handleRemove }: { output: TransientAgentOutput, outputs: TransientAgentOutput[], setOutputs: (outputs: TransientAgentOutput[]) => void, handleRemove: (id: string) => void }) {
+function SkillCard({ output, outputs, setOutputs, handleRemove }: { output: TransientAgentOutput, outputs: TransientAgentOutput[], setOutputs: (outputs: TransientAgentOutput[]) => void, handleRemove: (id: string) => void }) {
     const [showDetailsDialog, setShowDetailsDialog] = useState(false);
-    const isPlaceholder = output.config === undefined;
     const needsConfiguration = !output.config || !output.config.isComplete();
+    const [draftConfig, setDraftConfig] = useState<ConfigInstance | undefined>(output.config);
+
+    const draftOutput = { ...output, config: draftConfig };
+    const isDraftValid = draftConfig?.isComplete() ?? false;
+
+    const handleOpenDialog = () => {
+        setDraftConfig(output.config);
+        setShowDetailsDialog(true);
+    };
+
+    const handleCancel = () => {
+        setDraftConfig(output.config);
+        setShowDetailsDialog(false);
+    };
+
+    const handleDone = () => {
+        if (draftConfig) {
+            setOutputs(outputs.map(o => o.id === output.id ? { ...o, config: draftConfig, configType: draftConfig.configType } : o));
+        }
+        setShowDetailsDialog(false);
+    };
 
     const selectorProps: InputConfigSelectorProps = {
-        input: output,
-        setConfig: (config: ConfigInstance) => setOutputs(outputs.map(o => o.id === output.id ? { ...o, config, configType: config.configType } : o)),
+        input: draftOutput,
+        setConfig: setDraftConfig,
         variant: "card",
     };
 
-    let cardContent;
-    if (isPlaceholder) {
-        cardContent = (
-            <div
-                className="w-full aspect-square px-4 pb-4 pt-1 border rounded-lg cursor-pointer hover:bg-accent/30 transition-colors flex flex-col gap-2"
-                onClick={() => setShowDetailsDialog(true)}
-            >
-                <div className="flex flex-row justify-between items-center gap-2">
-                    <div className="min-w-0 flex-1 text-sm font-medium leading-none truncate">
-                        {CONFIG_DETAILS[output.configType].name}
-                    </div>
-                    <Button variant="ghost" size="icon-sm" onClick={(e) => { e.stopPropagation(); handleRemove(output.id); }} className="hover:text-destructive">
-                        <XIcon />
-                    </Button>
-                </div>
-
-                <div className="flex-1 flex items-center justify-center">
-                    <div className="size-16">
-                        <IconForConfigType type={output.configType} />
-                    </div>
-                </div>
-
-                <Badge variant="outline" className="mt-auto self-center max-w-full px-3 py-1 border-yellow-500 text-yellow-600 dark:text-yellow-500 whitespace-normal text-center">
-                    <IntegrationSelector {...selectorProps} variant="card" />
-                </Badge>
-            </div>
-        );
-    } else {
-        cardContent = (
-            <div
-                className="w-full aspect-square px-4 pb-4 pt-2 border rounded-lg cursor-pointer hover:bg-accent/30 transition-colors flex flex-col gap-2"
-                onClick={() => setShowDetailsDialog(true)}
-            >
-                <div className="flex flex-row justify-between items-center gap-2">
-                    <div className="min-w-0 flex-1 text-sm font-medium leading-none truncate">
-                        {CONFIG_DETAILS[output.configType].name}
-                    </div>
-                    <Button variant="ghost" size="icon-sm" onClick={(e) => { e.stopPropagation(); handleRemove(output.id); }} className="hover:text-destructive">
-                        <XIcon />
-                    </Button>
-                </div>
-
-                <div className="flex-1 flex items-center justify-center">
-                    <div className="w-16 h-16">
-                        <IconForConfigType type={output.configType} />
-                    </div>
-                </div>
-
-                <Badge variant="outline" className="mt-auto self-center max-w-full px-3 py-1 whitespace-normal text-center">
-                    <IntegrationSelector {...selectorProps} variant="card" />
-                </Badge>
-            </div>
-        );
-    }
-
     return (
         <>
-            {cardContent}
+            <div
+                className={cn(
+                    "flex items-center gap-4 p-4 border rounded-lg cursor-pointer transition-colors hover:bg-muted/50",
+                    needsConfiguration && "border-yellow-500/50"
+                )}
+                onClick={handleOpenDialog}
+            >
+                <div className="w-10 h-10 shrink-0">
+                    <IconForConfigType type={output.configType} />
+                </div>
+                <div className="flex-1 min-w-0">
+                    <div className="font-medium text-sm">
+                        {CONFIG_DETAILS[output.configType].name}
+                    </div>
+                    <div className="text-xs text-muted-foreground truncate">
+                        <IntegrationSelector {...selectorProps} variant="card" />
+                    </div>
+                </div>
+                {needsConfiguration && (
+                    <Badge variant="outline" className="border-yellow-500 text-yellow-600 dark:text-yellow-500 shrink-0">
+                        Configure
+                    </Badge>
+                )}
+                <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={(e) => { e.stopPropagation(); handleRemove(output.id); }}
+                    className="shrink-0 hover:text-destructive"
+                >
+                    <XIcon className="w-4 h-4" />
+                </Button>
+            </div>
 
-            <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
+            <Dialog open={showDetailsDialog} onOpenChange={(open) => { if (!open) handleCancel(); }}>
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>{needsConfiguration ? "Configure Skill" : "Skill Details"}</DialogTitle>
                     </DialogHeader>
                     <IntegrationSelector {...selectorProps} variant="dialog" />
+                    <DialogFooter>
+                        <Button variant="outline" onClick={handleCancel}>Cancel</Button>
+                        <Button onClick={handleDone} disabled={!isDraftValid}>Done</Button>
+                    </DialogFooter>
                 </DialogContent>
             </Dialog>
         </>
     )
 }
 
-function KnowledgeBaseLayout({ knowledgeBases, setKnowledgeBases, isIncomplete }: { knowledgeBases: TransientKnowledgeBase[], setKnowledgeBases: (knowledgeBases: TransientKnowledgeBase[]) => void, isIncomplete: boolean }) {
+function KnowledgeBaseLayout({ knowledgeBases, setKnowledgeBases }: { knowledgeBases: TransientKnowledgeBase[], setKnowledgeBases: (knowledgeBases: TransientKnowledgeBase[]) => void }) {
     const [showAddModal, setShowAddModal] = useState(false);
 
     const handleSelectKnowledgeBase = (configType: ConfigType) => {
@@ -712,107 +657,100 @@ function KnowledgeBaseLayout({ knowledgeBases, setKnowledgeBases, isIncomplete }
 
     return (
         <div className="flex flex-col gap-3">
-            <div className="flex flex-row gap-2 items-center mb-2">
-                <SectionHeader>Knowledge Base</SectionHeader>
-                <SectionInfoIcon
-                    isIncomplete={isIncomplete}
-                    alertMessage="Complete knowledge base configuration to remove this warning."
-                    infoMessage="Knowledge bases provide context and data for your automation."
-                />
-            </div>
-            <div className="grid grid-cols-[repeat(auto-fill,minmax(10rem,1fr))] gap-4 items-stretch">
-                {knowledgeBases.map((kb) => (
-                    <KnowledgeBaseCard key={kb.id} knowledgeBase={kb} knowledgeBases={knowledgeBases} setKnowledgeBases={setKnowledgeBases} handleRemove={handleRemove} />
-                ))}
-                <Button variant="outline" onClick={() => setShowAddModal(true)} className="w-full aspect-square h-auto">
-                    <PlusIcon className={cn("size-5", knowledgeBases.length > 0 ? "text-primary" : "text-muted-foreground")} />
-                </Button>
-                <AddKnowledgeBaseModal
-                    isOpen={showAddModal}
-                    onClose={() => setShowAddModal(false)}
-                    onSelectKnowledgeBase={handleSelectKnowledgeBase}
-                />
-            </div>
+            {knowledgeBases.map((kb) => (
+                <KnowledgeBaseCard key={kb.id} knowledgeBase={kb} knowledgeBases={knowledgeBases} setKnowledgeBases={setKnowledgeBases} handleRemove={handleRemove} />
+            ))}
+            <Button
+                variant="outline"
+                onClick={() => setShowAddModal(true)}
+                className="w-full justify-center border-dashed py-3"
+            >
+                <PlusIcon className="w-4 h-4 mr-2" />
+                Add knowledge base
+            </Button>
+            <AddKnowledgeBaseModal
+                isOpen={showAddModal}
+                onClose={() => setShowAddModal(false)}
+                onSelectKnowledgeBase={handleSelectKnowledgeBase}
+            />
         </div>
     )
 }
 
 function KnowledgeBaseCard({ knowledgeBase, knowledgeBases, setKnowledgeBases, handleRemove }: { knowledgeBase: TransientKnowledgeBase, knowledgeBases: TransientKnowledgeBase[], setKnowledgeBases: (knowledgeBases: TransientKnowledgeBase[]) => void, handleRemove: (id: string) => void }) {
     const [showDetailsDialog, setShowDetailsDialog] = useState(false);
-    const isPlaceholder = knowledgeBase.config === undefined;
     const needsConfiguration = !knowledgeBase.config || !knowledgeBase.config.isComplete();
+    const [draftConfig, setDraftConfig] = useState<ConfigInstance | undefined>(knowledgeBase.config);
+
+    const draftKnowledgeBase = { ...knowledgeBase, config: draftConfig };
+    const isDraftValid = draftConfig?.isComplete() ?? false;
+
+    const handleOpenDialog = () => {
+        setDraftConfig(knowledgeBase.config);
+        setShowDetailsDialog(true);
+    };
+
+    const handleCancel = () => {
+        setDraftConfig(knowledgeBase.config);
+        setShowDetailsDialog(false);
+    };
+
+    const handleDone = () => {
+        if (draftConfig) {
+            setKnowledgeBases(knowledgeBases.map(kb => kb.id === knowledgeBase.id ? { ...kb, config: draftConfig, configType: draftConfig.configType } : kb));
+        }
+        setShowDetailsDialog(false);
+    };
 
     const selectorProps = {
-        knowledgeBase: knowledgeBase,
-        setConfig: (config: ConfigInstance) => setKnowledgeBases(knowledgeBases.map(kb => kb.id === knowledgeBase.id ? { ...kb, config, configType: config.configType } : kb)),
+        knowledgeBase: draftKnowledgeBase,
+        setConfig: setDraftConfig,
         variant: "card" as const,
     };
 
-    let cardContent;
-    if (isPlaceholder) {
-        cardContent = (
-            <div
-                className="w-full aspect-square px-4 pb-4 pt-1 border rounded-lg cursor-pointer hover:bg-accent/30 transition-colors flex flex-col gap-2"
-                onClick={() => setShowDetailsDialog(true)}
-            >
-                <div className="flex flex-row justify-between items-center gap-2">
-                    <div className="min-w-0 flex-1 text-sm font-medium leading-none truncate">
-                        {CONFIG_DETAILS[knowledgeBase.configType].name}
-                    </div>
-                    <Button variant="ghost" size="icon-sm" onClick={(e) => { e.stopPropagation(); handleRemove(knowledgeBase.id); }} className="hover:text-destructive">
-                        <XIcon />
-                    </Button>
-                </div>
-
-                <div className="flex-1 flex items-center justify-center">
-                    <div className="w-16 h-16">
-                        <IconForConfigType type={knowledgeBase.configType} />
-                    </div>
-                </div>
-
-                <Badge variant="outline" className="mt-auto self-center max-w-full px-3 py-1 border-yellow-500 text-yellow-600 dark:text-yellow-500">
-                    <KnowledgeBaseSelector {...selectorProps} variant="card" />
-                </Badge>
-            </div>
-        );
-    } else {
-        cardContent = (
-            <div
-                className="w-full aspect-square px-4 pb-4 pt-2 border rounded-lg cursor-pointer hover:bg-accent/30 transition-colors flex flex-col gap-2"
-                onClick={() => setShowDetailsDialog(true)}
-            >
-                <div className="flex flex-row justify-between items-center gap-2">
-                    <div className="min-w-0 flex-1 text-sm font-medium leading-none truncate">
-                        {CONFIG_DETAILS[knowledgeBase.configType].name}
-                    </div>
-                    <Button variant="ghost" size="icon-sm" onClick={(e) => { e.stopPropagation(); handleRemove(knowledgeBase.id); }} className="hover:text-destructive">
-                        <XIcon />
-                    </Button>
-                </div>
-
-                <div className="flex-1 flex items-center justify-center">
-                    <div className="w-16 h-16">
-                        <IconForConfigType type={knowledgeBase.configType} />
-                    </div>
-                </div>
-
-                <Badge variant="outline" className="mt-auto self-center max-w-full px-3 py-1">
-                    <KnowledgeBaseSelector {...selectorProps} variant="card" />
-                </Badge>
-            </div>
-        );
-    }
-
     return (
         <>
-            {cardContent}
+            <div
+                className={cn(
+                    "flex items-center gap-4 p-4 border rounded-lg cursor-pointer transition-colors hover:bg-muted/50",
+                    needsConfiguration && "border-yellow-500/50"
+                )}
+                onClick={handleOpenDialog}
+            >
+                <div className="w-10 h-10 shrink-0">
+                    <IconForConfigType type={knowledgeBase.configType} />
+                </div>
+                <div className="flex-1 min-w-0">
+                    <div className="font-medium text-sm">{CONFIG_DETAILS[knowledgeBase.configType].name}</div>
+                    <div className="text-xs text-muted-foreground truncate">
+                        <KnowledgeBaseSelector {...selectorProps} variant="card" />
+                    </div>
+                </div>
+                {needsConfiguration && (
+                    <Badge variant="outline" className="border-yellow-500 text-yellow-600 dark:text-yellow-500 shrink-0">
+                        Configure
+                    </Badge>
+                )}
+                <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={(e) => { e.stopPropagation(); handleRemove(knowledgeBase.id); }}
+                    className="hover:text-destructive shrink-0"
+                >
+                    <XIcon className="w-4 h-4" />
+                </Button>
+            </div>
 
-            <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
+            <Dialog open={showDetailsDialog} onOpenChange={(open) => { if (!open) handleCancel(); }}>
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>{needsConfiguration ? "Configure Knowledge Base" : "Knowledge Base Details"}</DialogTitle>
                     </DialogHeader>
                     <KnowledgeBaseSelector {...selectorProps} variant="dialog" />
+                    <DialogFooter>
+                        <Button variant="outline" onClick={handleCancel}>Cancel</Button>
+                        <Button onClick={handleDone} disabled={!isDraftValid}>Done</Button>
+                    </DialogFooter>
                 </DialogContent>
             </Dialog>
         </>
