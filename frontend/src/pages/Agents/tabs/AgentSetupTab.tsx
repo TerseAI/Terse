@@ -342,52 +342,42 @@ export default function AgentSetupTab({
 
             {/* Main Content */}
             <div className="flex-1 min-h-0 overflow-y-auto">
-                <div className="p-6">
-                    {activeSection === 'triggers' && (
-                        <div className="max-w-3xl">
-                            <InputLayout inputs={inputs} setInputs={setInputs} isIncomplete={triggersIncomplete} />
-                        </div>
-                    )}
+                <div className="p-6 max-w-4xl">
+                    <div className={activeSection === 'triggers' ? 'block' : 'hidden'}>
+                        <InputLayout inputs={inputs} setInputs={setInputs} isIncomplete={triggersIncomplete} />
+                    </div>
 
-                    {activeSection === 'knowledgeBase' && (
-                        <div className="max-w-3xl">
-                            <KnowledgeBaseLayout knowledgeBases={knowledgeBases} setKnowledgeBases={setKnowledgeBases} />
-                        </div>
-                    )}
+                    <div className={activeSection === 'knowledgeBase' ? 'block' : 'hidden'}>
+                        <KnowledgeBaseLayout knowledgeBases={knowledgeBases} setKnowledgeBases={setKnowledgeBases} />
+                    </div>
 
-                    {activeSection === 'prompt' && (
-                        <div className="max-w-4xl">
-                            <div className="h-[calc(100vh-16rem)] min-h-[420px]">
-                                <InstructionsEditor
-                                    prompt={prompt}
-                                    setPrompt={setPrompt}
-                                    agentInputs={agentInputs}
-                                    agentOutputs={agentOutputs}
-                                    knowledgeBases={agentKnowledgeBases}
-                                    isIncomplete={promptIncomplete}
-                                />
-                            </div>
+                    <div className={activeSection === 'prompt' ? 'block' : 'hidden'}>
+                        <div className="h-[calc(100vh-16rem)] min-h-[420px]">
+                            <InstructionsEditor
+                                prompt={prompt}
+                                setPrompt={setPrompt}
+                                agentInputs={agentInputs}
+                                agentOutputs={agentOutputs}
+                                knowledgeBases={agentKnowledgeBases}
+                                isIncomplete={promptIncomplete}
+                            />
                         </div>
-                    )}
+                    </div>
 
-                    {activeSection === 'skills' && (
-                        <div className="max-w-3xl">
-                            <OutputLayout outputs={outputs} setOutputs={setOutputs} isIncomplete={skillsIncomplete} />
-                        </div>
-                    )}
+                    <div className={activeSection === 'skills' ? 'block' : 'hidden'}>
+                        <OutputLayout outputs={outputs} setOutputs={setOutputs} isIncomplete={skillsIncomplete} />
+                    </div>
 
-                    {activeSection === 'alerts' && (
-                        <div className="max-w-2xl space-y-6">
-                            <div>
-                                <h2 className="text-lg font-medium mb-1">Alerts & Approval</h2>
-                                <p className="text-sm text-muted-foreground mb-4">
-                                    Configure when you want to be notified and whether actions need your approval.
-                                </p>
-                            </div>
-                            <AgentApprovalSettings requireApproval={requireApproval} onChange={setRequireApproval} />
-                            <AgentNotificationSettings settings={notificationSettings} onChange={setNotificationSettings} />
+                    <div className={cn(activeSection === 'alerts' ? 'block' : 'hidden', 'space-y-6')}>
+                        <div>
+                            <h2 className="text-lg font-medium mb-1">Alerts & Approval</h2>
+                            <p className="text-sm text-muted-foreground mb-4">
+                                Configure when you want to be notified and whether actions need your approval.
+                            </p>
                         </div>
-                    )}
+                        <AgentApprovalSettings requireApproval={requireApproval} onChange={setRequireApproval} />
+                        <AgentNotificationSettings settings={notificationSettings} onChange={setNotificationSettings} />
+                    </div>
                 </div>
             </div>
         </div>
