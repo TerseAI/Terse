@@ -351,7 +351,7 @@ export default function AgentSetupTab({
 
                     {activeSection === 'knowledgeBase' && (
                         <div className="max-w-3xl">
-                            <KnowledgeBaseLayout knowledgeBases={knowledgeBases} setKnowledgeBases={setKnowledgeBases} isIncomplete={knowledgeBaseIncomplete} />
+                            <KnowledgeBaseLayout knowledgeBases={knowledgeBases} setKnowledgeBases={setKnowledgeBases} />
                         </div>
                     )}
 
@@ -606,7 +606,7 @@ function SkillCard({ output, outputs, setOutputs, handleRemove }: { output: Tran
     )
 }
 
-function KnowledgeBaseLayout({ knowledgeBases, setKnowledgeBases, isIncomplete }: { knowledgeBases: TransientKnowledgeBase[], setKnowledgeBases: (knowledgeBases: TransientKnowledgeBase[]) => void, isIncomplete: boolean }) {
+function KnowledgeBaseLayout({ knowledgeBases, setKnowledgeBases }: { knowledgeBases: TransientKnowledgeBase[], setKnowledgeBases: (knowledgeBases: TransientKnowledgeBase[]) => void }) {
     const [showAddModal, setShowAddModal] = useState(false);
 
     const handleSelectKnowledgeBase = (configType: ConfigType) => {
@@ -627,34 +627,28 @@ function KnowledgeBaseLayout({ knowledgeBases, setKnowledgeBases, isIncomplete }
 
     return (
         <div className="flex flex-col gap-3">
-            <div className="flex flex-row gap-2 items-center mb-2">
-                <SectionHeader>Knowledge Base</SectionHeader>
-                <SectionInfoIcon
-                    isIncomplete={isIncomplete}
-                    alertMessage="Complete knowledge base configuration to remove this warning."
-                    infoMessage="Knowledge bases provide context and data for your automation."
-                />
-            </div>
-            <div className="grid grid-cols-[repeat(auto-fill,minmax(10rem,1fr))] gap-4 items-stretch">
-                {knowledgeBases.map((kb) => (
-                    <KnowledgeBaseCard key={kb.id} knowledgeBase={kb} knowledgeBases={knowledgeBases} setKnowledgeBases={setKnowledgeBases} handleRemove={handleRemove} />
-                ))}
-                <Button variant="outline" onClick={() => setShowAddModal(true)} className="w-full aspect-square h-auto">
-                    <PlusIcon className={cn("size-5", knowledgeBases.length > 0 ? "text-primary" : "text-muted-foreground")} />
-                </Button>
-                <AddKnowledgeBaseModal
-                    isOpen={showAddModal}
-                    onClose={() => setShowAddModal(false)}
-                    onSelectKnowledgeBase={handleSelectKnowledgeBase}
-                />
-            </div>
+            {knowledgeBases.map((kb) => (
+                <KnowledgeBaseCard key={kb.id} knowledgeBase={kb} knowledgeBases={knowledgeBases} setKnowledgeBases={setKnowledgeBases} handleRemove={handleRemove} />
+            ))}
+            <Button
+                variant="outline"
+                onClick={() => setShowAddModal(true)}
+                className="w-full justify-center border-dashed py-3"
+            >
+                <PlusIcon className="w-4 h-4 mr-2" />
+                Add knowledge base
+            </Button>
+            <AddKnowledgeBaseModal
+                isOpen={showAddModal}
+                onClose={() => setShowAddModal(false)}
+                onSelectKnowledgeBase={handleSelectKnowledgeBase}
+            />
         </div>
     )
 }
 
 function KnowledgeBaseCard({ knowledgeBase, knowledgeBases, setKnowledgeBases, handleRemove }: { knowledgeBase: TransientKnowledgeBase, knowledgeBases: TransientKnowledgeBase[], setKnowledgeBases: (knowledgeBases: TransientKnowledgeBase[]) => void, handleRemove: (id: string) => void }) {
     const [showDetailsDialog, setShowDetailsDialog] = useState(false);
-    const isPlaceholder = knowledgeBase.config === undefined;
     const needsConfiguration = !knowledgeBase.config || !knowledgeBase.config.isComplete();
 
     const selectorProps = {
@@ -663,64 +657,38 @@ function KnowledgeBaseCard({ knowledgeBase, knowledgeBases, setKnowledgeBases, h
         variant: "card" as const,
     };
 
-    let cardContent;
-    if (isPlaceholder) {
-        cardContent = (
-            <div
-                className="w-full aspect-square px-4 pb-4 pt-1 border rounded-lg cursor-pointer hover:bg-accent/30 transition-colors flex flex-col gap-2"
-                onClick={() => setShowDetailsDialog(true)}
-            >
-                <div className="flex flex-row justify-between items-center gap-2">
-                    <div className="min-w-0 flex-1 text-sm font-medium leading-none truncate">
-                        {CONFIG_DETAILS[knowledgeBase.configType].name}
-                    </div>
-                    <Button variant="ghost" size="icon-sm" onClick={(e) => { e.stopPropagation(); handleRemove(knowledgeBase.id); }} className="hover:text-destructive">
-                        <XIcon />
-                    </Button>
-                </div>
-
-                <div className="flex-1 flex items-center justify-center">
-                    <div className="w-16 h-16">
-                        <IconForConfigType type={knowledgeBase.configType} />
-                    </div>
-                </div>
-
-                <Badge variant="outline" className="mt-auto self-center max-w-full px-3 py-1 border-yellow-500 text-yellow-600 dark:text-yellow-500">
-                    <KnowledgeBaseSelector {...selectorProps} variant="card" />
-                </Badge>
-            </div>
-        );
-    } else {
-        cardContent = (
-            <div
-                className="w-full aspect-square px-4 pb-4 pt-2 border rounded-lg cursor-pointer hover:bg-accent/30 transition-colors flex flex-col gap-2"
-                onClick={() => setShowDetailsDialog(true)}
-            >
-                <div className="flex flex-row justify-between items-center gap-2">
-                    <div className="min-w-0 flex-1 text-sm font-medium leading-none truncate">
-                        {CONFIG_DETAILS[knowledgeBase.configType].name}
-                    </div>
-                    <Button variant="ghost" size="icon-sm" onClick={(e) => { e.stopPropagation(); handleRemove(knowledgeBase.id); }} className="hover:text-destructive">
-                        <XIcon />
-                    </Button>
-                </div>
-
-                <div className="flex-1 flex items-center justify-center">
-                    <div className="w-16 h-16">
-                        <IconForConfigType type={knowledgeBase.configType} />
-                    </div>
-                </div>
-
-                <Badge variant="outline" className="mt-auto self-center max-w-full px-3 py-1">
-                    <KnowledgeBaseSelector {...selectorProps} variant="card" />
-                </Badge>
-            </div>
-        );
-    }
-
     return (
         <>
-            {cardContent}
+            <div
+                className={cn(
+                    "flex items-center gap-4 p-4 border rounded-lg cursor-pointer transition-colors hover:bg-muted/50",
+                    needsConfiguration && "border-yellow-500/50"
+                )}
+                onClick={() => setShowDetailsDialog(true)}
+            >
+                <div className="w-10 h-10 shrink-0">
+                    <IconForConfigType type={knowledgeBase.configType} />
+                </div>
+                <div className="flex-1 min-w-0">
+                    <div className="font-medium text-sm">{CONFIG_DETAILS[knowledgeBase.configType].name}</div>
+                    <div className="text-xs text-muted-foreground truncate">
+                        <KnowledgeBaseSelector {...selectorProps} variant="card" />
+                    </div>
+                </div>
+                {needsConfiguration && (
+                    <Badge variant="outline" className="border-yellow-500 text-yellow-600 dark:text-yellow-500 shrink-0">
+                        Configure
+                    </Badge>
+                )}
+                <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={(e) => { e.stopPropagation(); handleRemove(knowledgeBase.id); }}
+                    className="hover:text-destructive shrink-0"
+                >
+                    <XIcon className="w-4 h-4" />
+                </Button>
+            </div>
 
             <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
                 <DialogContent>
