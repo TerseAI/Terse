@@ -16,7 +16,7 @@ import { AddOutputModal } from "../components/AddOutputModal";
 import { KnowledgeBaseSelector } from "../components/KnowledgeBaseSelector";
 import { CONFIG_DETAILS, ConfigInstance, ConfigType } from "../../../shared/Configs";
 import { v4 as uuidv4 } from 'uuid';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../../components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "../../../components/ui/dialog";
 import { InputConfigSelectorProps, IntegrationSelector } from "../../../components/IntegrationSelector";
 import { AlertTriangleIcon, PlusIcon, XIcon, Zap, FileText, Wrench, Bell, Database, ChevronRight, Check } from "lucide-react";
 import { cn } from "../../../lib/utils";
@@ -444,10 +444,31 @@ function InputLayout({ inputs, setInputs }: { inputs: TransientAgentTrigger[], s
 function InputCard({ input, inputs, setInputs, handleRemove }: { input: TransientAgentTrigger, inputs: TransientAgentTrigger[], setInputs: (inputs: TransientAgentTrigger[]) => void, handleRemove: (id: string) => void }) {
     const needsConfiguration = !input.config || !input.config.isComplete();
     const [showDetailsDialog, setShowDetailsDialog] = useState(false);
+    const [draftConfig, setDraftConfig] = useState<ConfigInstance | undefined>(input.config);
+
+    const draftInput = { ...input, config: draftConfig };
+    const isDraftValid = draftConfig?.isComplete() ?? false;
+
+    const handleOpenDialog = () => {
+        setDraftConfig(input.config);
+        setShowDetailsDialog(true);
+    };
+
+    const handleCancel = () => {
+        setDraftConfig(input.config);
+        setShowDetailsDialog(false);
+    };
+
+    const handleDone = () => {
+        if (draftConfig) {
+            setInputs(inputs.map(i => i.id === input.id ? { ...i, config: draftConfig, configType: draftConfig.configType } : i));
+        }
+        setShowDetailsDialog(false);
+    };
 
     const selectorProps: InputConfigSelectorProps = {
-        input: input,
-        setConfig: (config: ConfigInstance) => setInputs(inputs.map(i => i.id === input.id ? { ...i, config, configType: config.configType } : i)),
+        input: draftInput,
+        setConfig: setDraftConfig,
         variant: "card",
     };
 
@@ -458,7 +479,7 @@ function InputCard({ input, inputs, setInputs, handleRemove }: { input: Transien
                     "flex items-center gap-4 p-4 border rounded-lg cursor-pointer transition-colors hover:bg-muted/50",
                     needsConfiguration && "border-yellow-500/50"
                 )}
-                onClick={() => setShowDetailsDialog(true)}
+                onClick={handleOpenDialog}
             >
                 <div className="w-10 h-10 shrink-0">
                     <IconForConfigType type={input.configType} />
@@ -486,12 +507,16 @@ function InputCard({ input, inputs, setInputs, handleRemove }: { input: Transien
                 </Button>
             </div>
 
-            <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
+            <Dialog open={showDetailsDialog} onOpenChange={(open) => { if (!open) handleCancel(); }}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>{needsConfiguration ? "Configure Integration" : "Integration Details"}</DialogTitle>
+                        <DialogTitle>{needsConfiguration ? "Configure Trigger" : "Trigger Details"}</DialogTitle>
                     </DialogHeader>
                     <IntegrationSelector {...selectorProps} variant="dialog" />
+                    <DialogFooter>
+                        <Button variant="outline" onClick={handleCancel}>Cancel</Button>
+                        <Button onClick={handleDone} disabled={!isDraftValid}>Done</Button>
+                    </DialogFooter>
                 </DialogContent>
             </Dialog>
         </>
@@ -552,10 +577,31 @@ function OutputLayout({ outputs, setOutputs }: { outputs: TransientAgentOutput[]
 function SkillCard({ output, outputs, setOutputs, handleRemove }: { output: TransientAgentOutput, outputs: TransientAgentOutput[], setOutputs: (outputs: TransientAgentOutput[]) => void, handleRemove: (id: string) => void }) {
     const [showDetailsDialog, setShowDetailsDialog] = useState(false);
     const needsConfiguration = !output.config || !output.config.isComplete();
+    const [draftConfig, setDraftConfig] = useState<ConfigInstance | undefined>(output.config);
+
+    const draftOutput = { ...output, config: draftConfig };
+    const isDraftValid = draftConfig?.isComplete() ?? false;
+
+    const handleOpenDialog = () => {
+        setDraftConfig(output.config);
+        setShowDetailsDialog(true);
+    };
+
+    const handleCancel = () => {
+        setDraftConfig(output.config);
+        setShowDetailsDialog(false);
+    };
+
+    const handleDone = () => {
+        if (draftConfig) {
+            setOutputs(outputs.map(o => o.id === output.id ? { ...o, config: draftConfig, configType: draftConfig.configType } : o));
+        }
+        setShowDetailsDialog(false);
+    };
 
     const selectorProps: InputConfigSelectorProps = {
-        input: output,
-        setConfig: (config: ConfigInstance) => setOutputs(outputs.map(o => o.id === output.id ? { ...o, config, configType: config.configType } : o)),
+        input: draftOutput,
+        setConfig: setDraftConfig,
         variant: "card",
     };
 
@@ -566,7 +612,7 @@ function SkillCard({ output, outputs, setOutputs, handleRemove }: { output: Tran
                     "flex items-center gap-4 p-4 border rounded-lg cursor-pointer transition-colors hover:bg-muted/50",
                     needsConfiguration && "border-yellow-500/50"
                 )}
-                onClick={() => setShowDetailsDialog(true)}
+                onClick={handleOpenDialog}
             >
                 <div className="w-10 h-10 shrink-0">
                     <IconForConfigType type={output.configType} />
@@ -594,12 +640,16 @@ function SkillCard({ output, outputs, setOutputs, handleRemove }: { output: Tran
                 </Button>
             </div>
 
-            <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
+            <Dialog open={showDetailsDialog} onOpenChange={(open) => { if (!open) handleCancel(); }}>
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>{needsConfiguration ? "Configure Skill" : "Skill Details"}</DialogTitle>
                     </DialogHeader>
                     <IntegrationSelector {...selectorProps} variant="dialog" />
+                    <DialogFooter>
+                        <Button variant="outline" onClick={handleCancel}>Cancel</Button>
+                        <Button onClick={handleDone} disabled={!isDraftValid}>Done</Button>
+                    </DialogFooter>
                 </DialogContent>
             </Dialog>
         </>
@@ -650,10 +700,31 @@ function KnowledgeBaseLayout({ knowledgeBases, setKnowledgeBases }: { knowledgeB
 function KnowledgeBaseCard({ knowledgeBase, knowledgeBases, setKnowledgeBases, handleRemove }: { knowledgeBase: TransientKnowledgeBase, knowledgeBases: TransientKnowledgeBase[], setKnowledgeBases: (knowledgeBases: TransientKnowledgeBase[]) => void, handleRemove: (id: string) => void }) {
     const [showDetailsDialog, setShowDetailsDialog] = useState(false);
     const needsConfiguration = !knowledgeBase.config || !knowledgeBase.config.isComplete();
+    const [draftConfig, setDraftConfig] = useState<ConfigInstance | undefined>(knowledgeBase.config);
+
+    const draftKnowledgeBase = { ...knowledgeBase, config: draftConfig };
+    const isDraftValid = draftConfig?.isComplete() ?? false;
+
+    const handleOpenDialog = () => {
+        setDraftConfig(knowledgeBase.config);
+        setShowDetailsDialog(true);
+    };
+
+    const handleCancel = () => {
+        setDraftConfig(knowledgeBase.config);
+        setShowDetailsDialog(false);
+    };
+
+    const handleDone = () => {
+        if (draftConfig) {
+            setKnowledgeBases(knowledgeBases.map(kb => kb.id === knowledgeBase.id ? { ...kb, config: draftConfig, configType: draftConfig.configType } : kb));
+        }
+        setShowDetailsDialog(false);
+    };
 
     const selectorProps = {
-        knowledgeBase: knowledgeBase,
-        setConfig: (config: ConfigInstance) => setKnowledgeBases(knowledgeBases.map(kb => kb.id === knowledgeBase.id ? { ...kb, config, configType: config.configType } : kb)),
+        knowledgeBase: draftKnowledgeBase,
+        setConfig: setDraftConfig,
         variant: "card" as const,
     };
 
@@ -664,7 +735,7 @@ function KnowledgeBaseCard({ knowledgeBase, knowledgeBases, setKnowledgeBases, h
                     "flex items-center gap-4 p-4 border rounded-lg cursor-pointer transition-colors hover:bg-muted/50",
                     needsConfiguration && "border-yellow-500/50"
                 )}
-                onClick={() => setShowDetailsDialog(true)}
+                onClick={handleOpenDialog}
             >
                 <div className="w-10 h-10 shrink-0">
                     <IconForConfigType type={knowledgeBase.configType} />
@@ -690,12 +761,16 @@ function KnowledgeBaseCard({ knowledgeBase, knowledgeBases, setKnowledgeBases, h
                 </Button>
             </div>
 
-            <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
+            <Dialog open={showDetailsDialog} onOpenChange={(open) => { if (!open) handleCancel(); }}>
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>{needsConfiguration ? "Configure Knowledge Base" : "Knowledge Base Details"}</DialogTitle>
                     </DialogHeader>
                     <KnowledgeBaseSelector {...selectorProps} variant="dialog" />
+                    <DialogFooter>
+                        <Button variant="outline" onClick={handleCancel}>Cancel</Button>
+                        <Button onClick={handleDone} disabled={!isDraftValid}>Done</Button>
+                    </DialogFooter>
                 </DialogContent>
             </Dialog>
         </>
