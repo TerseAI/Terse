@@ -15,15 +15,15 @@ export default function RunHistoryItemHeader({ trigger, formattedTimestamp, onCo
     const title = trigger.title || trigger.source;
 
     return (
-        <div className={`group w-full no-underline hover:no-underline ${onClick ? 'cursor-pointer hover:bg-muted rounded-md p-1' : ''} ${selected ? 'bg-muted rounded-md p-1' : ''}`} onClick={() => onClick?.(index ?? 0)}>
-            <div className="flex items-start gap-3">
+        <div className={`group w-full min-w-0 no-underline hover:no-underline ${onClick ? 'cursor-pointer hover:bg-muted rounded-md p-1' : ''} ${selected ? 'bg-muted rounded-md p-1' : ''}`} onClick={() => onClick?.(index ?? 0)}>
+            <div className="flex items-start gap-3 min-w-0">
                 <div className="text-muted-foreground size-4 flex-shrink-0 mt-1">
                     <IconForIntegration integration={trigger.integration} />
                 </div>
-                <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                        <span 
-                            className="text-foreground truncate no-underline hover:no-underline" 
+                <div className="flex-1 min-w-0 max-w-full overflow-hidden">
+                    <div className="flex items-center gap-2 mb-1 min-w-0 max-w-full">
+                        <span
+                            className="text-foreground truncate no-underline hover:no-underline block min-w-0 max-w-full"
                             title={title}
                         >
                             {title}
@@ -52,16 +52,16 @@ export default function RunHistoryItemHeader({ trigger, formattedTimestamp, onCo
                         </button>
                         )}
                     </div>
-                    <div className="flex items-center gap-2 text-muted-foreground no-underline hover:no-underline">
+                    <div className="flex items-center gap-2 text-muted-foreground no-underline hover:no-underline min-w-0 max-w-full">
                         {trigger.subheader && (
                             <>
-                                <span 
-                                    className="truncate no-underline hover:no-underline" 
+                                <span
+                                    className="truncate no-underline hover:no-underline block min-w-0 max-w-full"
                                     title={trigger.subheader}
                                 >
                                     {trigger.subheader}
                                 </span>
-                                <span className="no-underline hover:no-underline">•</span>
+                                <span className="no-underline hover:no-underline flex-shrink-0">•</span>
                             </>
                         )}
                         {formattedTimestamp && (

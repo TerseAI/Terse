@@ -84,7 +84,7 @@ export function SampleEventsModal({ isOpen, onClose, agentId, inputConfigs }: Sa
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-4 min-w-0 overflow-hidden">
           {/* Input Selector - only show if multiple inputs */}
           {inputConfigs.length > 1 && (
             <div className="flex flex-col gap-2">
@@ -108,7 +108,7 @@ export function SampleEventsModal({ isOpen, onClose, agentId, inputConfigs }: Sa
           )}
 
           {/* Sample Events List */}
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-3 min-w-0">
             <label className="text-sm font-medium">Sample Events</label>
             {isLoading && <Spin />}
 
@@ -118,15 +118,17 @@ export function SampleEventsModal({ isOpen, onClose, agentId, inputConfigs }: Sa
               </div>
             )}
 
-            {!isLoading && sampleEvents.map((event, index) => (
-              <RunHistoryItemTriggerHeader
-                key={index}
-                trigger={event.trigger}
-                onClick={() => setSelectedEventIndex(index)}
-                selected={selectedEventIndex === index}
-                index={index}
-              />
-            ))}
+            <div className="flex flex-col gap-3 overflow-hidden">
+              {!isLoading && sampleEvents.map((event, index) => (
+                <RunHistoryItemTriggerHeader
+                  key={index}
+                  trigger={event.trigger}
+                  onClick={() => setSelectedEventIndex(index)}
+                  selected={selectedEventIndex === index}
+                  index={index}
+                />
+              ))}
+            </div>
           </div>
         </div>
 

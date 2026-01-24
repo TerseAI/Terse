@@ -975,11 +975,23 @@ export class JiraEvent extends InputEvent {
     }
 
     formatForAgentRunner(): string {
-        const indentMultiline = (text: string): string =>
-            text
+        const indentMultiline = (text: string | any): string => {
+            // Handle non-string values (e.g., Atlassian Document Format objects)
+            let textStr: string;
+            if (typeof text === 'string') {
+                textStr = text;
+            } else if (text && typeof text === 'object') {
+                // If it's an ADF object, try to extract plain text or stringify it
+                textStr = JSON.stringify(text, null, 2);
+            } else {
+                textStr = String(text || '');
+            }
+
+            return textStr
                 .split('\n')
                 .map((line) => `        ${line}`)
                 .join('\n');
+        };
 
         const sections: string[] = [];
 
@@ -1195,6 +1207,154 @@ export class JiraEvent extends InputEvent {
         return [];
     }
 
+    private static buildJqlQuery(projectKey: string | undefined, projectKeys: string[]): string {
+        if (projectKey) {
+            return `project = ${projectKey} ORDER BY created DESC`;
+        }
+
+        if (projectKeys.length === 0) {
+            throw new Error('No projects available');
+        }
+
+        return `project in (${projectKeys.join(',')}) ORDER BY created DESC`;
+    }
+
+    private static async fetchAccessibleProjects(cloudId: string, accessToken: string): Promise<string[]> {
+        const projectsResponse = await axios.get<Array<{ key: string }>>(
+            `https://api.atlassian.com/ex/jira/${cloudId}/rest/api/3/project`,
+            {
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`,
+                    'Accept': 'application/json',
+                },
+            }
+        );
+
+        const projects = projectsResponse.data || [];
+        return projects.map((project) => project.key);
+    }
+
+    private static async searchJiraIssues(
+        cloudId: string,
+        accessToken: string,
+        jqlQuery: string
+    ): Promise<Array<{ id: string; self: string; key: string; fields: Record<string, unknown> }>> {
+        const response = await axios.get<{ issues: Array<{ id: string; self: string; key: string; fields: Record<string, unknown> }> }>(
+            `https://api.atlassian.com/ex/jira/${cloudId}/rest/api/3/search/jql`,
+            {
+                params: {
+                    jql: jqlQuery,
+                    maxResults: 3,
+                    fields: 'summary,description,status,priority,issuetype,project,assignee,creator,created,updated,labels,duedate',
+                },
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`,
+                    'Accept': 'application/json',
+                },
+            }
+        );
+
+        return response.data.issues || [];
+    }
+
+    private static createDefaultJiraUser(): JiraEventData['user'] {
+        return {
+            self: '',
+            name: 'Unknown',
+            key: '',
+            emailAddress: '',
+            avatarUrls: { "48x48": "", "24x24": "", "16x16": "", "32x32": "" },
+            displayName: 'Unknown',
+            active: true,
+        };
+    }
+
+    private static convertIssueToWebhookPayload(
+        issue: { id: string; self: string; key: string; fields: Record<string, unknown> }
+    ): JiraWebhookPayload {
+        const fields = issue.fields as any;
+
+        // Convert the API response fields to match the webhook payload structure
+        const status = fields.status || {};
+        const priority = fields.priority || {};
+        const issuetype = fields.issuetype || {};
+        const project = fields.project || {};
+        const creator = fields.creator || this.createDefaultJiraUser();
+
+        return {
+            timestamp: Date.now(),
+            webhookEvent: 'jira:issue_created',
+            user: creator,
+            issue: {
+                id: issue.id,
+                self: issue.self,
+                key: issue.key,
+                fields: {
+                    statuscategorychangedate: fields.updated || new Date().toISOString(),
+                    issuetype: {
+                        self: issuetype.self || '',
+                        id: issuetype.id || '',
+                        description: issuetype.description || '',
+                        iconUrl: issuetype.iconUrl || '',
+                        name: issuetype.name || '',
+                        subtask: issuetype.subtask || false,
+                        avatarId: issuetype.avatarId,
+                    },
+                    project: {
+                        self: project.self || '',
+                        id: project.id || '',
+                        key: project.key || '',
+                        name: project.name || '',
+                        projectTypeKey: project.projectTypeKey || 'software',
+                        simplified: project.simplified || false,
+                        avatarUrls: project.avatarUrls || { "48x48": "", "24x24": "", "16x16": "", "32x32": "" },
+                    },
+                    fixVersions: [],
+                    workratio: 0,
+                    watches: { self: '', watchCount: 0, isWatching: false },
+                    created: fields.created || new Date().toISOString(),
+                    priority: {
+                        self: priority.self || '',
+                        iconUrl: priority.iconUrl || '',
+                        name: priority.name || '',
+                        id: priority.id || '',
+                    },
+                    labels: (fields.labels as string[]) || [],
+                    versions: [],
+                    issuelinks: [],
+                    assignee: fields.assignee || null,
+                    updated: fields.updated || new Date().toISOString(),
+                    status: {
+                        self: status.self || '',
+                        description: status.description || '',
+                        iconUrl: status.iconUrl || '',
+                        name: status.name || '',
+                        id: status.id || '',
+                        statusCategory: status.statusCategory || {
+                            self: '',
+                            id: 0,
+                            key: '',
+                            colorName: '',
+                            name: '',
+                        },
+                    },
+                    components: [],
+                    timetracking: {},
+                    attachment: [],
+                    description: fields.description,
+                    summary: fields.summary || '',
+                    creator: creator,
+                    subtasks: [],
+                    reporter: fields.reporter || creator,
+                    aggregateprogress: { progress: 0, total: 0 },
+                    duedate: fields.duedate,
+                    progress: { progress: 0, total: 0 },
+                    votes: { self: '', votes: 0, hasVoted: false },
+                },
+            },
+        };
+    }
+
     static async getSampleEvents(config: JiraConfig): Promise<JiraSampleEvent[]> {
         const prisma = db();
 
@@ -1206,70 +1366,79 @@ export class JiraEvent extends InputEvent {
             throw new Error(`Atlassian integration ${config.integrationId} not found`);
         }
 
-        const sampleEvents: JiraSampleEvent[] = [];
-
         try {
-            
+            let jqlQuery: string;
 
-            // Fetch last 3 issues from the configured project
-            const response = await axios.get(
-                `${atlassianIntegration.cloud_id}/rest/api/3/search`,
-                {
-                    params: {
-                        jql: config.projectKey ? `project = ${config.projectKey} ORDER BY created DESC` : 'ORDER BY created DESC',
-                        maxResults: 3,
-                    },
-                    headers: {
-                        'Authorization': `Bearer ${atlassianIntegration.access_token}`,
-                        'Accept': 'application/json',
-                    },
+            if (config.projectKey) {
+                jqlQuery = this.buildJqlQuery(config.projectKey, []);
+            } else {
+                const projectKeys = await this.fetchAccessibleProjects(
+                    atlassianIntegration.cloud_id,
+                    atlassianIntegration.access_token
+                );
+
+                if (projectKeys.length === 0) {
+                    return [];
                 }
+
+                jqlQuery = this.buildJqlQuery(undefined, projectKeys);
+            }
+
+            const issues = await this.searchJiraIssues(
+                atlassianIntegration.cloud_id,
+                atlassianIntegration.access_token,
+                jqlQuery
             );
 
-            const issues = response.data.issues || [];
+            const sampleEvents: JiraSampleEvent[] = issues.map((issue) => {
+                const webhookPayload = this.convertIssueToWebhookPayload(issue);
+                const event = new JiraEvent(webhookPayload, config.integrationId);
 
-            for (const issue of issues) {
-                // Create a webhook payload-like structure from the issue data
+                // Extract simplified data for the sample event
                 const eventData: JiraEventData = {
-                    timestamp: Date.now(),
-                    webhookEvent: 'jira:issue_created',
-                    user: issue.fields.creator || {
-                        self: '',
-                        name: 'Unknown',
-                        key: '',
-                        emailAddress: '',
-                        avatarUrls: { "48x48": "", "24x24": "", "16x16": "", "32x32": "" },
-                        displayName: 'Unknown',
-                        active: true,
-                    },
+                    timestamp: webhookPayload.timestamp,
+                    webhookEvent: webhookPayload.webhookEvent,
+                    user: webhookPayload.user,
                     issue: {
-                        id: issue.id,
-                        self: issue.self,
-                        key: issue.key,
+                        id: webhookPayload.issue.id,
+                        self: webhookPayload.issue.self,
+                        key: webhookPayload.issue.key,
                         fields: {
-                            summary: issue.fields.summary,
-                            description: issue.fields.description,
-                            status: issue.fields.status,
-                            priority: issue.fields.priority,
-                            issuetype: issue.fields.issuetype,
-                            project: issue.fields.project,
-                            assignee: issue.fields.assignee,
-                            created: issue.fields.created,
-                            updated: issue.fields.updated,
-                            labels: issue.fields.labels || [],
-                            duedate: issue.fields.duedate,
+                            summary: webhookPayload.issue.fields.summary,
+                            description: webhookPayload.issue.fields.description,
+                            status: {
+                                name: webhookPayload.issue.fields.status.name,
+                                id: webhookPayload.issue.fields.status.id,
+                            },
+                            priority: {
+                                name: webhookPayload.issue.fields.priority.name,
+                                id: webhookPayload.issue.fields.priority.id,
+                            },
+                            issuetype: {
+                                name: webhookPayload.issue.fields.issuetype.name,
+                                id: webhookPayload.issue.fields.issuetype.id,
+                            },
+                            project: {
+                                name: webhookPayload.issue.fields.project.name,
+                                key: webhookPayload.issue.fields.project.key,
+                                id: webhookPayload.issue.fields.project.id,
+                            },
+                            assignee: webhookPayload.issue.fields.assignee,
+                            created: webhookPayload.issue.fields.created,
+                            updated: webhookPayload.issue.fields.updated,
+                            labels: webhookPayload.issue.fields.labels,
+                            duedate: webhookPayload.issue.fields.duedate,
                         },
                     },
                 };
 
-                const event = new JiraEvent(eventData as any, config.integrationId);
-                sampleEvents.push({
+                return {
                     configType: ConfigType.JIRA,
                     eventData,
                     trigger: event.createTriggerMetadata(),
                     integrationId: config.integrationId,
-                });
-            }
+                };
+            });
 
             return sampleEvents;
         } catch (error) {
@@ -1279,7 +1448,86 @@ export class JiraEvent extends InputEvent {
     }
 
     static async sendSampleEventToAgent(sampleEvent: JiraSampleEvent, agentId: string, user: User): Promise<void> {
-        const event = new JiraEvent(sampleEvent.eventData as any, sampleEvent.integrationId);
+        // Convert the simplified event data back to a full webhook payload
+        const eventData = sampleEvent.eventData;
+        const webhookPayload: JiraWebhookPayload = {
+            timestamp: eventData.timestamp,
+            webhookEvent: eventData.webhookEvent,
+            user: eventData.user,
+            issue: {
+                id: eventData.issue.id,
+                self: eventData.issue.self,
+                key: eventData.issue.key,
+                fields: {
+                    statuscategorychangedate: eventData.issue.fields.updated,
+                    issuetype: {
+                        self: '',
+                        id: eventData.issue.fields.issuetype.id,
+                        description: '',
+                        iconUrl: '',
+                        name: eventData.issue.fields.issuetype.name,
+                        subtask: false,
+                    },
+                    project: {
+                        self: '',
+                        id: eventData.issue.fields.project.id,
+                        key: eventData.issue.fields.project.key,
+                        name: eventData.issue.fields.project.name,
+                        projectTypeKey: 'software',
+                        simplified: false,
+                        avatarUrls: { "48x48": "", "24x24": "", "16x16": "", "32x32": "" },
+                    },
+                    fixVersions: [],
+                    workratio: 0,
+                    watches: { self: '', watchCount: 0, isWatching: false },
+                    created: eventData.issue.fields.created,
+                    priority: {
+                        self: '',
+                        iconUrl: '',
+                        name: eventData.issue.fields.priority.name,
+                        id: eventData.issue.fields.priority.id,
+                    },
+                    labels: eventData.issue.fields.labels,
+                    versions: [],
+                    issuelinks: [],
+                    assignee: eventData.issue.fields.assignee,
+                    updated: eventData.issue.fields.updated,
+                    status: {
+                        self: '',
+                        description: '',
+                        iconUrl: '',
+                        name: eventData.issue.fields.status.name,
+                        id: eventData.issue.fields.status.id,
+                        statusCategory: {
+                            self: '',
+                            id: 0,
+                            key: '',
+                            colorName: '',
+                            name: '',
+                        },
+                    },
+                    components: [],
+                    timetracking: {},
+                    attachment: [],
+                    description: eventData.issue.fields.description,
+                    summary: eventData.issue.fields.summary,
+                    creator: eventData.user,
+                    subtasks: [],
+                    reporter: eventData.user,
+                    aggregateprogress: { progress: 0, total: 0 },
+                    duedate: eventData.issue.fields.duedate,
+                    progress: { progress: 0, total: 0 },
+                    votes: { self: '', votes: 0, hasVoted: false },
+                },
+            },
+            changelog: eventData.changelog,
+            comment: eventData.comment ? {
+                ...eventData.comment,
+                updateAuthor: eventData.comment.author,
+            } : undefined,
+        };
+
+        const event = new JiraEvent(webhookPayload, sampleEvent.integrationId);
         const eventProcessor = new EventProcessor(event, user);
 
         const agent = await eventProcessor.findAgent(agentId);
