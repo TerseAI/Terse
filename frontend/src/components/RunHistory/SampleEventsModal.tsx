@@ -42,8 +42,10 @@ export function SampleEventsModal({ isOpen, onClose, agentId, inputConfigs }: Sa
       }
       const events = await BackendProvider.getSampleEvents(config);
       setSampleEvents(events);
-    } catch (error) {
-      toast.error('Failed to fetch sample events');
+    } catch (error: any) {
+      // Display specific error message from backend if available
+      const errorMessage = error.response?.data?.error || error.message || 'Failed to fetch sample events';
+      toast.error(errorMessage);
       setSampleEvents([]);
     } finally {
       setIsLoading(false);
@@ -68,9 +70,8 @@ export function SampleEventsModal({ isOpen, onClose, agentId, inputConfigs }: Sa
 
   // Helper to get display name for input config
   const getInputDisplayName = (input: TransientAgentTrigger, index: number) => {
-    const configType = input.configType;
-    const configName = CONFIG_DETAILS[configType]?.name || configType;
-    return `${configName} Input ${index + 1}`;
+    const configType = input.config?.configType;
+    return configType ? `${CONFIG_DETAILS[configType].name} Input ${index + 1}` : `Input ${index + 1}`;
   };
 
   return (

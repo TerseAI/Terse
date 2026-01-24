@@ -10,13 +10,22 @@ export async function getSampleEvents(req: Request, res: Response) {
     if (!config.integrationType || !config.integrationId) {
         return res.status(400).json({ error: 'config is required' });
     }
-    switch (config.configType) {
-        case ConfigType.GMAIL:
-            return res.status(200).json(await GmailEvent.getSampleEvents(config));
-        case ConfigType.SLACK:
-            return res.status(200).json(await SlackEvent.getSampleEvents(config as SlackConfig));
-        default:
-            return res.status(400).json({ error: 'Unsupported integration type' });
+
+    try {
+        switch (config.configType) {
+            case ConfigType.GMAIL:
+                return res.status(200).json(await GmailEvent.getSampleEvents(config));
+            case ConfigType.SLACK:
+                return res.status(200).json(await SlackEvent.getSampleEvents(config as SlackConfig));
+            default:
+                return res.status(400).json({ error: 'Unsupported integration type' });
+        }
+    } catch (error: any) {
+        // Use status code from error if available, otherwise default to 500
+        const statusCode = error.statusCode || 500;
+        const errorMessage = error.message || 'Failed to fetch sample events';
+
+        return res.status(statusCode).json({ error: errorMessage });
     }
 }
 
