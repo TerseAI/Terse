@@ -5,12 +5,13 @@ import { IntegrationType } from "../../../shared/Integrations";
 import { Session } from "../../../server";
 import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner";
 import { getLaunchDarklyApiKeyByIntegrationId } from "../launchdarklyApiClient";
+import { ToolName } from "../../../tools/ToolNames";
 
 /**
  * Tool for listing LaunchDarkly feature flags with their enabled/disabled states per environment.
  */
 export const listLaunchDarklyFlagsTool = tool({
-    name: 'listLaunchDarklyFlags',
+    name: ToolName.LAUNCHDARKLY_LIST_FEATURE_FLAGS,
     description: 'List all feature flags with enabled/disabled states per environment. Use summary=true for quick overview, summary=false for full details.',
     parameters: z.object({
         integrationId: z.string().describe('The integration ID of the LaunchDarkly knowledge base to use.'),

@@ -6,13 +6,14 @@ import { IntegrationType } from "../../../shared/Integrations";
 import { RunHistoryActionType } from "@prisma/client";
 import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner";
 import { Session } from "../../../server";
+import { ToolName } from "../../../tools/ToolNames";
 
 /**
  * Tool for semantic code search in GitHub repositories.
  * Uses GitHub's Code Search API to find code by meaning, function names, classes, etc.
  */
 export const searchGitHubCodeTool = tool({
-    name: 'searchGitHubCode',
+    name: ToolName.GITHUB_SEARCH_CODE,
     description: `Search GitHub repositories for code by SEMANTIC MEANING (conceptual search). Use this when you DON'T know the exact code text.
 
 Use searchGitHubCode for:

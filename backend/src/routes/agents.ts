@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import { db } from "../prismaClient";
 import { Agent, AgentTrigger, AgentsResponse, AgentNotificationSettings, AgentUpdate, AgentKnowledgeBase } from "../shared/types";
 import { parsePageParams } from "../utility/pagination";
-import { AgentWithTriggerRelations, PrismaTransaction, AgentWithRelations, AgentWithNotificationSettingsRelations, RunHistoryActionType } from "../types/prisma";
+import { AgentWithTriggerRelations, PrismaTransaction, AgentWithRelations, AgentWithNotificationSettingsRelations, RunHistoryActionType, AgentWithToolApprovalsRelations } from "../types/prisma";
 import { IntegrationType } from "../shared/Integrations";
 import { convertConfigTypeToInputConfigType, convertConfigTypeToOutputConfigType, convertConfigTypeToKnowledgeBaseConfigType, convertPrismaConfigToConfigInstance, convertPrismaOutputConfigToConfigInstance, convertPrismaKnowledgeBaseConfigToConfigInstance, convertPlainObjectToKnowledgeBaseConfigInstance } from "../utility/typeConverters";
 import { ConfigInstance, ConfigType } from "../shared/Configs";
@@ -13,6 +13,7 @@ import { OutputFactory } from "../outputs/abstract/OutputFactory";
 import { emitCacheInvalidationWithKey } from "../realtimeSocket";
 import logger from "../logger";
 import { KnowledgeBaseFactory } from "../knowledgeBase/abstract/KnowledgeBaseFactory";
+import { isValidToolName } from "../tools/ToolNames";
 
 export type AgentDraft = Omit<Agent, "id"> & { id?: string };
 
@@ -94,8 +95,22 @@ async function upsertNotificationSettings(
     });
 }
 
+
+function validateAndDeduplicateToolApprovals(toolApprovals: string[]): string[] {
+    // Deduplicate tool approvals to prevent unique constraint violations
+    const uniqueToolApprovals = Array.from(new Set(toolApprovals));
+    
+    // Validate all tool names
+    const invalidToolNames = uniqueToolApprovals.filter(toolName => !isValidToolName(toolName));
+    if (invalidToolNames.length > 0) {
+        throw new Error(`Invalid tool names: ${invalidToolNames.join(', ')}`);
+    }
+    
+    return uniqueToolApprovals;
+}
+
 export async function applyAgentForUser(userId: string, draft: AgentDraft): Promise<{ id: string }> {
-    const { name, triggers, outputs, knowledgeBases, prompt, isActive = true, requireApproval = false, notificationSettings } = draft;
+    const { name, triggers, outputs, knowledgeBases, prompt, isActive = true, requireApproval = false, notificationSettings, toolApprovals } = draft;
 
     logger.debug("Outputs from frontend", { outputs: JSON.stringify(outputs, null, 2), userId });
     logger.debug("Triggers from frontend", { triggers: JSON.stringify(triggers, null, 2), userId });
@@ -226,6 +241,18 @@ export async function applyAgentForUser(userId: string, draft: AgentDraft): Prom
             await upsertNotificationSettings(tx, newAgent.id, notificationSettings);
         }
 
+        // Create tool approvals if provided
+        if (toolApprovals && toolApprovals.length > 0) {
+            const uniqueToolApprovals = validateAndDeduplicateToolApprovals(toolApprovals);
+
+            await tx.automation_tool_approvals.createMany({
+                data: uniqueToolApprovals.map(toolName => ({
+                    automation_id: newAgent.id,
+                    tool_name: toolName,
+                })),
+            });
+        }
+
         return newAgent;
     });
 
@@ -256,7 +283,7 @@ export async function updateAgentForUser(
     agentId: string,
     update: Partial<AgentUpdate>
 ): Promise<{ id: string }> {
-    const { name, triggers, outputs, knowledgeBases, prompt, isActive, requireApproval, notificationSettings } = update;
+    const { name, triggers, outputs, knowledgeBases, prompt, isActive, requireApproval, notificationSettings, toolApprovals } = update;
 
     const prisma = db();
     const existingAgent: AgentWithTriggerRelations | null = await prisma.automations.findFirst({
@@ -426,6 +453,26 @@ export async function updateAgentForUser(
         if (notificationSettings) {
             await upsertNotificationSettings(tx, agentId, notificationSettings);
         }
+
+        // Update tool approvals if provided
+        if (toolApprovals !== undefined) {
+            const uniqueToolApprovals = validateAndDeduplicateToolApprovals(toolApprovals);
+
+            // Delete all existing tool approvals
+            await tx.automation_tool_approvals.deleteMany({
+                where: { automation_id: agentId }
+            });
+
+            // Insert new tool approvals if provided
+            if (uniqueToolApprovals.length > 0) {
+                await tx.automation_tool_approvals.createMany({
+                    data: uniqueToolApprovals.map(toolName => ({
+                        automation_id: agentId,
+                        tool_name: toolName,
+                    })),
+                });
+            }
+        }
     });
 
     const agentWithTriggerRelations: AgentWithTriggerRelations | null = await prisma.automations.findFirst({
@@ -494,7 +541,8 @@ export async function getUserAgents(req: Request, res: Response) {
                 knowledge_bases: {
                     include: getKnowledgeBaseConfigInclude()
                 },
-                notification_settings: true
+                notification_settings: true,
+                tool_approvals: true
             },
             orderBy: { created_at: 'desc' },
             skip,
@@ -560,6 +608,7 @@ export async function getRecentAgents(req: Request, res: Response) {
                 knowledge_bases: {
                     include: getKnowledgeBaseConfigInclude()
                 },
+                tool_approvals: true
             },
                 orderBy: { updated_at: 'desc' },
                 take: limit
@@ -609,8 +658,8 @@ export async function getUserAgent(req: Request, res: Response) {
     const userId = req.session.user.id;
     const agentId = req.params.id;
 
-    try {
-        const agent: AgentWithRelations & AgentWithNotificationSettingsRelations | null = await db().automations.findFirst({
+        try {
+            const agent: AgentWithRelations | null = await db().automations.findFirst({
             where: {
                 id: agentId,
                 user_id: userId
@@ -626,9 +675,10 @@ export async function getUserAgent(req: Request, res: Response) {
                 knowledge_bases: {
                     include: getKnowledgeBaseConfigInclude()
                 },
-                notification_settings: true
+                notification_settings: true,
+                tool_approvals: true
             }
-        });
+        })
 
         if (!agent || !agent.outputs || agent.outputs.length === 0) {
             res.status(404).json({ error: 'Agent not found' });
@@ -653,7 +703,7 @@ export async function createAgent(req: Request, res: Response) {
     }
 
     const userId = req.session.user.id;
-    const { name, triggers, outputs, knowledgeBases, prompt, isActive = true, requireApproval = false, notificationSettings } = req.body as Agent;
+    const { name, triggers, outputs, knowledgeBases, prompt, isActive = true, requireApproval = false, notificationSettings, toolApprovals } = req.body as Agent;
 
     try {
         const { id } = await applyAgentForUser(userId, {
@@ -665,6 +715,7 @@ export async function createAgent(req: Request, res: Response) {
             isActive,
             requireApproval,
             notificationSettings,
+            toolApprovals,
         });
 
         res.status(201).json({ success: true, id });
@@ -776,6 +827,7 @@ function transformAgentToFrontendFormat(agent: AgentWithRelations & Partial<Agen
             enabled: agent.notification_settings.enabled,
             actionTypes: agent.notification_settings.action_types,
         } : undefined,
+        toolApprovals: agent.tool_approvals.map((ta: any) => ta.tool_name),
         updatedAt: agent.updated_at.toISOString(),
     };
 }

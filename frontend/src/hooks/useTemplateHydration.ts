@@ -8,6 +8,7 @@ export interface HydratedTemplateState {
     prompt: AgentPrompt | undefined;
     isActive: boolean;
     requireApproval: boolean;
+    toolApprovals: string[];
     inputs: TransientAgentTrigger[];
     outputs: TransientAgentOutput[];
     knowledgeBases: TransientKnowledgeBase[];
@@ -70,6 +71,7 @@ export function useTemplateHydration(
             prompt: template.prompt,
             isActive: template.isActive,
             requireApproval: template.requireApproval,
+            toolApprovals: [],
             inputs: transientInputs,
             outputs: transientOutputs,
             knowledgeBases: transientKBs,

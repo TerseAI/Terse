@@ -503,6 +503,7 @@ model automations {
   notification_settings      automation_notification_settings?
   output_change_attributions output_change_attributions[]
   knowledge_bases            automation_knowledge_bases[]
+  tool_approvals             automation_tool_approvals[]
 
   @@index([user_id])
   @@index([is_active])
@@ -589,6 +590,18 @@ model automation_knowledge_bases {
 
   @@index([automation_id])
   @@index([config_type, integration_id])
+}
+
+model automation_tool_approvals {
+  id            String   @id @default(cuid())
+  automation_id String
+  tool_name     String
+  created_at    DateTime @default(now())
+
+  automation automations @relation(fields: [automation_id], references: [id], onDelete: Cascade)
+
+  @@unique([automation_id, tool_name])
+  @@index([automation_id])
 }
 
 model automation_posthog_configs {
@@ -876,6 +889,7 @@ enum OutputConfigType {
   JIRA_TICKET
   SLACK_CHANNEL
   GMAIL
+  TERSE
 }
 
 enum KnowledgeBaseConfigType {

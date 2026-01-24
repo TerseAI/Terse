@@ -7,7 +7,8 @@ import { IntegrationType } from "../../../shared/Integrations";
 import { RunHistoryActionType } from "@prisma/client";
 import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner";
 import { getOAuth2Client, GmailIntegrationManager } from "../../../integrations/GmailIntegration";
-import { formatError, needsApproval } from "../../../tools/toolUtils";
+import { formatError, createNeedsApprovalFunction } from "../../../tools/toolUtils";
+import { ToolName } from "../../../tools/ToolNames";
 import { Session } from "../../../server";
 
 /**
@@ -15,7 +16,7 @@ import { Session } from "../../../server";
  * Supports both sending new emails and replying to existing threads.
  */
 export const gmailSendEmailTool = tool({
-    name: "gmail_send_email",
+    name: ToolName.GMAIL_SEND_EMAIL,
     description: `Send email or reply to an existing email thread via Gmail. Use thread_id (the Gmail Thread ID, not the Message-ID) to reply to an existing thread, or omit it to send a new email.`,
     parameters: z.object({
         integrationId: z.string().describe('The integration ID of the Gmail account to use.'),
@@ -26,7 +27,7 @@ export const gmailSendEmailTool = tool({
         cc: z.string().nullable().optional().describe("CC recipient email address(es). Multiple addresses can be comma-separated."),
         bcc: z.string().nullable().optional().describe("BCC recipient email address(es). Multiple addresses can be comma-separated."),
     }),
-    needsApproval,
+    needsApproval: createNeedsApprovalFunction(ToolName.GMAIL_SEND_EMAIL),
     execute: async ({ integrationId, to, subject, body, thread_id, cc, bcc }, runContext?: RunContext<SessionWithTracking<Session>>) => {
         if (!runContext?.context) {
             throw new Error("No context provided");
@@ -178,10 +179,12 @@ export const gmailSendEmailTool = tool({
             const emailType = thread_id ? 'reply' : 'new email';
             const emailPreview = body.length > 100 ? body.substring(0, 100) + '...' : body;
             
-            // Build Gmail message URL
-            const gmailUrl = thread_id
-                ? `https://mail.google.com/mail/u/0/#inbox/${thread_id}`
-                : `https://mail.google.com/mail/u/0/#inbox/${messageId}`;
+            // Build Gmail message URL using the thread ID with #all
+            // Format: https://mail.google.com/mail/u/0/#all/{threadId}
+            // Using #all instead of #inbox ensures the link works regardless of label
+            // Fallback to messageId if threadId is not available (rare but possible edge case)
+            const sentThreadId = thread_id || result.data.threadId || messageId;
+            const gmailUrl = `https://mail.google.com/mail/u/0/#all/${sentThreadId}`;
             
             // Return action as part of the result
             const action = {

@@ -42,6 +42,8 @@ export type AgentSetupTabProps = {
     setIsActive: (isActive: boolean) => void;
     requireApproval: boolean;
     setRequireApproval: (requireApproval: boolean) => void;
+    toolApprovals: string[];
+    setToolApprovals: (toolApprovals: string[]) => void;
     notificationSettings: AgentNotificationSettingsType;
     setNotificationSettings: (settings: AgentNotificationSettingsType) => void;
     isLoading: boolean;
@@ -59,6 +61,7 @@ function SaveAgentButton({
     prompt,
     isActive,
     requireApproval,
+    toolApprovals,
     notificationSettings,
     mutate,
     onSaveSuccess
@@ -72,6 +75,7 @@ function SaveAgentButton({
     prompt: AgentPrompt | undefined;
     isActive: boolean;
     requireApproval: boolean;
+    toolApprovals: string[];
     notificationSettings: AgentNotificationSettingsType;
     mutate: KeyedMutator<Agent>;
     onSaveSuccess?: () => void;
@@ -105,6 +109,7 @@ function SaveAgentButton({
                 prompt,
                 isActive,
                 requireApproval,
+                toolApprovals,
                 notificationSettings
             };
 
@@ -166,9 +171,11 @@ export default function AgentSetupTab({
     setPrompt,
     isActive,
     requireApproval,
-    setRequireApproval,
+    setRequireApproval: _setRequireApproval, // Kept for backward compatibility but not used (we use toolApprovals instead)
     notificationSettings,
     setNotificationSettings,
+    toolApprovals,
+    setToolApprovals,
     mutate,
 }: AgentSetupTabProps) {
     const { totalCount } = useAgentCount();
@@ -236,6 +243,7 @@ export default function AgentSetupTab({
                         prompt={prompt}
                         isActive={isActive}
                         requireApproval={requireApproval}
+                        toolApprovals={toolApprovals}
                         notificationSettings={notificationSettings}
                         mutate={mutate}
                     />
@@ -365,7 +373,12 @@ export default function AgentSetupTab({
                                 Configure when you want to be notified and whether actions need your approval.
                             </p>
                         </div>
-                        <AgentApprovalSettings requireApproval={requireApproval} onChange={setRequireApproval} />
+                        <AgentApprovalSettings
+                            outputs={outputs}
+                            knowledgeBases={knowledgeBases}
+                            toolApprovals={toolApprovals}
+                            onToolApprovalsChange={setToolApprovals}
+                        />
                         <AgentNotificationSettings settings={notificationSettings} onChange={setNotificationSettings} />
                     </div>
                 </div>

@@ -5,13 +5,14 @@ import { IntegrationType } from "../../../shared/Integrations";
 import { Session } from "../../../server";
 import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner";
 import { getLaunchDarklyApiKeyByIntegrationId } from "../launchdarklyApiClient";
+import { ToolName } from "../../../tools/ToolNames";
 
 /**
  * Tool for getting detailed information about a specific LaunchDarkly feature flag.
  * Optionally includes change history over a time window.
  */
 export const getLaunchDarklyFlagDetailsTool = tool({
-    name: 'getLaunchDarklyFlagDetails',
+    name: ToolName.LAUNCHDARKLY_GET_FEATURE_FLAG_DETAILS,
     description: 'Get detailed information about a specific feature flag including targeting rules, rollout strategies, variations, and per-environment configuration. Optionally includes change history when includeHistory=true.',
     parameters: z.object({
         integrationId: z.string().describe('The integration ID of the LaunchDarkly knowledge base to use.'),

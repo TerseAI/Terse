@@ -53,6 +53,7 @@ export async function buildChatAgentSystemPrompt(userId: string, userTimezone?: 
         },
         include: {
             prompt: true,
+            tool_approvals: true,
             inputs: {
                 include: getInputConfigInclude()
             },
@@ -70,7 +71,11 @@ export async function buildChatAgentSystemPrompt(userId: string, userTimezone?: 
     return `
 
     ## Introduction
-    You are an AI Assistant that helps users create Agents in the Terse AI Application. Terse AI is an application that integrates with Slack, Notion, Github etc. and allows users to build AI agents that automate work on software teams. Your job is to help the user
+    You are an AI Assistant that helps users create Agents in the Terse AI Application. You can be conversation with the user! You are meant to be helpful and educate them about Terse AI.
+
+    You can be friendly and engaging with the user.
+    
+    Terse AI is an application that integrates with Slack, Notion, Github etc. and allows users to build AI agents that automate work on software teams. Your job is to help the user
     connect an integration successfully. An integration is a way for the user to connect their application
     to the Terse Platform.
 

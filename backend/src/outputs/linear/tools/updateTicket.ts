@@ -5,13 +5,14 @@ import { IntegrationType } from "../../../shared/Integrations";
 import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner";
 import type { IssueUpdateInput } from "@linear/sdk/dist/_generated_documents";
 import { RunHistoryActionType } from "@prisma/client";
-import { formatError, needsApproval } from "../../../tools/toolUtils";
+import { formatError, createNeedsApprovalFunction } from "../../../tools/toolUtils";
+import { ToolName } from "../../../tools/ToolNames";
 import logger from "../../../logger";
 import { Session } from "../../../server";
 import { LinearIntegrationManager } from "../../../integrations/LinearIntegration";
 
 export const linearUpdateTicketTool = tool({
-    name: 'linear_update_ticket',
+    name: ToolName.LINEAR_UPDATE_TICKET,
     description: `Update an existing Linear issue/ticket. Use this tool to modify issue properties such as title, description, state, assignee, priority, labels, due date, and more.
 
 BEFORE USING THIS TOOL:
@@ -46,7 +47,7 @@ COMMON UPDATE OPERATIONS:
         subscriberIds: z.array(z.string()).nullable().optional().describe('The IDs of users subscribing to this ticket.'),
         trashed: z.boolean().nullable().optional().describe('Whether the issue has been trashed.'),
     }),
-    needsApproval,
+    needsApproval: createNeedsApprovalFunction(ToolName.LINEAR_UPDATE_TICKET),
     execute: async ({ 
         integrationId,
         issueId, 

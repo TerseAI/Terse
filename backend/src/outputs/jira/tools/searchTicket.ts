@@ -4,13 +4,14 @@ import { IntegrationType } from "../../../shared/Integrations";
 import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner";
 import { RunHistoryActionType } from "@prisma/client";
 import { formatError } from "../../../tools/toolUtils";
+import { ToolName } from "../../../tools/ToolNames";
 import logger from "../../../logger";
 import { AtlassianIntegrationManager } from "../../../integrations/AtlassianIntegration";
 import { db } from "../../../prismaClient";
 import { Session } from "../../../server";
 
 export const jiraSearchTicketTool = tool({
-    name: 'jira_search_ticket',
+    name: ToolName.JIRA_SEARCH_TICKET,
     description: `Search for Jira issues/tickets using JQL (Jira Query Language) or text search. Returns issues that match the search criteria.
 
 Use this tool to find existing Jira issues before creating new ones or to look up ticket information.

@@ -4,7 +4,8 @@ import { Client } from '@notionhq/client';
 import { IntegrationType } from "../../../shared/Integrations";
 import { getBlockTypeName, describeBlocks, extractPageTitle } from "../../../utility/notion";
 import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner";
-import { formatError, needsApproval } from "../../../tools/toolUtils";
+import { formatError, createNeedsApprovalFunction } from "../../../tools/toolUtils";
+import { ToolName } from "../../../tools/ToolNames";
 import { ConfigType } from "../../../shared/Configs";
 import logger from "../../../logger";
 import { Session } from "../../../server";
@@ -24,7 +25,7 @@ function getBlockDeepLinkUrl(pageUrl: string | undefined, blockId: string | unde
 }
 
 export const notionModifyBlocksTool = tool({
-    name: 'notion_modify_blocks',
+    name: ToolName.NOTION_MODIFY_BLOCKS,
     description: `Add, update, or delete a block in the page content. Use this to modify page content (paragraphs, headings, lists, etc.). Call this tool once per operation - for multiple changes, call multiple times.
 
 Operations:
@@ -59,7 +60,7 @@ Example append: "{\"operation\": \"append\", \"blocks\": [{\"object\": \"block\"
 Example update: "{\"operation\": \"update\", \"block_id\": \"abc123\", \"block\": {\"paragraph\": {\"rich_text\": [{\"type\": \"text\", \"text\": {\"content\": \"Updated\"}}]}}}"
 Example delete: "{\"operation\": \"delete\", \"block_id\": \"abc123\"}"`),
     }),
-    needsApproval,
+    needsApproval: createNeedsApprovalFunction(ToolName.NOTION_MODIFY_BLOCKS),
     execute: async ({ integrationId, pageId, operation_json }, runContext?: RunContext<SessionWithTracking<Session>>) => {        
         // Parse the JSON string
         let op: {

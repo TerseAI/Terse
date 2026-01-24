@@ -19,16 +19,8 @@ import logger from "../../logger";
 export class LaunchDarklyKnowledgeBase extends KnowledgeBase<LaunchDarklyConfig> {
     constructor() {
         const toolbox: ToolboxEntry[] = [
-            {
-                tool: listLaunchDarklyFlagsTool as Tool,
-                isReadOnly: true,
-                integration: IntegrationType.LAUNCHDARKLY
-            },
-            {
-                tool: getLaunchDarklyFlagDetailsTool as Tool,
-                isReadOnly: true,
-                integration: IntegrationType.LAUNCHDARKLY
-            }
+            { tool: listLaunchDarklyFlagsTool as Tool, isReadOnly: true, integration: IntegrationType.LAUNCHDARKLY, displayName: 'List feature flags' },
+            { tool: getLaunchDarklyFlagDetailsTool as Tool, isReadOnly: true, integration: IntegrationType.LAUNCHDARKLY, displayName: 'Get flag details' },
         ];
 
         super(KnowledgeBaseConfigType.LAUNCHDARKLY, toolbox);

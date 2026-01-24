@@ -6,13 +6,14 @@ import { RunHistoryActionType } from "@prisma/client";
 import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner";
 import { Session } from "../../../server";
 import { getPosthogApiKeyByIntegrationId } from "../posthogApiClient";
+import { ToolName } from "../../../tools/ToolNames";
 
 /**
  * Tool for querying PostHog session recordings for a specific user.
  * This tool first finds the person by email, then retrieves their session recordings.
  */
 export const searchSessionsTool = tool({
-    name: 'searchPosthogSessions',
+    name: ToolName.POSTHOG_SEARCH_SESSIONS,
     description: 'Query PostHog session recordings for a specific user by their email address. Returns session recordings data and links to view sessions in PostHog. Use this when you need to replay user sessions, investigate user behavior, or understand how users interact with the application. Returns the most recent session recordings first.',
     parameters: z.object({
         integrationId: z.string().describe('The integration ID of the PostHog knowledge base to use.'),

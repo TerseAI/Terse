@@ -10,7 +10,7 @@ import { IntegrationType } from "../../shared/Integrations";
 export class SlackOutput extends Output<SlackOutputConfig> {
     constructor() {
         const toolbox: ToolboxEntry[] = [
-            { tool: slackSendMessageTool as Tool, isReadOnly: false, integration: IntegrationType.SLACK },
+            { tool: slackSendMessageTool as Tool, isReadOnly: false, integration: IntegrationType.SLACK, displayName: 'Send message' },
         ];
         super(OutputConfigType.SLACK_CHANNEL, toolbox);
     }
@@ -77,9 +77,16 @@ WHEN TO USE:
 FORMATTING (mrkdwn):
 *bold* _italic_ \`code\` \`\`\`code block\`\`\` <url|text> • bullets
 
+THREAD REPLIES:
+- When sending a message, the tool returns a \`thread_ts\` value in the result
+- To reply in the same thread, use the \`thread_ts\` from the previous message's result as the \`thread_ts\` parameter in your next message
+- The \`thread_ts\` represents the root message timestamp of the thread - use it consistently for all replies in that thread
+- If no \`thread_ts\` is provided, a new thread is started (the returned \`thread_ts\` will be the new message's timestamp)
+
 BEST PRACTICES:
 - Always provide \`message\` (fallback text for Block Kit)
 - No calls to action (user can't respond)
 - Keep concise and actionable
 - Include relevant links
+- For thread conversations, always use the \`thread_ts\` from previous message results to maintain thread context
 `.trim();
