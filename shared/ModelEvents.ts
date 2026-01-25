@@ -20,7 +20,20 @@ export type ModelEvent = {"type": "ToolApprovalResponse"} & ToolApprovalResponse
 
 export type ModelRequest = { "type": "SendModelRequest" } & SendModelRequest | { "type": "ToolApprovalResponse" } & ToolApprovalResponse;
 
-export type SendModelRequest = { user_message: string, timezone: string, };
+/**
+ * File uploaded to GCS for chat messages
+ */
+export type UploadedFile = {
+  fileKey: string;    // GCS object key (returned from upload-url endpoint)
+  filename: string;
+  mimeType: string;
+};
+
+export type SendModelRequest = {
+  user_message: string;
+  timezone: string;
+  uploadedFiles?: UploadedFile[];  // References to files already uploaded to GCS
+};
 
 export type ToolApprovalResponse = { step_id: string, approved: boolean };
 

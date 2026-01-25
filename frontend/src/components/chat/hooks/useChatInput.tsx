@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { type ModelRequest } from '../../../shared/ModelEvents';
+import { type ModelRequest, type UploadedFile } from '../../../shared/ModelEvents';
 
 interface UseChatInputOptions {
     sendMessage: (message: ModelRequest) => void;
@@ -9,14 +9,15 @@ interface UseChatInputOptions {
 export function useChatInput({ sendMessage: sendModelRequest, onUserMessage }: UseChatInputOptions) {
     const [input, setInput] = useState('');
 
-    const sendMessage = async (message: string) => {
+    const sendMessage = async (message: string, uploadedFiles?: UploadedFile[]) => {
         setInput('');
         onUserMessage?.(message);
-        
+
         const modelRequest: ModelRequest = {
             type: 'SendModelRequest',
             user_message: message,
             timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+            uploadedFiles: uploadedFiles && uploadedFiles.length > 0 ? uploadedFiles : undefined,
         };
         try {
             sendModelRequest(modelRequest);

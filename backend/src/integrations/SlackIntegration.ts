@@ -31,6 +31,14 @@ import {
 } from "../slack/blockKitHelpers";
 import { integrationTaskQueue } from "./IntegrationTaskQueues";
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask";
+import {
+  ensureStoredWithMetadata,
+  buildSlackFileKey,
+  FileDownloadResult,
+  isFileStorageConfigured,
+  isSupportedFileType,
+  StoredFile,
+} from "../services/FileStorageService";
 
 export class SlackIntegrationManager implements Integration<SlackIntegration, SlackMessageEvent, typeof SlackIntegrationMetadata>, OAuthIntegrationInstallation<IntegrationType.SLACK> {
     constructor() { }
@@ -510,13 +518,37 @@ export class SlackEvent extends InputEvent implements Identifiable {
     }
 
     /**
-     * Get all publicly accessible image URLs from the message
-     * Note: Excludes Slack file uploads which require authentication
+     * Get all accessible image URLs from the message
+     * Returns presigned GCS URLs for file uploads (if available) + public block/attachment URLs
      */
     getImageUrls(): string[] {
-        return this.getImages()
+        const urls: string[] = [];
+
+        // Add presigned GCS URLs for file images from storedFiles (takes priority)
+        if (this.data.storedFiles) {
+            const imageUrls = this.data.storedFiles
+                .filter(f => f.category === 'image')
+                .map(f => f.url);
+            urls.push(...imageUrls);
+        } else if (this.data.imageUrlsFromFiles && this.data.imageUrlsFromFiles.length > 0) {
+            // Legacy fallback
+            urls.push(...this.data.imageUrlsFromFiles);
+        }
+
+        // Add public URLs from blocks and attachments
+        const publicImages = this.getImages()
             .filter(img => !img.requiresAuth)
             .map(img => img.url);
+        urls.push(...publicImages);
+
+        return urls;
+    }
+
+    /**
+     * Get all stored files with full metadata (images, documents, text files)
+     */
+    getFiles(): StoredFile[] {
+        return this.data.storedFiles || [];
     }
 
     debugLog(): string {
@@ -877,6 +909,15 @@ async function handleSlackMessage(event: SlackMessageEvent, teamId: string, auth
             }
         }
 
+        // Download files and store in GCS (if configured)
+        // Supports: images, PDFs, documents, spreadsheets, text files
+        let storedFiles: StoredFile[] = [];
+        if (isFileStorageConfigured() && files && files.length > 0) {
+            // Get bot token for downloading files
+            const botToken = filteredWorkspaceUserIntegrations[0].slack_integration.access_token;
+            storedFiles = await downloadSlackFiles(files, teamId, botToken);
+        }
+
         // Build SlackEventData with all available information
         const slackEventData: SlackEventData = {
             channelId: messageEvent.channel!,
@@ -893,6 +934,10 @@ async function handleSlackMessage(event: SlackMessageEvent, teamId: string, auth
             blocks: blocks,
             attachments: attachments,
             files: files,
+            // Stored files with full metadata
+            storedFiles: storedFiles.length > 0 ? storedFiles : undefined,
+            // Legacy: image URLs only
+            imageUrlsFromFiles: storedFiles.filter(f => f.category === 'image').map(f => f.url),
         };
         
         // Create SlackEvent once
@@ -977,6 +1022,106 @@ export function initializeSlackWebClient(integration: UserSlackIntegrationWithUs
      });
 }
 
+/**
+ * Downloads files from Slack and stores them in GCS
+ * Returns array of StoredFile with full metadata (images, documents, text files)
+ */
+async function downloadSlackFiles(
+    files: SlackFile[],
+    teamId: string,
+    botToken: string
+): Promise<StoredFile[]> {
+    const storedFiles: StoredFile[] = [];
+
+    // Filter for supported file types (images, PDFs, documents, spreadsheets, text files)
+    const supportedFiles = files.filter(file => {
+        const mimetype = file.mimetype || '';
+        const filename = file.name || file.title || '';
+        return isSupportedFileType(mimetype, filename);
+    });
+
+    if (supportedFiles.length === 0) {
+        return storedFiles;
+    }
+
+    logger.info(`📎 [SLACK] Found ${supportedFiles.length} supported file(s) to download`, {
+        teamId,
+        totalFiles: files.length,
+        supportedFiles: supportedFiles.length
+    });
+
+    // Process each file (with concurrency limit)
+    const MAX_CONCURRENT = 5;
+    for (let i = 0; i < supportedFiles.length; i += MAX_CONCURRENT) {
+        const batch = supportedFiles.slice(i, i + MAX_CONCURRENT);
+        const batchResults = await Promise.all(
+            batch.map(async (file) => {
+                try {
+                    // Use url_private for full file, fallback to thumbnails for images
+                    const downloadUrl = file.url_private ||
+                        file.thumb_1024 || file.thumb_960 || file.thumb_800 ||
+                        file.thumb_720 || file.thumb_480 || file.thumb_360;
+
+                    if (!downloadUrl) {
+                        logger.warn(`No download URL found for Slack file`, { fileId: file.id, teamId });
+                        return null;
+                    }
+
+                    const primaryKey = buildSlackFileKey(teamId, file.id);
+                    const storedFile = await ensureStoredWithMetadata(primaryKey, async (): Promise<FileDownloadResult> => {
+                        // Download file using bot token for authentication
+                        const response = await fetch(downloadUrl, {
+                            headers: {
+                                'Authorization': `Bearer ${botToken}`,
+                            },
+                        });
+
+                        if (!response.ok) {
+                            throw new Error(`Failed to download Slack file: ${response.status} ${response.statusText}`);
+                        }
+
+                        const buffer = Buffer.from(await response.arrayBuffer());
+                        const mimeType = file.mimetype || response.headers.get('content-type') || 'application/octet-stream';
+                        const filename = file.name || file.title;
+                        return { data: buffer, mimeType, filename };
+                    });
+
+                    if (storedFile) {
+                        logger.debug(`✅ Stored Slack file in GCS`, {
+                            teamId,
+                            fileId: file.id,
+                            filename: file.name || file.title,
+                            category: storedFile.category
+                        });
+                        return storedFile;
+                    }
+                } catch (error) {
+                    logger.error(`Error storing Slack file`, {
+                        error,
+                        teamId,
+                        fileId: file.id,
+                        filename: file.name || file.title
+                    });
+                }
+                return null;
+            })
+        );
+
+        // Add non-null results
+        storedFiles.push(...batchResults.filter((f): f is StoredFile => f !== null));
+    }
+
+    if (storedFiles.length > 0) {
+        const byCategory = storedFiles.reduce((acc, f) => {
+            acc[f.category] = (acc[f.category] || 0) + 1;
+            return acc;
+        }, {} as Record<string, number>);
+        logger.info(`📎 [SLACK] Stored ${storedFiles.length} file(s) in GCS`, { teamId, storedCount: storedFiles.length, byCategory });
+    }
+
+    return storedFiles;
+}
+
 
 /**
  * Type for Slack API responses that follow the standard { ok: boolean; error?: string } pattern
@@ -1023,6 +1168,10 @@ export interface SlackEventData {
     attachments?: SlackAttachment[];
     // File attachments (including images)
     files?: SlackFile[];
+    // Stored files with full metadata (images, documents, text files)
+    storedFiles?: StoredFile[];
+    // Legacy: Presigned GCS URLs for file images only
+    imageUrlsFromFiles?: string[];
 }
 
 

@@ -17,6 +17,14 @@ import { integrationTaskQueue } from "./IntegrationTaskQueues";
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask";
 import { createOAuthStateToken, decodeOAuthStateToken, OAuthStateEncodingFormat } from "../utility/oauth";
 import { FrontendRoutes } from "../shared/FrontendRoutes";
+import {
+    ensureStoredWithMetadata,
+    buildGmailFileKey,
+    FileDownloadResult,
+    isFileStorageConfigured,
+    isSupportedFileType,
+    StoredFile,
+} from "../services/FileStorageService";
 
 
 // OAuth2 scopes for Gmail
@@ -155,8 +163,36 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
                             continue;
                         }
 
+                        // Download attachments and store in GCS (if configured)
+                        // Support: images, PDFs, documents, spreadsheets
+                        const allAttachments = parsedEmail.attachments || parsedEmail.images || [];
+                        if (isFileStorageConfigured() && allAttachments.length > 0) {
+                            const storedFiles = await downloadGmailAttachments(
+                                gmail,
+                                parsedEmail.id,
+                                allAttachments,
+                                integration.id
+                            );
+                            if (storedFiles.length > 0) {
+                                parsedEmail.storedFiles = storedFiles;
+                                // Also populate legacy field for backward compatibility
+                                parsedEmail.imageUrlsPresigned = storedFiles
+                                    .filter(f => f.category === 'image')
+                                    .map(f => f.url);
+                            }
+                        }
+
                         // Process email through automations (non-blocking)
-                        logger.info('About to process email', { userEmail: user.email, subject: parsedEmail.subject, from: parsedEmail.from, to: parsedEmail.to, date: emailDate.toISOString(), integrationId: integration.id, messageId: parsedEmail.id });
+                        logger.info('About to process email', {
+                            userEmail: user.email,
+                            subject: parsedEmail.subject,
+                            from: parsedEmail.from,
+                            to: parsedEmail.to,
+                            date: emailDate.toISOString(),
+                            integrationId: integration.id,
+                            messageId: parsedEmail.id,
+                            fileCount: parsedEmail.storedFiles?.length || 0
+                        });
 
                         const eventProcessor = new EventProcessor(new GmailEvent(parsedEmail, integration.id), user);
                         const results = await eventProcessor.process();
@@ -531,8 +567,19 @@ export class GmailEvent extends InputEvent {
     }
 
     getImageUrls(): string[] {
-        // Gmail events don't include images
-        return [];
+        // Return presigned GCS URLs for image attachments
+        // Filter from storedFiles if available, fallback to legacy field
+        if (this.data.storedFiles) {
+            return this.data.storedFiles
+                .filter(f => f.category === 'image')
+                .map(f => f.url);
+        }
+        return this.data.imageUrlsPresigned || [];
+    }
+
+    getFiles(): StoredFile[] {
+        // Return all stored files with full metadata
+        return this.data.storedFiles || [];
     }
 }
 
@@ -741,7 +788,7 @@ async function fetchAndParseEmail(
         id: messageId,
         format: "full",
       });
-  
+
       const message = messageResponse.data;
       const headers = message.payload?.headers || [];
       const getHeader = (name: string) => {
@@ -750,26 +797,26 @@ async function fetchAndParseEmail(
         );
         return header?.value || "";
       };
-  
+
       const subject = getHeader("Subject");
       const from = getHeader("From");
       const to = getHeader("To");
       const date = getHeader("Date");
       const messageIdHeader = getHeader("Message-ID");
       const labelIds = message.labelIds || [];
-  
+
       // Extract body - Gmail can have different structures
       const getBody = (payload: gmail_v1.Schema$MessagePart): string => {
         if (payload.body?.data) {
           return Buffer.from(payload.body.data, "base64").toString("utf-8");
         }
-  
+
         if (payload.parts) {
           for (const part of payload.parts) {
             if (part.mimeType === "text/plain" && part.body?.data) {
               return Buffer.from(part.body.data, "base64").toString("utf-8");
             }
-  
+
             // Recursively check nested parts
             const nestedBody = getBody(part);
             if (nestedBody) {
@@ -777,12 +824,50 @@ async function fetchAndParseEmail(
             }
           }
         }
-  
+
         return "";
       };
-  
+
+      // Extract all attachments recursively (images, PDFs, documents, etc.)
+      const extractAttachments = (payload: gmail_v1.Schema$MessagePart): GmailParsedAttachment[] => {
+        const attachments: GmailParsedAttachment[] = [];
+        const partHeaders = payload.headers || [];
+
+        const getPartHeader = (name: string) => {
+          const header = partHeaders.find(
+            (h) => h.name?.toLowerCase() === name.toLowerCase()
+          );
+          return header?.value || "";
+        };
+
+        // Check if this part has an attachmentId (any file type)
+        if (payload.body?.attachmentId && payload.mimeType) {
+          const contentDisposition = getPartHeader('Content-Disposition');
+          const contentId = getPartHeader('Content-ID');
+          const isInline = contentDisposition.toLowerCase().includes('inline') || !!contentId;
+
+          attachments.push({
+            attachmentId: payload.body.attachmentId,
+            filename: payload.filename || 'attachment',
+            mimeType: payload.mimeType,
+            contentId: contentId ? contentId.replace(/[<>]/g, '') : undefined,
+            isInline,
+          });
+        }
+
+        // Recursively check nested parts
+        if (payload.parts) {
+          for (const part of payload.parts) {
+            attachments.push(...extractAttachments(part));
+          }
+        }
+
+        return attachments;
+      };
+
       const body = getBody(message.payload || {});
-  
+      const attachments = extractAttachments(message.payload || {});
+
       return {
         id: message.id || messageId,
         threadId: message.threadId || "",
@@ -795,6 +880,9 @@ async function fetchAndParseEmail(
         body,
         snippet: message.snippet || "",
         labelIds,
+        attachments: attachments.length > 0 ? attachments : undefined,
+        // Legacy field for backward compatibility
+        images: attachments.filter(a => a.mimeType.startsWith('image/')),
       };
     } catch (error: any) {
       // 404 errors are expected - messages can be deleted/moved before we fetch them
@@ -820,6 +908,20 @@ export type GmailWebhookEvent = {
 /**
  * Parse email message to extract useful information
  */
+/**
+ * Parsed attachment from a Gmail message (images, documents, etc.)
+ */
+export interface GmailParsedAttachment {
+    attachmentId: string;
+    filename: string;
+    mimeType: string;
+    contentId?: string;  // For inline images (cid: references)
+    isInline: boolean;   // Content-Disposition: inline vs attachment
+}
+
+// Legacy alias for backward compatibility
+export type GmailParsedImage = GmailParsedAttachment;
+
 export interface GmailEventData {
     id: string;
     threadId: string;
@@ -832,6 +934,14 @@ export interface GmailEventData {
     body: string;
     snippet: string;
     labelIds: string[];
+    // Parsed attachments (images, documents, etc.)
+    attachments?: GmailParsedAttachment[];
+    // Legacy field - kept for backward compatibility
+    images?: GmailParsedAttachment[];
+    // Stored files with full metadata (category, mimeType, url)
+    storedFiles?: StoredFile[];
+    // Legacy field - presigned URLs for stored images only
+    imageUrlsPresigned?: string[];
 }
 
 type ProcessedWebhookClaim = {
@@ -845,3 +955,112 @@ type ProcessedWebhookClaim = {
     user: null;
     oldHistoryId: null;
 };
+
+/**
+ * Decode base64url string (Gmail uses base64url encoding)
+ */
+function decodeBase64Url(str: string): Buffer {
+    // Replace URL-safe characters and add padding
+    const urlSafe = str.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = urlSafe.padEnd(urlSafe.length + (4 - urlSafe.length % 4) % 4, '=');
+    return Buffer.from(padded, 'base64');
+}
+
+/**
+ * Downloads attachments from Gmail and stores them in GCS
+ * Returns array of StoredFile with metadata (url, mimeType, category)
+ */
+async function downloadGmailAttachments(
+    gmail: gmail_v1.Gmail,
+    messageId: string,
+    attachments: GmailParsedAttachment[],
+    integrationId: string
+): Promise<StoredFile[]> {
+    const storedFiles: StoredFile[] = [];
+
+    // Filter to only supported file types
+    const supportedAttachments = attachments.filter(att =>
+        isSupportedFileType(att.mimeType, att.filename)
+    );
+
+    if (supportedAttachments.length === 0) {
+        return storedFiles;
+    }
+
+    logger.info(`📎 [GMAIL] Found ${supportedAttachments.length} supported attachment(s) for message ${messageId}`, {
+        messageId,
+        integrationId,
+        totalAttachments: attachments.length,
+        supportedCount: supportedAttachments.length
+    });
+
+    // Process each attachment (with concurrency limit)
+    const MAX_CONCURRENT = 5;
+    for (let i = 0; i < supportedAttachments.length; i += MAX_CONCURRENT) {
+        const batch = supportedAttachments.slice(i, i + MAX_CONCURRENT);
+        const batchResults = await Promise.all(
+            batch.map(async (attachment) => {
+                try {
+                    const primaryKey = buildGmailFileKey(integrationId, messageId, attachment.attachmentId);
+                    const storedFile = await ensureStoredWithMetadata(primaryKey, async (): Promise<FileDownloadResult> => {
+                        // Fetch attachment using Gmail API
+                        const attachmentResponse = await gmail.users.messages.attachments.get({
+                            userId: 'me',
+                            messageId: messageId,
+                            id: attachment.attachmentId,
+                        });
+
+                        const attachmentData = attachmentResponse.data;
+                        if (!attachmentData.data) {
+                            throw new Error('No data in attachment response');
+                        }
+
+                        // Decode base64url-encoded attachment data
+                        const buffer = decodeBase64Url(attachmentData.data);
+                        return {
+                            data: buffer,
+                            mimeType: attachment.mimeType || 'application/octet-stream',
+                            filename: attachment.filename
+                        };
+                    });
+
+                    if (storedFile) {
+                        logger.debug(`✅ Stored Gmail attachment in GCS`, {
+                            messageId,
+                            attachmentId: attachment.attachmentId,
+                            filename: attachment.filename,
+                            category: storedFile.category,
+                            isInline: attachment.isInline
+                        });
+                        return storedFile;
+                    }
+                } catch (error) {
+                    logger.error(`Error storing Gmail attachment`, {
+                        error,
+                        messageId,
+                        attachmentId: attachment.attachmentId,
+                        filename: attachment.filename
+                    });
+                }
+                return null;
+            })
+        );
+
+        // Add non-null results
+        storedFiles.push(...batchResults.filter((f): f is StoredFile => f !== null));
+    }
+
+    if (storedFiles.length > 0) {
+        const byCategory = storedFiles.reduce((acc, f) => {
+            acc[f.category] = (acc[f.category] || 0) + 1;
+            return acc;
+        }, {} as Record<string, number>);
+        logger.info(`📎 [GMAIL] Stored ${storedFiles.length} attachment(s) in GCS for message ${messageId}`, {
+            messageId,
+            storedCount: storedFiles.length,
+            byCategory
+        });
+    }
+
+    return storedFiles;
+}

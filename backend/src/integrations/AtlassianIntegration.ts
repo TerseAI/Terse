@@ -20,6 +20,14 @@ import { integrationTaskQueue } from "./IntegrationTaskQueues";
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask";
 import { FrontendRoutes } from "../shared/FrontendRoutes";
 import { ApiRoutes } from "../shared/ApiRoutes";
+import {
+    ensureStoredWithMetadata,
+    buildJiraFileKey,
+    FileDownloadResult,
+    isFileStorageConfigured,
+    isSupportedFileType,
+    StoredFile,
+} from "../services/FileStorageService";
 
 const OAUTH_TOKEN_REFRESH_THRESHOLD_MS = 1000 * 60 * 30; // 30 minutes (expires access token after 1 hour)
 
@@ -421,8 +429,22 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
                         // Continue with original event if enrichment fails
                     }
 
+                    // Extract and store attachments in GCS (images, documents, etc.)
+                    let storedFiles: StoredFile[] = [];
+                    if (isFileStorageConfigured() && event.issue?.fields?.attachment) {
+                        const accessToken = await this.getAccessToken(integration.id);
+                        if (accessToken) {
+                            storedFiles = await this.downloadJiraAttachments(
+                                event.issue.fields.attachment,
+                                event.issue.key,
+                                integration.id,
+                                accessToken
+                            );
+                        }
+                    }
+
                     // Create JiraEvent and process it
-                    const jiraEvent = new JiraEvent(enrichedEvent, integration.id);
+                    const jiraEvent = new JiraEvent(enrichedEvent, integration.id, storedFiles);
                     const eventProcessor = new EventProcessor(jiraEvent, user);
                     await eventProcessor.process();
                 });
@@ -922,6 +944,99 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
     }
 
     /**
+     * Downloads attachments from Jira and stores them in GCS
+     * Returns array of StoredFile with full metadata (images, documents, etc.)
+     */
+    private async downloadJiraAttachments(
+        attachments: JiraWebhookPayload['issue']['fields']['attachment'],
+        issueKey: string,
+        integrationId: string,
+        accessToken: string
+    ): Promise<StoredFile[]> {
+        const storedFiles: StoredFile[] = [];
+
+        // Filter for supported file types (images, PDFs, documents, etc.)
+        const supportedAttachments = attachments?.filter(
+            att => isSupportedFileType(att.mimeType, att.filename)
+        ) ?? [];
+
+        if (supportedAttachments.length === 0) {
+            return storedFiles;
+        }
+
+        logger.info(`📎 [JIRA] Found ${supportedAttachments.length} supported attachment(s) for issue ${issueKey}`, {
+            issueKey,
+            totalAttachments: attachments?.length || 0,
+            supportedCount: supportedAttachments.length
+        });
+
+        // Process each attachment (with concurrency limit)
+        const MAX_CONCURRENT = 5;
+        for (let i = 0; i < supportedAttachments.length; i += MAX_CONCURRENT) {
+            const batch = supportedAttachments.slice(i, i + MAX_CONCURRENT);
+            const batchResults = await Promise.all(
+                batch.map(async (attachment) => {
+                    try {
+                        const primaryKey = buildJiraFileKey(integrationId, issueKey, attachment.id);
+                        const storedFile = await ensureStoredWithMetadata(primaryKey, async (): Promise<FileDownloadResult> => {
+                            // Download attachment using OAuth token
+                            const response = await fetch(attachment.content, {
+                                headers: {
+                                    'Authorization': `Bearer ${accessToken}`,
+                                    'Accept': '*/*',
+                                },
+                            });
+
+                            if (!response.ok) {
+                                throw new Error(`Failed to download Jira attachment: ${response.status} ${response.statusText}`);
+                            }
+
+                            const buffer = Buffer.from(await response.arrayBuffer());
+                            const mimeType = attachment.mimeType || response.headers.get('content-type') || 'application/octet-stream';
+                            return { data: buffer, mimeType, filename: attachment.filename };
+                        });
+
+                        if (storedFile) {
+                            logger.debug(`✅ Stored Jira attachment in GCS`, {
+                                issueKey,
+                                attachmentId: attachment.id,
+                                filename: attachment.filename,
+                                category: storedFile.category
+                            });
+                            return storedFile;
+                        }
+                    } catch (error) {
+                        logger.error(`Error storing Jira attachment`, {
+                            error,
+                            issueKey,
+                            attachmentId: attachment.id,
+                            filename: attachment.filename
+                        });
+                    }
+                    return null;
+                })
+            );
+
+            // Add non-null results
+            storedFiles.push(...batchResults.filter((f): f is StoredFile => f !== null));
+        }
+
+        if (storedFiles.length > 0) {
+            const byCategory = storedFiles.reduce((acc, f) => {
+                acc[f.category] = (acc[f.category] || 0) + 1;
+                return acc;
+            }, {} as Record<string, number>);
+            logger.info(`📎 [JIRA] Stored ${storedFiles.length} attachment(s) in GCS for issue ${issueKey}`, {
+                issueKey,
+                storedCount: storedFiles.length,
+                byCategory
+            });
+        }
+
+        return storedFiles;
+    }
+
+    /**
      * Deletes a Jira webhook using OAuth bearer token authentication
      */
     private async deleteJiraWebhook(
@@ -964,11 +1079,13 @@ export class JiraEvent extends InputEvent {
     readonly integrationType: IntegrationType = IntegrationType.ATLASSIAN;
     data: JiraWebhookPayload;
     private integrationId: string;
+    private storedFiles: StoredFile[];
 
-    constructor(data: JiraWebhookPayload, integrationId: string) {
+    constructor(data: JiraWebhookPayload, integrationId: string, storedFiles: StoredFile[] = []) {
         super();
         this.data = data;
         this.integrationId = integrationId;
+        this.storedFiles = storedFiles;
     }
 
     formatForAgentRunner(): string {
@@ -1187,9 +1304,15 @@ export class JiraEvent extends InputEvent {
     }
 
     getImageUrls(): string[] {
-        // Jira webhooks don't typically include images
-        // But we could extract attachment URLs if needed in the future
-        return [];
+        // Return presigned GCS URLs for image attachments
+        return this.storedFiles
+            .filter(f => f.category === 'image')
+            .map(f => f.url);
+    }
+
+    getFiles(): StoredFile[] {
+        // Return all stored files with full metadata
+        return this.storedFiles;
     }
 }
 

@@ -19,6 +19,14 @@ import { createOAuthStateToken } from "../utility/oauth";
 import { integrationTaskQueue } from "./IntegrationTaskQueues";
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask";
 import { FrontendRoutes } from "../shared/FrontendRoutes";
+import {
+    ensureStoredWithMetadata,
+    buildLinearFileKey,
+    FileDownloadResult,
+    isFileStorageConfigured,
+    StoredFile,
+    classifyFile,
+} from "../services/FileStorageService";
 
 export class LinearIntegrationManager implements Integration<LinearIntegration, LinearWebhookPayload, typeof LinearIntegrationMetadata>, OAuthIntegrationInstallation<IntegrationType.LINEAR> {
     constructor() { }
@@ -107,6 +115,8 @@ export class LinearIntegrationManager implements Integration<LinearIntegration, 
                 await runWithUserContext(user.id, user.email, async () => {
                     // Enrich context using LinearAdapter
                     let enrichedEvent = event;
+                    let storedFiles: StoredFile[] = [];
+
                     try {
                         // Get valid access token (handles refresh automatically)
                         const accessToken = await this.getAccessToken(integration.id);
@@ -115,14 +125,29 @@ export class LinearIntegrationManager implements Integration<LinearIntegration, 
                             // Continue with original event if token cannot be obtained
                         } else {
                             const adapter = new LinearAdapter(accessToken);
-                            
-                            // If this is an Issue event, fetch additional details
+
+                            // If this is an Issue event, fetch additional details and attachments
                             if (event.type === "Issue" && event.data?.id) {
                                 try {
                                     const issue = await adapter.findTicket(event.data.id);
                                     // Enrich the event with additional context from the API
                                     // The event already has most data, but we can add any missing fields
                                     logger.debug(`📊 [LINEAR INTEGRATION MANAGER] Enriched issue context for ${event.data.id}`, { issueId: event.data.id, integrationId: integration.id });
+
+                                    // Fetch and store attachments (images, documents, etc.)
+                                    if (isFileStorageConfigured()) {
+                                        try {
+                                            const attachments = await adapter.getIssueAttachments(event.data.id);
+                                            storedFiles = await downloadLinearAttachments(
+                                                attachments,
+                                                event.data.id,
+                                                event.organizationId,
+                                                accessToken
+                                            );
+                                        } catch (attachError) {
+                                            logger.warn(`⚠️  [LINEAR INTEGRATION MANAGER] Could not fetch attachments`, { error: attachError, issueId: event.data.id, integrationId: integration.id });
+                                        }
+                                    }
                                 } catch (error) {
                                     logger.warn(`⚠️  [LINEAR INTEGRATION MANAGER] Could not enrich issue context`, { error, issueId: event.data.id, integrationId: integration.id });
                                     // Continue with original event if enrichment fails
@@ -135,7 +160,7 @@ export class LinearIntegrationManager implements Integration<LinearIntegration, 
                     }
 
                     // Create LinearEvent and process it
-                    const linearEvent = new LinearEvent(enrichedEvent, integration.id);
+                    const linearEvent = new LinearEvent(enrichedEvent, integration.id, storedFiles);
                     const eventProcessor = new EventProcessor(linearEvent, user);
                     await eventProcessor.process();
                 });
@@ -446,11 +471,13 @@ export class LinearEvent extends InputEvent {
     readonly integrationType: IntegrationType = IntegrationType.LINEAR;
     data: LinearWebhookPayload;
     private integrationId: string;
+    private storedFiles: StoredFile[];
 
-    constructor(data: LinearWebhookPayload, integrationId: string) {
+    constructor(data: LinearWebhookPayload, integrationId: string, storedFiles: StoredFile[] = []) {
         super();
         this.data = data;
         this.integrationId = integrationId;
+        this.storedFiles = storedFiles;
     }
 
     formatForAgentRunner(): string {
@@ -583,7 +610,122 @@ export class LinearEvent extends InputEvent {
     }
 
     getImageUrls(): string[] {
-        // Linear events don't include images yet
-        return [];
+        // Return presigned GCS URLs for image attachments
+        return this.storedFiles
+            .filter(f => f.category === 'image')
+            .map(f => f.url);
     }
+
+    getFiles(): StoredFile[] {
+        // Return all stored files with full metadata
+        return this.storedFiles;
+    }
+}
+// Supported file extensions for Linear attachments
+const SUPPORTED_EXTENSIONS = [
+    // Images
+    '.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.svg', '.tiff', '.tif',
+    // Documents
+    '.pdf',
+    // Text files
+    '.txt', '.md', '.csv', '.json', '.xml', '.html',
+    // Office documents
+    '.docx', '.doc', '.xlsx', '.xls', '.pptx', '.ppt',
+];
+
+/**
+ * Downloads attachments from Linear and stores them in GCS
+ * Returns array of StoredFile with full metadata
+ */
+async function downloadLinearAttachments(
+    attachments: Array<{ id: string; title: string; url: string; createdAt: string }>,
+    issueId: string,
+    organizationId: string,
+    accessToken: string
+): Promise<StoredFile[]> {
+    const storedFiles: StoredFile[] = [];
+
+    // Filter for supported file types (infer from URL extension)
+    const supportedAttachments = attachments.filter(att => {
+        const urlLower = att.url.toLowerCase();
+        return SUPPORTED_EXTENSIONS.some(ext => urlLower.includes(ext));
+    });
+
+    if (supportedAttachments.length === 0) {
+        return storedFiles;
+    }
+
+    logger.info(`📎 [LINEAR] Found ${supportedAttachments.length} supported attachment(s) for issue ${issueId}`, {
+        issueId,
+        organizationId,
+        totalAttachments: attachments.length,
+        supportedCount: supportedAttachments.length
+    });
+
+    // Process each attachment (with concurrency limit)
+    const MAX_CONCURRENT = 5;
+    for (let i = 0; i < supportedAttachments.length; i += MAX_CONCURRENT) {
+        const batch = supportedAttachments.slice(i, i + MAX_CONCURRENT);
+        const batchResults = await Promise.all(
+            batch.map(async (attachment) => {
+                try {
+                    const primaryKey = buildLinearFileKey(organizationId, issueId, attachment.id);
+                    const storedFile = await ensureStoredWithMetadata(primaryKey, async (): Promise<FileDownloadResult> => {
+                        // Download attachment using Bearer token
+                        // Linear's uploads.linear.app requires authentication
+                        const response = await fetch(attachment.url, {
+                            headers: {
+                                'Authorization': `Bearer ${accessToken}`,
+                            },
+                        });
+
+                        if (!response.ok) {
+                            throw new Error(`Failed to download Linear attachment: ${response.status} ${response.statusText}`);
+                        }
+
+                        const buffer = Buffer.from(await response.arrayBuffer());
+                        const mimeType = response.headers.get('content-type') || 'application/octet-stream';
+                        // Extract filename from URL or use title
+                        const filename = attachment.title || attachment.url.split('/').pop() || 'attachment';
+                        return { data: buffer, mimeType, filename };
+                    });
+
+                    if (storedFile) {
+                        logger.debug(`✅ Stored Linear attachment in GCS`, {
+                            issueId,
+                            attachmentId: attachment.id,
+                            title: attachment.title,
+                            category: storedFile.category
+                        });
+                        return storedFile;
+                    }
+                } catch (error) {
+                    logger.error(`Error storing Linear attachment`, {
+                        error,
+                        issueId,
+                        attachmentId: attachment.id,
+                        title: attachment.title
+                    });
+                }
+                return null;
+            })
+        );
+
+        // Add non-null results
+        storedFiles.push(...batchResults.filter((f): f is StoredFile => f !== null));
+    }
+
+    if (storedFiles.length > 0) {
+        const byCategory = storedFiles.reduce((acc, f) => {
+            acc[f.category] = (acc[f.category] || 0) + 1;
+            return acc;
+        }, {} as Record<string, number>);
+        logger.info(`📎 [LINEAR] Stored ${storedFiles.length} attachment(s) in GCS for issue ${issueId}`, {
+            issueId,
+            storedCount: storedFiles.length,
+            byCategory
+        });
+    }
+
+    return storedFiles;
 }

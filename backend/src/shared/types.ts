@@ -336,6 +336,8 @@ export interface FigmaCommentEventData {
   positioningData?: FigmaPositioningData;
   matchedNodeIds?: string[];
   imageUrls?: FigmaCommentImageUrls;
+  // Presigned GCS URLs for images (populated after storage)
+  imageUrlsPresigned?: string[];
 }
 
 export type AgentTrigger = {

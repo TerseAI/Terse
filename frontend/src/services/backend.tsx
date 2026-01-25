@@ -385,6 +385,14 @@ interface BackendService {
      * Gets write-only tools that require approval for the given skills and knowledge bases
      */
     getToolsThatRequireApprovals(request: GetToolsThatRequireApprovalsRequest): Promise<GetToolsThatRequireApprovalsResponse>;
+
+    /**
+     * Gets a presigned URL for uploading a file directly to GCS
+     * @param filename - Original filename
+     * @param mimeType - MIME type of the file
+     * @param runId - The run ID this file is associated with
+     */
+    getFileUploadUrl(filename: string, mimeType: string, runId: string): Promise<{ uploadUrl: string; fileKey: string }>;
 }
 
 export const BackendProvider: BackendService = {
@@ -1081,6 +1089,19 @@ export const BackendProvider: BackendService = {
             .then(response => response.data)
             .catch(error => {
                 console.error('Error getting tools that require approvals:', error);
+                throw error;
+            });
+    },
+
+    getFileUploadUrl: (filename: string, mimeType: string, runId: string) => {
+        return axios.post<{ uploadUrl: string; fileKey: string }>(
+            `${backendBaseUrl}${ApiRoutes.FILES.UPLOAD_URL}`,
+            { filename, mimeType, runId },
+            { withCredentials: true }
+        )
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error getting file upload URL:', error);
                 throw error;
             });
     },

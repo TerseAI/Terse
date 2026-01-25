@@ -27,6 +27,16 @@ import { integrationTaskQueue } from "./IntegrationTaskQueues";
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask";
 import { FrontendRoutes } from "../shared/FrontendRoutes";
 import { ApiRoutes } from "../shared/ApiRoutes";
+import {
+  ensureStored,
+  buildFigmaNodeImageKey,
+  buildFigmaFullFrameImageKey,
+  FileDownloadResult,
+  isFileStorageConfigured,
+} from "../services/FileStorageService";
+
+// Type alias for backward compatibility
+type ImageDownloadResult = FileDownloadResult;
 
 export class FigmaIntegrationManager implements Integration<FigmaIntegration, FigmaWebhookEvent, typeof FigmaIntegrationMetadata>, OAuthIntegrationInstallation<IntegrationType.FIGMA> {
   constructor() { }
@@ -775,6 +785,57 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
 
     logger.info("Figma for comment imageUrls", { imageUrls: JSON.stringify(imageUrls, null, 2), commentId, fileKey });
 
+    // Download Figma images to GCS and get presigned URLs (if GCS is configured)
+    const imageUrlsPresigned: string[] = [];
+    if (isFileStorageConfigured()) {
+      // Download node image if available
+      if (imageUrls.nodeImage) {
+        try {
+          const primaryKey = buildFigmaNodeImageKey(integration.id, fileKey, commentId);
+          const presignedUrl = await ensureStored(primaryKey, async (): Promise<ImageDownloadResult> => {
+            // Figma export URLs are publicly accessible (no auth needed to download)
+            const response = await fetch(imageUrls.nodeImage!);
+            if (!response.ok) {
+              throw new Error(`Failed to download Figma node image: ${response.status} ${response.statusText}`);
+            }
+            const buffer = Buffer.from(await response.arrayBuffer());
+            const mimeType = response.headers.get('content-type') || 'image/png';
+            return { data: buffer, mimeType };
+          });
+          if (presignedUrl) {
+            imageUrlsPresigned.push(presignedUrl);
+            logger.debug(`✅ Stored Figma node image in GCS`, { commentId, fileKey, primaryKey });
+          }
+        } catch (error) {
+          logger.error(`Error storing Figma node image`, { error, commentId, fileKey });
+          // Continue - don't fail the entire event
+        }
+      }
+
+      // Download full frame image if available
+      if (imageUrls.fullFrame) {
+        try {
+          const primaryKey = buildFigmaFullFrameImageKey(integration.id, fileKey, commentId);
+          const presignedUrl = await ensureStored(primaryKey, async (): Promise<ImageDownloadResult> => {
+            const response = await fetch(imageUrls.fullFrame!);
+            if (!response.ok) {
+              throw new Error(`Failed to download Figma full frame image: ${response.status} ${response.statusText}`);
+            }
+            const buffer = Buffer.from(await response.arrayBuffer());
+            const mimeType = response.headers.get('content-type') || 'image/png';
+            return { data: buffer, mimeType };
+          });
+          if (presignedUrl) {
+            imageUrlsPresigned.push(presignedUrl);
+            logger.debug(`✅ Stored Figma full frame image in GCS`, { commentId, fileKey, primaryKey });
+          }
+        } catch (error) {
+          logger.error(`Error storing Figma full frame image`, { error, commentId, fileKey });
+          // Continue - don't fail the entire event
+        }
+      }
+    }
+
     // Get the closest node ID for storage
     const closestNodeId = matchedNodeIds.length > 0
       ? matchedNodeIds[0]
@@ -816,6 +877,7 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
       positioningData: positioningDataOrUndefined,
       matchedNodeIds: matchedNodeIds.length > 0 ? matchedNodeIds : undefined,
       imageUrls: imageUrls.nodeImage || imageUrls.fullFrame ? imageUrls : undefined,
+      imageUrlsPresigned: imageUrlsPresigned.length > 0 ? imageUrlsPresigned : undefined,
     });
 
     const eventProcessor = new EventProcessor(figmaEvent, user);
@@ -998,7 +1060,14 @@ export class FigmaCommentEvent extends InputEvent {
   }
 
   getImageUrls(): string[] {
-    // Return all available image URLs from the Figma comment event
+    // Return presigned GCS URLs if available (preferred - they're stable and don't expire for 24h)
+    // Fall back to raw Figma URLs only if GCS storage is not configured
+    if (this.data.imageUrlsPresigned && this.data.imageUrlsPresigned.length > 0) {
+      return this.data.imageUrlsPresigned;
+    }
+
+    // Fallback: return raw Figma URLs (only when GCS is not configured)
+    // Note: These URLs expire in 30 days and are not recommended for production use
     const urls: string[] = [];
     if (this.data.imageUrls) {
       if (this.data.imageUrls.nodeImage) {

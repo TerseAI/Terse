@@ -239,4 +239,9 @@ export const ApiRoutes = {
       params: { id: 'string' } as const,
     },
   },
+
+  // Files routes (for chat file uploads)
+  FILES: {
+    UPLOAD_URL: '/files/upload-url',
+  },
 } as const;

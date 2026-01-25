@@ -4,12 +4,12 @@ import { ChevronDown } from 'lucide-react';
 import { AwaitingResponseAnimation } from './AwaitingResponseAnimation';
 import { type Turn, TurnView } from './Turn';
 import ChatInput from './ChatInput';
-import { type ModelRequest } from '../../shared/ModelEvents';
+import { type ModelRequest, type UploadedFile } from '../../shared/ModelEvents';
 
 interface ChatLayoutProps {
     turns: Turn[];
     isPendingAssistantResponse: boolean;
-    onSendMessage: (message: string) => void;
+    onSendMessage: (message: string, uploadedFiles?: UploadedFile[]) => void;
     onSendModelRequest?: (request: ModelRequest) => void;
     input: string;
     setInput: (input: string) => void;
@@ -17,6 +17,7 @@ interface ChatLayoutProps {
     EmptyContentPlaceholder?: React.ReactNode;
     onApprove?: (stepId: string) => void;
     onReject?: (stepId: string) => void;
+    runId?: string;
 }
 
 export interface ChatLayoutHandle {
@@ -33,6 +34,7 @@ export const ChatLayout = forwardRef<ChatLayoutHandle, ChatLayoutProps>(function
     EmptyContentPlaceholder,
     onApprove,
     onReject,
+    runId,
 }, ref) {
     const [showScrollIndicator, setShowScrollIndicator] = useState(false);
     const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -148,12 +150,13 @@ export const ChatLayout = forwardRef<ChatLayoutHandle, ChatLayoutProps>(function
             </AnimatePresence>
 
             <div className="flex-shrink-0">
-                <ChatInput 
-                    sendMessage={onSendMessage} 
-                    input={input} 
-                    setInput={setInput} 
+                <ChatInput
+                    sendMessage={onSendMessage}
+                    input={input}
+                    setInput={setInput}
                     placeholders={placeholders}
                     disabled={isPendingAssistantResponse}
+                    runId={runId}
                 />
             </div>
         </div>

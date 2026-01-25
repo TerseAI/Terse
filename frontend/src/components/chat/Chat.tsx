@@ -13,18 +13,20 @@ type ChatProps = {
     onUserMessage?: (message: string) => void;
     onHandleApprove?: (stepId: string) => void;
     onHandleReject?: (stepId: string) => void;
+    runId?: string;
 };
 
 export type ChatHandle = ChatLayoutHandle;
 
-const Chat = forwardRef<ChatHandle, ChatProps>(function Chat({ 
+const Chat = forwardRef<ChatHandle, ChatProps>(function Chat({
     initialTurns,
-    EmptyContentPlaceholder,  
+    EmptyContentPlaceholder,
     subscribeToEvents,
     sendMessage,
     onUserMessage,
     onHandleApprove,
     onHandleReject,
+    runId,
 }, ref) {
     const { turns, isPendingAssistantResponse, input, setInput, sendMessage: sendUserMessage, sendModelRequest } = useChat({
         subscribeToEvents,
@@ -48,6 +50,7 @@ const Chat = forwardRef<ChatHandle, ChatProps>(function Chat({
             EmptyContentPlaceholder={EmptyContentPlaceholder}
             onApprove={onHandleApprove}
             onReject={onHandleReject}
+            runId={runId}
         />
     );
 });

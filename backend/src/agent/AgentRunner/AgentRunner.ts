@@ -29,6 +29,10 @@ import { SocketEvents, SocketRooms } from '../../shared/SocketEvents';
 // Types from @openai/agents SDK for content items
 type AgentInputText = protocol.InputText;
 type AgentInputImage = protocol.InputImage;
+type AgentInputFile = protocol.InputFile;
+
+// Type for user message content (supports text, images, and files)
+type UserMessageContent = AgentInputText | AgentInputImage | AgentInputFile;
 
 export class AgentRunner<
     T extends Session,
@@ -155,7 +159,7 @@ export class AgentRunner<
         return await this.buildResult(result, streamingParams);
     }
 
-    private buildUserHistory(userMessage: string | (AgentInputText | AgentInputImage)[]): AgentInputItem[] {
+    private buildUserHistory(userMessage: string | UserMessageContent[]): AgentInputItem[] {
         // Directives are now included in the system prompt via SystemPromptBuilder.buildDirectivesSection()
         // to avoid accumulating duplicate directive entries in session history on each conversation turn.
         return [{ role: 'user' as const, content: userMessage }];
@@ -419,16 +423,42 @@ export class AgentRunner<
         };
     }
 
-    private buildUserMessage(inputEvent: InputEvent): (AgentInputText | AgentInputImage)[] {
+    private buildUserMessage(inputEvent: InputEvent): UserMessageContent[] {
         const textContent = this.buildTextContent(inputEvent);
-        const content: (AgentInputText | AgentInputImage)[] = [{ type: 'input_text', text: textContent }];
+        const content: UserMessageContent[] = [{ type: 'input_text', text: textContent }];
 
+        // Add images (for multimodal vision support)
         const imageUrls = inputEvent.getImageUrls();
         for (const imageUrl of imageUrls) {
             content.push({ type: 'input_image', image: imageUrl });
         }
 
-        logger.info("User message build to be sent to agent", { content: JSON.stringify(content, null, 2) });
+        // Add files (PDFs, documents) using input_file content blocks
+        // The SDK supports input_file with file_data (base64 data URL) or file_id
+        // We use presigned URLs which the SDK can fetch
+        const files = inputEvent.getFiles();
+        for (const file of files) {
+            // Only include documents (PDFs) as input_file - they have native SDK support
+            // Text files (DOCX, XLSX, etc.) would need content extraction which isn't implemented yet
+            if (file.category === 'document') {
+                content.push({
+                    type: 'input_file',
+                    filename: file.filename || 'document.pdf',
+                    file_data: file.url, // Presigned URL - SDK will fetch the content
+                } as AgentInputFile);
+            }
+        }
+
+        const documentCount = files.filter(f => f.category === 'document').length;
+        const textFileCount = files.filter(f => f.category === 'text').length;
+
+        logger.info("User message built to be sent to agent", {
+            textLength: textContent.length,
+            imageCount: imageUrls.length,
+            documentCount,
+            textFileCount,
+            totalFilesStored: files.length,
+        });
 
         return content;
     }
