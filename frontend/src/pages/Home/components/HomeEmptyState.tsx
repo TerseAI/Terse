@@ -1,140 +1,234 @@
+import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plug, Zap, ArrowRight } from "lucide-react";
+import { Check, MessageSquare, GitBranch, Zap, ArrowRight, HelpCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
-import { useTemplates } from "@/hooks/api/useTemplates";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { useIntegrations } from "@/hooks/api/useIntegrations";
-import { TemplateCard } from "@/components/Agents/TemplateCard";
-import { Loader2 } from "lucide-react";
+import { useOAuthSuccessListener } from "@/hooks/useOAuthSuccessListener";
 import { FrontendRoutes } from "@/shared/FrontendRoutes";
+import { BackendProvider } from "@/services/backend";
+import { IntegrationType } from "@/shared/Integrations";
+
+enum OnboardingStep {
+    CONNECT_SLACK = 1,
+    ADD_INTEGRATION = 2,
+    CREATE_AGENT = 3,
+}
+
+function deriveOnboardingStep(
+    hasSlackIntegration: boolean,
+    hasOtherIntegrations: boolean
+): OnboardingStep {
+    if (!hasSlackIntegration) return OnboardingStep.CONNECT_SLACK;
+    if (!hasOtherIntegrations) return OnboardingStep.ADD_INTEGRATION;
+    return OnboardingStep.CREATE_AGENT;
+}
 
 export function HomeEmptyState() {
     const navigate = useNavigate();
-    const { templates, isLoading: isLoadingTemplates } = useTemplates();
-    const { integrations: activeIntegrations, isLoading: isLoadingIntegrations } = useIntegrations();
+    const { integrations: activeIntegrations, mutate } = useIntegrations();
+    const [isConnectingSlack, setIsConnectingSlack] = useState(false);
+    const popupRef = useRef<Window | null>(null);
 
-    const hasActiveIntegrations = activeIntegrations && activeIntegrations.length > 0;
+    const hasSlackIntegration = activeIntegrations?.some(
+        (integration) => integration.toLowerCase() === 'slack'
+    ) ?? false;
+
+    const hasOtherIntegrations = activeIntegrations
+        ? activeIntegrations.length > (hasSlackIntegration ? 1 : 0)
+        : false;
+
+    const currentStep = deriveOnboardingStep(hasSlackIntegration, hasOtherIntegrations);
+
+    // Listen for OAuth success and refetch integrations + reset connecting state
+    useOAuthSuccessListener(mutate, () => {
+        setIsConnectingSlack(false);
+    });
+
+    // Monitor popup closure to reset connecting state if user closes without completing
+    useEffect(() => {
+        if (!isConnectingSlack) return;
+
+        const checkPopupClosed = setInterval(() => {
+            // Check if popup exists and is closed
+            if (popupRef.current && popupRef.current.closed) {
+                clearInterval(checkPopupClosed);
+                setIsConnectingSlack(false);
+                popupRef.current = null;
+            }
+        }, 500);
+
+        return () => clearInterval(checkPopupClosed);
+    }, [isConnectingSlack]);
+
+    const connectSlack = async () => {
+        setIsConnectingSlack(true);
+        try {
+            const installationDetails = await BackendProvider.getIntegrationInstallationDetails(
+                IntegrationType.SLACK,
+                { isBotUser: true }
+            );
+
+            if (installationDetails?.oauthUrl) {
+                const popup = window.open(installationDetails.oauthUrl, 'oauth-popup', 'width=600,height=700');
+                popupRef.current = popup;
+
+                // If popup was blocked, reset state immediately
+                if (!popup) {
+                    console.error('Popup was blocked');
+                    setIsConnectingSlack(false);
+                }
+            } else {
+                console.error('OAuth URL not available');
+                setIsConnectingSlack(false);
+            }
+        } catch (error) {
+            console.error('Error initiating Slack OAuth:', error);
+            setIsConnectingSlack(false);
+        }
+    };
+
+    const steps = [
+        {
+            step: OnboardingStep.CONNECT_SLACK,
+            title: "Connect Slack",
+            description: "Chat with your agents and receive notifications directly in Slack. Manage everything through natural conversation.",
+            tooltip: "Manage all your agents directly from Slack. Create, run, and monitor agents without leaving your workspace.",
+            icon: <MessageSquare className="h-5 w-5" />,
+            completed: hasSlackIntegration,
+            action: connectSlack,
+            buttonText: isConnectingSlack ? "Connecting..." : "Connect Slack",
+            disabled: isConnectingSlack,
+        },
+        {
+            step: OnboardingStep.ADD_INTEGRATION,
+            title: "Add an integration",
+            description: "Connect GitHub, Linear, or other tools. These integrations trigger your agents and let them take action.",
+            tooltip: "Integrations give your agents abilities. Connect tools so agents can read issues, comment on PRs, update tasks, and more.",
+            icon: <GitBranch className="h-5 w-5" />,
+            completed: hasOtherIntegrations,
+            action: () => navigate(FrontendRoutes.INTEGRATIONS),
+            buttonText: "Add Integration",
+        },
+        {
+            step: OnboardingStep.CREATE_AGENT,
+            title: "Create your first agent",
+            description: "Build an AI agent that listens for events and automates your workflows. Start from scratch or use a template.",
+            tooltip: "Agents automate repetitive tasks. They listen for events and take action so you can focus on what matters.",
+            icon: <Zap className="h-5 w-5" />,
+            completed: false,
+            action: () => navigate(FrontendRoutes.AGENTS.SETUP),
+            buttonText: "Create Agent",
+        },
+    ];
 
     return (
-        <div className="mx-auto p-8 space-y-8 max-w-5xl">
-            {/* Welcome Header */}
-            <div className="text-center space-y-2">
-                <h1 className="text-3xl font-bold">Welcome to Terse</h1>
-                <p className="text-muted-foreground text-lg">
-                    Let's get you set up with your first automation Agent
-                </p>
-            </div>
+        <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center p-6">
+            <div className="w-full max-w-lg">
+                {/* Header */}
+                <div className="text-center mb-10">
+                    <h1 className="text-2xl font-semibold tracking-tight mb-2">
+                        Welcome to Terse
+                    </h1>
+                    <p className="text-muted-foreground text-sm">
+                        Let's get your workspace set up in a few steps
+                    </p>
+                </div>
 
-            {/* Setup Steps */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Step 1: Set up integrations */}
-                <Card className={`transition-colors ${!hasActiveIntegrations ? 'border-primary/50 bg-primary/5' : ''}`}>
-                    <CardHeader>
-                        <div className="flex items-start gap-4">
-                            <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${hasActiveIntegrations ? 'bg-green-500/10' : 'bg-muted'}`}>
-                                <Plug className={`h-5 w-5 ${hasActiveIntegrations ? 'text-green-500' : 'text-primary'}`} />
-                            </div>
-                            <div className="space-y-1">
-                                <div className="flex items-center gap-2">
-                                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Step 1</span>
-                                    {hasActiveIntegrations && (
-                                        <span className="text-xs font-medium text-green-500">✓ Complete</span>
-                                    )}
+                {/* Steps */}
+                <div className="space-y-3">
+                    {steps.map((stepConfig, index) => {
+                        const isActive = stepConfig.step === currentStep;
+                        const isPast = stepConfig.step < currentStep;
+                        const isFuture = stepConfig.step > currentStep;
+
+                        return (
+                            <div
+                                key={stepConfig.step}
+                                className={`
+                                    relative border rounded-xl p-5 transition-all
+                                    ${isActive ? 'border-foreground/20 bg-muted/30' : 'border-border'}
+                                    ${isFuture ? 'opacity-50' : ''}
+                                `}
+                            >
+                                <div className="flex gap-4">
+                                    {/* Step indicator */}
+                                    <div className={`
+                                        flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-medium
+                                        ${stepConfig.completed ? 'bg-foreground text-background' : isActive ? 'bg-foreground text-background' : 'bg-muted text-muted-foreground'}
+                                    `}>
+                                        {stepConfig.completed ? <Check className="h-4 w-4" /> : stepConfig.step}
+                                    </div>
+
+                                    {/* Content */}
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <h3 className="font-medium">{stepConfig.title}</h3>
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                                                </TooltipTrigger>
+                                                <TooltipContent side="top" className="max-w-[250px]">
+                                                    {stepConfig.tooltip}
+                                                </TooltipContent>
+                                            </Tooltip>
+                                            {stepConfig.completed && (
+                                                <span className="text-xs text-muted-foreground">Complete</span>
+                                            )}
+                                        </div>
+                                        <p className="text-sm text-muted-foreground mb-4">
+                                            {stepConfig.description}
+                                        </p>
+
+                                        {isActive && (
+                                            <Button
+                                                onClick={stepConfig.action}
+                                                size="sm"
+                                                disabled={stepConfig.disabled}
+                                            >
+                                                {stepConfig.buttonText}
+                                                <ArrowRight className="h-3.5 w-3.5" />
+                                            </Button>
+                                        )}
+
+                                        {stepConfig.completed && (
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => navigate(FrontendRoutes.INTEGRATIONS)}
+                                                className="text-muted-foreground"
+                                            >
+                                                Manage
+                                                <ArrowRight className="h-3.5 w-3.5" />
+                                            </Button>
+                                        )}
+                                    </div>
                                 </div>
-                                <CardTitle className="text-lg">Connect your integrations</CardTitle>
-                                <CardDescription>
-                                    {hasActiveIntegrations
-                                        ? `You have ${activeIntegrations.length} integration${activeIntegrations.length > 1 ? 's' : ''} connected`
-                                        : 'Connect apps like Slack, GitHub, Linear, and more to enable automation triggers and actions'
-                                    }
-                                </CardDescription>
-                            </div>
-                        </div>
-                    </CardHeader>
-                    <CardContent>
-                        {isLoadingIntegrations ? (
-                            <div className="flex items-center justify-center py-4">
-                                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                            </div>
-                        ) : (
-                            <Button
-                                variant={hasActiveIntegrations ? "outline" : "default"}
-                                onClick={() => navigate(FrontendRoutes.INTEGRATIONS)}
-                                className="w-full"
-                            >
-                                <Plug className="h-4 w-4" />
-                                {hasActiveIntegrations ? 'Manage Integrations' : 'Set Up Integrations'}
-                                <ArrowRight className="h-4 w-4 ml-auto" />
-                            </Button>
-                        )}
-                    </CardContent>
-                </Card>
 
-                {/* Step 2: Create an Agent */}
-                <Card className={`transition-colors ${hasActiveIntegrations ? 'border-primary/50 bg-primary/5' : ''}`}>
-                    <CardHeader>
-                        <div className="flex items-start gap-4">
-                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted">
-                                <Zap className="h-5 w-5 text-primary" />
+                                {/* Connector line - centered on the 40px circle: p-5 (20px) + half of w-10 (20px) - half of line width (1px) */}
+                                {index < steps.length - 1 && (
+                                    <div className={`
+                                        absolute left-[calc(1.25rem+1.25rem-1px)] top-[4.25rem] w-0.5 h-[calc(100%-2.5rem)]
+                                        ${isPast ? 'bg-foreground' : 'bg-border'}
+                                    `} />
+                                )}
                             </div>
-                            <div className="space-y-1">
-                                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Step 2</span>
-                                <CardTitle className="text-lg">Create your first Agent</CardTitle>
-                                <CardDescription>
-                                    Agents are automations that listen for events and take action using AI
-                                </CardDescription>
-                            </div>
-                        </div>
-                    </CardHeader>
-                    <CardContent>
-                        <Button
-                            variant={hasActiveIntegrations ? "default" : "outline"}
-                            onClick={() => navigate(FrontendRoutes.AGENTS.SETUP)}
-                            className="w-full"
-                        >
-                            <Zap className="h-4 w-4" />
-                            Create Agent
-                            <ArrowRight className="h-4 w-4 ml-auto" />
-                        </Button>
-                    </CardContent>
-                </Card>
+                        );
+                    })}
+                </div>
+
+                {/* Skip link */}
+                <div className="text-center mt-8">
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => navigate(FrontendRoutes.AGENTS.SETUP)}
+                        className="text-muted-foreground text-xs"
+                    >
+                        Skip setup and create an agent
+                    </Button>
+                </div>
             </div>
-
-            {/* Templates Section */}
-            {isLoadingTemplates ? (
-                <div className="flex items-center justify-center py-12">
-                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                </div>
-            ) : templates.length > 0 ? (
-                <div className="space-y-4">
-                    <div>
-                        <h2 className="text-xl font-semibold">Quick start with a template</h2>
-                        <p className="text-sm text-muted-foreground">
-                            Pre-configured Agents for common workflows
-                        </p>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {templates.slice(0, 6).map((template, index) => (
-                            <TemplateCard
-                                key={index}
-                                template={template}
-                                templateIndex={index}
-                            />
-                        ))}
-                    </div>
-                    {templates.length > 6 && (
-                        <div className="text-center">
-                            <Button
-                                variant="ghost"
-                                onClick={() => navigate(FrontendRoutes.AGENTS.SETUP)}
-                            >
-                                View all templates
-                                <ArrowRight className="h-4 w-4" />
-                            </Button>
-                        </div>
-                    )}
-                </div>
-            ) : null}
         </div>
     );
 }
