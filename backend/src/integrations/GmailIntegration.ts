@@ -554,6 +554,10 @@ export class GmailEvent extends InputEvent {
      * Get sample events for the given config that can be used for testing.
      */
     static async getSampleEvents(config: GmailConfig, userId?: string): Promise<SampleEvent[]> {
+        if (!userId) {
+            throw new Error('User ID is required for Gmail sample events');
+        }
+
         const prisma = db();
 
         const gmailIntegration = await prisma.gmail_integrations.findUnique({
@@ -563,6 +567,11 @@ export class GmailEvent extends InputEvent {
         })
         if (!gmailIntegration) {
             throw new Error(`Gmail integration ${config.integrationId} not found`);
+        }
+
+        // Verify ownership - ensure the integration belongs to the requesting user
+        if (gmailIntegration.user_id !== userId) {
+            throw new Error('Access denied. You do not have permission to access this Gmail integration.');
         }
 
         const accessToken = await refreshAccessTokenIfNeeded(gmailIntegration);

@@ -108,28 +108,33 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
         }),
         tool({
             name: 'sendSampleEventToAgent',
-            description: 'Send a sample event to an agent for testing. Results appear in run history.',
+            description: 'Send a sample event to an agent for testing. Results appear in run history. Use the fullEvent object from fetchSampleEvents response.',
             parameters: z.object({
                 agentId: z.string().min(1).describe('Agent ID'),
-                triggerIndex: z.number().min(0).describe('Trigger index from fetchSampleEvents'),
-                sampleEventIndex: z.number().min(0).describe('Sample event index from fetchSampleEvents'),
+                sampleEvent: z.object({
+                    configType: z.nativeEnum(ConfigType).describe('The config type of the event'),
+                    trigger: z.any().describe('The trigger metadata from the sample event'),
+                    integrationId: z.string().describe('The integration ID'),
+                    timestamp: z.string().describe('ISO timestamp of the event'),
+                    preview: z.string().describe('Human-readable preview'),
+                    eventData: z.any().describe('The full event data'),
+                }).describe('The fullEvent object from fetchSampleEvents response'),
             }),
-            execute: async ({ agentId, triggerIndex, sampleEventIndex }, runContext?: RunContext<ChatAgentContext>): Promise<string> => {
+            execute: async ({ agentId, sampleEvent }, runContext?: RunContext<ChatAgentContext>): Promise<string> => {
                 const userId = runContext?.context?.userId;
                 if (!userId) throw new Error("User ID is required");
 
-                const result = await fetchAgentSampleEvents(agentId, userId);
-                if (triggerIndex >= result.triggers.length) throw new Error(`Invalid trigger index`);
+                // Verify the agent exists and belongs to the user
+                const agent = await db().automations.findUnique({
+                    where: { id: agentId, user_id: userId }
+                });
+                if (!agent) throw new Error("Agent not found");
 
-                const trigger = result.triggers[triggerIndex];
-                if (sampleEventIndex >= trigger.sampleEvents.length) throw new Error(`Invalid event index`);
-
-                const sampleEvent = trigger.sampleEvents[sampleEventIndex].fullEvent;
                 const user = await db().users.findUnique({ where: { id: userId } });
                 if (!user) throw new Error("User not found");
 
                 const handler = InputEventRegistry.getEventHandler(sampleEvent.configType);
-                await handler.sendSampleEventToAgent(sampleEvent, agentId, user);
+                await handler.sendSampleEventToAgent(sampleEvent as SampleEvent, agentId, user);
 
                 return `Test started. Check run history for results.`;
             },

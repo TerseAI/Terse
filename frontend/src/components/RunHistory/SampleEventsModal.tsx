@@ -23,17 +23,28 @@ export function SampleEventsModal({ isOpen, onClose, agentId, inputConfigs }: Sa
   const [selectedEventIndex, setSelectedEventIndex] = useState<number | undefined>();
   const [selectedInputIndex, setSelectedInputIndex] = useState(0);
 
+  // Reset selectedInputIndex when inputConfigs changes to prevent out-of-bounds access
+  useEffect(() => {
+    if (selectedInputIndex >= inputConfigs.length) {
+      setSelectedInputIndex(0);
+    }
+  }, [inputConfigs.length, selectedInputIndex]);
+
   // Fetch sample events when modal opens or when selected input changes
   useEffect(() => {
-    if (isOpen && inputConfigs.length > 0) {
+    if (isOpen && inputConfigs.length > 0 && selectedInputIndex < inputConfigs.length) {
       fetchSampleEvents();
     }
-  }, [isOpen, selectedInputIndex]);
+  }, [isOpen, selectedInputIndex, inputConfigs.length]);
 
   const fetchSampleEvents = async () => {
     setIsLoading(true);
     setSelectedEventIndex(undefined); // Reset event selection when changing inputs
     try {
+      if (selectedInputIndex >= inputConfigs.length) {
+        setSelectedInputIndex(0);
+        return;
+      }
       const config = inputConfigs[selectedInputIndex].config;
       if (!config) {
         toast.error('Invalid input configuration');
