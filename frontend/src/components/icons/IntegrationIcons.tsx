@@ -55,9 +55,19 @@ export function ConfluenceIcon() {
 
 export function JiraConfluenceIcon() {
     return (
-        <div className="flex items-center gap-2">
-            <img src="/jira.svg" alt="Jira" className="w-full h-full object-contain" />
-            <img src="/confluence.svg" alt="Confluence" className="w-full h-full object-contain" />
+        <div className="relative w-full h-full">
+            {/* Jira icon - primary, positioned back-left */}
+            <img
+                src="/jira.svg"
+                alt="Jira"
+                className="absolute top-0 left-0 w-[70%] h-[70%] object-contain"
+            />
+            {/* Confluence icon - secondary, overlapping front-right */}
+            <img
+                src="/confluence.svg"
+                alt="Confluence"
+                className="absolute bottom-0 right-0 w-[70%] h-[70%] object-contain"
+            />
         </div>
     );
 }
