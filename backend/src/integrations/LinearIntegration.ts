@@ -613,8 +613,7 @@ export class LinearEvent extends InputEvent {
         if (!linearIntegration) {
             throw new Error(`Linear integration ${config.integrationId} not found`);
         }
-
-        const adapter = new LinearAdapter(linearIntegration.access_token);
+        
         const sampleEvents: LinearSampleEvent[] = [];
 
         try {

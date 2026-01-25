@@ -21,7 +21,7 @@ type InputsSectionProps = {
     agentId: string | null;
 };
 
-export const InputsSection = forwardRef<Map<string, HTMLDivElement>, InputsSectionProps>(({ inputs, setInputs, isLoading, agentId }, ref) => {
+export const InputsSection = forwardRef<Map<string, HTMLDivElement>, InputsSectionProps>(({ inputs, setInputs, isLoading }, ref) => {
     const [showAddModal, setShowAddModal] = useState(false);
     const inputRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
@@ -66,7 +66,6 @@ export const InputsSection = forwardRef<Map<string, HTMLDivElement>, InputsSecti
                     handleRemove={handleRemove} 
                     setShowAddModal={setShowAddModal}
                     inputRefs={inputRefs}
-                    agentId={agentId}
                 />
             )}
 
@@ -85,8 +84,7 @@ function InputCardsLayout({
     setInputs, 
     handleRemove, 
     setShowAddModal,
-    inputRefs,
-    agentId
+    inputRefs
 }: {
     inputs: TransientAgentTrigger[], 
     handleSelectIntegration: (integrationId: string, input: TransientAgentTrigger) => void, 
@@ -94,7 +92,6 @@ function InputCardsLayout({
     handleRemove: (id: string) => void, 
     setShowAddModal: (show: boolean) => void,
     inputRefs: React.MutableRefObject<Map<string, HTMLDivElement>>,
-    agentId: string | null
 }) {
     const isSingleInput = inputs.length === 1;
     
@@ -110,7 +107,6 @@ function InputCardsLayout({
                                 inputs={inputs}
                                 setInputs={setInputs} 
                                 handleRemove={handleRemove}
-                                agentId={agentId}
                                 ref={(el) => {
                                     if (el && input.config?.isComplete()) {
                                         inputRefs.current.set(input.id, el);
@@ -141,7 +137,6 @@ function InputCardsLayout({
                         inputs={inputs}
                         setInputs={setInputs} 
                         handleRemove={handleRemove}
-                        agentId={agentId}
                         ref={(el) => {
                             if (el && input.config?.isComplete()) {
                                 inputRefs.current.set(input.id, el);
@@ -163,8 +158,7 @@ export const InputCard = forwardRef<HTMLDivElement, {
     input: TransientAgentTrigger,
     inputs: TransientAgentTrigger[],
     setInputs: (inputs: TransientAgentTrigger[]) => void, 
-    handleRemove: (id: string) => void,
-    agentId: string | null
+    handleRemove: (id: string) => void
 }>(({
     input,
     inputs,
