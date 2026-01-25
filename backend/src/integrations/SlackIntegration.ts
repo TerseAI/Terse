@@ -645,7 +645,6 @@ export class SlackEvent extends InputEvent implements Identifiable {
 
             // Fetch message history for each conversation until we find one with messages
             for (const conversation of conversationsToSearch) {
-                console.log('fetching messages for conversation', conversation.id)
                 const messages = await client.conversations.history({
                     channel: conversation.id || '',
                     limit: 3
