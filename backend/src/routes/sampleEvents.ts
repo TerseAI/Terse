@@ -33,7 +33,7 @@ export async function getSampleEvents(req: Request, res: Response) {
 export async function sendSampleEventToAgent(req: Request, res: Response) {
     const agentSampleEvent = req.body as AgentSampleEvent;
     const { agentId, sampleEvent } = agentSampleEvent;
-    if (!agentId || !sampleEvent.integrationId || !sampleEvent.trigger || !sampleEvent.eventData) {
+    if (!agentId || !sampleEvent || !sampleEvent.integrationId || !sampleEvent.trigger || !sampleEvent.eventData) {
         return res.status(400).json({ error: 'agentId and sampleEvent are required' });
     }
     if (!req.session?.user) {
