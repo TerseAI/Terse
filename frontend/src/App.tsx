@@ -102,7 +102,7 @@ function AppLayout() {
   return (
     <SidebarProvider>
       <AppSidebar />
-      <main className="w-full">
+      <main className="w-full bg-background">
         <BreadCrumb />
         <Outlet />
       </main>
