@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Check, MessageSquare, GitBranch, Zap, ArrowRight, HelpCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { useIntegrations } from "@/hooks/api/useIntegrations";
+import { useOAuthSuccessListener } from "@/hooks/useOAuthSuccessListener";
 import { FrontendRoutes } from "@/shared/FrontendRoutes";
 import { BackendProvider } from "@/services/backend";
 import { IntegrationType } from "@/shared/Integrations";
@@ -25,8 +26,9 @@ function deriveOnboardingStep(
 
 export function HomeEmptyState() {
     const navigate = useNavigate();
-    const { integrations: activeIntegrations } = useIntegrations();
+    const { integrations: activeIntegrations, mutate } = useIntegrations();
     const [isConnectingSlack, setIsConnectingSlack] = useState(false);
+    const popupRef = useRef<Window | null>(null);
 
     const hasSlackIntegration = activeIntegrations?.some(
         (integration) => integration.toLowerCase() === 'slack'
@@ -38,6 +40,27 @@ export function HomeEmptyState() {
 
     const currentStep = deriveOnboardingStep(hasSlackIntegration, hasOtherIntegrations);
 
+    // Listen for OAuth success and refetch integrations + reset connecting state
+    useOAuthSuccessListener(mutate, () => {
+        setIsConnectingSlack(false);
+    });
+
+    // Monitor popup closure to reset connecting state if user closes without completing
+    useEffect(() => {
+        if (!isConnectingSlack) return;
+
+        const checkPopupClosed = setInterval(() => {
+            // Check if popup exists and is closed
+            if (popupRef.current && popupRef.current.closed) {
+                clearInterval(checkPopupClosed);
+                setIsConnectingSlack(false);
+                popupRef.current = null;
+            }
+        }, 500);
+
+        return () => clearInterval(checkPopupClosed);
+    }, [isConnectingSlack]);
+
     const connectSlack = async () => {
         setIsConnectingSlack(true);
         try {
@@ -47,13 +70,20 @@ export function HomeEmptyState() {
             );
 
             if (installationDetails?.oauthUrl) {
-                window.open(installationDetails.oauthUrl, 'oauth-popup', 'width=600,height=700');
+                const popup = window.open(installationDetails.oauthUrl, 'oauth-popup', 'width=600,height=700');
+                popupRef.current = popup;
+
+                // If popup was blocked, reset state immediately
+                if (!popup) {
+                    console.error('Popup was blocked');
+                    setIsConnectingSlack(false);
+                }
             } else {
                 console.error('OAuth URL not available');
+                setIsConnectingSlack(false);
             }
         } catch (error) {
             console.error('Error initiating Slack OAuth:', error);
-        } finally {
             setIsConnectingSlack(false);
         }
     };
