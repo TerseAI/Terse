@@ -240,8 +240,9 @@ export const ApiRoutes = {
     },
   },
 
-  // Files routes (for chat file uploads)
+  // Files routes
   FILES: {
     UPLOAD_URL: '/files/upload-url',
   },
+
 } as const;
