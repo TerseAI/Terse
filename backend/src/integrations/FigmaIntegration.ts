@@ -1108,21 +1108,9 @@ export class FigmaCommentEvent extends InputEvent {
     }
   }
 
-  static async sendSampleEventToAgent(sampleEvent: FigmaSampleEvent, agentId: string, user: User): Promise<void> {
+  static async sendSampleEventToAgent(sampleEvent: FigmaSampleEvent): Promise<FigmaCommentEvent> {
     const event = new FigmaCommentEvent(sampleEvent.eventData);
-    const eventProcessor = new EventProcessor(event, user);
-
-    const agent = await eventProcessor.findAgent(agentId);
-    if (!agent) {
-      throw new Error(`Agent ${agentId} not found`);
-    }
-
-    // Process asynchronously
-    eventProcessor.processAgent(agent).then(() => {
-      logger.info(`Sample Figma event sent to agent`, { agentId, fileKey: sampleEvent.eventData.fileKey });
-    }).catch((error) => {
-      logger.error(`Error sending sample Figma event to agent`, { error, agentId });
-    });
+    return event;
   }
 }
 

@@ -486,21 +486,9 @@ export class GithubEvent extends InputEvent {
         }
     }
 
-    static async sendSampleEventToAgent(sampleEvent: GithubSampleEvent, agentId: string, user: User): Promise<void> {
+    static async createInputEventFromSampleEvent(sampleEvent: GithubSampleEvent): Promise<GithubEvent> {
         const event = new GithubEvent(sampleEvent.eventData);
-        const eventProcessor = new EventProcessor(event, user);
-
-        const agent = await eventProcessor.findAgent(agentId);
-        if (!agent) {
-            throw new Error(`Agent ${agentId} not found`);
-        }
-
-        // Process asynchronously
-        eventProcessor.processAgent(agent).then(() => {
-            logger.info(`Sample GitHub event sent to agent`, { agentId, repository: sampleEvent.eventData.repositoryName });
-        }).catch((error) => {
-            logger.error(`Error sending sample GitHub event to agent`, { error, agentId });
-        });
+        return event;
     }
 }
 

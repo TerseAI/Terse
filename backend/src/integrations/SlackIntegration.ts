@@ -952,21 +952,9 @@ export class SlackEvent extends InputEvent implements Identifiable {
         }
     }
 
-    static async sendSampleEventToAgent(sampleEvent: SlackSampleEvent, agentId: string, user: User): Promise<void> {
+    static async createInputEventFromSampleEvent(sampleEvent: SlackSampleEvent): Promise<SlackEvent> {
         const event = new SlackEvent(sampleEvent.eventData);
-        const eventProcessor = new EventProcessor(event, user);
-
-        const agent = await eventProcessor.findAgent(agentId);
-        if (!agent) {
-            throw new Error(`Agent ${agentId} not found`);
-        }
-
-        // Process asynchronously
-        eventProcessor.processAgent(agent).then(() => {
-            logger.info(`Sample Slack event sent to agent`, { agentId, channelId: sampleEvent.eventData.channelId });
-        }).catch((error) => {
-            logger.error(`Error sending sample Slack event to agent`, { error, agentId });
-        });
+        return event
     }
 }
 

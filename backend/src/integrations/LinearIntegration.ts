@@ -705,20 +705,8 @@ export class LinearEvent extends InputEvent {
         }
     }
 
-    static async sendSampleEventToAgent(sampleEvent: LinearSampleEvent, agentId: string, user: User): Promise<void> {
+    static async createInputEventFromSampleEvent(sampleEvent: LinearSampleEvent): Promise<LinearEvent> {
         const event = new LinearEvent(sampleEvent.eventData, sampleEvent.integrationId);
-        const eventProcessor = new EventProcessor(event, user);
-
-        const agent = await eventProcessor.findAgent(agentId);
-        if (!agent) {
-            throw new Error(`Agent ${agentId} not found`);
-        }
-
-        // Process asynchronously
-        eventProcessor.processAgent(agent).then(() => {
-            logger.info(`Sample Linear event sent to agent`, { agentId, issueId: sampleEvent.eventData.data.id });
-        }).catch((error) => {
-            logger.error(`Error sending sample Linear event to agent`, { error, agentId });
-        });
+        return event
     }
 }

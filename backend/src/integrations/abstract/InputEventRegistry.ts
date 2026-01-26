@@ -1,6 +1,5 @@
 import { ConfigInstance, ConfigType } from '../../shared/Configs';
 import { SampleEvent } from '../../shared/SampleEvents';
-import { User } from '../../types/prisma';
 import { GmailEvent } from '../GmailIntegration';
 import { SlackEvent } from '../SlackIntegration';
 import { JiraEvent } from '../AtlassianIntegration';
@@ -11,7 +10,7 @@ import { FigmaCommentEvent } from '../FigmaIntegration';
 
 interface InputEventClass {
     getSampleEvents(config: ConfigInstance, userId?: string): Promise<SampleEvent[]>;
-    sendSampleEventToAgent(sampleEvent: SampleEvent, agentId: string, user: User): Promise<void>;
+    createInputEventFromSampleEvent(sampleEvent: SampleEvent): Promise<InputEvent>;
 }
 
 /**

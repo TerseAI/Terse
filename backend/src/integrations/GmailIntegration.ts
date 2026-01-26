@@ -607,7 +607,7 @@ export class GmailEvent extends InputEvent {
         return sampleEventsFiltered;
     }
 
-    static async sendSampleEventToAgent(sampleEvent: GmailSampleEvent, agentId: string, user: User): Promise<void> {
+    static async createInputEventFromSampleEvent(sampleEvent: GmailSampleEvent): Promise<GmailEvent> {
         console.log('Sending sample event to agent', sampleEvent);
         const { eventData, integrationId } = sampleEvent;
         const integration = await db().gmail_integrations.findUnique({
@@ -617,19 +617,7 @@ export class GmailEvent extends InputEvent {
             throw new Error(`Gmail integration ${integrationId} not found`);
         }
         const event = new GmailEvent(eventData as GmailEventData, integrationId);
-        const eventProcessor = new EventProcessor(event, user);
-
-        const agent = await eventProcessor.findAgent(agentId);
-        if (!agent) {
-            throw new Error(`Agent ${agentId} not found`);
-        }
-
-        // Process asynchronously
-        eventProcessor.processAgent(agent).then(() => {
-            logger.info(`Sample event ${eventData.messageId} sent to agent`, { sampleEvent });
-        }).catch((error) => {
-            logger.error(`Error sending sample event ${eventData.messageId} to agent`, { error, sampleEvent });
-        });
+        return event;
     }
 }
 

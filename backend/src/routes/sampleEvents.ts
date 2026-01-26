@@ -6,6 +6,7 @@ import { filterEvent } from "../agent/AgentRunner/EventFilter";
 import { createInputEventFromSampleEvent } from "../utility/typeConverters";
 import { db } from "../prismaClient";
 import { AgentPrompt } from "../types/prisma";
+import { EventProcessor } from "../agent/AgentRunner/EventProcessor";
 
 
 export async function addFilterResultsToSampleEvents(
@@ -85,7 +86,11 @@ export async function sendSampleEventToAgent(req: Request, res: Response) {
 
     try {
         const handler = InputEventRegistry.getEventHandler(sampleEvent.configType);
-        await handler.sendSampleEventToAgent(sampleEvent, agentId, req.session.user);
+        const inputEvent = await handler.createInputEventFromSampleEvent(sampleEvent);
+        const eventProcessor = new EventProcessor(inputEvent, req.session.user);
+        const agent = await eventProcessor.findAgent(agentId)
+        if (!agent) throw new Error("Agent not found");
+        await eventProcessor.processAgent(agent);
         return res.status(200).json({ message: 'Sample event sent to agent' });
     } catch (error) {
         return res.status(500).json({ error: 'Error sending sample event to agent' });

@@ -1460,7 +1460,7 @@ export class JiraEvent extends InputEvent {
         }
     }
 
-    static async sendSampleEventToAgent(sampleEvent: JiraSampleEvent, agentId: string, user: User): Promise<void> {
+    static async createInputEventFromSampleEvent(sampleEvent: JiraSampleEvent): Promise<JiraEvent> {
         // Convert the simplified event data back to a full webhook payload
         const eventData = sampleEvent.eventData;
         const webhookPayload: JiraWebhookPayload = {
@@ -1541,19 +1541,7 @@ export class JiraEvent extends InputEvent {
         };
 
         const event = new JiraEvent(webhookPayload, sampleEvent.integrationId);
-        const eventProcessor = new EventProcessor(event, user);
-
-        const agent = await eventProcessor.findAgent(agentId);
-        if (!agent) {
-            throw new Error(`Agent ${agentId} not found`);
-        }
-
-        // Process asynchronously
-        eventProcessor.processAgent(agent).then(() => {
-            logger.info(`Sample Jira event sent to agent`, { agentId, issueKey: sampleEvent.eventData.issue.key });
-        }).catch((error) => {
-            logger.error(`Error sending sample Jira event to agent`, { error, agentId });
-        });
+        return event;
     }
 }
 

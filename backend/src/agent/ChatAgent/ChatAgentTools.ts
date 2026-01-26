@@ -32,6 +32,7 @@ import { getInputConfigInclude } from "../../utility/prismaIncludes";
 import { convertPrismaConfigToConfigInstance } from "../../utility/typeConverters";
 import { addFilterResultsToSampleEvents } from "../../routes/sampleEvents";
 import { RunHistoryTrigger } from "../../shared/RunHistoryTypes";
+import { EventProcessor } from "../AgentRunner/EventProcessor";
 
 export type ChatAgentContext = {
     chatInterface: ChatInterface;
@@ -126,12 +127,6 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
                 const userId = runContext?.context?.userId;
                 if (!userId) throw new Error("User ID is required");
 
-                // Verify the agent exists and belongs to the user
-                const agent = await db().automations.findUnique({
-                    where: { id: agentId, user_id: userId }
-                });
-                if (!agent) throw new Error("Agent not found");
-
                 const user = await db().users.findUnique({ where: { id: userId } });
                 if (!user) throw new Error("User not found");
 
@@ -143,8 +138,11 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
                     eventData: JSON.parse(sampleEvent.eventData) as any
                 } as SampleEvent;
 
-                await handler.sendSampleEventToAgent(parsedSampleEvent, agentId, user);
-
+                const inputEvent = await handler.createInputEventFromSampleEvent(parsedSampleEvent);
+                const eventProcessor = new EventProcessor(inputEvent, user);
+                const agent = await eventProcessor.findAgent(agentId);
+                if (!agent) throw new Error("Agent not found");
+                await eventProcessor.processAgent(agent);
                 return `Test started. Check run history for results.`;
             },
         }),
