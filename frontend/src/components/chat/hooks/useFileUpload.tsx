@@ -184,7 +184,7 @@ export function useFileUpload({ runId, maxFiles = 5 }: UseFileUploadOptions) {
   const hasFiles = pendingFiles.length > 0;
   const hasErrors = pendingFiles.some(f => f.status === 'error');
   const allCompleted = pendingFiles.every(f => f.status === 'completed');
-  const canSend = hasFiles && !isUploading && pendingFiles.every(f => f.status !== 'error' || f.status === 'completed');
+  const canSend = hasFiles && !isUploading && pendingFiles.every(f => f.status !== 'error');
 
   return {
     pendingFiles,

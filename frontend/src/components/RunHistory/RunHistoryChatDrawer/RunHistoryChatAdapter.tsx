@@ -113,6 +113,7 @@ function convertRunHistoryEventsToTurns(events: ModelEvent[]): Turn[] {
                 turns.push({
                     role: 'user',
                     text: e.message,
+                    files: e.files,
                     function_calls: [],
                     step_id: 'user',
                     isGenerating: false,

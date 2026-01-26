@@ -25,6 +25,7 @@ import logger from '../../logger';
 import { RunHistoryActionType } from '@prisma/client';
 import { KnowledgeBase } from '../../knowledgeBase/abstract/KnowledgeBase';
 import { SocketEvents, SocketRooms } from '../../shared/SocketEvents';
+import { StoredFile } from '../../services/FileStorageService';
 
 // Types from @openai/agents SDK for content items
 type AgentInputText = protocol.InputText;
@@ -131,14 +132,14 @@ export class AgentRunner<
         return await this.buildResult(result, streamingParams);
     }
 
-    async userMessageRun(userMessage: string, streamingParams?: RunHistoryStreamingParams): Promise<ApprovalResult<SessionWithTracking<T>, Agent<SessionWithTracking<T>, AgentOutputType>>> {
+    async userMessageRun(userMessage: string, files?: StoredFile[], streamingParams?: RunHistoryStreamingParams): Promise<ApprovalResult<SessionWithTracking<T>, Agent<SessionWithTracking<T>, AgentOutputType>>> {
         await this.initializeAgent();
 
         if (!this.agent) {
             throw new Error("Agent not initialized. Call initializeAgent() before run()");
         }
 
-        const userHistory = this.buildUserHistory(userMessage);
+        const userHistory = this.buildUserHistory(userMessage, files);
 
         const runner = runnerFactory({
             agentId: this.agentConfig.id,
@@ -159,9 +160,31 @@ export class AgentRunner<
         return await this.buildResult(result, streamingParams);
     }
 
-    private buildUserHistory(userMessage: string | UserMessageContent[]): AgentInputItem[] {
+    private buildUserHistory(userMessage: string | UserMessageContent[], files?: StoredFile[]): AgentInputItem[] {
         // Directives are now included in the system prompt via SystemPromptBuilder.buildDirectivesSection()
         // to avoid accumulating duplicate directive entries in session history on each conversation turn.
+
+        // If files are provided, build multimodal content
+        if (files && files.length > 0 && typeof userMessage === 'string') {
+            const content: UserMessageContent[] = [
+                { type: 'input_text', text: userMessage }
+            ];
+
+            for (const file of files) {
+                if (file.category === 'image') {
+                    content.push({ type: 'input_image', image: file.url });
+                } else if (file.category === 'document') {
+                    content.push({
+                        type: 'input_file',
+                        filename: file.filename || 'document.pdf',
+                        file_data: file.url, // Presigned URL - SDK will fetch the content
+                    } as AgentInputFile);
+                }
+            }
+
+            return [user(content)];
+        }
+
         return [{ role: 'user' as const, content: userMessage }];
     }
 

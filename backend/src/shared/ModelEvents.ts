@@ -27,6 +27,7 @@ export type UploadedFile = {
   fileKey: string;    // GCS object key (returned from upload-url endpoint)
   filename: string;
   mimeType: string;
+  url?: string;       // Presigned URL for display (populated by backend)
 };
 
 export type SendModelRequest = {
@@ -47,4 +48,4 @@ export type ToolCallComplete = { tool_name: string, status: string, step_id: str
 
 export type FilterResult = { isRelevant: boolean, reason: string, confidence: number, step_id: string };
 
-export type UserMessage = { message: string };
+export type UserMessage = { message: string; files?: UploadedFile[] };

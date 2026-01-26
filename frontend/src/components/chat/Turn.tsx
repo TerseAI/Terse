@@ -3,14 +3,16 @@ import { HandThumbUpIcon as HandThumbUpFilledIcon, HandThumbDownIcon as HandThum
 import { useState } from "react";
 import TokenStream from "./TokenStream";
 
-import { ChangedItem, SharedErrorContext } from "../../shared/ModelEvents";
+import { ChangedItem, SharedErrorContext, UploadedFile } from "../../shared/ModelEvents";
 import FunctionCallItem from "./FunctionCallItem";
+import { MessageAttachments } from "./MessageAttachments";
 
 interface Turn {
     role: 'user' | 'assistant';
     text: string;
     function_calls: FunctionCallEvent[];
     step_id: string;
+    files?: UploadedFile[];
     isFailure?: boolean;
     isGenerating?: boolean;
     isThinking?: boolean;
@@ -39,7 +41,7 @@ interface FunctionCallEvent {
     errorContext?: SharedErrorContext;
 }
 
-function TurnView({ role, text, function_calls, isFailure = false, isGenerating = false, isThinking = false, filter_result, disableAnimation = false, onApprove, onReject }: Turn) {
+function TurnView({ role, text, function_calls, files, isFailure = false, isGenerating = false, isThinking = false, filter_result, disableAnimation = false, onApprove, onReject }: Turn) {
     const isUser = role === 'user';
     const isAssistantFinishedGenerating = !isGenerating && role === 'assistant' && text.length > 0;
     // Expanded state - show all steps with status
@@ -73,7 +75,12 @@ function TurnView({ role, text, function_calls, isFailure = false, isGenerating 
                                 </svg>
                             )}
                             {isUser ? (
-                                <span className="select-text">{text}</span>
+                                <>
+                                    <span className="select-text">{text}</span>
+                                    {files && files.length > 0 && (
+                                        <MessageAttachments files={files} />
+                                    )}
+                                </>
                             ) : (
                                 <div className="select-text">
                                     <TokenStream text={text} disableAnimation={disableAnimation} />
