@@ -73,6 +73,10 @@ export function useFileUpload({ runId, maxFiles = 5 }: UseFileUploadOptions) {
     return pendingFile;
   }, [validateFile, maxFiles]);
 
+  const addFiles = useCallback((files: File[]) => {
+    files.forEach(file => addFile(file));
+  }, [addFile]);
+
   const removeFile = useCallback((id: string) => {
     setPendingFiles(prev => {
       const file = prev.find(f => f.id === id);
@@ -124,6 +128,9 @@ export function useFileUpload({ runId, maxFiles = 5 }: UseFileUploadOptions) {
       if (!response.ok) {
         throw new Error(`Upload failed: ${response.statusText}`);
       }
+
+      // Confirm upload and set filename metadata
+      await BackendProvider.confirmFileUpload(fileKey, pendingFile.file.name);
 
       const uploadedFile: UploadedFile = {
         fileKey,
@@ -194,6 +201,7 @@ export function useFileUpload({ runId, maxFiles = 5 }: UseFileUploadOptions) {
     allCompleted,
     canSend,
     addFile,
+    addFiles,
     removeFile,
     clearFiles,
     uploadAllPending,

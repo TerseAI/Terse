@@ -393,6 +393,14 @@ interface BackendService {
      * @param runId - The run ID this file is associated with
      */
     getFileUploadUrl(filename: string, mimeType: string, runId: string): Promise<{ uploadUrl: string; fileKey: string }>;
+
+    /**
+     * Confirms a file upload and sets metadata (original filename)
+     * Should be called after the browser successfully uploads to GCS
+     * @param fileKey - The GCS object key
+     * @param filename - The original filename
+     */
+    confirmFileUpload(fileKey: string, filename: string): Promise<{ success: boolean }>;
 }
 
 export const BackendProvider: BackendService = {
@@ -1102,6 +1110,19 @@ export const BackendProvider: BackendService = {
             .then(response => response.data)
             .catch(error => {
                 console.error('Error getting file upload URL:', error);
+                throw error;
+            });
+    },
+
+    confirmFileUpload: (fileKey: string, filename: string) => {
+        return axios.post<{ success: boolean }>(
+            `${backendBaseUrl}${ApiRoutes.FILES.CONFIRM_UPLOAD}`,
+            { fileKey, filename },
+            { withCredentials: true }
+        )
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error confirming file upload:', error);
                 throw error;
             });
     },

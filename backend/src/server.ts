@@ -98,7 +98,7 @@ import { handleScheduleWebhook, handleManualTrigger } from "./routes/schedule";
 import { getTemplates } from "./routes/templates";
 import "./integrations/IntegrationTaskHandler"; // Import to trigger listener registration
 import { ApiRoutes } from "./shared/ApiRoutes";
-import { getUploadUrl } from "./routes/files";
+import { getUploadUrl, confirmUpload } from "./routes/files";
 import { runStartupValidations } from "./tools/validateToolNames";
 import { toolsThatRequireApprovalsRoute } from "./routes/tools";
 
@@ -579,6 +579,10 @@ app.post(ApiRoutes.TOOLS.THAT_REQUIRE_APPROVALS, authMiddleware, async (req, res
 
 app.post(ApiRoutes.FILES.UPLOAD_URL, authMiddleware, async (req, res) => {
   getUploadUrl(req, res);
+});
+
+app.post(ApiRoutes.FILES.CONFIRM_UPLOAD, authMiddleware, async (req, res) => {
+  confirmUpload(req, res);
 });
 
 /**

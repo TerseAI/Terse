@@ -100,7 +100,7 @@ function ChatInput({ sendMessage, input, setInput, placeholders, disabled = fals
                 {/* File upload button */}
                 {enableFileUpload && (
                     <FileUploadButton
-                        onFileSelect={fileUpload.addFile}
+                        onFilesSelect={fileUpload.addFiles}
                         disabled={isDisabled}
                     />
                 )}

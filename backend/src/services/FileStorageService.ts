@@ -284,6 +284,7 @@ async function generatePresignedUrl(file: File): Promise<string> {
     version: 'v4',
     action: 'read',
     expires: Date.now() + PRESIGNED_URL_EXPIRY_MS,
+    cname: ""
   });
   return signedUrl;
 }
@@ -695,6 +696,7 @@ export async function generateUploadUrl(
       action: 'write',
       expires: Date.now() + UPLOAD_URL_EXPIRY_MS,
       contentType: mimeType,
+      cname: ""
     });
 
     logger.info('Generated upload URL', {
@@ -711,6 +713,61 @@ export async function generateUploadUrl(
   } catch (error) {
     logger.error('Error generating upload URL', { primaryKey, error });
     return null;
+  }
+}
+
+/**
+ * Extract the original filename from a chat file key
+ * Chat file keys have format: chat/{userId}/{runId}/{uuid}_{filename}
+ */
+function extractFilenameFromKey(fileKey: string): string | undefined {
+  // Match the pattern: anything_{filename} at the end
+  const match = fileKey.match(/\/[^\/]+_(.+)$/);
+  if (match) {
+    // The filename was sanitized (non-alphanumeric replaced with _),
+    // but this is still useful as a fallback
+    return match[1];
+  }
+  return undefined;
+}
+
+/**
+ * Set metadata on an already-uploaded file
+ * Used after frontend uploads a file directly to GCS to set the original filename
+ *
+ * @param fileKey - The GCS object key
+ * @param filename - The original filename to store in metadata
+ * @returns true if successful, false otherwise
+ */
+export async function setFileMetadata(
+  fileKey: string,
+  filename: string
+): Promise<boolean> {
+  const file = getFile(fileKey);
+
+  if (!file) {
+    logger.debug('GCS not configured, cannot set file metadata', { fileKey });
+    return false;
+  }
+
+  try {
+    const [exists] = await file.exists();
+    if (!exists) {
+      logger.warn('File not found in GCS, cannot set metadata', { fileKey });
+      return false;
+    }
+
+    await file.setMetadata({
+      metadata: {
+        originalFilename: filename,
+      },
+    });
+
+    logger.info('Set file metadata', { fileKey, filename });
+    return true;
+  } catch (error) {
+    logger.error('Error setting file metadata', { fileKey, error });
+    return false;
   }
 }
 
@@ -741,7 +798,10 @@ export async function getStoredFileByKey(fileKey: string): Promise<StoredFile | 
 
     const contentType = typeof metadata.contentType === 'string' ? metadata.contentType : 'application/octet-stream';
     const originalFilename = metadata.metadata?.originalFilename;
-    const filenameStr = typeof originalFilename === 'string' ? originalFilename : undefined;
+    // Try to extract filename from metadata, fall back to extracting from key
+    const filenameStr = typeof originalFilename === 'string'
+      ? originalFilename
+      : extractFilenameFromKey(fileKey);
 
     return {
       url,

@@ -243,6 +243,7 @@ export const ApiRoutes = {
   // Files routes
   FILES: {
     UPLOAD_URL: '/files/upload-url',
+    CONFIRM_UPLOAD: '/files/confirm-upload',
   },
 
 } as const;

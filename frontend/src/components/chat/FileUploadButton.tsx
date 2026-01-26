@@ -2,17 +2,19 @@ import { useRef } from 'react';
 import { Paperclip } from 'lucide-react';
 
 interface FileUploadButtonProps {
-  onFileSelect: (file: File) => void;
+  onFilesSelect: (files: File[]) => void;
   disabled?: boolean;
   accept?: string;
+  multiple?: boolean;
 }
 
 const DEFAULT_ACCEPT = 'image/png,image/jpeg,image/gif,image/webp,application/pdf';
 
 export function FileUploadButton({
-  onFileSelect,
+  onFilesSelect,
   disabled = false,
   accept = DEFAULT_ACCEPT,
+  multiple = true,
 }: FileUploadButtonProps) {
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -21,9 +23,9 @@ export function FileUploadButton({
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      onFileSelect(file);
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      onFilesSelect(Array.from(files));
       // Reset input so same file can be selected again
       e.target.value = '';
     }
@@ -38,6 +40,7 @@ export function FileUploadButton({
         onChange={handleChange}
         className="hidden"
         disabled={disabled}
+        multiple={multiple}
       />
       <button
         type="button"
