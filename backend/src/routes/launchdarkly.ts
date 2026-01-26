@@ -74,52 +74,9 @@ export async function fetchLaunchDarklyProjects(
     integrationId: string,
     query: string = ""
 ): Promise<{ projects: Array<{ key: string; name: string }> }> {
-    const integration = await db().launchdarkly_integrations.findFirst({
-        where: {
-            id: integrationId,
-            user_id: userId,
-        },
-    });
-
-    if (!integration) {
-        throw new Error("LaunchDarkly integration not found");
-    }
-
-    const response = await fetch('https://app.launchdarkly.com/api/v2/projects', {
-        method: 'GET',
-        headers: {
-            'Authorization': integration.api_key,
-            'Content-Type': 'application/json',
-        },
-    });
-
-    if (!response.ok) {
-        const errorText = await response.text();
-        logger.error('Failed to fetch LaunchDarkly projects', {
-            integrationId,
-            status: response.status,
-            error: errorText,
-        });
-        throw new Error(response.status === 401 ? 'Invalid API key' : errorText);
-    }
-
-    const projectsData = await response.json();
-    let projects = Array.isArray(projectsData) ? projectsData : (projectsData.items || projectsData.projects || []);
-
-    if (query) {
-        const queryLower = query.toLowerCase();
-        projects = projects.filter((p: any) =>
-            p.name?.toLowerCase().includes(queryLower) ||
-            p.key?.toLowerCase().includes(queryLower)
-        );
-    }
-
-    const projectsList = projects.map((p: any) => ({
-        key: p.key || p._id,
-        name: p.name || p.key || 'Unnamed Project',
-    }));
-
-    return { projects: projectsList };
+    const manager = new LaunchDarklyIntegrationManager();
+    const projects = await manager.fetchResourcesForInstance(userId, integrationId, query);
+    return { projects };
 }
 
 export async function fetchLaunchDarklyEnvironments(

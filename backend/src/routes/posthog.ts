@@ -1,7 +1,6 @@
 import { Request, Response } from "express";
 import { PosthogIntegrationManager } from "../integrations/PosthogIntegration";
 import { PosthogProjectsResponse } from "../shared/types";
-import { db } from "../prismaClient";
 import logger from "../logger";
 import { parseFormSubmissionFromRequest } from "../integrations/abstract/Integration";
 
@@ -80,59 +79,7 @@ export const fetchPosthogProjects = async (
     integrationId: string,
     search: string = ""
 ): Promise<PosthogProjectsResponse> => {
-    const integration = await db().posthog_integrations.findFirst({
-        where: {
-            id: integrationId,
-            user_id: userId,
-        },
-    });
-
-    if (!integration) {
-        throw new Error("Posthog integration not found");
-    }
-
-    const apiUrl = 'https://us.posthog.com/api/projects/';
-    const response = await fetch(apiUrl, {
-        method: 'GET',
-        headers: {
-            'Authorization': `Bearer ${integration.api_key}`,
-            'Content-Type': 'application/json',
-        },
-    });
-
-    if (!response.ok) {
-        const errorText = await response.text();
-        logger.error('Posthog API error fetching projects', {
-            status: response.status,
-            error: errorText,
-        });
-        throw new Error(response.status === 401 ? 'Invalid API key' : errorText);
-    }
-
-    const data = await response.json();
-    let projects = Array.isArray(data) ? data : (data.results || data.data || []);
-    
-    if (search) {
-        const searchLower = search.toLowerCase();
-        projects = projects.filter((project: any) => 
-            project.name?.toLowerCase().includes(searchLower) ||
-            project.id?.toString().toLowerCase().includes(searchLower)
-        );
-    }
-
-    const mappedProjects = projects.map((project: any) => ({
-        id: project.id?.toString() || project.uuid || '',
-        name: project.name || 'Unnamed Project',
-        organization_id: project.organization_id || project.organization?.id || undefined,
-    })).filter((project: any) => project.id);
-
-    if (!search) {
-        mappedProjects.sort((a: { name: string }, b: { name: string }) => 
-            a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
-        );
-    }
-
-    return {
-        projects: mappedProjects,
-    };
+    const manager = new PosthogIntegrationManager();
+    const projects = await manager.fetchResourcesForInstance(userId, integrationId, search);
+    return { projects };
 };

@@ -1,4 +1,4 @@
-import { Integration, OAuthIntegrationInstallation, ConfigurationFieldDefinition } from "./abstract/Integration";
+import { Integration, OAuthIntegrationInstallation, ConfigurationFieldDefinition, IntegrationWithResources } from "./abstract/Integration";
 import { db } from "../prismaClient";
 import { EventProcessor } from "../agent/AgentRunner/EventProcessor";
 import { InputEvent } from "./abstract/InputEvent";
@@ -8,7 +8,7 @@ import { resolveUsersForGithubInstallation } from "../routes/github";
 import { User } from "../types/prisma";
 import { AgentTriggerWithConfigs } from "../types/prisma";
 import { RunHistoryTrigger } from "../shared/RunHistoryTypes";
-import { OAuthInstallationDetails } from "../shared/types";
+import { OAuthInstallationDetails, Repository } from "../shared/types";
 import { githubApp, urls } from "../config/settings";
 import { Request, Response } from "express";
 import { InputConfigType } from "@prisma/client";
@@ -20,7 +20,7 @@ import { IntegrationCompletedTask } from "./IntegrationCompletedTask";
 import { createOAuthStateToken, decodeOAuthStateToken, OAuthStatePayload, OAuthStateEncodingFormat } from "../utility/oauth";
 import { FrontendRoutes } from "../shared/FrontendRoutes";
 
-export class GithubIntegrationManager implements Integration<GithubIntegration, GithubAppUnifiedEventRequest, typeof GithubIntegrationMetadata>, OAuthIntegrationInstallation<IntegrationType.GITHUB> {
+export class GithubIntegrationManager implements Integration<GithubIntegration, GithubAppUnifiedEventRequest, typeof GithubIntegrationMetadata, Repository>, OAuthIntegrationInstallation<IntegrationType.GITHUB> {
     constructor() { }
     integrationType: IntegrationType = IntegrationType.GITHUB;
 
@@ -209,6 +209,52 @@ export class GithubIntegrationManager implements Integration<GithubIntegration, 
             logger.error(`Error getting GitHub access token for installation ${integrationId}`, { error, integrationId });
             return null;
         }
+    }
+
+    async fetchResourcesForInstance(userId: string, installationId: string, query?: string): Promise<Repository[]> {
+        const accessToken = await db().github_app_tokens.findFirst({ where: { user_id: userId } });
+        if (!accessToken) {
+            throw new Error("GitHub account not connected");
+        }
+
+        const installations = await getAppInstallationsForUser(accessToken.access_token);
+        const targetInstallation = installations.installations.find(i => i.id === Number(installationId));
+        if (!targetInstallation) {
+            throw new Error("Installation not found");
+        }
+
+        const installationRepositories = await getAppInstallationRepositories(accessToken.access_token, targetInstallation.id);
+
+        let repositories = installationRepositories.map(r => ({ id: r.id, name: r.name, owner: r.owner.login }));
+
+        if (query) {
+            const normalizedQuery = query.trim().toLowerCase();
+            repositories = repositories.filter(repo =>
+                repo.name.toLowerCase().includes(normalizedQuery) ||
+                `${repo.owner}/${repo.name}`.toLowerCase().includes(normalizedQuery)
+            );
+        }
+
+        return repositories;
+    }
+
+    async fetchResourcesForUser(userId: string, query?: string): Promise<IntegrationWithResources<GithubIntegration, Repository>[]> {
+        const integrations = await this.getInstancesForUser(userId);
+        return Promise.all(
+            integrations.map(async (integration) => {
+                const installationId = integration.installation_id ?? Number(integration.id);
+                if (!installationId) {
+                    return { integration, resources: [] };
+                }
+                try {
+                    const resources = await this.fetchResourcesForInstance(userId, String(installationId), query);
+                    return { integration, resources };
+                } catch (error) {
+                    logger.warn(`Failed to fetch resources for GitHub integration ${integration.id}`, { error, integrationId: integration.id });
+                    return { integration, resources: [] };
+                }
+            })
+        );
     }
 }
 

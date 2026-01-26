@@ -19,7 +19,7 @@ export interface ScheduleWebhookEvent {
 }
 
 export class CronJobIntegrationManager implements
-    Integration<IntegrationInstance, ScheduleWebhookEvent, typeof CronJobIntegrationMetadata>,
+    Integration<IntegrationInstance, ScheduleWebhookEvent, typeof CronJobIntegrationMetadata, never>,
     FormIntegrationInstallation<IntegrationType.CRON_JOB> {
     integrationType: IntegrationType = IntegrationType.CRON_JOB;
     private schedulerClient: SchedulerClient | null = null;
