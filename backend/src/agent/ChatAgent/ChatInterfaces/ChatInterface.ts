@@ -5,10 +5,10 @@ import { AgentDraft } from "../../../routes/agents";
 
 abstract class ChatInterface {
     abstract name: string;
-    protected readonly sessionId: string | undefined;
-    protected readonly userId: string | undefined;
+    protected readonly sessionId: string;
+    protected readonly userId: string;
 
-    constructor(sessionId?: string, userId?: string) {
+    constructor(sessionId: string, userId: string) {
         this.sessionId = sessionId;
         this.userId = userId;
     }
