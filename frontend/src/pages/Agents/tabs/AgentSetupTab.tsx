@@ -389,7 +389,7 @@ export default function AgentSetupTab({
 
             {/* Builder Chat */}
             <div className="border-l border-border col-span-6 h-full min-h-0">
-                <BuilderChat getStateJSON={() => ({})} />
+                <BuilderChat getStateJSON={getStateJSON} />
             </div>
         </div>
     )

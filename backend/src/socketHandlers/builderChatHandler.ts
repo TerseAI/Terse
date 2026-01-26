@@ -16,10 +16,11 @@ export function registerBuilderChatHandler(socket: Socket, userId: string): void
         }
 
         const userMessage = message.user_message;
-        logger.info(`[builder:chat:message] Processing message`, { sessionId, userId, userMessage });
+        const uiState = message.ui_state;
+        logger.info(`[builder:chat:message] Processing message`, { sessionId, userId, userMessage, hasUiState: !!uiState });
 
         const webChatInterface = new WebChatInterface(sessionId, userId, socket);
-        const chatAgent = new ChatAgent(webChatInterface, sessionId, userId);
+        const chatAgent = new ChatAgent(webChatInterface, sessionId, userId, uiState);
         await chatAgent.run(userMessage);
     });
 }
