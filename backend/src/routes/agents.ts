@@ -100,13 +100,13 @@ async function upsertNotificationSettings(
 function validateAndDeduplicateToolApprovals(toolApprovals: string[]): string[] {
     // Deduplicate tool approvals to prevent unique constraint violations
     const uniqueToolApprovals = Array.from(new Set(toolApprovals));
-    
+
     // Validate all tool names
     const invalidToolNames = uniqueToolApprovals.filter(toolName => !isValidToolName(toolName));
     if (invalidToolNames.length > 0) {
         throw new Error(`Invalid tool names: ${invalidToolNames.join(', ')}`);
     }
-    
+
     return uniqueToolApprovals;
 }
 
@@ -602,19 +602,19 @@ export async function getRecentAgents(req: Request, res: Response) {
                 where: {
                     user_id: userId,
                 },
-            include: {
-                prompt: true,
-                inputs: {
-                    include: getInputConfigInclude()
+                include: {
+                    prompt: true,
+                    inputs: {
+                        include: getInputConfigInclude()
+                    },
+                    outputs: {
+                        include: getOutputConfigInclude()
+                    },
+                    knowledge_bases: {
+                        include: getKnowledgeBaseConfigInclude()
+                    },
+                    tool_approvals: true
                 },
-                outputs: {
-                    include: getOutputConfigInclude()
-                },
-                knowledge_bases: {
-                    include: getKnowledgeBaseConfigInclude()
-                },
-                tool_approvals: true
-            },
                 orderBy: { updated_at: 'desc' },
                 take: limit
             }) as Promise<AgentWithRelations[]>,
@@ -663,8 +663,8 @@ export async function getUserAgent(req: Request, res: Response) {
     const userId = req.session.user.id;
     const agentId = req.params.id;
 
-        try {
-            const agent: AgentWithRelations | null = await db().automations.findFirst({
+    try {
+        const agent: AgentWithRelations | null = await db().automations.findFirst({
             where: {
                 id: agentId,
                 user_id: userId

@@ -78,7 +78,7 @@ export default function RunHistoryChatAdapter({ runId, status, children}: RunHis
 }
 
 
-function convertRunHistoryEventsToTurns(events: ModelEvent[]): Turn[] {
+export function convertRunHistoryEventsToTurns(events: ModelEvent[]): Turn[] {
     const turns: Turn[] = [];
     const stepBuffers = new Map<string, string>();
 
