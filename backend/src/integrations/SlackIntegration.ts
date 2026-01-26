@@ -33,7 +33,7 @@ import {
 } from "../slack/blockKitHelpers";
 import { integrationTaskQueue } from "./IntegrationTaskQueues";
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask";
-import { ConversationsHistoryResponse } from "@slack/web-api/dist/types/response/ConversationsHistoryResponse";
+import { ConversationsHistoryResponse, MessageElement } from "@slack/web-api/dist/types/response/ConversationsHistoryResponse";
 import { Channel } from "@slack/web-api/dist/types/response/UsersConversationsResponse";
 
 export class SlackIntegrationManager implements Integration<SlackIntegration, SlackMessageEvent, typeof SlackIntegrationMetadata>, OAuthIntegrationInstallation<IntegrationType.SLACK> {
@@ -622,34 +622,66 @@ export class SlackEvent extends InputEvent implements Identifiable {
     }
 
     /**
-     * Helper function to fetch sample messages from DM conversations
+     * Helper function to fetch sample messages from DM conversations.
+     * Collects messages across multiple DM conversations until we have the target count.
      */
     private static async fetchDMSampleMessages(
         client: WebClient,
         config: SlackConfig,
         authedUserId: string,
-        integrationId: string
-    ): Promise<{ messages: ConversationsHistoryResponse | undefined; conversation: Channel | undefined }> {
+        integrationId: string,
+        targetMessageCount: number = 3
+    ): Promise<{ messagesWithConversations: Array<{ message: MessageElement; conversation: Channel }> }> {
         try {
             const conversationsToSearch = await this.getDMConversationsToSearch(client, config, authedUserId);
 
             if (!conversationsToSearch || conversationsToSearch.length === 0) {
-                return { messages: undefined, conversation: undefined };
+                return { messagesWithConversations: [] };
             }
 
-            // Fetch message history for each conversation until we find one with messages
+            const collectedMessages: Array<{ message: MessageElement; conversation: Channel }> = [];
+
+            // Fetch message history from each conversation until we have enough messages
             for (const conversation of conversationsToSearch) {
+                if (collectedMessages.length >= targetMessageCount) {
+                    break;
+                }
+
+                const remainingNeeded = targetMessageCount - collectedMessages.length;
                 const messages = await client.conversations.history({
                     channel: conversation.id || '',
-                    limit: 3
+                    limit: remainingNeeded
                 });
 
                 if (messages?.messages?.length && messages.messages.length > 0) {
-                    return { messages, conversation };
+                    // For DMs, fetch the user's name to use as the channel name
+                    // The 'user' field on an IM channel is the ID of the other user in the DM
+                    let enrichedConversation = conversation;
+                    if (conversation.is_im && conversation.user) {
+                        try {
+                            const userInfo = await client.users.info({ user: conversation.user });
+                            if (userInfo.ok && userInfo.user) {
+                                const userName = userInfo.user.real_name || userInfo.user.profile?.display_name || userInfo.user.name || 'Direct Message';
+                                // Create a copy with the name set to the user's name
+                                enrichedConversation = { ...conversation, name: `DM with ${userName}` };
+                            }
+                        } catch {
+                            // If we can't fetch user info, fall back to generic name
+                            enrichedConversation = { ...conversation, name: 'Direct Message' };
+                        }
+                    }
+
+                    // Add each message with its conversation context
+                    for (const message of messages.messages) {
+                        if (collectedMessages.length >= targetMessageCount) {
+                            break;
+                        }
+                        collectedMessages.push({ message, conversation: enrichedConversation });
+                    }
                 }
             }
 
-            return { messages: undefined, conversation: undefined };
+            return { messagesWithConversations: collectedMessages };
         } catch (slackError: any) {
             logger.error('Slack API error fetching DM conversations', {
                 error: slackError.message,
@@ -659,11 +691,9 @@ export class SlackEvent extends InputEvent implements Identifiable {
 
             if (slackError.data?.error === 'missing_scope') {
                 const error = new Error('Missing permissions to access direct messages. Please reconnect your Slack workspace with user permissions.');
-                (error as any).statusCode = 403;
                 throw error;
             } else if (slackError.data?.error === 'token_revoked' || slackError.data?.error === 'invalid_auth') {
                 const error = new Error('Slack authentication has been revoked. Please reconnect your Slack workspace.');
-                (error as any).statusCode = 403;
                 throw error;
             }
             throw slackError;
@@ -705,15 +735,12 @@ export class SlackEvent extends InputEvent implements Identifiable {
 
             if (slackError.data?.error === 'channel_not_found') {
                 const error = new Error(`Channel not found or not accessible. Please verify the channel exists and the bot has been added to it.`);
-                (error as any).statusCode = 404;
                 throw error;
             } else if (slackError.data?.error === 'missing_scope') {
                 const error = new Error('Missing permissions to access this channel. Please reconnect your Slack workspace.');
-                (error as any).statusCode = 403;
                 throw error;
             } else if (slackError.data?.error === 'token_revoked' || slackError.data?.error === 'invalid_auth') {
                 const error = new Error('Slack authentication has been revoked. Please reconnect your Slack workspace.');
-                (error as any).statusCode = 403;
                 throw error;
             }
             throw slackError;
@@ -721,20 +748,68 @@ export class SlackEvent extends InputEvent implements Identifiable {
     }
 
     /**
-     * Helper function to convert Slack messages to SlackSampleEvent objects
+     * Helper function to convert Slack messages to SlackSampleEvent objects.
+     * Supports two input formats:
+     * 1. Messages with a single shared conversation (for channel messages)
+     * 2. Messages with individual conversation contexts (for DM messages across multiple conversations)
      */
-    private static convertMessagesToSampleEvents(
-        messages: any[],
+    private static async convertMessagesToSampleEvents(
+        input: {
+            messages: MessageElement[];
+            sharedConversation: Channel | undefined;
+        } | {
+            messagesWithConversations: Array<{ message: MessageElement; conversation: Channel }>;
+        },
         config: SlackConfig,
-        slackConversation: Channel | undefined,
-        teamId: string
-    ): SlackSampleEvent[] {
-        return messages.map(message => {
+        teamId: string,
+        client: WebClient
+    ): Promise<SlackSampleEvent[]> {
+        // Normalize input to a common format
+        const messageEntries: Array<{ message: MessageElement; conversation: Channel | undefined }> =
+            'messagesWithConversations' in input
+                ? input.messagesWithConversations
+                : input.messages.map(message => ({ message, conversation: input.sharedConversation }));
+
+        // Collect unique user IDs to batch lookup
+        const userIds = [...new Set(messageEntries.map(e => e.message.user).filter((id): id is string => !!id))];
+
+        // Fetch user info for all unique users in parallel
+        const userMap = new Map<string, string>();
+        if (userIds.length > 0) {
+            const userInfoResults = await Promise.allSettled(
+                userIds.map(async (userId) => {
+                    try {
+                        const userInfo = await client.users.info({ user: userId });
+                        if (userInfo.ok && userInfo.user) {
+                            const user = userInfo.user;
+                            // Prefer real_name, fallback to display_name, then name
+                            const userName = user.real_name || user.profile?.display_name || user.profile?.real_name || user.name || userId;
+                            return { userId, userName };
+                        }
+                        return { userId, userName: userId };
+                    } catch {
+                        return { userId, userName: userId };
+                    }
+                })
+            );
+
+            for (const result of userInfoResults) {
+                if (result.status === 'fulfilled') {
+                    userMap.set(result.value.userId, result.value.userName);
+                }
+            }
+        }
+
+        return messageEntries.map(({ message, conversation }) => {
+            const userId = message.user || '';
+            // Use looked-up user name, or fallback to message.username (for bots), or user ID
+            const userName = userMap.get(userId) || message.username || userId;
+
             const eventData: SlackEventData = {
-                channelId: config.channelId ? config.channelId : slackConversation?.id || '',
-                channelName: slackConversation?.name || '',
-                userId: message.user || '',
-                userName: message.username || '',
+                channelId: config.channelId ? config.channelId : conversation?.id || '',
+                channelName: conversation?.name || '',
+                userId,
+                userName,
                 text: message.text || '',
                 timestamp: message.ts || '',
                 threadTimestamp: message.thread_ts,
@@ -768,7 +843,6 @@ export class SlackEvent extends InputEvent implements Identifiable {
 
             if (!userSlackIntegration) {
                 const error = new Error(`Slack integration ${config.integrationId} not found`);
-                (error as any).statusCode = 404;
                 throw error;
             }
 
@@ -778,13 +852,11 @@ export class SlackEvent extends InputEvent implements Identifiable {
 
             if (!accessToken) {
                 const error = new Error(`Slack access token not found for integration ${config.integrationId}. Please reconnect your Slack workspace.`);
-                (error as any).statusCode = 403;
                 throw error;
             }
 
             const client = new WebClient(accessToken);
-            let messages: ConversationsHistoryResponse | undefined;
-            let slackConversation: Channel | undefined;
+            const teamId = userSlackIntegration.slack_integration.team_id;
 
             // Fetch messages based on config type (DM or Channel)
             if (config.listenToUserDms) {
@@ -795,7 +867,6 @@ export class SlackEvent extends InputEvent implements Identifiable {
 
                 if (!userSlackIntegration.authed_user_id) {
                     const error = new Error('Slack user ID not found. User token may not be properly configured.');
-                    (error as any).statusCode = 403;
                     throw error;
                 }
 
@@ -805,32 +876,41 @@ export class SlackEvent extends InputEvent implements Identifiable {
                     userSlackIntegration.authed_user_id,
                     config.integrationId
                 );
-                messages = result.messages;
-                slackConversation = result.conversation;
+
+                // Return empty if no messages found
+                if (result.messagesWithConversations.length === 0) {
+                    return [];
+                }
+
+                // Convert messages to sample events (resolves user names)
+                return await this.convertMessagesToSampleEvents(
+                    { messagesWithConversations: result.messagesWithConversations },
+                    config,
+                    teamId,
+                    client
+                );
             } else if (config.channelId) {
                 const result = await this.fetchChannelSampleMessages(
                     client,
                     config.channelId,
                     config.integrationId
                 );
-                messages = result.messages;
-                slackConversation = result.conversation;
+
+                // Return empty if no messages found
+                if (!result.messages?.messages || result.messages.messages.length === 0) {
+                    return [];
+                }
+
+                // Convert messages to sample events (resolves user names)
+                return await this.convertMessagesToSampleEvents(
+                    { messages: result.messages.messages, sharedConversation: result.conversation },
+                    config,
+                    teamId,
+                    client
+                );
             }
 
-            // Return empty if no messages found
-            if (!messages?.messages || messages.messages.length === 0) {
-                return [];
-            }
-
-            // Convert messages to sample events
-            const sampleEvents = this.convertMessagesToSampleEvents(
-                messages.messages,
-                config,
-                slackConversation,
-                userSlackIntegration.slack_integration.team_id
-            );
-
-            return sampleEvents;
+            return [];
         } catch (error: any) {
             // Re-throw errors with status codes
             if (error.statusCode) {
@@ -846,7 +926,6 @@ export class SlackEvent extends InputEvent implements Identifiable {
 
             // Throw generic error for unexpected cases
             const genericError = new Error('Failed to fetch sample events from Slack. Please try again.');
-            (genericError as any).statusCode = 500;
             throw genericError;
         }
     }

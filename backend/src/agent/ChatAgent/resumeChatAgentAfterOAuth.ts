@@ -35,7 +35,7 @@ export async function resumeChatAgentAfterOAuth(
         }
 
         // Create WebClient
-        const client = initializeSlackWebClient(userSlackIntegration as any);
+        const client = initializeSlackWebClient(userSlackIntegration);
 
         // Create SlackChatInterface
         const slackChatInterface = new SlackChatInterface(

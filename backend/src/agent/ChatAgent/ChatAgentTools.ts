@@ -530,13 +530,12 @@ async function fetchAgentSampleEvents(agentId: string, userId: string) {
 
     const triggers = await Promise.all(agent.inputs.map(async (input, triggerIndex) => {
         try {
-            const config = convertPrismaConfigToConfigInstance(input as any);
+            const config = convertPrismaConfigToConfigInstance(input);
             const handler = InputEventRegistry.getEventHandler(config.configType);
             const sampleEvents = await handler.getSampleEvents(config, userId);
             return {
                 triggerIndex,
                 configType: config.configType,
-                description: `${config.integrationType}: ${(config as any).channelName || (config as any).fileName || 'Input'}`,
                 sampleEvents: sampleEvents.map((event, index) => ({
                     index,
                     preview: event.preview,
@@ -547,7 +546,7 @@ async function fetchAgentSampleEvents(agentId: string, userId: string) {
         } catch (error) {
             return {
                 triggerIndex,
-                configType: input.config_type as any,
+                configType: input.config_type,
                 description: `${input.config_type}: Error fetching events`,
                 sampleEvents: []
             };
