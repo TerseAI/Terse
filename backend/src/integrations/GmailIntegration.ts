@@ -565,11 +565,6 @@ export class GmailEvent extends InputEvent {
             throw new Error(`Gmail integration ${config.integrationId} not found`);
         }
 
-        // Verify ownership - ensure the integration belongs to the requesting user
-        if (gmailIntegration.user_id !== userId) {
-            throw new Error('Access denied. You do not have permission to access this Gmail integration.');
-        }
-
         const accessToken = await refreshAccessTokenIfNeeded(gmailIntegration);
         const oauth2Client = getOAuth2Client();
         oauth2Client.setCredentials({
@@ -613,6 +608,7 @@ export class GmailEvent extends InputEvent {
     }
 
     static async sendSampleEventToAgent(sampleEvent: GmailSampleEvent, agentId: string, user: User): Promise<void> {
+        console.log('Sending sample event to agent', sampleEvent);
         const { eventData, integrationId } = sampleEvent;
         const integration = await db().gmail_integrations.findUnique({
             where: { id: integrationId },

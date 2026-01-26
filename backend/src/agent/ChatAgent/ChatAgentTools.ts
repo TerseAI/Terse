@@ -31,6 +31,7 @@ import { db } from "../../prismaClient";
 import { getInputConfigInclude } from "../../utility/prismaIncludes";
 import { convertPrismaConfigToConfigInstance } from "../../utility/typeConverters";
 import { addFilterResultsToSampleEvents } from "../../routes/sampleEvents";
+import { RunHistoryTrigger } from "../../shared/RunHistoryTypes";
 
 export type ChatAgentContext = {
     chatInterface: ChatInterface;
@@ -114,11 +115,11 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
                 agentId: z.string().min(1).describe('Agent ID'),
                 sampleEvent: z.object({
                     configType: z.nativeEnum(ConfigType).describe('The config type of the event'),
-                    trigger: z.any().describe('The trigger metadata from the sample event'),
+                    trigger: z.string().describe('The trigger metadata from the sample event'),
                     integrationId: z.string().describe('The integration ID'),
                     timestamp: z.string().describe('ISO timestamp of the event'),
                     preview: z.string().describe('Human-readable preview'),
-                    eventData: z.any().describe('The full event data'),
+                    eventData: z.string().describe('The full event data'),
                 }).describe('The fullEvent object from fetchSampleEvents response'),
             }),
             execute: async ({ agentId, sampleEvent }, runContext?: RunContext<ChatAgentContext>): Promise<string> => {
@@ -135,7 +136,14 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
                 if (!user) throw new Error("User not found");
 
                 const handler = InputEventRegistry.getEventHandler(sampleEvent.configType);
-                await handler.sendSampleEventToAgent(sampleEvent as SampleEvent, agentId, user);
+
+                const parsedSampleEvent = {
+                    ...sampleEvent,
+                    trigger: JSON.parse(sampleEvent.trigger) as RunHistoryTrigger,
+                    eventData: JSON.parse(sampleEvent.eventData) as any
+                } as SampleEvent;
+
+                await handler.sendSampleEventToAgent(parsedSampleEvent, agentId, user);
 
                 return `Test started. Check run history for results.`;
             },
