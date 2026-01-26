@@ -23,6 +23,7 @@ import { initializeSocket, disconnectSocket } from "./socket";
 import { useFeatureFlag } from "./hooks/useFeatureFlag";
 import NotificationsPage from "./pages/Notifications";
 import { FrontendRoutes } from "./shared/FrontendRoutes";
+import { ModelContextProvider } from "./services/ModelContextProvider";
 
 function App() {
   const hasBirdsEyeFlag = useFeatureFlag('Birds-eye-view-homepage');
@@ -34,7 +35,7 @@ function App() {
           <Routes>
             <Route path="/" element={<Navigate to={FrontendRoutes.APP} replace />} />
             <Route path={FrontendRoutes.APP} element={<Content />}>
-              <Route index element={ hasBirdsEyeFlag ? <BirdsEyeViewHomepage /> : <Home />} />
+              <Route index element={hasBirdsEyeFlag ? <BirdsEyeViewHomepage /> : <Home />} />
               <Route path="activity" element={<ActivityFeed />} />
               <Route path="agents" element={<AgentsList />} />
               <Route path="agents/setup" element={<AgentSetup />} />
@@ -85,7 +86,7 @@ function Content() {
     <>
       <AnimatePresence mode="wait">
         {user != null ? (
-          <div key="main" className="h-full">  
+          <div key="main" className="h-full">
             <AppLayout />
           </div>
         ) : (
@@ -105,7 +106,9 @@ function AppLayout() {
       <main className="flex-1 flex flex-col h-full min-w-0 bg-background">
         <BreadCrumb />
         <div className="flex-1 min-h-0">
-          <Outlet />
+          <ModelContextProvider>
+            <Outlet />
+          </ModelContextProvider>
         </div>
       </main>
     </SidebarProvider>

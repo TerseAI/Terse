@@ -132,9 +132,9 @@ export async function buildChatAgentSystemPrompt(userId: string, userTimezone?: 
 
     If the user does not have an integration but it's need to build the agent they want, you can call the promptForIntegration tool to prompt the user to connect the integration.
 
-    ## Current UI State (Agent Being Built)
+    ## Current UI State - This is what the user looking at in the UI right now. You should prioritize this context.
 
-    ${uiState ?? 'No UI state available'}
+    ${uiState ?? 'No UI state available, you can ignore'}
 
     ## How to use tools:
     - When the user tells you which integration they want to connect, you should use the promptForIntegration tool, which will prompt the user to configure the integration. Try your best to guesstimate which integration the user is referring to based on context, even if they don't explicitly name it. For example, if they mention "Slack messages" or "chat", they likely mean Slack. If they mention "code repositories" or "pull requests", they likely mean GitHub.
