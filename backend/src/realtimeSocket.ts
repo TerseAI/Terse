@@ -306,36 +306,12 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
             }
 
             const userMessage = message.user_message;
-            const uiState = message.ui_state;
 
-            logger.info(`[builder:chat:message] Processing message with UI state`, {
-                sessionId,
-                userId,
-                userMessage,
-                uiState
-            });
+            logger.info(`[builder:chat:message] Processing message`, { sessionId, userId, userMessage });
 
-            // Emit a simple echo response for now to verify round-trip works
-            const stepId = `step_${Date.now()}`;
-
-            // Send a text delta event
-            socket.emit(SocketEvents.BUILDER_CHAT_EVENT, {
-                sessionId,
-                event: {
-                    type: 'TextDelta',
-                    delta: `Received your message: "${userMessage}"\n\nUI State:\n${JSON.stringify(uiState, null, 2)}`,
-                    step_id: stepId,
-                }
-            });
-
-            // Send natural stop to indicate completion
-            socket.emit(SocketEvents.BUILDER_CHAT_EVENT, {
-                sessionId,
-                event: {
-                    type: 'NaturalStop',
-                    step_id: stepId,
-                }
-            });
+            // const webChatInterface = new WebChatInterface(sessionId, userId, socket);
+            // const chatAgent = new ChatAgent(webChatInterface, sessionId, userId);
+            // await chatAgent.run(userMessage);
         });
 
         // presence: mark online (60s TTL), refresh every 25s (only if Redis is available)
