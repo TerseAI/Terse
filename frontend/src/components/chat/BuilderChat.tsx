@@ -5,7 +5,7 @@ import { ModelRequest, SendModelRequest } from '@/shared/ModelEvents';
 import { ChatEventPayload } from './hooks/useCompletionSocket';
 
 type BuilderChatProps = {
-    getStateJSON: () => Record<string, unknown>;
+    getStateJSON: () => string;
     sessionId?: string;
 };
 

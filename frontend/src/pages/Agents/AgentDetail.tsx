@@ -10,7 +10,7 @@ import { AgentNotificationSettings, AgentPrompt, TransientAgentTrigger, Transien
 import { toTransientAgentTrigger, toTransientAgentOutput, toTransientKnowledgeBase } from "../../utility/AgentUtils";
 import { useTemplateHydration } from "../../hooks/useTemplateHydration";
 import { useModelContext } from "../../services/ModelContextProvider";
-import { AgentNameDonatedState, AgentInputsDonatedState, AgentOutputsDonatedState, AgentKnowledgeBasesDonatedState, AgentPromptDonatedState, AgentSetUpPageContext } from "../../utility/AgentModelDonation";
+import { AgentNameDonatedState, AgentInputsDonatedState, AgentOutputsDonatedState, AgentKnowledgeBasesDonatedState, AgentPromptDonatedState } from "../../utility/AgentModelDonation";
 
 function AgentDetail() {
     const { id, templateId } = useParams<{ id: string, templateId: string }>();
