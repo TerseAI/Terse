@@ -16,10 +16,6 @@ export const SocketEvents = {
   AGENT_CHAT_EVENT: 'agent:chat:event',
   AGENT_CHAT_MESSAGE: 'agent:chat:message',
   AGENT_CHAT_APPROVAL: 'agent:chat:approval',
-
-  // Builder chat events (in-app agent builder)
-  BUILDER_CHAT_MESSAGE: 'builder:chat:message',
-  BUILDER_CHAT_EVENT: 'builder:chat:event',
 } as const;
 
 /**
