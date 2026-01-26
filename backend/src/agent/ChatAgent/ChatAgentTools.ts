@@ -95,6 +95,11 @@ const GmailConfigSchema = BaseConfigSchema.extend({
     integrationType: z.literal(IntegrationType.GMAIL),
 });
 
+const GmailOutputConfigSchema = BaseConfigSchema.extend({
+    configType: z.literal(ConfigType.GMAIL_OUTPUT),
+    integrationType: z.literal(IntegrationType.GMAIL),
+});
+
 const FigmaConfigSchema = BaseConfigSchema.extend({
     configType: z.literal(ConfigType.FIGMA),
     integrationType: z.literal(IntegrationType.FIGMA),
@@ -240,7 +245,7 @@ const OutputConfigSchema = z.discriminatedUnion("configType", [
     LinearOutputConfigSchema,
     JiraConfigSchema,
     ConfluenceConfigSchema,
-    GmailConfigSchema,
+    GmailOutputConfigSchema,
 ]).superRefine((value, ctx) => {
     enforceNonSystemIntegrationId(value, ctx);
 });
