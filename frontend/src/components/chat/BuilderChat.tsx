@@ -1,4 +1,5 @@
-import { useId } from 'react';
+import { useMemo, useEffect, useRef } from 'react';
+import { v4 as uuidv4 } from 'uuid';
 import { Chat } from './Chat';
 import { subscribeToBuilderChat, sendBuilderMessage } from '@/socket';
 import { ModelRequest, SendModelRequest } from '@/shared/ModelEvents';
@@ -6,12 +7,28 @@ import { ChatEventPayload } from './hooks/useCompletionSocket';
 
 type BuilderChatProps = {
     getStateJSON: () => string;
-    sessionId?: string;
+    agentId?: string | null;
 };
 
-export function BuilderChat({ getStateJSON, sessionId: externalSessionId }: BuilderChatProps) {
-    const generatedId = useId();
-    const sessionId = externalSessionId ?? generatedId;
+export function BuilderChat({ getStateJSON, agentId }: BuilderChatProps) {
+    const generatedId = useMemo(() => uuidv4(), []);
+    const sessionId = agentId ?? generatedId;
+    
+    // Track previous agentId to detect changes
+    const previousAgentIdRef = useRef<string | null | undefined>(agentId);
+    
+    useEffect(() => {
+        // Only reset if agentId actually changed (not on initial mount)
+        if (previousAgentIdRef.current !== undefined && previousAgentIdRef.current !== agentId) {
+            // The key change will handle the reset, but we can log it for debugging
+            console.log('[BuilderChat] Agent changed, resetting chat', { 
+                previous: previousAgentIdRef.current, 
+                current: agentId,
+                sessionId 
+            });
+        }
+        previousAgentIdRef.current = agentId;
+    }, [agentId, sessionId]);
 
     function subscribeToEvents(callback: (payload: ChatEventPayload) => void) {
         return subscribeToBuilderChat(sessionId, (payload) => {
@@ -36,6 +53,7 @@ export function BuilderChat({ getStateJSON, sessionId: externalSessionId }: Buil
     return (
         <div className="h-full flex min-h-0">
             <Chat
+                key={sessionId}
                 subscribeToEvents={subscribeToEvents}
                 sendMessage={sendMessage}
             />
