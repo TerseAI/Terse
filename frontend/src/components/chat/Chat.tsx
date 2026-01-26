@@ -13,6 +13,7 @@ type ChatProps = {
     onUserMessage?: (message: string) => void;
     onHandleApprove?: (stepId: string) => void;
     onHandleReject?: (stepId: string) => void;
+    addUserTurnsLocally?: boolean;
 };
 
 export type ChatHandle = ChatLayoutHandle;
@@ -25,6 +26,7 @@ const Chat = forwardRef<ChatHandle, ChatProps>(function Chat({
     onUserMessage,
     onHandleApprove,
     onHandleReject,
+    addUserTurnsLocally,
 }, ref) {
     const { turns, isPendingAssistantResponse, input, setInput, sendMessage: sendUserMessage, sendModelRequest } = useChat({
         subscribeToEvents,
@@ -33,6 +35,7 @@ const Chat = forwardRef<ChatHandle, ChatProps>(function Chat({
         onUserMessage,
         onToolCall: () => {},
         onToolCallComplete: () => {},
+        addUserTurnsLocally,
     });
 
     return (
