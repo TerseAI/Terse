@@ -1,13 +1,13 @@
 import { RunStreamEvent } from "@openai/agents";
-import { ConfigType } from "../../shared/Configs";
+import { ConfigType } from "../../../shared/Configs";
 import ChatInterface from "./ChatInterface";
-import { IntegrationType } from "../../shared/Integrations";
-import logger from "../../logger";
+import { IntegrationType } from "../../../shared/Integrations";
+import logger from "../../../logger";
 import { Block, ChatPostMessageArguments, ChatUpdateArguments, KnownBlock, WebClient } from "@slack/web-api";
-import { INTEGRATION_REGISTRY } from "../../integrations/abstract/IntegrationRegistry";
-import { isFormIntegrationInstallation, isOAuthIntegrationInstallation, OAuthIntegrationInstallation } from "../../integrations/abstract/Integration";
-import { createOAuthStateToken } from "../../utility/oauth";
-import { createActionBlock, createButton, createIntegrationConnectionMessage } from "../../slack/blockKitHelpers";
+import { INTEGRATION_REGISTRY } from "../../../integrations/abstract/IntegrationRegistry";
+import { isFormIntegrationInstallation, isOAuthIntegrationInstallation, OAuthIntegrationInstallation } from "../../../integrations/abstract/Integration";
+import { createOAuthStateToken } from "../../../utility/oauth";
+import { createActionBlock, createButton, createIntegrationConnectionMessage } from "../../../slack/blockKitHelpers";
 
 class SlackChatInterface extends ChatInterface {
     name: string = 'Slack';

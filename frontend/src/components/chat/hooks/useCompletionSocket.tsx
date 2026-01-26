@@ -1,8 +1,11 @@
 import { useRef, useState, useEffect } from "react";
-import { type ToolCall, type ToolCallComplete, type TextDelta, type Failure, type ModelRequest, FilterResult, type ToolApprovalRequest, ToolApprovalResponse } from "../../../shared/ModelEvents";
-import type { RunHistoryModelSocketEvent } from "../../../shared/RunHistoryTypes";
+import { type ToolCall, type ToolCallComplete, type TextDelta, type Failure, type ModelRequest, FilterResult, type ToolApprovalRequest, ToolApprovalResponse, type ModelEvent } from "../../../shared/ModelEvents";
 
-export type ChatEventSubscription = (callback: (payload: RunHistoryModelSocketEvent) => void) => () => void;
+export type ChatEventPayload = {
+    runHistoryModelEvent: ModelEvent;
+};
+
+export type ChatEventSubscription = (callback: (payload: ChatEventPayload) => void) => () => void;
 
 export type UseCompletionSocketOptions = {
     subscribeToEvents?: ChatEventSubscription | null;

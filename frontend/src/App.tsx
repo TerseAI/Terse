@@ -85,7 +85,7 @@ function Content() {
     <>
       <AnimatePresence mode="wait">
         {user != null ? (
-          <div key="main" className="h-full">
+          <div key="main" className="h-full">  
             <AppLayout />
           </div>
         ) : (
@@ -102,9 +102,11 @@ function AppLayout() {
   return (
     <SidebarProvider>
       <AppSidebar />
-      <main className="w-full bg-background">
+      <main className="flex-1 flex flex-col h-full min-w-0 bg-background">
         <BreadCrumb />
-        <Outlet />
+        <div className="flex-1 min-h-0">
+          <Outlet />
+        </div>
       </main>
     </SidebarProvider>
   )

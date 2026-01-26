@@ -1,6 +1,6 @@
 import { Tool } from "@openai/agents-core";
 import { RunContext, tool } from "@openai/agents";
-import ChatInterface from "./ChatInterface";
+import ChatInterface from "./ChatInterfaces/ChatInterface";
 import { z } from "zod";
 import { IntegrationType } from "../../shared/Integrations";
 import { ConfigType } from "../../shared/Configs";

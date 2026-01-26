@@ -295,6 +295,49 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
             }
         });
 
+        // Listen for builder chat messages (in-app agent builder)
+        socket.on(SocketEvents.BUILDER_CHAT_MESSAGE, async (payload: { sessionId: string; message: SendModelRequest }) => {
+            const { sessionId, message } = payload;
+            logger.info(`[builder:chat:message] Received message`, { sessionId, userId, message });
+
+            if (!sessionId) {
+                logger.error(`[builder:chat:message] No sessionId provided`);
+                return;
+            }
+
+            const userMessage = message.user_message;
+            const uiState = message.ui_state;
+
+            logger.info(`[builder:chat:message] Processing message with UI state`, {
+                sessionId,
+                userId,
+                userMessage,
+                uiState
+            });
+
+            // Emit a simple echo response for now to verify round-trip works
+            const stepId = `step_${Date.now()}`;
+
+            // Send a text delta event
+            socket.emit(SocketEvents.BUILDER_CHAT_EVENT, {
+                sessionId,
+                event: {
+                    type: 'TextDelta',
+                    delta: `Received your message: "${userMessage}"\n\nUI State:\n${JSON.stringify(uiState, null, 2)}`,
+                    step_id: stepId,
+                }
+            });
+
+            // Send natural stop to indicate completion
+            socket.emit(SocketEvents.BUILDER_CHAT_EVENT, {
+                sessionId,
+                event: {
+                    type: 'NaturalStop',
+                    step_id: stepId,
+                }
+            });
+        });
+
         // presence: mark online (60s TTL), refresh every 25s (only if Redis is available)
         if (pub) {
             const key = `presence:${room}`;

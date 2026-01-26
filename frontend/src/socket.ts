@@ -2,7 +2,7 @@ import { io, Socket } from 'socket.io-client';
 import { mutate } from 'swr';
 import { BackendProvider } from './services/backend';
 import type { RunHistoryModelSocketEvent } from './shared/RunHistoryTypes';
-import { ModelRequest } from './shared/ModelEvents';
+import { ModelEvent, ModelRequest } from './shared/ModelEvents';
 import { SocketEvents } from './shared/SocketEvents';
 
 let socket: Socket | null = null;
@@ -140,4 +140,59 @@ export function sendToolApprovalResponse(runId: string, stepId: string, approved
             approved,
         },
     });
+}
+
+// Builder chat (in-app agent builder)
+type BuilderEventPayload = { sessionId: string; event: ModelEvent };
+type BuilderEventCallback = (payload: BuilderEventPayload) => void;
+
+const builderEventCallbacks = new Map<string, Set<BuilderEventCallback>>();
+let builderEventListenerSetUp = false;
+
+function setupBuilderEventListener() {
+    if (!socket || builderEventListenerSetUp) {
+        return;
+    }
+
+    socket.on(SocketEvents.BUILDER_CHAT_EVENT, (payload: BuilderEventPayload) => {
+        const callbacks = builderEventCallbacks.get(payload.sessionId);
+        if (callbacks) {
+            callbacks.forEach((cb) => cb(payload));
+        }
+    });
+
+    builderEventListenerSetUp = true;
+}
+
+export function subscribeToBuilderChat(sessionId: string, callback: BuilderEventCallback): () => void {
+    if (!socket) {
+        console.warn('Socket not initialized, cannot subscribe to builder chat');
+        return () => {};
+    }
+
+    setupBuilderEventListener();
+
+    if (!builderEventCallbacks.has(sessionId)) {
+        builderEventCallbacks.set(sessionId, new Set());
+    }
+
+    builderEventCallbacks.get(sessionId)!.add(callback);
+
+    return () => {
+        const callbacks = builderEventCallbacks.get(sessionId);
+        if (callbacks) {
+            callbacks.delete(callback);
+            if (callbacks.size === 0) {
+                builderEventCallbacks.delete(sessionId);
+            }
+        }
+    };
+}
+
+export function sendBuilderMessage(sessionId: string, message: ModelRequest): void {
+    if (!socket || !socket.connected) {
+        console.warn('Socket not connected, cannot send builder message');
+        return;
+    }
+    socket.emit(SocketEvents.BUILDER_CHAT_MESSAGE, { sessionId, message });
 }
