@@ -54,6 +54,7 @@ export function BuilderChat({ getStateJSON, agentId }: BuilderChatProps) {
                 key={sessionId}
                 subscribeToEvents={subscribeToEvents}
                 sendMessage={sendMessage}
+                addUserTurnsLocally={true}
             />
         </div>
     );
