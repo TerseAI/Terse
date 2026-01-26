@@ -13,6 +13,8 @@ import { DirectiveTask, directiveTaskQueue } from "./agent/DirectiveAgent/Direct
 import { ApprovalService } from "./services/ApprovalService";
 import logger from "./logger";
 import { SocketEvents, SocketRooms } from "./shared/SocketEvents";
+import WebChatInterface from "./agent/ChatAgent/ChatInterfaces/WebChatInterface";
+import ChatAgent from "./agent/ChatAgent/ChatAgent";
 
 // Extended Socket type with userId property
 interface AuthenticatedSocket extends Socket {
@@ -244,9 +246,9 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
 
             logger.info(`[builder:chat:message] Processing message`, { sessionId, userId, userMessage });
 
-            // const webChatInterface = new WebChatInterface(sessionId, userId, socket);
-            // const chatAgent = new ChatAgent(webChatInterface, sessionId, userId);
-            // await chatAgent.run(userMessage);
+            const webChatInterface = new WebChatInterface(sessionId, userId, socket);
+            const chatAgent = new ChatAgent(webChatInterface, sessionId, userId);
+            await chatAgent.run(userMessage);
         });
 
         // presence: mark online (60s TTL), refresh every 25s (only if Redis is available)
