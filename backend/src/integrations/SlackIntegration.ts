@@ -524,7 +524,7 @@ export class SlackEvent extends InputEvent implements Identifiable {
     }
 
     getEventTimestamp(): string {
-        return new Date(parseInt(this.data.timestamp, 10)).toISOString();
+        return new Date(parseInt(this.data.timestamp) * 1000).toISOString();
     }
 
     static formatPreviewFromEventData(data: SlackEventData): string {
