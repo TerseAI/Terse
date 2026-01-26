@@ -25,7 +25,7 @@ const SCOPES = [
     "https://www.googleapis.com/auth/gmail.send"
 ];
 
-export class GmailIntegrationManager implements Integration<GmailIntegration, GmailWebhookEvent, typeof GmailIntegrationMetadata>, OAuthIntegrationInstallation<IntegrationType.GMAIL> {
+export class GmailIntegrationManager implements Integration<GmailIntegration, GmailWebhookEvent, typeof GmailIntegrationMetadata, never>, OAuthIntegrationInstallation<IntegrationType.GMAIL> {
     constructor() { }
     integrationType: IntegrationType = IntegrationType.GMAIL;
 

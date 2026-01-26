@@ -79,7 +79,7 @@ export async function getActiveIntegrations(req: Request, res: Response) {
     res.json(activeIntegrations);
 }
 
-async function integrationHasInstances(integration: Integration<IntegrationInstance, any, IntegrationDetails>, userId: string): Promise<boolean> {
+async function integrationHasInstances(integration: Integration<IntegrationInstance, any, IntegrationDetails, any>, userId: string): Promise<boolean> {
     return (await integration.getInstancesForUser(userId)).length > 0;
 }
 

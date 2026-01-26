@@ -1,9 +1,5 @@
-import { Client } from "@notionhq/client";
 import { Request, Response } from "express";
-import { db } from "../prismaClient";
-import { NotionResource, NotionResourcesResponse } from "../shared/types";
-import { SearchResponse } from "@notionhq/client/build/src/api-endpoints";
-import { extractPageTitle } from "../utility/notion";
+import { NotionResourcesResponse } from "../shared/types";
 import { NotionIntegrationManager } from "../integrations/NotionIntegration";
 import logger from "../logger";
 
@@ -29,71 +25,18 @@ export const notionOAuthCallback = async (req: Request, res: Response) => {
   await integration.processInstallationCallback(req, res);
 };
 
-// Search Notion pages and databases by title
 export const fetchNotionResources = async (
   userId: string,
   integrationId: string,
   search: string = "",
   typeFilter?: string
 ): Promise<NotionResourcesResponse> => {
-  if (!integrationId) {
-    throw new Error("integrationId is required");
-  }
-
-  const integration = await db().notion_integrations.findFirst({
-    where: {
-      id: integrationId,
-      user_id: userId,
-    },
-  });
-
-  if (!integration) {
-    throw new Error("Notion integration not found");
-  }
-
   const manager = new NotionIntegrationManager();
-  const accessToken = await manager.getAccessToken(integrationId);
-  if (!accessToken) {
-    throw new Error("Could not get valid access token");
-  }
+  const resources = await manager.fetchResourcesForInstance(userId, integrationId, search);
 
-  const notionClient = new Client({ auth: accessToken });
-  const searchOptions: Parameters<typeof notionClient.search>[0] = {
-    query: search,
-    page_size: 100,
-  };
-  
-  if (typeFilter === 'page') {
-    searchOptions.filter = { property: "object", value: "page" };
-  } else if (typeFilter === 'database') {
-    searchOptions.filter = { property: "object", value: "data_source" };
-  }
-
-  const searchResponse: SearchResponse = await notionClient.search(searchOptions);
-
-  let resources: NotionResource[] = searchResponse.results
-    .map((result: any) => {
-      if (result.object === 'data_source') {
-        return {
-          id: result.id,
-          title: result.title?.[0]?.plain_text || "Untitled Database",
-          url: result.url,
-          type: 'database' as const,
-        };
-      } else if (result.object === 'page') {
-        return {
-          id: result.id,
-          title: extractPageTitle(result),
-          url: 'url' in result ? result.url : '',
-          type: 'page' as const,
-        };
-      }
-      return null;
-    })
-    .filter((resource): resource is NotionResource => resource !== null);
-  
-  if (!search) {
-    resources = resources.sort((a, b) => a.title.localeCompare(b.title, undefined, { sensitivity: 'base' }));
+  // Apply type filter if specified
+  if (typeFilter) {
+    return { resources: resources.filter(r => r.type === typeFilter) };
   }
 
   return { resources };

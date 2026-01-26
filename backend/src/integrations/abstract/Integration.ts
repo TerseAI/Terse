@@ -3,8 +3,12 @@ import { IntegrationInstance, IntegrationDetails, IntegrationType, InstallationO
 import { AgentTriggerWithConfigs } from "../../types/prisma";
 import { Request, Response } from "express";
 
-// This ensures T is a valid Prisma model type
-export interface Integration<T extends IntegrationInstance, W, M extends IntegrationDetails>  {
+export interface IntegrationWithResources<T extends IntegrationInstance, R> {
+    integration: T;
+    resources: R[];
+}
+
+export interface Integration<T extends IntegrationInstance, W, M extends IntegrationDetails, R>  {
     integrationType: IntegrationType;
     getInstancesForUser(userId: string): Promise<T[]>;
     formatIntegrationInstanceForAgent(instance: T): string;
@@ -13,6 +17,8 @@ export interface Integration<T extends IntegrationInstance, W, M extends Integra
     deleteInstallation(integrationId: string): Promise<void>;
     setupAgentTrigger(integrationId: string, agentTrigger: AgentTriggerWithConfigs): Promise<void>;
     teardownAgentTrigger(integrationId: string, agentTrigger: AgentTriggerWithConfigs): Promise<void>;
+    fetchResourcesForInstance?(userId: string, integrationId: string, query?: string): Promise<R[]>;
+    fetchResourcesForUser?(userId: string, query?: string): Promise<IntegrationWithResources<T, R>[]>;
 }
 
 export type FormFieldType = 'text' | 'password' | 'textarea';
