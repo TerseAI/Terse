@@ -13,8 +13,6 @@ type BuilderChatProps = {
 export function BuilderChat({ getStateJSON, agentId }: BuilderChatProps) {
     const generatedId = useMemo(() => uuidv4(), []);
     const sessionId = agentId ?? generatedId;
-    
-    // Track previous agentId to detect changes
     const previousAgentIdRef = useRef<string | null | undefined>(agentId);
     
     useEffect(() => {
