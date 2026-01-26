@@ -240,6 +240,7 @@ const OutputConfigSchema = z.discriminatedUnion("configType", [
     LinearOutputConfigSchema,
     JiraConfigSchema,
     ConfluenceConfigSchema,
+    GmailConfigSchema,
 ]).superRefine((value, ctx) => {
     enforceNonSystemIntegrationId(value, ctx);
 });

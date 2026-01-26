@@ -4,6 +4,7 @@ import { db } from "../../prismaClient";
 import { formatAgentForSystemPrompt } from "../AgentRunner/formatContext";
 import { AgentWithRelations } from "../../types/prisma";
 import { getInputConfigInclude, getKnowledgeBaseConfigInclude, getOutputConfigInclude } from "../../utility/prismaIncludes";
+import logger from "../../logger";
 
 export async function buildChatAgentSystemPrompt(userId: string, userTimezone?: string | null, uiState?: string | null): Promise<string> {
 
@@ -67,6 +68,8 @@ export async function buildChatAgentSystemPrompt(userId: string, userTimezone?: 
     });
 
     const currentUserAgentsList = currentUserAgents.map(agent => formatAgentForSystemPrompt(agent)).join('\n');
+
+    console.log('Current user agents list', { stringified: JSON.stringify(currentUserAgentsList, null, 2) });
 
     return `
 
