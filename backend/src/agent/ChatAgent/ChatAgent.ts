@@ -1,5 +1,5 @@
 import { Agent, AgentOutputType, run, RunStreamEvent } from "@openai/agents";
-import ChatInterface from "./ChatInterface";
+import ChatInterface from "./ChatInterfaces/ChatInterface";
 import { buildChatAgentSystemPrompt } from "./ChatAgentSystemPrompt";
 import { buildChatAgentTools, type ChatAgentContext } from "./ChatAgentTools";
 import { ChatMemorySession, recentHistoryCallback } from "../CustomMemorySession";

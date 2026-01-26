@@ -8,7 +8,7 @@ import { db } from "../prismaClient";
 import { SlackIntegrationManager, SlackMessageEvent } from "../integrations/SlackIntegration";
 import { ApprovalService } from "../services/ApprovalService";
 import logger from "../logger";
-import SlackChatInterface from "../agent/ChatAgent/SlackChatInterface";
+import SlackChatInterface from "../agent/ChatAgent/ChatInterfaces/SlackChatInterface";
 import ChatAgent from "../agent/ChatAgent/ChatAgent";
 import { INTEGRATION_REGISTRY } from "../integrations/abstract/IntegrationRegistry";
 import { isFormIntegrationInstallation, isOAuthIntegrationInstallation, FormFieldDefinition, ConfigurationFieldDefinition, FormSubmissionInput } from "../integrations/abstract/Integration";
