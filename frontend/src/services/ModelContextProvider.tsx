@@ -3,7 +3,7 @@ import { DonatedState } from "../shared/DonatedState";
 
 interface ModelContextType {
   donate: (key: string, state: DonatedState) => void;
-  getStateJSON: () => Record<string, unknown>;
+  getStateJSON: () => string;
 }
 
 const ModelContext = createContext<ModelContextType | null>(null);
@@ -20,8 +20,7 @@ export function ModelContextProvider({ children }: { children: React.ReactNode }
       stateRef.current.forEach((state, key) => {
         result[key] = state.toJSON();
       });
-      console.log('getStateJSON', result);
-      return result;
+      return JSON.stringify(result, null, 2);
     },
   };
 
