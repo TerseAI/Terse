@@ -9,7 +9,7 @@ import { db } from "./prismaClient";
 import { AgentRunner } from "./agent/AgentRunner/AgentRunner";
 import { RunContext } from "./agent/AgentRunner/SystemPromptBuilder";
 import { AgentWithRelations } from "./types/prisma";
-import { getInputConfigInclude, getOutputConfigInclude, getKnowledgeBaseConfigInclude } from './utility/prismaIncludes';
+import { getAgentHydrationInclude } from './utility/prismaIncludes';
 import { OutputFactory } from "./outputs/abstract/OutputFactory";
 import { Output } from "./outputs/abstract/Output";
 import { KnowledgeBaseFactory } from "./knowledgeBase/abstract/KnowledgeBaseFactory";
@@ -153,19 +153,7 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
                     id: runRecord.automation.id,
                     user_id: userId
                 },
-                include: {
-                    prompt: true,
-                    inputs: {
-                        include: getInputConfigInclude()
-                    },
-                    outputs: {
-                        include: getOutputConfigInclude()
-                    },
-                    knowledge_bases: {
-                        include: getKnowledgeBaseConfigInclude()
-                    },
-                    tool_approvals: true
-                }
+                include: getAgentHydrationInclude()
             })
 
             if (!agent) {
