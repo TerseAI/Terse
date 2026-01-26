@@ -53,27 +53,29 @@ export function ConfluenceIcon() {
     return <img src="/confluence.svg" alt="Confluence" className="w-full h-full object-contain" />;
 }
 
-export function JiraConfluenceIcon() {
+export function AtlassianIcon() {
     return (
-        <div className="relative w-full h-full">
-            {/* Jira badge - back left */}
-            <div className="absolute top-0 left-0 w-[72%] h-[72%] rounded-full bg-white flex items-center justify-center shadow-sm border border-gray-100">
-                <img
-                    src="/jira.svg"
-                    alt="Jira"
-                    className="w-[60%] h-[60%] object-contain"
-                />
-            </div>
-            {/* Confluence badge - front right, overlapping */}
-            <div className="absolute bottom-0 right-0 w-[72%] h-[72%] rounded-full bg-white flex items-center justify-center shadow-sm border border-gray-100">
-                <img
-                    src="/confluence.svg"
-                    alt="Confluence"
-                    className="w-[60%] h-[60%] object-contain"
-                />
-            </div>
-        </div>
+        <svg className="w-full h-full" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+                <linearGradient id="atlassian-gradient" x1="99.68%" y1="15.56%" x2="14.88%" y2="68.84%">
+                    <stop offset="0%" stopColor="#0052CC" />
+                    <stop offset="100%" stopColor="#2684FF" />
+                </linearGradient>
+            </defs>
+            <path
+                d="M7.12 11.084a.683.683 0 00-1.16.126L.075 22.974a.703.703 0 00.63 1.018h8.19a.678.678 0 00.63-.39c1.767-3.65.696-9.203-2.406-12.52z"
+                fill="url(#atlassian-gradient)"
+            />
+            <path
+                d="M11.434.386a15.515 15.515 0 00-.906 15.317l3.95 7.9a.703.703 0 00.628.388h8.19a.703.703 0 00.63-1.017L12.63.38a.664.664 0 00-1.196.006z"
+                fill="#2684FF"
+            />
+        </svg>
     );
+}
+
+export function JiraConfluenceIcon() {
+    return <AtlassianIcon />;
 }
 
 export function TerseIcon() {
