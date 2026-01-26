@@ -607,7 +607,7 @@ export class LinearEvent extends InputEvent {
         const prisma = db();
 
         const linearIntegration = await prisma.linear_integrations.findUnique({
-            where: { id: config.integrationId },
+            where: { id: config.integrationId, user_id: userId },
         });
 
         if (!linearIntegration) {

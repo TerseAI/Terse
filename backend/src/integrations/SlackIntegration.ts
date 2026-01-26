@@ -768,7 +768,7 @@ export class SlackEvent extends InputEvent implements Identifiable {
         try {
             // Get the Slack integration
             const userSlackIntegration = await prisma.user_slack_integrations.findUnique({
-                where: { id: config.integrationId },
+                where: { id: config.integrationId, user_id: userId },
                 include: { slack_integration: true, user: true }
             });
 

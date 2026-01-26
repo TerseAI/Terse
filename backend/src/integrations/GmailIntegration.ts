@@ -562,7 +562,8 @@ export class GmailEvent extends InputEvent {
 
         const gmailIntegration = await prisma.gmail_integrations.findUnique({
             where: {
-                id: config.integrationId
+                id: config.integrationId,
+                user_id: userId
             }
         })
         if (!gmailIntegration) {

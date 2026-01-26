@@ -1372,7 +1372,7 @@ export class JiraEvent extends InputEvent {
         const prisma = db();
 
         const atlassianIntegration = await prisma.atlassian_integrations.findUnique({
-            where: { id: config.integrationId },
+            where: { id: config.integrationId, user_id: userId },
         });
 
         if (!atlassianIntegration) {

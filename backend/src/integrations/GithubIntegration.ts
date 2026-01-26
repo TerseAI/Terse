@@ -630,7 +630,7 @@ async function createPushSampleEvent(
         const eventData: GithubEventData = {
             username: commit.commit.author.name || commit.author?.login || 'unknown',
             installationId: installationId,
-            repositoryName: repo.name,
+            repositoryName: `${repo.owner}/${repo.name}`,
             eventType: 'push',
             branch: repo.defaultBranch,
             commits: [{
@@ -706,7 +706,7 @@ async function createPullRequestSampleEvent(
         const eventData: GithubEventData = {
             username: pr.user.login,
             installationId: installationId,
-            repositoryName: repo.name,
+            repositoryName: `${repo.owner}/${repo.name}`,
             eventType: eventType,
             commits: commits,
             pullRequest: {

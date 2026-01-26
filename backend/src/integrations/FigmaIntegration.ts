@@ -1031,7 +1031,7 @@ export class FigmaCommentEvent extends InputEvent {
     const prisma = db();
 
     const figmaIntegration = await prisma.figma_integrations.findUnique({
-      where: { id: config.integrationId },
+      where: { id: config.integrationId, user_id: userId },
     });
 
     if (!figmaIntegration) {
