@@ -56,7 +56,12 @@ class WebChatInterface extends ChatInterface {
 
         if (isFormIntegrationInstallation(integrationManager)) {
             // For form-based integrations, the user needs to go to settings to configure
-            return `To connect ${integration}, please go to Settings > Integrations and fill out the required form.`;
+            this.socket.emit(SocketEvents.BUILDER_CHAT_PROMPT_INTEGRATION, {
+                sessionId: this.sessionId,
+                integration,
+                message: `To connect ${integration}, please go to Settings > Integrations and fill out the required form.`,
+            });
+            return `I've provided a button to connect ${integration}. Click it to start the authorization process.`;
         }
 
         if (isOAuthIntegrationInstallation(integrationManager)) {
@@ -135,13 +140,9 @@ class WebChatInterface extends ChatInterface {
     }
 
     async buildButton(label: string, url: string): Promise<void> {
-        // Emit a TextDelta with a markdown link that the frontend can render as a button
-        // The frontend can parse this and display it as a clickable button
-        const buttonMarkdown = `\n\n[${label}](${url})\n\n`;
-        this.emitEvent({
-            type: "TextDelta",
-            delta: buttonMarkdown,
-            step_id: `button_${Date.now()}`,
+        this.socket.emit(SocketEvents.BUILDER_CHAT_PRESENT_BUTTON, {
+            label,
+            url,
         });
     }
 }
