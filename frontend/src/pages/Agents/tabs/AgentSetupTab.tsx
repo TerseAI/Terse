@@ -223,7 +223,7 @@ export default function AgentSetupTab({
 
     return (
         <div className="grid grid-cols-20 h-full">
-            <div className="flex flex-col h-full min-h-0 col-span-16">
+            <div className="flex flex-col h-full min-h-0 col-span-14">
                 {/* Header */}
                 <div className="border-b border-border px-6 py-4">
                     <div className="flex items-center justify-between gap-4">
@@ -388,7 +388,7 @@ export default function AgentSetupTab({
             </div>
 
             {/* Builder Chat */}
-            <div className="border-l border-border col-span-4 h-full">
+            <div className="border-l border-border col-span-6 h-full min-h-0">
                 <BuilderChat getStateJSON={() => ({})} />
             </div>
         </div>
