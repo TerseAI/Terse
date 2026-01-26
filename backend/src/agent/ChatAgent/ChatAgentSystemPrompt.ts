@@ -69,8 +69,6 @@ export async function buildChatAgentSystemPrompt(userId: string, userTimezone?: 
 
     const currentUserAgentsList = currentUserAgents.map(agent => formatAgentForSystemPrompt(agent)).join('\n');
 
-    console.log('Current user agents list', { stringified: JSON.stringify(currentUserAgentsList, null, 2) });
-
     return `
 
     ## Introduction

@@ -10,7 +10,8 @@ import { getInputConfigInclude, getOutputConfigInclude, getKnowledgeBaseConfigIn
 import { TRIGGER_REGISTRY } from "../triggers/TriggerRegistry";
 import { INTEGRATION_REGISTRY, isSystemIntegration } from "../integrations/abstract/IntegrationRegistry";
 import { OutputFactory } from "../outputs/abstract/OutputFactory";
-import { emitCacheInvalidationWithKey } from "../services/CacheInvalidationService";
+import { emitCacheInvalidationWithKey, emitCacheInvalidationWithWildcard } from "../services/CacheInvalidationService";
+import { agentDetailKey } from "../shared/InvalidationKeys";
 import logger from "../logger";
 import { KnowledgeBaseFactory } from "../knowledgeBase/abstract/KnowledgeBaseFactory";
 import { isValidToolName } from "../tools/ToolNames";
@@ -493,6 +494,10 @@ export async function updateAgentForUser(
 
     // Invalidate recent agents cache
     emitCacheInvalidationWithKey(userId, 'recentAgents');
+    const agentKey = agentDetailKey(agentId);
+    if (agentKey) {
+        emitCacheInvalidationWithWildcard(userId, agentKey[0], agentKey[1].id);
+    }
 
     return { id: agentId };
 }
