@@ -172,6 +172,7 @@ export class EventProcessor {
             const filterResponse = await filterEvent(
                 this.inputEvent,
                 agent.prompt,
+                true,
                 {
                     runId,
                     userId: this.user.id,

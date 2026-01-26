@@ -44,7 +44,7 @@ import { CreateNotificationDestinationRequest, NotificationDestination } from '.
 import { ApiRoutes } from '../shared/ApiRoutes';
 import { GetToolsThatRequireApprovalsRequest, GetToolsThatRequireApprovalsResponse } from '../shared/ToolsTypes';
 import { ConfigInstanceImplementation } from '../shared/Configs';
-import { SampleEvent, AgentSampleEvent } from '../shared/SampleEvents';
+import { AgentSampleEvent } from '../shared/SampleEvents';
 
 const backendBaseUrl = '/api';
 
@@ -388,7 +388,7 @@ interface BackendService {
      */
     getToolsThatRequireApprovals(request: GetToolsThatRequireApprovalsRequest): Promise<GetToolsThatRequireApprovalsResponse>;
 
-    getSampleEvents(config: ConfigInstanceImplementation): Promise<SampleEvent[]>;
+    getAgentSampleEvents(config: ConfigInstanceImplementation, agentId?: string): Promise<AgentSampleEvent[]>;
 
     sendSampleEvent(agentSampleEvent: AgentSampleEvent): Promise<void>;
 }
@@ -1091,8 +1091,9 @@ export const BackendProvider: BackendService = {
             });
     },
 
-    getSampleEvents: (config: ConfigInstanceImplementation) => {
-        return axios.post<SampleEvent[]>(`${backendBaseUrl}${ApiRoutes.SAMPLE_EVENTS}`, config, { withCredentials: true })
+    getAgentSampleEvents: (config: ConfigInstanceImplementation, agentId?: string) => {
+        const payload = agentId ? { ...config, agentId } : config;
+        return axios.post<AgentSampleEvent[]>(`${backendBaseUrl}${ApiRoutes.SAMPLE_EVENTS}`, payload, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
                 console.error('Error getting sample events:', error);

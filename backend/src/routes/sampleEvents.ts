@@ -1,11 +1,38 @@
 import { Request, Response } from "express";
 import { ConfigInstance } from "../shared/Configs";
-import { AgentSampleEvent } from "../shared/SampleEvents";
+import { AgentSampleEvent, SampleEvent } from "../shared/SampleEvents";
 import { InputEventRegistry } from "../integrations/abstract/InputEventRegistry";
+import { filterEvent } from "../agent/AgentRunner/EventFilter";
+import { createInputEventFromSampleEvent } from "../utility/typeConverters";
+import { db } from "../prismaClient";
+import { AgentPrompt } from "../types/prisma";
 
+
+export async function addFilterResultsToSampleEvents(
+    sampleEvents: SampleEvent[],
+    agentPrompt: AgentPrompt,
+    agentId: string
+): Promise<AgentSampleEvent[]> {
+    const filterPromises = sampleEvents.map(async (sampleEvent) => {
+        try {
+            const inputEvent = createInputEventFromSampleEvent(sampleEvent);
+            const { result } = await filterEvent(inputEvent, agentPrompt, false);
+            return result;
+        } catch (error) {
+            return null;
+        }
+    });
+
+    const filterResults = await Promise.all(filterPromises);
+    return sampleEvents.map((event, index) => ({
+        sampleEvent: event,
+        filterResult: filterResults[index] ?? { isRelevant: false, reason: 'Error filtering event', confidence: 0 },
+        agentId: agentId,
+    }))
+}
 
 export async function getSampleEvents(req: Request, res: Response) {
-    const config = req.body as ConfigInstance;
+    const { agentId, ...config } = req.body as ConfigInstance & { agentId?: string };
     const userId = req.session?.user?.id; // Get userId from authenticated session
 
     if (!config.integrationType) {
@@ -19,8 +46,23 @@ export async function getSampleEvents(req: Request, res: Response) {
 
     try {
         const handler = InputEventRegistry.getEventHandler(config.configType);
-        // Pass userId for integrations that need it (like GitHub)
-        return res.status(200).json(await handler.getSampleEvents(config, userId));
+        const sampleEvents = await handler.getSampleEvents(config, userId);
+
+        const hasAgentAndUser = (
+            agentId && userId
+        )
+        if (hasAgentAndUser) {
+            const agent = await db().automations.findUnique({
+                where: { id: agentId, user_id: userId },
+                include: { prompt: true }
+            });
+            const matchingAgentAndHasPrompt = agent && agent?.prompt;
+            if (matchingAgentAndHasPrompt && agent?.prompt) {
+                const eventsWithFilters = await addFilterResultsToSampleEvents(sampleEvents, agent.prompt, agentId);
+                return res.status(200).json(eventsWithFilters);
+            }
+        }
+        return res.status(200).json(sampleEvents);
     } catch (error: any) {
         // Use status code from error if available, otherwise default to 500
         const statusCode = error.statusCode || 500;

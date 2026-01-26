@@ -1,4 +1,5 @@
 import { ConfigType } from "./Configs";
+import { FilterResult } from "./ModelEvents";
 import { RunHistoryTrigger } from "./RunHistoryTypes";
 import { SlackChannelType, FigmaCommentEventData } from "./types";
 
@@ -239,5 +240,6 @@ export type SampleEvent =
 
 export type AgentSampleEvent = {
     agentId: string;
+    filterResult: FilterResult;
     sampleEvent: SampleEvent;
 }

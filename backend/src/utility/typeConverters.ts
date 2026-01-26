@@ -1,24 +1,24 @@
 import { IntegrationType } from "../shared/Integrations";
-import { 
-    InputConfigType, 
-    IntegrationType as PrismaIntegrationType, 
+import {
+    InputConfigType,
+    IntegrationType as PrismaIntegrationType,
     OutputConfigType,
     KnowledgeBaseConfigType,
 } from "@prisma/client";
 import { AgentTriggerWithConfigs, AgentOutputWithConfigs, AgentKnowledgeBaseWithConfigs } from "../types/prisma";
-import { 
-    ConfigInstance, 
-    GmailConfig, 
+import {
+    ConfigInstance,
+    GmailConfig,
     GmailOutputConfig,
-    FigmaConfig, 
-    SlackConfig, 
+    FigmaConfig,
+    SlackConfig,
     SlackOutputConfig,
-    NotionConfig, 
-    NotionPageConfig, 
-    LinearInputConfig, 
+    NotionConfig,
+    NotionPageConfig,
+    LinearInputConfig,
     LinearOutputConfig,
-    GitHubConfig, 
-    JiraConfig, 
+    GitHubConfig,
+    JiraConfig,
     ConfluenceConfig,
     PosthogConfig,
     ConfigType,
@@ -27,6 +27,14 @@ import {
     LaunchDarklyConfig,
     DatadogConfig,
 } from "../shared/Configs";
+import { SampleEvent } from "../shared/SampleEvents";
+import { InputEvent } from "../integrations/abstract/InputEvent";
+import { GmailEvent } from "../integrations/GmailIntegration";
+import { SlackEvent } from "../integrations/SlackIntegration";
+import { LinearEvent } from "../integrations/LinearIntegration";
+import { JiraEvent } from "../integrations/AtlassianIntegration";
+import { GithubEvent } from "../integrations/GithubIntegration";
+import { FigmaCommentEvent } from "../integrations/FigmaIntegration";
 
 export const convertIntegrationTypeToPrismaIntegrationType = (integrationType: IntegrationType): PrismaIntegrationType => {
     switch (integrationType) {
@@ -583,5 +591,33 @@ export const convertPlainObjectToKnowledgeBaseConfigInstance = (config: any): Co
             );
         default:
             throw new Error(`Unsupported knowledge base config type: ${config.configType}`);
+    }
+}
+
+/**
+ * Converts a SampleEvent to an InputEvent for filtering.
+ * This allows sample events to be run through the event filter.
+ * Note: Some event types use `as any` because the sample event data
+ * is a simplified version of the full webhook payload, but contains
+ * all fields needed for filtering.
+ */
+export const createInputEventFromSampleEvent = (sampleEvent: SampleEvent): InputEvent => {
+    switch (sampleEvent.configType) {
+        case ConfigType.GMAIL:
+            return new GmailEvent(sampleEvent.eventData, sampleEvent.integrationId);
+        case ConfigType.SLACK:
+            return new SlackEvent(sampleEvent.eventData);
+        case ConfigType.LINEAR_INPUT:
+            return new LinearEvent(sampleEvent.eventData as any, sampleEvent.integrationId);
+        case ConfigType.JIRA:
+            return new JiraEvent(sampleEvent.eventData as any, sampleEvent.integrationId);
+        case ConfigType.GITHUB:
+            return new GithubEvent(sampleEvent.eventData as any);
+        case ConfigType.FIGMA:
+            return new FigmaCommentEvent(sampleEvent.eventData);
+        default: {
+            const _exhaustive: never = sampleEvent;
+            throw new Error(`Unsupported sample event config type: ${(_exhaustive as SampleEvent).configType}`);
+        }
     }
 }

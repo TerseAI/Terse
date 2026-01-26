@@ -26,10 +26,11 @@ import { LaunchDarklyIntegrationManager } from "../../integrations/LaunchDarklyI
 import { uuidv4 } from "zod/v4";
 import { FrontendRoutes } from "../../shared/FrontendRoutes";
 import { InputEventRegistry } from "../../integrations/abstract/InputEventRegistry";
-import { SampleEvent } from "../../shared/SampleEvents";
+import { AgentSampleEvent, SampleEvent } from "../../shared/SampleEvents";
 import { db } from "../../prismaClient";
 import { getInputConfigInclude } from "../../utility/prismaIncludes";
 import { convertPrismaConfigToConfigInstance } from "../../utility/typeConverters";
+import { addFilterResultsToSampleEvents } from "../../routes/sampleEvents";
 
 export type ChatAgentContext = {
     chatInterface: ChatInterface;
@@ -522,7 +523,10 @@ async function fetchResourcesForIntegrationType(
 async function fetchAgentSampleEvents(agentId: string, userId: string) {
     const agent = await db().automations.findUnique({
         where: { id: agentId, user_id: userId },
-        include: { inputs: { include: getInputConfigInclude() } }
+        include: {
+            inputs: { include: getInputConfigInclude() },
+            prompt: true  // Add prompt to check filter
+        }
     });
 
     if (!agent) throw new Error("Agent not found");
@@ -532,15 +536,22 @@ async function fetchAgentSampleEvents(agentId: string, userId: string) {
         try {
             const config = convertPrismaConfigToConfigInstance(input);
             const handler = InputEventRegistry.getEventHandler(config.configType);
-            const sampleEvents = await handler.getSampleEvents(config, userId);
+            let sampleEvents = await handler.getSampleEvents(config, userId);
+
+            let agentEvents: AgentSampleEvent[] = []
+            // Add filter results if agent has a prompt
+            if (agent.prompt) {
+                agentEvents = await addFilterResultsToSampleEvents(sampleEvents, agent.prompt, agentId);
+            }
             return {
                 triggerIndex,
                 configType: config.configType,
-                sampleEvents: sampleEvents.map((event, index) => ({
+                sampleEvents: agentEvents.map((event, index) => ({
                     index,
-                    preview: event.preview,
-                    timestamp: event.timestamp,
-                    fullEvent: event
+                    preview: event.sampleEvent.preview,
+                    timestamp: event.sampleEvent.timestamp,
+                    filterResult: event.filterResult,
+                    fullEvent: event.sampleEvent
                 }))
             };
         } catch (error) {

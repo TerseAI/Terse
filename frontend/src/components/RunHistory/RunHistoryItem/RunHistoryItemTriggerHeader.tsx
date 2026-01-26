@@ -1,6 +1,9 @@
-import { ExternalLink, Copy } from "lucide-react";
+import { ExternalLink, Copy, CheckCircle, XCircle } from "lucide-react";
 import type { RunHistoryTrigger } from "../../../shared/RunHistoryTypes";
 import { IconForIntegration } from "../../../pages/Agents/components/Integration";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../../ui/tooltip";
+import { FilterResult } from "../../../shared/ModelEvents";
+
 
 type Props = {
     trigger: RunHistoryTrigger;
@@ -9,9 +12,10 @@ type Props = {
     onClick?: (index: number) => void;
     index?: number;
     selected?: boolean;
+    filterResult?: FilterResult;
 };
 
-export default function RunHistoryItemHeader({ trigger, formattedTimestamp, onCopy, onClick, index, selected }: Props) {
+export default function RunHistoryItemHeader({ trigger, formattedTimestamp, onCopy, onClick, index, selected, filterResult }: Props) {
     const title = trigger.title || trigger.source;
 
     return (
@@ -28,6 +32,32 @@ export default function RunHistoryItemHeader({ trigger, formattedTimestamp, onCo
                         >
                             {title}
                         </span>
+                        {filterResult !== undefined && (
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <span className="flex-shrink-0">
+                                            {filterResult.isRelevant ? (
+                                                <CheckCircle className="w-4 h-4 text-green-500" />
+                                            ) : (
+                                                <XCircle className="w-4 h-4 text-red-500" />
+                                            )}
+                                        </span>
+                                    </TooltipTrigger>
+                                    <TooltipContent className="max-w-xs">
+                                        <div className="text-sm">
+                                            <div className="font-medium mb-1">
+                                                {filterResult.isRelevant ? 'Would trigger agent' : 'Would be filtered out'}
+                                            </div>
+                                            <div className="text-muted-foreground">{filterResult.reason}</div>
+                                            <div className="text-xs mt-1 text-muted-foreground">
+                                                Confidence: {Math.round(filterResult.confidence * 100)}%
+                                            </div>
+                                        </div>
+                                    </TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+                        )}
                         {trigger.url && (
                             <a
                                 href={trigger.url}

@@ -4,7 +4,7 @@ import { Button } from '../ui/button';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../ui/select';
 import RunHistoryItemTriggerHeader from './RunHistoryItem/RunHistoryItemTriggerHeader';
 import { BackendProvider } from '../../services/backend';
-import { SampleEvent } from '../../shared/SampleEvents';
+import { AgentSampleEvent } from '../../shared/SampleEvents';
 import { AgentTrigger } from '../../shared/types';
 import { CONFIG_DETAILS } from '../../shared/Configs';
 import { toast } from 'sonner';
@@ -18,7 +18,7 @@ interface SampleEventsModalProps {
 }
 
 export function SampleEventsModal({ isOpen, onClose, agentId, inputConfigs }: SampleEventsModalProps) {
-  const [sampleEvents, setSampleEvents] = useState<SampleEvent[]>([]);
+  const [sampleEvents, setSampleEvents] = useState<AgentSampleEvent[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedEventIndex, setSelectedEventIndex] = useState<number | undefined>();
   const [selectedInputIndex, setSelectedInputIndex] = useState(0);
@@ -33,11 +33,11 @@ export function SampleEventsModal({ isOpen, onClose, agentId, inputConfigs }: Sa
   // Fetch sample events when modal opens or when selected input changes
   useEffect(() => {
     if (isOpen && inputConfigs.length > 0 && selectedInputIndex < inputConfigs.length) {
-      fetchSampleEvents();
+      fetchAgentSampleEvents();
     }
   }, [isOpen, selectedInputIndex, inputConfigs.length]);
 
-  const fetchSampleEvents = async () => {
+  const fetchAgentSampleEvents = async () => {
     setIsLoading(true);
     setSelectedEventIndex(undefined); // Reset event selection when changing inputs
     try {
@@ -51,7 +51,8 @@ export function SampleEventsModal({ isOpen, onClose, agentId, inputConfigs }: Sa
         setSampleEvents([]);
         return;
       }
-      const events = await BackendProvider.getSampleEvents(config);
+      // Pass agentId to get filter results
+      const events = await BackendProvider.getAgentSampleEvents(config, agentId);
       setSampleEvents(events);
     } catch (error: any) {
       // Display specific error message from backend if available
@@ -68,8 +69,9 @@ export function SampleEventsModal({ isOpen, onClose, agentId, inputConfigs }: Sa
 
     setIsLoading(true);
     try {
-      const sampleEvent = sampleEvents[selectedEventIndex];
-      await BackendProvider.sendSampleEvent({ agentId, sampleEvent });
+      const agentSampleEvent = sampleEvents[selectedEventIndex];
+      if (!agentSampleEvent) return;
+      await BackendProvider.sendSampleEvent(agentSampleEvent);
       toast.success('Sample event sent to agent, check the activity log');
       onClose();
     } catch (error) {
@@ -133,10 +135,11 @@ export function SampleEventsModal({ isOpen, onClose, agentId, inputConfigs }: Sa
               {!isLoading && sampleEvents.map((event, index) => (
                 <RunHistoryItemTriggerHeader
                   key={index}
-                  trigger={event.trigger}
+                  trigger={event.sampleEvent.trigger}
                   onClick={() => setSelectedEventIndex(index)}
                   selected={selectedEventIndex === index}
                   index={index}
+                  filterResult={event.filterResult}
                 />
               ))}
             </div>

@@ -32,6 +32,8 @@ export type ToolCall = { summary: string, step_id: string, parameters: string, i
 
 export type ToolCallComplete = { tool_name: string, status: string, step_id: string, changed_items: ChangedItem[], integration: string, url?: string, result?: string, errorContext?: SharedErrorContext };
 
-export type FilterResult = { isRelevant: boolean, reason: string, confidence: number, step_id: string };
+export type FilterResult = { isRelevant: boolean, reason: string, confidence: number };
+
+export type FilterResultWithStepId = FilterResult & { step_id: string };
 
 export type UserMessage = { message: string };

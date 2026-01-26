@@ -13,6 +13,7 @@ import { runnerFactory } from '../runner';
 import logger from '../../logger';
 import { IntegrationType } from '../../shared/Integrations';
 import { SocketEvents, SocketRooms } from '../../shared/SocketEvents';
+import { FilterResult } from '../../shared/ModelEvents';
 
 export interface EventFilterResult {
     isRelevant: boolean;
@@ -86,6 +87,45 @@ You may provide additional context and analysis in your text response, but you M
 `;
 }
 
+function buildFilterAgent(): Agent<Session, typeof filterOutputSchema> {
+    const currentTimeUtc = new Date().toISOString();
+    const systemPrompt = buildFilterSystemPrompt(currentTimeUtc);
+
+    const agent = new Agent<Session, typeof filterOutputSchema>({
+        name: 'Agent Event Filter',
+        instructions: systemPrompt,
+        model: 'gpt-4o-mini',
+        modelSettings: {
+            temperature: 0.3,
+            maxTokens: 200
+        },
+        tools: [], // No tools - filter should not make tool calls
+        outputType: filterOutputSchema,
+    });
+
+    return agent;
+}
+
+
+function buildFilterHistory(agentPrompt: AgentPrompt, event: InputEvent): AgentInputItem[] {
+    return [
+        {
+            role: 'user',
+            content: [
+                {
+                    type: 'input_text',
+                    text: buildFilterUserPrompt(
+                        agentPrompt.content || 'No specific instructions provided',
+                        event.formatForAgentRunner()
+                    )
+                }
+            ]
+        }
+    ];
+}
+
+
+
 /**
  * Filters a single event to determine if it's relevant to the agent based on user instructions
  * Returns both the filter result and an async generator for streaming events
@@ -95,8 +135,9 @@ You may provide additional context and analysis in your text response, but you M
 export async function filterEvent(
     event: InputEvent,
     agentPrompt: AgentPrompt,
-    streamingParams?: RunHistoryStreamingParams
-): Promise<{ result: EventFilterResult }> {
+    isStreaming: boolean,
+    trackingParams?: RunHistoryStreamingParams
+): Promise<{ result: FilterResult }> {
     if (event.integrationType === IntegrationType.CRON_JOB) {
         return {
             result: {
@@ -104,99 +145,55 @@ export async function filterEvent(
             },
         };
     }
+    const agent = buildFilterAgent();
+    const history = buildFilterHistory(agentPrompt, event);
+    const runner = runnerFactory({
+        agentId: trackingParams?.agentId || '',
+        runId: trackingParams?.runId || '',
+        userId: trackingParams?.userId || '',
+        env: settings.nodeEnv,
+    })
     
-    try {
-        const currentTimeUtc = new Date().toISOString();
-        const systemPrompt = buildFilterSystemPrompt(currentTimeUtc);
-
-        const agent = new Agent<Session, typeof filterOutputSchema>({
-            name: 'Agent Event Filter',
-            instructions: systemPrompt,
-            model: 'gpt-4o-mini',
-            modelSettings: {
-                temperature: 0.3,
-                maxTokens: 200
-            },
-            tools: [], // No tools - filter should not make tool calls
-            outputType: filterOutputSchema,
-        });
-
-        const history: AgentInputItem[] = [
-            {
-                role: 'user',
-                content: [
-                    {
-                        type: 'input_text',
-                        text: buildFilterUserPrompt(
-                            agentPrompt.content || 'No specific instructions provided',
-                            event.formatForAgentRunner()
-                        )
-                    }
-                ]
-            }
-        ];
-        const runner = runnerFactory({
-            agentId: streamingParams?.agentId || '',
-            runId: streamingParams?.runId || '',
-            userId: streamingParams?.userId || '',
-            env: settings.nodeEnv,
-        })
-        const result = await runner.run(agent, history, {
-            stream: true,
-            context: undefined as any, // Filter agent doesn't need session context
-        });
-
-        if (result.interruptions && result.interruptions.length > 0) {
-            throw new Error('Filter agent requested tool approval, which is not supported for event filtering.');
-        }
-
-        // Handle streaming and channel management if streamingParams are provided
-        if (streamingParams?.runId && streamingParams?.userId && streamingParams?.agentId) {
+    if (isStreaming && trackingParams?.userId && trackingParams?.runId && trackingParams?.agentId) {
+            const result = await runner.run(agent, history, {
+                stream: true,
+                context: undefined as any, // Filter agent doesn't need session context
+            });
             const io = getRealtimeSocket();
-            const userRoom = SocketRooms.user(streamingParams.userId);
-
-            try {
-                for await (const modelEvent of transformAgentStreamToModelEvents(result)) {
-                    // Skip TextDelta events from filter agent - we'll store the structured FilterResult instead
-                    if (modelEvent.type === 'TextDelta') {
-                        continue;
-                    }
-
-                    // Store event in database and get the ID
-                    const eventId = await storeChatEvent(streamingParams.runId, modelEvent);
-
-                    // Emit event via Socket.IO with timestamp and ID
-                    if (io) {
-                        const runHistoryModelEvent: RunHistoryModelEvent = {
-                            ...modelEvent,
-                            id: eventId,
-                            timestamp: new Date().toISOString(),
-                        };
-                        const payload: RunHistoryModelSocketEvent = {
-                            runId: streamingParams.runId,
-                            agentId: streamingParams.agentId,
-                            runHistoryModelEvent,
-                        };
-                        io.to(userRoom).emit(SocketEvents.AGENT_CHAT_EVENT, payload);
-                    }
+            const userRoom = SocketRooms.user(trackingParams.userId);
+            for await (const modelEvent of transformAgentStreamToModelEvents(result)) {
+                // Skip TextDelta events from filter agent - we'll store the structured FilterResult instead
+                if (modelEvent.type === 'TextDelta') {
+                    continue;
                 }
-            } catch (error) {
-                logger.error('Error streaming filter events', { error, runId: streamingParams.runId, agentId: streamingParams.agentId });
-                // Continue with parsing even if streaming fails
+
+                // Store event in database and get the ID
+                const eventId = await storeChatEvent(trackingParams.runId, modelEvent);
+
+                // Emit event via Socket.IO with timestamp and ID
+                if (io) {
+                    const runHistoryModelEvent: RunHistoryModelEvent = {
+                        ...modelEvent,
+                        id: eventId,
+                        timestamp: new Date().toISOString(),
+                    };
+                    const payload: RunHistoryModelSocketEvent = {
+                        runId: trackingParams.runId,
+                        agentId: trackingParams.agentId,
+                        runHistoryModelEvent,
+                    };
+                    io.to(userRoom).emit(SocketEvents.AGENT_CHAT_EVENT, payload);
+                }
             }
-        }
 
-        // Get structured output from result
-        const parsed = result.finalOutput ?? null;
-        if (!parsed) {
-            throw new Error('No final output from filter agent');
-        }
+            const finalOutput = result.finalOutput ?? null;
+            if (!finalOutput) {
+                throw new Error('No final output from filter agent');
+            }
+            finalOutput.confidence = Math.max(0, Math.min(1, finalOutput.confidence));
 
-        // Clamp confidence to [0, 1]
-        parsed.confidence = Math.max(0, Math.min(1, parsed.confidence));
+            const parsed = finalOutput;
 
-        // Store and emit the filter result event if streamingParams are provided
-        if (streamingParams?.runId && streamingParams?.userId && streamingParams?.agentId) {
             const filterResultEvent = {
                 type: 'FilterResult' as const,
                 isRelevant: parsed.isRelevant,
@@ -204,31 +201,31 @@ export async function filterEvent(
                 confidence: parsed.confidence,
                 step_id: randomString(15),
             };
-            const filterEventId = await storeChatEvent(streamingParams.runId, filterResultEvent);
-
-            const io = getRealtimeSocket();
+            const filterEventId = await storeChatEvent(trackingParams.runId, filterResultEvent);
             if (io) {
-                const userRoom = `user:${streamingParams.userId}`;
+                const userRoom = `user:${trackingParams.userId}`;
                 const runHistoryModelEvent: RunHistoryModelEvent = {
                     ...filterResultEvent,
                     id: filterEventId,
                     timestamp: new Date().toISOString(),
                 };
                 const payload: RunHistoryModelSocketEvent = {
-                    runId: streamingParams.runId,
-                    agentId: streamingParams.agentId,
+                    runId: trackingParams.runId,
+                    agentId: trackingParams.agentId,
                     runHistoryModelEvent,
                 };
                 io.to(userRoom).emit('agent:chat:event', payload);
             }
+            logger.info(`Event filter result for ${event.integrationType}:`, { parsed });
+            return { result: parsed };
+    } else {
+        const result = await runner.run(agent, history);
+        const parsed = result.finalOutput ?? null;
+        if (!parsed) {
+            throw new Error('No final output from filter agent');
         }
-        logger.info(`Event filter result for ${event.integrationType}:`, { parsed });
+        parsed.confidence = Math.max(0, Math.min(1, parsed.confidence));
         return { result: parsed };
-
-    } catch (error) {
-        // Re-throw error to be handled by the caller (EventProcessor)
-        // This allows proper error tracking in run history
-        throw error;
     }
 }
 
