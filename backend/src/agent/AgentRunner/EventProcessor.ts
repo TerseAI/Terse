@@ -11,7 +11,7 @@ import { ApprovalResult } from './AgentRunner';
 import { Agent as OpenAIAgent, AgentOutputType, RunResult } from '@openai/agents';
 import { Session } from '../../server';
 import { emitCacheInvalidationWithKey, emitCacheInvalidationWithWildcard } from '../../realtimeSocket';
-import { getInputConfigInclude, getOutputConfigInclude, getKnowledgeBaseConfigInclude } from '../../utility/prismaIncludes';
+import { getAgentHydrationInclude } from '../../utility/prismaIncludes';
 import { KnowledgeBaseFactory } from '../../knowledgeBase/abstract/KnowledgeBaseFactory';
 import { KnowledgeBase } from '../../knowledgeBase/abstract/KnowledgeBase';
 import { ConfigInstance } from '../../shared/Configs';
@@ -59,19 +59,7 @@ export class EventProcessor {
                 user_id: this.user.id,
                 is_active: true,
             },
-            include: {
-                prompt: true,
-                inputs: {
-                    include: getInputConfigInclude()
-                },
-                outputs: {
-                    include: getOutputConfigInclude()
-                },
-                knowledge_bases: {
-                    include: getKnowledgeBaseConfigInclude()
-                },
-                tool_approvals: true
-            }
+            include: getAgentHydrationInclude()
         })
 
         if (agents.length === 0) {
