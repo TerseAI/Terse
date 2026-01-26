@@ -51,18 +51,19 @@ export async function getSampleEvents(req: Request, res: Response) {
         const hasAgentAndUser = (
             agentId && userId
         )
-        if (hasAgentAndUser) {
-            const agent = await db().automations.findUnique({
-                where: { id: agentId, user_id: userId },
-                include: { prompt: true }
-            });
-            const matchingAgentAndHasPrompt = agent && agent?.prompt;
-            if (matchingAgentAndHasPrompt && agent?.prompt) {
-                const eventsWithFilters = await addFilterResultsToSampleEvents(sampleEvents, agent.prompt, agentId);
-                return res.status(200).json(eventsWithFilters);
-            }
+
+        if (!hasAgentAndUser) {
+            throw new Error('Agent and user are required');
         }
-        return res.status(200).json(sampleEvents);
+        const agent = await db().automations.findUnique({
+            where: { id: agentId, user_id: userId },
+            include: { prompt: true }
+        });
+        if (!agent || !agent?.prompt) {
+            throw new Error('Agent and prompt are required');
+        }
+        const eventsWithFilters = await addFilterResultsToSampleEvents(sampleEvents, agent?.prompt, agentId);
+        return res.status(200).json(eventsWithFilters);
     } catch (error: any) {
         // Use status code from error if available, otherwise default to 500
         const statusCode = error.statusCode || 500;
