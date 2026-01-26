@@ -1,6 +1,6 @@
 import { GithubAppUnifiedEventRequest, Commit, FileDiff } from '../routes/GithubTypes';
 import { Ticket, TicketState, User as TicketUser, Team, Project, TicketSystemType } from '../shared/TicketSystem';
-import { Session } from '../server';
+import { Session } from "../types/session";
 import { Search } from '../searchClient';
 import { SearchItem, SearchResult, SearchOptions } from '../search/SearchItem';
 import Owner from '../theOwner/Owner';

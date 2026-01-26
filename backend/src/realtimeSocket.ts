@@ -13,8 +13,8 @@ import { DirectiveTask, directiveTaskQueue } from "./agent/DirectiveAgent/Direct
 import { ApprovalService } from "./services/ApprovalService";
 import logger from "./logger";
 import { SocketEvents, SocketRooms } from "./shared/SocketEvents";
-import WebChatInterface from "./agent/ChatAgent/ChatInterfaces/WebChatInterface";
-import ChatAgent from "./agent/ChatAgent/ChatAgent";
+import { registerBuilderChatHandler } from "./socketHandlers/builderChatHandler";
+import { emitCacheInvalidationWithWildcard } from "./services/CacheInvalidationService";
 
 // Extended Socket type with userId property
 interface AuthenticatedSocket extends Socket {
@@ -233,23 +233,7 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
         });
 
         // Listen for builder chat messages (in-app agent builder)
-        socket.on(SocketEvents.BUILDER_CHAT_MESSAGE, async (payload: { sessionId: string; message: SendModelRequest }) => {
-            const { sessionId, message } = payload;
-            logger.info(`[builder:chat:message] Received message`, { sessionId, userId, message });
-
-            if (!sessionId) {
-                logger.error(`[builder:chat:message] No sessionId provided`);
-                return;
-            }
-
-            const userMessage = message.user_message;
-
-            logger.info(`[builder:chat:message] Processing message`, { sessionId, userId, userMessage });
-
-            const webChatInterface = new WebChatInterface(sessionId, userId, socket);
-            const chatAgent = new ChatAgent(webChatInterface, sessionId, userId);
-            await chatAgent.run(userMessage);
-        });
+        registerBuilderChatHandler(socket, userId);
 
         // presence: mark online (60s TTL), refresh every 25s (only if Redis is available)
         if (pub) {
@@ -273,32 +257,6 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
 
 export function getRealtimeSocket(): Server | null {
     return io;
-}
-
-export function emitCacheInvalidationWithKey(
-    userId: string,
-    key: string
-) {
-    if (!io) {
-        logger.warn("Socket.IO server not initialized");
-        return;
-    }
-    io.to(SocketRooms.user(userId)).emit(SocketEvents.INVALIDATE, { key });
-}
-
-export function emitCacheInvalidationWithWildcard(
-    userId: string,
-    key: string,
-    id: string
-) {
-    if (!io) {
-        logger.warn("Socket.IO server not initialized");
-        return;
-    }
-    // Send tag-based invalidation payload
-    // If id is provided, frontend will match on both tag and id
-    // If id is not provided, frontend will match on tag only
-    io.to(SocketRooms.user(userId)).emit(SocketEvents.INVALIDATE, { key, id });
 }
 
 function getSocketCorsOrigin(): boolean | string | string[] {

@@ -4,7 +4,7 @@ import { GithubRepository, User } from "../../types/prisma";
 import { GithubAppInstallationCallbackRequest } from "../../shared/types";
 import chalk from "chalk";
 import { processRepository } from "./githubApp";
-import { emitCacheInvalidationWithKey } from "../../realtimeSocket";
+import { emitCacheInvalidationWithKey } from "../../services/CacheInvalidationService";
 import logger from "../../logger";
 
 export async function processsGithubAppInstallationWebhook(req: Request, res: Response) {

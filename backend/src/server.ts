@@ -81,7 +81,8 @@ import {
 } from "./routes/figma";
 import { getConfluenceIntegrations, getConfluenceResources } from "./routes/confluence";
 import { getActiveIntegrations, getAllIntegrations, getIntegrationInstallationDetails } from "./routes/integrations";
-import { initializeRealtimeSocket } from "./realtimeSocket";
+import { initializeRealtimeSocket, getRealtimeSocket } from "./realtimeSocket";
+import { registerSocketGetter } from "./services/CacheInvalidationService";
 import { generateQuestionsRoute, generatePromptRoute } from "./routes/promptBuilder";
 import {
   createNotificationDestination,
@@ -101,19 +102,12 @@ import { ApiRoutes } from "./shared/ApiRoutes";
 import { runStartupValidations } from "./tools/validateToolNames";
 import { toolsThatRequireApprovalsRoute } from "./routes/tools";
 
-export type Session = {
-  user: User;
-  ticketManager?: TicketManager;
-  isUserInitiated: boolean; // true if the user has initiated the session, false if the session was initiated by the system
-  teamId?: string;
-  currentUser?: TicketUser;
-};
-
 const app = express();
 const server = createServer(app);
 
 try {
   await initializeRealtimeSocket(server);
+  registerSocketGetter(getRealtimeSocket);
   logger.info("✅ Socket.IO server initialized");
 } catch (error) {
   logger.error("❌ Failed to initialize Socket.IO server", { error });

@@ -3,7 +3,7 @@ import { Agent, AgentInputItem, run, user, AgentOutputType } from "@openai/agent
 import { z } from "zod";
 import logger from "../../../logger";
 import { createGitHubClient, getPullRequestDiff, parseRepoFullName, getGitHubAccessToken } from "../githubApiClient";
-import { Session } from "../../../server";
+import { Session } from "../../../types/session";
 import { runnerFactory } from "../../../agent/runner";
 import { settings } from "../../../config/settings";
 import { IntegrationType } from "../../../shared/Integrations";

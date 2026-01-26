@@ -1,5 +1,5 @@
 import { Search } from '../searchClient';
-import { Session } from '../server';
+import { Session } from "../types/session";
 import { ActivityOverview, Analyzer } from '../agent/agents/Analyzer';
 import chalk from 'chalk';
 import { Commit, GithubAppUnifiedEventRequest } from '../routes/GithubTypes';

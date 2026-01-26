@@ -8,7 +8,7 @@ import { RunHistoryActionType } from "@prisma/client";
 import { formatError } from "../../../tools/toolUtils";
 import { ToolName } from "../../../tools/ToolNames";
 import logger from "../../../logger";
-import { Session } from "../../../server";
+import { Session } from "../../../types/session";
 import { LinearIntegrationManager } from "../../../integrations/LinearIntegration";
 
 

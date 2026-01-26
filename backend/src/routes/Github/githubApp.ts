@@ -5,7 +5,7 @@ import { User, GithubRepository, UserGithubRepository } from "../../types/prisma
 import Owner from "../../theOwner/Owner";
 import { Commit, GithubAppUnifiedEventRequest } from "../../routes/GithubTypes";
 import { search } from "../../searchClient";
-import { Session } from "../../server";
+import { Session } from "../../types/session";
 import { ActivityOverview } from "../../agent/agents/Analyzer";
 import { TicketEventType } from "@prisma/client";
 import { githubApp } from "../../config/settings";

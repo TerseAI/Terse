@@ -1,5 +1,5 @@
 import { RunContext } from "@openai/agents";
-import { Session } from "../server";
+import { Session } from "../types/session";
 import { SessionWithTracking } from "../agent/AgentRunner/AgentRunner";
 import logger from "../logger";
 

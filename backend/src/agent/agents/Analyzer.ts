@@ -1,5 +1,5 @@
 import { Agent, AgentInputItem, AgentOutputType, run, RunResult, user } from "@openai/agents";
-import { Session } from "../../server";
+import { Session } from "../../types/session";
 import chalk from "chalk";
 import { EntityType } from "../../shared/Entities";
 import { ChangedItem, ChangeEventType } from "../../shared/ModelEvents";

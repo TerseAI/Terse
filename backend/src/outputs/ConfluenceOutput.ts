@@ -8,7 +8,7 @@ import chalk from "chalk";
 import { OutputConfigType, RunHistoryActionType } from "@prisma/client";
 import { ConfluenceConfig } from "../shared/Configs";
 import { SessionWithTracking } from "../agent/AgentRunner/AgentRunner";
-import { Session } from "../server";
+import { Session } from "../types/session";
 import { formatError, createNeedsApprovalFunction } from "../tools/toolUtils";
 import { ToolName } from "../tools/ToolNames";
 import logger from "../logger";

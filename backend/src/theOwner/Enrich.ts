@@ -1,5 +1,5 @@
 import { Project, Ticket } from "../shared/TicketSystem";
-import { Session } from "../server";
+import { Session } from "../types/session";
 import chalk from "chalk";
 import logger from "../logger";
 

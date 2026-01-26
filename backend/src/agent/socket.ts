@@ -5,7 +5,7 @@ import { Request, Response } from "express";
 import { Jwt } from "../utility/jwt";
 import { AgentSession } from "./agents/Agent";
 import { transformAgentStreamToModelEvents } from "./streaming";
-import type { Session } from "../server";
+import type { Session } from "../types/session";
 import { ModelEvent, ModelRequest, SendModelRequest } from "../shared/ModelEvents";
 import { IAgentSession } from "./agents/AgentSession";
 import { getUserTicketManager } from "../types/user";

@@ -1,4 +1,4 @@
-import { Session } from '../server';
+import { Session } from "../types/session";
 
 export async function systemPrompt(session: Session): Promise<string> {
     const user_id = session.user.id;
