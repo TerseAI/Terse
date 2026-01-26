@@ -18,9 +18,9 @@ class SlackChatInterface extends ChatInterface {
     constructor(
         private readonly channel: string,
         webClient: WebClient,
-        userId?: string,
+        userId: string,
+        sessionId: string, // thread_ts if in a thread
         slackUserId?: string,
-        sessionId?: string // thread_ts if in a thread
     ) {
         super(sessionId, userId);
         this.webClient = webClient;
