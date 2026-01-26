@@ -518,37 +518,23 @@ export class SlackEvent extends InputEvent implements Identifiable {
     }
 
     /**
-     * Get all accessible image URLs from the message
-     * Returns presigned GCS URLs for file uploads (if available) + public block/attachment URLs
-     */
-    getImageUrls(): string[] {
-        const urls: string[] = [];
-
-        // Add presigned GCS URLs for file images from storedFiles (takes priority)
-        if (this.data.storedFiles) {
-            const imageUrls = this.data.storedFiles
-                .filter(f => f.category === 'image')
-                .map(f => f.url);
-            urls.push(...imageUrls);
-        } else if (this.data.imageUrlsFromFiles && this.data.imageUrlsFromFiles.length > 0) {
-            // Legacy fallback
-            urls.push(...this.data.imageUrlsFromFiles);
-        }
-
-        // Add public URLs from blocks and attachments
-        const publicImages = this.getImages()
-            .filter(img => !img.requiresAuth)
-            .map(img => img.url);
-        urls.push(...publicImages);
-
-        return urls;
-    }
-
-    /**
      * Get all stored files with full metadata (images, documents, text files)
+     * Includes both GCS-stored files and public block/attachment images
      */
     getFiles(): StoredFile[] {
-        return this.data.storedFiles || [];
+        const files: StoredFile[] = [...(this.data.storedFiles || [])];
+
+        // Add public block/attachment images as StoredFile objects
+        const publicImages = this.getImages().filter(img => !img.requiresAuth);
+        for (const img of publicImages) {
+            files.push({
+                url: img.url,
+                mimeType: 'image/png',
+                category: 'image',
+            });
+        }
+
+        return files;
     }
 
     debugLog(): string {

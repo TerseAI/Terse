@@ -33,6 +33,7 @@ import {
   buildFigmaFullFrameImageKey,
   FileDownloadResult,
   isFileStorageConfigured,
+  StoredFile,
 } from "../services/FileStorageService";
 
 // Type alias for backward compatibility
@@ -1059,25 +1060,31 @@ export class FigmaCommentEvent extends InputEvent {
     };
   }
 
-  getImageUrls(): string[] {
-    // Return presigned GCS URLs if available (preferred - they're stable and don't expire for 24h)
-    // Fall back to raw Figma URLs only if GCS storage is not configured
+  /**
+   * Get all files associated with this event.
+   * Returns presigned GCS URLs (preferred) or falls back to raw Figma URLs.
+   */
+  getFiles(): StoredFile[] {
+    // GCS presigned URLs (preferred - stable and 24h expiry)
     if (this.data.imageUrlsPresigned && this.data.imageUrlsPresigned.length > 0) {
-      return this.data.imageUrlsPresigned;
+      return this.data.imageUrlsPresigned.map(url => ({
+        url,
+        mimeType: 'image/png',
+        category: 'image' as const,
+      }));
     }
 
-    // Fallback: return raw Figma URLs (only when GCS is not configured)
-    // Note: These URLs expire in 30 days and are not recommended for production use
-    const urls: string[] = [];
+    // Fallback: raw Figma URLs (only when GCS is not configured)
+    const files: StoredFile[] = [];
     if (this.data.imageUrls) {
       if (this.data.imageUrls.nodeImage) {
-        urls.push(this.data.imageUrls.nodeImage);
+        files.push({ url: this.data.imageUrls.nodeImage, mimeType: 'image/png', category: 'image' });
       }
       if (this.data.imageUrls.fullFrame) {
-        urls.push(this.data.imageUrls.fullFrame);
+        files.push({ url: this.data.imageUrls.fullFrame, mimeType: 'image/png', category: 'image' });
       }
     }
-    return urls;
+    return files;
   }
 }
 

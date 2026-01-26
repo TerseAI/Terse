@@ -33,13 +33,6 @@ export abstract class InputEvent {
     abstract createTriggerMetadata(): RunHistoryTrigger;
 
     /**
-     * Get image URLs associated with this event.
-     * Events that include images (e.g., Figma comments with visual context) should return their URLs here.
-     * @returns Array of image URL strings. Empty array if no images are available.
-     */
-    abstract getImageUrls(): string[];
-
-    /**
      * Get file attachments associated with this event with full metadata.
      * Returns files categorized by type (image, document, text) for proper multimodal handling.
      *

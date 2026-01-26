@@ -446,31 +446,29 @@ export class AgentRunner<
         const textContent = this.buildTextContent(inputEvent);
         const content: UserMessageContent[] = [{ type: 'input_text', text: textContent }];
 
-        // Add images (for multimodal vision support)
-        const imageUrls = inputEvent.getImageUrls();
-        for (const imageUrl of imageUrls) {
-            content.push({ type: 'input_image', image: imageUrl });
-        }
-
+        // Get all files and process by category
         const files = inputEvent.getFiles();
         for (const file of files) {
-            // Only include documents (PDFs) as input_file - they have native SDK support
-            // Text files (DOCX, XLSX, etc.) would need content extraction which isn't implemented yet
-            if (file.category === 'document') {
+            if (file.category === 'image') {
+                content.push({ type: 'input_image', image: file.url });
+            } else if (file.category === 'document') {
+                // PDFs have native SDK support
                 content.push({
                     type: 'input_file',
                     filename: file.filename || 'document.pdf',
                     file_data: file.url, // Presigned URL - SDK will fetch the content
                 } as AgentInputFile);
             }
+            // Text files (DOCX, XLSX, etc.) would need content extraction which isn't implemented yet
         }
 
+        const imageCount = files.filter(f => f.category === 'image').length;
         const documentCount = files.filter(f => f.category === 'document').length;
         const textFileCount = files.filter(f => f.category === 'text').length;
 
         logger.info("User message built to be sent to agent", {
             textLength: textContent.length,
-            imageCount: imageUrls.length,
+            imageCount,
             documentCount,
             textFileCount,
             totalFilesStored: files.length,

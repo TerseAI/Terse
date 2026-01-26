@@ -1303,13 +1303,6 @@ export class JiraEvent extends InputEvent {
         };
     }
 
-    getImageUrls(): string[] {
-        // Return presigned GCS URLs for image attachments
-        return this.storedFiles
-            .filter(f => f.category === 'image')
-            .map(f => f.url);
-    }
-
     getFiles(): StoredFile[] {
         // Return all stored files with full metadata
         return this.storedFiles;

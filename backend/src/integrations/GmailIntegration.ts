@@ -566,17 +566,6 @@ export class GmailEvent extends InputEvent {
         };
     }
 
-    getImageUrls(): string[] {
-        // Return presigned GCS URLs for image attachments
-        // Filter from storedFiles if available, fallback to legacy field
-        if (this.data.storedFiles) {
-            return this.data.storedFiles
-                .filter(f => f.category === 'image')
-                .map(f => f.url);
-        }
-        return this.data.imageUrlsPresigned || [];
-    }
-
     getFiles(): StoredFile[] {
         // Return all stored files with full metadata
         return this.data.storedFiles || [];
