@@ -26,7 +26,10 @@ import AgentApprovalSettings from "../AgentApprovalSettings";
 import { InstructionsEditor } from "../components/InstructionsEditor";
 import { IconForConfigType } from "../components/Integration";
 import { BuilderChat } from "../../../components/chat/BuilderChat";
+import { useModelContext } from "../../../services/ModelContextProvider";
+import { AgentSetUpPageContext } from "../../../utility/AgentModelDonation";
 
+export type SetupSection = 'triggers' | 'knowledgeBase' | 'prompt' | 'skills' | 'alerts';
 export type AgentSetupTabProps = {
     agentId: string | null;
     name: string | null;
@@ -181,6 +184,7 @@ export default function AgentSetupTab({
 }: AgentSetupTabProps) {
     const { totalCount } = useAgentCount();
     const defaultName = getDefaultAgentName(totalCount);
+    const { getStateJSON, donate } = useModelContext();
 
     const agentInputs = inputs.map(toAgentTrigger).filter((i): i is AgentTrigger => i != null);
     const agentOutputs = outputs.map(toAgentOutput).filter((o): o is AgentOutput => o != null);
@@ -217,9 +221,9 @@ export default function AgentSetupTab({
             count: outputs.length,
         },
     ];
-
-    type SetupSection = 'triggers' | 'knowledgeBase' | 'prompt' | 'skills' | 'alerts';
     const [activeSection, setActiveSection] = useState<SetupSection>('triggers');
+
+    donate('Agent Set Up Page Context', new AgentSetUpPageContext(activeSection));
 
     return (
         <div className="grid grid-cols-20 h-full">
@@ -389,7 +393,7 @@ export default function AgentSetupTab({
 
             {/* Builder Chat */}
             <div className="border-l border-border col-span-6 h-full min-h-0">
-                <BuilderChat getStateJSON={getStateJSON} />
+                <BuilderChat getStateJSON={() => getStateJSON()} />
             </div>
         </div>
     )

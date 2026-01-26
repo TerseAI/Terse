@@ -20,6 +20,7 @@ export function ModelContextProvider({ children }: { children: React.ReactNode }
       stateRef.current.forEach((state, key) => {
         result[key] = state.toJSON();
       });
+      console.log('getStateJSON', result);
       return result;
     },
   };
