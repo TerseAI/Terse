@@ -1,5 +1,5 @@
 import { Agent, AgentInputItem, run, StreamedRunResult, user, AgentOutputType, RunRawModelStreamEvent, Tool } from '@openai/agents';
-import { Session } from '../../server';
+import { Session } from "../../types/session";
 import { systemPrompt } from '../systemPrompt';
 import { SendModelRequest, ChangedItem, ChangeEventType } from "../../shared/ModelEvents";
 import { IAgentSession } from './AgentSession';

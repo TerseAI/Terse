@@ -6,7 +6,7 @@ import { Output } from '../../outputs/abstract/Output';
 import { KnowledgeBaseFactory } from '../../knowledgeBase/abstract/KnowledgeBaseFactory';
 import { KnowledgeBase } from '../../knowledgeBase/abstract/KnowledgeBase';
 import { ConfigInstance } from '../../shared/Configs';
-import { Session } from '../../server';
+import { Session } from "../../types/session";
 import { AgentRunner } from './AgentRunner';
 import { RunContext } from './SystemPromptBuilder';
 import logger from '../../logger';

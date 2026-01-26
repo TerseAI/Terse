@@ -5,7 +5,7 @@ import { PostHogSessionService, SessionEventsResult } from "./eventDecoder.js";
 import { IntegrationType } from "../../../shared/Integrations.js";
 import { RunHistoryActionType } from "@prisma/client";
 import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner.js";
-import { Session } from "../../../server.js";
+import { Session } from "../../../types/session";
 import { getPosthogApiKeyByIntegrationId } from "../posthogApiClient.js";
 import { ToolName } from "../../../tools/ToolNames.js";
 

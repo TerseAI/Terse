@@ -10,7 +10,7 @@ import { getInputConfigInclude, getOutputConfigInclude, getKnowledgeBaseConfigIn
 import { TRIGGER_REGISTRY } from "../triggers/TriggerRegistry";
 import { INTEGRATION_REGISTRY, isSystemIntegration } from "../integrations/abstract/IntegrationRegistry";
 import { OutputFactory } from "../outputs/abstract/OutputFactory";
-import { emitCacheInvalidationWithKey } from "../realtimeSocket";
+import { emitCacheInvalidationWithKey } from "../services/CacheInvalidationService";
 import logger from "../logger";
 import { KnowledgeBaseFactory } from "../knowledgeBase/abstract/KnowledgeBaseFactory";
 import { isValidToolName } from "../tools/ToolNames";

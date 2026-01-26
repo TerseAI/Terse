@@ -5,13 +5,13 @@ import { User, GithubRepository, UserGithubRepository } from "../types/prisma";
 import Owner from "../theOwner/Owner";
 import { GithubAppUnifiedEventRequest, GithubAppInstallationDeletedRequest, GithubUserRepository, GithubAppInstallationRepository, GithubAppInstallation } from "../routes/GithubTypes";
 import { search } from "../searchClient";
-import { Session } from "../server";
+import { Session } from "../types/session";
 import { ActivityOverview } from "../agent/agents/Analyzer";
 import { TicketEventType } from "@prisma/client";
 import { githubApp } from "../config/settings";
 import { Repository, GithubAppInstallationCallbackRequest, GetGithubRepositoriesForIntegrationResponse } from "../shared/types";
-import { getAppInstallationRepositories, getAppInstallationsForUser, GithubIntegrationManager } from "../integrations/GithubIntegration";
-import { emitCacheInvalidationWithKey } from "../realtimeSocket";
+import { getAppInstallationRepositories, getAppInstallationsForUser, GithubIntegrationManager, resolveUsersForGithubInstallation } from "../integrations/GithubIntegration";
+import { emitCacheInvalidationWithKey } from "../services/CacheInvalidationService";
 import logger, { runWithUserContext } from "../logger";
 import { FeatureFlagService, FeatureFlag } from "../utility/featureFlags";
 
@@ -318,36 +318,6 @@ async function resolveUserForGithubInstallation(installationId: number, username
     }
 
     return null;
-}
-
-// Given an installation, we need to fetch all users that are associated with that installation.
-// This doesn't guarantee that they have an active input config, but it's a good start.
-// This is super inefficient, but it's a good start. We need to optimize this.
-export async function resolveUsersForGithubInstallation(installationId: number): Promise<User[]> {
-    return db().$transaction(async (tx) => {
-        // Get all of our github app users. 
-        const githubAppUsers = await tx.github_app_tokens.findMany();
-
-        // for each github App user, get their installations they have access to. Return a Map<user_id, installations>
-        const installationResults = await Promise.all(githubAppUsers.map(async (user) => {
-            const installations = await getAppInstallationsForUser(user.access_token);
-            return { userId: user.user_id, installations: installations.installations };
-        }));
-
-        // Find users who have access to the specific installation
-        const userIds = installationResults
-            .filter(result => result.installations.some(inst => inst.id === installationId))
-            .map(result => result.userId);
-
-        // Fetch and return the User objects
-        const users = await tx.users.findMany({
-            where: { id: { in: userIds } }
-        });
-
-        logger.debug(`Found ${users.length} users for event from installation`, { installationId, userCount: users.length });
-        
-        return users;
-    });
 }
 
 async function resolveUserGithubRelation(user: User, username: string, repositoryName: string, installationId: number): Promise<GithubRepository> {

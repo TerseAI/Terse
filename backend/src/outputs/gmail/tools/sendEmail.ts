@@ -9,7 +9,7 @@ import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner";
 import { getOAuth2Client, GmailIntegrationManager } from "../../../integrations/GmailIntegration";
 import { formatError, createNeedsApprovalFunction } from "../../../tools/toolUtils";
 import { ToolName } from "../../../tools/ToolNames";
-import { Session } from "../../../server";
+import { Session } from "../../../types/session";
 
 /**
  * Tool for sending emails or replying to email threads via Gmail.

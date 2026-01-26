@@ -1,7 +1,7 @@
 import { ChangedItem, ChangeEventType, SendModelRequest } from "../../shared/ModelEvents";
 import { EntityType } from "../../shared/Entities";
 import { Agent, AgentInputItem, AgentOutputType, StreamedRunResult } from "@openai/agents";
-import { Session } from "../../server";
+import { Session } from "../../types/session";
 
 // Interface for agent sessions
 export interface IAgentSession<T extends Session> {
