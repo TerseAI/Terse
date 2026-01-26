@@ -5,7 +5,7 @@ import { formatAgentForSystemPrompt } from "../AgentRunner/formatContext";
 import { AgentWithRelations } from "../../types/prisma";
 import { getInputConfigInclude, getKnowledgeBaseConfigInclude, getOutputConfigInclude } from "../../utility/prismaIncludes";
 
-export async function buildChatAgentSystemPrompt(userId: string, userTimezone?: string | null): Promise<string> {
+export async function buildChatAgentSystemPrompt(userId: string, userTimezone?: string | null, uiState?: string | null): Promise<string> {
 
     const integrationMetadata = Object.values(INTEGRATION_METADATA);
 
@@ -131,6 +131,10 @@ export async function buildChatAgentSystemPrompt(userId: string, userTimezone?: 
     You can also modify these integrations with the user's permissions. Just call promptForIntegration tool to prompt the user to configure the integration.
 
     If the user does not have an integration but it's need to build the agent they want, you can call the promptForIntegration tool to prompt the user to connect the integration.
+
+    ## Current UI State (Agent Being Built)
+
+    ${uiState ?? 'No UI state available'}
 
     ## How to use tools:
     - When the user tells you which integration they want to connect, you should use the promptForIntegration tool, which will prompt the user to configure the integration. Try your best to guesstimate which integration the user is referring to based on context, even if they don't explicitly name it. For example, if they mention "Slack messages" or "chat", they likely mean Slack. If they mention "code repositories" or "pull requests", they likely mean GitHub.
