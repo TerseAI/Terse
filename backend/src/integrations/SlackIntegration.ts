@@ -800,10 +800,31 @@ export class SlackEvent extends InputEvent implements Identifiable {
             }
         }
 
-        return messageEntries.map(({ message, conversation }) => {
+        // Fetch permalinks for all messages in parallel
+        const permalinkResults = await Promise.allSettled(
+            messageEntries.map(async ({ message, conversation }) => {
+                const channelId = config.channelId ? config.channelId : conversation?.id || '';
+                if (!channelId || !message.ts) return undefined;
+                try {
+                    const result = await client.chat.getPermalink({
+                        channel: channelId,
+                        message_ts: message.ts
+                    });
+                    return result.permalink;
+                } catch {
+                    return undefined;
+                }
+            })
+        );
+
+        return messageEntries.map(({ message, conversation }, index) => {
             const userId = message.user || '';
             // Use looked-up user name, or fallback to message.username (for bots), or user ID
             const userName = userMap.get(userId) || message.username || userId;
+
+            // Get permalink from parallel fetch results
+            const permalinkResult = permalinkResults[index];
+            const permalink = permalinkResult.status === 'fulfilled' ? permalinkResult.value : undefined;
 
             const eventData: SlackEventData = {
                 channelId: config.channelId ? config.channelId : conversation?.id || '',
@@ -814,6 +835,7 @@ export class SlackEvent extends InputEvent implements Identifiable {
                 timestamp: message.ts || '',
                 threadTimestamp: message.thread_ts,
                 teamId,
+                permalink,
                 blocks: message.blocks,
                 attachments: message.attachments,
                 files: message.files,

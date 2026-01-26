@@ -34,13 +34,16 @@ export default function RunHistoryActionItem({ runId, index, action, runStatus, 
             <div className="rounded-lg border border-border">
                 <AccordionItem value={actionKey} className="border-b-0">
                     <AccordionTrigger className="py-2 px-2 hover:no-underline">
-                        <div className="flex items-center gap-2 w-full mr-2">
+                        <div className="flex items-center gap-2 w-full mr-2 min-w-0">
                             <div className="w-4 h-4 flex-shrink-0">
                                 <IconForIntegration integration={action.integration} />
                             </div>
-                            <div className="flex-1">
-                                <div className="flex items-center gap-2">
-                                    <span className="text-foreground">
+                            <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 min-w-0">
+                                    <span
+                                        className="text-foreground truncate min-w-0"
+                                        title={`${formatAction(action.action)} on ${capitalize(action.integration)} → ${action.target}`}
+                                    >
                                         {formatAction(action.action)} on {capitalize(action.integration)} → {action.target}
                                     </span>
                                     {action.url && (
@@ -49,7 +52,7 @@ export default function RunHistoryActionItem({ runId, index, action, runStatus, 
                                             target="_blank"
                                             rel="noopener noreferrer"
                                             onClick={(e) => e.stopPropagation()}
-                                            className="text-primary hover:opacity-80 transition-opacity"
+                                            className="text-primary hover:opacity-80 transition-opacity flex-shrink-0"
                                         >
                                             <ExternalLink className="w-3 h-3" />
                                         </a>

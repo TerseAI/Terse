@@ -1367,10 +1367,8 @@ export class JiraEvent extends InputEvent {
         const prisma = db();
 
         const integrationManager = new AtlassianIntegrationManager();
-        const refreshedAccessToken = await integrationManager.refreshToken(config.integrationId);
-        if (!refreshedAccessToken) {
-            throw new Error('Failed to refresh access token');
-        }
+        await integrationManager.refreshToken(config.integrationId);
+
         const atlassianIntegration = await prisma.atlassian_integrations.findUnique({
             where: { id: config.integrationId, user_id: userId },
         });

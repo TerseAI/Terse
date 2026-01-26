@@ -371,11 +371,16 @@ export class GithubEvent extends InputEvent {
     }
 
     createTriggerMetadata(): RunHistoryTrigger {
+        // Build a descriptive title like "push: Fix typo" or "pull_request.opened: Add new feature"
+        const eventType = this.data.eventType || 'Event';
+        const description = this.data.pullRequest?.title || this.data.commits?.[0]?.name || '';
+        const title = description ? `${eventType}: ${description}` : eventType;
+
         return {
             event: 'github_event',
             integration: IntegrationType.GITHUB,
             source: this.data.repositoryName,
-            title: this.data.eventType,
+            title,
             subheader: this.data.username,
             url: `https://github.com/${this.data.repositoryName}/`,
         };
