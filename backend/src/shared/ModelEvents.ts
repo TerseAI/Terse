@@ -20,7 +20,7 @@ export type ModelEvent = {"type": "ToolApprovalResponse"} & ToolApprovalResponse
 
 export type ModelRequest = { "type": "SendModelRequest" } & SendModelRequest | { "type": "ToolApprovalResponse" } & ToolApprovalResponse;
 
-export type SendModelRequest = { user_message: string, timezone: string, ui_state?: Record<string, unknown> };
+export type SendModelRequest = { user_message: string, timezone: string, };
 
 export type ToolApprovalResponse = { step_id: string, approved: boolean };
 

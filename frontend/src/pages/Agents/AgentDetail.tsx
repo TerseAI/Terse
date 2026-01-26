@@ -9,7 +9,6 @@ import { useTemplates } from "../../hooks/api/useTemplates";
 import { AgentNotificationSettings, AgentPrompt, TransientAgentTrigger, TransientAgentOutput, TransientKnowledgeBase } from "../../shared/types";
 import { toTransientAgentTrigger, toTransientAgentOutput, toTransientKnowledgeBase } from "../../utility/AgentUtils";
 import { useTemplateHydration } from "../../hooks/useTemplateHydration";
-import { BuilderChat } from "../../components/chat/BuilderChat";
 
 function AgentDetail() {
     const { id, templateId } = useParams<{ id: string, templateId: string }>();
@@ -138,7 +137,7 @@ function AgentDetail() {
 
     return (
         <div className="grid grid-cols-20 h-full pt-2 pl-2">
-            <div className="h-full min-h-0 col-span-16">
+            <div className="h-full min-h-0 col-span-20">
                 <div className="mx-auto h-full min-h-0 flex flex-col h-full">
                     <TabGroup selectedIndex={selectedIndex} className="h-full flex flex-col" onChange={(index) => {
                         setSelectedIndex(index);
@@ -167,11 +166,6 @@ function AgentDetail() {
                         </TabPanels>
                     </TabGroup>
                 </div>
-            </div>
-
-            {/* Builder Chat */}
-            <div className="border-l border-t border-border col-span-4 h-full">
-                <BuilderChat getStateJSON={() => ({})} />
             </div>
         </div>
     )
