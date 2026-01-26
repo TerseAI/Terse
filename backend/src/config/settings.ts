@@ -128,7 +128,7 @@ export const settings = {
     region: optionalEnv('GCP_REGION', 'us-central1'),
   },
 
-  // Google Cloud Storage (for image storage)
+  // Google Cloud Storage
   gcs: {
     imageBucket: optionalEnv('GCS_IMAGE_BUCKET', 'terse-documents'),
     imagePrefix: optionalEnv('GCS_IMAGE_PREFIX', 'events/images'),

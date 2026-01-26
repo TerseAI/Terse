@@ -161,10 +161,6 @@ export class AgentRunner<
     }
 
     private buildUserHistory(userMessage: string | UserMessageContent[], files?: StoredFile[]): AgentInputItem[] {
-        // Directives are now included in the system prompt via SystemPromptBuilder.buildDirectivesSection()
-        // to avoid accumulating duplicate directive entries in session history on each conversation turn.
-
-        // If files are provided, build multimodal content
         if (files && files.length > 0 && typeof userMessage === 'string') {
             const content: UserMessageContent[] = [
                 { type: 'input_text', text: userMessage }
@@ -177,7 +173,7 @@ export class AgentRunner<
                     content.push({
                         type: 'input_file',
                         filename: file.filename || 'document.pdf',
-                        file_data: file.url, // Presigned URL - SDK will fetch the content
+                        file_data: file.url,
                     } as AgentInputFile);
                 }
             }
@@ -456,9 +452,6 @@ export class AgentRunner<
             content.push({ type: 'input_image', image: imageUrl });
         }
 
-        // Add files (PDFs, documents) using input_file content blocks
-        // The SDK supports input_file with file_data (base64 data URL) or file_id
-        // We use presigned URLs which the SDK can fetch
         const files = inputEvent.getFiles();
         for (const file of files) {
             // Only include documents (PDFs) as input_file - they have native SDK support
