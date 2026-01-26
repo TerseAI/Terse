@@ -608,7 +608,6 @@ export class GmailEvent extends InputEvent {
     }
 
     static async createInputEventFromSampleEvent(sampleEvent: GmailSampleEvent): Promise<GmailEvent> {
-        console.log('Sending sample event to agent', sampleEvent);
         const { eventData, integrationId } = sampleEvent;
         const integration = await db().gmail_integrations.findUnique({
             where: { id: integrationId },

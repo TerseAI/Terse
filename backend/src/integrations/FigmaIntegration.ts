@@ -1108,7 +1108,7 @@ export class FigmaCommentEvent extends InputEvent {
     }
   }
 
-  static async sendSampleEventToAgent(sampleEvent: FigmaSampleEvent): Promise<FigmaCommentEvent> {
+  static async createInputEventFromSampleEvent(sampleEvent: FigmaSampleEvent): Promise<FigmaCommentEvent> {
     const event = new FigmaCommentEvent(sampleEvent.eventData);
     return event;
   }

@@ -6,6 +6,7 @@ import { JiraEvent } from '../AtlassianIntegration';
 import { LinearEvent } from '../LinearIntegration';
 import { GithubEvent } from '../GithubIntegration';
 import { FigmaCommentEvent } from '../FigmaIntegration';
+import { InputEvent } from './InputEvent';
 
 
 interface InputEventClass {
