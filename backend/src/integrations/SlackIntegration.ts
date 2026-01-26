@@ -524,13 +524,7 @@ export class SlackEvent extends InputEvent implements Identifiable {
     }
 
     getEventTimestamp(): string {
-        return SlackEvent.getTimestampFromEventData(this.data);
-    }
-
-    static getTimestampFromEventData(data: SlackEventData): string {
-        // Slack timestamps are Unix timestamps with microseconds (e.g., "1234567890.123456")
-        const unixSeconds = parseFloat(data.timestamp);
-        return new Date(unixSeconds * 1000).toISOString();
+        return new Date(parseInt(this.data.timestamp, 10)).toISOString();
     }
 
     static formatPreviewFromEventData(data: SlackEventData): string {
@@ -756,7 +750,7 @@ export class SlackEvent extends InputEvent implements Identifiable {
                 eventData,
                 trigger: event.createTriggerMetadata(),
                 integrationId: config.integrationId,
-                timestamp: SlackEvent.getTimestampFromEventData(eventData),
+                timestamp: event.getEventTimestamp(),
                 preview: SlackEvent.formatPreviewFromEventData(eventData),
             };
         });

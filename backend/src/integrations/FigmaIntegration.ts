@@ -1015,12 +1015,7 @@ export class FigmaCommentEvent extends InputEvent {
   }
 
   getEventTimestamp(): string {
-    return FigmaCommentEvent.getTimestampFromEventData(this.data);
-  }
-
-  static getTimestampFromEventData(data: FigmaCommentEventData): string {
-    // Figma comment createdAt is already an ISO string
-    return data.createdAt;
+    return this.data.createdAt
   }
 
   static formatPreviewFromEventData(data: FigmaCommentEventData): string {
@@ -1101,7 +1096,7 @@ export class FigmaCommentEvent extends InputEvent {
           eventData,
           trigger: event.createTriggerMetadata(),
           integrationId: config.integrationId,
-          timestamp: FigmaCommentEvent.getTimestampFromEventData(eventData),
+          timestamp: event.getEventTimestamp(),
           preview: FigmaCommentEvent.formatPreviewFromEventData(eventData),
         });
       }

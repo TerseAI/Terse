@@ -152,6 +152,12 @@ export interface GithubEventData {
     repositoryName: string;
     eventType: 'push' | 'pull_request.opened' | 'pull_request.synchronize' | 'pull_request.closed' | 'pull_request.merged';
     branch?: string;
+    /**
+     * Event timestamp derived from the X-GitHub-Delivery header (UUIDv1).
+     * This should be parsed upstream from the raw webhook and passed through.
+     * @see https://github.com/orgs/community/discussions/61851
+     */
+    timestamp?: Date;
     commits: Array<{
         sha: string;
         name: string;

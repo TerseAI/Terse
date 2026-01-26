@@ -21,6 +21,20 @@ import { createOAuthStateToken, decodeOAuthStateToken, OAuthStatePayload, OAuthS
 import { FrontendRoutes } from "../shared/FrontendRoutes";
 import { ConfigType, GitHubConfig } from "../shared/Configs";
 import { GithubSampleEvent, GithubEventData } from "../shared/SampleEvents";
+import { Octokit, RestEndpointMethodTypes } from "@octokit/rest";
+
+// Octokit types for GitHub API responses
+type OctokitCommit = RestEndpointMethodTypes["repos"]["listCommits"]["response"]["data"][number];
+type OctokitCommitDetail = RestEndpointMethodTypes["repos"]["getCommit"]["response"]["data"];
+type OctokitPullRequest = RestEndpointMethodTypes["pulls"]["list"]["response"]["data"][number];
+type OctokitPullRequestCommit = RestEndpointMethodTypes["pulls"]["listCommits"]["response"]["data"][number];
+
+/**
+ * Create an authenticated Octokit instance
+ */
+function createOctokitClient(accessToken: string): Octokit {
+    return new Octokit({ auth: accessToken });
+}
 
 export class GithubIntegrationManager implements Integration<GithubIntegration, GithubAppUnifiedEventRequest, typeof GithubIntegrationMetadata>, OAuthIntegrationInstallation<IntegrationType.GITHUB> {
     constructor() { }
@@ -372,12 +386,10 @@ export class GithubEvent extends InputEvent {
     }
 
     getEventTimestamp(): string {
-        return GithubEvent.getTimestampFromEventData();
-    }
-
-    static getTimestampFromEventData(): string {
-        // GitHub webhook events don't include a timestamp in the unified format
-        // Return current time as these events are processed in real-time
+        if (this.data?.timestamp) {
+            return new Date(this.data.timestamp).toISOString();
+        }
+        // Fallback to current time if timestamp not available
         return new Date().toISOString();
     }
 
@@ -523,19 +535,18 @@ async function fetchRepositoryDetails(accessToken: string, repoId: number): Prom
 }
 
 /**
- * Fetch recent commits from a repository
+ * Fetch recent commits from a repository using Octokit
  */
-async function fetchRecentCommits(accessToken: string, owner: string, repo: string, count: number): Promise<any[]> {
+async function fetchRecentCommits(accessToken: string, owner: string, repo: string, count: number): Promise<OctokitCommit[]> {
     try {
-        const response = await axios.get(`https://api.github.com/repos/${owner}/${repo}/commits`, {
-            params: { per_page: count },
-            headers: {
-                Authorization: `Bearer ${accessToken}`,
-                Accept: 'application/vnd.github+json',
-            },
+        const octokit = createOctokitClient(accessToken);
+        const response = await octokit.rest.repos.listCommits({
+            owner,
+            repo,
+            per_page: count,
         });
 
-        return response.data || [];
+        return response.data;
     } catch (error) {
         logger.error('Error fetching recent commits', { error, owner, repo });
         return [];
@@ -543,15 +554,15 @@ async function fetchRecentCommits(accessToken: string, owner: string, repo: stri
 }
 
 /**
- * Fetch full commit details including diffs
+ * Fetch full commit details including diffs using Octokit
  */
-async function fetchCommitDiff(accessToken: string, owner: string, repo: string, sha: string): Promise<any> {
+async function fetchCommitDiff(accessToken: string, owner: string, repo: string, sha: string): Promise<OctokitCommitDetail | null> {
     try {
-        const response = await axios.get(`https://api.github.com/repos/${owner}/${repo}/commits/${sha}`, {
-            headers: {
-                Authorization: `Bearer ${accessToken}`,
-                Accept: 'application/vnd.github+json',
-            },
+        const octokit = createOctokitClient(accessToken);
+        const response = await octokit.rest.repos.getCommit({
+            owner,
+            repo,
+            ref: sha,
         });
 
         return response.data;
@@ -562,24 +573,21 @@ async function fetchCommitDiff(accessToken: string, owner: string, repo: string,
 }
 
 /**
- * Fetch recent pull requests from a repository
+ * Fetch recent pull requests from a repository using Octokit
  */
-async function fetchRecentPullRequests(accessToken: string, owner: string, repo: string, count: number): Promise<any[]> {
+async function fetchRecentPullRequests(accessToken: string, owner: string, repo: string, count: number): Promise<OctokitPullRequest[]> {
     try {
-        const response = await axios.get(`https://api.github.com/repos/${owner}/${repo}/pulls`, {
-            params: {
-                state: 'all',
-                sort: 'updated',
-                direction: 'desc',
-                per_page: count
-            },
-            headers: {
-                Authorization: `Bearer ${accessToken}`,
-                Accept: 'application/vnd.github+json',
-            },
+        const octokit = createOctokitClient(accessToken);
+        const response = await octokit.rest.pulls.list({
+            owner,
+            repo,
+            state: 'all',
+            sort: 'updated',
+            direction: 'desc',
+            per_page: count,
         });
 
-        return response.data || [];
+        return response.data;
     } catch (error) {
         logger.error('Error fetching recent pull requests', { error, owner, repo });
         return [];
@@ -587,18 +595,18 @@ async function fetchRecentPullRequests(accessToken: string, owner: string, repo:
 }
 
 /**
- * Fetch commits for a specific pull request
+ * Fetch commits for a specific pull request using Octokit
  */
-async function fetchPullRequestCommits(accessToken: string, owner: string, repo: string, prNumber: number): Promise<any[]> {
+async function fetchPullRequestCommits(accessToken: string, owner: string, repo: string, prNumber: number): Promise<OctokitPullRequestCommit[]> {
     try {
-        const response = await axios.get(`https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}/commits`, {
-            headers: {
-                Authorization: `Bearer ${accessToken}`,
-                Accept: 'application/vnd.github+json',
-            },
+        const octokit = createOctokitClient(accessToken);
+        const response = await octokit.rest.pulls.listCommits({
+            owner,
+            repo,
+            pull_number: prNumber,
         });
 
-        return response.data || [];
+        return response.data;
     } catch (error) {
         logger.error('Error fetching PR commits', { error, owner, repo, prNumber });
         return [];
@@ -609,7 +617,7 @@ async function fetchPullRequestCommits(accessToken: string, owner: string, repo:
  * Create a push sample event from a commit
  */
 async function createPushSampleEvent(
-    commit: any,
+    commit: OctokitCommit,
     repo: { id: number, owner: string, name: string, defaultBranch: string },
     installationId: number,
     accessToken: string
@@ -622,13 +630,13 @@ async function createPushSampleEvent(
         }
 
         // Process files and diffs
-        const fileDiffs = (commitDetails.files || []).map((file: any) => ({
+        const fileDiffs = (commitDetails.files || []).map((file) => ({
             filename: file.filename,
             diff: file.patch || '', // GitHub provides the patch/diff
         }));
 
         const eventData: GithubEventData = {
-            username: commit.commit.author.name || commit.author?.login || 'unknown',
+            username: commit.commit.author?.name || commit.author?.login || 'unknown',
             installationId: installationId,
             repositoryName: `${repo.owner}/${repo.name}`,
             eventType: 'push',
@@ -645,18 +653,20 @@ async function createPushSampleEvent(
                 defaultBranch: repo.defaultBranch,
             },
             sender: {
-                login: commit.commit.author.name || commit.author?.login || 'unknown',
-                email: commit.commit.author.email,
+                login: commit.commit.author?.name || commit.author?.login || 'unknown',
+                email: commit.commit.author?.email,
             },
+            timestamp: commit.commit.author?.date ? new Date(commit.commit.author.date) : undefined,
         };
 
         const event = new GithubEvent(eventData);
+
         return {
             configType: ConfigType.GITHUB,
             eventData,
             trigger: event.createTriggerMetadata(),
             integrationId: installationId.toString(),
-            timestamp: GithubEvent.getTimestampFromEventData(),
+            timestamp: event.getEventTimestamp(),
             preview: GithubEvent.formatPreviewFromEventData(eventData),
         };
     } catch (error) {
@@ -669,7 +679,7 @@ async function createPushSampleEvent(
  * Create a pull request sample event from a PR
  */
 async function createPullRequestSampleEvent(
-    pr: any,
+    pr: OctokitPullRequest,
     repo: { id: number, owner: string, name: string, defaultBranch: string },
     installationId: number,
     accessToken: string
@@ -689,9 +699,9 @@ async function createPullRequestSampleEvent(
         const prCommits = await fetchPullRequestCommits(accessToken, repo.owner, repo.name, pr.number);
 
         // Transform commits to our format
-        const commits = await Promise.all(prCommits.slice(0, 3).map(async (commit: any) => {
+        const commits = await Promise.all(prCommits.slice(0, 3).map(async (commit) => {
             const commitDetails = await fetchCommitDiff(accessToken, repo.owner, repo.name, commit.sha);
-            const fileDiffs = (commitDetails?.files || []).map((file: any) => ({
+            const fileDiffs = (commitDetails?.files || []).map((file) => ({
                 filename: file.filename,
                 diff: file.patch || '',
             }));
@@ -704,7 +714,7 @@ async function createPullRequestSampleEvent(
         }));
 
         const eventData: GithubEventData = {
-            username: pr.user.login,
+            username: pr.user?.login || 'unknown',
             installationId: installationId,
             repositoryName: `${repo.owner}/${repo.name}`,
             eventType: eventType,
@@ -714,7 +724,7 @@ async function createPullRequestSampleEvent(
                 number: pr.number,
                 title: pr.title,
                 body: pr.body || '',
-                state: pr.state,
+                state: pr.state as 'open' | 'closed',
                 merged: pr.merged_at !== null,
                 head: {
                     ref: pr.head.ref,
@@ -725,8 +735,8 @@ async function createPullRequestSampleEvent(
                     sha: pr.base.sha,
                 },
                 user: {
-                    login: pr.user.login,
-                    email: pr.user.email,
+                    login: pr.user?.login || 'unknown',
+                    email: undefined, // PR user doesn't include email
                 },
             },
             repository: {
@@ -736,9 +746,10 @@ async function createPullRequestSampleEvent(
                 defaultBranch: repo.defaultBranch,
             },
             sender: {
-                login: pr.user.login,
-                email: pr.user.email,
+                login: pr.user?.login || 'unknown',
+                email: undefined, // PR user doesn't include email
             },
+            timestamp: new Date(pr.created_at),
         };
 
         const event = new GithubEvent(eventData);
@@ -747,7 +758,7 @@ async function createPullRequestSampleEvent(
             eventData,
             trigger: event.createTriggerMetadata(),
             integrationId: installationId.toString(),
-            timestamp: GithubEvent.getTimestampFromEventData(),
+            timestamp: event.getEventTimestamp(),
             preview: GithubEvent.formatPreviewFromEventData(eventData),
         };
     } catch (error) {

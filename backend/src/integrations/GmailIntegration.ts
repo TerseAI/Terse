@@ -537,12 +537,7 @@ export class GmailEvent extends InputEvent {
     }
 
     getEventTimestamp(): string {
-        return GmailEvent.getTimestampFromEventData(this.data);
-    }
-
-    static getTimestampFromEventData(data: GmailEventData): string {
-        // Gmail internalDate is milliseconds since epoch
-        return new Date(parseInt(data.internalDate, 10)).toISOString();
+        return new Date(parseInt(this.data.internalDate, 10)).toISOString();
     }
 
     static formatPreviewFromEventData(data: GmailEventData): string {
@@ -605,7 +600,7 @@ export class GmailEvent extends InputEvent {
             eventData: event.data,
             trigger: event.createTriggerMetadata(),
             integrationId: config.integrationId,
-            timestamp: GmailEvent.getTimestampFromEventData(event.data),
+            timestamp: event.getEventTimestamp(),
             preview: GmailEvent.formatPreviewFromEventData(event.data),
         }));
 

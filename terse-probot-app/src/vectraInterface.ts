@@ -20,7 +20,7 @@ export type Repository = {
 interface VectraInterface {
     githubAppInstallationCallback(name: string, email: string, username: string, installationId: number, accountName: string | null, repositories: Repository[]): Promise<void>;
     githubAppInstallationDeleted(username: string, installationId: number): Promise<void>;
-    githubUnifiedEvent(username: string, installationId: number, repositoryName: string, eventType: string, eventData: any): Promise<void>;
+    githubUnifiedEvent(username: string, installationId: number, repositoryName: string, eventType: string, eventData: any, timestamp?: Date): Promise<void>;
 }
 
 export const VectraInterface: VectraInterface = {
@@ -61,15 +61,16 @@ export const VectraInterface: VectraInterface = {
         });
     },
 
-    async githubUnifiedEvent(username: string, installationId: number, repositoryName: string, eventType: string, eventData: any): Promise<void> {
+    async githubUnifiedEvent(username: string, installationId: number, repositoryName: string, eventType: string, eventData: any, timestamp?: Date): Promise<void> {
         const token = await new Jwt().sign(username);
         return axios.post(`${backendBaseUrl}/github/unified-event`, {
             username,
             installationId,
             repositoryName,
             eventType,
+            timestamp,
             ...eventData
-        }, { 
+        }, {
             headers: {
                 'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json'

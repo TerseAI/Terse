@@ -1208,12 +1208,7 @@ export class JiraEvent extends InputEvent {
     }
 
     getEventTimestamp(): string {
-        return JiraEvent.getTimestampFromEventData(this.data);
-    }
-
-    static getTimestampFromEventData(data: JiraWebhookPayload | JiraEventData): string {
-        // Jira webhook timestamp is milliseconds since epoch
-        return new Date(data.timestamp).toISOString();
+        return new Date(this.data.timestamp).toISOString();
     }
 
     static formatPreviewFromEventData(data: JiraEventData): string {
@@ -1450,7 +1445,7 @@ export class JiraEvent extends InputEvent {
                     eventData,
                     trigger: event.createTriggerMetadata(),
                     integrationId: config.integrationId,
-                    timestamp: JiraEvent.getTimestampFromEventData(eventData),
+                    timestamp: event.getEventTimestamp(),
                     preview: JiraEvent.formatPreviewFromEventData(eventData),
                 };
             });

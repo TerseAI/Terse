@@ -1,5 +1,6 @@
 import { Probot } from "probot";
 import { VectraInterface, Commit, FileDiff } from "./vectraInterface.js";
+import { getTimestampFromUuidV1 } from "./utility/uuidTimestamp.js";
 
 // Add this temporarily to debug what URL is being constructed
 console.log('Environment variables:', {
@@ -27,6 +28,10 @@ export default (app: Probot) => {
     const github = context.octokit;
 
     console.log("🚀 Push event received!");
+
+    // Extract timestamp from the X-GitHub-Delivery header (UUIDv1)
+    const deliveryId = context.id;
+    const eventTimestamp = getTimestampFromUuidV1(deliveryId);
 
     let diffs: Commit[] = [];
     const installationId = context.payload.installation?.id || 0;
@@ -87,7 +92,8 @@ export default (app: Probot) => {
             login: context.payload.sender?.login,
             email: context.payload.sender?.email
           }
-        }
+        },
+        eventTimestamp || undefined
       );
     } catch (error) {
       console.error('Error calling githubUnifiedEvent:', error);
@@ -117,6 +123,10 @@ export default (app: Probot) => {
     const { payload } = context;
     const github = context.octokit;
     const installationId = context.payload.installation?.id || 0;
+
+    // Extract timestamp from the X-GitHub-Delivery header (UUIDv1)
+    const deliveryId = context.id;
+    const eventTimestamp = getTimestampFromUuidV1(deliveryId);
 
     let diffs: Commit[] = [];
 
@@ -195,7 +205,8 @@ export default (app: Probot) => {
             login: payload.sender?.login,
             email: payload.sender?.email
           }
-        }
+        },
+        eventTimestamp || undefined
       );
 
     } catch (error) {

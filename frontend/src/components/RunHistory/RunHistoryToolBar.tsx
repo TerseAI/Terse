@@ -91,7 +91,7 @@ export default function RunHistoryToolBar({
                                             className="gap-2"
                                         >
                                             <TestTube className="h-4 w-4" />
-                                            Test E2E
+                                            Test
                                         </Button>
                                     </span>
                                 </TooltipTrigger>

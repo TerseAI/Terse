@@ -591,12 +591,7 @@ export class LinearEvent extends InputEvent {
     }
 
     getEventTimestamp(): string {
-        return LinearEvent.getTimestampFromEventData(this.data);
-    }
-
-    static getTimestampFromEventData(data: LinearWebhookPayload | LinearEventData): string {
-        // Linear webhook payloads include createdAt as an ISO string
-        return data.createdAt;
+        return this.data.createdAt
     }
 
     static formatPreviewFromEventData(data: LinearEventData): string {
@@ -698,7 +693,7 @@ export class LinearEvent extends InputEvent {
                     eventData,
                     trigger: event.createTriggerMetadata(),
                     integrationId: config.integrationId,
-                    timestamp: LinearEvent.getTimestampFromEventData(eventData),
+                    timestamp: event.getEventTimestamp(),
                     preview: LinearEvent.formatPreviewFromEventData(eventData),
                 });
             }

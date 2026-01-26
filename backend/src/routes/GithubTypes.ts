@@ -58,6 +58,7 @@ export type GithubAppUnifiedEventRequest = {
     eventType: 'push' | 'pull_request.opened' | 'pull_request.synchronize' | 'pull_request.closed' | 'pull_request.merged';
     branch?: string;
     commits: Commit[];
+    timestamp?: Date;
     pullRequest?: {
         id: string;
         number: number;
