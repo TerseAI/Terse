@@ -469,12 +469,6 @@ export class SlackEvent extends InputEvent implements Identifiable {
         // Determine the main message content
         // If text is empty but we have block/attachment content, note that
         const messageText = this.data.text || '(no plain text)';
-
-        // Note if images are present
-        const images = this.getImages();
-        const imageNote = images.length > 0 
-            ? `\n        Images: ${images.length} image(s) attached` 
-            : '';
         
         return `
         Incoming Slack Message Event.
@@ -485,7 +479,7 @@ export class SlackEvent extends InputEvent implements Identifiable {
         Message: ${messageText}
         Timestamp: ${this.data.timestamp}
         ${this.data.threadTimestamp ? `Thread: ${this.data.threadTimestamp}` : ''}
-        Team ID: ${this.data.teamId}${imageNote}
+        Team ID: ${this.data.teamId}
         ${blockContent ? `
         Rich Content (from blocks):
         ${blockContent}` : ''}
@@ -511,15 +505,8 @@ export class SlackEvent extends InputEvent implements Identifiable {
     }
 
     /**
-     * Check if the message contains any images
-     */
-    hasImages(): boolean {
-        return this.getImages().length > 0;
-    }
-
-    /**
      * Get all stored files with full metadata (images, documents, text files)
-     * Includes both GCS-stored files and public block/attachment images
+     * Includes both private files cached in GCS and public block/attachment images
      */
     getFiles(): StoredFile[] {
         const files: StoredFile[] = [...(this.data.storedFiles || [])];
@@ -533,7 +520,6 @@ export class SlackEvent extends InputEvent implements Identifiable {
                 category: FileCategory.IMAGE,
             });
         }
-
         return files;
     }
 

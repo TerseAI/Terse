@@ -194,7 +194,6 @@ async function generatePresignedUrl(file: File): Promise<string> {
     version: 'v4',
     action: 'read',
     expires: Date.now() + PRESIGNED_URL_EXPIRY_MS,
-    cname: ""
   });
   return signedUrl;
 }
@@ -509,15 +508,11 @@ export async function generateUploadUrl(
   }
 
   try {
-    // Note: We don't use extensionHeaders for x-goog-content-length-range because
-    // that would require the client to send the same header during upload.
-    // File size validation is done client-side and server-side after upload instead.
     const [signedUrl] = await file.getSignedUrl({
       version: 'v4',
       action: 'write',
       expires: Date.now() + UPLOAD_URL_EXPIRY_MS,
       contentType: mimeType,
-      cname: ""
     });
 
     logger.info('Generated upload URL', {

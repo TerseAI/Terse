@@ -426,9 +426,19 @@ export class AgentRunner<
 
     private buildUserContent(text: string, files?: StoredFile[]): UserMessageContent[] {
         const content: UserMessageContent[] = [];
-        if (text?.trim()) content.push({ type: "input_text", text: text.trim() });
+        const trimmedText = text?.trim();
+        const attachedFiles = files?.filter(file => file?.url) ?? [];
+        const attachmentNote = attachedFiles.length > 0
+            ? `<ATTACHMENTS>\nThe following files are attached to the event/message below. The input_file and input_image items that follow in this message correspond to these attachments.\n${attachedFiles.map(file => `- ${file.filename || 'unnamed file'}${file.mimeType ? ` (${file.mimeType})` : ''}`).join('\n')}\n</ATTACHMENTS>`
+            : '';
+        if (trimmedText) {
+            content.push({ type: "input_text", text: trimmedText });
+        }
+        if (attachmentNote) {
+            content.push({ type: "input_text", text: attachmentNote });
+        }
 
-        for (const f of files ?? []) {
+        for (const f of attachedFiles) {
             if (!f?.url) continue;
 
             if (f.category === FileCategory.IMAGE) {

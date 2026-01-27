@@ -20,9 +20,6 @@ import { IntegrationCompletedTask } from "./IntegrationCompletedTask";
 import { createOAuthStateToken, decodeOAuthStateToken, OAuthStateEncodingFormat } from "../utility/oauth";
 import { FrontendRoutes } from "../shared/FrontendRoutes";
 import {
-    ensureStoredWithMetadata,
-    buildGithubFileKey,
-    FileDownloadResult,
     StoredFile,
 } from "../services/FileStorageService";
 
@@ -84,20 +81,10 @@ export class GithubIntegrationManager implements Integration<GithubIntegration, 
             return;
         }
 
-        // Extract and store images from PR body (if this is a PR event with a body)
-        let storedFiles: StoredFile[] = [];
-        if (event.pullRequest?.body) {
-            storedFiles = await downloadGithubPRBodyFiles(
-                event.pullRequest.body,
-                event.repository.id,
-                event.installationId
-            );
-        }
-
         for (const user of users) {
             // Process with user context for logging
             await runWithUserContext(user.id, user.email, async () => {
-                const githubEvent = new GithubEvent(event, storedFiles);
+                const githubEvent = new GithubEvent(event, []);
                 const eventProcessor = new EventProcessor(githubEvent, user);
                 await eventProcessor.process();
             });
@@ -387,114 +374,6 @@ export class GithubEvent extends InputEvent {
         // Return all stored files with full metadata
         return this.storedFiles;
     }
-}
-
-// Regex to extract image URLs from markdown (![alt](url)) and HTML (<img src="url">)
-const MARKDOWN_IMAGE_REGEX = /!\[.*?\]\((https?:\/\/[^\s\)]+)\)/gi;
-const HTML_IMAGE_REGEX = /<img[^>]+src=["'](https?:\/\/[^\s"']+)["']/gi;
-
-/**
- * Extract image URLs from markdown/HTML content (PR body)
- */
-function extractImageUrlsFromMarkdown(content: string): string[] {
-    const urls: Set<string> = new Set();
-
-    // Extract markdown images
-    let match;
-    while ((match = MARKDOWN_IMAGE_REGEX.exec(content)) !== null) {
-        urls.add(match[1]);
-    }
-
-    // Reset regex state
-    MARKDOWN_IMAGE_REGEX.lastIndex = 0;
-
-    // Extract HTML images
-    while ((match = HTML_IMAGE_REGEX.exec(content)) !== null) {
-        urls.add(match[1]);
-    }
-
-    // Reset regex state
-    HTML_IMAGE_REGEX.lastIndex = 0;
-
-    return Array.from(urls);
-}
-
-
-/**
- * Downloads files (images) from GitHub PR body and stores them in GCS
- * Returns array of StoredFile with full metadata
- *
- * Note: GitHub user-uploaded images (user-images.githubusercontent.com) are typically
- * publicly accessible even for private repos (they contain a security token in the URL).
- * For truly private images, additional authentication would be needed.
- */
-async function downloadGithubPRBodyFiles(
-    prBody: string,
-    repositoryId: number,
-    _installationId: number
-): Promise<StoredFile[]> {
-    const storedFiles: StoredFile[] = [];
-
-    // Extract image URLs from PR body (GitHub only supports images in PR body)
-    const extractedUrls = extractImageUrlsFromMarkdown(prBody);
-
-    if (extractedUrls.length === 0) {
-        return storedFiles;
-    }
-
-    logger.info(`📎 [GITHUB] Found ${extractedUrls.length} image(s) in PR body`, { repositoryId, imageCount: extractedUrls.length });
-
-    // Process each image URL (with concurrency limit)
-    const MAX_CONCURRENT = 5;
-    for (let i = 0; i < extractedUrls.length; i += MAX_CONCURRENT) {
-        const batch = extractedUrls.slice(i, i + MAX_CONCURRENT);
-        const batchResults = await Promise.all(
-            batch.map(async (imageUrl) => {
-                try {
-                    const primaryKey = buildGithubFileKey(repositoryId, imageUrl);
-                    const storedFile = await ensureStoredWithMetadata(primaryKey, async (): Promise<FileDownloadResult> => {
-                        // GitHub user-images URLs are typically publicly accessible
-                        const response = await fetch(imageUrl);
-
-                        if (!response.ok) {
-                            throw new Error(`Failed to download GitHub image: ${response.status} ${response.statusText}`);
-                        }
-
-                        const buffer = Buffer.from(await response.arrayBuffer());
-                        const mimeType = response.headers.get('content-type') || 'image/png';
-                        // Extract filename from URL
-                        const filename = imageUrl.split('/').pop()?.split('?')[0] || 'image';
-                        return { data: buffer, mimeType, filename };
-                    });
-
-                    if (storedFile) {
-                        logger.debug(`✅ Stored GitHub image in GCS`, {
-                            repositoryId,
-                            imageUrl: imageUrl.substring(0, 100), // Truncate for logging
-                            category: storedFile.category
-                        });
-                        return storedFile;
-                    }
-                } catch (error) {
-                    logger.error(`Error storing GitHub image`, {
-                        error,
-                        repositoryId,
-                        imageUrl: imageUrl.substring(0, 100)
-                    });
-                }
-                return null;
-            })
-        );
-
-        // Add non-null results
-        storedFiles.push(...batchResults.filter((f): f is StoredFile => f !== null));
-    }
-
-    if (storedFiles.length > 0) {
-        logger.info(`📎 [GITHUB] Stored ${storedFiles.length} image(s) in GCS`, { repositoryId, storedCount: storedFiles.length });
-    }
-
-    return storedFiles;
 }
 
 // MARK: - Helper Functions - GITHUB REST API

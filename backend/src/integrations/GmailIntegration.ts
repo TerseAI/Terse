@@ -1036,8 +1036,5 @@ async function downloadGmailAttachments(
             byCategory
         });
     }
-
-    console.log('storedFiles', JSON.stringify(storedFiles, null, 2));
-
     return storedFiles;
 }
