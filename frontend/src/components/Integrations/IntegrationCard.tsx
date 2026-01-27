@@ -12,7 +12,7 @@ import PosthogIntegrationCard from "./PosthogIntegrationCard";
 import LaunchDarklyIntegrationCard from "./LaunchDarklyIntegrationCard";
 import DatadogIntegrationCard from "./DatadogIntegrationCard";
 
-function IntegrationCard({ integration, isActive = true }: { integration: IntegrationType; isActive?: boolean }) {
+function IntegrationCard({ integration, isActive = true, stateToken }: { integration: IntegrationType; isActive?: boolean; stateToken?: string }) {
     const cardClassName = "min-w-sm max-w-sm";
     
     switch (integration) {
@@ -49,15 +49,15 @@ function IntegrationCard({ integration, isActive = true }: { integration: Integr
             return null
         case IntegrationType.POSTHOG:
             return (
-                <PosthogIntegrationCard className={cardClassName} isActive={isActive} />
+                <PosthogIntegrationCard className={cardClassName} isActive={isActive} stateToken={stateToken} />
             );
         case IntegrationType.LAUNCHDARKLY:
             return (
-                <LaunchDarklyIntegrationCard className={cardClassName} isActive={isActive} />
+                <LaunchDarklyIntegrationCard className={cardClassName} isActive={isActive} stateToken={stateToken} />
             );
         case IntegrationType.DATADOG:
             return (
-                <DatadogIntegrationCard className={cardClassName} isActive={isActive} />
+                <DatadogIntegrationCard className={cardClassName} isActive={isActive} stateToken={stateToken} />
             );
         default:
             // Exhaustive check: TypeScript will error if any IntegrationType case is missing

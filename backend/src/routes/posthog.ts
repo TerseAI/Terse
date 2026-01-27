@@ -3,6 +3,8 @@ import { PosthogIntegrationManager } from "../integrations/PosthogIntegration";
 import { PosthogProjectsResponse } from "../shared/types";
 import logger from "../logger";
 import { parseFormSubmissionFromRequest } from "../integrations/abstract/Integration";
+import { IntegrationType } from "../shared/Integrations";
+import { emitIntegrationFormCompletedTaskIfNeeded } from "../integrations/helpers/emitIntegrationFormCompletedTask";
 
 
 export async function getPosthogIntegrations(req: Request, res: Response) {
@@ -39,6 +41,15 @@ export async function createOrUpdatePosthogIntegration(req: Request, res: Respon
             });
             return;
         }
+
+        // Check for state token in query params or body and emit task if needed
+        const stateToken = (req.query.state as string) || req.body?.state;
+        await emitIntegrationFormCompletedTaskIfNeeded(
+            stateToken,
+            manager,
+            input.userId,
+            IntegrationType.POSTHOG
+        );
 
         res.status(result.statusCode || 200).json(result.data || { success: true });
     } catch (error) {

@@ -231,7 +231,7 @@ interface BackendService {
     /**
      * Creates or updates a Posthog integration with API key
      */
-    createOrUpdatePosthogIntegration(apiKey: string): Promise<{ success: boolean; email: string | null; orgName: string | null }>;
+    createOrUpdatePosthogIntegration(apiKey: string, stateToken?: string): Promise<{ success: boolean; email: string | null; orgName: string | null }>;
 
     /**
      * Gets all LaunchDarkly integrations for the current user
@@ -241,7 +241,7 @@ interface BackendService {
     /**
      * Creates or updates a LaunchDarkly integration with API key
      */
-    createOrUpdateLaunchDarklyIntegration(apiKey: string): Promise<{ success: boolean; email: string | null }>;
+    createOrUpdateLaunchDarklyIntegration(apiKey: string, stateToken?: string): Promise<{ success: boolean; email: string | null }>;
 
     /**
      * Gets LaunchDarkly projects for an integration
@@ -264,7 +264,7 @@ interface BackendService {
     /**
      * Creates or updates a Datadog integration with API key, APP key, and region
      */
-    createOrUpdateDatadogIntegration(apiKey: string, appKey: string, region: string): Promise<{ success: boolean; region: string }>;
+    createOrUpdateDatadogIntegration(apiKey: string, appKey: string, region: string, stateToken?: string): Promise<{ success: boolean; region: string }>;
 
     /**
      * Gets Datadog log indexes for an integration
@@ -688,10 +688,14 @@ export const BackendProvider: BackendService = {
             });
     },
 
-    createOrUpdatePosthogIntegration: (apiKey: string) => {
+    createOrUpdatePosthogIntegration: (apiKey: string, stateToken?: string) => {
+        const body: any = { apiKey };
+        if (stateToken) {
+            body.state = stateToken;
+        }
         return axios.post<{ success: boolean; email: string | null; orgName: string | null }>(
             `${backendBaseUrl}${ApiRoutes.POSTHOG.INTEGRATIONS}`,
-            { apiKey },
+            body,
             { withCredentials: true }
         )
             .then(response => response.data)
@@ -719,10 +723,14 @@ export const BackendProvider: BackendService = {
             });
     },
 
-    createOrUpdateLaunchDarklyIntegration: (apiKey: string) => {
+    createOrUpdateLaunchDarklyIntegration: (apiKey: string, stateToken?: string) => {
+        const body: any = { apiKey };
+        if (stateToken) {
+            body.state = stateToken;
+        }
         return axios.post<{ success: boolean; email: string | null }>(
             `${backendBaseUrl}${ApiRoutes.LAUNCHDARKLY.INTEGRATIONS}`,
-            { apiKey },
+            body,
             { withCredentials: true }
         )
             .then(response => response.data)
@@ -732,10 +740,14 @@ export const BackendProvider: BackendService = {
             });
     },
 
-    createOrUpdateDatadogIntegration: (apiKey: string, appKey: string, region: string) => {
+    createOrUpdateDatadogIntegration: (apiKey: string, appKey: string, region: string, stateToken?: string) => {
+        const body: any = { apiKey, appKey, region };
+        if (stateToken) {
+            body.state = stateToken;
+        }
         return axios.post<{ success: boolean; region: string }>(
             `${backendBaseUrl}${ApiRoutes.DATADOG.INTEGRATIONS}`,
-            { apiKey, appKey, region },
+            body,
             { withCredentials: true }
         )
             .then(response => response.data)
