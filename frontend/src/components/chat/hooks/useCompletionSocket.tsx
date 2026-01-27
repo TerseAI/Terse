@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect } from "react";
-import { type ToolCall, type ToolCallComplete, type TextDelta, type Failure, type ModelRequest, FilterResult, type ToolApprovalRequest, ToolApprovalResponse, type ModelEvent } from "../../../shared/ModelEvents";
+import { type ToolCall, type ToolCallComplete, type TextDelta, type Failure, type ModelRequest, FilterResult, type ToolApprovalRequest, ToolApprovalResponse, type ModelEvent, type ChatSnippetPayload } from "../../../shared/ModelEvents";
 
 export type ChatEventPayload = {
     runHistoryModelEvent: ModelEvent;
@@ -19,10 +19,11 @@ export type UseCompletionSocketOptions = {
     onThinking: (stepId: string) => void;
     onToolApprovalRequest?: (request: ToolApprovalRequest) => void;
     onToolApprovalResponse?: (response: ToolApprovalResponse) => void;
+    onSnippet?: (snippet: ChatSnippetPayload) => void;
 };
 
 export function useCompletionSocket(options: UseCompletionSocketOptions) {
-    const { subscribeToEvents, sendMessage, onDelta, onToolCall, onToolCallComplete, onFailure, onNaturalStop, onFilterResult, onThinking, onToolApprovalRequest, onToolApprovalResponse } = options;
+    const { subscribeToEvents, sendMessage, onDelta, onToolCall, onToolCallComplete, onFailure, onNaturalStop, onFilterResult, onThinking, onToolApprovalRequest, onToolApprovalResponse, onSnippet } = options;
 
     const onDeltaRef = useRef(onDelta);
     const onToolCallRef = useRef(onToolCall);
@@ -33,6 +34,7 @@ export function useCompletionSocket(options: UseCompletionSocketOptions) {
     const onThinkingRef = useRef(onThinking);
     const onToolApprovalRequestRef = useRef(onToolApprovalRequest);
     const onToolApprovalResponseRef = useRef(onToolApprovalResponse);
+    const onSnippetRef = useRef(onSnippet);
     // For now we assume connected, or we could expose socket connection state globally
     const [isConnected] = useState(true);
 
@@ -47,7 +49,8 @@ export function useCompletionSocket(options: UseCompletionSocketOptions) {
         onThinkingRef.current = onThinking;
         onToolApprovalRequestRef.current = onToolApprovalRequest;
         onToolApprovalResponseRef.current = onToolApprovalResponse;
-    }, [onDelta, onToolCall, onToolCallComplete, onFailure, onNaturalStop, onFilterResult, onThinking, onToolApprovalRequest]);
+        onSnippetRef.current = onSnippet;
+    }, [onDelta, onToolCall, onToolCallComplete, onFailure, onNaturalStop, onFilterResult, onThinking, onToolApprovalRequest, onSnippet]);
 
     // Subscribe to events
     useEffect(() => {
@@ -82,6 +85,10 @@ export function useCompletionSocket(options: UseCompletionSocketOptions) {
                     break;
                 case 'ToolApprovalResponse':
                     onToolApprovalResponseRef.current?.(message);
+                    break;
+                case 'Snippet':
+                    console.log('Snippet event received', message.snippet);
+                    onSnippetRef.current?.(message.snippet);
                     break;
             }
         });

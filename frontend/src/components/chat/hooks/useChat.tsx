@@ -36,6 +36,7 @@ export function useChat({
         handleToolApprovalRequest,
         handleToolApprovalResponse,
         addUserTurn,
+        handleSnippet,
     } = useChatTurns({initialTurns});
 
     const { sendMessage: sendSocketMessage} = useCompletionSocket({
@@ -55,7 +56,8 @@ export function useChat({
         onFilterResult: handleFilterResult,
         onThinking: handleThinking,
         onToolApprovalRequest: handleToolApprovalRequest,
-        onToolApprovalResponse: handleToolApprovalResponse
+        onToolApprovalResponse: handleToolApprovalResponse,
+        onSnippet: handleSnippet,
     });
 
     const { input, setInput, sendMessage } = useChatInput({
