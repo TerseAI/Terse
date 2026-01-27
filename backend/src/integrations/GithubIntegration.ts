@@ -17,13 +17,12 @@ import { GithubAppUser } from "../routes/GithubTypes";
 import logger, { runWithUserContext } from "../logger";
 import { integrationTaskQueue } from "./IntegrationTaskQueues";
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask";
-import { createOAuthStateToken, decodeOAuthStateToken, OAuthStatePayload, OAuthStateEncodingFormat } from "../utility/oauth";
+import { createOAuthStateToken, decodeOAuthStateToken, OAuthStateEncodingFormat } from "../utility/oauth";
 import { FrontendRoutes } from "../shared/FrontendRoutes";
 import {
     ensureStoredWithMetadata,
     buildGithubFileKey,
     FileDownloadResult,
-    isFileStorageConfigured,
     StoredFile,
 } from "../services/FileStorageService";
 
@@ -87,7 +86,7 @@ export class GithubIntegrationManager implements Integration<GithubIntegration, 
 
         // Extract and store images from PR body (if this is a PR event with a body)
         let storedFiles: StoredFile[] = [];
-        if (isFileStorageConfigured() && event.pullRequest?.body) {
+        if (event.pullRequest?.body) {
             storedFiles = await downloadGithubPRBodyFiles(
                 event.pullRequest.body,
                 event.repository.id,

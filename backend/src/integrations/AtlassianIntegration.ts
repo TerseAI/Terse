@@ -24,7 +24,6 @@ import {
     ensureStoredWithMetadata,
     buildJiraFileKey,
     FileDownloadResult,
-    isFileStorageConfigured,
     isSupportedFileType,
     StoredFile,
 } from "../services/FileStorageService";
@@ -431,7 +430,7 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
 
                     // Extract and store attachments in GCS (images, documents, etc.)
                     let storedFiles: StoredFile[] = [];
-                    if (isFileStorageConfigured() && event.issue?.fields?.attachment) {
+                    if (event.issue?.fields?.attachment) {
                         const accessToken = await this.getAccessToken(integration.id);
                         if (accessToken) {
                             storedFiles = await this.downloadJiraAttachments(

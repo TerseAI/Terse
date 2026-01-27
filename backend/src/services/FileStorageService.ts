@@ -3,6 +3,12 @@ import crypto from 'crypto';
 import { gcp, gcs } from '../config/settings';
 import logger from '../logger';
 
+// Check if GCS is configured
+if (!gcp.serviceAccountBase64 || !gcp.projectId || !gcs.imageBucket) {
+  logger.warn('GCS not configured - file storage disabled. Set GCP_SERVICE_ACCOUNT_BASE64, GCP_PROJECT_ID, and GCS_IMAGE_BUCKET to enable.');
+  throw new Error('GCS not configured - file storage disabled. Set GCP_SERVICE_ACCOUNT_BASE64, GCP_PROJECT_ID, and GCS_IMAGE_BUCKET to enable.');
+}
+
 // File categories for multimodal processing
 export enum FileCategory {
   IMAGE = 'image',
@@ -51,7 +57,7 @@ const MIME_TYPE_CATEGORIES: Record<string, FileCategory> = {
 // File extensions for fallback categorization
 const EXTENSION_CATEGORIES: Record<string, FileCategory> = {
   // Images
-  '.png': FileCategory.IMAGE, 
+  '.png': FileCategory.IMAGE,
   '.jpg': FileCategory.IMAGE,
   '.jpeg': FileCategory.IMAGE,
   '.gif': FileCategory.IMAGE,
@@ -123,11 +129,8 @@ function getStorageClient(): Storage | null {
     return storageClient;
   }
 
-  // Check if GCS is configured
   if (!gcp.serviceAccountBase64 || !gcp.projectId || !gcs.imageBucket) {
-    logger.warn('GCS not configured - file storage disabled. Set GCP_SERVICE_ACCOUNT_BASE64, GCP_PROJECT_ID, and GCS_IMAGE_BUCKET to enable.');
-    isConfigured = false;
-    return null;
+    throw new Error('GCS not configured - file storage disabled. Set GCP_SERVICE_ACCOUNT_BASE64, GCP_PROJECT_ID, and GCS_IMAGE_BUCKET to enable.');
   }
 
   try {
@@ -147,16 +150,6 @@ function getStorageClient(): Storage | null {
     isConfigured = false;
     return null;
   }
-}
-
-/**
- * Check if file storage is configured and available
- */
-export function isFileStorageConfigured(): boolean {
-  if (storageClient === null && !isConfigured) {
-    getStorageClient(); // Attempt initialization
-  }
-  return isConfigured;
 }
 
 /**

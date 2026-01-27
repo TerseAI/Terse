@@ -21,7 +21,6 @@ import {
     ensureStoredWithMetadata,
     buildGmailFileKey,
     FileDownloadResult,
-    isFileStorageConfigured,
     isSupportedFileType,
     StoredFile,
 } from "../services/FileStorageService";
@@ -166,7 +165,7 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
                             // Download attachments and store in GCS (if configured)
                             // Support: images, PDFs, documents, spreadsheets
                             const allAttachments = parsedEmail.attachments || [];
-                            if (isFileStorageConfigured() && allAttachments.length > 0) {
+                            if (allAttachments.length > 0) {
                                 const storedFiles = await downloadGmailAttachments(
                                     gmail,
                                     parsedEmail.id,

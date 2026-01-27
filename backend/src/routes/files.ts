@@ -3,7 +3,6 @@ import {
   generateUploadUrl,
   buildChatFileKey,
   isAllowedChatUploadType,
-  isFileStorageConfigured,
   setFileMetadata,
 } from "../services/FileStorageService";
 import logger from "../logger";
@@ -36,14 +35,6 @@ export async function getUploadUrl(req: Request, res: Response) {
   const user = req.session?.user;
   if (!user) {
     return res.status(401).json({ error: "Unauthorized" });
-  }
-
-  // Check if file storage is configured
-  if (!isFileStorageConfigured()) {
-    logger.warn("File upload requested but GCS not configured");
-    return res.status(503).json({
-      error: "File storage is not configured. Please contact your administrator."
-    });
   }
 
   // Validate request body

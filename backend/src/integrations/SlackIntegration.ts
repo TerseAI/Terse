@@ -35,7 +35,6 @@ import {
   ensureStoredWithMetadata,
   buildSlackFileKey,
   FileDownloadResult,
-  isFileStorageConfigured,
   isSupportedFileType,
   StoredFile,
   FileCategory,
@@ -899,7 +898,7 @@ async function handleSlackMessage(event: SlackMessageEvent, teamId: string, auth
         // Download files and store in GCS (if configured)
         // Supports: images, PDFs, documents, spreadsheets, text files
         let storedFiles: StoredFile[] = [];
-        if (isFileStorageConfigured() && files && files.length > 0) {
+        if (files && files.length > 0) {
             // Get bot token for downloading files
             const botToken = filteredWorkspaceUserIntegrations[0].slack_integration.access_token;
             storedFiles = await downloadSlackFiles(files, teamId, botToken);
