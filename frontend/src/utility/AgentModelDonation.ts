@@ -30,7 +30,6 @@ export class AgentNameDonatedState extends DonatedState {
     }
 
     toJSON(): Record<string, unknown> {
-        console.log('AgentNameDonatedState toJSON', this.name);
         return { name: this.name };
     }
 }
@@ -45,7 +44,6 @@ export class AgentIdDonatedState extends DonatedState {
     }
 
     toJSON(): Record<string, unknown> {
-        console.log('AgentIdDonatedState toJSON', this.id);
         return { id: this.id ?? 'This agent is new and not yet saved!' };
     }
 }
@@ -60,7 +58,6 @@ export class AgentInputsDonatedState extends DonatedState {
     }
 
     toJSON(): Record<string, unknown> {
-        console.log('AgentInputsDonatedState toJSON', this.inputs);
         return { 
             inputs: this.inputs.map(input => 
                 input.config?.formatForAgent() || `Type: ${input.configType}`
@@ -79,7 +76,6 @@ export class AgentOutputsDonatedState extends DonatedState {
     }
 
     toJSON(): Record<string, unknown> {
-        console.log('AgentOutputsDonatedState toJSON', this.outputs);
         return { 
             outputs: this.outputs.map(output => 
                 output.config?.formatForAgent() || `Type: ${output.configType}`
@@ -97,7 +93,6 @@ export class AgentKnowledgeBasesDonatedState extends DonatedState {
     }
 
     toJSON(): Record<string, unknown> {
-        console.log('AgentKnowledgeBasesDonatedState toJSON', this.knowledgeBases);
         return { 
             knowledgeBases: this.knowledgeBases.map(knowledgeBase => 
                 knowledgeBase.config?.formatForAgent() || `Type: ${knowledgeBase.configType}`
@@ -116,7 +111,6 @@ export class AgentPromptDonatedState extends DonatedState {
     }
 
     toJSON(): Record<string, unknown> {
-        console.log('AgentPromptDonatedState toJSON', this.prompt);
         return { prompt: this.prompt.text };
     }
 }

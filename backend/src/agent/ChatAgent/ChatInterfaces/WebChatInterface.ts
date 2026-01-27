@@ -56,10 +56,13 @@ class WebChatInterface extends ChatInterface {
 
         if (isFormIntegrationInstallation(integrationManager)) {
             // For form-based integrations, the user needs to go to settings to configure
-            this.socket.emit(SocketEvents.BUILDER_CHAT_PROMPT_INTEGRATION, {
-                sessionId: this.sessionId,
-                integration,
-                message: `To connect ${integration}, please go to Settings > Integrations and fill out the required form.`,
+            this.emitEvent({
+                type: 'Snippet',
+                snippet: {
+                    type: 'integration_prompt',
+                    integration,
+                    message: `To connect ${integration}, please go to Settings > Integrations and fill out the required form.`,
+                },
             });
             return `I've provided a button to connect ${integration}. Click it to start the authorization process.`;
         }
@@ -140,9 +143,13 @@ class WebChatInterface extends ChatInterface {
     }
 
     async buildButton(label: string, url: string): Promise<void> {
-        this.socket.emit(SocketEvents.BUILDER_CHAT_PRESENT_BUTTON, {
-            label,
-            url,
+        this.emitEvent({
+            type: 'Snippet',
+            snippet: {
+                type: 'button',
+                label,
+                url,
+            },
         });
     }
 }
