@@ -22,11 +22,9 @@ export function FilePreview({ file, onRemove }: FilePreviewProps) {
             alt={file.file.name}
             className="w-full h-full object-cover"
           />
-        ) : isPdf ? (
-          <FileText className="w-8 h-8 text-red-500" />
-        ) : (
-          <FileText className="w-8 h-8 text-gray-400" />
-        )}
+        ) :
+          <FileText className="w-8 h-8 text-black" />
+        }
 
         {/* Loading overlay */}
         {file.status === 'uploading' && (

@@ -234,6 +234,8 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
                     data: { status: 'in_progress' },
                 });
             }
+
+            console.log('filesForEvent', JSON.stringify(filesForEvent, null, 2));
             const userMessageEvent: ModelEvent = {
                 type: 'UserMessage',
                 message: userMessage,

@@ -4,6 +4,7 @@ import { FileUploadButton } from "./FileUploadButton";
 import { FilePreviewList } from "./FilePreview";
 import { useFileUpload } from "./hooks/useFileUpload";
 import { UploadedFile } from "../../shared/ModelEvents";
+import { Button } from "@headlessui/react";
 
 interface ChatInputProps {
     sendMessage: (message: string, uploadedFiles?: UploadedFile[]) => void;
@@ -104,7 +105,6 @@ function ChatInput({ sendMessage, input, setInput, placeholders, disabled = fals
                         disabled={isDisabled}
                     />
                 )}
-
                 <GlowingTextField
                     isLoading={false}
                     disabled={isDisabled}
@@ -117,13 +117,13 @@ function ChatInput({ sendMessage, input, setInput, placeholders, disabled = fals
                     autoFocus={true}
                     focusOverride={focusOverride}
                 />
-                <button
-                    className="px-4 py-2 bg-[theme(--accent-primary)] text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                <Button
+                    className="p-4 bg-[theme(--accent-primary)] text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
                     onClick={handleSend}
                     disabled={!canSend}
                 >
                     {fileUpload.isUploading ? 'Uploading...' : 'Send'}
-                </button>
+                </Button>
             </div>
         </div>
     );

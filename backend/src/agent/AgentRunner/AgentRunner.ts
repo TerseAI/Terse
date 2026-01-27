@@ -66,19 +66,19 @@ export class AgentRunner<
         this.knowledgeBases = knowledgeBases;
         this.agentConfig = agent;
         const toolsMap = new Map<string, Tool<SessionWithTracking<T>>>();
-        
+
         outputs.forEach(output => {
             output.toolbox.forEach(entry => {
                 toolsMap.set(entry.tool.name, entry.tool);
             });
         });
-        
+
         knowledgeBases.forEach(kb => {
             kb.toolbox.forEach(entry => {
                 toolsMap.set(entry.tool.name, entry.tool);
             });
         });
-        
+
         this.tools = Array.from(toolsMap.values());
 
         this.runContext = runContext;
@@ -104,8 +104,11 @@ export class AgentRunner<
             throw new Error("Agent not initialized. Call initializeAgent() before run()");
         }
 
-        const userMessage = this.buildUserMessage(this.inputEvent);
+        const text = this.buildTextContent(this.inputEvent);
+        const userMessage = this.buildUserContent(text, this.inputEvent.getFiles());
         const userHistory: AgentInputItem[] = this.buildUserHistory(userMessage);
+
+        console.log('userHistory', JSON.stringify(userHistory, null, 2));
 
         const runner = runnerFactory({
             agentId: this.agentConfig.id,
@@ -139,7 +142,10 @@ export class AgentRunner<
             throw new Error("Agent not initialized. Call initializeAgent() before run()");
         }
 
-        const userHistory = this.buildUserHistory(userMessage, files);
+        const content = this.buildUserContent(userMessage, files);
+        const userHistory = this.buildUserHistory(content);
+
+        console.log('userHistory', JSON.stringify(userHistory, null, 2));
 
         const runner = runnerFactory({
             agentId: this.agentConfig.id,
@@ -160,28 +166,8 @@ export class AgentRunner<
         return await this.buildResult(result, streamingParams);
     }
 
-    private buildUserHistory(userMessage: string | UserMessageContent[], files?: StoredFile[]): AgentInputItem[] {
-        if (files && files.length > 0 && typeof userMessage === 'string') {
-            const content: UserMessageContent[] = [
-                { type: 'input_text', text: userMessage }
-            ];
-
-            for (const file of files) {
-                if (file.category === 'image') {
-                    content.push({ type: 'input_image', image: file.url });
-                } else if (file.category === 'document') {
-                    content.push({
-                        type: 'input_file',
-                        filename: file.filename || 'document.pdf',
-                        file_data: file.url,
-                    } as AgentInputFile);
-                }
-            }
-
-            return [user(content)];
-        }
-
-        return [{ role: 'user' as const, content: userMessage }];
+    private buildUserHistory(content: UserMessageContent[]): AgentInputItem[] {
+        return [user(content)];
     }
 
     async resumeFromPendingApproval(
@@ -350,7 +336,7 @@ export class AgentRunner<
                 step_id: finalStepId,
                 isReadOnly,
             });
-            
+
             if (actionId) {
                 changedItems.push({
                     type_name: EntityType.RUN_HISTORY_ACTION,
@@ -442,37 +428,22 @@ export class AgentRunner<
         };
     }
 
-    private buildUserMessage(inputEvent: InputEvent): UserMessageContent[] {
-        const textContent = this.buildTextContent(inputEvent);
-        const content: UserMessageContent[] = [{ type: 'input_text', text: textContent }];
+    private buildUserContent(text: string, files?: StoredFile[]): UserMessageContent[] {
+        const content: UserMessageContent[] = [];
+        if (text?.trim()) content.push({ type: "input_text", text: text.trim() });
 
-        // Get all files and process by category
-        const files = inputEvent.getFiles();
-        for (const file of files) {
-            if (file.category === 'image') {
-                content.push({ type: 'input_image', image: file.url });
-            } else if (file.category === 'document') {
-                // PDFs have native SDK support
+        for (const f of files ?? []) {
+            if (!f?.url) continue;
+
+            if (f.category === "image") {
+                content.push({ type: "input_image", image: f.url } as AgentInputImage);
+            } else if (f.category === "document") {
                 content.push({
-                    type: 'input_file',
-                    filename: file.filename || 'document.pdf',
-                    file_data: file.url, // Presigned URL - SDK will fetch the content
+                    type: "input_file",
+                    file: { url: f.url }
                 } as AgentInputFile);
             }
-            // Text files (DOCX, XLSX, etc.) would need content extraction which isn't implemented yet
         }
-
-        const imageCount = files.filter(f => f.category === 'image').length;
-        const documentCount = files.filter(f => f.category === 'document').length;
-        const textFileCount = files.filter(f => f.category === 'text').length;
-
-        logger.info("User message built to be sent to agent", {
-            textLength: textContent.length,
-            imageCount,
-            documentCount,
-            textFileCount,
-            totalFilesStored: files.length,
-        });
 
         return content;
     }
