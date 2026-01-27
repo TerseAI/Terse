@@ -3,6 +3,8 @@ import { LaunchDarklyIntegrationManager } from "../integrations/LaunchDarklyInte
 import { db } from "../prismaClient";
 import logger from "../logger";
 import { parseFormSubmissionFromRequest } from "../integrations/abstract/Integration";
+import { IntegrationType } from "../shared/Integrations";
+import { emitIntegrationFormCompletedTaskIfNeeded } from "../integrations/helpers/emitIntegrationFormCompletedTask";
 
 
 export async function getLaunchDarklyIntegrations(req: Request, res: Response) {
@@ -39,6 +41,15 @@ export async function createOrUpdateLaunchDarklyIntegration(req: Request, res: R
             });
             return;
         }
+
+        // Check for state token in query params or body and emit task if needed
+        const stateToken = (req.query.state as string) || req.body?.state;
+        await emitIntegrationFormCompletedTaskIfNeeded(
+            stateToken,
+            manager,
+            input.userId,
+            IntegrationType.LAUNCHDARKLY
+        );
 
         res.status(result.statusCode || 200).json(result.data || { success: true });
     } catch (error) {

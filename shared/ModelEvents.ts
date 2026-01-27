@@ -39,8 +39,8 @@ export type UserMessage = { message: string };
 // Chat snippet types for displaying interactive elements in chat
 export type ChatSnippet = 
     | { type: 'button'; label: string; url: string; id: string }
-    | { type: 'integration_prompt'; integration: string; message: string; id: string };
+    | { type: 'integration_prompt'; integration: string; message: string; id: string; stateToken?: string };
 
 export type ChatSnippetPayload = 
     | { type: 'button'; label: string; url: string }
-    | { type: 'integration_prompt'; integration: string; message: string };
+    | { type: 'integration_prompt'; integration: string; message: string; stateToken?: string };

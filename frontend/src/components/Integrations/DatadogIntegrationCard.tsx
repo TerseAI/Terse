@@ -28,7 +28,7 @@ const DATADOG_REGIONS = [
     { value: 'ap1', label: 'AP1 (ap1.datadoghq.com)' },
 ];
 
-function DatadogIntegrationCard({ className, isActive = true }: { className?: string; isActive?: boolean }) {
+function DatadogIntegrationCard({ className, isActive = true, stateToken }: { className?: string; isActive?: boolean; stateToken?: string }) {
     const { integrations, isLoading, mutate } = useDatadogIntegrations(); 
     const [showForm, setShowForm] = useState(false);
     const [apiKey, setApiKey] = useState("");
@@ -50,7 +50,7 @@ function DatadogIntegrationCard({ className, isActive = true }: { className?: st
         setIsSubmitting(true);
 
         try {
-            await BackendProvider.createOrUpdateDatadogIntegration(apiKey, appKey, region);
+            await BackendProvider.createOrUpdateDatadogIntegration(apiKey, appKey, region, stateToken);
             setShowForm(false);
             setApiKey("");
             setAppKey("");

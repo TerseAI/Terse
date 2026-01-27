@@ -3,6 +3,7 @@ import { IntegrationFormCompletedTask } from './IntegrationFormCompletedTask';
 import { integrationTaskQueue, integrationFormTaskQueue } from './IntegrationTaskQueues';
 import { resumeChatAgentAfterOAuth } from '../agent/ChatAgent/resumeChatAgentAfterOAuth';
 import { resumeChatAgentAfterFormCompletion } from '../agent/ChatAgent/resumeChatAgentAfterFormCompletion';
+import { resumeChatAgentAfterFormCompletionWeb } from '../agent/ChatAgent/resumeChatAgentAfterFormCompletionWeb';
 import logger from '../logger';
 import { IntegrationType } from '../shared/Integrations';
 import { OAuthStatePayload } from '../utility/oauth';
@@ -87,27 +88,43 @@ integrationFormTaskQueue.addListener({
         try {
             // Check if this form completion was initiated from ChatAgent
             if (hasChatMetadata(task.statePayload)) {
+                const channel = task.statePayload.channel!;
+                const chatId = task.statePayload.chatId!;
+                
                 logger.info('Integration form completed with chat metadata, resuming ChatAgent', {
                     integrationType: task.integrationType,
                     integrationId: task.integrationId,
                     userId: task.userId,
-                    chatId: task.statePayload.chatId,
-                    channel: task.statePayload.channel,
+                    chatId,
+                    channel,
                 });
 
                 // Resume ChatAgent conversation asynchronously
-                await resumeChatAgentAfterFormCompletion(
-                    task.userId,
-                    task.statePayload.chatId!,
-                    task.statePayload.channel!,
-                    task.statePayload.integrationType as IntegrationType,
-                    task.integrationId,
-                    task.statePayload.messageTs
-                );
+                // Check if this is web chat or Slack chat
+                if (channel === 'web') {
+                    // Web chat resumption
+                    await resumeChatAgentAfterFormCompletionWeb(
+                        task.userId,
+                        chatId,
+                        task.statePayload.integrationType as IntegrationType,
+                        task.integrationId
+                    );
+                } else {
+                    // Slack chat resumption
+                    await resumeChatAgentAfterFormCompletion(
+                        task.userId,
+                        chatId,
+                        channel,
+                        task.statePayload.integrationType as IntegrationType,
+                        task.integrationId,
+                        task.statePayload.messageTs
+                    );
+                }
 
                 logger.info('ChatAgent resumed after integration form completion', {
                     integrationType: task.integrationType,
                     integrationId: task.integrationId,
+                    channel,
                 });
             } else {
                 logger.debug('Integration form completed without chat metadata (normal form flow)', {

@@ -20,6 +20,7 @@ import {
     isFormIntegrationInstallation,
     OAuthIntegrationInstallation,
 } from "../../../integrations/abstract/Integration";
+import { createOAuthStateToken } from "../../../utility/oauth";
 
 class WebChatInterface extends ChatInterface {
     name: string = 'Web';
@@ -55,16 +56,29 @@ class WebChatInterface extends ChatInterface {
         }
 
         if (isFormIntegrationInstallation(integrationManager)) {
-            // For form-based integrations, the user needs to go to settings to configure
+            // Create state token with chat metadata
+            const stateToken = createOAuthStateToken({
+                userId: this.userId!,
+                additionalFields: { integrationType: integration },
+                additionalStatePayload: {
+                    chatId: this.sessionId,
+                    channel: 'web', // Use 'web' as the channel identifier for web chat
+                },
+                expiresIn: "7d",
+            });
+
+            // Emit integration_prompt snippet
             this.emitEvent({
                 type: 'Snippet',
                 snippet: {
                     type: 'integration_prompt',
                     integration,
-                    message: `To connect ${integration}, please go to Settings > Integrations and fill out the required form.`,
+                    message: `To connect ${integration}, please fill out the form below.`,
+                    stateToken,
                 },
             });
-            return `I've provided a button to connect ${integration}. Click it to start the authorization process.`;
+
+            return `I've provided a form to connect ${integration}. Fill it out to complete the integration.`;
         }
 
         if (isOAuthIntegrationInstallation(integrationManager)) {

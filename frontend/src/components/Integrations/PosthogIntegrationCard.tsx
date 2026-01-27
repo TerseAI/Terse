@@ -13,7 +13,7 @@ import { Tooltip, TooltipTrigger, TooltipContent } from "../ui/tooltip";
 import { useState } from "react";
 import { BackendProvider } from "@/services/backend";
 
-function PosthogIntegrationCard({ className, isActive = true }: { className?: string; isActive?: boolean }) {
+function PosthogIntegrationCard({ className, isActive = true, stateToken }: { className?: string; isActive?: boolean; stateToken?: string }) {
     const { integrations, isLoading, mutate } = usePosthogIntegrations(); 
     const [showForm, setShowForm] = useState(false);
     const [apiKey, setApiKey] = useState("");
@@ -32,7 +32,7 @@ function PosthogIntegrationCard({ className, isActive = true }: { className?: st
         setIsSubmitting(true);
 
         try {
-            await BackendProvider.createOrUpdatePosthogIntegration(apiKey);
+            await BackendProvider.createOrUpdatePosthogIntegration(apiKey, stateToken);
             setShowForm(false);
             setApiKey("");
             mutate(); // Refresh integrations list
