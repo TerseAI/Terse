@@ -13,7 +13,7 @@ import { useState } from "react";
 import { SlackConnectionOptions } from "./helpers/SlackConnectionOptions";
 import { BackendProvider } from "@/services/backend";
 
-function SlackIntegrationCard({ className, isActive = true }: { className?: string; isActive?: boolean }) {
+function SlackIntegrationCard({ className, isActive = true, stateToken }: { className?: string; isActive?: boolean; stateToken?: string }) {
     const [showConnectionOptions, setShowConnectionOptions] = useState(false);
     const [isBotUser, setIsBotUser] = useState(true);
     const [isConnecting, setIsConnecting] = useState(false);
@@ -29,7 +29,7 @@ function SlackIntegrationCard({ className, isActive = true }: { className?: stri
     const connect = async () => {
         setIsConnecting(true);
         try {
-            const installationDetails = await BackendProvider.getIntegrationInstallationDetails(IntegrationType.SLACK, { isBotUser });
+            const installationDetails = await BackendProvider.getIntegrationInstallationDetails(IntegrationType.SLACK, { isBotUser }, stateToken);
 
             if (installationDetails?.oauthUrl) {
                 window.open(installationDetails.oauthUrl, 'oauth-popup', 'width=600,height=700');

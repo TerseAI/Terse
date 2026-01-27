@@ -110,7 +110,7 @@ interface BackendService {
     /**
      * Returns the installation details for a given integration type
      */
-    getIntegrationInstallationDetails<T extends IntegrationType>(integrationType: T, options?: InstallationOptionsFor<T>): Promise<OAuthInstallationDetails>;
+    getIntegrationInstallationDetails<T extends IntegrationType>(integrationType: T, options?: InstallationOptionsFor<T>, stateToken?: string): Promise<OAuthInstallationDetails>;
 
     /**
      * Returns all integrations with their active status for the current user
@@ -493,10 +493,13 @@ export const BackendProvider: BackendService = {
             });
     },
 
-    getIntegrationInstallationDetails: <T extends IntegrationType>(integrationType: T, options?: InstallationOptionsFor<T>) => {
+    getIntegrationInstallationDetails: <T extends IntegrationType>(integrationType: T, options?: InstallationOptionsFor<T>, stateToken?: string) => {
         const params = new URLSearchParams();
         if (options) {
             params.append('options', JSON.stringify(options));
+        }
+        if (stateToken) {
+            params.append('state', stateToken);
         }
         const queryString = params.toString();
         const url = `${backendBaseUrl}${ApiRoutes.INTEGRATIONS.INSTALLATION_DETAILS_BY_TYPE.build(integrationType)}${queryString ? `?${queryString}` : ''}`;
