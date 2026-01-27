@@ -1,9 +1,7 @@
 import { IntegrationCompletedTask } from './IntegrationCompletedTask';
 import { IntegrationFormCompletedTask } from './IntegrationFormCompletedTask';
 import { integrationTaskQueue, integrationFormTaskQueue } from './IntegrationTaskQueues';
-import { resumeChatAgentAfterOAuth } from '../agent/ChatAgent/resumeChatAgentAfterOAuth';
-import { resumeChatAgentAfterFormCompletion } from '../agent/ChatAgent/resumeChatAgentAfterFormCompletion';
-import { resumeChatAgentAfterFormCompletionWeb } from '../agent/ChatAgent/resumeChatAgentAfterFormCompletionWeb';
+import { resumeChatAgentAfterIntegration } from '../agent/ChatAgent/resumeChatAgentAfterIntegration';
 import logger from '../logger';
 import { IntegrationType } from '../shared/Integrations';
 import { OAuthStatePayload } from '../utility/oauth';
@@ -44,7 +42,7 @@ integrationTaskQueue.addListener({
                 });
 
                 // Resume ChatAgent conversation asynchronously
-                await resumeChatAgentAfterOAuth(
+                await resumeChatAgentAfterIntegration(
                     task.userId,
                     task.statePayload.chatId!,
                     task.statePayload.channel!,
@@ -100,26 +98,14 @@ integrationFormTaskQueue.addListener({
                 });
 
                 // Resume ChatAgent conversation asynchronously
-                // Check if this is web chat or Slack chat
-                if (channel === 'web') {
-                    // Web chat resumption
-                    await resumeChatAgentAfterFormCompletionWeb(
-                        task.userId,
-                        chatId,
-                        task.statePayload.integrationType as IntegrationType,
-                        task.integrationId
-                    );
-                } else {
-                    // Slack chat resumption
-                    await resumeChatAgentAfterFormCompletion(
-                        task.userId,
-                        chatId,
-                        channel,
-                        task.statePayload.integrationType as IntegrationType,
-                        task.integrationId,
-                        task.statePayload.messageTs
-                    );
-                }
+                await resumeChatAgentAfterIntegration(
+                    task.userId,
+                    chatId,
+                    channel,
+                    task.statePayload.integrationType as IntegrationType,
+                    task.integrationId,
+                    task.statePayload.messageTs
+                );
 
                 logger.info('ChatAgent resumed after integration form completion', {
                     integrationType: task.integrationType,
