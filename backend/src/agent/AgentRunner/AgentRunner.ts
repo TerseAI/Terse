@@ -108,8 +108,6 @@ export class AgentRunner<
         const userMessage = this.buildUserContent(text, this.inputEvent.getFiles());
         const userHistory: AgentInputItem[] = this.buildUserHistory(userMessage);
 
-        console.log('userHistory', JSON.stringify(userHistory, null, 2));
-
         const runner = runnerFactory({
             agentId: this.agentConfig.id,
             runId: this.runContext.runId,
@@ -144,8 +142,6 @@ export class AgentRunner<
 
         const content = this.buildUserContent(userMessage, files);
         const userHistory = this.buildUserHistory(content);
-
-        console.log('userHistory', JSON.stringify(userHistory, null, 2));
 
         const runner = runnerFactory({
             agentId: this.agentConfig.id,
