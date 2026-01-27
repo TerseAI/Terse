@@ -8,7 +8,6 @@ interface FilePreviewProps {
 
 export function FilePreview({ file, onRemove }: FilePreviewProps) {
   const isImage = file.file.type.startsWith('image/');
-  const isPdf = file.file.type === 'application/pdf';
 
   return (
     <div className="relative group">
