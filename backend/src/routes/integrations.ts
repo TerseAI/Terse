@@ -7,6 +7,7 @@ import {
 import { OAuthInstallationDetails } from "../shared/types";
 import { InstallationOptionsFor, IntegrationDetails, IntegrationInstance, IntegrationType, IntegrationWithStatus } from "../shared/Integrations";
 import logger from "../logger";
+import { decodeOAuthStateToken, OAuthStatePayload } from "../utility/oauth";
 
 
 export const getIntegrationInstallationDetails = async (req: Request, res: Response) => {
@@ -26,8 +27,34 @@ export const getIntegrationInstallationDetails = async (req: Request, res: Respo
             ? JSON.parse(decodeURIComponent(req.query.options as string))
             : undefined;
 
+        // Decode stateToken if provided to extract chat metadata
+        let additionalStatePayload: Record<string, string> | undefined = undefined;
+        const stateToken = req.query.state as string | undefined;
+        if (stateToken) {
+            try {
+                const statePayload = decodeOAuthStateToken(stateToken);
+                // Extract chat metadata fields (chatId, channel, integrationType, messageTs)
+                // These are used to resume chat agent after OAuth completion
+                if (statePayload.chatId && statePayload.channel) {
+                    additionalStatePayload = {
+                        chatId: statePayload.chatId,
+                        channel: statePayload.channel,
+                        integrationType: statePayload.integrationType || integrationType,
+                        ...(statePayload.messageTs ? { messageTs: statePayload.messageTs } : {}),
+                    };
+                }
+            } catch (error) {
+                logger.warn('Failed to decode stateToken in getIntegrationInstallationDetails', { 
+                    error,
+                    integrationType: req.params.integrationType,
+                    userId: req.session?.user?.id 
+                });
+                // Continue without additionalStatePayload - not critical
+            }
+        }
+
         const userId = req.session.user.id;
-        const installationDetails = await getInstallationInformation(integrationType as IntegrationType, userId, options);
+        const installationDetails = await getInstallationInformation(integrationType as IntegrationType, userId, options, additionalStatePayload);
         res.json(installationDetails);
     } catch (error: any) {
         logger.error('Error getting installation details', { error, integrationType: req.params.integrationType, userId: req.session?.user?.id });
@@ -35,14 +62,19 @@ export const getIntegrationInstallationDetails = async (req: Request, res: Respo
     }
 }
 
-const getInstallationInformation = async (integration: IntegrationType, userId: string, options: InstallationOptionsFor<IntegrationType>): Promise<OAuthInstallationDetails> => {
+const getInstallationInformation = async (
+    integration: IntegrationType, 
+    userId: string, 
+    options: InstallationOptionsFor<IntegrationType>,
+    additionalStatePayload?: Record<string, string>
+): Promise<OAuthInstallationDetails> => {
     const integrationInstance = INTEGRATION_REGISTRY.find(instance => instance.integrationType === integration);
     if (!integrationInstance) {
         throw new Error(`Integration ${integration} not found`);
     }
     
     if (isOAuthIntegrationInstallation<typeof integration>(integrationInstance)) {
-        return await integrationInstance.getInstallationUrl(userId, options, undefined);
+        return await integrationInstance.getInstallationUrl(userId, options, additionalStatePayload);
     }
     
     throw new Error(`Integration ${integration} does not support installation`);
