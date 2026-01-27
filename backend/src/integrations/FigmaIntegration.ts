@@ -34,6 +34,7 @@ import {
   FileDownloadResult,
   isFileStorageConfigured,
   StoredFile,
+  FileCategory,
 } from "../services/FileStorageService";
 
 // Type alias for backward compatibility
@@ -1070,7 +1071,7 @@ export class FigmaCommentEvent extends InputEvent {
       return this.data.imageUrlsPresigned.map(url => ({
         url,
         mimeType: 'image/png',
-        category: 'image' as const,
+        category: FileCategory.IMAGE,
       }));
     }
 
@@ -1078,10 +1079,10 @@ export class FigmaCommentEvent extends InputEvent {
     const files: StoredFile[] = [];
     if (this.data.imageUrls) {
       if (this.data.imageUrls.nodeImage) {
-        files.push({ url: this.data.imageUrls.nodeImage, mimeType: 'image/png', category: 'image' });
+        files.push({ url: this.data.imageUrls.nodeImage, mimeType: 'image/png', category: FileCategory.IMAGE });
       }
       if (this.data.imageUrls.fullFrame) {
-        files.push({ url: this.data.imageUrls.fullFrame, mimeType: 'image/png', category: 'image' });
+        files.push({ url: this.data.imageUrls.fullFrame, mimeType: 'image/png', category: FileCategory.IMAGE });
       }
     }
     return files;

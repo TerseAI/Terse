@@ -38,6 +38,7 @@ import {
   isFileStorageConfigured,
   isSupportedFileType,
   StoredFile,
+  FileCategory,
 } from "../services/FileStorageService";
 
 export class SlackIntegrationManager implements Integration<SlackIntegration, SlackMessageEvent, typeof SlackIntegrationMetadata>, OAuthIntegrationInstallation<IntegrationType.SLACK> {
@@ -530,7 +531,7 @@ export class SlackEvent extends InputEvent implements Identifiable {
             files.push({
                 url: img.url,
                 mimeType: 'image/png',
-                category: 'image',
+                category: FileCategory.IMAGE,
             });
         }
 

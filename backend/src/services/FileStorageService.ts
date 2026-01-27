@@ -1,31 +1,16 @@
-/**
- * FileStorageService
- *
- * Handles downloading, storing, and serving files (images and documents) from GCS for multimodal support.
- * Provides a reusable interface for all integrations (Gmail, Slack, GitHub, Linear, Jira, Figma).
- *
- * Supported file types:
- * - Images: PNG, JPG, JPEG, GIF, WEBP, BMP, SVG (type: 'image')
- * - Documents: PDF (type: 'document' - Claude can process visually)
- * - Text files: TXT, MD, CSV (type: 'text' - content extracted as plain text)
- * - Office documents: DOCX, XLSX (type: 'text' - content extracted as plain text)
- *
- * Key features:
- * - Deduplication via primary key (avoids re-uploading same file)
- * - Presigned URL generation (24h expiry, read-only)
- * - Per-file error handling (failures don't block other files)
- * - File type classification for downstream processing
- */
-
 import { Storage, File } from '@google-cloud/storage';
 import crypto from 'crypto';
 import { gcp, gcs } from '../config/settings';
 import logger from '../logger';
 
 // File categories for multimodal processing
-export type FileCategory = 'image' | 'document' | 'text' | 'unsupported';
+export enum FileCategory {
+  IMAGE = 'image',
+  DOCUMENT = 'document',
+  UNSUPPORTED = 'unsupported'
+}
 
-// Stored file result with URL and metadata
+
 export interface StoredFile {
   url: string;           // Presigned GCS URL
   mimeType: string;      // Original MIME type
@@ -50,79 +35,38 @@ export type ImageDownloadFn = FileDownloadFn;
 // MIME type to category mapping
 const MIME_TYPE_CATEGORIES: Record<string, FileCategory> = {
   // Images (Claude vision)
-  'image/png': 'image',
-  'image/jpeg': 'image',
-  'image/jpg': 'image',
-  'image/gif': 'image',
-  'image/webp': 'image',
-  'image/bmp': 'image',
-  'image/svg+xml': 'image',
-  'image/tiff': 'image',
+  'image/png': FileCategory.IMAGE,
+  'image/jpeg': FileCategory.IMAGE,
+  'image/jpg': FileCategory.IMAGE,
+  'image/gif': FileCategory.IMAGE,
+  'image/webp': FileCategory.IMAGE,
+  'image/bmp': FileCategory.IMAGE,
+  'image/svg+xml': FileCategory.IMAGE,
+  'image/tiff': FileCategory.IMAGE,
 
   // Documents (Claude PDF support - visual analysis)
-  'application/pdf': 'document',
-
-  // Text files (extract content as plain text)
-  'text/plain': 'text',
-  'text/markdown': 'text',
-  'text/csv': 'text',
-  'text/html': 'text',
-  'application/json': 'text',
-
-  // Office documents (need text extraction - treat as text for content inclusion)
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'text', // .docx
-  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'text', // .xlsx
-  'application/vnd.openxmlformats-officedocument.presentationml.presentation': 'text', // .pptx
-  'application/msword': 'text', // .doc
-  'application/vnd.ms-excel': 'text', // .xls
-  'application/vnd.ms-powerpoint': 'text', // .ppt
-
-  // Google Docs formats
-  'application/vnd.google-apps.document': 'text',
-  'application/vnd.google-apps.spreadsheet': 'text',
-  'application/vnd.google-apps.presentation': 'text',
+  'application/pdf': FileCategory.DOCUMENT
 };
 
 // File extensions for fallback categorization
 const EXTENSION_CATEGORIES: Record<string, FileCategory> = {
   // Images
-  '.png': 'image',
-  '.jpg': 'image',
-  '.jpeg': 'image',
-  '.gif': 'image',
-  '.webp': 'image',
-  '.bmp': 'image',
-  '.svg': 'image',
-  '.tiff': 'image',
-  '.tif': 'image',
+  '.png': FileCategory.IMAGE, 
+  '.jpg': FileCategory.IMAGE,
+  '.jpeg': FileCategory.IMAGE,
+  '.gif': FileCategory.IMAGE,
+  '.webp': FileCategory.IMAGE,
+  '.bmp': FileCategory.IMAGE,
+  '.svg': FileCategory.IMAGE,
+  '.tiff': FileCategory.IMAGE,
+  '.tif': FileCategory.IMAGE,
 
   // Documents
-  '.pdf': 'document',
-
-  // Text
-  '.txt': 'text',
-  '.md': 'text',
-  '.markdown': 'text',
-  '.csv': 'text',
-  '.json': 'text',
-  '.html': 'text',
-  '.htm': 'text',
-  '.xml': 'text',
-
-  // Office
-  '.docx': 'text',
-  '.doc': 'text',
-  '.xlsx': 'text',
-  '.xls': 'text',
-  '.pptx': 'text',
-  '.ppt': 'text',
+  '.pdf': FileCategory.DOCUMENT
 };
 
 // Presigned URL expiry: 24 hours
 const PRESIGNED_URL_EXPIRY_MS = 24 * 60 * 60 * 1000;
-
-// Max concurrent file operations
-const MAX_CONCURRENT_OPERATIONS = 5;
 
 // Max file size (32MB - Claude's limit)
 const MAX_FILE_SIZE_BYTES = 32 * 1024 * 1024;
@@ -136,62 +80,38 @@ let isConfigured = false;
  */
 export function classifyFile(mimeType?: string, filename?: string): FileCategory {
   // Try MIME type first
+  const category = classifyFileByMimeType(mimeType);
+  if (category !== FileCategory.UNSUPPORTED) {
+    return category;
+  }
+  return classifyFileByExtension(filename);
+}
+
+export function classifyFileByMimeType(mimeType?: string): FileCategory {
   if (mimeType) {
     const normalizedMime = mimeType.toLowerCase().split(';')[0].trim();
-
-    // Check exact match
     if (MIME_TYPE_CATEGORIES[normalizedMime]) {
       return MIME_TYPE_CATEGORIES[normalizedMime];
     }
-
-    // Check prefix for generic image types
-    if (normalizedMime.startsWith('image/')) {
-      return 'image';
-    }
-
-    // Check prefix for text types
-    if (normalizedMime.startsWith('text/')) {
-      return 'text';
-    }
   }
+  return FileCategory.UNSUPPORTED;
+}
 
-  // Fall back to filename extension
+export function classifyFileByExtension(filename?: string): FileCategory {
   if (filename) {
     const ext = filename.toLowerCase().match(/\.[^.]+$/)?.[0];
     if (ext && EXTENSION_CATEGORIES[ext]) {
       return EXTENSION_CATEGORIES[ext];
     }
   }
-
-  return 'unsupported';
+  return FileCategory.UNSUPPORTED;
 }
 
 /**
  * Check if a file type is supported for multimodal processing
  */
 export function isSupportedFileType(mimeType?: string, filename?: string): boolean {
-  return classifyFile(mimeType, filename) !== 'unsupported';
-}
-
-/**
- * Check if a MIME type represents an image
- */
-export function isImageMimeType(mimeType: string): boolean {
-  return classifyFile(mimeType) === 'image';
-}
-
-/**
- * Check if a MIME type represents a document (PDF)
- */
-export function isDocumentMimeType(mimeType: string): boolean {
-  return classifyFile(mimeType) === 'document';
-}
-
-/**
- * Check if a MIME type represents a text file
- */
-export function isTextMimeType(mimeType: string): boolean {
-  return classifyFile(mimeType) === 'text';
+  return classifyFile(mimeType, filename) !== FileCategory.UNSUPPORTED;
 }
 
 /**
@@ -239,9 +159,6 @@ export function isFileStorageConfigured(): boolean {
   return isConfigured;
 }
 
-// Legacy alias for backward compatibility
-export const isImageStorageConfigured = isFileStorageConfigured;
-
 /**
  * Sanitize a primary key for use as a GCS object name
  * Replaces invalid characters with underscores
@@ -287,28 +204,6 @@ async function generatePresignedUrl(file: File): Promise<string> {
     cname: ""
   });
   return signedUrl;
-}
-
-/**
- * Get a presigned URL for an existing object (without re-downloading)
- * Returns null if the object doesn't exist or GCS is not configured
- */
-export async function getPresignedUrl(primaryKey: string): Promise<string | null> {
-  const file = getFile(primaryKey);
-  if (!file) {
-    return null;
-  }
-
-  try {
-    const [exists] = await file.exists();
-    if (!exists) {
-      return null;
-    }
-    return await generatePresignedUrl(file);
-  } catch (error) {
-    logger.error('Error getting presigned URL', { primaryKey, error });
-    return null;
-  }
 }
 
 /**
@@ -431,7 +326,7 @@ export async function ensureStoredWithMetadata(
 
     // Classify the file
     const category = classifyFile(mimeType, filename);
-    if (category === 'unsupported') {
+    if (category === FileCategory.UNSUPPORTED) {
       logger.debug('Unsupported file type, skipping', { primaryKey, mimeType, filename });
       return null;
     }
@@ -468,64 +363,6 @@ export async function ensureStoredWithMetadata(
   }
 }
 
-/**
- * Process multiple files with concurrency control
- * Returns an array of stored file metadata (null for failed files)
- */
-export async function ensureStoredBatch(
-  files: Array<{ primaryKey: string; download: FileDownloadFn }>
-): Promise<Array<string | null>> {
-  if (!isFileStorageConfigured()) {
-    return files.map(() => null);
-  }
-
-  // Process in batches to limit concurrency
-  const results: Array<string | null> = [];
-
-  for (let i = 0; i < files.length; i += MAX_CONCURRENT_OPERATIONS) {
-    const batch = files.slice(i, i + MAX_CONCURRENT_OPERATIONS);
-    const batchResults = await Promise.all(
-      batch.map(({ primaryKey, download }) =>
-        ensureStored(primaryKey, download).catch(error => {
-          logger.error('Error in batch file storage', { primaryKey, error });
-          return null;
-        })
-      )
-    );
-    results.push(...batchResults);
-  }
-
-  return results;
-}
-
-/**
- * Process multiple files with full metadata
- */
-export async function ensureStoredBatchWithMetadata(
-  files: Array<{ primaryKey: string; download: FileDownloadFn }>
-): Promise<Array<StoredFile | null>> {
-  if (!isFileStorageConfigured()) {
-    return files.map(() => null);
-  }
-
-  const results: Array<StoredFile | null> = [];
-
-  for (let i = 0; i < files.length; i += MAX_CONCURRENT_OPERATIONS) {
-    const batch = files.slice(i, i + MAX_CONCURRENT_OPERATIONS);
-    const batchResults = await Promise.all(
-      batch.map(({ primaryKey, download }) =>
-        ensureStoredWithMetadata(primaryKey, download).catch(error => {
-          logger.error('Error in batch file storage', { primaryKey, error });
-          return null;
-        })
-      )
-    );
-    results.push(...batchResults);
-  }
-
-  return results;
-}
-
 // Helper functions for generating primary keys
 
 /**
@@ -547,9 +384,6 @@ export function buildGmailFileKey(
   const hash = md5Hash(`${messageId}/${attachmentId}`);
   return `gmail/${integrationId}/${hash}`;
 }
-
-// Legacy alias
-export const buildGmailImageKey = buildGmailFileKey;
 
 /**
  * Build a primary key for Slack files
@@ -588,9 +422,6 @@ export function buildLinearFileKey(
   return `linear/${organizationId}/${hash}`;
 }
 
-// Legacy alias
-export const buildLinearImageKey = buildLinearFileKey;
-
 /**
  * Build a primary key for Jira files
  * Format: jira/{integrationId}/{md5(issueKey/attachmentId)}
@@ -603,9 +434,6 @@ export function buildJiraFileKey(
   const hash = md5Hash(`${issueKey}/${attachmentId}`);
   return `jira/${integrationId}/${hash}`;
 }
-
-// Legacy alias
-export const buildJiraImageKey = buildJiraFileKey;
 
 /**
  * Build a primary key for Figma node images

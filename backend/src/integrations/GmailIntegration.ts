@@ -110,7 +110,7 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
                     continue;
                 }
                 const { integration, user, oldHistoryId } = claim;
-                
+
                 // Process with user context for logging
                 await runWithUserContext(user.id, user.email, async () => {
                     // Step 2: Fetch message IDs from Gmail (fast, non-blocking)
@@ -135,84 +135,80 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
 
                     // Step 4: Process each message (fast, non-blocking)
                     for (const messageId of messageIds) {
-                    // Try to mark this message as processed (non-blocking, unique constraint prevents duplicates)
-                    const wasNewlyProcessed = await markMessageAsProcessed(
-                        integration.id,
-                        messageId,
-                        String(Date.now())
-                    );
+                        // Try to mark this message as processed (non-blocking, unique constraint prevents duplicates)
+                        const wasNewlyProcessed = await markMessageAsProcessed(
+                            integration.id,
+                            messageId,
+                            String(Date.now())
+                        );
 
-                    if (!wasNewlyProcessed) {
-                        logger.debug(`Skipping already processed message ${messageId}`, { messageId, integrationId: integration.id });
-                        continue;
-                    }
-
-                    const parsedEmail: GmailEventData | null = await fetchAndParseEmail(gmail, messageId);
-
-                    if (parsedEmail) {
-                        const emailTimestamp = parseInt(parsedEmail.internalDate, 10);
-                        const emailDate = new Date(emailTimestamp);
-
-                        logger.debug("Received Webhook for email", { from: parsedEmail.from, to: parsedEmail.to, subject: parsedEmail.subject, date: emailDate.toISOString(), messageId, integrationId: integration.id });
-
-                        // Skip messages older than the last processed message date
-                        if (lastProcessedDate && emailDate <= lastProcessedDate) {
-                            logger.debug(`Skipping old message ${parsedEmail.id} from ${emailDate.toISOString()}`, { messageId: parsedEmail.id, subject: parsedEmail.subject, emailDate: emailDate.toISOString(), lastProcessedDate: lastProcessedDate.toISOString(), integrationId: integration.id });
-                            // Mark as processed (non-blocking)
-                            await markMessageAsProcessed(integration.id, parsedEmail.id, parsedEmail.internalDate);
+                        if (!wasNewlyProcessed) {
+                            logger.debug(`Skipping already processed message ${messageId}`, { messageId, integrationId: integration.id });
                             continue;
                         }
 
-                        // Download attachments and store in GCS (if configured)
-                        // Support: images, PDFs, documents, spreadsheets
-                        const allAttachments = parsedEmail.attachments || parsedEmail.images || [];
-                        if (isFileStorageConfigured() && allAttachments.length > 0) {
-                            const storedFiles = await downloadGmailAttachments(
-                                gmail,
-                                parsedEmail.id,
-                                allAttachments,
-                                integration.id
-                            );
-                            if (storedFiles.length > 0) {
-                                parsedEmail.storedFiles = storedFiles;
-                                // Also populate legacy field for backward compatibility
-                                parsedEmail.imageUrlsPresigned = storedFiles
-                                    .filter(f => f.category === 'image')
-                                    .map(f => f.url);
+                        const parsedEmail: GmailEventData | null = await fetchAndParseEmail(gmail, messageId);
+
+                        if (parsedEmail) {
+                            const emailTimestamp = parseInt(parsedEmail.internalDate, 10);
+                            const emailDate = new Date(emailTimestamp);
+
+                            logger.debug("Received Webhook for email", { from: parsedEmail.from, to: parsedEmail.to, subject: parsedEmail.subject, date: emailDate.toISOString(), messageId, integrationId: integration.id });
+
+                            // Skip messages older than the last processed message date
+                            if (lastProcessedDate && emailDate <= lastProcessedDate) {
+                                logger.debug(`Skipping old message ${parsedEmail.id} from ${emailDate.toISOString()}`, { messageId: parsedEmail.id, subject: parsedEmail.subject, emailDate: emailDate.toISOString(), lastProcessedDate: lastProcessedDate.toISOString(), integrationId: integration.id });
+                                // Mark as processed (non-blocking)
+                                await markMessageAsProcessed(integration.id, parsedEmail.id, parsedEmail.internalDate);
+                                continue;
+                            }
+
+                            // Download attachments and store in GCS (if configured)
+                            // Support: images, PDFs, documents, spreadsheets
+                            const allAttachments = parsedEmail.attachments || [];
+                            if (isFileStorageConfigured() && allAttachments.length > 0) {
+                                const storedFiles = await downloadGmailAttachments(
+                                    gmail,
+                                    parsedEmail.id,
+                                    allAttachments,
+                                    integration.id
+                                );
+                                if (storedFiles.length > 0) {
+                                    parsedEmail.storedFiles = storedFiles;
+                                }
+                            }
+
+                            // Process email through automations (non-blocking)
+                            logger.info('About to process email', {
+                                userEmail: user.email,
+                                subject: parsedEmail.subject,
+                                from: parsedEmail.from,
+                                to: parsedEmail.to,
+                                date: emailDate.toISOString(),
+                                integrationId: integration.id,
+                                messageId: parsedEmail.id,
+                                fileCount: parsedEmail.storedFiles?.length || 0
+                            });
+
+                            const eventProcessor = new EventProcessor(new GmailEvent(parsedEmail, integration.id), user);
+                            const results = await eventProcessor.process();
+
+                            // Process results from all automations
+                            let hasSuccess = false;
+                            for (const result of results) {
+                                if (result.success) {
+                                    logger.info(`Email processed successfully by agent: ${result.agentConfig?.name || 'unknown'}`, { agentName: result.agentConfig?.name, integrationId: integration.id, messageId: parsedEmail.id });
+                                    hasSuccess = true;
+                                } else {
+                                    logger.debug(`Agent "${result.agentConfig?.name || 'unknown'}" skipped: ${result.message}`, { agentName: result.agentConfig?.name, message: result.message, integrationId: integration.id });
+                                }
+                            }
+
+                            // Track the most recent email date if processing succeeded
+                            if (hasSuccess && (!mostRecentEmailDate || emailDate > mostRecentEmailDate)) {
+                                mostRecentEmailDate = emailDate;
                             }
                         }
-
-                        // Process email through automations (non-blocking)
-                        logger.info('About to process email', {
-                            userEmail: user.email,
-                            subject: parsedEmail.subject,
-                            from: parsedEmail.from,
-                            to: parsedEmail.to,
-                            date: emailDate.toISOString(),
-                            integrationId: integration.id,
-                            messageId: parsedEmail.id,
-                            fileCount: parsedEmail.storedFiles?.length || 0
-                        });
-
-                        const eventProcessor = new EventProcessor(new GmailEvent(parsedEmail, integration.id), user);
-                        const results = await eventProcessor.process();
-
-                        // Process results from all automations
-                        let hasSuccess = false;
-                        for (const result of results) {
-                            if (result.success) {
-                                logger.info(`Email processed successfully by agent: ${result.agentConfig?.name || 'unknown'}`, { agentName: result.agentConfig?.name, integrationId: integration.id, messageId: parsedEmail.id });
-                                hasSuccess = true;
-                            } else {
-                                logger.debug(`Agent "${result.agentConfig?.name || 'unknown'}" skipped: ${result.message}`, { agentName: result.agentConfig?.name, message: result.message, integrationId: integration.id });
-                            }
-                        }
-
-                        // Track the most recent email date if processing succeeded
-                        if (hasSuccess && (!mostRecentEmailDate || emailDate > mostRecentEmailDate)) {
-                            mostRecentEmailDate = emailDate;
-                        }
-                    }
                     }
 
                     // Step 5: Update the last processed message date (non-blocking)
@@ -233,7 +229,7 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
             throw error;
         }
     }
-    
+
     async getInstallationUrl(userId: string, options?: InstallationOptionsFor<IntegrationType.GMAIL>, additionalStatePayload?: AdditionalStateParams): Promise<OAuthInstallationDetails> {
         const oauth2Client = getOAuth2Client();
 
@@ -419,7 +415,7 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
 
             // Also refresh the Gmail watch if it's expiring soon (within 24 hours) or if token was refreshed
             const now = new Date();
-            const watchNeedsRefresh = !integration.watch_expiration || 
+            const watchNeedsRefresh = !integration.watch_expiration ||
                 integration.watch_expiration <= new Date(now.getTime() + 24 * 60 * 60 * 1000);
 
             if (watchNeedsRefresh || tokenRefreshed) {
@@ -507,6 +503,11 @@ export class GmailEvent extends InputEvent {
     }
 
     formatForAgentRunner(): string {
+        const getAttachmentLog = (attachment: GmailParsedAttachment) => {
+            return `- ${attachment.filename} ${attachment.isInline ? 'Inline' : 'Attachment'}  (${attachment.mimeType})`;
+        }
+        const attachmentInfo = this.data.attachments?.map(getAttachmentLog).join('\n') || 'No attachments';
+
         return `
         Incoming Email Event.
 
@@ -519,6 +520,8 @@ export class GmailEvent extends InputEvent {
         Thread ID: ${this.data.threadId}
         Body: ${this.data.body}
         Snippet: ${this.data.snippet}
+        Attachments (if any listed, actual files should be added below):
+        ${attachmentInfo}
         `;
     }
 
@@ -590,37 +593,37 @@ async function refreshAccessTokenIfNeeded(
 ): Promise<string> {
     const now = new Date();
 
-        // Check if token is expired or will expire within the refresh threshold
-        if (
-            integration.token_expiry &&
-            integration.token_expiry <= new Date(now.getTime() + OAUTH_TOKEN_REFRESH_THRESHOLD_MS)
-        ) {
-            logger.info("Access token expired or expiring soon, refreshing...", { integrationId: integration.id, tokenExpiry: integration.token_expiry });
+    // Check if token is expired or will expire within the refresh threshold
+    if (
+        integration.token_expiry &&
+        integration.token_expiry <= new Date(now.getTime() + OAUTH_TOKEN_REFRESH_THRESHOLD_MS)
+    ) {
+        logger.info("Access token expired or expiring soon, refreshing...", { integrationId: integration.id, tokenExpiry: integration.token_expiry });
 
-            const oauth2Client = getOAuth2Client();
-            oauth2Client.setCredentials({
-                refresh_token: integration.refresh_token,
-            });
+        const oauth2Client = getOAuth2Client();
+        oauth2Client.setCredentials({
+            refresh_token: integration.refresh_token,
+        });
 
-            const { credentials } = await oauth2Client.refreshAccessToken();
+        const { credentials } = await oauth2Client.refreshAccessToken();
 
-            const newTokenExpiry = credentials.expiry_date
-                ? new Date(credentials.expiry_date)
-                : new Date(Date.now() + 3600 * 1000);
+        const newTokenExpiry = credentials.expiry_date
+            ? new Date(credentials.expiry_date)
+            : new Date(Date.now() + 3600 * 1000);
 
-            // Update the database with new tokens
-            await db().gmail_integrations.update({
-                where: { id: integration.id },
-                data: {
-                    access_token: credentials.access_token!,
-                    token_expiry: newTokenExpiry,
-                },
-            });
+        // Update the database with new tokens
+        await db().gmail_integrations.update({
+            where: { id: integration.id },
+            data: {
+                access_token: credentials.access_token!,
+                token_expiry: newTokenExpiry,
+            },
+        });
 
-            logger.info("Access token refreshed successfully", { integrationId: integration.id, newTokenExpiry });
+        logger.info("Access token refreshed successfully", { integrationId: integration.id, newTokenExpiry });
 
-            return credentials.access_token!;
-        }
+        return credentials.access_token!;
+    }
 
     return integration.access_token;
 }
@@ -770,94 +773,93 @@ async function fetchNewMessageIds(
 async function fetchAndParseEmail(
     gmail: gmail_v1.Gmail,
     messageId: string
-  ): Promise<GmailEventData | null> {
-    try {
-      const messageResponse = await gmail.users.messages.get({
+): Promise<GmailEventData | null> {
+    const messageResponse = await gmail.users.messages.get({
         userId: "me",
         id: messageId,
         format: "full",
-      });
+    });
 
-      const message = messageResponse.data;
-      const headers = message.payload?.headers || [];
-      const getHeader = (name: string) => {
+    const message = messageResponse.data;
+    const headers = message.payload?.headers || [];
+    const getHeader = (name: string) => {
         const header = headers.find(
-          (h) => h.name?.toLowerCase() === name.toLowerCase()
+            (h) => h.name?.toLowerCase() === name.toLowerCase()
         );
         return header?.value || "";
-      };
+    };
 
-      const subject = getHeader("Subject");
-      const from = getHeader("From");
-      const to = getHeader("To");
-      const date = getHeader("Date");
-      const messageIdHeader = getHeader("Message-ID");
-      const labelIds = message.labelIds || [];
+    const subject = getHeader("Subject");
+    const from = getHeader("From");
+    const to = getHeader("To");
+    const date = getHeader("Date");
+    const messageIdHeader = getHeader("Message-ID");
+    const labelIds = message.labelIds || [];
 
-      // Extract body - Gmail can have different structures
-      const getBody = (payload: gmail_v1.Schema$MessagePart): string => {
+    // Extract body - Gmail can have different structures
+    const getBody = (payload: gmail_v1.Schema$MessagePart): string => {
         if (payload.body?.data) {
-          return Buffer.from(payload.body.data, "base64").toString("utf-8");
+            return Buffer.from(payload.body.data, "base64").toString("utf-8");
         }
 
         if (payload.parts) {
-          for (const part of payload.parts) {
-            if (part.mimeType === "text/plain" && part.body?.data) {
-              return Buffer.from(part.body.data, "base64").toString("utf-8");
-            }
+            for (const part of payload.parts) {
+                if (part.mimeType === "text/plain" && part.body?.data) {
+                    return Buffer.from(part.body.data, "base64").toString("utf-8");
+                }
 
-            // Recursively check nested parts
-            const nestedBody = getBody(part);
-            if (nestedBody) {
-              return nestedBody;
+                // Recursively check nested parts
+                const nestedBody = getBody(part);
+                if (nestedBody) {
+                    return nestedBody;
+                }
             }
-          }
         }
 
         return "";
-      };
+    };
 
-      // Extract all attachments recursively (images, PDFs, documents, etc.)
-      const extractAttachments = (payload: gmail_v1.Schema$MessagePart): GmailParsedAttachment[] => {
+    // Extract all attachments recursively (images, PDFs, documents, etc.)
+    const extractAttachments = (payload: gmail_v1.Schema$MessagePart): GmailParsedAttachment[] => {
         const attachments: GmailParsedAttachment[] = [];
         const partHeaders = payload.headers || [];
 
         const getPartHeader = (name: string) => {
-          const header = partHeaders.find(
-            (h) => h.name?.toLowerCase() === name.toLowerCase()
-          );
-          return header?.value || "";
+            const header = partHeaders.find(
+                (h) => h.name?.toLowerCase() === name.toLowerCase()
+            );
+            return header?.value || "";
         };
 
         // Check if this part has an attachmentId (any file type)
         if (payload.body?.attachmentId && payload.mimeType) {
-          const contentDisposition = getPartHeader('Content-Disposition');
-          const contentId = getPartHeader('Content-ID');
-          const isInline = contentDisposition.toLowerCase().includes('inline') || !!contentId;
+            const contentDisposition = getPartHeader('Content-Disposition');
+            const contentId = getPartHeader('Content-ID');
+            const isInline = contentDisposition.toLowerCase().includes('inline') || !!contentId;
 
-          attachments.push({
-            attachmentId: payload.body.attachmentId,
-            filename: payload.filename || 'attachment',
-            mimeType: payload.mimeType,
-            contentId: contentId ? contentId.replace(/[<>]/g, '') : undefined,
-            isInline,
-          });
+            attachments.push({
+                attachmentId: payload.body.attachmentId,
+                filename: payload.filename || 'attachment',
+                mimeType: payload.mimeType,
+                contentId: contentId ? contentId.replace(/[<>]/g, '') : undefined,
+                isInline,
+            });
         }
 
         // Recursively check nested parts
         if (payload.parts) {
-          for (const part of payload.parts) {
-            attachments.push(...extractAttachments(part));
-          }
+            for (const part of payload.parts) {
+                attachments.push(...extractAttachments(part));
+            }
         }
 
         return attachments;
-      };
+    };
 
-      const body = getBody(message.payload || {});
-      const attachments = extractAttachments(message.payload || {});
+    const body = getBody(message.payload || {});
+    const attachments = extractAttachments(message.payload || {});
 
-      return {
+    return {
         id: message.id || messageId,
         threadId: message.threadId || "",
         subject,
@@ -869,24 +871,9 @@ async function fetchAndParseEmail(
         body,
         snippet: message.snippet || "",
         labelIds,
-        attachments: attachments.length > 0 ? attachments : undefined,
-        // Legacy field for backward compatibility
-        images: attachments.filter(a => a.mimeType.startsWith('image/')),
-      };
-    } catch (error: any) {
-      // 404 errors are expected - messages can be deleted/moved before we fetch them
-      if (
-        error?.code === 404 ||
-        error?.message?.includes("Requested entity was not found")
-      ) {
-        logger.debug(`Message ${messageId} not found (likely deleted or moved)`, { messageId });
-      } else {
-        // Log other errors as actual errors
-        logger.error(`Error fetching message ${messageId}`, { error, messageId });
-      }
-      return null;
-    }
-  }
+        attachments: attachments.length > 0 ? attachments : undefined
+    };
+}
 
 
 export type GmailWebhookEvent = {
@@ -1050,6 +1037,8 @@ async function downloadGmailAttachments(
             byCategory
         });
     }
+
+    console.log('storedFiles', JSON.stringify(storedFiles, null, 2));
 
     return storedFiles;
 }

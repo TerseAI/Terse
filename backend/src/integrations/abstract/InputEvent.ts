@@ -45,31 +45,6 @@ export abstract class InputEvent {
     }
 
     /**
-     * Get document URLs (PDFs) associated with this event.
-     * Documents can be processed by Claude's PDF support for visual analysis.
-     * @returns Array of document URL strings. Empty array if no documents are available.
-     */
-    getDocumentUrls(): string[] {
-        // Default implementation: filter files by category
-        return this.getFiles()
-            .filter(f => f.category === 'document')
-            .map(f => f.url);
-    }
-
-    /**
-     * Get text file content associated with this event.
-     * Text files (TXT, MD, CSV, DOCX, XLSX) have their content extracted.
-     * Note: Currently returns URLs for text files; content extraction may be added later.
-     * @returns Array of text file URLs. Empty array if no text files are available.
-     */
-    getTextFileUrls(): string[] {
-        // Default implementation: filter files by category
-        return this.getFiles()
-            .filter(f => f.category === 'text')
-            .map(f => f.url);
-    }
-
-    /**
      * Check if this InputEvent implements Identifiable.
      * Only InputEvents that conform to Identifiable can be tracked for output change attributions.
      * @returns true if this event implements Identifiable

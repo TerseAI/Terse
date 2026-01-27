@@ -26,6 +26,8 @@ import {
     isFileStorageConfigured,
     StoredFile,
     classifyFile,
+    isSupportedFileType,
+    FileCategory,
 } from "../services/FileStorageService";
 
 export class LinearIntegrationManager implements Integration<LinearIntegration, LinearWebhookPayload, typeof LinearIntegrationMetadata>, OAuthIntegrationInstallation<IntegrationType.LINEAR> {
@@ -614,17 +616,6 @@ export class LinearEvent extends InputEvent {
         return this.storedFiles;
     }
 }
-// Supported file extensions for Linear attachments
-const SUPPORTED_EXTENSIONS = [
-    // Images
-    '.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.svg', '.tiff', '.tif',
-    // Documents
-    '.pdf',
-    // Text files
-    '.txt', '.md', '.csv', '.json', '.xml', '.html',
-    // Office documents
-    '.docx', '.doc', '.xlsx', '.xls', '.pptx', '.ppt',
-];
 
 /**
  * Downloads attachments from Linear and stores them in GCS
@@ -640,8 +631,7 @@ async function downloadLinearAttachments(
 
     // Filter for supported file types (infer from URL extension)
     const supportedAttachments = attachments.filter(att => {
-        const urlLower = att.url.toLowerCase();
-        return SUPPORTED_EXTENSIONS.some(ext => urlLower.includes(ext));
+        return classifyFile(att.url) !== FileCategory.UNSUPPORTED
     });
 
     if (supportedAttachments.length === 0) {
