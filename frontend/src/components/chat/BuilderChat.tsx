@@ -4,6 +4,7 @@ import { Chat } from './Chat';
 import { subscribeToBuilderChat, sendBuilderMessage } from '@/socket';
 import { ModelRequest, SendModelRequest } from '@/shared/ModelEvents';
 import { ChatEventPayload } from './hooks/useCompletionSocket';
+import { Bot, Plug, Settings, MessageSquare } from 'lucide-react';
 
 type BuilderChatProps = {
     getStateJSON: () => string;
@@ -59,7 +60,66 @@ export function BuilderChat({ getStateJSON, agentId }: BuilderChatProps) {
                 subscribeToEvents={subscribeToEvents}
                 sendMessage={sendMessage}
                 addUserTurnsLocally={true}
+                EmptyContentPlaceholder={<BuilderChatEmptyState />}
             />
+        </div>
+    );
+}
+
+function BuilderChatEmptyState() {
+    return (
+        <div className="flex flex-col items-center justify-center h-full text-center max-w-2xl mx-auto">
+            <div className="mb-6">
+                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-primary/10 flex items-center justify-center">
+                    <MessageSquare className="w-8 h-8 text-primary" />
+                </div>
+                <h3 className="text-xl font-semibold text-foreground mb-2">Welcome to Terse AI Chat</h3>
+                <p className="text-muted-foreground mb-6">
+                    I'm here to help you create and configure AI agents that automate work for your software team.
+                </p>
+            </div>
+            
+            <div className="space-y-4 text-left w-full">
+                <div className="rounded-lg border bg-card p-4">
+                    <h4 className="font-medium text-foreground mb-2 flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                            <Bot className="w-5 h-5 text-primary" />
+                        </div>
+                        Create Agents
+                    </h4>
+                    <p className="text-sm text-muted-foreground">
+                        Tell me about a problem you want to automate, and I'll help you build an agent with triggers, outputs, prompts, and knowledge bases.
+                    </p>
+                </div>
+                
+                <div className="rounded-lg border bg-card p-4">
+                    <h4 className="font-medium text-foreground mb-2 flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                            <Plug className="w-5 h-5 text-primary" />
+                        </div>
+                        Connect Integrations
+                    </h4>
+                    <p className="text-sm text-muted-foreground">
+                        I can help you connect Slack, Notion, GitHub, Linear, and other integrations to power your agents.
+                    </p>
+                </div>
+                
+                <div className="rounded-lg border bg-card p-4">
+                    <h4 className="font-medium text-foreground mb-2 flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                            <Settings className="w-5 h-5 text-primary" />
+                        </div>
+                        Configure Settings
+                    </h4>
+                    <p className="text-sm text-muted-foreground">
+                        Modify existing agents, update integration settings, or adjust how your agents work.
+                    </p>
+                </div>
+            </div>
+            
+            <p className="mt-6 text-sm text-muted-foreground">
+                Just start chatting to get started! Try saying something like "I want to create an agent that updates Notion when a GitHub PR is opened."
+            </p>
         </div>
     );
 }
