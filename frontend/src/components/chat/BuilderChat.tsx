@@ -1,4 +1,4 @@
-import { useMemo, useEffect, useRef } from 'react';
+import { useMemo, useEffect, useRef, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { Chat } from './Chat';
 import { subscribeToBuilderChat, sendBuilderMessage } from '@/socket';
@@ -28,15 +28,19 @@ export function BuilderChat({ getStateJSON, agentId }: BuilderChatProps) {
         previousAgentIdRef.current = agentId;
     }, [agentId, sessionId]);
 
-    function subscribeToEvents(callback: (payload: ChatEventPayload) => void) {
-        return subscribeToBuilderChat(sessionId, (payload) => {
+    const subscribeToEvents = (callback: (payload: ChatEventPayload) => void) => {
+        console.log('[BuilderChat] subscribeToEvents called', { sessionId });
+        const unsubscribe = subscribeToBuilderChat(sessionId, (payload) => {
+            console.log('[BuilderChat] Event received', payload.event.type);
             callback({
                 runHistoryModelEvent: payload.event,
             });
         });
-    }
+        console.log('[BuilderChat] Subscription created');
+        return unsubscribe;
+    };
 
-    function sendMessage(message: ModelRequest) {
+    const sendMessage = useCallback((message: ModelRequest) => {
         if (message.type === 'SendModelRequest') {
             const enrichedMessage: { type: 'SendModelRequest' } & SendModelRequest = {
                 ...message,
@@ -46,7 +50,7 @@ export function BuilderChat({ getStateJSON, agentId }: BuilderChatProps) {
         } else {
             sendBuilderMessage(sessionId, message);
         }
-    }
+    }, [sessionId, getStateJSON]);
 
     return (
         <div className="h-full flex min-h-0">

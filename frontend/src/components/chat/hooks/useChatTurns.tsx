@@ -308,14 +308,10 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
     };
 
     const handleSnippet = (snippetPayload: ChatSnippetPayload) => {
-        const snippet: ChatSnippet = (() => {
-            const id = uuidv4();
-            if (snippetPayload.type === 'button') {
-                return { ...snippetPayload, id };
-            } else {
-                return { ...snippetPayload, id };
-            }
-        })();
+        const snippet: ChatSnippet = {
+            ...snippetPayload,
+            id: uuidv4(),
+        };
 
         setTurns(prev => {
             const updated = [...prev];
@@ -343,8 +339,15 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
             
             // Add snippet to the target turn
             if (targetTurn && targetIndex !== -1) {
-                targetTurn.snippets = [...(targetTurn.snippets || []), snippet];
-                return updated;
+                const updatedTurn = {
+                    ...targetTurn,
+                    snippets: [...(targetTurn.snippets || []), snippet],
+                };
+                return [
+                    ...updated.slice(0, targetIndex),
+                    updatedTurn,
+                    ...updated.slice(targetIndex + 1)
+                ];
             }
             
             // Create a new assistant turn with the snippet if no suitable turn exists
