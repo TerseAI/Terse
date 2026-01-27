@@ -15,11 +15,6 @@ import {
     createNaturalStopEvent,
 } from "../../streaming";
 import { INTEGRATION_REGISTRY } from "../../../integrations/abstract/IntegrationRegistry";
-import {
-    isOAuthIntegrationInstallation,
-    isFormIntegrationInstallation,
-    OAuthIntegrationInstallation,
-} from "../../../integrations/abstract/Integration";
 import { createOAuthStateToken } from "../../../utility/oauth";
 
 class WebChatInterface extends ChatInterface {
@@ -55,65 +50,30 @@ class WebChatInterface extends ChatInterface {
             return `Integration ${integration} not found.`;
         }
 
-        if (isFormIntegrationInstallation(integrationManager)) {
-            // Create state token with chat metadata
-            const stateToken = createOAuthStateToken({
-                userId: this.userId!,
-                additionalFields: { integrationType: integration },
-                additionalStatePayload: {
-                    chatId: this.sessionId,
-                    channel: 'web', // Use 'web' as the channel identifier for web chat
-                },
-                expiresIn: "7d",
-            });
+        // Create state token with chat metadata for both OAuth and form integrations
+        const stateToken = createOAuthStateToken({
+            userId: this.userId!,
+            additionalFields: { integrationType: integration },
+            additionalStatePayload: {
+                chatId: this.sessionId,
+                channel: 'web',
+            },
+            expiresIn: "7d",
+        });
 
-            // Emit integration_prompt snippet
-            this.emitEvent({
-                type: 'Snippet',
-                snippet: {
-                    type: 'integration_prompt',
-                    integration,
-                    message: `To connect ${integration}, please fill out the form below.`,
-                    stateToken,
-                },
-            });
+        // Emit integration_prompt snippet - works for both OAuth and form integrations
+        // The integration card will handle fetching OAuth URLs or showing forms
+        this.emitEvent({
+            type: 'Snippet',
+            snippet: {
+                type: 'integration_prompt',
+                integration,
+                message: `To connect ${integration}, please use the form or button below.`,
+                stateToken,
+            },
+        });
 
-            return `I've provided a form to connect ${integration}. Fill it out to complete the integration.`;
-        }
-
-        if (isOAuthIntegrationInstallation(integrationManager)) {
-            return await this.handleOAuthIntegration(integration, integrationManager);
-        }
-
-        return `Integration ${integration} does not support installation.`;
-    }
-
-    private async handleOAuthIntegration(
-        integration: IntegrationType,
-        integrationManager: OAuthIntegrationInstallation<IntegrationType>
-    ): Promise<string> {
-        try {
-            const configFields = integrationManager.getConfigurationFields();
-
-            if (configFields.length > 0) {
-                // Integration requires configuration before OAuth
-                return `To connect ${integration}, please go to Settings > Integrations to configure and authorize it.`;
-            }
-
-            // No configuration needed - get the OAuth URL directly
-            const installationDetails = await integrationManager.getInstallationUrl(this.userId!, undefined, {
-                sessionId: this.sessionId,
-            });
-            const oauthUrl = installationDetails.oauthUrl;
-
-            // Emit a button event to the frontend
-            await this.buildButton(`Connect ${integration}`, oauthUrl);
-
-            return `I've provided a button to connect ${integration}. Click it to start the authorization process.`;
-        } catch (error) {
-            logger.error('Error getting installation URL', { error, integration, userId: this.userId });
-            return `Failed to get authorization URL for ${integration}. Please try again.`;
-        }
+        return `I've provided a way to connect ${integration}. Use the form or button below to complete the integration.`;
     }
 
     async promptForConfig(config: ConfigType): Promise<string> {
