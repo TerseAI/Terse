@@ -25,7 +25,7 @@ import logger from '../../logger';
 import { RunHistoryActionType } from '@prisma/client';
 import { KnowledgeBase } from '../../knowledgeBase/abstract/KnowledgeBase';
 import { SocketEvents, SocketRooms } from '../../shared/SocketEvents';
-import { StoredFile } from '../../services/FileStorageService';
+import { FileCategory, StoredFile } from '../../services/FileStorageService';
 
 // Types from @openai/agents SDK for content items
 type AgentInputText = protocol.InputText;
@@ -431,9 +431,9 @@ export class AgentRunner<
         for (const f of files ?? []) {
             if (!f?.url) continue;
 
-            if (f.category === "image") {
+            if (f.category === FileCategory.IMAGE) {
                 content.push({ type: "input_image", image: f.url } as AgentInputImage);
-            } else if (f.category === "document") {
+            } else if (f.category === FileCategory.DOCUMENT) {
                 content.push({
                     type: "input_file",
                     file: { url: f.url }

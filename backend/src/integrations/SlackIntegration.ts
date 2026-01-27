@@ -924,7 +924,7 @@ async function handleSlackMessage(event: SlackMessageEvent, teamId: string, auth
             // Stored files with full metadata
             storedFiles: storedFiles.length > 0 ? storedFiles : undefined,
             // Legacy: image URLs only
-            imageUrlsFromFiles: storedFiles.filter(f => f.category === 'image').map(f => f.url),
+            imageUrlsFromFiles: storedFiles.filter(f => f.category === FileCategory.IMAGE).map(f => f.url),
         };
         
         // Create SlackEvent once
