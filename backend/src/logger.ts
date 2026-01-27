@@ -171,7 +171,7 @@ class Logger {
     if (upperLevel === 'ERROR' || upperLevel === 'FATAL' || upperLevel === 'WARN') {
       console.log(`${chalk.dim(time)} ${levelTag} ${message}, ${JSON.stringify(attributes, null, 2)}`);
     } else {
-      console.log(`${chalk.dim(time)} ${levelTag} ${message}`);
+      console.log(`${chalk.dim(time)} ${levelTag} ${message}, ${JSON.stringify(attributes, null, 2)}`);
     }
   }
 

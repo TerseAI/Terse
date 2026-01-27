@@ -192,7 +192,7 @@ export async function setupSlackBolt() {
         });
         return;
       }
-      const slackChatInterface = new SlackChatInterface(event.channel, client, userId, event.user, chatId);
+      const slackChatInterface = new SlackChatInterface(event.channel, client, userId, chatId, event.user);
       const chatAgent = new ChatAgent(slackChatInterface, chatId, userId);
 
       const messageWithContext = await buildSlackChannelContextMessage(client, message, event.channel);
