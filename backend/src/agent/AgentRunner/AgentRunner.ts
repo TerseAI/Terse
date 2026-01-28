@@ -424,34 +424,75 @@ export class AgentRunner<
     }
 
     private buildUserContent(text: string, files?: StoredFile[]): UserMessageContent[] {
+        const { trimmedText, attachedFiles } = this.normalizeUserInputs(text, files);
+
         const content: UserMessageContent[] = [];
-        const trimmedText = text?.trim();
-        const attachedFiles = files?.filter(file => file?.url) ?? [];
-        const attachmentNote = attachedFiles.length > 0
-            ? `<ATTACHMENTS>\nThe following files are attached to the event/message below. The input_file and input_image items that follow in this message correspond to these attachments.\n${attachedFiles.map(file => `- ${file.filename || 'unnamed file'}${file.mimeType ? ` (${file.mimeType})` : ''}`).join('\n')}\n</ATTACHMENTS>`
-            : '';
-        if (trimmedText) {
-            content.push({ type: "input_text", text: trimmedText });
-        }
-        if (attachmentNote) {
-            content.push({ type: "input_text", text: attachmentNote });
-        }
 
-        for (const f of attachedFiles) {
-            if (!f?.url) continue;
+        this.pushInputTextIfPresent(content, trimmedText);
 
-            if (f.category === FileCategory.IMAGE) {
-                content.push({ type: "input_image", image: f.url } as AgentInputImage);
-            } else if (f.category === FileCategory.DOCUMENT) {
-                content.push({
-                    type: "input_file",
-                    file: { url: f.url }
-                } as AgentInputFile);
-            }
-        }
+        const attachmentNote = this.buildAttachmentNote(attachedFiles);
+        this.pushInputTextIfPresent(content, attachmentNote);
+
+        content.push(...this.buildAttachmentItems(attachedFiles));
 
         return content;
     }
+
+    private normalizeUserInputs(text: string, files?: StoredFile[]) {
+        const trimmedText = text?.trim() ?? "";
+        const attachedFiles = (files ?? []).filter((f): f is StoredFile => Boolean(f?.url));
+        return { trimmedText, attachedFiles };
+    }
+
+    private pushInputTextIfPresent(content: UserMessageContent[], text?: string) {
+        const t = text?.trim();
+        if (!t) return;
+        content.push({ type: "input_text", text: t });
+    }
+
+    private buildAttachmentNote(attachedFiles: StoredFile[]): string {
+        if (attachedFiles.length === 0) return "";
+
+        const lines = attachedFiles.map((file) => {
+            const name = file.filename || "unnamed file";
+            const type = file.mimeType ? ` (${file.mimeType})` : "";
+            return `- ${name}${type}`;
+        });
+
+        return [
+            "<ATTACHMENTS>",
+            "The following files are attached to the event/message below. The input_file and input_image items that follow in this message correspond to these attachments.",
+            ...lines,
+            "</ATTACHMENTS>",
+        ].join("\n");
+    }
+
+    private buildAttachmentItems(attachedFiles: StoredFile[]): UserMessageContent[] {
+        const items: UserMessageContent[] = [];
+
+        for (const file of attachedFiles) {
+            const item = this.fileToContentItem(file);
+            if (item) items.push(item);
+        }
+
+        return items;
+    }
+
+    private fileToContentItem(file: StoredFile): UserMessageContent | null {
+        if (!file?.url) return null;
+
+        switch (file.category) {
+            case FileCategory.IMAGE:
+                return { type: "input_image", image: file.url } as AgentInputImage;
+
+            case FileCategory.DOCUMENT:
+                return { type: "input_file", file: { url: file.url } } as AgentInputFile;
+
+            default:
+                return null;
+        }
+    }
+
 
     private buildTextContent(inputEvent: InputEvent): string {
         return `
