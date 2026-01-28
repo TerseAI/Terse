@@ -37,10 +37,12 @@ export type FilterResult = { isRelevant: boolean, reason: string, confidence: nu
 export type UserMessage = { message: string };
 
 // Chat snippet types for displaying interactive elements in chat
-export type ChatSnippet = 
+export type ChatSnippet =
     | { type: 'button'; label: string; url: string; id: string }
-    | { type: 'integration_prompt'; integration: string; message: string; id: string; stateToken?: string };
+    | { type: 'integration_prompt'; integration: string; message: string; id: string; stateToken?: string }
+    | { type: 'navigate'; path: string; id: string };
 
-export type ChatSnippetPayload = 
+export type ChatSnippetPayload =
     | { type: 'button'; label: string; url: string }
-    | { type: 'integration_prompt'; integration: string; message: string; stateToken?: string };
+    | { type: 'integration_prompt'; integration: string; message: string; stateToken?: string }
+    | { type: 'navigate'; path: string };
