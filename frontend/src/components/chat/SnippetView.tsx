@@ -1,10 +1,25 @@
+import { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { LinkIcon } from '@heroicons/react/24/outline';
 import { ChatSnippet } from '../../shared/ModelEvents';
 import { IntegrationType } from '../../shared/Integrations';
 import IntegrationCard from '../Integrations/IntegrationCard';
 
 export function SnippetView({ snippet }: { snippet: ChatSnippet }) {
-    console.log('SnippetView is rendering', snippet);
+    const navigate = useNavigate();
+
+    useEffect(() => {
+        if (snippet.type === 'navigate') {
+            // Navigate to the path when this snippet is rendered
+            navigate(snippet.path);
+        }
+    }, [snippet, navigate]);
+
+    if (snippet.type === 'navigate') {
+        // Return null since we're navigating away
+        return null;
+    }
+
     if (snippet.type === 'button') {
         return (
             <div className="bg-primary/10 border border-primary/20 rounded-lg p-3">

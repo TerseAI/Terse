@@ -75,7 +75,13 @@ class SlackChatInterface extends ChatInterface {
             blocks,
         });
     }
-    
+
+    async navigate(path: string): Promise<void> {
+        // For Slack, we can't navigate in-app, so show a button instead
+        const frontendUrl = process.env.FRONTEND_URL || '';
+        await this.buildButton('View Automation', `${frontendUrl}${path}`);
+    }
+
     private async handleFormIntegrationInstallation(integration: IntegrationType): Promise<string> {
         try {
             // Create state payload with chat metadata
