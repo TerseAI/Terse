@@ -32,7 +32,6 @@ type AgentInputText = protocol.InputText;
 type AgentInputImage = protocol.InputImage;
 type AgentInputFile = protocol.InputFile;
 
-// Type for user message content (supports text, images, and files)
 type UserMessageContent = AgentInputText | AgentInputImage | AgentInputFile;
 
 export class AgentRunner<
