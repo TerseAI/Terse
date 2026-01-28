@@ -68,30 +68,22 @@ function ChatInput({ sendMessage, input, setInput, placeholders, disabled = fals
     const { size: textFieldSize, compact, minRows, showBorder } = sizeMapping[inputSize];
 
     return (
-        <div>
-            <div className="grid grid-cols-[1fr_auto] gap-2 items-end">
-                <GlowingTextField
-                    isLoading={false}
-                    disabled={disabled}
-                    onInputChange={(e) => setInput(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                    inputValue={input}
-                    placeholders={placeholders}
-                    compact={compact}
-                    size={textFieldSize}
-                    autoFocus={true}
-                    focusOverride={focusOverride}
-                    minRows={minRows}
-                    showBorder={showBorder}
-                />
-                <button
-                    className={`px-4 py-2 bg-[theme(--accent-primary)] text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed ${inputSize === 'large' ? 'h-12' : ''}`}
-                    onClick={() => sanitizeAndSendMessage(input)}
-                    disabled={disabled}
-                >
-                    Send
-                </button>
-            </div>
+        <div className="p-4">
+            <GlowingTextField
+                isLoading={false}
+                disabled={disabled}
+                onInputChange={(e) => setInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                inputValue={input}
+                placeholders={placeholders}
+                compact={compact}
+                size={textFieldSize}
+                autoFocus={true}
+                focusOverride={focusOverride}
+                minRows={minRows}
+                showBorder={showBorder}
+                onSend={() => sanitizeAndSendMessage(input)}
+            />
         </div>
     );
 }
