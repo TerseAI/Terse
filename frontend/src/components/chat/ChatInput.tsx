@@ -1,7 +1,7 @@
 import GlowingTextField, { Size } from "./GlowingTextField";
 import { useEffect, useRef } from "react";
 
-function ChatInput({ sendMessage, input, setInput, placeholders, disabled = false }: { sendMessage: (message: string) => void, input: string, setInput: (input: string) => void, placeholders: string[], disabled?: boolean }) {
+function ChatInput({ sendMessage, input, setInput, placeholders, disabled = false, inputSize = 'small' }: { sendMessage: (message: string) => void, input: string, setInput: (input: string) => void, placeholders: string[], disabled?: boolean, inputSize?: 'small' | 'medium' | 'large' }) {
     const prevSelectedRef = useRef<number | null>(null);
 
     // Track focus override based on state transitions
@@ -60,6 +60,13 @@ function ChatInput({ sendMessage, input, setInput, placeholders, disabled = fals
         sendMessage(cleanMessage);
     };
 
+    const sizeMapping = {
+        small: { size: Size.Small, compact: true },
+        medium: { size: Size.Medium, compact: false },
+        large: { size: Size.Large, compact: false },
+    };
+    const { size: textFieldSize, compact } = sizeMapping[inputSize];
+
     return (
         <div className="p-4">
             <div className="grid grid-cols-[1fr_auto] gap-2">
@@ -70,8 +77,8 @@ function ChatInput({ sendMessage, input, setInput, placeholders, disabled = fals
                     onKeyDown={handleKeyDown}
                     inputValue={input}
                     placeholders={placeholders}
-                    compact={true}
-                    size={Size.Small}
+                    compact={compact}
+                    size={textFieldSize}
                     autoFocus={true}
                     focusOverride={focusOverride}
                 />
