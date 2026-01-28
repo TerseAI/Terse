@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import {
@@ -10,8 +10,6 @@ import {
 import { Maximize2Icon, Sparkles, Info } from "lucide-react";
 import { AgentTrigger, AgentOutput, AgentKnowledgeBase, AgentPrompt } from "@/shared/types";
 import { PromptBuilderModal } from "../../../components/PromptBuilder/PromptBuilderModal";
-import { Switch } from "../../../components/ui/switch";
-import { Label } from "../../../components/ui/label";
 import ReactMarkdown from "react-markdown";
 import { SectionHeader } from "@/components/ui/section-header";
 import { Tooltip, TooltipTrigger, TooltipContent } from "../../../components/ui/tooltip";
@@ -29,6 +27,8 @@ Be specific about:
 • Any rules for filtering or prioritizing events
 • The tone or style for generated content`;
 
+const clickHerePlaceholder = `## Click here to edit the prompt`;
+
 interface InstructionsEditorProps {
     prompt: AgentPrompt | undefined;
     setPrompt: (prompt: AgentPrompt | undefined) => void;
@@ -38,10 +38,48 @@ interface InstructionsEditorProps {
     isIncomplete?: boolean;
 }
 
+type InstructionsEditorContentProps = {
+    showMarkdown: boolean;
+    setShowMarkdown: (showMarkdown: boolean) => void;
+    text: string;
+    prompt: AgentPrompt | undefined;
+    setPrompt: (prompt: AgentPrompt | undefined) => void;
+}
+
+function InstructionsEditorContent({ showMarkdown, setShowMarkdown, text, prompt, setPrompt }: InstructionsEditorContentProps) {
+    return (
+        <>
+            {showMarkdown ? (
+                <div
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setShowMarkdown(false)}
+                    onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") setShowMarkdown(false);
+                    }}
+                >
+                    <div className="react-markdown rounded-md p-2 border border-foreground/10 bg-background shadow-sm hover:border-foreground/15 transition">
+                        <ReactMarkdown>{prompt?.text ?? clickHerePlaceholder}</ReactMarkdown>
+                    </div>
+                </div>
+            ) : (
+                <Textarea
+                    value={text}
+                    onChange={(e) => setPrompt({ ...prompt, text: e.target.value })}
+                    className="flex-1 min-h-0 resize-none overflow-auto"
+                    onBlur={() => setShowMarkdown(true)}
+                    onFocus={() => setShowMarkdown(false)}
+                    placeholder={instructionsPlaceholder}
+                />
+            )}
+        </>
+    )
+}
+
 export function InstructionsEditor({ prompt, setPrompt, agentInputs, agentOutputs, knowledgeBases }: InstructionsEditorProps) {
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [showPromptBuilder, setShowPromptBuilder] = useState(false);
-    const [showMarkdown, setShowMarkdown] = useState(false);
+    const [showMarkdown, setShowMarkdown] = useState(true);
     const text: string = prompt?.text ?? '';
 
     return (
@@ -59,17 +97,6 @@ export function InstructionsEditor({ prompt, setPrompt, agentInputs, agentOutput
                     </Tooltip>
                 </div>
                 <div className="flex justify-end gap-2">
-                    <div className="flex items-center gap-2">
-                        <Switch
-                            id="markdown-toggle"
-                            checked={showMarkdown}
-                            onCheckedChange={setShowMarkdown}
-                            disabled={!prompt?.text || prompt.text.trim() === ''}
-                        />
-                        <Label htmlFor="markdown-toggle" className="text-sm text-muted-foreground cursor-pointer">
-                            Markdown
-                        </Label>
-                    </div>
                     <Button
                         variant="outline"
                         size="sm"
@@ -88,23 +115,7 @@ export function InstructionsEditor({ prompt, setPrompt, agentInputs, agentOutput
                     </Button>
                 </div>
             </div>
-            {showMarkdown && prompt?.text ? (
-                <div className="flex-1 min-h-0 overflow-auto p-3 border rounded-md bg-background">
-                    <div className="react-markdown prose prose-sm dark:prose-invert max-w-none">
-                        <ReactMarkdown>
-                            {prompt.text}
-                        </ReactMarkdown>
-                    </div>
-                </div>
-            ) : (
-                <Textarea
-                    value={text}
-                    onChange={(e) => setPrompt({ ...prompt, text: e.target.value })}
-                    className="flex-1 min-h-0 resize-none overflow-auto"
-                    placeholder={instructionsPlaceholder}
-                />
-            )}
-
+            <InstructionsEditorContent showMarkdown={showMarkdown} setShowMarkdown={setShowMarkdown} text={text} prompt={prompt} setPrompt={setPrompt} />
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogContent className="sm:max-w-2xl h-[80vh] flex flex-col">
                     <DialogHeader>
@@ -112,22 +123,7 @@ export function InstructionsEditor({ prompt, setPrompt, agentInputs, agentOutput
                             Prompt
                         </DialogTitle>
                     </DialogHeader>
-                    {showMarkdown && prompt?.text ? (
-                        <div className="flex-1 min-h-0 overflow-auto p-3 border rounded-md bg-background">
-                            <div className="react-markdown prose prose-sm dark:prose-invert max-w-none">
-                                <ReactMarkdown>
-                                    {prompt.text}
-                                </ReactMarkdown>
-                            </div>
-                        </div>
-                    ) : (
-                        <Textarea
-                            value={text}
-                            onChange={(e) => setPrompt({ ...prompt, text: e.target.value })}
-                            className="flex-1 min-h-0 resize-none"
-                            placeholder={instructionsPlaceholder}
-                        />
-                    )}
+                    <InstructionsEditorContent showMarkdown={showMarkdown} setShowMarkdown={setShowMarkdown} text={text} prompt={prompt} setPrompt={setPrompt} />
                 </DialogContent>
             </Dialog>
             <PromptBuilderModal
