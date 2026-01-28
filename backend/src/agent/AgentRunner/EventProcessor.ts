@@ -104,6 +104,7 @@ export class EventProcessor {
                 ));
             }
         }
+
         return results;
     }
 
