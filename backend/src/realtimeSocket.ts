@@ -4,7 +4,7 @@ import { createClient } from "redis";
 import { createAdapter } from "@socket.io/redis-adapter";
 import { Jwt } from "./utility/jwt";
 import { urls, nodeEnv, optional } from "./config/settings";
-import { SendModelRequest, ModelEvent, ModelRequest, ToolApprovalResponse, UploadedFile } from "./shared/ModelEvents";
+import { SendModelRequest, ModelEvent, ModelRequest, ToolApprovalResponse } from "./shared/ModelEvents";
 import { db } from "./prismaClient";
 import { AgentRunner } from "./agent/AgentRunner/AgentRunner";
 import { RunContext } from "./agent/AgentRunner/SystemPromptBuilder";
@@ -21,7 +21,6 @@ import { DirectiveTask, directiveTaskQueue } from "./agent/DirectiveAgent/Direct
 import { ApprovalService } from "./services/ApprovalService";
 import logger from "./logger";
 import { SocketEvents, SocketRooms } from "./shared/SocketEvents";
-import { getStoredFileByKey, StoredFile } from "./services/FileStorageService";
 
 // Extended Socket type with userId property
 interface AuthenticatedSocket extends Socket {
@@ -206,26 +205,6 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
             };
 
             const userMessage = message.user_message;
-            const uploadedFiles = message.uploadedFiles || [];
-
-            // Retrieve StoredFile metadata for uploaded files
-            let storedFiles: StoredFile[] = [];
-            if (uploadedFiles.length > 0) {
-                const filePromises = uploadedFiles.map(f => getStoredFileByKey(f.fileKey));
-                const results = await Promise.all(filePromises);
-                storedFiles = results.filter((f): f is StoredFile => f !== null);
-                logger.info(`[agent:chat:message] Retrieved ${storedFiles.length} stored files`, { runId, userId });
-            }
-
-            // Build files array for UserMessage event (with URLs for frontend display)
-            const filesForEvent: UploadedFile[] | undefined = storedFiles.length > 0
-                ? storedFiles.map(f => ({
-                    fileKey: f.url, // Use URL as fileKey for display purposes
-                    filename: f.filename || 'file',
-                    mimeType: f.mimeType,
-                    url: f.url, // Presigned URL for display
-                }))
-                : undefined;
 
             // Ensure run status is 'in_progress' so streaming works
             if (runRecord.status !== 'in_progress') {
@@ -234,11 +213,9 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
                     data: { status: 'in_progress' },
                 });
             }
-
             const userMessageEvent: ModelEvent = {
                 type: 'UserMessage',
                 message: userMessage,
-                files: filesForEvent,
             };
             const userMessageEventId = await storeChatEvent(runId, userMessageEvent);
             emitCacheInvalidationWithWildcard(user.id, 'runHistory', agent.id);
@@ -253,7 +230,7 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
 
             let result;
             try {
-                result = await agentRunner.userMessageRun(userMessage, storedFiles, {
+                result = await agentRunner.userMessageRun(userMessage, [], {
                     runId,
                     userId: userId,
                     agentId: agent.id,

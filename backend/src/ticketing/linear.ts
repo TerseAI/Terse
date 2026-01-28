@@ -658,6 +658,36 @@ export class LinearAdapter implements TicketManager {
         return commentsWithUsers;
     }
 
+    async getIssueAttachments(issueId: string): Promise<Array<{ id: string; title: string; url: string; createdAt: string }>> {
+        const issue = await this.client.issue(issueId);
+        if (!issue) throw new Error('Issue not found');
+
+        const attachments = await issue.attachments();
+        return attachments.nodes.map(attachment => ({
+            id: attachment.id,
+            title: attachment.title,
+            url: attachment.url,
+            createdAt: attachment.createdAt.toISOString()
+        }));
+    }
+
+    async getIssueRelations(issueId: string): Promise<Array<{ id: string; type: string; relatedIssueId: string }>> {
+        const issue = await this.client.issue(issueId);
+        if (!issue) throw new Error('Issue not found');
+
+        const relations = await issue.relations();
+        const relationsWithIssues = await Promise.all(relations.nodes.map(async relation => {
+            const relatedIssue = await relation.relatedIssue;
+            return {
+                id: relation.id,
+                type: relation.type,
+                relatedIssueId: relatedIssue?.id || ''
+            };
+        }));
+
+        return relationsWithIssues;
+    }
+
     // helper
     private async convertLinearTicket(issue: Issue): Promise<Ticket> {
         return {

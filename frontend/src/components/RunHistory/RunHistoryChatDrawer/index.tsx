@@ -98,14 +98,13 @@ export default function RunHistoryChatDrawer({
                                     )}>
                                         <div className="flex flex-col h-full relative">
                                             <div className="flex-1 min-h-0">
-                                                <Chat
+                                                <Chat 
                                                     ref={chatRef}
-                                                    initialTurns={initialTurns}
+                                                    initialTurns={initialTurns} 
                                                     subscribeToEvents={subscribeToEvents}
                                                     sendMessage={sendMessage}
                                                     onHandleApprove={handleApprove}
                                                     onHandleReject={handleReject}
-                                                    runId={runId}
                                                     EmptyContentPlaceholder={
                                                         isLoading 
                                                             ? <div className="p-4 text-center text-muted-foreground">Loading history...</div> 

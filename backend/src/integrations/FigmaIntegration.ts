@@ -27,17 +27,6 @@ import { integrationTaskQueue } from "./IntegrationTaskQueues";
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask";
 import { FrontendRoutes } from "../shared/FrontendRoutes";
 import { ApiRoutes } from "../shared/ApiRoutes";
-import {
-  ensureStored,
-  buildFigmaNodeImageKey,
-  buildFigmaFullFrameImageKey,
-  FileDownloadResult,
-  StoredFile,
-  FileCategory,
-} from "../services/FileStorageService";
-
-// Type alias for backward compatibility
-type ImageDownloadResult = FileDownloadResult;
 
 export class FigmaIntegrationManager implements Integration<FigmaIntegration, FigmaWebhookEvent, typeof FigmaIntegrationMetadata>, OAuthIntegrationInstallation<IntegrationType.FIGMA> {
   constructor() { }
@@ -786,55 +775,6 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
 
     logger.info("Figma for comment imageUrls", { imageUrls: JSON.stringify(imageUrls, null, 2), commentId, fileKey });
 
-    // Download Figma images to GCS and get presigned URLs (if GCS is configured)
-    const imageUrlsPresigned: string[] = [];
-    // Download node image if available
-    if (imageUrls.nodeImage) {
-      try {
-        const primaryKey = buildFigmaNodeImageKey(integration.id, fileKey, commentId);
-        const presignedUrl = await ensureStored(primaryKey, async (): Promise<ImageDownloadResult> => {
-          // Figma export URLs are publicly accessible (no auth needed to download)
-          const response = await fetch(imageUrls.nodeImage!);
-          if (!response.ok) {
-            throw new Error(`Failed to download Figma node image: ${response.status} ${response.statusText}`);
-          }
-          const buffer = Buffer.from(await response.arrayBuffer());
-          const mimeType = response.headers.get('content-type') || 'image/png';
-          return { data: buffer, mimeType };
-        });
-        if (presignedUrl) {
-          imageUrlsPresigned.push(presignedUrl);
-          logger.debug(`✅ Stored Figma node image in GCS`, { commentId, fileKey, primaryKey });
-        }
-      } catch (error) {
-        logger.error(`Error storing Figma node image`, { error, commentId, fileKey });
-        // Continue - don't fail the entire event
-      }
-    }
-
-    // Download full frame image if available
-    if (imageUrls.fullFrame) {
-      try {
-        const primaryKey = buildFigmaFullFrameImageKey(integration.id, fileKey, commentId);
-        const presignedUrl = await ensureStored(primaryKey, async (): Promise<ImageDownloadResult> => {
-          const response = await fetch(imageUrls.fullFrame!);
-          if (!response.ok) {
-            throw new Error(`Failed to download Figma full frame image: ${response.status} ${response.statusText}`);
-          }
-          const buffer = Buffer.from(await response.arrayBuffer());
-          const mimeType = response.headers.get('content-type') || 'image/png';
-          return { data: buffer, mimeType };
-        });
-        if (presignedUrl) {
-          imageUrlsPresigned.push(presignedUrl);
-          logger.debug(`✅ Stored Figma full frame image in GCS`, { commentId, fileKey, primaryKey });
-        }
-      } catch (error) {
-        logger.error(`Error storing Figma full frame image`, { error, commentId, fileKey });
-        // Continue - don't fail the entire event
-      }
-    }
-
     // Get the closest node ID for storage
     const closestNodeId = matchedNodeIds.length > 0
       ? matchedNodeIds[0]
@@ -876,7 +816,6 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
       positioningData: positioningDataOrUndefined,
       matchedNodeIds: matchedNodeIds.length > 0 ? matchedNodeIds : undefined,
       imageUrls: imageUrls.nodeImage || imageUrls.fullFrame ? imageUrls : undefined,
-      imageUrlsPresigned: imageUrlsPresigned.length > 0 ? imageUrlsPresigned : undefined,
     });
 
     const eventProcessor = new EventProcessor(figmaEvent, user);
@@ -1058,31 +997,18 @@ export class FigmaCommentEvent extends InputEvent {
     };
   }
 
-  /**
-   * Get all files associated with this event.
-   * Returns presigned GCS URLs (preferred) or falls back to raw Figma URLs.
-   */
-  getFiles(): StoredFile[] {
-    // GCS presigned URLs (preferred - stable and 24h expiry)
-    if (this.data.imageUrlsPresigned && this.data.imageUrlsPresigned.length > 0) {
-      return this.data.imageUrlsPresigned.map(url => ({
-        url,
-        mimeType: 'image/png',
-        category: FileCategory.IMAGE,
-      }));
-    }
-
-    // Fallback: raw Figma URLs (only when GCS is not configured)
-    const files: StoredFile[] = [];
+  getImageUrls(): string[] {
+    // Return all available image URLs from the Figma comment event
+    const urls: string[] = [];
     if (this.data.imageUrls) {
       if (this.data.imageUrls.nodeImage) {
-        files.push({ url: this.data.imageUrls.nodeImage, mimeType: 'image/png', category: FileCategory.IMAGE });
+        urls.push(this.data.imageUrls.nodeImage);
       }
       if (this.data.imageUrls.fullFrame) {
-        files.push({ url: this.data.imageUrls.fullFrame, mimeType: 'image/png', category: FileCategory.IMAGE });
+        urls.push(this.data.imageUrls.fullFrame);
       }
     }
-    return files;
+    return urls;
   }
 }
 
@@ -1483,21 +1409,21 @@ export async function extractCommentImages(
                     imageUrls.fullFrame = imageData.images[targetNodeId];
                     logger.debug(`📄 Extracted full page image for file-level comment`, { fileKey, targetNodeId });
                   } else {
-                    logger.info(`Unable to get valid image for file-level comment: image data missing or empty`, {
-                      fileKey,
-                      targetNodeId,
+                    logger.info(`Unable to get valid image for file-level comment: image data missing or empty`, { 
+                      fileKey, 
+                      targetNodeId, 
                       hasImages: !!imageData.images,
                       imageKeys: imageData.images ? Object.keys(imageData.images) : []
                     });
                   }
                 } else {
                   const errorText = await imageResponse.text();
-                  logger.info(`Unable to get image for file-level comment: API returned non-ok status`, {
-                    fileKey,
-                    targetNodeId,
-                    status: imageResponse.status,
+                  logger.info(`Unable to get image for file-level comment: API returned non-ok status`, { 
+                    fileKey, 
+                    targetNodeId, 
+                    status: imageResponse.status, 
                     statusText: imageResponse.statusText,
-                    error: errorText
+                    error: errorText 
                   });
                 }
               } else {
@@ -1508,11 +1434,11 @@ export async function extractCommentImages(
             }
           } else {
             const errorText = await fileResponse.text();
-            logger.info(`Unable to get image for file-level comment: file API returned non-ok status`, {
-              fileKey,
-              status: fileResponse.status,
+            logger.info(`Unable to get image for file-level comment: file API returned non-ok status`, { 
+              fileKey, 
+              status: fileResponse.status, 
               statusText: fileResponse.statusText,
-              error: errorText
+              error: errorText 
             });
           }
         } catch (error) {
@@ -1540,9 +1466,9 @@ export async function extractCommentImages(
         if (imageData.images && imageData.images[primaryNodeId]) {
           imageUrls.nodeImage = imageData.images[primaryNodeId];
         } else {
-          logger.info(`Unable to get valid node image: image data missing or empty`, {
-            fileKey,
-            primaryNodeId,
+          logger.info(`Unable to get valid node image: image data missing or empty`, { 
+            fileKey, 
+            primaryNodeId, 
             hasImages: !!imageData.images,
             imageKeys: imageData.images ? Object.keys(imageData.images) : []
           });
@@ -1550,12 +1476,12 @@ export async function extractCommentImages(
       } else {
         const errorText = await imageResponse.text();
         logger.error(`Failed to extract node image for ${primaryNodeId}`, { error: errorText, fileKey, primaryNodeId });
-        logger.info(`Unable to get node image: API returned non-ok status`, {
-          fileKey,
-          primaryNodeId,
-          status: imageResponse.status,
+        logger.info(`Unable to get node image: API returned non-ok status`, { 
+          fileKey, 
+          primaryNodeId, 
+          status: imageResponse.status, 
           statusText: imageResponse.statusText,
-          error: errorText
+          error: errorText 
         });
       }
     }
@@ -1623,9 +1549,9 @@ export async function extractCommentImages(
               if (fullFrameData.images && fullFrameData.images[targetFrameId]) {
                 imageUrls.fullFrame = fullFrameData.images[targetFrameId];
               } else {
-                logger.info(`Unable to get valid full frame image: image data missing or empty`, {
-                  fileKey,
-                  targetFrameId,
+                logger.info(`Unable to get valid full frame image: image data missing or empty`, { 
+                  fileKey, 
+                  targetFrameId, 
                   primaryNodeId,
                   pageNodeId,
                   hasImages: !!fullFrameData.images,
@@ -1634,14 +1560,14 @@ export async function extractCommentImages(
               }
             } else {
               const errorText = await fullFrameResponse.text();
-              logger.info(`Unable to get full frame image: API returned non-ok status`, {
-                fileKey,
-                targetFrameId,
+              logger.info(`Unable to get full frame image: API returned non-ok status`, { 
+                fileKey, 
+                targetFrameId, 
                 primaryNodeId,
                 pageNodeId,
-                status: fullFrameResponse.status,
+                status: fullFrameResponse.status, 
                 statusText: fullFrameResponse.statusText,
-                error: errorText
+                error: errorText 
               });
             }
           } else {
@@ -1657,12 +1583,12 @@ export async function extractCommentImages(
         }
       } else {
         const errorText = await fileResponse.text();
-        logger.info(`Unable to get full frame image: file API returned non-ok status`, {
-          fileKey,
+        logger.info(`Unable to get full frame image: file API returned non-ok status`, { 
+          fileKey, 
           primaryNodeId,
-          status: fileResponse.status,
+          status: fileResponse.status, 
           statusText: fileResponse.statusText,
-          error: errorText
+          error: errorText 
         });
       }
     } catch (error) {
