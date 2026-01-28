@@ -13,6 +13,8 @@ interface GlowingTextFieldProps {
     shouldAllowKeyboardShortcutForFocus?: boolean;
     autoFocus?: boolean;
     focusOverride?: boolean | null; // null = no override, true = focus, false = blur
+    minRows?: number;
+    showBorder?: boolean;
 }
 
 export enum Size {
@@ -21,7 +23,7 @@ export enum Size {
     Large = 'large',
 }
 
-function GlowingTextField({ isLoading, disabled, onInputChange, onKeyDown, inputValue, placeholders = [], compact = false, size = Size.Medium, shouldAllowKeyboardShortcutForFocus = true, autoFocus = false, focusOverride = null }: GlowingTextFieldProps) {
+function GlowingTextField({ isLoading, disabled, onInputChange, onKeyDown, inputValue, placeholders = [], compact = false, size = Size.Medium, shouldAllowKeyboardShortcutForFocus = true, autoFocus = false, focusOverride = null, minRows, showBorder = false }: GlowingTextFieldProps) {
     const [currentPlaceholder, setCurrentPlaceholder] = useState<string | undefined>(placeholders ? placeholders[0] : undefined);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -93,7 +95,7 @@ function GlowingTextField({ isLoading, disabled, onInputChange, onKeyDown, input
             )}
 
             <div
-                className="
+                className={`
                         grid place-items-stretch
                         w-full
                         rounded-lg
@@ -101,21 +103,22 @@ function GlowingTextField({ isLoading, disabled, onInputChange, onKeyDown, input
                         duration-400
                         p-1
                         bg-card
-                    "
+                        ${showBorder ? 'border-2 border-border focus-within:border-primary/50' : ''}
+                    `}
             >
                 <TextareaAutosize
                     ref={textareaRef}
                     className={`
-                            w-full 
+                            w-full
                             text-foreground
-                            ${getFontSize()} 
-                            resize-none 
-                            ${compact ? 'p-2.5' : 'p-4'} 
-                            leading-normal 
+                            ${getFontSize()}
+                            resize-none
+                            ${compact ? 'p-2.5' : 'p-4'}
+                            leading-normal
                             placeholder:italic
-                            placeholder:text-muted-foreground 
+                            placeholder:text-muted-foreground
                             rounded-lg
-                            transition-all 
+                            transition-all
                             duration-300
                             focus:outline-none
                         `}
@@ -124,8 +127,8 @@ function GlowingTextField({ isLoading, disabled, onInputChange, onKeyDown, input
                     value={inputValue}
                     disabled={disabled}
                     placeholder={currentPlaceholder}
-                    rows={compact ? 1 : undefined}
-                    maxRows={compact ? 4 : undefined}
+                    minRows={minRows ?? (compact ? 1 : undefined)}
+                    maxRows={compact ? 4 : 10}
                     autoFocus={autoFocus}
                 />
             </div>
