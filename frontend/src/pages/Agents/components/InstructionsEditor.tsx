@@ -39,14 +39,13 @@ interface InstructionsEditorProps {
 }
 
 type InstructionsEditorContentProps = {
-    showMarkdown: boolean;
-    setShowMarkdown: (showMarkdown: boolean) => void;
     text: string;
     prompt: AgentPrompt | undefined;
     setPrompt: (prompt: AgentPrompt | undefined) => void;
 }
 
-function InstructionsEditorContent({ showMarkdown, setShowMarkdown, text, prompt, setPrompt }: InstructionsEditorContentProps) {
+function InstructionsEditorContent({ text, prompt, setPrompt }: InstructionsEditorContentProps) {
+    const [showMarkdown, setShowMarkdown] = useState(true);
     return (
         <>
             {showMarkdown ? (
@@ -58,7 +57,7 @@ function InstructionsEditorContent({ showMarkdown, setShowMarkdown, text, prompt
                         if (e.key === "Enter" || e.key === " ") setShowMarkdown(false);
                     }}
                 >
-                    <div className="react-markdown rounded-md p-2 border border-foreground/10 bg-background shadow-sm hover:border-foreground/15 transition">
+                    <div className="flex-1 min-h-0 overflow-auto react-markdown rounded-md p-2 border border-foreground/10 bg-background shadow-sm hover:border-foreground/15 transition">
                         <ReactMarkdown>{prompt?.text ?? clickHerePlaceholder}</ReactMarkdown>
                     </div>
                 </div>
@@ -67,6 +66,7 @@ function InstructionsEditorContent({ showMarkdown, setShowMarkdown, text, prompt
                     value={text}
                     onChange={(e) => setPrompt({ ...prompt, text: e.target.value })}
                     className="flex-1 min-h-0 resize-none overflow-auto"
+                    autoFocus
                     onBlur={() => setShowMarkdown(true)}
                     onFocus={() => setShowMarkdown(false)}
                     placeholder={instructionsPlaceholder}
@@ -79,7 +79,7 @@ function InstructionsEditorContent({ showMarkdown, setShowMarkdown, text, prompt
 export function InstructionsEditor({ prompt, setPrompt, agentInputs, agentOutputs, knowledgeBases }: InstructionsEditorProps) {
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [showPromptBuilder, setShowPromptBuilder] = useState(false);
-    const [showMarkdown, setShowMarkdown] = useState(true);
+
     const text: string = prompt?.text ?? '';
 
     return (
@@ -115,7 +115,7 @@ export function InstructionsEditor({ prompt, setPrompt, agentInputs, agentOutput
                     </Button>
                 </div>
             </div>
-            <InstructionsEditorContent showMarkdown={showMarkdown} setShowMarkdown={setShowMarkdown} text={text} prompt={prompt} setPrompt={setPrompt} />
+            <InstructionsEditorContent text={text} prompt={prompt} setPrompt={setPrompt} />
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogContent className="sm:max-w-2xl h-[80vh] flex flex-col">
                     <DialogHeader>
@@ -123,7 +123,7 @@ export function InstructionsEditor({ prompt, setPrompt, agentInputs, agentOutput
                             Prompt
                         </DialogTitle>
                     </DialogHeader>
-                    <InstructionsEditorContent showMarkdown={showMarkdown} setShowMarkdown={setShowMarkdown} text={text} prompt={prompt} setPrompt={setPrompt} />
+                    <InstructionsEditorContent text={text} prompt={prompt} setPrompt={setPrompt} />
                 </DialogContent>
             </Dialog>
             <PromptBuilderModal
