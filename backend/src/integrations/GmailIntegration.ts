@@ -915,8 +915,6 @@ export interface GmailEventData {
     images?: GmailParsedAttachment[];
     // Stored files with full metadata (category, mimeType, url)
     storedFiles?: StoredFile[];
-    // Legacy field - presigned URLs for stored images only
-    imageUrlsPresigned?: string[];
 }
 
 type ProcessedWebhookClaim = {
