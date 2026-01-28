@@ -908,8 +908,6 @@ async function handleSlackMessage(event: SlackMessageEvent, teamId: string, auth
             files: files,
             // Stored files with full metadata
             storedFiles: storedFiles.length > 0 ? storedFiles : undefined,
-            // Legacy: image URLs only
-            imageUrlsFromFiles: storedFiles.filter(f => f.category === FileCategory.IMAGE).map(f => f.url),
         };
         
         // Create SlackEvent once
@@ -1140,10 +1138,8 @@ export interface SlackEventData {
     attachments?: SlackAttachment[];
     // File attachments (including images)
     files?: SlackFile[];
-    // Stored files with full metadata (images, documents, text files)
+    // Stored files with full metadata (images, documents)
     storedFiles?: StoredFile[];
-    // Legacy: Presigned GCS URLs for file images only
-    imageUrlsFromFiles?: string[];
 }
 
 
