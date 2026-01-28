@@ -18,6 +18,7 @@ interface ChatLayoutProps {
     onApprove?: (stepId: string) => void;
     onReject?: (stepId: string) => void;
     inputSize?: 'small' | 'medium' | 'large';
+    showPlaceholderChips?: boolean;
 }
 
 export interface ChatLayoutHandle {
@@ -35,6 +36,7 @@ export const ChatLayout = forwardRef<ChatLayoutHandle, ChatLayoutProps>(function
     onApprove,
     onReject,
     inputSize = 'small',
+    showPlaceholderChips = false,
 }, ref) {
     const [showScrollIndicator, setShowScrollIndicator] = useState(false);
     const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -157,6 +159,7 @@ export const ChatLayout = forwardRef<ChatLayoutHandle, ChatLayoutProps>(function
                     placeholders={placeholders}
                     disabled={isPendingAssistantResponse}
                     inputSize={inputSize}
+                    showPlaceholderChips={showPlaceholderChips}
                 />
             </div>
         </div>
