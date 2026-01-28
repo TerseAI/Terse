@@ -1,41 +1,90 @@
-import { useNavigate } from 'react-router-dom';
-import { Plus, FileText } from 'lucide-react';
+import { useState, useCallback, useMemo } from 'react';
+import { v4 as uuidv4 } from 'uuid';
+import { Loader2 } from 'lucide-react';
 import { useTemplates } from '@/hooks/api/useTemplates';
 import { TemplateCard } from '@/components/Agents/TemplateCard';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
-import { Loader2 } from 'lucide-react';
-import { FrontendRoutes } from '@/shared/FrontendRoutes';
+import { Card, CardContent } from '@/components/ui/card';
+import { Chat } from '@/components/chat/Chat';
+import { subscribeToBuilderChat, sendBuilderMessage } from '@/socket';
+import { ModelRequest, SendModelRequest } from '@/shared/ModelEvents';
+import { ChatEventPayload } from '@/components/chat/hooks/useCompletionSocket';
+import { cn } from '@/lib/utils';
 
 export default function AgentSetup() {
-    const navigate = useNavigate();
     const { templates, isLoading } = useTemplates();
+    const [hasStartedChat, setHasStartedChat] = useState(false);
 
-    const handleStartFromScratch = () => {
-        navigate(FrontendRoutes.AGENTS.NEW);
-    };
+    // Generate a session ID for this setup flow
+    const sessionId = useMemo(() => uuidv4(), []);
+
+    const subscribeToEvents = useCallback((callback: (payload: ChatEventPayload) => void) => {
+        const unsubscribe = subscribeToBuilderChat(sessionId, (payload) => {
+            callback({
+                runHistoryModelEvent: payload.event,
+            });
+        });
+        return unsubscribe;
+    }, [sessionId]);
+
+    const sendMessage = useCallback((message: ModelRequest) => {
+        // Mark that the user has started chatting
+        if (!hasStartedChat) {
+            setHasStartedChat(true);
+        }
+
+        if (message.type === 'SendModelRequest') {
+            const enrichedMessage: { type: 'SendModelRequest' } & SendModelRequest = {
+                ...message,
+                ui_state: JSON.stringify({ page: 'agent-setup' }),
+            };
+            sendBuilderMessage(sessionId, enrichedMessage);
+        } else {
+            sendBuilderMessage(sessionId, message);
+        }
+    }, [sessionId, hasStartedChat]);
+
+    const handleUserMessage = useCallback(() => {
+        if (!hasStartedChat) {
+            setHasStartedChat(true);
+        }
+    }, [hasStartedChat]);
 
     return (
-        <div className="flex flex-col h-full p-4">
-            <div className="flex-1 overflow-y-auto">
-                <div className="mx-auto space-y-8 max-w-5xl">
-                    <div>
-                        <h1 className="text-2xl font-bold text-foreground">Create a New Agent</h1>
-                        <p className="text-muted-foreground mt-1">
-                            Choose a template to get started quickly, or start from scratch with a blank Agent.
-                        </p>
-                    </div>
+        <div className="flex flex-col h-full w-full">
+            {/* Chat Section - expands when chat starts */}
+            <div className={cn(
+                "flex flex-col transition-all duration-500 ease-in-out mx-auto max-w-5xl w-full",
+                hasStartedChat ? "flex-1 min-h-0" : "h-[280px]"
+            )}>
+                <div className="flex-1 min-h-0 w-full">
+                    <Chat
+                        key={sessionId}
+                        subscribeToEvents={subscribeToEvents}
+                        sendMessage={sendMessage}
+                        onUserMessage={handleUserMessage}
+                        addUserTurnsLocally={true}
+                        inputSize={hasStartedChat ? "small" : "large"}
+                    />
+                </div>
+            </div>
 
-                    {/* Templates Section */}
-                    <div className="space-y-4">
-                        <div>
-                            <h2 className="text-lg font-semibold">Start with a template</h2>
-                            <p className="text-sm text-muted-foreground">
-                                Pre-configured Agents for common workflows
-                            </p>
+            {/* Templates Section - animates away when chat starts */}
+            <div className={cn(
+                "overflow-hidden transition-all duration-500 ease-in-out",
+                hasStartedChat ? "max-h-0 opacity-0" : "max-h-[600px] opacity-100"
+            )}>
+                <div className="p-6">
+                    <div className="mx-auto max-w-5xl space-y-4">
+                        {/* Divider with "or" */}
+                        <div className="flex items-center gap-4">
+                            <div className="h-px flex-1 bg-border" />
+                            <span className="text-sm text-muted-foreground">or start with a template</span>
+                            <div className="h-px flex-1 bg-border" />
                         </div>
 
+                        {/* Templates Grid */}
                         {isLoading ? (
-                            <div className="flex items-center justify-center py-12">
+                            <div className="flex items-center justify-center py-8">
                                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                             </div>
                         ) : templates.length > 0 ? (
@@ -50,44 +99,14 @@ export default function AgentSetup() {
                             </div>
                         ) : (
                             <Card className="border-dashed">
-                                <CardContent className="flex flex-col items-center justify-center py-8 text-center">
-                                    <p className="text-muted-foreground">
+                                <CardContent className="flex flex-col items-center justify-center py-6 text-center">
+                                    <p className="text-muted-foreground text-sm">
                                         No templates available yet
                                     </p>
                                 </CardContent>
                             </Card>
                         )}
                     </div>
-
-                    {/* Divider */}
-                    <div className="flex items-center gap-4">
-                        <div className="h-px flex-1 bg-border" />
-                        <span className="text-sm text-muted-foreground">or</span>
-                        <div className="h-px flex-1 bg-border" />
-                    </div>
-
-                    {/* Start from Scratch Section */}
-                    <Card
-                        className="cursor-pointer transition-colors hover:bg-accent/50"
-                        onClick={handleStartFromScratch}
-                    >
-                        <CardHeader>
-                            <div className="flex items-center gap-3">
-                                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
-                                    <FileText className="h-5 w-5 text-primary" />
-                                </div>
-                                <div>
-                                    <CardTitle className="text-base">Start from scratch</CardTitle>
-                                    <CardDescription>
-                                        Create a custom Agent with your own configuration
-                                    </CardDescription>
-                                </div>
-                                <div className="ml-auto">
-                                    <Plus className="h-5 w-5 text-muted-foreground" />
-                                </div>
-                            </div>
-                        </CardHeader>
-                    </Card>
                 </div>
             </div>
         </div>

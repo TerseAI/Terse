@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import TextareaAutosize from 'react-textarea-autosize';
+import { Send } from 'lucide-react';
 
 interface GlowingTextFieldProps {
     isLoading: boolean;
@@ -13,6 +14,9 @@ interface GlowingTextFieldProps {
     shouldAllowKeyboardShortcutForFocus?: boolean;
     autoFocus?: boolean;
     focusOverride?: boolean | null; // null = no override, true = focus, false = blur
+    minRows?: number;
+    showBorder?: boolean;
+    onSend?: () => void; // When provided, shows send button inside the text field
 }
 
 export enum Size {
@@ -21,7 +25,7 @@ export enum Size {
     Large = 'large',
 }
 
-function GlowingTextField({ isLoading, disabled, onInputChange, onKeyDown, inputValue, placeholders = [], compact = false, size = Size.Medium, shouldAllowKeyboardShortcutForFocus = true, autoFocus = false, focusOverride = null }: GlowingTextFieldProps) {
+function GlowingTextField({ isLoading, disabled, onInputChange, onKeyDown, inputValue, placeholders = [], compact = false, size = Size.Medium, shouldAllowKeyboardShortcutForFocus = true, autoFocus = false, focusOverride = null, minRows, showBorder = false, onSend }: GlowingTextFieldProps) {
     const [currentPlaceholder, setCurrentPlaceholder] = useState<string | undefined>(placeholders ? placeholders[0] : undefined);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -93,29 +97,31 @@ function GlowingTextField({ isLoading, disabled, onInputChange, onKeyDown, input
             )}
 
             <div
-                className="
-                        grid place-items-stretch
+                className={`
+                        relative
                         w-full
                         rounded-lg
                         transition-all
                         duration-400
                         p-1
                         bg-card
-                    "
+                        ${showBorder ? 'border-2 border-border focus-within:border-primary/50' : ''}
+                    `}
             >
                 <TextareaAutosize
                     ref={textareaRef}
                     className={`
-                            w-full 
+                            w-full
                             text-foreground
-                            ${getFontSize()} 
-                            resize-none 
-                            ${compact ? 'p-2.5' : 'p-4'} 
-                            leading-normal 
+                            ${getFontSize()}
+                            resize-none
+                            ${compact ? 'p-2.5' : 'p-4'}
+                            ${onSend ? 'pr-14' : ''}
+                            leading-normal
                             placeholder:italic
-                            placeholder:text-muted-foreground 
+                            placeholder:text-muted-foreground
                             rounded-lg
-                            transition-all 
+                            transition-all
                             duration-300
                             focus:outline-none
                         `}
@@ -124,10 +130,21 @@ function GlowingTextField({ isLoading, disabled, onInputChange, onKeyDown, input
                     value={inputValue}
                     disabled={disabled}
                     placeholder={currentPlaceholder}
-                    rows={compact ? 1 : undefined}
-                    maxRows={compact ? 4 : undefined}
+                    minRows={minRows ?? (compact ? 1 : undefined)}
+                    maxRows={compact ? 4 : 10}
                     autoFocus={autoFocus}
                 />
+                {onSend && (
+                    <button
+                        type="button"
+                        onClick={onSend}
+                        disabled={disabled || !inputValue.trim()}
+                        className="absolute right-3 bottom-3 p-2 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                        aria-label="Send message"
+                    >
+                        <Send className="w-5 h-5" />
+                    </button>
+                )}
             </div>
         </div>
     );
