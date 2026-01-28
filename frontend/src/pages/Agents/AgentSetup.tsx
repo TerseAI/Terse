@@ -64,6 +64,7 @@ export default function AgentSetup() {
                         onUserMessage={handleUserMessage}
                         addUserTurnsLocally={true}
                         EmptyContentPlaceholder={<AgentSetupChatPlaceholder />}
+                        inputSize="large"
                     />
                 </div>
             </div>

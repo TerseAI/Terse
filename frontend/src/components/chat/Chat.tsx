@@ -14,19 +14,21 @@ type ChatProps = {
     onHandleApprove?: (stepId: string) => void;
     onHandleReject?: (stepId: string) => void;
     addUserTurnsLocally?: boolean;
+    inputSize?: 'small' | 'medium' | 'large';
 };
 
 export type ChatHandle = ChatLayoutHandle;
 
-const Chat = forwardRef<ChatHandle, ChatProps>(function Chat({ 
+const Chat = forwardRef<ChatHandle, ChatProps>(function Chat({
     initialTurns,
-    EmptyContentPlaceholder,  
+    EmptyContentPlaceholder,
     subscribeToEvents,
     sendMessage,
     onUserMessage,
     onHandleApprove,
     onHandleReject,
     addUserTurnsLocally,
+    inputSize = 'small',
 }, ref) {
     const { turns, isPendingAssistantResponse, input, setInput, sendMessage: sendUserMessage, sendModelRequest } = useChat({
         subscribeToEvents,
@@ -51,6 +53,7 @@ const Chat = forwardRef<ChatHandle, ChatProps>(function Chat({
             EmptyContentPlaceholder={EmptyContentPlaceholder}
             onApprove={onHandleApprove}
             onReject={onHandleReject}
+            inputSize={inputSize}
         />
     );
 });
