@@ -1,7 +1,17 @@
 import GlowingTextField, { Size } from "./GlowingTextField";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useCallback } from "react";
 
-function ChatInput({ sendMessage, input, setInput, placeholders, disabled = false, inputSize = 'small' }: { sendMessage: (message: string) => void, input: string, setInput: (input: string) => void, placeholders: string[], disabled?: boolean, inputSize?: 'small' | 'medium' | 'large' }) {
+interface ChatInputProps {
+    sendMessage: (message: string) => void;
+    input: string;
+    setInput: (input: string) => void;
+    placeholders: string[];
+    disabled?: boolean;
+    inputSize?: 'small' | 'medium' | 'large';
+    showPlaceholderChips?: boolean;
+}
+
+function ChatInput({ sendMessage, input, setInput, placeholders, disabled = false, inputSize = 'small', showPlaceholderChips = false }: ChatInputProps) {
     const prevSelectedRef = useRef<number | null>(null);
 
     // Track focus override based on state transitions
@@ -60,6 +70,10 @@ function ChatInput({ sendMessage, input, setInput, placeholders, disabled = fals
         sendMessage(cleanMessage);
     };
 
+    const handlePlaceholderSelect = useCallback((placeholder: string) => {
+        setInput(placeholder);
+    }, [setInput]);
+
     const sizeMapping = {
         small: { size: Size.Small, compact: true, minRows: 1, showBorder: true },
         medium: { size: Size.Medium, compact: false, minRows: 2, showBorder: true },
@@ -83,6 +97,8 @@ function ChatInput({ sendMessage, input, setInput, placeholders, disabled = fals
                 minRows={minRows}
                 showBorder={showBorder}
                 onSend={() => sanitizeAndSendMessage(input)}
+                onPlaceholderSelect={handlePlaceholderSelect}
+                showPlaceholderChips={showPlaceholderChips}
             />
         </div>
     );
