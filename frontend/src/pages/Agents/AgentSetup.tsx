@@ -112,17 +112,3 @@ export default function AgentSetup() {
         </div>
     );
 }
-
-function AgentSetupChatPlaceholder() {
-    return (
-        <div className="flex flex-col items-center justify-center h-full text-center px-6 py-8">
-            <h2 className="text-xl font-semibold text-foreground mb-2">
-                What would you like to automate?
-            </h2>
-            <p className="text-muted-foreground max-w-lg">
-                Describe the workflow you want to create and I'll help you build an agent.
-                For example: "When a new GitHub issue is created, post it to Slack"
-            </p>
-        </div>
-    );
-}
