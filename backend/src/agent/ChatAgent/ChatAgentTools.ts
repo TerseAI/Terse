@@ -20,8 +20,6 @@ export type ChatAgentContext = {
     userId: string;
 };
 
-const frontendUrl = process.env.FRONTEND_URL;
-
 export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgentContext>[] {
     return [
         tool({
@@ -43,7 +41,7 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
                     const result = id
                         ? await updateAgentForUser(userId, id, draft)
                         : await applyAgentForUser(userId, draft);
-                    await chatInterface.buildButton("View Automation", `${frontendUrl}${FrontendRoutes.AGENTS.DETAIL(result.id)}`);
+                    await chatInterface.navigate(FrontendRoutes.AGENTS.DETAIL(result.id));
                     return `Agent applied successfully (${result.id})`;
                 } catch (error) {
                     logger.error('applyAgent failed', { error, userId, agent });

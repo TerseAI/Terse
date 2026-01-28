@@ -19,6 +19,7 @@ abstract class ChatInterface {
     abstract processStreamEvent(sessionId: string, event: RunStreamEvent): void;
     abstract processMessageEnd(sessionId: string, finalOutput: string): Promise<void>;
     abstract buildButton(label: string, url: string): Promise<void>;
+    abstract navigate(path: string): Promise<void>;
 
     async getUserTimezone(): Promise<string | null> {
         return null;

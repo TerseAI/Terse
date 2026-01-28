@@ -126,6 +126,16 @@ class WebChatInterface extends ChatInterface {
             },
         });
     }
+
+    async navigate(path: string): Promise<void> {
+        this.emitEvent({
+            type: 'Snippet',
+            snippet: {
+                type: 'navigate',
+                path,
+            },
+        });
+    }
 }
 
 export default WebChatInterface;
