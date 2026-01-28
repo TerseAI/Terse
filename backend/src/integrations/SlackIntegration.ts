@@ -505,7 +505,7 @@ export class SlackEvent extends InputEvent implements Identifiable {
     }
 
     /**
-     * Get all stored files with full metadata (images, documents, text files)
+     * Get all stored files with full metadata (images, documents)
      * Includes both private files cached in GCS and public block/attachment images
      */
     getFiles(): StoredFile[] {
@@ -881,8 +881,7 @@ async function handleSlackMessage(event: SlackMessageEvent, teamId: string, auth
             }
         }
 
-        // Download files and store in GCS (if configured)
-        // Supports: images, PDFs, documents, spreadsheets, text files
+        // Supports: images, PDFs
         let storedFiles: StoredFile[] = [];
         if (files && files.length > 0) {
             // Get bot token for downloading files
@@ -994,7 +993,7 @@ export function initializeSlackWebClient(integration: UserSlackIntegrationWithUs
 
 /**
  * Downloads files from Slack and stores them in GCS
- * Returns array of StoredFile with full metadata (images, documents, text files)
+ * Returns array of StoredFile with full metadata (images, documents)
  */
 async function downloadSlackFiles(
     files: SlackFile[],
@@ -1003,7 +1002,7 @@ async function downloadSlackFiles(
 ): Promise<StoredFile[]> {
     const storedFiles: StoredFile[] = [];
 
-    // Filter for supported file types (images, PDFs, documents, spreadsheets, text files)
+    // Filter for supported file types (images, PDFs)
     const supportedFiles = files.filter(file => {
         const mimetype = file.mimetype || '';
         const filename = file.name || file.title || '';
