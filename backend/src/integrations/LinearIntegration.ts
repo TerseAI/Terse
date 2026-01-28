@@ -19,9 +19,7 @@ import { createOAuthStateToken } from "../utility/oauth";
 import { integrationTaskQueue } from "./IntegrationTaskQueues";
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask";
 import { FrontendRoutes } from "../shared/FrontendRoutes";
-import {
-    StoredFile
-} from "../services/FileStorageService";
+import { StoredFile } from "../services/FileStorageService";
 
 export class LinearIntegrationManager implements Integration<LinearIntegration, LinearWebhookPayload, typeof LinearIntegrationMetadata>, OAuthIntegrationInstallation<IntegrationType.LINEAR> {
     constructor() { }
@@ -75,7 +73,7 @@ export class LinearIntegrationManager implements Integration<LinearIntegration, 
         // Find all integrations that match this event based on workspace_id
         // We match by team name from the webhook payload, which should correspond to workspace_id
         const workspaceIdentifier = event.data?.team?.name || event.organizationId;
-
+        
         if (!workspaceIdentifier) {
             logger.warn("⚠️  [LINEAR INTEGRATION MANAGER] No workspace identifier found in webhook payload", { eventType: event.type, action: event.action });
             return;
@@ -110,7 +108,35 @@ export class LinearIntegrationManager implements Integration<LinearIntegration, 
                 await runWithUserContext(user.id, user.email, async () => {
                     // Enrich context using LinearAdapter
                     let enrichedEvent = event;
-                    const linearEvent = new LinearEvent(enrichedEvent, integration.id, []);
+                    try {
+                        // Get valid access token (handles refresh automatically)
+                        const accessToken = await this.getAccessToken(integration.id);
+                        if (!accessToken) {
+                            logger.warn(`⚠️  [LINEAR INTEGRATION MANAGER] Could not get valid access token for integration ${integration.id}`, { integrationId: integration.id });
+                            // Continue with original event if token cannot be obtained
+                        } else {
+                            const adapter = new LinearAdapter(accessToken);
+                            
+                            // If this is an Issue event, fetch additional details
+                            if (event.type === "Issue" && event.data?.id) {
+                                try {
+                                    const issue = await adapter.findTicket(event.data.id);
+                                    // Enrich the event with additional context from the API
+                                    // The event already has most data, but we can add any missing fields
+                                    logger.debug(`📊 [LINEAR INTEGRATION MANAGER] Enriched issue context for ${event.data.id}`, { issueId: event.data.id, integrationId: integration.id });
+                                } catch (error) {
+                                    logger.warn(`⚠️  [LINEAR INTEGRATION MANAGER] Could not enrich issue context`, { error, issueId: event.data.id, integrationId: integration.id });
+                                    // Continue with original event if enrichment fails
+                                }
+                            }
+                        }
+                    } catch (error) {
+                        logger.warn(`⚠️  [LINEAR INTEGRATION MANAGER] Error enriching context`, { error, integrationId: integration.id });
+                        // Continue with original event if enrichment fails
+                    }
+
+                    // Create LinearEvent and process it
+                    const linearEvent = new LinearEvent(enrichedEvent, integration.id);
                     const eventProcessor = new EventProcessor(linearEvent, user);
                     await eventProcessor.process();
                 });
@@ -142,7 +168,7 @@ export class LinearIntegrationManager implements Integration<LinearIntegration, 
         authUrl.searchParams.append("response_type", "code");
         authUrl.searchParams.append("scope", "read,write");
         authUrl.searchParams.append("state", state);
-        authUrl.searchParams.append("actor", "user");
+        authUrl.searchParams.append("actor", "user"); 
         authUrl.searchParams.append("prompt", "consent");
 
         return {
@@ -421,13 +447,11 @@ export class LinearEvent extends InputEvent {
     readonly integrationType: IntegrationType = IntegrationType.LINEAR;
     data: LinearWebhookPayload;
     private integrationId: string;
-    private storedFiles: StoredFile[];
 
-    constructor(data: LinearWebhookPayload, integrationId: string, storedFiles: StoredFile[] = []) {
+    constructor(data: LinearWebhookPayload, integrationId: string) {
         super();
         this.data = data;
         this.integrationId = integrationId;
-        this.storedFiles = storedFiles;
     }
 
     formatForAgentRunner(): string {
@@ -457,7 +481,7 @@ export class LinearEvent extends InputEvent {
             issueSections.push(`Priority: ${issue.priorityLabel || issue.priority}`);
             issueSections.push(`State: ${issue.state?.name || 'Unknown'}`);
             issueSections.push(`Team: ${issue.team?.name || 'Unknown'}`);
-
+            
             if (issue.assignee) {
                 issueSections.push(`Assignee: ${issue.assignee.name}`);
             }
@@ -560,7 +584,6 @@ export class LinearEvent extends InputEvent {
     }
 
     getFiles(): StoredFile[] {
-        // Return all stored files with full metadata
-        return this.storedFiles;
+        return [];
     }
 }
