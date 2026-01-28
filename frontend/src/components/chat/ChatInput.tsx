@@ -61,14 +61,14 @@ function ChatInput({ sendMessage, input, setInput, placeholders, disabled = fals
     };
 
     const sizeMapping = {
-        small: { size: Size.Small, compact: true, minRows: 1, showBorder: false },
-        medium: { size: Size.Medium, compact: false, minRows: 2, showBorder: false },
+        small: { size: Size.Small, compact: true, minRows: 1, showBorder: true },
+        medium: { size: Size.Medium, compact: false, minRows: 2, showBorder: true },
         large: { size: Size.Large, compact: false, minRows: 4, showBorder: true },
     };
     const { size: textFieldSize, compact, minRows, showBorder } = sizeMapping[inputSize];
 
     return (
-        <div className="p-4">
+        <div>
             <div className="grid grid-cols-[1fr_auto] gap-2 items-end">
                 <GlowingTextField
                     isLoading={false}

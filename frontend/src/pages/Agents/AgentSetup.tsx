@@ -50,28 +50,27 @@ export default function AgentSetup() {
     }, [hasStartedChat]);
 
     return (
-        <div className="flex flex-col h-full">
+        <div className="flex flex-col h-full w-full">
             {/* Chat Section - expands when chat starts */}
             <div className={cn(
-                "flex flex-col transition-all duration-500 ease-in-out",
+                "flex flex-col transition-all duration-500 ease-in-out mx-auto max-w-5xl w-full",
                 hasStartedChat ? "flex-1 min-h-0" : "h-[280px]"
             )}>
-                <div className="flex-1 min-h-0">
+                <div className="flex-1 min-h-0 w-full">
                     <Chat
                         key={sessionId}
                         subscribeToEvents={subscribeToEvents}
                         sendMessage={sendMessage}
                         onUserMessage={handleUserMessage}
                         addUserTurnsLocally={true}
-                        EmptyContentPlaceholder={<AgentSetupChatPlaceholder />}
-                        inputSize="large"
+                        inputSize={hasStartedChat ? "small" : "large"}
                     />
                 </div>
             </div>
 
             {/* Templates Section - animates away when chat starts */}
             <div className={cn(
-                "border-t border-border overflow-hidden transition-all duration-500 ease-in-out",
+                "overflow-hidden transition-all duration-500 ease-in-out",
                 hasStartedChat ? "max-h-0 opacity-0" : "max-h-[600px] opacity-100"
             )}>
                 <div className="p-6">
