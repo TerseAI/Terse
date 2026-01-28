@@ -68,7 +68,7 @@ function ChatInput({ sendMessage, input, setInput, placeholders, disabled = fals
     const { size: textFieldSize, compact, minRows, showBorder } = sizeMapping[inputSize];
 
     return (
-        <div className="p-4">
+        <div>
             <GlowingTextField
                 isLoading={false}
                 disabled={disabled}
