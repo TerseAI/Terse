@@ -7,7 +7,7 @@ import { CalendarClockIcon } from "@/components/icons/IntegrationIcons";
 import { Button } from "@/components/ui/button";
 import { ManualTriggerDialog } from "../ManualTriggerDialog";
 
-export function TimeTriggerIntegration({ input, variant, setConfig }: InputConfigSelectorProps) {
+export function TimeTriggerIntegration({ input, variant, setConfig, isSaved }: InputConfigSelectorProps) {
     const existingConfig = input.config as TimeTriggerConfig | undefined;
     const hasSchedule = existingConfig?.cronExpression?.trim();
     const [showManualTrigger, setShowManualTrigger] = useState(false);
@@ -42,17 +42,25 @@ export function TimeTriggerIntegration({ input, variant, setConfig }: InputConfi
 
             {hasSchedule && (
                 <div className="pt-2 border-t border-border/50">
-                    <Button
-                        variant="outline"
-                        onClick={() => setShowManualTrigger(true)}
-                        className="w-full"
-                    >
-                        <PlayIcon className="size-4 mr-2" />
-                        Trigger Now
-                    </Button>
-                    <p className="text-xs text-muted-foreground mt-2 text-center">
-                        Run this automation immediately instead of waiting for the next scheduled time
-                    </p>
+                    {isSaved ? (
+                        <>
+                            <Button
+                                variant="outline"
+                                onClick={() => setShowManualTrigger(true)}
+                                className="w-full"
+                            >
+                                <PlayIcon className="size-4 mr-2" />
+                                Trigger Now
+                            </Button>
+                            <p className="text-xs text-muted-foreground mt-2 text-center">
+                                Run this automation immediately instead of waiting for the next scheduled time
+                            </p>
+                        </>
+                    ) : (
+                        <p className="text-xs text-muted-foreground text-center">
+                            Save the automation to enable triggering it manually.
+                        </p>
+                    )}
                 </div>
             )}
 

@@ -114,6 +114,7 @@ export function IntegrationSelector(props: InputConfigSelectorProps) {
                     input={props.input}
                     variant={props.variant}
                     setConfig={props.setConfig}
+                    isSaved={props.isSaved}
                 />
             );
 

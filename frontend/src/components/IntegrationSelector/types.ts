@@ -5,4 +5,6 @@ export interface InputConfigSelectorProps {
     input: TransientAgentTrigger;
     variant: 'card' | 'dialog';
     setConfig: (config: ConfigInstance) => void;
+    /** Whether this trigger has been saved to the backend (agent exists and trigger is persisted) */
+    isSaved?: boolean;
 }
