@@ -111,7 +111,19 @@ export async function githubAppUnifiedEvent(req: Request, res: Response) {
     repositoryName: body.repositoryName,
     username: body.username,
   });
-  await processGithubEvent(body);
+
+  try {
+    await processGithubEvent(body);
+    res.status(200).json({ message: "Event processed successfully" });
+  } catch (error) {
+    logger.error("Error processing GitHub event", {
+      error,
+      eventType: body.eventType,
+      repositoryName: body.repositoryName,
+      username: body.username,
+    });
+    res.status(500).json({ error: "Failed to process GitHub event" });
+  }
 }
 
 export default {

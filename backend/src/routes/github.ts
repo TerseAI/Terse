@@ -66,12 +66,22 @@ export async function processsGithubAppInstallationWebhook(
     username: body.username,
   });
 
-  let user: User | null = await resolveUserForGithubInstallation(
-    body.installationId,
-    body.username,
-  );
-  if (user) {
-    emitCacheInvalidationWithKey(user.id, "integrations");
+  try {
+    let user: User | null = await resolveUserForGithubInstallation(
+      body.installationId,
+      body.username,
+    );
+    if (user) {
+      emitCacheInvalidationWithKey(user.id, "integrations");
+    }
+    res.status(200).json({ message: "Installation webhook processed" });
+  } catch (error) {
+    logger.error("Error processing GitHub installation webhook", {
+      error,
+      installationId: body.installationId,
+      username: body.username,
+    });
+    res.status(500).json({ error: "Failed to process installation webhook" });
   }
 }
 
@@ -129,23 +139,27 @@ export async function githubAppUnifiedEvent(req: Request, res: Response) {
   const body: GithubAppUnifiedEventRequest =
     req.body as GithubAppUnifiedEventRequest;
 
-  const { username, repositoryName, installationId } = body;
+  const { username, repositoryName } = body;
   logger.info("githubAppUnifiedEvent", {
     eventType: body.eventType,
     repositoryName: body.repositoryName,
     username: body.username,
   });
 
-  // Process event through integration manager
-  const githubIntegrationManager = new GithubIntegrationManager();
-  await githubIntegrationManager.processWebhookEvent(body).catch((error) => {
+  try {
+    // Process event through integration manager
+    const githubIntegrationManager = new GithubIntegrationManager();
+    await githubIntegrationManager.processWebhookEvent(body);
+    res.status(200).json({ message: "Event processed successfully" });
+  } catch (error) {
     logger.error("Error processing GitHub event in integration manager", {
       error,
       eventType: body.eventType,
       repositoryName,
       username,
     });
-  });
+    res.status(500).json({ error: "Failed to process GitHub event" });
+  }
 }
 
 type RouteError = Error & { statusCode?: number };
