@@ -168,9 +168,9 @@ function GlowingTextField({ isLoading, disabled, onInputChange, onKeyDown, input
                                 text-foreground
                                 ${getFontSize()}
                                 resize-none
-                                ${compact ? 'p-2.5' : 'p-4'}
+                                ${compact ? 'px-3 py-2.5' : 'p-4'}
                                 ${onSend ? 'pr-14' : ''}
-                                leading-normal
+                                leading-relaxed
                                 placeholder:italic
                                 placeholder:text-muted-foreground
                                 rounded-lg
