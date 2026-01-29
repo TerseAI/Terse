@@ -70,7 +70,7 @@ export default function AgentSetup() {
 
             {/* Chat Section - expands when chat starts */}
             <div className={cn(
-                "flex flex-col transition-all duration-500 ease-in-out mx-auto max-w-5xl w-full",
+                "flex flex-col transition-all duration-500 ease-in-out mx-auto max-w-5xl w-full px-4 pb-6",
                 hasStartedChat ? "flex-1 min-h-0" : "h-[200px]"
             )}>
                 <div className="flex-1 min-h-0 w-full">
