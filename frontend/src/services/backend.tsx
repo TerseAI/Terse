@@ -20,6 +20,7 @@ import {
     StatsResponse,
     SlackUsersResponse,
     AgentTemplate,
+    DirectiveRecord,
 } from "../shared/types";
 import { GenerateSurveyQuestionsRequest, GenerateSurveyQuestionsResponse, GenerateSurveyPromptRequest, GenerateSurveyPromptResponse } from "../shared/PromptBuilderTypes";
 import {
@@ -385,6 +386,16 @@ interface BackendService {
      * Gets write-only tools that require approval for the given skills and knowledge bases
      */
     getToolsThatRequireApprovals(request: GetToolsThatRequireApprovalsRequest): Promise<GetToolsThatRequireApprovalsResponse>;
+
+    /**
+     * Gets all directives for an agent
+     */
+    getAgentDirectives(agentId: string): Promise<DirectiveRecord[]>;
+
+    /**
+     * Deletes a directive
+     */
+    deleteDirective(agentId: string, directiveId: string): Promise<{ success: boolean; message: string }>;
 }
 
 export const BackendProvider: BackendService = {
@@ -1081,6 +1092,27 @@ export const BackendProvider: BackendService = {
             .then(response => response.data)
             .catch(error => {
                 console.error('Error getting tools that require approvals:', error);
+                throw error;
+            });
+    },
+
+    getAgentDirectives: (agentId: string) => {
+        return axios.get<DirectiveRecord[]>(`${backendBaseUrl}${ApiRoutes.AGENTS.DIRECTIVES.build(agentId)}`, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error getting agent directives:', error);
+                throw error;
+            });
+    },
+
+    deleteDirective: (agentId: string, directiveId: string) => {
+        return axios.delete<{ success: boolean; message: string }>(
+            `${backendBaseUrl}${ApiRoutes.AGENTS.DIRECTIVE_BY_ID.build(agentId, directiveId)}`,
+            { withCredentials: true }
+        )
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error deleting directive:', error);
                 throw error;
             });
     },

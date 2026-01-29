@@ -1,8 +1,9 @@
 import { Tab, TabGroup, TabList, TabPanel, TabPanels } from "@headlessui/react";
-import { Settings, Clock } from "lucide-react";
+import { Settings, Clock, ScrollText } from "lucide-react";
 import { useParams, useSearchParams } from "react-router-dom";
 import AgentSetupTab, { AgentSetupTabProps } from "./tabs/AgentSetupTab";
 import AgentRunHistoryTab from "./tabs/AgentRunHistoryTab";
+import AgentDirectivesTab from "./tabs/AgentDirectivesTab";
 import { useEffect, useState } from "react";
 import { useAgent } from "../../hooks/api/useAgents";
 import { useTemplates } from "../../hooks/api/useTemplates";
@@ -90,7 +91,7 @@ function AgentDetail() {
         }
     }, [agent, agentId, templateId, templateFound, templateHydratedState, templateHydrated]);
 
-    const tabs = ['setup', 'history'] as const;
+    const tabs = ['setup', 'history', 'directives'] as const;
     const tabFromQuery = searchParams.get('tab');
     const [selectedIndex, setSelectedIndex] = useState(() => {
         return Math.max(0, tabs.indexOf((tabFromQuery as typeof tabs[number]) || 'setup'));
@@ -155,6 +156,10 @@ function AgentDetail() {
                                 <Clock className="h-4 w-4" />
                                 <span>Activity</span>
                             </Tab>
+                            <Tab className={({ selected }) => `px-3 py-2 text-sm font-medium rounded-t-md border-b-2 -mb-px inline-flex items-center gap-2 ${selected ? 'text-foreground border-primary' : 'text-muted-foreground border-transparent hover:text-foreground'}`}>
+                                <ScrollText className="h-4 w-4" />
+                                <span>Directives</span>
+                            </Tab>
                         </TabList>
                         <TabPanels className="flex-1 min-h-0 h-full flex">
                             <TabPanel className="flex-1 min-h-0 h-full flex flex-col">
@@ -162,6 +167,9 @@ function AgentDetail() {
                             </TabPanel>
                             <TabPanel className="flex-1 min-h-0 flex flex-col">
                                 <AgentRunHistoryTab agentId={agentId} />
+                            </TabPanel>
+                            <TabPanel className="flex-1 min-h-0 flex flex-col">
+                                <AgentDirectivesTab agentId={agentId} />
                             </TabPanel>
                         </TabPanels>
                     </TabGroup>

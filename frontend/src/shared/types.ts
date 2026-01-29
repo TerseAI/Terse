@@ -450,6 +450,16 @@ export type RecentAgent = Agent & {
   lastEventProcessedAt: string | null;
 };
 
+export type DirectiveRecord = {
+  id: string;
+  automationId: string;
+  runHistoryRecordId: string;
+  runHistoryChatEventId: string;
+  directiveDescription: string;
+  isActive: boolean;
+  createdAt: string;
+};
+
 export type GithubAppInstallationCallbackRequest = {
   name: string;
   email: string;

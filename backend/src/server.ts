@@ -31,6 +31,10 @@ import {
   updateAgent,
 } from "./routes/agents";
 import {
+  getAgentDirectives,
+  deleteDirective,
+} from "./routes/directives";
+import {
   getInstallationUrl,
   githubAppUnifiedEvent,
   githubAppInstallationDeleted,
@@ -520,6 +524,16 @@ app.patch(ApiRoutes.AGENTS.BY_ID.pattern, authMiddleware, async (req, res) => {
 
 app.delete(ApiRoutes.AGENTS.BY_ID.pattern, authMiddleware, async (req, res) => {
   deleteAgent(req, res);
+});
+
+// MARK: AGENT DIRECTIVES
+
+app.get(ApiRoutes.AGENTS.DIRECTIVES.pattern, authMiddleware, async (req, res) => {
+  getAgentDirectives(req, res);
+});
+
+app.delete(ApiRoutes.AGENTS.DIRECTIVE_BY_ID.pattern, authMiddleware, async (req, res) => {
+  deleteDirective(req, res);
 });
 
 // MARK: TEMPLATES

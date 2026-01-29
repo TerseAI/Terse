@@ -160,6 +160,16 @@ export const ApiRoutes = {
       build: (id: string) => `/agents/${encodeURIComponent(id)}`,
       params: { id: 'string' } as const,
     },
+    DIRECTIVES: {
+      pattern: '/agents/:agentId/directives',
+      build: (agentId: string) => `/agents/${encodeURIComponent(agentId)}/directives`,
+      params: { agentId: 'string' } as const,
+    },
+    DIRECTIVE_BY_ID: {
+      pattern: '/agents/:agentId/directives/:directiveId',
+      build: (agentId: string, directiveId: string) => `/agents/${encodeURIComponent(agentId)}/directives/${encodeURIComponent(directiveId)}`,
+      params: { agentId: 'string', directiveId: 'string' } as const,
+    },
   },
 
   // Templates routes
