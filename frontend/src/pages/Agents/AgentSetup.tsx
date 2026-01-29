@@ -82,7 +82,6 @@ export default function AgentSetup() {
                         addUserTurnsLocally={true}
                         inputSize={hasStartedChat ? "small" : "large"}
                         placeholders={AGENT_SETUP_PLACEHOLDERS}
-                        showPlaceholderChips={!hasStartedChat}
                     />
                 </div>
             </div>
