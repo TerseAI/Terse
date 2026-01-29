@@ -81,7 +81,7 @@ export default function AgentSetup() {
                         onUserMessage={handleUserMessage}
                         addUserTurnsLocally={true}
                         inputSize={hasStartedChat ? "small" : "large"}
-                        placeholders={AGENT_SETUP_PLACEHOLDERS}
+                        placeholders={hasStartedChat ? [] : AGENT_SETUP_PLACEHOLDERS}
                     />
                 </div>
             </div>

@@ -62,6 +62,7 @@ function GlowingTextField({ isLoading, disabled, onInputChange, onKeyDown, input
         if (!placeholders || placeholders.length === 0 || inputValue.length > 0) {
             setDisplayedPlaceholder('');
             setIsFullyTyped(false);
+            setIsTyping(false);
             return;
         }
 
