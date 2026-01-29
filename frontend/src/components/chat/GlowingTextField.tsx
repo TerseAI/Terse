@@ -31,6 +31,7 @@ function GlowingTextField({ isLoading, disabled, onInputChange, onKeyDown, input
     const [displayedPlaceholder, setDisplayedPlaceholder] = useState<string>('');
     const [currentPlaceholderIndex, setCurrentPlaceholderIndex] = useState(0);
     const [isTyping, setIsTyping] = useState(true);
+    const [isFullyTyped, setIsFullyTyped] = useState(false);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const typewriterRef = useRef<{ charIndex: number; timeoutId: NodeJS.Timeout | null }>({ charIndex: 0, timeoutId: null });
 
@@ -60,6 +61,7 @@ function GlowingTextField({ isLoading, disabled, onInputChange, onKeyDown, input
     useEffect(() => {
         if (!placeholders || placeholders.length === 0 || inputValue.length > 0) {
             setDisplayedPlaceholder('');
+            setIsFullyTyped(false);
             return;
         }
 
@@ -72,9 +74,11 @@ function GlowingTextField({ isLoading, disabled, onInputChange, onKeyDown, input
                 typewriterRef.current.timeoutId = setTimeout(typeNextChar, 40);
             } else {
                 setIsTyping(false);
+                setIsFullyTyped(true);
                 // Wait before moving to next placeholder
                 typewriterRef.current.timeoutId = setTimeout(() => {
                     setIsTyping(true);
+                    setIsFullyTyped(false);
                     typewriterRef.current.charIndex = 0;
                     setCurrentPlaceholderIndex((prev) => (prev + 1) % placeholders.length);
                 }, 3000);
@@ -84,6 +88,7 @@ function GlowingTextField({ isLoading, disabled, onInputChange, onKeyDown, input
         // Reset and start typing
         typewriterRef.current.charIndex = 0;
         setIsTyping(true);
+        setIsFullyTyped(false);
         typeNextChar();
 
         return () => {
@@ -99,6 +104,17 @@ function GlowingTextField({ isLoading, disabled, onInputChange, onKeyDown, input
         }
         textareaRef.current?.focus();
     }, [onPlaceholderSelect]);
+
+    // Handle Tab to complete placeholder
+    const handleKeyDownInternal = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+        if (e.key === 'Tab' && inputValue.length === 0 && displayedPlaceholder && onPlaceholderSelect) {
+            e.preventDefault();
+            const currentPlaceholder = placeholders[currentPlaceholderIndex];
+            onPlaceholderSelect(currentPlaceholder);
+            return;
+        }
+        onKeyDown(e);
+    }, [inputValue, displayedPlaceholder, placeholders, currentPlaceholderIndex, onPlaceholderSelect, onKeyDown]);
 
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -163,7 +179,7 @@ function GlowingTextField({ isLoading, disabled, onInputChange, onKeyDown, input
                                 focus:outline-none
                             `}
                         onChange={onInputChange}
-                        onKeyDown={onKeyDown}
+                        onKeyDown={handleKeyDownInternal}
                         value={inputValue}
                         disabled={disabled}
                         placeholder={displayedPlaceholder + (isTyping && inputValue.length === 0 ? '|' : '')}
@@ -171,11 +187,19 @@ function GlowingTextField({ isLoading, disabled, onInputChange, onKeyDown, input
                         maxRows={compact ? 4 : 10}
                         autoFocus={autoFocus}
                     />
-                    {onSend && (
+                    {/* Tab hint - shows when placeholder is fully typed and input is empty */}
+                    {isFullyTyped && inputValue.length === 0 && onPlaceholderSelect && (
+                        <div className="absolute right-4 bottom-4 flex items-center gap-1.5 text-xs text-muted-foreground/70 pointer-events-none animate-in fade-in duration-300">
+                            <kbd className="px-1.5 py-0.5 bg-muted/30 border border-border/30 rounded text-[10px] font-mono">Tab</kbd>
+                            <span>to use</span>
+                        </div>
+                    )}
+                    {/* Send button - only shows when there's input */}
+                    {onSend && inputValue.trim() && (
                         <button
                             type="button"
                             onClick={onSend}
-                            disabled={disabled || !inputValue.trim()}
+                            disabled={disabled}
                             className="absolute right-3 bottom-3 p-2 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                             aria-label="Send message"
                         >
