@@ -156,7 +156,6 @@ function GlowingTextField({ isLoading, disabled, onInputChange, onKeyDown, input
                             rounded-lg
                             transition-all
                             duration-400
-                            p-1
                             bg-card
                             ${showBorder ? 'border-2 border-border focus-within:border-primary/50' : ''}
                         `}
@@ -168,9 +167,9 @@ function GlowingTextField({ isLoading, disabled, onInputChange, onKeyDown, input
                                 text-foreground
                                 ${getFontSize()}
                                 resize-none
-                                ${compact ? 'px-3 py-2.5' : 'p-4'}
+                                ${compact ? 'px-3 py-2' : 'p-4'}
                                 ${onSend ? 'pr-14' : ''}
-                                leading-relaxed
+                                ${compact ? 'leading-normal' : 'leading-relaxed'}
                                 placeholder:italic
                                 placeholder:text-muted-foreground
                                 rounded-lg
@@ -189,7 +188,7 @@ function GlowingTextField({ isLoading, disabled, onInputChange, onKeyDown, input
                     />
                     {/* Tab hint - shows when placeholder is fully typed and input is empty */}
                     {isFullyTyped && inputValue.length === 0 && onPlaceholderSelect && (
-                        <div className="absolute right-4 bottom-4 flex items-center gap-1.5 text-xs text-muted-foreground/70 pointer-events-none animate-in fade-in duration-300">
+                        <div className={`absolute right-4 flex items-center gap-1.5 text-xs text-muted-foreground/70 pointer-events-none animate-in fade-in duration-300 ${compact ? 'top-1/2 -translate-y-1/2' : 'bottom-4'}`}>
                             <kbd className="px-1.5 py-0.5 bg-muted/30 border border-border/30 rounded text-[10px] font-mono">Tab</kbd>
                             <span>to use</span>
                         </div>
