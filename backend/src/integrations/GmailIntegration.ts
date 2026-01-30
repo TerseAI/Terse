@@ -1124,9 +1124,6 @@ export interface GmailParsedAttachment {
   isInline: boolean; // Content-Disposition: inline vs attachment
 }
 
-// Legacy alias for backward compatibility
-export type GmailParsedImage = GmailParsedAttachment;
-
 export interface GmailEventData {
   id: string;
   threadId: string;
