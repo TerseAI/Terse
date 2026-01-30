@@ -1,52 +1,45 @@
 import {
-  users,
-  github_repositories,
-  linear_api_keys,
-  linear_integrations,
-  jira_api_keys,
-  atlassian_integrations,
-  slack_integrations,
-  user_slack_integrations,
-  user_github_repositories,
+  $Enums,
   activity_events,
-  ticket_activity_events,
-  sub_activity_events,
-  sub_activity_commit_associations,
-  gmail_integrations,
-  automations,
-  automation_prompts,
+  approval_slack_messages,
+  atlassian_integrations,
+  automation_confluence_configs,
   automation_inputs,
-  automation_outputs,
-  notion_integrations,
-  Prisma,
+  automation_jira_configs,
+  automation_knowledge_bases,
+  automation_linear_configs,
+  automation_notification_settings,
   automation_notion_configs,
   automation_notion_page_configs,
-  automation_confluence_configs,
-  PrismaClient,
-  user_notification_destinations,
-  automation_notification_settings,
-  automation_linear_configs,
+  automation_outputs,
+  automation_prompts,
+  automations,
   directive_records,
-  run_history_raw_events,
-  approval_slack_messages,
-  $Enums,
-  output_change_attributions,
+  github_repositories,
+  gmail_integrations,
   identifiable_refs,
-  automation_knowledge_bases,
-  automation_jira_configs,
-} from '@prisma/client';
-
+  linear_integrations,
+  notion_integrations,
+  output_change_attributions,
+  Prisma,
+  PrismaClient,
+  run_history_raw_events,
+  slack_integrations,
+  sub_activity_commit_associations,
+  sub_activity_events,
+  ticket_activity_events,
+  user_github_repositories,
+  user_notification_destinations,
+  user_slack_integrations,
+  users,
+} from "@prisma/client";
 
 // PascalCase aliases
 export type User = users;
 
 export type GithubRepository = github_repositories;
 
-export type LinearApiKey = linear_api_keys;
-
 export type LinearIntegration = linear_integrations;
-
-export type JiraApiKey = jira_api_keys;
 
 export type AtlassianIntegration = atlassian_integrations;
 
@@ -55,12 +48,13 @@ export type SlackIntegration = slack_integrations;
 export type UserSlackIntegration = user_slack_integrations;
 
 // Extended type for UserSlackIntegration with user relation included
-export type UserSlackIntegrationWithUser = Prisma.user_slack_integrationsGetPayload<{
-  include: {
-    user: true;
-    slack_integration: true;
-  };
-}>;
+export type UserSlackIntegrationWithUser =
+  Prisma.user_slack_integrationsGetPayload<{
+    include: {
+      user: true;
+      slack_integration: true;
+    };
+  }>;
 
 export type UserGithubRepository = user_github_repositories;
 
@@ -116,15 +110,15 @@ export type AgentOutput = automation_outputs; // Alias for rebranding (formerly 
 export type AgentKnowledgeBase = automation_knowledge_bases;
 
 // Extended type for AgentKnowledgeBase with all config relations included
-export type AgentKnowledgeBaseWithConfigs = Prisma.automation_knowledge_basesGetPayload<{
-  include: {
-    posthog_config: true;
-    github_kb_config: true;
-    launchdarkly_config: true;
-    datadog_config: true;
-  };
-}>;
-
+export type AgentKnowledgeBaseWithConfigs =
+  Prisma.automation_knowledge_basesGetPayload<{
+    include: {
+      posthog_config: true;
+      github_kb_config: true;
+      launchdarkly_config: true;
+      datadog_config: true;
+    };
+  }>;
 
 // Extended type for AgentOutput with all config relations included
 export type AutomationOutputWithConfigs = Prisma.automation_outputsGetPayload<{
@@ -172,9 +166,9 @@ export type AutomationWithInputRelations = Prisma.automationsGetPayload<{
         gmail_config: true;
         figma_config: true;
         time_trigger_config: true;
-      }
+      };
     };
-  }
+  };
 }>;
 export type AgentWithTriggerRelations = AutomationWithInputRelations; // Alias for rebranding (formerly ChannelWithInputRelations)
 
@@ -191,101 +185,114 @@ export type AutomationWithOutputRelations = Prisma.automationsGetPayload<{
         github_config: true;
         gmail_config: true;
         figma_config: true;
-      }
+      };
     };
-  }
+  };
 }>;
 export type AgentWithOutputRelations = AutomationWithOutputRelations; // Alias for rebranding (formerly ChannelWithOutputRelations)
 
 export type AutomationWithPromptRelations = Prisma.automationsGetPayload<{
   include: {
     prompt: true;
-  }
+  };
 }>;
 export type AgentWithPromptRelations = AutomationWithPromptRelations; // Alias for rebranding (formerly ChannelWithPromptRelations)
 
-export type AutomationWithNotificationSettingsRelations = Prisma.automationsGetPayload<{
-  include: {
-    notification_settings: true;
-  }
-}>;
-export type AgentWithNotificationSettingsRelations = AutomationWithNotificationSettingsRelations; // Alias for rebranding (formerly ChannelWithNotificationSettingsRelations)
+export type AutomationWithNotificationSettingsRelations =
+  Prisma.automationsGetPayload<{
+    include: {
+      notification_settings: true;
+    };
+  }>;
+export type AgentWithNotificationSettingsRelations =
+  AutomationWithNotificationSettingsRelations; // Alias for rebranding (formerly ChannelWithNotificationSettingsRelations)
 
-export type AutomationWithToolApprovalsRelations = Prisma.automationsGetPayload<{
-  include: {
-    tool_approvals: true;
-  }
-}>;
+export type AutomationWithToolApprovalsRelations =
+  Prisma.automationsGetPayload<{
+    include: {
+      tool_approvals: true;
+    };
+  }>;
 
-export type AgentWithToolApprovalsRelations = AutomationWithToolApprovalsRelations;
+export type AgentWithToolApprovalsRelations =
+  AutomationWithToolApprovalsRelations;
 
-export type AutomationWithKnowledgeBaseRelations = Prisma.automationsGetPayload<{
-  include: {
-    knowledge_bases: {
-      include: {
-        posthog_config: true;
-        github_kb_config: true;
+export type AutomationWithKnowledgeBaseRelations =
+  Prisma.automationsGetPayload<{
+    include: {
+      knowledge_bases: {
+        include: {
+          posthog_config: true;
+          github_kb_config: true;
+        };
       };
     };
-  };
-}>;
-export type AgentWithKnowledgeBaseRelations = AutomationWithKnowledgeBaseRelations;
+  }>;
+export type AgentWithKnowledgeBaseRelations =
+  AutomationWithKnowledgeBaseRelations;
 
-export type AutomationWithRelations = AutomationWithInputRelations & AutomationWithOutputRelations & AutomationWithPromptRelations & Partial<AutomationWithKnowledgeBaseRelations> & Partial<AutomationWithToolApprovalsRelations>;
-export type AgentWithRelations = AgentWithTriggerRelations & AgentWithOutputRelations & AgentWithPromptRelations & Partial<AgentWithKnowledgeBaseRelations> & AgentWithToolApprovalsRelations;
+export type AutomationWithRelations = AutomationWithInputRelations &
+  AutomationWithOutputRelations &
+  AutomationWithPromptRelations &
+  Partial<AutomationWithKnowledgeBaseRelations> &
+  Partial<AutomationWithToolApprovalsRelations>;
+export type AgentWithRelations = AgentWithTriggerRelations &
+  AgentWithOutputRelations &
+  AgentWithPromptRelations &
+  Partial<AgentWithKnowledgeBaseRelations> &
+  AgentWithToolApprovalsRelations;
 
 // Extract the transaction type from PrismaClient
-export type PrismaTransaction = Parameters<Parameters<PrismaClient['$transaction']>[0]>[0];
-
+export type PrismaTransaction = Parameters<
+  Parameters<PrismaClient["$transaction"]>[0]
+>[0];
 
 export type RunHistoryRawEvent = run_history_raw_events;
 
 export type OutputChangeAttribution = output_change_attributions;
 export type IdentifiableRef = identifiable_refs;
 
-
 // Extended type for RunHistoryRawEvent with runHistory and automation relations included
-export type RunHistoryRawEventWithRelations = Prisma.run_history_raw_eventsGetPayload<{
-  include: {
-    run_history_record: {
-      include: {
-        automation: true;
+export type RunHistoryRawEventWithRelations =
+  Prisma.run_history_raw_eventsGetPayload<{
+    include: {
+      run_history_record: {
+        include: {
+          automation: true;
+        };
       };
     };
-  };
-}>;
+  }>;
 
 // Re-export enum types
 export type RunHistoryActionType = $Enums.RunHistoryActionType;
 
 // Re-export the original types too
 export {
-  users,
-  github_repositories,
-  linear_api_keys,
-  linear_integrations,
-  jira_api_keys,
-  atlassian_integrations,
-  slack_integrations,
-  user_slack_integrations,
-  user_github_repositories,
   activity_events,
-  ticket_activity_events,
-  sub_activity_events,
-  sub_activity_commit_associations,
-  gmail_integrations,
-  automations,
-  automation_prompts,
-  automation_notification_settings,
+  approval_slack_messages,
+  atlassian_integrations,
+  automation_confluence_configs,
   automation_inputs,
-  automation_outputs,
-  notion_integrations,
+  automation_linear_configs,
+  automation_notification_settings,
   automation_notion_configs,
   automation_notion_page_configs,
-  automation_confluence_configs,
-  user_notification_destinations,
-  automation_linear_configs,
-  approval_slack_messages,
-  output_change_attributions,
+  automation_outputs,
+  automation_prompts,
+  automations,
+  github_repositories,
+  gmail_integrations,
   identifiable_refs,
+  linear_integrations,
+  notion_integrations,
+  output_change_attributions,
+  slack_integrations,
+  sub_activity_commit_associations,
+  sub_activity_events,
+  ticket_activity_events,
+  user_github_repositories,
+  user_notification_destinations,
+  user_slack_integrations,
+  users,
 };
