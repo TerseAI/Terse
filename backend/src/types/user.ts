@@ -1,6 +1,7 @@
 import logger from "../logger";
 import { db } from "../prismaClient";
 import { User } from "./prisma";
+import { trackNewUserAdded } from "../utility/analytics";
 
 export async function login(
   email: string,
@@ -44,6 +45,7 @@ export async function createUser(
   displayName: string,
   email: string,
   githubUsername: string | null,
+  authMethod?: 'github' | 'google',
 ): Promise<User> {
   let user = await db().users.create({
     data: {
@@ -57,6 +59,14 @@ export async function createUser(
     email: user.email,
     userId: user.id,
     displayName: user.display_name,
+    githubUsername: user.github_username,
+  });
+
+  // Track new user analytics event
+  trackNewUserAdded(user.id, {
+    email: user.email,
+    displayName: user.display_name,
+    authMethod,
     githubUsername: user.github_username,
   });
 
