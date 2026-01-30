@@ -75,11 +75,11 @@ function ChatInput({ sendMessage, input, setInput, placeholders, disabled = fals
     }, [setInput]);
 
     const sizeMapping = {
-        small: { size: Size.Small, compact: true, minRows: 1, showBorder: true },
-        medium: { size: Size.Medium, compact: false, minRows: 2, showBorder: true },
-        large: { size: Size.Large, compact: false, minRows: 4, showBorder: true },
+        small: { size: Size.Small, minRows: 1, showBorder: true },
+        medium: { size: Size.Medium, minRows: 2, showBorder: true },
+        large: { size: Size.Large, minRows: 4, showBorder: true },
     };
-    const { size: textFieldSize, compact, minRows, showBorder } = sizeMapping[inputSize];
+    const { size: textFieldSize, minRows, showBorder } = sizeMapping[inputSize];
 
     return (
         <div>
@@ -90,7 +90,6 @@ function ChatInput({ sendMessage, input, setInput, placeholders, disabled = fals
                 onKeyDown={handleKeyDown}
                 inputValue={input}
                 placeholders={placeholders}
-                compact={compact}
                 size={textFieldSize}
                 autoFocus={true}
                 focusOverride={focusOverride}
