@@ -75,6 +75,7 @@ export default function AgentSetup() {
         hidden: {
             opacity: 0,
             height: 0,
+            filter: 'blur(0px)',
             marginTop: 0,
             marginBottom: 0,
         },
@@ -84,6 +85,10 @@ export default function AgentSetup() {
         initial: {
             flexGrow: 0,
             minHeight: 200,
+        },
+        inMotion: {
+            flexGrow: 1,
+            minHeight: 0,
         },
         expanded: {
             flexGrow: 1,
@@ -95,14 +100,12 @@ export default function AgentSetup() {
         visible: {
             opacity: 1,
             filter: 'blur(0px)',
-            height: 'auto',
-            scale: 1,
+            y: 0,
         },
         hidden: {
             opacity: 0,
             filter: 'blur(8px)',
-            height: 0,
-            scale: 0.98,
+            y: 300,
         },
     };
 
@@ -156,61 +159,67 @@ export default function AgentSetup() {
                 </div>
             </motion.div>
 
-            {/* Templates Section - animates away with fade + blur when chat starts */}
-            <AnimatePresence>
-                {!hasStartedChat && (
-                    <motion.div
-                        className="overflow-hidden"
-                        variants={templatesVariants}
-                        initial="visible"
-                        animate="visible"
-                        exit="hidden"
-                        transition={{
-                            duration: ANIMATION_DURATION,
-                            ease: [0.4, 0, 0.2, 1],
-                            // Height animates together with opacity so chat can expand smoothly
-                            height: { duration: 0.3 },
-                            filter: { duration: 2.5 },
-                        }}
-                    >
-                        <div className="p-6">
-                            <div className="mx-auto max-w-5xl space-y-4">
-                                {/* Divider with "or" */}
-                                <div className="flex items-center gap-4">
-                                    <div className="h-px flex-1 bg-border" />
-                                    <span className="text-sm text-muted-foreground">or start with a template</span>
-                                    <div className="h-px flex-1 bg-border" />
-                                </div>
+            {/* Templates Section - wrapper collapses immediately, content fades out */}
+            <div 
+                className="relative"
+                style={{ 
+                    height: hasStartedChat ? 0 : 'auto',
+                    overflow: 'visible',
+                    transition: 'none',
+                }}
+            >
+                <AnimatePresence>
+                    {!hasStartedChat && (
+                        <motion.div
+                            className="w-full"
+                            variants={templatesVariants}
+                            initial="visible"
+                            animate="visible"
+                            exit="hidden"
+                            transition={{
+                                duration: ANIMATION_DURATION,
+                                ease: [0.4, 0, 0.2, 1],
+                            }}
+                        >
+                            <div className="p-6">
+                                <div className="mx-auto max-w-5xl space-y-4">
+                                    {/* Divider with "or" */}
+                                    <div className="flex items-center gap-4">
+                                        <div className="h-px flex-1 bg-border" />
+                                        <span className="text-sm text-muted-foreground">or start with a template</span>
+                                        <div className="h-px flex-1 bg-border" />
+                                    </div>
 
-                                {/* Templates Grid */}
-                                {isLoading ? (
-                                    <div className="flex items-center justify-center py-8">
-                                        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                                    </div>
-                                ) : templates.length > 0 ? (
-                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                        {templates.map((template, index) => (
-                                            <TemplateCard
-                                                key={index}
-                                                template={template}
-                                                templateIndex={index}
-                                            />
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <Card className="border-dashed">
-                                        <CardContent className="flex flex-col items-center justify-center py-6 text-center">
-                                            <p className="text-muted-foreground text-sm">
-                                                No templates available yet
-                                            </p>
-                                        </CardContent>
-                                    </Card>
-                                )}
+                                    {/* Templates Grid */}
+                                    {isLoading ? (
+                                        <div className="flex items-center justify-center py-8">
+                                            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                                        </div>
+                                    ) : templates.length > 0 ? (
+                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                            {templates.map((template, index) => (
+                                                <TemplateCard
+                                                    key={index}
+                                                    template={template}
+                                                    templateIndex={index}
+                                                />
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <Card className="border-dashed">
+                                            <CardContent className="flex flex-col items-center justify-center py-6 text-center">
+                                                <p className="text-muted-foreground text-sm">
+                                                    No templates available yet
+                                                </p>
+                                            </CardContent>
+                                        </Card>
+                                    )}
+                                </div>
                             </div>
-                        </div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+            </div>
         </motion.div>
     );
 }
