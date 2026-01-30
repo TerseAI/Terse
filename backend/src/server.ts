@@ -121,7 +121,6 @@ import { getStats } from "./routes/stats";
 import { getTemplates } from "./routes/templates";
 import { toolsThatRequireApprovalsRoute } from "./routes/tools";
 import { ApiRoutes } from "./shared/ApiRoutes";
-import { User as TicketUser } from "./shared/TicketSystem";
 import { setupSlackBolt } from "./slack/boltApp";
 import { runStartupValidations } from "./tools/validateToolNames";
 import { User } from "./types/prisma";
@@ -130,7 +129,6 @@ export type Session = {
   user: User;
   isUserInitiated: boolean; // true if the user has initiated the session, false if the session was initiated by the system
   teamId?: string;
-  currentUser?: TicketUser;
 };
 
 const app = express();
@@ -159,7 +157,9 @@ app.use(
 if (settings.nodeEnv !== "development") {
   app.use((req: Request, res: Response, next: NextFunction) => {
     const startTime = Date.now();
-    const requestId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const requestId = `${Date.now()}-${Math.random()
+      .toString(36)
+      .substr(2, 9)}`;
 
     // Capture request details
     const requestInfo = {

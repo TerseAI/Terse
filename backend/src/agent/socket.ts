@@ -5,6 +5,9 @@ import { Jwt } from "../utility/jwt";
 export async function requestSessionSocketToken(req: Request, res: Response) {
   try {
     let user = req.session?.user;
+    if (!user) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
     const token = await new Jwt().sign(user.id);
     res.json(token);
   } catch (error) {

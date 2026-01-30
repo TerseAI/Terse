@@ -12,7 +12,11 @@ export async function getInstallationUrl(req: Request, res: Response) {
   try {
     const appName = githubApp.appName;
     const clientId = githubApp.clientId;
-    const state = Buffer.from(req.session?.user?.id).toString("base64");
+    const userId = req.session?.user?.id;
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    const state = Buffer.from(userId).toString("base64");
     // Generate GitHub App installation URL with callback
     const installationUrl: string = `https://github.com/apps/${appName}/installations/new?client_id=${clientId}&target_type=repositories&state=${state}`;
 
