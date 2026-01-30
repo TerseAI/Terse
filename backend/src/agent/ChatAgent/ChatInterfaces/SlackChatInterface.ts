@@ -1,13 +1,13 @@
 import { RunStreamEvent } from "@openai/agents";
-import { ConfigType } from "../../shared/Configs";
+import { ConfigType } from "../../../shared/Configs";
 import ChatInterface from "./ChatInterface";
-import { IntegrationType } from "../../shared/Integrations";
-import logger from "../../logger";
+import { IntegrationType } from "../../../shared/Integrations";
+import logger from "../../../logger";
 import { Block, ChatPostMessageArguments, ChatUpdateArguments, KnownBlock, WebClient } from "@slack/web-api";
-import { INTEGRATION_REGISTRY } from "../../integrations/abstract/IntegrationRegistry";
-import { isFormIntegrationInstallation, isOAuthIntegrationInstallation, OAuthIntegrationInstallation } from "../../integrations/abstract/Integration";
-import { createOAuthStateToken } from "../../utility/oauth";
-import { createActionBlock, createButton, createIntegrationConnectionMessage } from "../../slack/blockKitHelpers";
+import { INTEGRATION_REGISTRY } from "../../../integrations/abstract/IntegrationRegistry";
+import { isFormIntegrationInstallation, isOAuthIntegrationInstallation, OAuthIntegrationInstallation } from "../../../integrations/abstract/Integration";
+import { createOAuthStateToken } from "../../../utility/oauth";
+import { createActionBlock, createButton, createIntegrationConnectionMessage } from "../../../slack/blockKitHelpers";
 
 class SlackChatInterface extends ChatInterface {
     name: string = 'Slack';
@@ -18,9 +18,9 @@ class SlackChatInterface extends ChatInterface {
     constructor(
         private readonly channel: string,
         webClient: WebClient,
-        userId?: string,
+        userId: string,
+        sessionId: string, // thread_ts if in a thread
         slackUserId?: string,
-        sessionId?: string // thread_ts if in a thread
     ) {
         super(sessionId, userId);
         this.webClient = webClient;
@@ -75,7 +75,13 @@ class SlackChatInterface extends ChatInterface {
             blocks,
         });
     }
-    
+
+    async navigate(path: string): Promise<void> {
+        // For Slack, we can't navigate in-app, so show a button instead
+        const frontendUrl = process.env.FRONTEND_URL || '';
+        await this.buildButton('View Automation', `${frontendUrl}${path}`);
+    }
+
     private async handleFormIntegrationInstallation(integration: IntegrationType): Promise<string> {
         try {
             // Create state payload with chat metadata

@@ -6,6 +6,7 @@ import crypto from "crypto";
 import { Request, Response } from "express";
 import jwt from "jsonwebtoken";
 import { EventProcessor } from "../agent/AgentRunner/EventProcessor";
+import { SlackChannel as SlackChannelShared } from "../shared/types";
 import {
   jwt as jwtConfig,
   slack as slackConfig,
@@ -53,6 +54,7 @@ import { InputEvent } from "./abstract/InputEvent";
 import {
   ConfigurationFieldDefinition,
   Integration,
+  IntegrationWithResources,
   OAuthIntegrationInstallation,
 } from "./abstract/Integration";
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask";
@@ -63,7 +65,8 @@ export class SlackIntegrationManager
     Integration<
       SlackIntegration,
       SlackMessageEvent,
-      typeof SlackIntegrationMetadata
+      typeof SlackIntegrationMetadata,
+      SlackChannelShared
     >,
     OAuthIntegrationInstallation<IntegrationType.SLACK>
 {
@@ -526,6 +529,76 @@ export class SlackIntegrationManager
       return null;
     }
   }
+
+    async fetchResourcesForInstance(userId: string, integrationId: string, query?: string): Promise<SlackChannelShared[]> {
+        const userSlackIntegration = await db().user_slack_integrations.findFirst({
+            where: { id: integrationId, user_id: userId },
+            include: { slack_integration: true, user: true },
+        });
+
+        if (!userSlackIntegration || !userSlackIntegration.slack_integration) {
+            throw new Error("Slack integration not found");
+        }
+
+        const client = initializeSlackWebClient(userSlackIntegration);
+        const isBotUser = userSlackIntegration.is_bot_user;
+
+        const [publicChannels, privateChannels, mpimChannels] = await Promise.all([
+            client.conversations.list({ types: "public_channel", exclude_archived: true, limit: 1000 }),
+            client.conversations.list({ types: "private_channel", exclude_archived: true, limit: 1000 }),
+            client.conversations.list({ types: "mpim", exclude_archived: true, limit: 1000 })
+        ]);
+
+        const channels: SlackChannelShared[] = [];
+
+        if (publicChannels.ok && publicChannels.channels) {
+            for (const channel of publicChannels.channels) {
+                if (channel.id && channel.name && (!isBotUser || channel.is_member)) {
+                    channels.push({ id: channel.id, name: channel.name, isPrivate: false, isArchived: channel.is_archived || false, isMPIM: false });
+                }
+            }
+        }
+
+        if (privateChannels.ok && privateChannels.channels) {
+            for (const channel of privateChannels.channels) {
+                if (channel.id && channel.name) {
+                    channels.push({ id: channel.id, name: channel.name, isPrivate: true, isArchived: channel.is_archived || false, isMPIM: false });
+                }
+            }
+        }
+
+        if (mpimChannels.ok && mpimChannels.channels) {
+            for (const channel of mpimChannels.channels) {
+                if (channel.id && channel.name) {
+                    channels.push({ id: channel.id, name: channel.name, isPrivate: true, isArchived: channel.is_archived || false, isMPIM: true });
+                }
+            }
+        }
+
+        channels.sort((a, b) => a.name.localeCompare(b.name));
+
+        if (query) {
+            const normalizedQuery = query.trim().toLowerCase();
+            return channels.filter(channel => channel.name.toLowerCase().includes(normalizedQuery));
+        }
+
+        return channels;
+    }
+
+    async fetchResourcesForUser(userId: string, query?: string): Promise<IntegrationWithResources<SlackIntegration, SlackChannelShared>[]> {
+        const integrations = await this.getInstancesForUser(userId);
+        return Promise.all(
+            integrations.map(async (integration) => {
+                try {
+                    const resources = await this.fetchResourcesForInstance(userId, integration.id, query);
+                    return { integration, resources };
+                } catch (error) {
+                    logger.warn(`Failed to fetch resources for Slack integration ${integration.id}`, { error, integrationId: integration.id });
+                    return { integration, resources: [] };
+                }
+            })
+        );
+    }
 }
 
 // MARK: - SLACK Event

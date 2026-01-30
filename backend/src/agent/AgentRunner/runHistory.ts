@@ -5,7 +5,6 @@ import { ModelEvent } from "../../shared/ModelEvents";
 import type { RunHistoryChatEventType } from "@prisma/client";
 import { Prisma } from "@prisma/client";
 import { RunToolApprovalItem } from "@openai/agents";
-import { RunHistoryActionType } from "../../types/prisma";
 
 export type RunTrigger = RunHistoryTrigger;
 

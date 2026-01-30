@@ -58,7 +58,8 @@ export class GmailIntegrationManager
     Integration<
       GmailIntegration,
       GmailWebhookEvent,
-      typeof GmailIntegrationMetadata
+      typeof GmailIntegrationMetadata,
+      never
     >,
     OAuthIntegrationInstallation<IntegrationType.GMAIL>
 {

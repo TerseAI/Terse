@@ -1,6 +1,6 @@
 import { Tool } from "@openai/agents-core";
 import { RunContext, tool } from "@openai/agents";
-import ChatInterface from "./ChatInterface";
+import ChatInterface from "./ChatInterfaces/ChatInterface";
 import { z } from "zod";
 import { IntegrationType } from "../../shared/Integrations";
 import { ConfigType } from "../../shared/Configs";
@@ -8,21 +8,10 @@ import logger from "../../logger";
 import { applyAgentForUser, updateAgentForUser } from "../../routes/agents";
 import type { AgentDraft } from "../../routes/agents";
 import type { ConfigInstance } from "../../shared/Configs";
-import { GithubIntegrationManager } from "../../integrations/GithubIntegration";
-import { SlackIntegrationManager } from "../../integrations/SlackIntegration";
-import { NotionIntegrationManager } from "../../integrations/NotionIntegration";
-import { AtlassianIntegrationManager } from "../../integrations/AtlassianIntegration";
-import { LinearIntegrationManager } from "../../integrations/LinearIntegration";
-import { PosthogIntegrationManager } from "../../integrations/PosthogIntegration";
-import { fetchGithubRepositoriesForIntegration } from "../../routes/github";
-import { fetchSlackChannelsForIntegration } from "../../routes/slack";
-import { fetchNotionResources } from "../../routes/notion";
+import { INTEGRATION_REGISTRY } from "../../integrations/abstract/IntegrationRegistry";
 import { fetchConfluenceResources } from "../../routes/confluence";
 import { fetchJiraResources } from "../../routes/jira";
-import { fetchLinearTeams } from "../../routes/linear";
-import { fetchPosthogProjects } from "../../routes/posthog";
-import { fetchLaunchDarklyProjects, fetchLaunchDarklyEnvironments } from "../../routes/launchdarkly";
-import { LaunchDarklyIntegrationManager } from "../../integrations/LaunchDarklyIntegration";
+import { fetchLaunchDarklyEnvironments } from "../../routes/launchdarkly";
 import { uuidv4 } from "zod/v4";
 import { FrontendRoutes } from "../../shared/FrontendRoutes";
 
@@ -30,8 +19,6 @@ export type ChatAgentContext = {
     chatInterface: ChatInterface;
     userId: string;
 };
-
-const frontendUrl = process.env.FRONTEND_URL;
 
 export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgentContext>[] {
     return [
@@ -54,7 +41,7 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
                     const result = id
                         ? await updateAgentForUser(userId, id, draft)
                         : await applyAgentForUser(userId, draft);
-                    await chatInterface.buildButton("View Automation", `${frontendUrl}${FrontendRoutes.AGENTS.DETAIL(result.id)}`);
+                    await chatInterface.navigate(FrontendRoutes.AGENTS.DETAIL(result.id));
                     return `Agent applied successfully (${result.id})`;
                 } catch (error) {
                     logger.error('applyAgent failed', { error, userId, agent });
@@ -103,6 +90,11 @@ const BaseConfigSchema = z.object({
 
 const GmailConfigSchema = BaseConfigSchema.extend({
     configType: z.literal(ConfigType.GMAIL),
+    integrationType: z.literal(IntegrationType.GMAIL),
+});
+
+const GmailOutputConfigSchema = BaseConfigSchema.extend({
+    configType: z.literal(ConfigType.GMAIL_OUTPUT),
     integrationType: z.literal(IntegrationType.GMAIL),
 });
 
@@ -251,6 +243,7 @@ const OutputConfigSchema = z.discriminatedUnion("configType", [
     LinearOutputConfigSchema,
     JiraConfigSchema,
     ConfluenceConfigSchema,
+    GmailOutputConfigSchema,
 ]).superRefine((value, ctx) => {
     enforceNonSystemIntegrationId(value, ctx);
 });
@@ -350,120 +343,53 @@ async function fetchResourcesForIntegrationType(
     userId: string,
     query?: string
 ): Promise<string> {
-    const normalizedQuery = query?.trim().toLowerCase();
-    const matchesQuery = (value: string | undefined | null): boolean => {
-        if (!normalizedQuery) {
-            return true;
-        }
-        if (!value) {
-            return false;
-        }
-        return value.toLowerCase().includes(normalizedQuery);
-    };
-    switch (integrationType) {
-        case IntegrationType.GITHUB: {
-            const manager = new GithubIntegrationManager();
-            const integrations = await manager.getInstancesForUser(userId);
-            const resources = await Promise.all(integrations.map(async (integration) => {
-                const installationId = integration.installation_id ?? Number(integration.id);
-                if (!installationId) {
-                    return { integration, repositories: [] };
-                }
-                const response = await fetchGithubRepositoriesForIntegration(
-                    userId,
-                    String(installationId)
-                );
-                const repositories = normalizedQuery
-                    ? response.repositories.filter(repo => matchesQuery(`${repo.owner}/${repo.name}`) || matchesQuery(repo.name))
-                    : response.repositories;
-                return { integration, repositories };
-            }));
-            return JSON.stringify({ integrations, resources });
-        }
-        case IntegrationType.SLACK: {
-            const manager = new SlackIntegrationManager();
-            const integrations = await manager.getInstancesForUser(userId);
-            const resources = await Promise.all(integrations.map(async (integration) => {
-                const response = await fetchSlackChannelsForIntegration(userId, integration.id);
-                const channels = normalizedQuery
-                    ? response.channels.filter(channel => matchesQuery(channel.name))
-                    : response.channels;
-                return { integration, channels };
-            }));
-            return JSON.stringify({ integrations, resources });
-        }
-        case IntegrationType.NOTION: {
-            const manager = new NotionIntegrationManager();
-            const integrations = await manager.getInstancesForUser(userId);
-            const resources = await Promise.all(integrations.map(async (integration) => {
-                const response = await fetchNotionResources(userId, integration.id, query ?? "");
-                return { integration, resources: response.resources };
-            }));
-            return JSON.stringify({ integrations, resources });
-        }
-        case IntegrationType.ATLASSIAN: {
-            const manager = new AtlassianIntegrationManager();
-            const integrations = await manager.getInstancesForUser(userId);
-            const jira = await Promise.all(integrations.map(async (integration) => {
-                const response = await fetchJiraResources(userId, integration.id);
-                const projects = response.resources?.projects ?? [];
-                const filteredProjects = normalizedQuery
-                    ? projects.filter((project: { name?: string; key?: string }) =>
-                        matchesQuery(project.name) || matchesQuery(project.key))
-                    : projects;
-                return { integration, resources: { ...response.resources, projects: filteredProjects } };
-            }));
-            const confluence = await Promise.all(integrations.map(async (integration) => {
-                const response = await fetchConfluenceResources(userId, integration.id, query ?? "");
-                return { integration, resources: response };
-            }));
-            return JSON.stringify({ integrations, jira, confluence });
-        }
-        case IntegrationType.LINEAR: {
-            const manager = new LinearIntegrationManager();
-            const integrations = await manager.getInstancesForUser(userId);
-            const resources = await Promise.all(integrations.map(async (integration) => {
-                const response = await fetchLinearTeams(userId, integration.id);
-                const teams = normalizedQuery
-                    ? response.filter(team => matchesQuery(team.name) || matchesQuery(team.key))
-                    : response;
-                return { integration, teams };
-            }));
-            return JSON.stringify({ integrations, resources });
-        }
-        case IntegrationType.POSTHOG: {
-            const manager = new PosthogIntegrationManager();
-            const integrations = await manager.getInstancesForUser(userId);
-            const resources = await Promise.all(integrations.map(async (integration) => {
-                const response = await fetchPosthogProjects(userId, integration.id, query ?? "");
-                return { integration, projects: response.projects ?? response };
-            }));
-            return JSON.stringify({ integrations, resources });
-        }
-        case IntegrationType.LAUNCHDARKLY: {
-            const manager = new LaunchDarklyIntegrationManager();
-            const integrations = await manager.getInstancesForUser(userId);
-            const resources = await Promise.all(integrations.map(async (integration) => {
-                const projectsResponse = await fetchLaunchDarklyProjects(userId, integration.id, query ?? "");
-                const projectsWithEnvironments = await Promise.all(
-                    projectsResponse.projects.map(async (project) => {
-                        const envsResponse = await fetchLaunchDarklyEnvironments(userId, integration.id, project.key);
-                        return { ...project, environments: envsResponse.environments };
-                    })
-                );
-                return { integration, projects: projectsWithEnvironments };
-            }));
-            return JSON.stringify({ integrations, resources });
-        }
-        case IntegrationType.GMAIL:
-        case IntegrationType.FIGMA:
-        case IntegrationType.CRON_JOB:
-        case IntegrationType.TERSE:
-        case IntegrationType.DATADOG:
-            return JSON.stringify("This is a system integration. No config is needed.");
-        default: {
-            const _exhaustive: never = integrationType;
-            throw new Error(`Unhandled integration type: ${_exhaustive}`);
-        }
+    const manager = INTEGRATION_REGISTRY.find(m => m.integrationType === integrationType);
+    if (!manager) {
+        throw new Error(`Unknown integration type: ${integrationType}`);
     }
+
+    // Special case: Atlassian has dual resources (Jira + Confluence)
+    if (integrationType === IntegrationType.ATLASSIAN) {
+        const integrations = await manager.getInstancesForUser(userId);
+        const normalizedQuery = query?.trim().toLowerCase();
+        const jira = await Promise.all(integrations.map(async (integration) => {
+            const response = await fetchJiraResources(userId, integration.id);
+            const projects = response.resources?.projects ?? [];
+            const filteredProjects = normalizedQuery
+                ? projects.filter((project: { name?: string; key?: string }) =>
+                    project.name?.toLowerCase().includes(normalizedQuery) || project.key?.toLowerCase().includes(normalizedQuery))
+                : projects;
+            return { integration, resources: { ...response.resources, projects: filteredProjects } };
+        }));
+        const confluence = await Promise.all(integrations.map(async (integration) => {
+            const response = await fetchConfluenceResources(userId, integration.id, query ?? "");
+            return { integration, resources: response };
+        }));
+        return JSON.stringify({ integrations, jira, confluence });
+    }
+
+    // Special case: LaunchDarkly needs nested environments
+    if (integrationType === IntegrationType.LAUNCHDARKLY && manager.fetchResourcesForUser) {
+        const integrations = await manager.getInstancesForUser(userId);
+        const resources = await Promise.all(integrations.map(async (integration) => {
+            const projects = await manager.fetchResourcesForInstance!(userId, integration.id, query);
+            const projectsWithEnvironments = await Promise.all(
+                (projects as Array<{ key: string; name: string }>).map(async (project) => {
+                    const envsResponse = await fetchLaunchDarklyEnvironments(userId, integration.id, project.key);
+                    return { ...project, environments: envsResponse.environments };
+                })
+            );
+            return { integration, resources: projectsWithEnvironments };
+        }));
+        return JSON.stringify({ resources });
+    }
+
+    // Standard case: use fetchResourcesForUser if available
+    if (manager.fetchResourcesForUser) {
+        const results = await manager.fetchResourcesForUser(userId, query);
+        return JSON.stringify({ resources: results });
+    }
+
+    // System integrations without resources
+    return JSON.stringify("This is a system integration. No config is needed.");
 }

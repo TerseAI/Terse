@@ -22,8 +22,8 @@ import DropdownSelect from "../ui/DropdownSelect";
 // Number of repositories to show on the card before showing "View all" button
 const REPOSITORY_DISPLAY_THRESHOLD = 3;
 
-function GithubIntegrationCard({ className, isActive = true }: { className?: string; isActive?: boolean }) {
-    const { connect, isConnecting } = useOAuthConnection<IntegrationType.GITHUB>(IntegrationType.GITHUB, {});
+function GithubIntegrationCard({ className, isActive = true, stateToken }: { className?: string; isActive?: boolean; stateToken?: string }) {
+    const { connect, isConnecting } = useOAuthConnection<IntegrationType.GITHUB>(IntegrationType.GITHUB, {}, stateToken);
     const { integrations, isLoading: isLoadingIntegrations } = useGithubIntegrations();
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [selectedInstallationId, setSelectedInstallationId] = useState<number | null>(null);

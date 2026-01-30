@@ -1,5 +1,5 @@
 import { Agent, AgentOutputType, run, RunStreamEvent } from "@openai/agents";
-import ChatInterface from "./ChatInterface";
+import ChatInterface from "./ChatInterfaces/ChatInterface";
 import { buildChatAgentSystemPrompt } from "./ChatAgentSystemPrompt";
 import { buildChatAgentTools, type ChatAgentContext } from "./ChatAgentTools";
 import { ChatMemorySession, recentHistoryCallback } from "../CustomMemorySession";
@@ -11,7 +11,8 @@ class ChatAgent {
     constructor(
         private readonly chatInterface: ChatInterface,
         private readonly sessionId: string, // This is the external_id (e.g., Slack thread timestamp)
-        private readonly userId: string // Required userId for interfaces
+        private readonly userId: string, // Required userId for interfaces
+        private readonly uiState?: string | null // UI context from the web interface
     ) {}
 
     private async getMemorySession(): Promise<ChatMemorySession> {
@@ -32,7 +33,7 @@ class ChatAgent {
         const userTimezone = await this.chatInterface.getUserTimezone();
         const agent = new Agent<ChatAgentContext, AgentOutputType>({
             name: 'Terse Automation Assistant',
-            instructions: await buildChatAgentSystemPrompt(this.userId, userTimezone),
+            instructions: await buildChatAgentSystemPrompt(this.userId, userTimezone, this.uiState),
             model: 'gpt-5.2',
             tools: buildChatAgentTools(this.chatInterface),
         });

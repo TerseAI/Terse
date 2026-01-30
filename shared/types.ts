@@ -396,6 +396,7 @@ export type TemplateKnowledgeBase = {
 export type AgentTemplate = {
     name: string;
     description: string;
+    chatPrompt: string; // Short prompt to pre-fill chat input when template is selected
     prompt: AgentPrompt;
     triggers: TemplateTrigger[];
     outputs: TemplateOutput[];

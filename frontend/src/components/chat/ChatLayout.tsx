@@ -17,6 +17,8 @@ interface ChatLayoutProps {
     EmptyContentPlaceholder?: React.ReactNode;
     onApprove?: (stepId: string) => void;
     onReject?: (stepId: string) => void;
+    inputSize?: 'small' | 'medium' | 'large';
+    showPlaceholderChips?: boolean;
 }
 
 export interface ChatLayoutHandle {
@@ -33,6 +35,8 @@ export const ChatLayout = forwardRef<ChatLayoutHandle, ChatLayoutProps>(function
     EmptyContentPlaceholder,
     onApprove,
     onReject,
+    inputSize = 'small',
+    showPlaceholderChips = false,
 }, ref) {
     const [showScrollIndicator, setShowScrollIndicator] = useState(false);
     const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -148,12 +152,14 @@ export const ChatLayout = forwardRef<ChatLayoutHandle, ChatLayoutProps>(function
             </AnimatePresence>
 
             <div className="flex-shrink-0">
-                <ChatInput 
-                    sendMessage={onSendMessage} 
-                    input={input} 
-                    setInput={setInput} 
+                <ChatInput
+                    sendMessage={onSendMessage}
+                    input={input}
+                    setInput={setInput}
                     placeholders={placeholders}
                     disabled={isPendingAssistantResponse}
+                    inputSize={inputSize}
+                    showPlaceholderChips={showPlaceholderChips}
                 />
             </div>
         </div>

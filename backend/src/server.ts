@@ -10,7 +10,7 @@ import "./config/settings";
 import { settings } from "./config/settings";
 import "./integrations/IntegrationTaskHandler"; // Import to trigger listener registration
 import logger from "./logger";
-import { initializeRealtimeSocket } from "./realtimeSocket";
+import { initializeRealtimeSocket, getRealtimeSocket  } from "./realtimeSocket";
 import {
   createAgent,
   deleteAgent,
@@ -124,18 +124,14 @@ import { ApiRoutes } from "./shared/ApiRoutes";
 import { setupSlackBolt } from "./slack/boltApp";
 import { runStartupValidations } from "./tools/validateToolNames";
 import { User } from "./types/prisma";
-
-export type Session = {
-  user: User;
-  isUserInitiated: boolean; // true if the user has initiated the session, false if the session was initiated by the system
-  teamId?: string;
-};
+import { registerSocketGetter } from "./services/CacheInvalidationService";
 
 const app = express();
 const server = createServer(app);
 
 try {
   await initializeRealtimeSocket(server);
+  registerSocketGetter(getRealtimeSocket);
   logger.info("✅ Socket.IO server initialized");
 } catch (error) {
   logger.error("❌ Failed to initialize Socket.IO server", { error });

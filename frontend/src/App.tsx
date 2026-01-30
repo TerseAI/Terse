@@ -18,6 +18,7 @@ import OAuthError from "./pages/OAuthError";
 import OAuthSuccess from "./pages/OAuthSuccess";
 import { AuthProvider, useAuth } from "./services/auth";
 import { FrontendRoutes } from "./shared/FrontendRoutes";
+import { ModelContextProvider } from "./services/ModelContextProvider";
 import { disconnectSocket, initializeSocket } from "./socket";
 
 function App() {
@@ -95,9 +96,13 @@ function AppLayout() {
   return (
     <SidebarProvider>
       <AppSidebar />
-      <main className="w-full bg-background">
+      <main className="flex-1 flex flex-col h-full min-w-0 bg-background">
         <BreadCrumb />
-        <Outlet />
+        <div className="flex-1 min-h-0">
+          <ModelContextProvider>
+            <Outlet />
+          </ModelContextProvider>
+        </div>
       </main>
     </SidebarProvider>
   )

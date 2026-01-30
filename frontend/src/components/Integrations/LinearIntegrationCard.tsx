@@ -9,9 +9,9 @@ import { useOAuthConnection } from "@/hooks/useOAuthConnection";
 import { Skeleton } from "../ui/skeleton";
 import { Target } from "lucide-react";
 
-function LinearIntegrationCard({ className, isActive = true }: { className?: string; isActive?: boolean }) {
+function LinearIntegrationCard({ className, isActive = true, stateToken }: { className?: string; isActive?: boolean; stateToken?: string }) {
     const { integrations, isLoading } = useLinearIntegrations();
-    const { connect, isConnecting } = useOAuthConnection<IntegrationType.LINEAR>(IntegrationType.LINEAR, {});
+    const { connect, isConnecting } = useOAuthConnection<IntegrationType.LINEAR>(IntegrationType.LINEAR, {}, stateToken);
 
     return (
         <Card className={cn(className)}>

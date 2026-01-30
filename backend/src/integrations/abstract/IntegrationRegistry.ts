@@ -13,7 +13,7 @@ import { LaunchDarklyIntegrationManager } from "../LaunchDarklyIntegration";
 import { DatadogIntegrationManager } from "../DatadogIntegration";
 
 
-type IntegrationWithInstallation = Integration<IntegrationInstance, any, IntegrationDetails> & (OAuthIntegrationInstallation<IntegrationType> | FormIntegrationInstallation<IntegrationType>);
+type IntegrationWithInstallation = Integration<IntegrationInstance, any, IntegrationDetails, any> & (OAuthIntegrationInstallation<IntegrationType> | FormIntegrationInstallation<IntegrationType>);
 
 // System integrations that don't require user ownership validation
 const SYSTEM_INTEGRATION_TYPES: IntegrationType[] = [

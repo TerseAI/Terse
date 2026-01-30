@@ -3,6 +3,8 @@ import { LaunchDarklyIntegrationManager } from "../integrations/LaunchDarklyInte
 import { db } from "../prismaClient";
 import logger from "../logger";
 import { parseFormSubmissionFromRequest } from "../integrations/abstract/Integration";
+import { IntegrationType } from "../shared/Integrations";
+import { emitIntegrationFormCompletedTaskIfNeeded } from "../integrations/helpers/emitIntegrationFormCompletedTask";
 
 
 export async function getLaunchDarklyIntegrations(req: Request, res: Response) {
@@ -40,6 +42,15 @@ export async function createOrUpdateLaunchDarklyIntegration(req: Request, res: R
             return;
         }
 
+        // Check for state token in query params or body and emit task if needed
+        const stateToken = (req.query.state as string) || req.body?.state;
+        await emitIntegrationFormCompletedTaskIfNeeded(
+            stateToken,
+            manager,
+            input.userId,
+            IntegrationType.LAUNCHDARKLY
+        );
+
         res.status(result.statusCode || 200).json(result.data || { success: true });
     } catch (error) {
         logger.error('Error creating/updating LaunchDarkly integration:', { error });
@@ -74,52 +85,9 @@ export async function fetchLaunchDarklyProjects(
     integrationId: string,
     query: string = ""
 ): Promise<{ projects: Array<{ key: string; name: string }> }> {
-    const integration = await db().launchdarkly_integrations.findFirst({
-        where: {
-            id: integrationId,
-            user_id: userId,
-        },
-    });
-
-    if (!integration) {
-        throw new Error("LaunchDarkly integration not found");
-    }
-
-    const response = await fetch('https://app.launchdarkly.com/api/v2/projects', {
-        method: 'GET',
-        headers: {
-            'Authorization': integration.api_key,
-            'Content-Type': 'application/json',
-        },
-    });
-
-    if (!response.ok) {
-        const errorText = await response.text();
-        logger.error('Failed to fetch LaunchDarkly projects', {
-            integrationId,
-            status: response.status,
-            error: errorText,
-        });
-        throw new Error(response.status === 401 ? 'Invalid API key' : errorText);
-    }
-
-    const projectsData = await response.json();
-    let projects = Array.isArray(projectsData) ? projectsData : (projectsData.items || projectsData.projects || []);
-
-    if (query) {
-        const queryLower = query.toLowerCase();
-        projects = projects.filter((p: any) =>
-            p.name?.toLowerCase().includes(queryLower) ||
-            p.key?.toLowerCase().includes(queryLower)
-        );
-    }
-
-    const projectsList = projects.map((p: any) => ({
-        key: p.key || p._id,
-        name: p.name || p.key || 'Unnamed Project',
-    }));
-
-    return { projects: projectsList };
+    const manager = new LaunchDarklyIntegrationManager();
+    const projects = await manager.fetchResourcesForInstance(userId, integrationId, query);
+    return { projects };
 }
 
 export async function fetchLaunchDarklyEnvironments(

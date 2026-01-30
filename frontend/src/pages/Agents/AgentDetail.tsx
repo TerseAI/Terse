@@ -9,10 +9,13 @@ import { useTemplates } from "../../hooks/api/useTemplates";
 import { AgentNotificationSettings, AgentPrompt, TransientAgentTrigger, TransientAgentOutput, TransientKnowledgeBase } from "../../shared/types";
 import { toTransientAgentTrigger, toTransientAgentOutput, toTransientKnowledgeBase } from "../../utility/AgentUtils";
 import { useTemplateHydration } from "../../hooks/useTemplateHydration";
+import { useModelContext } from "../../services/ModelContextProvider";
+import { AgentNameDonatedState, AgentInputsDonatedState, AgentOutputsDonatedState, AgentKnowledgeBasesDonatedState, AgentPromptDonatedState } from "../../utility/AgentModelDonation";
 
 function AgentDetail() {
     const { id, templateId } = useParams<{ id: string, templateId: string }>();
     const [searchParams, setSearchParams] = useSearchParams();
+    const { donate } = useModelContext();
 
     // Only pass agentId if it's not "new"
     const agentId: string | null = id && id !== 'new' ? id : null;
@@ -135,11 +138,18 @@ function AgentDetail() {
         updatedAt: agent?.updatedAt,
     }
 
+     // Let the chat know about what's on the screen
+     donate('Agent Name', new AgentNameDonatedState(name ?? ''));
+     donate('Agent Inputs', new AgentInputsDonatedState(inputs));
+     donate('Agent Skills', new AgentOutputsDonatedState(outputs));
+     donate('Agent Knowledge Bases', new AgentKnowledgeBasesDonatedState(knowledgeBases));
+     donate('Agent Prompt', new AgentPromptDonatedState(prompt ?? { text: '' }));
+
     return (
         <div className="grid grid-cols-20 h-full pt-2 pl-2">
             <div className="h-full min-h-0 col-span-20">
                 <div className="mx-auto h-full min-h-0 flex flex-col h-full">
-                    <TabGroup selectedIndex={selectedIndex} className="h-full" onChange={(index) => {
+                    <TabGroup selectedIndex={selectedIndex} className="h-full flex flex-col" onChange={(index) => {
                         setSelectedIndex(index);
                         const next = tabs[index];
                         const nextParams = new URLSearchParams(searchParams);
@@ -156,7 +166,7 @@ function AgentDetail() {
                                 <span>Activity</span>
                             </Tab>
                         </TabList>
-                        <TabPanels className="flex-1 min-h-0 h-full flex">
+                        <TabPanels className="flex-1 min-h-0 flex">
                             <TabPanel className="flex-1 min-h-0 h-full flex flex-col">
                                 <AgentSetupTab {...agentProps} />
                             </TabPanel>

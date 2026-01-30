@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import { Jwt } from "../utility/jwt";
 import { login as loginUser } from "../types/user";
-import { Session } from "../server";
+import { Session } from "../types/session";
 import { nodeEnv, optional } from "../config/settings";
 import logger, { setUserContext } from "../logger";
 

@@ -2,7 +2,7 @@ import { RunContext, tool } from "@openai/agents";
 import { z } from "zod";
 import logger from "../../../logger";
 import { IntegrationType } from "../../../shared/Integrations";
-import { Session } from "../../../server";
+import { Session } from "../../../types/session";
 import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner";
 import { getLaunchDarklyApiKeyByIntegrationId } from "../launchdarklyApiClient";
 import { ToolName } from "../../../tools/ToolNames";

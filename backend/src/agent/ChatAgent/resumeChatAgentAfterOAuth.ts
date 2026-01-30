@@ -1,5 +1,5 @@
 import { db } from "../../prismaClient";
-import SlackChatInterface from "./SlackChatInterface";
+import SlackChatInterface from "./ChatInterfaces/SlackChatInterface";
 import ChatAgent from "./ChatAgent";
 import logger from "../../logger";
 import { initializeSlackWebClient } from "../../integrations/SlackIntegration";
