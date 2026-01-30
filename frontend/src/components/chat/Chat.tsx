@@ -31,7 +31,7 @@ const Chat = forwardRef<ChatHandle, ChatProps>(function Chat({
     onHandleReject,
     addUserTurnsLocally,
     inputSize = 'small',
-    placeholders = ["Chat with the AI assistant"],
+    placeholders = [],
     showPlaceholderChips = false,
 }, ref) {
     const { turns, isPendingAssistantResponse, input, setInput, sendMessage: sendUserMessage, sendModelRequest } = useChat({

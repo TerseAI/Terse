@@ -9,7 +9,6 @@ interface GlowingTextFieldProps {
     onKeyDown: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
     inputValue: string;
     placeholders?: string[];
-    compact?: boolean;
     size?: Size;
     shouldAllowKeyboardShortcutForFocus?: boolean;
     autoFocus?: boolean;
@@ -27,7 +26,7 @@ export enum Size {
     Large = 'large',
 }
 
-function GlowingTextField({ isLoading, disabled, onInputChange, onKeyDown, inputValue, placeholders = [], compact = false, size = Size.Medium, shouldAllowKeyboardShortcutForFocus = true, autoFocus = false, focusOverride = null, minRows, showBorder = false, onSend, onPlaceholderSelect, showPlaceholderChips = false }: GlowingTextFieldProps) {
+function GlowingTextField({ isLoading, disabled, onInputChange, onKeyDown, inputValue, placeholders = [], size = Size.Medium, shouldAllowKeyboardShortcutForFocus = true, autoFocus = false, focusOverride = null, minRows, showBorder = false, onSend, onPlaceholderSelect, showPlaceholderChips = false }: GlowingTextFieldProps) {
     const [displayedPlaceholder, setDisplayedPlaceholder] = useState<string>('');
     const [currentPlaceholderIndex, setCurrentPlaceholderIndex] = useState(0);
     const [isTyping, setIsTyping] = useState(true);
@@ -44,6 +43,8 @@ function GlowingTextField({ isLoading, disabled, onInputChange, onKeyDown, input
         }
     }, [focusOverride]);
 
+    const isLarge = size === Size.Large;
+
     const getFontSize = () => {
         switch (size) {
             case Size.Small:
@@ -54,6 +55,19 @@ function GlowingTextField({ isLoading, disabled, onInputChange, onKeyDown, input
                 return 'text-lg';
             default:
                 return 'text-base';
+        }
+    };
+
+    const getPadding = () => {
+        switch (size) {
+            case Size.Small:
+                return 'px-3 py-3';
+            case Size.Medium:
+                return 'px-4 py-4';
+            case Size.Large:
+                return 'p-4';
+            default:
+                return 'px-4 py-4';
         }
     };
 
@@ -140,12 +154,12 @@ function GlowingTextField({ isLoading, disabled, onInputChange, onKeyDown, input
     const chipPlaceholders = placeholders.filter((_, idx) => idx !== currentPlaceholderIndex);
 
     return (
-        <div className={`flex flex-col gap-3 ${compact ? 'w-full max-w-full' : 'w-full'} overflow-visible`}>
+        <div className={`flex flex-col gap-3 w-full max-w-full overflow-visible p-2`}>
             <div className="grid place-items-stretch overflow-visible">
                 {isLoading && (
                     <div className="absolute inset-0 pointer-events-none overflow-visible">
                         <div className="absolute left-1/2 top-1/2 w-full h-full animate-rect-orbit overflow-visible">
-                            <div className={`absolute ${compact ? 'w-2.5 h-2.5' : 'w-3 h-3'} rounded-full bg-purple-500/60 blur-sm shadow-[0_0_10px_rgba(168,85,247,0.6)] -translate-x-1/2 -translate-y-1/2 overflow-visible`} />
+                            <div className={`absolute w-3 h-3 rounded-full bg-purple-500/60 blur-sm shadow-[0_0_10px_rgba(168,85,247,0.6)] -translate-x-1/2 -translate-y-1/2 overflow-visible`} />
                         </div>
                     </div>
                 )}
@@ -168,40 +182,39 @@ function GlowingTextField({ isLoading, disabled, onInputChange, onKeyDown, input
                                 text-foreground
                                 ${getFontSize()}
                                 resize-none
-                                ${compact ? 'px-3 py-2' : 'p-4'}
+                                ${getPadding()}
                                 ${onSend ? 'pr-14' : ''}
-                                ${compact ? 'leading-normal' : 'leading-relaxed'}
+                                ${isLarge ? 'leading-relaxed' : 'leading-normal'}
                                 placeholder:italic
                                 placeholder:text-muted-foreground
                                 rounded-lg
                                 transition-all
                                 duration-300
                                 focus:outline-none
-                                min-h-15
                             `}
                         onChange={onInputChange}
                         onKeyDown={handleKeyDownInternal}
                         value={inputValue}
                         disabled={disabled}
                         placeholder={displayedPlaceholder + (isTyping && inputValue.length === 0 ? '|' : '')}
-                        minRows={minRows ?? (compact ? 1 : undefined)}
-                        maxRows={compact ? 4 : 10}
+                        minRows={minRows ?? (isLarge ? undefined : 1)}
+                        maxRows={isLarge ? 10 : 4}
                         autoFocus={autoFocus}
                     />
                     {/* Tab hint - shows when placeholder is fully typed and input is empty */}
                     {isFullyTyped && inputValue.length === 0 && onPlaceholderSelect && (
-                        <div className={`absolute right-4 flex items-center gap-1.5 text-xs text-muted-foreground/70 pointer-events-none animate-in fade-in duration-300 ${compact ? 'top-1/2 -translate-y-1/2' : 'bottom-4'}`}>
+                        <div className={`absolute flex items-center gap-1.5 text-xs text-muted-foreground/70 pointer-events-none animate-in fade-in duration-300 ${onSend ? 'right-14' : 'right-4'} ${isLarge ? 'bottom-4' : 'top-1/2 -translate-y-1/2'}`}>
                             <kbd className="px-1.5 py-0.5 bg-muted/30 border border-border/30 rounded text-[10px] font-mono">Tab</kbd>
                             <span>to use</span>
                         </div>
                     )}
-                    {/* Send button - only shows when there's input */}
+                    {/* Send button */}
                     {onSend && (
                         <button
                             type="button"
                             onClick={onSend}
                             disabled={disabled}
-                            className={`absolute right-3 bottom-3 p-2 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all ${inputValue.trim() ? '' : 'opacity-50'}`}
+                            className={`absolute right-3 p-2 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all ${inputValue.trim() ? '' : 'opacity-50'} ${isLarge ? 'bottom-3' : 'top-1/2 -translate-y-1/2'}`}
                             aria-label="Send message"
                         >
                             <Send className="w-5 h-5" />
