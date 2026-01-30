@@ -1221,6 +1221,20 @@ function extractImagesFromAttachments(attachments: SlackAttachment[]): SlackMess
 }
 
 /**
+ * Get the best available URL for a Slack file.
+ * Prefers url_private (full resolution), then falls back through thumbnail sizes.
+ */
+export function pickSlackFileUrl(file: SlackFile): string | undefined {
+  return file.url_private ||
+    file.thumb_1024 ||
+    file.thumb_960 ||
+    file.thumb_800 ||
+    file.thumb_720 ||
+    file.thumb_480 ||
+    file.thumb_360;
+}
+
+/**
  * Extract images from file uploads
  * Note: Slack file URLs require authentication to access
  */
@@ -1236,14 +1250,7 @@ function extractImagesFromFiles(files: SlackFile[]): SlackMessageImage[] {
 
     if (!isImage) continue;
 
-    // Get the best available URL (prefer larger versions for quality)
-    const url = file.url_private ||
-      file.thumb_1024 ||
-      file.thumb_960 ||
-      file.thumb_800 ||
-      file.thumb_720 ||
-      file.thumb_480 ||
-      file.thumb_360;
+    const url = pickSlackFileUrl(file);
 
     if (url) {
       images.push({

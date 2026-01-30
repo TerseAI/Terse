@@ -230,7 +230,7 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
 
             let result;
             try {
-                result = await agentRunner.userMessageRun(userMessage, {
+                result = await agentRunner.userMessageRun(userMessage, [], {
                     runId,
                     userId: userId,
                     agentId: agent.id,
