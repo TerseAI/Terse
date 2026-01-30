@@ -125,6 +125,8 @@ function useAgentSave({
                 const creation = await createAgent(agentData);
 
                 if (creation?.id) {
+                    // Always navigate to the new agent page after creation
+                    // This ensures the UI has the correct backend-assigned trigger IDs
                     navigate(FrontendRoutes.AGENTS.DETAIL(creation.id), { replace: true });
                 }
             }

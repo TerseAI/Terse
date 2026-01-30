@@ -7,6 +7,7 @@ import { CalendarClockIcon } from "@/components/icons/IntegrationIcons";
 import { Button } from "@/components/ui/button";
 import { ManualTriggerDialog } from "../ManualTriggerDialog";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+import { toast } from "sonner";
 
 export function TimeTriggerIntegration({ input, variant, setConfig, agentSaveState }: InputConfigSelectorProps) {
     const existingConfig = input.config as TimeTriggerConfig | undefined;
@@ -26,23 +27,22 @@ export function TimeTriggerIntegration({ input, variant, setConfig, agentSaveSta
             return;
         }
 
-        // If agent is complete but has unsaved changes, save first
+        // If agent is complete but not yet saved to backend, save first
+        // The save will navigate to the new agent page, which will have the correct backend-assigned trigger IDs
         if (agentSaveState.isComplete && !isSavedAgent) {
             setIsSavingBeforeTrigger(true);
             const success = await agentSaveState.saveAgent();
             setIsSavingBeforeTrigger(false);
-            if (!success) {
-                return; // Save failed, don't open trigger dialog
+            if (success) {
+                // After saving a new agent, we navigate to the new agent page.
+                // Show a toast to inform the user they can now trigger.
+                toast.info('Agent saved! Click "Trigger Now" again to run it.');
             }
-        } else if (agentSaveState.isComplete && isSavedAgent) {
-            // Agent is saved but may have unsaved changes - save to ensure backend is up to date
-            setIsSavingBeforeTrigger(true);
-            const success = await agentSaveState.saveAgent();
-            setIsSavingBeforeTrigger(false);
-            if (!success) {
-                return;
-            }
+            // Don't open the dialog here - the navigation will load the new page
+            // where the user can click "Trigger Now" with the correct trigger ID
+            return;
         }
+        // For already-saved agents, just open the dialog directly
 
         setShowManualTrigger(true);
     };
