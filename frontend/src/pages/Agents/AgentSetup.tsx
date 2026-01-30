@@ -61,7 +61,7 @@ export default function AgentSetup() {
         <div className="flex flex-col h-full w-full">
             {/* Header - fades out when chat starts */}
             <div className={cn(
-                "transition-all duration-500 ease-in-out mx-auto max-w-5xl w-full px-4",
+                "transition-all duration-500 ease-in-out mx-auto max-w-5xl w-full",
                 hasStartedChat ? "max-h-0 opacity-0 overflow-hidden" : "max-h-32 opacity-100 pt-8 pb-2"
             )}>
                 <h1 className="text-2xl font-semibold text-foreground">Create a new agent</h1>
@@ -70,7 +70,7 @@ export default function AgentSetup() {
 
             {/* Chat Section - expands when chat starts */}
             <div className={cn(
-                "flex flex-col transition-all duration-500 ease-in-out mx-auto max-w-5xl w-full px-4 pb-6",
+                "flex flex-col transition-all duration-500 ease-in-out mx-auto max-w-5xl w-full pb-3",
                 hasStartedChat ? "flex-1 min-h-0" : "h-[200px]"
             )}>
                 <div className="flex-1 min-h-0 w-full">
