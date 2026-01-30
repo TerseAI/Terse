@@ -54,7 +54,7 @@ export function BuilderChat({ getStateJSON, agentId }: BuilderChatProps) {
     }, [sessionId, getStateJSON]);
 
     return (
-        <div className="h-full flex min-h-0">
+        <div className="h-full flex min-h-0 p-2">
             <Chat
                 key={sessionId}
                 subscribeToEvents={subscribeToEvents}
@@ -75,7 +75,7 @@ function BuilderChatEmptyState() {
                 </div>
                 <h3 className="text-xl font-semibold text-foreground mb-2">Welcome to Terse AI Chat</h3>
                 <p className="text-muted-foreground mb-6">
-                    I'm here to help you create and configure AI agents that automate work for your software team.
+                    I'm here to help manage your AI agents that automate work for your software team.
                 </p>
             </div>
             
@@ -85,10 +85,10 @@ function BuilderChatEmptyState() {
                         <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
                             <Bot className="w-5 h-5 text-primary" />
                         </div>
-                        Create Agents
+                        Manage Agents
                     </h4>
                     <p className="text-sm text-muted-foreground">
-                        Tell me about a problem you want to automate, and I'll help you build an agent with triggers, outputs, prompts, and knowledge bases.
+                        Tell me about a problem you want to automate, and I'll help you manage your agent with triggers, outputs, prompts, and knowledge bases.
                     </p>
                 </div>
                 
@@ -116,10 +116,6 @@ function BuilderChatEmptyState() {
                     </p>
                 </div>
             </div>
-            
-            <p className="mt-6 text-sm text-muted-foreground">
-                Just start chatting to get started! Try saying something like "I want to create an agent that updates Notion when a GitHub PR is opened."
-            </p>
         </div>
     );
 }
