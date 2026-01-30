@@ -127,6 +127,12 @@ export const settings = {
     projectId: optionalEnv('GCP_PROJECT_ID'),
     region: optionalEnv('GCP_REGION', 'us-central1'),
   },
+
+  // Google Cloud Storage
+  gcs: {
+    imageBucket: optionalEnv('GCS_IMAGE_BUCKET', 'terse-documents'),
+    imagePrefix: optionalEnv('GCS_IMAGE_PREFIX', 'events/images'),
+  },
   
   // Cloud Scheduler (for cron jobs)
   cloudScheduler: {
@@ -162,6 +168,7 @@ export const {
   figma,
   slack,
   gcp,
+  gcs,
   cloudScheduler,
   optional,
 } = settings;

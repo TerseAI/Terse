@@ -2,6 +2,7 @@ import { IntegrationType } from "../../shared/Integrations";
 import { AgentTriggerWithConfigs } from "../../types/prisma";
 import { RunHistoryTrigger } from "../../shared/RunHistoryTypes";
 import { Identifiable } from "../../rag/Hydrator";
+import { StoredFile } from "../../services/FileStorageService";
 
 export abstract class InputEvent {
     abstract readonly integrationType: IntegrationType;
@@ -32,11 +33,16 @@ export abstract class InputEvent {
     abstract createTriggerMetadata(): RunHistoryTrigger;
 
     /**
-     * Get image URLs associated with this event.
-     * Events that include images (e.g., Figma comments with visual context) should return their URLs here.
-     * @returns Array of image URL strings. Empty array if no images are available.
+     * Get file attachments associated with this event with full metadata.
+     * Returns files categorized by type (image, document, text) for proper multimodal handling.
+     *
+     * @returns Array of StoredFile objects with URL, mimeType, and category. Empty array if no files.
      */
-    abstract getImageUrls(): string[];
+    getFiles(): StoredFile[] {
+        // Default implementation returns empty array
+        // Subclasses can override to return files with full metadata
+        return [];
+    }
 
     /**
      * Check if this InputEvent implements Identifiable.
