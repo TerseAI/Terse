@@ -17,7 +17,7 @@ import { useAgents } from "@/hooks/api/useAgents";
 import { FrontendRoutes } from "@/shared/FrontendRoutes";
 import { Agent } from "@/shared/types";
 import type { LucideIcon } from "lucide-react";
-import { Bell, Eye, Home, Plug, Plus, Zap } from "lucide-react";
+import { Bell, Home, Plug, Plus, Zap } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { AppSidebarFooter } from "./SidebarFooter";
 import { AppSidebarHeader } from "./SidebarHeader";
@@ -177,27 +177,6 @@ const DefaultApplicationItems: NavItem[] = [
     },
     {
         title: "Agents",
-        url: FrontendRoutes.AGENTS.LIST,
-        icon: Zap,
-        iconColor: "text-primary",
-    }
-]
-
-const BirdsEyeApplicationItems: NavItem[] = [
-    {
-        title: "Birds Eye",
-        url: "/app/birds-eye",
-        icon: Eye,
-        iconColor: "text-primary",
-    },
-    {
-        title: "Home",
-        url: FrontendRoutes.APP,
-        icon: Home,
-        iconColor: "text-primary",
-    },
-    {
-        title: "Channels",
         url: FrontendRoutes.AGENTS.LIST,
         icon: Zap,
         iconColor: "text-primary",
