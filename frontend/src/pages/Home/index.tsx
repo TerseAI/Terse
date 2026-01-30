@@ -16,6 +16,8 @@ function Home() {
     const { agents: recentAgentsData, isLoading: isLoadingAgents } = useRecentAgents(3);
     const { stats, isLoading: isLoadingStats } = useStats();
 
+    console.log('stats', stats);
+
     const hasNoAgents = !isLoadingAllAgents && allAgents.length === 0;
 
     // Show empty state if user has no agents
