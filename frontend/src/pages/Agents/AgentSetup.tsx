@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, Easing } from 'framer-motion';
 import { Loader2 } from 'lucide-react';
 import { useTemplates } from '@/hooks/api/useTemplates';
 import { TemplateCard } from '@/components/Agents/TemplateCard';
@@ -19,6 +19,7 @@ const AGENT_SETUP_PLACEHOLDERS = [
 ];
 
 const ANIMATION_DURATION = 0.8;
+const ANIMATION_EASE: Easing = [0.4, 0, 0.2, 1];
 
 export default function AgentSetup() {
     const { templates, isLoading } = useTemplates();
@@ -63,12 +64,10 @@ export default function AgentSetup() {
     const headerVariants = {
         visible: {
             opacity: 1,
-            y: 0,
         },
         hidden: {
             opacity: 0,
             filter: 'blur(8px)',
-            y: -40,
         },
     };
 
@@ -116,8 +115,8 @@ export default function AgentSetup() {
                             animate="visible"
                             exit="hidden"
                             transition={{
-                                duration: ANIMATION_DURATION,
-                                ease: [0.4, 0, 0.2, 1],
+                                duration: ANIMATION_DURATION/4,
+                                ease: ANIMATION_EASE,
                             }}
                         >
                             <h1 className="text-2xl font-semibold text-foreground">Create a new agent</h1>
@@ -135,6 +134,7 @@ export default function AgentSetup() {
                 animate={hasStartedChat ? "expanded" : "initial"}
                 transition={{
                     duration: ANIMATION_DURATION,
+                    ease: ANIMATION_EASE,
                 }}
             >
                 <div className="flex-1 min-h-0 w-full">
@@ -169,7 +169,7 @@ export default function AgentSetup() {
                             exit="hidden"
                             transition={{
                                 duration: ANIMATION_DURATION,
-                                ease: [0.4, 0, 0.2, 1],
+                                ease: ANIMATION_EASE,
                             }}
                         >
                             <div className="p-6">
