@@ -53,23 +53,18 @@ const SCOPES = [
   "https://www.googleapis.com/auth/gmail.send",
 ];
 
-<<<<<<< HEAD
-export class GmailIntegrationManager implements Integration<GmailIntegration, GmailWebhookEvent, typeof GmailIntegrationMetadata, never>, OAuthIntegrationInstallation<IntegrationType.GMAIL> {
-    constructor() { }
-    integrationType: IntegrationType = IntegrationType.GMAIL;
-=======
 export class GmailIntegrationManager
   implements
     Integration<
       GmailIntegration,
       GmailWebhookEvent,
-      typeof GmailIntegrationMetadata
+      typeof GmailIntegrationMetadata,
+      never
     >,
     OAuthIntegrationInstallation<IntegrationType.GMAIL>
 {
   constructor() {}
   integrationType: IntegrationType = IntegrationType.GMAIL;
->>>>>>> 3e8150ba8a06fa6203038af56f1fb060ca628425
 
   getConfigurationFields(): ConfigurationFieldDefinition[] {
     return [];
