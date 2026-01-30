@@ -15,7 +15,14 @@ datasource db {
 }
 
 model users {
-  id              String   @id @default(cuid())
+  id String @id @default(cuid())
+
+  // To Do, this needs to be made unique in a
+  // future migration.
+  workos_id String @unique
+
+  // Deprecated, we will remove these in a future
+  // migration and use WorkOS as the source of truth
   email           String   @unique
   display_name    String
   github_username String?  @unique
@@ -41,6 +48,8 @@ model users {
   posthog_integrations      posthog_integrations[]
   launchdarkly_integrations launchdarkly_integrations[]
   datadog_integrations      datadog_integrations[]
+
+  @@index([workos_id])
 }
 
 model github_repositories {
