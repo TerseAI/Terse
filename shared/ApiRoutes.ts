@@ -27,6 +27,11 @@ export const ApiRoutes = {
     WORKOS_CALLBACK: "/auth/workos/callback",
   },
 
+  ORGANIZATIONS: {
+    CREATE: "/organizations",
+    GET_CURRENT: "/organizations/current",
+  },
+
   // Stats routes
   STATS: "/stats",
 

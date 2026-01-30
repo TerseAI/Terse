@@ -23,6 +23,7 @@ import {
   authMiddleware,
   authMiddlewareAllowNoOrg,
   callback,
+  getWorkOSWidgetToken,
   login,
   logout,
 } from "./routes/auth";
@@ -98,6 +99,10 @@ import {
   getNotionResources,
   notionOAuthCallback,
 } from "./routes/notion";
+import {
+  createOrganization,
+  getCurrentOrganization,
+} from "./routes/organization";
 import {
   createOrUpdatePosthogIntegration,
   getPosthogIntegrations,
@@ -280,6 +285,21 @@ app.post(ApiRoutes.AUTH.LOGOUT, async (req, res) => {
 app.get(ApiRoutes.AUTH.WORKOS_CALLBACK, (req, res) => {
   callback(req, res);
 });
+
+app.get("/auth/workos/widget-token", authMiddleware, (req, res) =>
+  getWorkOSWidgetToken(req, res),
+);
+
+// MARK: Organizations (WorkOS) - auth without org required so user can create org
+app.post(ApiRoutes.ORGANIZATIONS.CREATE, authMiddlewareAllowNoOrg, (req, res) =>
+  createOrganization(req, res),
+);
+
+app.get(
+  ApiRoutes.ORGANIZATIONS.GET_CURRENT,
+  authMiddlewareAllowNoOrg,
+  (req, res) => getCurrentOrganization(req, res),
+);
 
 // MARK: STATS
 app.get(ApiRoutes.STATS, authMiddleware, async (req, res) => {
