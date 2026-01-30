@@ -3,7 +3,7 @@ import { ModelEvent } from '../../shared/ModelEvents';
 import { storeChatEvent } from './runHistory';
 import type { RunHistoryModelEvent, RunHistoryModelSocketEvent, RunHistoryStreamingParams } from '../../shared/RunHistoryTypes';
 import { randomString } from '../../utility/strings';
-import { emitCacheInvalidationWithWildcard } from '../../realtimeSocket';
+import { emitCacheInvalidationWithWildcard } from '../../services/CacheInvalidationService';
 import logger from '../../logger';
 import { SocketEvents, SocketRooms } from '../../shared/SocketEvents';
 

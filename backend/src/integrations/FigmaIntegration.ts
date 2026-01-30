@@ -29,7 +29,7 @@ import { FrontendRoutes } from "../shared/FrontendRoutes";
 import { ApiRoutes } from "../shared/ApiRoutes";
 import { FileCategory, StoredFile } from "../services/FileStorageService";
 
-export class FigmaIntegrationManager implements Integration<FigmaIntegration, FigmaWebhookEvent, typeof FigmaIntegrationMetadata>, OAuthIntegrationInstallation<IntegrationType.FIGMA> {
+export class FigmaIntegrationManager implements Integration<FigmaIntegration, FigmaWebhookEvent, typeof FigmaIntegrationMetadata, never>, OAuthIntegrationInstallation<IntegrationType.FIGMA> {
   constructor() { }
   integrationType: IntegrationType = IntegrationType.FIGMA;
 

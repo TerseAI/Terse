@@ -4,23 +4,17 @@ import { createClient } from "redis";
 import { createAdapter } from "@socket.io/redis-adapter";
 import { Jwt } from "./utility/jwt";
 import { urls, nodeEnv, optional } from "./config/settings";
-import { SendModelRequest, ModelEvent, ModelRequest, ToolApprovalResponse } from "./shared/ModelEvents";
+import { SendModelRequest, ModelEvent, ToolApprovalResponse } from "./shared/ModelEvents";
 import { db } from "./prismaClient";
-import { AgentRunner } from "./agent/AgentRunner/AgentRunner";
 import { RunContext } from "./agent/AgentRunner/SystemPromptBuilder";
-import { AgentWithRelations } from "./types/prisma";
-import { getInputConfigInclude, getOutputConfigInclude, getKnowledgeBaseConfigInclude } from './utility/prismaIncludes';
-import { OutputFactory } from "./outputs/abstract/OutputFactory";
-import { Output } from "./outputs/abstract/Output";
-import { KnowledgeBaseFactory } from "./knowledgeBase/abstract/KnowledgeBaseFactory";
-import { KnowledgeBase } from "./knowledgeBase/abstract/KnowledgeBase";
-import { ConfigInstance } from "./shared/Configs";
-import { Session } from "./server";
+import { hydrateAgentById, createAgentRunner, formatHydrationError } from "./agent/AgentRunner/AgentHydration";
 import { storeChatEvent, markRunFailed, finalizeRunStatus } from "./agent/AgentRunner/runHistory";
 import { DirectiveTask, directiveTaskQueue } from "./agent/DirectiveAgent/DirectiveAgent";
 import { ApprovalService } from "./services/ApprovalService";
 import logger from "./logger";
 import { SocketEvents, SocketRooms } from "./shared/SocketEvents";
+import { registerBuilderChatHandler } from "./socketHandlers/builderChatHandler";
+import { emitCacheInvalidationWithWildcard } from "./services/CacheInvalidationService";
 
 // Extended Socket type with userId property
 interface AuthenticatedSocket extends Socket {
@@ -30,12 +24,6 @@ interface AuthenticatedSocket extends Socket {
 let io: Server | null = null;
 let pub: ReturnType<typeof createClient> | null = null;
 let sub: ReturnType<typeof createClient> | null = null;
-
-function createKnowledgeBases(
-    agentKnowledgeBases: AgentWithRelations['knowledge_bases']
-): KnowledgeBase<ConfigInstance>[] {
-    return KnowledgeBaseFactory.createKnowledgeBasesFromAgent(agentKnowledgeBases);
-}
 
 export async function initializeRealtimeSocket(server: HttpServer): Promise<Server> {
     logger.info("Initializing realtime socket", { address: server.address()?.toString() });
@@ -148,62 +136,14 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
                 return;
             }
 
-            const agent: AgentWithRelations | null = await prisma.automations.findUnique({
-                where: {
-                    id: runRecord.automation.id,
-                    user_id: userId
-                },
-                include: {
-                    prompt: true,
-                    inputs: {
-                        include: getInputConfigInclude()
-                    },
-                    outputs: {
-                        include: getOutputConfigInclude()
-                    },
-                    knowledge_bases: {
-                        include: getKnowledgeBaseConfigInclude()
-                    },
-                    tool_approvals: true
-                }
-            })
-
-            if (!agent) {
-                logger.error(`[agent:chat:message] Agent not found for automation id: ${runRecord.automation.id}`, { automationId: runRecord.automation.id, userId });
+            // Hydrate agent with all dependencies (outputs, knowledge bases, session)
+            const hydrationResult = await hydrateAgentById(runRecord.automation.id, userId);
+            if (!hydrationResult.success) {
+                logger.error(`[agent:chat:message] ${formatHydrationError(hydrationResult.error)}`, { runId, userId });
                 return;
             }
 
-            if (!agent.outputs || agent.outputs.length === 0) {
-                logger.error(`[agent:chat:message] No output integrations found for agent: ${agent.id}`, { agentId: agent.id, userId });
-                return;
-            }
-
-            // Create outputs from agent configuration
-            let outputs: Output<ConfigInstance>[];
-            try {
-                outputs = OutputFactory.createOutputsFromAgent(agent);
-            } catch (error) {
-                logger.error(`[agent:chat:message] Failed to create outputs for agent: ${agent.id}`, { error, agentId: agent.id, userId });
-                return;
-            }
-
-            const user = await prisma.users.findUnique({
-                where: {
-                    id: userId
-                }
-            });
-            if(!user) {
-                logger.error(`[agent:chat:message] User not found for userId: ${userId}`, { userId });
-                return;
-            }
-            
-
-            // Create base session for AgentRunner
-            const session: Session = {
-                user: user,
-                isUserInitiated: true,
-            };
-
+            const { agent, user, session } = hydrationResult.data;
             const userMessage = message.user_message;
 
             // Ensure run status is 'in_progress' so streaming works
@@ -221,11 +161,8 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
             emitCacheInvalidationWithWildcard(user.id, 'runHistory', agent.id);
             emitCacheInvalidationWithWildcard(user.id, 'chatHistory', runId);
 
-            // Create knowledge bases from agent configuration
-            const knowledgeBases = createKnowledgeBases(agent.knowledge_bases || []);
-
             const runContext: RunContext = { runId };
-            const agentRunner = new AgentRunner(session, outputs, knowledgeBases, agent, runContext);
+            const agentRunner = createAgentRunner(hydrationResult.data, runContext);
             await agentRunner.initializeAgent();
 
             let result;
@@ -295,6 +232,9 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
             }
         });
 
+        // Listen for builder chat messages (in-app agent builder)
+        registerBuilderChatHandler(socket, userId);
+
         // presence: mark online (60s TTL), refresh every 25s (only if Redis is available)
         if (pub) {
             const key = `presence:${room}`;
@@ -317,32 +257,6 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
 
 export function getRealtimeSocket(): Server | null {
     return io;
-}
-
-export function emitCacheInvalidationWithKey(
-    userId: string,
-    key: string
-) {
-    if (!io) {
-        logger.warn("Socket.IO server not initialized");
-        return;
-    }
-    io.to(SocketRooms.user(userId)).emit(SocketEvents.INVALIDATE, { key });
-}
-
-export function emitCacheInvalidationWithWildcard(
-    userId: string,
-    key: string,
-    id: string
-) {
-    if (!io) {
-        logger.warn("Socket.IO server not initialized");
-        return;
-    }
-    // Send tag-based invalidation payload
-    // If id is provided, frontend will match on both tag and id
-    // If id is not provided, frontend will match on tag only
-    io.to(SocketRooms.user(userId)).emit(SocketEvents.INVALIDATE, { key, id });
 }
 
 function getSocketCorsOrigin(): boolean | string | string[] {

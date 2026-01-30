@@ -1,5 +1,5 @@
 import { Tool } from "@openai/agents";
-import { Session } from "../../server";
+import { Session } from "../../types/session";
 import { AgentKnowledgeBaseWithConfigs, PrismaTransaction, User } from "../../types/prisma";
 import { KnowledgeBaseConfigType } from "@prisma/client";
 import { ConfigInstance, PosthogConfig } from "../../shared/Configs";

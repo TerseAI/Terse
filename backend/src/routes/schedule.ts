@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import { cloudScheduler } from "../config/settings";
 import { CronJobIntegrationManager } from "../integrations/CronJobIntegration";
 import logger from "../logger";
-import { Session } from "../server";
+import { Session } from "../types/session";
 
 export interface ManualTriggerRequest {
     context?: string;

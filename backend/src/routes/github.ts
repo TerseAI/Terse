@@ -1,13 +1,12 @@
 import { Request, Response } from "express";
 import { githubApp } from "../config/settings";
 import {
-  getAppInstallationRepositories,
   getAppInstallationsForUser,
   GithubIntegrationManager,
 } from "../integrations/GithubIntegration";
 import logger from "../logger";
 import { db } from "../prismaClient";
-import { emitCacheInvalidationWithKey } from "../realtimeSocket";
+import { emitCacheInvalidationWithKey } from "../services/CacheInvalidationService";
 import {
   GithubAppInstallationDeletedRequest,
   GithubAppInstallationRepository,
@@ -178,40 +177,9 @@ export async function fetchGithubRepositoriesForIntegration(
   userId: string,
   installationId: string,
 ): Promise<GetGithubRepositoriesForIntegrationResponse> {
-  if (!installationId) {
-    throw createRouteError("Installation ID is required", 400);
-  }
-
-  const accessToken = await db().github_app_tokens.findFirst({
-    where: { user_id: userId },
-  });
-  if (!accessToken) {
-    throw createRouteError("Unauthorized", 401);
-  }
-
-  const installations = await getAppInstallationsForUser(
-    accessToken.access_token,
-  );
-  const targetInstallation = installations.installations.find(
-    (installation) => installation.id === Number(installationId),
-  );
-  if (!targetInstallation) {
-    throw createRouteError("Installation not found", 404);
-  }
-
-  const installationRepositories: GithubAppInstallationRepository[] =
-    await getAppInstallationRepositories(
-      accessToken.access_token,
-      targetInstallation.id,
-    );
-
-  return {
-    repositories: installationRepositories.map((r) => ({
-      id: r.id,
-      name: r.name,
-      owner: r.owner.login,
-    })),
-  };
+    const manager = new GithubIntegrationManager();
+    const repositories = await manager.fetchResourcesForInstance(userId, installationId);
+    return { repositories };
 }
 
 export async function getGithubRepositoriesForIntegration(

@@ -1,5 +1,5 @@
 import { Agent, AgentInputItem, AgentOutputType, Tool, RunResult, RunState, RunToolApprovalItem, Runner, run, user, StreamedRunResult, RunStreamEvent, protocol } from '@openai/agents';
-import { Session } from '../../server';
+import { Session } from "../../types/session";
 import { SystemPromptBuilder, RunContext, SystemPromptBuilderDependencies } from './SystemPromptBuilder';
 import { InputEvent } from '../../integrations/abstract/InputEvent';
 import { Output } from '../../outputs/abstract/Output';
@@ -9,7 +9,7 @@ import { settings } from '../../config/settings';
 import { formatAgentTriggersForAgent } from './formatContext';
 import { UserFormatter } from '../../utility/UserFormatter';
 import { transformAgentStreamToModelEvents } from '../streaming';
-import { getRealtimeSocket } from '../../realtimeSocket';
+import { getSocketIO } from '../../services/CacheInvalidationService';
 import type { RunHistoryAction, RunHistoryStreamingParams, RunHistoryModelEvent, RunHistoryModelSocketEvent } from '../../shared/RunHistoryTypes';
 import { EntityType } from '../../shared/Entities';
 import { ChangedItem, ChangeEventType, ModelEvent } from '../../shared/ModelEvents';
@@ -535,7 +535,7 @@ ${inputEvent.formatForAgentRunner()}
         result: StreamedRunResult<TSession, TAgent>,
         streamingParams: RunHistoryStreamingParams
     ): Promise<void> {
-        const io = getRealtimeSocket();
+        const io = getSocketIO();
 
         const eventStream = transformAgentStreamToModelEvents(result, {
             toolToIntegrationMap: this.getToolToIntegrationMap(),
@@ -607,7 +607,7 @@ ${inputEvent.formatForAgentRunner()}
 
             // Emit ToolApprovalRequest events for each interruption
             if (streamingParams && this.shouldEnableStreaming(streamingParams)) {
-                const io = getRealtimeSocket();
+                const io = getSocketIO();
                 for (const interruption of result.interruptions) {
                     // Safely extract callId from interruption rawItem
                     const getCallId = (int: RunToolApprovalItem): string => {

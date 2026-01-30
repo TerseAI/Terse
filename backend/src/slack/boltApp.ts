@@ -8,7 +8,7 @@ import { db } from "../prismaClient";
 import { SlackIntegrationManager, SlackMessageEvent } from "../integrations/SlackIntegration";
 import { ApprovalService } from "../services/ApprovalService";
 import logger from "../logger";
-import SlackChatInterface from "../agent/ChatAgent/SlackChatInterface";
+import SlackChatInterface from "../agent/ChatAgent/ChatInterfaces/SlackChatInterface";
 import ChatAgent from "../agent/ChatAgent/ChatAgent";
 import { INTEGRATION_REGISTRY } from "../integrations/abstract/IntegrationRegistry";
 import { isFormIntegrationInstallation, isOAuthIntegrationInstallation, FormFieldDefinition, ConfigurationFieldDefinition, FormSubmissionInput } from "../integrations/abstract/Integration";
@@ -192,7 +192,7 @@ export async function setupSlackBolt() {
         });
         return;
       }
-      const slackChatInterface = new SlackChatInterface(event.channel, client, userId, event.user, chatId);
+      const slackChatInterface = new SlackChatInterface(event.channel, client, userId, chatId, event.user);
       const chatAgent = new ChatAgent(slackChatInterface, chatId, userId);
 
       const messageWithContext = await buildSlackChannelContextMessage(client, message, event.channel);

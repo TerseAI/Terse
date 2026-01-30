@@ -1,9 +1,9 @@
-import { Integration, OAuthIntegrationInstallation, ConfigurationFieldDefinition } from "./abstract/Integration";
+import { Integration, OAuthIntegrationInstallation, ConfigurationFieldDefinition, IntegrationWithResources } from "./abstract/Integration";
 import { db } from "../prismaClient";
 import { LinearIntegration, LinearIntegrationMetadata } from "../shared/Integrations";
 import { IntegrationType, InstallationOptionsFor, AdditionalStateParams } from "../shared/Integrations";
 import { AgentTriggerWithConfigs } from "../types/prisma";
-import { OAuthInstallationDetails } from "../shared/types";
+import { OAuthInstallationDetails, LinearTeam } from "../shared/types";
 import jwt from "jsonwebtoken";
 import { settings, OAUTH_TOKEN_REFRESH_THRESHOLD_MS } from "../config/settings";
 import { Request, Response } from "express";
@@ -21,7 +21,7 @@ import { IntegrationCompletedTask } from "./IntegrationCompletedTask";
 import { FrontendRoutes } from "../shared/FrontendRoutes";
 import { StoredFile } from "../services/FileStorageService";
 
-export class LinearIntegrationManager implements Integration<LinearIntegration, LinearWebhookPayload, typeof LinearIntegrationMetadata>, OAuthIntegrationInstallation<IntegrationType.LINEAR> {
+export class LinearIntegrationManager implements Integration<LinearIntegration, LinearWebhookPayload, typeof LinearIntegrationMetadata, LinearTeam>, OAuthIntegrationInstallation<IntegrationType.LINEAR> {
     constructor() { }
     integrationType: IntegrationType = IntegrationType.LINEAR;
 
@@ -438,6 +438,51 @@ export class LinearIntegrationManager implements Integration<LinearIntegration, 
             // Return null on error - caller should handle
             return null;
         }
+    }
+
+    async fetchResourcesForInstance(userId: string, integrationId: string, query?: string): Promise<LinearTeam[]> {
+        const integration = await db().linear_integrations.findFirst({
+            where: { id: integrationId, user_id: userId },
+        });
+
+        if (!integration) {
+            throw new Error("Linear integration not found");
+        }
+
+        const accessToken = await this.getAccessToken(integrationId);
+        if (!accessToken) {
+            throw new Error("Could not get valid access token");
+        }
+
+        const adapter = new LinearAdapter(accessToken);
+        const teams = await adapter.getTeams();
+
+        let result = teams.map(team => ({ id: team.id, name: team.name, key: team.key }));
+
+        if (query) {
+            const normalizedQuery = query.trim().toLowerCase();
+            result = result.filter(team =>
+                team.name.toLowerCase().includes(normalizedQuery) ||
+                team.key.toLowerCase().includes(normalizedQuery)
+            );
+        }
+
+        return result;
+    }
+
+    async fetchResourcesForUser(userId: string, query?: string): Promise<IntegrationWithResources<LinearIntegration, LinearTeam>[]> {
+        const integrations = await this.getInstancesForUser(userId);
+        return Promise.all(
+            integrations.map(async (integration) => {
+                try {
+                    const resources = await this.fetchResourcesForInstance(userId, integration.id, query);
+                    return { integration, resources };
+                } catch (error) {
+                    logger.warn(`Failed to fetch resources for Linear integration ${integration.id}`, { error, integrationId: integration.id });
+                    return { integration, resources: [] };
+                }
+            })
+        );
     }
 }
 

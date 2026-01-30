@@ -1,20 +1,14 @@
-import chalk from 'chalk';
 import { db } from '../../prismaClient';
 import { Agent as PrismaAgent, AgentWithRelations, User } from '../../types/prisma';
 import { InputEvent } from '../../integrations/abstract/InputEvent';
-import { OutputFactory } from '../../outputs/abstract/OutputFactory';
-import { Output } from '../../outputs/abstract/Output';
-import { AgentRunner, SessionWithTracking } from './AgentRunner';
+import { SessionWithTracking, ApprovalResult } from './AgentRunner';
 import { filterEvent } from './EventFilter';
 import { createRunRecord, finalizeRunStatus, markRunFailed, markRunProcessed, markRunSkipped, appendRunAction } from './runHistory';
-import { ApprovalResult } from './AgentRunner';
 import { Agent as OpenAIAgent, AgentOutputType, RunResult } from '@openai/agents';
-import { Session } from '../../server';
-import { emitCacheInvalidationWithKey, emitCacheInvalidationWithWildcard } from '../../realtimeSocket';
-import { getInputConfigInclude, getOutputConfigInclude, getKnowledgeBaseConfigInclude } from '../../utility/prismaIncludes';
-import { KnowledgeBaseFactory } from '../../knowledgeBase/abstract/KnowledgeBaseFactory';
-import { KnowledgeBase } from '../../knowledgeBase/abstract/KnowledgeBase';
-import { ConfigInstance } from '../../shared/Configs';
+import { Session } from '../../types/session';
+import { emitCacheInvalidationWithKey, emitCacheInvalidationWithWildcard } from '../../services/CacheInvalidationService';
+import { getAgentHydrationInclude } from '../../utility/prismaIncludes';
+import { hydrateAgentFromRecord, createAgentRunner, formatHydrationError } from './AgentHydration';
 import { RunHistoryAction } from '../../shared/RunHistoryTypes';
 import { RunContext } from './SystemPromptBuilder';
 import logger from '../../logger';
@@ -59,19 +53,7 @@ export class EventProcessor {
                 user_id: this.user.id,
                 is_active: true,
             },
-            include: {
-                prompt: true,
-                inputs: {
-                    include: getInputConfigInclude()
-                },
-                outputs: {
-                    include: getOutputConfigInclude()
-                },
-                knowledge_bases: {
-                    include: getKnowledgeBaseConfigInclude()
-                },
-                tool_approvals: true
-            }
+            include: getAgentHydrationInclude()
         })
 
         if (agents.length === 0) {
@@ -108,12 +90,6 @@ export class EventProcessor {
         return results;
     }
 
-    private createKnowledgeBases(
-        agentKnowledgeBases: AgentWithRelations['knowledge_bases']
-    ): KnowledgeBase<ConfigInstance>[] {
-        return KnowledgeBaseFactory.createKnowledgeBasesFromAgent(agentKnowledgeBases);
-    }
-
     private async processAgent(agent: AgentWithRelations): Promise<ProcessorResult> {
         logger.info(`Processing agent: ${agent.name} (${agent.id})`);
 
@@ -130,25 +106,14 @@ export class EventProcessor {
         emitCacheInvalidationWithWildcard(this.user.id, 'runHistory', agent.id);
         emitCacheInvalidationWithKey(this.user.id, 'recentAgents');
 
-        // Get the outputs from agent relations (already fetched with config)
-        if (!agent.outputs || agent.outputs.length === 0) {
-            return new ProcessorResult(false, "No output integrations found for this agent", agent);
+        // Hydrate agent with outputs, knowledge bases, and session
+        const hydrationResult = await hydrateAgentFromRecord(agent, this.user.id);
+        if (!hydrationResult.success) {
+            const errorMessage = formatHydrationError(hydrationResult.error);
+            return new ProcessorResult(false, errorMessage, agent);
         }
 
-        // Create outputs from agent configuration
-        let outputs: Output<ConfigInstance>[];
-        try {
-            outputs = OutputFactory.createOutputsFromAgent(agent);
-        } catch (error) {
-            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-            return new ProcessorResult(false, `Failed to create outputs: ${errorMessage}`, agent);
-        }
-
-        // Create base session for AgentRunner
-        const session: Session = {
-            user: this.user,
-            isUserInitiated: true,
-        };
+        const { session } = hydrationResult.data;
 
         // Filter the event using AI to see if it's relevant to this agent
         let filterResult;
@@ -203,12 +168,9 @@ export class EventProcessor {
 
         logger.info(`Event is relevant to agent "${agent.name}"`);
 
-        // Create knowledge bases from agent configuration
-        const knowledgeBases = this.createKnowledgeBases(agent.knowledge_bases || []);
-
-        // Create agent runner with the session and outputs
+        // Create agent runner with hydrated dependencies
         const runContext: RunContext = { runId };
-        const agentRunner = new AgentRunner(session, outputs, knowledgeBases, agent, runContext);
+        const agentRunner = createAgentRunner(hydrationResult.data, runContext);
         agentRunner.setInputEvent(this.inputEvent);
 
         // Run the agent runner with streaming parameters

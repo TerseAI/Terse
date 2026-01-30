@@ -5,7 +5,7 @@ import { createGitHubClient, searchCode, getGitHubAccessToken } from "../githubA
 import { IntegrationType } from "../../../shared/Integrations";
 import { RunHistoryActionType } from "@prisma/client";
 import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner";
-import { Session } from "../../../server";
+import { Session } from "../../../types/session";
 import { ToolName } from "../../../tools/ToolNames";
 
 /**

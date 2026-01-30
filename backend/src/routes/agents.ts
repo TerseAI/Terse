@@ -10,7 +10,8 @@ import { getInputConfigInclude, getOutputConfigInclude, getKnowledgeBaseConfigIn
 import { TRIGGER_REGISTRY } from "../triggers/TriggerRegistry";
 import { INTEGRATION_REGISTRY, isSystemIntegration } from "../integrations/abstract/IntegrationRegistry";
 import { OutputFactory } from "../outputs/abstract/OutputFactory";
-import { emitCacheInvalidationWithKey } from "../realtimeSocket";
+import { emitCacheInvalidationWithKey, emitCacheInvalidationWithWildcard } from "../services/CacheInvalidationService";
+import { agentDetailKey } from "../shared/InvalidationKeys";
 import logger from "../logger";
 import { KnowledgeBaseFactory } from "../knowledgeBase/abstract/KnowledgeBaseFactory";
 import { isValidToolName } from "../tools/ToolNames";
@@ -99,13 +100,13 @@ async function upsertNotificationSettings(
 function validateAndDeduplicateToolApprovals(toolApprovals: string[]): string[] {
     // Deduplicate tool approvals to prevent unique constraint violations
     const uniqueToolApprovals = Array.from(new Set(toolApprovals));
-    
+
     // Validate all tool names
     const invalidToolNames = uniqueToolApprovals.filter(toolName => !isValidToolName(toolName));
     if (invalidToolNames.length > 0) {
         throw new Error(`Invalid tool names: ${invalidToolNames.join(', ')}`);
     }
-    
+
     return uniqueToolApprovals;
 }
 
@@ -493,6 +494,10 @@ export async function updateAgentForUser(
 
     // Invalidate recent agents cache
     emitCacheInvalidationWithKey(userId, 'recentAgents');
+    const agentKey = agentDetailKey(agentId);
+    if (agentKey) {
+        emitCacheInvalidationWithWildcard(userId, agentKey[0], agentKey[1].id);
+    }
 
     return { id: agentId };
 }
@@ -597,19 +602,19 @@ export async function getRecentAgents(req: Request, res: Response) {
                 where: {
                     user_id: userId,
                 },
-            include: {
-                prompt: true,
-                inputs: {
-                    include: getInputConfigInclude()
+                include: {
+                    prompt: true,
+                    inputs: {
+                        include: getInputConfigInclude()
+                    },
+                    outputs: {
+                        include: getOutputConfigInclude()
+                    },
+                    knowledge_bases: {
+                        include: getKnowledgeBaseConfigInclude()
+                    },
+                    tool_approvals: true
                 },
-                outputs: {
-                    include: getOutputConfigInclude()
-                },
-                knowledge_bases: {
-                    include: getKnowledgeBaseConfigInclude()
-                },
-                tool_approvals: true
-            },
                 orderBy: { updated_at: 'desc' },
                 take: limit
             }) as Promise<AgentWithRelations[]>,
@@ -658,8 +663,8 @@ export async function getUserAgent(req: Request, res: Response) {
     const userId = req.session.user.id;
     const agentId = req.params.id;
 
-        try {
-            const agent: AgentWithRelations | null = await db().automations.findFirst({
+    try {
+        const agent: AgentWithRelations | null = await db().automations.findFirst({
             where: {
                 id: agentId,
                 user_id: userId

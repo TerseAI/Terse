@@ -11,6 +11,7 @@ interface UseChatOptions {
     onUserMessage?: (message: string) => void;
     onToolCall?: (req: ToolCall) => void;
     onToolCallComplete?: (req: ToolCallComplete) => void;
+    addUserTurnsLocally?: boolean;
 }
 
 export function useChat({
@@ -20,6 +21,7 @@ export function useChat({
     onUserMessage,
     onToolCall,
     onToolCallComplete,
+    addUserTurnsLocally = false,
 }: UseChatOptions) {
     const {
         turns,
@@ -33,6 +35,8 @@ export function useChat({
         handleThinking,
         handleToolApprovalRequest,
         handleToolApprovalResponse,
+        addUserTurn,
+        handleSnippet,
     } = useChatTurns({initialTurns});
 
     const { sendMessage: sendSocketMessage} = useCompletionSocket({
@@ -52,12 +56,16 @@ export function useChat({
         onFilterResult: handleFilterResult,
         onThinking: handleThinking,
         onToolApprovalRequest: handleToolApprovalRequest,
-        onToolApprovalResponse: handleToolApprovalResponse
+        onToolApprovalResponse: handleToolApprovalResponse,
+        onSnippet: handleSnippet,
     });
 
     const { input, setInput, sendMessage } = useChatInput({
         sendMessage: sendSocketMessage,
         onUserMessage: (message: string) => {
+            if (addUserTurnsLocally) {
+                addUserTurn(message);
+            }
             onUserMessage?.(message);
         }
     });

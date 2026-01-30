@@ -13,7 +13,7 @@ import { Tooltip, TooltipTrigger, TooltipContent } from "../ui/tooltip";
 import { useState } from "react";
 import { BackendProvider } from "@/services/backend";
 
-function LaunchDarklyIntegrationCard({ className, isActive = true }: { className?: string; isActive?: boolean }) {
+function LaunchDarklyIntegrationCard({ className, isActive = true, stateToken }: { className?: string; isActive?: boolean; stateToken?: string }) {
     const { integrations, isLoading, mutate } = useLaunchdarklyIntegrations(); 
     const [showForm, setShowForm] = useState(false);
     const [apiKey, setApiKey] = useState("");
@@ -32,7 +32,7 @@ function LaunchDarklyIntegrationCard({ className, isActive = true }: { className
         setIsSubmitting(true);
 
         try {
-            await BackendProvider.createOrUpdateLaunchDarklyIntegration(apiKey);
+            await BackendProvider.createOrUpdateLaunchDarklyIntegration(apiKey, stateToken);
             setShowForm(false);
             setApiKey("");
             mutate(); // Refresh integrations list

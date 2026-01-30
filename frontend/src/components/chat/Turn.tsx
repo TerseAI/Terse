@@ -3,8 +3,9 @@ import { HandThumbUpIcon as HandThumbUpFilledIcon, HandThumbDownIcon as HandThum
 import { useState } from "react";
 import TokenStream from "./TokenStream";
 
-import { ChangedItem, SharedErrorContext } from "../../shared/ModelEvents";
+import { ChangedItem, SharedErrorContext, ChatSnippet } from "../../shared/ModelEvents";
 import FunctionCallItem from "./FunctionCallItem";
+import { SnippetView } from "./SnippetView";
 
 interface Turn {
     role: 'user' | 'assistant';
@@ -19,6 +20,7 @@ interface Turn {
         reason: string;
         confidence: number;
     };
+    snippets?: ChatSnippet[];
     disableAnimation?: boolean;
     onApprove?: (stepId: string) => void;
     onReject?: (stepId: string) => void;
@@ -39,7 +41,7 @@ interface FunctionCallEvent {
     errorContext?: SharedErrorContext;
 }
 
-function TurnView({ role, text, function_calls, isFailure = false, isGenerating = false, isThinking = false, filter_result, disableAnimation = false, onApprove, onReject }: Turn) {
+function TurnView({ role, text, function_calls, isFailure = false, isGenerating = false, isThinking = false, filter_result, snippets = [], disableAnimation = false, onApprove, onReject }: Turn) {
     const isUser = role === 'user';
     const isAssistantFinishedGenerating = !isGenerating && role === 'assistant' && text.length > 0;
     // Expanded state - show all steps with status
@@ -92,6 +94,14 @@ function TurnView({ role, text, function_calls, isFailure = false, isGenerating 
                         onReject={onReject}
                     />
                 ))}
+
+                {snippets.length > 0 && (
+                    <div className="space-y-2 mt-2">
+                        {snippets.map((snippet) => (
+                            <SnippetView key={snippet.id} snippet={snippet} />
+                        ))}
+                    </div>
+                )}
 
                 {isAssistantFinishedGenerating && (
                     <div className="flex gap-2">

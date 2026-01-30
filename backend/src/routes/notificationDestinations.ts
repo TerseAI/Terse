@@ -7,7 +7,7 @@ import {
     SlackNotificationDestination,
     NotificationDestinationType as SharedNotificationDestinationType 
 } from "../shared/Notifications";
-import { emitCacheInvalidationWithKey } from "../realtimeSocket";
+import { emitCacheInvalidationWithKey } from "../services/CacheInvalidationService";
 import { notificationDestinationsKey } from "../shared/InvalidationKeys";
 import { UserNotificationDestination } from "../types/prisma";
 import logger from "../logger";

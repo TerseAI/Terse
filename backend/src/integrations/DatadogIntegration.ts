@@ -6,7 +6,7 @@ import { AgentTriggerWithConfigs } from "../types/prisma";
 import logger from "../logger";
 import { getDatadogApiUrl } from "../utility/datadog";
 
-export class DatadogIntegrationManager implements Integration<DatadogIntegration, never, typeof DatadogIntegrationMetadata>, FormIntegrationInstallation<IntegrationType.DATADOG> {
+export class DatadogIntegrationManager implements Integration<DatadogIntegration, never, typeof DatadogIntegrationMetadata, never>, FormIntegrationInstallation<IntegrationType.DATADOG> {
     constructor() { }
     integrationType: IntegrationType = IntegrationType.DATADOG;
 

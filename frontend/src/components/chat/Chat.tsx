@@ -1,4 +1,4 @@
-import { forwardRef } from "react";
+import { forwardRef, useImperativeHandle, useRef } from "react";
 import { ChatLayout, type ChatLayoutHandle } from "./ChatLayout";
 import { useChat } from "./hooks/useChat";
 import { Turn } from "./Turn";
@@ -13,19 +13,30 @@ type ChatProps = {
     onUserMessage?: (message: string) => void;
     onHandleApprove?: (stepId: string) => void;
     onHandleReject?: (stepId: string) => void;
+    addUserTurnsLocally?: boolean;
+    inputSize?: 'small' | 'medium' | 'large';
+    placeholders?: string[];
+    showPlaceholderChips?: boolean;
 };
 
-export type ChatHandle = ChatLayoutHandle;
+export type ChatHandle = ChatLayoutHandle & {
+    setInput: (value: string) => void;
+};
 
-const Chat = forwardRef<ChatHandle, ChatProps>(function Chat({ 
+const Chat = forwardRef<ChatHandle, ChatProps>(function Chat({
     initialTurns,
-    EmptyContentPlaceholder,  
+    EmptyContentPlaceholder,
     subscribeToEvents,
     sendMessage,
     onUserMessage,
     onHandleApprove,
     onHandleReject,
+    addUserTurnsLocally,
+    inputSize = 'small',
+    placeholders = [],
+    showPlaceholderChips = false,
 }, ref) {
+    const chatLayoutRef = useRef<ChatLayoutHandle>(null);
     const { turns, isPendingAssistantResponse, input, setInput, sendMessage: sendUserMessage, sendModelRequest } = useChat({
         subscribeToEvents,
         sendMessage,
@@ -33,21 +44,30 @@ const Chat = forwardRef<ChatHandle, ChatProps>(function Chat({
         onUserMessage,
         onToolCall: () => {},
         onToolCallComplete: () => {},
+        addUserTurnsLocally,
     });
+
+    // Expose both ChatLayout methods and setInput to parent
+    useImperativeHandle(ref, () => ({
+        scrollToBottom: () => chatLayoutRef.current?.scrollToBottom(),
+        setInput,
+    }));
 
     return (
         <ChatLayout
-            ref={ref}
+            ref={chatLayoutRef}
             turns={turns}
             isPendingAssistantResponse={isPendingAssistantResponse}
             onSendMessage={sendUserMessage}
             onSendModelRequest={sendModelRequest}
             input={input}
             setInput={setInput}
-            placeholders={["Chat with the AI assistant"]}
+            placeholders={placeholders}
             EmptyContentPlaceholder={EmptyContentPlaceholder}
             onApprove={onHandleApprove}
             onReject={onHandleReject}
+            inputSize={inputSize}
+            showPlaceholderChips={showPlaceholderChips}
         />
     );
 });

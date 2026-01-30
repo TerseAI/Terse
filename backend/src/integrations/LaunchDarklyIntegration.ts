@@ -1,11 +1,12 @@
-import { FormIntegrationInstallation, Integration, FormFieldDefinition, FormSubmissionInput, FormSubmissionResult } from "./abstract/Integration";
+import { FormIntegrationInstallation, Integration, FormFieldDefinition, FormSubmissionInput, FormSubmissionResult, IntegrationWithResources } from "./abstract/Integration";
 import { db } from "../prismaClient";
 import { LaunchDarklyIntegration, LaunchDarklyIntegrationMetadata } from "../shared/Integrations";
 import { IntegrationType } from "../shared/Integrations";
 import { AgentTriggerWithConfigs } from "../types/prisma";
+import { LaunchDarklyProject } from "../shared/types";
 import logger from "../logger";
 
-export class LaunchDarklyIntegrationManager implements Integration<LaunchDarklyIntegration, never, typeof LaunchDarklyIntegrationMetadata>, FormIntegrationInstallation<IntegrationType.LAUNCHDARKLY> {
+export class LaunchDarklyIntegrationManager implements Integration<LaunchDarklyIntegration, never, typeof LaunchDarklyIntegrationMetadata, LaunchDarklyProject>, FormIntegrationInstallation<IntegrationType.LAUNCHDARKLY> {
     constructor() { }
     integrationType: IntegrationType = IntegrationType.LAUNCHDARKLY;
 
@@ -218,4 +219,56 @@ export class LaunchDarklyIntegrationManager implements Integration<LaunchDarklyI
         }
     }
 
+    async fetchResourcesForInstance(userId: string, integrationId: string, query?: string): Promise<LaunchDarklyProject[]> {
+        const integration = await db().launchdarkly_integrations.findFirst({
+            where: { id: integrationId, user_id: userId },
+        });
+
+        if (!integration) {
+            throw new Error("LaunchDarkly integration not found");
+        }
+
+        const response = await fetch('https://app.launchdarkly.com/api/v2/projects', {
+            method: 'GET',
+            headers: { 'Authorization': integration.api_key, 'Content-Type': 'application/json' },
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(response.status === 401 ? 'Invalid API key' : errorText);
+        }
+
+        const projectsData = await response.json();
+        let projects = Array.isArray(projectsData) ? projectsData : (projectsData.items || projectsData.projects || []);
+
+        let projectsList: LaunchDarklyProject[] = projects.map((p: any) => ({
+            key: p.key || p._id,
+            name: p.name || p.key || 'Unnamed Project',
+        }));
+
+        if (query) {
+            const queryLower = query.toLowerCase();
+            projectsList = projectsList.filter(p =>
+                p.name.toLowerCase().includes(queryLower) ||
+                p.key.toLowerCase().includes(queryLower)
+            );
+        }
+
+        return projectsList;
+    }
+
+    async fetchResourcesForUser(userId: string, query?: string): Promise<IntegrationWithResources<LaunchDarklyIntegration, LaunchDarklyProject>[]> {
+        const integrations = await this.getInstancesForUser(userId);
+        return Promise.all(
+            integrations.map(async (integration) => {
+                try {
+                    const resources = await this.fetchResourcesForInstance(userId, integration.id, query);
+                    return { integration, resources };
+                } catch (error) {
+                    logger.warn(`Failed to fetch resources for LaunchDarkly integration ${integration.id}`, { error, integrationId: integration.id });
+                    return { integration, resources: [] };
+                }
+            })
+        );
+    }
 }

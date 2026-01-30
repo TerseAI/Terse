@@ -1,12 +1,12 @@
 import { Agent, AgentInputItem, run, StreamedRunResult, AgentOutputType } from '@openai/agents';
 import { InputEvent } from "../../integrations/abstract/InputEvent";
 import { AgentPrompt } from "../../types/prisma";
-import { Session } from "../../server";
+import { Session } from "../../types/session";
 import { transformAgentStreamToModelEvents } from '../streaming';
 import { z } from "zod";
 import type { RunHistoryStreamingParams, RunHistoryModelEvent, RunHistoryModelSocketEvent } from '../../shared/RunHistoryTypes';
 import { storeChatEvent } from './runHistory';
-import { getRealtimeSocket } from '../../realtimeSocket';
+import { getSocketIO } from '../../services/CacheInvalidationService';
 import { randomString } from '../../utility/strings';
 import { settings } from '../../config/settings';
 import { runnerFactory } from '../runner';
@@ -152,7 +152,7 @@ export async function filterEvent(
 
         // Handle streaming and channel management if streamingParams are provided
         if (streamingParams?.runId && streamingParams?.userId && streamingParams?.agentId) {
-            const io = getRealtimeSocket();
+            const io = getSocketIO();
             const userRoom = SocketRooms.user(streamingParams.userId);
 
             try {
@@ -206,7 +206,7 @@ export async function filterEvent(
             };
             const filterEventId = await storeChatEvent(streamingParams.runId, filterResultEvent);
 
-            const io = getRealtimeSocket();
+            const io = getSocketIO();
             if (io) {
                 const userRoom = `user:${streamingParams.userId}`;
                 const runHistoryModelEvent: RunHistoryModelEvent = {

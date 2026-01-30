@@ -4,9 +4,7 @@ import crypto from "crypto";
 import { LinearWebhookPayload } from "../utility/LinearWebhookPayload";
 import { LinearIntegrationManager } from "../integrations/LinearIntegration";
 import { settings } from "../config/settings";
-import { db } from "../prismaClient";
 import { LinearTeam } from "../shared/types";
-import { LinearAdapter } from "../ticketing/linear";
 import logger from "../logger";
 
 
@@ -113,8 +111,9 @@ export async function getLinearTeams(req: Request, res: Response) {
     }
 
     try {
-        const response = await fetchLinearTeams(user.id, integrationId);
-        res.status(200).json(response);
+        const manager = new LinearIntegrationManager();
+        const teams = await manager.fetchResourcesForInstance(user.id, integrationId);
+        res.status(200).json(teams);
     } catch (error: unknown) {
         logger.error('Error fetching Linear teams:', { error });
         const errorMessage = error instanceof Error ? error.message : 'Failed to fetch Linear teams';
@@ -123,29 +122,6 @@ export async function getLinearTeams(req: Request, res: Response) {
 }
 
 export async function fetchLinearTeams(userId: string, integrationId: string): Promise<LinearTeam[]> {
-    const integration = await db().linear_integrations.findFirst({
-        where: {
-            id: integrationId,
-            user_id: userId,
-        },
-    });
-
-    if (!integration) {
-        throw new Error("Linear integration not found");
-    }
-
     const manager = new LinearIntegrationManager();
-    const accessToken = await manager.getAccessToken(integrationId);
-    if (!accessToken) {
-        throw new Error("Could not get valid access token");
-    }
-
-    const adapter = new LinearAdapter(accessToken);
-    const teams = await adapter.getTeams();
-
-    return teams.map(team => ({
-        id: team.id,
-        name: team.name,
-        key: team.key,
-    }));
+    return manager.fetchResourcesForInstance(userId, integrationId);
 }

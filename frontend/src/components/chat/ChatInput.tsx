@@ -1,7 +1,17 @@
 import GlowingTextField, { Size } from "./GlowingTextField";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useCallback } from "react";
 
-function ChatInput({ sendMessage, input, setInput, placeholders, disabled = false }: { sendMessage: (message: string) => void, input: string, setInput: (input: string) => void, placeholders: string[], disabled?: boolean }) {
+interface ChatInputProps {
+    sendMessage: (message: string) => void;
+    input: string;
+    setInput: (input: string) => void;
+    placeholders: string[];
+    disabled?: boolean;
+    inputSize?: 'small' | 'medium' | 'large';
+    showPlaceholderChips?: boolean;
+}
+
+function ChatInput({ sendMessage, input, setInput, placeholders, disabled = false, inputSize = 'small', showPlaceholderChips = false }: ChatInputProps) {
     const prevSelectedRef = useRef<number | null>(null);
 
     // Track focus override based on state transitions
@@ -60,29 +70,35 @@ function ChatInput({ sendMessage, input, setInput, placeholders, disabled = fals
         sendMessage(cleanMessage);
     };
 
+    const handlePlaceholderSelect = useCallback((placeholder: string) => {
+        setInput(placeholder);
+    }, [setInput]);
+
+    const sizeMapping = {
+        small: { size: Size.Small, minRows: 1, showBorder: true },
+        medium: { size: Size.Medium, minRows: 2, showBorder: true },
+        large: { size: Size.Large, minRows: 4, showBorder: true },
+    };
+    const { size: textFieldSize, minRows, showBorder } = sizeMapping[inputSize];
+
     return (
-        <div className="p-4">
-            <div className="grid grid-cols-[1fr_auto] gap-2">
-                <GlowingTextField
-                    isLoading={false}
-                    disabled={disabled}
-                    onInputChange={(e) => setInput(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                    inputValue={input}
-                    placeholders={placeholders}
-                    compact={true}
-                    size={Size.Small}
-                    autoFocus={true}
-                    focusOverride={focusOverride}
-                />
-                <button
-                    className="px-4 py-2 bg-[theme(--accent-primary)] text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                    onClick={() => sanitizeAndSendMessage(input)}
-                    disabled={disabled}
-                >
-                    Send
-                </button>
-            </div>
+        <div>
+            <GlowingTextField
+                isLoading={false}
+                disabled={disabled}
+                onInputChange={(e) => setInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                inputValue={input}
+                placeholders={placeholders}
+                size={textFieldSize}
+                autoFocus={true}
+                focusOverride={focusOverride}
+                minRows={minRows}
+                showBorder={showBorder}
+                onSend={() => sanitizeAndSendMessage(input)}
+                onPlaceholderSelect={handlePlaceholderSelect}
+                showPlaceholderChips={showPlaceholderChips}
+            />
         </div>
     );
 }

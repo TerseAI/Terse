@@ -1,14 +1,13 @@
-import { Integration, OAuthIntegrationInstallation, ConfigurationFieldDefinition } from "./abstract/Integration";
+import { Integration, OAuthIntegrationInstallation, ConfigurationFieldDefinition, IntegrationWithResources } from "./abstract/Integration";
 import { db } from "../prismaClient";
 import { EventProcessor } from "../agent/AgentRunner/EventProcessor";
 import { InputEvent } from "./abstract/InputEvent";
 import { GithubIntegration, GithubIntegrationMetadata, IntegrationType, InstallationOptionsFor, AdditionalStateParams } from "../shared/Integrations";
 import { GithubAppInstallationRepository, GithubAppInstallationRepositoryResponse, GithubAppInstallationResponse, GithubAppUnifiedEventRequest } from "../routes/GithubTypes";
-import { resolveUsersForGithubInstallation } from "../routes/github";
 import { User } from "../types/prisma";
 import { AgentTriggerWithConfigs } from "../types/prisma";
 import { RunHistoryTrigger } from "../shared/RunHistoryTypes";
-import { OAuthInstallationDetails } from "../shared/types";
+import { OAuthInstallationDetails, Repository } from "../shared/types";
 import { githubApp, urls } from "../config/settings";
 import { Request, Response } from "express";
 import { InputConfigType } from "@prisma/client";
@@ -23,7 +22,7 @@ import {
     StoredFile,
 } from "../services/FileStorageService";
 
-export class GithubIntegrationManager implements Integration<GithubIntegration, GithubAppUnifiedEventRequest, typeof GithubIntegrationMetadata>, OAuthIntegrationInstallation<IntegrationType.GITHUB> {
+export class GithubIntegrationManager implements Integration<GithubIntegration, GithubAppUnifiedEventRequest, typeof GithubIntegrationMetadata, Repository>, OAuthIntegrationInstallation<IntegrationType.GITHUB> {
     constructor() { }
     integrationType: IntegrationType = IntegrationType.GITHUB;
 
@@ -212,6 +211,52 @@ export class GithubIntegrationManager implements Integration<GithubIntegration, 
             logger.error(`Error getting GitHub access token for installation ${integrationId}`, { error, integrationId });
             return null;
         }
+    }
+
+    async fetchResourcesForInstance(userId: string, installationId: string, query?: string): Promise<Repository[]> {
+        const accessToken = await db().github_app_tokens.findFirst({ where: { user_id: userId } });
+        if (!accessToken) {
+            throw new Error("GitHub account not connected");
+        }
+
+        const installations = await getAppInstallationsForUser(accessToken.access_token);
+        const targetInstallation = installations.installations.find(i => i.id === Number(installationId));
+        if (!targetInstallation) {
+            throw new Error("Installation not found");
+        }
+
+        const installationRepositories = await getAppInstallationRepositories(accessToken.access_token, targetInstallation.id);
+
+        let repositories = installationRepositories.map(r => ({ id: r.id, name: r.name, owner: r.owner.login }));
+
+        if (query) {
+            const normalizedQuery = query.trim().toLowerCase();
+            repositories = repositories.filter(repo =>
+                repo.name.toLowerCase().includes(normalizedQuery) ||
+                `${repo.owner}/${repo.name}`.toLowerCase().includes(normalizedQuery)
+            );
+        }
+
+        return repositories;
+    }
+
+    async fetchResourcesForUser(userId: string, query?: string): Promise<IntegrationWithResources<GithubIntegration, Repository>[]> {
+        const integrations = await this.getInstancesForUser(userId);
+        return Promise.all(
+            integrations.map(async (integration) => {
+                const installationId = integration.installation_id ?? Number(integration.id);
+                if (!installationId) {
+                    return { integration, resources: [] };
+                }
+                try {
+                    const resources = await this.fetchResourcesForInstance(userId, String(installationId), query);
+                    return { integration, resources };
+                } catch (error) {
+                    logger.warn(`Failed to fetch resources for GitHub integration ${integration.id}`, { error, integrationId: integration.id });
+                    return { integration, resources: [] };
+                }
+            })
+        );
     }
 }
 
@@ -435,4 +480,34 @@ export async function getAppInstallationRepositories(oAuthToken: string, install
         },
     });
     return resp.data.repositories;
+}
+
+// Given an installation, we need to fetch all users that are associated with that installation.
+// This doesn't guarantee that they have an active input config, but it's a good start.
+// This is super inefficient, but it's a good start. We need to optimize this.
+export async function resolveUsersForGithubInstallation(installationId: number): Promise<User[]> {
+    return db().$transaction(async (tx) => {
+        // Get all of our github app users.
+        const githubAppUsers = await tx.github_app_tokens.findMany();
+
+        // for each github App user, get their installations they have access to. Return a Map<user_id, installations>
+        const installationResults = await Promise.all(githubAppUsers.map(async (user) => {
+            const installations = await getAppInstallationsForUser(user.access_token);
+            return { userId: user.user_id, installations: installations.installations };
+        }));
+
+        // Find users who have access to the specific installation
+        const userIds = installationResults
+            .filter(result => result.installations.some(inst => inst.id === installationId))
+            .map(result => result.userId);
+
+        // Fetch and return the User objects
+        const users = await tx.users.findMany({
+            where: { id: { in: userIds } }
+        });
+
+        logger.debug(`Found ${users.length} users for event from installation`, { installationId, userCount: users.length });
+
+        return users;
+    });
 }

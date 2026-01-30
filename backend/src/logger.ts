@@ -154,7 +154,7 @@ class Logger {
     return Logger.instance;
   }
 
-  private logToConsole(level: string, message: string): void {
+  private logToConsole(level: string, message: string, attributes?: Record<string, any>): void {
     const time = new Date().toLocaleTimeString('en-US', { hour12: false });
     const upperLevel = level.toUpperCase();
 
@@ -168,7 +168,11 @@ class Logger {
     const colorFn = levelColors[upperLevel] || chalk.white;
     const levelTag = colorFn(`[${upperLevel}]`);
 
-    console.log(`${chalk.dim(time)} ${levelTag} ${message}`);
+    if (upperLevel === 'ERROR' || upperLevel === 'FATAL' || upperLevel === 'WARN') {
+      console.log(`${chalk.dim(time)} ${levelTag} ${message}, ${JSON.stringify(attributes, null, 2)}`);
+    } else {
+      console.log(`${chalk.dim(time)} ${levelTag} ${message}, ${JSON.stringify(attributes, null, 2)}`);
+    }
   }
 
   private emitToPostHog(severityText: string, message: string, attributes?: Record<string, any>): void {
@@ -176,7 +180,7 @@ class Logger {
     
     if (!openTelemetryLogger) {
       // Fallback to console if PostHog is not initialized
-      this.logToConsole(severityText, message);
+      this.logToConsole(severityText, message, attributes);
       return;
     }
     try {
@@ -217,7 +221,7 @@ class Logger {
     } catch (error) {
       // Fallback to console if PostHog fails
       console.error('[Logger] Failed to emit log to PostHog:', error);
-      this.logToConsole(severityText, message);
+      this.logToConsole(severityText, message, attributes);
     }
   }
 
@@ -288,7 +292,7 @@ class Logger {
     if (config.usePostHog) {
       this.emitToPostHog(severityText, message, mergedAttributes);
     } else {
-      this.logToConsole(severityText, message);
+      this.logToConsole(severityText, message, mergedAttributes);
     }
   }
 

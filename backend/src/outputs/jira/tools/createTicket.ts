@@ -8,7 +8,7 @@ import { ToolName } from "../../../tools/ToolNames";
 import logger from "../../../logger";
 import { AtlassianIntegrationManager } from "../../../integrations/AtlassianIntegration";
 import { db } from "../../../prismaClient";
-import { Session } from "../../../server";
+import { Session } from "../../../types/session";
 
 // Atlassian Document Format (ADF) interfaces
 interface ADFText {

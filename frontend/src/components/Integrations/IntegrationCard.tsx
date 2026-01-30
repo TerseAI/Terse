@@ -12,52 +12,52 @@ import PosthogIntegrationCard from "./PosthogIntegrationCard";
 import LaunchDarklyIntegrationCard from "./LaunchDarklyIntegrationCard";
 import DatadogIntegrationCard from "./DatadogIntegrationCard";
 
-function IntegrationCard({ integration, isActive = true }: { integration: IntegrationType; isActive?: boolean }) {
+function IntegrationCard({ integration, isActive = true, stateToken }: { integration: IntegrationType; isActive?: boolean; stateToken?: string }) {
     const cardClassName = "min-w-sm max-w-sm";
     
     switch (integration) {
         case IntegrationType.NOTION:
             return (
-                <NotionIntegrationCard className={cardClassName} isActive={isActive} />
+                <NotionIntegrationCard className={cardClassName} isActive={isActive} stateToken={stateToken} />
             );
         case IntegrationType.SLACK:
             return (
-                <SlackIntegrationCard className={cardClassName} isActive={isActive} />
+                <SlackIntegrationCard className={cardClassName} isActive={isActive} stateToken={stateToken} />
             );
         case IntegrationType.LINEAR:
             return (
-                <LinearIntegrationCard className={cardClassName} isActive={isActive} />
+                <LinearIntegrationCard className={cardClassName} isActive={isActive} stateToken={stateToken} />
             );
         case IntegrationType.GITHUB:
             return (
-                <GithubIntegrationCard className={cardClassName} isActive={isActive} />
+                <GithubIntegrationCard className={cardClassName} isActive={isActive} stateToken={stateToken} />
             );
         case IntegrationType.GMAIL:
             return (
-                <GmailIntegrationCard className={cardClassName} isActive={isActive} />
+                <GmailIntegrationCard className={cardClassName} isActive={isActive} stateToken={stateToken} />
             );
         case IntegrationType.ATLASSIAN:
             return (
-                <AtlassianIntegrationCard className={cardClassName} isActive={isActive} />
+                <AtlassianIntegrationCard className={cardClassName} isActive={isActive} stateToken={stateToken} />
             );
         case IntegrationType.FIGMA:
             return (
-                <FigmaIntegrationCard className={cardClassName} isActive={isActive} />
+                <FigmaIntegrationCard className={cardClassName} isActive={isActive} stateToken={stateToken} />
             );
         case IntegrationType.TERSE:
         case IntegrationType.CRON_JOB:
             return null
         case IntegrationType.POSTHOG:
             return (
-                <PosthogIntegrationCard className={cardClassName} isActive={isActive} />
+                <PosthogIntegrationCard className={cardClassName} isActive={isActive} stateToken={stateToken} />
             );
         case IntegrationType.LAUNCHDARKLY:
             return (
-                <LaunchDarklyIntegrationCard className={cardClassName} isActive={isActive} />
+                <LaunchDarklyIntegrationCard className={cardClassName} isActive={isActive} stateToken={stateToken} />
             );
         case IntegrationType.DATADOG:
             return (
-                <DatadogIntegrationCard className={cardClassName} isActive={isActive} />
+                <DatadogIntegrationCard className={cardClassName} isActive={isActive} stateToken={stateToken} />
             );
         default:
             // Exhaustive check: TypeScript will error if any IntegrationType case is missing
