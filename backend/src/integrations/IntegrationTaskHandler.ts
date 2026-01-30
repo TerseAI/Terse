@@ -5,6 +5,7 @@ import { resumeChatAgentAfterIntegration } from '../agent/ChatAgent/resumeChatAg
 import logger from '../logger';
 import { IntegrationType } from '../shared/Integrations';
 import { OAuthStatePayload } from '../utility/oauth';
+import { trackIntegrationAdded } from '../utility/analytics';
 
 const INTEGRATION_COMPLETED_TASK_NAME = 'INTEGRATION_COMPLETED_TASK' as const;
 const INTEGRATION_FORM_COMPLETED_TASK_NAME = 'INTEGRATION_FORM_COMPLETED_TASK' as const;
@@ -31,6 +32,11 @@ integrationTaskQueue.addListener({
     taskName: INTEGRATION_COMPLETED_TASK_NAME,
     onTask: async (task: IntegrationCompletedTask) => {
         try {
+            // Track integration added analytics event
+            trackIntegrationAdded(task.userId, {
+                integrationType: task.integrationType,
+            });
+
             // Check if this OAuth flow was initiated from ChatAgent
             if (hasChatMetadata(task.statePayload)) {
                 logger.info('Integration completed with chat metadata, resuming ChatAgent', {
@@ -84,6 +90,11 @@ integrationFormTaskQueue.addListener({
     taskName: INTEGRATION_FORM_COMPLETED_TASK_NAME,
     onTask: async (task: IntegrationFormCompletedTask) => {
         try {
+            // Track integration added analytics event
+            trackIntegrationAdded(task.userId, {
+                integrationType: task.integrationType,
+            });
+
             // Check if this form completion was initiated from ChatAgent
             if (hasChatMetadata(task.statePayload)) {
                 const channel = task.statePayload.channel!;
