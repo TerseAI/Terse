@@ -1,48 +1,48 @@
 import axios from 'axios';
-import type { RunHistoryModelEvent, RunHistoryActionWithId } from "../shared/RunHistoryTypes";
+import { ApiRoutes } from '../shared/ApiRoutes';
+import {
+    AtlassianIntegration,
+    DatadogIntegration,
+    FigmaIntegration,
+    GithubIntegration,
+    GmailIntegration,
+    InstallationOptionsFor,
+    IntegrationType,
+    IntegrationWithStatus,
+    LaunchDarklyIntegration,
+    LinearIntegration,
+    NotionIntegration,
+    PosthogIntegration,
+    SlackIntegration,
+} from "../shared/Integrations";
+import { CreateNotificationDestinationRequest, NotificationDestination } from '../shared/Notifications';
+import { GenerateSurveyPromptRequest, GenerateSurveyPromptResponse, GenerateSurveyQuestionsRequest, GenerateSurveyQuestionsResponse } from "../shared/PromptBuilderTypes";
+import type { RunHistoryActionWithId, RunHistoryModelEvent } from "../shared/RunHistoryTypes";
+import { GetRunHistoryParams, GetRunHistoryResponse } from '../shared/RunHistoryTypes';
+import { GetToolsThatRequireApprovalsRequest, GetToolsThatRequireApprovalsResponse } from '../shared/ToolsTypes';
 import {
     Agent,
     AgentsResponse,
+    AgentTemplate,
     AgentUpdate,
     ConfluenceResourcesResponse,
+    DatadogIndexesResponse,
     GetGithubRepositoriesForIntegrationResponse,
-    OAuthInstallationDetails,
     JiraCredentialsValidationResponse,
     JiraResourcesResponse,
+    LaunchDarklyEnvironmentsResponse,
+    LaunchDarklyProjectsResponse,
     LinearTeam,
     NotionResourcesResponse,
+    OAuthInstallationDetails,
     PosthogProjectsResponse,
-    LaunchDarklyProjectsResponse,
-    LaunchDarklyEnvironmentsResponse,
-    DatadogIndexesResponse,
     RecentAgent,
     SlackChannelsResponse,
-    StatsResponse,
     SlackUsersResponse,
-    AgentTemplate,
+    StatsResponse,
 } from "../shared/types";
-import { GenerateSurveyQuestionsRequest, GenerateSurveyQuestionsResponse, GenerateSurveyPromptRequest, GenerateSurveyPromptResponse } from "../shared/PromptBuilderTypes";
-import {
-    IntegrationType,
-    IntegrationWithStatus,
-    GmailIntegration,
-    LinearIntegration,
-    SlackIntegration,
-    AtlassianIntegration,
-    FigmaIntegration,
-    GithubIntegration,
-    NotionIntegration,
-    InstallationOptionsFor,
-    PosthogIntegration,
-    LaunchDarklyIntegration,
-    DatadogIntegration,
-} from "../shared/Integrations";
 import { User } from "../types/User";
-import { GetRunHistoryParams, GetRunHistoryResponse } from '../shared/RunHistoryTypes';
 import { deserializeConfig } from '../utility/ConfigUtils';
-import { CreateNotificationDestinationRequest, NotificationDestination } from '../shared/Notifications';
-import { ApiRoutes } from '../shared/ApiRoutes';
-import { GetToolsThatRequireApprovalsRequest, GetToolsThatRequireApprovalsResponse } from '../shared/ToolsTypes';
 
 const backendBaseUrl = '/api';
 
@@ -86,20 +86,6 @@ interface BackendService {
      * Terminates the current user session
      */
     terminateSession(): Promise<void>;
-
-    /**
-     * Gets the activity feed
-     */
-    getActivityFeed(url?: string): Promise<any>;
-
-    /**
-     * Gets the daily activity summary
-     */
-    getDailyActivitySummary(): Promise<{
-        date: string;
-        summary: string;
-        eventCount: number;
-    }>;
 
     /**
      * Gets statistics for the homepage dashboard
@@ -464,25 +450,6 @@ export const BackendProvider: BackendService = {
             });
     },
 
-    getActivityFeed: (url?: string) => {
-        const endpoint = url ? `${backendBaseUrl}${url}` : `${backendBaseUrl}${ApiRoutes.ACTIVITY.FEED}`;
-        return axios.get(endpoint, { withCredentials: true })
-            .then(response => response.data)
-            .catch(error => {
-                console.error('Error getting activity feed:', error);
-                throw error;
-            });
-    },
-
-    getDailyActivitySummary: () => {
-        return axios.get(`${backendBaseUrl}${ApiRoutes.ACTIVITY.DAILY_SUMMARY}`, { withCredentials: true })
-            .then(response => response.data)
-            .catch(error => {
-                console.error('Error getting daily activity summary:', error);
-                throw error;
-            });
-    },
-
     getStats: (timezone?: string) => {
         const params = timezone ? { tz: timezone } : {};
         return axios.get(`${backendBaseUrl}${ApiRoutes.STATS}`, { withCredentials: true, params })
@@ -787,9 +754,9 @@ export const BackendProvider: BackendService = {
     getDatadogIndexes: (integrationId: string) => {
         return axios.get<DatadogIndexesResponse>(
             `${backendBaseUrl}/datadog/indexes`,
-            { 
+            {
                 params: { integrationId },
-                withCredentials: true 
+                withCredentials: true
             }
         )
             .then(response => response.data)
