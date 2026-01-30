@@ -12,12 +12,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { PlayIcon, Loader2Icon } from "lucide-react";
 import { BackendProvider } from "@/services/backend";
+import { AgentSaveState } from "./IntegrationSelector/types";
 
 interface ManualTriggerDialogProps {
     isOpen: boolean;
     onClose: () => void;
     inputId: string;
     onTriggered?: () => void;
+    agentSaveState?: AgentSaveState;
 }
 
 export function ManualTriggerDialog({
@@ -25,6 +27,7 @@ export function ManualTriggerDialog({
     onClose,
     inputId,
     onTriggered,
+    agentSaveState,
 }: ManualTriggerDialogProps) {
     const [context, setContext] = useState("");
     const [isTriggering, setIsTriggering] = useState(false);
@@ -35,6 +38,15 @@ export function ManualTriggerDialog({
         setError(null);
 
         try {
+            // If there are unsaved changes, save the agent first
+            if (agentSaveState?.hasUnsavedChanges) {
+                const saveSuccess = await agentSaveState.saveAgent();
+                if (!saveSuccess) {
+                    setError("Failed to save agent. Please save the agent manually and try again.");
+                    return;
+                }
+            }
+
             await BackendProvider.triggerManually(
                 inputId,
                 context.trim() || undefined
@@ -55,6 +67,8 @@ export function ManualTriggerDialog({
         onClose();
     };
 
+    const hasUnsavedChanges = agentSaveState?.hasUnsavedChanges ?? false;
+
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
             <DialogContent className="sm:max-w-md">
@@ -66,6 +80,12 @@ export function ManualTriggerDialog({
                 </DialogHeader>
 
                 <div className="space-y-4 py-2">
+                    {hasUnsavedChanges && (
+                        <div className="text-sm text-amber-600 dark:text-amber-500 bg-amber-50 dark:bg-amber-950/30 px-3 py-2 rounded-md">
+                            You have unsaved changes. Triggering will save your agent first.
+                        </div>
+                    )}
+
                     <div className="space-y-2">
                         <Label htmlFor="context">
                             Context <span className="text-muted-foreground text-xs">(optional)</span>
@@ -97,12 +117,12 @@ export function ManualTriggerDialog({
                         {isTriggering ? (
                             <>
                                 <Loader2Icon className="size-4 mr-2 animate-spin" />
-                                Triggering...
+                                {hasUnsavedChanges ? "Saving & Triggering..." : "Triggering..."}
                             </>
                         ) : (
                             <>
                                 <PlayIcon className="size-4 mr-2" />
-                                Trigger Now
+                                {hasUnsavedChanges ? "Save & Trigger" : "Trigger Now"}
                             </>
                         )}
                     </Button>

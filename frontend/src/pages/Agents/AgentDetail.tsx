@@ -133,6 +133,7 @@ function AgentDetail() {
         isLoading,
         mutate,
         updatedAt: agent?.updatedAt,
+        originalAgent: agent,
     }
 
     return (
