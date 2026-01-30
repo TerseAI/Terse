@@ -274,11 +274,11 @@ app.get(ApiRoutes.AUTH.GOOGLE_LOGIN_URL, (req, res) => {
   googleLoginURL(req, res);
 });
 
-app.post(ApiRoutes.AUTH.LOGIN, async (req, res) => {
+app.get(ApiRoutes.AUTH.LOGIN, async (req, res) => {
   login(req, res);
 });
 
-app.post(ApiRoutes.AUTH.LOGOUT, async (req, res) => {
+app.get(ApiRoutes.AUTH.LOGOUT, async (req, res) => {
   logout(req, res);
 });
 
@@ -286,7 +286,7 @@ app.get(ApiRoutes.AUTH.WORKOS_CALLBACK, (req, res) => {
   callback(req, res);
 });
 
-app.get("/auth/workos/widget-token", authMiddleware, (req, res) =>
+app.get(ApiRoutes.WORKOS.WIDGET_TOKEN, authMiddleware, (req, res) =>
   getWorkOSWidgetToken(req, res),
 );
 

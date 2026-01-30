@@ -3,6 +3,8 @@ import { IntegrationType } from "./Integrations";
 import { RunHistoryActionType } from "./RunHistoryTypes";
 import { Project, Ticket } from "./TicketSystem";
 
+type Role = "admin" | "user";
+
 export type User = {
   id: string;
   workosId: string;
@@ -11,7 +13,7 @@ export type User = {
   email: string;
   display_name: string;
   is_placeholder: boolean;
-  roles: string[];
+  roles: Role[];
 };
 
 export type SubActivity = {

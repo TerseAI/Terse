@@ -17,7 +17,7 @@ import { useAgents } from "@/hooks/api/useAgents";
 import { FrontendRoutes } from "@/shared/FrontendRoutes";
 import { Agent } from "@/shared/types";
 import type { LucideIcon } from "lucide-react";
-import { Bell, Home, Plug, Plus, Zap } from "lucide-react";
+import { Bell, Home, Plug, Plus, User, Zap } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { AppSidebarFooter } from "./SidebarFooter";
 import { AppSidebarHeader } from "./SidebarHeader";
@@ -196,4 +196,10 @@ const SettingsItems: NavItem[] = [
         icon: Bell,
         iconColor: "text-primary",
     },
+    {
+        title: "User Management",
+        url: FrontendRoutes.USER_MANAGEMENT,
+        icon: User,
+        iconColor: "text-primary",
+    }
 ]

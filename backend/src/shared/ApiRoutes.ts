@@ -27,6 +27,10 @@ export const ApiRoutes = {
     WORKOS_CALLBACK: "/auth/workos/callback",
   },
 
+  WORKOS: {
+    WIDGET_TOKEN: "/auth/workos/widget-token",
+  },
+
   ORGANIZATIONS: {
     CREATE: "/organizations",
     GET_CURRENT: "/organizations/current",

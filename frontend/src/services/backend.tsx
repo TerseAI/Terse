@@ -45,6 +45,9 @@ import { User } from "../types/User";
 import { deserializeConfig } from '../utility/ConfigUtils';
 
 const backendBaseUrl = '/api';
+// For browser redirects (login/logout), we need the actual backend URL since window.location.href
+// bypasses Vite's proxy. Falls back to /api for production where the proxy is handled by nginx/etc.
+const backendRedirectUrl = import.meta.env.VITE_BACKEND_REDIRECT_URL || '/api';
 
 interface BackendService {
     /**
@@ -81,11 +84,6 @@ interface BackendService {
      * Authenticates a user with email and password
      */
     authenticateUser(email: string, password: string): Promise<User>;
-
-    /**
-     * Terminates the current user session
-     */
-    terminateSession(): Promise<void>;
 
     /**
      * Gets statistics for the homepage dashboard
@@ -371,6 +369,31 @@ interface BackendService {
      * Gets write-only tools that require approval for the given skills and knowledge bases
      */
     getToolsThatRequireApprovals(request: GetToolsThatRequireApprovalsRequest): Promise<GetToolsThatRequireApprovalsResponse>;
+
+    /**
+     * Redirects to the login endpoint
+     */
+    loginRedirect(): void;
+
+    /**
+     * Redirects to the logout endpoint
+     */
+    logoutRedirect(): void;
+
+    /**
+     * Creates a new organization
+     */
+    createOrganization(name: string): Promise<{ id: string; name: string }>;
+
+    /**
+     * Gets the current organization
+     */
+    getCurrentOrganization(): Promise<{ id: string; name: string }>;
+
+    /**
+     * Gets the WorkOS widget token
+     */
+    getWidgetToken(): Promise<{ token: string; expiresAt: string }>;
 }
 
 export const BackendProvider: BackendService = {
@@ -436,16 +459,6 @@ export const BackendProvider: BackendService = {
             })
             .catch(error => {
                 console.error('Error logging in:', error);
-                throw error;
-            });
-    },
-
-    terminateSession: () => {
-        return axios.post(`${backendBaseUrl}${ApiRoutes.AUTH.LOGOUT}`, {}, { withCredentials: true })
-            .then(_ => {
-            })
-            .catch(error => {
-                console.error('Error logging out:', error);
                 throw error;
             });
     },
@@ -1048,6 +1061,41 @@ export const BackendProvider: BackendService = {
             .then(response => response.data)
             .catch(error => {
                 console.error('Error getting tools that require approvals:', error);
+                throw error;
+            });
+    },
+
+    loginRedirect: () => {
+        window.location.href = `${backendRedirectUrl}${ApiRoutes.AUTH.LOGIN}`;
+    },
+
+    logoutRedirect: () => {
+        window.location.href = `${backendRedirectUrl}${ApiRoutes.AUTH.LOGOUT}`;
+    },
+
+    createOrganization: (name: string) => {
+        return axios.post<{ id: string; name: string }>(`${backendBaseUrl}${ApiRoutes.ORGANIZATIONS.CREATE}`, { name }, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error creating organization:', error);
+                throw error;
+            });
+    },
+
+    getCurrentOrganization: () => {
+        return axios.get<{ id: string; name: string }>(`${backendBaseUrl}${ApiRoutes.ORGANIZATIONS.GET_CURRENT}`, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error getting current organization:', error);
+                throw error;
+            });
+    },
+
+    getWidgetToken: () => {
+        return axios.get<{ token: string; expiresAt: string }>(`${backendBaseUrl}${ApiRoutes.WORKOS.WIDGET_TOKEN}`, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error getting widget token:', error);
                 throw error;
             });
     },

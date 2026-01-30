@@ -177,8 +177,18 @@ export async function callback(req: Request, res: Response) {
     // Redirect the user to the homepage
     return res.redirect(settings.urls.frontend);
   } catch (error) {
-    logger.error("WorkOS callback error", { error });
-    return res.redirect("/login");
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    logger.error("WorkOS callback error", { error, message: errorMessage });
+    // Don't redirect to /login here as it causes an infinite redirect loop
+    // Clear any stale session cookie and show an error
+    res.clearCookie(WORKOS_SESSION_COOKIE_NAME);
+    return res
+      .status(500)
+      .send(
+        `Authentication failed: ${errorMessage}. ` +
+          `Please <a href="${settings.urls.frontend}">return to the app</a> and try again. ` +
+          `If the problem persists, clear your cookies for this site.`,
+      );
   }
 }
 
