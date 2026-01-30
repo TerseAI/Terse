@@ -294,4 +294,7 @@ export class CronJobEvent extends InputEvent {
         };
     }
 
+    getImageUrls(): string[] {
+        return [];
+    }
 }
