@@ -27,6 +27,7 @@ import { integrationTaskQueue } from "./IntegrationTaskQueues";
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask";
 import { FrontendRoutes } from "../shared/FrontendRoutes";
 import { ApiRoutes } from "../shared/ApiRoutes";
+import { FileCategory, StoredFile } from "../services/FileStorageService";
 
 export class FigmaIntegrationManager implements Integration<FigmaIntegration, FigmaWebhookEvent, typeof FigmaIntegrationMetadata, never>, OAuthIntegrationInstallation<IntegrationType.FIGMA> {
   constructor() { }
@@ -997,18 +998,26 @@ export class FigmaCommentEvent extends InputEvent {
     };
   }
 
-  getImageUrls(): string[] {
+  getFiles(): StoredFile[] {
     // Return all available image URLs from the Figma comment event
-    const urls: string[] = [];
+    const storedFiles: StoredFile[] = [];
     if (this.data.imageUrls) {
       if (this.data.imageUrls.nodeImage) {
-        urls.push(this.data.imageUrls.nodeImage);
+        storedFiles.push({
+          url: this.data.imageUrls.nodeImage,
+          mimeType: 'image/png',
+          category: FileCategory.IMAGE,
+        });
       }
       if (this.data.imageUrls.fullFrame) {
-        urls.push(this.data.imageUrls.fullFrame);
+        storedFiles.push({
+          url: this.data.imageUrls.fullFrame,
+          mimeType: 'image/png',
+          category: FileCategory.IMAGE,
+        })
       }
     }
-    return urls;
+    return storedFiles;
   }
 }
 

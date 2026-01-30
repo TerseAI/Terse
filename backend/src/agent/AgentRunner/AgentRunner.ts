@@ -25,10 +25,14 @@ import logger from '../../logger';
 import { RunHistoryActionType } from '@prisma/client';
 import { KnowledgeBase } from '../../knowledgeBase/abstract/KnowledgeBase';
 import { SocketEvents, SocketRooms } from '../../shared/SocketEvents';
+import { FileCategory, StoredFile } from '../../services/FileStorageService';
 
 // Types from @openai/agents SDK for content items
 type AgentInputText = protocol.InputText;
 type AgentInputImage = protocol.InputImage;
+type AgentInputFile = protocol.InputFile;
+
+type UserMessageContent = AgentInputText | AgentInputImage | AgentInputFile;
 
 export class AgentRunner<
     T extends Session,
@@ -61,19 +65,19 @@ export class AgentRunner<
         this.knowledgeBases = knowledgeBases;
         this.agentConfig = agent;
         const toolsMap = new Map<string, Tool<SessionWithTracking<T>>>();
-        
+
         outputs.forEach(output => {
             output.toolbox.forEach(entry => {
                 toolsMap.set(entry.tool.name, entry.tool);
             });
         });
-        
+
         knowledgeBases.forEach(kb => {
             kb.toolbox.forEach(entry => {
                 toolsMap.set(entry.tool.name, entry.tool);
             });
         });
-        
+
         this.tools = Array.from(toolsMap.values());
 
         this.runContext = runContext;
@@ -99,7 +103,8 @@ export class AgentRunner<
             throw new Error("Agent not initialized. Call initializeAgent() before run()");
         }
 
-        const userMessage = this.buildUserMessage(this.inputEvent);
+        const text = this.buildTextContent(this.inputEvent);
+        const userMessage = this.buildUserContent(text, this.inputEvent.getFiles());
         const userHistory: AgentInputItem[] = this.buildUserHistory(userMessage);
 
         const runner = runnerFactory({
@@ -127,14 +132,15 @@ export class AgentRunner<
         return await this.buildResult(result, streamingParams);
     }
 
-    async userMessageRun(userMessage: string, streamingParams?: RunHistoryStreamingParams): Promise<ApprovalResult<SessionWithTracking<T>, Agent<SessionWithTracking<T>, AgentOutputType>>> {
+    async userMessageRun(userMessage: string, files?: StoredFile[], streamingParams?: RunHistoryStreamingParams): Promise<ApprovalResult<SessionWithTracking<T>, Agent<SessionWithTracking<T>, AgentOutputType>>> {
         await this.initializeAgent();
 
         if (!this.agent) {
             throw new Error("Agent not initialized. Call initializeAgent() before run()");
         }
 
-        const userHistory = this.buildUserHistory(userMessage);
+        const content = this.buildUserContent(userMessage, files);
+        const userHistory = this.buildUserHistory(content);
 
         const runner = runnerFactory({
             agentId: this.agentConfig.id,
@@ -155,10 +161,8 @@ export class AgentRunner<
         return await this.buildResult(result, streamingParams);
     }
 
-    private buildUserHistory(userMessage: string | (AgentInputText | AgentInputImage)[]): AgentInputItem[] {
-        // Directives are now included in the system prompt via SystemPromptBuilder.buildDirectivesSection()
-        // to avoid accumulating duplicate directive entries in session history on each conversation turn.
-        return [{ role: 'user' as const, content: userMessage }];
+    private buildUserHistory(content: UserMessageContent[]): AgentInputItem[] {
+        return [user(content)];
     }
 
     async resumeFromPendingApproval(
@@ -327,7 +331,7 @@ export class AgentRunner<
                 step_id: finalStepId,
                 isReadOnly,
             });
-            
+
             if (actionId) {
                 changedItems.push({
                     type_name: EntityType.RUN_HISTORY_ACTION,
@@ -419,19 +423,76 @@ export class AgentRunner<
         };
     }
 
-    private buildUserMessage(inputEvent: InputEvent): (AgentInputText | AgentInputImage)[] {
-        const textContent = this.buildTextContent(inputEvent);
-        const content: (AgentInputText | AgentInputImage)[] = [{ type: 'input_text', text: textContent }];
+    private buildUserContent(text: string, files?: StoredFile[]): UserMessageContent[] {
+        const { trimmedText, attachedFiles } = this.normalizeUserInputs(text, files);
 
-        const imageUrls = inputEvent.getImageUrls();
-        for (const imageUrl of imageUrls) {
-            content.push({ type: 'input_image', image: imageUrl });
-        }
+        const content: UserMessageContent[] = [];
 
-        logger.info("User message build to be sent to agent", { content: JSON.stringify(content, null, 2) });
+        this.pushInputTextIfPresent(content, trimmedText);
+
+        const attachmentNote = this.buildAttachmentNote(attachedFiles);
+        this.pushInputTextIfPresent(content, attachmentNote);
+
+        content.push(...this.buildAttachmentItems(attachedFiles));
 
         return content;
     }
+
+    private normalizeUserInputs(text: string, files?: StoredFile[]) {
+        const trimmedText = text?.trim() ?? "";
+        const attachedFiles = (files ?? []).filter((f): f is StoredFile => Boolean(f?.url));
+        return { trimmedText, attachedFiles };
+    }
+
+    private pushInputTextIfPresent(content: UserMessageContent[], text?: string) {
+        const t = text?.trim();
+        if (!t) return;
+        content.push({ type: "input_text", text: t });
+    }
+
+    private buildAttachmentNote(attachedFiles: StoredFile[]): string {
+        if (attachedFiles.length === 0) return "";
+
+        const lines = attachedFiles.map((file) => {
+            const name = file.filename || "unnamed file";
+            const type = file.mimeType ? ` (${file.mimeType})` : "";
+            return `- ${name}${type}`;
+        });
+
+        return [
+            "<ATTACHMENTS>",
+            "The following files are attached to the event/message below. The input_file and input_image items that follow in this message correspond to these attachments.",
+            ...lines,
+            "</ATTACHMENTS>",
+        ].join("\n");
+    }
+
+    private buildAttachmentItems(attachedFiles: StoredFile[]): UserMessageContent[] {
+        const items: UserMessageContent[] = [];
+
+        for (const file of attachedFiles) {
+            const item = this.fileToContentItem(file);
+            if (item) items.push(item);
+        }
+
+        return items;
+    }
+
+    private fileToContentItem(file: StoredFile): UserMessageContent | null {
+        if (!file?.url) return null;
+
+        switch (file.category) {
+            case FileCategory.IMAGE:
+                return { type: "input_image", image: file.url } as AgentInputImage;
+
+            case FileCategory.DOCUMENT:
+                return { type: "input_file", file: { url: file.url } } as AgentInputFile;
+
+            default:
+                return null;
+        }
+    }
+
 
     private buildTextContent(inputEvent: InputEvent): string {
         return `
