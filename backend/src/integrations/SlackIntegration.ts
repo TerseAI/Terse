@@ -22,24 +22,15 @@ import logger, { runWithUserContext } from "../logger";
 import { createOAuthStateToken } from "../utility/oauth";
 import { KnownBlock } from "@slack/types";
 import {
-    extractTextFromBlocks,
-    extractTextFromAttachments,
-    extractImagesFromMessage,
-    pickSlackFileUrl,
-    SlackAttachment,
-    SlackFile,
-    SlackMessageImage,
+  extractTextFromBlocks,
+  extractTextFromAttachments,
+  extractImagesFromMessage,
+  SlackAttachment,
+  SlackFile,
+  SlackMessageImage,
 } from "../slack/blockKitHelpers";
 import { integrationTaskQueue } from "./IntegrationTaskQueues";
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask";
-import {
-    ensureStoredWithMetadata,
-    buildSlackFileKey,
-    FileDownloadResult,
-    isSupportedFileType,
-    StoredFile,
-    FileCategory,
-} from "../services/FileStorageService";
 
 export class SlackIntegrationManager implements Integration<SlackIntegration, SlackMessageEvent, typeof SlackIntegrationMetadata>, OAuthIntegrationInstallation<IntegrationType.SLACK> {
     constructor() { }
@@ -370,7 +361,7 @@ export class SlackIntegrationManager implements Integration<SlackIntegration, Sl
                 IntegrationType.SLACK,
                 userSlackIntegration.id,
                 decoded.userId,
-                decoded,
+                decoded, 
                 new Date()
             ));
 
@@ -460,8 +451,8 @@ export class SlackEvent extends InputEvent implements Identifiable {
 
     formatForAgentRunner(): string {
         // Extract rich content from blocks and attachments (used by third-party apps)
-        const blockContent = this.data.blocks
-            ? extractTextFromBlocks(this.data.blocks)
+        const blockContent = this.data.blocks 
+            ? extractTextFromBlocks(this.data.blocks) 
             : '';
         const attachmentContent = this.data.attachments
             ? extractTextFromAttachments(this.data.attachments)
@@ -471,6 +462,12 @@ export class SlackEvent extends InputEvent implements Identifiable {
         // If text is empty but we have block/attachment content, note that
         const messageText = this.data.text || '(no plain text)';
 
+        // Note if images are present
+        const images = this.getImages();
+        const imageNote = images.length > 0 
+            ? `\n        Images: ${images.length} image(s) attached` 
+            : '';
+        
         return `
         Incoming Slack Message Event.
 
@@ -480,7 +477,7 @@ export class SlackEvent extends InputEvent implements Identifiable {
         Message: ${messageText}
         Timestamp: ${this.data.timestamp}
         ${this.data.threadTimestamp ? `Thread: ${this.data.threadTimestamp}` : ''}
-        Team ID: ${this.data.teamId}
+        Team ID: ${this.data.teamId}${imageNote}
         ${blockContent ? `
         Rich Content (from blocks):
         ${blockContent}` : ''}
@@ -506,22 +503,20 @@ export class SlackEvent extends InputEvent implements Identifiable {
     }
 
     /**
-     * Get all stored files with full metadata (images, documents)
-     * Includes both private files cached in GCS and public block/attachment images
+     * Check if the message contains any images
      */
-    getFiles(): StoredFile[] {
-        const files: StoredFile[] = [...(this.data.storedFiles || [])];
+    hasImages(): boolean {
+        return this.getImages().length > 0;
+    }
 
-        // Add public block/attachment images as StoredFile objects
-        const publicImages = this.getImages().filter(img => !img.requiresAuth);
-        for (const img of publicImages) {
-            files.push({
-                url: img.url,
-                mimeType: 'image/png',
-                category: FileCategory.IMAGE,
-            });
-        }
-        return files;
+    /**
+     * Get all publicly accessible image URLs from the message
+     * Note: Excludes Slack file uploads which require authentication
+     */
+    getImageUrls(): string[] {
+        return this.getImages()
+            .filter(img => !img.requiresAuth)
+            .map(img => img.url);
     }
 
     debugLog(): string {
@@ -553,12 +548,12 @@ export class SlackEvent extends InputEvent implements Identifiable {
 
         // Helper function to check if user matches filter (if userIds is specified)
         const matchesUserFilter = !slackConfig.user_ids || slackConfig.user_ids.length === 0 || slackConfig.user_ids.includes(this.data.userId);
-
-        const matchesChannelOrGroup = isChannelOrGroup &&
-            this.data.channelId === slackConfig.channel_id &&
+        
+        const matchesChannelOrGroup = isChannelOrGroup && 
+            this.data.channelId === slackConfig.channel_id && 
             matchesUserFilter;
-        const matchesDM = isDM &&
-            slackConfig?.listen_to_user_dms &&
+        const matchesDM = isDM && 
+            slackConfig?.listen_to_user_dms && 
             matchesUserFilter;
         return (
             matchesChannelOrGroup || matchesDM
@@ -861,7 +856,7 @@ async function handleSlackMessage(event: SlackMessageEvent, teamId: string, auth
             // Since we limit the API call to 1 message (oldest=ts, latest=ts, limit=1),
             // the first item in the array is always the exact message we requested
             const fullMessage = fullMessageApiResult.data.messages[0];
-
+            
             // Use API blocks/attachments if event payload didn't have them
             if (!blocks && fullMessage.blocks) {
                 blocks = fullMessage.blocks as KnownBlock[];
@@ -882,14 +877,6 @@ async function handleSlackMessage(event: SlackMessageEvent, teamId: string, auth
             }
         }
 
-        // Supports: images, PDFs
-        let storedFiles: StoredFile[] = [];
-        if (files && files.length > 0) {
-            // Get bot token for downloading files
-            const botToken = filteredWorkspaceUserIntegrations[0].slack_integration.access_token;
-            storedFiles = await downloadSlackFiles(files, teamId, botToken);
-        }
-
         // Build SlackEventData with all available information
         const slackEventData: SlackEventData = {
             channelId: messageEvent.channel!,
@@ -906,10 +893,8 @@ async function handleSlackMessage(event: SlackMessageEvent, teamId: string, auth
             blocks: blocks,
             attachments: attachments,
             files: files,
-            // Stored files with full metadata
-            storedFiles: storedFiles.length > 0 ? storedFiles : undefined,
         };
-
+        
         // Create SlackEvent once
         const slackEvent = new SlackEvent(slackEventData);
 
@@ -987,108 +972,11 @@ export function isValidSlackSig(req: Request) {
 
 export function initializeSlackWebClient(integration: UserSlackIntegrationWithUser): WebClient {
     const token = integration.authed_user_access_token || integration.slack_integration.access_token;
-    return new WebClient(token, {
-        logLevel: LogLevel.INFO
-    });
+     return new WebClient(token, {
+         logLevel: LogLevel.INFO
+     });
 }
 
-export async function downloadSlackFiles(
-    files: SlackFile[],
-    teamId: string,
-    botToken: string
-): Promise<StoredFile[]> {
-    try {
-        const supportedFiles = filterSupportedSlackFiles(files);
-        if (supportedFiles.length === 0) return [];
-
-        const storedFiles = await Promise.all(
-            supportedFiles.map((file) => processSlackFile({ file, teamId, botToken }))
-        );
-
-        return storedFiles.filter((f): f is StoredFile => f !== null);
-    } catch (error) {
-        // Don't let file download failures break the entire event
-        // This can happen e.g. when the user needs to reinstall their Slack app
-        logger.error(`Failed to download Slack files`, { error, teamId, fileCount: files.length });
-        return [];
-    }
-}
-
-function filterSupportedSlackFiles(files: SlackFile[]): SlackFile[] {
-    return files.filter((file) => {
-        const mimetype = file.mimetype ?? "";
-        const filename = file.name ?? file.title ?? "";
-        return isSupportedFileType(mimetype, filename);
-    });
-}
-
-async function processSlackFile(args: {
-    file: SlackFile;
-    teamId: string;
-    botToken: string;
-}): Promise<StoredFile | null> {
-    const { file, teamId, botToken } = args;
-
-    try {
-        const downloadUrl = pickSlackFileUrl(file);
-        if (!downloadUrl) {
-            logger.warn(`No download URL found for Slack file`, { fileId: file.id, teamId });
-            return null;
-        }
-
-        const primaryKey = buildSlackFileKey(teamId, file.id);
-
-        const storedFile = await ensureStoredWithMetadata(primaryKey, async (): Promise<FileDownloadResult> => {
-            return downloadSlackFile({ downloadUrl, botToken, file });
-        });
-
-        if (storedFile) {
-            logger.debug(`✅ Stored Slack file in GCS`, {
-                teamId,
-                fileId: file.id,
-                filename: file.name || file.title,
-                category: storedFile.category,
-            });
-        }
-
-        return storedFile ?? null;
-    } catch (error) {
-        logger.error(`Error storing Slack file`, {
-            error,
-            teamId,
-            fileId: file.id,
-            filename: file.name || file.title,
-        });
-        return null;
-    }
-}
-
-
-async function downloadSlackFile(args: {
-    downloadUrl: string;
-    botToken: string;
-    file: SlackFile;
-}): Promise<FileDownloadResult> {
-    const { downloadUrl, botToken, file } = args;
-
-    const response = await fetch(downloadUrl, {
-        headers: { Authorization: `Bearer ${botToken}` },
-    });
-
-    if (!response.ok) {
-        throw new Error(`Failed to download Slack file: ${response.status} ${response.statusText}`);
-    }
-
-    const buffer = Buffer.from(await response.arrayBuffer());
-    const mimeType =
-        file.mimetype ||
-        response.headers.get("content-type") ||
-        "application/octet-stream";
-
-    const filename = file.name || file.title;
-
-    return { data: buffer, mimeType, filename };
-}
 
 /**
  * Type for Slack API responses that follow the standard { ok: boolean; error?: string } pattern
@@ -1135,8 +1023,6 @@ export interface SlackEventData {
     attachments?: SlackAttachment[];
     // File attachments (including images)
     files?: SlackFile[];
-    // Stored files with full metadata (images, documents)
-    storedFiles?: StoredFile[];
 }
 
 

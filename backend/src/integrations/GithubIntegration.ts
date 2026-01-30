@@ -17,11 +17,8 @@ import { GithubAppUser } from "../routes/GithubTypes";
 import logger, { runWithUserContext } from "../logger";
 import { integrationTaskQueue } from "./IntegrationTaskQueues";
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask";
-import { createOAuthStateToken, decodeOAuthStateToken, OAuthStateEncodingFormat } from "../utility/oauth";
+import { createOAuthStateToken, decodeOAuthStateToken, OAuthStatePayload, OAuthStateEncodingFormat } from "../utility/oauth";
 import { FrontendRoutes } from "../shared/FrontendRoutes";
-import {
-    StoredFile,
-} from "../services/FileStorageService";
 
 export class GithubIntegrationManager implements Integration<GithubIntegration, GithubAppUnifiedEventRequest, typeof GithubIntegrationMetadata>, OAuthIntegrationInstallation<IntegrationType.GITHUB> {
     constructor() { }
@@ -80,11 +77,11 @@ export class GithubIntegrationManager implements Integration<GithubIntegration, 
             logger.warn(`⚠️  No users found for GitHub event from ${event.installationId}`, { installationId: event.installationId, eventType: event.eventType });
             return;
         }
-
+        
         for (const user of users) {
             // Process with user context for logging
             await runWithUserContext(user.id, user.email, async () => {
-                const githubEvent = new GithubEvent(event, []);
+                const githubEvent = new GithubEvent(event);
                 const eventProcessor = new EventProcessor(githubEvent, user);
                 await eventProcessor.process();
             });
@@ -220,12 +217,10 @@ export class GithubIntegrationManager implements Integration<GithubIntegration, 
 export class GithubEvent extends InputEvent {
     readonly integrationType: IntegrationType = IntegrationType.GITHUB;
     data: GithubAppUnifiedEventRequest;
-    private storedFiles: StoredFile[];
 
-    constructor(data: GithubAppUnifiedEventRequest, storedFiles: StoredFile[] = []) {
+    constructor(data: GithubAppUnifiedEventRequest) {
         super();
         this.data = data;
-        this.storedFiles = storedFiles;
     }
 
     formatForAgentRunner(): string {
@@ -370,9 +365,8 @@ export class GithubEvent extends InputEvent {
         };
     }
 
-    getFiles(): StoredFile[] {
-        // Return all stored files with full metadata
-        return this.storedFiles;
+    getImageUrls(): string[] {
+        return [];
     }
 }
 
