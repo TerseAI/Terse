@@ -19,7 +19,6 @@ import { createOAuthStateToken } from "../utility/oauth";
 import { integrationTaskQueue } from "./IntegrationTaskQueues";
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask";
 import { FrontendRoutes } from "../shared/FrontendRoutes";
-import { StoredFile } from "../services/FileStorageService";
 
 export class LinearIntegrationManager implements Integration<LinearIntegration, LinearWebhookPayload, typeof LinearIntegrationMetadata>, OAuthIntegrationInstallation<IntegrationType.LINEAR> {
     constructor() { }
@@ -583,7 +582,8 @@ export class LinearEvent extends InputEvent {
         };
     }
 
-    getFiles(): StoredFile[] {
+    getImageUrls(): string[] {
+        // Linear events don't include images yet
         return [];
     }
 }
