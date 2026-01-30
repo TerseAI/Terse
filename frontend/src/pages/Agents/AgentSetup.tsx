@@ -63,16 +63,12 @@ export default function AgentSetup() {
     const headerVariants = {
         visible: {
             opacity: 1,
-            height: 'auto',
-            marginTop: 32,
-            marginBottom: 8,
+            y: 0,
         },
         hidden: {
             opacity: 0,
-            height: 0,
-            filter: 'blur(0px)',
-            marginTop: 0,
-            marginBottom: 0,
+            filter: 'blur(8px)',
+            y: -40,
         },
     };
 
@@ -102,25 +98,34 @@ export default function AgentSetup() {
 
     return (
         <div className="flex flex-col h-full w-full">
-            {/* Header - fades out when chat starts */}
-            <AnimatePresence>
-                {!hasStartedChat && (
-                    <motion.div
-                        className="mx-auto max-w-5xl w-full"
-                        variants={headerVariants}
-                        initial="visible"
-                        animate="visible"
-                        exit="hidden"
-                        transition={{
-                            duration: ANIMATION_DURATION,
-                            ease: [0.4, 0, 0.2, 1],
-                        }}
-                    >
-                        <h1 className="text-2xl font-semibold text-foreground">Create a new agent</h1>
-                        <p className="text-muted-foreground mt-1">Describe what you want your agent to do, and we'll help you build it.</p>
-                    </motion.div>
-                )}
-            </AnimatePresence>
+            {/* Header - wrapper collapses immediately, content fades out */}
+            <div 
+                style={{ 
+                    height: hasStartedChat ? 0 : 'auto',
+                    overflow: 'visible',
+                    marginTop: hasStartedChat ? 0 : 32,
+                    marginBottom: hasStartedChat ? 0 : 8,
+                }}
+            >
+                <AnimatePresence>
+                    {!hasStartedChat && (
+                        <motion.div
+                            className="mx-auto max-w-5xl w-full"
+                            variants={headerVariants}
+                            initial="visible"
+                            animate="visible"
+                            exit="hidden"
+                            transition={{
+                                duration: ANIMATION_DURATION,
+                                ease: [0.4, 0, 0.2, 1],
+                            }}
+                        >
+                            <h1 className="text-2xl font-semibold text-foreground">Create a new agent</h1>
+                            <p className="text-muted-foreground mt-1">Describe what you want your agent to do, and we'll help you build it.</p>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+            </div>
 
             {/* Chat Section - expands when chat starts */}
             <motion.div
