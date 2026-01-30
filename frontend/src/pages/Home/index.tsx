@@ -1,14 +1,14 @@
+import { useAgents } from "../../hooks/api/useAgents";
 import { useRecentAgents } from "../../hooks/api/useRecentAgents";
 import { useStats } from "../../hooks/api/useStats";
-import { useAgents } from "../../hooks/api/useAgents";
-import { formatRelativeTime } from "../../utility/timeUtils";
 import { IntegrationType } from "../../shared/Integrations";
 import { RunHistoryAction } from "../../shared/RunHistoryTypes";
-import { StatsMetricsSection } from "./components/StatsMetricsSection";
+import { formatRelativeTime } from "../../utility/timeUtils";
 import { DailyEventsChart } from "./components/DailyEventsChart";
+import { HomeEmptyState } from "./components/HomeEmptyState";
 import { RecentActionsSection } from "./components/RecentActionsSection";
 import { RecentAgentsSection } from "./components/RecentAgentsSection";
-import { HomeEmptyState } from "./components/HomeEmptyState";
+import { StatsMetricsSection } from "./components/StatsMetricsSection";
 import { transformStatsToMetrics } from "./utils";
 
 function Home() {

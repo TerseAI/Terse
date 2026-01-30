@@ -24,10 +24,8 @@ model users {
   is_placeholder  Boolean  @default(false)
 
   user_github_repositories  user_github_repositories[]
-  linear_api_keys           linear_api_keys[] // @deprecated - Use linear_integrations instead
   linear_integrations       linear_integrations[]
   user_slack_integrations   user_slack_integrations[]
-  jira_api_keys             jira_api_keys[] // @deprecated - Use atlassian_integrations instead
   atlassian_integrations    atlassian_integrations[]
   gmail_integrations        gmail_integrations[]
   notion_integrations       notion_integrations[]
@@ -99,29 +97,6 @@ model github_app_tokens {
   @@unique([user_id, github_username])
 }
 
-// @deprecated - This table is deprecated. Use linear_integrations instead for OAuth-based connections.
-// The old table is kept for backward compatibility with existing API key-based connections.
-model linear_api_keys {
-  id             String   @id @default(cuid())
-  user_id        String
-  linear_user_id String
-  workspace_id   String?
-  workspace_name String?
-  team_id        String? // Connection-level default project/team. Can be overridden per automation via automation_linear_configs.project_id
-  team_name      String? // Connection-level default project name. Can be overridden per automation via automation_linear_configs.project_name
-  api_key        String   @unique
-  webhook_secret String
-  webhook_id     String
-  created_at     DateTime @default(now())
-  updated_at     DateTime @updatedAt
-
-  user users @relation(fields: [user_id], references: [id])
-
-  @@index([user_id])
-  @@index([workspace_id, team_id])
-}
-
-// Replaces linear_api_keys for new OAuth connections
 model linear_integrations {
   id             String   @id @default(cuid())
   user_id        String
@@ -174,28 +149,6 @@ model slack_integrations {
   processed_slack_events  processed_slack_events[]
 }
 
-// @deprecated - This table is deprecated. Use atlassian_integrations instead for OAuth-based connections.
-// The old table is kept for backward compatibility with existing API key-based connections.
-model jira_api_keys {
-  id              String   @id @default(cuid())
-  user_id         String
-  jira_user_email String
-  base_url        String
-  site_name       String?
-  project_key     String? // Connection-level default project key. Can be overridden per automation via automation_jira_configs.project_key
-  project_name    String? // Connection-level default project name (display only, not migrated to config table)
-  webhook_id      String?
-  api_token       String   @unique
-  created_at      DateTime @default(now())
-  updated_at      DateTime @updatedAt
-
-  user users @relation(fields: [user_id], references: [id])
-
-  @@index([user_id])
-  @@index([base_url, project_key])
-}
-
-// Replaces jira_api_keys for new OAuth connections
 model atlassian_integrations {
   id              String   @id @default(cuid())
   user_id         String
