@@ -1,9 +1,12 @@
 import { useTemplates } from '@/hooks/api/useTemplates';
 import { TemplateCard } from './TemplateCard';
 import { Loader2 } from 'lucide-react';
+import { FrontendRoutes } from '../../shared/FrontendRoutes';
+import { useNavigate } from 'react-router-dom';
 
 export function TemplatesGrid() {
     const { templates, isLoading } = useTemplates();
+    const navigate = useNavigate();
 
     if (isLoading) {
         return (
@@ -30,7 +33,7 @@ export function TemplatesGrid() {
                     <TemplateCard
                         key={index}
                         template={template}
-                        templateIndex={index}
+                        onSelect={() => navigate(FrontendRoutes.AGENTS.SETUP, { state: { template } })}
                     />
                 ))}
             </div>
