@@ -1138,8 +1138,6 @@ export interface GmailEventData {
   labelIds: string[];
   // Parsed attachments (images, documents, etc.)
   attachments?: GmailParsedAttachment[];
-  // Legacy field - kept for backward compatibility
-  images?: GmailParsedAttachment[];
   // Stored files with full metadata (category, mimeType, url)
   storedFiles?: StoredFile[];
 }

@@ -25,6 +25,7 @@ import {
     extractTextFromBlocks,
     extractTextFromAttachments,
     extractImagesFromMessage,
+    pickSlackFileUrl,
     SlackAttachment,
     SlackFile,
     SlackMessageImage,
@@ -1029,7 +1030,7 @@ async function processSlackFile(args: {
     const { file, teamId, botToken } = args;
 
     try {
-        const downloadUrl = pickSlackDownloadUrl(file);
+        const downloadUrl = pickSlackFileUrl(file);
         if (!downloadUrl) {
             logger.warn(`No download URL found for Slack file`, { fileId: file.id, teamId });
             return null;
@@ -1062,18 +1063,6 @@ async function processSlackFile(args: {
     }
 }
 
-function pickSlackDownloadUrl(file: SlackFile): string | undefined {
-    if (file.url_private) return file.url_private;
-    return (
-        file.thumb_1024 ||
-        file.thumb_960 ||
-        file.thumb_800 ||
-        file.thumb_720 ||
-        file.thumb_480 ||
-        file.thumb_360 ||
-        undefined
-    );
-}
 
 async function downloadSlackFile(args: {
     downloadUrl: string;
