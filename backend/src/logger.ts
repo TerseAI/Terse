@@ -5,6 +5,7 @@ import { resourceFromAttributes } from '@opentelemetry/resources';
 import { settings } from './config/settings';
 import { logs, Logger as OpenTelemetryLogger } from '@opentelemetry/api-logs';
 import { AsyncLocalStorage } from 'async_hooks';
+import chalk from 'chalk';
 
 
 const config: LoggerConfig = {
@@ -153,14 +154,21 @@ class Logger {
     return Logger.instance;
   }
 
-  private logToConsole(level: string, message: string, attributes?: Record<string, any>): void {
-    const timestamp = new Date().toISOString();
-    const logMessage = `[${timestamp}] [${level.toUpperCase()}] ${message}`;
-    if (attributes && Object.keys(attributes).length > 0) {
-      console.log(logMessage, attributes);
-    } else {
-      console.log(logMessage);
-    }
+  private logToConsole(level: string, message: string): void {
+    const time = new Date().toLocaleTimeString('en-US', { hour12: false });
+    const upperLevel = level.toUpperCase();
+
+    const levelColors: Record<string, (text: string) => string> = {
+      DEBUG: chalk.gray,
+      INFO: chalk.blue,
+      WARN: chalk.yellow,
+      ERROR: chalk.red,
+    };
+
+    const colorFn = levelColors[upperLevel] || chalk.white;
+    const levelTag = colorFn(`[${upperLevel}]`);
+
+    console.log(`${chalk.dim(time)} ${levelTag} ${message}`);
   }
 
   private emitToPostHog(severityText: string, message: string, attributes?: Record<string, any>): void {
@@ -168,7 +176,7 @@ class Logger {
     
     if (!openTelemetryLogger) {
       // Fallback to console if PostHog is not initialized
-      this.logToConsole(severityText, message, attributes);
+      this.logToConsole(severityText, message);
       return;
     }
     try {
@@ -209,7 +217,7 @@ class Logger {
     } catch (error) {
       // Fallback to console if PostHog fails
       console.error('[Logger] Failed to emit log to PostHog:', error);
-      this.logToConsole(severityText, message, attributes);
+      this.logToConsole(severityText, message);
     }
   }
 
@@ -280,7 +288,7 @@ class Logger {
     if (config.usePostHog) {
       this.emitToPostHog(severityText, message, mergedAttributes);
     } else {
-      this.logToConsole(severityText, message, mergedAttributes);
+      this.logToConsole(severityText, message);
     }
   }
 
