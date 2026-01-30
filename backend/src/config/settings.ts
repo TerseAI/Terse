@@ -38,6 +38,13 @@ export const settings = {
     searchUrl: requireEnv('SEARCH_DATABASE_URL'),
   },
 
+  workos: {
+    clientId: requireEnv("WORKOS_CLIENT_ID"),
+    apiKey: requireEnv("WORKOS_API_KEY"),
+    cookiePassword: requireEnv("WORKOS_COOKIE_PASSWORD"),
+    redirectUri: requireEnv("WORKOS_REDIRECT_URI"),
+  },
+
   // API keys
   openai: {
     apiKey: requireEnv('OPENAI_API_KEY'),
