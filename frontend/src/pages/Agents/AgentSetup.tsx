@@ -60,11 +60,6 @@ export default function AgentSetup() {
     }, [hasStartedChat]);
 
     // Animation variants for synchronized transitions
-    const containerVariants = {
-        initial: { opacity: 1 },
-        chatStarted: { opacity: 1 },
-    };
-
     const headerVariants = {
         visible: {
             opacity: 1,
@@ -86,10 +81,6 @@ export default function AgentSetup() {
             flexGrow: 0,
             minHeight: 200,
         },
-        inMotion: {
-            flexGrow: 1,
-            minHeight: 0,
-        },
         expanded: {
             flexGrow: 1,
             minHeight: 0,
@@ -110,12 +101,7 @@ export default function AgentSetup() {
     };
 
     return (
-        <motion.div
-            className="flex flex-col h-full w-full"
-            variants={containerVariants}
-            initial="initial"
-            animate={hasStartedChat ? "chatStarted" : "initial"}
-        >
+        <div className="flex flex-col h-full w-full">
             {/* Header - fades out when chat starts */}
             <AnimatePresence>
                 {!hasStartedChat && (
@@ -220,6 +206,6 @@ export default function AgentSetup() {
                     )}
                 </AnimatePresence>
             </div>
-        </motion.div>
+        </div>
     );
 }
