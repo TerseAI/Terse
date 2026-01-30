@@ -104,7 +104,7 @@ function SlackCardContent({
     return (
         <div className="space-y-2">
             {integrations.map((integration) => (
-                <SlackIntegrationItem integration={integration} />
+                <SlackIntegrationItem integration={integration} key={integration.id} />
             ))}
         </div>
     );

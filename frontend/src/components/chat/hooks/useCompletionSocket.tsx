@@ -54,10 +54,16 @@ export function useCompletionSocket(options: UseCompletionSocketOptions) {
 
     // Subscribe to events
     useEffect(() => {
-        if (!subscribeToEvents) return;
+        if (!subscribeToEvents) {
+            console.log('[useCompletionSocket] No subscribeToEvents provided, skipping subscription');
+            return;
+        }
 
+        console.log('[useCompletionSocket] Setting up event subscription');
         const unsubscribe = subscribeToEvents((payload) => {
             const message = payload.runHistoryModelEvent;
+            console.log('[useCompletionSocket] Event received:', message.type);
+            
             switch (message.type) {
                 case 'TextDelta':
                     onDeltaRef.current(message);
@@ -90,10 +96,13 @@ export function useCompletionSocket(options: UseCompletionSocketOptions) {
                     console.log('Snippet event received', message.snippet);
                     onSnippetRef.current?.(message.snippet);
                     break;
+                default:
+                    console.warn('[useCompletionSocket] Unknown event type:', message.type);
             }
         });
 
         return () => {
+            console.log('[useCompletionSocket] Cleaning up event subscription');
             unsubscribe();
         };
     }, [subscribeToEvents]);
