@@ -90,7 +90,7 @@ export async function buildChatAgentSystemPrompt(userId: string, userTimezone?: 
     - Prompt - this is the prompt that the agent will use to perform the actions.
     - Knowledge Base - this is the context that the agent will use to perform the actions. This can be a GitHub repository, a Notion database, a Confluence page, etc.
     
-    Normally, agents have 1 or 2 triggers and their can only be 1 output. But they can have multiple knowledge bases.
+    Agents can have multiple triggers, knowledge bases and outputs.
 
     Different integrations can be used for different purposes. The following is a list of integrations and in
     what contexts they can be used:
