@@ -278,7 +278,8 @@ export class CronJobEvent extends InputEvent {
             return false;
         }
 
-        return true;
+        // Must match the specific trigger ID, not just any time trigger
+        return agentTrigger.id === this.data.inputId;
     }
 
     createTriggerMetadata(): RunHistoryTrigger {
