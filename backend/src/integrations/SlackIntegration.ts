@@ -996,16 +996,21 @@ export async function downloadSlackFiles(
     teamId: string,
     botToken: string
 ): Promise<StoredFile[]> {
-    const supportedFiles = filterSupportedSlackFiles(files);
+    try {
+        const supportedFiles = filterSupportedSlackFiles(files);
+        if (supportedFiles.length === 0) return [];
 
-    if (supportedFiles.length === 0) return [];
-    const MAX_CONCURRENT = 5;
-    const storedFiles = await mapWithConcurrency(supportedFiles, MAX_CONCURRENT, (file) =>
-        processSlackFile({ file, teamId, botToken })
-    );
+        const storedFiles = await Promise.all(
+            supportedFiles.map((file) => processSlackFile({ file, teamId, botToken }))
+        );
 
-    const nonNull = storedFiles.filter((f): f is StoredFile => f !== null);
-    return nonNull;
+        return storedFiles.filter((f): f is StoredFile => f !== null);
+    } catch (error) {
+        // Don't let file download failures break the entire event
+        // This can happen e.g. when the user needs to reinstall their Slack app
+        logger.error(`Failed to download Slack files`, { error, teamId, fileCount: files.length });
+        return [];
+    }
 }
 
 function filterSupportedSlackFiles(files: SlackFile[]): SlackFile[] {
@@ -1014,24 +1019,6 @@ function filterSupportedSlackFiles(files: SlackFile[]): SlackFile[] {
         const filename = file.name ?? file.title ?? "";
         return isSupportedFileType(mimetype, filename);
     });
-}
-
-async function mapWithConcurrency<T, R>(
-    items: T[],
-    maxConcurrent: number,
-    worker: (item: T, index: number) => Promise<R>
-): Promise<R[]> {
-    const results: R[] = new Array(items.length);
-    for (let i = 0; i < items.length; i += maxConcurrent) {
-        const batch = items.slice(i, i + maxConcurrent);
-        const batchResults = await Promise.all(
-            batch.map((item, j) => worker(item, i + j))
-        );
-        for (let j = 0; j < batchResults.length; j++) {
-            results[i + j] = batchResults[j];
-        }
-    }
-    return results;
 }
 
 async function processSlackFile(args: {
