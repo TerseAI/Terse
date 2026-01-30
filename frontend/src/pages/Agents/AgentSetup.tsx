@@ -1,14 +1,15 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useRef } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { motion, AnimatePresence, Easing } from 'framer-motion';
 import { Loader2 } from 'lucide-react';
 import { useTemplates } from '@/hooks/api/useTemplates';
 import { TemplateCard } from '@/components/Agents/TemplateCard';
 import { Card, CardContent } from '@/components/ui/card';
-import { Chat } from '@/components/chat/Chat';
+import { Chat, ChatHandle } from '@/components/chat/Chat';
 import { subscribeToBuilderChat, sendBuilderMessage } from '@/socket';
 import { ModelRequest, SendModelRequest } from '@/shared/ModelEvents';
 import { ChatEventPayload } from '@/components/chat/hooks/useCompletionSocket';
+import { AgentTemplate } from '@/shared/types';
 
 const AGENT_SETUP_PLACEHOLDERS = [
     "Build me an agent that summarizes my Slack messages daily",
@@ -24,9 +25,14 @@ const ANIMATION_EASE: Easing = [0.4, 0, 0.2, 1];
 export default function AgentSetup() {
     const { templates, isLoading } = useTemplates();
     const [hasStartedChat, setHasStartedChat] = useState(false);
+    const chatRef = useRef<ChatHandle>(null);
 
     // Generate a session ID for this setup flow
     const sessionId = useMemo(() => uuidv4(), []);
+
+    const handleTemplateSelect = (template: AgentTemplate) => {
+        chatRef.current?.setInput(template.chatPrompt);
+    };
 
     const subscribeToEvents = useCallback((callback: (payload: ChatEventPayload) => void) => {
         const unsubscribe = subscribeToBuilderChat(sessionId, (payload) => {
@@ -139,6 +145,7 @@ export default function AgentSetup() {
             >
                 <div className="flex-1 min-h-0 w-full">
                     <Chat
+                        ref={chatRef}
                         key={sessionId}
                         subscribeToEvents={subscribeToEvents}
                         sendMessage={sendMessage}
@@ -192,7 +199,7 @@ export default function AgentSetup() {
                                                 <TemplateCard
                                                     key={index}
                                                     template={template}
-                                                    templateIndex={index}
+                                                    onSelect={handleTemplateSelect}
                                                 />
                                             ))}
                                         </div>
