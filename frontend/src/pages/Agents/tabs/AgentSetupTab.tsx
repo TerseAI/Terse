@@ -17,7 +17,7 @@ import { KnowledgeBaseSelector } from "../components/KnowledgeBaseSelector";
 import { CONFIG_DETAILS, ConfigInstance, ConfigType } from "../../../shared/Configs";
 import { v4 as uuidv4 } from 'uuid';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "../../../components/ui/dialog";
-import { InputConfigSelectorProps, IntegrationSelector } from "../../../components/IntegrationSelector";
+import { InputConfigSelectorProps, IntegrationSelector, AgentSaveState } from "../../../components/IntegrationSelector";
 import { PlusIcon, XIcon, Zap, FileText, Wrench, Bell, Database, ChevronRight, Check } from "lucide-react";
 import { cn } from "../../../lib/utils";
 import { Badge } from "../../../components/ui/badge";
@@ -51,21 +51,7 @@ export type AgentSetupTabProps = {
     updatedAt?: string;
 };
 
-function SaveAgentButton({
-    defaultName,
-    agentId,
-    name,
-    inputs,
-    outputs,
-    knowledgeBases,
-    prompt,
-    isActive,
-    requireApproval,
-    toolApprovals,
-    notificationSettings,
-    mutate,
-    onSaveSuccess
-}: {
+interface UseAgentSaveProps {
     defaultName: string;
     agentId: string | null;
     name: string | null;
@@ -78,8 +64,22 @@ function SaveAgentButton({
     toolApprovals: string[];
     notificationSettings: AgentNotificationSettingsType;
     mutate: KeyedMutator<Agent>;
-    onSaveSuccess?: () => void;
-}) {
+}
+
+function useAgentSave({
+    defaultName,
+    agentId,
+    name,
+    inputs,
+    outputs,
+    knowledgeBases,
+    prompt,
+    isActive,
+    requireApproval,
+    toolApprovals,
+    notificationSettings,
+    mutate,
+}: UseAgentSaveProps) {
     const navigate = useNavigate();
     const [isSaving, setIsSaving] = useState(false);
     const [saveSuccess, setSaveSuccess] = useState(false);
@@ -96,8 +96,8 @@ function SaveAgentButton({
 
     const isEditMode = !!agentId;
 
-    const handleSave = async () => {
-        if (!isComplete || !inputs.length || !outputs.length) return;
+    const handleSave = async (): Promise<boolean> => {
+        if (!isComplete || !inputs.length || !outputs.length) return false;
 
         setIsSaving(true);
         try {
@@ -131,21 +131,40 @@ function SaveAgentButton({
 
             toast.success('Agent saved successfully');
 
-            // Notify parent that save was successful
-            onSaveSuccess?.();
-
             setSaveSuccess(true);
             setTimeout(() => {
                 setSaveSuccess(false);
             }, 1000);
+            return true;
         } catch (error) {
             console.error('Error saving agent:', error);
-            alert('Failed to save agent. Please try again.');
+            toast.error('Failed to save agent. Please try again.');
+            return false;
         } finally {
             setIsSaving(false);
         }
     };
 
+    return {
+        isSaving,
+        saveSuccess,
+        isComplete,
+        isEditMode,
+        handleSave,
+    };
+}
+
+function SaveAgentButton({
+    isSaving,
+    saveSuccess,
+    isComplete,
+    handleSave,
+}: {
+    isSaving: boolean;
+    saveSuccess: boolean;
+    isComplete: boolean;
+    handleSave: () => Promise<boolean>;
+}) {
     return (
         <Button
             onClick={handleSave}
@@ -189,6 +208,30 @@ export default function AgentSetupTab({
         inputs.length === 0 || inputs.some((i) => !i || !i.config || !i.config.isComplete());
     const promptIncomplete = !prompt?.text || prompt.text.trim() === '';
     const skillsIncomplete = outputs.length === 0 || outputs.some((o) => !o || !o.config || !o.config.isComplete());
+
+    // Use the save hook to manage save state
+    const { isSaving, saveSuccess, isComplete, handleSave } = useAgentSave({
+        defaultName,
+        agentId,
+        name,
+        inputs: agentInputs,
+        outputs: agentOutputs,
+        knowledgeBases: agentKnowledgeBases,
+        prompt,
+        isActive,
+        requireApproval,
+        toolApprovals,
+        notificationSettings,
+        mutate,
+    });
+
+    // Create the agent save state for passing to triggers
+    const agentSaveState: AgentSaveState = {
+        isSavedAgent: !!agentId,
+        isComplete,
+        isSaving,
+        saveAgent: handleSave,
+    };
 
     // Step definitions for the builder flow
     const steps = [
@@ -234,18 +277,10 @@ export default function AgentSetupTab({
                         />
                     </div>
                     <SaveAgentButton
-                        defaultName={defaultName}
-                        agentId={agentId}
-                        name={name}
-                        inputs={agentInputs}
-                        outputs={agentOutputs}
-                        knowledgeBases={agentKnowledgeBases}
-                        prompt={prompt}
-                        isActive={isActive}
-                        requireApproval={requireApproval}
-                        toolApprovals={toolApprovals}
-                        notificationSettings={notificationSettings}
-                        mutate={mutate}
+                        isSaving={isSaving}
+                        saveSuccess={saveSuccess}
+                        isComplete={isComplete}
+                        handleSave={handleSave}
                     />
                 </div>
             </div>
@@ -342,7 +377,7 @@ export default function AgentSetupTab({
             <div className="flex-1 min-h-0 overflow-y-auto">
                 <div className="p-6 max-w-4xl">
                     <div className={activeSection === 'triggers' ? 'block' : 'hidden'}>
-                        <InputLayout inputs={inputs} setInputs={setInputs} isIncomplete={triggersIncomplete} />
+                        <InputLayout inputs={inputs} setInputs={setInputs} isIncomplete={triggersIncomplete} agentSaveState={agentSaveState} />
                     </div>
 
                     <div className={activeSection === 'knowledgeBase' ? 'block' : 'hidden'}>
@@ -387,7 +422,7 @@ export default function AgentSetupTab({
     )
 }
 
-function InputLayout({ inputs, setInputs }: { inputs: TransientAgentTrigger[], setInputs: (inputs: TransientAgentTrigger[]) => void, isIncomplete: boolean }) {
+function InputLayout({ inputs, setInputs, agentSaveState }: { inputs: TransientAgentTrigger[], setInputs: (inputs: TransientAgentTrigger[]) => void, isIncomplete: boolean, agentSaveState?: AgentSaveState }) {
     const [showAddModal, setShowAddModal] = useState(false);
 
     const handleSelectPlatform = (config: ConfigType) => {
@@ -413,7 +448,7 @@ function InputLayout({ inputs, setInputs }: { inputs: TransientAgentTrigger[], s
 
             <div className="space-y-2">
                 {inputs.map((input) => (
-                    <InputCard key={input.id} input={input} inputs={inputs} setInputs={setInputs} handleRemove={handleRemove} />
+                    <InputCard key={input.id} input={input} inputs={inputs} setInputs={setInputs} handleRemove={handleRemove} agentSaveState={agentSaveState} />
                 ))}
                 <Button
                     variant="outline"
@@ -434,7 +469,7 @@ function InputLayout({ inputs, setInputs }: { inputs: TransientAgentTrigger[], s
     )
 }
 
-function InputCard({ input, inputs, setInputs, handleRemove }: { input: TransientAgentTrigger, inputs: TransientAgentTrigger[], setInputs: (inputs: TransientAgentTrigger[]) => void, handleRemove: (id: string) => void }) {
+function InputCard({ input, inputs, setInputs, handleRemove, agentSaveState }: { input: TransientAgentTrigger, inputs: TransientAgentTrigger[], setInputs: (inputs: TransientAgentTrigger[]) => void, handleRemove: (id: string) => void, agentSaveState?: AgentSaveState }) {
     const needsConfiguration = !input.config || !input.config.isComplete();
     const [showDetailsDialog, setShowDetailsDialog] = useState(false);
     const [draftConfig, setDraftConfig] = useState<ConfigInstance | undefined>(input.config);
@@ -463,6 +498,7 @@ function InputCard({ input, inputs, setInputs, handleRemove }: { input: Transien
         input: draftInput,
         setConfig: setDraftConfig,
         variant: "card",
+        agentSaveState,
     };
 
     return (
@@ -505,7 +541,7 @@ function InputCard({ input, inputs, setInputs, handleRemove }: { input: Transien
                     <DialogHeader>
                         <DialogTitle>{needsConfiguration ? "Configure Trigger" : "Trigger Details"}</DialogTitle>
                     </DialogHeader>
-                    <IntegrationSelector {...selectorProps} variant="dialog" />
+                    <IntegrationSelector {...selectorProps} variant="dialog" agentSaveState={agentSaveState} />
                     <DialogFooter>
                         <Button variant="outline" onClick={handleCancel}>Cancel</Button>
                         <Button onClick={handleDone} disabled={!isDraftValid}>Done</Button>
