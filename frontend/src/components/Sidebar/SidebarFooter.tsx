@@ -1,13 +1,12 @@
 import { useAuth } from "@/services/auth";
+import { FrontendRoutes } from "@/shared/FrontendRoutes";
+import { User } from "@/types/User";
+import { ChevronUp, User2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "../theme-provider";
-import { SidebarFooter, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "../ui/sidebar";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../ui/dropdown-menu";
-import { User2 } from "lucide-react";
-import { ChevronUp } from "lucide-react";
-import { User } from "@/types/User";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
-import { FrontendRoutes } from "@/shared/FrontendRoutes";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../ui/dropdown-menu";
+import { SidebarFooter, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "../ui/sidebar";
 
 export function AppSidebarFooter() {
     const { user, logout } = useAuth();
@@ -19,7 +18,7 @@ export function AppSidebarFooter() {
         navigate(FrontendRoutes.APP);
     }
 
-    const userName = user?.display_name || user?.email || 'User';
+    const userName = user?.displayName || user?.email || 'User';
     return (
         <SidebarFooter>
             <SidebarMenu>
@@ -52,11 +51,7 @@ export function AppSidebarFooter() {
 
 // Function to try and resolve a profile photo from their github (if attached) or their email as a fallback
 function ProfilePhoto({ user }: { user: User | null }) {
-    let size = 100;
-    let imageUrl = '';
-    if (user && user.github_username) {
-        imageUrl = `https://github.com/${user.github_username}.png?size=${size}`;
-    }
+    const imageUrl = user?.displayPhotoUrl || '';
 
     return (
         <Avatar>

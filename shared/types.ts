@@ -3,7 +3,7 @@ import { IntegrationType } from "./Integrations";
 import { RunHistoryActionType } from "./RunHistoryTypes";
 import { Project, Ticket } from "./TicketSystem";
 
-type Role = "admin" | "user";
+export type Role = "admin" | "user";
 
 export type User = {
   id: string;
@@ -11,10 +11,16 @@ export type User = {
   organizationId: string | undefined;
   organizationName: string | undefined;
   email: string;
-  display_name: string;
-  is_placeholder: boolean;
+  displayName: string;
+  displayPhotoUrl: string;
+  isPlaceholder: boolean;
   roles: Role[];
 };
+
+export type UserNoOrganization = Omit<
+  User,
+  "organizationId" | "organizationName" | "roles"
+>;
 
 export type SubActivity = {
   summary: string;

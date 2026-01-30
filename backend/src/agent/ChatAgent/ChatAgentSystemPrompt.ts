@@ -1,74 +1,110 @@
-import { INTEGRATION_METADATA, IntegrationInstance, IntegrationType } from "../../shared/Integrations";
-import { INTEGRATION_REGISTRY, isSystemIntegration } from "../../integrations/abstract/IntegrationRegistry";
+import {
+  INTEGRATION_REGISTRY,
+  isSystemIntegration,
+} from "../../integrations/abstract/IntegrationRegistry";
 import { db } from "../../prismaClient";
-import { formatAgentForSystemPrompt } from "../AgentRunner/formatContext";
+import { getUserNoOrganizationFromDb } from "../../routes/auth";
+import {
+  INTEGRATION_METADATA,
+  IntegrationInstance,
+  IntegrationType,
+} from "../../shared/Integrations";
 import { AgentWithRelations } from "../../types/prisma";
-import { getInputConfigInclude, getKnowledgeBaseConfigInclude, getOutputConfigInclude } from "../../utility/prismaIncludes";
+import {
+  getInputConfigInclude,
+  getKnowledgeBaseConfigInclude,
+  getOutputConfigInclude,
+} from "../../utility/prismaIncludes";
+import { formatAgentForSystemPrompt } from "../AgentRunner/formatContext";
 
-export async function buildChatAgentSystemPrompt(userId: string, userTimezone?: string | null): Promise<string> {
+export async function buildChatAgentSystemPrompt(
+  userId: string,
+  userTimezone?: string | null,
+): Promise<string> {
+  const integrationMetadata = Object.values(INTEGRATION_METADATA);
 
-    const integrationMetadata = Object.values(INTEGRATION_METADATA);
+  // Excluding these integrations from the list of integrations that we have to
+  // setup a connection for.
+  const excludedIntegrations = [
+    IntegrationType.TERSE,
+    IntegrationType.CRON_JOB,
+  ];
+  const integrationList = integrationMetadata.filter(
+    (metadata) => !excludedIntegrations.includes(metadata.type),
+  );
+  const integrationDescriptions = integrationList
+    .map(
+      (metadata) =>
+        `${metadata.name} - Description: ${metadata.description} - Input: ${metadata.isInput} - Output: ${metadata.isOutput} - Knowledge Base: ${metadata.isKnowledgeBase}`,
+    )
+    .join("\n");
 
-    // Excluding these integrations from the list of integrations that we have to
-    // setup a connection for.
-    const excludedIntegrations = [IntegrationType.TERSE, IntegrationType.CRON_JOB];
-    const integrationList = integrationMetadata.filter(metadata => !excludedIntegrations.includes(metadata.type))
-    const integrationDescriptions = integrationList.map(metadata => `${metadata.name} - Description: ${metadata.description} - Input: ${metadata.isInput} - Output: ${metadata.isOutput} - Knowledge Base: ${metadata.isKnowledgeBase}`).join('\n');
+  const userRecord = await getUserNoOrganizationFromDb(userId);
+  if (!userRecord) {
+    throw new Error("User not found");
+  }
+  const currentTimeUtc = new Date().toISOString();
+  const currentDateUtc = currentTimeUtc.split("T")[0];
+  const resolvedTimezone = userTimezone || "UTC";
+  const currentTimeLocal = formatCurrentTimeForTimezone(resolvedTimezone);
+  const currentDateLocal = currentTimeLocal
+    ? currentTimeLocal.split("T")[0]
+    : null;
 
-    const userRecord = await db().users.findUnique({
-        where: { id: userId },
-        select: {
-            email: true,
-            display_name: true,
-        },
-    });
-    const currentTimeUtc = new Date().toISOString();
-    const currentDateUtc = currentTimeUtc.split("T")[0];
-    const resolvedTimezone = userTimezone || "UTC";
-    const currentTimeLocal = formatCurrentTimeForTimezone(resolvedTimezone);
-    const currentDateLocal = currentTimeLocal ? currentTimeLocal.split("T")[0] : null;
+  // Get user's existing integrations
+  const integrationInstanceDescriptions = (
+    await Promise.all(
+      INTEGRATION_REGISTRY.map(async (integration) => {
+        const instances = await integration.getInstancesForUser(userId);
+        const formattedInstances = instances.map((instance) =>
+          integration.formatIntegrationInstanceForAgent(instance),
+        );
 
-    // Get user's existing integrations
-    const integrationInstanceDescriptions = (await Promise.all(
-        INTEGRATION_REGISTRY.map(async (integration) => {
-            const instances = await integration.getInstancesForUser(userId);
-            const formattedInstances = instances.map(instance => integration.formatIntegrationInstanceForAgent(instance));
-
-            if (formattedInstances.length === 0 && isSystemIntegration(integration.integrationType)) {
-                const placeholderInstance: IntegrationInstance = { id: "system" };
-                return [integration.formatIntegrationInstanceForAgent(placeholderInstance)];
-            }
-
-            return formattedInstances;
-        })
-    )).flat();
-
-    const existingIntegrationsList = integrationInstanceDescriptions.length > 0
-        ? `\n- ${integrationInstanceDescriptions.join('\n- ')}`
-        : '\nYou currently have no integrations connected.';
-
-    const currentUserAgents: AgentWithRelations[] = await db().automations.findMany({
-        where: {
-            user_id: userId,
-        },
-        include: {
-            prompt: true,
-            tool_approvals: true,
-            inputs: {
-                include: getInputConfigInclude()
-            },
-            outputs: {
-                include: getOutputConfigInclude()
-            },
-            knowledge_bases: {
-                include: getKnowledgeBaseConfigInclude()
-            }
+        if (
+          formattedInstances.length === 0 &&
+          isSystemIntegration(integration.integrationType)
+        ) {
+          const placeholderInstance: IntegrationInstance = { id: "system" };
+          return [
+            integration.formatIntegrationInstanceForAgent(placeholderInstance),
+          ];
         }
+
+        return formattedInstances;
+      }),
+    )
+  ).flat();
+
+  const existingIntegrationsList =
+    integrationInstanceDescriptions.length > 0
+      ? `\n- ${integrationInstanceDescriptions.join("\n- ")}`
+      : "\nYou currently have no integrations connected.";
+
+  const currentUserAgents: AgentWithRelations[] =
+    await db().automations.findMany({
+      where: {
+        user_id: userId,
+      },
+      include: {
+        prompt: true,
+        tool_approvals: true,
+        inputs: {
+          include: getInputConfigInclude(),
+        },
+        outputs: {
+          include: getOutputConfigInclude(),
+        },
+        knowledge_bases: {
+          include: getKnowledgeBaseConfigInclude(),
+        },
+      },
     });
 
-    const currentUserAgentsList = currentUserAgents.map(agent => formatAgentForSystemPrompt(agent)).join('\n');
+  const currentUserAgentsList = currentUserAgents
+    .map((agent) => formatAgentForSystemPrompt(agent))
+    .join("\n");
 
-    return `
+  return `
 
     ## Introduction
     You are an AI Assistant that helps users create Agents in the Terse AI Application. You can be conversation with the user! You are meant to be helpful and educate them about Terse AI.
@@ -111,7 +147,9 @@ export async function buildChatAgentSystemPrompt(userId: string, userTimezone?: 
 
     ## Current User Context
 
-    User: ${userRecord?.display_name || "Unknown"} (${userRecord?.email || "Unknown"})
+    User: ${userRecord.displayName || "Unknown"} (${
+    userRecord.email || "Unknown"
+  })
     User ID: ${userId}
     User Timezone: ${resolvedTimezone}
     Current Date (User TZ): ${currentDateLocal ?? "Unavailable"}
@@ -146,15 +184,17 @@ export async function buildChatAgentSystemPrompt(userId: string, userTimezone?: 
     
     Your goal is to call the applyAgent tool to configure the integration. That tool call will allow to persist and apply the agent. Once that is called and it saves successfully, you should thank the user and ask them if they have any other agents they want to create just let you know. They may then prompt you to try creating something else and the loop continues.
     `;
-}   
+}
 
 function formatCurrentTimeForTimezone(timezone: string): string | null {
-    try {
-        return new Date().toLocaleString("sv-SE", {
-            timeZone: timezone,
-            hour12: false,
-        }).replace(" ", "T");
-    } catch {
-        return null;
-    }
+  try {
+    return new Date()
+      .toLocaleString("sv-SE", {
+        timeZone: timezone,
+        hour12: false,
+      })
+      .replace(" ", "T");
+  } catch {
+    return null;
+  }
 }

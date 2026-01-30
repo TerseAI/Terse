@@ -32,7 +32,7 @@ export async function createUser(
   logger.info("✅ New user created", {
     email: user.email,
     userId: user.id,
-    displayName: user.display_name,
+    displayName: user.displayName,
     githubUsername: user.github_username,
   });
 

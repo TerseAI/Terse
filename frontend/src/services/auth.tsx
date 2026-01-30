@@ -17,7 +17,7 @@ const AuthContext = createContext<AuthContextType | null>(null);
 function identifyInPostHog(user: User) {
   posthog.identify(user.id, {
     email: user.email,
-    display_name: user.display_name
+    displayName: user.displayName
   });
   posthog.setPersonPropertiesForFlags({ email: user.email });
 }

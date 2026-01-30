@@ -9,7 +9,7 @@ import { settings } from "../config/settings";
 import logger from "../logger";
 import { db } from "../prismaClient";
 import { Session } from "../server";
-import { User } from "../shared/types";
+import { Role, User, UserNoOrganization } from "../shared/types";
 
 export const WORKOS_SESSION_COOKIE_NAME = "TERSE_WORKOS_SESSION";
 
@@ -253,9 +253,38 @@ export async function getOrCreateDbUserFromWorkOS(
     organizationId: authResult.organizationId,
     organizationName: organizationName,
     email: workosUser.email,
-    display_name: workosUser.firstName + " " + workosUser.lastName,
-    is_placeholder: false,
-    roles: roles,
+    displayName: workosUser.firstName + " " + workosUser.lastName,
+    displayPhotoUrl: workosUser.profilePictureUrl || "",
+    isPlaceholder: false,
+    roles: roles as Role[],
+  };
+}
+
+export async function getUserNoOrganizationFromDb(
+  userId: string,
+): Promise<UserNoOrganization | null> {
+  const prisma = db();
+  const dbUser = await prisma.users.findUnique({
+    where: { id: userId },
+  });
+
+  if (!dbUser) {
+    return null;
+  }
+
+  const workOSId = dbUser.workos_id;
+  const workOSUser = await workos.userManagement.getUser(workOSId);
+  if (!workOSUser) {
+    return null;
+  }
+
+  return {
+    id: dbUser.id,
+    workosId: workOSId,
+    email: workOSUser.email,
+    displayName: workOSUser.firstName + " " + workOSUser.lastName,
+    displayPhotoUrl: workOSUser.profilePictureUrl || "",
+    isPlaceholder: false,
   };
 }
 
