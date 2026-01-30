@@ -188,10 +188,11 @@ function GlowingTextField({ isLoading, disabled, onInputChange, onKeyDown, input
                                 placeholder:italic
                                 placeholder:text-muted-foreground
                                 rounded-lg
-                                transition-all
-                                duration-300
                                 focus:outline-none
                             `}
+                        style={{
+                            transition: 'padding 0.4s cubic-bezier(0.4, 0, 0.2, 1), font-size 0.4s cubic-bezier(0.4, 0, 0.2, 1), line-height 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+                        }}
                         onChange={onInputChange}
                         onKeyDown={handleKeyDownInternal}
                         value={inputValue}
