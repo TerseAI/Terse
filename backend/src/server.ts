@@ -2,23 +2,13 @@ import bodyParser from "body-parser";
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import "dotenv/config";
-import express, { NextFunction, Request, Response } from "express";
+import express, { Request, Response, NextFunction } from "express";
 import { createServer } from "http";
 // Import settings early to validate environment variables at startup
-import { requestSessionSocketToken } from "./agent/socket";
 import "./config/settings";
 import { settings } from "./config/settings";
-import "./integrations/IntegrationTaskHandler"; // Import to trigger listener registration
-import logger from "./logger";
-import { initializeRealtimeSocket } from "./realtimeSocket";
-import {
-  createAgent,
-  deleteAgent,
-  getRecentAgents,
-  getUserAgent,
-  getUserAgents,
-  updateAgent,
-} from "./routes/agents";
+import { requestSessionSocketToken } from "./agent/socket";
+import { getActivityFeed, getDailyActivitySummary } from "./routes/activity";
 import { authMiddleware, login, logout, setSession } from "./routes/auth";
 import {
   githubAppAuthMiddleware,
@@ -33,101 +23,87 @@ import {
   googleLoginURL,
 } from "./routes/auth/googleAuth";
 import {
-  getConfluenceIntegrations,
-  getConfluenceResources,
-} from "./routes/confluence";
+  createAgent,
+  deleteAgent,
+  getRecentAgents,
+  getUserAgent,
+  getUserAgents,
+  updateAgent,
+} from "./routes/agents";
 import {
-  createOrUpdateDatadogIntegration,
-  getDatadogIndexes,
-  getDatadogIntegrations,
-} from "./routes/datadog";
-import {
-  figmaOAuthCallback,
-  getFigmaIntegrations,
-  handleFigmaWebhook,
-} from "./routes/figma";
-import {
-  getGithubIntegrations,
-  getGithubRepositoriesForIntegration,
   getInstallationUrl,
-  githubAppInstallationDeleted,
   githubAppUnifiedEvent,
+  githubAppInstallationDeleted,
   processsGithubAppInstallationWebhook,
+  getGithubRepositoriesForIntegration,
+  getGithubIntegrations,
 } from "./routes/github";
 import {
   deleteGmailIntegration,
   getGmailIntegrations,
   gmailCallback,
-  handleGmailWebhook,
+  handleGmailWebhook
 } from "./routes/gmail";
+import { refreshAllTokens } from "./routes/refreshTokens";
 import {
-  getActiveIntegrations,
-  getAllIntegrations,
-  getIntegrationInstallationDetails,
-} from "./routes/integrations";
-import {
-  atlassianOAuthCallback,
   getAtlassianIntegrations,
-  getJiraResources,
+  atlassianOAuthCallback,
   handleJiraWebhook,
+  getJiraResources,
 } from "./routes/jira";
 import {
-  createOrUpdateLaunchDarklyIntegration,
-  getLaunchDarklyEnvironments,
-  getLaunchDarklyIntegrations,
-  getLaunchDarklyProjects,
-} from "./routes/launchdarkly";
-import {
+  linearOAuthCallback,
   getLinearIntegrations,
   getLinearTeams,
   handleLinearWebhook,
-  linearOAuthCallback,
 } from "./routes/linear";
+import {
+  notionOAuthCallback,
+  getNotionResources,
+  getNotionIntegrations
+} from "./routes/notion";
+import { getRunHistory, getChatHistory, getRunHistoryActions } from "./routes/runHistory";
+import { getStats } from "./routes/stats";
+import { User as TicketUser } from "./shared/TicketSystem";
+import {
+  getCurrentSlackIntegration,
+  slackOAuthCallback,
+  getSlackChannels,
+  getSlackIntegrations,
+  getSlackUsers,
+} from "./routes/slack";
+import { TicketManager } from "./ticketing/TicketIntegration";
+import { User } from "./types/prisma";
+import {
+  figmaOAuthCallback,
+  getFigmaIntegrations,
+  handleFigmaWebhook,
+} from "./routes/figma";
+import { getConfluenceIntegrations, getConfluenceResources } from "./routes/confluence";
+import { getActiveIntegrations, getAllIntegrations, getIntegrationInstallationDetails } from "./routes/integrations";
+import { initializeRealtimeSocket } from "./realtimeSocket";
+import { generateQuestionsRoute, generatePromptRoute } from "./routes/promptBuilder";
 import {
   createNotificationDestination,
   deleteNotificationDestination,
   getNotificationDestinations,
   updateNotificationDestination,
 } from "./routes/notificationDestinations";
-import {
-  getNotionIntegrations,
-  getNotionResources,
-  notionOAuthCallback,
-} from "./routes/notion";
-import {
-  createOrUpdatePosthogIntegration,
-  getPosthogIntegrations,
-  getPosthogProjects,
-} from "./routes/posthog";
-import {
-  generatePromptRoute,
-  generateQuestionsRoute,
-} from "./routes/promptBuilder";
-import { refreshAllTokens } from "./routes/refreshTokens";
-import {
-  getChatHistory,
-  getRunHistory,
-  getRunHistoryActions,
-} from "./routes/runHistory";
-import { handleManualTrigger, handleScheduleWebhook } from "./routes/schedule";
-import {
-  getCurrentSlackIntegration,
-  getSlackChannels,
-  getSlackIntegrations,
-  getSlackUsers,
-  slackOAuthCallback,
-} from "./routes/slack";
-import { getStats } from "./routes/stats";
-import { getTemplates } from "./routes/templates";
-import { toolsThatRequireApprovalsRoute } from "./routes/tools";
-import { ApiRoutes } from "./shared/ApiRoutes";
-import { User as TicketUser } from "./shared/TicketSystem";
 import { setupSlackBolt } from "./slack/boltApp";
+import logger from "./logger";
+import { getPosthogIntegrations, createOrUpdatePosthogIntegration, getPosthogProjects } from "./routes/posthog";
+import { getLaunchDarklyIntegrations, createOrUpdateLaunchDarklyIntegration, getLaunchDarklyProjects, getLaunchDarklyEnvironments } from "./routes/launchdarkly";
+import { getDatadogIntegrations, createOrUpdateDatadogIntegration, getDatadogIndexes } from "./routes/datadog";
+import { handleScheduleWebhook, handleManualTrigger } from "./routes/schedule";
+import { getTemplates } from "./routes/templates";
+import "./integrations/IntegrationTaskHandler"; // Import to trigger listener registration
+import { ApiRoutes } from "./shared/ApiRoutes";
 import { runStartupValidations } from "./tools/validateToolNames";
-import { User } from "./types/prisma";
+import { toolsThatRequireApprovalsRoute } from "./routes/tools";
 
 export type Session = {
   user: User;
+  ticketManager?: TicketManager;
   isUserInitiated: boolean; // true if the user has initiated the session, false if the session was initiated by the system
   teamId?: string;
   currentUser?: TicketUser;
@@ -145,18 +121,17 @@ try {
 }
 
 // Initialize Slack Bolt app
-const slackReceiver: Awaited<ReturnType<typeof setupSlackBolt>> | null =
-  await setupSlackBolt();
+const slackReceiver: Awaited<ReturnType<typeof setupSlackBolt>> | null = await setupSlackBolt();
 
 app.use(
   cors({
     origin: true,
     credentials: true,
-  }),
+  })
 );
 
 // Access logging middleware - only in production (too noisy for local dev)
-if (settings.nodeEnv !== "development") {
+if (settings.nodeEnv !== 'development') {
   app.use((req: Request, res: Response, next: NextFunction) => {
     const startTime = Date.now();
     const requestId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -167,12 +142,10 @@ if (settings.nodeEnv !== "development") {
       method: req.method,
       path: req.path,
       query: Object.keys(req.query).length > 0 ? req.query : undefined,
-      ip: req.ip || req.socket.remoteAddress || "unknown",
-      userAgent: req.get("user-agent"),
-      contentType: req.get("content-type"),
-      contentLength: req.get("content-length")
-        ? parseInt(req.get("content-length") || "0")
-        : undefined,
+      ip: req.ip || req.socket.remoteAddress || 'unknown',
+      userAgent: req.get('user-agent'),
+      contentType: req.get('content-type'),
+      contentLength: req.get('content-length') ? parseInt(req.get('content-length') || '0') : undefined,
       userId: (req.session?.user as User)?.id,
     };
 
@@ -189,23 +162,15 @@ if (settings.nodeEnv !== "development") {
         path: req.path,
         statusCode: res.statusCode,
         duration: `${duration}ms`,
-        contentLength: res.get("content-length")
-          ? parseInt(res.get("content-length") || "0")
-          : undefined,
+        contentLength: res.get('content-length') ? parseInt(res.get('content-length') || '0') : undefined,
         userId: (req.session?.user as User)?.id,
       };
 
       // Log response
       if (res.statusCode >= 400) {
-        logger.warn(
-          `📤 ${req.method} ${req.path} ${res.statusCode}`,
-          responseInfo,
-        );
+        logger.warn(`📤 ${req.method} ${req.path} ${res.statusCode}`, responseInfo);
       } else {
-        logger.info(
-          `📤 ${req.method} ${req.path} ${res.statusCode}`,
-          responseInfo,
-        );
+        logger.info(`📤 ${req.method} ${req.path} ${res.statusCode}`, responseInfo);
       }
 
       return originalSend.call(this, body);
@@ -214,6 +179,7 @@ if (settings.nodeEnv !== "development") {
     next();
   });
 }
+
 
 if (slackReceiver?.receiver) {
   app.use("/slack", slackReceiver.receiver.router);
@@ -277,6 +243,17 @@ app.post(ApiRoutes.AUTH.LOGOUT, async (req, res) => {
   logout(req, res);
 });
 
+// MARK ACTIVITY FEED
+
+app.get(ApiRoutes.ACTIVITY.FEED, authMiddleware, async (req, res) => {
+  getActivityFeed(req, res);
+});
+
+// Add daily summary route
+app.get(ApiRoutes.ACTIVITY.DAILY_SUMMARY, authMiddleware, async (req, res) => {
+  getDailyActivitySummary(req, res);
+});
+
 // MARK: STATS
 app.get(ApiRoutes.STATS, authMiddleware, async (req, res) => {
   getStats(req, res);
@@ -288,21 +265,13 @@ app.get(ApiRoutes.RUN_HISTORY.ACTIONS, authMiddleware, async (req, res) => {
   getRunHistoryActions(req, res);
 });
 
-app.get(
-  ApiRoutes.RUN_HISTORY.BY_AGENT_ID.pattern,
-  authMiddleware,
-  async (req, res) => {
-    getRunHistory(req, res);
-  },
-);
+app.get(ApiRoutes.RUN_HISTORY.BY_AGENT_ID.pattern, authMiddleware, async (req, res) => {
+  getRunHistory(req, res);
+});
 
-app.get(
-  ApiRoutes.RUN_HISTORY.CHAT_BY_RUN_ID.pattern,
-  authMiddleware,
-  async (req, res) => {
-    getChatHistory(req, res);
-  },
-);
+app.get(ApiRoutes.RUN_HISTORY.CHAT_BY_RUN_ID.pattern, authMiddleware, async (req, res) => {
+  getChatHistory(req, res);
+});
 
 // MARK: SESSION
 
@@ -314,19 +283,15 @@ app.get(ApiRoutes.SESSION.TOKEN, authMiddleware, async (req, res) => {
 
 app.get(ApiRoutes.GITHUB.INTEGRATIONS, authMiddleware, async (req, res) => {
   getGithubIntegrations(req, res);
-});
+})
 
 app.get(ApiRoutes.GITHUB.INSTALLATION_URL, authMiddleware, async (req, res) => {
   getInstallationUrl(req, res);
 });
 
-app.get(
-  ApiRoutes.GITHUB.GET_REPOSITORIES_FOR_INTEGRATION,
-  authMiddleware,
-  async (req, res) => {
-    getGithubRepositoriesForIntegration(req, res);
-  },
-);
+app.get(ApiRoutes.GITHUB.GET_REPOSITORIES_FOR_INTEGRATION, authMiddleware, async (req, res) => {
+  getGithubRepositoriesForIntegration(req, res);
+});
 
 // THIS IS FOR THE PROBOT APP!
 app.post(
@@ -334,7 +299,7 @@ app.post(
   githubAppAuthMiddleware,
   async (req, res) => {
     processsGithubAppInstallationWebhook(req, res);
-  },
+  }
 );
 
 app.post(
@@ -342,7 +307,7 @@ app.post(
   githubAppAuthMiddleware,
   async (req, res) => {
     githubAppInstallationDeleted(req, res);
-  },
+  }
 );
 
 app.post(ApiRoutes.GITHUB.UNIFIED_EVENT, async (req, res) => {
@@ -384,13 +349,9 @@ app.get(ApiRoutes.GMAIL.CALLBACK, async (req, res) => {
   gmailCallback(req, res);
 });
 
-app.delete(
-  ApiRoutes.GMAIL.DELETE_INTEGRATION,
-  authMiddleware,
-  async (req, res) => {
-    deleteGmailIntegration(req, res);
-  },
-);
+app.delete(ApiRoutes.GMAIL.DELETE_INTEGRATION, authMiddleware, async (req, res) => {
+  deleteGmailIntegration(req, res);
+});
 
 app.post(ApiRoutes.WEBHOOKS.GMAIL, async (req, res) => {
   handleGmailWebhook(req, res);
@@ -405,7 +366,7 @@ app.post(ApiRoutes.REFRESH_TOKENS, async (req, res) => {
 
 app.get(ApiRoutes.NOTION.INTEGRATIONS, authMiddleware, async (req, res) => {
   getNotionIntegrations(req, res);
-});
+})
 
 // OAuth endpoints
 
@@ -421,7 +382,7 @@ app.get(ApiRoutes.NOTION.RESOURCES, authMiddleware, async (req, res) => {
 
 app.get(ApiRoutes.FIGMA.INTEGRATIONS, authMiddleware, async (req, res) => {
   getFigmaIntegrations(req, res);
-});
+})
 
 app.get(ApiRoutes.FIGMA.OAUTH_CALLBACK, async (req, res) => {
   figmaOAuthCallback(req, res);
@@ -463,27 +424,19 @@ app.post(ApiRoutes.WEBHOOKS.SCHEDULE_BY_INPUT_ID.pattern, async (req, res) => {
 });
 
 // Manual trigger endpoint (authenticated)
-app.post(
-  ApiRoutes.SCHEDULE.TRIGGER_BY_INPUT_ID.pattern,
-  authMiddleware,
-  async (req, res) => {
-    handleManualTrigger(req, res);
-  },
-);
+app.post(ApiRoutes.SCHEDULE.TRIGGER_BY_INPUT_ID.pattern, authMiddleware, async (req, res) => {
+  handleManualTrigger(req, res);
+});
 
 // MARK: SLACK
 
 app.get(ApiRoutes.SLACK.INTEGRATIONS, authMiddleware, async (req, res) => {
   getSlackIntegrations(req, res);
-});
+})
 
-app.get(
-  ApiRoutes.SLACK.GET_CURRENT_INTEGRATION,
-  authMiddleware,
-  async (req, res) => {
-    getCurrentSlackIntegration(req, res);
-  },
-);
+app.get(ApiRoutes.SLACK.GET_CURRENT_INTEGRATION, authMiddleware, async (req, res) => {
+  getCurrentSlackIntegration(req, res);
+});
 
 app.get(ApiRoutes.SLACK.OAUTH_CALLBACK, async (req, res) => {
   slackOAuthCallback(req, res);
@@ -513,37 +466,21 @@ app.get(ApiRoutes.POSTHOG.PROJECTS, authMiddleware, async (req, res) => {
 
 // MARK: LAUNCHDARKLY
 
-app.get(
-  ApiRoutes.LAUNCHDARKLY.INTEGRATIONS,
-  authMiddleware,
-  async (req, res) => {
-    getLaunchDarklyIntegrations(req, res);
-  },
-);
+app.get(ApiRoutes.LAUNCHDARKLY.INTEGRATIONS, authMiddleware, async (req, res) => {
+  getLaunchDarklyIntegrations(req, res);
+});
 
-app.post(
-  ApiRoutes.LAUNCHDARKLY.INTEGRATIONS,
-  authMiddleware,
-  async (req, res) => {
-    createOrUpdateLaunchDarklyIntegration(req, res);
-  },
-);
+app.post(ApiRoutes.LAUNCHDARKLY.INTEGRATIONS, authMiddleware, async (req, res) => {
+  createOrUpdateLaunchDarklyIntegration(req, res);
+});
 
-app.get(
-  ApiRoutes.LAUNCHDARKLY.PROJECTS_BY_INTEGRATION_ID.pattern,
-  authMiddleware,
-  async (req, res) => {
-    getLaunchDarklyProjects(req, res);
-  },
-);
+app.get(ApiRoutes.LAUNCHDARKLY.PROJECTS_BY_INTEGRATION_ID.pattern, authMiddleware, async (req, res) => {
+  getLaunchDarklyProjects(req, res);
+});
 
-app.get(
-  ApiRoutes.LAUNCHDARKLY.ENVIRONMENTS_BY_INTEGRATION_AND_PROJECT.pattern,
-  authMiddleware,
-  async (req, res) => {
-    getLaunchDarklyEnvironments(req, res);
-  },
-);
+app.get(ApiRoutes.LAUNCHDARKLY.ENVIRONMENTS_BY_INTEGRATION_AND_PROJECT.pattern, authMiddleware, async (req, res) => {
+  getLaunchDarklyEnvironments(req, res);
+});
 
 // MARK: DATADOG
 
@@ -593,31 +530,19 @@ app.get("/templates", authMiddleware, async (req, res) => {
 
 // MARK: PROMPT BUILDER
 
-app.post(
-  "/prompt-builder/generate-questions",
-  authMiddleware,
-  async (req, res) => {
-    generateQuestionsRoute(req, res);
-  },
-);
+app.post("/prompt-builder/generate-questions", authMiddleware, async (req, res) => {
+  generateQuestionsRoute(req, res);
+});
 
-app.post(
-  "/prompt-builder/generate-prompt",
-  authMiddleware,
-  async (req, res) => {
-    generatePromptRoute(req, res);
-  },
-);
+app.post("/prompt-builder/generate-prompt", authMiddleware, async (req, res) => {
+  generatePromptRoute(req, res);
+});
 
 // MARK: INTEGRATIONS
 
-app.get(
-  ApiRoutes.INTEGRATIONS.INSTALLATION_DETAILS_BY_TYPE.pattern,
-  authMiddleware,
-  async (req, res) => {
-    getIntegrationInstallationDetails(req, res);
-  },
-);
+app.get(ApiRoutes.INTEGRATIONS.INSTALLATION_DETAILS_BY_TYPE.pattern, authMiddleware, async (req, res) => {
+  getIntegrationInstallationDetails(req, res);
+});
 
 app.get("/integrations", authMiddleware, async (req, res) => {
   getAllIntegrations(req, res);
@@ -637,31 +562,19 @@ app.post("/notification-destinations", authMiddleware, async (req, res) => {
   createNotificationDestination(req, res);
 });
 
-app.put(
-  ApiRoutes.NOTIFICATION_DESTINATIONS.BY_ID.pattern,
-  authMiddleware,
-  async (req, res) => {
-    updateNotificationDestination(req, res);
-  },
-);
+app.put(ApiRoutes.NOTIFICATION_DESTINATIONS.BY_ID.pattern, authMiddleware, async (req, res) => {
+  updateNotificationDestination(req, res);
+});
 
-app.delete(
-  ApiRoutes.NOTIFICATION_DESTINATIONS.BY_ID.pattern,
-  authMiddleware,
-  async (req, res) => {
-    deleteNotificationDestination(req, res);
-  },
-);
+app.delete(ApiRoutes.NOTIFICATION_DESTINATIONS.BY_ID.pattern, authMiddleware, async (req, res) => {
+  deleteNotificationDestination(req, res);
+});
 
 // MARK: TOOLS THAT REQUIRE APPROVALS
 
-app.post(
-  ApiRoutes.TOOLS.THAT_REQUIRE_APPROVALS,
-  authMiddleware,
-  async (req, res) => {
-    toolsThatRequireApprovalsRoute(req, res);
-  },
-);
+app.post(ApiRoutes.TOOLS.THAT_REQUIRE_APPROVALS, authMiddleware, async (req, res) => {
+  toolsThatRequireApprovalsRoute(req, res);
+});
 
 /**
  * Express error handling middleware - MUST be last, after all routes
@@ -672,28 +585,24 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
     error: err.message,
     stack: err.stack,
     path: req.path,
-    method: req.method,
+    method: req.method
   });
   res.status(500).json({
-    error: "Internal server error",
+    error: "Internal server error"
   });
 });
 
 // Global unhandled rejection handler - safety net for fire-and-forget promises
 // This catches any promises that reject without a .catch() handler
-process.on(
-  "unhandledRejection",
-  (reason: unknown, promise: Promise<unknown>) => {
-    const errorMessage =
-      reason instanceof Error ? reason.message : String(reason);
-    const stack = reason instanceof Error ? reason.stack : undefined;
-    logger.error("❌ Unhandled Promise Rejection (safety net)", {
-      error: errorMessage,
-      stack,
-    });
-    // Log but don't crash - this is a safety net for promises we might have missed
-  },
-);
+process.on("unhandledRejection", (reason: unknown, promise: Promise<unknown>) => {
+  const errorMessage = reason instanceof Error ? reason.message : String(reason);
+  const stack = reason instanceof Error ? reason.stack : undefined;
+  logger.error("❌ Unhandled Promise Rejection (safety net)", {
+    error: errorMessage,
+    stack
+  });
+  // Log but don't crash - this is a safety net for promises we might have missed
+});
 
 try {
   runStartupValidations();

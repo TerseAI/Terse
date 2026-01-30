@@ -1,25 +1,31 @@
 import { AnimatePresence } from "framer-motion";
-import { useEffect } from "react";
 import { Navigate, Outlet, Route, BrowserRouter as Router, Routes } from 'react-router-dom';
-import BreadCrumb from "./components/BreadCrumb";
+import { useEffect } from "react";
 import Spin from "./components/loading/Spin";
 import { AppSidebar } from "./components/Sidebar/Sidebar";
-import { ThemeProvider } from "./components/theme-provider";
-import { SidebarProvider } from "./components/ui/sidebar";
-import { Toaster } from "./components/ui/sonner";
+import ActivityFeed from "./pages/ActivityFeed";
 import AgentDetail from "./pages/Agents/AgentDetail";
-import AgentSetup from "./pages/Agents/AgentSetup";
 import AgentsList from "./pages/Agents/AgentsList";
-import IntegrationPage from "./pages/IntegrationPage";
+import AgentSetup from "./pages/Agents/AgentSetup";
+import BirdsEyeViewHomepage from "./pages/BirdsEye";
+import Home from "./pages/Home";
+import LandingPageChangelog from "./pages/LandingPage_changelog";
 import Login from "./pages/Login";
-import NotificationsPage from "./pages/Notifications";
 import OAuthError from "./pages/OAuthError";
 import OAuthSuccess from "./pages/OAuthSuccess";
 import { AuthProvider, useAuth } from "./services/auth";
+import { SidebarProvider } from "./components/ui/sidebar";
+import { ThemeProvider } from "./components/theme-provider";
+import { Toaster } from "./components/ui/sonner";
+import IntegrationPage from "./pages/IntegrationPage";
+import BreadCrumb from "./components/BreadCrumb";
+import { initializeSocket, disconnectSocket } from "./socket";
+import { useFeatureFlag } from "./hooks/useFeatureFlag";
+import NotificationsPage from "./pages/Notifications";
 import { FrontendRoutes } from "./shared/FrontendRoutes";
-import { disconnectSocket, initializeSocket } from "./socket";
 
 function App() {
+  const hasBirdsEyeFlag = useFeatureFlag('Birds-eye-view-homepage');
   return (
     <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
       <Toaster position="top-center" richColors={true} />
@@ -28,6 +34,8 @@ function App() {
           <Routes>
             <Route path="/" element={<Navigate to={FrontendRoutes.APP} replace />} />
             <Route path={FrontendRoutes.APP} element={<Content />}>
+              <Route index element={ hasBirdsEyeFlag ? <BirdsEyeViewHomepage /> : <Home />} />
+              <Route path="activity" element={<ActivityFeed />} />
               <Route path="agents" element={<AgentsList />} />
               <Route path="agents/setup" element={<AgentSetup />} />
               <Route path="agents/new" element={<AgentDetail />} />
@@ -36,6 +44,7 @@ function App() {
               <Route path="integrations" element={<IntegrationPage />} />
               <Route path="notifications" element={<NotificationsPage />} />
             </Route>
+            <Route path="/changelog" element={<LandingPageChangelog />} />
             <Route path={FrontendRoutes.OAUTH.SUCCESS} element={<OAuthSuccess />} />
             <Route path={FrontendRoutes.OAUTH.ERROR} element={<OAuthError />} />
             <Route path="*" element={<div>Not Found</div>} />
