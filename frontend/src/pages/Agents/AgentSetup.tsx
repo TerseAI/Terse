@@ -18,6 +18,8 @@ const AGENT_SETUP_PLACEHOLDERS = [
     "Create a daily standup bot for my team",
 ];
 
+const ANIMATION_DURATION = 0.8;
+
 export default function AgentSetup() {
     const { templates, isLoading } = useTemplates();
     const [hasStartedChat, setHasStartedChat] = useState(false);
@@ -80,12 +82,12 @@ export default function AgentSetup() {
 
     const chatSectionVariants = {
         initial: {
-            flex: '0 0 auto',
-            height: 200,
+            flexGrow: 0,
+            minHeight: 200,
         },
         expanded: {
-            flex: '1 1 0%',
-            height: 'auto',
+            flexGrow: 1,
+            minHeight: 0,
         },
     };
 
@@ -121,7 +123,7 @@ export default function AgentSetup() {
                         animate="visible"
                         exit="hidden"
                         transition={{
-                            duration: 0.4,
+                            duration: ANIMATION_DURATION,
                             ease: [0.4, 0, 0.2, 1],
                         }}
                     >
@@ -133,19 +135,12 @@ export default function AgentSetup() {
 
             {/* Chat Section - expands when chat starts */}
             <motion.div
-                className="flex flex-col mx-auto max-w-5xl w-full pb-3 min-h-0"
+                className="flex flex-col mx-auto max-w-5xl w-full pb-3"
                 variants={chatSectionVariants}
                 initial="initial"
                 animate={hasStartedChat ? "expanded" : "initial"}
                 transition={{
-                    duration: 0.5,
-                    ease: [0.4, 0, 0.2, 1],
-                    // Delay the expansion slightly to sync with templates fading
-                    delay: hasStartedChat ? 0.1 : 0,
-                }}
-                style={{
-                    flex: hasStartedChat ? '1 1 0%' : '0 0 auto',
-                    minHeight: hasStartedChat ? 0 : 200,
+                    duration: ANIMATION_DURATION,
                 }}
             >
                 <div className="flex-1 min-h-0 w-full">
@@ -171,10 +166,11 @@ export default function AgentSetup() {
                         animate="visible"
                         exit="hidden"
                         transition={{
-                            duration: 0.4,
+                            duration: ANIMATION_DURATION,
                             ease: [0.4, 0, 0.2, 1],
-                            // Stagger the blur slightly after opacity starts
-                            filter: { duration: 0.3 },
+                            // Height animates together with opacity so chat can expand smoothly
+                            height: { duration: 0.3 },
+                            filter: { duration: 2.5 },
                         }}
                     >
                         <div className="p-6">
