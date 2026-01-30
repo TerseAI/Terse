@@ -38,7 +38,7 @@ export const listGitHubPullRequestsTool = tool({
 - Track PR activity for specific repositories
 - Understand the development history and velocity
 
-The tool returns PR details including title, author, merge status, and dates.
+The tool returns PR details including title, description, author, merge status, and dates.
 Dates are specified in YYYY-MM-DD format (e.g., "2024-01-15"). The since date is interpreted as the start of that day (00:00:00), and the until date is interpreted as the end of that day (23:59:59).`,
     parameters: z.object({
         repository: z.string().describe('Repository in "owner/repo" format (e.g., "facebook/react"). Must be one of the configured repositories.'),
@@ -101,6 +101,7 @@ Dates are specified in YYYY-MM-DD format (e.g., "2024-01-15"). The since date is
             const formattedResults = results.items.map((pr) => ({
                 number: pr.number,
                 title: pr.title,
+                description: pr.body,
                 author: pr.author,
                 state: pr.state,
                 merged: pr.merged,
