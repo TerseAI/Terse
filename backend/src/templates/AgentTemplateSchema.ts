@@ -180,6 +180,7 @@ export const AgentTemplateSchema = z.object({
     outputs: z.array(AgentOutputTemplateSchema).min(1, "At least one output is required"),
     knowledgeBases: z.array(AgentKnowledgeBaseTemplateSchema).optional(),
     requireApproval: z.boolean().optional().default(false),
+    chatPrompt: z.string().optional(),
     isActive: z.boolean().optional().default(true),
     notificationSettings: AgentNotificationSettingsSchema,
 }).strict(); // Strict mode: no extra properties allowed

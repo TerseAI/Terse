@@ -44,7 +44,7 @@ export function EmptyState({ hasFilters }: EmptyStateProps) {
                                 <TemplateCard
                                     key={index}
                                     template={template}
-                                    templateIndex={index}
+                                    onSelect={() => navigate(FrontendRoutes.AGENTS.SETUP, { state: { template } })}
                                 />
                             ))}
                         </div>
