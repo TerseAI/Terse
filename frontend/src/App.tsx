@@ -10,6 +10,7 @@ import { Toaster } from "./components/ui/sonner";
 import AgentDetail from "./pages/Agents/AgentDetail";
 import AgentSetup from "./pages/Agents/AgentSetup";
 import AgentsList from "./pages/Agents/AgentsList";
+import Home from "./pages/Home";
 import IntegrationPage from "./pages/IntegrationPage";
 import Login from "./pages/Login";
 import NotificationsPage from "./pages/Notifications";
@@ -28,6 +29,7 @@ function App() {
           <Routes>
             <Route path="/" element={<Navigate to={FrontendRoutes.APP} replace />} />
             <Route path={FrontendRoutes.APP} element={<Content />}>
+              <Route index element={<Home />} />
               <Route path="agents" element={<AgentsList />} />
               <Route path="agents/setup" element={<AgentSetup />} />
               <Route path="agents/new" element={<AgentDetail />} />

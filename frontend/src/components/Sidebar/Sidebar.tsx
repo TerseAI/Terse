@@ -1,5 +1,4 @@
-import { Bell, Eye, Home, Plus, Plug, Zap } from "lucide-react"
-import type { LucideIcon } from "lucide-react"
+import { Button } from "@/components/ui/button";
 import {
     Sidebar,
     SidebarContent,
@@ -13,15 +12,15 @@ import {
     SidebarMenuSub,
     SidebarMenuSubButton,
     SidebarMenuSubItem,
-} from "@/components/ui/sidebar"
-import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Agent } from "@/shared/types";
-import { Button } from "@/components/ui/button";
-import { AppSidebarHeader } from "./SidebarHeader";
-import { AppSidebarFooter } from "./SidebarFooter";
+} from "@/components/ui/sidebar";
 import { useAgents } from "@/hooks/api/useAgents";
-import { useFeatureFlag } from "@/hooks/useFeatureFlag";
 import { FrontendRoutes } from "@/shared/FrontendRoutes";
+import { Agent } from "@/shared/types";
+import type { LucideIcon } from "lucide-react";
+import { Bell, Eye, Home, Plug, Plus, Zap } from "lucide-react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { AppSidebarFooter } from "./SidebarFooter";
+import { AppSidebarHeader } from "./SidebarHeader";
 
 export function AppSidebar() {
     const { agents, isLoading } = useAgents({ limit: 100 });
@@ -56,8 +55,7 @@ interface ApplicationNavigationProps {
 
 function ApplicationNavigation({ agents, loading }: ApplicationNavigationProps) {
     const location = useLocation();
-    const hasBirdsEyeFlag = useFeatureFlag('Birds-eye-view-homepage');
-    const applicationItems = hasBirdsEyeFlag ? BirdsEyeApplicationItems : DefaultApplicationItems;
+    const applicationItems = DefaultApplicationItems;
 
     return (
         <SidebarMenu>
@@ -133,7 +131,7 @@ function AgentsList({ agents, loading }: AgentsListProps) {
                         className="gap-1 text-xs text-muted-foreground"
                         onClick={() => navigate(FrontendRoutes.AGENTS.SETUP)}
                     >
-                        <Plus className="size-3 !text-muted-foreground hover:!text-foreground" color="currentColor"/>
+                        <Plus className="size-3 !text-muted-foreground hover:!text-foreground" color="currentColor" />
                         Add Agent
                     </Button>
                 </SidebarMenuSubButton>
