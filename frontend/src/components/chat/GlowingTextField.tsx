@@ -154,7 +154,7 @@ function GlowingTextField({ isLoading, disabled, onInputChange, onKeyDown, input
     const chipPlaceholders = placeholders.filter((_, idx) => idx !== currentPlaceholderIndex);
 
     return (
-        <div className={`flex flex-col gap-3 w-full max-w-full overflow-visible p-2`}>
+        <div className={`flex flex-col gap-3 w-full max-w-full overflow-visible`}>
             <div className="grid place-items-stretch overflow-visible">
                 {isLoading && (
                     <div className="absolute inset-0 pointer-events-none overflow-visible">
