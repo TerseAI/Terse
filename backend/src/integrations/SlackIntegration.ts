@@ -1377,42 +1377,6 @@ async function hasFilesReadScope(botToken: string): Promise<boolean> {
   }
 }
 
-/**
- * Validate that a file download response contains actual file content,
- * not an HTML redirect/login page.
- * Uses global fetch Response type (not Express Response)
- */
-function isValidFileResponse(
-  response: globalThis.Response,
-  expectedMimeType: string | undefined,
-): { valid: boolean; reason?: string } {
-  // Check if response was redirected (usually indicates auth failure)
-  if (response.redirected) {
-    const redirectUrl = response.url;
-    // Slack redirects to workspace root or login when files:read is missing
-    if (
-      redirectUrl.includes("?redir=") ||
-      redirectUrl.includes("/files-pri/") === false
-    ) {
-      return {
-        valid: false,
-        reason: `Response was redirected to ${redirectUrl}. This usually means the Slack app is missing the 'files:read' permission. Users need to re-install the Slack app to grant file access.`,
-      };
-    }
-  }
-
-  // Check content-type - if we expected a file but got HTML, auth likely failed
-  const contentType = response.headers.get("content-type") || "";
-  if (contentType.includes("text/html")) {
-    return {
-      valid: false,
-      reason: `Received HTML content instead of file. This usually means the Slack app is missing the 'files:read' permission. Users need to re-install the Slack app to grant file access.`,
-    };
-  }
-
-  return { valid: true };
-}
-
 async function downloadSlackFile(args: {
   downloadUrl: string;
   botToken: string;
@@ -1428,17 +1392,6 @@ async function downloadSlackFile(args: {
     throw new Error(
       `Failed to download Slack file: ${response.status} ${response.statusText}`,
     );
-  }
-
-  // Validate that we got actual file content, not a redirect to login page
-  const validation = isValidFileResponse(response, file.mimetype);
-  if (!validation.valid) {
-    logger.warn(`Slack file download failed validation`, {
-      fileId: file.id,
-      filename: file.name || file.title,
-      reason: validation.reason,
-    });
-    throw new Error(validation.reason);
   }
 
   const buffer = Buffer.from(await response.arrayBuffer());
