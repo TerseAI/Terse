@@ -177,6 +177,7 @@ function GlowingTextField({ isLoading, disabled, onInputChange, onKeyDown, input
                                 transition-all
                                 duration-300
                                 focus:outline-none
+                                min-h-15
                             `}
                         onChange={onInputChange}
                         onKeyDown={handleKeyDownInternal}
@@ -195,12 +196,12 @@ function GlowingTextField({ isLoading, disabled, onInputChange, onKeyDown, input
                         </div>
                     )}
                     {/* Send button - only shows when there's input */}
-                    {onSend && inputValue.trim() && (
+                    {onSend && (
                         <button
                             type="button"
                             onClick={onSend}
                             disabled={disabled}
-                            className="absolute right-3 bottom-3 p-2 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                            className={`absolute right-3 bottom-3 p-2 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all ${inputValue.trim() ? '' : 'opacity-50'}`}
                             aria-label="Send message"
                         >
                             <Send className="w-5 h-5" />
