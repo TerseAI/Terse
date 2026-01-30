@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
+import { motion } from 'framer-motion';
 import TextareaAutosize from 'react-textarea-autosize';
 import { Send } from 'lucide-react';
 
@@ -86,8 +87,21 @@ function GlowingTextField({ isLoading, disabled, onInputChange, onKeyDown, input
         };
     }, [shouldAllowKeyboardShortcutForFocus]);
 
+    // Animation configuration matching AgentSetup
+    const animationDuration = 0.5;
+    const animationEase = [0.4, 0, 0.2, 1];
+
     return (
-        <div className={`grid place-items-stretch ${compact ? 'w-full max-w-full' : 'w-full'} overflow-visible`}>
+        <motion.div
+            className={`grid place-items-stretch ${compact ? 'w-full max-w-full' : 'w-full'} overflow-visible`}
+            layout
+            transition={{
+                layout: {
+                    duration: animationDuration,
+                    ease: animationEase,
+                },
+            }}
+        >
             {isLoading && (
                 <div className="absolute inset-0 pointer-events-none overflow-visible">
                     <div className="absolute left-1/2 top-1/2 w-full h-full animate-rect-orbit overflow-visible">
@@ -96,17 +110,22 @@ function GlowingTextField({ isLoading, disabled, onInputChange, onKeyDown, input
                 </div>
             )}
 
-            <div
+            <motion.div
                 className={`
                         relative
                         w-full
                         rounded-lg
-                        transition-all
-                        duration-400
                         p-1
                         bg-card
                         ${showBorder ? 'border-2 border-border focus-within:border-primary/50' : ''}
                     `}
+                layout
+                transition={{
+                    layout: {
+                        duration: animationDuration,
+                        ease: animationEase,
+                    },
+                }}
             >
                 <TextareaAutosize
                     ref={textareaRef}
@@ -145,8 +164,8 @@ function GlowingTextField({ isLoading, disabled, onInputChange, onKeyDown, input
                         <Send className="w-5 h-5" />
                     </button>
                 )}
-            </div>
-        </div>
+            </motion.div>
+        </motion.div>
     );
 }
 
