@@ -1,5 +1,5 @@
 // Define a session type that matches what we're actually using in auth
-import { User } from "./types/prisma";
+import { User } from "./shared/types";
 
 export type Session = {
   user: User;

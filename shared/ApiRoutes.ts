@@ -24,6 +24,7 @@ export const ApiRoutes = {
     GOOGLE: "/auth/google",
     GOOGLE_LOGIN_URL: "/auth/google/login-url",
     GOOGLE_CALLBACK: "/auth/google/callback",
+    WORKOS_CALLBACK: "/auth/workos/callback",
   },
 
   // Stats routes
@@ -132,14 +133,18 @@ export const ApiRoutes = {
     PROJECTS_BY_INTEGRATION_ID: {
       pattern: "/launchdarkly/integrations/:integrationId/projects",
       build: (integrationId: string) =>
-        `/launchdarkly/integrations/${encodeURIComponent(integrationId)}/projects`,
+        `/launchdarkly/integrations/${encodeURIComponent(
+          integrationId,
+        )}/projects`,
       params: { integrationId: "string" } as const,
     },
     ENVIRONMENTS_BY_INTEGRATION_AND_PROJECT: {
       pattern:
         "/launchdarkly/integrations/:integrationId/projects/:projectKey/environments",
       build: (integrationId: string, projectKey: string) =>
-        `/launchdarkly/integrations/${encodeURIComponent(integrationId)}/projects/${encodeURIComponent(projectKey)}/environments`,
+        `/launchdarkly/integrations/${encodeURIComponent(
+          integrationId,
+        )}/projects/${encodeURIComponent(projectKey)}/environments`,
       params: { integrationId: "string", projectKey: "string" } as const,
     },
   },
@@ -180,7 +185,9 @@ export const ApiRoutes = {
     INSTALLATION_DETAILS_BY_TYPE: {
       pattern: "/integrations/:integrationType/installation-details",
       build: (integrationType: string) =>
-        `/integrations/${encodeURIComponent(integrationType)}/installation-details`,
+        `/integrations/${encodeURIComponent(
+          integrationType,
+        )}/installation-details`,
       params: { integrationType: "string" } as const,
     },
     LIST: "/integrations",

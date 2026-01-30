@@ -19,9 +19,15 @@ import {
   getUserAgents,
   updateAgent,
 } from "./routes/agents";
-import { authMiddleware, login, logout, setSession } from "./routes/auth";
 import {
-  githubAppAuthMiddleware,
+  authMiddleware,
+  authMiddlewareAllowNoOrg,
+  callback,
+  login,
+  logout,
+} from "./routes/auth";
+import {
+  //githubAppAuthMiddleware,
   githubAppCallbackIntegrate,
   githubAppOAuth,
   githubCallback,
@@ -50,9 +56,7 @@ import {
   getGithubIntegrations,
   getGithubRepositoriesForIntegration,
   getInstallationUrl,
-  githubAppInstallationDeleted,
   githubAppUnifiedEvent,
-  processsGithubAppInstallationWebhook,
 } from "./routes/github";
 import {
   deleteGmailIntegration,
@@ -121,9 +125,9 @@ import { getStats } from "./routes/stats";
 import { getTemplates } from "./routes/templates";
 import { toolsThatRequireApprovalsRoute } from "./routes/tools";
 import { ApiRoutes } from "./shared/ApiRoutes";
+import { User } from "./shared/types";
 import { setupSlackBolt } from "./slack/boltApp";
 import { runStartupValidations } from "./tools/validateToolNames";
-import { User } from "./types/prisma";
 
 export type Session = {
   user: User;
@@ -232,7 +236,7 @@ app.use(cookieParser());
 
 // MARK: AUTH
 
-app.get(ApiRoutes.AUTH.ME, authMiddleware, (req, res) => {
+app.get(ApiRoutes.AUTH.ME, authMiddlewareAllowNoOrg, (req, res) => {
   res.send(req.session?.user);
 });
 
@@ -242,10 +246,6 @@ app.get(ApiRoutes.AUTH.GITHUB_APP, async (req, res) => {
 
 app.get(ApiRoutes.AUTH.GOOGLE, async (req, res) => {
   googleLogin(req, res);
-});
-
-app.post(ApiRoutes.AUTH.SET_SESSION, async (req, res) => {
-  setSession(req, res);
 });
 
 app.get(ApiRoutes.AUTH.GITHUB_LOGIN_CALLBACK, async (req, res) => {
@@ -275,6 +275,10 @@ app.post(ApiRoutes.AUTH.LOGIN, async (req, res) => {
 
 app.post(ApiRoutes.AUTH.LOGOUT, async (req, res) => {
   logout(req, res);
+});
+
+app.get(ApiRoutes.AUTH.WORKOS_CALLBACK, (req, res) => {
+  callback(req, res);
 });
 
 // MARK: STATS
@@ -325,23 +329,6 @@ app.get(
   authMiddleware,
   async (req, res) => {
     getGithubRepositoriesForIntegration(req, res);
-  },
-);
-
-// THIS IS FOR THE PROBOT APP!
-app.post(
-  ApiRoutes.GITHUB.INSTALLATION_CALLBACK,
-  githubAppAuthMiddleware,
-  async (req, res) => {
-    processsGithubAppInstallationWebhook(req, res);
-  },
-);
-
-app.post(
-  ApiRoutes.GITHUB.INSTALLATION_DELETED,
-  githubAppAuthMiddleware,
-  async (req, res) => {
-    githubAppInstallationDeleted(req, res);
   },
 );
 

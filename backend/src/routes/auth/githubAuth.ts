@@ -1,8 +1,7 @@
 import { NextFunction, Request, Response } from "express";
-import { COOKIE_NAME } from "../auth";
+
 import { Jwt } from "../../utility/jwt";
 import crypto from "crypto";
-import chalk from "chalk";
 import axios from "axios";
 import { findUserByEmail, findUserByGitHubUsername, createUser, updateUserGitHubUsername } from "../../types/user";
 import { githubApp } from "../../config/settings";
@@ -10,36 +9,36 @@ import { GithubIntegrationManager, exchangeCodeForAccessToken, getGithubAppUser 
 import { db } from "../../prismaClient";
 import logger from "../../logger";
 
-export const githubAppAuthMiddleware = async (req: Request, res: Response, next: NextFunction) => {
-    logger.debug('githubAppAuthMiddleware route has been hit');
-    try {
-        let token: string | null = null;
+// export const githubAppAuthMiddleware = async (req: Request, res: Response, next: NextFunction) => {
+//     logger.debug('githubAppAuthMiddleware route has been hit');
+//     try {
+//         let token: string | null = null;
 
-        // First try to get token from Authorization header
-        const authHeader = req.headers.authorization;
-        if (authHeader && authHeader.startsWith('Bearer ')) {
-            token = authHeader.substring(7); // Remove 'Bearer ' prefix
-        } else if (req.cookies && req.cookies[COOKIE_NAME]) {
-            // Fall back to cookie
-            token = req.cookies[COOKIE_NAME];
-        }
+//         // First try to get token from Authorization header
+//         const authHeader = req.headers.authorization;
+//         if (authHeader && authHeader.startsWith('Bearer ')) {
+//             token = authHeader.substring(7); // Remove 'Bearer ' prefix
+//         } else if (req.cookies && req.cookies[COOKIE_NAME]) {
+//             // Fall back to cookie
+//             token = req.cookies[COOKIE_NAME];
+//         }
 
-        if (!token) {
-            res.status(401).json({ message: 'Unauthorized - No token provided' });
-            return;
-        }
+//         if (!token) {
+//             res.status(401).json({ message: 'Unauthorized - No token provided' });
+//             return;
+//         }
 
-        const isGitHubApp = await new Jwt().verifyGitHubApp(token);
-        if (!isGitHubApp) {
-            res.status(401).json({ message: 'Unauthorized - Invalid GitHub app token' });
-            return;
-        }
-        next();
-    } catch (error) {
-        logger.error('GitHub app auth middleware error:', { error });
-        res.status(401).json({ message: 'Unauthorized - Token verification failed' });
-    }
-}
+//         const isGitHubApp = await new Jwt().verifyGitHubApp(token);
+//         if (!isGitHubApp) {
+//             res.status(401).json({ message: 'Unauthorized - Invalid GitHub app token' });
+//             return;
+//         }
+//         next();
+//     } catch (error) {
+//         logger.error('GitHub app auth middleware error:', { error });
+//         res.status(401).json({ message: 'Unauthorized - Token verification failed' });
+//     }
+// }
 
 export function githubLoginURL(req: Request, res: Response) {
     const state = crypto.randomBytes(8).toString('hex');

@@ -19,16 +19,9 @@ model users {
 
   // To Do, this needs to be made unique in a
   // future migration.
-  workos_id String @unique
-
-  // Deprecated, we will remove these in a future
-  // migration and use WorkOS as the source of truth
-  email           String   @unique
-  display_name    String
-  github_username String?  @unique
-  created_at      DateTime @default(now())
-  updated_at      DateTime @updatedAt
-  is_placeholder  Boolean  @default(false)
+  workos_id  String   @unique
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 
   user_github_repositories  user_github_repositories[]
   linear_integrations       linear_integrations[]
