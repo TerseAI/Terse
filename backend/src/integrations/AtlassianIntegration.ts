@@ -20,6 +20,9 @@ import { integrationTaskQueue } from "./IntegrationTaskQueues";
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask";
 import { FrontendRoutes } from "../shared/FrontendRoutes";
 import { ApiRoutes } from "../shared/ApiRoutes";
+import {
+    StoredFile,
+} from "../services/FileStorageService";
 
 const OAUTH_TOKEN_REFRESH_THRESHOLD_MS = 1000 * 60 * 30; // 30 minutes (expires access token after 1 hour)
 
@@ -422,7 +425,7 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
                     }
 
                     // Create JiraEvent and process it
-                    const jiraEvent = new JiraEvent(enrichedEvent, integration.id);
+                    const jiraEvent = new JiraEvent(enrichedEvent, integration.id, []);
                     const eventProcessor = new EventProcessor(jiraEvent, user);
                     await eventProcessor.process();
                 });
@@ -964,11 +967,13 @@ export class JiraEvent extends InputEvent {
     readonly integrationType: IntegrationType = IntegrationType.ATLASSIAN;
     data: JiraWebhookPayload;
     private integrationId: string;
+    private storedFiles: StoredFile[];
 
-    constructor(data: JiraWebhookPayload, integrationId: string) {
+    constructor(data: JiraWebhookPayload, integrationId: string, storedFiles: StoredFile[] = []) {
         super();
         this.data = data;
         this.integrationId = integrationId;
+        this.storedFiles = storedFiles;
     }
 
     formatForAgentRunner(): string {
@@ -1186,10 +1191,9 @@ export class JiraEvent extends InputEvent {
         };
     }
 
-    getImageUrls(): string[] {
-        // Jira webhooks don't typically include images
-        // But we could extract attachment URLs if needed in the future
-        return [];
+    getFiles(): StoredFile[] {
+        // Return all stored files with full metadata
+        return this.storedFiles;
     }
 }
 

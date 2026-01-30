@@ -29,6 +29,7 @@
             "bot": [
                 "channels:history",
                 "channels:manage",
+                "files:read",
                 "groups:history",
                 "groups:write",
                 "im:history",
