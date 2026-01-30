@@ -15,6 +15,8 @@ type ChatProps = {
     onHandleReject?: (stepId: string) => void;
     addUserTurnsLocally?: boolean;
     inputSize?: 'small' | 'medium' | 'large';
+    placeholders?: string[];
+    showPlaceholderChips?: boolean;
 };
 
 export type ChatHandle = ChatLayoutHandle;
@@ -29,6 +31,8 @@ const Chat = forwardRef<ChatHandle, ChatProps>(function Chat({
     onHandleReject,
     addUserTurnsLocally,
     inputSize = 'small',
+    placeholders = [],
+    showPlaceholderChips = false,
 }, ref) {
     const { turns, isPendingAssistantResponse, input, setInput, sendMessage: sendUserMessage, sendModelRequest } = useChat({
         subscribeToEvents,
@@ -49,11 +53,12 @@ const Chat = forwardRef<ChatHandle, ChatProps>(function Chat({
             onSendModelRequest={sendModelRequest}
             input={input}
             setInput={setInput}
-            placeholders={["Chat with the AI assistant"]}
+            placeholders={placeholders}
             EmptyContentPlaceholder={EmptyContentPlaceholder}
             onApprove={onHandleApprove}
             onReject={onHandleReject}
             inputSize={inputSize}
+            showPlaceholderChips={showPlaceholderChips}
         />
     );
 });

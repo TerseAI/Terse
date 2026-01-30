@@ -10,6 +10,14 @@ import { ModelRequest, SendModelRequest } from '@/shared/ModelEvents';
 import { ChatEventPayload } from '@/components/chat/hooks/useCompletionSocket';
 import { cn } from '@/lib/utils';
 
+const AGENT_SETUP_PLACEHOLDERS = [
+    "Build me an agent that summarizes my Slack messages daily",
+    "Create a workflow that monitors GitHub PRs and posts updates",
+    "Set up an agent to track competitor pricing changes",
+    "Build an automation that syncs Notion tasks to Linear",
+    "Create a daily standup bot for my team",
+];
+
 export default function AgentSetup() {
     const { templates, isLoading } = useTemplates();
     const [hasStartedChat, setHasStartedChat] = useState(false);
@@ -51,10 +59,19 @@ export default function AgentSetup() {
 
     return (
         <div className="flex flex-col h-full w-full">
+            {/* Header - fades out when chat starts */}
+            <div className={cn(
+                "transition-all duration-500 ease-in-out mx-auto max-w-5xl w-full",
+                hasStartedChat ? "max-h-0 opacity-0 overflow-hidden" : "max-h-32 opacity-100 pt-8 pb-2"
+            )}>
+                <h1 className="text-2xl font-semibold text-foreground">Create a new agent</h1>
+                <p className="text-muted-foreground mt-1">Describe what you want your agent to do, and we'll help you build it.</p>
+            </div>
+
             {/* Chat Section - expands when chat starts */}
             <div className={cn(
-                "flex flex-col transition-all duration-500 ease-in-out mx-auto max-w-5xl w-full",
-                hasStartedChat ? "flex-1 min-h-0" : "h-[280px]"
+                "flex flex-col transition-all duration-500 ease-in-out mx-auto max-w-5xl w-full pb-3",
+                hasStartedChat ? "flex-1 min-h-0" : "h-[200px]"
             )}>
                 <div className="flex-1 min-h-0 w-full">
                     <Chat
@@ -64,6 +81,7 @@ export default function AgentSetup() {
                         onUserMessage={handleUserMessage}
                         addUserTurnsLocally={true}
                         inputSize={hasStartedChat ? "small" : "large"}
+                        placeholders={hasStartedChat ? [] : AGENT_SETUP_PLACEHOLDERS}
                     />
                 </div>
             </div>

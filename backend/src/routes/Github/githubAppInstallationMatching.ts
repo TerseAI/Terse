@@ -1,100 +1,133 @@
 import { Request, Response } from "express";
+import logger from "../../logger";
 import { db } from "../../prismaClient";
-import { GithubRepository, User } from "../../types/prisma";
 import { GithubAppInstallationCallbackRequest } from "../../shared/types";
-import chalk from "chalk";
+import { GithubRepository, User } from "../../types/prisma";
 import { processRepository } from "./githubApp";
 import { emitCacheInvalidationWithKey } from "../../services/CacheInvalidationService";
-import logger from "../../logger";
 
-export async function processsGithubAppInstallationWebhook(req: Request, res: Response) {
-    const body: GithubAppInstallationCallbackRequest = req.body as GithubAppInstallationCallbackRequest;
+export async function processsGithubAppInstallationWebhook(
+  req: Request,
+  res: Response,
+) {
+  const body: GithubAppInstallationCallbackRequest =
+    req.body as GithubAppInstallationCallbackRequest;
 
-    // Check if the user is regestered with us, no problem if not. Will make a placeholder user.
-    let user: User | null = await resolveUserForGithubInstallation(body.installationId, body.username);
-    if (!user) {
-        user = await db().users.create({
-            data: {
-                github_username: body.username,
-                is_placeholder: true,
-                email: body.email,
-                display_name: body.name
-            }
-        });
-
-        logger.info('Placeholder user created', { userId: user.id, githubUsername: user.github_username, email: user.email });
-    }
-
-    // Update the user_github_installation record with the user_id
-    await db().user_github_installation.upsert({
-        where: { installation_id: body.installationId },
-        update: { user_id: user.id },
-        create: { user_id: user.id, installation_id: body.installationId }
+  // Check if the user is regestered with us, no problem if not. Will make a placeholder user.
+  let user: User | null = await resolveUserForGithubInstallation(
+    body.installationId,
+    body.username,
+  );
+  if (!user) {
+    user = await db().users.create({
+      data: {
+        github_username: body.username,
+        is_placeholder: true,
+        email: body.email,
+        display_name: body.name,
+      },
     });
 
-    // Process each repository in the array
-    const processedRepositories = await Promise.all(
-        body.repositories.map(repositoryData =>
-            processRepository(repositoryData, user, body.installationId)
-        )
-    );
-
-    res.status(200).json({
-        message: 'Repository installation callback processed',
-        processedRepositories
+    logger.info("Placeholder user created", {
+      userId: user.id,
+      githubUsername: user.github_username,
+      email: user.email,
     });
+  }
 
-    emitCacheInvalidationWithKey(user.id, 'integrations');
+  // Update the user_github_installation record with the user_id
+  await db().user_github_installation.upsert({
+    where: { installation_id: body.installationId },
+    update: { user_id: user.id },
+    create: { user_id: user.id, installation_id: body.installationId },
+  });
+
+  // Process each repository in the array
+  const processedRepositories = await Promise.all(
+    body.repositories.map((repositoryData) =>
+      processRepository(repositoryData, user, body.installationId),
+    ),
+  );
+
+  res.status(200).json({
+    message: "Repository installation callback processed",
+    processedRepositories,
+  });
+
+  emitCacheInvalidationWithKey(user.id, "integrations");
 }
 
 type GithubAppInstallationDeletedRequest = {
-    username: string;
-    installationId: number;
-}
+  username: string;
+  installationId: number;
+};
 
-export async function githubAppInstallationDeleted(req: Request, res: Response) {
-    logger.info('githubAppInstallationDeleted', { body: req.body });
-    const body: GithubAppInstallationDeletedRequest = req.body as GithubAppInstallationDeletedRequest;
+export async function githubAppInstallationDeleted(
+  req: Request,
+  res: Response,
+) {
+  logger.info("githubAppInstallationDeleted", { body: req.body });
+  const body: GithubAppInstallationDeletedRequest =
+    req.body as GithubAppInstallationDeletedRequest;
 
-    const commit = db().$transaction(async (tx) => {
-        // find all repos for this installation
-        const repositories: GithubRepository[] = await tx.github_repositories.findMany({ where: { installation_id: body.installationId } });
+  const commit = db().$transaction(async (tx) => {
+    // find all repos for this installation
+    const repositories: GithubRepository[] =
+      await tx.github_repositories.findMany({
+        where: { installation_id: body.installationId },
+      });
 
-        if (repositories.length === 0) {
-            res.status(404).json({ message: 'No repositories found for this installation' });
-            return;
-        }
+    if (repositories.length === 0) {
+      res
+        .status(404)
+        .json({ message: "No repositories found for this installation" });
+      return;
+    }
 
-        // remove all associations for those repos
-        await tx.user_github_repositories.deleteMany({ where: { github_repository_id: { in: repositories.map(repo => repo.id) } } });
-
-        // now remove the installation + repositories
-        await tx.github_repositories.deleteMany({ where: { installation_id: body.installationId } });
-        await tx.user_github_installation.deleteMany({ where: { installation_id: body.installationId } });
+    // remove all associations for those repos
+    await tx.user_github_repositories.deleteMany({
+      where: {
+        github_repository_id: { in: repositories.map((repo) => repo.id) },
+      },
     });
 
-    // TODO: We need to invalidate Automations that were dependent on these repositories. This is a more general issue we don't account for yet.
+    // now remove the installation + repositories
+    await tx.github_repositories.deleteMany({
+      where: { installation_id: body.installationId },
+    });
+    await tx.user_github_installation.deleteMany({
+      where: { installation_id: body.installationId },
+    });
+  });
 
-    emitCacheInvalidationWithKey(body.username, 'integrations');
+  // TODO: We need to invalidate Automations that were dependent on these repositories. This is a more general issue we don't account for yet.
 
-    res.status(200).json({ message: 'Repositories removed from user' });
+  emitCacheInvalidationWithKey(body.username, "integrations");
+
+  res.status(200).json({ message: "Repositories removed from user" });
 }
 
-
-export async function resolveUserForGithubInstallation(installationId: number, github_username: string): Promise<User | null> {
-    return db().$transaction(async (tx) => {
-        // check if installation is already associated with a user - This should be most common case.
-        let installation = await tx.user_github_installation.findFirst({ where: { installation_id: installationId } });
-        if (installation && installation.user_id != null) {
-            return tx.users.findUnique({ where: { id: installation.user_id } });
-        }
-
-        // check if we can match via github_username
-        let user = await tx.users.findFirst({ where: { github_username: github_username } });
-        if (user) {
-            return user;
-        }
-
-        return null;
+export async function resolveUserForGithubInstallation(
+  installationId: number,
+  github_username: string,
+): Promise<User | null> {
+  return db().$transaction(async (tx) => {
+    // check if installation is already associated with a user - This should be most common case.
+    let installation = await tx.user_github_installation.findFirst({
+      where: { installation_id: installationId },
     });
+    if (installation && installation.user_id != null) {
+      return tx.users.findUnique({ where: { id: installation.user_id } });
+    }
+
+    // check if we can match via github_username
+    let user = await tx.users.findFirst({
+      where: { github_username: github_username },
+    });
+    if (user) {
+      return user;
+    }
+
+    return null;
+  });
 }

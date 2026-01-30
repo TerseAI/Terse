@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import TextareaAutosize from 'react-textarea-autosize';
 import { Send } from 'lucide-react';
 
@@ -9,7 +9,6 @@ interface GlowingTextFieldProps {
     onKeyDown: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
     inputValue: string;
     placeholders?: string[];
-    compact?: boolean;
     size?: Size;
     shouldAllowKeyboardShortcutForFocus?: boolean;
     autoFocus?: boolean;
@@ -17,6 +16,8 @@ interface GlowingTextFieldProps {
     minRows?: number;
     showBorder?: boolean;
     onSend?: () => void; // When provided, shows send button inside the text field
+    onPlaceholderSelect?: (placeholder: string) => void; // When user clicks a placeholder suggestion
+    showPlaceholderChips?: boolean; // Show clickable placeholder chips below input
 }
 
 export enum Size {
@@ -25,9 +26,13 @@ export enum Size {
     Large = 'large',
 }
 
-function GlowingTextField({ isLoading, disabled, onInputChange, onKeyDown, inputValue, placeholders = [], compact = false, size = Size.Medium, shouldAllowKeyboardShortcutForFocus = true, autoFocus = false, focusOverride = null, minRows, showBorder = false, onSend }: GlowingTextFieldProps) {
-    const [currentPlaceholder, setCurrentPlaceholder] = useState<string | undefined>(placeholders ? placeholders[0] : undefined);
+function GlowingTextField({ isLoading, disabled, onInputChange, onKeyDown, inputValue, placeholders = [], size = Size.Medium, shouldAllowKeyboardShortcutForFocus = true, autoFocus = false, focusOverride = null, minRows, showBorder = false, onSend, onPlaceholderSelect, showPlaceholderChips = false }: GlowingTextFieldProps) {
+    const [displayedPlaceholder, setDisplayedPlaceholder] = useState<string>('');
+    const [currentPlaceholderIndex, setCurrentPlaceholderIndex] = useState(0);
+    const [isTyping, setIsTyping] = useState(true);
+    const [isFullyTyped, setIsFullyTyped] = useState(false);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
+    const typewriterRef = useRef<{ charIndex: number; timeoutId: NodeJS.Timeout | null }>({ charIndex: 0, timeoutId: null });
 
     // Handle focus override
     useEffect(() => {
@@ -37,6 +42,8 @@ function GlowingTextField({ isLoading, disabled, onInputChange, onKeyDown, input
             textareaRef.current?.blur();
         }
     }, [focusOverride]);
+
+    const isLarge = size === Size.Large;
 
     const getFontSize = () => {
         switch (size) {
@@ -51,21 +58,78 @@ function GlowingTextField({ isLoading, disabled, onInputChange, onKeyDown, input
         }
     };
 
+    const getPadding = () => {
+        switch (size) {
+            case Size.Small:
+                return 'px-3 py-3';
+            case Size.Medium:
+                return 'px-4 py-4';
+            case Size.Large:
+                return 'p-4';
+            default:
+                return 'px-4 py-4';
+        }
+    };
+
+    // Typewriter animation effect
     useEffect(() => {
-        let currentIndex = 0;
+        if (!placeholders || placeholders.length === 0 || inputValue.length > 0) {
+            setDisplayedPlaceholder('');
+            setIsFullyTyped(false);
+            setIsTyping(false);
+            return;
+        }
 
-        const interval = setInterval(() => {
-            if (inputValue.length === 0) {
+        const currentPlaceholder = placeholders[currentPlaceholderIndex];
 
-                setTimeout(() => {
-                    currentIndex = (currentIndex + 1) % placeholders.length;
-                    setCurrentPlaceholder(placeholders[currentIndex]);
-                }, 800);
+        const typeNextChar = () => {
+            if (typewriterRef.current.charIndex <= currentPlaceholder.length) {
+                setDisplayedPlaceholder(currentPlaceholder.slice(0, typewriterRef.current.charIndex));
+                typewriterRef.current.charIndex++;
+                typewriterRef.current.timeoutId = setTimeout(typeNextChar, 40);
+            } else {
+                setIsTyping(false);
+                setIsFullyTyped(true);
+                // Wait before moving to next placeholder
+                typewriterRef.current.timeoutId = setTimeout(() => {
+                    setIsTyping(true);
+                    setIsFullyTyped(false);
+                    typewriterRef.current.charIndex = 0;
+                    setCurrentPlaceholderIndex((prev) => (prev + 1) % placeholders.length);
+                }, 3000);
             }
-        }, 4000);
+        };
 
-        return () => clearInterval(interval);
-    }, [inputValue]);
+        // Reset and start typing
+        typewriterRef.current.charIndex = 0;
+        setIsTyping(true);
+        setIsFullyTyped(false);
+        typeNextChar();
+
+        return () => {
+            if (typewriterRef.current.timeoutId) {
+                clearTimeout(typewriterRef.current.timeoutId);
+            }
+        };
+    }, [currentPlaceholderIndex, placeholders, inputValue]);
+
+    const handlePlaceholderClick = useCallback((placeholder: string) => {
+        if (onPlaceholderSelect) {
+            onPlaceholderSelect(placeholder);
+        }
+        textareaRef.current?.focus();
+    }, [onPlaceholderSelect]);
+
+    // Handle Tab to complete placeholder
+    const handleKeyDownInternal = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+        if (e.key === 'Tab' && inputValue.length === 0 && displayedPlaceholder && onPlaceholderSelect) {
+            e.preventDefault();
+            const currentPlaceholder = placeholders[currentPlaceholderIndex];
+            onPlaceholderSelect(currentPlaceholder);
+            return;
+        }
+        onKeyDown(e);
+    }, [inputValue, displayedPlaceholder, placeholders, currentPlaceholderIndex, onPlaceholderSelect, onKeyDown]);
 
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -86,66 +150,95 @@ function GlowingTextField({ isLoading, disabled, onInputChange, onKeyDown, input
         };
     }, [shouldAllowKeyboardShortcutForFocus]);
 
-    return (
-        <div className={`grid place-items-stretch ${compact ? 'w-full max-w-full' : 'w-full'} overflow-visible`}>
-            {isLoading && (
-                <div className="absolute inset-0 pointer-events-none overflow-visible">
-                    <div className="absolute left-1/2 top-1/2 w-full h-full animate-rect-orbit overflow-visible">
-                        <div className={`absolute ${compact ? 'w-2.5 h-2.5' : 'w-3 h-3'} rounded-full bg-purple-500/60 blur-sm shadow-[0_0_10px_rgba(168,85,247,0.6)] -translate-x-1/2 -translate-y-1/2 overflow-visible`} />
-                    </div>
-                </div>
-            )}
+    // Get placeholders to show as chips (excluding current one being typed)
+    const chipPlaceholders = placeholders.filter((_, idx) => idx !== currentPlaceholderIndex);
 
-            <div
-                className={`
-                        relative
-                        w-full
-                        rounded-lg
-                        transition-all
-                        duration-400
-                        p-1
-                        bg-card
-                        ${showBorder ? 'border-2 border-border focus-within:border-primary/50' : ''}
-                    `}
-            >
-                <TextareaAutosize
-                    ref={textareaRef}
+    return (
+        <div className={`flex flex-col gap-3 w-full max-w-full overflow-visible p-2`}>
+            <div className="grid place-items-stretch overflow-visible">
+                {isLoading && (
+                    <div className="absolute inset-0 pointer-events-none overflow-visible">
+                        <div className="absolute left-1/2 top-1/2 w-full h-full animate-rect-orbit overflow-visible">
+                            <div className={`absolute w-3 h-3 rounded-full bg-purple-500/60 blur-sm shadow-[0_0_10px_rgba(168,85,247,0.6)] -translate-x-1/2 -translate-y-1/2 overflow-visible`} />
+                        </div>
+                    </div>
+                )}
+
+                <div
                     className={`
+                            relative
                             w-full
-                            text-foreground
-                            ${getFontSize()}
-                            resize-none
-                            ${compact ? 'p-2.5' : 'p-4'}
-                            ${onSend ? 'pr-14' : ''}
-                            leading-normal
-                            placeholder:italic
-                            placeholder:text-muted-foreground
                             rounded-lg
                             transition-all
-                            duration-300
-                            focus:outline-none
+                            duration-400
+                            bg-card
+                            ${showBorder ? 'border-2 border-border focus-within:border-primary/50' : ''}
                         `}
-                    onChange={onInputChange}
-                    onKeyDown={onKeyDown}
-                    value={inputValue}
-                    disabled={disabled}
-                    placeholder={currentPlaceholder}
-                    minRows={minRows ?? (compact ? 1 : undefined)}
-                    maxRows={compact ? 4 : 10}
-                    autoFocus={autoFocus}
-                />
-                {onSend && (
-                    <button
-                        type="button"
-                        onClick={onSend}
-                        disabled={disabled || !inputValue.trim()}
-                        className="absolute right-3 bottom-3 p-2 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                        aria-label="Send message"
-                    >
-                        <Send className="w-5 h-5" />
-                    </button>
-                )}
+                >
+                    <TextareaAutosize
+                        ref={textareaRef}
+                        className={`
+                                w-full
+                                text-foreground
+                                ${getFontSize()}
+                                resize-none
+                                ${getPadding()}
+                                ${onSend ? 'pr-14' : ''}
+                                ${isLarge ? 'leading-relaxed' : 'leading-normal'}
+                                placeholder:italic
+                                placeholder:text-muted-foreground
+                                rounded-lg
+                                transition-all
+                                duration-300
+                                focus:outline-none
+                            `}
+                        onChange={onInputChange}
+                        onKeyDown={handleKeyDownInternal}
+                        value={inputValue}
+                        disabled={disabled}
+                        placeholder={displayedPlaceholder + (isTyping && inputValue.length === 0 ? '|' : '')}
+                        minRows={minRows ?? (isLarge ? undefined : 1)}
+                        maxRows={isLarge ? 10 : 4}
+                        autoFocus={autoFocus}
+                    />
+                    {/* Tab hint - shows when placeholder is fully typed and input is empty */}
+                    {isFullyTyped && inputValue.length === 0 && onPlaceholderSelect && (
+                        <div className={`absolute flex items-center gap-1.5 text-xs text-muted-foreground/70 pointer-events-none animate-in fade-in duration-300 ${onSend ? 'right-14' : 'right-4'} ${isLarge ? 'bottom-4' : 'top-1/2 -translate-y-1/2'}`}>
+                            <kbd className="px-1.5 py-0.5 bg-muted/30 border border-border/30 rounded text-[10px] font-mono">Tab</kbd>
+                            <span>to use</span>
+                        </div>
+                    )}
+                    {/* Send button */}
+                    {onSend && (
+                        <button
+                            type="button"
+                            onClick={onSend}
+                            disabled={disabled}
+                            className={`absolute right-3 p-2 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all ${inputValue.trim() ? '' : 'opacity-50'} ${isLarge ? 'bottom-3' : 'top-1/2 -translate-y-1/2'}`}
+                            aria-label="Send message"
+                        >
+                            <Send className="w-5 h-5" />
+                        </button>
+                    )}
+                </div>
             </div>
+
+            {/* Placeholder suggestion chips */}
+            {showPlaceholderChips && inputValue.length === 0 && chipPlaceholders.length > 0 && (
+                <div className="flex flex-wrap gap-2 px-1">
+                    {chipPlaceholders.slice(0, 3).map((placeholder, idx) => (
+                        <button
+                            key={idx}
+                            type="button"
+                            onClick={() => handlePlaceholderClick(placeholder)}
+                            className="px-3 py-1.5 text-sm text-muted-foreground bg-secondary/50 hover:bg-secondary hover:text-foreground border border-border/50 hover:border-border rounded-full transition-all duration-200 truncate max-w-[200px]"
+                            title={placeholder}
+                        >
+                            {placeholder}
+                        </button>
+                    ))}
+                </div>
+            )}
         </div>
     );
 }
