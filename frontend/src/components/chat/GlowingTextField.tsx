@@ -191,7 +191,7 @@ function GlowingTextField({ isLoading, disabled, onInputChange, onKeyDown, input
                                 focus:outline-none
                             `}
                         style={{
-                            transition: 'padding 0.4s cubic-bezier(0.4, 0, 0.2, 1), font-size 0.4s cubic-bezier(0.4, 0, 0.2, 1), line-height 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+                            transition: 'height 0.4s cubic-bezier(0.4, 0, 0.2, 1), padding 0.4s cubic-bezier(0.4, 0, 0.2, 1), font-size 0.4s cubic-bezier(0.4, 0, 0.2, 1), line-height 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
                         }}
                         onChange={onInputChange}
                         onKeyDown={handleKeyDownInternal}
