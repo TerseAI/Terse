@@ -185,7 +185,11 @@ export class EventProcessor {
       agentId: agent.id,
       trigger,
     });
-    emitCacheInvalidationWithWildcard(this.user.organizationId, "runHistory", agent.id);
+    emitCacheInvalidationWithWildcard(
+      this.user.organizationId,
+      "runHistory",
+      agent.id,
+    );
     emitCacheInvalidationWithKey(this.user.organizationId, "recentAgents");
 
     // Get the outputs from agent relations (already fetched with config)
@@ -224,6 +228,7 @@ export class EventProcessor {
         runId,
         userId: this.user.id,
         agentId: agent.id,
+        organizationId: this.user.organizationId,
       });
 
       filterResult = filterResponse.result;
@@ -240,7 +245,11 @@ export class EventProcessor {
 
       try {
         await markRunFailed(runId, errorMessage, "filter");
-        emitCacheInvalidationWithWildcard(this.user.organizationId, "runHistory", agent.id);
+        emitCacheInvalidationWithWildcard(
+          this.user.organizationId,
+          "runHistory",
+          agent.id,
+        );
       } catch (e) {
         logger.error("Failed to mark run as failed", {
           error: e,
@@ -263,7 +272,11 @@ export class EventProcessor {
       try {
         await markRunSkipped(runId, filterResult.reason);
         // Emit cache invalidation to update UI
-        emitCacheInvalidationWithWildcard(this.user.organizationId, "runHistory", agent.id);
+        emitCacheInvalidationWithWildcard(
+          this.user.organizationId,
+          "runHistory",
+          agent.id,
+        );
       } catch (e) {
         logger.error("Failed to mark run skipped", {
           error: e,
@@ -331,7 +344,11 @@ export class EventProcessor {
 
       try {
         await markRunFailed(runId, errorMessage, "agent");
-        emitCacheInvalidationWithWildcard(this.user.organizationId, "runHistory", agent.id);
+        emitCacheInvalidationWithWildcard(
+          this.user.organizationId,
+          "runHistory",
+          agent.id,
+        );
       } catch (e) {
         logger.error("Failed to mark run as failed", {
           error,
@@ -379,7 +396,11 @@ async function persistRunResult<T extends Session>(
   try {
     await finalizeRunStatus(runId, hasFinalOutput ? "success" : "failed");
     // Invalidate all run history queries for this agent when status changes
-    emitCacheInvalidationWithWildcard(session.user.organizationId, "runHistory", agent.id);
+    emitCacheInvalidationWithWildcard(
+      session.user.organizationId,
+      "runHistory",
+      agent.id,
+    );
   } catch (e) {
     logger.error("Failed to finalize run status", {
       error: e,
@@ -406,7 +427,11 @@ export async function persistRunAction<T extends Session>(
 ): Promise<string | undefined> {
   try {
     const actionId = await appendRunAction(runId, action);
-    emitCacheInvalidationWithWildcard(session.user.organizationId, "runHistory", agent.id);
+    emitCacheInvalidationWithWildcard(
+      session.user.organizationId,
+      "runHistory",
+      agent.id,
+    );
     emitCacheInvalidationWithKey(session.user.organizationId, "recentActions");
     return actionId;
   } catch (e) {

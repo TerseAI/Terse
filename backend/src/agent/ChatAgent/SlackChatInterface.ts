@@ -292,9 +292,16 @@ class SlackChatInterface extends ChatInterface {
     logger.info("Slack chat interface promptForIntegration", {
       integration,
       userId: this.userId,
+      organizationId: this.organizationId,
     });
     if (!this.userId) {
       logger.error("Cannot prompt for integration: userId is not available");
+      return "Unable to get authorization URL. Please ensure you are properly authenticated.";
+    }
+    if (!this.organizationId) {
+      logger.error(
+        "Cannot prompt for integration: organizationId is not available",
+      );
       return "Unable to get authorization URL. Please ensure you are properly authenticated.";
     }
 
