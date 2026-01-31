@@ -262,7 +262,7 @@ export class GithubIntegrationManager
           where: {
             user_id_github_username: {
               user_id: user_id,
-              github_username: githubAppUser.name,
+              github_username: githubAppUser.login,
             },
           },
           update: {
@@ -271,7 +271,7 @@ export class GithubIntegrationManager
           },
           create: {
             user_id: user_id,
-            github_username: githubAppUser.name,
+            github_username: githubAppUser.login,
             access_token: authToken.access_token,
             organization_id: organizationId,
           },
