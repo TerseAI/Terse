@@ -1,4 +1,4 @@
-import { forwardRef, useImperativeHandle, useRef } from "react";
+import { forwardRef, useImperativeHandle, useRef, useEffect } from "react";
 import { ChatLayout, type ChatLayoutHandle } from "./ChatLayout";
 import { useChat } from "./hooks/useChat";
 import { Turn } from "./Turn";
@@ -38,6 +38,7 @@ const Chat = forwardRef<ChatHandle, ChatProps>(function Chat({
     showPlaceholderChips = false,
 }, ref) {
     const chatLayoutRef = useRef<ChatLayoutHandle>(null);
+    const hasScrolledToBottomRef = useRef(false);
     const { turns, isPendingAssistantResponse, input, setInput, sendMessage: sendUserMessage, sendModelRequest } = useChat({
         subscribeToEvents,
         sendMessage,
@@ -47,6 +48,16 @@ const Chat = forwardRef<ChatHandle, ChatProps>(function Chat({
         onToolCallComplete: () => {},
         addUserTurnsLocally,
     });
+
+    // Scroll to bottom when initialTurns are first rendered
+    useEffect(() => {
+        if (initialTurns && initialTurns.length > 0 && !hasScrolledToBottomRef.current) {
+            hasScrolledToBottomRef.current = true;
+            requestAnimationFrame(() => {
+                chatLayoutRef.current?.scrollToBottom();
+            });
+        }
+    }, [initialTurns]);
 
     // Expose both ChatLayout methods and setInput to parent
     useImperativeHandle(ref, () => ({

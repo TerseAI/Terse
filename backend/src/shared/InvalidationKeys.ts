@@ -150,3 +150,8 @@ export const agentDetailKey = (id: string | null): readonly [string, { id: strin
     if (!id) return null;
     return ['agent', { id }];
 };
+
+export const builderChatHistoryKey = (sessionId: string | null | undefined): readonly [string, string] | null => {
+    if (!sessionId) return null;
+    return ['builderChatHistory', sessionId] as const;
+};
