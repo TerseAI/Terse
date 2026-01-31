@@ -48,6 +48,7 @@ export const ToolName = {
     POSTHOG_SEARCH_SESSIONS: 'searchPosthogSessions',
     POSTHOG_SEARCH_LOGS: 'searchPosthogLogs',
     POSTHOG_GET_SESSION_EVENTS: 'getPosthogSessionEvents',
+    POSTHOG_SEARCH_EVENTS: 'searchPosthogEvents',
 
     // LaunchDarkly Knowledge Base Tools
     LAUNCHDARKLY_LIST_FEATURE_FLAGS: 'listLaunchDarklyFlags',

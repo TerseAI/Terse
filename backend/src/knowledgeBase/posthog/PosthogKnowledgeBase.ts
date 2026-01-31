@@ -9,6 +9,7 @@ import { KnowledgeBase } from "../abstract/KnowledgeBase";
 import { searchLogsTool } from "./tools/searchLogs";
 import { searchSessionsTool } from "./tools/searchSessions";
 import { getSessionEventsTool } from "./tools/getSessionEvents";
+import { searchEventsTool } from "./tools/searchEvents";
 import { db } from "../../prismaClient";
 import logger from "../../logger";
 
@@ -23,6 +24,7 @@ export class PosthogKnowledgeBase extends KnowledgeBase<PosthogConfig> {
             { tool: searchLogsTool as Tool, isReadOnly: true, integration: IntegrationType.POSTHOG, displayName: 'Search logs' },
             { tool: searchSessionsTool as Tool, isReadOnly: true, integration: IntegrationType.POSTHOG, displayName: 'Search sessions' },
             { tool: getSessionEventsTool as Tool, isReadOnly: true, integration: IntegrationType.POSTHOG, displayName: 'Get session events' },
+            { tool: searchEventsTool as Tool, isReadOnly: true, integration: IntegrationType.POSTHOG, displayName: 'Search analytics events' },
         ];
 
         super(KnowledgeBaseConfigType.POSTHOG, toolbox);
@@ -33,8 +35,8 @@ export class PosthogKnowledgeBase extends KnowledgeBase<PosthogConfig> {
         if (!knowledgeBase.projectId) {
             throw new Error('Invalid knowledge base config for posthog: missing projectId');
         }
-        if (!knowledgeBase.canReadLogs && !knowledgeBase.canReadSessionRecordings) {
-            throw new Error('Invalid knowledge base config for posthog: requires canReadLogs or canReadSessionRecordings');
+        if (!knowledgeBase.canReadLogs && !knowledgeBase.canReadSessionRecordings && !knowledgeBase.canReadEvents) {
+            throw new Error('Invalid knowledge base config for posthog: requires canReadLogs, canReadSessionRecordings, or canReadEvents');
         }
     }
 
@@ -47,6 +49,7 @@ export class PosthogKnowledgeBase extends KnowledgeBase<PosthogConfig> {
                 project_name: knowledgeBase.projectName || null,
                 can_read_logs: knowledgeBase.canReadLogs ?? false,
                 can_read_session_recordings: knowledgeBase.canReadSessionRecordings ?? false,
+                can_read_events: knowledgeBase.canReadEvents ?? false,
             }
         });
     }
@@ -75,9 +78,11 @@ export class PosthogKnowledgeBase extends KnowledgeBase<PosthogConfig> {
             const projectName = config.posthog_config.project_name;
             const canReadLogs = config.posthog_config.can_read_logs;
             const canReadSessionRecordings = config.posthog_config.can_read_session_recordings;
+            const canReadEvents = config.posthog_config.can_read_events;
             const permissions = [];
             if (canReadLogs) permissions.push('logs');
             if (canReadSessionRecordings) permissions.push('session recordings');
+            if (canReadEvents) permissions.push('analytics events');
             configList.push(`  • Integration ID: ${config.integration_id} - Project Name: ${projectName || 'N/A'}, Project ID: ${projectId || 'N/A'} (${permissions.join(', ')})`);
         }
         sections.push('Available configurations:');
@@ -94,28 +99,32 @@ export class PosthogKnowledgeBase extends KnowledgeBase<PosthogConfig> {
             const projectName = config.posthog_config.project_name || 'N/A';
             const canReadLogs = config.posthog_config.can_read_logs ?? false;
             const canReadSessionRecordings = config.posthog_config.can_read_session_recordings ?? false;
-            
+            const canReadEvents = config.posthog_config.can_read_events ?? false;
+
             const availableTools: string[] = [];
-            
+
             if (canReadLogs) {
                 availableTools.push('searchPosthogLogs');
             }
             if (canReadSessionRecordings) {
                 availableTools.push('searchPosthogSessions', 'getPosthogSessionEvents');
             }
-            
+            if (canReadEvents) {
+                availableTools.push('searchPosthogEvents');
+            }
+
             if (availableTools.length > 0) {
                 toolsByIntegration.push(
                     `  Integration ID ${integrationId} (${projectName}): ${availableTools.join(', ')}`
                 );
             }
         }
-        
+
         if (toolsByIntegration.length > 0) {
             sections.push('\nAVAILABLE TOOLS BY INTEGRATION:');
             sections.push(toolsByIntegration.join('\n'));
             sections.push('\nTOOL DESCRIPTIONS:');
-            
+
             // Check if any config has logs permission
             if (configs.some(c => c.posthog_config?.can_read_logs)) {
                 sections.push(
@@ -125,7 +134,7 @@ export class PosthogKnowledgeBase extends KnowledgeBase<PosthogConfig> {
                     'Supports pagination (offset parameter) and date filtering.'
                 );
             }
-            
+
             // Check if any config has session recordings permission
             if (configs.some(c => c.posthog_config?.can_read_session_recordings)) {
                 sections.push(
@@ -135,6 +144,16 @@ export class PosthogKnowledgeBase extends KnowledgeBase<PosthogConfig> {
                 sections.push(
                     '• getPosthogSessionEvents: Decode a session\'s events (clicks, inputs, console logs, errors, navigation). ' +
                     'Use startSeconds/endSeconds to focus on specific time windows within a session.'
+                );
+            }
+
+            // Check if any config has events permission
+            if (configs.some(c => c.posthog_config?.can_read_events)) {
+                sections.push(
+                    '• searchPosthogEvents: Query analytics events (custom events tracked via posthog.capture()). ' +
+                    'Use this to investigate user behavior, track feature usage, or analyze custom events like "user_signed_up", ' +
+                    '"button_clicked", "$pageview", etc. Can filter by event name, user distinct ID, person email, properties, ' +
+                    'and date range. Different from logs - these are product analytics events that show what users are doing in the app.'
                 );
             }
         }

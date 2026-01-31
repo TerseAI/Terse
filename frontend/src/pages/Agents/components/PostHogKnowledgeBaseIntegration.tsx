@@ -21,7 +21,7 @@ import {
 
 export function PostHogKnowledgeBaseIntegration({ knowledgeBase, variant, setConfig }: KnowledgeBaseSelectorProps) {
     const { integrations, isLoading, mutate } = usePosthogIntegrations();
-    const posthogConfig = (knowledgeBase.config as PosthogConfig) || new PosthogConfig('', '', undefined, false, false);
+    const posthogConfig = (knowledgeBase.config as PosthogConfig) || new PosthogConfig('', '', undefined, false, false, false);
     const selectedIntegrationId = posthogConfig.integrationId || null;
     
     // Form state for connecting new integration
@@ -180,7 +180,8 @@ export function PostHogKnowledgeBaseIntegration({ knowledgeBase, variant, setCon
             '', // Clear project when integration changes
             undefined,
             posthogConfig.canReadLogs,
-            posthogConfig.canReadSessionRecordings
+            posthogConfig.canReadSessionRecordings,
+            posthogConfig.canReadEvents
         );
         setConfig(newPosthogConfig);
     };
@@ -191,7 +192,8 @@ export function PostHogKnowledgeBaseIntegration({ knowledgeBase, variant, setCon
             projectId,
             projectName,
             posthogConfig.canReadLogs,
-            posthogConfig.canReadSessionRecordings
+            posthogConfig.canReadSessionRecordings,
+            posthogConfig.canReadEvents
         );
         setConfig(newPosthogConfig);
     };
@@ -202,7 +204,8 @@ export function PostHogKnowledgeBaseIntegration({ knowledgeBase, variant, setCon
             posthogConfig.projectId,
             posthogConfig.projectName,
             canReadLogs,
-            posthogConfig.canReadSessionRecordings
+            posthogConfig.canReadSessionRecordings,
+            posthogConfig.canReadEvents
         );
         setConfig(newPosthogConfig);
     };
@@ -213,7 +216,20 @@ export function PostHogKnowledgeBaseIntegration({ knowledgeBase, variant, setCon
             posthogConfig.projectId,
             posthogConfig.projectName,
             posthogConfig.canReadLogs,
-            canReadSessionRecordings
+            canReadSessionRecordings,
+            posthogConfig.canReadEvents
+        );
+        setConfig(newPosthogConfig);
+    };
+
+    const updateCanReadEvents = (canReadEvents: boolean) => {
+        const newPosthogConfig = new PosthogConfig(
+            posthogConfig.integrationId,
+            posthogConfig.projectId,
+            posthogConfig.projectName,
+            posthogConfig.canReadLogs,
+            posthogConfig.canReadSessionRecordings,
+            canReadEvents
         );
         setConfig(newPosthogConfig);
     };
@@ -286,6 +302,16 @@ export function PostHogKnowledgeBaseIntegration({ knowledgeBase, variant, setCon
                         />
                         <Label htmlFor="read-session-recordings" className="font-normal cursor-pointer">
                             Look at relevant session recordings
+                        </Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                        <Checkbox
+                            id="read-events"
+                            checked={posthogConfig.canReadEvents}
+                            onCheckedChange={updateCanReadEvents}
+                        />
+                        <Label htmlFor="read-events" className="font-normal cursor-pointer">
+                            Search analytics events
                         </Label>
                     </div>
                 </div>
