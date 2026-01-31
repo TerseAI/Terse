@@ -12,6 +12,7 @@ import { hydrateAgentFromRecord, createAgentRunner, formatHydrationError } from 
 import { RunHistoryAction } from '../../shared/RunHistoryTypes';
 import { RunContext } from './SystemPromptBuilder';
 import logger from '../../logger';
+import { trackAgentTriggered, trackActionTaken } from '../../utility/analytics';
 
 // The job of this class is to take an Input Event, and check if it's a match for an Agent.
 // It will then create a Session, and summon the Agent Runner with the create user data.
@@ -168,6 +169,15 @@ export class EventProcessor {
 
         logger.info(`Event is relevant to agent "${agent.name}"`);
 
+        // Track agent triggered analytics event
+        trackAgentTriggered(this.user.id, {
+            agentId: agent.id,
+            agentName: agent.name,
+            triggerType: trigger.integration,
+            triggerSource: trigger.source,
+            runId,
+        });
+
         // Create agent runner with hydrated dependencies
         const runContext: RunContext = { runId };
         const agentRunner = createAgentRunner(hydrationResult.data, runContext);
@@ -243,6 +253,16 @@ export async function persistRunAction<T extends Session>(
         const actionId = await appendRunAction(runId, action);
         emitCacheInvalidationWithWildcard(session.user.id, 'runHistory', agent.id);
         emitCacheInvalidationWithKey(session.user.id, 'recentActions');
+
+        // Track action taken analytics event
+        trackActionTaken(session.user.id, {
+            runId,
+            actionType: action.type,
+            integration: action.integration,
+            target: action.target,
+            isReadOnly: action.isReadOnly,
+        });
+
         return actionId;
     } catch (e) {
         logger.error('Failed to append run action', { error: e, runId, agentId: agent.id });
