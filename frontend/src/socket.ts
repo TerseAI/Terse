@@ -23,19 +23,9 @@ export async function initializeSocket() {
   // The path will be: /api/socket.io (which the Vite proxy will forward to /socket.io on backend)
   const socketUrl = import.meta.env.VITE_SOCKET_URL ?? window.location.origin;
 
-  console.log("Connecting to Socket.IO at:", socketUrl);
-
   socket = io(socketUrl, {
     auth: { token },
     withCredentials: true,
-  });
-
-  socket.on(SocketEvents.CONNECT, () => {
-    console.log("[Socket] Connected");
-  });
-
-  socket.on(SocketEvents.DISCONNECT, (reason) => {
-    console.log("[Socket] Disconnected", { reason });
   });
 
   socket.on(SocketEvents.CONNECT_ERROR, (error) => {
@@ -57,35 +47,27 @@ export async function initializeSocket() {
     (payload: { key?: string; id?: string }) => {
       const { key, id } = payload || {};
       if (key && id) {
-        console.log("Invalidating key and id:", [key, id]);
-        // Use matcher function to invalidate all keys that start with [key, id]
-        // This matches both ['runHistory', automationId] and ['runHistory', automationId, params]
         mutate((k) => Array.isArray(k) && k[0] === key && k[1] === id);
       } else if (key) {
-        console.log("Invalidating key:", key);
-        // Use matcher function to invalidate all keys that start with [key]
         mutate((k) => Array.isArray(k) && k[0] === key);
       }
     },
   );
 
   // WorkOS webhook-driven events
-  socket.on(SocketEvents.WORKOS_FORCE_LOGOUT, (payload) => {
+  socket.on(SocketEvents.WORKOS_FORCE_LOGOUT, () => {
     window.location.href = `${backendRedirectUrl}${ApiRoutes.AUTH.LOGIN}`;
   });
 
-  socket.on(SocketEvents.WORKOS_USER_UPDATED, (payload) => {
-    console.log("[Socket] Received WORKOS_USER_UPDATED", payload);
+  socket.on(SocketEvents.WORKOS_USER_UPDATED, () => {
     window.dispatchEvent(new CustomEvent(SocketEvents.WORKOS_USER_UPDATED));
   });
 
-  socket.on(SocketEvents.WORKOS_SESSION_UPDATED, (payload) => {
-    console.log("[Socket] Received WORKOS_SESSION_UPDATED", payload);
+  socket.on(SocketEvents.WORKOS_SESSION_UPDATED, () => {
     window.dispatchEvent(new CustomEvent(SocketEvents.WORKOS_SESSION_UPDATED));
   });
 
-  socket.on(SocketEvents.WORKOS_ORG_UPDATED, (payload) => {
-    console.log("[Socket] Received WORKOS_ORG_UPDATED", payload);
+  socket.on(SocketEvents.WORKOS_ORG_UPDATED, () => {
     window.dispatchEvent(new CustomEvent(SocketEvents.WORKOS_ORG_UPDATED));
   });
 }

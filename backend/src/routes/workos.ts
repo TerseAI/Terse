@@ -45,11 +45,6 @@ async function processWorkOSEvent(event: WorkOSWebhookEvent): Promise<void> {
   }
 
   const { event: eventType, data } = event;
-  logger.info("[WorkOS webhook] Processing event", {
-    eventType,
-    eventId: event.id,
-    dataKeys: Object.keys(data || {}),
-  });
 
   switch (eventType) {
     case "user.updated": {
@@ -57,11 +52,6 @@ async function processWorkOSEvent(event: WorkOSWebhookEvent): Promise<void> {
       const workosUserId =
         (data as { user?: { id: string } }).user?.id ??
         (data as { id?: string }).id;
-      logger.info("[WorkOS webhook] user.updated", {
-        workosUserId,
-        hasUserNested: !!(data as { user?: unknown }).user,
-        dataId: (data as { id?: string }).id,
-      });
       if (!workosUserId) {
         logger.warn("[WorkOS webhook] user.updated: no user id in payload", {
           data: JSON.stringify(data),
@@ -70,15 +60,6 @@ async function processWorkOSEvent(event: WorkOSWebhookEvent): Promise<void> {
       }
       const localUserId = await getLocalUserIdFromWorkOS(workosUserId);
       const room = SocketRooms.user(localUserId ?? "");
-      const roomSize = localUserId
-        ? io.sockets.adapter.rooms.get(room)?.size ?? 0
-        : 0;
-      logger.info("[WorkOS webhook] user.updated lookup", {
-        workosUserId,
-        localUserId,
-        room,
-        socketsInRoom: roomSize,
-      });
       if (!localUserId) {
         logger.warn(
           "[WorkOS webhook] user.updated: no local user found for workos user",
@@ -88,11 +69,6 @@ async function processWorkOSEvent(event: WorkOSWebhookEvent): Promise<void> {
       }
       io.to(room).emit(SocketEvents.WORKOS_USER_UPDATED, {
         userId: localUserId,
-      });
-      logger.info("[WorkOS webhook] Emitted WORKOS_USER_UPDATED", {
-        localUserId,
-        workosUserId,
-        socketsInRoom: roomSize,
       });
       break;
     }
@@ -108,10 +84,6 @@ async function processWorkOSEvent(event: WorkOSWebhookEvent): Promise<void> {
             reason: "user_deleted",
           },
         );
-        logger.info("Emitted WORKOS_FORCE_LOGOUT (user_deleted)", {
-          localUserId,
-          workosUserId,
-        });
       }
       break;
     }
@@ -121,10 +93,6 @@ async function processWorkOSEvent(event: WorkOSWebhookEvent): Promise<void> {
       // Emit ONLY to the session room - so only the device with that session gets logged out.
       // Revoking "Chrome on Mac" should not log out "Safari on iPhone".
       const revokedSessionId = (data as { id?: string }).id;
-      logger.info("[WorkOS webhook] session.revoked", {
-        revokedSessionId,
-        dataKeys: Object.keys(data || {}),
-      });
       if (!revokedSessionId) {
         logger.warn(
           "[WorkOS webhook] session.revoked: no session id in payload",
@@ -133,18 +101,9 @@ async function processWorkOSEvent(event: WorkOSWebhookEvent): Promise<void> {
         break;
       }
       const sessionRoom = SocketRooms.session(revokedSessionId);
-      const roomSize = io.sockets.adapter.rooms.get(sessionRoom)?.size ?? 0;
-      logger.info(
-        "[WorkOS webhook] session.revoked - emitting to session room only",
-        { revokedSessionId, sessionRoom, socketsInRoom: roomSize },
-      );
       io.to(sessionRoom).emit(SocketEvents.WORKOS_FORCE_LOGOUT, {
         reason: "session_revoked",
       });
-      logger.info(
-        "[WorkOS webhook] Emitted WORKOS_FORCE_LOGOUT to session room",
-        { revokedSessionId, socketsInRoom: roomSize },
-      );
       break;
     }
 
@@ -245,10 +204,6 @@ export async function handleWorkOSWebhook(
     });
 
     const webhookEvent = event as WorkOSWebhookEvent;
-    logger.info("[WorkOS webhook] Received and validated", {
-      eventId: webhookEvent.id,
-      eventType: webhookEvent.event,
-    });
 
     // Respond immediately per WorkOS best practices
     res.status(200).send("OK");

@@ -61,7 +61,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     const handleRefresh = () => {
-      console.log("[Auth] Received WorkOS refresh event, refreshing user");
       runRefresh(setUser, setIsLoading);
     };
     window.addEventListener(SocketEvents.WORKOS_USER_UPDATED, handleRefresh);

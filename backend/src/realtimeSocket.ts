@@ -156,7 +156,6 @@ export async function initializeRealtimeSocket(
       logger.info("User in socket authenticated", {
         userId: dbUser.id,
         organizationId: organizationId ?? "(none)",
-        workosSessionId: workosSessionId ?? "(none)",
       });
       const authSocket = socket as AuthenticatedSocket;
       authSocket.userId = dbUser.id;
@@ -186,7 +185,6 @@ export async function initializeRealtimeSocket(
       userId,
       userRoom,
       orgRoom: orgRoom ?? "(none)",
-      sessionRoom: sessionRoom ?? "(none)",
     });
 
     socket.join(userRoom);

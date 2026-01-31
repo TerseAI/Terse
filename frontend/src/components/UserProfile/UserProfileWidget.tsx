@@ -23,10 +23,7 @@ export function UserProfileWidget() {
     }, []);
 
     useEffect(() => {
-        const handleUpdate = () => {
-            console.log('[UserProfileWidget] Received WORKOS_USER_UPDATED, refreshing widget token');
-            fetchToken();
-        };
+        const handleUpdate = () => fetchToken();
         window.addEventListener(SocketEvents.WORKOS_USER_UPDATED, handleUpdate);
         return () => window.removeEventListener(SocketEvents.WORKOS_USER_UPDATED, handleUpdate);
     }, []);
