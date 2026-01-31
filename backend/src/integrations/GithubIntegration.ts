@@ -42,15 +42,7 @@ export class GithubIntegrationManager implements Integration<GithubIntegration, 
                 account_name: ai.account.login,
             }));
         }));
-        // Deduplicate by installation_id to prevent duplicates when user has multiple tokens
-        const seen = new Set<number>();
-        return installations.flat().filter(installation => {
-            if (seen.has(installation.installation_id)) {
-                return false;
-            }
-            seen.add(installation.installation_id);
-            return true;
-        });
+        return installations.flat();
     }
 
     formatIntegrationInstanceForAgent(instance: GithubIntegration): string {
