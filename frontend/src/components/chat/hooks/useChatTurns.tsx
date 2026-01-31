@@ -70,56 +70,52 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
     const handleToolCall = ({ summary, step_id, parameters }: ToolCall) => {
         // Track current step_id
         currentStepIdRef.current = step_id;
-        
+
         setTurns(prev => {
-            // Find the turn with the matching step_id
-            const existingTurnIndex = prev.findIndex(turn => turn.step_id === step_id);
+            const updated = [...prev];
+            const last = updated[updated.length - 1];
 
-            if (existingTurnIndex === -1) {
-                return [...prev, {
-                    role: 'assistant',
-                    text: "",
-                    function_calls: [{ id: step_id, name: summary, isRunning: false, isWaitingForApproval: false, isWaitingForUserInput: false, parameters }],
-                    isGenerating: true,
-                    step_id,
-                }];
+            // If last turn is an assistant turn, add tool call to it
+            if (last && last.role === 'assistant') {
+                // Check if this tool call already exists (by step_id which is the unique call ID)
+                const existingCallIndex = last.function_calls.findIndex(call => call.id === step_id);
+
+                if (existingCallIndex !== -1) {
+                    // Update existing tool call
+                    last.function_calls[existingCallIndex] = {
+                        ...last.function_calls[existingCallIndex],
+                        parameters
+                    };
+                } else {
+                    // Add new tool call
+                    last.function_calls.push({
+                        id: step_id,
+                        name: summary,
+                        isRunning: false,
+                        isWaitingForApproval: false,
+                        isWaitingForUserInput: false,
+                        parameters
+                    });
+                }
+                last.isGenerating = true;
+                return updated;
             }
 
-            const existingTurn = prev[existingTurnIndex];
-
-            // Check if this tool call already exists
-            const existingCallIndex = existingTurn.function_calls.findIndex(call => call.id === step_id && call.name === summary);
-            if (existingCallIndex !== -1) {
-                // Update existing tool call with new parameters
-                const updatedTurn = {
-                    ...existingTurn,
-                    function_calls: existingTurn.function_calls.map((call, index) =>
-                        index === existingCallIndex
-                            ? { ...call, parameters }
-                            : call
-                    )
-                };
-
-                return [
-                    ...prev.slice(0, existingTurnIndex),
-                    updatedTurn,
-                    ...prev.slice(existingTurnIndex + 1)
-                ];
-            }
-
-            // Create new turn with added tool call (immutable update)
-            const updatedTurn = {
-                ...existingTurn,
-                function_calls: [...existingTurn.function_calls, { id: step_id, name: summary, isRunning: false, isWaitingForApproval: false, isWaitingForUserInput: false, parameters }],
-                isGenerating: true
-            };
-
-            // Create new turns array with updated turn (immutable update)
-            return [
-                ...prev.slice(0, existingTurnIndex),
-                updatedTurn,
-                ...prev.slice(existingTurnIndex + 1)
-            ];
+            // Otherwise create new assistant turn
+            return [...updated, {
+                role: 'assistant',
+                text: "",
+                function_calls: [{
+                    id: step_id,
+                    name: summary,
+                    isRunning: false,
+                    isWaitingForApproval: false,
+                    isWaitingForUserInput: false,
+                    parameters
+                }],
+                isGenerating: true,
+                step_id,
+            }];
         });
     };
 
