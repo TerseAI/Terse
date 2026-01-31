@@ -79,7 +79,6 @@ export default function AgentSetup() {
 
     const chatSectionVariants = {
         initial: {
-            flexGrow: 0,
             minHeight: 200,
         },
         expanded: {
@@ -104,8 +103,8 @@ export default function AgentSetup() {
     return (
         <div className="flex flex-col h-full w-full">
             {/* Header - wrapper collapses immediately, content fades out */}
-            <div 
-                style={{ 
+            <div
+                style={{
                     height: hasStartedChat ? 0 : 'auto',
                     overflow: 'visible',
                     marginTop: hasStartedChat ? 0 : 32,
@@ -121,7 +120,7 @@ export default function AgentSetup() {
                             animate="visible"
                             exit="hidden"
                             transition={{
-                                duration: ANIMATION_DURATION/4,
+                                duration: ANIMATION_DURATION / 4,
                                 ease: ANIMATION_EASE,
                             }}
                         >
@@ -158,9 +157,9 @@ export default function AgentSetup() {
             </motion.div>
 
             {/* Templates Section - wrapper collapses immediately, content fades out */}
-            <div 
+            <div
                 className="relative"
-                style={{ 
+                style={{
                     height: hasStartedChat ? 0 : 'auto',
                     overflow: 'visible',
                     transition: 'none',
