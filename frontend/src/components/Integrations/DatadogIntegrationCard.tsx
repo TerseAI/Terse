@@ -28,8 +28,8 @@ const DATADOG_REGIONS = [
     { value: 'ap1', label: 'AP1 (ap1.datadoghq.com)' },
 ];
 
-function DatadogIntegrationCard({ className, isActive = true, stateToken }: { className?: string; isActive?: boolean; stateToken?: string }) {
-    const { integrations, isLoading, mutate } = useDatadogIntegrations(); 
+function DatadogIntegrationCard({ className, isActive = true, stateToken, compact = false }: { className?: string; isActive?: boolean; stateToken?: string; compact?: boolean }) {
+    const { integrations, isLoading, mutate } = useDatadogIntegrations();
     const [showForm, setShowForm] = useState(false);
     const [apiKey, setApiKey] = useState("");
     const [appKey, setAppKey] = useState("");
@@ -73,33 +73,35 @@ function DatadogIntegrationCard({ className, isActive = true, stateToken }: { cl
 
     return (
         <Card className={cn(className)}>
-            <IntegrationCardHeader integration={IntegrationType.DATADOG} isActive={isActive} />
-            <CardContent>
-                {showForm ? (
-                    <DatadogForm
-                        apiKey={apiKey}
-                        setApiKey={setApiKey}
-                        appKey={appKey}
-                        setAppKey={setAppKey}
-                        showApiKey={showApiKey}
-                        setShowApiKey={setShowApiKey}
-                        showAppKey={showAppKey}
-                        setShowAppKey={setShowAppKey}
-                        region={region}
-                        setRegion={setRegion}
-                        onSubmit={handleSubmit}
-                        onCancel={handleCancel}
-                        isSubmitting={isSubmitting}
-                        error={error}
-                    />
-                ) : (
-                    <DatadogCardContent integrations={integrations} isLoading={isLoading} />
-                )}
-            </CardContent>
-            <CardFooter>
+            <IntegrationCardHeader integration={IntegrationType.DATADOG} isActive={isActive} compact={compact} />
+            {!compact && (
+                <CardContent>
+                    {showForm ? (
+                        <DatadogForm
+                            apiKey={apiKey}
+                            setApiKey={setApiKey}
+                            appKey={appKey}
+                            setAppKey={setAppKey}
+                            showApiKey={showApiKey}
+                            setShowApiKey={setShowApiKey}
+                            showAppKey={showAppKey}
+                            setShowAppKey={setShowAppKey}
+                            region={region}
+                            setRegion={setRegion}
+                            onSubmit={handleSubmit}
+                            onCancel={handleCancel}
+                            isSubmitting={isSubmitting}
+                            error={error}
+                        />
+                    ) : (
+                        <DatadogCardContent integrations={integrations} isLoading={isLoading} />
+                    )}
+                </CardContent>
+            )}
+            <CardFooter className={cn(compact && "py-3 px-4")}>
                 {!showForm && (
-                    <Button variant="outline" onClick={handleConnect}>
-                        {integrations.length > 0 ? "Update" : "Connect"}
+                    <Button variant="outline" size={compact ? "sm" : "default"} onClick={handleConnect}>
+                        {compact ? "Connect" : (integrations.length > 0 ? "Update" : "Connect")}
                     </Button>
                 )}
             </CardFooter>

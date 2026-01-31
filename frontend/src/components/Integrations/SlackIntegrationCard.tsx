@@ -13,7 +13,7 @@ import { useState } from "react";
 import { SlackConnectionOptions } from "./helpers/SlackConnectionOptions";
 import { BackendProvider } from "@/services/backend";
 
-function SlackIntegrationCard({ className, isActive = true, stateToken }: { className?: string; isActive?: boolean; stateToken?: string }) {
+function SlackIntegrationCard({ className, isActive = true, stateToken, compact = false }: { className?: string; isActive?: boolean; stateToken?: string; compact?: boolean }) {
     const [showConnectionOptions, setShowConnectionOptions] = useState(false);
     const [isBotUser, setIsBotUser] = useState(true);
     const [isConnecting, setIsConnecting] = useState(false);
@@ -47,28 +47,31 @@ function SlackIntegrationCard({ className, isActive = true, stateToken }: { clas
 
     return (
         <Card className={cn(className)}>
-            <IntegrationCardHeader integration={IntegrationType.SLACK} isActive={isActive} />
-            <CardContent>
-                {showConnectionOptions ? (
-                    <SlackConnectionOptions
-                        isBotUser={isBotUser}
-                        setIsBotUser={setIsBotUser}
-                        onBack={handleBack}
-                        onConnect={connect}
-                        isConnecting={isConnecting}
-                    />
-                ) : (
-                    <SlackCardContent
-                        integrations={integrations}
-                        isLoading={integrationsLoading}
-                    />
-                )}
-            </CardContent>
+            <IntegrationCardHeader integration={IntegrationType.SLACK} isActive={isActive} compact={compact} />
+            {!compact && (
+                <CardContent>
+                    {showConnectionOptions ? (
+                        <SlackConnectionOptions
+                            isBotUser={isBotUser}
+                            setIsBotUser={setIsBotUser}
+                            onBack={handleBack}
+                            onConnect={connect}
+                            isConnecting={isConnecting}
+                        />
+                    ) : (
+                        <SlackCardContent
+                            integrations={integrations}
+                            isLoading={integrationsLoading}
+                        />
+                    )}
+                </CardContent>
+            )}
             {!showConnectionOptions && (
                 <IntegrationCardFooter
                     connect={handleConnectClick}
                     isConnecting={isConnecting}
                     buttonText="Connect Another Slack"
+                    compact={compact}
                 />
             )}
         </Card>
