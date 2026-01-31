@@ -194,6 +194,7 @@ export default function AgentSetupTab({
         inputs.length === 0 || inputs.some((i) => !i || !i.config || !i.config.isComplete());
     const promptIncomplete = !prompt?.text || prompt.text.trim() === '';
     const skillsIncomplete = outputs.length === 0 || outputs.some((o) => !o || !o.config || !o.config.isComplete());
+    const isAgentConfigComplete = !triggersIncomplete && !promptIncomplete && !skillsIncomplete;
 
     // Step definitions for the builder flow
     const steps = [
@@ -348,7 +349,7 @@ export default function AgentSetupTab({
                 <div className="flex-1 min-h-0 overflow-y-auto">
                     <div className="p-6 max-w-4xl">
                         <div className={activeSection === 'triggers' ? 'block' : 'hidden'}>
-                            <InputLayout inputs={inputs} setInputs={setInputs} isIncomplete={triggersIncomplete} />
+                            <InputLayout inputs={inputs} setInputs={setInputs} isIncomplete={triggersIncomplete} isAgentConfigComplete={isAgentConfigComplete} />
                         </div>
 
                         <div className={activeSection === 'knowledgeBase' ? 'block' : 'hidden'}>
@@ -402,7 +403,7 @@ export default function AgentSetupTab({
     )
 }
 
-function InputLayout({ inputs, setInputs }: { inputs: TransientAgentTrigger[], setInputs: (inputs: TransientAgentTrigger[]) => void, isIncomplete: boolean }) {
+function InputLayout({ inputs, setInputs, isAgentConfigComplete }: { inputs: TransientAgentTrigger[], setInputs: (inputs: TransientAgentTrigger[]) => void, isIncomplete: boolean, isAgentConfigComplete: boolean }) {
     const [showAddModal, setShowAddModal] = useState(false);
 
     const handleSelectPlatform = (config: ConfigType) => {
@@ -428,7 +429,7 @@ function InputLayout({ inputs, setInputs }: { inputs: TransientAgentTrigger[], s
 
             <div className="space-y-2">
                 {inputs.map((input) => (
-                    <InputCard key={input.id} input={input} inputs={inputs} setInputs={setInputs} handleRemove={handleRemove} />
+                    <InputCard key={input.id} input={input} inputs={inputs} setInputs={setInputs} handleRemove={handleRemove} isAgentConfigComplete={isAgentConfigComplete} />
                 ))}
                 <Button
                     variant="outline"
@@ -449,7 +450,7 @@ function InputLayout({ inputs, setInputs }: { inputs: TransientAgentTrigger[], s
     )
 }
 
-function InputCard({ input, inputs, setInputs, handleRemove }: { input: TransientAgentTrigger, inputs: TransientAgentTrigger[], setInputs: (inputs: TransientAgentTrigger[]) => void, handleRemove: (id: string) => void }) {
+function InputCard({ input, inputs, setInputs, handleRemove, isAgentConfigComplete }: { input: TransientAgentTrigger, inputs: TransientAgentTrigger[], setInputs: (inputs: TransientAgentTrigger[]) => void, handleRemove: (id: string) => void, isAgentConfigComplete: boolean }) {
     const needsConfiguration = !input.config || !input.config.isComplete();
     const [showDetailsDialog, setShowDetailsDialog] = useState(false);
     const [draftConfig, setDraftConfig] = useState<ConfigInstance | undefined>(input.config);
@@ -478,7 +479,7 @@ function InputCard({ input, inputs, setInputs, handleRemove }: { input: Transien
         input: draftInput,
         setConfig: setDraftConfig,
         variant: "card",
-        disableManualTrigger: true,
+        disableManualTrigger: !isAgentConfigComplete,
     };
 
     return (
@@ -521,7 +522,7 @@ function InputCard({ input, inputs, setInputs, handleRemove }: { input: Transien
                     <DialogHeader>
                         <DialogTitle>{needsConfiguration ? "Configure Trigger" : "Trigger Details"}</DialogTitle>
                     </DialogHeader>
-                    <IntegrationSelector {...selectorProps} variant="dialog" disableManualTrigger={true} />
+                    <IntegrationSelector {...selectorProps} variant="dialog" />
                     <DialogFooter>
                         <Button variant="outline" onClick={handleCancel}>Cancel</Button>
                         <Button onClick={handleDone} disabled={!isDraftValid}>Done</Button>
