@@ -3,6 +3,7 @@ import { IntegrationType } from "@/shared/Integrations"
 import { IntegrationCardHeader } from "./helpers/IntegrationCardHeader";
 import { IntegrationCardFooter } from "./helpers/IntegrationCardFooter";
 import { IntegrationItem } from "./helpers/IntegrationItem";
+import { CompactIntegrationRow } from "./CompactIntegrationRow";
 import { useOAuthConnection } from "@/hooks/useOAuthConnection";
 import { cn } from "@/lib/utils";
 import { useGmailIntegrations } from "@/hooks/api/useGmailIntegrations";
@@ -13,15 +14,29 @@ function GmailIntegrationCard({ className, isActive = true, stateToken, compact 
     const { connect, isConnecting } = useOAuthConnection<IntegrationType.GMAIL>(IntegrationType.GMAIL, {}, stateToken);
     const { integrations, isLoading } = useGmailIntegrations();
 
+    const isConnected = integrations.length > 0;
+    const summary = integrations[0]?.email;
+
+    if (compact) {
+        return (
+            <CompactIntegrationRow
+                integration={IntegrationType.GMAIL}
+                isConnected={isConnected}
+                summary={summary}
+                connect={connect}
+                isConnecting={isConnecting}
+                className={className}
+            />
+        );
+    }
+
     return (
         <Card className={cn(className)}>
-            <IntegrationCardHeader integration={IntegrationType.GMAIL} isActive={isActive} compact={compact} />
-            {!compact && (
-                <CardContent>
-                    <GmailCardContent integrations={integrations} isLoading={isLoading} />
-                </CardContent>
-            )}
-            <IntegrationCardFooter connect={connect} isConnecting={isConnecting} compact={compact} />
+            <IntegrationCardHeader integration={IntegrationType.GMAIL} isActive={isActive} />
+            <CardContent>
+                <GmailCardContent integrations={integrations} isLoading={isLoading} />
+            </CardContent>
+            <IntegrationCardFooter connect={connect} isConnecting={isConnecting} />
         </Card>
     )
 }

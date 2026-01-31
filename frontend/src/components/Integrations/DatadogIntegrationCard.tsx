@@ -2,6 +2,7 @@ import { Card, CardContent, CardFooter } from "../ui/card";
 import { DatadogIntegration, IntegrationType } from "@/shared/Integrations"
 import { IntegrationCardHeader } from "./helpers/IntegrationCardHeader";
 import { IntegrationItem } from "./helpers/IntegrationItem";
+import { CompactIntegrationRow } from "./CompactIntegrationRow";
 import { cn } from "@/lib/utils";
 import { useDatadogIntegrations } from "@/hooks/api/useDatadogIntegrations";
 import { Skeleton } from "../ui/skeleton";
@@ -71,37 +72,51 @@ function DatadogIntegrationCard({ className, isActive = true, stateToken, compac
         setError(null);
     };
 
+    const isConnected = integrations.length > 0;
+    const summary = integrations[0] ? `Region: ${integrations[0].region.toUpperCase()}` : undefined;
+
+    if (compact) {
+        return (
+            <CompactIntegrationRow
+                integration={IntegrationType.DATADOG}
+                isConnected={isConnected}
+                summary={summary}
+                connect={handleConnect}
+                isConnecting={isSubmitting}
+                className={className}
+            />
+        );
+    }
+
     return (
         <Card className={cn(className)}>
-            <IntegrationCardHeader integration={IntegrationType.DATADOG} isActive={isActive} compact={compact} />
-            {!compact && (
-                <CardContent>
-                    {showForm ? (
-                        <DatadogForm
-                            apiKey={apiKey}
-                            setApiKey={setApiKey}
-                            appKey={appKey}
-                            setAppKey={setAppKey}
-                            showApiKey={showApiKey}
-                            setShowApiKey={setShowApiKey}
-                            showAppKey={showAppKey}
-                            setShowAppKey={setShowAppKey}
-                            region={region}
-                            setRegion={setRegion}
-                            onSubmit={handleSubmit}
-                            onCancel={handleCancel}
-                            isSubmitting={isSubmitting}
-                            error={error}
-                        />
-                    ) : (
-                        <DatadogCardContent integrations={integrations} isLoading={isLoading} />
-                    )}
-                </CardContent>
-            )}
-            <CardFooter className={cn(compact && "py-3 px-4")}>
+            <IntegrationCardHeader integration={IntegrationType.DATADOG} isActive={isActive} />
+            <CardContent>
+                {showForm ? (
+                    <DatadogForm
+                        apiKey={apiKey}
+                        setApiKey={setApiKey}
+                        appKey={appKey}
+                        setAppKey={setAppKey}
+                        showApiKey={showApiKey}
+                        setShowApiKey={setShowApiKey}
+                        showAppKey={showAppKey}
+                        setShowAppKey={setShowAppKey}
+                        region={region}
+                        setRegion={setRegion}
+                        onSubmit={handleSubmit}
+                        onCancel={handleCancel}
+                        isSubmitting={isSubmitting}
+                        error={error}
+                    />
+                ) : (
+                    <DatadogCardContent integrations={integrations} isLoading={isLoading} />
+                )}
+            </CardContent>
+            <CardFooter>
                 {!showForm && (
-                    <Button variant="outline" size={compact ? "sm" : "default"} onClick={handleConnect}>
-                        {compact ? "Connect" : (integrations.length > 0 ? "Update" : "Connect")}
+                    <Button variant="outline" onClick={handleConnect}>
+                        {integrations.length > 0 ? "Update" : "Connect"}
                     </Button>
                 )}
             </CardFooter>
