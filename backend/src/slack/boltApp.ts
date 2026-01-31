@@ -1421,7 +1421,9 @@ async function buildSlackChannelContextMessage(
   }
 
   const channelLabel = channelName ? `#${channelName}` : "this channel";
-  return `Message from the ${channelLabel} channel in Slack:\n\n${message}\n\nChannel ID: ${channelId}`;
+  // Note: The channel name is just context metadata - don't assume the user wants to automate something
+  // related to the channel just because they're messaging from it. Respond to what they actually said.
+  return `[Context: User is messaging from ${channelLabel} in Slack]\n\nUser message: ${message}`;
 }
 
 async function isThreadStartedByAppMention(
