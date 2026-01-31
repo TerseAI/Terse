@@ -1,5 +1,6 @@
 import { createAdapter } from "@socket.io/redis-adapter";
 import { Server as HttpServer } from "http";
+import { jwtVerify } from "jose";
 import { createClient } from "redis";
 import { Server, Socket } from "socket.io";
 import { AgentRunner } from "./agent/AgentRunner/AgentRunner";
@@ -19,8 +20,8 @@ import { KnowledgeBaseFactory } from "./knowledgeBase/abstract/KnowledgeBaseFact
 import logger from "./logger";
 import { Output } from "./outputs/abstract/Output";
 import { OutputFactory } from "./outputs/abstract/OutputFactory";
-import { getUserForOrg, workos } from "./routes/auth";
 import { db } from "./prismaClient";
+import { getUserForOrg, workos } from "./routes/auth";
 import { Session } from "./server";
 import { ApprovalService } from "./services/ApprovalService";
 import { ConfigInstance } from "./shared/Configs";
@@ -31,17 +32,17 @@ import {
 } from "./shared/ModelEvents";
 import { SocketEvents, SocketRooms } from "./shared/SocketEvents";
 import { AgentWithRelations } from "./types/prisma";
-import { jwtVerify } from "jose";
 import {
   getInputConfigInclude,
   getKnowledgeBaseConfigInclude,
   getOutputConfigInclude,
 } from "./utility/prismaIncludes";
 
-// Extended Socket type with userId and organizationId
+// Extended Socket type with userId, organizationId, and WorkOS session ID
 interface AuthenticatedSocket extends Socket {
   userId: string;
   organizationId: string | undefined;
+  workosSessionId?: string; // From JWT sid claim - used to target session-specific events
 }
 
 let io: Server | null = null;
@@ -130,13 +131,16 @@ export async function initializeRealtimeSocket(
     try {
       const jwks = await workos.userManagement.getJWKS();
       if (!jwks) {
-        logger.warn("Socket.IO auth failed: JWKS not available (missing clientId)");
+        logger.warn(
+          "Socket.IO auth failed: JWKS not available (missing clientId)",
+        );
         return next(new Error("Authentication failed"));
       }
       const { payload } = await jwtVerify(token, jwks);
 
       const workosUserId = payload.sub as string;
       const organizationId = payload.org_id as string | undefined;
+      const workosSessionId = payload.sid as string | undefined; // WorkOS session ID - used for session-specific logout
 
       const dbUser = await db().users.findUnique({
         where: { workos_id: workosUserId },
@@ -152,10 +156,12 @@ export async function initializeRealtimeSocket(
       logger.info("User in socket authenticated", {
         userId: dbUser.id,
         organizationId: organizationId ?? "(none)",
+        workosSessionId: workosSessionId ?? "(none)",
       });
       const authSocket = socket as AuthenticatedSocket;
       authSocket.userId = dbUser.id;
       authSocket.organizationId = organizationId;
+      authSocket.workosSessionId = workosSessionId;
       next();
     } catch (error) {
       logger.error("Socket.IO auth failed", { error });
@@ -168,19 +174,27 @@ export async function initializeRealtimeSocket(
     const authenticatedSocket = socket as AuthenticatedSocket;
     const userId = authenticatedSocket.userId;
     const organizationId = authenticatedSocket.organizationId;
+    const workosSessionId = authenticatedSocket.workosSessionId;
     const userRoom = SocketRooms.user(userId);
     const orgRoom = organizationId
       ? SocketRooms.organization(organizationId)
+      : null;
+    const sessionRoom = workosSessionId
+      ? SocketRooms.session(workosSessionId)
       : null;
     logger.info(`Socket.IO connection established for user ${userId}`, {
       userId,
       userRoom,
       orgRoom: orgRoom ?? "(none)",
+      sessionRoom: sessionRoom ?? "(none)",
     });
 
     socket.join(userRoom);
     if (orgRoom) {
       socket.join(orgRoom);
+    }
+    if (sessionRoom) {
+      socket.join(sessionRoom);
     }
 
     // Listen for agent chat messages
@@ -310,8 +324,16 @@ export async function initializeRealtimeSocket(
           userMessageEvent,
         );
         if (organizationId) {
-          emitCacheInvalidationWithWildcard(organizationId, "runHistory", agent.id);
-          emitCacheInvalidationWithWildcard(organizationId, "chatHistory", runId);
+          emitCacheInvalidationWithWildcard(
+            organizationId,
+            "runHistory",
+            agent.id,
+          );
+          emitCacheInvalidationWithWildcard(
+            organizationId,
+            "chatHistory",
+            runId,
+          );
         }
 
         // Create knowledge bases from agent configuration
@@ -349,7 +371,11 @@ export async function initializeRealtimeSocket(
           try {
             await markRunFailed(runId, errorMessage, "agent");
             if (organizationId) {
-              emitCacheInvalidationWithWildcard(organizationId, "runHistory", agent.id);
+              emitCacheInvalidationWithWildcard(
+                organizationId,
+                "runHistory",
+                agent.id,
+              );
             }
           } catch (e) {
             logger.error("Failed to mark run as failed", { error: e, runId });
@@ -366,7 +392,11 @@ export async function initializeRealtimeSocket(
               hasFinalOutput ? "success" : "failed",
             );
             if (organizationId) {
-              emitCacheInvalidationWithWildcard(organizationId, "runHistory", agent.id);
+              emitCacheInvalidationWithWildcard(
+                organizationId,
+                "runHistory",
+                agent.id,
+              );
             }
           } catch (e) {
             logger.error("Failed to finalize run status", { error: e, runId });
@@ -453,9 +483,12 @@ export function emitCacheInvalidationWithKey(
     logger.warn("Socket.IO server not initialized");
     return;
   }
-  io.to(SocketRooms.organization(organizationId)).emit(SocketEvents.INVALIDATE, {
-    key,
-  });
+  io.to(SocketRooms.organization(organizationId)).emit(
+    SocketEvents.INVALIDATE,
+    {
+      key,
+    },
+  );
 }
 
 export function emitCacheInvalidationWithWildcard(
@@ -470,10 +503,13 @@ export function emitCacheInvalidationWithWildcard(
   // Send tag-based invalidation payload
   // If id is provided, frontend will match on both tag and id
   // If id is not provided, frontend will match on tag only
-  io.to(SocketRooms.organization(organizationId)).emit(SocketEvents.INVALIDATE, {
-    key,
-    id,
-  });
+  io.to(SocketRooms.organization(organizationId)).emit(
+    SocketEvents.INVALIDATE,
+    {
+      key,
+      id,
+    },
+  );
 }
 
 function getSocketCorsOrigin(): boolean | string | string[] {

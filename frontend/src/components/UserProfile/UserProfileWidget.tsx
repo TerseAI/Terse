@@ -1,5 +1,6 @@
 import { getWorkOsThemeConfig, useResolvedAppearance, workOsWidgetElements } from '@/hooks/useWorkOsTheme';
 import { BackendProvider } from '@/services/backend';
+import { SocketEvents } from '@/shared/SocketEvents';
 import { UserProfile, WorkOsWidgets } from '@workos-inc/widgets';
 import { useEffect, useState } from 'react';
 
@@ -8,13 +9,26 @@ export function UserProfileWidget() {
     const [authToken, setAuthToken] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
 
-    useEffect(() => {
+    const fetchToken = () => {
         BackendProvider.getWidgetToken()
             .then((data) => setAuthToken(data.token))
             .catch((err) => {
                 console.error('Failed to get widget token:', err);
                 setError(err.response?.data?.error ?? 'Failed to load profile.');
             });
+    };
+
+    useEffect(() => {
+        fetchToken();
+    }, []);
+
+    useEffect(() => {
+        const handleUpdate = () => {
+            console.log('[UserProfileWidget] Received WORKOS_USER_UPDATED, refreshing widget token');
+            fetchToken();
+        };
+        window.addEventListener(SocketEvents.WORKOS_USER_UPDATED, handleUpdate);
+        return () => window.removeEventListener(SocketEvents.WORKOS_USER_UPDATED, handleUpdate);
     }, []);
 
     if (error) {

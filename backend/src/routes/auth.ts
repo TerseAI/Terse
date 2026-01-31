@@ -53,10 +53,13 @@ export async function me(req: Request, res: Response) {
     };
     return res.send(refreshedUser);
   } catch (error) {
-    logger.warn("Failed to fetch fresh user from WorkOS, returning session user", {
-      error,
-      userId: user.id,
-    });
+    logger.warn(
+      "Failed to fetch fresh user from WorkOS, returning session user",
+      {
+        error,
+        userId: user.id,
+      },
+    );
     return res.send(user);
   }
 }

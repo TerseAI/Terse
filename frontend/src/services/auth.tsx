@@ -3,6 +3,7 @@ import { AxiosError } from "axios";
 import { posthog } from "posthog-js";
 import { createContext, useContext, useEffect, useState } from "react";
 import type { User } from "../types/User";
+import { SocketEvents } from "../shared/SocketEvents";
 import { BackendProvider } from "./backend";
 
 interface AuthContextType {
@@ -56,6 +57,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     runRefresh(setUser, setIsLoading);
+  }, []);
+
+  useEffect(() => {
+    const handleRefresh = () => {
+      console.log("[Auth] Received WorkOS refresh event, refreshing user");
+      runRefresh(setUser, setIsLoading);
+    };
+    window.addEventListener(SocketEvents.WORKOS_USER_UPDATED, handleRefresh);
+    window.addEventListener(SocketEvents.WORKOS_ORG_UPDATED, handleRefresh);
+    return () => {
+      window.removeEventListener(SocketEvents.WORKOS_USER_UPDATED, handleRefresh);
+      window.removeEventListener(SocketEvents.WORKOS_ORG_UPDATED, handleRefresh);
+    };
   }, []);
 
   function logout() {

@@ -43,6 +43,7 @@ export const settings = {
     apiKey: requireEnv("WORKOS_API_KEY"),
     cookiePassword: requireEnv("WORKOS_COOKIE_PASSWORD"),
     redirectUri: requireEnv("WORKOS_REDIRECT_URI"),
+    webhookSecret: optionalEnv("WORKOS_WEBHOOK_SECRET"),
   },
 
   // API keys

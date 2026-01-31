@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
-import logger from "../logger";
 import { settings } from "../config/settings";
+import logger from "../logger";
 import { workos, WORKOS_SESSION_COOKIE_NAME } from "../routes/auth";
 
 export async function requestSessionSocketToken(req: Request, res: Response) {

@@ -25,6 +25,7 @@ import {
   getWorkOSWidgetToken,
   login,
   logout,
+  me,
 } from "./routes/auth";
 import { githubAppCallbackIntegrate } from "./routes/auth/githubAuth";
 import {
@@ -93,6 +94,7 @@ import {
   getUserOrganizations,
   switchOrganization,
 } from "./routes/organization";
+import { handleWorkOSWebhook } from "./routes/workos";
 import {
   createOrUpdatePosthogIntegration,
   getPosthogIntegrations,
@@ -217,9 +219,13 @@ if (slackReceiver?.receiver) {
   logger.info("✅ Slack Bolt router mounted at /slack");
 }
 
-// Parse JSON for all routes except Slack events and Linear webhook (which need raw body for signature verification)
+// Parse JSON for all routes except Slack events, Linear webhook, and WorkOS webhook (which need raw body for signature verification)
 app.use((req, res, next) => {
-  if (req.path === "/slack/events" || req.path === "/linear/webhook") {
+  if (
+    req.path === "/slack/events" ||
+    req.path === "/linear/webhook" ||
+    req.path === ApiRoutes.WEBHOOKS.WORKOS
+  ) {
     next();
   } else {
     bodyParser.json()(req, res, next);
@@ -229,9 +235,7 @@ app.use(cookieParser());
 
 // MARK: AUTH
 
-app.get(ApiRoutes.AUTH.ME, authMiddlewareAllowNoOrg, (req, res) => {
-  res.send(req.session?.user);
-});
+app.get(ApiRoutes.AUTH.ME, authMiddlewareAllowNoOrg, me);
 
 // GITHUB Will call this immediately after the user installs the app.
 app.get(ApiRoutes.AUTH.GITHUB_APP_CALLBACK, async (req, res) => {
@@ -425,6 +429,13 @@ app.use(ApiRoutes.LINEAR.WEBHOOK, express.raw({ type: "application/json" }));
 
 app.post(ApiRoutes.LINEAR.WEBHOOK, async (req, res) => {
   handleLinearWebhook(req, res);
+});
+
+// WorkOS webhook needs raw body for signature verification
+app.use(ApiRoutes.WEBHOOKS.WORKOS, express.raw({ type: "application/json" }));
+
+app.post(ApiRoutes.WEBHOOKS.WORKOS, async (req, res) => {
+  handleWorkOSWebhook(req, res);
 });
 
 app.get(ApiRoutes.LINEAR.INTEGRATIONS, authMiddleware, async (req, res) => {

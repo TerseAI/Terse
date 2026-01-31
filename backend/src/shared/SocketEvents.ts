@@ -16,6 +16,12 @@ export const SocketEvents = {
   AGENT_CHAT_EVENT: 'agent:chat:event',
   AGENT_CHAT_MESSAGE: 'agent:chat:message',
   AGENT_CHAT_APPROVAL: 'agent:chat:approval',
+
+  // WorkOS user events
+  WORKOS_USER_UPDATED: 'workos:user:updated',
+  WORKOS_FORCE_LOGOUT: 'workos:force:logout',
+  WORKOS_SESSION_UPDATED: 'workos:session:updated',
+  WORKOS_ORG_UPDATED: 'workos:org:updated',
 } as const;
 
 /**
@@ -34,4 +40,10 @@ export const SocketRooms = {
    * @returns Room name in format "org:${orgId}"
    */
   organization: (orgId: string): string => `org:${orgId}`,
+  /**
+   * Get the room name for a specific WorkOS session (for targeting a single device)
+   * @param workosSessionId - The WorkOS session ID (from JWT sid claim)
+   * @returns Room name in format "session:${workosSessionId}"
+   */
+  session: (workosSessionId: string): string => `session:${workosSessionId}`,
 } as const;

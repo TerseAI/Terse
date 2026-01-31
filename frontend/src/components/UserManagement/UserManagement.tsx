@@ -1,8 +1,9 @@
 import { UsersManagement, WorkOsWidgets } from '@workos-inc/widgets';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { getWorkOsThemeConfig, useResolvedAppearance, workOsWidgetElements } from '../../hooks/useWorkOsTheme';
 import { useAuth } from '../../services/auth';
 import { BackendProvider } from '../../services/backend';
-import { getWorkOsThemeConfig, workOsWidgetElements, useResolvedAppearance } from '../../hooks/useWorkOsTheme';
+import { SocketEvents } from '../../shared/SocketEvents';
 
 export function UserTable() {
     const { user } = useAuth();
@@ -10,7 +11,7 @@ export function UserTable() {
     const [authToken, setAuthToken] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
 
-    useEffect(() => {
+    const fetchToken = useCallback(() => {
         if (!user?.organizationId) {
             setError('Create an organization to manage users.');
             return;
@@ -22,6 +23,16 @@ export function UserTable() {
                 setError(err.response?.data?.error ?? 'Failed to load user management.');
             });
     }, [user?.organizationId]);
+
+    useEffect(() => {
+        fetchToken();
+    }, [fetchToken]);
+
+    useEffect(() => {
+        const handleUpdate = () => fetchToken();
+        window.addEventListener(SocketEvents.WORKOS_ORG_UPDATED, handleUpdate);
+        return () => window.removeEventListener(SocketEvents.WORKOS_ORG_UPDATED, handleUpdate);
+    }, [fetchToken]);
 
     if (error) {
         return <p className="text-destructive text-sm">{error}</p>;

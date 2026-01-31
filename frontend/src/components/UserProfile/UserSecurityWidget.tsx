@@ -1,6 +1,7 @@
 import { UserSecurity, WorkOsWidgets } from '@workos-inc/widgets';
 import { useEffect, useState } from 'react';
 import { BackendProvider } from '@/services/backend';
+import { SocketEvents } from '@/shared/SocketEvents';
 import { getWorkOsThemeConfig, workOsWidgetElements, useResolvedAppearance } from '@/hooks/useWorkOsTheme';
 
 export function UserSecurityWidget() {
@@ -8,13 +9,23 @@ export function UserSecurityWidget() {
     const [authToken, setAuthToken] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
 
-    useEffect(() => {
+    const fetchToken = () => {
         BackendProvider.getWidgetToken()
             .then((data) => setAuthToken(data.token))
             .catch((err) => {
                 console.error('Failed to get widget token:', err);
                 setError(err.response?.data?.error ?? 'Failed to load security settings.');
             });
+    };
+
+    useEffect(() => {
+        fetchToken();
+    }, []);
+
+    useEffect(() => {
+        const handleUpdate = () => fetchToken();
+        window.addEventListener(SocketEvents.WORKOS_USER_UPDATED, handleUpdate);
+        return () => window.removeEventListener(SocketEvents.WORKOS_USER_UPDATED, handleUpdate);
     }, []);
 
     if (error) {

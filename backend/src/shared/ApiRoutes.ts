@@ -213,6 +213,7 @@ export const ApiRoutes = {
   WEBHOOKS: {
     GMAIL: "/webhooks/gmail",
     FIGMA: "/webhooks/figma",
+    WORKOS: "/webhooks/workos",
     JIRA_BY_ACCOUNT_ID: {
       pattern: "/webhooks/jira/:accountId",
       build: (accountId: string) =>
