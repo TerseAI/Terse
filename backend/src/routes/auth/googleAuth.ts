@@ -86,7 +86,7 @@ export async function googleCallback(req: Request, res: Response) {
         let user = await findUserByEmail(email);
         if (!user) {
             // Create new user
-            user = await createUser(name, email, null);
+            user = await createUser(name, email, null, 'google');
         } else {
             logger.debug('Existing user', { userId: user.id, email: user.email });
         }
