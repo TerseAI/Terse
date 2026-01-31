@@ -32,6 +32,7 @@ export default function AgentSetup() {
 
     const handleTemplateSelect = (template: AgentTemplate) => {
         chatRef.current?.setInput(template.chatPrompt);
+        chatRef.current?.focus();
     };
 
     const subscribeToEvents = useCallback((callback: (payload: ChatEventPayload) => void) => {

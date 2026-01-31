@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useRef, useCallback, forwardRef, useImperativeHandle } from 'react';
 import TextareaAutosize from 'react-textarea-autosize';
 import { Send } from 'lucide-react';
 
@@ -26,13 +26,22 @@ export enum Size {
     Large = 'large',
 }
 
-function GlowingTextField({ isLoading, disabled, onInputChange, onKeyDown, inputValue, placeholders = [], size = Size.Medium, shouldAllowKeyboardShortcutForFocus = true, autoFocus = false, focusOverride = null, minRows, showBorder = false, onSend, onPlaceholderSelect, showPlaceholderChips = false }: GlowingTextFieldProps) {
+export interface GlowingTextFieldHandle {
+    focus: () => void;
+}
+
+const GlowingTextField = forwardRef<GlowingTextFieldHandle, GlowingTextFieldProps>(function GlowingTextField({ isLoading, disabled, onInputChange, onKeyDown, inputValue, placeholders = [], size = Size.Medium, shouldAllowKeyboardShortcutForFocus = true, autoFocus = false, focusOverride = null, minRows, showBorder = false, onSend, onPlaceholderSelect, showPlaceholderChips = false }, ref) {
     const [displayedPlaceholder, setDisplayedPlaceholder] = useState<string>('');
     const [currentPlaceholderIndex, setCurrentPlaceholderIndex] = useState(0);
     const [isTyping, setIsTyping] = useState(true);
     const [isFullyTyped, setIsFullyTyped] = useState(false);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const typewriterRef = useRef<{ charIndex: number; timeoutId: NodeJS.Timeout | null }>({ charIndex: 0, timeoutId: null });
+
+    // Expose focus method to parent
+    useImperativeHandle(ref, () => ({
+        focus: () => textareaRef.current?.focus(),
+    }));
 
     // Handle focus override
     useEffect(() => {
@@ -249,6 +258,6 @@ function GlowingTextField({ isLoading, disabled, onInputChange, onKeyDown, input
             )}
         </div>
     );
-}
+});
 
 export default GlowingTextField;

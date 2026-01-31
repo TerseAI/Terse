@@ -1,5 +1,5 @@
-import GlowingTextField, { Size } from "./GlowingTextField";
-import { useEffect, useRef, useCallback } from "react";
+import GlowingTextField, { Size, type GlowingTextFieldHandle } from "./GlowingTextField";
+import { useEffect, useRef, useCallback, forwardRef, useImperativeHandle } from "react";
 
 interface ChatInputProps {
     sendMessage: (message: string) => void;
@@ -11,8 +11,18 @@ interface ChatInputProps {
     showPlaceholderChips?: boolean;
 }
 
-function ChatInput({ sendMessage, input, setInput, placeholders, disabled = false, inputSize = 'small', showPlaceholderChips = false }: ChatInputProps) {
+export interface ChatInputHandle {
+    focus: () => void;
+}
+
+const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function ChatInput({ sendMessage, input, setInput, placeholders, disabled = false, inputSize = 'small', showPlaceholderChips = false }, ref) {
     const prevSelectedRef = useRef<number | null>(null);
+    const glowingTextFieldRef = useRef<GlowingTextFieldHandle>(null);
+
+    // Expose focus method to parent
+    useImperativeHandle(ref, () => ({
+        focus: () => glowingTextFieldRef.current?.focus(),
+    }));
 
     // Track focus override based on state transitions
     const focusOverride = (() => {
@@ -84,6 +94,7 @@ function ChatInput({ sendMessage, input, setInput, placeholders, disabled = fals
     return (
         <div>
             <GlowingTextField
+                ref={glowingTextFieldRef}
                 isLoading={false}
                 disabled={disabled}
                 onInputChange={(e) => setInput(e.target.value)}
@@ -101,6 +112,6 @@ function ChatInput({ sendMessage, input, setInput, placeholders, disabled = fals
             />
         </div>
     );
-}
+});
 
 export default ChatInput;
