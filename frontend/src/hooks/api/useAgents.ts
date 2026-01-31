@@ -6,13 +6,7 @@ import type {
     AgentUpdate,
 } from '@/shared/types';
 import { deserializeConfig } from '@/utility/ConfigUtils';
-
-type AgentListArgs = {
-    page?: number;
-    limit?: number;
-    isActive?: boolean;
-    search?: string;
-};
+import { agentListKey, agentDetailKey, type AgentListArgs } from '@/shared/InvalidationKeys';
 
 type UpdateAgentArgs = {
     id: string;
@@ -23,16 +17,6 @@ type UpdateAgentArgs = {
 type ListMutationContext = {
     params: AgentListArgs;
     mutateList: KeyedMutator<AgentsResponse>;
-};
-
-const agentListKey = ({ page = 1, limit = 25, isActive, search }: AgentListArgs = {}): readonly [string, AgentListArgs] => [
-    'agents',
-    { page, limit, isActive, search },
-];
-
-const agentDetailKey = (id: string | null): readonly [string, { id: string }] | null => {
-    if (!id) return null;
-    return ['agent', { id }];
 };
 
 export function useAgents(params: AgentListArgs = {}) {
@@ -223,5 +207,3 @@ export function useAgentMutations() {
         invalidateAgentDetail,
     };
 }
-
-export type { AgentListArgs };

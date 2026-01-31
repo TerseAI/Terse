@@ -245,9 +245,6 @@ export const fetchSlackChannelsForIntegration = async (
   }
 };
 
-/**
- * Fetch available channels for a Slack integration
- */
 export const getSlackChannels = async (req: Request, res: Response) => {
   const user = req.session?.user;
   if (!user) {

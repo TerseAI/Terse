@@ -9,7 +9,7 @@ import {
   removeEyesReaction,
 } from "../../slack/blockKitHelpers";
 import ChatAgent from "./ChatAgent";
-import SlackChatInterface from "./SlackChatInterface";
+import SlackChatInterface from "./ChatInterfaces/SlackChatInterface";
 
 export async function resumeChatAgentAfterFormCompletion(
   userId: string,

@@ -1,22 +1,29 @@
-import logger from "../logger";
-import { db } from "../prismaClient";
-import {
-  IntegrationType,
-  PosthogIntegration,
-  PosthogIntegrationMetadata,
-} from "../shared/Integrations";
-import { AgentTriggerWithConfigs } from "../types/prisma";
 import {
   FormFieldDefinition,
   FormIntegrationInstallation,
   FormSubmissionInput,
   FormSubmissionResult,
   Integration,
+  IntegrationWithResources,
 } from "./abstract/Integration";
+import { db } from "../prismaClient";
+import {
+  IntegrationType,
+  PosthogIntegration,
+  PosthogIntegrationMetadata,
+} from "../shared/Integrations";
+import { PosthogProject } from "../shared/types";
+import { AgentTriggerWithConfigs } from "../types/prisma";
+import logger from "../logger";
 
 export class PosthogIntegrationManager
   implements
-    Integration<PosthogIntegration, never, typeof PosthogIntegrationMetadata>,
+    Integration<
+      PosthogIntegration,
+      never,
+      typeof PosthogIntegrationMetadata,
+      PosthogProject
+    >,
     FormIntegrationInstallation<IntegrationType.POSTHOG>
 {
   constructor() {}
@@ -233,5 +240,79 @@ export class PosthogIntegrationManager
         statusCode: 500,
       };
     }
+  }
+
+  async fetchResourcesForInstance(
+    userId: string,
+    integrationId: string,
+    query?: string,
+  ): Promise<PosthogProject[]> {
+    const integration = await db().posthog_integrations.findFirst({
+      where: { id: integrationId, user_id: userId },
+    });
+    if (!integration) {
+      throw new Error("Posthog integration not found");
+    }
+    const response = await fetch("https://us.posthog.com/api/projects/", {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${integration.api_key}`,
+        "Content-Type": "application/json",
+      },
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(
+        response.status === 401 ? "Invalid API key" : errorText,
+      );
+    }
+    const data = await response.json();
+    let projects = Array.isArray(data) ? data : data.results || data.data || [];
+    let mappedProjects: PosthogProject[] = projects
+      .map((project: any) => ({
+        id: project.id?.toString() || project.uuid || "",
+        name: project.name || "Unnamed Project",
+        organization_id:
+          project.organization_id || project.organization?.id || undefined,
+      }))
+      .filter((project: any) => project.id);
+    if (query) {
+      const searchLower = query.toLowerCase();
+      mappedProjects = mappedProjects.filter(
+        (project) =>
+          project.name.toLowerCase().includes(searchLower) ||
+          project.id.toLowerCase().includes(searchLower),
+      );
+    } else {
+      mappedProjects.sort((a, b) =>
+        a.name.localeCompare(b.name, undefined, { sensitivity: "base" }),
+      );
+    }
+    return mappedProjects;
+  }
+
+  async fetchResourcesForUser(
+    userId: string,
+    query?: string,
+  ): Promise<IntegrationWithResources<PosthogIntegration, PosthogProject>[]> {
+    const integrations = await this.getInstancesForUser(userId);
+    return Promise.all(
+      integrations.map(async (integration) => {
+        try {
+          const resources = await this.fetchResourcesForInstance(
+            userId,
+            integration.id,
+            query,
+          );
+          return { integration, resources };
+        } catch (error) {
+          logger.warn(
+            `Failed to fetch resources for Posthog integration ${integration.id}`,
+            { error, integrationId: integration.id },
+          );
+          return { integration, resources: [] };
+        }
+      }),
+    );
   }
 }

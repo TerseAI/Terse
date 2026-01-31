@@ -8,7 +8,7 @@ import { NextFunction, Request, Response } from "express";
 import { settings } from "../config/settings";
 import logger from "../logger";
 import { db } from "../prismaClient";
-import { Session } from "../server";
+import { Session } from "../types/session";
 import { Role, User } from "../shared/types";
 
 export const WORKOS_SESSION_COOKIE_NAME = "TERSE_WORKOS_SESSION";
@@ -77,10 +77,12 @@ function createAuthMiddleware(requireOrganization: boolean) {
         const user = await getOrCreateDbUserFromWorkOS(authResult);
         if (!req.session) {
           req.session = {
-            user: user,
+            user,
+            isUserInitiated: true,
           } as Session;
         } else {
           req.session.user = user;
+          req.session.isUserInitiated = true;
         }
         if (requireOrganization && !user.organizationId) {
           return sendOrganizationRequired(req, res);
@@ -103,10 +105,12 @@ function createAuthMiddleware(requireOrganization: boolean) {
       const user = await getOrCreateDbUserFromWorkOS(refreshedSessionResult);
       if (!req.session) {
         req.session = {
-          user: user,
+          user,
+          isUserInitiated: true,
         } as Session;
       } else {
         req.session.user = user;
+        req.session.isUserInitiated = true;
       }
 
       const sealedSession = refreshedSessionResult.sealedSession;

@@ -5,7 +5,6 @@ import { ModelEvent } from "../../shared/ModelEvents";
 import type { RunHistoryChatEventType } from "@prisma/client";
 import { Prisma } from "@prisma/client";
 import { RunToolApprovalItem } from "@openai/agents";
-import { RunHistoryActionType } from "../../types/prisma";
 
 export type RunTrigger = RunHistoryTrigger;
 
@@ -130,7 +129,7 @@ export async function storeChatEvent(runId: string, event: ModelEvent, timestamp
     const created = await prisma.run_history_chat_events.create({
         data: {
             run_history_record_id: runId,
-            event_type: event.type,
+            event_type: event.type as RunHistoryChatEventType,
             event_json: event as Prisma.InputJsonValue,
             timestamp: eventTimestamp,
         },

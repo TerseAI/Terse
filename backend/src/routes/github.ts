@@ -1,13 +1,13 @@
 import { Request, Response } from "express";
 import { githubApp } from "../config/settings";
 import {
-  getAppInstallationRepositories,
   getAppInstallationsForUser,
+  getAppInstallationRepositories,
   GithubIntegrationManager,
 } from "../integrations/GithubIntegration";
 import logger from "../logger";
 import { db } from "../prismaClient";
-import { emitCacheInvalidationWithKey } from "../realtimeSocket";
+import { emitCacheInvalidationWithKey } from "../services/CacheInvalidationService";
 import {
   GithubAppInstallationDeletedRequest,
   GithubAppInstallationRepository,
@@ -20,7 +20,7 @@ import {
   User as RuntimeUser,
 } from "../shared/types";
 import { getUserForOrg } from "./auth";
-import { GithubRepository, User } from "../types/prisma";
+import { GithubRepository } from "../types/prisma";
 
 // MARK: - Route Handlers
 
@@ -214,7 +214,7 @@ export async function fetchGithubRepositoriesForIntegration(
   }
 
   let targetInstallation: { id: number } | undefined;
-  let tokenWithAccess: typeof orgTokens[0] | null = null;
+  let tokenWithAccess: (typeof orgTokens)[0] | null = null;
 
   for (const token of orgTokens) {
     const installations = await getAppInstallationsForUser(token.access_token);
@@ -277,7 +277,7 @@ export async function getGithubRepositoriesForIntegration(
 
 export async function processRepository(
   repositoryData: Repository,
-  user: User,
+  user: RuntimeUser,
   installationId: number,
 ): Promise<{ name: string; status: string; error?: string }> {
   logger.debug("Processing repository", {
@@ -418,7 +418,7 @@ export async function resolveUserForGithubInstallation(
 // This is super inefficient, but it's a good start. We need to optimize this.
 export async function resolveUsersForGithubInstallation(
   installationId: number,
-): Promise<User[]> {
+): Promise<import("../types/prisma").User[]> {
   return db().$transaction(async (tx) => {
     // Get all of our github app users.
     const githubAppUsers = await tx.github_app_tokens.findMany();

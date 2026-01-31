@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import { cloudScheduler } from "../config/settings";
 import { CronJobIntegrationManager } from "../integrations/CronJobIntegration";
 import logger from "../logger";
-import { Session } from "../server";
+import { Session } from "../types/session";
 
 export interface ManualTriggerRequest {
     context?: string;
@@ -11,7 +11,11 @@ export interface ManualTriggerRequest {
 export async function handleManualTrigger(req: Request, res: Response) {
     const { inputId } = req.params;
     const { context } = req.body as ManualTriggerRequest;
-    const session = req.session as Session;
+    const session = req.session;
+    if (!session?.user) {
+        res.status(401).json({ error: "Unauthorized" });
+        return;
+    }
 
     logger.info("🖱️ Manual trigger received", { inputId, userId: session.user.id, hasContext: !!context });
 

@@ -1,6 +1,6 @@
 import { Agent, StreamedRunResult, RunStreamEvent, RunToolCallOutputItem, FunctionCallResultItem } from "@openai/agents";
 import { ModelEvent, ChangedItem } from "../shared/ModelEvents";
-import { Session } from "../server";
+import { Session } from "../types/session";
 import { randomString } from "../utility/strings";
 import { IntegrationType } from "../shared/Integrations";
 import { detectSerializedError, ErrorContext, parseSerializedError } from "../tools/toolUtils";

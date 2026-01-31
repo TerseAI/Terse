@@ -22,6 +22,11 @@ export const SocketEvents = {
   WORKOS_FORCE_LOGOUT: 'workos:force:logout',
   WORKOS_SESSION_UPDATED: 'workos:session:updated',
   WORKOS_ORG_UPDATED: 'workos:org:updated',
+
+  // Builder chat events
+  BUILDER_CHAT_EVENT: 'builder:chat:event',
+  BUILDER_CHAT_MESSAGE: 'builder:chat:message',
+  BUILDER_CHAT_APPROVAL: 'builder:chat:approval',
 } as const;
 
 /**

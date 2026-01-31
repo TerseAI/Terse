@@ -1,5 +1,6 @@
 import { RunContext, tool } from "@openai/agents";
 import { Tool } from "@openai/agents-core";
+import ChatInterface from "./ChatInterfaces/ChatInterface";
 import { z } from "zod";
 import { uuidv4 } from "zod/v4";
 import { AtlassianIntegrationManager } from "../../integrations/AtlassianIntegration";
@@ -27,15 +28,12 @@ import type { ConfigInstance } from "../../shared/Configs";
 import { ConfigType } from "../../shared/Configs";
 import { FrontendRoutes } from "../../shared/FrontendRoutes";
 import { IntegrationType } from "../../shared/Integrations";
-import ChatInterface from "./ChatInterface";
 
 export type ChatAgentContext = {
   chatInterface: ChatInterface;
   userId: string;
   organizationId: string;
 };
-
-const frontendUrl = process.env.FRONTEND_URL;
 
 export function buildChatAgentTools(
   chatInterface: ChatInterface,
@@ -70,10 +68,7 @@ export function buildChatAgentTools(
           const result = id
             ? await updateAgentForUser(userId, organizationId, id, draft)
             : await applyAgentForUser(userId, organizationId, draft);
-          await chatInterface.buildButton(
-            "View Automation",
-            `${frontendUrl}${FrontendRoutes.AGENTS.DETAIL(result.id)}`,
-          );
+          await chatInterface.navigate(FrontendRoutes.AGENTS.DETAIL(result.id));
           return `Agent applied successfully (${result.id})`;
         } catch (error) {
           logger.error("applyAgent failed", { error, userId, agent });
@@ -158,6 +153,11 @@ const BaseConfigSchema = z
 const GmailConfigSchema = BaseConfigSchema.extend({
   configType: z.literal(ConfigType.GMAIL),
   integrationType: z.literal(IntegrationType.GMAIL),
+});
+
+const GmailOutputConfigSchema = BaseConfigSchema.extend({
+    configType: z.literal(ConfigType.GMAIL_OUTPUT),
+    integrationType: z.literal(IntegrationType.GMAIL),
 });
 
 const FigmaConfigSchema = BaseConfigSchema.extend({
@@ -318,6 +318,7 @@ const OutputConfigSchema = z
     LinearOutputConfigSchema,
     JiraConfigSchema,
     ConfluenceConfigSchema,
+    GmailOutputConfigSchema,
   ])
   .superRefine((value, ctx) => {
     enforceNonSystemIntegrationId(value, ctx);

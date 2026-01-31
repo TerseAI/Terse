@@ -4,6 +4,8 @@ import { parseFormSubmissionFromRequest } from "../integrations/abstract/Integra
 import logger from "../logger";
 import { db } from "../prismaClient";
 import { getDatadogApiUrl } from "../utility/datadog";
+import { IntegrationType } from "../shared/Integrations";
+import { emitIntegrationFormCompletedTaskIfNeeded } from "../integrations/helpers/emitIntegrationFormCompletedTask";
 
 export async function getDatadogIntegrations(req: Request, res: Response) {
   if (!req.session?.user) {
@@ -38,9 +40,26 @@ export async function createOrUpdateDatadogIntegration(
       res.status(401).json({ error: "Unauthorized" });
       return;
     }
+
     const manager = new DatadogIntegrationManager();
     const result = await manager.processFormSubmission(input);
-    res.status(result.statusCode ?? (result.success ? 200 : 400)).json(result);
+
+    if (!result.success) {
+      res.status(result.statusCode ?? 400).json(result);
+      return;
+    }
+
+    const organizationId = req.session.user.organizationId;
+    const stateToken = (req.query.state as string) || req.body?.state;
+    await emitIntegrationFormCompletedTaskIfNeeded(
+      stateToken,
+      manager,
+      input.userId,
+      organizationId,
+      IntegrationType.DATADOG,
+    );
+
+    res.status(result.statusCode ?? 200).json(result);
   } catch (error) {
     logger.error("Error creating/updating Datadog integration:", { error });
     res.status(500).json({ error: "Failed to process integration" });

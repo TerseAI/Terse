@@ -46,3 +46,23 @@ export function getKnowledgeBaseConfigInclude() {
         datadog_config: true,
     } as const;
 }
+
+/**
+ * Returns the full include object for hydrating an agent with all relations.
+ * Use this when fetching agents that need their full configuration (inputs, outputs, knowledge bases, etc.)
+ */
+export function getAgentHydrationInclude() {
+    return {
+        prompt: true,
+        inputs: {
+            include: getInputConfigInclude()
+        },
+        outputs: {
+            include: getOutputConfigInclude()
+        },
+        knowledge_bases: {
+            include: getKnowledgeBaseConfigInclude()
+        },
+        tool_approvals: true
+    } as const;
+}

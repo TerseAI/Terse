@@ -9,6 +9,7 @@ import {
 } from "../config/settings";
 import logger, { runWithUserContext } from "../logger";
 import { db } from "../prismaClient";
+import { getUserForOrg } from "../routes/auth";
 import { FrontendRoutes } from "../shared/FrontendRoutes";
 import {
   AdditionalStateParams,
@@ -18,7 +19,7 @@ import {
   LinearIntegrationMetadata,
 } from "../shared/Integrations";
 import { RunHistoryTrigger } from "../shared/RunHistoryTypes";
-import { OAuthInstallationDetails } from "../shared/types";
+import { OAuthInstallationDetails, LinearTeam } from "../shared/types";
 import { LinearAdapter } from "../ticketing/linear";
 import { AgentTriggerWithConfigs } from "../types/prisma";
 import { LinearWebhookPayload } from "../utility/LinearWebhookPayload";
@@ -27,19 +28,20 @@ import { InputEvent } from "./abstract/InputEvent";
 import {
   ConfigurationFieldDefinition,
   Integration,
+  IntegrationWithResources,
   OAuthIntegrationInstallation,
 } from "./abstract/Integration";
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask";
 import { integrationTaskQueue } from "./IntegrationTaskQueues";
-
-import { getUserForOrg } from "../routes/auth";
+import { StoredFile } from "../services/FileStorageService";
 
 export class LinearIntegrationManager
   implements
     Integration<
       LinearIntegration,
       LinearWebhookPayload,
-      typeof LinearIntegrationMetadata
+      typeof LinearIntegrationMetadata,
+      LinearTeam
     >,
     OAuthIntegrationInstallation<IntegrationType.LINEAR>
 {
@@ -595,6 +597,66 @@ export class LinearIntegrationManager
       return null;
     }
   }
+
+  async fetchResourcesForInstance(
+    userId: string,
+    integrationId: string,
+    query?: string,
+  ): Promise<LinearTeam[]> {
+    const integration = await db().linear_integrations.findFirst({
+      where: { id: integrationId, user_id: userId },
+    });
+    if (!integration) {
+      throw new Error("Linear integration not found");
+    }
+    const accessToken = await this.getAccessToken(integrationId);
+    if (!accessToken) {
+      throw new Error("Could not get valid access token");
+    }
+    const adapter = new LinearAdapter(accessToken);
+    const teams = await adapter.getTeams();
+    let result = teams.map((team) => ({
+      id: team.id,
+      name: team.name,
+      key: team.key,
+    }));
+    if (query) {
+      const normalizedQuery = query.trim().toLowerCase();
+      result = result.filter(
+        (team) =>
+          team.name.toLowerCase().includes(normalizedQuery) ||
+          team.key.toLowerCase().includes(normalizedQuery),
+      );
+    }
+    return result;
+  }
+
+  async fetchResourcesForUser(
+    userId: string,
+    query?: string,
+  ): Promise<
+    IntegrationWithResources<LinearIntegration, LinearTeam>[]
+  > {
+    const integrations = await this.getInstancesForUser(userId);
+    return Promise.all(
+      integrations.map(async (integration) => {
+        try {
+          const resources = await this.fetchResourcesForInstance(
+            userId,
+            integration.id,
+            query,
+          );
+          return { integration, resources };
+        } catch (error) {
+          logger.warn(
+            `Failed to fetch resources for Linear integration ${integration.id}`,
+            { error, integrationId: integration.id },
+          );
+          return { integration, resources: [] };
+        }
+      }),
+    );
+  }
 }
 
 // MARK: - LinearEvent
@@ -756,8 +818,7 @@ export class LinearEvent extends InputEvent {
     };
   }
 
-  getImageUrls(): string[] {
-    // Linear events don't include images yet
+  getFiles(): StoredFile[] {
     return [];
   }
 }

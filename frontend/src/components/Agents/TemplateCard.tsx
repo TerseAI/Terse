@@ -1,19 +1,15 @@
-import { useNavigate } from 'react-router-dom';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { AgentTemplate } from '@/shared/types';
 import { TemplateAppsList } from './TemplateAppsList';
-import { FrontendRoutes } from '@/shared/FrontendRoutes';
 
 interface TemplateCardProps {
     template: AgentTemplate;
-    templateIndex: number;
+    onSelect: (template: AgentTemplate) => void;
 }
 
-export function TemplateCard({ template, templateIndex }: TemplateCardProps) {
-    const navigate = useNavigate();
-
+export function TemplateCard({ template, onSelect }: TemplateCardProps) {
     const handleClick = () => {
-        navigate(FrontendRoutes.AGENTS.NEW_WITH_TEMPLATE.build(templateIndex.toString()));
+        onSelect(template);
     };
 
     return (

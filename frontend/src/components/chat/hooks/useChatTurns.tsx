@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { type Turn } from '../Turn';
-import { type TextDelta, type ToolCall, type ToolCallComplete, type Failure, FilterResult } from '../../../shared/ModelEvents';
+import { type TextDelta, type ToolCall, type ToolCallComplete, type Failure, FilterResult, type ChatSnippetPayload, type ChatSnippet } from '../../../shared/ModelEvents';
 import { filterOutThinkingOnlyTurns } from '../utils/turnUtils';
+import { v4 as uuidv4 } from 'uuid';
 
 interface UseChatTurnsOptions {
     initialTurns?: Turn[] | undefined;
@@ -12,6 +13,7 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
     const stepBuffersRef = useRef<Map<string, string>>(new Map());
     const pendingApprovalsRef = useRef<Set<string>>(new Set());
     const queuedToolCallsRef = useRef<Array<{ summary: string; step_id: string; parameters: string }>>([]);
+    const currentStepIdRef = useRef<string | null>(null);
 
     useEffect(() => {
         if (initialTurns && initialTurns.length > 0) {
@@ -38,6 +40,9 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
     );
 
     const handleDelta = ({ delta, step_id }: TextDelta) => {
+        // Track current step_id
+        currentStepIdRef.current = step_id;
+        
         // Merge delta into buffer
         const existing = stepBuffersRef.current.get(step_id) ?? '';
         const newText = existing + delta;
@@ -63,6 +68,9 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
     };
 
     const handleToolCall = ({ summary, step_id, parameters }: ToolCall) => {
+        // Track current step_id
+        currentStepIdRef.current = step_id;
+        
         setTurns(prev => {
             // Find the turn with the matching step_id
             const existingTurnIndex = prev.findIndex(turn => turn.step_id === step_id);
@@ -183,6 +191,9 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
     };
 
     const handleToolCallComplete = ({ step_id, result, changed_items, errorContext }: ToolCallComplete) => {
+        // Track current step_id
+        currentStepIdRef.current = step_id;
+        
         // Remove from pending approvals if it was there
         pendingApprovalsRef.current.delete(step_id);
 
@@ -237,6 +248,8 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
             if (last) {
                 last.isGenerating = false;
             }
+            // Clear current step_id when message ends
+            currentStepIdRef.current = null;
             return updated;
         });
     };
@@ -260,6 +273,9 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
     };
 
     const handleThinking = (stepId: string) => {
+        // Track current step_id
+        currentStepIdRef.current = stepId;
+        
         setTurns(prev => {
             const last = prev[prev.length - 1];
             if (last && last.step_id === stepId && !last.text && last.function_calls.length === 0) {
@@ -291,6 +307,62 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
         });
     };
 
+    const handleSnippet = (snippetPayload: ChatSnippetPayload) => {
+        const snippet: ChatSnippet = {
+            ...snippetPayload,
+            id: uuidv4(),
+        };
+
+        setTurns(prev => {
+            const updated = [...prev];
+            
+            // Try to find the turn with the current step_id
+            const currentStepId = currentStepIdRef.current;
+            let targetTurn: Turn | undefined;
+            let targetIndex = -1;
+            
+            if (currentStepId) {
+                targetIndex = updated.findIndex(turn => turn.step_id === currentStepId && turn.role === 'assistant');
+                if (targetIndex !== -1) {
+                    targetTurn = updated[targetIndex];
+                }
+            }
+            
+            // If no current step_id or turn not found, use the last assistant turn
+            if (!targetTurn) {
+                const lastAssistantIndex = updated.length - 1;
+                if (lastAssistantIndex >= 0 && updated[lastAssistantIndex].role === 'assistant') {
+                    targetTurn = updated[lastAssistantIndex];
+                    targetIndex = lastAssistantIndex;
+                }
+            }
+            
+            // Add snippet to the target turn
+            if (targetTurn && targetIndex !== -1) {
+                const updatedTurn = {
+                    ...targetTurn,
+                    snippets: [...(targetTurn.snippets || []), snippet],
+                };
+                return [
+                    ...updated.slice(0, targetIndex),
+                    updatedTurn,
+                    ...updated.slice(targetIndex + 1)
+                ];
+            }
+            
+            // Create a new assistant turn with the snippet if no suitable turn exists
+            // Use current step_id if available, otherwise generate one
+            const stepId = currentStepId || `snippet-${snippet.id}`;
+            return [...updated, {
+                role: 'assistant',
+                text: '',
+                function_calls: [],
+                step_id: stepId,
+                snippets: [snippet],
+            }];
+        });
+    };
+
     const clearTurns = () => {
         setTurns([]);
         stepBuffersRef.current.clear();
@@ -311,6 +383,7 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
         handleFilterResult,
         handleThinking,
         addUserTurn,
+        handleSnippet,
         clearTurns,
     };
 } 

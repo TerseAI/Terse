@@ -17,7 +17,12 @@ import {
 
 export class DatadogIntegrationManager
   implements
-    Integration<DatadogIntegration, never, typeof DatadogIntegrationMetadata>,
+    Integration<
+      DatadogIntegration,
+      never,
+      typeof DatadogIntegrationMetadata,
+      never
+    >,
     FormIntegrationInstallation<IntegrationType.DATADOG>
 {
   constructor() {}

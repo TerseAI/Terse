@@ -4,6 +4,8 @@ import { PosthogIntegrationManager } from "../integrations/PosthogIntegration";
 import logger from "../logger";
 import { db } from "../prismaClient";
 import { PosthogProjectsResponse } from "../shared/types";
+import { IntegrationType } from "../shared/Integrations";
+import { emitIntegrationFormCompletedTaskIfNeeded } from "../integrations/helpers/emitIntegrationFormCompletedTask";
 
 export async function getPosthogIntegrations(req: Request, res: Response) {
   if (!req.session?.user) {
@@ -43,6 +45,18 @@ export async function createOrUpdatePosthogIntegration(
         ...(result.data || {}),
       });
       return;
+    }
+
+    const organizationId = req.session?.user?.organizationId;
+    if (organizationId) {
+      const stateToken = (req.query.state as string) || req.body?.state;
+      await emitIntegrationFormCompletedTaskIfNeeded(
+        stateToken,
+        manager,
+        input.userId,
+        organizationId,
+        IntegrationType.POSTHOG,
+      );
     }
 
     res.status(result.statusCode || 200).json(result.data || { success: true });

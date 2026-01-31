@@ -3,6 +3,8 @@ import { parseFormSubmissionFromRequest } from "../integrations/abstract/Integra
 import { LaunchDarklyIntegrationManager } from "../integrations/LaunchDarklyIntegration";
 import logger from "../logger";
 import { db } from "../prismaClient";
+import { IntegrationType } from "../shared/Integrations";
+import { emitIntegrationFormCompletedTaskIfNeeded } from "../integrations/helpers/emitIntegrationFormCompletedTask";
 
 export async function getLaunchDarklyIntegrations(req: Request, res: Response) {
   if (!req.session?.user) {
@@ -44,6 +46,18 @@ export async function createOrUpdateLaunchDarklyIntegration(
         ...(result.data || {}),
       });
       return;
+    }
+
+    const organizationId = req.session?.user?.organizationId;
+    if (organizationId) {
+      const stateToken = (req.query.state as string) || req.body?.state;
+      await emitIntegrationFormCompletedTaskIfNeeded(
+        stateToken,
+        manager,
+        input.userId,
+        organizationId,
+        IntegrationType.LAUNCHDARKLY,
+      );
     }
 
     res.status(result.statusCode || 200).json(result.data || { success: true });

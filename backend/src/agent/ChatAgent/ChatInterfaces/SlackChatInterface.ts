@@ -10,17 +10,17 @@ import {
   isFormIntegrationInstallation,
   isOAuthIntegrationInstallation,
   OAuthIntegrationInstallation,
-} from "../../integrations/abstract/Integration";
-import { INTEGRATION_REGISTRY } from "../../integrations/abstract/IntegrationRegistry";
-import logger from "../../logger";
-import { ConfigType } from "../../shared/Configs";
-import { IntegrationType } from "../../shared/Integrations";
+} from "../../../integrations/abstract/Integration";
+import { INTEGRATION_REGISTRY } from "../../../integrations/abstract/IntegrationRegistry";
+import logger from "../../../logger";
+import { ConfigType } from "../../../shared/Configs";
+import { IntegrationType } from "../../../shared/Integrations";
 import {
   createActionBlock,
   createButton,
   createIntegrationConnectionMessage,
-} from "../../slack/blockKitHelpers";
-import { createOAuthStateToken } from "../../utility/oauth";
+} from "../../../slack/blockKitHelpers";
+import { createOAuthStateToken } from "../../../utility/oauth";
 import ChatInterface from "./ChatInterface";
 
 class SlackChatInterface extends ChatInterface {
@@ -32,12 +32,12 @@ class SlackChatInterface extends ChatInterface {
   constructor(
     private readonly channel: string,
     webClient: WebClient,
-    userId?: string,
-    organizationId?: string,
+    userId: string,
+    organizationId: string,
     slackUserId?: string,
     sessionId?: string, // thread_ts if in a thread
   ) {
-    super(sessionId, userId, organizationId);
+    super(sessionId ?? channel, userId, organizationId);
     this.webClient = webClient;
     this.slackUserId = slackUserId;
   }
@@ -379,11 +379,17 @@ class SlackChatInterface extends ChatInterface {
     }
 
     // Default behavior: post new message
-    this.say({
+    await this.say({
       text: finalOutput,
       blocks,
       thread_ts: sessionId,
     });
+  }
+
+  async navigate(path: string): Promise<void> {
+    // For Slack, we can't navigate in-app, so show a button instead
+    const frontendUrl = process.env.FRONTEND_URL || "";
+    await this.buildButton("View Automation", `${frontendUrl}${path}`);
   }
 }
 

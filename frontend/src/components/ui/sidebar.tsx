@@ -129,7 +129,7 @@ function SidebarProvider({
             ...style,
           } as React.CSSProperties
         }
-        className={cn("flex min-h-svh w-full", className)}
+        className={cn("flex h-svh w-full", className)}
         {...props}
       >
         {children}

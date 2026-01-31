@@ -16,4 +16,10 @@ export enum PosthogEvents {
     LANDING_PAGE_VIEWED = 'landing_page_viewed',
     LANDING_PAGE_CTA_CLICKED = 'landing_page_cta_clicked',
     LANDING_PAGE_SCROLL_TO_FEATURES = 'landing_page_scroll_to_features',
+    // Backend analytics events (tracked server-side, listed here for reference)
+    NEW_USER_ADDED = 'new_user_added',
+    AGENT_TRIGGERED = 'agent_triggered',
+    ACTION_TAKEN = 'action_taken',
+    AGENT_CREATED = 'agent_created',
+    INTEGRATION_ADDED = 'integration_added',
 }

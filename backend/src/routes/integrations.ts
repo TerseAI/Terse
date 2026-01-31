@@ -13,6 +13,7 @@ import {
   IntegrationWithStatus,
 } from "../shared/Integrations";
 import { OAuthInstallationDetails } from "../shared/types";
+import { decodeOAuthStateToken } from "../utility/oauth";
 
 export const getIntegrationInstallationDetails = async (
   req: Request,
@@ -34,6 +35,32 @@ export const getIntegrationInstallationDetails = async (
       ? JSON.parse(decodeURIComponent(req.query.options as string))
       : undefined;
 
+    let additionalStatePayload: Record<string, string> | undefined =
+      undefined;
+    const stateToken = req.query.state as string | undefined;
+    if (stateToken) {
+      try {
+        const statePayload = decodeOAuthStateToken(stateToken);
+        if (statePayload.chatId && statePayload.channel) {
+          additionalStatePayload = {
+            chatId: statePayload.chatId,
+            channel: statePayload.channel,
+            integrationType:
+              statePayload.integrationType || (integrationType as string),
+            ...(statePayload.messageTs
+              ? { messageTs: statePayload.messageTs }
+              : {}),
+          };
+        }
+      } catch (error) {
+        logger.warn("Failed to decode stateToken in getIntegrationInstallationDetails", {
+          error,
+          integrationType: req.params.integrationType,
+          userId: req.session?.user?.id,
+        });
+      }
+    }
+
     const userId = req.session.user.id;
     const organizationId = req.session.user.organizationId;
     const installationDetails = await getInstallationInformation(
@@ -41,6 +68,7 @@ export const getIntegrationInstallationDetails = async (
       userId,
       organizationId,
       options,
+      additionalStatePayload,
     );
     res.json(installationDetails);
   } catch (error: any) {
@@ -60,6 +88,7 @@ const getInstallationInformation = async (
   userId: string,
   organizationId: string,
   options: InstallationOptionsFor<IntegrationType>,
+  additionalStatePayload?: Record<string, string>,
 ): Promise<OAuthInstallationDetails> => {
   const integrationInstance = INTEGRATION_REGISTRY.find(
     (instance) => instance.integrationType === integration,
@@ -73,7 +102,7 @@ const getInstallationInformation = async (
       userId,
       organizationId,
       options,
-      undefined,
+      additionalStatePayload,
     );
   }
 
@@ -118,7 +147,12 @@ export async function getActiveIntegrations(req: Request, res: Response) {
 }
 
 async function integrationHasInstances(
-  integration: Integration<IntegrationInstance, any, IntegrationDetails>,
+  integration: Integration<
+    IntegrationInstance,
+    any,
+    IntegrationDetails,
+    any
+  >,
   organizationId: string,
 ): Promise<boolean> {
   return (

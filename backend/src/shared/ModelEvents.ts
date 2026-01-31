@@ -16,11 +16,11 @@ export type Failure = { error: string, step_id: string };
 
 export type FunctionCall = { function_name: string, result: string, step_id: string, };
 
-export type ModelEvent = {"type": "ToolApprovalResponse"} & ToolApprovalResponse | { "type": "ToolApprovalRequest" } & ToolApprovalRequest | { "type": "ToolCall" } & ToolCall | { "type": "ToolCallComplete" } & ToolCallComplete | { "type": "TextDelta" } & TextDelta | { "type": "Failure" } & Failure | { "type": "NaturalStop", step_id: string } | { "type": "FilterResult" } & FilterResult | { "type": "UserMessage" } & UserMessage | { "type": "Thinking", step_id: string };
+export type ModelEvent = {"type": "ToolApprovalResponse"} & ToolApprovalResponse | { "type": "ToolApprovalRequest" } & ToolApprovalRequest | { "type": "ToolCall" } & ToolCall | { "type": "ToolCallComplete" } & ToolCallComplete | { "type": "TextDelta" } & TextDelta | { "type": "Failure" } & Failure | { "type": "NaturalStop", step_id: string } | { "type": "FilterResult" } & FilterResult | { "type": "UserMessage" } & UserMessage | { "type": "Thinking", step_id: string } | { "type": "Snippet" } & { snippet: ChatSnippetPayload };
 
 export type ModelRequest = { "type": "SendModelRequest" } & SendModelRequest | { "type": "ToolApprovalResponse" } & ToolApprovalResponse;
 
-export type SendModelRequest = { user_message: string, timezone: string, };
+export type SendModelRequest = { user_message: string, timezone: string, ui_state?: string };
 
 export type ToolApprovalResponse = { step_id: string, approved: boolean };
 
@@ -35,3 +35,14 @@ export type ToolCallComplete = { tool_name: string, status: string, step_id: str
 export type FilterResult = { isRelevant: boolean, reason: string, confidence: number, step_id: string };
 
 export type UserMessage = { message: string };
+
+// Chat snippet types for displaying interactive elements in chat
+export type ChatSnippet =
+    | { type: 'button'; label: string; url: string; id: string }
+    | { type: 'integration_prompt'; integration: string; message: string; id: string; stateToken?: string }
+    | { type: 'navigate'; path: string; id: string };
+
+export type ChatSnippetPayload =
+    | { type: 'button'; label: string; url: string }
+    | { type: 'integration_prompt'; integration: string; message: string; stateToken?: string }
+    | { type: 'navigate'; path: string };

@@ -7,7 +7,7 @@ import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner";
 import { formatError, createNeedsApprovalFunction } from "../../../tools/toolUtils";
 import { ToolName } from "../../../tools/ToolNames";
 import logger from "../../../logger";
-import { Session } from "../../../server";
+import { Session } from "../../../types/session";
 import { NotionIntegrationManager } from "../../../integrations/NotionIntegration";
 
 export const notionModifyPageTool = tool({

@@ -1,4 +1,4 @@
-import { Session } from '../../server';
+import { Session } from "../../types/session";
 import { AgentWithRelations } from '../../types/prisma';
 import { Output } from '../../outputs/abstract/Output';
 import { ConfigInstance } from '../../shared/Configs';

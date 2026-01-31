@@ -37,7 +37,8 @@ export class CronJobIntegrationManager
     Integration<
       IntegrationInstance,
       ScheduleWebhookEvent,
-      typeof CronJobIntegrationMetadata
+      typeof CronJobIntegrationMetadata,
+      never
     >,
     FormIntegrationInstallation<IntegrationType.CRON_JOB>
 {
@@ -336,13 +337,12 @@ export class CronJobEvent extends InputEvent {
     if (agentTrigger.config_type !== InputConfigType.TIME_TRIGGER) {
       return false;
     }
-
-    return true;
+    // Must match the specific trigger ID, not just any time trigger
+    return agentTrigger.id === this.data.inputId;
   }
 
   createTriggerMetadata(): RunHistoryTrigger {
     const { isManualTrigger } = this.data;
-
     return {
       event: isManualTrigger ? "manual_trigger" : "scheduled_event",
       integration: IntegrationType.CRON_JOB,
@@ -353,9 +353,5 @@ export class CronJobEvent extends InputEvent {
         : "Scheduled Job",
       url: FrontendRoutes.AGENTS.BY_ID_RELATIVE(this.data.inputId),
     };
-  }
-
-  getImageUrls(): string[] {
-    return [];
   }
 }

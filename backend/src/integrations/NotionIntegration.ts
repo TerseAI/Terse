@@ -15,20 +15,28 @@ import {
   NotionIntegration,
   NotionIntegrationMetadata,
 } from "../shared/Integrations";
-import { OAuthInstallationDetails } from "../shared/types";
+import { OAuthInstallationDetails, NotionResource } from "../shared/types";
 import { AgentTriggerWithConfigs } from "../types/prisma";
 import { createOAuthStateToken } from "../utility/oauth";
 import {
   ConfigurationFieldDefinition,
   Integration,
+  IntegrationWithResources,
   OAuthIntegrationInstallation,
 } from "./abstract/Integration";
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask";
 import { integrationTaskQueue } from "./IntegrationTaskQueues";
+import { Client } from "@notionhq/client";
+import { extractPageTitle } from "../utility/notion";
 
 export class NotionIntegrationManager
   implements
-    Integration<NotionIntegration, never, typeof NotionIntegrationMetadata>,
+    Integration<
+      NotionIntegration,
+      never,
+      typeof NotionIntegrationMetadata,
+      NotionResource
+    >,
     OAuthIntegrationInstallation<IntegrationType.NOTION>
 {
   constructor() {}
@@ -318,5 +326,81 @@ export class NotionIntegrationManager
       );
       return null;
     }
+  }
+
+  async fetchResourcesForInstance(
+    userId: string,
+    integrationId: string,
+    query?: string,
+  ): Promise<NotionResource[]> {
+    const integration = await db().notion_integrations.findFirst({
+      where: { id: integrationId, user_id: userId },
+    });
+    if (!integration) {
+      throw new Error("Notion integration not found");
+    }
+    const accessToken = await this.getAccessToken(integrationId);
+    if (!accessToken) {
+      throw new Error("Could not get valid access token");
+    }
+    const notionClient = new Client({ auth: accessToken });
+    const searchResponse = await notionClient.search({
+      query: query || "",
+      page_size: 100,
+    });
+    let resources: NotionResource[] = searchResponse.results
+      .map((result: any) => {
+        if (result.object === "data_source") {
+          return {
+            id: result.id,
+            title:
+              result.title?.[0]?.plain_text || "Untitled Database",
+            url: result.url,
+            type: "database" as const,
+          };
+        } else if (result.object === "page") {
+          return {
+            id: result.id,
+            title: extractPageTitle(result),
+            url: "url" in result ? result.url : "",
+            type: "page" as const,
+          };
+        }
+        return null;
+      })
+      .filter((resource): resource is NotionResource => resource !== null);
+    if (!query) {
+      resources = resources.sort((a, b) =>
+        a.title.localeCompare(b.title, undefined, { sensitivity: "base" }),
+      );
+    }
+    return resources;
+  }
+
+  async fetchResourcesForUser(
+    userId: string,
+    query?: string,
+  ): Promise<
+    IntegrationWithResources<NotionIntegration, NotionResource>[]
+  > {
+    const integrations = await this.getInstancesForUser(userId);
+    return Promise.all(
+      integrations.map(async (integration) => {
+        try {
+          const resources = await this.fetchResourcesForInstance(
+            userId,
+            integration.id,
+            query,
+          );
+          return { integration, resources };
+        } catch (error) {
+          logger.warn(
+            `Failed to fetch resources for Notion integration ${integration.id}`,
+            { error, integrationId: integration.id },
+          );
+          return { integration, resources: [] };
+        }
+      }),
+    );
   }
 }

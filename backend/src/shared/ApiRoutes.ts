@@ -256,4 +256,14 @@ export const ApiRoutes = {
       params: { id: "string" } as const,
     },
   },
+
+  // Builder chat routes
+  BUILDER_CHAT: {
+    HISTORY_BY_SESSION_ID: {
+      pattern: "/builder-chat/:sessionId/history",
+      build: (sessionId: string) =>
+        `/builder-chat/${encodeURIComponent(sessionId)}/history`,
+      params: { sessionId: "string" } as const,
+    },
+  },
 } as const;

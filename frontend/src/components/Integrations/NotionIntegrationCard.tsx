@@ -9,8 +9,8 @@ import { useNotionIntegrations } from "@/hooks/api/useNotionIntegrations";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "../ui/skeleton";
 
-function NotionIntegrationCard({ className, isActive = true }: { className?: string; isActive?: boolean }) {
-    const { connect, isConnecting } = useOAuthConnection<IntegrationType.NOTION>(IntegrationType.NOTION, {});
+function NotionIntegrationCard({ className, isActive = true, stateToken }: { className?: string; isActive?: boolean; stateToken?: string }) {
+    const { connect, isConnecting } = useOAuthConnection<IntegrationType.NOTION>(IntegrationType.NOTION, {}, stateToken);
     const { integrations, isLoading: integrationsLoading } = useNotionIntegrations();
 
     return (

@@ -37,6 +37,7 @@ import {
   getKnowledgeBaseConfigInclude,
   getOutputConfigInclude,
 } from "./utility/prismaIncludes";
+import { registerBuilderChatHandler } from "./socketHandlers/builderChatHandler";
 
 // Extended Socket type with userId, organizationId, and WorkOS session ID
 interface AuthenticatedSocket extends Socket {
@@ -308,7 +309,7 @@ export async function initializeRealtimeSocket(
 
         // Ensure run status is 'in_progress' so streaming works
         if (runRecord.status !== "in_progress") {
-          await prisma.run_history_records.update({
+          await db().run_history_records.update({
             where: { id: runId },
             data: { status: "in_progress" },
           });
@@ -351,12 +352,16 @@ export async function initializeRealtimeSocket(
 
         let result;
         try {
-          result = await agentRunner.userMessageRun(userMessage, {
-            runId,
-            userId: userId,
-            agentId: agent.id,
-            ...(organizationId && { organizationId }),
-          });
+          result = await agentRunner.userMessageRun(
+            userMessage,
+            undefined,
+            {
+              runId,
+              userId,
+              agentId: agent.id,
+              ...(organizationId && { organizationId }),
+            },
+          );
         } catch (error) {
           // Log the error and update run history
           const errorMessage =
@@ -410,13 +415,10 @@ export async function initializeRealtimeSocket(
             userMessage,
           ),
         );
-      },
-    );
+      });
 
-    // Listen for tool approval responses
-    socket.on(
-      SocketEvents.AGENT_CHAT_APPROVAL,
-      async (payload: { runId: string; message: ToolApprovalResponse }) => {
+      // Use centralized approval service - it handles Slack notifications internally
+      socket.on(SocketEvents.AGENT_CHAT_APPROVAL, async (payload: { runId: string; message: ToolApprovalResponse }) => {
         const { runId, message } = payload;
         logger.info(`[agent:chat:approval] Received approval response`, {
           message,
@@ -429,7 +431,6 @@ export async function initializeRealtimeSocket(
           return;
         }
 
-        // Use centralized approval service - it handles Slack notifications internally
         const result = await ApprovalService.processApproval({
           runId,
           stepId: message.step_id,
@@ -438,32 +439,28 @@ export async function initializeRealtimeSocket(
         });
 
         if (result.status === "failed" && result.error) {
-          logger.error(
-            `[agent:chat:approval] Approval processing failed: ${result.error}`,
-          );
+          logger.error(`[agent:chat:approval] Approval processing failed: ${result.error}`);
         } else {
-          logger.info(
-            `[agent:chat:approval] Successfully processed approval for runId: ${runId}`,
-          );
+          logger.info(`[agent:chat:approval] Successfully processed approval for runId: ${runId}`);
         }
-      },
-    );
-
-    // presence: mark online (60s TTL), refresh every 25s (only if Redis is available)
-    if (pub) {
-      const key = `presence:${userRoom}`;
-      pub.set(key, "1", { EX: 60 }).catch(() => {});
-      const refresh = setInterval(
-        () => pub!.expire(key, 60).catch(() => {}),
-        25_000,
-      );
-
-      socket.on(SocketEvents.DISCONNECT, () => {
-        clearInterval(refresh);
-        // Optional: check if other sockets for this user still exist before deleting presence
-        // Otherwise let TTL expire naturally.
       });
-    }
+
+      // Listen for builder chat messages (in-app agent builder, organization-scoped)
+      registerBuilderChatHandler(socket, userId, organizationId ?? "");
+
+      // presence: mark online (60s TTL), refresh every 25s (only if Redis is available)
+      if (pub) {
+        const key = `presence:${userRoom}`;
+        pub.set(key, "1", { EX: 60 }).catch(() => {});
+        const refresh = setInterval(
+          () => pub!.expire(key, 60).catch(() => {}),
+          25_000,
+        );
+
+        socket.on(SocketEvents.DISCONNECT, () => {
+          clearInterval(refresh);
+        });
+      }
   });
 
   return io;
@@ -498,9 +495,6 @@ export function emitCacheInvalidationWithWildcard(
     logger.warn("Socket.IO server not initialized");
     return;
   }
-  // Send tag-based invalidation payload
-  // If id is provided, frontend will match on both tag and id
-  // If id is not provided, frontend will match on tag only
   io.to(SocketRooms.organization(organizationId)).emit(
     SocketEvents.INVALIDATE,
     {

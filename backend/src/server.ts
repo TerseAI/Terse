@@ -9,7 +9,7 @@ import { requestSessionSocketToken } from "./agent/socket";
 import "./config/settings";
 import "./integrations/IntegrationTaskHandler"; // Import to trigger listener registration
 import logger from "./logger";
-import { initializeRealtimeSocket } from "./realtimeSocket";
+import { initializeRealtimeSocket, getRealtimeSocket  } from "./realtimeSocket";
 import {
   createAgent,
   deleteAgent,
@@ -110,6 +110,7 @@ import {
   getRunHistory,
   getRunHistoryActions,
 } from "./routes/runHistory";
+import { getBuilderChatHistory } from "./routes/builderChat";
 import { handleManualTrigger, handleScheduleWebhook } from "./routes/schedule";
 import {
   getCurrentSlackIntegration,
@@ -126,9 +127,11 @@ import { User } from "./shared/types";
 import { setupSlackBolt } from "./slack/boltApp";
 import { runStartupValidations } from "./tools/validateToolNames";
 
+import { registerSocketGetter } from "./services/CacheInvalidationService";
+
 export type Session = {
   user: User;
-  isUserInitiated: boolean; // true if the user has initiated the session, false if the session was initiated by the system
+  isUserInitiated: boolean;
   teamId?: string;
 };
 
@@ -137,6 +140,7 @@ const server = createServer(app);
 
 try {
   await initializeRealtimeSocket(server);
+  registerSocketGetter(getRealtimeSocket);
   logger.info("✅ Socket.IO server initialized");
 } catch (error) {
   logger.error("❌ Failed to initialize Socket.IO server", { error });
@@ -305,6 +309,16 @@ app.get(
   authMiddleware,
   async (req, res) => {
     getChatHistory(req, res);
+  },
+);
+
+// MARK: BUILDER CHAT
+
+app.get(
+  ApiRoutes.BUILDER_CHAT.HISTORY_BY_SESSION_ID.pattern,
+  authMiddleware,
+  async (req, res) => {
+    getBuilderChatHistory(req, res);
   },
 );
 

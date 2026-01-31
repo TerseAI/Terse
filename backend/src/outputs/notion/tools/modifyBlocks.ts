@@ -8,7 +8,7 @@ import { formatError, createNeedsApprovalFunction } from "../../../tools/toolUti
 import { ToolName } from "../../../tools/ToolNames";
 import { ConfigType } from "../../../shared/Configs";
 import logger from "../../../logger";
-import { Session } from "../../../server";
+import { Session } from "../../../types/session";
 import { NotionIntegrationManager } from "../../../integrations/NotionIntegration";
 
 /**

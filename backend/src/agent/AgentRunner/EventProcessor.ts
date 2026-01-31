@@ -14,7 +14,7 @@ import {
   emitCacheInvalidationWithKey,
   emitCacheInvalidationWithWildcard,
 } from "../../realtimeSocket";
-import { Session } from "../../server";
+import { Session } from "../../types/session";
 import { ConfigInstance } from "../../shared/Configs";
 import { RunHistoryAction } from "../../shared/RunHistoryTypes";
 import { User } from "../../shared/types";
@@ -39,6 +39,7 @@ import {
   markRunSkipped,
 } from "./runHistory";
 import { RunContext } from "./SystemPromptBuilder";
+import { trackAgentTriggered, trackActionTaken } from "../../utility/analytics";
 
 // The job of this class is to take an Input Event, and check if it's a match for an Agent.
 // It will then create a Session, and summon the Agent Runner with the create user data.
@@ -303,6 +304,15 @@ export class EventProcessor {
 
     logger.info(`Event is relevant to agent "${agent.name}"`);
 
+    // Track agent triggered analytics event (organization-scoped)
+    trackAgentTriggered(this.user.id, {
+      agentId: agent.id,
+      agentName: agent.name,
+      triggerType: trigger.integration,
+      triggerSource: trigger.source,
+      runId,
+    });
+
     // Create knowledge bases from agent configuration
     const knowledgeBases = this.createKnowledgeBases(
       agent.knowledge_bases || [],
@@ -433,6 +443,15 @@ export async function persistRunAction<T extends Session>(
       agent.id,
     );
     emitCacheInvalidationWithKey(session.user.organizationId, "recentActions");
+
+    trackActionTaken(session.user.id, {
+      runId,
+      actionType: action.type,
+      integration: action.integration,
+      target: action.target,
+      isReadOnly: action.isReadOnly,
+    });
+
     return actionId;
   } catch (e) {
     logger.error("Failed to append run action", {

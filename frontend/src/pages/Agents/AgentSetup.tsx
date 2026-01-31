@@ -1,94 +1,222 @@
-import { useNavigate } from 'react-router-dom';
-import { Plus, FileText } from 'lucide-react';
+import { useState, useCallback, useMemo, useRef } from 'react';
+import { v4 as uuidv4 } from 'uuid';
+import { motion, AnimatePresence, Easing } from 'framer-motion';
+import { Loader2 } from 'lucide-react';
 import { useTemplates } from '@/hooks/api/useTemplates';
 import { TemplateCard } from '@/components/Agents/TemplateCard';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
-import { Loader2 } from 'lucide-react';
-import { FrontendRoutes } from '@/shared/FrontendRoutes';
+import { Card, CardContent } from '@/components/ui/card';
+import { Chat, ChatHandle } from '@/components/chat/Chat';
+import { subscribeToBuilderChat, sendBuilderMessage } from '@/socket';
+import { ModelRequest, SendModelRequest } from '@/shared/ModelEvents';
+import { ChatEventPayload } from '@/components/chat/hooks/useCompletionSocket';
+import { AgentTemplate } from '@/shared/types';
+
+const AGENT_SETUP_PLACEHOLDERS = [
+    "Build me an agent that summarizes my Slack messages daily",
+    "Create a workflow that monitors GitHub PRs and posts updates",
+    "Set up an agent to track competitor pricing changes",
+    "Build an automation that syncs Notion tasks to Linear",
+    "Create a daily standup bot for my team",
+];
+
+const ANIMATION_DURATION = 0.8;
+const ANIMATION_EASE: Easing = [0.4, 0, 0.2, 1];
 
 export default function AgentSetup() {
-    const navigate = useNavigate();
     const { templates, isLoading } = useTemplates();
+    const [hasStartedChat, setHasStartedChat] = useState(false);
+    const chatRef = useRef<ChatHandle>(null);
 
-    const handleStartFromScratch = () => {
-        navigate(FrontendRoutes.AGENTS.NEW);
+    // Generate a session ID for this setup flow
+    const sessionId = useMemo(() => uuidv4(), []);
+
+    const handleTemplateSelect = (template: AgentTemplate) => {
+        chatRef.current?.setInput(template.chatPrompt);
+        chatRef.current?.focus();
+    };
+
+    const subscribeToEvents = useCallback((callback: (payload: ChatEventPayload) => void) => {
+        const unsubscribe = subscribeToBuilderChat(sessionId, (payload) => {
+            callback({
+                runHistoryModelEvent: payload.event,
+            });
+        });
+        return unsubscribe;
+    }, [sessionId]);
+
+    const sendMessage = useCallback((message: ModelRequest) => {
+        // Mark that the user has started chatting
+        if (!hasStartedChat) {
+            setHasStartedChat(true);
+        }
+
+        if (message.type === 'SendModelRequest') {
+            const enrichedMessage: { type: 'SendModelRequest' } & SendModelRequest = {
+                ...message,
+                ui_state: JSON.stringify({ page: 'agent-setup' }),
+            };
+            sendBuilderMessage(sessionId, enrichedMessage);
+        } else {
+            sendBuilderMessage(sessionId, message);
+        }
+    }, [sessionId, hasStartedChat]);
+
+    const handleUserMessage = useCallback(() => {
+        if (!hasStartedChat) {
+            setHasStartedChat(true);
+        }
+    }, [hasStartedChat]);
+
+    // Animation variants for synchronized transitions
+    const headerVariants = {
+        visible: {
+            opacity: 1,
+        },
+        hidden: {
+            opacity: 0,
+            filter: 'blur(8px)',
+        },
+    };
+
+    const chatSectionVariants = {
+        initial: {
+            minHeight: 200,
+        },
+        expanded: {
+            flexGrow: 1,
+            minHeight: 0,
+        },
+    };
+
+    const templatesVariants = {
+        visible: {
+            opacity: 1,
+            filter: 'blur(0px)',
+            y: 0,
+        },
+        hidden: {
+            opacity: 0,
+            filter: 'blur(8px)',
+            y: 300,
+        },
     };
 
     return (
-        <div className="flex flex-col h-full p-4">
-            <div className="flex-1 overflow-y-auto">
-                <div className="mx-auto space-y-8 max-w-5xl">
-                    <div>
-                        <h1 className="text-2xl font-bold text-foreground">Create a New Agent</h1>
-                        <p className="text-muted-foreground mt-1">
-                            Choose a template to get started quickly, or start from scratch with a blank Agent.
-                        </p>
-                    </div>
+        <div className="flex flex-col h-full w-full">
+            {/* Header - wrapper collapses immediately, content fades out */}
+            <div
+                style={{
+                    height: hasStartedChat ? 0 : 'auto',
+                    overflow: 'visible',
+                    marginTop: hasStartedChat ? 0 : 32,
+                    marginBottom: hasStartedChat ? 0 : 8,
+                }}
+            >
+                <AnimatePresence>
+                    {!hasStartedChat && (
+                        <motion.div
+                            className="mx-auto max-w-5xl w-full"
+                            variants={headerVariants}
+                            initial="visible"
+                            animate="visible"
+                            exit="hidden"
+                            transition={{
+                                duration: ANIMATION_DURATION / 4,
+                                ease: ANIMATION_EASE,
+                            }}
+                        >
+                            <h1 className="text-2xl font-semibold text-foreground">Create a new agent</h1>
+                            <p className="text-muted-foreground mt-1">Describe what you want your agent to do, and we'll help you build it.</p>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+            </div>
 
-                    {/* Templates Section */}
-                    <div className="space-y-4">
-                        <div>
-                            <h2 className="text-lg font-semibold">Start with a template</h2>
-                            <p className="text-sm text-muted-foreground">
-                                Pre-configured Agents for common workflows
-                            </p>
-                        </div>
-
-                        {isLoading ? (
-                            <div className="flex items-center justify-center py-12">
-                                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                            </div>
-                        ) : templates.length > 0 ? (
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                {templates.map((template, index) => (
-                                    <TemplateCard
-                                        key={index}
-                                        template={template}
-                                        templateIndex={index}
-                                    />
-                                ))}
-                            </div>
-                        ) : (
-                            <Card className="border-dashed">
-                                <CardContent className="flex flex-col items-center justify-center py-8 text-center">
-                                    <p className="text-muted-foreground">
-                                        No templates available yet
-                                    </p>
-                                </CardContent>
-                            </Card>
-                        )}
-                    </div>
-
-                    {/* Divider */}
-                    <div className="flex items-center gap-4">
-                        <div className="h-px flex-1 bg-border" />
-                        <span className="text-sm text-muted-foreground">or</span>
-                        <div className="h-px flex-1 bg-border" />
-                    </div>
-
-                    {/* Start from Scratch Section */}
-                    <Card
-                        className="cursor-pointer transition-colors hover:bg-accent/50"
-                        onClick={handleStartFromScratch}
-                    >
-                        <CardHeader>
-                            <div className="flex items-center gap-3">
-                                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
-                                    <FileText className="h-5 w-5 text-primary" />
-                                </div>
-                                <div>
-                                    <CardTitle className="text-base">Start from scratch</CardTitle>
-                                    <CardDescription>
-                                        Create a custom Agent with your own configuration
-                                    </CardDescription>
-                                </div>
-                                <div className="ml-auto">
-                                    <Plus className="h-5 w-5 text-muted-foreground" />
-                                </div>
-                            </div>
-                        </CardHeader>
-                    </Card>
+            {/* Chat Section - expands when chat starts */}
+            <motion.div
+                className="flex flex-col mx-auto max-w-5xl w-full pb-3"
+                variants={chatSectionVariants}
+                initial="initial"
+                animate={hasStartedChat ? "expanded" : "initial"}
+                transition={{
+                    duration: ANIMATION_DURATION,
+                    ease: ANIMATION_EASE,
+                }}
+            >
+                <div className="flex-1 min-h-0 w-full">
+                    <Chat
+                        ref={chatRef}
+                        key={sessionId}
+                        subscribeToEvents={subscribeToEvents}
+                        sendMessage={sendMessage}
+                        onUserMessage={handleUserMessage}
+                        addUserTurnsLocally={true}
+                        inputSize={hasStartedChat ? "small" : "large"}
+                        placeholders={hasStartedChat ? [] : AGENT_SETUP_PLACEHOLDERS}
+                    />
                 </div>
+            </motion.div>
+
+            {/* Templates Section - wrapper collapses immediately, content fades out */}
+            <div
+                className="relative"
+                style={{
+                    height: hasStartedChat ? 0 : 'auto',
+                    overflow: 'visible',
+                    transition: 'none',
+                }}
+            >
+                <AnimatePresence>
+                    {!hasStartedChat && (
+                        <motion.div
+                            className="w-full"
+                            variants={templatesVariants}
+                            initial="visible"
+                            animate="visible"
+                            exit="hidden"
+                            transition={{
+                                duration: ANIMATION_DURATION,
+                                ease: ANIMATION_EASE,
+                            }}
+                        >
+                            <div className="p-6">
+                                <div className="mx-auto max-w-5xl space-y-4">
+                                    {/* Divider with "or" */}
+                                    <div className="flex items-center gap-4">
+                                        <div className="h-px flex-1 bg-border" />
+                                        <span className="text-sm text-muted-foreground">or start with a template</span>
+                                        <div className="h-px flex-1 bg-border" />
+                                    </div>
+
+                                    {/* Templates Grid */}
+                                    {isLoading ? (
+                                        <div className="flex items-center justify-center py-8">
+                                            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                                        </div>
+                                    ) : templates.length > 0 ? (
+                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                            {templates.map((template, index) => (
+                                                <TemplateCard
+                                                    key={index}
+                                                    template={template}
+                                                    onSelect={handleTemplateSelect}
+                                                />
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <Card className="border-dashed">
+                                            <CardContent className="flex flex-col items-center justify-center py-6 text-center">
+                                                <p className="text-muted-foreground text-sm">
+                                                    No templates available yet
+                                                </p>
+                                            </CardContent>
+                                        </Card>
+                                    )}
+                                </div>
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </div>
         </div>
     );

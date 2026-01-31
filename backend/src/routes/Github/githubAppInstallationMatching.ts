@@ -2,9 +2,7 @@ import { Request, Response } from "express";
 import logger from "../../logger";
 import { db } from "../../prismaClient";
 import { emitCacheInvalidationWithKey } from "../../realtimeSocket";
-//import { GithubAppInstallationCallbackRequest } from "../../shared/types";
 import { GithubRepository } from "../../types/prisma";
-//import { processRepository } from "./githubApp";
 
 // TODO: find solution for this
 // export async function processsGithubAppInstallationWebhook(

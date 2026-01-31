@@ -6,6 +6,7 @@ import crypto from "crypto";
 import { Request, Response } from "express";
 import jwt from "jsonwebtoken";
 import { EventProcessor } from "../agent/AgentRunner/EventProcessor";
+import { SlackChannel as SlackChannelShared } from "../shared/types";
 import {
   jwt as jwtConfig,
   slack as slackConfig,
@@ -14,7 +15,14 @@ import {
 import logger, { runWithUserContext } from "../logger";
 import { db } from "../prismaClient";
 import { Identifiable } from "../rag/Hydrator";
-import { getUserForOrg } from "../routes/auth";
+import {
+  buildSlackFileKey,
+  ensureStoredWithMetadata,
+  FileCategory,
+  FileDownloadResult,
+  isSupportedFileType,
+  StoredFile,
+} from "../services/FileStorageService";
 import { FrontendRoutes } from "../shared/FrontendRoutes";
 import {
   AdditionalStateParams,
@@ -29,6 +37,7 @@ import {
   extractImagesFromMessage,
   extractTextFromAttachments,
   extractTextFromBlocks,
+  pickSlackFileUrl,
   SlackAttachment,
   SlackFile,
   SlackMessageImage,
@@ -39,12 +48,14 @@ import {
   UserSlackIntegrationWithUser,
 } from "../types/prisma";
 import { HydratorType } from "../types/rag";
+import { getUserForOrg } from "../routes/auth";
 import { Jwt } from "../utility/jwt";
 import { createOAuthStateToken } from "../utility/oauth";
 import { InputEvent } from "./abstract/InputEvent";
 import {
   ConfigurationFieldDefinition,
   Integration,
+  IntegrationWithResources,
   OAuthIntegrationInstallation,
 } from "./abstract/Integration";
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask";
@@ -55,7 +66,8 @@ export class SlackIntegrationManager
     Integration<
       SlackIntegration,
       SlackMessageEvent,
-      typeof SlackIntegrationMetadata
+      typeof SlackIntegrationMetadata,
+      SlackChannelShared
     >,
     OAuthIntegrationInstallation<IntegrationType.SLACK>
 {
@@ -232,11 +244,10 @@ export class SlackIntegrationManager
     const redirect_uri = slackConfig.oauthCallbackUrl;
     const isBotUser = options.isBotUser;
     const scope =
-      "channels:history,channels:manage,groups:history,groups:write,im:history,im:write,mpim:history,mpim:write,channels:read,groups:read,mpim:read,im:read,users:read,chat:write,app_mentions:read,reactions:read,reactions:write";
+      "channels:history,channels:manage,groups:history,groups:write,im:history,im:write,mpim:history,mpim:write,channels:read,groups:read,mpim:read,im:read,users:read,chat:write,app_mentions:read,reactions:read,reactions:write,files:read";
     const user_scope = isBotUser
       ? ""
-      : "channels:history,channels:read,groups:history,groups:read,im:history,im:read,mpim:history,mpim:read,users:read,channels:write,groups:write,mpim:write,im:write,chat:write,reactions:read,reactions:write";
-    // create JWT and attach to url as state, including isBotUser and any additional state payload
+      : "channels:history,channels:read,groups:history,groups:read,im:history,im:read,mpim:history,mpim:read,users:read,channels:write,groups:write,mpim:write,im:write,chat:write,reactions:read,reactions:write,files:read";
     const state = createOAuthStateToken({
       userId,
       organizationId,
@@ -278,14 +289,13 @@ export class SlackIntegrationManager
     }
 
     const jwtUtil = new Jwt();
-    const result = await jwtUtil.verify(state);
+    const user = await jwtUtil.verify(state);
 
-    if (!result) {
+    if (!user) {
       logger.error("Invalid or expired state token");
       res.redirect(`${frontendUrl}${FrontendRoutes.OAUTH.ERROR}`);
       return;
     }
-    const user = result.user;
 
     // Decode the full JWT state payload
     let decoded: any;
@@ -296,12 +306,12 @@ export class SlackIntegrationManager
       res.redirect(`${frontendUrl}${FrontendRoutes.OAUTH.ERROR}`);
       return;
     }
-    const isBotUser = decoded.isBotUser ?? true; // Default to true for backward compatibility
+    const isBotUser = decoded.isBotUser ?? true;
     const organizationId = decoded.organizationId;
 
     if (!organizationId || typeof organizationId !== "string") {
       logger.error("Slack OAuth: organizationId is required in state", {
-        userId: user.id,
+        userId: user.user.id,
       });
       res.redirect(`${frontendUrl}${FrontendRoutes.OAUTH.ERROR}`);
       return;
@@ -408,7 +418,7 @@ export class SlackIntegrationManager
         const createData =
           isUserType && authed_user.access_token
             ? {
-                user_id: user.id,
+                user_id: user.user.id,
                 slack_team_id: slackIntegration.team_id,
                 authed_user_id: authed_user.id,
                 authed_user_access_token: authed_user.access_token,
@@ -416,7 +426,7 @@ export class SlackIntegrationManager
                 organization_id: organizationId,
               }
             : {
-                user_id: user.id,
+                user_id: user.user.id,
                 slack_team_id: slackIntegration.team_id,
                 authed_user_id: authed_user.id,
                 is_bot_user: true,
@@ -426,7 +436,7 @@ export class SlackIntegrationManager
         await tx.user_slack_integrations.upsert({
           where: {
             user_id_slack_team_id_is_bot_user: {
-              user_id: user.id,
+              user_id: user.user.id,
               slack_team_id: slackIntegration.team_id,
               is_bot_user: !isUserType,
             },
@@ -442,7 +452,7 @@ export class SlackIntegrationManager
       const userSlackIntegration = await db().user_slack_integrations.findFirst(
         {
           where: {
-            user_id: user.id,
+            user_id: user.user.id,
             slack_team_id: team.id,
             is_bot_user: !isUserType,
           },
@@ -451,7 +461,7 @@ export class SlackIntegrationManager
 
       if (!userSlackIntegration) {
         logger.error("Failed to find user_slack_integration after OAuth", {
-          userId: user.id,
+          userId: user.user.id,
           teamId: team.id,
         });
         res.redirect(`${frontendUrl}${FrontendRoutes.OAUTH.ERROR}`);
@@ -470,7 +480,7 @@ export class SlackIntegrationManager
       );
 
       logger.info("Slack OAuth completed successfully", {
-        userId: user.id,
+        userId: user.user.id,
         teamId: team.id,
         integrationId: userSlackIntegration.id,
       });
@@ -553,6 +563,129 @@ export class SlackIntegrationManager
       return null;
     }
   }
+
+  async fetchResourcesForInstance(
+    userId: string,
+    integrationId: string,
+    query?: string,
+  ): Promise<SlackChannelShared[]> {
+    const userSlackIntegration =
+      await db().user_slack_integrations.findFirst({
+        where: { id: integrationId, user_id: userId },
+        include: { slack_integration: true, user: true },
+      });
+
+    if (!userSlackIntegration?.slack_integration) {
+      throw new Error("Slack integration not found");
+    }
+
+    const client = initializeSlackWebClient(userSlackIntegration);
+    const isBotUser = userSlackIntegration.is_bot_user;
+
+    const [publicChannels, privateChannels, mpimChannels] = await Promise.all([
+      client.conversations.list({
+        types: "public_channel",
+        exclude_archived: true,
+        limit: 1000,
+      }),
+      client.conversations.list({
+        types: "private_channel",
+        exclude_archived: true,
+        limit: 1000,
+      }),
+      client.conversations.list({
+        types: "mpim",
+        exclude_archived: true,
+        limit: 1000,
+      }),
+    ]);
+
+    const channels: SlackChannelShared[] = [];
+
+    if (publicChannels.ok && publicChannels.channels) {
+      for (const channel of publicChannels.channels) {
+        if (
+          channel.id &&
+          channel.name &&
+          (!isBotUser || channel.is_member)
+        ) {
+          channels.push({
+            id: channel.id,
+            name: channel.name,
+            isPrivate: false,
+            isArchived: channel.is_archived || false,
+            isMPIM: false,
+          });
+        }
+      }
+    }
+
+    if (privateChannels.ok && privateChannels.channels) {
+      for (const channel of privateChannels.channels) {
+        if (channel.id && channel.name) {
+          channels.push({
+            id: channel.id,
+            name: channel.name,
+            isPrivate: true,
+            isArchived: channel.is_archived || false,
+            isMPIM: false,
+          });
+        }
+      }
+    }
+
+    if (mpimChannels.ok && mpimChannels.channels) {
+      for (const channel of mpimChannels.channels) {
+        if (channel.id && channel.name) {
+          channels.push({
+            id: channel.id,
+            name: channel.name,
+            isPrivate: true,
+            isArchived: channel.is_archived || false,
+            isMPIM: true,
+          });
+        }
+      }
+    }
+
+    channels.sort((a, b) => a.name.localeCompare(b.name));
+
+    if (query) {
+      const normalizedQuery = query.trim().toLowerCase();
+      return channels.filter((channel) =>
+        channel.name.toLowerCase().includes(normalizedQuery),
+      );
+    }
+
+    return channels;
+  }
+
+  async fetchResourcesForUser(
+    userId: string,
+    query?: string,
+  ): Promise<
+    IntegrationWithResources<SlackIntegration, SlackChannelShared>[]
+  > {
+    const integrations = await this.getInstancesForUser(userId);
+    return Promise.all(
+      integrations.map(async (integration) => {
+        try {
+          const resources = await this.fetchResourcesForInstance(
+            userId,
+            integration.id,
+            query,
+          );
+          return { integration, resources };
+        } catch (error) {
+          logger.warn(
+            `Failed to fetch resources for Slack integration ${integration.id}`,
+            { error, integrationId: integration.id },
+          );
+          return { integration, resources: [] };
+        }
+      }),
+    );
+  }
 }
 
 // MARK: - SLACK Event
@@ -582,13 +715,6 @@ export class SlackEvent extends InputEvent implements Identifiable {
     // If text is empty but we have block/attachment content, note that
     const messageText = this.data.text || "(no plain text)";
 
-    // Note if images are present
-    const images = this.getImages();
-    const imageNote =
-      images.length > 0
-        ? `\n        Images: ${images.length} image(s) attached`
-        : "";
-
     return `
         Incoming Slack Message Event.
 
@@ -602,7 +728,7 @@ export class SlackEvent extends InputEvent implements Identifiable {
             ? `Thread: ${this.data.threadTimestamp}`
             : ""
         }
-        Team ID: ${this.data.teamId}${imageNote}
+        Team ID: ${this.data.teamId}
         ${
           blockContent
             ? `
@@ -636,20 +762,20 @@ export class SlackEvent extends InputEvent implements Identifiable {
   }
 
   /**
-   * Check if the message contains any images
+   * Get all stored files with full metadata (images, documents)
+   * Includes both private files cached in GCS and public block/attachment images
    */
-  hasImages(): boolean {
-    return this.getImages().length > 0;
-  }
-
-  /**
-   * Get all publicly accessible image URLs from the message
-   * Note: Excludes Slack file uploads which require authentication
-   */
-  getImageUrls(): string[] {
-    return this.getImages()
-      .filter((img) => !img.requiresAuth)
-      .map((img) => img.url);
+  getFiles(): StoredFile[] {
+    const files: StoredFile[] = [...(this.data.storedFiles || [])];
+    const publicImages = this.getImages().filter((img) => !img.requiresAuth);
+    for (const img of publicImages) {
+      files.push({
+        url: img.url,
+        mimeType: "image/png",
+        category: FileCategory.IMAGE,
+      });
+    }
+    return files;
   }
 
   debugLog(): string {
@@ -1118,6 +1244,14 @@ async function handleSlackMessage(
       }
     }
 
+    // Supports: images, PDFs
+    let storedFiles: StoredFile[] = [];
+    if (files && files.length > 0) {
+      const botToken =
+        filteredWorkspaceUserIntegrations[0].slack_integration.access_token;
+      storedFiles = await downloadSlackFiles(files, teamId, botToken);
+    }
+
     // Build SlackEventData with all available information
     const slackEventData: SlackEventData = {
       channelId: messageEvent.channel!,
@@ -1134,6 +1268,7 @@ async function handleSlackMessage(
       blocks: blocks,
       attachments: attachments,
       files: files,
+      storedFiles: storedFiles.length > 0 ? storedFiles : undefined,
     };
 
     // Create SlackEvent once
@@ -1143,71 +1278,65 @@ async function handleSlackMessage(
     // This ensures messages from any workspace user can trigger automations
     let totalMatches = 0;
     for (const userSlackIntegration of filteredWorkspaceUserIntegrations) {
-      const organizationId = userSlackIntegration.organization_id;
-      if (!organizationId) {
-        continue;
-      }
-      const user = await getUserForOrg(
-        userSlackIntegration.user.id,
-        organizationId,
-      );
-      if (!user) {
-        logger.error(`User not found for Slack integration`, {
-          userId: userSlackIntegration.user.id,
-        });
-        continue;
-      }
       try {
-        // Process with user context for logging
-        await runWithUserContext(user, async () => {
-            const eventProcessor = new EventProcessor(slackEvent, user);
-            const results = await eventProcessor.process();
+        const organizationId = userSlackIntegration.organization_id;
+        if (!organizationId) continue;
+        const fullUser = await getUserForOrg(
+          userSlackIntegration.user.id,
+          organizationId,
+        );
+        if (!fullUser) continue;
+        await runWithUserContext(fullUser, async () => {
+          const eventProcessor = new EventProcessor(slackEvent, fullUser);
+          const results = await eventProcessor.process();
 
-            // Log results for this user
-            if (
-              results.length > 0 &&
-              results.some((r) => r.success || r.agentConfig !== null)
-            ) {
-              totalMatches += results.filter(
-                (r) => r.success || r.agentConfig !== null,
-              ).length;
-              logger.info(
-                `User ${user.email}: ${results.length} automation(s) matched`,
-                {
-                  userId: userSlackIntegration.user.id,
-                  email: user.email,
-                  resultsCount: results.length,
-                  teamId,
-                },
-              );
-              for (const result of results) {
-                if (result.success) {
-                  logger.debug(
-                    `  ✓ Agent "${result.agentConfig?.name}" processed successfully`,
-                    {
-                      agentName: result.agentConfig?.name,
-                      userId: userSlackIntegration.user.id,
-                    },
-                  );
-                } else if (result.agentConfig) {
-                  logger.warn(
-                    `  ⚠ Agent "${result.agentConfig?.name}": ${result.message}`,
-                    {
-                      agentName: result.agentConfig?.name,
-                      message: result.message,
-                      userId: userSlackIntegration.user.id,
-                    },
-                  );
-                }
+          // Log results for this user
+          if (
+            results.length > 0 &&
+            results.some((r) => r.success || r.agentConfig !== null)
+          ) {
+            totalMatches += results.filter(
+              (r) => r.success || r.agentConfig !== null,
+            ).length;
+            logger.info(
+              `User ${fullUser.email}: ${results.length} automation(s) matched`,
+              {
+                userId: fullUser.id,
+                email: fullUser.email,
+                resultsCount: results.length,
+                teamId,
+              },
+            );
+            for (const result of results) {
+              if (result.success) {
+                logger.debug(
+                  `  ✓ Agent "${result.agentConfig?.name}" processed successfully`,
+                  {
+                    agentName: result.agentConfig?.name,
+                    userId: fullUser.id,
+                  },
+                );
+              } else if (result.agentConfig) {
+                logger.warn(
+                  `  ⚠ Agent "${result.agentConfig?.name}": ${result.message}`,
+                  {
+                    agentName: result.agentConfig?.name,
+                    message: result.message,
+                    userId: fullUser.id,
+                  },
+                );
               }
             }
-          });
-      } catch (error) {
-        logger.error(`Error processing automations for user ${user.email}`, {
-          error,
-          userId: userSlackIntegration.user.id,
-          email: user.email,
+          }
         });
+      } catch (error) {
+        logger.error(
+          `Error processing automations for user ${userSlackIntegration.user.id}`,
+          {
+            error,
+            userId: userSlackIntegration.user.id,
+          },
+        );
         // Continue processing other users even if one fails
       }
     }
@@ -1269,6 +1398,174 @@ export function initializeSlackWebClient(
   });
 }
 
+export async function downloadSlackFiles(
+  files: SlackFile[],
+  teamId: string,
+  botToken: string,
+): Promise<StoredFile[]> {
+  try {
+    const supportedFiles = filterSupportedSlackFiles(files);
+    if (supportedFiles.length === 0) return [];
+
+    // Check if bot has files:read permission before attempting downloads
+    const canReadFiles = await hasFilesReadScope(botToken);
+    if (!canReadFiles) {
+      logger.warn(
+        `Skipping file downloads - bot token is missing 'files:read' scope. ` +
+          `Users need to re-install the Slack app to grant file access.`,
+        { teamId, fileCount: supportedFiles.length },
+      );
+      return [];
+    }
+
+    const storedFiles = await Promise.all(
+      supportedFiles.map((file) =>
+        processSlackFile({ file, teamId, botToken }),
+      ),
+    );
+
+    return storedFiles.filter((f): f is StoredFile => f !== null);
+  } catch (error) {
+    // Don't let file download failures break the entire event
+    // This can happen e.g. when the user needs to reinstall their Slack app
+    logger.error(`Failed to download Slack files`, {
+      error,
+      teamId,
+      fileCount: files.length,
+    });
+    return [];
+  }
+}
+
+function filterSupportedSlackFiles(files: SlackFile[]): SlackFile[] {
+  return files.filter((file) => {
+    const mimetype = file.mimetype ?? "";
+    const filename = file.name ?? file.title ?? "";
+    return isSupportedFileType(mimetype, filename);
+  });
+}
+
+async function processSlackFile(args: {
+  file: SlackFile;
+  teamId: string;
+  botToken: string;
+}): Promise<StoredFile | null> {
+  const { file, teamId, botToken } = args;
+
+  try {
+    const downloadUrl = pickSlackFileUrl(file);
+    if (!downloadUrl) {
+      logger.warn(`No download URL found for Slack file`, {
+        fileId: file.id,
+        teamId,
+      });
+      return null;
+    }
+    const primaryKey = buildSlackFileKey(teamId, file.id);
+
+    const storedFile = await ensureStoredWithMetadata(
+      primaryKey,
+      async (): Promise<FileDownloadResult> => {
+        return downloadSlackFile({ downloadUrl, botToken, file });
+      },
+    );
+
+    if (storedFile) {
+      logger.debug(`✅ Stored Slack file in GCS`, {
+        teamId,
+        fileId: file.id,
+        filename: file.name || file.title,
+        category: storedFile.category,
+      });
+    }
+
+    return storedFile ?? null;
+  } catch (error) {
+    logger.error(`Error storing Slack file`, {
+      error,
+      teamId,
+      fileId: file.id,
+      filename: file.name || file.title,
+    });
+    return null;
+  }
+}
+
+/**
+ * Check if the bot token has the files:read scope required for downloading files.
+ * Uses auth.test API which returns scopes in response_metadata.
+ */
+async function hasFilesReadScope(botToken: string): Promise<boolean> {
+  try {
+    const client = new WebClient(botToken);
+    const authResult = await client.auth.test();
+
+    if (!authResult.ok) {
+      logger.warn("Bot token auth.test failed", { error: authResult.error });
+      return false;
+    }
+
+    // Scopes are returned in response_metadata.scopes as an array
+    const scopes = authResult.response_metadata?.scopes as string[] | undefined;
+    if (!scopes) {
+      logger.warn(
+        "Could not determine bot token scopes - response_metadata.scopes not present",
+      );
+      // Fall back to attempting the download (will be validated by isValidFileResponse)
+      return true;
+    }
+
+    const hasFilesRead = scopes.includes("files:read");
+    if (!hasFilesRead) {
+      logger.warn(
+        `Bot token is missing 'files:read' scope. Current scopes: ${scopes.join(
+          ", ",
+        )}. ` + `Users need to re-install the Slack app to grant file access.`,
+      );
+    }
+
+    return hasFilesRead;
+  } catch (error) {
+    logger.warn("Failed to check bot token scopes", { error });
+    return false;
+  }
+}
+
+async function downloadSlackFile(args: {
+  downloadUrl: string;
+  botToken: string;
+  file: SlackFile;
+}): Promise<FileDownloadResult> {
+  const { downloadUrl, botToken, file } = args;
+
+  const response = await fetch(downloadUrl, {
+    headers: { Authorization: `Bearer ${botToken}` },
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      `Failed to download Slack file: ${response.status} ${response.statusText}`,
+    );
+  }
+
+  const buffer = Buffer.from(await response.arrayBuffer());
+  const mimeType =
+    file.mimetype ||
+    response.headers.get("content-type") ||
+    "application/octet-stream";
+
+  const filename = file.name || file.title;
+
+  logger.debug(`Successfully downloaded Slack file`, {
+    fileId: file.id,
+    filename,
+    mimeType,
+    size: buffer.length,
+  });
+
+  return { data: buffer, mimeType, filename };
+}
+
 /**
  * Type for Slack API responses that follow the standard { ok: boolean; error?: string } pattern
  */
@@ -1316,6 +1613,7 @@ export interface SlackEventData {
   attachments?: SlackAttachment[];
   // File attachments (including images)
   files?: SlackFile[];
+  storedFiles?: StoredFile[];
 }
 
 /**

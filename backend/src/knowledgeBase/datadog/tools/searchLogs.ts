@@ -5,7 +5,7 @@ import logger from "../../../logger";
 import { getDatadogSite, getDatadogLogsDeepLink } from "../../../utility/datadog";
 import { IntegrationType } from "../../../shared/Integrations";
 import { RunHistoryActionType } from "@prisma/client";
-import { Session } from "../../../server";
+import { Session } from "../../../types/session";
 import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner";
 import { getDatadogCredentialsByIntegrationId } from "../datadogApiClient";
 import { ToolName } from "../../../tools/ToolNames";

@@ -31,7 +31,6 @@ export const notionOAuthCallback = async (req: Request, res: Response) => {
   await integration.processInstallationCallback(req, res);
 };
 
-// Search Notion pages and databases by title
 export const fetchNotionResources = async (
   organizationId: string,
   integrationId: string,
@@ -56,13 +55,7 @@ export const fetchNotionResources = async (
     throw new Error("Notion integration not found");
   }
 
-  const manager = new NotionIntegrationManager();
-  const accessToken = await manager.getAccessToken(integrationId);
-  if (!accessToken) {
-    throw new Error("Could not get valid access token");
-  }
-
-  const notionClient = new Client({ auth: accessToken });
+  const notionClient = new Client({ auth: integration.integration_token });
   const searchOptions: Parameters<typeof notionClient.search>[0] = {
     query: search,
     page_size: 100,
@@ -103,6 +96,10 @@ export const fetchNotionResources = async (
     resources = resources.sort((a, b) =>
       a.title.localeCompare(b.title, undefined, { sensitivity: "base" }),
     );
+  }
+
+  if (typeFilter) {
+    return { resources: resources.filter((r) => r.type === typeFilter) };
   }
 
   return { resources };

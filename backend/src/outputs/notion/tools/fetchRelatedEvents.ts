@@ -5,7 +5,7 @@ import { AttributionStore } from "../../../rag/AttributionStore";
 import logger from "../../../logger";
 import { IntegrationType } from "../../../shared/Integrations";
 import { RunHistoryActionType } from "@prisma/client";
-import { Session } from "../../../server";
+import { Session } from "../../../types/session";
 import { ToolName } from "../../../tools/ToolNames";
 
 /**

@@ -1,14 +1,14 @@
-import { resumeChatAgentAfterFormCompletion } from "../agent/ChatAgent/resumeChatAgentAfterFormCompletion";
-import { resumeChatAgentAfterOAuth } from "../agent/ChatAgent/resumeChatAgentAfterOAuth";
-import logger from "../logger";
-import { IntegrationType } from "../shared/Integrations";
-import { OAuthStatePayload } from "../utility/oauth";
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask";
 import { IntegrationFormCompletedTask } from "./IntegrationFormCompletedTask";
 import {
-  integrationFormTaskQueue,
   integrationTaskQueue,
+  integrationFormTaskQueue,
 } from "./IntegrationTaskQueues";
+import { resumeChatAgentAfterIntegration } from "../agent/ChatAgent/resumeChatAgentAfterIntegration";
+import logger from "../logger";
+import { IntegrationType } from "../shared/Integrations";
+import { OAuthStatePayload } from "../utility/oauth";
+import { trackIntegrationAdded } from "../utility/analytics";
 
 const INTEGRATION_COMPLETED_TASK_NAME = "INTEGRATION_COMPLETED_TASK" as const;
 const INTEGRATION_FORM_COMPLETED_TASK_NAME =
@@ -36,6 +36,11 @@ integrationTaskQueue.addListener({
   taskName: INTEGRATION_COMPLETED_TASK_NAME,
   onTask: async (task: IntegrationCompletedTask) => {
     try {
+      // Track integration added analytics event
+      trackIntegrationAdded(task.userId, {
+        integrationType: task.integrationType,
+      });
+
       // Check if this OAuth flow was initiated from ChatAgent
       if (hasChatMetadata(task.statePayload)) {
         logger.info(
@@ -49,20 +54,23 @@ integrationTaskQueue.addListener({
           },
         );
 
-        // Resume ChatAgent conversation asynchronously
-        await resumeChatAgentAfterOAuth(
-          task.userId,
-          task.statePayload.chatId!,
-          task.statePayload.channel!,
-          task.statePayload.integrationType as IntegrationType,
-          task.integrationId,
-          task.statePayload.messageTs,
-        );
-
-        logger.info("ChatAgent resumed after integration completion", {
-          integrationType: task.integrationType,
-          integrationId: task.integrationId,
-        });
+        // Resume ChatAgent conversation asynchronously (organization-scoped)
+        const organizationId = task.statePayload?.organizationId;
+        if (organizationId) {
+          await resumeChatAgentAfterIntegration(
+            task.userId,
+            organizationId,
+            task.statePayload.chatId!,
+            task.statePayload.channel!,
+            task.statePayload.integrationType as IntegrationType,
+            task.integrationId,
+            task.statePayload.messageTs,
+          );
+          logger.info("ChatAgent resumed after integration completion", {
+            integrationType: task.integrationType,
+            integrationId: task.integrationId,
+          });
+        }
       } else {
         logger.debug(
           "Integration completed without chat metadata (normal OAuth flow)",
@@ -95,26 +103,33 @@ integrationFormTaskQueue.addListener({
   taskName: INTEGRATION_FORM_COMPLETED_TASK_NAME,
   onTask: async (task: IntegrationFormCompletedTask) => {
     try {
+      // Track integration added analytics event
+      trackIntegrationAdded(task.userId, {
+        integrationType: task.integrationType,
+      });
+
       // Check if this form completion was initiated from ChatAgent
       if (hasChatMetadata(task.statePayload)) {
+        const channel = task.statePayload.channel!;
+        const chatId = task.statePayload.chatId!;
+
         logger.info(
           "Integration form completed with chat metadata, resuming ChatAgent",
           {
             integrationType: task.integrationType,
             integrationId: task.integrationId,
             userId: task.userId,
-            organizationId: task.organizationId,
-            chatId: task.statePayload.chatId,
-            channel: task.statePayload.channel,
+            chatId,
+            channel,
           },
         );
 
-        // Resume ChatAgent conversation asynchronously
-        await resumeChatAgentAfterFormCompletion(
+        // Resume ChatAgent conversation asynchronously (organization-scoped)
+        await resumeChatAgentAfterIntegration(
           task.userId,
           task.organizationId,
-          task.statePayload.chatId!,
-          task.statePayload.channel!,
+          chatId,
+          channel,
           task.statePayload.integrationType as IntegrationType,
           task.integrationId,
           task.statePayload.messageTs,
@@ -123,6 +138,7 @@ integrationFormTaskQueue.addListener({
         logger.info("ChatAgent resumed after integration form completion", {
           integrationType: task.integrationType,
           integrationId: task.integrationId,
+          channel,
         });
       } else {
         logger.debug(
@@ -141,7 +157,6 @@ integrationFormTaskQueue.addListener({
         integrationType: task.integrationType,
         integrationId: task.integrationId,
         userId: task.userId,
-        organizationId: task.organizationId,
       });
     }
   },

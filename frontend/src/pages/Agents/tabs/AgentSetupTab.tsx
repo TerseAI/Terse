@@ -25,7 +25,11 @@ import AgentNotificationSettings from "../AgentNotificationSettings";
 import AgentApprovalSettings from "../AgentApprovalSettings";
 import { InstructionsEditor } from "../components/InstructionsEditor";
 import { IconForConfigType } from "../components/Integration";
+import { BuilderChat } from "../../../components/chat/BuilderChat";
+import { useModelContext } from "../../../services/ModelContextProvider";
+import { AgentSetUpPageContext } from "../../../utility/AgentModelDonation";
 
+export type SetupSection = 'triggers' | 'knowledgeBase' | 'prompt' | 'skills' | 'alerts';
 export type AgentSetupTabProps = {
     agentId: string | null;
     name: string | null;
@@ -180,6 +184,7 @@ export default function AgentSetupTab({
 }: AgentSetupTabProps) {
     const { totalCount } = useAgentCount();
     const defaultName = getDefaultAgentName(totalCount);
+    const { getStateJSON, donate } = useModelContext();
 
     const agentInputs = inputs.map(toAgentTrigger).filter((i): i is AgentTrigger => i != null);
     const agentOutputs = outputs.map(toAgentOutput).filter((o): o is AgentOutput => o != null);
@@ -216,172 +221,182 @@ export default function AgentSetupTab({
             count: outputs.length,
         },
     ];
-
-    type SetupSection = 'triggers' | 'knowledgeBase' | 'prompt' | 'skills' | 'alerts';
     const [activeSection, setActiveSection] = useState<SetupSection>('triggers');
 
+    donate('Agent Set Up Page Context', new AgentSetUpPageContext(activeSection));
+
     return (
-        <div className="flex flex-col h-full min-h-0">
-            {/* Header */}
-            <div className="border-b border-border px-6 py-4">
-                <div className="flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-4 min-w-0">
-                        <EditableTextField
-                            className="text-lg font-medium"
-                            value={name || ''}
-                            placeholder={defaultName}
-                            onSave={(value) => setName(value)}
-                        />
-                    </div>
-                    <SaveAgentButton
-                        defaultName={defaultName}
-                        agentId={agentId}
-                        name={name}
-                        inputs={agentInputs}
-                        outputs={agentOutputs}
-                        knowledgeBases={agentKnowledgeBases}
-                        prompt={prompt}
-                        isActive={isActive}
-                        requireApproval={requireApproval}
-                        toolApprovals={toolApprovals}
-                        notificationSettings={notificationSettings}
-                        mutate={mutate}
-                    />
-                </div>
-            </div>
-
-            {/* Builder Steps - Horizontal flow */}
-            <div className="border-b border-border px-6 py-4 bg-muted/30">
-                <div className="flex items-center gap-2">
-                    {steps.map((step, index) => {
-                        const isActive = activeSection === step.id;
-                        const StepIcon = step.icon;
-
-                        return (
-                            <div key={step.id} className="flex items-center">
-                                <button
-                                    onClick={() => setActiveSection(step.id)}
-                                    className={cn(
-                                        "flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all",
-                                        isActive
-                                            ? "bg-background border border-border shadow-sm"
-                                            : "hover:bg-background/50",
-                                    )}
-                                >
-                                    <div className={cn(
-                                        "flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium transition-colors",
-                                        step.isComplete
-                                            ? "bg-foreground text-background"
-                                            : isActive
-                                                ? "bg-foreground/10 text-foreground border border-foreground/20"
-                                                : "bg-muted text-muted-foreground"
-                                    )}>
-                                        {step.isComplete ? (
-                                            <Check className="w-4 h-4" />
-                                        ) : (
-                                            <StepIcon className="w-4 h-4" />
-                                        )}
-                                    </div>
-                                    <div className="text-left">
-                                        <div className={cn(
-                                            "text-sm font-medium",
-                                            isActive ? "text-foreground" : "text-muted-foreground"
-                                        )}>
-                                            {step.label}
-                                            {step.count !== undefined && step.count > 0 && (
-                                                <span className="ml-1.5 text-xs text-muted-foreground">({step.count})</span>
-                                            )}
-                                        </div>
-                                        <div className="text-xs text-muted-foreground">{step.description}</div>
-                                    </div>
-                                </button>
-                                {index < steps.length - 1 && (
-                                    <ChevronRight className="w-4 h-4 text-muted-foreground/50 mx-1" />
-                                )}
-                            </div>
-                        );
-                    })}
-
-                    {/* Separator */}
-                    <div className="w-px h-8 bg-border mx-2" />
-
-                    {/* Optional sections */}
-                    <button
-                        onClick={() => setActiveSection('knowledgeBase')}
-                        className={cn(
-                            "flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all",
-                            activeSection === 'knowledgeBase'
-                                ? "bg-background border border-border shadow-sm text-foreground"
-                                : "text-muted-foreground hover:bg-background/50 hover:text-foreground",
-                        )}
-                    >
-                        <Database className="w-4 h-4" />
-                        <span>Knowledge</span>
-                        {knowledgeBases.length > 0 && (
-                            <Badge variant="secondary" className="ml-1 text-xs px-1.5 py-0">
-                                {knowledgeBases.length}
-                            </Badge>
-                        )}
-                    </button>
-                    <button
-                        onClick={() => setActiveSection('alerts')}
-                        className={cn(
-                            "flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all",
-                            activeSection === 'alerts'
-                                ? "bg-background border border-border shadow-sm text-foreground"
-                                : "text-muted-foreground hover:bg-background/50 hover:text-foreground",
-                        )}
-                    >
-                        <Bell className="w-4 h-4" />
-                        <span>Alerts</span>
-                    </button>
-                </div>
-            </div>
-
-            {/* Main Content */}
-            <div className="flex-1 min-h-0 overflow-y-auto">
-                <div className="p-6 max-w-4xl">
-                    <div className={activeSection === 'triggers' ? 'block' : 'hidden'}>
-                        <InputLayout inputs={inputs} setInputs={setInputs} isIncomplete={triggersIncomplete} />
-                    </div>
-
-                    <div className={activeSection === 'knowledgeBase' ? 'block' : 'hidden'}>
-                        <KnowledgeBaseLayout knowledgeBases={knowledgeBases} setKnowledgeBases={setKnowledgeBases} />
-                    </div>
-
-                    <div className={activeSection === 'prompt' ? 'block' : 'hidden'}>
-                        <div className="h-[calc(100vh-16rem)] min-h-[420px]">
-                            <InstructionsEditor
-                                prompt={prompt}
-                                setPrompt={setPrompt}
-                                agentInputs={agentInputs}
-                                agentOutputs={agentOutputs}
-                                knowledgeBases={agentKnowledgeBases}
-                                isIncomplete={promptIncomplete}
+        <div className="grid grid-cols-20 h-full">
+            <div className="flex flex-col h-full min-h-0 col-span-14">
+                {/* Header */}
+                <div className="border-b border-border px-6 py-4">
+                    <div className="flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-4 min-w-0">
+                            <EditableTextField
+                                className="text-lg font-medium"
+                                value={name || ''}
+                                placeholder={defaultName}
+                                onSave={(value) => setName(value)}
                             />
                         </div>
-                    </div>
-
-                    <div className={activeSection === 'skills' ? 'block' : 'hidden'}>
-                        <OutputLayout outputs={outputs} setOutputs={setOutputs} isIncomplete={skillsIncomplete} />
-                    </div>
-
-                    <div className={cn(activeSection === 'alerts' ? 'block' : 'hidden', 'space-y-6')}>
-                        <div>
-                            <h2 className="text-lg font-medium mb-1">Alerts & Approval</h2>
-                            <p className="text-sm text-muted-foreground mb-4">
-                                Configure when you want to be notified and whether actions need your approval.
-                            </p>
-                        </div>
-                        <AgentApprovalSettings
-                            outputs={outputs}
-                            knowledgeBases={knowledgeBases}
+                        <SaveAgentButton
+                            defaultName={defaultName}
+                            agentId={agentId}
+                            name={name}
+                            inputs={agentInputs}
+                            outputs={agentOutputs}
+                            knowledgeBases={agentKnowledgeBases}
+                            prompt={prompt}
+                            isActive={isActive}
+                            requireApproval={requireApproval}
                             toolApprovals={toolApprovals}
-                            onToolApprovalsChange={setToolApprovals}
+                            notificationSettings={notificationSettings}
+                            mutate={mutate}
                         />
-                        <AgentNotificationSettings settings={notificationSettings} onChange={setNotificationSettings} />
                     </div>
                 </div>
+
+                {/* Builder Steps - Horizontal flow */}
+                <div className="border-b border-border px-6 py-4 bg-muted/30">
+                    <div className="flex items-center gap-2">
+                        {steps.map((step, index) => {
+                            const isActive = activeSection === step.id;
+                            const StepIcon = step.icon;
+
+                            return (
+                                <div key={step.id} className="flex items-center">
+                                    <button
+                                        onClick={() => setActiveSection(step.id)}
+                                        className={cn(
+                                            "flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all",
+                                            isActive
+                                                ? "bg-background border border-border shadow-sm"
+                                                : "hover:bg-background/50",
+                                        )}
+                                    >
+                                        <div className={cn(
+                                            "flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium transition-colors",
+                                            step.isComplete
+                                                ? "bg-foreground text-background"
+                                                : isActive
+                                                    ? "bg-foreground/10 text-foreground border border-foreground/20"
+                                                    : "bg-muted text-muted-foreground"
+                                        )}>
+                                            {step.isComplete ? (
+                                                <Check className="w-4 h-4" />
+                                            ) : (
+                                                <StepIcon className="w-4 h-4" />
+                                            )}
+                                        </div>
+                                        <div className="text-left">
+                                            <div className={cn(
+                                                "text-sm font-medium",
+                                                isActive ? "text-foreground" : "text-muted-foreground"
+                                            )}>
+                                                {step.label}
+                                                {step.count !== undefined && step.count > 0 && (
+                                                    <span className="ml-1.5 text-xs text-muted-foreground">({step.count})</span>
+                                                )}
+                                            </div>
+                                            <div className="text-xs text-muted-foreground">{step.description}</div>
+                                        </div>
+                                    </button>
+                                    {index < steps.length - 1 && (
+                                        <ChevronRight className="w-4 h-4 text-muted-foreground/50 mx-1" />
+                                    )}
+                                </div>
+                            );
+                        })}
+
+                        {/* Separator */}
+                        <div className="w-px h-8 bg-border mx-2" />
+
+                        {/* Optional sections */}
+                        <button
+                            onClick={() => setActiveSection('knowledgeBase')}
+                            className={cn(
+                                "flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all",
+                                activeSection === 'knowledgeBase'
+                                    ? "bg-background border border-border shadow-sm text-foreground"
+                                    : "text-muted-foreground hover:bg-background/50 hover:text-foreground",
+                            )}
+                        >
+                            <Database className="w-4 h-4" />
+                            <span>Knowledge</span>
+                            {knowledgeBases.length > 0 && (
+                                <Badge variant="secondary" className="ml-1 text-xs px-1.5 py-0">
+                                    {knowledgeBases.length}
+                                </Badge>
+                            )}
+                        </button>
+                        <button
+                            onClick={() => setActiveSection('alerts')}
+                            className={cn(
+                                "flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all",
+                                activeSection === 'alerts'
+                                    ? "bg-background border border-border shadow-sm text-foreground"
+                                    : "text-muted-foreground hover:bg-background/50 hover:text-foreground",
+                            )}
+                        >
+                            <Bell className="w-4 h-4" />
+                            <span>Alerts</span>
+                        </button>
+                    </div>
+                </div>
+
+                {/* Main Content */}
+                <div className="flex-1 min-h-0 overflow-y-auto">
+                    <div className="p-6 max-w-4xl">
+                        <div className={activeSection === 'triggers' ? 'block' : 'hidden'}>
+                            <InputLayout inputs={inputs} setInputs={setInputs} isIncomplete={triggersIncomplete} />
+                        </div>
+
+                        <div className={activeSection === 'knowledgeBase' ? 'block' : 'hidden'}>
+                            <KnowledgeBaseLayout knowledgeBases={knowledgeBases} setKnowledgeBases={setKnowledgeBases} />
+                        </div>
+
+                        <div className={activeSection === 'prompt' ? 'block' : 'hidden'}>
+                            <div className="h-[calc(100vh-16rem)] min-h-[420px]">
+                                <InstructionsEditor
+                                    prompt={prompt}
+                                    setPrompt={setPrompt}
+                                    agentInputs={agentInputs}
+                                    agentOutputs={agentOutputs}
+                                    knowledgeBases={agentKnowledgeBases}
+                                    isIncomplete={promptIncomplete}
+                                />
+                            </div>
+                        </div>
+
+                        <div className={activeSection === 'skills' ? 'block' : 'hidden'}>
+                            <OutputLayout outputs={outputs} setOutputs={setOutputs} isIncomplete={skillsIncomplete} />
+                        </div>
+
+                        <div className={cn(activeSection === 'alerts' ? 'block' : 'hidden', 'space-y-6')}>
+                            <div>
+                                <h2 className="text-lg font-medium mb-1">Alerts & Approval</h2>
+                                <p className="text-sm text-muted-foreground mb-4">
+                                    Configure when you want to be notified and whether actions need your approval.
+                                </p>
+                            </div>
+                            <AgentApprovalSettings
+                                outputs={outputs}
+                                knowledgeBases={knowledgeBases}
+                                toolApprovals={toolApprovals}
+                                onToolApprovalsChange={setToolApprovals}
+                            />
+                            <AgentNotificationSettings settings={notificationSettings} onChange={setNotificationSettings} />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Builder Chat */}
+            <div className="border-l border-border col-span-6 h-full min-h-0">
+                <BuilderChat 
+                    getStateJSON={() => getStateJSON()} 
+                    agentId={agentId}
+                />
             </div>
         </div>
     )

@@ -1,7 +1,7 @@
 import { Agent, AgentInputItem, run, StreamedRunResult, AgentOutputType } from '@openai/agents';
 import { InputEvent } from "../../integrations/abstract/InputEvent";
 import { AgentPrompt } from "../../types/prisma";
-import { Session } from "../../server";
+import { Session } from "../../types/session";
 import { transformAgentStreamToModelEvents } from '../streaming';
 import { z } from "zod";
 import type { RunHistoryStreamingParams, RunHistoryModelEvent, RunHistoryModelSocketEvent } from '../../shared/RunHistoryTypes';
@@ -150,7 +150,7 @@ export async function filterEvent(
             throw new Error('Filter agent requested tool approval, which is not supported for event filtering.');
         }
 
-        // Handle streaming and channel management if streamingParams are provided
+        // Handle streaming and channel management if streamingParams are provided (organization-scoped)
         if (streamingParams?.runId && streamingParams?.organizationId && streamingParams?.agentId) {
             const io = getRealtimeSocket();
             const orgRoom = SocketRooms.organization(streamingParams.organizationId);
@@ -208,7 +208,7 @@ export async function filterEvent(
 
             const io = getRealtimeSocket();
             if (io) {
-                const orgRoom = SocketRooms.organization(streamingParams.organizationId);
+                const orgRoom = SocketRooms.organization(streamingParams.organizationId!);
                 const runHistoryModelEvent: RunHistoryModelEvent = {
                     ...filterResultEvent,
                     id: filterEventId,

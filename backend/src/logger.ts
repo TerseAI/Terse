@@ -170,24 +170,27 @@ class Logger {
     const colorFn = levelColors[upperLevel] || chalk.white;
     const levelTag = colorFn(`[${upperLevel}]`);
 
-    // Format attributes for console output if present
-    let attributesStr = "";
-    if (attributes && Object.keys(attributes).length > 0) {
-      const formattedAttrs = Object.entries(attributes)
-        .filter(([_, v]) => v !== undefined && v !== null)
-        .map(([k, v]) => {
-          const value = typeof v === "object" ? JSON.stringify(v) : v;
-          return `${chalk.cyan(k)}=${value}`;
-        })
-        .join(" ");
-      if (formattedAttrs) {
-        attributesStr = ` ${chalk.dim("{")} ${formattedAttrs} ${chalk.dim(
-          "}",
-        )}`;
-      }
+    if (
+      upperLevel === "ERROR" ||
+      upperLevel === "FATAL" ||
+      upperLevel === "WARN"
+    ) {
+      console.log(
+        `${chalk.dim(time)} ${levelTag} ${message}, ${JSON.stringify(
+          attributes,
+          null,
+          2,
+        )}`,
+      );
+    } else {
+      console.log(
+        `${chalk.dim(time)} ${levelTag} ${message}, ${JSON.stringify(
+          attributes,
+          null,
+          2,
+        )}`,
+      );
     }
-
-    console.log(`${chalk.dim(time)} ${levelTag} ${message}${attributesStr}`);
   }
 
   private emitToPostHog(

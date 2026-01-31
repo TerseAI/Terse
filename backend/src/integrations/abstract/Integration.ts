@@ -9,11 +9,17 @@ import {
 import { OAuthInstallationDetails } from "../../shared/types";
 import { AgentTriggerWithConfigs } from "../../types/prisma";
 
+export interface IntegrationWithResources<T extends IntegrationInstance, R> {
+  integration: T;
+  resources: R[];
+}
+
 // This ensures T is a valid Prisma model type
 export interface Integration<
   T extends IntegrationInstance,
   W,
   M extends IntegrationDetails,
+  R,
 > {
   integrationType: IntegrationType;
   getInstancesForUser(userId: string): Promise<T[]>;
@@ -30,6 +36,15 @@ export interface Integration<
     integrationId: string,
     agentTrigger: AgentTriggerWithConfigs,
   ): Promise<void>;
+  fetchResourcesForInstance?(
+    userId: string,
+    integrationId: string,
+    query?: string,
+  ): Promise<R[]>;
+  fetchResourcesForUser?(
+    userId: string,
+    query?: string,
+  ): Promise<IntegrationWithResources<T, R>[]>;
 }
 
 export type FormFieldType = "text" | "password" | "textarea";
