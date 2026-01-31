@@ -1,17 +1,25 @@
 import { useState } from "react";
 import { ChevronRightIcon } from '@heroicons/react/24/outline';
 import { FunctionCallEvent } from "./Turn";
+import FunctionCallItem from "./FunctionCallItem";
 
 interface ToolCallsSummaryProps {
     calls: FunctionCallEvent[];
+    isTurnFailure?: boolean;
+    onApprove?: (stepId: string) => void;
+    onReject?: (stepId: string) => void;
 }
 
-export default function ToolCallsSummary({ calls }: ToolCallsSummaryProps) {
+export default function ToolCallsSummary({ calls, isTurnFailure = false, onApprove, onReject }: ToolCallsSummaryProps) {
     const [isExpanded, setIsExpanded] = useState(false);
 
     if (calls.length === 0) return null;
 
     const isAnyRunning = calls.some(c => c.isRunning);
+    const hasAnyWaitingForApproval = calls.some(c => c.isWaitingForApproval && !c.isRejected);
+
+    // Auto-expand if any call is waiting for approval
+    const shouldShowExpanded = isExpanded || hasAnyWaitingForApproval;
 
     return (
         <div className="w-fit">
@@ -20,7 +28,7 @@ export default function ToolCallsSummary({ calls }: ToolCallsSummaryProps) {
                 className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors py-1"
             >
                 <ChevronRightIcon
-                    className={`w-3 h-3 transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`}
+                    className={`w-3 h-3 transition-transform duration-200 ${shouldShowExpanded ? 'rotate-90' : ''}`}
                 />
                 {isAnyRunning ? (
                     <svg className="animate-spin w-3 h-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -30,15 +38,23 @@ export default function ToolCallsSummary({ calls }: ToolCallsSummaryProps) {
                 ) : null}
                 <span>
                     {calls.length} tool call{calls.length !== 1 ? 's' : ''}
+                    {hasAnyWaitingForApproval && (
+                        <span className="text-yellow-500 ml-1">(approval needed)</span>
+                    )}
                 </span>
             </button>
 
-            {isExpanded && (
-                <div className="ml-4 mt-1 text-xs text-muted-foreground space-y-0.5">
+            {shouldShowExpanded && (
+                <div className="ml-4 mt-2 space-y-2">
                     {calls.map((call, index) => (
-                        <div key={index} className="font-mono">
-                            {call.name}
-                        </div>
+                        <FunctionCallItem
+                            key={`${call.id}-${index}`}
+                            call={call}
+                            index={index}
+                            isTurnFailure={isTurnFailure}
+                            onApprove={onApprove}
+                            onReject={onReject}
+                        />
                     ))}
                 </div>
             )}
