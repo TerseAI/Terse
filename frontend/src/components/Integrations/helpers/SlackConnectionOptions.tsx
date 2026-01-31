@@ -43,7 +43,7 @@ export function SlackConnectionOptions({
                         <RadioGroupItem value="botUser" id="botUser" className="mt-0.5" />
                         <Label htmlFor="botUser" className="text-sm">
                             <span>A Bot User - </span>
-                            <span className="italic">Access is limited to channels you invite the bot to.</span>
+                            <span className="italic">You'll need to add the bot to each channel with <code className="px-1 py-0.5 bg-muted rounded text-xs not-italic">/invite @Terse</code></span>
                         </Label>
                     </div>
                     <div className="flex items-start space-x-2">
