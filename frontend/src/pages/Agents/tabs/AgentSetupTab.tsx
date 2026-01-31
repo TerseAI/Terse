@@ -478,6 +478,7 @@ function InputCard({ input, inputs, setInputs, handleRemove }: { input: Transien
         input: draftInput,
         setConfig: setDraftConfig,
         variant: "card",
+        disableManualTrigger: true,
     };
 
     return (
@@ -520,7 +521,7 @@ function InputCard({ input, inputs, setInputs, handleRemove }: { input: Transien
                     <DialogHeader>
                         <DialogTitle>{needsConfiguration ? "Configure Trigger" : "Trigger Details"}</DialogTitle>
                     </DialogHeader>
-                    <IntegrationSelector {...selectorProps} variant="dialog" />
+                    <IntegrationSelector {...selectorProps} variant="dialog" disableManualTrigger={true} />
                     <DialogFooter>
                         <Button variant="outline" onClick={handleCancel}>Cancel</Button>
                         <Button onClick={handleDone} disabled={!isDraftValid}>Done</Button>
