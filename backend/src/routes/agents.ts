@@ -15,6 +15,7 @@ import { agentDetailKey } from "../shared/InvalidationKeys";
 import logger from "../logger";
 import { KnowledgeBaseFactory } from "../knowledgeBase/abstract/KnowledgeBaseFactory";
 import { isValidToolName } from "../tools/ToolNames";
+import { trackAgentCreated } from "../utility/analytics";
 
 export type AgentDraft = Omit<Agent, "id"> & { id?: string };
 
@@ -275,6 +276,16 @@ export async function applyAgentForUser(userId: string, draft: AgentDraft): Prom
 
     // Invalidate recent agents cache
     emitCacheInvalidationWithKey(userId, 'recentAgents');
+
+    // Track agent created analytics event
+    trackAgentCreated(userId, {
+        agentId: agent.id,
+        agentName: name,
+        triggerCount: triggers.length,
+        outputCount: outputs.length,
+        knowledgeBaseCount: knowledgeBases?.length || 0,
+        requiresApproval: requireApproval,
+    });
 
     return { id: agent.id };
 }
