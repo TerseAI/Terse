@@ -56,11 +56,12 @@ export function SnippetView({ snippet }: { snippet: ChatSnippet }) {
         }
 
         return (
-            <div className="max-w-sm">
-                <IntegrationCard 
-                    integration={integrationType} 
-                    isActive={false} 
+            <div className="max-w-64">
+                <IntegrationCard
+                    integration={integrationType}
+                    isActive={false}
                     stateToken={snippet.stateToken}
+                    compact
                 />
                 {snippet.message && (
                     <div className="mt-2 text-sm text-gray-300">{snippet.message}</div>

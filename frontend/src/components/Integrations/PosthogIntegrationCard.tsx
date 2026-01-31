@@ -13,8 +13,8 @@ import { Tooltip, TooltipTrigger, TooltipContent } from "../ui/tooltip";
 import { useState } from "react";
 import { BackendProvider } from "@/services/backend";
 
-function PosthogIntegrationCard({ className, isActive = true, stateToken }: { className?: string; isActive?: boolean; stateToken?: string }) {
-    const { integrations, isLoading, mutate } = usePosthogIntegrations(); 
+function PosthogIntegrationCard({ className, isActive = true, stateToken, compact = false }: { className?: string; isActive?: boolean; stateToken?: string; compact?: boolean }) {
+    const { integrations, isLoading, mutate } = usePosthogIntegrations();
     const [showForm, setShowForm] = useState(false);
     const [apiKey, setApiKey] = useState("");
     const [showApiKey, setShowApiKey] = useState(false);
@@ -51,27 +51,29 @@ function PosthogIntegrationCard({ className, isActive = true, stateToken }: { cl
 
     return (
         <Card className={cn(className)}>
-            <IntegrationCardHeader integration={IntegrationType.POSTHOG} isActive={isActive} />
-            <CardContent>
-                {showForm ? (
-                    <PosthogForm
-                        apiKey={apiKey}
-                        setApiKey={setApiKey}
-                        showApiKey={showApiKey}
-                        setShowApiKey={setShowApiKey}
-                        onSubmit={handleSubmit}
-                        onCancel={handleCancel}
-                        isSubmitting={isSubmitting}
-                        error={error}
-                    />
-                ) : (
-                    <PosthogCardContent integrations={integrations} isLoading={isLoading} />
-                )}
-            </CardContent>
-            <CardFooter>
+            <IntegrationCardHeader integration={IntegrationType.POSTHOG} isActive={isActive} compact={compact} />
+            {!compact && (
+                <CardContent>
+                    {showForm ? (
+                        <PosthogForm
+                            apiKey={apiKey}
+                            setApiKey={setApiKey}
+                            showApiKey={showApiKey}
+                            setShowApiKey={setShowApiKey}
+                            onSubmit={handleSubmit}
+                            onCancel={handleCancel}
+                            isSubmitting={isSubmitting}
+                            error={error}
+                        />
+                    ) : (
+                        <PosthogCardContent integrations={integrations} isLoading={isLoading} />
+                    )}
+                </CardContent>
+            )}
+            <CardFooter className={cn(compact && "py-3 px-4")}>
                 {!showForm && (
-                    <Button variant="outline" onClick={handleConnect}>
-                        {integrations.length > 0 ? "Update" : "Connect"}
+                    <Button variant="outline" size={compact ? "sm" : "default"} onClick={handleConnect}>
+                        {compact ? "Connect" : (integrations.length > 0 ? "Update" : "Connect")}
                     </Button>
                 )}
             </CardFooter>

@@ -9,17 +9,19 @@ import { useFigmaIntegrations } from "@/hooks/api/useFigmaIntegrations";
 import { Skeleton } from "../ui/skeleton";
 import { Palette } from "lucide-react";
 
-function FigmaIntegrationCard({ className, isActive = true, stateToken }: { className?: string; isActive?: boolean; stateToken?: string }) {
+function FigmaIntegrationCard({ className, isActive = true, stateToken, compact = false }: { className?: string; isActive?: boolean; stateToken?: string; compact?: boolean }) {
     const { connect, isConnecting } = useOAuthConnection<IntegrationType.FIGMA>(IntegrationType.FIGMA, {}, stateToken);
-    const { integrations, isLoading } = useFigmaIntegrations(); 
+    const { integrations, isLoading } = useFigmaIntegrations();
 
     return (
         <Card className={cn(className)}>
-            <IntegrationCardHeader integration={IntegrationType.FIGMA} isActive={isActive} />
-            <CardContent>
-                <FigmaCardContent integrations={integrations} isLoading={isLoading} />
-            </CardContent>
-            <IntegrationCardFooter connect={connect} isConnecting={isConnecting} />
+            <IntegrationCardHeader integration={IntegrationType.FIGMA} isActive={isActive} compact={compact} />
+            {!compact && (
+                <CardContent>
+                    <FigmaCardContent integrations={integrations} isLoading={isLoading} />
+                </CardContent>
+            )}
+            <IntegrationCardFooter connect={connect} isConnecting={isConnecting} compact={compact} />
         </Card>
     )
 }

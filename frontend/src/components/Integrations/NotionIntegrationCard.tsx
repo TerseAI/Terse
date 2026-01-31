@@ -9,20 +9,22 @@ import { useNotionIntegrations } from "@/hooks/api/useNotionIntegrations";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "../ui/skeleton";
 
-function NotionIntegrationCard({ className, isActive = true, stateToken }: { className?: string; isActive?: boolean; stateToken?: string }) {
+function NotionIntegrationCard({ className, isActive = true, stateToken, compact = false }: { className?: string; isActive?: boolean; stateToken?: string; compact?: boolean }) {
     const { connect, isConnecting } = useOAuthConnection<IntegrationType.NOTION>(IntegrationType.NOTION, {}, stateToken);
     const { integrations, isLoading: integrationsLoading } = useNotionIntegrations();
 
     return (
         <Card className={cn(className)}>
-            <IntegrationCardHeader integration={IntegrationType.NOTION} isActive={isActive} />
-            <CardContent>
-                <NotionCardContent 
-                    integrations={integrations} 
-                    isLoading={integrationsLoading} 
-                />
-            </CardContent>
-            <IntegrationCardFooter connect={connect} isConnecting={isConnecting} />
+            <IntegrationCardHeader integration={IntegrationType.NOTION} isActive={isActive} compact={compact} />
+            {!compact && (
+                <CardContent>
+                    <NotionCardContent
+                        integrations={integrations}
+                        isLoading={integrationsLoading}
+                    />
+                </CardContent>
+            )}
+            <IntegrationCardFooter connect={connect} isConnecting={isConnecting} compact={compact} />
         </Card>
     )
 }
