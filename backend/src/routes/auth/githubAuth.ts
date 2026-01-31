@@ -89,7 +89,7 @@ export async function githubCallback(req: Request, res: Response) {
         }
         if (!user) {
             // Create new user with GitHub username
-            user = await createUser(name, email, githubUsername);
+            user = await createUser(name, email, githubUsername, 'github');
         } else if (user.github_username !== githubUsername) {
             // Update existing user's GitHub username if it's different
             await updateUserGitHubUsername(user.id, githubUsername);
