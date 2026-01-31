@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown } from 'lucide-react';
 import { AwaitingResponseAnimation } from './AwaitingResponseAnimation';
 import { type Turn, TurnView } from './Turn';
-import ChatInput from './ChatInput';
+import ChatInput, { type ChatInputHandle } from './ChatInput';
 import { type ModelRequest } from '../../shared/ModelEvents';
 
 interface ChatLayoutProps {
@@ -23,6 +23,7 @@ interface ChatLayoutProps {
 
 export interface ChatLayoutHandle {
     scrollToBottom: () => void;
+    focus: () => void;
 }
 
 export const ChatLayout = forwardRef<ChatLayoutHandle, ChatLayoutProps>(function ChatLayout({
@@ -43,6 +44,7 @@ export const ChatLayout = forwardRef<ChatLayoutHandle, ChatLayoutProps>(function
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const contentRef = useRef<HTMLDivElement>(null);
     const isNearBottomRef = useRef(true);
+    const chatInputRef = useRef<ChatInputHandle>(null);
 
     // Check if user is near the bottom and update state accordingly
     const checkScrollPosition = () => {
@@ -89,11 +91,14 @@ export const ChatLayout = forwardRef<ChatLayoutHandle, ChatLayoutProps>(function
         };
     }, []);
 
-    // Expose scrollToBottom to parent via ref (instant scroll for programmatic calls)
+    // Expose scrollToBottom and focus to parent via ref
     useImperativeHandle(ref, () => ({
         scrollToBottom: () => {
             messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
-        }
+        },
+        focus: () => {
+            chatInputRef.current?.focus();
+        },
     }));
 
     // Smooth scroll for button click
@@ -153,6 +158,7 @@ export const ChatLayout = forwardRef<ChatLayoutHandle, ChatLayoutProps>(function
 
             <div className="flex-shrink-0">
                 <ChatInput
+                    ref={chatInputRef}
                     sendMessage={onSendMessage}
                     input={input}
                     setInput={setInput}
