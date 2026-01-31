@@ -4,6 +4,7 @@ import { IntegrationType, SlackIntegration } from "@/shared/Integrations"
 import { IntegrationCardHeader } from "./helpers/IntegrationCardHeader";
 import { IntegrationCardFooter } from "./helpers/IntegrationCardFooter";
 import { IntegrationItem } from "./helpers/IntegrationItem";
+import { CompactIntegrationRow } from "./CompactIntegrationRow";
 import { CountDisplay } from "./helpers/CountDisplay";
 import { useSlackChannels } from "@/hooks/api/useSlackChannels";
 import { useSlackIntegrations } from "@/hooks/api/useSlackIntegrations";
@@ -45,33 +46,46 @@ function SlackIntegrationCard({ className, isActive = true, stateToken, compact 
         }
     }
 
+    const isConnected = integrations.length > 0;
+    const summary = integrations[0]?.teamName;
+
+    if (compact) {
+        return (
+            <CompactIntegrationRow
+                integration={IntegrationType.SLACK}
+                isConnected={isConnected}
+                summary={summary}
+                connect={handleConnectClick}
+                isConnecting={isConnecting}
+                className={className}
+            />
+        );
+    }
+
     return (
         <Card className={cn(className)}>
-            <IntegrationCardHeader integration={IntegrationType.SLACK} isActive={isActive} compact={compact} />
-            {!compact && (
-                <CardContent>
-                    {showConnectionOptions ? (
-                        <SlackConnectionOptions
-                            isBotUser={isBotUser}
-                            setIsBotUser={setIsBotUser}
-                            onBack={handleBack}
-                            onConnect={connect}
-                            isConnecting={isConnecting}
-                        />
-                    ) : (
-                        <SlackCardContent
-                            integrations={integrations}
-                            isLoading={integrationsLoading}
-                        />
-                    )}
-                </CardContent>
-            )}
+            <IntegrationCardHeader integration={IntegrationType.SLACK} isActive={isActive} />
+            <CardContent>
+                {showConnectionOptions ? (
+                    <SlackConnectionOptions
+                        isBotUser={isBotUser}
+                        setIsBotUser={setIsBotUser}
+                        onBack={handleBack}
+                        onConnect={connect}
+                        isConnecting={isConnecting}
+                    />
+                ) : (
+                    <SlackCardContent
+                        integrations={integrations}
+                        isLoading={integrationsLoading}
+                    />
+                )}
+            </CardContent>
             {!showConnectionOptions && (
                 <IntegrationCardFooter
                     connect={handleConnectClick}
                     isConnecting={isConnecting}
                     buttonText="Connect Another Slack"
-                    compact={compact}
                 />
             )}
         </Card>

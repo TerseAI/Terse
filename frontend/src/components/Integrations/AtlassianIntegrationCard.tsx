@@ -3,6 +3,7 @@ import { IntegrationType } from "@/shared/Integrations"
 import { IntegrationCardHeader } from "./helpers/IntegrationCardHeader";
 import { IntegrationCardFooter } from "./helpers/IntegrationCardFooter";
 import { IntegrationItem } from "./helpers/IntegrationItem";
+import { CompactIntegrationRow } from "./CompactIntegrationRow";
 import { useOAuthConnection } from "@/hooks/useOAuthConnection";
 import { cn } from "@/lib/utils";
 import { useAtlassianIntegrations } from "@/hooks/api/useAtlassianIntegrations";
@@ -13,15 +14,29 @@ function AtlassianIntegrationCard({ className, isActive = true, stateToken, comp
     const { connect, isConnecting } = useOAuthConnection<IntegrationType.ATLASSIAN>(IntegrationType.ATLASSIAN, {}, stateToken);
     const { integrations, isLoading } = useAtlassianIntegrations();
 
+    const isConnected = integrations.length > 0;
+    const summary = integrations[0]?.baseUrl || integrations[0]?.email;
+
+    if (compact) {
+        return (
+            <CompactIntegrationRow
+                integration={IntegrationType.ATLASSIAN}
+                isConnected={isConnected}
+                summary={summary}
+                connect={connect}
+                isConnecting={isConnecting}
+                className={className}
+            />
+        );
+    }
+
     return (
         <Card className={cn(className)}>
-            <IntegrationCardHeader integration={IntegrationType.ATLASSIAN} isActive={isActive} compact={compact} />
-            {!compact && (
-                <CardContent>
-                    <AtlassianCardContent integrations={integrations} isLoading={isLoading} />
-                </CardContent>
-            )}
-            <IntegrationCardFooter connect={connect} isConnecting={isConnecting} compact={compact} />
+            <IntegrationCardHeader integration={IntegrationType.ATLASSIAN} isActive={isActive} />
+            <CardContent>
+                <AtlassianCardContent integrations={integrations} isLoading={isLoading} />
+            </CardContent>
+            <IntegrationCardFooter connect={connect} isConnecting={isConnecting} />
         </Card>
     )
 }

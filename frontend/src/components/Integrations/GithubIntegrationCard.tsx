@@ -10,6 +10,7 @@ import {
 import { IntegrationType } from "@/shared/Integrations"
 import { IntegrationCardHeader } from "./helpers/IntegrationCardHeader";
 import { IntegrationCardFooter } from "./helpers/IntegrationCardFooter";
+import { CompactIntegrationRow } from "./CompactIntegrationRow";
 import { useOAuthConnection } from "@/hooks/useOAuthConnection";
 import { cn } from "@/lib/utils";
 import { ExternalLink, Github } from "lucide-react";
@@ -54,44 +55,58 @@ function GithubIntegrationCard({ className, isActive = true, stateToken, compact
         }
     };
 
+    const isConnected = integrations.length > 0;
+    const summary = integrations[0]?.account_name || (repositories.length > 0 ? `${repositories.length} repositories` : undefined);
+
+    if (compact) {
+        return (
+            <CompactIntegrationRow
+                integration={IntegrationType.GITHUB}
+                isConnected={isConnected}
+                summary={summary}
+                connect={connect}
+                isConnecting={isConnecting}
+                className={className}
+            />
+        );
+    }
+
     return (
         <>
             <Card className={cn(className)}>
-                <IntegrationCardHeader integration={IntegrationType.GITHUB} isActive={isActive} compact={compact} />
-                {!compact && (
-                    <CardContent>
-                        {isLoadingIntegrations ? (
-                            <div className="space-y-3">
-                                <Skeleton className="h-12 w-full" />
-                                <Skeleton className="h-12 w-full" />
-                            </div>
-                        ) : integrations.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center py-8 px-4 text-center">
-                                <Github className="w-10 h-10 text-muted-foreground/50 mb-3" />
-                                <p className="text-sm text-muted-foreground">No GitHub integration connected</p>
-                                <p className="text-xs text-muted-foreground/70 mt-1">Connect your GitHub account to get started</p>
-                            </div>
-                        ) : (
-                            <>
-                                <div className="mb-4">
-                                    <label className="text-sm font-medium mb-1.5 block">Connection</label>
-                                    <DropdownSelect
-                                        statusOptions={connectionSelections}
-                                        selectedOption={selectedOption}
-                                        setSelected={handleInstallationChange}
-                                        placeholder="No connection selected"
-                                    />
-                                </div>
-                                <GithubCardContent
-                                    repositories={repositories}
-                                    isLoading={isLoadingRepositories}
-                                    onViewAll={() => setIsDialogOpen(true)}
+                <IntegrationCardHeader integration={IntegrationType.GITHUB} isActive={isActive} />
+                <CardContent>
+                    {isLoadingIntegrations ? (
+                        <div className="space-y-3">
+                            <Skeleton className="h-12 w-full" />
+                            <Skeleton className="h-12 w-full" />
+                        </div>
+                    ) : integrations.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-8 px-4 text-center">
+                            <Github className="w-10 h-10 text-muted-foreground/50 mb-3" />
+                            <p className="text-sm text-muted-foreground">No GitHub integration connected</p>
+                            <p className="text-xs text-muted-foreground/70 mt-1">Connect your GitHub account to get started</p>
+                        </div>
+                    ) : (
+                        <>
+                            <div className="mb-4">
+                                <label className="text-sm font-medium mb-1.5 block">Connection</label>
+                                <DropdownSelect
+                                    statusOptions={connectionSelections}
+                                    selectedOption={selectedOption}
+                                    setSelected={handleInstallationChange}
+                                    placeholder="No connection selected"
                                 />
-                            </>
-                        )}
-                    </CardContent>
-                )}
-                <IntegrationCardFooter connect={connect} isConnecting={isConnecting} compact={compact} />
+                            </div>
+                            <GithubCardContent
+                                repositories={repositories}
+                                isLoading={isLoadingRepositories}
+                                onViewAll={() => setIsDialogOpen(true)}
+                            />
+                        </>
+                    )}
+                </CardContent>
+                <IntegrationCardFooter connect={connect} isConnecting={isConnecting} />
             </Card>
             <RepositoriesDialog
                 repositories={repositories}

@@ -4,6 +4,7 @@ import { IntegrationType } from "@/shared/Integrations"
 import { IntegrationCardHeader } from "./helpers/IntegrationCardHeader";
 import { IntegrationCardFooter } from "./helpers/IntegrationCardFooter";
 import { IntegrationItem } from "./helpers/IntegrationItem";
+import { CompactIntegrationRow } from "./CompactIntegrationRow";
 import { useOAuthConnection } from "@/hooks/useOAuthConnection";
 import { useNotionIntegrations } from "@/hooks/api/useNotionIntegrations";
 import { cn } from "@/lib/utils";
@@ -13,18 +14,32 @@ function NotionIntegrationCard({ className, isActive = true, stateToken, compact
     const { connect, isConnecting } = useOAuthConnection<IntegrationType.NOTION>(IntegrationType.NOTION, {}, stateToken);
     const { integrations, isLoading: integrationsLoading } = useNotionIntegrations();
 
+    const isConnected = integrations.length > 0;
+    const summary = integrations[0]?.workspaceName;
+
+    if (compact) {
+        return (
+            <CompactIntegrationRow
+                integration={IntegrationType.NOTION}
+                isConnected={isConnected}
+                summary={summary}
+                connect={connect}
+                isConnecting={isConnecting}
+                className={className}
+            />
+        );
+    }
+
     return (
         <Card className={cn(className)}>
-            <IntegrationCardHeader integration={IntegrationType.NOTION} isActive={isActive} compact={compact} />
-            {!compact && (
-                <CardContent>
-                    <NotionCardContent
-                        integrations={integrations}
-                        isLoading={integrationsLoading}
-                    />
-                </CardContent>
-            )}
-            <IntegrationCardFooter connect={connect} isConnecting={isConnecting} compact={compact} />
+            <IntegrationCardHeader integration={IntegrationType.NOTION} isActive={isActive} />
+            <CardContent>
+                <NotionCardContent
+                    integrations={integrations}
+                    isLoading={integrationsLoading}
+                />
+            </CardContent>
+            <IntegrationCardFooter connect={connect} isConnecting={isConnecting} />
         </Card>
     )
 }
