@@ -1,10 +1,10 @@
 import { Request, Response } from "express";
 import { parseFormSubmissionFromRequest } from "../integrations/abstract/Integration";
+import { emitIntegrationFormCompletedTaskIfNeeded } from "../integrations/helpers/emitIntegrationFormCompletedTask";
 import { LaunchDarklyIntegrationManager } from "../integrations/LaunchDarklyIntegration";
 import logger from "../logger";
 import { db } from "../prismaClient";
 import { IntegrationType } from "../shared/Integrations";
-import { emitIntegrationFormCompletedTaskIfNeeded } from "../integrations/helpers/emitIntegrationFormCompletedTask";
 
 export async function getLaunchDarklyIntegrations(req: Request, res: Response) {
   if (!req.session?.user) {
@@ -84,7 +84,9 @@ export async function getLaunchDarklyProjects(req: Request, res: Response) {
 
   try {
     if (!req.session.user.organizationId) {
-      return res.status(400).json({ error: "Organization context is required" });
+      return res
+        .status(400)
+        .json({ error: "Organization context is required" });
     }
     const response = await fetchLaunchDarklyProjects(
       req.session.user.organizationId,
@@ -227,7 +229,9 @@ export async function getLaunchDarklyEnvironments(req: Request, res: Response) {
   try {
     const organizationId = req.session.user.organizationId;
     if (!organizationId) {
-      return res.status(400).json({ error: "Organization context is required" });
+      return res
+        .status(400)
+        .json({ error: "Organization context is required" });
     }
 
     const integration = await db().launchdarkly_integrations.findFirst({

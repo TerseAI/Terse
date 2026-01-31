@@ -2,26 +2,44 @@ import { App as SlackApp } from "@slack/bolt";
 import ExpressReceiverModule from "@slack/bolt/dist/receivers/ExpressReceiver.js";
 // ESM wraps CommonJS default exports, so we need to access .default
 import type ExpressReceiverType from "@slack/bolt/dist/receivers/ExpressReceiver";
-const ExpressReceiver = ((ExpressReceiverModule as any).default || ExpressReceiverModule) as typeof ExpressReceiverType;
-import { settings } from "../config/settings";
-import { db } from "../prismaClient";
-import { SlackIntegrationManager, SlackMessageEvent } from "../integrations/SlackIntegration";
-import { ApprovalService } from "../services/ApprovalService";
-import logger from "../logger";
-import SlackChatInterface from "../agent/ChatAgent/ChatInterfaces/SlackChatInterface";
-import ChatAgent from "../agent/ChatAgent/ChatAgent";
-import { INTEGRATION_REGISTRY } from "../integrations/abstract/IntegrationRegistry";
-import { isFormIntegrationInstallation, isOAuthIntegrationInstallation, FormFieldDefinition, ConfigurationFieldDefinition, FormSubmissionInput } from "../integrations/abstract/Integration";
-import { IntegrationType } from "../shared/Integrations";
-import { jwt as jwtConfig } from "../config/settings";
-import { integrationFormTaskQueue } from "../integrations/IntegrationTaskQueues";
-import { IntegrationFormCompletedTask } from "../integrations/IntegrationFormCompletedTask";
-import { createFeedbackModal, createFormModal, createOAuthModal, formFieldsToSlackBlocks, configurationFieldsToSlackBlocks, removeEyesReaction, addEyesReaction, createProcessingModal, createSuccessModal, createErrorModal } from "./blockKitHelpers";
-import { createOAuthStateToken, OAuthStatePayload } from "../utility/oauth";
 import { AppMentionEvent, GenericMessageEvent, ModalView } from "@slack/types";
 import jwt from "jsonwebtoken";
+import ChatAgent from "../agent/ChatAgent/ChatAgent";
+import SlackChatInterface from "../agent/ChatAgent/ChatInterfaces/SlackChatInterface";
+import { jwt as jwtConfig, settings } from "../config/settings";
+import {
+  FormSubmissionInput,
+  isFormIntegrationInstallation,
+  isOAuthIntegrationInstallation,
+} from "../integrations/abstract/Integration";
+import { INTEGRATION_REGISTRY } from "../integrations/abstract/IntegrationRegistry";
+import { IntegrationFormCompletedTask } from "../integrations/IntegrationFormCompletedTask";
+import { integrationFormTaskQueue } from "../integrations/IntegrationTaskQueues";
+import {
+  SlackIntegrationManager,
+  SlackMessageEvent,
+} from "../integrations/SlackIntegration";
+import logger from "../logger";
+import { db } from "../prismaClient";
 import { getUserForOrg } from "../routes/auth";
+import { ApprovalService } from "../services/ApprovalService";
+import { IntegrationType } from "../shared/Integrations";
 import { User } from "../shared/types";
+import { createOAuthStateToken, OAuthStatePayload } from "../utility/oauth";
+import {
+  addEyesReaction,
+  configurationFieldsToSlackBlocks,
+  createErrorModal,
+  createFeedbackModal,
+  createFormModal,
+  createOAuthModal,
+  createProcessingModal,
+  createSuccessModal,
+  formFieldsToSlackBlocks,
+  removeEyesReaction,
+} from "./blockKitHelpers";
+const ExpressReceiver = ((ExpressReceiverModule as any).default ||
+  ExpressReceiverModule) as typeof ExpressReceiverType;
 
 /**
  * Gets the Terse user ID from a Slack user ID and team ID
@@ -497,6 +515,7 @@ export async function setupSlackBolt() {
         }
 
         const userId = userSlackIntegration.user_id;
+        const organizationId = userSlackIntegration.organization_id;
 
         // Verify user has access to this run
         const runRecord = await db().run_history_records.findUnique({
@@ -507,7 +526,7 @@ export async function setupSlackBolt() {
         if (
           !runRecord ||
           !runRecord.automation ||
-          runRecord.automation.user_id !== userId
+          runRecord.automation.organization_id !== organizationId
         ) {
           logger.error(
             `[Slack Approval] User ${userId} does not have access to run ${runId}`,
@@ -634,6 +653,7 @@ export async function setupSlackBolt() {
         }
 
         const userId = userSlackIntegration.user_id;
+        const organizationId = userSlackIntegration.organization_id;
 
         // Verify user has access to this run
         const runRecord = await db().run_history_records.findUnique({
@@ -644,7 +664,7 @@ export async function setupSlackBolt() {
         if (
           !runRecord ||
           !runRecord.automation ||
-          runRecord.automation.user_id !== userId
+          runRecord.automation.organization_id !== organizationId
         ) {
           logger.error(
             `[Slack Approval] User ${userId} does not have access to run ${runId}`,
@@ -811,6 +831,7 @@ export async function setupSlackBolt() {
           }
 
           const userId = userSlackIntegration.user_id;
+          const organizationId = userSlackIntegration.organization_id;
 
           // Verify user has access
           const runRecord = await db().run_history_records.findUnique({
@@ -821,7 +842,7 @@ export async function setupSlackBolt() {
           if (
             !runRecord ||
             !runRecord.automation ||
-            runRecord.automation.user_id !== userId
+            runRecord.automation.organization_id !== organizationId
           ) {
             logger.error(
               `[Slack Approval] User ${userId} does not have access to run ${runId}`,

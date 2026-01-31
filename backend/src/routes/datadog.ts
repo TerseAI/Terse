@@ -1,11 +1,11 @@
 import { Request, Response } from "express";
 import { DatadogIntegrationManager } from "../integrations/DatadogIntegration";
 import { parseFormSubmissionFromRequest } from "../integrations/abstract/Integration";
+import { emitIntegrationFormCompletedTaskIfNeeded } from "../integrations/helpers/emitIntegrationFormCompletedTask";
 import logger from "../logger";
 import { db } from "../prismaClient";
-import { getDatadogApiUrl } from "../utility/datadog";
 import { IntegrationType } from "../shared/Integrations";
-import { emitIntegrationFormCompletedTaskIfNeeded } from "../integrations/helpers/emitIntegrationFormCompletedTask";
+import { getDatadogApiUrl } from "../utility/datadog";
 
 export async function getDatadogIntegrations(req: Request, res: Response) {
   if (!req.session?.user) {

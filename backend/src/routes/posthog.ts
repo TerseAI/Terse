@@ -1,11 +1,11 @@
 import { Request, Response } from "express";
 import { parseFormSubmissionFromRequest } from "../integrations/abstract/Integration";
+import { emitIntegrationFormCompletedTaskIfNeeded } from "../integrations/helpers/emitIntegrationFormCompletedTask";
 import { PosthogIntegrationManager } from "../integrations/PosthogIntegration";
 import logger from "../logger";
 import { db } from "../prismaClient";
-import { PosthogProjectsResponse } from "../shared/types";
 import { IntegrationType } from "../shared/Integrations";
-import { emitIntegrationFormCompletedTaskIfNeeded } from "../integrations/helpers/emitIntegrationFormCompletedTask";
+import { PosthogProjectsResponse } from "../shared/types";
 
 export async function getPosthogIntegrations(req: Request, res: Response) {
   if (!req.session?.user) {
@@ -83,7 +83,9 @@ export const getPosthogProjects = async (req: Request, res: Response) => {
 
   try {
     if (!user.organizationId) {
-      return res.status(400).json({ error: "Organization context is required" });
+      return res
+        .status(400)
+        .json({ error: "Organization context is required" });
     }
     const responseData = await fetchPosthogProjects(
       user.organizationId,

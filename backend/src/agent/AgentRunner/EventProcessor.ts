@@ -14,11 +14,12 @@ import {
   emitCacheInvalidationWithKey,
   emitCacheInvalidationWithWildcard,
 } from "../../realtimeSocket";
-import { Session } from "../../types/session";
 import { ConfigInstance } from "../../shared/Configs";
 import { RunHistoryAction } from "../../shared/RunHistoryTypes";
 import { User } from "../../shared/types";
 import { AgentWithRelations, Agent as PrismaAgent } from "../../types/prisma";
+import { Session } from "../../types/session";
+import { trackActionTaken, trackAgentTriggered } from "../../utility/analytics";
 import {
   getInputConfigInclude,
   getKnowledgeBaseConfigInclude,
@@ -39,7 +40,6 @@ import {
   markRunSkipped,
 } from "./runHistory";
 import { RunContext } from "./SystemPromptBuilder";
-import { trackAgentTriggered, trackActionTaken } from "../../utility/analytics";
 
 // The job of this class is to take an Input Event, and check if it's a match for an Agent.
 // It will then create a Session, and summon the Agent Runner with the create user data.

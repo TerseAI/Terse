@@ -9,7 +9,7 @@ import { requestSessionSocketToken } from "./agent/socket";
 import "./config/settings";
 import "./integrations/IntegrationTaskHandler"; // Import to trigger listener registration
 import logger from "./logger";
-import { initializeRealtimeSocket, getRealtimeSocket  } from "./realtimeSocket";
+import { getRealtimeSocket, initializeRealtimeSocket } from "./realtimeSocket";
 import {
   createAgent,
   deleteAgent,
@@ -28,6 +28,7 @@ import {
   me,
 } from "./routes/auth";
 import { githubAppCallbackIntegrate } from "./routes/auth/githubAuth";
+import { getBuilderChatHistory } from "./routes/builderChat";
 import {
   getConfluenceIntegrations,
   getConfluenceResources,
@@ -94,7 +95,6 @@ import {
   getUserOrganizations,
   switchOrganization,
 } from "./routes/organization";
-import { handleWorkOSWebhook } from "./routes/workos";
 import {
   createOrUpdatePosthogIntegration,
   getPosthogIntegrations,
@@ -110,7 +110,6 @@ import {
   getRunHistory,
   getRunHistoryActions,
 } from "./routes/runHistory";
-import { getBuilderChatHistory } from "./routes/builderChat";
 import { handleManualTrigger, handleScheduleWebhook } from "./routes/schedule";
 import {
   getCurrentSlackIntegration,
@@ -122,6 +121,7 @@ import {
 import { getStats } from "./routes/stats";
 import { getTemplates } from "./routes/templates";
 import { toolsThatRequireApprovalsRoute } from "./routes/tools";
+import { handleWorkOSWebhook } from "./routes/workos";
 import { ApiRoutes } from "./shared/ApiRoutes";
 import { User } from "./shared/types";
 import { setupSlackBolt } from "./slack/boltApp";
@@ -273,16 +273,12 @@ app.get(
   (req, res) => getCurrentOrganization(req, res),
 );
 
-app.get(
-  ApiRoutes.ORGANIZATIONS.LIST,
-  authMiddleware,
-  (req, res) => getUserOrganizations(req, res),
+app.get(ApiRoutes.ORGANIZATIONS.LIST, authMiddleware, (req, res) =>
+  getUserOrganizations(req, res),
 );
 
-app.post(
-  ApiRoutes.ORGANIZATIONS.SWITCH,
-  authMiddleware,
-  (req, res) => switchOrganization(req, res),
+app.post(ApiRoutes.ORGANIZATIONS.SWITCH, authMiddleware, (req, res) =>
+  switchOrganization(req, res),
 );
 
 // MARK: STATS

@@ -13,16 +13,16 @@ export function getSocketIO(): Server | null {
     return getSocket?.() ?? null;
 }
 
-export function emitCacheInvalidationWithKey(userId: string, key: string): void {
+export function emitCacheInvalidationWithKey(organizationId: string, key: string): void {
     const io = getSocket?.();
     if (!io) {
         logger.warn("Socket.IO server not initialized");
         return;
     }
-    io.to(SocketRooms.user(userId)).emit(SocketEvents.INVALIDATE, { key });
+    io.to(SocketRooms.organization(organizationId)).emit(SocketEvents.INVALIDATE, { key });
 }
 
-export function emitCacheInvalidationWithWildcard(userId: string, key: string, id: string): void {
+export function emitCacheInvalidationWithWildcard(organizationId: string, key: string, id: string): void {
     const io = getSocket?.();
     if (!io) {
         logger.warn("Socket.IO server not initialized");
@@ -31,5 +31,5 @@ export function emitCacheInvalidationWithWildcard(userId: string, key: string, i
     // Send tag-based invalidation payload
     // If id is provided, frontend will match on both tag and id
     // If id is not provided, frontend will match on tag only
-    io.to(SocketRooms.user(userId)).emit(SocketEvents.INVALIDATE, { key, id });
+    io.to(SocketRooms.organization(organizationId)).emit(SocketEvents.INVALIDATE, { key, id });
 }

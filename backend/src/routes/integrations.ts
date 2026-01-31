@@ -35,8 +35,7 @@ export const getIntegrationInstallationDetails = async (
       ? JSON.parse(decodeURIComponent(req.query.options as string))
       : undefined;
 
-    let additionalStatePayload: Record<string, string> | undefined =
-      undefined;
+    let additionalStatePayload: Record<string, string> | undefined = undefined;
     const stateToken = req.query.state as string | undefined;
     if (stateToken) {
       try {
@@ -53,11 +52,14 @@ export const getIntegrationInstallationDetails = async (
           };
         }
       } catch (error) {
-        logger.warn("Failed to decode stateToken in getIntegrationInstallationDetails", {
-          error,
-          integrationType: req.params.integrationType,
-          userId: req.session?.user?.id,
-        });
+        logger.warn(
+          "Failed to decode stateToken in getIntegrationInstallationDetails",
+          {
+            error,
+            integrationType: req.params.integrationType,
+            userId: req.session?.user?.id,
+          },
+        );
       }
     }
 
@@ -147,12 +149,7 @@ export async function getActiveIntegrations(req: Request, res: Response) {
 }
 
 async function integrationHasInstances(
-  integration: Integration<
-    IntegrationInstance,
-    any,
-    IntegrationDetails,
-    any
-  >,
+  integration: Integration<IntegrationInstance, any, IntegrationDetails, any>,
   organizationId: string,
 ): Promise<boolean> {
   return (

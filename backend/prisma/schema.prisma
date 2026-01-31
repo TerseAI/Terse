@@ -17,8 +17,6 @@ datasource db {
 model users {
   id String @id @default(cuid())
 
-  // To Do, this needs to be made unique in a
-  // future migration.
   workos_id  String   @unique
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt

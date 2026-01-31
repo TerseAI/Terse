@@ -17,15 +17,15 @@ type BuilderEventCallback = (payload: BuilderEventPayload) => void;
 
 // Pending subscriptions queue for handling race conditions
 type PendingChatSubscription = {
-    type: 'chat';
-    runId: string;
-    callback: ChatEventCallback;
+  type: "chat";
+  runId: string;
+  callback: ChatEventCallback;
 };
 
 type PendingBuilderSubscription = {
-    type: 'builder';
-    sessionId: string;
-    callback: BuilderEventCallback;
+  type: "builder";
+  sessionId: string;
+  callback: BuilderEventCallback;
 };
 
 type PendingSubscription = PendingChatSubscription | PendingBuilderSubscription;
@@ -39,66 +39,74 @@ let chatEventListenerSetUp = false;
 let builderEventListenerSetUp = false;
 
 function setupChatEventListener() {
-    if (!socket || chatEventListenerSetUp) {
-        return;
-    }
+  if (!socket || chatEventListenerSetUp) {
+    return;
+  }
 
-    socket.on(SocketEvents.AGENT_CHAT_EVENT, (payload: RunHistoryModelSocketEvent) => {
-        const callbacks = chatEventCallbacks.get(payload.runId);
-        if (callbacks) {
-            callbacks.forEach((cb) => cb(payload));
-        }
-    });
+  socket.on(
+    SocketEvents.AGENT_CHAT_EVENT,
+    (payload: RunHistoryModelSocketEvent) => {
+      const callbacks = chatEventCallbacks.get(payload.runId);
+      if (callbacks) {
+        callbacks.forEach((cb) => cb(payload));
+      }
+    },
+  );
 
-    chatEventListenerSetUp = true;
+  chatEventListenerSetUp = true;
 }
 
 function setupBuilderEventListener() {
-    if (!socket || builderEventListenerSetUp) {
-        return;
+  if (!socket || builderEventListenerSetUp) {
+    return;
+  }
+
+  socket.on(SocketEvents.BUILDER_CHAT_EVENT, (payload: BuilderEventPayload) => {
+    const callbacks = builderEventCallbacks.get(payload.sessionId);
+    if (callbacks) {
+      callbacks.forEach((cb) => cb(payload));
     }
+  });
 
-    socket.on(SocketEvents.BUILDER_CHAT_EVENT, (payload: BuilderEventPayload) => {
-        const callbacks = builderEventCallbacks.get(payload.sessionId);
-        if (callbacks) {
-            callbacks.forEach((cb) => cb(payload));
-        }
-    });
-
-    builderEventListenerSetUp = true;
+  builderEventListenerSetUp = true;
 }
 
 function addChatSubscription(runId: string, callback: ChatEventCallback) {
-    setupChatEventListener();
-    if (!chatEventCallbacks.has(runId)) {
-        chatEventCallbacks.set(runId, new Set());
-    }
-    chatEventCallbacks.get(runId)!.add(callback);
+  setupChatEventListener();
+  if (!chatEventCallbacks.has(runId)) {
+    chatEventCallbacks.set(runId, new Set());
+  }
+  chatEventCallbacks.get(runId)!.add(callback);
 }
 
-function addBuilderSubscription(sessionId: string, callback: BuilderEventCallback) {
-    setupBuilderEventListener();
-    if (!builderEventCallbacks.has(sessionId)) {
-        builderEventCallbacks.set(sessionId, new Set());
-    }
-    builderEventCallbacks.get(sessionId)!.add(callback);
+function addBuilderSubscription(
+  sessionId: string,
+  callback: BuilderEventCallback,
+) {
+  setupBuilderEventListener();
+  if (!builderEventCallbacks.has(sessionId)) {
+    builderEventCallbacks.set(sessionId, new Set());
+  }
+  builderEventCallbacks.get(sessionId)!.add(callback);
 }
 
 function processPendingSubscriptions() {
-    if (pendingSubscriptions.length === 0) return;
-    
-    console.log(`Processing ${pendingSubscriptions.length} pending socket subscriptions`);
-    
-    for (const sub of pendingSubscriptions) {
-        if (sub.type === 'chat') {
-            addChatSubscription(sub.runId, sub.callback);
-        } else if (sub.type === 'builder') {
-            addBuilderSubscription(sub.sessionId, sub.callback);
-        }
+  if (pendingSubscriptions.length === 0) return;
+
+  console.log(
+    `Processing ${pendingSubscriptions.length} pending socket subscriptions`,
+  );
+
+  for (const sub of pendingSubscriptions) {
+    if (sub.type === "chat") {
+      addChatSubscription(sub.runId, sub.callback);
+    } else if (sub.type === "builder") {
+      addBuilderSubscription(sub.sessionId, sub.callback);
     }
-    
-    // Clear the queue
-    pendingSubscriptions.length = 0;
+  }
+
+  // Clear the queue
+  pendingSubscriptions.length = 0;
 }
 
 export async function initializeSocket() {
@@ -182,9 +190,7 @@ export function subscribeToChatEvents(
   return () => {
     const pendingIndex = pendingSubscriptions.findIndex(
       (sub) =>
-        sub.type === "chat" &&
-        sub.runId === runId &&
-        sub.callback === callback,
+        sub.type === "chat" && sub.runId === runId && sub.callback === callback,
     );
     if (pendingIndex !== -1) {
       pendingSubscriptions.splice(pendingIndex, 1);
@@ -240,41 +246,53 @@ export function sendToolApprovalResponse(
 }
 
 // Builder chat subscription
-export function subscribeToBuilderChat(sessionId: string, callback: BuilderEventCallback): () => void {
-    // If socket is connected, subscribe immediately
-    if (socket?.connected) {
-        addBuilderSubscription(sessionId, callback);
-    } else {
-        // Queue for when socket connects
-        console.log('Socket not ready, queueing builder subscription for sessionId:', sessionId);
-        pendingSubscriptions.push({ type: 'builder', sessionId, callback });
+export function subscribeToBuilderChat(
+  sessionId: string,
+  callback: BuilderEventCallback,
+): () => void {
+  // If socket is connected, subscribe immediately
+  if (socket?.connected) {
+    addBuilderSubscription(sessionId, callback);
+  } else {
+    // Queue for when socket connects
+    console.log(
+      "Socket not ready, queueing builder subscription for sessionId:",
+      sessionId,
+    );
+    pendingSubscriptions.push({ type: "builder", sessionId, callback });
+  }
+
+  // Return unsubscribe function (works regardless of connection state)
+  return () => {
+    // Remove from pending queue if still there
+    const pendingIndex = pendingSubscriptions.findIndex(
+      (sub) =>
+        sub.type === "builder" &&
+        sub.sessionId === sessionId &&
+        sub.callback === callback,
+    );
+    if (pendingIndex !== -1) {
+      pendingSubscriptions.splice(pendingIndex, 1);
     }
 
-    // Return unsubscribe function (works regardless of connection state)
-    return () => {
-        // Remove from pending queue if still there
-        const pendingIndex = pendingSubscriptions.findIndex(
-            (sub) => sub.type === 'builder' && sub.sessionId === sessionId && sub.callback === callback
-        );
-        if (pendingIndex !== -1) {
-            pendingSubscriptions.splice(pendingIndex, 1);
-        }
-
-        // Remove from active callbacks
-        const callbacks = builderEventCallbacks.get(sessionId);
-        if (callbacks) {
-            callbacks.delete(callback);
-            if (callbacks.size === 0) {
-                builderEventCallbacks.delete(sessionId);
-            }
-        }
-    };
+    // Remove from active callbacks
+    const callbacks = builderEventCallbacks.get(sessionId);
+    if (callbacks) {
+      callbacks.delete(callback);
+      if (callbacks.size === 0) {
+        builderEventCallbacks.delete(sessionId);
+      }
+    }
+  };
 }
 
-export function sendBuilderMessage(sessionId: string, message: ModelRequest): void {
-    if (!socket || !socket.connected) {
-        console.warn('Socket not connected, cannot send builder message');
-        return;
-    }
-    socket.emit(SocketEvents.BUILDER_CHAT_MESSAGE, { sessionId, message });
+export function sendBuilderMessage(
+  sessionId: string,
+  message: ModelRequest,
+): void {
+  if (!socket || !socket.connected) {
+    console.warn("Socket not connected, cannot send builder message");
+    return;
+  }
+  socket.emit(SocketEvents.BUILDER_CHAT_MESSAGE, { sessionId, message });
 }

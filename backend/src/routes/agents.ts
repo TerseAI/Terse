@@ -1,53 +1,46 @@
 import { Request, Response } from "express";
-import { db } from "../prismaClient";
-import {
-  Agent,
-  AgentTrigger,
-  AgentsResponse,
-  AgentNotificationSettings,
-  AgentUpdate,
-  AgentKnowledgeBase,
-} from "../shared/types";
-import { parsePageParams } from "../utility/pagination";
-import {
-  AgentWithTriggerRelations,
-  PrismaTransaction,
-  AgentWithRelations,
-  AgentWithNotificationSettingsRelations,
-  RunHistoryActionType,
-  AgentWithToolApprovalsRelations,
-} from "../types/prisma";
-import { IntegrationType } from "../shared/Integrations";
-import {
-  convertConfigTypeToInputConfigType,
-  convertConfigTypeToOutputConfigType,
-  convertConfigTypeToKnowledgeBaseConfigType,
-  convertPrismaConfigToConfigInstance,
-  convertPrismaOutputConfigToConfigInstance,
-  convertPrismaKnowledgeBaseConfigToConfigInstance,
-  convertPlainObjectToKnowledgeBaseConfigInstance,
-} from "../utility/typeConverters";
-import { ConfigInstance, ConfigType } from "../shared/Configs";
-import {
-  getInputConfigInclude,
-  getOutputConfigInclude,
-  getKnowledgeBaseConfigInclude,
-} from "../utility/prismaIncludes";
-import { TRIGGER_REGISTRY } from "../triggers/TriggerRegistry";
 import {
   INTEGRATION_REGISTRY,
   isSystemIntegration,
 } from "../integrations/abstract/IntegrationRegistry";
-import { OutputFactory } from "../outputs/abstract/OutputFactory";
-import {
-  emitCacheInvalidationWithKey,
-  emitCacheInvalidationWithWildcard,
-} from "../realtimeSocket";
-import { agentDetailKey } from "../shared/InvalidationKeys";
-import logger from "../logger";
 import { KnowledgeBaseFactory } from "../knowledgeBase/abstract/KnowledgeBaseFactory";
+import logger from "../logger";
+import { OutputFactory } from "../outputs/abstract/OutputFactory";
+import { db } from "../prismaClient";
+import { emitCacheInvalidationWithKey } from "../realtimeSocket";
+import { ConfigInstance } from "../shared/Configs";
+import { IntegrationType } from "../shared/Integrations";
+import {
+  Agent,
+  AgentNotificationSettings,
+  AgentTrigger,
+  AgentUpdate,
+  AgentsResponse,
+} from "../shared/types";
 import { isValidToolName } from "../tools/ToolNames";
+import { TRIGGER_REGISTRY } from "../triggers/TriggerRegistry";
+import {
+  AgentWithNotificationSettingsRelations,
+  AgentWithRelations,
+  AgentWithTriggerRelations,
+  PrismaTransaction,
+} from "../types/prisma";
 import { trackAgentCreated } from "../utility/analytics";
+import { parsePageParams } from "../utility/pagination";
+import {
+  getInputConfigInclude,
+  getKnowledgeBaseConfigInclude,
+  getOutputConfigInclude,
+} from "../utility/prismaIncludes";
+import {
+  convertConfigTypeToInputConfigType,
+  convertConfigTypeToKnowledgeBaseConfigType,
+  convertConfigTypeToOutputConfigType,
+  convertPlainObjectToKnowledgeBaseConfigInstance,
+  convertPrismaConfigToConfigInstance,
+  convertPrismaKnowledgeBaseConfigToConfigInstance,
+  convertPrismaOutputConfigToConfigInstance,
+} from "../utility/typeConverters";
 
 export type AgentDraft = Omit<Agent, "id"> & { id?: string };
 

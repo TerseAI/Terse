@@ -12,6 +12,7 @@ import {
 import logger, { runWithUserContext } from "../logger";
 import { db } from "../prismaClient";
 import { getUserForOrg } from "../routes/auth";
+import { FileCategory, StoredFile } from "../services/FileStorageService";
 import { ApiRoutes } from "../shared/ApiRoutes";
 import { FrontendRoutes } from "../shared/FrontendRoutes";
 import {
@@ -43,7 +44,6 @@ import {
   OAuthIntegrationInstallation,
 } from "./abstract/Integration";
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask";
-import { FileCategory, StoredFile } from "../services/FileStorageService";
 import { integrationTaskQueue } from "./IntegrationTaskQueues";
 
 export class FigmaIntegrationManager
@@ -229,7 +229,10 @@ export class FigmaIntegrationManager
         timestamp: number;
       };
 
-      if (!decoded.organizationId || typeof decoded.organizationId !== "string") {
+      if (
+        !decoded.organizationId ||
+        typeof decoded.organizationId !== "string"
+      ) {
         logger.error("Figma OAuth: organizationId is required in state", {
           userId: decoded.userId,
         });
@@ -1337,16 +1340,16 @@ export class FigmaCommentEvent extends InputEvent {
       if (this.data.imageUrls.nodeImage) {
         storedFiles.push({
           url: this.data.imageUrls.nodeImage,
-          mimeType: 'image/png',
+          mimeType: "image/png",
           category: FileCategory.IMAGE,
         });
       }
       if (this.data.imageUrls.fullFrame) {
         storedFiles.push({
           url: this.data.imageUrls.fullFrame,
-          mimeType: 'image/png',
+          mimeType: "image/png",
           category: FileCategory.IMAGE,
-        })
+        });
       }
     }
     return storedFiles;

@@ -121,7 +121,9 @@ export const getNotionResources = async (req: Request, res: Response) => {
 
   try {
     if (!user.organizationId) {
-      return res.status(400).json({ error: "Organization context is required" });
+      return res
+        .status(400)
+        .json({ error: "Organization context is required" });
     }
     const response = await fetchNotionResources(
       user.organizationId,

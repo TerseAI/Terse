@@ -10,6 +10,7 @@ import {
 import logger, { runWithUserContext } from "../logger";
 import { db } from "../prismaClient";
 import { getUserForOrg } from "../routes/auth";
+import { StoredFile } from "../services/FileStorageService";
 import { FrontendRoutes } from "../shared/FrontendRoutes";
 import {
   AdditionalStateParams,
@@ -19,7 +20,7 @@ import {
   LinearIntegrationMetadata,
 } from "../shared/Integrations";
 import { RunHistoryTrigger } from "../shared/RunHistoryTypes";
-import { OAuthInstallationDetails, LinearTeam } from "../shared/types";
+import { LinearTeam, OAuthInstallationDetails } from "../shared/types";
 import { LinearAdapter } from "../ticketing/linear";
 import { AgentTriggerWithConfigs } from "../types/prisma";
 import { LinearWebhookPayload } from "../utility/LinearWebhookPayload";
@@ -33,7 +34,6 @@ import {
 } from "./abstract/Integration";
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask";
 import { integrationTaskQueue } from "./IntegrationTaskQueues";
-import { StoredFile } from "../services/FileStorageService";
 
 export class LinearIntegrationManager
   implements
@@ -281,7 +281,10 @@ export class LinearIntegrationManager
         timestamp: number;
       };
 
-      if (!decoded.organizationId || typeof decoded.organizationId !== "string") {
+      if (
+        !decoded.organizationId ||
+        typeof decoded.organizationId !== "string"
+      ) {
         logger.error("Linear OAuth: organizationId is required in state", {
           userId: decoded.userId,
         });
@@ -634,9 +637,7 @@ export class LinearIntegrationManager
   async fetchResourcesForUser(
     userId: string,
     query?: string,
-  ): Promise<
-    IntegrationWithResources<LinearIntegration, LinearTeam>[]
-  > {
+  ): Promise<IntegrationWithResources<LinearIntegration, LinearTeam>[]> {
     const integrations = await this.getInstancesForUser(userId);
     return Promise.all(
       integrations.map(async (integration) => {
