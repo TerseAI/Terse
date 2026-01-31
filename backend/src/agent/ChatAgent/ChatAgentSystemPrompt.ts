@@ -40,7 +40,7 @@ export async function buildChatAgentSystemPrompt(
     )
     .join("\n");
 
-  const userRecord = await getUserForOrg(userId);
+  const userRecord = await getUserForOrg(userId, organizationId);
   if (!userRecord) {
     throw new Error("User not found");
   }

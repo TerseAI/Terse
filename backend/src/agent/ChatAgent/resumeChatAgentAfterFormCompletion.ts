@@ -69,7 +69,12 @@ export async function resumeChatAgentAfterFormCompletion(
     }
 
     // Create ChatAgent
-    const chatAgent = new ChatAgent(slackChatInterface, chatId, userId);
+    const chatAgent = new ChatAgent(
+      slackChatInterface,
+      chatId,
+      userId,
+      organizationId,
+    );
 
     // Run the agent with a message about successful connection
     const message = `The ${integrationName} integration has been successfully connected. Integration ID: ${integrationId}`;

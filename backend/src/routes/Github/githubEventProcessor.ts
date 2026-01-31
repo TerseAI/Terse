@@ -8,7 +8,7 @@ import {
   User,
 } from "../../shared/types";
 import { GithubAppUnifiedEventRequest } from "../GithubTypes";
-import { resolveUserForGithubInstallation } from "./githubAppInstallationMatching";
+import { resolveUserForGithubInstallation } from "../github";
 
 export async function processGithubEvent(event: GithubAppUnifiedEventRequest) {
   logger.info("processGithubEvent", { event });

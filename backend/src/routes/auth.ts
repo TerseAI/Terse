@@ -250,8 +250,8 @@ export async function getOrCreateDbUserFromWorkOS(
   return {
     id: dbUser.id,
     workosId: workosUser.id,
-    organizationId: authResult.organizationId,
-    organizationName: organizationName,
+    organizationId: authResult.organizationId ?? "",
+    organizationName: organizationName ?? "",
     email: workosUser.email,
     displayName: workosUser.firstName + " " + workosUser.lastName,
     displayPhotoUrl: workosUser.profilePictureUrl || "",

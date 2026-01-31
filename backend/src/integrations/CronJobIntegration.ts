@@ -138,6 +138,12 @@ export class CronJobIntegrationManager
       agentTrigger.automation.user_id,
       channel.organization_id,
     );
+    if (!user) {
+      logger.warn("User not found for cron job trigger", {
+        userId: agentTrigger.automation.user_id,
+      });
+      return;
+    }
 
     // Process with user context for logging
     await runWithUserContext(user, async () => {

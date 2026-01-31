@@ -32,6 +32,7 @@ import ChatInterface from "./ChatInterface";
 export type ChatAgentContext = {
   chatInterface: ChatInterface;
   userId: string;
+  organizationId: string;
 };
 
 const frontendUrl = process.env.FRONTEND_URL;
@@ -60,8 +61,8 @@ export function buildChatAgentTools(
         logger.info("Slack chat interface applyAgent", { agent, id });
         const userId = runContext?.context?.userId;
         const organizationId = runContext?.context?.organizationId;
-        if (!userId) {
-          throw new Error("User ID is required to apply agent");
+        if (!userId || !organizationId) {
+          throw new Error("User ID and organization ID are required to apply agent");
         }
 
         try {

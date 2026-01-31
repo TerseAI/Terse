@@ -38,12 +38,14 @@ export async function resumeChatAgentAfterOAuth(
         const client = initializeSlackWebClient(userSlackIntegration as any);
 
         // Create SlackChatInterface
+        const organizationId = userSlackIntegration.organization_id;
         const slackChatInterface = new SlackChatInterface(
             channel,
             client,
             userId,
+            organizationId,
             userSlackIntegration.authed_user_id,
-            chatId
+            chatId,
         );
 
         // If messageTs is provided, set it to replace the message instead of posting new one
@@ -52,7 +54,12 @@ export async function resumeChatAgentAfterOAuth(
         }
 
         // Create ChatAgent
-        const chatAgent = new ChatAgent(slackChatInterface, chatId, userId);
+        const chatAgent = new ChatAgent(
+            slackChatInterface,
+            chatId,
+            userId,
+            organizationId,
+        );
 
         // Get integration name from type
         const integrationName = integrationType.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (l) => l.toUpperCase());

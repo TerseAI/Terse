@@ -19,6 +19,7 @@ import { KnowledgeBaseFactory } from "./knowledgeBase/abstract/KnowledgeBaseFact
 import logger from "./logger";
 import { Output } from "./outputs/abstract/Output";
 import { OutputFactory } from "./outputs/abstract/OutputFactory";
+import { getUserForOrg } from "./routes/auth";
 import { db } from "./prismaClient";
 import { Session } from "./server";
 import { ApprovalService } from "./services/ApprovalService";
@@ -239,11 +240,8 @@ export async function initializeRealtimeSocket(
           return;
         }
 
-        const user = await prisma.users.findUnique({
-          where: {
-            id: userId,
-          },
-        });
+        const organizationId = runRecord.automation.organization_id;
+        const user = await getUserForOrg(userId, organizationId);
         if (!user) {
           logger.error(
             `[agent:chat:message] User not found for userId: ${userId}`,
@@ -254,7 +252,7 @@ export async function initializeRealtimeSocket(
 
         // Create base session for AgentRunner
         const session: Session = {
-          user: user,
+          user,
           isUserInitiated: true,
         };
 

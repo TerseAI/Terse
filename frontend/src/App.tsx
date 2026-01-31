@@ -77,11 +77,6 @@ function Content() {
     return <Navigate to={FrontendRoutes.ORGANIZATIONS.CREATE} replace />;
   }
 
-  // If user is placeholder, redirect to onboarding
-  if (user != null && user.is_placeholder) {
-    window.location.href = FrontendRoutes.ONBOARD;
-  }
-
   return (
     <>
       <AnimatePresence mode="wait">

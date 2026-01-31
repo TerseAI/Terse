@@ -26,18 +26,7 @@ import {
   login,
   logout,
 } from "./routes/auth";
-import {
-  //githubAppAuthMiddleware,
-  githubAppCallbackIntegrate,
-  githubAppOAuth,
-  githubCallback,
-  githubLoginURL,
-} from "./routes/auth/githubAuth";
-import {
-  googleCallback,
-  googleLogin,
-  googleLoginURL,
-} from "./routes/auth/googleAuth";
+import { githubAppCallbackIntegrate } from "./routes/auth/githubAuth";
 import {
   getConfluenceIntegrations,
   getConfluenceResources,
@@ -242,33 +231,9 @@ app.get(ApiRoutes.AUTH.ME, authMiddlewareAllowNoOrg, (req, res) => {
   res.send(req.session?.user);
 });
 
-app.get(ApiRoutes.AUTH.GITHUB_APP, async (req, res) => {
-  githubAppOAuth(req, res);
-});
-
-app.get(ApiRoutes.AUTH.GOOGLE, async (req, res) => {
-  googleLogin(req, res);
-});
-
-app.get(ApiRoutes.AUTH.GITHUB_LOGIN_CALLBACK, async (req, res) => {
-  githubCallback(req, res);
-});
-
 // GITHUB Will call this immediately after the user installs the app.
 app.get(ApiRoutes.AUTH.GITHUB_APP_CALLBACK, async (req, res) => {
   githubAppCallbackIntegrate(req, res);
-});
-
-app.get(ApiRoutes.AUTH.GOOGLE_CALLBACK, async (req, res) => {
-  googleCallback(req, res);
-});
-
-app.get(ApiRoutes.AUTH.GITHUB_LOGIN_URL, (req, res) => {
-  githubLoginURL(req, res);
-});
-
-app.get(ApiRoutes.AUTH.GOOGLE_LOGIN_URL, (req, res) => {
-  googleLoginURL(req, res);
 });
 
 app.get(ApiRoutes.AUTH.LOGIN, async (req, res) => {

@@ -21,8 +21,10 @@ import {
 } from "../integrations/SlackIntegration";
 import logger from "../logger";
 import { db } from "../prismaClient";
+import { getUserForOrg } from "../routes/auth";
 import { ApprovalService } from "../services/ApprovalService";
 import { IntegrationType } from "../shared/Integrations";
+import { User } from "../shared/types";
 import { createOAuthStateToken, OAuthStatePayload } from "../utility/oauth";
 import {
   addEyesReaction,
@@ -41,17 +43,29 @@ const ExpressReceiver = ((ExpressReceiverModule as any).default ||
 /**
  * Gets the Terse user ID from a Slack user ID and team ID
  */
-async function getUserIdFromSlackUser(
+async function getUserFromSlackUser(
   slackUserId: string,
   teamId: string,
-): Promise<string | undefined> {
+): Promise<User | undefined> {
   const userSlackIntegration = await db().user_slack_integrations.findFirst({
     where: {
       authed_user_id: slackUserId,
       slack_team_id: teamId,
     },
   });
-  return userSlackIntegration?.user_id;
+  if (!userSlackIntegration) {
+    return undefined;
+  }
+  const userId = userSlackIntegration.user_id;
+  const organizationId = userSlackIntegration.organization_id;
+  if (!organizationId) {
+    return undefined;
+  }
+  const user = await getUserForOrg(userId, organizationId);
+  if (!user) {
+    return undefined;
+  }
+  return user;
 }
 
 /**
@@ -141,12 +155,12 @@ export async function setupSlackBolt() {
 
           try {
             // Get the user ID from the Slack user ID and team ID
-            const userId = await getUserIdFromSlackUser(
+            const user = await getUserFromSlackUser(
               messageEvent.user,
               body.team_id,
             );
-            if (!userId) {
-              logger.warn("Could not find user ID for Slack user", {
+            if (!user) {
+              logger.warn("Could not find user for Slack user", {
                 slackUserId: messageEvent.user,
                 teamId: body.team_id,
               });
@@ -159,14 +173,16 @@ export async function setupSlackBolt() {
             const slackChatInterface = new SlackChatInterface(
               messageEvent.channel,
               client,
-              userId,
+              user.id,
+              user.organizationId,
               messageEvent.user,
               threadTs,
             );
             const chatAgent = new ChatAgent(
               slackChatInterface,
               threadTs,
-              userId,
+              user.id,
+              user.organizationId,
             );
             await chatAgent.run(messageEvent.text);
           } catch (error) {
@@ -236,9 +252,9 @@ export async function setupSlackBolt() {
         });
         return;
       }
-      const userId = await getUserIdFromSlackUser(event.user, body.team_id);
-      if (!userId) {
-        logger.warn("Could not find user ID for Slack user", {
+      const user = await getUserFromSlackUser(event.user, body.team_id);
+      if (!user) {
+        logger.warn("Could not find user for Slack user", {
           slackUserId: event.user,
           teamId: body.team_id,
         });
@@ -251,11 +267,17 @@ export async function setupSlackBolt() {
       const slackChatInterface = new SlackChatInterface(
         event.channel,
         client,
-        userId,
+        user.id,
+        user.organizationId,
         event.user,
         chatId,
       );
-      const chatAgent = new ChatAgent(slackChatInterface, chatId, userId);
+      const chatAgent = new ChatAgent(
+        slackChatInterface,
+        chatId,
+        user.id,
+        user.organizationId,
+      );
 
       const messageWithContext = await buildSlackChannelContextMessage(
         client,
@@ -352,6 +374,7 @@ export async function setupSlackBolt() {
         }
 
         const userId = userSlackIntegration.user_id;
+        const organizationId = userSlackIntegration.organization_id;
 
         // Get channel info for updating message and generating summary
         const runRecord = await db().run_history_records.findUnique({
@@ -362,7 +385,7 @@ export async function setupSlackBolt() {
         if (
           !runRecord ||
           !runRecord.automation ||
-          runRecord.automation.user_id !== userId
+          runRecord.automation.organization_id !== organizationId
         ) {
           logger.error(
             `[Slack Approval] User ${userId} does not have access to run ${runId}`,
@@ -1076,6 +1099,7 @@ export async function setupSlackBolt() {
       // Create clean form submission input
       const input: FormSubmissionInput = {
         userId: userId,
+        organizationId: organizationId,
         formValues: formValues,
       };
 

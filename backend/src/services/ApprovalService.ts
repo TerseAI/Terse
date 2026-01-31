@@ -1,3 +1,4 @@
+import { getUserForOrg } from "../routes/auth";
 import { db } from "../prismaClient";
 import { AgentWithRelations } from "../types/prisma";
 import { getInputConfigInclude, getOutputConfigInclude, getKnowledgeBaseConfigInclude } from "../utility/prismaIncludes";
@@ -227,12 +228,13 @@ export class ApprovalService {
 
             // Create outputs
             const outputs = this.createOutputs(channel);
-            
-            // Create base session for AgentRunner
-            const user = await db().users.findUnique({ where: { id: userId } });
+
+            // Create base session for AgentRunner (runtime User type)
+            const user = await getUserForOrg(userId, channel.organization_id);
             if (!user) {
                 throw new Error(`User not found: ${userId}`);
             }
+
             const session: Session = {
                 user,
                 isUserInitiated: true,

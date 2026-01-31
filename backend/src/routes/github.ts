@@ -17,7 +17,9 @@ import {
   GetGithubRepositoriesForIntegrationResponse,
   GithubAppInstallationCallbackRequest,
   Repository,
+  User as RuntimeUser,
 } from "../shared/types";
+import { getUserForOrg } from "./auth";
 import { GithubRepository, User } from "../types/prisma";
 
 // MARK: - Route Handlers
@@ -73,7 +75,7 @@ export async function processsGithubAppInstallationWebhook(
   });
 
   try {
-    let user: User | null = await resolveUserForGithubInstallation(
+    const user: RuntimeUser | null = await resolveUserForGithubInstallation(
       body.installationId,
       body.username,
     );
@@ -336,39 +338,39 @@ export async function processRepository(
   }
 }
 
-// Given an installation and username, resolve a specific user
-async function resolveUserForGithubInstallation(
+// Given an installation and username, resolve a specific user (runtime User type)
+export async function resolveUserForGithubInstallation(
   installationId: number,
   username: string,
-): Promise<User | null> {
-  const users_from_installation: User[] =
-    await resolveUsersForGithubInstallation(installationId);
+): Promise<RuntimeUser | null> {
+  const usersFromInstallation = await resolveUsersForGithubInstallation(
+    installationId,
+  );
+  const installationUserIds = usersFromInstallation.map((u) => u.id);
 
-  let user =
-    users_from_installation.find((user) => user.github_username === username) ||
-    null;
-  if (user) {
-    return user;
+  // Match by github_username in github_app_tokens (users table no longer has github_username)
+  const tokenForUsername = await db().github_app_tokens.findFirst({
+    where: {
+      github_username: username,
+      user_id: { in: installationUserIds },
+    },
+  });
+  if (tokenForUsername) {
+    return getUserForOrg(
+      tokenForUsername.user_id,
+      tokenForUsername.organization_id,
+    );
   }
 
-  const app_keys_from_username = await db().github_app_tokens.findMany({
+  // User might have token but not be in installation list yet (e.g. new install)
+  const anyTokenForUsername = await db().github_app_tokens.findFirst({
     where: { github_username: username },
   });
-  const user_id = app_keys_from_username.find(
-    (key) => key.github_username === username,
-  )?.user_id;
-
-  if (user_id) {
-    const matched_user = await db().users.findUnique({
-      where: { id: user_id },
-    });
-    if (matched_user) {
-      await db().users.update({
-        where: { id: user_id },
-        data: { github_username: username },
-      });
-      return matched_user;
-    }
+  if (anyTokenForUsername && installationUserIds.includes(anyTokenForUsername.user_id)) {
+    return getUserForOrg(
+      anyTokenForUsername.user_id,
+      anyTokenForUsername.organization_id,
+    );
   }
 
   return null;

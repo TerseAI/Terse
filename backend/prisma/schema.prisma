@@ -83,7 +83,7 @@ model user_github_repositories {
 model github_app_tokens {
   id              String    @id @default(cuid())
   user_id         String
-  organization_id String?
+  organization_id String
   github_username String
   access_token    String
   refresh_token   String?
@@ -94,12 +94,13 @@ model github_app_tokens {
   user users @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@unique([user_id, github_username])
+  @@index([organization_id])
 }
 
 model linear_integrations {
   id              String   @id @default(cuid())
   user_id         String
-  organization_id String?
+  organization_id String
   linear_user_id  String
   workspace_id    String
   workspace_name  String
@@ -112,6 +113,7 @@ model linear_integrations {
   user users @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@index([user_id])
+  @@index([organization_id])
   @@index([workspace_id])
   @@index([token_expiry]) // For finding tokens that need refresh
 }
@@ -119,7 +121,7 @@ model linear_integrations {
 model user_slack_integrations {
   id                       String   @id @default(cuid())
   user_id                  String
-  organization_id          String?
+  organization_id          String
   slack_team_id            String
   authed_user_id           String
   authed_user_access_token String?
@@ -132,6 +134,7 @@ model user_slack_integrations {
   user_notification_destinations user_notification_destinations[]
 
   @@unique([user_id, slack_team_id, is_bot_user])
+  @@index([organization_id])
 }
 
 model slack_integrations {
@@ -153,7 +156,7 @@ model slack_integrations {
 model atlassian_integrations {
   id              String   @id @default(cuid())
   user_id         String
-  organization_id String?
+  organization_id String
   jira_user_email String // User email in Atlassian/Jira
   base_url        String // Base URL of the Atlassian instance (e.g., https://company.atlassian.net)
   cloud_id        String // Atlassian cloud ID for API calls
@@ -171,6 +174,7 @@ model atlassian_integrations {
   user users @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@index([user_id])
+  @@index([organization_id])
   @@index([base_url, project_key])
   @@index([token_expiry]) // For finding tokens that need refresh
 }
@@ -178,7 +182,7 @@ model atlassian_integrations {
 model gmail_integrations {
   id                          String    @id @default(cuid())
   user_id                     String
-  organization_id             String?
+  organization_id             String
   email                       String
   history_id                  String
   watch_expiration            DateTime
@@ -194,6 +198,7 @@ model gmail_integrations {
   processed_gmail_messages processed_gmail_messages[]
 
   @@unique([user_id, email]) // Allow multiple Gmail accounts per user, but not duplicates
+  @@index([organization_id])
   @@index([email])
   @@index([watch_expiration]) // For finding watches that need renewal
   @@index([is_active]) // For finding active integrations
@@ -229,7 +234,7 @@ model processed_slack_events {
 model notion_integrations {
   id                String   @id @default(cuid())
   user_id           String
-  organization_id   String?
+  organization_id   String
   workspace_id      String?
   workspace_name    String?
   integration_token String
@@ -239,13 +244,14 @@ model notion_integrations {
   user users @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@index([user_id])
+  @@index([organization_id])
   @@index([workspace_id])
 }
 
 model figma_integrations {
   id              String   @id @default(cuid())
   user_id         String
-  organization_id String?
+  organization_id String
   handle          String
   figma_user_id   String
   access_token    String
@@ -260,6 +266,7 @@ model figma_integrations {
   figma_webhooks           figma_webhooks[]
 
   @@index([user_id])
+  @@index([organization_id])
   @@index([figma_user_id])
 }
 
@@ -330,7 +337,7 @@ model figma_comment_context {
 model posthog_integrations {
   id              String   @id @default(cuid())
   user_id         String
-  organization_id String?
+  organization_id String
   api_key         String
   user_email      String?
   org_name        String?
@@ -340,13 +347,14 @@ model posthog_integrations {
   user users @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@index([user_id])
+  @@index([organization_id])
 }
 
 // LaunchDarkly Integration
 model launchdarkly_integrations {
   id              String   @id @default(cuid())
   user_id         String
-  organization_id String?
+  organization_id String
   api_key         String
   user_email      String?
   token_name      String?
@@ -356,12 +364,13 @@ model launchdarkly_integrations {
   user users @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@index([user_id])
+  @@index([organization_id])
 }
 
 model datadog_integrations {
   id              String   @id @default(cuid())
   user_id         String
-  organization_id String?
+  organization_id String
   api_key         String
   app_key         String
   region          String
@@ -371,6 +380,7 @@ model datadog_integrations {
   user users @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@index([user_id])
+  @@index([organization_id])
 }
 
 // Automation tables
@@ -378,7 +388,7 @@ model automations {
   id               String   @id @default(cuid())
   user_id          String
   // Update this to not be nullable in a future migration
-  organization_id  String?
+  organization_id  String
   name             String
   is_active        Boolean  @default(true)
   require_approval Boolean  @default(false)

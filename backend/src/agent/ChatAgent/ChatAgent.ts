@@ -63,6 +63,7 @@ class ChatAgent {
         context: {
           chatInterface: this.chatInterface,
           userId: this.userId,
+          organizationId: this.organizationId,
         },
         session: memorySession,
         sessionInputCallback: recentHistoryCallback,
