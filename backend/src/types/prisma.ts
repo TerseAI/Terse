@@ -35,7 +35,7 @@ import {
 } from "@prisma/client";
 
 // PascalCase aliases
-export type User2 = users;
+export type User = users;
 
 export type GithubRepository = github_repositories;
 

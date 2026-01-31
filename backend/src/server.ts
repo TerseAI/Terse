@@ -7,7 +7,6 @@ import { createServer } from "http";
 // Import settings early to validate environment variables at startup
 import { requestSessionSocketToken } from "./agent/socket";
 import "./config/settings";
-import { settings } from "./config/settings";
 import "./integrations/IntegrationTaskHandler"; // Import to trigger listener registration
 import logger from "./logger";
 import { initializeRealtimeSocket } from "./realtimeSocket";
@@ -163,66 +162,64 @@ app.use(
 );
 
 // Access logging middleware - only in production (too noisy for local dev)
-if (settings.nodeEnv !== "development") {
-  app.use((req: Request, res: Response, next: NextFunction) => {
-    const startTime = Date.now();
-    const requestId = `${Date.now()}-${Math.random()
-      .toString(36)
-      .substr(2, 9)}`;
+// if (settings.nodeEnv !== "development") {
+app.use((req: Request, res: Response, next: NextFunction) => {
+  const startTime = Date.now();
+  const requestId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
-    // Capture request details
-    const requestInfo = {
+  // Capture request details
+  const requestInfo = {
+    requestId,
+    method: req.method,
+    path: req.path,
+    query: Object.keys(req.query).length > 0 ? req.query : undefined,
+    ip: req.ip || req.socket.remoteAddress || "unknown",
+    userAgent: req.get("user-agent"),
+    contentType: req.get("content-type"),
+    contentLength: req.get("content-length")
+      ? parseInt(req.get("content-length") || "0")
+      : undefined,
+    userId: (req.session?.user as User)?.id,
+  };
+
+  // Log incoming request
+  logger.info(`📥 ${req.method} ${req.path}`, requestInfo);
+
+  // Capture response details
+  const originalSend = res.send;
+  res.send = function (body: any) {
+    const duration = Date.now() - startTime;
+    const responseInfo = {
       requestId,
       method: req.method,
       path: req.path,
-      query: Object.keys(req.query).length > 0 ? req.query : undefined,
-      ip: req.ip || req.socket.remoteAddress || "unknown",
-      userAgent: req.get("user-agent"),
-      contentType: req.get("content-type"),
-      contentLength: req.get("content-length")
-        ? parseInt(req.get("content-length") || "0")
+      statusCode: res.statusCode,
+      duration: `${duration}ms`,
+      contentLength: res.get("content-length")
+        ? parseInt(res.get("content-length") || "0")
         : undefined,
       userId: (req.session?.user as User)?.id,
     };
 
-    // Log incoming request
-    logger.info(`📥 ${req.method} ${req.path}`, requestInfo);
+    // Log response
+    if (res.statusCode >= 400) {
+      logger.warn(
+        `📤 ${req.method} ${req.path} ${res.statusCode}`,
+        responseInfo,
+      );
+    } else {
+      logger.info(
+        `📤 ${req.method} ${req.path} ${res.statusCode}`,
+        responseInfo,
+      );
+    }
 
-    // Capture response details
-    const originalSend = res.send;
-    res.send = function (body: any) {
-      const duration = Date.now() - startTime;
-      const responseInfo = {
-        requestId,
-        method: req.method,
-        path: req.path,
-        statusCode: res.statusCode,
-        duration: `${duration}ms`,
-        contentLength: res.get("content-length")
-          ? parseInt(res.get("content-length") || "0")
-          : undefined,
-        userId: (req.session?.user as User)?.id,
-      };
+    return originalSend.call(this, body);
+  };
 
-      // Log response
-      if (res.statusCode >= 400) {
-        logger.warn(
-          `📤 ${req.method} ${req.path} ${res.statusCode}`,
-          responseInfo,
-        );
-      } else {
-        logger.info(
-          `📤 ${req.method} ${req.path} ${res.statusCode}`,
-          responseInfo,
-        );
-      }
-
-      return originalSend.call(this, body);
-    };
-
-    next();
-  });
-}
+  next();
+});
+// }
 
 if (slackReceiver?.receiver) {
   app.use("/slack", slackReceiver.receiver.router);

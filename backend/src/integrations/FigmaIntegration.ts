@@ -1,35 +1,60 @@
-import { Integration, OAuthIntegrationInstallation, ConfigurationFieldDefinition } from "./abstract/Integration";
-import { db } from "../prismaClient";
-import { User, AgentTriggerWithConfigs } from "../types/prisma";
 import { figma_integrations, InputConfigType } from "@prisma/client";
-import { generateWebhookPasscode } from "../utility/webhookSecrets";
-import { nodeEnv } from "../config/settings";
+import { Request, Response } from "express";
+import jwt from "jsonwebtoken";
 import { EventProcessor } from "../agent/AgentRunner/EventProcessor";
-import { RunHistoryTrigger } from "../shared/RunHistoryTypes";
-import { InputEvent } from "./abstract/InputEvent";
 import {
+  figma as figmaConfig,
+  jwt as jwtConfig,
+  nodeEnv,
+  OAUTH_TOKEN_REFRESH_THRESHOLD_MS,
+  urls,
+} from "../config/settings";
+import logger, { runWithUserContext } from "../logger";
+import { db } from "../prismaClient";
+import { getUserForOrg } from "../routes/auth";
+import { ApiRoutes } from "../shared/ApiRoutes";
+import { FrontendRoutes } from "../shared/FrontendRoutes";
+import {
+  AdditionalStateParams,
+  FigmaIntegration,
+  FigmaIntegrationMetadata,
+  InstallationOptionsFor,
+  IntegrationType,
+} from "../shared/Integrations";
+import { RunHistoryTrigger } from "../shared/RunHistoryTypes";
+import {
+  FigmaApiComment,
   FigmaCommentEventData,
+  FigmaCommentImageUrls,
   FigmaCommentThreadEntry,
   FigmaEventTypes,
-  FigmaCommentImageUrls,
-  FigmaWebhookUser,
   FigmaPositioningData,
-  FigmaApiComment,
+  FigmaWebhookUser,
   OAuthInstallationDetails,
+  User as SessionUser,
 } from "../shared/types";
-import { FigmaIntegration, FigmaIntegrationMetadata, IntegrationType, InstallationOptionsFor, AdditionalStateParams } from "../shared/Integrations";
-import jwt from "jsonwebtoken";
-import { figma as figmaConfig, jwt as jwtConfig, urls, OAUTH_TOKEN_REFRESH_THRESHOLD_MS } from "../config/settings";
-import { Request, Response } from "express";
-import logger, { runWithUserContext } from "../logger";
+import { AgentTriggerWithConfigs } from "../types/prisma";
 import { createOAuthStateToken } from "../utility/oauth";
-import { integrationTaskQueue } from "./IntegrationTaskQueues";
+import { generateWebhookPasscode } from "../utility/webhookSecrets";
+import { InputEvent } from "./abstract/InputEvent";
+import {
+  ConfigurationFieldDefinition,
+  Integration,
+  OAuthIntegrationInstallation,
+} from "./abstract/Integration";
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask";
-import { FrontendRoutes } from "../shared/FrontendRoutes";
-import { ApiRoutes } from "../shared/ApiRoutes";
+import { integrationTaskQueue } from "./IntegrationTaskQueues";
 
-export class FigmaIntegrationManager implements Integration<FigmaIntegration, FigmaWebhookEvent, typeof FigmaIntegrationMetadata>, OAuthIntegrationInstallation<IntegrationType.FIGMA> {
-  constructor() { }
+export class FigmaIntegrationManager
+  implements
+    Integration<
+      FigmaIntegration,
+      FigmaWebhookEvent,
+      typeof FigmaIntegrationMetadata
+    >,
+    OAuthIntegrationInstallation<IntegrationType.FIGMA>
+{
+  constructor() {}
   integrationType: IntegrationType = IntegrationType.FIGMA;
 
   getConfigurationFields(): ConfigurationFieldDefinition[] {
@@ -42,7 +67,23 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
         user_id: userId,
       },
     });
-    return integrations.map(integration => ({
+    return integrations.map((integration) => ({
+      id: integration.id,
+      handle: integration.handle,
+      figma_user_id: integration.figma_user_id,
+      token_expiry: integration.token_expiry,
+    }));
+  }
+
+  async getInstancesForOrganization(
+    organizationId: string,
+  ): Promise<FigmaIntegration[]> {
+    const integrations = await db().figma_integrations.findMany({
+      where: {
+        organization_id: organizationId,
+      },
+    });
+    return integrations.map((integration) => ({
       id: integration.id,
       handle: integration.handle,
       figma_user_id: integration.figma_user_id,
@@ -71,7 +112,7 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
         token_expiry: true,
       },
     });
-    return integrations.map(integration => ({
+    return integrations.map((integration) => ({
       id: integration.id,
       handle: integration.handle,
       figma_user_id: integration.figma_user_id,
@@ -84,7 +125,9 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
 
     const supportedEventTypes = Object.values(FigmaEventTypes);
     if (!supportedEventTypes.includes(eventType as FigmaEventTypes)) {
-      logger.warn(`⚠️  Ignoring unsupported event type ${eventType}`, { eventType });
+      logger.warn(`⚠️  Ignoring unsupported event type ${eventType}`, {
+        eventType,
+      });
       return;
     }
 
@@ -104,29 +147,48 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
     });
 
     if (integrations.length === 0) {
-      logger.warn(`⚠️  No integrations found with matching passcode`, { passcode: receivedPasscode });
+      logger.warn(`⚠️  No integrations found with matching passcode`, {
+        passcode: receivedPasscode,
+      });
       return;
     }
 
     for (const integration of integrations) {
+      if (!integration.organization_id) {
+        continue;
+      }
+      const user = await getUserForOrg(
+        integration.user_id,
+        integration.organization_id,
+      );
+      if (!user) {
+        continue;
+      }
       if (eventType === FigmaEventTypes.FILE_COMMENT) {
         // Process with user context for logging
-        await runWithUserContext(integration.user.id, integration.user.email, async () => {
-          await this.handleFigmaCommentEvent(integration, event, integration.user);
+        await runWithUserContext(user, async () => {
+          await this.handleFigmaCommentEvent(integration, event, user);
         });
       }
     }
   }
 
-  async getInstallationUrl(userId: string, options?: InstallationOptionsFor<IntegrationType.FIGMA>, additionalStatePayload?: AdditionalStateParams): Promise<OAuthInstallationDetails> {
+  async getInstallationUrl(
+    userId: string,
+    organizationId: string,
+    options?: InstallationOptionsFor<IntegrationType.FIGMA>,
+    additionalStatePayload?: AdditionalStateParams,
+  ): Promise<OAuthInstallationDetails> {
     // Generate state token for security (prevents CSRF)
     const state = createOAuthStateToken({
       userId,
+      organizationId,
       additionalFields: { timestamp: Date.now() },
       additionalStatePayload,
     });
 
-    const scope = "current_user:read,file_comments:read,file_content:read,file_metadata:read,file_versions:read,library_assets:read,library_content:read,team_library_content:read,file_dev_resources:read,projects:read,webhooks:read,webhooks:write";
+    const scope =
+      "current_user:read,file_comments:read,file_content:read,file_metadata:read,file_versions:read,library_assets:read,library_content:read,team_library_content:read,file_dev_resources:read,projects:read,webhooks:read,webhooks:write";
 
     // Build OAuth URL with proper encoding
     const authUrl = new URL("https://www.figma.com/oauth");
@@ -137,11 +199,14 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
     authUrl.searchParams.append("response_type", "code");
 
     return {
-      oauthUrl: authUrl.toString()
+      oauthUrl: authUrl.toString(),
     };
   }
 
-  async processInstallationCallback(req: Request, res: Response): Promise<void> {
+  async processInstallationCallback(
+    req: Request,
+    res: Response,
+  ): Promise<void> {
     const { code, state, error } = req.query;
 
     if (error) {
@@ -158,6 +223,7 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
       // Verify state token to prevent CSRF attacks
       const decoded = jwt.verify(state as string, jwtConfig.secret) as {
         userId: string;
+        organizationId: string;
         timestamp: number;
       };
 
@@ -169,16 +235,19 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
         grant_type: "authorization_code",
       });
 
-      const tokenResponse = await fetch("https://api.figma.com/v1/oauth/token", {
-        method: "POST",
-        headers: {
-          Authorization: `Basic ${Buffer.from(
-            `${figmaConfig.clientId}:${figmaConfig.clientSecret}`
-          ).toString("base64")}`,
-          "Content-Type": "application/x-www-form-urlencoded",
+      const tokenResponse = await fetch(
+        "https://api.figma.com/v1/oauth/token",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Basic ${Buffer.from(
+              `${figmaConfig.clientId}:${figmaConfig.clientSecret}`,
+            ).toString("base64")}`,
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+          body: params.toString(),
         },
-        body: params.toString(),
-      });
+      );
 
       if (!tokenResponse.ok) {
         const errorText = await tokenResponse.text();
@@ -187,35 +256,45 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
       }
 
       const tokenData = await tokenResponse.json();
-      const { access_token, refresh_token, expires_in, user_id_string } = tokenData;
+      const { access_token, refresh_token, expires_in, user_id_string } =
+        tokenData;
 
-      logger.info("🔑 Received Figma access token for user", { userId: decoded.userId });
-      logger.info("👤 Figma User ID", { userId: decoded.userId, figmaUserId: user_id_string });
-      logger.debug("Token expires in", { expiresIn: expires_in, userId: decoded.userId });
+      logger.info("🔑 Received Figma access token for user", {
+        userId: decoded.userId,
+      });
+      logger.info("👤 Figma User ID", {
+        userId: decoded.userId,
+        figmaUserId: user_id_string,
+      });
+      logger.debug("Token expires in", {
+        expiresIn: expires_in,
+        userId: decoded.userId,
+      });
 
       // Calculate token expiry
-      const tokenExpiry = new Date(Date.now() + (expires_in * 1000));
-
+      const tokenExpiry = new Date(Date.now() + expires_in * 1000);
 
       let handle: string;
       const userInfoResponse = await fetch("https://api.figma.com/v1/me", {
         method: "GET",
         headers: {
-          "Authorization": `Bearer ${access_token}`,
+          Authorization: `Bearer ${access_token}`,
         },
       });
 
       if (userInfoResponse.ok) {
         const userInfo = await userInfoResponse.json();
-        handle = userInfo.handle
+        handle = userInfo.handle;
       } else {
-        throw new Error(`Failed to fetch Figma user info: ${userInfoResponse.statusText}`);
+        throw new Error(
+          `Failed to fetch Figma user info: ${userInfoResponse.statusText}`,
+        );
       }
 
       // Check if a connection for this Figma user already exists
       const existing = await db().figma_integrations.findFirst({
         where: {
-          user_id: decoded.userId,
+          organization_id: decoded.organizationId,
           figma_user_id: user_id_string,
         },
       });
@@ -225,6 +304,7 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
         const newIntegration = await db().figma_integrations.create({
           data: {
             user_id: decoded.userId,
+            organization_id: decoded.organizationId,
             figma_user_id: user_id_string,
             handle: handle,
             access_token: access_token,
@@ -233,12 +313,17 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
           },
         });
         integrationId = newIntegration.id;
-        logger.info("✅ Created Figma connection for user", { userId: decoded.userId, figmaUserId: user_id_string, handle });
+        logger.info("✅ Created Figma connection for user", {
+          userId: decoded.userId,
+          figmaUserId: user_id_string,
+          handle,
+        });
       } else {
         // Update existing connection with new token (in case it was revoked and re-authorized)
         await db().figma_integrations.update({
           where: { id: existing.id },
           data: {
+            organization_id: decoded.organizationId,
             handle: handle,
             figma_user_id: user_id_string,
             access_token: access_token,
@@ -247,19 +332,28 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
           },
         });
         integrationId = existing.id;
-        logger.info("✅ Updated Figma connection token for user", { userId: decoded.userId, figmaUserId: user_id_string, integrationId: existing.id });
+        logger.info("✅ Updated Figma connection token for user", {
+          userId: decoded.userId,
+          figmaUserId: user_id_string,
+          integrationId: existing.id,
+        });
       }
 
-      logger.info("✅ Figma OAuth completed for user", { userId: decoded.userId, figmaUserId: user_id_string });
+      logger.info("✅ Figma OAuth completed for user", {
+        userId: decoded.userId,
+        figmaUserId: user_id_string,
+      });
 
       // Emit integration completed task (includes full state payload for chat metadata detection)
-      integrationTaskQueue.emit(new IntegrationCompletedTask(
-        IntegrationType.FIGMA,
-        integrationId,
-        decoded.userId,
-        decoded,
-        new Date()
-      ));
+      integrationTaskQueue.emit(
+        new IntegrationCompletedTask(
+          IntegrationType.FIGMA,
+          integrationId,
+          decoded.userId,
+          decoded,
+          new Date(),
+        ),
+      );
 
       // Redirect to success page which will auto-close the popup
       res.redirect(`${urls.frontend}${FrontendRoutes.OAUTH.SUCCESS}`);
@@ -273,17 +367,26 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
     return Promise.resolve();
   }
 
-  async setupAgentTrigger(integrationId: string, agentTrigger: AgentTriggerWithConfigs): Promise<void> {
+  async setupAgentTrigger(
+    integrationId: string,
+    agentTrigger: AgentTriggerWithConfigs,
+  ): Promise<void> {
     // Check if figma_config exists at all
     if (!agentTrigger.figma_config) {
-      logger.warn(`⚠️  No Figma config found for input ${agentTrigger.id}. Skipping webhook setup.`, { inputId: agentTrigger.id });
+      logger.warn(
+        `⚠️  No Figma config found for input ${agentTrigger.id}. Skipping webhook setup.`,
+        { inputId: agentTrigger.id },
+      );
       return;
     }
 
     const fileKey = agentTrigger.figma_config.file_key;
 
     if (!fileKey) {
-      logger.warn(`⚠️  No file_key specified in Figma config for input ${agentTrigger.id}`, { inputId: agentTrigger.id });
+      logger.warn(
+        `⚠️  No file_key specified in Figma config for input ${agentTrigger.id}`,
+        { inputId: agentTrigger.id },
+      );
       return;
     }
 
@@ -293,7 +396,9 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
     });
 
     if (!figmaIntegration) {
-      logger.warn(`⚠️  Figma integration not found: ${integrationId}`, { integrationId });
+      logger.warn(`⚠️  Figma integration not found: ${integrationId}`, {
+        integrationId,
+      });
       return;
     }
 
@@ -301,22 +406,26 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
     const teamId = agentTrigger.figma_config.team_id;
 
     if (!teamId) {
-      throw new Error(`team_id is required for creating Figma webhooks. Please provide a team ID in the Figma configuration for file ${fileKey}.`);
+      throw new Error(
+        `team_id is required for creating Figma webhooks. Please provide a team ID in the Figma configuration for file ${fileKey}.`,
+      );
     }
 
     // Build webhook endpoint URL
     const webhookEndpoint = `${urls.backend}${ApiRoutes.WEBHOOKS.FIGMA}`;
 
     // Event types to monitor: comments
-    const eventTypes = ['FILE_COMMENT'];
+    const eventTypes = ["FILE_COMMENT"];
 
     try {
       // Get valid access token (handles refresh automatically)
       const accessToken = await this.getAccessToken(integrationId);
       if (!accessToken) {
-        throw new Error(`Could not get valid access token for Figma integration ${integrationId}`);
+        throw new Error(
+          `Could not get valid access token for Figma integration ${integrationId}`,
+        );
       }
-      const isDevelopment = nodeEnv !== 'production';
+      const isDevelopment = nodeEnv !== "production";
 
       // Create or reuse team-level webhooks for both event types
       for (const eventType of eventTypes) {
@@ -331,25 +440,44 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
 
         // In development, always delete and recreate webhooks
         if (isDevelopment && existingWebhook) {
-          logger.info(`🔄 Development mode: Deleting existing webhook ${existingWebhook.webhook_id} for team ${teamId}, event ${eventType}`, { webhookId: existingWebhook.webhook_id, teamId, eventType });
+          logger.info(
+            `🔄 Development mode: Deleting existing webhook ${existingWebhook.webhook_id} for team ${teamId}, event ${eventType}`,
+            { webhookId: existingWebhook.webhook_id, teamId, eventType },
+          );
 
           // Delete webhook from Figma API
           try {
-            const deleteResponse = await fetch(`https://api.figma.com/v2/webhooks/${existingWebhook.webhook_id}`, {
-              method: 'DELETE',
-              headers: {
-                'Authorization': `Bearer ${accessToken}`,
+            const deleteResponse = await fetch(
+              `https://api.figma.com/v2/webhooks/${existingWebhook.webhook_id}`,
+              {
+                method: "DELETE",
+                headers: {
+                  Authorization: `Bearer ${accessToken}`,
+                },
               },
-            });
+            );
 
             if (!deleteResponse.ok && deleteResponse.status !== 404) {
               const errorText = await deleteResponse.text();
-              logger.error(`Failed to delete existing Figma webhook ${existingWebhook.webhook_id}`, { error: errorText, webhookId: existingWebhook.webhook_id, teamId });
+              logger.error(
+                `Failed to delete existing Figma webhook ${existingWebhook.webhook_id}`,
+                {
+                  error: errorText,
+                  webhookId: existingWebhook.webhook_id,
+                  teamId,
+                },
+              );
             } else {
-              logger.info(`✅ Deleted existing webhook ${existingWebhook.webhook_id}`, { webhookId: existingWebhook.webhook_id, teamId });
+              logger.info(
+                `✅ Deleted existing webhook ${existingWebhook.webhook_id}`,
+                { webhookId: existingWebhook.webhook_id, teamId },
+              );
             }
           } catch (error) {
-            logger.error(`❌ Error deleting existing webhook ${existingWebhook.webhook_id}`, { error, webhookId: existingWebhook.webhook_id, teamId });
+            logger.error(
+              `❌ Error deleting existing webhook ${existingWebhook.webhook_id}`,
+              { error, webhookId: existingWebhook.webhook_id, teamId },
+            );
           }
 
           // Delete webhook record from database
@@ -358,7 +486,10 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
           });
         } else if (existingWebhook) {
           // In production, reuse existing webhook
-          logger.info(`ℹ️  Team-level webhook already exists for team ${teamId}, event ${eventType}. Reusing existing webhook ${existingWebhook.webhook_id}`, { webhookId: existingWebhook.webhook_id, teamId, eventType });
+          logger.info(
+            `ℹ️  Team-level webhook already exists for team ${teamId}, event ${eventType}. Reusing existing webhook ${existingWebhook.webhook_id}`,
+            { webhookId: existingWebhook.webhook_id, teamId, eventType },
+          );
           continue; // Webhook already exists, skip creation
         }
 
@@ -366,32 +497,43 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
         const passcode = generateWebhookPasscode();
 
         // Create team-level webhook (no file_key - monitors entire team)
-        const webhookResponse = await fetch('https://api.figma.com/v2/webhooks', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
+        const webhookResponse = await fetch(
+          "https://api.figma.com/v2/webhooks",
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              event_type: eventType,
+              team_id: teamId,
+              // No file_key - this is a team-level webhook
+              endpoint: webhookEndpoint,
+              passcode: passcode,
+            }),
           },
-          body: JSON.stringify({
-            event_type: eventType,
-            team_id: teamId,
-            // No file_key - this is a team-level webhook
-            endpoint: webhookEndpoint,
-            passcode: passcode,
-          }),
-        });
+        );
 
         if (!webhookResponse.ok) {
           const errorText = await webhookResponse.text();
-          logger.error(`Failed to create Figma webhook for ${eventType}`, { error: errorText, eventType, teamId });
-          throw new Error(`Failed to create Figma webhook for ${eventType}: ${errorText}`);
+          logger.error(`Failed to create Figma webhook for ${eventType}`, {
+            error: errorText,
+            eventType,
+            teamId,
+          });
+          throw new Error(
+            `Failed to create Figma webhook for ${eventType}: ${errorText}`,
+          );
         }
 
         const webhookData = await webhookResponse.json();
         const webhookId = webhookData.webhook?.id || webhookData.id;
 
         if (!webhookId) {
-          throw new Error(`Webhook ID not returned from Figma API for ${eventType}`);
+          throw new Error(
+            `Webhook ID not returned from Figma API for ${eventType}`,
+          );
         }
 
         // Store team-level webhook in database
@@ -406,19 +548,31 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
           },
         });
 
-        logger.info(`✅ Created team-level Figma webhook ${webhookId} for team ${teamId}, event ${eventType}`, { webhookId, teamId, eventType });
+        logger.info(
+          `✅ Created team-level Figma webhook ${webhookId} for team ${teamId}, event ${eventType}`,
+          { webhookId, teamId, eventType },
+        );
       }
     } catch (error) {
-      logger.error(`❌ Error creating Figma webhooks for team ${teamId}`, { error, teamId });
+      logger.error(`❌ Error creating Figma webhooks for team ${teamId}`, {
+        error,
+        teamId,
+      });
       throw error;
     }
   }
 
-  async teardownAgentTrigger(integrationId: string, agentTrigger: AgentTriggerWithConfigs): Promise<void> {
+  async teardownAgentTrigger(
+    integrationId: string,
+    agentTrigger: AgentTriggerWithConfigs,
+  ): Promise<void> {
     const teamId = agentTrigger.figma_config?.team_id;
 
     if (!teamId) {
-      logger.info(`ℹ️  No team_id in config, skipping webhook cleanup for channel input ${agentTrigger.id}`, { inputId: agentTrigger.id });
+      logger.info(
+        `ℹ️  No team_id in config, skipping webhook cleanup for channel input ${agentTrigger.id}`,
+        { inputId: agentTrigger.id },
+      );
       return;
     }
 
@@ -428,7 +582,9 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
     });
 
     if (!figmaIntegration) {
-      logger.warn(`⚠️  Figma integration not found: ${integrationId}`, { integrationId });
+      logger.warn(`⚠️  Figma integration not found: ${integrationId}`, {
+        integrationId,
+      });
       return;
     }
 
@@ -450,11 +606,14 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
 
     // Check if any other active channel uses the same team
     const otherTeamUsers = otherAutomations.filter(
-      (input) => input.figma_config?.team_id === teamId
+      (input) => input.figma_config?.team_id === teamId,
     );
 
     if (otherTeamUsers.length > 0) {
-      logger.info(`ℹ️  Team ${teamId} still in use by ${otherTeamUsers.length} other automation(s). Keeping team-level webhooks.`, { teamId, otherAutomationsCount: otherTeamUsers.length, integrationId });
+      logger.info(
+        `ℹ️  Team ${teamId} still in use by ${otherTeamUsers.length} other automation(s). Keeping team-level webhooks.`,
+        { teamId, otherAutomationsCount: otherTeamUsers.length, integrationId },
+      );
       return; // Don't delete webhooks, other automations are using them
     }
 
@@ -467,36 +626,64 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
     });
 
     if (webhooks.length === 0) {
-      logger.info(`ℹ️  No webhooks found for team ${teamId}`, { teamId, integrationId });
+      logger.info(`ℹ️  No webhooks found for team ${teamId}`, {
+        teamId,
+        integrationId,
+      });
       return;
     }
 
     // Get valid access token (handles refresh automatically)
     const accessToken = await this.getAccessToken(integrationId);
     if (!accessToken) {
-      logger.warn(`⚠️  Could not get valid access token, skipping webhook deletion`, { integrationId, teamId });
+      logger.warn(
+        `⚠️  Could not get valid access token, skipping webhook deletion`,
+        { integrationId, teamId },
+      );
       return;
     }
 
     // Delete all team-level webhooks for this team
     for (const webhook of webhooks) {
       try {
-        const deleteResponse = await fetch(`https://api.figma.com/v2/webhooks/${webhook.webhook_id}`, {
-          method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
+        const deleteResponse = await fetch(
+          `https://api.figma.com/v2/webhooks/${webhook.webhook_id}`,
+          {
+            method: "DELETE",
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+            },
           },
-        });
+        );
 
         if (!deleteResponse.ok && deleteResponse.status !== 404) {
           // 404 means webhook already deleted, which is fine
           const errorText = await deleteResponse.text();
-          logger.error(`Failed to delete Figma webhook ${webhook.webhook_id} (${webhook.event_type})`, { error: errorText, webhookId: webhook.webhook_id, eventType: webhook.event_type, teamId });
+          logger.error(
+            `Failed to delete Figma webhook ${webhook.webhook_id} (${webhook.event_type})`,
+            {
+              error: errorText,
+              webhookId: webhook.webhook_id,
+              eventType: webhook.event_type,
+              teamId,
+            },
+          );
         } else {
-          logger.info(`✅ Deleted team-level Figma webhook ${webhook.webhook_id} (${webhook.event_type}) for team ${teamId}`, { webhookId: webhook.webhook_id, eventType: webhook.event_type, teamId });
+          logger.info(
+            `✅ Deleted team-level Figma webhook ${webhook.webhook_id} (${webhook.event_type}) for team ${teamId}`,
+            {
+              webhookId: webhook.webhook_id,
+              eventType: webhook.event_type,
+              teamId,
+            },
+          );
         }
       } catch (error) {
-        logger.error(`❌ Error deleting Figma webhook ${webhook.webhook_id}`, { error, webhookId: webhook.webhook_id, teamId });
+        logger.error(`❌ Error deleting Figma webhook ${webhook.webhook_id}`, {
+          error,
+          webhookId: webhook.webhook_id,
+          teamId,
+        });
         // Continue with database cleanup even if API call fails
       }
     }
@@ -509,7 +696,10 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
       },
     });
 
-    logger.info(`📤 Team ${teamId} no longer monitored by any automations`, { teamId, integrationId });
+    logger.info(`📤 Team ${teamId} no longer monitored by any automations`, {
+      teamId,
+      integrationId,
+    });
   }
 
   async refreshToken(integrationId: string): Promise<boolean> {
@@ -519,7 +709,9 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
       });
 
       if (!integration) {
-        logger.warn(`Figma integration ${integrationId} not found`, { integrationId });
+        logger.warn(`Figma integration ${integrationId} not found`, {
+          integrationId,
+        });
         return false;
       }
 
@@ -535,12 +727,19 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
           select: { token_expiry: true },
         });
 
-        if (!updatedIntegration || !originalTokenExpiry || !updatedIntegration.token_expiry) {
+        if (
+          !updatedIntegration ||
+          !originalTokenExpiry ||
+          !updatedIntegration.token_expiry
+        ) {
           return false;
         }
 
         // If expiry changed, token was refreshed
-        return updatedIntegration.token_expiry.getTime() !== originalTokenExpiry.getTime();
+        return (
+          updatedIntegration.token_expiry.getTime() !==
+          originalTokenExpiry.getTime()
+        );
       }
 
       // Check if token was refreshed by comparing expiry dates
@@ -549,14 +748,24 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
         select: { token_expiry: true },
       });
 
-      if (!updatedIntegration || !originalTokenExpiry || !updatedIntegration.token_expiry) {
+      if (
+        !updatedIntegration ||
+        !originalTokenExpiry ||
+        !updatedIntegration.token_expiry
+      ) {
         return false;
       }
 
       // Token was refreshed if expiry changed
-      return updatedIntegration.token_expiry.getTime() !== originalTokenExpiry.getTime();
+      return (
+        updatedIntegration.token_expiry.getTime() !==
+        originalTokenExpiry.getTime()
+      );
     } catch (error) {
-      logger.error(`Error refreshing Figma token for integration ${integrationId}`, { error, integrationId });
+      logger.error(
+        `Error refreshing Figma token for integration ${integrationId}`,
+        { error, integrationId },
+      );
       return false;
     }
   }
@@ -568,7 +777,9 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
       });
 
       if (!integration) {
-        logger.error(`Figma integration ${integrationId} not found`, { integrationId });
+        logger.error(`Figma integration ${integrationId} not found`, {
+          integrationId,
+        });
         return null;
       }
 
@@ -576,12 +787,19 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
       // Check if token is expired or will expire within the refresh threshold
       if (
         integration.token_expiry &&
-        integration.token_expiry <= new Date(now.getTime() + OAUTH_TOKEN_REFRESH_THRESHOLD_MS)
+        integration.token_expiry <=
+          new Date(now.getTime() + OAUTH_TOKEN_REFRESH_THRESHOLD_MS)
       ) {
-        logger.info(`Figma access token expiring soon for integration ${integrationId}, refreshing...`, { integrationId });
+        logger.info(
+          `Figma access token expiring soon for integration ${integrationId}, refreshing...`,
+          { integrationId },
+        );
 
         if (!integration.refresh_token) {
-          logger.error(`No refresh token available for Figma integration ${integrationId}`, { integrationId });
+          logger.error(
+            `No refresh token available for Figma integration ${integrationId}`,
+            { integrationId },
+          );
           return integration.access_token; // Return existing token as fallback
         }
 
@@ -592,20 +810,26 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
           refresh_token: integration.refresh_token,
         });
 
-        const tokenResponse = await fetch("https://api.figma.com/v1/oauth/token", {
-          method: "POST",
-          headers: {
-            Authorization: `Basic ${Buffer.from(
-              `${figmaConfig.clientId}:${figmaConfig.clientSecret}`
-            ).toString("base64")}`,
-            "Content-Type": "application/x-www-form-urlencoded",
+        const tokenResponse = await fetch(
+          "https://api.figma.com/v1/oauth/token",
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Basic ${Buffer.from(
+                `${figmaConfig.clientId}:${figmaConfig.clientSecret}`,
+              ).toString("base64")}`,
+              "Content-Type": "application/x-www-form-urlencoded",
+            },
+            body: params.toString(),
           },
-          body: params.toString(),
-        });
+        );
 
         if (!tokenResponse.ok) {
           const errorText = await tokenResponse.text();
-          logger.error(`Figma token refresh failed for integration ${integrationId}`, { error: errorText, integrationId });
+          logger.error(
+            `Figma token refresh failed for integration ${integrationId}`,
+            { error: errorText, integrationId },
+          );
           // Return existing token as fallback - it might still work
           return integration.access_token;
         }
@@ -614,13 +838,16 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
         const { access_token, refresh_token, expires_in } = tokenData;
 
         if (!access_token) {
-          logger.error(`No access token received from Figma refresh for integration ${integrationId}`, { integrationId });
+          logger.error(
+            `No access token received from Figma refresh for integration ${integrationId}`,
+            { integrationId },
+          );
           // Return existing token as fallback
           return integration.access_token;
         }
 
         // Calculate token expiry
-        const tokenExpiry = new Date(Date.now() + (expires_in * 1000));
+        const tokenExpiry = new Date(Date.now() + expires_in * 1000);
 
         // Update the database with new tokens
         await db().figma_integrations.update({
@@ -632,14 +859,20 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
           },
         });
 
-        logger.info(`Successfully refreshed Figma access token for integration ${integrationId}`, { integrationId });
+        logger.info(
+          `Successfully refreshed Figma access token for integration ${integrationId}`,
+          { integrationId },
+        );
         return access_token;
       }
 
       // Token is still valid
       return integration.access_token;
     } catch (error) {
-      logger.error(`Error getting Figma access token for integration ${integrationId}`, { error, integrationId });
+      logger.error(
+        `Error getting Figma access token for integration ${integrationId}`,
+        { error, integrationId },
+      );
       // Return null on error - caller should handle
       return null;
     }
@@ -653,22 +886,28 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
   private async handleFigmaCommentEvent(
     integration: figma_integrations,
     webhookEvent: FigmaWebhookEvent,
-    user: User,
+    user: SessionUser,
   ): Promise<void> {
     // Extract comment_id from top level (Figma webhook structure)
     const commentId = webhookEvent.comment_id;
     const fileKey = webhookEvent.file_key;
     if (!commentId) {
-      logger.warn(`⚠️  FILE_COMMENT event missing comment_id`, { webhookEvent: JSON.stringify(webhookEvent, null, 2), integrationId: integration.id });
+      logger.warn(`⚠️  FILE_COMMENT event missing comment_id`, {
+        webhookEvent: JSON.stringify(webhookEvent, null, 2),
+        integrationId: integration.id,
+      });
       return;
     }
     if (!fileKey) {
-      logger.warn(`⚠️  FILE_COMMENT event missing file_key`, { webhookEvent: JSON.stringify(webhookEvent, null, 2), integrationId: integration.id });
+      logger.warn(`⚠️  FILE_COMMENT event missing file_key`, {
+        webhookEvent: JSON.stringify(webhookEvent, null, 2),
+        integrationId: integration.id,
+      });
       return;
     }
     logger.info(
       `📝 Processing FILE_COMMENT event for file ${fileKey}, comment ${commentId}`,
-      { fileKey, commentId, integrationId: integration.id }
+      { fileKey, commentId, integrationId: integration.id },
     );
 
     // Process the comment once per integration, to prevent duplicate processing
@@ -682,8 +921,12 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
       });
     } catch (error: any) {
       // Race condition - comment already being processed
-      if (error.code === 'P2002') {
-        logger.info(`ℹ️  Comment ${commentId} already being processed`, { commentId, fileKey, integrationId: integration.id });
+      if (error.code === "P2002") {
+        logger.info(`ℹ️  Comment ${commentId} already being processed`, {
+          commentId,
+          fileKey,
+          integrationId: integration.id,
+        });
         return;
       }
       throw error;
@@ -692,7 +935,10 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
     // Get valid access token (handles refresh automatically)
     const accessToken = await this.getAccessToken(integration.id);
     if (!accessToken) {
-      logger.warn(`⚠️  Could not get valid access token for Figma integration ${integration.id}`, { integrationId: integration.id, fileKey, commentId });
+      logger.warn(
+        `⚠️  Could not get valid access token for Figma integration ${integration.id}`,
+        { integrationId: integration.id, fileKey, commentId },
+      );
       return;
     }
 
@@ -701,51 +947,73 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
     const commentThreadData = await fetchFigmaCommentThreadFromApi(
       accessToken,
       fileKey,
-      commentId
+      commentId,
     );
     if (!commentThreadData) {
-      logger.warn(`⚠️  Could not fetch comment ${commentId} from API`, { commentId, fileKey, integrationId: integration.id });
+      logger.warn(`⚠️  Could not fetch comment ${commentId} from API`, {
+        commentId,
+        fileKey,
+        integrationId: integration.id,
+      });
       return;
     }
 
     const { comment: commentFromApi, thread } = commentThreadData;
 
-    const { rootComment, positioningComment, positioningData } = resolvePositioningContext(
-      commentFromApi,
-      thread
-    );
+    const { rootComment, positioningComment, positioningData } =
+      resolvePositioningContext(commentFromApi, thread);
 
-    logger.debug(`Client Meta (event comment)`, { clientMeta: JSON.stringify(commentFromApi.client_meta, null, 2), commentId, fileKey });
+    logger.debug(`Client Meta (event comment)`, {
+      clientMeta: JSON.stringify(commentFromApi.client_meta, null, 2),
+      commentId,
+      fileKey,
+    });
     if (positioningComment && positioningComment.id !== commentFromApi.id) {
       logger.debug(
         `Using comment ${positioningComment.id} client_meta for positioning`,
-        { positioningCommentId: positioningComment.id, clientMeta: JSON.stringify(positioningComment.client_meta, null, 2), commentId }
+        {
+          positioningCommentId: positioningComment.id,
+          clientMeta: JSON.stringify(positioningComment.client_meta, null, 2),
+          commentId,
+        },
       );
     }
-    logger.debug(
-      `📍 Positioning data for comment ${commentId}`,
-      { positioningData: positioningData ? JSON.stringify(positioningData, null, 2) : 'null (empty client_meta)', commentId, fileKey }
-    );
+    logger.debug(`📍 Positioning data for comment ${commentId}`, {
+      positioningData: positioningData
+        ? JSON.stringify(positioningData, null, 2)
+        : "null (empty client_meta)",
+      commentId,
+      fileKey,
+    });
 
     // Map comment to design elements using positioning data
     let matchedNodeIds: string[] = [];
     try {
-      const nodeId = positioningComment?.client_meta?.node_id ?? commentFromApi.client_meta?.node_id;
+      const nodeId =
+        positioningComment?.client_meta?.node_id ??
+        commentFromApi.client_meta?.node_id;
       matchedNodeIds = await mapCommentToDesignElements(
         accessToken,
         fileKey,
         positioningData,
-        nodeId
+        nodeId,
       );
       logger.debug(
         `🎯 Matched ${matchedNodeIds.length} node(s) for comment ${commentId}`,
-        { matchedNodes: matchedNodeIds.length > 0 ? matchedNodeIds.join(', ') : 'none', nodeCount: matchedNodeIds.length, commentId, fileKey }
+        {
+          matchedNodes:
+            matchedNodeIds.length > 0 ? matchedNodeIds.join(", ") : "none",
+          nodeCount: matchedNodeIds.length,
+          commentId,
+          fileKey,
+        },
       );
     } catch (error) {
-      logger.error(
-        `Error mapping comment ${commentId} to design elements`,
-        { error, commentId, fileKey }
-      );
+      logger.error(`Error mapping comment ${commentId} to design elements`, {
+        error,
+        commentId,
+        fileKey,
+      });
       // Continue with empty array if mapping fails
     }
 
@@ -759,30 +1027,44 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
         accessToken,
         fileKey,
         matchedNodeIds,
-        positioningData
+        positioningData,
       );
-      logger.debug(
-        `🖼️  Extracted images for comment ${commentId}`,
-        { imageCount: Object.keys(imageUrls).length, hasImages: Object.keys(imageUrls).length > 0, commentId, fileKey }
-      );
+      logger.debug(`🖼️  Extracted images for comment ${commentId}`, {
+        imageCount: Object.keys(imageUrls).length,
+        hasImages: Object.keys(imageUrls).length > 0,
+        commentId,
+        fileKey,
+      });
     } catch (error) {
-      logger.error(
-        `Error extracting images for comment ${commentId}`,
-        { error, commentId, fileKey }
-      );
+      logger.error(`Error extracting images for comment ${commentId}`, {
+        error,
+        commentId,
+        fileKey,
+      });
       // Continue with empty object if image extraction fails
     }
 
-    logger.info("Figma for comment imageUrls", { imageUrls: JSON.stringify(imageUrls, null, 2), commentId, fileKey });
+    logger.info("Figma for comment imageUrls", {
+      imageUrls: JSON.stringify(imageUrls, null, 2),
+      commentId,
+      fileKey,
+    });
 
     // Get the closest node ID for storage
-    const closestNodeId = matchedNodeIds.length > 0
-      ? matchedNodeIds[0]
-      : (positioningComment?.client_meta?.node_id ?? commentFromApi.client_meta?.node_id ?? null);
+    const closestNodeId =
+      matchedNodeIds.length > 0
+        ? matchedNodeIds[0]
+        : positioningComment?.client_meta?.node_id ??
+          commentFromApi.client_meta?.node_id ??
+          null;
 
     const fileMetadata = await fetchFileMetadata(accessToken, fileKey);
     if (!fileMetadata) {
-      logger.warn(`⚠️  Could not fetch file metadata for file ${fileKey}`, { fileKey, commentId, integrationId: integration.id });
+      logger.warn(`⚠️  Could not fetch file metadata for file ${fileKey}`, {
+        fileKey,
+        commentId,
+        integrationId: integration.id,
+      });
       return;
     }
 
@@ -807,7 +1089,7 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
       fileKey: fileKey,
       fileUrl: fileMetadata.url,
       nodeId: closestNodeId || undefined,
-      message: commentFromApi.message || '',
+      message: commentFromApi.message || "",
       author: commentFromApi.user,
       createdAt: commentFromApi.created_at,
       resolved: resolved,
@@ -815,7 +1097,8 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
       fileMetadata: fileMetadata,
       positioningData: positioningDataOrUndefined,
       matchedNodeIds: matchedNodeIds.length > 0 ? matchedNodeIds : undefined,
-      imageUrls: imageUrls.nodeImage || imageUrls.fullFrame ? imageUrls : undefined,
+      imageUrls:
+        imageUrls.nodeImage || imageUrls.fullFrame ? imageUrls : undefined,
     });
 
     const eventProcessor = new EventProcessor(figmaEvent, user);
@@ -837,87 +1120,119 @@ export class FigmaCommentEvent extends InputEvent {
   formatForAgentRunner(): string {
     const indentMultiline = (text: string): string =>
       text
-        .split('\n')
+        .split("\n")
         .map((line) => `        ${line}`)
-        .join('\n');
+        .join("\n");
 
-    let imageInfo = '';
+    let imageInfo = "";
     if (this.data.imageUrls) {
       const imageLines: string[] = [];
       if (this.data.imageUrls.nodeImage) {
-        imageLines.push(`- Primary Node Image: ${this.data.imageUrls.nodeImage}`);
+        imageLines.push(
+          `- Primary Node Image: ${this.data.imageUrls.nodeImage}`,
+        );
       }
       if (this.data.imageUrls.fullFrame) {
         imageLines.push(`- Full Frame Image: ${this.data.imageUrls.fullFrame}`);
       }
       if (imageLines.length > 0) {
-        imageLines.push('- Note: Use these images to understand what element the comment refers to.');
-        imageInfo = `Visual Context:\n${indentMultiline(imageLines.join('\n'))}`;
+        imageLines.push(
+          "- Note: Use these images to understand what element the comment refers to.",
+        );
+        imageInfo = `Visual Context:\n${indentMultiline(
+          imageLines.join("\n"),
+        )}`;
       }
     }
 
     const threadEntries = this.data.thread ? [...this.data.thread] : [];
-    const currentThreadEntry = threadEntries.find((entry) => entry.id === this.data.commentId);
+    const currentThreadEntry = threadEntries.find(
+      (entry) => entry.id === this.data.commentId,
+    );
     const parentThreadEntry = currentThreadEntry?.parentId
       ? threadEntries.find((entry) => entry.id === currentThreadEntry.parentId)
       : undefined;
-    const rootThreadEntry = threadEntries.find((entry) => entry.isRoot) ?? threadEntries[0];
+    const rootThreadEntry =
+      threadEntries.find((entry) => entry.isRoot) ?? threadEntries[0];
 
     const formatThreadMessage = (entry: FigmaCommentThreadEntry): string => {
       const flags: string[] = [];
       if (entry.isRoot) {
-        flags.push('root comment');
+        flags.push("root comment");
       }
       if (entry.id === this.data.commentId) {
-        flags.push('current event');
+        flags.push("current event");
       }
       if (entry.parentId && entry.parentId !== entry.id) {
-        flags.push('reply');
+        flags.push("reply");
       }
       if (entry.resolvedAt) {
         flags.push(`resolved on ${entry.resolvedAt}`);
       }
 
-      const metadata = flags.length > 0 ? ` [${flags.join(' | ')}]` : '';
+      const metadata = flags.length > 0 ? ` [${flags.join(" | ")}]` : "";
       const header = `${entry.author.handle} on ${entry.createdAt}${metadata}`;
-      const messageBody = entry.message && entry.message.trim().length > 0
-        ? entry.message.split('\n').map((line) => `  ${line}`).join('\n')
-        : '  (no message)';
+      const messageBody =
+        entry.message && entry.message.trim().length > 0
+          ? entry.message
+              .split("\n")
+              .map((line) => `  ${line}`)
+              .join("\n")
+          : "  (no message)";
 
       return `${header}\n${messageBody}`;
     };
 
     const formatContextEntry = (entry: FigmaCommentThreadEntry): string => {
       const header = `${entry.author.handle} on ${entry.createdAt}`;
-      const messageBody = entry.message && entry.message.trim().length > 0
-        ? entry.message.split('\n').map((line) => `  ${line}`).join('\n')
-        : '  (no message)';
+      const messageBody =
+        entry.message && entry.message.trim().length > 0
+          ? entry.message
+              .split("\n")
+              .map((line) => `  ${line}`)
+              .join("\n")
+          : "  (no message)";
 
       return `${header}\n${messageBody}`;
     };
 
-    const messageBlock = this.data.message && this.data.message.trim().length > 0
-      ? `Comment Message:\n${indentMultiline(this.data.message)}`
-      : '';
+    const messageBlock =
+      this.data.message && this.data.message.trim().length > 0
+        ? `Comment Message:\n${indentMultiline(this.data.message)}`
+        : "";
 
-    const directParentBlock = parentThreadEntry && parentThreadEntry.id !== this.data.commentId
-      ? `Direct Parent Comment:\n${indentMultiline(formatContextEntry(parentThreadEntry))}`
-      : '';
+    const directParentBlock =
+      parentThreadEntry && parentThreadEntry.id !== this.data.commentId
+        ? `Direct Parent Comment:\n${indentMultiline(
+            formatContextEntry(parentThreadEntry),
+          )}`
+        : "";
 
-    const rootThreadBlock = rootThreadEntry
-      && rootThreadEntry.id !== this.data.commentId
-      && rootThreadEntry.id !== parentThreadEntry?.id
-      ? `Thread Starting Comment:\n${indentMultiline(formatContextEntry(rootThreadEntry))}`
-      : '';
+    const rootThreadBlock =
+      rootThreadEntry &&
+      rootThreadEntry.id !== this.data.commentId &&
+      rootThreadEntry.id !== parentThreadEntry?.id
+        ? `Thread Starting Comment:\n${indentMultiline(
+            formatContextEntry(rootThreadEntry),
+          )}`
+        : "";
 
-    const threadInfo = threadEntries.length > 0
-      ? `Full Comment Thread (oldest → newest):\n${indentMultiline(threadEntries.map((entry, index) => {
-        const prefix = `${index + 1}. `;
-        const formatted = formatThreadMessage(entry).split('\n');
-        const withIndex = [formatted[0] ? `${prefix}${formatted[0]}` : prefix, ...formatted.slice(1)];
-        return withIndex.join('\n');
-      }).join('\n\n'))}`
-      : '';
+    const threadInfo =
+      threadEntries.length > 0
+        ? `Full Comment Thread (oldest → newest):\n${indentMultiline(
+            threadEntries
+              .map((entry, index) => {
+                const prefix = `${index + 1}. `;
+                const formatted = formatThreadMessage(entry).split("\n");
+                const withIndex = [
+                  formatted[0] ? `${prefix}${formatted[0]}` : prefix,
+                  ...formatted.slice(1),
+                ];
+                return withIndex.join("\n");
+              })
+              .join("\n\n"),
+          )}`
+        : "";
 
     const conversationContextSections = [
       messageBlock,
@@ -926,30 +1241,36 @@ export class FigmaCommentEvent extends InputEvent {
       threadInfo,
     ].filter((section) => section && section.trim().length > 0);
 
-    const conversationContext = conversationContextSections.join('\n\n');
+    const conversationContext = conversationContextSections.join("\n\n");
 
-    const fileName = typeof this.data.fileMetadata?.name === 'string'
-      ? this.data.fileMetadata.name
-      : null;
-    const folderName = typeof this.data.fileMetadata?.folder_name === 'string'
-      ? this.data.fileMetadata.folder_name
-      : null;
+    const fileName =
+      typeof this.data.fileMetadata?.name === "string"
+        ? this.data.fileMetadata.name
+        : null;
+    const folderName =
+      typeof this.data.fileMetadata?.folder_name === "string"
+        ? this.data.fileMetadata.folder_name
+        : null;
 
     const designContextLines: string[] = [];
-    designContextLines.push(`Design File: ${fileName || 'Untitled Figma file'}`);
+    designContextLines.push(
+      `Design File: ${fileName || "Untitled Figma file"}`,
+    );
     if (folderName) {
       designContextLines.push(`Location: ${folderName}`);
     }
     designContextLines.push(`Open in Figma: ${this.data.fileUrl}`);
 
-    const designContext = `Context:\n${indentMultiline(designContextLines.join('\n'))}`;
+    const designContext = `Context:\n${indentMultiline(
+      designContextLines.join("\n"),
+    )}`;
 
     const summarySection = [
-      'Incoming Figma Comment Event',
+      "Incoming Figma Comment Event",
       `Author: ${this.data.author.handle}`,
       `Created: ${this.data.createdAt}`,
-      `Status: ${this.data.resolved ? 'Resolved' : 'Open'}`,
-    ].join('\n');
+      `Status: ${this.data.resolved ? "Resolved" : "Open"}`,
+    ].join("\n");
 
     const sections = [
       summarySection,
@@ -958,11 +1279,13 @@ export class FigmaCommentEvent extends InputEvent {
       imageInfo,
     ].filter((section) => section && section.trim().length > 0);
 
-    return `${sections.join('\n\n')}\n`;
+    return `${sections.join("\n\n")}\n`;
   }
 
   debugLog(): string {
-    return `Figma Comment Event: File ${this.data.fileKey} - ${this.data.author.handle} - ${this.data.message.substring(0, 50)}`;
+    return `Figma Comment Event: File ${this.data.fileKey} - ${
+      this.data.author.handle
+    } - ${this.data.message.substring(0, 50)}`;
   }
 
   matchesAgentTrigger(agentTrigger: AgentTriggerWithConfigs): boolean {
@@ -988,7 +1311,7 @@ export class FigmaCommentEvent extends InputEvent {
     const subheader = `${this.data.author.handle} on ${fileName}`;
 
     return {
-      event: 'comment_added',
+      event: "comment_added",
       integration: IntegrationType.FIGMA,
       source: this.data.fileKey,
       title: this.data.message.substring(0, 100), // First 100 chars of comment
@@ -1023,7 +1346,7 @@ export async function getFigmaAccessToken(userId: string): Promise<string> {
       user_id: userId,
     },
     orderBy: {
-      created_at: 'desc',
+      created_at: "desc",
     },
   });
 
@@ -1031,7 +1354,10 @@ export async function getFigmaAccessToken(userId: string): Promise<string> {
     throw new Error("Figma integration not found");
   }
 
-  if (figmaIntegration.token_expiry && new Date() > figmaIntegration.token_expiry) {
+  if (
+    figmaIntegration.token_expiry &&
+    new Date() > figmaIntegration.token_expiry
+  ) {
     throw new Error("Figma access token has expired. Please re-authenticate.");
   }
 
@@ -1043,29 +1369,35 @@ export async function getFigmaAccessToken(userId: string): Promise<string> {
  */
 export async function fetchFileMetadata(
   accessToken: string,
-  fileKey: string
+  fileKey: string,
 ): Promise<any> {
   try {
     // Using /v1/files/:key/meta endpoint which returns { file: { ... } }
-    const metadataResponse = await fetch(`https://api.figma.com/v1/files/${fileKey}/meta`, {
-      method: "GET",
-      headers: {
-        "Authorization": `Bearer ${accessToken}`,
+    const metadataResponse = await fetch(
+      `https://api.figma.com/v1/files/${fileKey}/meta`,
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
       },
-    });
+    );
 
     if (metadataResponse.ok) {
       const metadataData = await metadataResponse.json();
       // Extract the file property from the response
       const fileMetadata = metadataData.file || metadataData;
-      logger.info(`✅ Fetched file metadata for ${fileKey}`, { fileKey, fileName: fileMetadata?.name || 'unknown file' });
+      logger.info(`✅ Fetched file metadata for ${fileKey}`, {
+        fileKey,
+        fileName: fileMetadata?.name || "unknown file",
+      });
       return fileMetadata;
     } else {
       const errorText = await metadataResponse.text();
-      logger.error(
-        `Failed to fetch file metadata for ${fileKey}`,
-        { error: errorText, fileKey }
-      );
+      logger.error(`Failed to fetch file metadata for ${fileKey}`, {
+        error: errorText,
+        fileKey,
+      });
       return null;
     }
   } catch (error) {
@@ -1078,66 +1410,95 @@ export async function fetchFileMetadata(
  * Parse client_meta positioning data from Figma comment
  * Returns the positioning type and normalized data structure
  */
-export function parsePositioningData(clientMeta: any): FigmaPositioningData | null {
-  if (!clientMeta || typeof clientMeta !== 'object') {
+export function parsePositioningData(
+  clientMeta: any,
+): FigmaPositioningData | null {
+  if (!clientMeta || typeof clientMeta !== "object") {
     return null;
   }
 
   // Check for Vector: { x: number, y: number }
-  if (typeof clientMeta.x === 'number' && typeof clientMeta.y === 'number' && !clientMeta.width && !clientMeta.height && !clientMeta.node_id) {
+  if (
+    typeof clientMeta.x === "number" &&
+    typeof clientMeta.y === "number" &&
+    !clientMeta.width &&
+    !clientMeta.height &&
+    !clientMeta.node_id
+  ) {
     return {
-      type: 'Vector',
-      data: { x: clientMeta.x, y: clientMeta.y }
+      type: "Vector",
+      data: { x: clientMeta.x, y: clientMeta.y },
     };
   }
 
   // Check for FrameOffset: { node_id: string, node_offset: { x: number, y: number } }
-  if (clientMeta.node_id && clientMeta.node_offset && typeof clientMeta.node_offset.x === 'number' && typeof clientMeta.node_offset.y === 'number') {
+  if (
+    clientMeta.node_id &&
+    clientMeta.node_offset &&
+    typeof clientMeta.node_offset.x === "number" &&
+    typeof clientMeta.node_offset.y === "number"
+  ) {
     return {
-      type: 'FrameOffset',
+      type: "FrameOffset",
       data: {
         node_id: clientMeta.node_id,
-        node_offset: { x: clientMeta.node_offset.x, y: clientMeta.node_offset.y }
-      }
+        node_offset: {
+          x: clientMeta.node_offset.x,
+          y: clientMeta.node_offset.y,
+        },
+      },
     };
   }
 
   // Check for Region: { x: number, y: number, width: number, height: number }
-  if (typeof clientMeta.x === 'number' && typeof clientMeta.y === 'number' && typeof clientMeta.width === 'number' && typeof clientMeta.height === 'number' && !clientMeta.node_id) {
+  if (
+    typeof clientMeta.x === "number" &&
+    typeof clientMeta.y === "number" &&
+    typeof clientMeta.width === "number" &&
+    typeof clientMeta.height === "number" &&
+    !clientMeta.node_id
+  ) {
     return {
-      type: 'Region',
+      type: "Region",
       data: {
         x: clientMeta.x,
         y: clientMeta.y,
         width: clientMeta.width,
-        height: clientMeta.height
-      }
+        height: clientMeta.height,
+      },
     };
   }
 
   // Check for FrameOffsetRegion: Combination of FrameOffset and Region
-  if (clientMeta.node_id && clientMeta.node_offset && typeof clientMeta.x === 'number' && typeof clientMeta.y === 'number' && typeof clientMeta.width === 'number' && typeof clientMeta.height === 'number') {
+  if (
+    clientMeta.node_id &&
+    clientMeta.node_offset &&
+    typeof clientMeta.x === "number" &&
+    typeof clientMeta.y === "number" &&
+    typeof clientMeta.width === "number" &&
+    typeof clientMeta.height === "number"
+  ) {
     return {
-      type: 'FrameOffsetRegion',
+      type: "FrameOffsetRegion",
       data: {
         node_id: clientMeta.node_id,
         node_offset: clientMeta.node_offset,
         x: clientMeta.x,
         y: clientMeta.y,
         width: clientMeta.width,
-        height: clientMeta.height
-      }
+        height: clientMeta.height,
+      },
     };
   }
 
   // Also check for node_id-only positioning (common case)
   if (clientMeta.node_id) {
     return {
-      type: 'FrameOffset',
+      type: "FrameOffset",
       data: {
         node_id: clientMeta.node_id,
-        node_offset: clientMeta.node_offset || { x: 0, y: 0 }
-      }
+        node_offset: clientMeta.node_offset || { x: 0, y: 0 },
+      },
     };
   }
 
@@ -1152,7 +1513,7 @@ export async function mapCommentToDesignElements(
   accessToken: string,
   fileKey: string,
   positioningData: { type: string; data: any } | null,
-  existingNodeId?: string
+  existingNodeId?: string,
 ): Promise<string[]> {
   const matchedNodeIds: string[] = [];
 
@@ -1166,12 +1527,15 @@ export async function mapCommentToDesignElements(
     if (!positioningData) {
       // For file-level comments, try to get the document root or first page
       try {
-        const fileResponse = await fetch(`https://api.figma.com/v1/files/${fileKey}?geometry=paths`, {
-          method: "GET",
-          headers: {
-            "Authorization": `Bearer ${accessToken}`,
+        const fileResponse = await fetch(
+          `https://api.figma.com/v1/files/${fileKey}?geometry=paths`,
+          {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+            },
           },
-        });
+        );
 
         if (fileResponse.ok) {
           const fileData = await fileResponse.json();
@@ -1181,7 +1545,7 @@ export async function mapCommentToDesignElements(
             // Get root page nodes (CANVAS type) or the document itself
             const findRootPages = (node: any, pages: string[] = []): void => {
               // CANVAS nodes are typically pages in Figma
-              if (node.type === 'CANVAS' || node.type === 'FRAME') {
+              if (node.type === "CANVAS" || node.type === "FRAME") {
                 pages.push(node.id);
               }
               // Limit to first 3 pages to avoid too many
@@ -1209,23 +1573,32 @@ export async function mapCommentToDesignElements(
           }
         }
       } catch (error) {
-        logger.error(`Error fetching file for file-level comment context`, { error, fileKey });
+        logger.error(`Error fetching file for file-level comment context`, {
+          error,
+          fileKey,
+        });
       }
 
       return matchedNodeIds;
     }
 
     // Fetch full file JSON to get all nodes and their positions
-    const fileResponse = await fetch(`https://api.figma.com/v1/files/${fileKey}?geometry=paths`, {
-      method: "GET",
-      headers: {
-        "Authorization": `Bearer ${accessToken}`,
+    const fileResponse = await fetch(
+      `https://api.figma.com/v1/files/${fileKey}?geometry=paths`,
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
       },
-    });
+    );
 
     if (!fileResponse.ok) {
       const errorText = await fileResponse.text();
-      logger.error(`Failed to fetch file JSON for ${fileKey}`, { error: errorText, fileKey });
+      logger.error(`Failed to fetch file JSON for ${fileKey}`, {
+        error: errorText,
+        fileKey,
+      });
       return matchedNodeIds; // Return existing node_id if we have it
     }
 
@@ -1237,7 +1610,10 @@ export async function mapCommentToDesignElements(
     }
 
     // Helper function to recursively find all nodes with their bounds
-    const findNodesWithBounds = (node: any, nodes: Array<{ id: string; bounds: any; name: string }> = []): void => {
+    const findNodesWithBounds = (
+      node: any,
+      nodes: Array<{ id: string; bounds: any; name: string }> = [],
+    ): void => {
       if (node.absoluteBoundingBox || node.relativeTransform) {
         const bounds = node.absoluteBoundingBox || {
           x: node.relativeTransform?.[0]?.[2] || 0,
@@ -1249,7 +1625,7 @@ export async function mapCommentToDesignElements(
         nodes.push({
           id: node.id,
           bounds: bounds,
-          name: node.name || 'Unnamed',
+          name: node.name || "Unnamed",
         });
       }
 
@@ -1264,40 +1640,49 @@ export async function mapCommentToDesignElements(
     findNodesWithBounds(document, allNodes);
 
     // Match based on positioning type
-    if (positioningData.type === 'Vector') {
+    if (positioningData.type === "Vector") {
       // For Vector, find nodes that contain the point
       const { x, y } = positioningData.data;
       for (const node of allNodes) {
         const bounds = node.bounds;
-        if (bounds &&
+        if (
+          bounds &&
           x >= bounds.x &&
           x <= bounds.x + bounds.width &&
           y >= bounds.y &&
-          y <= bounds.y + bounds.height) {
+          y <= bounds.y + bounds.height
+        ) {
           if (!matchedNodeIds.includes(node.id)) {
             matchedNodeIds.push(node.id);
           }
         }
       }
-    } else if (positioningData.type === 'Region') {
+    } else if (positioningData.type === "Region") {
       // For Region, find nodes that overlap with the region
       const { x, y, width, height } = positioningData.data;
       const regionBounds = { x, y, width, height };
 
       for (const node of allNodes) {
         const bounds = node.bounds;
-        if (bounds &&
-          !(regionBounds.x + regionBounds.width < bounds.x ||
+        if (
+          bounds &&
+          !(
+            regionBounds.x + regionBounds.width < bounds.x ||
             regionBounds.x > bounds.x + regionBounds.width ||
             regionBounds.y + regionBounds.height < bounds.y ||
-            regionBounds.y > bounds.y + bounds.height)) {
+            regionBounds.y > bounds.y + bounds.height
+          )
+        ) {
           // Overlaps
           if (!matchedNodeIds.includes(node.id)) {
             matchedNodeIds.push(node.id);
           }
         }
       }
-    } else if (positioningData.type === 'FrameOffset' || positioningData.type === 'FrameOffsetRegion') {
+    } else if (
+      positioningData.type === "FrameOffset" ||
+      positioningData.type === "FrameOffsetRegion"
+    ) {
       // For FrameOffset, the node_id is already in the data
       const nodeId = positioningData.data.node_id;
       if (nodeId && !matchedNodeIds.includes(nodeId)) {
@@ -1305,17 +1690,24 @@ export async function mapCommentToDesignElements(
       }
 
       // For FrameOffsetRegion, also check region overlap
-      if (positioningData.type === 'FrameOffsetRegion' && positioningData.data.x !== undefined) {
+      if (
+        positioningData.type === "FrameOffsetRegion" &&
+        positioningData.data.x !== undefined
+      ) {
         const { x, y, width, height } = positioningData.data;
         const regionBounds = { x, y, width, height };
 
         for (const node of allNodes) {
           const bounds = node.bounds;
-          if (bounds &&
-            !(regionBounds.x + regionBounds.width < bounds.x ||
+          if (
+            bounds &&
+            !(
+              regionBounds.x + regionBounds.width < bounds.x ||
               regionBounds.x > bounds.x + bounds.width ||
               regionBounds.y + regionBounds.height < bounds.y ||
-              regionBounds.y > bounds.y + bounds.height)) {
+              regionBounds.y > bounds.y + bounds.height
+            )
+          ) {
             if (!matchedNodeIds.includes(node.id)) {
               matchedNodeIds.push(node.id);
             }
@@ -1326,16 +1718,18 @@ export async function mapCommentToDesignElements(
 
     // Sort by specificity (smaller nodes first, as they're more specific)
     matchedNodeIds.sort((id1, id2) => {
-      const node1 = allNodes.find(n => n.id === id1);
-      const node2 = allNodes.find(n => n.id === id2);
+      const node1 = allNodes.find((n) => n.id === id1);
+      const node2 = allNodes.find((n) => n.id === id2);
       if (!node1 || !node2) return 0;
       const area1 = (node1.bounds?.width || 0) * (node1.bounds?.height || 0);
       const area2 = (node2.bounds?.width || 0) * (node2.bounds?.height || 0);
       return area1 - area2;
     });
-
   } catch (error) {
-    logger.error("Error mapping comment to design elements", { error, fileKey });
+    logger.error("Error mapping comment to design elements", {
+      error,
+      fileKey,
+    });
     // Return existing node_id if we have it, even if mapping failed
   }
 
@@ -1350,7 +1744,7 @@ export async function extractCommentImages(
   accessToken: string,
   fileKey: string,
   nodeIds: string[],
-  positioningData: { type: string; data: any } | null
+  positioningData: { type: string; data: any } | null,
 ): Promise<FigmaCommentImageUrls> {
   const imageUrls: FigmaCommentImageUrls = {};
 
@@ -1361,12 +1755,15 @@ export async function extractCommentImages(
       if (!positioningData) {
         // Try to get document root or first page
         try {
-          const fileResponse = await fetch(`https://api.figma.com/v1/files/${fileKey}`, {
-            method: "GET",
-            headers: {
-              "Authorization": `Bearer ${accessToken}`,
+          const fileResponse = await fetch(
+            `https://api.figma.com/v1/files/${fileKey}`,
+            {
+              method: "GET",
+              headers: {
+                Authorization: `Bearer ${accessToken}`,
+              },
             },
-          });
+          );
 
           if (fileResponse.ok) {
             const fileData = await fileResponse.json();
@@ -1377,7 +1774,10 @@ export async function extractCommentImages(
               let pageNodeId: string | null = null;
 
               const findFirstPage = (node: any): void => {
-                if (node.type === 'CANVAS' || (node.type === 'FRAME' && !pageNodeId)) {
+                if (
+                  node.type === "CANVAS" ||
+                  (node.type === "FRAME" && !pageNodeId)
+                ) {
                   pageNodeId = node.id;
                 }
                 if (!pageNodeId && node.children) {
@@ -1394,55 +1794,80 @@ export async function extractCommentImages(
 
               if (targetNodeId) {
                 const imageResponse = await fetch(
-                  `https://api.figma.com/v1/images/${fileKey}?ids=${encodeURIComponent(targetNodeId)}&format=png&scale=1`,
+                  `https://api.figma.com/v1/images/${fileKey}?ids=${encodeURIComponent(
+                    targetNodeId,
+                  )}&format=png&scale=1`,
                   {
                     method: "GET",
                     headers: {
-                      "Authorization": `Bearer ${accessToken}`,
+                      Authorization: `Bearer ${accessToken}`,
                     },
-                  }
+                  },
                 );
 
                 if (imageResponse.ok) {
                   const imageData = await imageResponse.json();
                   if (imageData.images && imageData.images[targetNodeId]) {
                     imageUrls.fullFrame = imageData.images[targetNodeId];
-                    logger.debug(`📄 Extracted full page image for file-level comment`, { fileKey, targetNodeId });
+                    logger.debug(
+                      `📄 Extracted full page image for file-level comment`,
+                      { fileKey, targetNodeId },
+                    );
                   } else {
-                    logger.info(`Unable to get valid image for file-level comment: image data missing or empty`, { 
-                      fileKey, 
-                      targetNodeId, 
-                      hasImages: !!imageData.images,
-                      imageKeys: imageData.images ? Object.keys(imageData.images) : []
-                    });
+                    logger.info(
+                      `Unable to get valid image for file-level comment: image data missing or empty`,
+                      {
+                        fileKey,
+                        targetNodeId,
+                        hasImages: !!imageData.images,
+                        imageKeys: imageData.images
+                          ? Object.keys(imageData.images)
+                          : [],
+                      },
+                    );
                   }
                 } else {
                   const errorText = await imageResponse.text();
-                  logger.info(`Unable to get image for file-level comment: API returned non-ok status`, { 
-                    fileKey, 
-                    targetNodeId, 
-                    status: imageResponse.status, 
-                    statusText: imageResponse.statusText,
-                    error: errorText 
-                  });
+                  logger.info(
+                    `Unable to get image for file-level comment: API returned non-ok status`,
+                    {
+                      fileKey,
+                      targetNodeId,
+                      status: imageResponse.status,
+                      statusText: imageResponse.statusText,
+                      error: errorText,
+                    },
+                  );
                 }
               } else {
-                logger.info(`Unable to get image for file-level comment: no target node ID found`, { fileKey, pageNodeId, documentId: document.id });
+                logger.info(
+                  `Unable to get image for file-level comment: no target node ID found`,
+                  { fileKey, pageNodeId, documentId: document.id },
+                );
               }
             } else {
-              logger.info(`Unable to get image for file-level comment: document not found in file data`, { fileKey });
+              logger.info(
+                `Unable to get image for file-level comment: document not found in file data`,
+                { fileKey },
+              );
             }
           } else {
             const errorText = await fileResponse.text();
-            logger.info(`Unable to get image for file-level comment: file API returned non-ok status`, { 
-              fileKey, 
-              status: fileResponse.status, 
-              statusText: fileResponse.statusText,
-              error: errorText 
-            });
+            logger.info(
+              `Unable to get image for file-level comment: file API returned non-ok status`,
+              {
+                fileKey,
+                status: fileResponse.status,
+                statusText: fileResponse.statusText,
+                error: errorText,
+              },
+            );
           }
         } catch (error) {
-          logger.error(`Error extracting file-level comment image`, { error, fileKey });
+          logger.error(`Error extracting file-level comment image`, {
+            error,
+            fileKey,
+          });
         }
       }
       return imageUrls;
@@ -1452,13 +1877,15 @@ export async function extractCommentImages(
     const primaryNodeId = nodeIds[0];
     if (primaryNodeId) {
       const imageResponse = await fetch(
-        `https://api.figma.com/v1/images/${fileKey}?ids=${encodeURIComponent(primaryNodeId)}&format=png&scale=2`,
+        `https://api.figma.com/v1/images/${fileKey}?ids=${encodeURIComponent(
+          primaryNodeId,
+        )}&format=png&scale=2`,
         {
           method: "GET",
           headers: {
-            "Authorization": `Bearer ${accessToken}`,
+            Authorization: `Bearer ${accessToken}`,
           },
-        }
+        },
       );
 
       if (imageResponse.ok) {
@@ -1466,22 +1893,29 @@ export async function extractCommentImages(
         if (imageData.images && imageData.images[primaryNodeId]) {
           imageUrls.nodeImage = imageData.images[primaryNodeId];
         } else {
-          logger.info(`Unable to get valid node image: image data missing or empty`, { 
-            fileKey, 
-            primaryNodeId, 
-            hasImages: !!imageData.images,
-            imageKeys: imageData.images ? Object.keys(imageData.images) : []
-          });
+          logger.info(
+            `Unable to get valid node image: image data missing or empty`,
+            {
+              fileKey,
+              primaryNodeId,
+              hasImages: !!imageData.images,
+              imageKeys: imageData.images ? Object.keys(imageData.images) : [],
+            },
+          );
         }
       } else {
         const errorText = await imageResponse.text();
-        logger.error(`Failed to extract node image for ${primaryNodeId}`, { error: errorText, fileKey, primaryNodeId });
-        logger.info(`Unable to get node image: API returned non-ok status`, { 
-          fileKey, 
-          primaryNodeId, 
-          status: imageResponse.status, 
+        logger.error(`Failed to extract node image for ${primaryNodeId}`, {
+          error: errorText,
+          fileKey,
+          primaryNodeId,
+        });
+        logger.info(`Unable to get node image: API returned non-ok status`, {
+          fileKey,
+          primaryNodeId,
+          status: imageResponse.status,
           statusText: imageResponse.statusText,
-          error: errorText 
+          error: errorText,
         });
       }
     }
@@ -1489,12 +1923,15 @@ export async function extractCommentImages(
     // Full frame image - extract the page/frame containing the comment
     // Find the page (CANVAS) that contains the primary node
     try {
-      const fileResponse = await fetch(`https://api.figma.com/v1/files/${fileKey}`, {
-        method: "GET",
-        headers: {
-          "Authorization": `Bearer ${accessToken}`,
+      const fileResponse = await fetch(
+        `https://api.figma.com/v1/files/${fileKey}`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
         },
-      });
+      );
 
       if (fileResponse.ok) {
         const fileData = await fileResponse.json();
@@ -1505,7 +1942,7 @@ export async function extractCommentImages(
           let pageNodeId: string | null = null;
 
           const findPageForNode = (node: any, targetId: string): void => {
-            if (node.type === 'CANVAS') {
+            if (node.type === "CANVAS") {
               // Check if this page contains the target node
               const containsNode = (n: any): boolean => {
                 if (n.id === targetId) return true;
@@ -1535,13 +1972,15 @@ export async function extractCommentImages(
 
           if (targetFrameId) {
             const fullFrameResponse = await fetch(
-              `https://api.figma.com/v1/images/${fileKey}?ids=${encodeURIComponent(targetFrameId)}&format=png&scale=1`,
+              `https://api.figma.com/v1/images/${fileKey}?ids=${encodeURIComponent(
+                targetFrameId,
+              )}&format=png&scale=1`,
               {
                 method: "GET",
                 headers: {
-                  "Authorization": `Bearer ${accessToken}`,
+                  Authorization: `Bearer ${accessToken}`,
                 },
-              }
+              },
             );
 
             if (fullFrameResponse.ok) {
@@ -1549,53 +1988,72 @@ export async function extractCommentImages(
               if (fullFrameData.images && fullFrameData.images[targetFrameId]) {
                 imageUrls.fullFrame = fullFrameData.images[targetFrameId];
               } else {
-                logger.info(`Unable to get valid full frame image: image data missing or empty`, { 
-                  fileKey, 
-                  targetFrameId, 
-                  primaryNodeId,
-                  pageNodeId,
-                  hasImages: !!fullFrameData.images,
-                  imageKeys: fullFrameData.images ? Object.keys(fullFrameData.images) : []
-                });
+                logger.info(
+                  `Unable to get valid full frame image: image data missing or empty`,
+                  {
+                    fileKey,
+                    targetFrameId,
+                    primaryNodeId,
+                    pageNodeId,
+                    hasImages: !!fullFrameData.images,
+                    imageKeys: fullFrameData.images
+                      ? Object.keys(fullFrameData.images)
+                      : [],
+                  },
+                );
               }
             } else {
               const errorText = await fullFrameResponse.text();
-              logger.info(`Unable to get full frame image: API returned non-ok status`, { 
-                fileKey, 
-                targetFrameId, 
-                primaryNodeId,
-                pageNodeId,
-                status: fullFrameResponse.status, 
-                statusText: fullFrameResponse.statusText,
-                error: errorText 
-              });
+              logger.info(
+                `Unable to get full frame image: API returned non-ok status`,
+                {
+                  fileKey,
+                  targetFrameId,
+                  primaryNodeId,
+                  pageNodeId,
+                  status: fullFrameResponse.status,
+                  statusText: fullFrameResponse.statusText,
+                  error: errorText,
+                },
+              );
             }
           } else {
-            logger.info(`Unable to get full frame image: no target frame ID found`, { fileKey, primaryNodeId, pageNodeId });
+            logger.info(
+              `Unable to get full frame image: no target frame ID found`,
+              { fileKey, primaryNodeId, pageNodeId },
+            );
           }
         } else {
           if (!document) {
-            logger.info(`Unable to get full frame image: document not found in file data`, { fileKey, primaryNodeId });
+            logger.info(
+              `Unable to get full frame image: document not found in file data`,
+              { fileKey, primaryNodeId },
+            );
           }
           if (!primaryNodeId) {
-            logger.info(`Unable to get full frame image: no primary node ID available`, { fileKey });
+            logger.info(
+              `Unable to get full frame image: no primary node ID available`,
+              { fileKey },
+            );
           }
         }
       } else {
         const errorText = await fileResponse.text();
-        logger.info(`Unable to get full frame image: file API returned non-ok status`, { 
-          fileKey, 
-          primaryNodeId,
-          status: fileResponse.status, 
-          statusText: fileResponse.statusText,
-          error: errorText 
-        });
+        logger.info(
+          `Unable to get full frame image: file API returned non-ok status`,
+          {
+            fileKey,
+            primaryNodeId,
+            status: fileResponse.status,
+            statusText: fileResponse.statusText,
+            error: errorText,
+          },
+        );
       }
     } catch (error) {
       logger.error(`Error extracting full frame image`, { error, fileKey });
       // Continue without full frame image
     }
-
   } catch (error) {
     logger.error("Error extracting comment images", { error, fileKey });
     // Don't throw - image extraction is optional, continue without images
@@ -1604,14 +2062,13 @@ export async function extractCommentImages(
   return imageUrls;
 }
 
-
 /**
  * Fetch comment from Figma API using a single integration
  */
 export async function fetchFigmaCommentThreadFromApi(
   accessToken: string,
   fileKey: string,
-  commentId: string
+  commentId: string,
 ): Promise<{ comment: FigmaApiComment; thread: FigmaApiComment[] } | null> {
   try {
     const commentsResponse = await fetch(
@@ -1619,14 +2076,17 @@ export async function fetchFigmaCommentThreadFromApi(
       {
         method: "GET",
         headers: {
-          "Authorization": `Bearer ${accessToken}`,
+          Authorization: `Bearer ${accessToken}`,
         },
-      }
+      },
     );
 
     if (!commentsResponse.ok) {
       const errorText = await commentsResponse.text();
-      logger.error(`Failed to fetch comments for file ${fileKey}`, { error: errorText, fileKey });
+      logger.error(`Failed to fetch comments for file ${fileKey}`, {
+        error: errorText,
+        fileKey,
+      });
       return null;
     }
 
@@ -1706,7 +2166,8 @@ export async function fetchFigmaCommentThreadFromApi(
         return aTime - bTime;
       });
 
-    const threadList = threadComments.length > 0 ? threadComments : [targetComment];
+    const threadList =
+      threadComments.length > 0 ? threadComments : [targetComment];
 
     return {
       comment: targetComment,
@@ -1715,7 +2176,7 @@ export async function fetchFigmaCommentThreadFromApi(
   } catch (error) {
     logger.error(
       `⚠️  Error fetching comment from API with file key ${fileKey}`,
-      { error, fileKey }
+      { error, fileKey },
     );
     return null;
   }
@@ -1723,7 +2184,7 @@ export async function fetchFigmaCommentThreadFromApi(
 
 export function findRootThreadComment(
   thread: FigmaApiComment[],
-  fallback: FigmaApiComment
+  fallback: FigmaApiComment,
 ): FigmaApiComment {
   if (thread.length === 0) {
     return fallback;
@@ -1739,7 +2200,7 @@ export function findRootThreadComment(
 
 export function resolvePositioningContext(
   targetComment: FigmaApiComment,
-  thread: FigmaApiComment[]
+  thread: FigmaApiComment[],
 ): {
   rootComment: FigmaApiComment;
   positioningComment: FigmaApiComment;
@@ -1747,11 +2208,20 @@ export function resolvePositioningContext(
 } {
   const rootComment = findRootThreadComment(thread, targetComment);
 
-  const orderedCandidates = [targetComment, ...thread.filter((comment) => comment.id !== targetComment.id)];
-  const candidateWithMeta = orderedCandidates.find((comment) => comment.client_meta);
-  const positioningComment = candidateWithMeta ?? (rootComment.client_meta ? rootComment : targetComment);
+  const orderedCandidates = [
+    targetComment,
+    ...thread.filter((comment) => comment.id !== targetComment.id),
+  ];
+  const candidateWithMeta = orderedCandidates.find(
+    (comment) => comment.client_meta,
+  );
+  const positioningComment =
+    candidateWithMeta ??
+    (rootComment.client_meta ? rootComment : targetComment);
 
-  const positioningData = parsePositioningData(positioningComment?.client_meta ?? null);
+  const positioningData = parsePositioningData(
+    positioningComment?.client_meta ?? null,
+  );
 
   return {
     rootComment,
@@ -1792,4 +2262,3 @@ export interface FigmaWebhookEvent {
   mentions: unknown[]; // Array of mention objects (structure unknown)
   triggered_by: FigmaWebhookUser;
 }
-

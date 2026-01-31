@@ -9,7 +9,7 @@ import { settings } from "../config/settings";
 import logger from "../logger";
 import { db } from "../prismaClient";
 import { Session } from "../server";
-import { Role, User, UserNoOrganization } from "../shared/types";
+import { Role, User } from "../shared/types";
 
 export const WORKOS_SESSION_COOKIE_NAME = "TERSE_WORKOS_SESSION";
 
@@ -255,14 +255,14 @@ export async function getOrCreateDbUserFromWorkOS(
     email: workosUser.email,
     displayName: workosUser.firstName + " " + workosUser.lastName,
     displayPhotoUrl: workosUser.profilePictureUrl || "",
-    isPlaceholder: false,
     roles: roles as Role[],
   };
 }
 
-export async function getUserNoOrganizationFromDb(
+export async function getUserForOrg(
   userId: string,
-): Promise<UserNoOrganization | null> {
+  organizationId: string,
+): Promise<User | null> {
   const prisma = db();
   const dbUser = await prisma.users.findUnique({
     where: { id: userId },
@@ -278,13 +278,37 @@ export async function getUserNoOrganizationFromDb(
     return null;
   }
 
+  const organization = await workos.organizations.getOrganization(
+    organizationId,
+  );
+  const organizationName = organization.name;
+
+  const organizationMemberships =
+    await workos.userManagement.listOrganizationMemberships({
+      userId: workOSId,
+      organizationId: organizationId,
+      statuses: ["active"],
+    });
+  if (!organizationMemberships.data) {
+    return null;
+  }
+
+  let roles: Role[] = [];
+  organizationMemberships.data.forEach((membership) => {
+    if (membership.organizationId === organizationId) {
+      roles = (membership.roles?.map((role) => role.slug) as Role[]) || [];
+    }
+  });
+
   return {
     id: dbUser.id,
     workosId: workOSId,
+    organizationId: organizationId,
+    organizationName: organizationName,
     email: workOSUser.email,
     displayName: workOSUser.firstName + " " + workOSUser.lastName,
     displayPhotoUrl: workOSUser.profilePictureUrl || "",
-    isPlaceholder: false,
+    roles: roles,
   };
 }
 

@@ -1,25 +1,27 @@
 import { Client } from "@notionhq/client";
-import { Request, Response } from "express";
-import { db } from "../prismaClient";
-import { NotionResource, NotionResourcesResponse } from "../shared/types";
 import { SearchResponse } from "@notionhq/client/build/src/api-endpoints";
-import { extractPageTitle } from "../utility/notion";
+import { Request, Response } from "express";
 import { NotionIntegrationManager } from "../integrations/NotionIntegration";
 import logger from "../logger";
+import { db } from "../prismaClient";
+import { NotionResource, NotionResourcesResponse } from "../shared/types";
+import { extractPageTitle } from "../utility/notion";
 
 export async function getNotionIntegrations(req: Request, res: Response) {
   if (!req.session?.user) {
-      res.status(401).json({ error: 'Unauthorized' });
-      return;
+    res.status(401).json({ error: "Unauthorized" });
+    return;
   }
 
   try {
-      const manager = new NotionIntegrationManager();
-      const integrations = await manager.getInstancesForUser(req.session.user.id);
-      res.status(200).json(integrations);
+    const manager = new NotionIntegrationManager();
+    const integrations = await manager.getInstancesForOrganization(
+      req.session.user.organizationId,
+    );
+    res.status(200).json(integrations);
   } catch (error) {
-      logger.error('Error fetching Notion integrations:', { error });
-      res.status(500).json({ error: 'Failed to fetch Notion integrations' });
+    logger.error("Error fetching Notion integrations:", { error });
+    res.status(500).json({ error: "Failed to fetch Notion integrations" });
   }
 }
 
@@ -34,7 +36,7 @@ export const fetchNotionResources = async (
   userId: string,
   integrationId: string,
   search: string = "",
-  typeFilter?: string
+  typeFilter?: string,
 ): Promise<NotionResourcesResponse> => {
   if (!integrationId) {
     throw new Error("integrationId is required");
@@ -62,38 +64,42 @@ export const fetchNotionResources = async (
     query: search,
     page_size: 100,
   };
-  
-  if (typeFilter === 'page') {
+
+  if (typeFilter === "page") {
     searchOptions.filter = { property: "object", value: "page" };
-  } else if (typeFilter === 'database') {
+  } else if (typeFilter === "database") {
     searchOptions.filter = { property: "object", value: "data_source" };
   }
 
-  const searchResponse: SearchResponse = await notionClient.search(searchOptions);
+  const searchResponse: SearchResponse = await notionClient.search(
+    searchOptions,
+  );
 
   let resources: NotionResource[] = searchResponse.results
     .map((result: any) => {
-      if (result.object === 'data_source') {
+      if (result.object === "data_source") {
         return {
           id: result.id,
           title: result.title?.[0]?.plain_text || "Untitled Database",
           url: result.url,
-          type: 'database' as const,
+          type: "database" as const,
         };
-      } else if (result.object === 'page') {
+      } else if (result.object === "page") {
         return {
           id: result.id,
           title: extractPageTitle(result),
-          url: 'url' in result ? result.url : '',
-          type: 'page' as const,
+          url: "url" in result ? result.url : "",
+          type: "page" as const,
         };
       }
       return null;
     })
     .filter((resource): resource is NotionResource => resource !== null);
-  
+
   if (!search) {
-    resources = resources.sort((a, b) => a.title.localeCompare(b.title, undefined, { sensitivity: 'base' }));
+    resources = resources.sort((a, b) =>
+      a.title.localeCompare(b.title, undefined, { sensitivity: "base" }),
+    );
   }
 
   return { resources };
@@ -114,13 +120,18 @@ export const getNotionResources = async (req: Request, res: Response) => {
   const typeFilter = req.query.type as string | undefined;
 
   try {
-    const response = await fetchNotionResources(user.id, integrationId, search, typeFilter);
+    const response = await fetchNotionResources(
+      user.id,
+      integrationId,
+      search,
+      typeFilter,
+    );
     res.status(200).json(response);
   } catch (error: any) {
-    logger.error('Error searching Notion resources:', { error });
+    logger.error("Error searching Notion resources:", { error });
     res.status(500).json({
       error: "Failed to search resources",
-      details: error.message
+      details: error.message,
     });
   }
 };

@@ -17,7 +17,7 @@ import {
 import { Session } from "../../server";
 import { ConfigInstance } from "../../shared/Configs";
 import { RunHistoryAction } from "../../shared/RunHistoryTypes";
-import { UserNoOrganization } from "../../shared/types";
+import { User } from "../../shared/types";
 import { AgentWithRelations, Agent as PrismaAgent } from "../../types/prisma";
 import {
   getInputConfigInclude,
@@ -70,9 +70,9 @@ export class ProcessorResult<T extends Session = SessionWithTracking<Session>> {
 
 export class EventProcessor {
   private inputEvent: InputEvent;
-  private user: UserNoOrganization;
+  private user: User;
 
-  constructor(inputEvent: InputEvent, user: UserNoOrganization) {
+  constructor(inputEvent: InputEvent, user: User) {
     this.inputEvent = inputEvent;
     this.user = user;
   }
@@ -88,7 +88,7 @@ export class EventProcessor {
     // Find all active agents for this user (already includes all config relations)
     const agents: AgentWithRelations[] = await db().automations.findMany({
       where: {
-        user_id: this.user.id,
+        organization_id: this.user.organizationId,
         is_active: true,
       },
       include: {

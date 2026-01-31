@@ -14,7 +14,7 @@ import {
 import logger, { runWithUserContext } from "../logger";
 import { db } from "../prismaClient";
 import { Identifiable } from "../rag/Hydrator";
-import { getUserNoOrganizationFromDb } from "../routes/auth";
+import { getUserForOrg } from "../routes/auth";
 import { FrontendRoutes } from "../shared/FrontendRoutes";
 import {
   AdditionalStateParams,
@@ -66,6 +66,25 @@ export class SlackIntegrationManager
     const userSlackIntegrations = await db().user_slack_integrations.findMany({
       where: {
         user_id: userId,
+      },
+      include: {
+        slack_integration: true,
+      },
+    });
+    return userSlackIntegrations.map((usi) => ({
+      id: usi.id,
+      teamId: usi.slack_integration.team_id,
+      teamName: usi.slack_integration.team_name,
+      isBotUser: usi.is_bot_user,
+    }));
+  }
+
+  async getInstancesForOrganization(
+    organizationId: string,
+  ): Promise<SlackIntegration[]> {
+    const userSlackIntegrations = await db().user_slack_integrations.findMany({
+      where: {
+        organization_id: organizationId,
       },
       include: {
         slack_integration: true,
@@ -202,6 +221,7 @@ export class SlackIntegrationManager
 
   async getInstallationUrl(
     userId: string,
+    organizationId: string,
     options?: InstallationOptionsFor<IntegrationType.SLACK>,
     additionalStatePayload?: AdditionalStateParams,
   ): Promise<OAuthInstallationDetails> {
@@ -219,6 +239,7 @@ export class SlackIntegrationManager
     // create JWT and attach to url as state, including isBotUser and any additional state payload
     const state = createOAuthStateToken({
       userId,
+      organizationId,
       additionalFields: { isBotUser },
       additionalStatePayload,
       expiresIn: "7d",
@@ -275,6 +296,7 @@ export class SlackIntegrationManager
       return;
     }
     const isBotUser = decoded.isBotUser ?? true; // Default to true for backward compatibility
+    const organizationId = decoded.organizationId ?? undefined;
 
     const client_id = slackConfig.clientId;
     const client_secret = slackConfig.clientSecret;
@@ -367,9 +389,11 @@ export class SlackIntegrationManager
           ? {
               authed_user_id: authed_user.id,
               authed_user_access_token: authed_user.access_token,
+              organization_id: organizationId,
             }
           : {
               authed_user_id: authed_user.id,
+              organization_id: organizationId,
             };
 
         const createData =
@@ -380,12 +404,14 @@ export class SlackIntegrationManager
                 authed_user_id: authed_user.id,
                 authed_user_access_token: authed_user.access_token,
                 is_bot_user: false,
+                organization_id: organizationId,
               }
             : {
                 user_id: user.id,
                 slack_team_id: slackIntegration.team_id,
                 authed_user_id: authed_user.id,
                 is_bot_user: true,
+                organization_id: organizationId,
               };
 
         await tx.user_slack_integrations.upsert({
@@ -1108,8 +1134,13 @@ async function handleSlackMessage(
     // This ensures messages from any workspace user can trigger automations
     let totalMatches = 0;
     for (const userSlackIntegration of filteredWorkspaceUserIntegrations) {
-      const user = await getUserNoOrganizationFromDb(
+      const organizationId = userSlackIntegration.organization_id;
+      if (!organizationId) {
+        continue;
+      }
+      const user = await getUserForOrg(
         userSlackIntegration.user.id,
+        organizationId,
       );
       if (!user) {
         logger.error(`User not found for Slack integration`, {
@@ -1119,10 +1150,7 @@ async function handleSlackMessage(
       }
       try {
         // Process with user context for logging
-        await runWithUserContext(
-          userSlackIntegration.user.id,
-          user.email,
-          async () => {
+        await runWithUserContext(user, async () => {
             const eventProcessor = new EventProcessor(slackEvent, user);
             const results = await eventProcessor.process();
 
@@ -1164,8 +1192,7 @@ async function handleSlackMessage(
                 }
               }
             }
-          },
-        );
+          });
       } catch (error) {
         logger.error(`Error processing automations for user ${user.email}`, {
           error,

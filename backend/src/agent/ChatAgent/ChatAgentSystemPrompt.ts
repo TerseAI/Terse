@@ -3,7 +3,7 @@ import {
   isSystemIntegration,
 } from "../../integrations/abstract/IntegrationRegistry";
 import { db } from "../../prismaClient";
-import { getUserNoOrganizationFromDb } from "../../routes/auth";
+import { getUserForOrg } from "../../routes/auth";
 import {
   INTEGRATION_METADATA,
   IntegrationInstance,
@@ -19,6 +19,7 @@ import { formatAgentForSystemPrompt } from "../AgentRunner/formatContext";
 
 export async function buildChatAgentSystemPrompt(
   userId: string,
+  organizationId: string,
   userTimezone?: string | null,
 ): Promise<string> {
   const integrationMetadata = Object.values(INTEGRATION_METADATA);
@@ -39,7 +40,7 @@ export async function buildChatAgentSystemPrompt(
     )
     .join("\n");
 
-  const userRecord = await getUserNoOrganizationFromDb(userId);
+  const userRecord = await getUserForOrg(userId);
   if (!userRecord) {
     throw new Error("User not found");
   }
@@ -51,11 +52,13 @@ export async function buildChatAgentSystemPrompt(
     ? currentTimeLocal.split("T")[0]
     : null;
 
-  // Get user's existing integrations
+  // Get org's existing integrations
   const integrationInstanceDescriptions = (
     await Promise.all(
       INTEGRATION_REGISTRY.map(async (integration) => {
-        const instances = await integration.getInstancesForUser(userId);
+        const instances = await integration.getInstancesForOrganization(
+          organizationId,
+        );
         const formattedInstances = instances.map((instance) =>
           integration.formatIntegrationInstanceForAgent(instance),
         );

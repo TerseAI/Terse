@@ -30,7 +30,9 @@ export async function getGithubIntegrations(req: Request, res: Response) {
 
   try {
     const manager = new GithubIntegrationManager();
-    const integrations = await manager.getInstancesForUser(req.session.user.id);
+    const integrations = await manager.getInstancesForOrganization(
+      req.session.user.organizationId,
+    );
     res.status(200).json(integrations);
   } catch (error) {
     logger.error("Error fetching GitHub integrations", { error });

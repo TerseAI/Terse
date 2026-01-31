@@ -22,7 +22,9 @@ export async function getSlackIntegrations(req: Request, res: Response) {
 
   try {
     const manager = new SlackIntegrationManager();
-    const integrations = await manager.getInstancesForUser(req.session.user.id);
+    const integrations = await manager.getInstancesForOrganization(
+      req.session.user.organizationId,
+    );
     res.status(200).json(integrations);
   } catch (error) {
     logger.error("Error fetching Slack integrations", {

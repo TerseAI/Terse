@@ -8,12 +8,11 @@ export type Role = "admin" | "user";
 export type User = {
   id: string;
   workosId: string;
-  organizationId: string | undefined;
-  organizationName: string | undefined;
+  organizationId: string;
+  organizationName: string;
   email: string;
   displayName: string;
   displayPhotoUrl: string;
-  isPlaceholder: boolean;
   roles: Role[];
 };
 

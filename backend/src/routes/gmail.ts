@@ -1,24 +1,29 @@
+import { InputConfigType, OutputConfigType } from "@prisma/client";
 import { Request, Response } from "express";
 import { google } from "googleapis";
-import { db } from "../prismaClient";
-import { getOAuth2Client, GmailIntegrationManager, GmailWebhookEvent } from "../integrations/GmailIntegration";
-import { InputConfigType, OutputConfigType } from "@prisma/client";
+import {
+  getOAuth2Client,
+  GmailIntegrationManager,
+  GmailWebhookEvent,
+} from "../integrations/GmailIntegration";
 import logger from "../logger";
-
+import { db } from "../prismaClient";
 
 export async function getGmailIntegrations(req: Request, res: Response) {
   if (!req.session?.user) {
-      res.status(401).json({ error: 'Unauthorized' });
-      return;
+    res.status(401).json({ error: "Unauthorized" });
+    return;
   }
 
   try {
-      const manager = new GmailIntegrationManager();
-      const integrations = await manager.getInstancesForUser(req.session.user.id);
-      res.status(200).json(integrations);
+    const manager = new GmailIntegrationManager();
+    const integrations = await manager.getInstancesForOrganization(
+      req.session.user.organizationId,
+    );
+    res.status(200).json(integrations);
   } catch (error) {
-      logger.error('Error fetching Gmail integrations:', { error });
-      res.status(500).json({ error: 'Failed to fetch Gmail integrations' });
+    logger.error("Error fetching Gmail integrations:", { error });
+    res.status(500).json({ error: "Failed to fetch Gmail integrations" });
   }
 }
 
@@ -95,7 +100,7 @@ export async function deleteGmailIntegration(req: Request, res: Response) {
     });
 
     logger.info(
-      `Gmail integration deactivated for user ${req.session.user.id}`
+      `Gmail integration deactivated for user ${req.session.user.id}`,
     );
     res.json({ message: "Gmail integration disabled successfully" });
   } catch (error) {
@@ -114,28 +119,29 @@ export async function handleGmailWebhook(req: Request, res: Response) {
   // Extract and validate webhook data
   const webhookData = extractWebhookData(req);
   if (!webhookData) {
-    return res.status(400).send('Invalid message format');
+    return res.status(400).send("Invalid message format");
   }
 
   // Immediately acknowledge to Gmail to prevent duplicate deliveries
-  res.status(200).send('OK');
+  res.status(200).send("OK");
 
   const gmailIntegration = new GmailIntegrationManager();
   try {
     await gmailIntegration.processWebhookEvent({
       emailAddress: webhookData.emailAddress,
       historyId: webhookData.historyId,
-    })
+    });
   } catch (error) {
-    logger.error('Error processing Gmail webhook:', { error });
+    logger.error("Error processing Gmail webhook:", { error });
   }
 }
-
 
 /**
  * Extract and validate webhook data from the request
  */
-function extractWebhookData(req: Request): { emailAddress: string; historyId: number } | null {
+function extractWebhookData(
+  req: Request,
+): { emailAddress: string; historyId: number } | null {
   const { message } = req.body;
 
   if (!message || !message.data) {
@@ -144,7 +150,7 @@ function extractWebhookData(req: Request): { emailAddress: string; historyId: nu
 
   try {
     const decoded: GmailWebhookEvent = JSON.parse(
-      Buffer.from(message.data, 'base64').toString()
+      Buffer.from(message.data, "base64").toString(),
     );
 
     return {
@@ -152,12 +158,10 @@ function extractWebhookData(req: Request): { emailAddress: string; historyId: nu
       historyId: decoded.historyId,
     };
   } catch (error) {
-    logger.error('Error decoding webhook data:', { error });
+    logger.error("Error decoding webhook data:", { error });
     return null;
   }
 }
-
-
 
 export default {
   gmailCallback,
