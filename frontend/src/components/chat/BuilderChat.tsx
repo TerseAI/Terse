@@ -21,15 +21,10 @@ export function BuilderChat({ getStateJSON, agentId }: BuilderChatProps) {
     // Fetch history only when we have an agentId (existing session)
     const { events: historyEvents, isLoading: isHistoryLoading } = useBuilderChatHistory(agentId);
 
-    // Convert history events to turns
-    const initialTurns = useMemo(() => {
-        if (!agentId || historyEvents.length === 0) {
-            return undefined;
-        }
-        // Mark historical events so they don't animate
-        const historicalEvents = historyEvents.map((event) => ({ ...event, isHistorical: true }));
-        return convertRunHistoryEventsToTurns(historicalEvents);
-    }, [agentId, historyEvents]);
+    // Convert history events to turns (mark as historical to disable animation)
+    const initialTurns = agentId && historyEvents.length > 0
+        ? convertRunHistoryEventsToTurns(historyEvents.map((event) => ({ ...event, isHistorical: true })))
+        : undefined;
 
     useEffect(() => {
         // Only reset if agentId actually changed (not on initial mount)
