@@ -5,6 +5,8 @@ import { subscribeToBuilderChat, sendBuilderMessage } from '@/socket';
 import { ModelRequest, SendModelRequest } from '@/shared/ModelEvents';
 import { ChatEventPayload } from './hooks/useCompletionSocket';
 import { Bot, Plug, Settings, MessageSquare } from 'lucide-react';
+import { useBuilderChatHistory } from '@/hooks/api/useBuilderChatHistory';
+import { convertRunHistoryEventsToTurns } from '@/components/RunHistory/RunHistoryChatDrawer/RunHistoryChatAdapter';
 
 type BuilderChatProps = {
     getStateJSON: () => string;
@@ -15,15 +17,23 @@ export function BuilderChat({ getStateJSON, agentId }: BuilderChatProps) {
     const generatedId = useMemo(() => uuidv4(), []);
     const sessionId = agentId ?? generatedId;
     const previousAgentIdRef = useRef<string | null | undefined>(agentId);
-    
+
+    // Fetch history only when we have an agentId (existing session)
+    const { events: historyEvents, isLoading: isHistoryLoading } = useBuilderChatHistory(agentId);
+
+    // Convert history events to turns (mark as historical to disable animation)
+    const initialTurns = agentId && historyEvents.length > 0
+        ? convertRunHistoryEventsToTurns(historyEvents.map((event) => ({ ...event, isHistorical: true })))
+        : undefined;
+
     useEffect(() => {
         // Only reset if agentId actually changed (not on initial mount)
         if (previousAgentIdRef.current !== undefined && previousAgentIdRef.current !== agentId) {
             // The key change will handle the reset, but we can log it for debugging
-            console.log('[BuilderChat] Agent changed, resetting chat', { 
-                previous: previousAgentIdRef.current, 
+            console.log('[BuilderChat] Agent changed, resetting chat', {
+                previous: previousAgentIdRef.current,
                 current: agentId,
-                sessionId 
+                sessionId
             });
         }
         previousAgentIdRef.current = agentId;
@@ -53,6 +63,15 @@ export function BuilderChat({ getStateJSON, agentId }: BuilderChatProps) {
         }
     }, [sessionId, getStateJSON]);
 
+    // Show loading state while fetching history for existing sessions
+    if (agentId && isHistoryLoading) {
+        return (
+            <div className="h-full flex items-center justify-center p-2">
+                <div className="text-muted-foreground">Loading conversation...</div>
+            </div>
+        );
+    }
+
     return (
         <div className="h-full flex min-h-0 p-2">
             <Chat
@@ -60,6 +79,7 @@ export function BuilderChat({ getStateJSON, agentId }: BuilderChatProps) {
                 subscribeToEvents={subscribeToEvents}
                 sendMessage={sendMessage}
                 addUserTurnsLocally={true}
+                initialTurns={initialTurns}
                 EmptyContentPlaceholder={<BuilderChatEmptyState />}
             />
         </div>

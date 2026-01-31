@@ -109,6 +109,7 @@ import {
   getRunHistory,
   getRunHistoryActions,
 } from "./routes/runHistory";
+import { getBuilderChatHistory } from "./routes/builderChat";
 import { handleManualTrigger, handleScheduleWebhook } from "./routes/schedule";
 import {
   getCurrentSlackIntegration,
@@ -297,6 +298,16 @@ app.get(
   authMiddleware,
   async (req, res) => {
     getChatHistory(req, res);
+  },
+);
+
+// MARK: BUILDER CHAT
+
+app.get(
+  ApiRoutes.BUILDER_CHAT.HISTORY_BY_SESSION_ID.pattern,
+  authMiddleware,
+  async (req, res) => {
+    getBuilderChatHistory(req, res);
   },
 );
 
