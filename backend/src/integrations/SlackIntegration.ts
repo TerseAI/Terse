@@ -278,13 +278,14 @@ export class SlackIntegrationManager
     }
 
     const jwtUtil = new Jwt();
-    const user = await jwtUtil.verify(state);
+    const result = await jwtUtil.verify(state);
 
-    if (!user) {
+    if (!result) {
       logger.error("Invalid or expired state token");
       res.redirect(`${frontendUrl}${FrontendRoutes.OAUTH.ERROR}`);
       return;
     }
+    const user = result.user;
 
     // Decode the full JWT state payload
     let decoded: any;
@@ -296,7 +297,15 @@ export class SlackIntegrationManager
       return;
     }
     const isBotUser = decoded.isBotUser ?? true; // Default to true for backward compatibility
-    const organizationId = decoded.organizationId ?? undefined;
+    const organizationId = decoded.organizationId;
+
+    if (!organizationId || typeof organizationId !== "string") {
+      logger.error("Slack OAuth: organizationId is required in state", {
+        userId: user.id,
+      });
+      res.redirect(`${frontendUrl}${FrontendRoutes.OAUTH.ERROR}`);
+      return;
+    }
 
     const client_id = slackConfig.clientId;
     const client_secret = slackConfig.clientSecret;

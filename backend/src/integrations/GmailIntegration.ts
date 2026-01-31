@@ -393,9 +393,17 @@ export class GmailIntegrationManager
       // Decode state using helper function
       const stateData = decodeOAuthStateToken(state);
       const userId = stateData.userId;
-      const organizationId = stateData.organizationId ?? undefined;
+      const organizationId = stateData.organizationId;
 
       if (!userId) {
+        res.redirect(`${urls.frontend}${FrontendRoutes.OAUTH.ERROR}`);
+        return;
+      }
+
+      if (!organizationId || typeof organizationId !== "string") {
+        logger.error("Gmail OAuth: organizationId is required in state", {
+          userId,
+        });
         res.redirect(`${urls.frontend}${FrontendRoutes.OAUTH.ERROR}`);
         return;
       }

@@ -68,8 +68,11 @@ export const getPosthogProjects = async (req: Request, res: Response) => {
   const search = (req.query.search as string) || "";
 
   try {
+    if (!user.organizationId) {
+      return res.status(400).json({ error: "Organization context is required" });
+    }
     const responseData = await fetchPosthogProjects(
-      user.id,
+      user.organizationId,
       integrationId,
       search,
     );
@@ -84,14 +87,14 @@ export const getPosthogProjects = async (req: Request, res: Response) => {
 };
 
 export const fetchPosthogProjects = async (
-  userId: string,
+  organizationId: string,
   integrationId: string,
   search: string = "",
 ): Promise<PosthogProjectsResponse> => {
   const integration = await db().posthog_integrations.findFirst({
     where: {
       id: integrationId,
-      user_id: userId,
+      organization_id: organizationId,
     },
   });
 

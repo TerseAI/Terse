@@ -86,7 +86,7 @@ export async function buildChatAgentSystemPrompt(
   const currentUserAgents: AgentWithRelations[] =
     await db().automations.findMany({
       where: {
-        user_id: userId,
+        organization_id: organizationId,
       },
       include: {
         prompt: true,

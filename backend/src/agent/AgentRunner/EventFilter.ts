@@ -151,9 +151,9 @@ export async function filterEvent(
         }
 
         // Handle streaming and channel management if streamingParams are provided
-        if (streamingParams?.runId && streamingParams?.userId && streamingParams?.agentId) {
+        if (streamingParams?.runId && streamingParams?.organizationId && streamingParams?.agentId) {
             const io = getRealtimeSocket();
-            const userRoom = SocketRooms.user(streamingParams.userId);
+            const orgRoom = SocketRooms.organization(streamingParams.organizationId);
 
             try {
                 for await (const modelEvent of transformAgentStreamToModelEvents(result)) {
@@ -177,7 +177,7 @@ export async function filterEvent(
                             agentId: streamingParams.agentId,
                             runHistoryModelEvent,
                         };
-                        io.to(userRoom).emit(SocketEvents.AGENT_CHAT_EVENT, payload);
+                        io.to(orgRoom).emit(SocketEvents.AGENT_CHAT_EVENT, payload);
                     }
                 }
             } catch (error) {
@@ -196,7 +196,7 @@ export async function filterEvent(
         parsed.confidence = Math.max(0, Math.min(1, parsed.confidence));
 
         // Store and emit the filter result event if streamingParams are provided
-        if (streamingParams?.runId && streamingParams?.userId && streamingParams?.agentId) {
+        if (streamingParams?.runId && streamingParams?.organizationId && streamingParams?.agentId) {
             const filterResultEvent = {
                 type: 'FilterResult' as const,
                 isRelevant: parsed.isRelevant,
@@ -208,7 +208,7 @@ export async function filterEvent(
 
             const io = getRealtimeSocket();
             if (io) {
-                const userRoom = `user:${streamingParams.userId}`;
+                const orgRoom = SocketRooms.organization(streamingParams.organizationId);
                 const runHistoryModelEvent: RunHistoryModelEvent = {
                     ...filterResultEvent,
                     id: filterEventId,
@@ -219,7 +219,7 @@ export async function filterEvent(
                     agentId: streamingParams.agentId,
                     runHistoryModelEvent,
                 };
-                io.to(userRoom).emit('agent:chat:event', payload);
+                io.to(orgRoom).emit(SocketEvents.AGENT_CHAT_EVENT, payload);
             }
         }
         logger.info(`Event filter result for ${event.integrationType}:`, { parsed });

@@ -259,8 +259,8 @@ export class ApprovalService {
                 approved: approved,
             };
             await storeChatEvent(runId, toolApprovalResponseEvent);
-            emitCacheInvalidationWithWildcard(userId, 'runHistory', channel.id);
-            emitCacheInvalidationWithWildcard(userId, 'chatHistory', runId);
+            emitCacheInvalidationWithWildcard(channel.organization_id, 'runHistory', channel.id);
+            emitCacheInvalidationWithWildcard(channel.organization_id, 'chatHistory', runId);
 
             // Create agent runner and resume from pending approval
             const runContext = { runId };
@@ -275,6 +275,7 @@ export class ApprovalService {
                     runId,
                     userId: userId,
                     agentId: channel.id,
+                    organizationId: channel.organization_id,
                 },
                 rejectionReason,
                 hardReject
@@ -288,7 +289,7 @@ export class ApprovalService {
                 const hasFinalOutput = Boolean(result.result?.finalOutput);
                 try {
                     await finalizeRunStatus(runId, hasFinalOutput ? 'success' : 'failed');
-                    emitCacheInvalidationWithWildcard(userId, 'runHistory', channel.id);
+                    emitCacheInvalidationWithWildcard(channel.organization_id, 'runHistory', channel.id);
                 } catch (e) {
                     logger.error('Failed to finalize run status', { error: e });
                 }
@@ -306,8 +307,8 @@ export class ApprovalService {
             if (result.status === 'awaiting_approval') {
                 await this.updateSlackNotification(runId, stepId, finalSlackStatus, userId, channel.id);
 
-                emitCacheInvalidationWithWildcard(userId, 'runHistory', channel.id);
-                emitCacheInvalidationWithWildcard(userId, 'chatHistory', runId);
+                emitCacheInvalidationWithWildcard(channel.organization_id, 'runHistory', channel.id);
+                emitCacheInvalidationWithWildcard(channel.organization_id, 'chatHistory', runId);
 
                 logger.info(
                     `[ApprovalService] Processed approval decision; run is now awaiting another approval`,
@@ -343,7 +344,10 @@ export class ApprovalService {
                 await markRunFailed(runId, errorMessage, 'agent');
                 // runHistory cache keys are scoped by channelId (not runId). chatHistory is scoped by runId.
                 if (channelIdForSlack) {
-                    emitCacheInvalidationWithWildcard(userId, 'runHistory', channelIdForSlack);
+                    const automation = await db().automations.findUnique({ where: { id: channelIdForSlack }, select: { organization_id: true } });
+                    if (automation?.organization_id) {
+                        emitCacheInvalidationWithWildcard(automation.organization_id, 'runHistory', channelIdForSlack);
+                    }
                 } else {
                     logger.warn('[ApprovalService] Missing channel id; cannot invalidate runHistory cache', {
                         userId,

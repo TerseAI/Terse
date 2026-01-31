@@ -69,8 +69,11 @@ export async function getLaunchDarklyProjects(req: Request, res: Response) {
   }
 
   try {
+    if (!req.session.user.organizationId) {
+      return res.status(400).json({ error: "Organization context is required" });
+    }
     const response = await fetchLaunchDarklyProjects(
-      req.session.user.id,
+      req.session.user.organizationId,
       integrationId,
     );
     res.status(200).json(response);
@@ -86,14 +89,14 @@ export async function getLaunchDarklyProjects(req: Request, res: Response) {
 }
 
 export async function fetchLaunchDarklyProjects(
-  userId: string,
+  organizationId: string,
   integrationId: string,
   query: string = "",
 ): Promise<{ projects: Array<{ key: string; name: string }> }> {
   const integration = await db().launchdarkly_integrations.findFirst({
     where: {
       id: integrationId,
-      user_id: userId,
+      organization_id: organizationId,
     },
   });
 
@@ -142,14 +145,14 @@ export async function fetchLaunchDarklyProjects(
 }
 
 export async function fetchLaunchDarklyEnvironments(
-  userId: string,
+  organizationId: string,
   integrationId: string,
   projectKey: string,
 ): Promise<{ environments: Array<{ key: string; name: string }> }> {
   const integration = await db().launchdarkly_integrations.findFirst({
     where: {
       id: integrationId,
-      user_id: userId,
+      organization_id: organizationId,
     },
   });
 
@@ -208,19 +211,21 @@ export async function getLaunchDarklyEnvironments(req: Request, res: Response) {
   }
 
   try {
-    const integration = await db().launchdarkly_integrations.findUnique({
-      where: { id: integrationId },
-      select: { api_key: true, user_id: true },
+    const organizationId = req.session.user.organizationId;
+    if (!organizationId) {
+      return res.status(400).json({ error: "Organization context is required" });
+    }
+
+    const integration = await db().launchdarkly_integrations.findFirst({
+      where: {
+        id: integrationId,
+        organization_id: organizationId,
+      },
+      select: { api_key: true },
     });
 
     if (!integration) {
       res.status(404).json({ error: "Integration not found" });
-      return;
-    }
-
-    // Verify the integration belongs to the user
-    if (integration.user_id !== req.session.user.id) {
-      res.status(403).json({ error: "Forbidden" });
       return;
     }
 

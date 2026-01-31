@@ -465,7 +465,7 @@ async function fetchResourcesForIntegrationType(
             return { integration, repositories: [] };
           }
           const response = await fetchGithubRepositoriesForIntegration(
-            userId,
+            organizationId,
             String(installationId),
           );
           const repositories = normalizedQuery
@@ -489,6 +489,7 @@ async function fetchResourcesForIntegrationType(
         integrations.map(async (integration) => {
           const response = await fetchSlackChannelsForIntegration(
             userId,
+            organizationId,
             integration.id,
           );
           const channels = normalizedQuery
@@ -507,7 +508,7 @@ async function fetchResourcesForIntegrationType(
       const resources = await Promise.all(
         integrations.map(async (integration) => {
           const response = await fetchNotionResources(
-            userId,
+            organizationId,
             integration.id,
             query ?? "",
           );
@@ -523,7 +524,7 @@ async function fetchResourcesForIntegrationType(
       );
       const jira = await Promise.all(
         integrations.map(async (integration) => {
-          const response = await fetchJiraResources(userId, integration.id);
+          const response = await fetchJiraResources(organizationId, integration.id);
           const projects = response.resources?.projects ?? [];
           const filteredProjects = normalizedQuery
             ? projects.filter(
@@ -540,7 +541,7 @@ async function fetchResourcesForIntegrationType(
       const confluence = await Promise.all(
         integrations.map(async (integration) => {
           const response = await fetchConfluenceResources(
-            userId,
+            organizationId,
             integration.id,
             query ?? "",
           );
@@ -556,7 +557,7 @@ async function fetchResourcesForIntegrationType(
       );
       const resources = await Promise.all(
         integrations.map(async (integration) => {
-          const response = await fetchLinearTeams(userId, integration.id);
+          const response = await fetchLinearTeams(organizationId, integration.id);
           const teams = normalizedQuery
             ? response.filter(
                 (team) => matchesQuery(team.name) || matchesQuery(team.key),
@@ -575,7 +576,7 @@ async function fetchResourcesForIntegrationType(
       const resources = await Promise.all(
         integrations.map(async (integration) => {
           const response = await fetchPosthogProjects(
-            userId,
+            organizationId,
             integration.id,
             query ?? "",
           );
@@ -592,14 +593,14 @@ async function fetchResourcesForIntegrationType(
       const resources = await Promise.all(
         integrations.map(async (integration) => {
           const projectsResponse = await fetchLaunchDarklyProjects(
-            userId,
+            organizationId,
             integration.id,
             query ?? "",
           );
           const projectsWithEnvironments = await Promise.all(
             projectsResponse.projects.map(async (project) => {
               const envsResponse = await fetchLaunchDarklyEnvironments(
-                userId,
+                organizationId,
                 integration.id,
                 project.key,
               );

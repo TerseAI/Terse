@@ -25,24 +25,41 @@ export async function createOrganization(req: Request, res: Response) {
     });
 
     const sealedSessionData = req.cookies[WORKOS_SESSION_COOKIE_NAME];
-    if (sealedSessionData) {
-      const session = workos.userManagement.loadSealedSession({
-        sessionData: sealedSessionData,
-        cookiePassword: settings.workos.cookiePassword,
-      });
-      const refreshResult = await session.refresh({
+    if (!sealedSessionData) {
+      logger.error("Failed to create organization: no session cookie", {
         organizationId: organization.id,
-        cookiePassword: settings.workos.cookiePassword,
+        userId: user.id,
       });
-      if (refreshResult.authenticated && refreshResult.sealedSession) {
-        res.cookie(WORKOS_SESSION_COOKIE_NAME, refreshResult.sealedSession, {
-          path: "/",
-          httpOnly: true,
-          secure: settings.nodeEnv === "production",
-          sameSite: "lax",
-        });
-      }
+      return res.status(500).json({
+        error: "Session expired. Please log in again and try creating the organization.",
+      });
     }
+
+    const session = workos.userManagement.loadSealedSession({
+      sessionData: sealedSessionData,
+      cookiePassword: settings.workos.cookiePassword,
+    });
+    const refreshResult = await session.refresh({
+      organizationId: organization.id,
+      cookiePassword: settings.workos.cookiePassword,
+    });
+
+    if (!refreshResult.authenticated || !refreshResult.sealedSession) {
+      logger.error("Failed to create organization: session refresh failed", {
+        organizationId: organization.id,
+        userId: user.id,
+      });
+      return res.status(500).json({
+        error: "Organization was created but we could not update your session. Please log out and log back in to use it.",
+      });
+    }
+
+    res.cookie(WORKOS_SESSION_COOKIE_NAME, refreshResult.sealedSession, {
+      path: "/",
+      httpOnly: true,
+      secure: settings.nodeEnv === "production",
+      sameSite: "lax",
+    });
 
     logger.info("Organization created", {
       organizationId: organization.id,

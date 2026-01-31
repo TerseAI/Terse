@@ -127,6 +127,14 @@ export class AtlassianIntegrationManager
         timestamp: number;
       };
 
+      if (!decoded.organizationId || typeof decoded.organizationId !== "string") {
+        logger.error("Atlassian OAuth: organizationId is required in state", {
+          userId: decoded.userId,
+        });
+        res.redirect(`${urls.frontend}${FrontendRoutes.OAUTH.ERROR}`);
+        return;
+      }
+
       // Exchange authorization code for access token
       const tokenResponse = await fetch(
         "https://auth.atlassian.com/oauth/token",

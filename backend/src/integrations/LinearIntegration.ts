@@ -279,6 +279,14 @@ export class LinearIntegrationManager
         timestamp: number;
       };
 
+      if (!decoded.organizationId || typeof decoded.organizationId !== "string") {
+        logger.error("Linear OAuth: organizationId is required in state", {
+          userId: decoded.userId,
+        });
+        res.redirect(`${urls.frontend}${FrontendRoutes.OAUTH.ERROR}`);
+        return;
+      }
+
       // Exchange authorization code for access token
       const params = new URLSearchParams();
       params.append("code", code as string);

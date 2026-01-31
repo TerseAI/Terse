@@ -110,16 +110,21 @@ function createSlackRouteError(
 
 export const fetchSlackChannelsForIntegration = async (
   userId: string,
+  organizationId: string,
   integrationId: string,
 ): Promise<SlackChannelsResponse> => {
   if (!integrationId) {
     throw createSlackRouteError("integrationId is required", 400);
+  }
+  if (!organizationId) {
+    throw createSlackRouteError("Organization context is required", 400);
   }
 
   const userSlackIntegration = await db().user_slack_integrations.findFirst({
     where: {
       id: integrationId,
       user_id: userId,
+      organization_id: organizationId,
     },
     include: {
       slack_integration: true,
@@ -248,6 +253,9 @@ export const getSlackChannels = async (req: Request, res: Response) => {
   if (!user) {
     return res.status(401).json({ error: "Unauthorized" });
   }
+  if (!user.organizationId) {
+    return res.status(400).json({ error: "Organization context is required" });
+  }
 
   const integrationId = req.query.integrationId as string;
   if (!integrationId) {
@@ -257,6 +265,7 @@ export const getSlackChannels = async (req: Request, res: Response) => {
   try {
     const response = await fetchSlackChannelsForIntegration(
       user.id,
+      user.organizationId,
       integrationId,
     );
     res.status(200).json(response);
@@ -279,6 +288,9 @@ export const getSlackUsers = async (req: Request, res: Response) => {
   if (!user) {
     return res.status(401).json({ error: "Unauthorized" });
   }
+  if (!user.organizationId) {
+    return res.status(400).json({ error: "Organization context is required" });
+  }
 
   const integrationId = req.query.integrationId as string;
   if (!integrationId) {
@@ -286,12 +298,12 @@ export const getSlackUsers = async (req: Request, res: Response) => {
   }
 
   try {
-    // Verify user owns this integration
+    // Verify user owns this integration and it belongs to their organization
     // For Slack, integrationId is user_slack_integrations.id
     const userSlackIntegration = await db().user_slack_integrations.findFirst({
       where: {
         id: integrationId,
-        user_id: user.id,
+        organization_id: user.organizationId,
       },
       include: {
         slack_integration: true,

@@ -10,8 +10,12 @@ export default function OrganizationCreationPage() {
         return null;
     }
 
+    if (!user) {
+        return <Navigate to={FrontendRoutes.APP} replace />;
+    }
+
     // If user already has an organization, redirect to app
-    if (user?.organizationId) {
+    if (user.organizationId) {
         return <Navigate to={FrontendRoutes.APP} replace />;
     }
 

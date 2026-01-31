@@ -119,7 +119,10 @@ export async function getJiraResources(req: Request, res: Response) {
   }
 
   try {
-    const response = await fetchJiraResources(user.id, integrationId);
+    if (!user.organizationId) {
+      return res.status(400).json({ success: false, error: "Organization context is required" });
+    }
+    const response = await fetchJiraResources(user.organizationId, integrationId);
     return res.status(200).json(response);
   } catch (error: any) {
     logger.error("Error fetching Jira resources:", { error });
@@ -131,13 +134,13 @@ export async function getJiraResources(req: Request, res: Response) {
 }
 
 export async function fetchJiraResources(
-  userId: string,
+  organizationId: string,
   integrationId: string,
 ) {
   const integration = await db().atlassian_integrations.findFirst({
     where: {
       id: integrationId,
-      user_id: userId,
+      organization_id: organizationId,
     },
   });
 

@@ -202,83 +202,111 @@ export class GithubIntegrationManager
       hasState: !!state,
     });
 
-    // Decode state using helper function
-    const stateData = decodeOAuthStateToken(state as string);
-    const user_id = stateData.userId;
-    const user: PrismaUser | null = await db().users.findUnique({
-      where: { id: user_id },
-    });
+    try {
+      // Decode state using helper function (can throw)
+      const stateData = decodeOAuthStateToken(state as string);
+      const user_id = stateData.userId;
+      const organizationId = stateData.organizationId;
 
-    if (!user) {
-      logger.error("[GitHub Setup URL Installation] ERROR: User not found", {
+      if (!user_id || typeof user_id !== "string") {
+        logger.error(
+          "[GitHub Setup URL Installation] ERROR: userId is required in state",
+          { installationId: installation_id },
+        );
+        res.status(400).json({ message: "Invalid state. Please try again from the app." });
+        return;
+      }
+
+      if (!organizationId || typeof organizationId !== "string") {
+        logger.error(
+          "[GitHub Setup URL Installation] ERROR: organizationId is required in state",
+          { userId: user_id, installationId: installation_id },
+        );
+        res.status(400).json({ message: "Organization context required. Please try again from the app." });
+        return;
+      }
+
+      const user: PrismaUser | null = await db().users.findUnique({
+        where: { id: user_id },
+      });
+
+      if (!user) {
+        logger.error("[GitHub Setup URL Installation] ERROR: User not found", {
+          userId: user_id,
+          installationId: installation_id,
+        });
+        res.status(400).json({ message: "User not found" });
+        return;
+      }
+
+      // parse installation_id as number
+      const installation_id_number = parseInt(installation_id as string);
+      if (isNaN(installation_id_number)) {
+        logger.error(
+          "[GitHub Setup URL Installation] ERROR: Installation ID is not a number",
+          { installationId: installation_id, userId: user_id },
+        );
+        res.status(400).json({ message: "Installation ID is not a number" });
+        return;
+      }
+
+      const authToken = await exchangeCodeForAccessToken(code);
+      const githubAppUser = await getGithubAppUser(authToken.access_token);
+
+      const githubInstallation = await db().$transaction(async (prisma) => {
+        const installation = await prisma.user_github_installation.upsert({
+          where: { installation_id: installation_id_number },
+          update: { user_id: user_id },
+          create: { user_id: user_id, installation_id: installation_id_number },
+        });
+
+        await prisma.github_app_tokens.upsert({
+          where: {
+            user_id_github_username: {
+              user_id: user_id,
+              github_username: githubAppUser.name,
+            },
+          },
+          update: {
+            access_token: authToken.access_token,
+            organization_id: organizationId,
+          },
+          create: {
+            user_id: user_id,
+            github_username: githubAppUser.name,
+            access_token: authToken.access_token,
+            organization_id: organizationId,
+          },
+        });
+
+        return installation;
+      });
+
+      logger.info("[GitHub Setup URL Installation] Upsert completed", {
+        installationId: installation_id_number,
         userId: user_id,
+      });
+
+      // Emit integration completed task (includes full state payload for chat metadata detection)
+      // Note: GitHub uses base64-encoded JSON state, so we decode it and pass as statePayload
+      integrationTaskQueue.emit(
+        new IntegrationCompletedTask(
+          IntegrationType.GITHUB,
+          githubInstallation.id, // Use user_github_installation.id as integrationId
+          user_id,
+          stateData,
+          new Date(),
+        ),
+      );
+
+      res.redirect(`${urls.frontend}${FrontendRoutes.OAUTH.SUCCESS}`);
+    } catch (error) {
+      logger.error("[GitHub Setup URL Installation] Callback error", {
+        error,
         installationId: installation_id,
       });
-      res.status(400).json({ message: "User not found" });
-      return;
+      res.redirect(`${urls.frontend}${FrontendRoutes.OAUTH.ERROR}`);
     }
-
-    // parse installation_id as number
-    const installation_id_number = parseInt(installation_id as string);
-    if (isNaN(installation_id_number)) {
-      logger.error(
-        "[GitHub Setup URL Installation] ERROR: Installation ID is not a number",
-        { installationId: installation_id, userId: user_id },
-      );
-      res.status(400).json({ message: "Installation ID is not a number" });
-      return;
-    }
-
-    // create a new user_github_installation record
-    // Note: account_name will be populated by the webhook callback if not already set
-    const githubInstallation = await db().user_github_installation.upsert({
-      where: { installation_id: installation_id_number },
-      update: { user_id: user_id },
-      create: { user_id: user_id, installation_id: installation_id_number },
-    });
-
-    const authToken = await exchangeCodeForAccessToken(code);
-    const githubAppUser = await getGithubAppUser(authToken.access_token);
-
-    const organizationId = stateData.organizationId ?? undefined;
-
-    await db().github_app_tokens.upsert({
-      where: {
-        user_id_github_username: {
-          user_id: user_id,
-          github_username: githubAppUser.name,
-        },
-      },
-      update: {
-        access_token: authToken.access_token,
-        organization_id: organizationId,
-      },
-      create: {
-        user_id: user_id,
-        github_username: githubAppUser.name,
-        access_token: authToken.access_token,
-        organization_id: organizationId,
-      },
-    });
-
-    logger.info("[GitHub Setup URL Installation] Upsert completed", {
-      installationId: installation_id_number,
-      userId: user_id,
-    });
-
-    // Emit integration completed task (includes full state payload for chat metadata detection)
-    // Note: GitHub uses base64-encoded JSON state, so we decode it and pass as statePayload
-    integrationTaskQueue.emit(
-      new IntegrationCompletedTask(
-        IntegrationType.GITHUB,
-        githubInstallation.id, // Use user_github_installation.id as integrationId
-        user_id,
-        stateData,
-        new Date(),
-      ),
-    );
-
-    res.redirect(`${urls.frontend}${FrontendRoutes.OAUTH.SUCCESS}`);
   }
 
   deleteInstallation(integrationId: string): Promise<void> {

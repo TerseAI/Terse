@@ -227,6 +227,14 @@ export class FigmaIntegrationManager
         timestamp: number;
       };
 
+      if (!decoded.organizationId || typeof decoded.organizationId !== "string") {
+        logger.error("Figma OAuth: organizationId is required in state", {
+          userId: decoded.userId,
+        });
+        res.redirect(`${urls.frontend}${FrontendRoutes.OAUTH.ERROR}`);
+        return;
+      }
+
       // Exchange authorization code for access token
       // Figma requires application/x-www-form-urlencoded format
       const params = new URLSearchParams({

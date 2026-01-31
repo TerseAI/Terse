@@ -33,7 +33,7 @@ export const notionOAuthCallback = async (req: Request, res: Response) => {
 
 // Search Notion pages and databases by title
 export const fetchNotionResources = async (
-  userId: string,
+  organizationId: string,
   integrationId: string,
   search: string = "",
   typeFilter?: string,
@@ -41,11 +41,14 @@ export const fetchNotionResources = async (
   if (!integrationId) {
     throw new Error("integrationId is required");
   }
+  if (!organizationId) {
+    throw new Error("organizationId is required");
+  }
 
   const integration = await db().notion_integrations.findFirst({
     where: {
       id: integrationId,
-      user_id: userId,
+      organization_id: organizationId,
     },
   });
 
@@ -120,8 +123,11 @@ export const getNotionResources = async (req: Request, res: Response) => {
   const typeFilter = req.query.type as string | undefined;
 
   try {
+    if (!user.organizationId) {
+      return res.status(400).json({ error: "Organization context is required" });
+    }
     const response = await fetchNotionResources(
-      user.id,
+      user.organizationId,
       integrationId,
       search,
       typeFilter,

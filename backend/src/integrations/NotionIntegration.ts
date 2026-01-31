@@ -165,6 +165,14 @@ export class NotionIntegrationManager
         integrationType?: string;
       };
 
+      if (!decoded.organizationId || typeof decoded.organizationId !== "string") {
+        logger.error("Notion OAuth: organizationId is required in state", {
+          userId: decoded.userId,
+        });
+        res.redirect(`${urls.frontend}${FrontendRoutes.OAUTH.ERROR}`);
+        return;
+      }
+
       // Exchange authorization code for access token
       const tokenResponse = await fetch(
         "https://api.notion.com/v1/oauth/token",

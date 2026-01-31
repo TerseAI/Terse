@@ -25,18 +25,21 @@ export async function getConfluenceIntegrations(req: Request, res: Response) {
 }
 
 export async function fetchConfluenceResources(
-  userId: string,
+  organizationId: string,
   integrationId: string,
   search: string = "",
 ): Promise<{ success: true; resources: ConfluencePage[]; total: number }> {
   if (!integrationId) {
     throw new Error("integrationId is required");
   }
+  if (!organizationId) {
+    throw new Error("organizationId is required");
+  }
 
   const oauthIntegration = await db().atlassian_integrations.findFirst({
     where: {
       id: integrationId,
-      user_id: userId,
+      organization_id: organizationId,
     },
   });
 
@@ -115,8 +118,11 @@ export async function getConfluenceResources(req: Request, res: Response) {
   const search = (req.query.search as string) || "";
 
   try {
+    if (!user.organizationId) {
+      return res.status(400).json({ success: false, error: "Organization context is required" });
+    }
     const response = await fetchConfluenceResources(
-      user.id,
+      user.organizationId,
       integrationId,
       search,
     );

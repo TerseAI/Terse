@@ -61,6 +61,7 @@
     "google-auth-library": "^10.5.0",
     "googleapis": "^164.0.0",
     "jira-client": "^8.2.2",
+    "jose": "^6.1.3",
     "jsonwebtoken": "^9.0.2",
     "luxon": "^3.7.2",
     "openai": "^6.10.0",

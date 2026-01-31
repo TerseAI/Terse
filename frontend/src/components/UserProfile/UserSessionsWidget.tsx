@@ -1,7 +1,7 @@
+import { getWorkOsThemeConfig, useResolvedAppearance, workOsWidgetElements } from '@/hooks/useWorkOsTheme';
+import { BackendProvider } from '@/services/backend';
 import { UserSessions, WorkOsWidgets } from '@workos-inc/widgets';
 import { useEffect, useState } from 'react';
-import { BackendProvider } from '@/services/backend';
-import { getWorkOsThemeConfig, workOsWidgetElements, useResolvedAppearance } from '@/hooks/useWorkOsTheme';
 
 export function UserSessionsWidget() {
     const appearance = useResolvedAppearance();

@@ -55,7 +55,21 @@ export async function githubAppInstallationDeleted(
   const body: GithubAppInstallationDeletedRequest =
     req.body as GithubAppInstallationDeletedRequest;
 
-  const commit = db().$transaction(async (tx) => {
+  // Look up organizationId before deletion (installation record will be removed in transaction)
+  const installation = await db().user_github_installation.findUnique({
+    where: { installation_id: body.installationId },
+    select: { user_id: true },
+  });
+  let organizationId: string | null = null;
+  if (installation?.user_id) {
+    const token = await db().github_app_tokens.findFirst({
+      where: { user_id: installation.user_id },
+      select: { organization_id: true },
+    });
+    organizationId = token?.organization_id ?? null;
+  }
+
+  await db().$transaction(async (tx) => {
     // find all repos for this installation
     const repositories: GithubRepository[] =
       await tx.github_repositories.findMany({
@@ -87,7 +101,9 @@ export async function githubAppInstallationDeleted(
 
   // TODO: We need to invalidate Automations that were dependent on these repositories. This is a more general issue we don't account for yet.
 
-  emitCacheInvalidationWithKey(body.username, "integrations");
+  if (organizationId) {
+    emitCacheInvalidationWithKey(organizationId, "integrations");
+  }
 
   res.status(200).json({ message: "Repositories removed from user" });
 }

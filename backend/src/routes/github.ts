@@ -79,8 +79,8 @@ export async function processsGithubAppInstallationWebhook(
       body.installationId,
       body.username,
     );
-    if (user) {
-      emitCacheInvalidationWithKey(user.id, "integrations");
+    if (user?.organizationId) {
+      emitCacheInvalidationWithKey(user.organizationId, "integrations");
     }
     res.status(200).json({ message: "Installation webhook processed" });
   } catch (error) {
@@ -103,6 +103,20 @@ export async function githubAppInstallationDeleted(
     installationId: body.installationId,
     username: body.username,
   });
+
+  // Look up organizationId before deletion (installation record will be removed in transaction)
+  const installation = await db().user_github_installation.findUnique({
+    where: { installation_id: body.installationId },
+    select: { user_id: true },
+  });
+  let organizationId: string | null = null;
+  if (installation?.user_id) {
+    const token = await db().github_app_tokens.findFirst({
+      where: { user_id: installation.user_id },
+      select: { organization_id: true },
+    });
+    organizationId = token?.organization_id ?? null;
+  }
 
   await db().$transaction(async (tx) => {
     // find all repos for this installation
@@ -137,7 +151,9 @@ export async function githubAppInstallationDeleted(
 
   // TODO: We need to invalidate Channels that were dependent on these repositories. This is a more general issue we don't account for yet.
 
-  emitCacheInvalidationWithKey(body.username, "integrations");
+  if (organizationId) {
+    emitCacheInvalidationWithKey(organizationId, "integrations");
+  }
 }
 
 /**
@@ -179,33 +195,46 @@ function createRouteError(message: string, statusCode: number): RouteError {
 }
 
 export async function fetchGithubRepositoriesForIntegration(
-  userId: string,
+  organizationId: string,
   installationId: string,
 ): Promise<GetGithubRepositoriesForIntegrationResponse> {
   if (!installationId) {
     throw createRouteError("Installation ID is required", 400);
   }
+  if (!organizationId) {
+    throw createRouteError("Organization context is required", 400);
+  }
 
-  const accessToken = await db().github_app_tokens.findFirst({
-    where: { user_id: userId },
+  // Find a token in the org that has access to this installation
+  const orgTokens = await db().github_app_tokens.findMany({
+    where: { organization_id: organizationId },
   });
-  if (!accessToken) {
+  if (orgTokens.length === 0) {
     throw createRouteError("Unauthorized", 401);
   }
 
-  const installations = await getAppInstallationsForUser(
-    accessToken.access_token,
-  );
-  const targetInstallation = installations.installations.find(
-    (installation) => installation.id === Number(installationId),
-  );
-  if (!targetInstallation) {
+  let targetInstallation: { id: number } | undefined;
+  let tokenWithAccess: typeof orgTokens[0] | null = null;
+
+  for (const token of orgTokens) {
+    const installations = await getAppInstallationsForUser(token.access_token);
+    const installation = installations.installations.find(
+      (i) => i.id === Number(installationId),
+    );
+    if (installation) {
+      targetInstallation = installation;
+      tokenWithAccess = token;
+      break;
+    }
+  }
+
+  if (!targetInstallation || !tokenWithAccess) {
     throw createRouteError("Installation not found", 404);
   }
 
   const installationRepositories: GithubAppInstallationRepository[] =
     await getAppInstallationRepositories(
-      accessToken.access_token,
+      tokenWithAccess.access_token,
       targetInstallation.id,
     );
 
@@ -230,8 +259,11 @@ export async function getGithubRepositoriesForIntegration(
   const installationId = req.query.installation_id as string;
 
   try {
+    if (!req.session.user.organizationId) {
+      return res.status(400).json({ message: "Organization context is required" });
+    }
     const result = await fetchGithubRepositoriesForIntegration(
-      req.session.user.id,
+      req.session.user.organizationId,
       installationId,
     );
     res.status(200).json(result);
@@ -355,22 +387,27 @@ export async function resolveUserForGithubInstallation(
       user_id: { in: installationUserIds },
     },
   });
-  if (tokenForUsername) {
-    return getUserForOrg(
+  if (tokenForUsername?.organization_id) {
+    const user = await getUserForOrg(
       tokenForUsername.user_id,
       tokenForUsername.organization_id,
     );
+    if (user) return user;
   }
 
   // User might have token but not be in installation list yet (e.g. new install)
   const anyTokenForUsername = await db().github_app_tokens.findFirst({
     where: { github_username: username },
   });
-  if (anyTokenForUsername && installationUserIds.includes(anyTokenForUsername.user_id)) {
-    return getUserForOrg(
+  if (
+    anyTokenForUsername?.organization_id &&
+    installationUserIds.includes(anyTokenForUsername.user_id)
+  ) {
+    const user = await getUserForOrg(
       anyTokenForUsername.user_id,
       anyTokenForUsername.organization_id,
     );
+    if (user) return user;
   }
 
   return null;

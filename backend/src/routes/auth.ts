@@ -41,7 +41,24 @@ export async function me(req: Request, res: Response) {
   if (!user) {
     return res.status(401).send("Unauthorized");
   }
-  res.send(user);
+  // Always fetch fresh profile data from WorkOS so profile updates (e.g., from User Profile widget)
+  // are reflected immediately when the frontend calls refreshUser()
+  try {
+    const workOSUser = await workos.userManagement.getUser(user.workosId);
+    const refreshedUser: User = {
+      ...user,
+      email: workOSUser.email,
+      displayName: workOSUser.firstName + " " + workOSUser.lastName,
+      displayPhotoUrl: workOSUser.profilePictureUrl || "",
+    };
+    return res.send(refreshedUser);
+  } catch (error) {
+    logger.warn("Failed to fetch fresh user from WorkOS, returning session user", {
+      error,
+      userId: user.id,
+    });
+    return res.send(user);
+  }
 }
 
 function createAuthMiddleware(requireOrganization: boolean) {
@@ -62,7 +79,7 @@ function createAuthMiddleware(requireOrganization: boolean) {
         } else {
           req.session.user = user;
         }
-        if (requireOrganization && user.organizationId === undefined) {
+        if (requireOrganization && !user.organizationId) {
           return sendOrganizationRequired(req, res);
         }
         return next();
@@ -91,7 +108,7 @@ function createAuthMiddleware(requireOrganization: boolean) {
 
       const sealedSession = refreshedSessionResult.sealedSession;
 
-      if (requireOrganization && user.organizationId === undefined) {
+      if (requireOrganization && !user.organizationId) {
         return sendOrganizationRequired(req, res);
       }
 

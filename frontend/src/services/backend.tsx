@@ -49,6 +49,18 @@ const backendBaseUrl = '/api';
 // bypasses Vite's proxy. Falls back to /api for production where the proxy is handled by nginx/etc.
 const backendRedirectUrl = import.meta.env.VITE_BACKEND_REDIRECT_URL || '/api';
 
+// Global 401 handler: when session is invalidated (e.g., user revokes session in WorkOS widget),
+// redirect to login so the user gets a fresh session. The backend clears the cookie on auth failure.
+axios.interceptors.response.use(
+    (response) => response,
+    (error) => {
+        if (error.response?.status === 401) {
+            window.location.href = `${backendRedirectUrl}${ApiRoutes.AUTH.LOGIN}`;
+        }
+        return Promise.reject(error);
+    }
+);
+
 interface BackendService {
     /**
      * Retrieves the currently authenticated user
@@ -807,8 +819,11 @@ export const BackendProvider: BackendService = {
     },
 
     requestSessionSocketToken: () => {
-        return axios.get(`${backendBaseUrl}${ApiRoutes.SESSION.TOKEN}`, { withCredentials: true })
-            .then(response => response.data)
+        return axios.get<{ token: string } | string>(`${backendBaseUrl}${ApiRoutes.SESSION.TOKEN}`, { withCredentials: true })
+            .then(response => {
+                const data = response.data;
+                return typeof data === 'string' ? data : data.token;
+            })
             .catch(error => {
                 console.error('Error requesting session socket token:', error);
                 throw error;

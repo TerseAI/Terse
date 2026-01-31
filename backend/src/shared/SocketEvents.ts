@@ -28,4 +28,10 @@ export const SocketRooms = {
    * @returns Room name in format "user:${userId}"
    */
   user: (userId: string): string => `user:${userId}`,
+  /**
+   * Get the room name for a specific organization
+   * @param orgId - The organization ID
+   * @returns Room name in format "org:${orgId}"
+   */
+  organization: (orgId: string): string => `org:${orgId}`,
 } as const;

@@ -393,7 +393,7 @@ export async function applyAgentForUser(
 
   const agentWithRelations: AgentWithTriggerRelations | null =
     await prisma.automations.findFirst({
-      where: { id: agent.id },
+      where: { id: agent.id, organization_id: organizationId },
       include: {
         inputs: {
           include: getInputConfigInclude(),
@@ -409,7 +409,7 @@ export async function applyAgentForUser(
   await setupAgentTriggers(agentWithRelations);
 
   // Invalidate recent agents cache
-  emitCacheInvalidationWithKey(userId, "recentAgents");
+  emitCacheInvalidationWithKey(organizationId, "recentAgents");
 
   return { id: agent.id };
 }
@@ -458,8 +458,11 @@ export async function updateAgentForUser(
       isActive !== undefined ||
       requireApproval !== undefined
     ) {
-      await tx.automations.update({
-        where: { id: agentId },
+      const updateResult = await tx.automations.updateMany({
+        where: {
+          id: agentId,
+          organization_id: organizationId,
+        },
         data: {
           ...(name !== undefined && { name }),
           ...(isActive !== undefined && { is_active: isActive }),
@@ -468,6 +471,9 @@ export async function updateAgentForUser(
           }),
         },
       });
+      if (updateResult.count !== 1) {
+        throw new Error("Agent not found or access denied");
+      }
     }
 
     // Update prompt if provided
@@ -671,7 +677,7 @@ export async function updateAgentForUser(
 
   const agentWithTriggerRelations: AgentWithTriggerRelations | null =
     await prisma.automations.findFirst({
-      where: { id: agentId },
+      where: { id: agentId, organization_id: organizationId },
       include: {
         inputs: {
           include: getInputConfigInclude(),
@@ -687,7 +693,7 @@ export async function updateAgentForUser(
   await setupAgentTriggers(agentWithTriggerRelations);
 
   // Invalidate recent agents cache
-  emitCacheInvalidationWithKey(userId, "recentAgents");
+  emitCacheInvalidationWithKey(organizationId, "recentAgents");
 
   return { id: agentId };
 }
@@ -1011,13 +1017,20 @@ export async function deleteAgent(req: Request, res: Response) {
     // Tear down agent triggers (e.g., delete webhooks for Figma)
     await tearDownAgentTriggers(existingAgent);
 
-    // Delete agent (cascade will delete related records)
-    await prisma.automations.delete({
-      where: { id: agentId },
+    // Delete agent (cascade will delete related records) - use organization_id for defense in depth
+    const deleteResult = await prisma.automations.deleteMany({
+      where: {
+        id: agentId,
+        organization_id: organizationId,
+      },
     });
+    if (deleteResult.count !== 1) {
+      res.status(404).json({ error: "Agent not found" });
+      return;
+    }
 
     // Invalidate recent agents cache
-    emitCacheInvalidationWithKey(userId, "recentAgents");
+    emitCacheInvalidationWithKey(organizationId, "recentAgents");
 
     res
       .status(200)

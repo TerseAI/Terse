@@ -63,11 +63,17 @@ export const getDatadogIndexes = async (req: Request, res: Response) => {
   const includeDisabled = req.query.includeDisabled === "true";
 
   try {
-    // Verify user owns this integration
+    const organizationId = user.organizationId;
+    if (!organizationId) {
+      return res
+        .status(400)
+        .json({ error: "Organization context is required" });
+    }
+    // Verify integration belongs to user's organization
     const integration = await db().datadog_integrations.findFirst({
       where: {
         id: integrationId,
-        user_id: user.id,
+        organization_id: organizationId,
       },
     });
 

@@ -44,10 +44,14 @@ export async function deleteGmailIntegration(req: Request, res: Response) {
   }
 
   try {
-    // Get the active integration
+    const organizationId = req.session.user.organizationId;
+    if (!organizationId) {
+      return res.status(400).json({ error: "Organization context is required" });
+    }
+    // Get the active integration (org-level: any org member can manage)
     const integration = await db().gmail_integrations.findFirst({
       where: {
-        user_id: req.session.user.id,
+        organization_id: organizationId,
         is_active: true,
       },
     });
