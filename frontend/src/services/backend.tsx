@@ -376,6 +376,16 @@ interface BackendService {
     getCurrentOrganization(): Promise<{ id: string; name: string }>;
 
     /**
+     * Gets organizations the user belongs to
+     */
+    getUserOrganizations(): Promise<{ organizations: { id: string; name: string }[] }>;
+
+    /**
+     * Switches the session to a different organization
+     */
+    switchOrganization(organizationId: string): Promise<{ success?: boolean; redirectUrl?: string }>;
+
+    /**
      * Gets the WorkOS widget token
      */
     getWidgetToken(): Promise<{ token: string; expiresAt: string }>;
@@ -1045,6 +1055,28 @@ export const BackendProvider: BackendService = {
             .then(response => response.data)
             .catch(error => {
                 console.error('Error getting current organization:', error);
+                throw error;
+            });
+    },
+
+    getUserOrganizations: () => {
+        return axios.get<{ organizations: { id: string; name: string }[] }>(`${backendBaseUrl}${ApiRoutes.ORGANIZATIONS.LIST}`, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error getting user organizations:', error);
+                throw error;
+            });
+    },
+
+    switchOrganization: (organizationId: string) => {
+        return axios.post<{ success?: boolean; redirectUrl?: string }>(`${backendBaseUrl}${ApiRoutes.ORGANIZATIONS.SWITCH}`, { organizationId }, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                const data = error.response?.data;
+                if (data?.redirectUrl) {
+                    return Promise.reject({ ...error, redirectUrl: data.redirectUrl });
+                }
+                console.error('Error switching organization:', error);
                 throw error;
             });
     },

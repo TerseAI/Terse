@@ -48,7 +48,7 @@ export const FrontendRoutes = {
   INTEGRATIONS: "/app/integrations",
   ACTIVITY: "/app/activity",
   NOTIFICATIONS: "/app/notifications",
-  USER_MANAGEMENT: "/app/user-management",
+  PROFILE: "/app/profile",
   ORGANIZATIONS: {
     CREATE: "/app/organizations/create",
   },

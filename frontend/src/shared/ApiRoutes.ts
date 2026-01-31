@@ -27,6 +27,8 @@ export const ApiRoutes = {
   ORGANIZATIONS: {
     CREATE: "/organizations",
     GET_CURRENT: "/organizations/current",
+    LIST: "/organizations",
+    SWITCH: "/organizations/switch",
   },
 
   // Stats routes

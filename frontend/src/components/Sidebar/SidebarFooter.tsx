@@ -35,6 +35,9 @@ export function AppSidebarFooter() {
                             className="min-w-56"
                             align="start"
                         >
+                            <DropdownMenuItem onClick={() => navigate(FrontendRoutes.PROFILE)}>
+                                <span>Account Settings</span>
+                            </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}>
                                 <span>{theme === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode'}</span>
                             </DropdownMenuItem>

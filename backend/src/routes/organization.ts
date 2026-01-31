@@ -97,3 +97,97 @@ export async function getCurrentOrganization(req: Request, res: Response) {
     });
   }
 }
+
+export async function getUserOrganizations(req: Request, res: Response) {
+  const user = req.session?.user;
+  if (!user) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  if (!user.workosId) {
+    return res.status(400).json({
+      error: "User has no WorkOS ID. Re-authenticate to link account.",
+    });
+  }
+
+  try {
+    const memberships = await workos.userManagement.listOrganizationMemberships(
+      {
+        userId: user.workosId,
+      },
+    );
+    const orgIds = [
+      ...new Set(
+        (memberships.data ?? []).map((m) => m.organizationId),
+      ),
+    ];
+    const organizations = await Promise.all(
+      orgIds.map(async (id) => {
+        const org = await workos.organizations.getOrganization(id);
+        return { id: org.id, name: org.name };
+      }),
+    );
+    return res.json({ organizations });
+  } catch (error) {
+    logger.error("Failed to list user organizations", {
+      error,
+      userId: user.id,
+    });
+    return res.status(500).json({
+      error: "Failed to load organizations.",
+    });
+  }
+}
+
+export async function switchOrganization(req: Request, res: Response) {
+  const user = req.session?.user;
+  if (!user) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
+  const organizationId = req.body?.organizationId as string | undefined;
+  if (!organizationId || typeof organizationId !== "string") {
+    return res.status(400).json({ error: "organizationId is required" });
+  }
+
+  const sealedSessionData = req.cookies[WORKOS_SESSION_COOKIE_NAME];
+  if (!sealedSessionData) {
+    return res.status(401).json({ error: "No session" });
+  }
+
+  try {
+    const session = workos.userManagement.loadSealedSession({
+      sessionData: sealedSessionData,
+      cookiePassword: settings.workos.cookiePassword,
+    });
+    const refreshResult = await session.refresh({
+      organizationId,
+      cookiePassword: settings.workos.cookiePassword,
+    });
+
+    if (!refreshResult.authenticated || !refreshResult.sealedSession) {
+      return res.status(403).json({
+        error: "Not authorized for this organization",
+        redirectUrl: settings.urls.frontend,
+      });
+    }
+
+    res.cookie(WORKOS_SESSION_COOKIE_NAME, refreshResult.sealedSession, {
+      path: "/",
+      httpOnly: true,
+      secure: settings.nodeEnv === "production",
+      sameSite: "lax",
+    });
+
+    return res.json({ success: true });
+  } catch (error) {
+    logger.error("Failed to switch organization", {
+      error,
+      userId: user.id,
+      organizationId,
+    });
+    return res.status(500).json({
+      error: "Failed to switch organization.",
+      redirectUrl: settings.urls.frontend,
+    });
+  }
+}

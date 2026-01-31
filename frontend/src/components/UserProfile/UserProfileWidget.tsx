@@ -1,27 +1,21 @@
-import { UsersManagement, WorkOsWidgets } from '@workos-inc/widgets';
+import { UserProfile, WorkOsWidgets } from '@workos-inc/widgets';
 import { useEffect, useState } from 'react';
-import { useAuth } from '../../services/auth';
-import { BackendProvider } from '../../services/backend';
-import { getWorkOsThemeConfig, workOsWidgetElements, useResolvedAppearance } from '../../hooks/useWorkOsTheme';
+import { BackendProvider } from '@/services/backend';
+import { getWorkOsThemeConfig, workOsWidgetElements, useResolvedAppearance } from '@/hooks/useWorkOsTheme';
 
-export function UserTable() {
-    const { user } = useAuth();
+export function UserProfileWidget() {
     const appearance = useResolvedAppearance();
     const [authToken, setAuthToken] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        if (!user?.organizationId) {
-            setError('Create an organization to manage users.');
-            return;
-        }
         BackendProvider.getWidgetToken()
             .then((data) => setAuthToken(data.token))
             .catch((err) => {
                 console.error('Failed to get widget token:', err);
-                setError(err.response?.data?.error ?? 'Failed to load user management.');
+                setError(err.response?.data?.error ?? 'Failed to load profile.');
             });
-    }, [user?.organizationId]);
+    }, []);
 
     if (error) {
         return <p className="text-destructive text-sm">{error}</p>;
@@ -32,7 +26,7 @@ export function UserTable() {
 
     return (
         <WorkOsWidgets theme={getWorkOsThemeConfig(appearance)} elements={workOsWidgetElements}>
-            <UsersManagement authToken={authToken} />
+            <UserProfile authToken={authToken} />
         </WorkOsWidgets>
     );
 }

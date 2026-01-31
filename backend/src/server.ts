@@ -90,6 +90,8 @@ import {
 import {
   createOrganization,
   getCurrentOrganization,
+  getUserOrganizations,
+  switchOrganization,
 } from "./routes/organization";
 import {
   createOrUpdatePosthogIntegration,
@@ -261,6 +263,18 @@ app.get(
   ApiRoutes.ORGANIZATIONS.GET_CURRENT,
   authMiddlewareAllowNoOrg,
   (req, res) => getCurrentOrganization(req, res),
+);
+
+app.get(
+  ApiRoutes.ORGANIZATIONS.LIST,
+  authMiddleware,
+  (req, res) => getUserOrganizations(req, res),
+);
+
+app.post(
+  ApiRoutes.ORGANIZATIONS.SWITCH,
+  authMiddleware,
+  (req, res) => switchOrganization(req, res),
 );
 
 // MARK: STATS

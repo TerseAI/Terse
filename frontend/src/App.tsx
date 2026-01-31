@@ -16,7 +16,7 @@ import NotificationsPage from "./pages/Notifications";
 import OAuthError from "./pages/OAuthError";
 import OAuthSuccess from "./pages/OAuthSuccess";
 import OrganizationCreationPage from "./pages/OrganizationCreationPage";
-import UserManagementPage from "./pages/UserManagementPage";
+import ProfilePage from "./pages/ProfilePage";
 import { AuthProvider, useAuth } from "./services/auth";
 import { FrontendRoutes } from "./shared/FrontendRoutes";
 import { disconnectSocket, initializeSocket } from "./socket";
@@ -38,7 +38,7 @@ function App() {
               <Route path={FrontendRoutes.AGENTS.BY_ID.pattern} element={<AgentDetail />} />
               <Route path="integrations" element={<IntegrationPage />} />
               <Route path="notifications" element={<NotificationsPage />} />
-              <Route path={FrontendRoutes.USER_MANAGEMENT} element={<UserManagementPage />} />
+              <Route path="profile" element={<ProfilePage />} />
             </Route>
             <Route path={FrontendRoutes.ORGANIZATIONS.CREATE} element={<OrganizationCreationPage />} />
             <Route path={FrontendRoutes.OAUTH.SUCCESS} element={<OAuthSuccess />} />
