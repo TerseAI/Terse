@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useRef, useCallback, forwardRef, useImperativeHandle } from 'react';
 import TextareaAutosize from 'react-textarea-autosize';
 import { Send } from 'lucide-react';
 
@@ -26,13 +26,22 @@ export enum Size {
     Large = 'large',
 }
 
-function GlowingTextField({ isLoading, disabled, onInputChange, onKeyDown, inputValue, placeholders = [], size = Size.Medium, shouldAllowKeyboardShortcutForFocus = true, autoFocus = false, focusOverride = null, minRows, showBorder = false, onSend, onPlaceholderSelect, showPlaceholderChips = false }: GlowingTextFieldProps) {
+export interface GlowingTextFieldHandle {
+    focus: () => void;
+}
+
+const GlowingTextField = forwardRef<GlowingTextFieldHandle, GlowingTextFieldProps>(function GlowingTextField({ isLoading, disabled, onInputChange, onKeyDown, inputValue, placeholders = [], size = Size.Medium, shouldAllowKeyboardShortcutForFocus = true, autoFocus = false, focusOverride = null, minRows, showBorder = false, onSend, onPlaceholderSelect, showPlaceholderChips = false }, ref) {
     const [displayedPlaceholder, setDisplayedPlaceholder] = useState<string>('');
     const [currentPlaceholderIndex, setCurrentPlaceholderIndex] = useState(0);
     const [isTyping, setIsTyping] = useState(true);
     const [isFullyTyped, setIsFullyTyped] = useState(false);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const typewriterRef = useRef<{ charIndex: number; timeoutId: NodeJS.Timeout | null }>({ charIndex: 0, timeoutId: null });
+
+    // Expose focus method to parent
+    useImperativeHandle(ref, () => ({
+        focus: () => textareaRef.current?.focus(),
+    }));
 
     // Handle focus override
     useEffect(() => {
@@ -45,7 +54,14 @@ function GlowingTextField({ isLoading, disabled, onInputChange, onKeyDown, input
 
     const isLarge = size === Size.Large;
 
+    // Track if user has typed substantial content (more than a short sentence)
+    const hasSubstantialContent = inputValue.length > 100;
+
     const getFontSize = () => {
+        // When there's substantial content in large mode, reduce font size for better readability
+        if (size === Size.Large && hasSubstantialContent) {
+            return 'text-base';
+        }
         switch (size) {
             case Size.Small:
                 return 'text-sm';
@@ -184,14 +200,14 @@ function GlowingTextField({ isLoading, disabled, onInputChange, onKeyDown, input
                                 resize-none
                                 ${getPadding()}
                                 ${onSend ? 'pr-14' : ''}
-                                ${isLarge ? 'leading-relaxed' : 'leading-normal'}
+                                ${isLarge && !hasSubstantialContent ? 'leading-relaxed' : 'leading-normal'}
                                 placeholder:italic
                                 placeholder:text-muted-foreground
                                 rounded-lg
                                 focus:outline-none
                             `}
                         style={{
-                            transition: 'height 0.4s cubic-bezier(0.4, 0, 0.2, 1), padding 0.4s cubic-bezier(0.4, 0, 0.2, 1), font-size 0.4s cubic-bezier(0.4, 0, 0.2, 1), line-height 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+                            transition: 'height 0.2s cubic-bezier(0.4, 0, 0.2, 1), padding 0.2s cubic-bezier(0.4, 0, 0.2, 1), font-size 0.2s cubic-bezier(0.4, 0, 0.2, 1), line-height 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                         }}
                         onChange={onInputChange}
                         onKeyDown={handleKeyDownInternal}
@@ -199,7 +215,7 @@ function GlowingTextField({ isLoading, disabled, onInputChange, onKeyDown, input
                         disabled={disabled}
                         placeholder={displayedPlaceholder + (isTyping && inputValue.length === 0 ? '|' : '')}
                         minRows={minRows ?? (isLarge ? undefined : 1)}
-                        maxRows={isLarge ? 10 : 4}
+                        maxRows={hasSubstantialContent ? 12 : (isLarge ? 6 : 4)}
                         autoFocus={autoFocus}
                     />
                     {/* Tab hint - shows when placeholder is fully typed and input is empty */}
@@ -242,6 +258,6 @@ function GlowingTextField({ isLoading, disabled, onInputChange, onKeyDown, input
             )}
         </div>
     );
-}
+});
 
 export default GlowingTextField;
