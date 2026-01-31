@@ -152,7 +152,14 @@ class SlackChatInterface extends ChatInterface {
 
             await this.say(messagePayload);
 
-            return `I've sent you a button to configure ${integration}. Click it to set up the integration.`;
+            let response = `I've sent you a button to configure ${integration}. Click it to set up the integration.`;
+
+            // Add Slack-specific guidance about channel access
+            if (integration === IntegrationType.SLACK) {
+                response += `\n\nIMPORTANT: After connecting Slack as a bot, you'll need to invite the Terse bot to each channel you want it to access. In the channel, type /invite @Terse. Only channels where the bot has been invited will be available for automations.`;
+            }
+
+            return response;
         } catch (error) {
             logger.error('Error preparing OAuth integration with config', { error, integration, userId: this.userId });
             return `Failed to prepare configuration for ${integration}. Please try again.`;
