@@ -84,7 +84,12 @@ function TurnView({ role, text, function_calls, isFailure = false, isGenerating 
                         </div>
                     </div>
                 )}
-                <ToolCallsSummary calls={function_calls} />
+                <ToolCallsSummary 
+                    calls={function_calls} 
+                    isTurnFailure={isFailure}
+                    onApprove={onApprove}
+                    onReject={onReject}
+                />
 
                 {snippets.length > 0 && (
                     <div className="space-y-2 mt-2">
