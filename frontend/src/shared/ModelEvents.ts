@@ -16,7 +16,7 @@ export type Failure = { error: string, step_id: string };
 
 export type FunctionCall = { function_name: string, result: string, step_id: string, };
 
-export type ModelEvent = {"type": "ToolApprovalResponse"} & ToolApprovalResponse | { "type": "ToolApprovalRequest" } & ToolApprovalRequest | { "type": "ToolCall" } & ToolCall | { "type": "ToolCallComplete" } & ToolCallComplete | { "type": "TextDelta" } & TextDelta | { "type": "Failure" } & Failure | { "type": "NaturalStop", step_id: string } | { "type": "FilterResult" } & FilterResult | { "type": "UserMessage" } & UserMessage | { "type": "Thinking", step_id: string } | { "type": "Snippet" } & { snippet: ChatSnippetPayload };
+export type ModelEvent = {"type": "ToolApprovalResponse"} & ToolApprovalResponse | { "type": "ToolApprovalRequest" } & ToolApprovalRequest | { "type": "ToolCallGenerating" } & ToolCallGenerating | { "type": "ToolCall" } & ToolCall | { "type": "ToolCallComplete" } & ToolCallComplete | { "type": "TextDelta" } & TextDelta | { "type": "Failure" } & Failure | { "type": "NaturalStop", step_id: string } | { "type": "FilterResult" } & FilterResult | { "type": "UserMessage" } & UserMessage | { "type": "Thinking", step_id: string } | { "type": "Snippet" } & { snippet: ChatSnippetPayload };
 
 export type ModelRequest = { "type": "SendModelRequest" } & SendModelRequest | { "type": "ToolApprovalResponse" } & ToolApprovalResponse;
 
@@ -27,6 +27,8 @@ export type ToolApprovalResponse = { step_id: string, approved: boolean };
 export type ToolApprovalRequest = { step_id: string, name: string, arguments: string };
 
 export type TextDelta = { delta: string, step_id: string, };
+
+export type ToolCallGenerating = { tool_name: string, step_id: string };
 
 export type ToolCall = { summary: string, step_id: string, parameters: string, integration: string, };
 
