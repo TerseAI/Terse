@@ -57,19 +57,16 @@ const GlowingTextField = forwardRef<GlowingTextFieldHandle, GlowingTextFieldProp
     // Track if user has typed substantial content (more than a short sentence)
     const hasSubstantialContent = inputValue.length > 100;
 
-    const getStyles = () => {
-        const baseStyles = {
-            lineHeight: '1.5',
-        };
-
+    const getSizeClasses = () => {
+        // Explicit line-height matching font size, with padding for vertical centering
         switch (size) {
             case Size.Small:
-                return { ...baseStyles, fontSize: '14px', padding: '10px 12px' };
+                return 'text-sm leading-[14px] py-[13px] px-3';
             case Size.Large:
-                return { ...baseStyles, fontSize: '18px', padding: '16px' };
+                return 'text-lg leading-[18px] p-4';
             case Size.Medium:
             default:
-                return { ...baseStyles, fontSize: '16px', padding: '12px 16px' };
+                return 'text-base leading-[16px] py-[14px] px-4';
         }
     };
 
@@ -156,8 +153,8 @@ const GlowingTextField = forwardRef<GlowingTextFieldHandle, GlowingTextFieldProp
     const chipPlaceholders = placeholders.filter((_, idx) => idx !== currentPlaceholderIndex);
 
     return (
-        <div className={`flex flex-col gap-3 w-full max-w-full overflow-visible`}>
-            <div className="grid place-items-stretch overflow-visible">
+        <div className={`flex flex-col w-full max-w-full overflow-visible`}>
+            <div className="grid place-items-center overflow-visible">
                 {isLoading && (
                     <div className="absolute inset-0 pointer-events-none overflow-visible">
                         <div className="absolute left-1/2 top-1/2 w-full h-full animate-rect-orbit overflow-visible">
@@ -183,13 +180,14 @@ const GlowingTextField = forwardRef<GlowingTextFieldHandle, GlowingTextFieldProp
                                 w-full
                                 text-foreground
                                 resize-none
+                                ${getSizeClasses()}
                                 ${onSend ? 'pr-14' : ''}
                                 placeholder:text-muted-foreground
                                 rounded-lg
                                 focus:outline-none
                                 bg-transparent
+                                m-2 block
                             `}
-                        style={getStyles()}
                         onChange={onInputChange}
                         onKeyDown={handleKeyDownInternal}
                         value={inputValue}
