@@ -869,6 +869,7 @@ enum RunHistoryDecisionAction {
 // Chat event types for run history (matches shared/ModelEvents.ts ModelEvent types)
 enum RunHistoryChatEventType {
   TextDelta
+  ToolCallGenerating
   ToolCall
   ToolCallComplete
   ToolApprovalRequest
