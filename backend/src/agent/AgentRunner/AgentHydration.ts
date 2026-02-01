@@ -1,5 +1,5 @@
 import { db } from '../../prismaClient';
-import { getUserForOrg } from '../../routes/auth';
+import { getUserForOrg } from '../../utility/workos';
 import { AgentWithRelations } from '../../types/prisma';
 import { User } from '../../shared/types';
 import { getAgentHydrationInclude } from '../../utility/prismaIncludes';

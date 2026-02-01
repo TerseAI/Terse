@@ -1,3 +1,4 @@
+import { Client } from "@notionhq/client";
 import { Request, Response } from "express";
 import jwt from "jsonwebtoken";
 import {
@@ -15,8 +16,9 @@ import {
   NotionIntegration,
   NotionIntegrationMetadata,
 } from "../shared/Integrations";
-import { OAuthInstallationDetails, NotionResource } from "../shared/types";
+import { NotionResource, OAuthInstallationDetails } from "../shared/types";
 import { AgentTriggerWithConfigs } from "../types/prisma";
+import { extractPageTitle } from "../utility/notion";
 import { createOAuthStateToken } from "../utility/oauth";
 import {
   ConfigurationFieldDefinition,
@@ -24,10 +26,9 @@ import {
   IntegrationWithResources,
   OAuthIntegrationInstallation,
 } from "./abstract/Integration";
+import { fetchNotionResources } from "../routes/notion";
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask";
 import { integrationTaskQueue } from "./IntegrationTaskQueues";
-import { Client } from "@notionhq/client";
-import { extractPageTitle } from "../utility/notion";
 
 export class NotionIntegrationManager
   implements
@@ -46,22 +47,6 @@ export class NotionIntegrationManager
     return [];
   }
 
-  async getInstancesForUser(userId: string): Promise<NotionIntegration[]> {
-    const notionIntegrations = await db().notion_integrations.findMany({
-      where: { user_id: userId },
-      select: {
-        id: true,
-        workspace_id: true,
-        workspace_name: true,
-      },
-    });
-    return notionIntegrations.map((ni) => ({
-      id: ni.id,
-      workspaceId: ni.workspace_id || undefined,
-      workspaceName: ni.workspace_name || undefined,
-    }));
-  }
-
   async getInstancesForOrganization(
     organizationId: string,
   ): Promise<NotionIntegration[]> {
@@ -78,6 +63,34 @@ export class NotionIntegrationManager
       workspaceId: ni.workspace_id || undefined,
       workspaceName: ni.workspace_name || undefined,
     }));
+  }
+
+  async fetchResourcesForOrganization(
+    organizationId: string,
+    query?: string,
+  ): Promise<
+    IntegrationWithResources<NotionIntegration, NotionResource>[]
+  > {
+    const integrations =
+      await this.getInstancesForOrganization(organizationId);
+    return Promise.all(
+      integrations.map(async (integration) => {
+        try {
+          const response = await fetchNotionResources(
+            organizationId,
+            integration.id,
+            query ?? "",
+          );
+          return { integration, resources: response.resources };
+        } catch (error) {
+          logger.warn(
+            `Failed to fetch resources for Notion integration ${integration.id}`,
+            { error, integrationId: integration.id },
+          );
+          return { integration, resources: [] };
+        }
+      }),
+    );
   }
 
   formatIntegrationInstanceForAgent(instance: NotionIntegration): string {
@@ -173,7 +186,10 @@ export class NotionIntegrationManager
         integrationType?: string;
       };
 
-      if (!decoded.organizationId || typeof decoded.organizationId !== "string") {
+      if (
+        !decoded.organizationId ||
+        typeof decoded.organizationId !== "string"
+      ) {
         logger.error("Notion OAuth: organizationId is required in state", {
           userId: decoded.userId,
         });
@@ -353,8 +369,7 @@ export class NotionIntegrationManager
         if (result.object === "data_source") {
           return {
             id: result.id,
-            title:
-              result.title?.[0]?.plain_text || "Untitled Database",
+            title: result.title?.[0]?.plain_text || "Untitled Database",
             url: result.url,
             type: "database" as const,
           };
@@ -375,32 +390,5 @@ export class NotionIntegrationManager
       );
     }
     return resources;
-  }
-
-  async fetchResourcesForUser(
-    userId: string,
-    query?: string,
-  ): Promise<
-    IntegrationWithResources<NotionIntegration, NotionResource>[]
-  > {
-    const integrations = await this.getInstancesForUser(userId);
-    return Promise.all(
-      integrations.map(async (integration) => {
-        try {
-          const resources = await this.fetchResourcesForInstance(
-            userId,
-            integration.id,
-            query,
-          );
-          return { integration, resources };
-        } catch (error) {
-          logger.warn(
-            `Failed to fetch resources for Notion integration ${integration.id}`,
-            { error, integrationId: integration.id },
-          );
-          return { integration, resources: [] };
-        }
-      }),
-    );
   }
 }

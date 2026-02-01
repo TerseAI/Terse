@@ -3,7 +3,7 @@ import { EventProcessor } from "../agent/AgentRunner/EventProcessor";
 import { settings } from "../config/settings";
 import logger, { runWithUserContext } from "../logger";
 import { db } from "../prismaClient";
-import { getUserForOrg } from "../routes/auth";
+import { getUserForOrg } from "../utility/workos";
 import { ApiRoutes } from "../shared/ApiRoutes";
 import { FrontendRoutes } from "../shared/FrontendRoutes";
 import {

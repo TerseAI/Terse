@@ -4,7 +4,7 @@ import logger from "../logger";
 import { db } from "../prismaClient";
 import { getRealtimeSocket } from "../realtimeSocket";
 import { SocketEvents, SocketRooms } from "../shared/SocketEvents";
-import { workos } from "./auth";
+import { workos } from "../utility/workos";
 
 /**
  * WorkOS webhook event payload structure.

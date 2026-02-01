@@ -1,7 +1,8 @@
 import { Request, Response } from "express";
 import { settings } from "../config/settings";
 import logger from "../logger";
-import { workos, WORKOS_SESSION_COOKIE_NAME } from "../routes/auth";
+import { workos } from "../utility/workos";
+import { WORKOS_SESSION_COOKIE_NAME } from "../routes/auth";
 
 export async function requestSessionSocketToken(req: Request, res: Response) {
   try {

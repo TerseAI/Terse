@@ -21,7 +21,7 @@ import {
 } from "../integrations/SlackIntegration";
 import logger from "../logger";
 import { db } from "../prismaClient";
-import { getUserForOrg } from "../routes/auth";
+import { getUserForOrg } from "../utility/workos";
 import { ApprovalService } from "../services/ApprovalService";
 import { IntegrationType } from "../shared/Integrations";
 import { User } from "../shared/types";

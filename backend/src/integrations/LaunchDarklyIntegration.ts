@@ -1,11 +1,3 @@
-import {
-  FormFieldDefinition,
-  FormIntegrationInstallation,
-  FormSubmissionInput,
-  FormSubmissionResult,
-  Integration,
-  IntegrationWithResources,
-} from "./abstract/Integration";
 import logger from "../logger";
 import { db } from "../prismaClient";
 import {
@@ -15,6 +7,18 @@ import {
 } from "../shared/Integrations";
 import { LaunchDarklyProject } from "../shared/types";
 import { AgentTriggerWithConfigs } from "../types/prisma";
+import {
+  FormFieldDefinition,
+  FormIntegrationInstallation,
+  FormSubmissionInput,
+  FormSubmissionResult,
+  Integration,
+  IntegrationWithResources,
+} from "./abstract/Integration";
+import {
+  fetchLaunchDarklyEnvironments,
+  fetchLaunchDarklyProjects,
+} from "../routes/launchdarkly";
 
 export class LaunchDarklyIntegrationManager
   implements
@@ -28,25 +32,6 @@ export class LaunchDarklyIntegrationManager
 {
   constructor() {}
   integrationType: IntegrationType = IntegrationType.LAUNCHDARKLY;
-
-  async getInstancesForUser(
-    userId: string,
-  ): Promise<LaunchDarklyIntegration[]> {
-    const launchdarklyIntegrations =
-      await db().launchdarkly_integrations.findMany({
-        where: { user_id: userId },
-        select: {
-          id: true,
-          user_email: true,
-          token_name: true,
-        },
-      });
-    return launchdarklyIntegrations.map((li) => ({
-      id: li.id,
-      email: li.user_email || null,
-      tokenName: li.token_name || null,
-    }));
-  }
 
   async getInstancesForOrganization(
     organizationId: string,
@@ -65,6 +50,50 @@ export class LaunchDarklyIntegrationManager
       email: li.user_email || null,
       tokenName: li.token_name || null,
     }));
+  }
+
+  async fetchResourcesForOrganization(
+    organizationId: string,
+    query?: string,
+  ): Promise<
+    IntegrationWithResources<
+      LaunchDarklyIntegration,
+      LaunchDarklyProject & { environments: Array<{ key: string; name: string }> }
+    >[]
+  > {
+    const integrations =
+      await this.getInstancesForOrganization(organizationId);
+    return Promise.all(
+      integrations.map(async (integration) => {
+        try {
+          const projectsResponse = await fetchLaunchDarklyProjects(
+            organizationId,
+            integration.id,
+            query ?? "",
+          );
+          const projectsWithEnvironments = await Promise.all(
+            projectsResponse.projects.map(async (project) => {
+              const envsResponse = await fetchLaunchDarklyEnvironments(
+                organizationId,
+                integration.id,
+                project.key,
+              );
+              return {
+                ...project,
+                environments: envsResponse.environments,
+              };
+            }),
+          );
+          return { integration, resources: projectsWithEnvironments };
+        } catch (error) {
+          logger.warn(
+            `Failed to fetch resources for LaunchDarkly integration ${integration.id}`,
+            { error, integrationId: integration.id },
+          );
+          return { integration, resources: [] };
+        }
+      }),
+    );
   }
 
   formatIntegrationInstanceForAgent(instance: LaunchDarklyIntegration): string {
@@ -309,9 +338,7 @@ export class LaunchDarklyIntegrationManager
     );
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(
-        response.status === 401 ? "Invalid API key" : errorText,
-      );
+      throw new Error(response.status === 401 ? "Invalid API key" : errorText);
     }
     const projectsData = await response.json();
     const projects = Array.isArray(projectsData)
@@ -330,32 +357,5 @@ export class LaunchDarklyIntegrationManager
       );
     }
     return projectsList;
-  }
-
-  async fetchResourcesForUser(
-    userId: string,
-    query?: string,
-  ): Promise<
-    IntegrationWithResources<LaunchDarklyIntegration, LaunchDarklyProject>[]
-  > {
-    const integrations = await this.getInstancesForUser(userId);
-    return Promise.all(
-      integrations.map(async (integration) => {
-        try {
-          const resources = await this.fetchResourcesForInstance(
-            userId,
-            integration.id,
-            query,
-          );
-          return { integration, resources };
-        } catch (error) {
-          logger.warn(
-            `Failed to fetch resources for LaunchDarkly integration ${integration.id}`,
-            { error, integrationId: integration.id },
-          );
-          return { integration, resources: [] };
-        }
-      }),
-    );
   }
 }

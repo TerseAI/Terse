@@ -5,7 +5,6 @@ import { EventProcessor } from "../agent/AgentRunner/EventProcessor";
 import { githubApp, urls } from "../config/settings";
 import logger, { runWithUserContext } from "../logger";
 import { db } from "../prismaClient";
-import { getUserForOrg } from "../routes/auth";
 import {
   GithubAppInstallationRepository,
   GithubAppInstallationRepositoryResponse,
@@ -13,6 +12,7 @@ import {
   GithubAppUnifiedEventRequest,
   GithubAppUser,
 } from "../routes/GithubTypes";
+import { StoredFile } from "../services/FileStorageService";
 import { FrontendRoutes } from "../shared/FrontendRoutes";
 import {
   AdditionalStateParams,
@@ -29,6 +29,7 @@ import {
   decodeOAuthStateToken,
   OAuthStateEncodingFormat,
 } from "../utility/oauth";
+import { getUserForOrg } from "../utility/workos";
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask";
 import { integrationTaskQueue } from "./IntegrationTaskQueues";
 import { InputEvent } from "./abstract/InputEvent";
@@ -38,7 +39,7 @@ import {
   IntegrationWithResources,
   OAuthIntegrationInstallation,
 } from "./abstract/Integration";
-import { StoredFile } from "../services/FileStorageService";
+import { fetchGithubRepositoriesForIntegration } from "../routes/github";
 
 export class GithubIntegrationManager
   implements
@@ -55,25 +56,6 @@ export class GithubIntegrationManager
 
   getConfigurationFields(): ConfigurationFieldDefinition[] {
     return [];
-  }
-
-  async getInstancesForUser(userId: string): Promise<GithubIntegration[]> {
-    const userAccounts = await db().github_app_tokens.findMany({
-      where: { user_id: userId },
-    });
-    const installations = await Promise.all(
-      userAccounts.map(async (ua) => {
-        const appInstallations = await getAppInstallationsForUser(
-          ua.access_token,
-        );
-        return appInstallations.installations.map((ai) => ({
-          id: ai.id.toString(),
-          installation_id: ai.id,
-          account_name: ai.account.login,
-        }));
-      }),
-    );
-    return installations.flat();
   }
 
   async getInstancesForOrganization(
@@ -95,6 +77,48 @@ export class GithubIntegrationManager
       }),
     );
     return installations.flat();
+  }
+
+  async fetchResourcesForOrganization(
+    organizationId: string,
+    query?: string,
+  ): Promise<IntegrationWithResources<GithubIntegration, Repository>[]> {
+    const integrations = await this.getInstancesForOrganization(organizationId);
+    const normalizedQuery = query?.trim().toLowerCase();
+    const matchesQuery = (value: string | undefined | null): boolean => {
+      if (!normalizedQuery) return true;
+      if (!value) return false;
+      return value.toLowerCase().includes(normalizedQuery);
+    };
+    return Promise.all(
+      integrations.map(async (integration) => {
+        const installationId =
+          integration.installation_id ?? Number(integration.id);
+        if (!installationId) {
+          return { integration, resources: [] };
+        }
+        try {
+          const response = await fetchGithubRepositoriesForIntegration(
+            organizationId,
+            String(installationId),
+          );
+          const repositories = normalizedQuery
+            ? response.repositories.filter(
+                (repo) =>
+                  matchesQuery(`${repo.owner}/${repo.name}`) ||
+                  matchesQuery(repo.name),
+              )
+            : response.repositories;
+          return { integration, resources: repositories };
+        } catch (error) {
+          logger.warn(
+            `Failed to fetch resources for GitHub integration ${integration.id}`,
+            { error, integrationId: integration.id },
+          );
+          return { integration, resources: [] };
+        }
+      }),
+    );
   }
 
   formatIntegrationInstanceForAgent(instance: GithubIntegration): string {
@@ -211,7 +235,9 @@ export class GithubIntegrationManager
           "[GitHub Setup URL Installation] ERROR: userId is required in state",
           { installationId: installation_id },
         );
-        res.status(400).json({ message: "Invalid state. Please try again from the app." });
+        res
+          .status(400)
+          .json({ message: "Invalid state. Please try again from the app." });
         return;
       }
 
@@ -220,7 +246,10 @@ export class GithubIntegrationManager
           "[GitHub Setup URL Installation] ERROR: organizationId is required in state",
           { userId: user_id, installationId: installation_id },
         );
-        res.status(400).json({ message: "Organization context required. Please try again from the app." });
+        res.status(400).json({
+          message:
+            "Organization context required. Please try again from the app.",
+        });
         return;
       }
 
@@ -384,11 +413,10 @@ export class GithubIntegrationManager
     if (!targetInstallation) {
       throw new Error("Installation not found");
     }
-    const installationRepositories =
-      await getAppInstallationRepositories(
-        accessToken.access_token,
-        targetInstallation.id,
-      );
+    const installationRepositories = await getAppInstallationRepositories(
+      accessToken.access_token,
+      targetInstallation.id,
+    );
     let repositories = installationRepositories.map((r) => ({
       id: r.id,
       name: r.name,
@@ -403,38 +431,6 @@ export class GithubIntegrationManager
       );
     }
     return repositories;
-  }
-
-  async fetchResourcesForUser(
-    userId: string,
-    query?: string,
-  ): Promise<
-    IntegrationWithResources<GithubIntegration, Repository>[]
-  > {
-    const integrations = await this.getInstancesForUser(userId);
-    return Promise.all(
-      integrations.map(async (integration) => {
-        const installationId =
-          integration.installation_id ?? Number(integration.id);
-        if (!installationId) {
-          return { integration, resources: [] };
-        }
-        try {
-          const resources = await this.fetchResourcesForInstance(
-            userId,
-            String(installationId),
-            query,
-          );
-          return { integration, resources };
-        } catch (error) {
-          logger.warn(
-            `Failed to fetch resources for GitHub integration ${integration.id}`,
-            { error, integrationId: integration.id },
-          );
-          return { integration, resources: [] };
-        }
-      }),
-    );
   }
 }
 
@@ -730,10 +726,10 @@ export async function resolveUsersForGithubInstallation(
     const users = await tx.users.findMany({
       where: { id: { in: userIds } },
     });
-    logger.debug(
-      `Found ${users.length} users for event from installation`,
-      { installationId, userCount: users.length },
-    );
+    logger.debug(`Found ${users.length} users for event from installation`, {
+      installationId,
+      userCount: users.length,
+    });
     return users;
   });
 }

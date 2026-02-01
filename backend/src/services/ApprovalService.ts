@@ -1,4 +1,4 @@
-import { getUserForOrg } from "../routes/auth";
+import { getUserForOrg } from "../utility/workos";
 import { db } from "../prismaClient";
 import { AgentWithRelations } from "../types/prisma";
 import { getInputConfigInclude, getOutputConfigInclude, getKnowledgeBaseConfigInclude } from "../utility/prismaIncludes";

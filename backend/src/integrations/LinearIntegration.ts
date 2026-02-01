@@ -9,7 +9,6 @@ import {
 } from "../config/settings";
 import logger, { runWithUserContext } from "../logger";
 import { db } from "../prismaClient";
-import { getUserForOrg } from "../routes/auth";
 import { StoredFile } from "../services/FileStorageService";
 import { FrontendRoutes } from "../shared/FrontendRoutes";
 import {
@@ -25,6 +24,7 @@ import { LinearAdapter } from "../ticketing/linear";
 import { AgentTriggerWithConfigs } from "../types/prisma";
 import { LinearWebhookPayload } from "../utility/LinearWebhookPayload";
 import { createOAuthStateToken } from "../utility/oauth";
+import { getUserForOrg } from "../utility/workos";
 import { InputEvent } from "./abstract/InputEvent";
 import {
   ConfigurationFieldDefinition,
@@ -32,6 +32,7 @@ import {
   IntegrationWithResources,
   OAuthIntegrationInstallation,
 } from "./abstract/Integration";
+import { fetchLinearTeams } from "../routes/linear";
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask";
 import { integrationTaskQueue } from "./IntegrationTaskQueues";
 
@@ -52,21 +53,6 @@ export class LinearIntegrationManager
     return [];
   }
 
-  async getInstancesForUser(userId: string): Promise<LinearIntegration[]> {
-    const linearIntegrations = await db().linear_integrations.findMany({
-      where: { user_id: userId },
-      select: {
-        id: true,
-        workspace_id: true,
-        workspace_name: true,
-      },
-    });
-    return linearIntegrations.map((li) => ({
-      id: li.id,
-      workspaceName: li.workspace_name,
-    }));
-  }
-
   async getInstancesForOrganization(
     organizationId: string,
   ): Promise<LinearIntegration[]> {
@@ -82,6 +68,45 @@ export class LinearIntegrationManager
       id: li.id,
       workspaceName: li.workspace_name,
     }));
+  }
+
+  async fetchResourcesForOrganization(
+    organizationId: string,
+    query?: string,
+  ): Promise<
+    IntegrationWithResources<LinearIntegration, LinearTeam>[]
+  > {
+    const integrations =
+      await this.getInstancesForOrganization(organizationId);
+    const normalizedQuery = query?.trim().toLowerCase();
+    const matchesQuery = (value: string | undefined | null): boolean => {
+      if (!normalizedQuery) return true;
+      if (!value) return false;
+      return value.toLowerCase().includes(normalizedQuery);
+    };
+    return Promise.all(
+      integrations.map(async (integration) => {
+        try {
+          const response = await fetchLinearTeams(
+            organizationId,
+            integration.id,
+          );
+          const teams = normalizedQuery
+            ? response.filter(
+                (team) =>
+                  matchesQuery(team.name) || matchesQuery(team.key),
+              )
+            : response;
+          return { integration, resources: teams };
+        } catch (error) {
+          logger.warn(
+            `Failed to fetch resources for Linear integration ${integration.id}`,
+            { error, integrationId: integration.id },
+          );
+          return { integration, resources: [] };
+        }
+      }),
+    );
   }
 
   formatIntegrationInstanceForAgent(instance: LinearIntegration): string {
@@ -632,31 +657,6 @@ export class LinearIntegrationManager
       );
     }
     return result;
-  }
-
-  async fetchResourcesForUser(
-    userId: string,
-    query?: string,
-  ): Promise<IntegrationWithResources<LinearIntegration, LinearTeam>[]> {
-    const integrations = await this.getInstancesForUser(userId);
-    return Promise.all(
-      integrations.map(async (integration) => {
-        try {
-          const resources = await this.fetchResourcesForInstance(
-            userId,
-            integration.id,
-            query,
-          );
-          return { integration, resources };
-        } catch (error) {
-          logger.warn(
-            `Failed to fetch resources for Linear integration ${integration.id}`,
-            { error, integrationId: integration.id },
-          );
-          return { integration, resources: [] };
-        }
-      }),
-    );
   }
 }
 

@@ -19,7 +19,7 @@ import {
   Repository,
   User as RuntimeUser,
 } from "../shared/types";
-import { getUserForOrg } from "./auth";
+import { getUserForOrg } from "../utility/workos";
 import { GithubRepository } from "../types/prisma";
 
 // MARK: - Route Handlers

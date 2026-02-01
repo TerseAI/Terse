@@ -3,7 +3,7 @@ import {
   isSystemIntegration,
 } from "../../integrations/abstract/IntegrationRegistry";
 import { db } from "../../prismaClient";
-import { getUserForOrg } from "../../routes/auth";
+import { getUserForOrg } from "../../utility/workos";
 import {
   INTEGRATION_METADATA,
   IntegrationInstance,

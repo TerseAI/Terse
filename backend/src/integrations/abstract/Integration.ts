@@ -22,7 +22,6 @@ export interface Integration<
   R,
 > {
   integrationType: IntegrationType;
-  getInstancesForUser(userId: string): Promise<T[]>;
   getInstancesForOrganization(organizationId: string): Promise<T[]>;
   formatIntegrationInstanceForAgent(instance: T): string;
   getAllActiveInstances(): Promise<T[]>;
@@ -41,8 +40,8 @@ export interface Integration<
     integrationId: string,
     query?: string,
   ): Promise<R[]>;
-  fetchResourcesForUser?(
-    userId: string,
+  fetchResourcesForOrganization?(
+    organizationId: string,
     query?: string,
   ): Promise<IntegrationWithResources<T, R>[]>;
 }

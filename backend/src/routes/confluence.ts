@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { AtlassianIntegrationManager } from "../integrations/AtlassianIntegration";
+import { AtlassianClient } from "../integrations/AtlassianClient";
 import logger from "../logger";
 import { db } from "../prismaClient";
 import type { ConfluencePage } from "../shared/types";
@@ -13,7 +13,7 @@ export async function getConfluenceIntegrations(req: Request, res: Response) {
   }
 
   try {
-    const manager = new AtlassianIntegrationManager();
+    const manager = new AtlassianClient();
     const integrations = await manager.getInstancesForOrganization(
       req.session.user.organizationId,
     );
@@ -53,7 +53,7 @@ export async function fetchConfluenceResources(
     throw new Error("Integration missing cloud ID");
   }
 
-  const manager = new AtlassianIntegrationManager();
+  const manager = new AtlassianClient();
   const accessToken = await manager.getAccessToken(integrationId);
   if (!accessToken) {
     throw new Error("Could not get valid access token");
@@ -119,7 +119,9 @@ export async function getConfluenceResources(req: Request, res: Response) {
 
   try {
     if (!user.organizationId) {
-      return res.status(400).json({ success: false, error: "Organization context is required" });
+      return res
+        .status(400)
+        .json({ success: false, error: "Organization context is required" });
     }
     const response = await fetchConfluenceResources(
       user.organizationId,

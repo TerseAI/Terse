@@ -57,20 +57,6 @@ export class DatadogIntegrationManager
     ];
   }
 
-  async getInstancesForUser(userId: string): Promise<DatadogIntegration[]> {
-    const datadogIntegrations = await db().datadog_integrations.findMany({
-      where: { user_id: userId },
-      select: {
-        id: true,
-        region: true,
-      },
-    });
-    return datadogIntegrations.map((di) => ({
-      id: di.id,
-      region: di.region,
-    }));
-  }
-
   async getInstancesForOrganization(
     organizationId: string,
   ): Promise<DatadogIntegration[]> {

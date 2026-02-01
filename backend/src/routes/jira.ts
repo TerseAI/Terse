@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { AtlassianClient } from "../integrations/AtlassianClient";
 import { AtlassianIntegrationManager } from "../integrations/AtlassianIntegration";
 import logger from "../logger";
 import { db } from "../prismaClient";
@@ -11,8 +12,8 @@ export async function getAtlassianIntegrations(req: Request, res: Response) {
   }
 
   try {
-    const manager = new AtlassianIntegrationManager();
-    const integrations = await manager.getInstancesForOrganization(
+    const client = new AtlassianClient();
+    const integrations = await client.getInstancesForOrganization(
       req.session.user.organizationId,
     );
     res.status(200).json(integrations);
@@ -120,9 +121,14 @@ export async function getJiraResources(req: Request, res: Response) {
 
   try {
     if (!user.organizationId) {
-      return res.status(400).json({ success: false, error: "Organization context is required" });
+      return res
+        .status(400)
+        .json({ success: false, error: "Organization context is required" });
     }
-    const response = await fetchJiraResources(user.organizationId, integrationId);
+    const response = await fetchJiraResources(
+      user.organizationId,
+      integrationId,
+    );
     return res.status(200).json(response);
   } catch (error: any) {
     logger.error("Error fetching Jira resources:", { error });
@@ -152,8 +158,8 @@ export async function fetchJiraResources(
     throw new Error("Integration missing cloud_id");
   }
 
-  const manager = new AtlassianIntegrationManager();
-  const accessToken = await manager.getAccessToken(integrationId);
+  const client = new AtlassianClient();
+  const accessToken = await client.getAccessToken(integrationId);
   if (!accessToken) {
     throw new Error("Could not get valid access token");
   }

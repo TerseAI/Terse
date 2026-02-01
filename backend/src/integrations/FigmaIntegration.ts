@@ -11,7 +11,6 @@ import {
 } from "../config/settings";
 import logger, { runWithUserContext } from "../logger";
 import { db } from "../prismaClient";
-import { getUserForOrg } from "../routes/auth";
 import { FileCategory, StoredFile } from "../services/FileStorageService";
 import { ApiRoutes } from "../shared/ApiRoutes";
 import { FrontendRoutes } from "../shared/FrontendRoutes";
@@ -37,6 +36,7 @@ import {
 import { AgentTriggerWithConfigs } from "../types/prisma";
 import { createOAuthStateToken } from "../utility/oauth";
 import { generateWebhookPasscode } from "../utility/webhookSecrets";
+import { getUserForOrg } from "../utility/workos";
 import { InputEvent } from "./abstract/InputEvent";
 import {
   ConfigurationFieldDefinition,
@@ -61,20 +61,6 @@ export class FigmaIntegrationManager
 
   getConfigurationFields(): ConfigurationFieldDefinition[] {
     return [];
-  }
-
-  async getInstancesForUser(userId: string): Promise<FigmaIntegration[]> {
-    const integrations = await db().figma_integrations.findMany({
-      where: {
-        user_id: userId,
-      },
-    });
-    return integrations.map((integration) => ({
-      id: integration.id,
-      handle: integration.handle,
-      figma_user_id: integration.figma_user_id,
-      token_expiry: integration.token_expiry,
-    }));
   }
 
   async getInstancesForOrganization(

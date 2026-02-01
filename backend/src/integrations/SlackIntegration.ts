@@ -6,7 +6,6 @@ import crypto from "crypto";
 import { Request, Response } from "express";
 import jwt from "jsonwebtoken";
 import { EventProcessor } from "../agent/AgentRunner/EventProcessor";
-import { SlackChannel as SlackChannelShared } from "../shared/types";
 import {
   jwt as jwtConfig,
   slack as slackConfig,
@@ -32,7 +31,11 @@ import {
   SlackIntegrationMetadata,
 } from "../shared/Integrations";
 import { RunHistoryTrigger } from "../shared/RunHistoryTypes";
-import { OAuthInstallationDetails, SlackChannelType } from "../shared/types";
+import {
+  OAuthInstallationDetails,
+  SlackChannel as SlackChannelShared,
+  SlackChannelType,
+} from "../shared/types";
 import {
   extractImagesFromMessage,
   extractTextFromAttachments,
@@ -48,9 +51,9 @@ import {
   UserSlackIntegrationWithUser,
 } from "../types/prisma";
 import { HydratorType } from "../types/rag";
-import { getUserForOrg } from "../routes/auth";
 import { Jwt } from "../utility/jwt";
 import { createOAuthStateToken } from "../utility/oauth";
+import { getUserForOrg } from "../utility/workos";
 import { InputEvent } from "./abstract/InputEvent";
 import {
   ConfigurationFieldDefinition,
@@ -58,6 +61,7 @@ import {
   IntegrationWithResources,
   OAuthIntegrationInstallation,
 } from "./abstract/Integration";
+import { fetchSlackChannelsForIntegration } from "../routes/slack";
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask";
 import { integrationTaskQueue } from "./IntegrationTaskQueues";
 
@@ -73,23 +77,6 @@ export class SlackIntegrationManager
 {
   constructor() {}
   integrationType: IntegrationType = IntegrationType.SLACK;
-
-  async getInstancesForUser(userId: string): Promise<SlackIntegration[]> {
-    const userSlackIntegrations = await db().user_slack_integrations.findMany({
-      where: {
-        user_id: userId,
-      },
-      include: {
-        slack_integration: true,
-      },
-    });
-    return userSlackIntegrations.map((usi) => ({
-      id: usi.id,
-      teamId: usi.slack_integration.team_id,
-      teamName: usi.slack_integration.team_name,
-      isBotUser: usi.is_bot_user,
-    }));
-  }
 
   async getInstancesForOrganization(
     organizationId: string,
@@ -108,6 +95,55 @@ export class SlackIntegrationManager
       teamName: usi.slack_integration.team_name,
       isBotUser: usi.is_bot_user,
     }));
+  }
+
+  async fetchResourcesForOrganization(
+    organizationId: string,
+    query?: string,
+  ): Promise<
+    IntegrationWithResources<SlackIntegration, SlackChannelShared>[]
+  > {
+    const integrations =
+      await this.getInstancesForOrganization(organizationId);
+    const normalizedQuery = query?.trim().toLowerCase();
+    const matchesQuery = (value: string | undefined | null): boolean => {
+      if (!normalizedQuery) return true;
+      if (!value) return false;
+      return value.toLowerCase().includes(normalizedQuery);
+    };
+    return Promise.all(
+      integrations.map(async (integration) => {
+        const usi = await db().user_slack_integrations.findFirst({
+          where: {
+            id: integration.id,
+            organization_id: organizationId,
+          },
+          select: { user_id: true },
+        });
+        if (!usi) {
+          return { integration, resources: [] };
+        }
+        try {
+          const response = await fetchSlackChannelsForIntegration(
+            usi.user_id,
+            organizationId,
+            integration.id,
+          );
+          const channels = normalizedQuery
+            ? response.channels.filter((channel) =>
+                matchesQuery(channel.name),
+              )
+            : response.channels;
+          return { integration, resources: channels };
+        } catch (error) {
+          logger.warn(
+            `Failed to fetch resources for Slack integration ${integration.id}`,
+            { error, integrationId: integration.id },
+          );
+          return { integration, resources: [] };
+        }
+      }),
+    );
   }
 
   formatIntegrationInstanceForAgent(instance: SlackIntegration): string {
@@ -569,11 +605,10 @@ export class SlackIntegrationManager
     integrationId: string,
     query?: string,
   ): Promise<SlackChannelShared[]> {
-    const userSlackIntegration =
-      await db().user_slack_integrations.findFirst({
-        where: { id: integrationId, user_id: userId },
-        include: { slack_integration: true, user: true },
-      });
+    const userSlackIntegration = await db().user_slack_integrations.findFirst({
+      where: { id: integrationId, user_id: userId },
+      include: { slack_integration: true, user: true },
+    });
 
     if (!userSlackIntegration?.slack_integration) {
       throw new Error("Slack integration not found");
@@ -604,11 +639,7 @@ export class SlackIntegrationManager
 
     if (publicChannels.ok && publicChannels.channels) {
       for (const channel of publicChannels.channels) {
-        if (
-          channel.id &&
-          channel.name &&
-          (!isBotUser || channel.is_member)
-        ) {
+        if (channel.id && channel.name && (!isBotUser || channel.is_member)) {
           channels.push({
             id: channel.id,
             name: channel.name,
@@ -658,33 +689,6 @@ export class SlackIntegrationManager
     }
 
     return channels;
-  }
-
-  async fetchResourcesForUser(
-    userId: string,
-    query?: string,
-  ): Promise<
-    IntegrationWithResources<SlackIntegration, SlackChannelShared>[]
-  > {
-    const integrations = await this.getInstancesForUser(userId);
-    return Promise.all(
-      integrations.map(async (integration) => {
-        try {
-          const resources = await this.fetchResourcesForInstance(
-            userId,
-            integration.id,
-            query,
-          );
-          return { integration, resources };
-        } catch (error) {
-          logger.warn(
-            `Failed to fetch resources for Slack integration ${integration.id}`,
-            { error, integrationId: integration.id },
-          );
-          return { integration, resources: [] };
-        }
-      }),
-    );
   }
 }
 

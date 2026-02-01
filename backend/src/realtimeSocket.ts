@@ -21,7 +21,7 @@ import logger from "./logger";
 import { Output } from "./outputs/abstract/Output";
 import { OutputFactory } from "./outputs/abstract/OutputFactory";
 import { db } from "./prismaClient";
-import { getUserForOrg, workos } from "./routes/auth";
+import { getUserForOrg, workos } from "./utility/workos";
 import { Session } from "./server";
 import { ApprovalService } from "./services/ApprovalService";
 import { ConfigInstance } from "./shared/Configs";

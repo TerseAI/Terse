@@ -5,8 +5,7 @@ import { EventProcessor } from "../agent/AgentRunner/EventProcessor";
 import { settings, urls } from "../config/settings";
 import logger, { runWithUserContext } from "../logger";
 import { db } from "../prismaClient";
-import { getUserForOrg } from "../routes/auth";
-import { ApiRoutes } from "../shared/ApiRoutes";
+import { StoredFile } from "../services/FileStorageService";
 import { FrontendRoutes } from "../shared/FrontendRoutes";
 import {
   AdditionalStateParams,
@@ -20,33 +19,42 @@ import { OAuthInstallationDetails } from "../shared/types";
 import { AgentTriggerWithConfigs } from "../types/prisma";
 import { JiraWebhookPayload } from "../utility/JiraWebhookPayload";
 import { createOAuthStateToken } from "../utility/oauth";
-import { generateWebhookSecret } from "../utility/webhookSecrets";
+import { getUserForOrg } from "../utility/workos";
 import { InputEvent } from "./abstract/InputEvent";
 import {
   ConfigurationFieldDefinition,
   Integration,
   OAuthIntegrationInstallation,
 } from "./abstract/Integration";
+import { AtlassianClient, AtlassianResource } from "./AtlassianClient";
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask";
 import { integrationTaskQueue } from "./IntegrationTaskQueues";
-import { StoredFile } from "../services/FileStorageService";
-
-const OAUTH_TOKEN_REFRESH_THRESHOLD_MS = 1000 * 60 * 30; // 30 minutes (expires access token after 1 hour)
 
 // MARK: - Integration Manager
 
+/**
+ * AtlassianIntegrationManager extends AtlassianClient to add:
+ * - OAuth installation flow
+ * - Webhook event processing (requires EventProcessor)
+ * - Agent trigger setup/teardown
+ *
+ * For API-only operations (getting tokens, querying instances), use AtlassianClient directly
+ * to avoid circular dependency issues.
+ */
 export class AtlassianIntegrationManager
+  extends AtlassianClient
   implements
     Integration<
       AtlassianIntegration,
       JiraWebhookPayload,
       typeof AtlassianIntegrationMetadata,
-      never
+      AtlassianResource
     >,
     OAuthIntegrationInstallation<IntegrationType.ATLASSIAN>
 {
-  integrationType: IntegrationType = IntegrationType.ATLASSIAN;
-  constructor() {}
+  constructor() {
+    super();
+  }
 
   getConfigurationFields(): ConfigurationFieldDefinition[] {
     return [];
@@ -129,7 +137,10 @@ export class AtlassianIntegrationManager
         timestamp: number;
       };
 
-      if (!decoded.organizationId || typeof decoded.organizationId !== "string") {
+      if (
+        !decoded.organizationId ||
+        typeof decoded.organizationId !== "string"
+      ) {
         logger.error("Atlassian OAuth: organizationId is required in state", {
           userId: decoded.userId,
         });
@@ -369,83 +380,6 @@ export class AtlassianIntegrationManager
     }
   }
 
-  async getInstancesForUser(userId: string): Promise<AtlassianIntegration[]> {
-    // Fetch both OAuth-based integrations and legacy API key-based integrations
-    const oauthIntegrations = await db().atlassian_integrations.findMany({
-      where: { user_id: userId },
-      select: {
-        id: true,
-        jira_user_email: true,
-        base_url: true,
-        site_name: true,
-      },
-    });
-
-    // Combine both types
-    return oauthIntegrations.map((oi) => ({
-      id: oi.id,
-      email: oi.jira_user_email,
-      baseUrl: oi.base_url,
-      siteName: oi.site_name || undefined,
-    }));
-  }
-
-  async getInstancesForOrganization(
-    organizationId: string,
-  ): Promise<AtlassianIntegration[]> {
-    const integrations = await db().atlassian_integrations.findMany({
-      where: { organization_id: organizationId },
-      select: {
-        id: true,
-        jira_user_email: true,
-        base_url: true,
-        site_name: true,
-      },
-    });
-    return integrations.map((oi) => ({
-      id: oi.id,
-      email: oi.jira_user_email,
-      baseUrl: oi.base_url,
-      siteName: oi.site_name || undefined,
-    }));
-  }
-
-  formatIntegrationInstanceForAgent(instance: AtlassianIntegration): string {
-    const details: string[] = [];
-    if (instance.siteName) {
-      details.push(`site "${instance.siteName}"`);
-    } else if (instance.baseUrl) {
-      details.push(`site ${instance.baseUrl}`);
-    }
-    if (instance.email) {
-      details.push(`email ${instance.email}`);
-    }
-    if (instance.projectKey) {
-      details.push(`project ${instance.projectKey}`);
-    } else if (instance.projectName) {
-      details.push(`project "${instance.projectName}"`);
-    }
-    const detailText = details.length ? ` (${details.join(", ")})` : "";
-    return `Atlassian${detailText} [id: ${instance.id}]`;
-  }
-
-  async getAllActiveInstances(): Promise<AtlassianIntegration[]> {
-    const integrations = await db().atlassian_integrations.findMany({
-      select: {
-        id: true,
-        jira_user_email: true,
-        base_url: true,
-        site_name: true,
-      },
-    });
-    return integrations.map((oi) => ({
-      id: oi.id,
-      email: oi.jira_user_email,
-      baseUrl: oi.base_url,
-      siteName: oi.site_name || undefined,
-    }));
-  }
-
   async processWebhookEvent(event: JiraWebhookPayload): Promise<void> {
     // Extract base URL from the issue self URL or match by user email
     // The webhook payload includes user email, which we can use to match integrations
@@ -550,56 +484,6 @@ export class AtlassianIntegrationManager
         );
         // Continue processing other integrations even if one fails
       }
-    }
-  }
-
-  async deleteInstallation(integrationId: string): Promise<void> {
-    try {
-      // Fetch the integration to get webhook details
-      const integration = await db().atlassian_integrations.findUnique({
-        where: { id: integrationId },
-      });
-
-      if (!integration) {
-        logger.warn("⚠️  Integration not found for deletion", {
-          integrationId,
-        });
-        return;
-      }
-
-      // Delete webhook if it exists
-      if (integration.webhook_id && integration.cloud_id) {
-        // Get valid access token before using it
-        const accessToken = await this.getAccessToken(integration.id);
-        if (accessToken) {
-          try {
-            await this.deleteJiraWebhook(
-              integration.cloud_id,
-              accessToken,
-              integration.webhook_id,
-            );
-          } catch (error) {
-            logger.error(
-              "⚠️  Failed to delete webhook during integration deletion",
-              { error, integrationId },
-            );
-            // Continue with deletion even if webhook deletion fails
-          }
-        }
-      }
-
-      // Delete the integration record
-      await db().atlassian_integrations.delete({
-        where: { id: integrationId },
-      });
-
-      logger.info(
-        "✅ [JIRA INTEGRATION MANAGER] Deleted Atlassian integration:",
-        { integrationId },
-      );
-    } catch (error) {
-      logger.error("Error deleting Atlassian integration:", { error });
-      throw error;
     }
   }
 
@@ -749,77 +633,6 @@ export class AtlassianIntegrationManager
     }
   }
 
-  async refreshToken(integrationId: string): Promise<boolean> {
-    try {
-      const integration = await db().atlassian_integrations.findUnique({
-        where: { id: integrationId },
-      });
-
-      if (!integration) {
-        logger.warn(`Atlassian integration ${integrationId} not found`, {
-          integrationId,
-        });
-        return false;
-      }
-
-      // Store the original token expiry to detect if refresh happened
-      const originalTokenExpiry = integration.token_expiry;
-
-      // Use getAccessToken which internally handles token refresh
-      const accessToken = await this.getAccessToken(integrationId);
-      if (!accessToken) {
-        // getAccessToken returns null on error, but might return existing token as fallback
-        // Check if token was actually refreshed by comparing expiry dates
-        const updatedIntegration = await db().atlassian_integrations.findUnique(
-          {
-            where: { id: integrationId },
-            select: { token_expiry: true },
-          },
-        );
-
-        if (
-          !updatedIntegration ||
-          !originalTokenExpiry ||
-          !updatedIntegration.token_expiry
-        ) {
-          return false;
-        }
-
-        // If expiry changed, token was refreshed
-        return (
-          updatedIntegration.token_expiry.getTime() !==
-          originalTokenExpiry.getTime()
-        );
-      }
-
-      // Check if token was refreshed by comparing expiry dates
-      const updatedIntegration = await db().atlassian_integrations.findUnique({
-        where: { id: integrationId },
-        select: { token_expiry: true },
-      });
-
-      if (
-        !updatedIntegration ||
-        !originalTokenExpiry ||
-        !updatedIntegration.token_expiry
-      ) {
-        return false;
-      }
-
-      // Token was refreshed if expiry changed
-      return (
-        updatedIntegration.token_expiry.getTime() !==
-        originalTokenExpiry.getTime()
-      );
-    } catch (error) {
-      logger.error(
-        `Error refreshing Atlassian token for integration ${integrationId}`,
-        { error, integrationId },
-      );
-      return false;
-    }
-  }
-
   async teardownAgentTrigger(
     integrationId: string,
     automationInput: AgentTriggerWithConfigs,
@@ -930,259 +743,6 @@ export class AtlassianIntegrationManager
       );
       // Don't throw - allow automation teardown to continue even if webhook deletion fails
     }
-  }
-
-  // MARK: - Helper Methods
-
-  async getAccessToken(
-    integrationId: string,
-    userId?: string,
-  ): Promise<string | null> {
-    try {
-      const integration = await db().atlassian_integrations.findUnique({
-        where: { id: integrationId },
-      });
-
-      if (!integration) {
-        logger.error(`Atlassian integration ${integrationId} not found`, {
-          integrationId,
-        });
-        return null;
-      }
-
-      // Validate that the integration belongs to the user if userId is provided
-      if (userId && integration.user_id !== userId) {
-        logger.warn("Atlassian integration does not belong to user", {
-          integrationId,
-          userId,
-          tokenUserId: integration.user_id,
-        });
-        return null;
-      }
-
-      const now = new Date();
-      // Check if token is expired or will expire within the refresh threshold
-      if (
-        integration.token_expiry &&
-        integration.token_expiry <=
-          new Date(now.getTime() + OAUTH_TOKEN_REFRESH_THRESHOLD_MS)
-      ) {
-        logger.info(
-          `Atlassian access token expiring soon for integration ${integrationId}, refreshing...`,
-          { integrationId },
-        );
-
-        if (!integration.refresh_token || integration.refresh_token === "") {
-          logger.error(
-            `No refresh token available for Atlassian integration ${integrationId}`,
-            { integrationId },
-          );
-          return null;
-        }
-
-        // Exchange refresh token for new access token
-        const tokenResponse = await fetch(
-          "https://auth.atlassian.com/oauth/token",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              grant_type: "refresh_token",
-              client_id: settings.atlassian.clientId,
-              client_secret: settings.atlassian.clientSecret,
-              refresh_token: integration.refresh_token,
-            }),
-          },
-        );
-
-        if (!tokenResponse.ok) {
-          const errorText = await tokenResponse.text();
-          logger.error(
-            `Atlassian token refresh failed for integration ${integrationId}`,
-            { error: errorText, integrationId },
-          );
-          // Return existing token as fallback - it might still work
-          return integration.access_token;
-        }
-
-        const tokenData = await tokenResponse.json();
-        const { access_token, refresh_token, expires_in } = tokenData;
-
-        if (!access_token) {
-          logger.error(
-            `No access token received from Atlassian refresh for integration ${integrationId}`,
-            { integrationId },
-          );
-          // Return existing token as fallback
-          return integration.access_token;
-        }
-
-        // Calculate token expiry
-        const tokenExpiry = new Date(Date.now() + (expires_in || 3600) * 1000);
-
-        // Update the database with new tokens
-        await db().atlassian_integrations.update({
-          where: { id: integration.id },
-          data: {
-            access_token: access_token,
-            refresh_token: refresh_token || integration.refresh_token, // Preserve existing if new one not provided
-            token_expiry: tokenExpiry,
-          },
-        });
-
-        logger.info(
-          `Successfully refreshed Atlassian access token for integration ${integrationId}`,
-          { integrationId },
-        );
-        return access_token;
-      }
-
-      // Token is still valid
-      return integration.access_token;
-    } catch (error) {
-      logger.error(
-        `Error ensuring valid access token for integration ${integrationId}`,
-        {
-          error,
-          integrationId,
-        },
-      );
-      // Return null on error - caller should handle
-      return null;
-    }
-  }
-
-  /**
-   * Creates a Jira webhook using OAuth bearer token authentication
-   * Events tracked: issue creation, updates, comments for ticket management automation
-   */
-  private async createJiraWebhook(
-    cloudId: string,
-    accessToken: string,
-    accountId: string,
-  ): Promise<{ webhookId: string; webhookSecret: string }> {
-    const webhookSecret = generateWebhookSecret(32);
-    const backendUrl = urls.backend;
-
-    // Webhook events relevant for a bot automating ticket management
-    const webhookEvents = [
-      "jira:issue_created", // New tickets
-      "jira:issue_updated", // State changes, assignments, field updates
-      "comment_created", // Comments added to issues
-      "comment_updated", // Comments edited
-      "comment_deleted", // Comments removed
-    ];
-
-    const webhookUrl = `${backendUrl}${ApiRoutes.WEBHOOKS.JIRA_BY_ACCOUNT_ID.build(
-      accountId,
-    )}`;
-
-    // For Jira Cloud OAuth 2.0 apps, use the REST API v3 webhook endpoint
-    // Documentation: https://developer.atlassian.com/cloud/jira/platform/webhooks/
-    const webhookEndpoint = `https://api.atlassian.com/ex/jira/${cloudId}/rest/api/3/webhook`;
-
-    const webhookPayload = {
-      url: webhookUrl,
-      webhooks: [
-        {
-          // Jira doesn't allow empty jqlFilter, so we use a dummy project key that doesn't exist
-          // https://community.developer.atlassian.com/t/listening-for-changes-update-delete-in-all-issues-of-the-workspace/56266/6
-          jqlFilter: "issueKey != NONEXISTENTPROJECT-1",
-          events: webhookEvents,
-        },
-      ],
-    };
-
-    const webhookResponse = await fetch(webhookEndpoint, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        Accept: "application/json",
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(webhookPayload),
-    });
-
-    if (!webhookResponse.ok) {
-      const errorText = await webhookResponse.text();
-      logger.error("Failed to create Jira webhook", { error: errorText });
-      throw new Error(`Failed to create Jira webhook: ${errorText}`);
-    }
-
-    // Parse the webhook registration response
-    // Response format: { "webhookRegistrationResult": [{ "createdWebhookId": 1 }, ...] }
-    const response =
-      (await webhookResponse.json()) as JiraWebhookRegistrationResponse;
-
-    // Extract the results array from the response wrapper
-    const webhookResults = response.webhookRegistrationResult;
-
-    if (!Array.isArray(webhookResults) || webhookResults.length === 0) {
-      throw new Error(
-        "Invalid webhook response format: missing webhookRegistrationResult array",
-      );
-    }
-
-    const firstResult = webhookResults[0];
-
-    // Check for errors
-    if (firstResult.errors && firstResult.errors.length > 0) {
-      throw new Error(
-        `Webhook registration failed: ${firstResult.errors.join(", ")}`,
-      );
-    }
-
-    // Extract webhook ID from the response
-    const webhookId = firstResult.createdWebhookId?.toString();
-
-    if (!webhookId) {
-      throw new Error("Could not extract webhook ID from Jira API response");
-    }
-
-    logger.info("✅ Created Jira webhook", {
-      webhookId,
-      events: webhookEvents.join(", "),
-    });
-
-    return { webhookId, webhookSecret };
-  }
-
-  /**
-   * Deletes a Jira webhook using OAuth bearer token authentication
-   */
-  private async deleteJiraWebhook(
-    cloudId: string,
-    accessToken: string,
-    webhookId: string,
-  ): Promise<void> {
-    // For Jira Cloud OAuth 2.0 apps, delete webhooks using the REST API v3 endpoint
-    // Format: DELETE /rest/api/3/webhook with body { "webhookIds": [id1, id2, ...] }
-    const webhookEndpoint = `https://api.atlassian.com/ex/jira/${cloudId}/rest/api/3/webhook`;
-
-    const webhookResponse = await fetch(webhookEndpoint, {
-      method: "DELETE",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        Accept: "application/json",
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        webhookIds: [parseInt(webhookId, 10)],
-      }),
-    });
-
-    if (!webhookResponse.ok && webhookResponse.status !== 404) {
-      const errorText = await webhookResponse.text();
-      logger.error("Failed to delete Jira webhook", {
-        error: errorText,
-        webhookId,
-      });
-      throw new Error(`Failed to delete Jira webhook: ${errorText}`);
-    }
-
-    logger.info("✅ Deleted Jira webhook", { webhookId });
   }
 }
 
@@ -1451,16 +1011,4 @@ export class JiraEvent extends InputEvent {
   getFiles(): StoredFile[] {
     return this.storedFiles;
   }
-}
-
-// MARK: - Interfaces
-
-// Types for Jira webhook API responses
-interface JiraWebhookRegistrationResult {
-  createdWebhookId?: number;
-  errors?: string[];
-}
-
-interface JiraWebhookRegistrationResponse {
-  webhookRegistrationResult: JiraWebhookRegistrationResult[];
 }

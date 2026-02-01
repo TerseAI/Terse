@@ -11,7 +11,6 @@ import {
 } from "../config/settings";
 import logger, { runWithUserContext } from "../logger";
 import { db } from "../prismaClient";
-import { getUserForOrg } from "../routes/auth";
 import {
   buildGmailFileKey,
   ensureStoredWithMetadata,
@@ -39,6 +38,7 @@ import {
   decodeOAuthStateToken,
   OAuthStateEncodingFormat,
 } from "../utility/oauth";
+import { getUserForOrg } from "../utility/workos";
 import { InputEvent } from "./abstract/InputEvent";
 import {
   ConfigurationFieldDefinition,
@@ -69,28 +69,6 @@ export class GmailIntegrationManager
 
   getConfigurationFields(): ConfigurationFieldDefinition[] {
     return [];
-  }
-
-  async getInstancesForUser(userId: string): Promise<GmailIntegration[]> {
-    const prisma = db();
-    const integrations = await prisma.gmail_integrations.findMany({
-      where: {
-        user_id: userId,
-        is_active: true,
-      },
-      select: {
-        id: true,
-        email: true,
-        history_id: true,
-        watch_expiration: true,
-      },
-    });
-    return integrations.map((gi) => ({
-      id: gi.id,
-      email: gi.email,
-      historyId: gi.history_id,
-      watchExpiration: gi.watch_expiration,
-    }));
   }
 
   async getInstancesForOrganization(

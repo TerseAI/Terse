@@ -1,7 +1,8 @@
 import { Request, Response } from "express";
 import { settings } from "../config/settings";
 import logger from "../logger";
-import { workos, WORKOS_SESSION_COOKIE_NAME } from "./auth";
+import { workos } from "../utility/workos";
+import { WORKOS_SESSION_COOKIE_NAME } from "./auth";
 
 export async function createOrganization(req: Request, res: Response) {
   const user = req.session?.user;

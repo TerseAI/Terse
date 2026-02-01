@@ -2,7 +2,6 @@ import { users as PrismaUser } from "@prisma/client";
 import {
   AuthenticateWithSessionCookieSuccessResponse,
   AuthenticationResponse,
-  WorkOS,
 } from "@workos-inc/node";
 import { NextFunction, Request, Response } from "express";
 import { settings } from "../config/settings";
@@ -10,13 +9,9 @@ import logger from "../logger";
 import { db } from "../prismaClient";
 import { Session } from "../types/session";
 import { Role, User } from "../shared/types";
+import { workos } from "../utility/workos";
 
 export const WORKOS_SESSION_COOKIE_NAME = "TERSE_WORKOS_SESSION";
-
-export const workos = new WorkOS({
-  apiKey: settings.workos.apiKey,
-  clientId: settings.workos.clientId,
-});
 
 export async function login(req: Request, res: Response) {
   const authorizationUrl = workos.userManagement.getAuthorizationUrl({
@@ -280,59 +275,6 @@ export async function getOrCreateDbUserFromWorkOS(
     displayName: workosUser.firstName + " " + workosUser.lastName,
     displayPhotoUrl: workosUser.profilePictureUrl || "",
     roles: roles as Role[],
-  };
-}
-
-export async function getUserForOrg(
-  userId: string,
-  organizationId: string,
-): Promise<User | null> {
-  const prisma = db();
-  const dbUser = await prisma.users.findUnique({
-    where: { id: userId },
-  });
-
-  if (!dbUser) {
-    return null;
-  }
-
-  const workOSId = dbUser.workos_id;
-  const workOSUser = await workos.userManagement.getUser(workOSId);
-  if (!workOSUser) {
-    return null;
-  }
-
-  const organization = await workos.organizations.getOrganization(
-    organizationId,
-  );
-  const organizationName = organization.name;
-
-  const organizationMemberships =
-    await workos.userManagement.listOrganizationMemberships({
-      userId: workOSId,
-      organizationId: organizationId,
-      statuses: ["active"],
-    });
-  if (!organizationMemberships.data) {
-    return null;
-  }
-
-  let roles: Role[] = [];
-  organizationMemberships.data.forEach((membership) => {
-    if (membership.organizationId === organizationId) {
-      roles = (membership.roles?.map((role) => role.slug) as Role[]) || [];
-    }
-  });
-
-  return {
-    id: dbUser.id,
-    workosId: workOSId,
-    organizationId: organizationId,
-    organizationName: organizationName,
-    email: workOSUser.email,
-    displayName: workOSUser.firstName + " " + workOSUser.lastName,
-    displayPhotoUrl: workOSUser.profilePictureUrl || "",
-    roles: roles,
   };
 }
 
