@@ -1,4 +1,3 @@
-import { Client } from "@notionhq/client";
 import { Request, Response } from "express";
 import jwt from "jsonwebtoken";
 import {
@@ -8,6 +7,7 @@ import {
 } from "../config/settings";
 import logger from "../logger";
 import { db } from "../prismaClient";
+import { fetchNotionResources } from "../routes/notion";
 import { FrontendRoutes } from "../shared/FrontendRoutes";
 import {
   AdditionalStateParams,
@@ -18,7 +18,6 @@ import {
 } from "../shared/Integrations";
 import { NotionResource, OAuthInstallationDetails } from "../shared/types";
 import { AgentTriggerWithConfigs } from "../types/prisma";
-import { extractPageTitle } from "../utility/notion";
 import { createOAuthStateToken } from "../utility/oauth";
 import {
   ConfigurationFieldDefinition,
@@ -26,7 +25,6 @@ import {
   IntegrationWithResources,
   OAuthIntegrationInstallation,
 } from "./abstract/Integration";
-import { fetchNotionResources } from "../routes/notion";
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask";
 import { integrationTaskQueue } from "./IntegrationTaskQueues";
 
@@ -68,11 +66,8 @@ export class NotionIntegrationManager
   async fetchResourcesForOrganization(
     organizationId: string,
     query?: string,
-  ): Promise<
-    IntegrationWithResources<NotionIntegration, NotionResource>[]
-  > {
-    const integrations =
-      await this.getInstancesForOrganization(organizationId);
+  ): Promise<IntegrationWithResources<NotionIntegration, NotionResource>[]> {
+    const integrations = await this.getInstancesForOrganization(organizationId);
     return Promise.all(
       integrations.map(async (integration) => {
         try {
@@ -342,53 +337,5 @@ export class NotionIntegrationManager
       );
       return null;
     }
-  }
-
-  async fetchResourcesForInstance(
-    userId: string,
-    integrationId: string,
-    query?: string,
-  ): Promise<NotionResource[]> {
-    const integration = await db().notion_integrations.findFirst({
-      where: { id: integrationId, user_id: userId },
-    });
-    if (!integration) {
-      throw new Error("Notion integration not found");
-    }
-    const accessToken = await this.getAccessToken(integrationId);
-    if (!accessToken) {
-      throw new Error("Could not get valid access token");
-    }
-    const notionClient = new Client({ auth: accessToken });
-    const searchResponse = await notionClient.search({
-      query: query || "",
-      page_size: 100,
-    });
-    let resources: NotionResource[] = searchResponse.results
-      .map((result: any) => {
-        if (result.object === "data_source") {
-          return {
-            id: result.id,
-            title: result.title?.[0]?.plain_text || "Untitled Database",
-            url: result.url,
-            type: "database" as const,
-          };
-        } else if (result.object === "page") {
-          return {
-            id: result.id,
-            title: extractPageTitle(result),
-            url: "url" in result ? result.url : "",
-            type: "page" as const,
-          };
-        }
-        return null;
-      })
-      .filter((resource): resource is NotionResource => resource !== null);
-    if (!query) {
-      resources = resources.sort((a, b) =>
-        a.title.localeCompare(b.title, undefined, { sensitivity: "base" }),
-      );
-    }
-    return resources;
   }
 }

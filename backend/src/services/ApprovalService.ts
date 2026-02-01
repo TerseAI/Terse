@@ -21,6 +21,7 @@ export type ApprovalRequest = {
     stepId: string;
     approved: boolean;
     userId: string;
+    organizationId: string;
     rejectionReason?: string;
     /** When true, stops the run completely without resuming the agent */
     hardReject?: boolean;
@@ -38,8 +39,8 @@ export type ApprovalResult = {
 
 
 export class ApprovalService {
-    private static async validateUserAccess(runId: string, userId: string): Promise<{
-        runRecord: { id: string; status: string; automation: { id: string; user_id: string } };
+    private static async validateUserAccess(runId: string, organizationId: string): Promise<{
+        runRecord: { id: string; status: string; automation: { id: string; user_id: string; organization_id: string | null } };
         channel: AgentWithRelations;
     }> {
         const prisma = db();
@@ -49,14 +50,14 @@ export class ApprovalService {
             include: { automation: true },
         });
 
-        if (!runRecord || !runRecord.automation || runRecord.automation.user_id !== userId) {
-            throw new Error(`User ${userId} does not have access to run ${runId}`);
+        if (!runRecord || !runRecord.automation || runRecord.automation.organization_id !== organizationId) {
+            throw new Error(`Organization ${organizationId} does not have access to run ${runId}`);
         }
 
         const channel = await prisma.automations.findUnique({
             where: {
                 id: runRecord.automation.id,
-                user_id: userId,
+                organization_id: organizationId,
             },
             include: {
                 prompt: true,
@@ -199,7 +200,7 @@ export class ApprovalService {
     }
 
     static async processApproval(request: ApprovalRequest): Promise<ApprovalResult> {
-        const { runId, stepId, approved, userId, rejectionReason, hardReject } = request;
+        const { runId, stepId, approved, userId, organizationId, rejectionReason, hardReject } = request;
 
         logger.info(`[ApprovalService] Processing approval for runId: ${runId}, stepId: ${stepId}, approved: ${approved}, hardReject: ${hardReject}`);
 
@@ -207,8 +208,8 @@ export class ApprovalService {
         let channelIdForSlack: string | null = null;
         let slackMarkedProcessing = false;
         try {
-            // Validate user access and load channel
-            const { runRecord, channel } = await this.validateUserAccess(runId, userId);
+            // Validate organization access and load channel
+            const { runRecord, channel } = await this.validateUserAccess(runId, organizationId);
             channelIdForSlack = channel.id;
 
             // Store rejection reason in database if provided (for request changes flow)

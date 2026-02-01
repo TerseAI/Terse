@@ -14,6 +14,7 @@ import {
 import logger, { runWithUserContext } from "../logger";
 import { db } from "../prismaClient";
 import { Identifiable } from "../rag/Hydrator";
+import { fetchSlackChannelsForIntegration } from "../routes/slack";
 import {
   buildSlackFileKey,
   ensureStoredWithMetadata,
@@ -61,7 +62,6 @@ import {
   IntegrationWithResources,
   OAuthIntegrationInstallation,
 } from "./abstract/Integration";
-import { fetchSlackChannelsForIntegration } from "../routes/slack";
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask";
 import { integrationTaskQueue } from "./IntegrationTaskQueues";
 
@@ -100,11 +100,8 @@ export class SlackIntegrationManager
   async fetchResourcesForOrganization(
     organizationId: string,
     query?: string,
-  ): Promise<
-    IntegrationWithResources<SlackIntegration, SlackChannelShared>[]
-  > {
-    const integrations =
-      await this.getInstancesForOrganization(organizationId);
+  ): Promise<IntegrationWithResources<SlackIntegration, SlackChannelShared>[]> {
+    const integrations = await this.getInstancesForOrganization(organizationId);
     const normalizedQuery = query?.trim().toLowerCase();
     const matchesQuery = (value: string | undefined | null): boolean => {
       if (!normalizedQuery) return true;
@@ -130,9 +127,7 @@ export class SlackIntegrationManager
             integration.id,
           );
           const channels = normalizedQuery
-            ? response.channels.filter((channel) =>
-                matchesQuery(channel.name),
-              )
+            ? response.channels.filter((channel) => matchesQuery(channel.name))
             : response.channels;
           return { integration, resources: channels };
         } catch (error) {
@@ -598,97 +593,6 @@ export class SlackIntegrationManager
       );
       return null;
     }
-  }
-
-  async fetchResourcesForInstance(
-    userId: string,
-    integrationId: string,
-    query?: string,
-  ): Promise<SlackChannelShared[]> {
-    const userSlackIntegration = await db().user_slack_integrations.findFirst({
-      where: { id: integrationId, user_id: userId },
-      include: { slack_integration: true, user: true },
-    });
-
-    if (!userSlackIntegration?.slack_integration) {
-      throw new Error("Slack integration not found");
-    }
-
-    const client = initializeSlackWebClient(userSlackIntegration);
-    const isBotUser = userSlackIntegration.is_bot_user;
-
-    const [publicChannels, privateChannels, mpimChannels] = await Promise.all([
-      client.conversations.list({
-        types: "public_channel",
-        exclude_archived: true,
-        limit: 1000,
-      }),
-      client.conversations.list({
-        types: "private_channel",
-        exclude_archived: true,
-        limit: 1000,
-      }),
-      client.conversations.list({
-        types: "mpim",
-        exclude_archived: true,
-        limit: 1000,
-      }),
-    ]);
-
-    const channels: SlackChannelShared[] = [];
-
-    if (publicChannels.ok && publicChannels.channels) {
-      for (const channel of publicChannels.channels) {
-        if (channel.id && channel.name && (!isBotUser || channel.is_member)) {
-          channels.push({
-            id: channel.id,
-            name: channel.name,
-            isPrivate: false,
-            isArchived: channel.is_archived || false,
-            isMPIM: false,
-          });
-        }
-      }
-    }
-
-    if (privateChannels.ok && privateChannels.channels) {
-      for (const channel of privateChannels.channels) {
-        if (channel.id && channel.name) {
-          channels.push({
-            id: channel.id,
-            name: channel.name,
-            isPrivate: true,
-            isArchived: channel.is_archived || false,
-            isMPIM: false,
-          });
-        }
-      }
-    }
-
-    if (mpimChannels.ok && mpimChannels.channels) {
-      for (const channel of mpimChannels.channels) {
-        if (channel.id && channel.name) {
-          channels.push({
-            id: channel.id,
-            name: channel.name,
-            isPrivate: true,
-            isArchived: channel.is_archived || false,
-            isMPIM: true,
-          });
-        }
-      }
-    }
-
-    channels.sort((a, b) => a.name.localeCompare(b.name));
-
-    if (query) {
-      const normalizedQuery = query.trim().toLowerCase();
-      return channels.filter((channel) =>
-        channel.name.toLowerCase().includes(normalizedQuery),
-      );
-    }
-
-    return channels;
   }
 }
 

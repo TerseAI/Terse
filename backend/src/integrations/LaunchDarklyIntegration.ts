@@ -1,6 +1,10 @@
 import logger from "../logger";
 import { db } from "../prismaClient";
 import {
+  fetchLaunchDarklyEnvironments,
+  fetchLaunchDarklyProjects,
+} from "../routes/launchdarkly";
+import {
   IntegrationType,
   LaunchDarklyIntegration,
   LaunchDarklyIntegrationMetadata,
@@ -15,10 +19,6 @@ import {
   Integration,
   IntegrationWithResources,
 } from "./abstract/Integration";
-import {
-  fetchLaunchDarklyEnvironments,
-  fetchLaunchDarklyProjects,
-} from "../routes/launchdarkly";
 
 export class LaunchDarklyIntegrationManager
   implements
@@ -58,11 +58,12 @@ export class LaunchDarklyIntegrationManager
   ): Promise<
     IntegrationWithResources<
       LaunchDarklyIntegration,
-      LaunchDarklyProject & { environments: Array<{ key: string; name: string }> }
+      LaunchDarklyProject & {
+        environments: Array<{ key: string; name: string }>;
+      }
     >[]
   > {
-    const integrations =
-      await this.getInstancesForOrganization(organizationId);
+    const integrations = await this.getInstancesForOrganization(organizationId);
     return Promise.all(
       integrations.map(async (integration) => {
         try {
@@ -313,49 +314,5 @@ export class LaunchDarklyIntegrationManager
         statusCode: 500,
       };
     }
-  }
-
-  async fetchResourcesForInstance(
-    userId: string,
-    integrationId: string,
-    query?: string,
-  ): Promise<LaunchDarklyProject[]> {
-    const integration = await db().launchdarkly_integrations.findFirst({
-      where: { id: integrationId, user_id: userId },
-    });
-    if (!integration) {
-      throw new Error("LaunchDarkly integration not found");
-    }
-    const response = await fetch(
-      "https://app.launchdarkly.com/api/v2/projects",
-      {
-        method: "GET",
-        headers: {
-          Authorization: integration.api_key,
-          "Content-Type": "application/json",
-        },
-      },
-    );
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(response.status === 401 ? "Invalid API key" : errorText);
-    }
-    const projectsData = await response.json();
-    const projects = Array.isArray(projectsData)
-      ? projectsData
-      : projectsData.items || projectsData.projects || [];
-    let projectsList: LaunchDarklyProject[] = projects.map((p: any) => ({
-      key: p.key || p._id,
-      name: p.name || p.key || "Unnamed Project",
-    }));
-    if (query) {
-      const queryLower = query.toLowerCase();
-      projectsList = projectsList.filter(
-        (p) =>
-          p.name.toLowerCase().includes(queryLower) ||
-          p.key.toLowerCase().includes(queryLower),
-      );
-    }
-    return projectsList;
   }
 }

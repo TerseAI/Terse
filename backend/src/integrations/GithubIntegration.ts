@@ -12,6 +12,7 @@ import {
   GithubAppUnifiedEventRequest,
   GithubAppUser,
 } from "../routes/GithubTypes";
+import { fetchGithubRepositoriesForIntegration } from "../routes/github";
 import { StoredFile } from "../services/FileStorageService";
 import { FrontendRoutes } from "../shared/FrontendRoutes";
 import {
@@ -39,7 +40,6 @@ import {
   IntegrationWithResources,
   OAuthIntegrationInstallation,
 } from "./abstract/Integration";
-import { fetchGithubRepositoriesForIntegration } from "../routes/github";
 
 export class GithubIntegrationManager
   implements
@@ -391,46 +391,6 @@ export class GithubIntegrationManager
       );
       return null;
     }
-  }
-
-  async fetchResourcesForInstance(
-    userId: string,
-    installationId: string,
-    query?: string,
-  ): Promise<Repository[]> {
-    const accessToken = await db().github_app_tokens.findFirst({
-      where: { user_id: userId },
-    });
-    if (!accessToken) {
-      throw new Error("GitHub account not connected");
-    }
-    const installations = await getAppInstallationsForUser(
-      accessToken.access_token,
-    );
-    const targetInstallation = installations.installations.find(
-      (i) => i.id === Number(installationId),
-    );
-    if (!targetInstallation) {
-      throw new Error("Installation not found");
-    }
-    const installationRepositories = await getAppInstallationRepositories(
-      accessToken.access_token,
-      targetInstallation.id,
-    );
-    let repositories = installationRepositories.map((r) => ({
-      id: r.id,
-      name: r.name,
-      owner: r.owner.login,
-    }));
-    if (query) {
-      const normalizedQuery = query.trim().toLowerCase();
-      repositories = repositories.filter(
-        (repo) =>
-          repo.name.toLowerCase().includes(normalizedQuery) ||
-          `${repo.owner}/${repo.name}`.toLowerCase().includes(normalizedQuery),
-      );
-    }
-    return repositories;
   }
 }
 

@@ -9,6 +9,7 @@ import {
 } from "../config/settings";
 import logger, { runWithUserContext } from "../logger";
 import { db } from "../prismaClient";
+import { fetchLinearTeams } from "../routes/linear";
 import { StoredFile } from "../services/FileStorageService";
 import { FrontendRoutes } from "../shared/FrontendRoutes";
 import {
@@ -32,7 +33,6 @@ import {
   IntegrationWithResources,
   OAuthIntegrationInstallation,
 } from "./abstract/Integration";
-import { fetchLinearTeams } from "../routes/linear";
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask";
 import { integrationTaskQueue } from "./IntegrationTaskQueues";
 
@@ -73,11 +73,8 @@ export class LinearIntegrationManager
   async fetchResourcesForOrganization(
     organizationId: string,
     query?: string,
-  ): Promise<
-    IntegrationWithResources<LinearIntegration, LinearTeam>[]
-  > {
-    const integrations =
-      await this.getInstancesForOrganization(organizationId);
+  ): Promise<IntegrationWithResources<LinearIntegration, LinearTeam>[]> {
+    const integrations = await this.getInstancesForOrganization(organizationId);
     const normalizedQuery = query?.trim().toLowerCase();
     const matchesQuery = (value: string | undefined | null): boolean => {
       if (!normalizedQuery) return true;
@@ -93,8 +90,7 @@ export class LinearIntegrationManager
           );
           const teams = normalizedQuery
             ? response.filter(
-                (team) =>
-                  matchesQuery(team.name) || matchesQuery(team.key),
+                (team) => matchesQuery(team.name) || matchesQuery(team.key),
               )
             : response;
           return { integration, resources: teams };
@@ -624,39 +620,6 @@ export class LinearIntegrationManager
       // Return null on error - caller should handle
       return null;
     }
-  }
-
-  async fetchResourcesForInstance(
-    userId: string,
-    integrationId: string,
-    query?: string,
-  ): Promise<LinearTeam[]> {
-    const integration = await db().linear_integrations.findFirst({
-      where: { id: integrationId, user_id: userId },
-    });
-    if (!integration) {
-      throw new Error("Linear integration not found");
-    }
-    const accessToken = await this.getAccessToken(integrationId);
-    if (!accessToken) {
-      throw new Error("Could not get valid access token");
-    }
-    const adapter = new LinearAdapter(accessToken);
-    const teams = await adapter.getTeams();
-    let result = teams.map((team) => ({
-      id: team.id,
-      name: team.name,
-      key: team.key,
-    }));
-    if (query) {
-      const normalizedQuery = query.trim().toLowerCase();
-      result = result.filter(
-        (team) =>
-          team.name.toLowerCase().includes(normalizedQuery) ||
-          team.key.toLowerCase().includes(normalizedQuery),
-      );
-    }
-    return result;
   }
 }
 

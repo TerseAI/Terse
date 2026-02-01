@@ -123,7 +123,6 @@ export const fetchSlackChannelsForIntegration = async (
   const userSlackIntegration = await db().user_slack_integrations.findFirst({
     where: {
       id: integrationId,
-      user_id: userId,
       organization_id: organizationId,
     },
     include: {

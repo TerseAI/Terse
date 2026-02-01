@@ -417,6 +417,7 @@ export async function setupSlackBolt() {
           stepId,
           approved: true,
           userId,
+          organizationId,
         });
 
         if (result.status === "failed" && result.error) {
@@ -682,6 +683,7 @@ export async function setupSlackBolt() {
           stepId,
           approved: false,
           userId,
+          organizationId,
           hardReject: true,
         });
 
@@ -860,6 +862,7 @@ export async function setupSlackBolt() {
             stepId,
             approved: false,
             userId,
+            organizationId,
             rejectionReason: feedback.trim(),
           });
 

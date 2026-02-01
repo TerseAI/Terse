@@ -224,11 +224,11 @@ export async function initializeRealtimeSocket(
         if (
           !runRecord ||
           !runRecord.automation ||
-          runRecord.automation.user_id !== userId
+          runRecord.automation.organization_id !== organizationId
         ) {
           logger.error(
             `[agent:chat:message] Run record not found for runId: ${runId} or user does not have access to this run`,
-            { runId, userId },
+            { runId, userId, organizationId },
           );
           return;
         }
@@ -237,7 +237,7 @@ export async function initializeRealtimeSocket(
           await prisma.automations.findUnique({
             where: {
               id: runRecord.automation.id,
-              user_id: userId,
+              organization_id: organizationId,
             },
             include: {
               prompt: true,
@@ -436,6 +436,7 @@ export async function initializeRealtimeSocket(
           stepId: message.step_id,
           approved: message.approved,
           userId,
+          organizationId: organizationId ?? "",
         });
 
         if (result.status === "failed" && result.error) {

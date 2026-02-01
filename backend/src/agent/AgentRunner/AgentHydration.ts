@@ -34,17 +34,19 @@ export interface HydratedAgent {
 /**
  * Fetches and hydrates an agent by ID with all required relations.
  * Returns the agent along with validated outputs and knowledge bases.
+ * Authorization is scoped by organizationId (not userId) so any user in the org can access.
  */
 export async function hydrateAgentById(
     agentId: string,
-    userId: string
+    userId: string,
+    organizationId: string
 ): Promise<HydrationResult> {
     const prisma = db();
 
     const agent = await prisma.automations.findUnique({
         where: {
             id: agentId,
-            user_id: userId
+            organization_id: organizationId
         },
         include: getAgentHydrationInclude()
     });
@@ -148,9 +150,10 @@ export function createAgentRunner(
 export async function hydrateAndCreateRunner(
     agentId: string,
     userId: string,
+    organizationId: string,
     runContext: RunContext
 ): Promise<{ success: true; runner: AgentRunner<Session, ConfigInstance, ConfigInstance>; hydrated: HydratedAgent } | { success: false; error: HydrationError }> {
-    const result = await hydrateAgentById(agentId, userId);
+    const result = await hydrateAgentById(agentId, userId, organizationId);
 
     if (!result.success) {
         return result;
