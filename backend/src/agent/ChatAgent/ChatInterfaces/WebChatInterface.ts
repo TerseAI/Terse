@@ -9,6 +9,7 @@ import { ModelEvent } from "../../../shared/ModelEvents";
 import {
     tryExtractThinking,
     tryExtractTextDelta,
+    tryExtractToolCallGenerating,
     tryExtractToolCall,
     tryExtractToolCallCompleteData,
     createToolCallCompleteEvent,
@@ -92,6 +93,13 @@ class WebChatInterface extends ChatInterface {
         const textDelta = tryExtractTextDelta(event);
         if (textDelta) {
             this.emitEvent(textDelta);
+            return;
+        }
+
+        // Check for tool call generating (before arguments are complete)
+        const toolCallGenerating = tryExtractToolCallGenerating(event);
+        if (toolCallGenerating) {
+            this.emitEvent(toolCallGenerating);
             return;
         }
 

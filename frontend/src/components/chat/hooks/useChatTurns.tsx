@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { type Turn } from '../Turn';
-import { type TextDelta, type ToolCall, type ToolCallComplete, type Failure, FilterResult, type ChatSnippetPayload, type ChatSnippet } from '../../../shared/ModelEvents';
+import { type TextDelta, type ToolCallGenerating, type ToolCall, type ToolCallComplete, type Failure, FilterResult, type ChatSnippetPayload, type ChatSnippet } from '../../../shared/ModelEvents';
 import { filterOutThinkingOnlyTurns } from '../utils/turnUtils';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -67,6 +67,52 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
         });
     };
 
+    const handleToolCallGenerating = ({ tool_name, step_id }: ToolCallGenerating) => {
+        // Track current step_id
+        currentStepIdRef.current = step_id;
+
+        setTurns(prev => {
+            const updated = [...prev];
+            const last = updated[updated.length - 1];
+
+            // If last turn is an assistant turn, add generating tool call to it
+            if (last && last.role === 'assistant') {
+                // Check if this tool call already exists
+                const existingCallIndex = last.function_calls.findIndex(call => call.id === step_id);
+
+                if (existingCallIndex === -1) {
+                    // Add new tool call in generating state
+                    last.function_calls.push({
+                        id: step_id,
+                        name: tool_name,
+                        isGeneratingParams: true,
+                        isRunning: false,
+                        isWaitingForApproval: false,
+                        isWaitingForUserInput: false,
+                    });
+                }
+                last.isGenerating = true;
+                return updated;
+            }
+
+            // Otherwise create new assistant turn
+            return [...updated, {
+                role: 'assistant',
+                text: "",
+                function_calls: [{
+                    id: step_id,
+                    name: tool_name,
+                    isGeneratingParams: true,
+                    isRunning: false,
+                    isWaitingForApproval: false,
+                    isWaitingForUserInput: false,
+                }],
+                isGenerating: true,
+                step_id,
+            }];
+        });
+    };
+
     const handleToolCall = ({ summary, step_id, parameters }: ToolCall) => {
         // Track current step_id
         currentStepIdRef.current = step_id;
@@ -81,16 +127,19 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
                 const existingCallIndex = last.function_calls.findIndex(call => call.id === step_id);
 
                 if (existingCallIndex !== -1) {
-                    // Update existing tool call
+                    // Update existing tool call - transition from generating to running
                     last.function_calls[existingCallIndex] = {
                         ...last.function_calls[existingCallIndex],
+                        isGeneratingParams: false,
+                        isRunning: true,
                         parameters
                     };
                 } else {
-                    // Add new tool call
+                    // Add new tool call (in case we missed the generating event)
                     last.function_calls.push({
                         id: step_id,
                         name: summary,
+                        isGeneratingParams: false,
                         isRunning: true,
                         isWaitingForApproval: false,
                         isWaitingForUserInput: false,
@@ -108,6 +157,7 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
                 function_calls: [{
                     id: step_id,
                     name: summary,
+                    isGeneratingParams: false,
                     isRunning: true,
                     isWaitingForApproval: false,
                     isWaitingForUserInput: false,
@@ -370,6 +420,7 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
         turns: filterOutThinkingOnlyTurns(turns),
         isPendingAssistantResponse,
         handleDelta,
+        handleToolCallGenerating,
         handleToolCall,
         handleToolApprovalRequest,
         handleToolApprovalResponse,

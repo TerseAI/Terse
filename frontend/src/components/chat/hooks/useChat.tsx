@@ -27,6 +27,7 @@ export function useChat({
         turns,
         isPendingAssistantResponse,
         handleDelta,
+        handleToolCallGenerating,
         handleToolCall,
         handleToolCallComplete,
         handleFailure,
@@ -43,6 +44,7 @@ export function useChat({
         subscribeToEvents,
         sendMessage: sendModelRequest,
         onDelta: handleDelta,
+        onToolCallGenerating: handleToolCallGenerating,
         onToolCall: (req: ToolCall) => {
             handleToolCall(req);
             onToolCall?.(req);

@@ -29,6 +29,7 @@ interface Turn {
 interface FunctionCallEvent {
     id: string;
     name: string;
+    isGeneratingParams?: boolean;
     isRunning: boolean;
     isWaitingForApproval?: boolean;
     isRejected?: boolean;
