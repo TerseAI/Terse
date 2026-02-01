@@ -91,7 +91,7 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
                     last.function_calls.push({
                         id: step_id,
                         name: summary,
-                        isRunning: false,
+                        isRunning: true,
                         isWaitingForApproval: false,
                         isWaitingForUserInput: false,
                         parameters
@@ -108,7 +108,7 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
                 function_calls: [{
                     id: step_id,
                     name: summary,
-                    isRunning: false,
+                    isRunning: true,
                     isWaitingForApproval: false,
                     isWaitingForUserInput: false,
                     parameters
