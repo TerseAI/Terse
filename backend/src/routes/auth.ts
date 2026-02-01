@@ -44,6 +44,8 @@ export async function me(req: Request, res: Response) {
       ...user,
       email: workOSUser.email,
       displayName: workOSUser.firstName + " " + workOSUser.lastName,
+      firstName: workOSUser.firstName || null,
+      lastName: workOSUser.lastName || null,
       displayPhotoUrl: workOSUser.profilePictureUrl || "",
     };
     return res.send(refreshedUser);
@@ -93,10 +95,15 @@ function createAuthMiddleware(requireOrganization: boolean) {
       }
 
       // try refreshing the session, it may have gone stale
+      logger.info("Session expired, attempting refresh", {
+        reason: authFailedReason,
+      });
       const refreshedSessionResult = await session.refresh();
       if (!refreshedSessionResult.authenticated) {
+        logger.warn("Session refresh failed");
         return sendUnauthorized(req, res);
       }
+      logger.info("Session refreshed successfully");
       const user = await getOrCreateDbUserFromWorkOS(refreshedSessionResult);
       if (!req.session) {
         req.session = {
@@ -273,6 +280,8 @@ export async function getOrCreateDbUserFromWorkOS(
     organizationName: organizationName ?? "",
     email: workosUser.email,
     displayName: workosUser.firstName + " " + workosUser.lastName,
+    firstName: workosUser.firstName || null,
+    lastName: workosUser.lastName || null,
     displayPhotoUrl: workosUser.profilePictureUrl || "",
     roles: roles as Role[],
   };

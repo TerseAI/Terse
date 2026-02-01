@@ -64,6 +64,8 @@ export async function getUserForOrg(
     organizationName: organizationName,
     email: workOSUser.email,
     displayName: workOSUser.firstName + " " + workOSUser.lastName,
+    firstName: workOSUser.firstName || null,
+    lastName: workOSUser.lastName || null,
     displayPhotoUrl: workOSUser.profilePictureUrl || "",
     roles: roles,
   };

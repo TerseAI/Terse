@@ -12,6 +12,8 @@ export type User = {
   organizationName: string;
   email: string;
   displayName: string;
+  firstName: string | null;
+  lastName: string | null;
   displayPhotoUrl: string;
   roles: Role[];
 };

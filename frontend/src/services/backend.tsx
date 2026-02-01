@@ -384,8 +384,9 @@ interface BackendService {
 
     /**
      * Creates a new organization
+     * Optionally updates the user's first/last name in WorkOS when provided (e.g., for users without social auth).
      */
-    createOrganization(name: string): Promise<{ id: string; name: string }>;
+    createOrganization(name: string, firstName?: string, lastName?: string): Promise<{ id: string; name: string }>;
 
     /**
      * Gets the current organization
@@ -1086,8 +1087,8 @@ export const BackendProvider: BackendService = {
         window.location.href = `${backendRedirectUrl}${ApiRoutes.AUTH.LOGOUT}`;
     },
 
-    createOrganization: (name: string) => {
-        return axios.post<{ id: string; name: string }>(`${backendBaseUrl}${ApiRoutes.ORGANIZATIONS.CREATE}`, { name }, { withCredentials: true })
+    createOrganization: (name: string, firstName?: string, lastName?: string) => {
+        return axios.post<{ id: string; name: string }>(`${backendBaseUrl}${ApiRoutes.ORGANIZATIONS.CREATE}`, { name, firstName, lastName }, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
                 console.error('Error creating organization:', error);

@@ -10,11 +10,21 @@ export async function createOrganization(req: Request, res: Response) {
     return res.status(401).json({ error: "Unauthorized" });
   }
   const name = req.body?.name as string | undefined;
+  const firstName = req.body?.firstName as string | undefined;
+  const lastName = req.body?.lastName as string | undefined;
   if (!name || typeof name !== "string" || name.trim() === "") {
     return res.status(400).json({ error: "Organization name is required" });
   }
 
   try {
+    if (firstName || lastName) {
+      await workos.userManagement.updateUser({
+        userId: user.workosId,
+        firstName: typeof firstName === "string" ? firstName.trim() || undefined : undefined,
+        lastName: typeof lastName === "string" ? lastName.trim() || undefined : undefined,
+      });
+    }
+
     const organization = await workos.organizations.createOrganization({
       name: name.trim(),
     });

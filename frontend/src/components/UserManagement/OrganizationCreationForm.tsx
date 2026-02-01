@@ -22,34 +22,65 @@ import { FrontendRoutes } from "@/shared/FrontendRoutes";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AxiosError } from "axios";
 import { Loader2 } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
 import * as z from "zod";
-
-const organizationCreationSchema = z.object({
-    name: z.string().min(1, "Organization name is required"),
-});
-
-type OrganizationCreationFormValues = z.infer<typeof organizationCreationSchema>;
 
 export default function OrganizationCreationForm() {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState(false);
     const navigate = useNavigate();
-    const { refreshUser } = useAuth();
+    const { user, refreshUser } = useAuth();
+
+    const needsName = !user?.firstName?.trim() && !user?.lastName?.trim();
+
+    const organizationCreationSchema = useMemo(
+        () =>
+            z
+                .object({
+                    name: z.string().min(1, "Organization name is required"),
+                    firstName: z.string().optional(),
+                    lastName: z.string().optional(),
+                })
+                .superRefine((data, ctx) => {
+                    if (needsName) {
+                        if (!data.firstName?.trim()) {
+                            ctx.addIssue({
+                                code: z.ZodIssueCode.custom,
+                                message: "First name is required",
+                                path: ["firstName"],
+                            });
+                        }
+                        if (!data.lastName?.trim()) {
+                            ctx.addIssue({
+                                code: z.ZodIssueCode.custom,
+                                message: "Last name is required",
+                                path: ["lastName"],
+                            });
+                        }
+                    }
+                }),
+        [needsName],
+    );
+
+    type OrganizationCreationFormValues = z.infer<typeof organizationCreationSchema>;
 
     const form = useForm<OrganizationCreationFormValues>({
         resolver: zodResolver(organizationCreationSchema),
-        defaultValues: { name: "" },
+        defaultValues: { name: "", firstName: "", lastName: "" },
     });
 
     async function onSubmit(values: OrganizationCreationFormValues) {
         setError(null);
         setIsLoading(true);
         try {
-            await BackendProvider.createOrganization(values.name);
+            await BackendProvider.createOrganization(
+                values.name,
+                values.firstName,
+                values.lastName,
+            );
             setSuccess(true);
             await refreshUser();
             navigate(FrontendRoutes.APP, { replace: true });
@@ -98,12 +129,58 @@ export default function OrganizationCreationForm() {
                     </CardTitle>
                 </div>
                 <CardDescription className="text-muted-foreground">
-                    To get started, create your organization.
+                    {needsName ? "To get started, we need a few more details about you." : "To get started, create your organization."}
                 </CardDescription>
             </CardHeader>
             <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)}>
                     <CardContent className="space-y-4 pb-2">
+                        {needsName && (
+                            <>
+                                <FormField
+                                    control={form.control}
+                                    name="firstName"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>
+                                                First name{" "}
+                                                <span className="text-destructive">*</span>
+                                            </FormLabel>
+                                            <FormControl>
+                                                <Input
+                                                    type="text"
+                                                    placeholder="e.g. Jane"
+                                                    disabled={isLoading}
+                                                    {...field}
+                                                />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="lastName"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>
+                                                Last name{" "}
+                                                <span className="text-destructive">*</span>
+                                            </FormLabel>
+                                            <FormControl>
+                                                <Input
+                                                    type="text"
+                                                    placeholder="e.g. Smith"
+                                                    disabled={isLoading}
+                                                    {...field}
+                                                />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                            </>
+                        )}
                         <FormField
                             control={form.control}
                             name="name"
