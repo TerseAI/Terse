@@ -2,6 +2,55 @@ import { useState } from "react";
 import { ChevronRightIcon } from '@heroicons/react/24/outline';
 import { FunctionCallEvent } from "./Turn";
 import FunctionCallItem from "./FunctionCallItem";
+import ShinyText from "../ShinyText";
+
+/**
+ * Formats a list of tool call names into a human-readable single-line string.
+ *
+ * Examples:
+ * - ["fetchResources"] -> "calling fetchResources..."
+ * - ["fetchResources", "fetchResources"] -> "calling fetchResources x2..."
+ * - ["fetchResources", "applyAgent"] -> "calling fetchResources and applyAgent..."
+ * - ["fetchResources", "fetchResources", "applyAgent"] -> "calling fetchResources x2 and applyAgent..."
+ * - ["a", "b", "c"] -> "calling a, b, and c..."
+ * - ["a", "a", "b", "c"] -> "calling a x2, b, and c..."
+ */
+export function formatRunningToolCallsText(toolNames: string[]): string {
+    if (toolNames.length === 0) return "";
+
+    // Count occurrences of each tool name
+    const counts = new Map<string, number>();
+    for (const name of toolNames) {
+        counts.set(name, (counts.get(name) || 0) + 1);
+    }
+
+    // Build formatted parts preserving order of first occurrence
+    const seen = new Set<string>();
+    const parts: string[] = [];
+    for (const name of toolNames) {
+        if (seen.has(name)) continue;
+        seen.add(name);
+
+        const count = counts.get(name)!;
+        if (count > 1) {
+            parts.push(`${name} x${count}`);
+        } else {
+            parts.push(name);
+        }
+    }
+
+    // Join parts with proper grammar
+    let joined: string;
+    if (parts.length === 1) {
+        joined = parts[0];
+    } else if (parts.length === 2) {
+        joined = `${parts[0]} and ${parts[1]}`;
+    } else {
+        joined = `${parts.slice(0, -1).join(", ")}, and ${parts[parts.length - 1]}`;
+    }
+
+    return `calling ${joined}...`;
+}
 
 interface ToolCallsSummaryProps {
     calls: FunctionCallEvent[];
@@ -15,48 +64,63 @@ export default function ToolCallsSummary({ calls, isTurnFailure = false, onAppro
 
     if (calls.length === 0) return null;
 
-    const isAnyRunning = calls.some(c => c.isRunning);
+    const runningCalls = calls.filter(c => c.isRunning);
+    const completedCalls = calls.filter(c => !c.isRunning);
     const hasAnyWaitingForApproval = calls.some(c => c.isWaitingForApproval && !c.isRejected);
 
     // Auto-expand if any call is waiting for approval
     const shouldShowExpanded = isExpanded || hasAnyWaitingForApproval;
 
-    return (
-        <div className="w-fit">
-            <button
-                onClick={() => setIsExpanded(!isExpanded)}
-                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors py-1"
-            >
-                <ChevronRightIcon
-                    className={`w-3 h-3 transition-transform duration-200 ${shouldShowExpanded ? 'rotate-90' : ''}`}
-                />
-                {isAnyRunning ? (
-                    <svg className="animate-spin w-3 h-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                ) : null}
-                <span>
-                    {calls.length} tool call{calls.length !== 1 ? 's' : ''}
-                    {hasAnyWaitingForApproval && (
-                        <span className="text-yellow-500 ml-1">(approval needed)</span>
-                    )}
-                </span>
-            </button>
+    // Format running calls into a single line
+    const runningToolNames = runningCalls.map(c => c.name);
+    const runningText = formatRunningToolCallsText(runningToolNames);
 
-            {shouldShowExpanded && (
-                <div className="ml-4 mt-2 space-y-2">
-                    {calls.map((call, index) => (
-                        <FunctionCallItem
-                            key={`${call.id}-${index}`}
-                            call={call}
-                            index={index}
-                            isTurnFailure={isTurnFailure}
-                            onApprove={onApprove}
-                            onReject={onReject}
-                        />
-                    ))}
+    return (
+        <div className="w-fit space-y-2">
+            {/* Show shiny text for running calls */}
+            {runningText && (
+                <div className="py-1">
+                    <ShinyText
+                        text={runningText}
+                        speed={1.5}
+                        className="text-sm"
+                    />
                 </div>
+            )}
+
+            {/* Show expandable summary for completed calls */}
+            {completedCalls.length > 0 && (
+                <>
+                    <button
+                        onClick={() => setIsExpanded(!isExpanded)}
+                        className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors py-1"
+                    >
+                        <ChevronRightIcon
+                            className={`w-3 h-3 transition-transform duration-200 ${shouldShowExpanded ? 'rotate-90' : ''}`}
+                        />
+                        <span>
+                            {completedCalls.length} tool call{completedCalls.length !== 1 ? 's' : ''}
+                            {hasAnyWaitingForApproval && (
+                                <span className="text-yellow-500 ml-1">(approval needed)</span>
+                            )}
+                        </span>
+                    </button>
+
+                    {shouldShowExpanded && (
+                        <div className="ml-4 mt-2 space-y-2">
+                            {completedCalls.map((call, index) => (
+                                <FunctionCallItem
+                                    key={`${call.id}-${index}`}
+                                    call={call}
+                                    index={index}
+                                    isTurnFailure={isTurnFailure}
+                                    onApprove={onApprove}
+                                    onReject={onReject}
+                                />
+                            ))}
+                        </div>
+                    )}
+                </>
             )}
         </div>
     );

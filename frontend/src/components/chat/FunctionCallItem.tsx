@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { ClockIcon, XMarkIcon, PaperAirplaneIcon, CheckIcon, NoSymbolIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
-import Spin, { Size } from "../loading/Spin";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "../ui/accordion";
 import ToolCallParameters from "../ToolCallParameters";
 import { ChangedItem } from "../../shared/ModelEvents";
@@ -188,8 +187,6 @@ export default function FunctionCallItem({ call, isTurnFailure = false, index, o
                                     <svg className="w-4 h-4 text-blue-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                                     </svg>
-                                ) : call.isRunning ? (
-                                    <Spin size={Size.Tiny} />
                                 ) : (
                                     <svg className="w-4 h-4 text-primary flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
