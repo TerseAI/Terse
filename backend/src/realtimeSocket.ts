@@ -282,10 +282,9 @@ export async function initializeRealtimeSocket(
           return;
         }
 
-        const organizationId = runRecord.automation.organization_id;
         if (!organizationId) {
           logger.error(
-            `[agent:chat:message] Automation has no organization_id for runId: ${runId}`,
+            `[agent:chat:message] No organization context for runId: ${runId}`,
             { runId, userId },
           );
           return;
