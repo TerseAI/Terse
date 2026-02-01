@@ -1,12 +1,12 @@
 import { io, Socket } from "socket.io-client";
 import { mutate } from "swr";
 import { BackendProvider } from "./services/backend";
+import { ApiRoutes } from "./shared/ApiRoutes";
 import {
   currentUserKey,
   userOrganizationsKey,
   widgetTokenKey,
 } from "./shared/InvalidationKeys";
-import { ApiRoutes } from "./shared/ApiRoutes";
 import { ModelEvent, ModelRequest } from "./shared/ModelEvents";
 import type { RunHistoryModelSocketEvent } from "./shared/RunHistoryTypes";
 import { SocketEvents } from "./shared/SocketEvents";
@@ -219,6 +219,11 @@ export function disconnectSocket() {
     socket.disconnect();
     socket = null;
   }
+  // explicit clear of callbacks and pending subscriptions
+  // avoiding a memory leak
+  chatEventCallbacks.clear();
+  builderEventCallbacks.clear();
+  pendingSubscriptions.length = 0;
   chatEventListenerSetUp = false;
   builderEventListenerSetUp = false;
 }

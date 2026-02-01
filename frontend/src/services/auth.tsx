@@ -4,6 +4,7 @@ import { posthog } from "posthog-js";
 import { createContext, useContext, useEffect } from "react";
 import type { User } from "../types/User";
 import { useCurrentUser } from "../hooks/api/useCurrentUser";
+import { disconnectSocket } from "../socket";
 import { BackendProvider } from "./backend";
 
 interface AuthContextType {
@@ -37,6 +38,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, [user]);
 
   function logout() {
+    disconnectSocket();
     BackendProvider.logoutRedirect();
   }
 
