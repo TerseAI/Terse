@@ -35,11 +35,7 @@ export interface Integration<
     integrationId: string,
     agentTrigger: AgentTriggerWithConfigs,
   ): Promise<void>;
-  fetchResourcesForInstance?(
-    userId: string,
-    integrationId: string,
-    query?: string,
-  ): Promise<R[]>;
+
   fetchResourcesForOrganization?(
     organizationId: string,
     query?: string,

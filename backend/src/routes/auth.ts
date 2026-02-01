@@ -7,8 +7,8 @@ import { NextFunction, Request, Response } from "express";
 import { settings } from "../config/settings";
 import logger from "../logger";
 import { db } from "../prismaClient";
-import { Session } from "../types/session";
 import { Role, User } from "../shared/types";
+import { Session } from "../types/session";
 import { workos } from "../utility/workos";
 
 export const WORKOS_SESSION_COOKIE_NAME = "TERSE_WORKOS_SESSION";

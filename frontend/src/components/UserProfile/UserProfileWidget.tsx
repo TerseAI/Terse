@@ -1,43 +1,21 @@
 import { getWorkOsThemeConfig, useResolvedAppearance, workOsWidgetElements } from '@/hooks/useWorkOsTheme';
-import { BackendProvider } from '@/services/backend';
-import { SocketEvents } from '@/shared/SocketEvents';
+import { useWidgetToken } from '@/hooks/api/useWidgetToken';
 import { UserProfile, WorkOsWidgets } from '@workos-inc/widgets';
-import { useEffect, useState } from 'react';
 
 export function UserProfileWidget() {
     const appearance = useResolvedAppearance();
-    const [authToken, setAuthToken] = useState<string | null>(null);
-    const [error, setError] = useState<string | null>(null);
+    const { token, isLoading, isError } = useWidgetToken();
 
-    const fetchToken = () => {
-        BackendProvider.getWidgetToken()
-            .then((data) => setAuthToken(data.token))
-            .catch((err) => {
-                console.error('Failed to get widget token:', err);
-                setError(err.response?.data?.error ?? 'Failed to load profile.');
-            });
-    };
-
-    useEffect(() => {
-        fetchToken();
-    }, []);
-
-    useEffect(() => {
-        const handleUpdate = () => fetchToken();
-        window.addEventListener(SocketEvents.WORKOS_USER_UPDATED, handleUpdate);
-        return () => window.removeEventListener(SocketEvents.WORKOS_USER_UPDATED, handleUpdate);
-    }, []);
-
-    if (error) {
-        return <p className="text-destructive text-sm">{error}</p>;
+    if (isError) {
+        return <p className="text-destructive text-sm">Failed to load profile.</p>;
     }
-    if (!authToken) {
+    if (isLoading || !token) {
         return <p className="text-muted-foreground text-sm">Loading…</p>;
     }
 
     return (
         <WorkOsWidgets theme={getWorkOsThemeConfig(appearance)} elements={workOsWidgetElements}>
-            <UserProfile authToken={authToken} />
+            <UserProfile authToken={token} />
         </WorkOsWidgets>
     );
 }

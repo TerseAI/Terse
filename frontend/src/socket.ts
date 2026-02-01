@@ -1,6 +1,11 @@
 import { io, Socket } from "socket.io-client";
 import { mutate } from "swr";
 import { BackendProvider } from "./services/backend";
+import {
+  currentUserKey,
+  userOrganizationsKey,
+  widgetTokenKey,
+} from "./shared/InvalidationKeys";
 import { ApiRoutes } from "./shared/ApiRoutes";
 import { ModelEvent, ModelRequest } from "./shared/ModelEvents";
 import type { RunHistoryModelSocketEvent } from "./shared/RunHistoryTypes";
@@ -160,15 +165,18 @@ export async function initializeSocket() {
   });
 
   socket.on(SocketEvents.WORKOS_USER_UPDATED, () => {
-    window.dispatchEvent(new CustomEvent(SocketEvents.WORKOS_USER_UPDATED));
+    void mutate(widgetTokenKey());
+    void mutate(currentUserKey());
   });
 
   socket.on(SocketEvents.WORKOS_SESSION_UPDATED, () => {
-    window.dispatchEvent(new CustomEvent(SocketEvents.WORKOS_SESSION_UPDATED));
+    void mutate(widgetTokenKey());
   });
 
   socket.on(SocketEvents.WORKOS_ORG_UPDATED, () => {
-    window.dispatchEvent(new CustomEvent(SocketEvents.WORKOS_ORG_UPDATED));
+    void mutate(widgetTokenKey());
+    void mutate(userOrganizationsKey());
+    void mutate(currentUserKey());
   });
 }
 

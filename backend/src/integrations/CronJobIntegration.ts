@@ -3,7 +3,6 @@ import { EventProcessor } from "../agent/AgentRunner/EventProcessor";
 import { settings } from "../config/settings";
 import logger, { runWithUserContext } from "../logger";
 import { db } from "../prismaClient";
-import { getUserForOrg } from "../utility/workos";
 import { ApiRoutes } from "../shared/ApiRoutes";
 import { FrontendRoutes } from "../shared/FrontendRoutes";
 import {
@@ -17,6 +16,7 @@ import {
   createSchedulerClient,
   SchedulerClient,
 } from "../utility/schedulerClient";
+import { getUserForOrg } from "../utility/workos";
 import { InputEvent } from "./abstract/InputEvent";
 import {
   FormFieldDefinition,
@@ -56,10 +56,6 @@ export class CronJobIntegrationManager
       this.schedulerClient = createSchedulerClient();
     }
     return this.schedulerClient;
-  }
-
-  async getInstancesForUser(_userId: string): Promise<IntegrationInstance[]> {
-    return [];
   }
 
   async getInstancesForOrganization(

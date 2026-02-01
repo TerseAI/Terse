@@ -1,34 +1,19 @@
-import { OrganizationSwitcher, WorkOsWidgets } from '@workos-inc/widgets';
-import { useEffect, useState } from 'react';
+import { useUserOrganizations } from '@/hooks/api/useUserOrganizations';
+import { useWidgetToken } from '@/hooks/api/useWidgetToken';
+import { getWorkOsThemeConfig, useResolvedAppearance, workOsWidgetElements } from '@/hooks/useWorkOsTheme';
 import { BackendProvider } from '@/services/backend';
-import { getWorkOsThemeConfig, workOsWidgetElements, useResolvedAppearance } from '@/hooks/useWorkOsTheme';
+import { OrganizationSwitcher, WorkOsWidgets } from '@workos-inc/widgets';
 
 export function OrganizationSwitcherWidget() {
     const appearance = useResolvedAppearance();
-    const [authToken, setAuthToken] = useState<string | null>(null);
-    const [organizations, setOrganizations] = useState<{ id: string; name: string }[]>([]);
-    const [loading, setLoading] = useState(true);
+    const { token, isLoading: isLoadingToken } = useWidgetToken();
+    const { organizations, isLoading: isLoadingOrgs } = useUserOrganizations();
 
-    useEffect(() => {
-        Promise.all([
-            BackendProvider.getUserOrganizations(),
-            BackendProvider.getWidgetToken(),
-        ])
-            .then(([orgsRes, tokenRes]) => {
-                setOrganizations(orgsRes.organizations);
-                setAuthToken(tokenRes.token);
-            })
-            .catch((err) => {
-                console.error('Failed to load organizations or widget token:', err);
-            })
-            .finally(() => setLoading(false));
-    }, []);
-
-    if (loading) {
+    if (isLoadingToken || isLoadingOrgs) {
         return null;
     }
 
-    if (organizations.length <= 1 || !authToken) {
+    if (organizations.length <= 1 || !token) {
         return null;
     }
 
@@ -53,7 +38,7 @@ export function OrganizationSwitcherWidget() {
     return (
         <WorkOsWidgets theme={getWorkOsThemeConfig(appearance)} elements={workOsWidgetElements}>
             <OrganizationSwitcher
-                authToken={authToken}
+                authToken={token}
                 switchToOrganization={handleSwitch}
             />
         </WorkOsWidgets>
