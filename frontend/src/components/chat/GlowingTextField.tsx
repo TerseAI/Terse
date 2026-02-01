@@ -57,33 +57,19 @@ const GlowingTextField = forwardRef<GlowingTextFieldHandle, GlowingTextFieldProp
     // Track if user has typed substantial content (more than a short sentence)
     const hasSubstantialContent = inputValue.length > 100;
 
-    const getFontSize = () => {
-        // When there's substantial content in large mode, reduce font size for better readability
-        if (size === Size.Large && hasSubstantialContent) {
-            return 'text-base';
-        }
-        switch (size) {
-            case Size.Small:
-                return 'text-sm';
-            case Size.Medium:
-                return 'text-base';
-            case Size.Large:
-                return 'text-lg';
-            default:
-                return 'text-base';
-        }
-    };
+    const getStyles = () => {
+        const baseStyles = {
+            lineHeight: '1.5',
+        };
 
-    const getPadding = () => {
         switch (size) {
             case Size.Small:
-                return 'px-3 py-3';
-            case Size.Medium:
-                return 'px-4 py-4';
+                return { ...baseStyles, fontSize: '14px', padding: '10px 12px' };
             case Size.Large:
-                return 'p-4';
+                return { ...baseStyles, fontSize: '18px', padding: '16px' };
+            case Size.Medium:
             default:
-                return 'px-4 py-4';
+                return { ...baseStyles, fontSize: '16px', padding: '12px 16px' };
         }
     };
 
@@ -196,19 +182,14 @@ const GlowingTextField = forwardRef<GlowingTextFieldHandle, GlowingTextFieldProp
                         className={`
                                 w-full
                                 text-foreground
-                                ${getFontSize()}
                                 resize-none
-                                ${getPadding()}
                                 ${onSend ? 'pr-14' : ''}
-                                ${isLarge && !hasSubstantialContent ? 'leading-relaxed' : 'leading-normal'}
-                                placeholder:italic
                                 placeholder:text-muted-foreground
                                 rounded-lg
                                 focus:outline-none
+                                bg-transparent
                             `}
-                        style={{
-                            transition: 'height 0.2s cubic-bezier(0.4, 0, 0.2, 1), padding 0.2s cubic-bezier(0.4, 0, 0.2, 1), font-size 0.2s cubic-bezier(0.4, 0, 0.2, 1), line-height 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                        }}
+                        style={getStyles()}
                         onChange={onInputChange}
                         onKeyDown={handleKeyDownInternal}
                         value={inputValue}
