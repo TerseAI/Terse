@@ -64,7 +64,7 @@ export function buildChatAgentTools(
     tool({
       name: "promptForIntegration",
       description:
-        "Prompt for an integration. You can also call this if the user needs to re-configure an integration. Ex: Add repos to github or more pages to Notion.",
+        "IMPORTANT: Only call this once per turn! The UX is very bad if this called multiple times in a single turn. Call it once, wait for the reply then call it again if another integration is needed. Prompt for an integration. You can also call this if the user needs to re-configure an integration. Ex: Add repos to github or more pages to Notion.",
       parameters: z.object({
         integration: z
           .nativeEnum(IntegrationType)
