@@ -55,7 +55,7 @@ function setupChatEventListener() {
       if (callbacks) {
         callbacks.forEach((cb) => cb(payload));
       }
-    },
+    }
   );
 
   chatEventListenerSetUp = true;
@@ -86,7 +86,7 @@ function addChatSubscription(runId: string, callback: ChatEventCallback) {
 
 function addBuilderSubscription(
   sessionId: string,
-  callback: BuilderEventCallback,
+  callback: BuilderEventCallback
 ) {
   setupBuilderEventListener();
   if (!builderEventCallbacks.has(sessionId)) {
@@ -99,7 +99,7 @@ function processPendingSubscriptions() {
   if (pendingSubscriptions.length === 0) return;
 
   console.log(
-    `Processing ${pendingSubscriptions.length} pending socket subscriptions`,
+    `Processing ${pendingSubscriptions.length} pending socket subscriptions`
   );
 
   for (const sub of pendingSubscriptions) {
@@ -114,21 +114,28 @@ function processPendingSubscriptions() {
   pendingSubscriptions.length = 0;
 }
 
-export async function initializeSocket() {
-  // Don't initialize if already connected
-  if (socket?.connected) {
+export function initializeSocket() {
+  // Don't initialize if socket exists - Socket.IO handles reconnection automatically
+  if (socket) {
     return;
   }
-
-  // Get the session token for authentication
-  const token = await BackendProvider.requestSessionSocketToken();
 
   // Socket.IO needs the full origin URL, and we specify the path via the 'path' option
   // The path will be: /api/socket.io (which the Vite proxy will forward to /socket.io on backend)
   const socketUrl = import.meta.env.VITE_SOCKET_URL ?? window.location.origin;
 
+  // Socket is assigned synchronously here to prevent race conditions
+  // The auth callback fetches a fresh token on every connection/reconnection attempt
   socket = io(socketUrl, {
-    auth: { token },
+    auth: async (cb) => {
+      try {
+        const token = await BackendProvider.requestSessionSocketToken();
+        cb({ token });
+      } catch (error) {
+        console.error("Failed to get socket token:", error);
+        cb({ token: null });
+      }
+    },
     withCredentials: true,
   });
 
@@ -156,7 +163,7 @@ export async function initializeSocket() {
       } else if (key) {
         mutate((k) => Array.isArray(k) && k[0] === key);
       }
-    },
+    }
   );
 
   // WorkOS webhook-driven events
@@ -183,14 +190,14 @@ export async function initializeSocket() {
 // Chat event subscription
 export function subscribeToChatEvents(
   runId: string,
-  callback: ChatEventCallback,
+  callback: ChatEventCallback
 ): () => void {
   if (socket?.connected) {
     addChatSubscription(runId, callback);
   } else {
     console.log(
       "Socket not ready, queueing chat subscription for runId:",
-      runId,
+      runId
     );
     pendingSubscriptions.push({ type: "chat", runId, callback });
   }
@@ -198,7 +205,7 @@ export function subscribeToChatEvents(
   return () => {
     const pendingIndex = pendingSubscriptions.findIndex(
       (sub) =>
-        sub.type === "chat" && sub.runId === runId && sub.callback === callback,
+        sub.type === "chat" && sub.runId === runId && sub.callback === callback
     );
     if (pendingIndex !== -1) {
       pendingSubscriptions.splice(pendingIndex, 1);
@@ -230,7 +237,7 @@ export function disconnectSocket() {
 
 export function sendChatMessage(
   runId: string | null,
-  message: ModelRequest,
+  message: ModelRequest
 ): void {
   if (!socket || !socket.connected) {
     console.warn("Socket not connected, cannot send message");
@@ -242,7 +249,7 @@ export function sendChatMessage(
 export function sendToolApprovalResponse(
   runId: string,
   stepId: string,
-  approved: boolean,
+  approved: boolean
 ): void {
   if (!socket || !socket.connected) {
     console.warn("Socket not connected, cannot send approval response");
@@ -261,7 +268,7 @@ export function sendToolApprovalResponse(
 // Builder chat subscription
 export function subscribeToBuilderChat(
   sessionId: string,
-  callback: BuilderEventCallback,
+  callback: BuilderEventCallback
 ): () => void {
   // If socket is connected, subscribe immediately
   if (socket?.connected) {
@@ -270,7 +277,7 @@ export function subscribeToBuilderChat(
     // Queue for when socket connects
     console.log(
       "Socket not ready, queueing builder subscription for sessionId:",
-      sessionId,
+      sessionId
     );
     pendingSubscriptions.push({ type: "builder", sessionId, callback });
   }
@@ -282,7 +289,7 @@ export function subscribeToBuilderChat(
       (sub) =>
         sub.type === "builder" &&
         sub.sessionId === sessionId &&
-        sub.callback === callback,
+        sub.callback === callback
     );
     if (pendingIndex !== -1) {
       pendingSubscriptions.splice(pendingIndex, 1);
@@ -301,7 +308,7 @@ export function subscribeToBuilderChat(
 
 export function sendBuilderMessage(
   sessionId: string,
-  message: ModelRequest,
+  message: ModelRequest
 ): void {
   if (!socket || !socket.connected) {
     console.warn("Socket not connected, cannot send builder message");
