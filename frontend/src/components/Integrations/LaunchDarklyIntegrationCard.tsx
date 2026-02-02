@@ -1,16 +1,16 @@
 import { Card, CardContent, CardFooter } from "../ui/card";
-import { LaunchDarklyIntegration, IntegrationType } from "@/shared/Integrations"
+import { LaunchDarklyIntegration, IntegrationType, INTEGRATION_METADATA } from "@/shared/Integrations"
 import { IntegrationCardHeader } from "./helpers/IntegrationCardHeader";
 import { IntegrationItem } from "./helpers/IntegrationItem";
 import { CompactIntegrationRow } from "./CompactIntegrationRow";
 import { cn } from "@/lib/utils";
 import { useLaunchdarklyIntegrations } from "@/hooks/api/useLaunchdarklyIntegrations";
 import { Skeleton } from "../ui/skeleton";
-import { Flag, Eye, EyeOff, Info } from "lucide-react";
+import { Flag, Eye, EyeOff } from "lucide-react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
-import { Tooltip, TooltipTrigger, TooltipContent } from "../ui/tooltip";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "../ui/dialog";
 import { useState } from "react";
 import { BackendProvider } from "@/services/backend";
 
@@ -53,46 +53,60 @@ function LaunchDarklyIntegrationCard({ className, isActive = true, stateToken, c
     const isConnected = integrations.length > 0;
     const summary = integrations[0]?.tokenName ?? integrations[0]?.email ?? undefined;
 
+    const formDialog = (
+        <Dialog open={showForm} onOpenChange={(open) => !open && handleCancel()}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Connect {INTEGRATION_METADATA[IntegrationType.LAUNCHDARKLY].name}</DialogTitle>
+                    <DialogDescription>
+                        Enter your LaunchDarkly API key to connect your account.
+                    </DialogDescription>
+                </DialogHeader>
+                <LaunchDarklyForm
+                    apiKey={apiKey}
+                    setApiKey={setApiKey}
+                    showApiKey={showApiKey}
+                    setShowApiKey={setShowApiKey}
+                    onSubmit={handleSubmit}
+                    onCancel={handleCancel}
+                    isSubmitting={isSubmitting}
+                    error={error}
+                />
+            </DialogContent>
+        </Dialog>
+    );
+
     if (compact) {
         return (
-            <CompactIntegrationRow
-                integration={IntegrationType.LAUNCHDARKLY}
-                isConnected={isConnected}
-                summary={summary}
-                connect={handleConnect}
-                isConnecting={isSubmitting}
-                className={className}
-            />
+            <>
+                <CompactIntegrationRow
+                    integration={IntegrationType.LAUNCHDARKLY}
+                    isConnected={isConnected}
+                    summary={summary}
+                    connect={handleConnect}
+                    isConnecting={isSubmitting}
+                    className={className}
+                />
+                {formDialog}
+            </>
         );
     }
 
     return (
-        <Card className={cn(className)}>
-            <IntegrationCardHeader integration={IntegrationType.LAUNCHDARKLY} isActive={isActive} />
-            <CardContent>
-                {showForm ? (
-                    <LaunchDarklyForm
-                        apiKey={apiKey}
-                        setApiKey={setApiKey}
-                        showApiKey={showApiKey}
-                        setShowApiKey={setShowApiKey}
-                        onSubmit={handleSubmit}
-                        onCancel={handleCancel}
-                        isSubmitting={isSubmitting}
-                        error={error}
-                    />
-                ) : (
+        <>
+            <Card className={cn(className)}>
+                <IntegrationCardHeader integration={IntegrationType.LAUNCHDARKLY} isActive={isActive} />
+                <CardContent>
                     <LaunchDarklyCardContent integrations={integrations} isLoading={isLoading} />
-                )}
-            </CardContent>
-            <CardFooter>
-                {!showForm && (
+                </CardContent>
+                <CardFooter>
                     <Button variant="outline" onClick={handleConnect}>
                         {integrations.length > 0 ? "Update" : "Connect"}
                     </Button>
-                )}
-            </CardFooter>
-        </Card>
+                </CardFooter>
+            </Card>
+            {formDialog}
+        </>
     )
 }
 
@@ -152,32 +166,7 @@ function LaunchDarklyForm({
     return (
         <form onSubmit={onSubmit} className="space-y-4">
             <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                    <Label htmlFor="apiKey">API Key</Label>
-                    <Tooltip>
-                        <TooltipTrigger asChild>
-                            <button
-                                type="button"
-                                className="text-muted-foreground hover:text-foreground transition-colors"
-                            >
-                                <Info className="h-4 w-4" />
-                            </button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                            <div className="flex flex-col gap-1">
-                                <span>Get your API key from LaunchDarkly</span>
-                                <a
-                                    href="https://app.launchdarkly.com/settings/authorization"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="underline hover:no-underline"
-                                >
-                                    Open API keys page
-                                </a>
-                            </div>
-                        </TooltipContent>
-                    </Tooltip>
-                </div>
+                <Label htmlFor="apiKey">API Key</Label>
                 <div className="relative">
                     <Input
                         id="apiKey"
