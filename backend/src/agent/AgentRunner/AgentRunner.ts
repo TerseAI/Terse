@@ -528,7 +528,7 @@ ${inputEvent.formatForAgentRunner()}
     }
 
     private shouldEnableStreaming(params?: RunHistoryStreamingParams): boolean {
-        return !!(params?.runId && params?.userId && params?.agentId);
+        return !!(params?.runId && params?.userId && params?.agentId && params?.organizationId);
     }
 
     private async processWithStreaming<TSession extends Session = Session, TAgent extends Agent<any, any> = Agent<Session, any>>(
@@ -548,6 +548,7 @@ ${inputEvent.formatForAgentRunner()}
             runId: streamingParams.runId!,
             userId: streamingParams.userId!,
             agentId: streamingParams.agentId!,
+            organizationId: streamingParams.organizationId!,
             io,
         });
     }
@@ -630,7 +631,7 @@ ${inputEvent.formatForAgentRunner()}
                     // Store and emit the approval request
                     const eventId = await storeChatEvent(this.runContext.runId, approvalRequest);
 
-                    if (io && streamingParams.userId) {
+                    if (io && streamingParams.organizationId) {
                         const runHistoryModelEvent: RunHistoryModelEvent = {
                             ...approvalRequest,
                             id: eventId,
@@ -641,7 +642,7 @@ ${inputEvent.formatForAgentRunner()}
                             agentId: streamingParams.agentId!,
                             runHistoryModelEvent,
                         };
-                        io.to(SocketRooms.user(streamingParams.userId)).emit(SocketEvents.AGENT_CHAT_EVENT, payload);
+                        io.to(SocketRooms.organization(streamingParams.organizationId)).emit(SocketEvents.AGENT_CHAT_EVENT, payload);
                     }
 
                     // Send notification for approval request

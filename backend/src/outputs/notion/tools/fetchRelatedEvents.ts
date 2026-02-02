@@ -33,7 +33,7 @@ The tool returns the source events (e.g., Slack messages, emails) that led to th
         block_id: z.string().describe('The Notion block ID to fetch related events for'),
     }),
     execute: async ({ integrationId, pageId, block_id }, runContext?: RunContext<SessionWithTracking<Session>>) => {
-        logger.info('Fetching related events for block and user', { block_id, userId: runContext?.context?.user.display_name });
+        logger.info('Fetching related events for block and user', { block_id, userId: runContext?.context?.user.displayName });
 
         if (!runContext?.context) {
             throw new Error("No context provided");
@@ -47,7 +47,7 @@ The tool returns the source events (e.g., Slack messages, emails) that led to th
             const hydratedEvents = await attributionStore.fetchAttributionsForOutputItem(block_id);
 
             if (hydratedEvents.length === 0) {
-                logger.info('No related events found for this block', { block_id, userId: runContext?.context?.user.display_name });
+                logger.info('No related events found for this block', { block_id, userId: runContext?.context?.user.displayName });
                 return {
                     success: true,
                     events_count: 0,
@@ -55,7 +55,7 @@ The tool returns the source events (e.g., Slack messages, emails) that led to th
                 };
             }
 
-            logger.info('Found related events', { block_id, userId: runContext?.context?.user.display_name, events_count: hydratedEvents.length });
+            logger.info('Found related events', { block_id, userId: runContext?.context?.user.displayName, events_count: hydratedEvents.length });
 
             const formattedEvents = hydratedEvents.map((event, index) => {
                 if ('formatForAgentRunner' in event && typeof event.formatForAgentRunner === 'function') {
@@ -67,7 +67,7 @@ The tool returns the source events (e.g., Slack messages, emails) that led to th
 
             const eventsText = formattedEvents.join('\n\n---\n\n');
 
-            logger.info('Successfully fetched and formatted events', { block_id, userId: runContext?.context?.user.display_name, events_count: hydratedEvents.length });
+            logger.info('Successfully fetched and formatted events', { block_id, userId: runContext?.context?.user.displayName, events_count: hydratedEvents.length });
 
             // Return action as part of the result
             const action = {
@@ -89,7 +89,7 @@ The tool returns the source events (e.g., Slack messages, emails) that led to th
             };
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-            logger.error('Error fetching related events', { block_id, userId: runContext?.context?.user.display_name, error });
+            logger.error('Error fetching related events', { block_id, userId: runContext?.context?.user.displayName, error });
             return {
                 success: false,
                 error: errorMessage,

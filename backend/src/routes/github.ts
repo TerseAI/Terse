@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { githubApp } from "../config/settings";
 import {
   getAppInstallationsForUser,
+  getAppInstallationRepositories,
   GithubIntegrationManager,
 } from "../integrations/GithubIntegration";
 import logger from "../logger";
@@ -16,8 +17,10 @@ import {
   GetGithubRepositoriesForIntegrationResponse,
   GithubAppInstallationCallbackRequest,
   Repository,
+  User as RuntimeUser,
 } from "../shared/types";
-import { GithubRepository, User } from "../types/prisma";
+import { getUserForOrg } from "../utility/workos";
+import { GithubRepository } from "../types/prisma";
 
 // MARK: - Route Handlers
 
@@ -29,7 +32,9 @@ export async function getGithubIntegrations(req: Request, res: Response) {
 
   try {
     const manager = new GithubIntegrationManager();
-    const integrations = await manager.getInstancesForUser(req.session.user.id);
+    const integrations = await manager.getInstancesForOrganization(
+      req.session.user.organizationId,
+    );
     res.status(200).json(integrations);
   } catch (error) {
     logger.error("Error fetching GitHub integrations", { error });
@@ -70,12 +75,12 @@ export async function processsGithubAppInstallationWebhook(
   });
 
   try {
-    let user: User | null = await resolveUserForGithubInstallation(
+    const user: RuntimeUser | null = await resolveUserForGithubInstallation(
       body.installationId,
       body.username,
     );
-    if (user) {
-      emitCacheInvalidationWithKey(user.id, "integrations");
+    if (user?.organizationId) {
+      emitCacheInvalidationWithKey(user.organizationId, "integrations");
     }
     res.status(200).json({ message: "Installation webhook processed" });
   } catch (error) {
@@ -98,6 +103,20 @@ export async function githubAppInstallationDeleted(
     installationId: body.installationId,
     username: body.username,
   });
+
+  // Look up organizationId before deletion (installation record will be removed in transaction)
+  const installation = await db().user_github_installation.findUnique({
+    where: { installation_id: body.installationId },
+    select: { user_id: true },
+  });
+  let organizationId: string | null = null;
+  if (installation?.user_id) {
+    const token = await db().github_app_tokens.findFirst({
+      where: { user_id: installation.user_id },
+      select: { organization_id: true },
+    });
+    organizationId = token?.organization_id ?? null;
+  }
 
   await db().$transaction(async (tx) => {
     // find all repos for this installation
@@ -132,7 +151,9 @@ export async function githubAppInstallationDeleted(
 
   // TODO: We need to invalidate Channels that were dependent on these repositories. This is a more general issue we don't account for yet.
 
-  emitCacheInvalidationWithKey(body.username, "integrations");
+  if (organizationId) {
+    emitCacheInvalidationWithKey(organizationId, "integrations");
+  }
 }
 
 /**
@@ -174,12 +195,56 @@ function createRouteError(message: string, statusCode: number): RouteError {
 }
 
 export async function fetchGithubRepositoriesForIntegration(
-  userId: string,
+  organizationId: string,
   installationId: string,
 ): Promise<GetGithubRepositoriesForIntegrationResponse> {
-    const manager = new GithubIntegrationManager();
-    const repositories = await manager.fetchResourcesForInstance(userId, installationId);
-    return { repositories };
+  if (!installationId) {
+    throw createRouteError("Installation ID is required", 400);
+  }
+  if (!organizationId) {
+    throw createRouteError("Organization context is required", 400);
+  }
+
+  // Find a token in the org that has access to this installation
+  const orgTokens = await db().github_app_tokens.findMany({
+    where: { organization_id: organizationId },
+  });
+  if (orgTokens.length === 0) {
+    throw createRouteError("Unauthorized", 401);
+  }
+
+  let targetInstallation: { id: number } | undefined;
+  let tokenWithAccess: (typeof orgTokens)[0] | null = null;
+
+  for (const token of orgTokens) {
+    const installations = await getAppInstallationsForUser(token.access_token);
+    const installation = installations.installations.find(
+      (i) => i.id === Number(installationId),
+    );
+    if (installation) {
+      targetInstallation = installation;
+      tokenWithAccess = token;
+      break;
+    }
+  }
+
+  if (!targetInstallation || !tokenWithAccess) {
+    throw createRouteError("Installation not found", 404);
+  }
+
+  const installationRepositories: GithubAppInstallationRepository[] =
+    await getAppInstallationRepositories(
+      tokenWithAccess.access_token,
+      targetInstallation.id,
+    );
+
+  return {
+    repositories: installationRepositories.map((r) => ({
+      id: r.id,
+      name: r.name,
+      owner: r.owner.login,
+    })),
+  };
 }
 
 export async function getGithubRepositoriesForIntegration(
@@ -194,8 +259,11 @@ export async function getGithubRepositoriesForIntegration(
   const installationId = req.query.installation_id as string;
 
   try {
+    if (!req.session.user.organizationId) {
+      return res.status(400).json({ message: "Organization context is required" });
+    }
     const result = await fetchGithubRepositoriesForIntegration(
-      req.session.user.id,
+      req.session.user.organizationId,
       installationId,
     );
     res.status(200).json(result);
@@ -209,7 +277,7 @@ export async function getGithubRepositoriesForIntegration(
 
 export async function processRepository(
   repositoryData: Repository,
-  user: User,
+  user: RuntimeUser,
   installationId: number,
 ): Promise<{ name: string; status: string; error?: string }> {
   logger.debug("Processing repository", {
@@ -302,39 +370,44 @@ export async function processRepository(
   }
 }
 
-// Given an installation and username, resolve a specific user
-async function resolveUserForGithubInstallation(
+// Given an installation and username, resolve a specific user (runtime User type)
+export async function resolveUserForGithubInstallation(
   installationId: number,
   username: string,
-): Promise<User | null> {
-  const users_from_installation: User[] =
-    await resolveUsersForGithubInstallation(installationId);
+): Promise<RuntimeUser | null> {
+  const usersFromInstallation = await resolveUsersForGithubInstallation(
+    installationId,
+  );
+  const installationUserIds = usersFromInstallation.map((u) => u.id);
 
-  let user =
-    users_from_installation.find((user) => user.github_username === username) ||
-    null;
-  if (user) {
-    return user;
+  // Match by github_username in github_app_tokens (users table no longer has github_username)
+  const tokenForUsername = await db().github_app_tokens.findFirst({
+    where: {
+      github_username: username,
+      user_id: { in: installationUserIds },
+    },
+  });
+  if (tokenForUsername?.organization_id) {
+    const user = await getUserForOrg(
+      tokenForUsername.user_id,
+      tokenForUsername.organization_id,
+    );
+    if (user) return user;
   }
 
-  const app_keys_from_username = await db().github_app_tokens.findMany({
+  // User might have token but not be in installation list yet (e.g. new install)
+  const anyTokenForUsername = await db().github_app_tokens.findFirst({
     where: { github_username: username },
   });
-  const user_id = app_keys_from_username.find(
-    (key) => key.github_username === username,
-  )?.user_id;
-
-  if (user_id) {
-    const matched_user = await db().users.findUnique({
-      where: { id: user_id },
-    });
-    if (matched_user) {
-      await db().users.update({
-        where: { id: user_id },
-        data: { github_username: username },
-      });
-      return matched_user;
-    }
+  if (
+    anyTokenForUsername?.organization_id &&
+    installationUserIds.includes(anyTokenForUsername.user_id)
+  ) {
+    const user = await getUserForOrg(
+      anyTokenForUsername.user_id,
+      anyTokenForUsername.organization_id,
+    );
+    if (user) return user;
   }
 
   return null;
@@ -345,7 +418,7 @@ async function resolveUserForGithubInstallation(
 // This is super inefficient, but it's a good start. We need to optimize this.
 export async function resolveUsersForGithubInstallation(
   installationId: number,
-): Promise<User[]> {
+): Promise<import("../types/prisma").User[]> {
   return db().$transaction(async (tx) => {
     // Get all of our github app users.
     const githubAppUsers = await tx.github_app_tokens.findMany();
