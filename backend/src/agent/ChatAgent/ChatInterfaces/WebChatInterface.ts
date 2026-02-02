@@ -74,7 +74,14 @@ class WebChatInterface extends ChatInterface {
             },
         });
 
-        return `I've provided a way to connect ${integration}. Use the form or button below to complete the integration.`;
+        let response = `I've provided a way to connect ${integration}. Use the form or button below to complete the integration.`;
+
+        // Add Slack-specific guidance about channel access
+        if (integration === IntegrationType.SLACK) {
+            response += `\n\nIMPORTANT: After connecting Slack as a bot, you'll need to invite the Terse bot to each channel you want it to access. In Slack, go to the channel and type /invite @Terse. Only channels where the bot has been invited will be available for automations.`;
+        }
+
+        return response;
     }
 
     async promptForConfig(config: ConfigType): Promise<string> {

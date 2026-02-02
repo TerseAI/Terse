@@ -175,8 +175,13 @@ export function SlackConfigurationSelector({
     // For user tokens, we should still show the Select dropdown so users can enable DM listening
     if (!listenToUserDms && channels.length === 0 && !showListenToDMsOption) {
         return (
-            <div className="text-sm text-[theme(text-secondary)]">
-                No channels found. Make sure your Slack app has been added to the channels you want to use.
+            <div className="flex flex-col gap-2 p-3 bg-muted/50 rounded-md border border-border">
+                <p className="text-sm text-muted-foreground">
+                    No channels available yet. You need to invite the Terse bot to channels before they'll appear here.
+                </p>
+                <p className="text-sm text-muted-foreground">
+                    In Slack, go to a channel and type <code className="px-1.5 py-0.5 bg-muted rounded text-foreground">/invite @Terse</code> to add the bot, then refresh this list.
+                </p>
             </div>
         );
     }
@@ -207,8 +212,8 @@ export function SlackConfigurationSelector({
                             </TooltipTrigger>
                             <TooltipContent side="right" className="max-w-xs">
                                 <p>
-                                    When using a bot token, you need to add the bot to the channel first. 
-                                    The bot must be a member of the channel to receive messages.
+                                    Only channels where you've added the Terse bot will appear here.
+                                    To add a channel, go to that channel in Slack and type <code className="px-1 py-0.5 bg-muted rounded text-xs">/invite @Terse</code>
                                 </p>
                             </TooltipContent>
                         </Tooltip>
