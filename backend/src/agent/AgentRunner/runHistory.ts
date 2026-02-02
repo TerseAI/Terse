@@ -129,7 +129,7 @@ export async function storeChatEvent(runId: string, event: ModelEvent, timestamp
     const created = await prisma.run_history_chat_events.create({
         data: {
             run_history_record_id: runId,
-            event_type: event.type,
+            event_type: event.type as RunHistoryChatEventType,
             event_json: event as Prisma.InputJsonValue,
             timestamp: eventTimestamp,
         },
@@ -171,7 +171,7 @@ export async function storePendingApprovalState(
             updated_at: new Date(),
         },
         create: {
-            user_id: runRecord.automation.user_id,
+            usersId: runRecord.automation.user_id,
             run_history_record_id: runId,
             serialized_state: serializedState,
             interruptions: interruptions as Prisma.InputJsonValue,

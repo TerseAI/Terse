@@ -15,13 +15,11 @@ datasource db {
 }
 
 model users {
-  id              String   @id @default(cuid())
-  email           String   @unique
-  display_name    String
-  github_username String?  @unique
-  created_at      DateTime @default(now())
-  updated_at      DateTime @updatedAt
-  is_placeholder  Boolean  @default(false)
+  id String @id @default(cuid())
+
+  workos_id  String   @unique
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 
   user_github_repositories  user_github_repositories[]
   linear_integrations       linear_integrations[]
@@ -30,9 +28,6 @@ model users {
   gmail_integrations        gmail_integrations[]
   notion_integrations       notion_integrations[]
   figma_integrations        figma_integrations[]
-  activity_events           activity_events[]
-  ticket_activity_events    ticket_activity_events[]
-  project_activity_events   project_activity_events[]
   automations               automations[]
   pending_approvals         pending_approvals[]
   user_github_installation  user_github_installation[]
@@ -41,6 +36,8 @@ model users {
   posthog_integrations      posthog_integrations[]
   launchdarkly_integrations launchdarkly_integrations[]
   datadog_integrations      datadog_integrations[]
+
+  @@index([workos_id])
 }
 
 model github_repositories {
@@ -53,7 +50,6 @@ model github_repositories {
   updated_at      DateTime @updatedAt
 
   user_github_repositories user_github_repositories[]
-  activity_events          activity_events[]
 
   @@unique([installation_id, repository_id])
 }
@@ -85,6 +81,7 @@ model user_github_repositories {
 model github_app_tokens {
   id              String    @id @default(cuid())
   user_id         String
+  organization_id String
   github_username String
   access_token    String
   refresh_token   String?
@@ -95,23 +92,26 @@ model github_app_tokens {
   user users @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@unique([user_id, github_username])
+  @@index([organization_id])
 }
 
 model linear_integrations {
-  id             String   @id @default(cuid())
-  user_id        String
-  linear_user_id String
-  workspace_id   String
-  workspace_name String
-  access_token   String
-  refresh_token  String
-  token_expiry   DateTime
-  created_at     DateTime @default(now())
-  updated_at     DateTime @updatedAt
+  id              String   @id @default(cuid())
+  user_id         String
+  organization_id String
+  linear_user_id  String
+  workspace_id    String
+  workspace_name  String
+  access_token    String
+  refresh_token   String
+  token_expiry    DateTime
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
 
   user users @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@index([user_id])
+  @@index([organization_id])
   @@index([workspace_id])
   @@index([token_expiry]) // For finding tokens that need refresh
 }
@@ -119,6 +119,7 @@ model linear_integrations {
 model user_slack_integrations {
   id                       String   @id @default(cuid())
   user_id                  String
+  organization_id          String
   slack_team_id            String
   authed_user_id           String
   authed_user_access_token String?
@@ -131,6 +132,7 @@ model user_slack_integrations {
   user_notification_destinations user_notification_destinations[]
 
   @@unique([user_id, slack_team_id, is_bot_user])
+  @@index([organization_id])
 }
 
 model slack_integrations {
@@ -152,6 +154,7 @@ model slack_integrations {
 model atlassian_integrations {
   id              String   @id @default(cuid())
   user_id         String
+  organization_id String
   jira_user_email String // User email in Atlassian/Jira
   base_url        String // Base URL of the Atlassian instance (e.g., https://company.atlassian.net)
   cloud_id        String // Atlassian cloud ID for API calls
@@ -169,6 +172,7 @@ model atlassian_integrations {
   user users @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@index([user_id])
+  @@index([organization_id])
   @@index([base_url, project_key])
   @@index([token_expiry]) // For finding tokens that need refresh
 }
@@ -176,6 +180,7 @@ model atlassian_integrations {
 model gmail_integrations {
   id                          String    @id @default(cuid())
   user_id                     String
+  organization_id             String
   email                       String
   history_id                  String
   watch_expiration            DateTime
@@ -191,6 +196,7 @@ model gmail_integrations {
   processed_gmail_messages processed_gmail_messages[]
 
   @@unique([user_id, email]) // Allow multiple Gmail accounts per user, but not duplicates
+  @@index([organization_id])
   @@index([email])
   @@index([watch_expiration]) // For finding watches that need renewal
   @@index([is_active]) // For finding active integrations
@@ -226,6 +232,7 @@ model processed_slack_events {
 model notion_integrations {
   id                String   @id @default(cuid())
   user_id           String
+  organization_id   String
   workspace_id      String?
   workspace_name    String?
   integration_token String
@@ -235,19 +242,21 @@ model notion_integrations {
   user users @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@index([user_id])
+  @@index([organization_id])
   @@index([workspace_id])
 }
 
 model figma_integrations {
-  id            String   @id @default(cuid())
-  user_id       String
-  handle        String
-  figma_user_id String
-  access_token  String
-  refresh_token String
-  token_expiry  DateTime
-  created_at    DateTime @default(now())
-  updated_at    DateTime @updatedAt
+  id              String   @id @default(cuid())
+  user_id         String
+  organization_id String
+  handle          String
+  figma_user_id   String
+  access_token    String
+  refresh_token   String
+  token_expiry    DateTime
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
 
   user                     users                      @relation(fields: [user_id], references: [id], onDelete: Cascade)
   processed_figma_comments processed_figma_comments[]
@@ -255,6 +264,7 @@ model figma_integrations {
   figma_webhooks           figma_webhooks[]
 
   @@index([user_id])
+  @@index([organization_id])
   @@index([figma_user_id])
 }
 
@@ -323,124 +333,59 @@ model figma_comment_context {
 }
 
 model posthog_integrations {
-  id         String   @id @default(cuid())
-  user_id    String
-  api_key    String
-  user_email String?
-  org_name   String?
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
+  id              String   @id @default(cuid())
+  user_id         String
+  organization_id String
+  api_key         String
+  user_email      String?
+  org_name        String?
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
 
   user users @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@index([user_id])
+  @@index([organization_id])
 }
 
 // LaunchDarkly Integration
 model launchdarkly_integrations {
-  id         String   @id @default(cuid())
-  user_id    String
-  api_key    String
-  user_email String?
-  token_name String?
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
+  id              String   @id @default(cuid())
+  user_id         String
+  organization_id String
+  api_key         String
+  user_email      String?
+  token_name      String?
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
 
   user users @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@index([user_id])
+  @@index([organization_id])
 }
 
 model datadog_integrations {
-  id         String   @id @default(cuid())
-  user_id    String
-  api_key    String
-  app_key    String
-  region     String
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
+  id              String   @id @default(cuid())
+  user_id         String
+  organization_id String
+  api_key         String
+  app_key         String
+  region          String
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
 
   user users @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@index([user_id])
-}
-
-// Activity Feed - Starting with GitHub Events
-model activity_events {
-  id                   String          @id @default(cuid())
-  user_id              String
-  title                String
-  event_type           GitHubEventType
-  github_repository_id String
-  created_at           DateTime        @default(now())
-  updated_at           DateTime        @updatedAt
-
-  github_repository       github_repositories       @relation(fields: [github_repository_id], references: [id], onDelete: Cascade)
-  users                   users?                    @relation(fields: [user_id], references: [id])
-  sub_activity_events     sub_activity_events[]
-  project_activity_events project_activity_events[]
-  ticket_activity_events  ticket_activity_events[]
-
-  @@index([event_type])
-}
-
-model sub_activity_events {
-  id                String   @id @default(cuid())
-  summary           String
-  created_at        DateTime @default(now())
-  updated_at        DateTime @updatedAt
-  activity_event_id String
-
-  activity_events                  activity_events                    @relation(fields: [activity_event_id], references: [id], onDelete: Cascade)
-  sub_activity_commit_associations sub_activity_commit_associations[]
-}
-
-model sub_activity_commit_associations {
-  id                    String   @id @default(cuid())
-  commit_sha            String
-  commit_message        String
-  commit_url            String
-  created_at            DateTime @default(now())
-  sub_activity_event_id String
-
-  sub_activity_events sub_activity_events @relation(fields: [sub_activity_event_id], references: [id], onDelete: Cascade)
-}
-
-model ticket_activity_events {
-  id                String          @id @default(cuid())
-  activity_event_id String
-  user_id           String
-  event_type        TicketEventType
-  ticket_id         String // External ticket ID (Linear/Jira)
-  title             String
-  created_at        DateTime        @default(now())
-  updated_at        DateTime        @updatedAt
-
-  activity_events activity_events @relation(fields: [activity_event_id], references: [id], onDelete: Cascade)
-  users           users           @relation(fields: [user_id], references: [id], onDelete: Cascade)
-
-  @@index([ticket_id])
-}
-
-model project_activity_events {
-  id                String   @id @default(cuid())
-  user_id           String
-  project_id        String
-  activity_event_id String
-  title             String // This should be a summary of change in relation to this project
-  created_at        DateTime @default(now())
-  updated_at        DateTime @updatedAt
-
-  activity_events activity_events @relation(fields: [activity_event_id], references: [id], onDelete: Cascade)
-  users           users           @relation(fields: [user_id], references: [id], onDelete: Cascade)
-
-  @@index([project_id])
+  @@index([organization_id])
 }
 
 // Automation tables
 model automations {
   id               String   @id @default(cuid())
   user_id          String
+  organization_id  String
   name             String
   is_active        Boolean  @default(true)
   require_approval Boolean  @default(false)
@@ -459,6 +404,7 @@ model automations {
   tool_approvals             automation_tool_approvals[]
 
   @@index([user_id])
+  @@index([organization_id])
   @@index([is_active])
 }
 
@@ -787,12 +733,6 @@ model automation_time_trigger_configs {
   automation_input automation_inputs @relation(fields: [automation_input_id], references: [id], onDelete: Cascade)
 }
 
-enum TicketEventType {
-  TICKET_CREATED
-  TICKET_UPDATED
-  COMMENT_ADDED
-}
-
 // GitHub Event Types
 enum GitHubEventType {
   PUSH
@@ -951,7 +891,6 @@ enum RunHistoryActionType {
 // for better data organization and compliance tracking (created_at timestamp)
 model pending_approvals {
   id                    String    @id @default(cuid())
-  user_id               String
   run_history_record_id String    @unique
   serialized_state      String    @db.Text // Serialized OpenAI RunState for resumption (JSON string)
   interruptions         Json // Array of RunToolApprovalItem objects
@@ -959,10 +898,10 @@ model pending_approvals {
   updated_at            DateTime  @updatedAt
   approved_at           DateTime?
 
-  user               users               @relation(fields: [user_id], references: [id], onDelete: Cascade)
   run_history_record run_history_records @relation(fields: [run_history_record_id], references: [id], onDelete: Cascade)
+  users              users?              @relation(fields: [usersId], references: [id])
+  usersId            String?
 
-  @@index([user_id])
   @@index([created_at])
   @@index([run_history_record_id])
 }

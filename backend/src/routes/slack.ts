@@ -1,27 +1,37 @@
-import { Request, Response } from "express";
-import { db } from "../prismaClient";
-import { SlackChannelsResponse, SlackUsersResponse } from "../shared/types";
-import { WebClient, LogLevel } from "@slack/web-api";
+import { LogLevel, WebClient } from "@slack/web-api";
 import { Member as SlackUser } from "@slack/web-api/dist/types/response/UsersListResponse";
-import { User, UserSlackIntegrationWithUser } from "../types/prisma";
-import { SlackIntegrationManager } from '../integrations/SlackIntegration';
+import { Request, Response } from "express";
+import { SlackIntegrationManager } from "../integrations/SlackIntegration";
 import logger from "../logger";
+import { db } from "../prismaClient";
+import {
+  SlackChannel,
+  SlackChannelsResponse,
+  SlackUsersResponse,
+  User,
+} from "../shared/types";
+import { UserSlackIntegrationWithUser } from "../types/prisma";
 
 // MARK: - Route Handlers
 
 export async function getSlackIntegrations(req: Request, res: Response) {
   if (!req.session?.user) {
-    res.status(401).json({ error: 'Unauthorized' });
+    res.status(401).json({ error: "Unauthorized" });
     return;
   }
 
   try {
     const manager = new SlackIntegrationManager();
-    const integrations = await manager.getInstancesForUser(req.session.user.id);
+    const integrations = await manager.getInstancesForOrganization(
+      req.session.user.organizationId,
+    );
     res.status(200).json(integrations);
   } catch (error) {
-    logger.error('Error fetching Slack integrations', { error, userId: req.session?.user?.id });
-    res.status(500).json({ error: 'Failed to fetch Slack integrations' });
+    logger.error("Error fetching Slack integrations", {
+      error,
+      userId: req.session?.user?.id,
+    });
+    res.status(500).json({ error: "Failed to fetch Slack integrations" });
   }
 }
 
@@ -30,7 +40,7 @@ export async function getSlackIntegrations(req: Request, res: Response) {
  */
 export async function getCurrentSlackIntegration(req: Request, res: Response) {
   if (!req.session?.user) {
-    res.status(500).json({ message: 'User not found' });
+    res.status(500).json({ message: "User not found" });
     return;
   }
 
@@ -38,11 +48,11 @@ export async function getCurrentSlackIntegration(req: Request, res: Response) {
 
   const userSlackIntegration = await db().user_slack_integrations.findFirst({
     where: {
-      user_id: user.id
+      user_id: user.id,
     },
     orderBy: {
-      created_at: 'desc'
-    }
+      created_at: "desc",
+    },
   });
 
   if (!userSlackIntegration) {
@@ -52,8 +62,8 @@ export async function getCurrentSlackIntegration(req: Request, res: Response) {
 
   const slackIntegration = await db().slack_integrations.findFirst({
     where: {
-      team_id: userSlackIntegration?.slack_team_id
-    }
+      team_id: userSlackIntegration?.slack_team_id,
+    },
   });
 
   if (!slackIntegration || !userSlackIntegration) {
@@ -72,24 +82,175 @@ export async function slackOAuthCallback(req: Request, res: Response) {
   await integration.processInstallationCallback(req, res);
 }
 
-
 const getToken = (integration: UserSlackIntegrationWithUser) => {
-  return integration.authed_user_access_token || integration.slack_integration.access_token;
+  return (
+    integration.authed_user_access_token ||
+    integration.slack_integration.access_token
+  );
+};
+
+type SlackRouteError = Error & {
+  statusCode?: number;
+  details?: string;
+  code?: string;
+};
+
+function createSlackRouteError(
+  message: string,
+  statusCode: number,
+  details?: string,
+  code?: string,
+): SlackRouteError {
+  const error = new Error(message) as SlackRouteError;
+  error.statusCode = statusCode;
+  error.details = details;
+  error.code = code;
+  return error;
 }
 
 export const fetchSlackChannelsForIntegration = async (
   userId: string,
-  integrationId: string
+  organizationId: string,
+  integrationId: string,
 ): Promise<SlackChannelsResponse> => {
-  const manager = new SlackIntegrationManager();
-  const channels = await manager.fetchResourcesForInstance(userId, integrationId);
-  return { channels, selectedChannelId: null };
-}
+  if (!integrationId) {
+    throw createSlackRouteError("integrationId is required", 400);
+  }
+  if (!organizationId) {
+    throw createSlackRouteError("Organization context is required", 400);
+  }
+
+  const userSlackIntegration = await db().user_slack_integrations.findFirst({
+    where: {
+      id: integrationId,
+      organization_id: organizationId,
+    },
+    include: {
+      slack_integration: true,
+      user: true,
+    },
+  });
+
+  if (!userSlackIntegration || !userSlackIntegration.slack_integration) {
+    throw createSlackRouteError("Slack integration not found", 404);
+  }
+
+  const token = getToken(userSlackIntegration);
+  const isBotUser = userSlackIntegration.is_bot_user;
+  const teamName = userSlackIntegration.slack_integration.team_name;
+  const authedUserId = userSlackIntegration.authed_user_id;
+  const teamId = userSlackIntegration.slack_team_id;
+
+  logger.debug(
+    `🔵 [SLACK CHANNELS] integration: team="${teamName}", user_id="${authedUserId}", team_id="${teamId}"`,
+    { teamName, authedUserId, teamId, integrationId },
+  );
+
+  const client = new WebClient(token, {
+    logLevel: LogLevel.ERROR,
+  });
+
+  try {
+    const [publicChannels, privateChannels, mpimChannels] = await Promise.all([
+      client.conversations.list({
+        types: "public_channel",
+        exclude_archived: true,
+        limit: 1000,
+      }),
+      client.conversations.list({
+        types: "private_channel",
+        exclude_archived: true,
+        limit: 1000,
+      }),
+      client.conversations.list({
+        types: "mpim",
+        exclude_archived: true,
+        limit: 1000,
+      }),
+    ]);
+
+    const channels: SlackChannel[] = [];
+
+    if (publicChannels.ok && publicChannels.channels) {
+      for (const channel of publicChannels.channels) {
+        if (channel.id && channel.name && (!isBotUser || channel.is_member)) {
+          channels.push({
+            id: channel.id,
+            name: channel.name,
+            isPrivate: false,
+            isArchived: channel.is_archived || false,
+            isMPIM: false,
+          });
+        }
+      }
+    }
+
+    if (privateChannels.ok && privateChannels.channels) {
+      for (const channel of privateChannels.channels) {
+        if (channel.id && channel.name) {
+          channels.push({
+            id: channel.id,
+            name: channel.name,
+            isPrivate: true,
+            isArchived: channel.is_archived || false,
+            isMPIM: false,
+          });
+        }
+      }
+    }
+
+    if (mpimChannels.ok && mpimChannels.channels) {
+      for (const channel of mpimChannels.channels) {
+        if (channel.id && channel.name) {
+          channels.push({
+            id: channel.id,
+            name: channel.name,
+            isPrivate: true,
+            isArchived: channel.is_archived || false,
+            isMPIM: true,
+          });
+        }
+      }
+    }
+
+    channels.sort((a, b) => a.name.localeCompare(b.name));
+
+    return {
+      channels,
+      selectedChannelId: null,
+    };
+  } catch (error: any) {
+    logger.error("Error fetching Slack channels", {
+      error,
+      integrationId,
+      userId,
+    });
+
+    const isInvalidAuth =
+      error?.data?.error === "invalid_auth" ||
+      (error?.code === "slack_webapi_platform_error" &&
+        error?.data?.error === "invalid_auth");
+
+    if (isInvalidAuth) {
+      throw createSlackRouteError(
+        "Slack authentication failed",
+        401,
+        "The Slack integration token is invalid or expired. Please reconnect your Slack integration.",
+        "SLACK_INVALID_AUTH",
+      );
+    }
+
+    throw createSlackRouteError("Failed to fetch channels", 500, error.message);
+  }
+};
 
 export const getSlackChannels = async (req: Request, res: Response) => {
   const user = req.session?.user;
   if (!user) {
     return res.status(401).json({ error: "Unauthorized" });
+  }
+  if (!user.organizationId) {
+    return res.status(400).json({ error: "Organization context is required" });
   }
 
   const integrationId = req.query.integrationId as string;
@@ -98,12 +259,18 @@ export const getSlackChannels = async (req: Request, res: Response) => {
   }
 
   try {
-    const manager = new SlackIntegrationManager();
-    const channels = await manager.fetchResourcesForInstance(user.id, integrationId);
-    const response: SlackChannelsResponse = { channels, selectedChannelId: null };
+    const response = await fetchSlackChannelsForIntegration(
+      user.id,
+      user.organizationId,
+      integrationId,
+    );
     res.status(200).json(response);
   } catch (error: any) {
-    logger.error("Error fetching Slack channels", { error, integrationId, userId: user.id });
+    logger.error("Error fetching Slack channels", {
+      error,
+      integrationId,
+      userId: user.id,
+    });
     res.status(error?.statusCode || 500).json({
       error: error.message || "Failed to fetch channels",
       details: error.details,
@@ -117,6 +284,9 @@ export const getSlackUsers = async (req: Request, res: Response) => {
   if (!user) {
     return res.status(401).json({ error: "Unauthorized" });
   }
+  if (!user.organizationId) {
+    return res.status(400).json({ error: "Organization context is required" });
+  }
 
   const integrationId = req.query.integrationId as string;
   if (!integrationId) {
@@ -124,12 +294,12 @@ export const getSlackUsers = async (req: Request, res: Response) => {
   }
 
   try {
-    // Verify user owns this integration
+    // Verify user owns this integration and it belongs to their organization
     // For Slack, integrationId is user_slack_integrations.id
     const userSlackIntegration = await db().user_slack_integrations.findFirst({
       where: {
         id: integrationId,
-        user_id: user.id,
+        organization_id: user.organizationId,
       },
       include: {
         slack_integration: true,
@@ -160,22 +330,24 @@ export const getSlackUsers = async (req: Request, res: Response) => {
     }
 
     const response: SlackUsersResponse = {
-      users: users.members
-        ?.filter((member): member is SlackUser & { id: string; name: string } =>
-          Boolean(member.id && member.name) && !member.is_bot
-        )
-        .map(member => ({
-          id: member.id,
-          name: member.name,
-        })) || [],
+      users:
+        users.members
+          ?.filter(
+            (member): member is SlackUser & { id: string; name: string } =>
+              Boolean(member.id && member.name) && !member.is_bot,
+          )
+          .map((member) => ({
+            id: member.id,
+            name: member.name,
+          })) || [],
     };
 
     res.status(200).json(response);
   } catch (error: any) {
-    logger.error('Error fetching Slack users:', { error });
+    logger.error("Error fetching Slack users:", { error });
     res.status(500).json({ error: "Failed to fetch users" });
   }
-}
+};
 
 export async function handleSlackInteraction(req: Request, res: Response) {
   res.sendStatus(200);
@@ -190,16 +362,16 @@ export async function handleSlackInteraction(req: Request, res: Response) {
 async function openChat(accessToken: string, authedUserId: string) {
   try {
     const client = new WebClient(accessToken, {
-      logLevel: LogLevel.DEBUG
+      logLevel: LogLevel.DEBUG,
     });
 
     const { channel } = await client.conversations.open({
-      users: authedUserId
+      users: authedUserId,
     });
 
     return channel;
   } catch (error) {
-    logger.error('Error opening chat', { error, authedUserId });
+    logger.error("Error opening chat", { error, authedUserId });
     return null;
   }
 }

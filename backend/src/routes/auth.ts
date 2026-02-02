@@ -1,140 +1,312 @@
+import { users as PrismaUser } from "@prisma/client";
+import {
+  AuthenticateWithSessionCookieSuccessResponse,
+  AuthenticationResponse,
+} from "@workos-inc/node";
 import { NextFunction, Request, Response } from "express";
-import { Jwt } from "../utility/jwt";
-import { login as loginUser } from "../types/user";
+import { settings } from "../config/settings";
+import logger from "../logger";
+import { db } from "../prismaClient";
+import { Role, User } from "../shared/types";
 import { Session } from "../types/session";
-import { nodeEnv, optional } from "../config/settings";
-import logger, { setUserContext } from "../logger";
+import { workos } from "../utility/workos";
 
-export const COOKIE_NAME = 'AUTH_JWT';
+export const WORKOS_SESSION_COOKIE_NAME = "TERSE_WORKOS_SESSION";
 
-export const authMiddleware = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-        if (!req.cookies || !req.cookies[COOKIE_NAME]) {
-            logger.debug('Unauthorized - No cookie provided');
-            res.status(401).json({ message: 'Unauthorized' });
-            return;
-        }
-
-        const token = req.cookies[COOKIE_NAME];
-        const user = await new Jwt().verify(token);
-
-        if (!user) {
-            logger.debug('Unauthorized - No user found');
-            res.status(401).json({ message: 'Unauthorized' });
-            return;
-        }
-
-        // If user is verified, refresh the token to extend session
-        const newToken = await new Jwt().sign(user.id);
-        res.cookie(COOKIE_NAME, newToken, {
-            httpOnly: true,
-            secure: nodeEnv === 'production',
-            sameSite: nodeEnv === 'production' ? 'none' : 'lax',
-            path: '/',
-            maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-        });
-
-        // Create session object
-        const session: Session = {
-            user: user,
-            isUserInitiated: true,
-        };
-
-        req.session = session;
-        
-        // Set user context for logging
-        setUserContext(user.id, user.email);
-        
-        next();
-    } catch (error) {
-        next(error); // Pass errors to error handler
-    }
-}
-
-export async function setSession(req: Request, res: Response) {
-    logger.debug('setSession route has been hit', { hasBody: !!req.body });
-
-    const { token } = req.body;
-
-    if (!token) {
-        res.status(401).json({ message: 'Unauthorized - No token provided' });
-        return;
-    }
-
-    // verify token
-    const user = await new Jwt().verify(req.body.token);
-    if (!user) {
-        logger.debug('Unauthorized - Invalid token');
-        res.status(401).json({ message: 'Unauthorized - Invalid token' });
-        return;
-    }
-
-    logger.debug('User verified', { userId: user.id, email: user.email });
-
-    res.cookie(COOKIE_NAME, token, {
-        httpOnly: true,
-        secure: nodeEnv === 'production',
-        sameSite: nodeEnv === 'production' ? 'none' : 'lax',
-        path: '/',
-        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-        domain: optional.cookieDomain || undefined // Allow setting custom domain
-    });
-
-    res.json({
-        message: 'Login successful',
-        user: user
-    });
-}
-
-
-export async function me(req: Request, res: Response) {
-    try {
-        res.send(req.session?.user);
-    } catch (error) {
-        logger.error('Failed to retrieve session user', { error });
-        res.status(500).json({ message: 'Failed to fetch user information' });
-    }
-}
+export const WORKOS_SESSION_COOKIE_OPTIONS = {
+  path: "/",
+  httpOnly: true,
+  secure: settings.nodeEnv === "production",
+  sameSite: "lax" as const,
+};
 
 export async function login(req: Request, res: Response) {
-    logger.debug('login route has been hit', { hasBody: !!req.body, hasEmail: !!req.body?.email });
-
-    try {
-        const user = await loginUser(req.body.email, req.body.password);
-
-        if (!user) {
-            return res.status(401).json({ message: 'Invalid credentials' });
-        }
-
-        // Create JWT token
-        const token = await new Jwt().sign(user.id);
-
-        res.cookie(COOKIE_NAME, token, {
-            httpOnly: true,
-            secure: nodeEnv === 'production',
-            sameSite: nodeEnv === 'production' ? 'none' : 'lax',
-            path: '/',
-            maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-            domain: optional.cookieDomain || undefined // Allow setting custom domain
-        });
-
-        logger.info('Login successful for user', { userId: user.id, email: user.email });
-
-        res.json({
-            message: 'Login successful',
-            user: user
-        });
-    } catch (error) {
-        logger.error('Login error', { error });
-        res.status(500).json({ message: 'Internal server error' });
-    }
+  const authorizationUrl = workos.userManagement.getAuthorizationUrl({
+    provider: "authkit",
+    redirectUri: settings.workos.redirectUri,
+  });
+  res.redirect(authorizationUrl);
 }
 
 export async function logout(req: Request, res: Response) {
-    logger.debug('logout route has been hit', { userId: req.session?.user?.id });
-    res.clearCookie(COOKIE_NAME);
-    res.json({ message: 'Logout successful' });
+  const session = workos.userManagement.loadSealedSession({
+    sessionData: req.cookies[WORKOS_SESSION_COOKIE_NAME],
+    cookiePassword: settings.workos.cookiePassword,
+  });
+  const url = await session.getLogoutUrl({ returnTo: settings.urls.backend });
+  res.clearCookie(WORKOS_SESSION_COOKIE_NAME, WORKOS_SESSION_COOKIE_OPTIONS);
+  res.redirect(url);
 }
 
+export async function me(req: Request, res: Response) {
+  const user = req.session?.user || null;
+  if (!user) {
+    return res.status(401).send("Unauthorized");
+  }
+  // Always fetch fresh profile data from WorkOS so profile updates (e.g., from User Profile widget)
+  // are reflected immediately when the frontend calls refreshUser()
+  try {
+    const workOSUser = await workos.userManagement.getUser(user.workosId);
+    const refreshedUser: User = {
+      ...user,
+      email: workOSUser.email,
+      displayName: workOSUser.firstName + " " + workOSUser.lastName,
+      firstName: workOSUser.firstName || null,
+      lastName: workOSUser.lastName || null,
+      displayPhotoUrl: workOSUser.profilePictureUrl || "",
+    };
+    return res.send(refreshedUser);
+  } catch (error) {
+    logger.warn(
+      "Failed to fetch fresh user from WorkOS, returning session user",
+      {
+        error,
+        userId: user.id,
+      }
+    );
+    return res.send(user);
+  }
+}
 
-export default { me, login, logout };
+function createAuthMiddleware(requireOrganization: boolean) {
+  return async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const session = workos.userManagement.loadSealedSession({
+        sessionData: req.cookies[WORKOS_SESSION_COOKIE_NAME],
+        cookiePassword: settings.workos.cookiePassword,
+      });
+      const authResult = await session.authenticate();
+
+      if (authResult.authenticated) {
+        const user = await getOrCreateDbUserFromWorkOS(authResult);
+        if (!req.session) {
+          req.session = {
+            user,
+            isUserInitiated: true,
+          } as Session;
+        } else {
+          req.session.user = user;
+          req.session.isUserInitiated = true;
+        }
+        if (requireOrganization && !user.organizationId) {
+          return sendOrganizationRequired(req, res);
+        }
+        return next();
+      }
+
+      // Give up if no cookie is provided
+      const authenticated = authResult.authenticated;
+      const authFailedReason = authResult.reason;
+      if (!authenticated && authFailedReason === "no_session_cookie_provided") {
+        return sendUnauthorized(req, res);
+      }
+
+      // try refreshing the session, it may have gone stale
+      logger.info("Session expired, attempting refresh", {
+        reason: authFailedReason,
+      });
+      const refreshedSessionResult = await session.refresh();
+      if (!refreshedSessionResult.authenticated) {
+        logger.warn("Session refresh failed");
+        return sendUnauthorized(req, res);
+      }
+      logger.info("Session refreshed successfully");
+      const user = await getOrCreateDbUserFromWorkOS(refreshedSessionResult);
+      if (!req.session) {
+        req.session = {
+          user,
+          isUserInitiated: true,
+        } as Session;
+      } else {
+        req.session.user = user;
+        req.session.isUserInitiated = true;
+      }
+
+      if (requireOrganization && !user.organizationId) {
+        return sendOrganizationRequired(req, res);
+      }
+
+      // update the cookie if we have a sealed session
+      if (refreshedSessionResult.sealedSession) {
+        res.cookie(
+          WORKOS_SESSION_COOKIE_NAME,
+          refreshedSessionResult.sealedSession,
+          WORKOS_SESSION_COOKIE_OPTIONS
+        );
+      }
+      return next();
+    } catch (error) {
+      logger.error("Failed to authorize user", {
+        error,
+      });
+      res.clearCookie(WORKOS_SESSION_COOKIE_NAME);
+      return sendUnauthorized(req, res);
+    }
+  };
+}
+
+function isApiRequest(req: Request): boolean {
+  const acceptHeader = req.get("accept") || "";
+  return acceptHeader.includes("application/json");
+}
+
+function sendUnauthorized(req: Request, res: Response) {
+  if (isApiRequest(req)) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  return res.redirect("/login");
+}
+
+function sendOrganizationRequired(req: Request, res: Response) {
+  return res.status(403).json({
+    code: "ORGANIZATION_REQUIRED",
+    message: "User must create or join an organization",
+    redirectTo: "/organization/create",
+  });
+}
+
+export async function callback(req: Request, res: Response) {
+  const code = req.query.code as string;
+
+  if (!code) {
+    return res.status(400).send("No code provided");
+  }
+
+  try {
+    const authenticateResponse =
+      await workos.userManagement.authenticateWithCode({
+        clientId: settings.workos.clientId,
+        code,
+        session: {
+          sealSession: true,
+          cookiePassword: settings.workos.cookiePassword,
+        },
+      });
+    if (!authenticateResponse.sealedSession) {
+      return res.status(401).send("No sealed session provided");
+    }
+    const workosSession = workos.userManagement.loadSealedSession({
+      sessionData: authenticateResponse.sealedSession,
+      cookiePassword: settings.workos.cookiePassword,
+    });
+    const authResult = await workosSession.authenticate();
+    if (!authResult.authenticated) {
+      return res.status(401).send("Failed to authenticate");
+    }
+
+    // Create user record in database if it doesn't already
+    // exist
+    await getOrCreateDbUserFromWorkOS(authResult);
+
+    // Store the session in a cookie
+    res.cookie(WORKOS_SESSION_COOKIE_NAME, authenticateResponse.sealedSession, {
+      path: "/",
+      httpOnly: true,
+      secure: settings.nodeEnv === "production",
+      sameSite: "lax",
+    });
+
+    // Redirect the user to the homepage
+    return res.redirect(settings.urls.frontend);
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    logger.error("WorkOS callback error", { error, message: errorMessage });
+    // Don't redirect to /login here as it causes an infinite redirect loop
+    // Clear any stale session cookie and show an error
+    res.clearCookie(WORKOS_SESSION_COOKIE_NAME);
+    return res
+      .status(500)
+      .send(
+        `Authentication failed: ${errorMessage}. ` +
+          `Please <a href="${settings.urls.frontend}">return to the app</a> and try again. ` +
+          `If the problem persists, clear your cookies for this site.`
+      );
+  }
+}
+
+export async function getWorkOSWidgetToken(req: Request, res: Response) {
+  const user = req.session?.user;
+  if (!user) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  if (!user.organizationId) {
+    return res.status(400).json({
+      error: "User has no organization. Create an organization first.",
+    });
+  }
+  const workosUserId = user?.workosId;
+  if (!workosUserId) {
+    return res.status(400).json({
+      error: "User has no WorkOS ID. Re-authenticate to link account.",
+    });
+  }
+
+  const widgetToken = await workos.widgets.getToken({
+    organizationId: user.organizationId,
+    userId: workosUserId,
+  });
+
+  return res.json({ token: widgetToken });
+}
+
+export async function getOrCreateDbUserFromWorkOS(
+  authResult:
+    | AuthenticateWithSessionCookieSuccessResponse
+    | RefreshSessionSuccessResponse
+): Promise<User> {
+  const prisma = db();
+  const workosUser = authResult.user;
+  let dbUser: PrismaUser | null = await prisma.users.findUnique({
+    where: {
+      workos_id: workosUser.id,
+    },
+  });
+  if (!dbUser) {
+    dbUser = await prisma.users.create({
+      data: {
+        workos_id: workosUser.id,
+      },
+    });
+  }
+
+  const roles = authResult.roles || [];
+
+  let organizationName = undefined;
+  if (authResult.organizationId) {
+    const organization = await workos.organizations.getOrganization(
+      authResult.organizationId
+    );
+    organizationName = organization.name;
+  }
+
+  return {
+    id: dbUser.id,
+    workosId: workosUser.id,
+    organizationId: authResult.organizationId ?? "",
+    organizationName: organizationName ?? "",
+    email: workosUser.email,
+    displayName: workosUser.firstName + " " + workosUser.lastName,
+    firstName: workosUser.firstName || null,
+    lastName: workosUser.lastName || null,
+    displayPhotoUrl: workosUser.profilePictureUrl || "",
+    roles: roles as Role[],
+  };
+}
+
+// Library doesn't export this type properly, so we need to define it ourselves
+type RefreshSessionSuccessResponse = Omit<
+  AuthenticateWithSessionCookieSuccessResponse,
+  "accessToken"
+> & {
+  authenticated: true;
+  session?: AuthenticationResponse;
+  sealedSession?: string;
+};
+
+// By default, every user must be in an organization for most routes
+export const authMiddleware = createAuthMiddleware(true);
+
+// Some routes have an exception to this rule
+export const authMiddlewareAllowNoOrg = createAuthMiddleware(false);
+
+export default { me, login, logout, getWorkOSWidgetToken, callback };

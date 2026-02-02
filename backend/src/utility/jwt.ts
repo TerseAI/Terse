@@ -6,26 +6,30 @@ import { jwt as jwtConfig } from '../config/settings';
 export class Jwt {
   private readonly TOKEN_EXPIRY = '7d'; // 7 days - in future may need to handle token expiration
 
-  async sign(userId: string) {
+  async sign(userId: string, organizationId?: string) {
     const user = await db().users.findUnique({ where: { id: userId } });
     if (!user) {
       throw new Error('User not found');
     }
 
-    const payload = { 
-      userId: user.id
+    const payload: { userId: string; organizationId?: string } = {
+      userId: user.id,
     };
+    if (organizationId) {
+      payload.organizationId = organizationId;
+    }
 
     return jwt.sign(payload, jwtConfig.secret, {
       expiresIn: this.TOKEN_EXPIRY
     });
   }
 
-  async verify(token: string): Promise<users | null> {
+  async verify(token: string): Promise<{ user: users; organizationId?: string } | null> {
     try {
-      let decoded = jwt.verify(token, jwtConfig.secret) as { userId: string };
+      const decoded = jwt.verify(token, jwtConfig.secret) as { userId: string; organizationId?: string };
       const user = await db().users.findUnique({ where: { id: decoded.userId } });
-      return user || null;
+      if (!user) return null;
+      return { user, organizationId: decoded.organizationId };
     } catch (error) {
       throw new Error('Invalid token');
     }

@@ -195,5 +195,5 @@ const SettingsItems: NavItem[] = [
         url: FrontendRoutes.NOTIFICATIONS,
         icon: Bell,
         iconColor: "text-primary",
-    },
+    }
 ]
