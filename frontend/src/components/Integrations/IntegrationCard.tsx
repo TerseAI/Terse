@@ -20,7 +20,7 @@ export interface IntegrationCardProps {
 }
 
 function IntegrationCard({ integration, isActive = true, stateToken, compact = false }: { integration: IntegrationType; isActive?: boolean; stateToken?: string; compact?: boolean }) {
-    const cardClassName = compact ? "min-w-64 max-w-64" : "min-w-sm max-w-sm";
+    const cardClassName = "min-w-sm max-w-sm";
 
     switch (integration) {
         case IntegrationType.NOTION:
