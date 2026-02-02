@@ -1,6 +1,5 @@
-import { SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "../ui/sidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
-import { OrganizationSwitcherWidget } from "../OrganizationSwitcher/OrganizationSwitcherWidget";
+import { SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "../ui/sidebar";
 
 export function AppSidebarHeader() {
     return (
@@ -22,9 +21,6 @@ export function AppSidebarHeader() {
                             <span className="text-xs text-muted-foreground">Beta</span>
                         </div>
                     </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                    <OrganizationSwitcherWidget />
                 </SidebarMenuItem>
             </SidebarMenu>
         </SidebarHeader>
