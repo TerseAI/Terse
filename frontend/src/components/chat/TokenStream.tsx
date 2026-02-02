@@ -11,6 +11,9 @@ function TokenStream({ text, disableAnimation = false }: { text: string, disable
     const [buffer, setBuffer] = useState<string[]>([]);
     const [finalText, setFinalText] = useState<string>('');
     const [showFormatted, setShowFormatted] = useState(false);
+    const lastTextChangeRef = useRef<number>(Date.now());
+    const completionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const bufferRef = useRef<string[]>([]);
 
     // If animation is disabled, immediately show formatted text
     useEffect(() => {
@@ -19,8 +22,18 @@ function TokenStream({ text, disableAnimation = false }: { text: string, disable
             setShowFormatted(true);
             setTokens([]);
             setBuffer([]);
+            bufferRef.current = [];
         }
     }, [text, disableAnimation]);
+
+    // Track when text changes to detect streaming completion
+    useEffect(() => {
+        lastTextChangeRef.current = Date.now();
+        // If we were showing formatted and text changed, reset to streaming mode
+        if (showFormatted && text !== finalText && !disableAnimation) {
+            setShowFormatted(false);
+        }
+    }, [text]);
 
     // Process markdown
     const processMarkdown = (text: string): JSX.Element => {
@@ -67,7 +80,11 @@ function TokenStream({ text, disableAnimation = false }: { text: string, disable
         const diff = text.slice(prev.length);
         const newTokens = diff.split(/(\s+|\n+)/);
 
-        setBuffer((prev) => [...prev, ...newTokens]);
+        setBuffer((prev) => {
+            const newBuffer = [...prev, ...newTokens];
+            bufferRef.current = newBuffer;
+            return newBuffer;
+        });
         previousTextRef.current = text;
     }, [text, disableAnimation]);
 
@@ -83,26 +100,49 @@ function TokenStream({ text, disableAnimation = false }: { text: string, disable
             }));
 
             setTokens((prev) => [...prev, ...next]);
-            setBuffer((prev) => prev.slice(3));
+            setBuffer((prev) => {
+                const newBuffer = prev.slice(3);
+                bufferRef.current = newBuffer;
+                return newBuffer;
+            });
         }, 20);
 
         return () => clearInterval(interval);
     }, [buffer]);
 
-    // Handle when streaming finishes - wait a bit then apply formatting
+    // Handle when streaming finishes - use debounce approach for reliability
     useEffect(() => {
-        const currentText = tokens.map(token => token.value).join('');
-        
-        if (currentText === text && buffer.length === 0 && text.length > 0) {
-            // Streaming is complete, wait a moment then apply formatting
-            const timer = setTimeout(() => {
-                setFinalText(text);
-                setShowFormatted(true);
-            }, 500); // Small delay to let animation settle
-            
-            return () => clearTimeout(timer);
+        if (disableAnimation) return;
+        if (text.length === 0) return;
+
+        // Clear any existing completion timer
+        if (completionTimerRef.current) {
+            clearTimeout(completionTimerRef.current);
+            completionTimerRef.current = null;
         }
-    }, [tokens, text, buffer.length]);
+
+        // Only check for completion when buffer is empty (all tokens rendered)
+        if (buffer.length === 0) {
+            // Check if enough time has passed since last text change (debounce)
+            const timeSinceLastChange = Date.now() - lastTextChangeRef.current;
+            const delay = Math.max(0, 300 - timeSinceLastChange);
+
+            completionTimerRef.current = setTimeout(() => {
+                // Final check: buffer still empty (use ref to avoid stale closure)
+                if (bufferRef.current.length === 0) {
+                    setFinalText(text);
+                    setShowFormatted(true);
+                }
+            }, delay + 200); // Add buffer for animation to settle
+        }
+
+        return () => {
+            if (completionTimerRef.current) {
+                clearTimeout(completionTimerRef.current);
+                completionTimerRef.current = null;
+            }
+        };
+    }, [tokens, text, buffer.length, disableAnimation]);
 
     // Show formatted version (only if finalText matches current text to avoid stale content)
     if (showFormatted && finalText === text) {
