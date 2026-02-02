@@ -239,12 +239,17 @@ function SelectSlackChannelForm({ integrationId, isBotUser, initialChannelId, in
     if (isBotUser && channels.length === 0) {
         return (
             <div className="flex flex-col gap-2 p-3 bg-muted/50 rounded-md border border-border">
-                <p className="text-sm text-muted-foreground">
-                    No channels available. To send notifications, you need to invite the Terse bot to at least one channel.
+                <p className="text-sm font-medium text-foreground">
+                    No channels available yet
                 </p>
                 <p className="text-sm text-muted-foreground">
-                    In Slack, go to a channel and type <code className="px-1.5 py-0.5 bg-muted rounded text-foreground">/invite @Terse</code> to add the bot.
+                    The Terse bot can only access channels it has been invited to. To add a channel:
                 </p>
+                <ol className="text-sm text-muted-foreground list-decimal list-inside space-y-1">
+                    <li>Open the channel in Slack where you want notifications</li>
+                    <li>Type <code className="px-1.5 py-0.5 bg-muted rounded text-foreground">/invite @Terse</code></li>
+                    <li>Return here and refresh the channel list</li>
+                </ol>
             </div>
         );
     }

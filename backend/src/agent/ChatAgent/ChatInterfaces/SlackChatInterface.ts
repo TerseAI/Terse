@@ -35,7 +35,7 @@ class SlackChatInterface extends ChatInterface {
     userId: string,
     organizationId: string,
     slackUserId?: string,
-    sessionId?: string, // thread_ts if in a thread
+    sessionId?: string // thread_ts if in a thread
   ) {
     super(sessionId ?? channel, userId, organizationId);
     this.webClient = webClient;
@@ -95,7 +95,7 @@ class SlackChatInterface extends ChatInterface {
   }
 
   private async handleFormIntegrationInstallation(
-    integration: IntegrationType,
+    integration: IntegrationType
   ): Promise<string> {
     try {
       // Create state payload with chat metadata
@@ -143,7 +143,7 @@ class SlackChatInterface extends ChatInterface {
   }
 
   private async handleOAuthIntegrationWithConfig(
-    integration: IntegrationType,
+    integration: IntegrationType
   ): Promise<string> {
     try {
       // Configuration required - send button to open configuration modal
@@ -179,7 +179,14 @@ class SlackChatInterface extends ChatInterface {
 
       await this.say(messagePayload);
 
-      return `I've sent you a button to configure ${integration}. Click it to set up the integration.`;
+      let response = `I've sent you a button to configure ${integration}. Click it to set up the integration.`;
+
+      // Add Slack-specific guidance about channel access
+      if (integration === IntegrationType.SLACK) {
+        response += `\n\nIMPORTANT: After connecting Slack as a bot, you'll need to invite the Terse bot to each channel you want it to access. In the channel, type /invite @Terse. Only channels where the bot has been invited will be available for automations.`;
+      }
+
+      return response;
     } catch (error) {
       logger.error("Error preparing OAuth integration with config", {
         error,
@@ -192,7 +199,7 @@ class SlackChatInterface extends ChatInterface {
 
   private async handleOAuthIntegrationWithoutConfig(
     integration: IntegrationType,
-    integrationManager: OAuthIntegrationInstallation<IntegrationType>,
+    integrationManager: OAuthIntegrationInstallation<IntegrationType>
   ): Promise<string> {
     try {
       if (!this.userId) {
@@ -239,7 +246,7 @@ class SlackChatInterface extends ChatInterface {
         this.userId,
         this.organizationId,
         undefined,
-        additionalStatePayload,
+        additionalStatePayload
       );
       const oauthUrl = installationDetails.oauthUrl;
 
@@ -269,7 +276,7 @@ class SlackChatInterface extends ChatInterface {
         } catch (error) {
           logger.error(
             "Failed to update preliminary message, falling back to posting new message",
-            { error, integration, userId: this.userId },
+            { error, integration, userId: this.userId }
           );
           await this.say(messagePayload);
         }
@@ -300,13 +307,13 @@ class SlackChatInterface extends ChatInterface {
     }
     if (!this.organizationId) {
       logger.error(
-        "Cannot prompt for integration: organizationId is not available",
+        "Cannot prompt for integration: organizationId is not available"
       );
       return "Unable to get authorization URL. Please ensure you are properly authenticated.";
     }
 
     const integrationManager = INTEGRATION_REGISTRY.find(
-      (int) => int.integrationType === integration,
+      (int) => int.integrationType === integration
     );
 
     if (!integrationManager) {
@@ -329,7 +336,7 @@ class SlackChatInterface extends ChatInterface {
       // No configuration needed - proceed with existing OAuth flow
       return await this.handleOAuthIntegrationWithoutConfig(
         integration,
-        integrationManager,
+        integrationManager
       );
     }
 
@@ -348,7 +355,7 @@ class SlackChatInterface extends ChatInterface {
 
   async processMessageEnd(
     sessionId: string,
-    finalOutput: string,
+    finalOutput: string
   ): Promise<void> {
     logger.info("Slack chat interface processMessageEnd. Final output:", {
       messageTsToReplace: this.messageTsToReplace,
@@ -372,7 +379,7 @@ class SlackChatInterface extends ChatInterface {
       } catch (error) {
         logger.error(
           "Failed to update message, falling back to posting new message",
-          { error, messageTs: this.messageTsToReplace },
+          { error, messageTs: this.messageTsToReplace }
         );
         // Fall through to post new message
       }
