@@ -1,61 +1,44 @@
 import { Request, Response } from "express";
 import logger from "../../logger";
 import { db } from "../../prismaClient";
-import { GithubAppInstallationCallbackRequest } from "../../shared/types";
-import { GithubRepository, User } from "../../types/prisma";
-import { processRepository } from "./githubApp";
-import { emitCacheInvalidationWithKey } from "../../services/CacheInvalidationService";
+import { emitCacheInvalidationWithKey } from "../../realtimeSocket";
+import { GithubRepository } from "../../types/prisma";
 
-export async function processsGithubAppInstallationWebhook(
-  req: Request,
-  res: Response,
-) {
-  const body: GithubAppInstallationCallbackRequest =
-    req.body as GithubAppInstallationCallbackRequest;
+// TODO: find solution for this
+// export async function processsGithubAppInstallationWebhook(
+//   req: Request,
+//   res: Response,
+// ) {
+//   const body: GithubAppInstallationCallbackRequest =
+//     req.body as GithubAppInstallationCallbackRequest;
 
-  // Check if the user is regestered with us, no problem if not. Will make a placeholder user.
-  let user: User | null = await resolveUserForGithubInstallation(
-    body.installationId,
-    body.username,
-  );
-  if (!user) {
-    user = await db().users.create({
-      data: {
-        github_username: body.username,
-        is_placeholder: true,
-        email: body.email,
-        display_name: body.name,
-      },
-    });
+//   // Check if the user is regestered with us, no problem if not. Will make a placeholder user.
+//   let user: User | null = await resolveUserForGithubInstallation(
+//     body.installationId,
+//     body.username,
+//   );
 
-    logger.info("Placeholder user created", {
-      userId: user.id,
-      githubUsername: user.github_username,
-      email: user.email,
-    });
-  }
+//   // Update the user_github_installation record with the user_id
+//   await db().user_github_installation.upsert({
+//     where: { installation_id: body.installationId },
+//     update: { user_id: user.id },
+//     create: { user_id: user.id, installation_id: body.installationId },
+//   });
 
-  // Update the user_github_installation record with the user_id
-  await db().user_github_installation.upsert({
-    where: { installation_id: body.installationId },
-    update: { user_id: user.id },
-    create: { user_id: user.id, installation_id: body.installationId },
-  });
+//   // Process each repository in the array
+//   const processedRepositories = await Promise.all(
+//     body.repositories.map((repositoryData) =>
+//       processRepository(repositoryData, user, body.installationId),
+//     ),
+//   );
 
-  // Process each repository in the array
-  const processedRepositories = await Promise.all(
-    body.repositories.map((repositoryData) =>
-      processRepository(repositoryData, user, body.installationId),
-    ),
-  );
+//   res.status(200).json({
+//     message: "Repository installation callback processed",
+//     processedRepositories,
+//   });
 
-  res.status(200).json({
-    message: "Repository installation callback processed",
-    processedRepositories,
-  });
-
-  emitCacheInvalidationWithKey(user.id, "integrations");
-}
+//   emitCacheInvalidationWithKey(user.id, "integrations");
+// }
 
 type GithubAppInstallationDeletedRequest = {
   username: string;
@@ -70,7 +53,21 @@ export async function githubAppInstallationDeleted(
   const body: GithubAppInstallationDeletedRequest =
     req.body as GithubAppInstallationDeletedRequest;
 
-  const commit = db().$transaction(async (tx) => {
+  // Look up organizationId before deletion (installation record will be removed in transaction)
+  const installation = await db().user_github_installation.findUnique({
+    where: { installation_id: body.installationId },
+    select: { user_id: true },
+  });
+  let organizationId: string | null = null;
+  if (installation?.user_id) {
+    const token = await db().github_app_tokens.findFirst({
+      where: { user_id: installation.user_id },
+      select: { organization_id: true },
+    });
+    organizationId = token?.organization_id ?? null;
+  }
+
+  await db().$transaction(async (tx) => {
     // find all repos for this installation
     const repositories: GithubRepository[] =
       await tx.github_repositories.findMany({
@@ -102,32 +99,34 @@ export async function githubAppInstallationDeleted(
 
   // TODO: We need to invalidate Automations that were dependent on these repositories. This is a more general issue we don't account for yet.
 
-  emitCacheInvalidationWithKey(body.username, "integrations");
+  if (organizationId) {
+    emitCacheInvalidationWithKey(organizationId, "integrations");
+  }
 
   res.status(200).json({ message: "Repositories removed from user" });
 }
 
-export async function resolveUserForGithubInstallation(
-  installationId: number,
-  github_username: string,
-): Promise<User | null> {
-  return db().$transaction(async (tx) => {
-    // check if installation is already associated with a user - This should be most common case.
-    let installation = await tx.user_github_installation.findFirst({
-      where: { installation_id: installationId },
-    });
-    if (installation && installation.user_id != null) {
-      return tx.users.findUnique({ where: { id: installation.user_id } });
-    }
+// export async function resolveUserForGithubInstallation(
+//   installationId: number,
+//   github_username: string,
+// ): Promise<User | null> {
+//   return db().$transaction(async (tx) => {
+//     // check if installation is already associated with a user - This should be most common case.
+//     let installation = await tx.user_github_installation.findFirst({
+//       where: { installation_id: installationId },
+//     });
+//     if (installation && installation.user_id != null) {
+//       return tx.users.findUnique({ where: { id: installation.user_id } });
+//     }
 
-    // check if we can match via github_username
-    let user = await tx.users.findFirst({
-      where: { github_username: github_username },
-    });
-    if (user) {
-      return user;
-    }
+//     // check if we can match via github_username
+//     let user = await tx.users.findFirst({
+//       where: { github_username: github_username },
+//     });
+//     if (user) {
+//       return user;
+//     }
 
-    return null;
-  });
-}
+//     return null;
+//   });
+// }

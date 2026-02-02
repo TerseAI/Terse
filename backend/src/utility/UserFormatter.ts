@@ -1,23 +1,29 @@
-import { User } from '../types/prisma';
-
+import { User } from "../shared/types";
 
 export class UserFormatter {
-    static formatForAgent(user: User): string {
-        const parts: string[] = [];
-        
-        if (user.display_name) {
-            parts.push(`Name: ${user.display_name}`);
-        }
-        
-        if (user.email) {
-            parts.push(`Email: ${user.email}`);
-        }
-        
-        if (user.github_username) {
-            parts.push(`GitHub: ${user.github_username}`);
-        }
-        
-        return parts.join('\n') || 'User information not available';
-    }
-}
+  static formatForAgent(user: User): string {
+    const parts: string[] = [];
 
+    if (user.displayName) {
+      parts.push(`Name: ${user.displayName}`);
+    }
+
+    if (user.email) {
+      parts.push(`Email: ${user.email}`);
+    }
+
+    if (user.displayPhotoUrl) {
+      parts.push(`Photo: ${user.displayPhotoUrl}`);
+    }
+
+    if (user.organizationName) {
+      parts.push(`Organization: ${user.organizationName}`);
+    }
+
+    if (user.roles) {
+      parts.push(`Roles: ${user.roles.join(", ")}`);
+    }
+
+    return parts.join("\n") || "User information not available";
+  }
+}

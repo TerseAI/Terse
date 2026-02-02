@@ -22,8 +22,8 @@ class WebChatInterface extends ChatInterface {
     name: string = 'Web';
     private readonly socket: Socket;
 
-    constructor(sessionId: string, userId: string, socket: Socket) {
-        super(sessionId, userId);
+    constructor(sessionId: string, userId: string, socket: Socket, organizationId?: string) {
+        super(sessionId, userId, organizationId);
         this.socket = socket;
     }
 
@@ -51,9 +51,10 @@ class WebChatInterface extends ChatInterface {
             return `Integration ${integration} not found.`;
         }
 
-        // Create state token with chat metadata for both OAuth and form integrations
+        // Create state token with chat metadata for both OAuth and form integrations (organization-scoped)
         const stateToken = createOAuthStateToken({
             userId: this.userId!,
+            organizationId: this.organizationId ?? '',
             additionalFields: { integrationType: integration },
             additionalStatePayload: {
                 chatId: this.sessionId,

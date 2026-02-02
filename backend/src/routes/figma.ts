@@ -1,24 +1,31 @@
 import { Request, Response } from "express";
-import chalk from "chalk";
-import { FigmaIntegrationManager, FigmaWebhookEvent } from "../integrations/FigmaIntegration";
-import { FigmaEventTypes } from "../shared/types";
+import {
+  FigmaIntegrationManager,
+  FigmaWebhookEvent,
+} from "../integrations/FigmaIntegration";
 import logger from "../logger";
+import { FigmaEventTypes } from "../shared/types";
 
 // MARK: - Route Handlers
 
 export async function getFigmaIntegrations(req: Request, res: Response) {
   if (!req.session?.user) {
-      res.status(401).json({ error: 'Unauthorized' });
-      return;
+    res.status(401).json({ error: "Unauthorized" });
+    return;
   }
 
   try {
-      const manager = new FigmaIntegrationManager();
-      const integrations = await manager.getInstancesForUser(req.session.user.id);
-      res.status(200).json(integrations);
+    const manager = new FigmaIntegrationManager();
+    const integrations = await manager.getInstancesForOrganization(
+      req.session.user.organizationId,
+    );
+    res.status(200).json(integrations);
   } catch (error) {
-      logger.error('Error fetching Figma integrations', { error, userId: req.session.user.id });
-      res.status(500).json({ error: 'Failed to fetch Figma integrations' });
+    logger.error("Error fetching Figma integrations", {
+      error,
+      userId: req.session.user.id,
+    });
+    res.status(500).json({ error: "Failed to fetch Figma integrations" });
   }
 }
 
@@ -35,7 +42,10 @@ export const figmaOAuthCallback = async (req: Request, res: Response) => {
  * POST /webhooks/figma
  */
 export const handleFigmaWebhook = async (req: Request, res: Response) => {
-  logger.debug("Figma webhook received", { eventType: req.body?.event_type, hasBody: !!req.body });
+  logger.debug("Figma webhook received", {
+    eventType: req.body?.event_type,
+    hasBody: !!req.body,
+  });
 
   try {
     const webhookEvent = req.body as FigmaWebhookEvent;
@@ -44,7 +54,10 @@ export const handleFigmaWebhook = async (req: Request, res: Response) => {
     const supportedEventTypes = Object.values(FigmaEventTypes);
 
     if (!supportedEventTypes.includes(eventType as FigmaEventTypes)) {
-      logger.warn(`⚠️  Ignoring unsupported event type ${eventType} or missing file_key`, { eventType });
+      logger.warn(
+        `⚠️  Ignoring unsupported event type ${eventType} or missing file_key`,
+        { eventType },
+      );
       res.status(200).json({ received: true });
       return;
     }
@@ -55,7 +68,10 @@ export const handleFigmaWebhook = async (req: Request, res: Response) => {
     // Process the event asynchronously
     const figmaIntegrationManager = new FigmaIntegrationManager();
     figmaIntegrationManager.processWebhookEvent(webhookEvent).catch((error) => {
-      logger.error('Error processing Figma webhook event', { error, eventType: webhookEvent.event_type });
+      logger.error("Error processing Figma webhook event", {
+        error,
+        eventType: webhookEvent.event_type,
+      });
     });
   } catch (error) {
     logger.error("Error in handleFigmaWebhook", { error });

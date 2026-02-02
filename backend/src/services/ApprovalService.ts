@@ -1,3 +1,4 @@
+import { getUserForOrg } from "../utility/workos";
 import { db } from "../prismaClient";
 import { AgentWithRelations } from "../types/prisma";
 import { getInputConfigInclude, getOutputConfigInclude, getKnowledgeBaseConfigInclude } from "../utility/prismaIncludes";
@@ -20,6 +21,7 @@ export type ApprovalRequest = {
     stepId: string;
     approved: boolean;
     userId: string;
+    organizationId: string;
     rejectionReason?: string;
     /** When true, stops the run completely without resuming the agent */
     hardReject?: boolean;
@@ -37,8 +39,8 @@ export type ApprovalResult = {
 
 
 export class ApprovalService {
-    private static async validateUserAccess(runId: string, userId: string): Promise<{
-        runRecord: { id: string; status: string; automation: { id: string; user_id: string } };
+    private static async validateUserAccess(runId: string, organizationId: string): Promise<{
+        runRecord: { id: string; status: string; automation: { id: string; user_id: string; organization_id: string | null } };
         channel: AgentWithRelations;
     }> {
         const prisma = db();
@@ -48,14 +50,14 @@ export class ApprovalService {
             include: { automation: true },
         });
 
-        if (!runRecord || !runRecord.automation || runRecord.automation.user_id !== userId) {
-            throw new Error(`User ${userId} does not have access to run ${runId}`);
+        if (!runRecord || !runRecord.automation || runRecord.automation.organization_id !== organizationId) {
+            throw new Error(`Organization ${organizationId} does not have access to run ${runId}`);
         }
 
         const channel = await prisma.automations.findUnique({
             where: {
                 id: runRecord.automation.id,
-                user_id: userId,
+                organization_id: organizationId,
             },
             include: {
                 prompt: true,
@@ -198,7 +200,7 @@ export class ApprovalService {
     }
 
     static async processApproval(request: ApprovalRequest): Promise<ApprovalResult> {
-        const { runId, stepId, approved, userId, rejectionReason, hardReject } = request;
+        const { runId, stepId, approved, userId, organizationId, rejectionReason, hardReject } = request;
 
         logger.info(`[ApprovalService] Processing approval for runId: ${runId}, stepId: ${stepId}, approved: ${approved}, hardReject: ${hardReject}`);
 
@@ -206,8 +208,8 @@ export class ApprovalService {
         let channelIdForSlack: string | null = null;
         let slackMarkedProcessing = false;
         try {
-            // Validate user access and load channel
-            const { runRecord, channel } = await this.validateUserAccess(runId, userId);
+            // Validate organization access and load channel
+            const { runRecord, channel } = await this.validateUserAccess(runId, organizationId);
             channelIdForSlack = channel.id;
 
             // Store rejection reason in database if provided (for request changes flow)
@@ -227,12 +229,13 @@ export class ApprovalService {
 
             // Create outputs
             const outputs = this.createOutputs(channel);
-            
-            // Create base session for AgentRunner
-            const user = await db().users.findUnique({ where: { id: userId } });
+
+            // Create base session for AgentRunner (runtime User type)
+            const user = await getUserForOrg(userId, channel.organization_id);
             if (!user) {
                 throw new Error(`User not found: ${userId}`);
             }
+
             const session: Session = {
                 user,
                 isUserInitiated: true,
@@ -257,8 +260,8 @@ export class ApprovalService {
                 approved: approved,
             };
             await storeChatEvent(runId, toolApprovalResponseEvent);
-            emitCacheInvalidationWithWildcard(userId, 'runHistory', channel.id);
-            emitCacheInvalidationWithWildcard(userId, 'chatHistory', runId);
+            emitCacheInvalidationWithWildcard(channel.organization_id, 'runHistory', channel.id);
+            emitCacheInvalidationWithWildcard(channel.organization_id, 'chatHistory', runId);
 
             // Create agent runner and resume from pending approval
             const runContext = { runId };
@@ -273,6 +276,7 @@ export class ApprovalService {
                     runId,
                     userId: userId,
                     agentId: channel.id,
+                    organizationId: channel.organization_id,
                 },
                 rejectionReason,
                 hardReject
@@ -286,7 +290,7 @@ export class ApprovalService {
                 const hasFinalOutput = Boolean(result.result?.finalOutput);
                 try {
                     await finalizeRunStatus(runId, hasFinalOutput ? 'success' : 'failed');
-                    emitCacheInvalidationWithWildcard(userId, 'runHistory', channel.id);
+                    emitCacheInvalidationWithWildcard(channel.organization_id, 'runHistory', channel.id);
                 } catch (e) {
                     logger.error('Failed to finalize run status', { error: e });
                 }
@@ -304,8 +308,8 @@ export class ApprovalService {
             if (result.status === 'awaiting_approval') {
                 await this.updateSlackNotification(runId, stepId, finalSlackStatus, userId, channel.id);
 
-                emitCacheInvalidationWithWildcard(userId, 'runHistory', channel.id);
-                emitCacheInvalidationWithWildcard(userId, 'chatHistory', runId);
+                emitCacheInvalidationWithWildcard(channel.organization_id, 'runHistory', channel.id);
+                emitCacheInvalidationWithWildcard(channel.organization_id, 'chatHistory', runId);
 
                 logger.info(
                     `[ApprovalService] Processed approval decision; run is now awaiting another approval`,
@@ -341,7 +345,10 @@ export class ApprovalService {
                 await markRunFailed(runId, errorMessage, 'agent');
                 // runHistory cache keys are scoped by channelId (not runId). chatHistory is scoped by runId.
                 if (channelIdForSlack) {
-                    emitCacheInvalidationWithWildcard(userId, 'runHistory', channelIdForSlack);
+                    const automation = await db().automations.findUnique({ where: { id: channelIdForSlack }, select: { organization_id: true } });
+                    if (automation?.organization_id) {
+                        emitCacheInvalidationWithWildcard(automation.organization_id, 'runHistory', channelIdForSlack);
+                    }
                 } else {
                     logger.warn('[ApprovalService] Missing channel id; cannot invalidate runHistory cache', {
                         userId,
