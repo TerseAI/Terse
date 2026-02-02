@@ -69,12 +69,17 @@ export async function createNotificationDestination(req: Request, res: Response)
             return;
         }
 
-        // For Slack, validate that user owns the integration
+        // For Slack, validate that integration belongs to user's organization
         if (type === 'slack') {
+            const organizationId = req.session.user.organizationId;
+            if (!organizationId) {
+                res.status(400).json({ error: 'Organization context is required' });
+                return;
+            }
             const slackIntegration = await prisma.user_slack_integrations.findFirst({
                 where: {
-                    user_id: userId,
-                    id: integrationId
+                    id: integrationId,
+                    organization_id: organizationId,
                 }
             });
 

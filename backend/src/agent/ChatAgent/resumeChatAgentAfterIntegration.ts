@@ -15,6 +15,7 @@ import { initializeSlackWebClient } from "../../integrations/SlackIntegration";
  */
 export async function resumeChatAgentAfterIntegration(
     userId: string,
+    organizationId: string,
     chatId: string,
     channel: string,
     integrationType: IntegrationType,
@@ -25,11 +26,9 @@ export async function resumeChatAgentAfterIntegration(
         const integrationName = formatIntegrationName(integrationType);
 
         if (channel === 'web') {
-            // Web chat resumption
-            await resumeChatAgentForWeb(userId, chatId, integrationType, integrationId, integrationName);
+            await resumeChatAgentForWeb(userId, organizationId, chatId, integrationType, integrationId, integrationName);
         } else {
-            // Slack chat resumption
-            await resumeChatAgentForSlack(userId, chatId, channel, integrationType, integrationId, integrationName, messageTs);
+            await resumeChatAgentForSlack(userId, organizationId, chatId, channel, integrationType, integrationId, integrationName, messageTs);
         }
 
         logger.info('ChatAgent resumed after integration completion', { 
@@ -54,6 +53,7 @@ export async function resumeChatAgentAfterIntegration(
 
 async function resumeChatAgentForWeb(
     userId: string,
+    organizationId: string,
     chatId: string,
     integrationType: IntegrationType,
     integrationId: string,
@@ -83,8 +83,8 @@ async function resumeChatAgentForWeb(
         return;
     }
 
-    const webChatInterface = new WebChatInterface(chatId, userId, socket);
-    const chatAgent = new ChatAgent(webChatInterface, chatId, userId);
+    const webChatInterface = new WebChatInterface(chatId, userId, socket, organizationId);
+    const chatAgent = new ChatAgent(webChatInterface, chatId, userId, organizationId);
 
     const message = `The ${integrationName} integration has been successfully connected. Integration ID: ${integrationId}. You may Proceed!`;
     await chatAgent.run(message);
@@ -92,6 +92,7 @@ async function resumeChatAgentForWeb(
 
 async function resumeChatAgentForSlack(
     userId: string,
+    organizationId: string,
     chatId: string,
     channel: string,
     integrationType: IntegrationType,
@@ -121,13 +122,14 @@ async function resumeChatAgentForSlack(
     // Create WebClient
     const client = initializeSlackWebClient(userSlackIntegration as any);
 
-    // Create SlackChatInterface
+    // Create SlackChatInterface (organization-scoped)
     const slackChatInterface = new SlackChatInterface(
         channel,
         client,
         userId,
+        organizationId,
         userSlackIntegration.authed_user_id,
-        chatId
+        chatId,
     );
 
     // If messageTs is provided, set it to replace the message instead of posting new one
@@ -136,7 +138,7 @@ async function resumeChatAgentForSlack(
     }
 
     // Create ChatAgent
-    const chatAgent = new ChatAgent(slackChatInterface, chatId, userId);
+    const chatAgent = new ChatAgent(slackChatInterface, chatId, userId, organizationId);
 
     // Run the agent with a message about successful connection
     const message = `The ${integrationName} integration has been successfully connected. Integration ID: ${integrationId}`;

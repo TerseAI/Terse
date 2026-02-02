@@ -1,5 +1,7 @@
 import { db } from '../../prismaClient';
-import { AgentWithRelations, User } from '../../types/prisma';
+import { getUserForOrg } from '../../utility/workos';
+import { AgentWithRelations } from '../../types/prisma';
+import { User } from '../../shared/types';
 import { getAgentHydrationInclude } from '../../utility/prismaIncludes';
 import { OutputFactory } from '../../outputs/abstract/OutputFactory';
 import { Output } from '../../outputs/abstract/Output';
@@ -32,17 +34,19 @@ export interface HydratedAgent {
 /**
  * Fetches and hydrates an agent by ID with all required relations.
  * Returns the agent along with validated outputs and knowledge bases.
+ * Authorization is scoped by organizationId (not userId) so any user in the org can access.
  */
 export async function hydrateAgentById(
     agentId: string,
-    userId: string
+    userId: string,
+    organizationId: string
 ): Promise<HydrationResult> {
     const prisma = db();
 
     const agent = await prisma.automations.findUnique({
         where: {
             id: agentId,
-            user_id: userId
+            organization_id: organizationId
         },
         include: getAgentHydrationInclude()
     });
@@ -87,11 +91,15 @@ export async function hydrateAgentFromRecord(
         };
     }
 
-    // Fetch user
-    const user = await prisma.users.findUnique({
-        where: { id: userId }
-    });
-
+    // Fetch full user (runtime User type for session)
+    const organizationId = agent.organization_id;
+    if (!organizationId) {
+        return {
+            success: false,
+            error: { type: 'user_not_found', userId }
+        };
+    }
+    const user: User | null = await getUserForOrg(userId, organizationId);
     if (!user) {
         return {
             success: false,
@@ -142,9 +150,10 @@ export function createAgentRunner(
 export async function hydrateAndCreateRunner(
     agentId: string,
     userId: string,
+    organizationId: string,
     runContext: RunContext
 ): Promise<{ success: true; runner: AgentRunner<Session, ConfigInstance, ConfigInstance>; hydrated: HydratedAgent } | { success: false; error: HydrationError }> {
-    const result = await hydrateAgentById(agentId, userId);
+    const result = await hydrateAgentById(agentId, userId, organizationId);
 
     if (!result.success) {
         return result;

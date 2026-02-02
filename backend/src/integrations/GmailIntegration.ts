@@ -38,6 +38,7 @@ import {
   decodeOAuthStateToken,
   OAuthStateEncodingFormat,
 } from "../utility/oauth";
+import { getUserForOrg } from "../utility/workos";
 import { InputEvent } from "./abstract/InputEvent";
 import {
   ConfigurationFieldDefinition,
@@ -70,19 +71,11 @@ export class GmailIntegrationManager
     return [];
   }
 
-  async getInstancesForUser(userId: string): Promise<GmailIntegration[]> {
-    const prisma = db();
-    const integrations = await prisma.gmail_integrations.findMany({
-      where: {
-        user_id: userId,
-        is_active: true,
-      },
-      select: {
-        id: true,
-        email: true,
-        history_id: true,
-        watch_expiration: true,
-      },
+  async getInstancesForOrganization(
+    organizationId: string,
+  ): Promise<GmailIntegration[]> {
+    const integrations = await db().gmail_integrations.findMany({
+      where: { organization_id: organizationId },
     });
     return integrations.map((gi) => ({
       id: gi.id,
@@ -149,9 +142,14 @@ export class GmailIntegrationManager
           continue;
         }
         const { integration, user, oldHistoryId } = claim;
+        const fullUser = await getUserForOrg(
+          integration.user_id,
+          integration.organization_id,
+        );
+        if (!fullUser) continue;
 
         // Process with user context for logging
-        await runWithUserContext(user.id, user.email, async () => {
+        await runWithUserContext(fullUser, async () => {
           // Step 2: Fetch message IDs from Gmail (fast, non-blocking)
           const messageIds = await fetchNewMessageIds(
             integration,
@@ -238,7 +236,6 @@ export class GmailIntegrationManager
               }
 
               // Download attachments and store in GCS (if configured)
-              // Support: images, PDFs, documents, spreadsheets
               const allAttachments = parsedEmail.attachments || [];
               if (allAttachments.length > 0) {
                 const storedFiles = await downloadGmailAttachments(
@@ -254,7 +251,7 @@ export class GmailIntegrationManager
 
               // Process email through automations (non-blocking)
               logger.info("About to process email", {
-                userEmail: user.email,
+                userEmail: fullUser.email,
                 subject: parsedEmail.subject,
                 from: parsedEmail.from,
                 to: parsedEmail.to,
@@ -266,11 +263,10 @@ export class GmailIntegrationManager
 
               const eventProcessor = new EventProcessor(
                 new GmailEvent(parsedEmail, integration.id),
-                user,
+                fullUser,
               );
               const results = await eventProcessor.process();
 
-              // Process results from all automations
               let hasSuccess = false;
               for (const result of results) {
                 if (result.success) {
@@ -346,6 +342,7 @@ export class GmailIntegrationManager
 
   async getInstallationUrl(
     userId: string,
+    organizationId: string,
     options?: InstallationOptionsFor<IntegrationType.GMAIL>,
     additionalStatePayload?: AdditionalStateParams,
   ): Promise<OAuthInstallationDetails> {
@@ -355,6 +352,7 @@ export class GmailIntegrationManager
     // Include random for CSRF protection
     const state = createOAuthStateToken({
       userId,
+      organizationId,
       additionalFields: {
         random: crypto.randomBytes(16).toString("hex"),
       },
@@ -390,8 +388,17 @@ export class GmailIntegrationManager
       // Decode state using helper function
       const stateData = decodeOAuthStateToken(state);
       const userId = stateData.userId;
+      const organizationId = stateData.organizationId;
 
       if (!userId) {
+        res.redirect(`${urls.frontend}${FrontendRoutes.OAUTH.ERROR}`);
+        return;
+      }
+
+      if (!organizationId || typeof organizationId !== "string") {
+        logger.error("Gmail OAuth: organizationId is required in state", {
+          userId,
+        });
         res.redirect(`${urls.frontend}${FrontendRoutes.OAUTH.ERROR}`);
         return;
       }
@@ -450,6 +457,7 @@ export class GmailIntegrationManager
         },
         create: {
           user_id: userId,
+          organization_id: organizationId,
           email: emailAddress,
           history_id: historyId,
           watch_expiration: new Date(parseInt(expiration)),
@@ -460,13 +468,13 @@ export class GmailIntegrationManager
           last_processed_message_date: new Date(), // Set initial date to prevent processing historical messages
         },
         update: {
+          organization_id: organizationId,
           history_id: historyId,
           watch_expiration: new Date(parseInt(expiration)),
           access_token: tokens.access_token,
           refresh_token: tokens.refresh_token,
           token_expiry: tokenExpiry,
-          is_active: true, // Reactivate if it was previously disabled
-          // Don't reset last_processed_message_date on reactivation - preserve existing value
+          is_active: true,
         },
       });
 
@@ -756,7 +764,6 @@ export class GmailEvent extends InputEvent {
   }
 
   getFiles(): StoredFile[] {
-    // Return all stored files with full metadata
     return this.data.storedFiles || [];
   }
 }
@@ -1002,108 +1009,107 @@ async function fetchAndParseEmail(
   gmail: gmail_v1.Gmail,
   messageId: string,
 ): Promise<GmailEventData | null> {
-  const messageResponse = await gmail.users.messages.get({
-    userId: "me",
-    id: messageId,
-    format: "full",
-  });
+  try {
+    const messageResponse = await gmail.users.messages.get({
+      userId: "me",
+      id: messageId,
+      format: "full",
+    });
 
-  const message = messageResponse.data;
-  const headers = message.payload?.headers || [];
-  const getHeader = (name: string) => {
-    const header = headers.find(
-      (h) => h.name?.toLowerCase() === name.toLowerCase(),
-    );
-    return header?.value || "";
-  };
-
-  const subject = getHeader("Subject");
-  const from = getHeader("From");
-  const to = getHeader("To");
-  const date = getHeader("Date");
-  const messageIdHeader = getHeader("Message-ID");
-  const labelIds = message.labelIds || [];
-
-  // Extract body - Gmail can have different structures
-  const getBody = (payload: gmail_v1.Schema$MessagePart): string => {
-    if (payload.body?.data) {
-      return Buffer.from(payload.body.data, "base64").toString("utf-8");
-    }
-
-    if (payload.parts) {
-      for (const part of payload.parts) {
-        if (part.mimeType === "text/plain" && part.body?.data) {
-          return Buffer.from(part.body.data, "base64").toString("utf-8");
-        }
-
-        // Recursively check nested parts
-        const nestedBody = getBody(part);
-        if (nestedBody) {
-          return nestedBody;
-        }
-      }
-    }
-
-    return "";
-  };
-
-  // Extract all attachments recursively (images, PDFs, documents, etc.)
-  const extractAttachments = (
-    payload: gmail_v1.Schema$MessagePart,
-  ): GmailParsedAttachment[] => {
-    const attachments: GmailParsedAttachment[] = [];
-    const partHeaders = payload.headers || [];
-
-    const getPartHeader = (name: string) => {
-      const header = partHeaders.find(
+    const message = messageResponse.data;
+    const headers = message.payload?.headers || [];
+    const getHeader = (name: string) => {
+      const header = headers.find(
         (h) => h.name?.toLowerCase() === name.toLowerCase(),
       );
       return header?.value || "";
     };
 
-    // Check if this part has an attachmentId (any file type)
-    if (payload.body?.attachmentId && payload.mimeType) {
-      const contentDisposition = getPartHeader("Content-Disposition");
-      const contentId = getPartHeader("Content-ID");
-      const isInline =
-        contentDisposition.toLowerCase().includes("inline") || !!contentId;
+    const subject = getHeader("Subject");
+    const from = getHeader("From");
+    const to = getHeader("To");
+    const date = getHeader("Date");
+    const messageIdHeader = getHeader("Message-ID");
+    const labelIds = message.labelIds || [];
 
-      attachments.push({
-        attachmentId: payload.body.attachmentId,
-        filename: payload.filename || "attachment",
-        mimeType: payload.mimeType,
-        contentId: contentId ? contentId.replace(/[<>]/g, "") : undefined,
-        isInline,
-      });
-    }
-
-    // Recursively check nested parts
-    if (payload.parts) {
-      for (const part of payload.parts) {
-        attachments.push(...extractAttachments(part));
+    const getBody = (payload: gmail_v1.Schema$MessagePart): string => {
+      if (payload.body?.data) {
+        return Buffer.from(payload.body.data, "base64").toString("utf-8");
       }
+      if (payload.parts) {
+        for (const part of payload.parts) {
+          if (part.mimeType === "text/plain" && part.body?.data) {
+            return Buffer.from(part.body.data, "base64").toString("utf-8");
+          }
+          const nestedBody = getBody(part);
+          if (nestedBody) return nestedBody;
+        }
+      }
+      return "";
+    };
+
+    const extractAttachments = (
+      payload: gmail_v1.Schema$MessagePart,
+    ): GmailParsedAttachment[] => {
+      const attachments: GmailParsedAttachment[] = [];
+      const partHeaders = payload.headers || [];
+      const getPartHeader = (name: string) => {
+        const header = partHeaders.find(
+          (h) => h.name?.toLowerCase() === name.toLowerCase(),
+        );
+        return header?.value || "";
+      };
+      if (payload.body?.attachmentId && payload.mimeType) {
+        const contentDisposition = getPartHeader("Content-Disposition");
+        const contentId = getPartHeader("Content-ID");
+        const isInline =
+          contentDisposition.toLowerCase().includes("inline") || !!contentId;
+        attachments.push({
+          attachmentId: payload.body.attachmentId,
+          filename: payload.filename || "attachment",
+          mimeType: payload.mimeType,
+          contentId: contentId ? contentId.replace(/[<>]/g, "") : undefined,
+          isInline,
+        });
+      }
+      if (payload.parts) {
+        for (const part of payload.parts) {
+          attachments.push(...extractAttachments(part));
+        }
+      }
+      return attachments;
+    };
+
+    const body = getBody(message.payload || {});
+    const attachments = extractAttachments(message.payload || {});
+
+    return {
+      id: message.id || messageId,
+      threadId: message.threadId || "",
+      subject,
+      from,
+      to,
+      date,
+      internalDate: message.internalDate || "",
+      messageId: messageIdHeader,
+      body,
+      snippet: message.snippet || "",
+      labelIds,
+      attachments: attachments.length > 0 ? attachments : undefined,
+    };
+  } catch (error: any) {
+    if (
+      error?.code === 404 ||
+      error?.message?.includes("Requested entity was not found")
+    ) {
+      logger.debug(`Message ${messageId} not found (likely deleted or moved)`, {
+        messageId,
+      });
+    } else {
+      logger.error(`Error fetching message ${messageId}`, { error, messageId });
     }
-
-    return attachments;
-  };
-
-  const body = getBody(message.payload || {});
-  const attachments = extractAttachments(message.payload || {});
-
-  return {
-    id: message.id || messageId,
-    threadId: message.threadId || "",
-    subject,
-    from,
-    to,
-    date,
-    internalDate: message.internalDate || "", // Unix timestamp in milliseconds
-    messageId: messageIdHeader,
-    body,
-    snippet: message.snippet || "",
-    labelIds,
-    attachments: attachments.length > 0 ? attachments : undefined,
-  };
+    return null;
+  }
 }
 
 export type GmailWebhookEvent = {
@@ -1112,17 +1118,14 @@ export type GmailWebhookEvent = {
 };
 
 /**
- * Parse email message to extract useful information
- */
-/**
  * Parsed attachment from a Gmail message (images, documents, etc.)
  */
 export interface GmailParsedAttachment {
   attachmentId: string;
   filename: string;
   mimeType: string;
-  contentId?: string; // For inline images (cid: references)
-  isInline: boolean; // Content-Disposition: inline vs attachment
+  contentId?: string;
+  isInline: boolean;
 }
 
 export interface GmailEventData {

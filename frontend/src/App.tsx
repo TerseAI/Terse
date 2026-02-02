@@ -12,13 +12,14 @@ import AgentSetup from "./pages/Agents/AgentSetup";
 import AgentsList from "./pages/Agents/AgentsList";
 import Home from "./pages/Home";
 import IntegrationPage from "./pages/IntegrationPage";
-import Login from "./pages/Login";
 import NotificationsPage from "./pages/Notifications";
 import OAuthError from "./pages/OAuthError";
 import OAuthSuccess from "./pages/OAuthSuccess";
+import OrganizationCreationPage from "./pages/OrganizationCreationPage";
+import ProfilePage from "./pages/ProfilePage";
 import { AuthProvider, useAuth } from "./services/auth";
-import { FrontendRoutes } from "./shared/FrontendRoutes";
 import { ModelContextProvider } from "./services/ModelContextProvider";
+import { FrontendRoutes } from "./shared/FrontendRoutes";
 import { disconnectSocket, initializeSocket } from "./socket";
 
 function App() {
@@ -38,7 +39,9 @@ function App() {
               <Route path={FrontendRoutes.AGENTS.BY_ID.pattern} element={<AgentDetail />} />
               <Route path="integrations" element={<IntegrationPage />} />
               <Route path="notifications" element={<NotificationsPage />} />
+              <Route path="profile" element={<ProfilePage />} />
             </Route>
+            <Route path={FrontendRoutes.ORGANIZATIONS.CREATE} element={<OrganizationCreationPage />} />
             <Route path={FrontendRoutes.OAUTH.SUCCESS} element={<OAuthSuccess />} />
             <Route path={FrontendRoutes.OAUTH.ERROR} element={<OAuthError />} />
             <Route path="*" element={<div>Not Found</div>} />
@@ -70,9 +73,11 @@ function Content() {
     return <Spin />;
   }
 
-  // If user is not part of an organization, redirect to onboarding
-  if (user != null && user.is_placeholder) {
-    window.location.href = FrontendRoutes.ONBOARD;
+
+
+  // If user is not part of an organization, redirect to org creation
+  if (user != null && !user.organizationId) {
+    return <Navigate to={FrontendRoutes.ORGANIZATIONS.CREATE} replace />;
   }
 
   return (
@@ -83,8 +88,8 @@ function Content() {
             <AppLayout />
           </div>
         ) : (
-          <div key="login">
-            <Login />
+          <div key="redirecting" className="h-full grid place-items-center">
+            <Spin />
           </div>
         )}
       </AnimatePresence>

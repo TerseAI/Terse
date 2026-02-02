@@ -6,7 +6,6 @@ import crypto from "crypto";
 import { Request, Response } from "express";
 import jwt from "jsonwebtoken";
 import { EventProcessor } from "../agent/AgentRunner/EventProcessor";
-import { SlackChannel as SlackChannelShared } from "../shared/types";
 import {
   jwt as jwtConfig,
   slack as slackConfig,
@@ -15,6 +14,7 @@ import {
 import logger, { runWithUserContext } from "../logger";
 import { db } from "../prismaClient";
 import { Identifiable } from "../rag/Hydrator";
+import { fetchSlackChannelsForIntegration } from "../routes/slack";
 import {
   buildSlackFileKey,
   ensureStoredWithMetadata,
@@ -32,7 +32,11 @@ import {
   SlackIntegrationMetadata,
 } from "../shared/Integrations";
 import { RunHistoryTrigger } from "../shared/RunHistoryTypes";
-import { OAuthInstallationDetails, SlackChannelType } from "../shared/types";
+import {
+  OAuthInstallationDetails,
+  SlackChannel as SlackChannelShared,
+  SlackChannelType,
+} from "../shared/types";
 import {
   extractImagesFromMessage,
   extractTextFromAttachments,
@@ -50,6 +54,7 @@ import {
 import { HydratorType } from "../types/rag";
 import { Jwt } from "../utility/jwt";
 import { createOAuthStateToken } from "../utility/oauth";
+import { getUserForOrg } from "../utility/workos";
 import { InputEvent } from "./abstract/InputEvent";
 import {
   ConfigurationFieldDefinition,
@@ -73,10 +78,12 @@ export class SlackIntegrationManager
   constructor() {}
   integrationType: IntegrationType = IntegrationType.SLACK;
 
-  async getInstancesForUser(userId: string): Promise<SlackIntegration[]> {
+  async getInstancesForOrganization(
+    organizationId: string,
+  ): Promise<SlackIntegration[]> {
     const userSlackIntegrations = await db().user_slack_integrations.findMany({
       where: {
-        user_id: userId,
+        organization_id: organizationId,
       },
       include: {
         slack_integration: true,
@@ -88,6 +95,50 @@ export class SlackIntegrationManager
       teamName: usi.slack_integration.team_name,
       isBotUser: usi.is_bot_user,
     }));
+  }
+
+  async fetchResourcesForOrganization(
+    organizationId: string,
+    query?: string,
+  ): Promise<IntegrationWithResources<SlackIntegration, SlackChannelShared>[]> {
+    const integrations = await this.getInstancesForOrganization(organizationId);
+    const normalizedQuery = query?.trim().toLowerCase();
+    const matchesQuery = (value: string | undefined | null): boolean => {
+      if (!normalizedQuery) return true;
+      if (!value) return false;
+      return value.toLowerCase().includes(normalizedQuery);
+    };
+    return Promise.all(
+      integrations.map(async (integration) => {
+        const usi = await db().user_slack_integrations.findFirst({
+          where: {
+            id: integration.id,
+            organization_id: organizationId,
+          },
+          select: { user_id: true },
+        });
+        if (!usi) {
+          return { integration, resources: [] };
+        }
+        try {
+          const response = await fetchSlackChannelsForIntegration(
+            usi.user_id,
+            organizationId,
+            integration.id,
+          );
+          const channels = normalizedQuery
+            ? response.channels.filter((channel) => matchesQuery(channel.name))
+            : response.channels;
+          return { integration, resources: channels };
+        } catch (error) {
+          logger.warn(
+            `Failed to fetch resources for Slack integration ${integration.id}`,
+            { error, integrationId: integration.id },
+          );
+          return { integration, resources: [] };
+        }
+      }),
+    );
   }
 
   formatIntegrationInstanceForAgent(instance: SlackIntegration): string {
@@ -213,6 +264,7 @@ export class SlackIntegrationManager
 
   async getInstallationUrl(
     userId: string,
+    organizationId: string,
     options?: InstallationOptionsFor<IntegrationType.SLACK>,
     additionalStatePayload?: AdditionalStateParams,
   ): Promise<OAuthInstallationDetails> {
@@ -227,9 +279,9 @@ export class SlackIntegrationManager
     const user_scope = isBotUser
       ? ""
       : "channels:history,channels:read,groups:history,groups:read,im:history,im:read,mpim:history,mpim:read,users:read,channels:write,groups:write,mpim:write,im:write,chat:write,reactions:read,reactions:write,files:read";
-    // create JWT and attach to url as state, including isBotUser and any additional state payload
     const state = createOAuthStateToken({
       userId,
+      organizationId,
       additionalFields: { isBotUser },
       additionalStatePayload,
       expiresIn: "7d",
@@ -285,7 +337,16 @@ export class SlackIntegrationManager
       res.redirect(`${frontendUrl}${FrontendRoutes.OAUTH.ERROR}`);
       return;
     }
-    const isBotUser = decoded.isBotUser ?? true; // Default to true for backward compatibility
+    const isBotUser = decoded.isBotUser ?? true;
+    const organizationId = decoded.organizationId;
+
+    if (!organizationId || typeof organizationId !== "string") {
+      logger.error("Slack OAuth: organizationId is required in state", {
+        userId: user.user.id,
+      });
+      res.redirect(`${frontendUrl}${FrontendRoutes.OAUTH.ERROR}`);
+      return;
+    }
 
     const client_id = slackConfig.clientId;
     const client_secret = slackConfig.clientSecret;
@@ -378,31 +439,35 @@ export class SlackIntegrationManager
           ? {
               authed_user_id: authed_user.id,
               authed_user_access_token: authed_user.access_token,
+              organization_id: organizationId,
             }
           : {
               authed_user_id: authed_user.id,
+              organization_id: organizationId,
             };
 
         const createData =
           isUserType && authed_user.access_token
             ? {
-                user_id: user.id,
+                user_id: user.user.id,
                 slack_team_id: slackIntegration.team_id,
                 authed_user_id: authed_user.id,
                 authed_user_access_token: authed_user.access_token,
                 is_bot_user: false,
+                organization_id: organizationId,
               }
             : {
-                user_id: user.id,
+                user_id: user.user.id,
                 slack_team_id: slackIntegration.team_id,
                 authed_user_id: authed_user.id,
                 is_bot_user: true,
+                organization_id: organizationId,
               };
 
         await tx.user_slack_integrations.upsert({
           where: {
             user_id_slack_team_id_is_bot_user: {
-              user_id: user.id,
+              user_id: user.user.id,
               slack_team_id: slackIntegration.team_id,
               is_bot_user: !isUserType,
             },
@@ -418,7 +483,7 @@ export class SlackIntegrationManager
       const userSlackIntegration = await db().user_slack_integrations.findFirst(
         {
           where: {
-            user_id: user.id,
+            user_id: user.user.id,
             slack_team_id: team.id,
             is_bot_user: !isUserType,
           },
@@ -427,7 +492,7 @@ export class SlackIntegrationManager
 
       if (!userSlackIntegration) {
         logger.error("Failed to find user_slack_integration after OAuth", {
-          userId: user.id,
+          userId: user.user.id,
           teamId: team.id,
         });
         res.redirect(`${frontendUrl}${FrontendRoutes.OAUTH.ERROR}`);
@@ -446,7 +511,7 @@ export class SlackIntegrationManager
       );
 
       logger.info("Slack OAuth completed successfully", {
-        userId: user.id,
+        userId: user.user.id,
         teamId: team.id,
         integrationId: userSlackIntegration.id,
       });
@@ -529,76 +594,6 @@ export class SlackIntegrationManager
       return null;
     }
   }
-
-    async fetchResourcesForInstance(userId: string, integrationId: string, query?: string): Promise<SlackChannelShared[]> {
-        const userSlackIntegration = await db().user_slack_integrations.findFirst({
-            where: { id: integrationId, user_id: userId },
-            include: { slack_integration: true, user: true },
-        });
-
-        if (!userSlackIntegration || !userSlackIntegration.slack_integration) {
-            throw new Error("Slack integration not found");
-        }
-
-        const client = initializeSlackWebClient(userSlackIntegration);
-        const isBotUser = userSlackIntegration.is_bot_user;
-
-        const [publicChannels, privateChannels, mpimChannels] = await Promise.all([
-            client.conversations.list({ types: "public_channel", exclude_archived: true, limit: 1000 }),
-            client.conversations.list({ types: "private_channel", exclude_archived: true, limit: 1000 }),
-            client.conversations.list({ types: "mpim", exclude_archived: true, limit: 1000 })
-        ]);
-
-        const channels: SlackChannelShared[] = [];
-
-        if (publicChannels.ok && publicChannels.channels) {
-            for (const channel of publicChannels.channels) {
-                if (channel.id && channel.name && (!isBotUser || channel.is_member)) {
-                    channels.push({ id: channel.id, name: channel.name, isPrivate: false, isArchived: channel.is_archived || false, isMPIM: false });
-                }
-            }
-        }
-
-        if (privateChannels.ok && privateChannels.channels) {
-            for (const channel of privateChannels.channels) {
-                if (channel.id && channel.name) {
-                    channels.push({ id: channel.id, name: channel.name, isPrivate: true, isArchived: channel.is_archived || false, isMPIM: false });
-                }
-            }
-        }
-
-        if (mpimChannels.ok && mpimChannels.channels) {
-            for (const channel of mpimChannels.channels) {
-                if (channel.id && channel.name) {
-                    channels.push({ id: channel.id, name: channel.name, isPrivate: true, isArchived: channel.is_archived || false, isMPIM: true });
-                }
-            }
-        }
-
-        channels.sort((a, b) => a.name.localeCompare(b.name));
-
-        if (query) {
-            const normalizedQuery = query.trim().toLowerCase();
-            return channels.filter(channel => channel.name.toLowerCase().includes(normalizedQuery));
-        }
-
-        return channels;
-    }
-
-    async fetchResourcesForUser(userId: string, query?: string): Promise<IntegrationWithResources<SlackIntegration, SlackChannelShared>[]> {
-        const integrations = await this.getInstancesForUser(userId);
-        return Promise.all(
-            integrations.map(async (integration) => {
-                try {
-                    const resources = await this.fetchResourcesForInstance(userId, integration.id, query);
-                    return { integration, resources };
-                } catch (error) {
-                    logger.warn(`Failed to fetch resources for Slack integration ${integration.id}`, { error, integrationId: integration.id });
-                    return { integration, resources: [] };
-                }
-            })
-        );
-    }
 }
 
 // MARK: - SLACK Event
@@ -680,8 +675,6 @@ export class SlackEvent extends InputEvent implements Identifiable {
    */
   getFiles(): StoredFile[] {
     const files: StoredFile[] = [...(this.data.storedFiles || [])];
-
-    // Add public block/attachment images as StoredFile objects
     const publicImages = this.getImages().filter((img) => !img.requiresAuth);
     for (const img of publicImages) {
       files.push({
@@ -1162,7 +1155,6 @@ async function handleSlackMessage(
     // Supports: images, PDFs
     let storedFiles: StoredFile[] = [];
     if (files && files.length > 0) {
-      // Get bot token for downloading files
       const botToken =
         filteredWorkspaceUserIntegrations[0].slack_integration.access_token;
       storedFiles = await downloadSlackFiles(files, teamId, botToken);
@@ -1184,7 +1176,6 @@ async function handleSlackMessage(
       blocks: blocks,
       attachments: attachments,
       files: files,
-      // Stored files with full metadata
       storedFiles: storedFiles.length > 0 ? storedFiles : undefined,
     };
 
@@ -1196,64 +1187,62 @@ async function handleSlackMessage(
     let totalMatches = 0;
     for (const userSlackIntegration of filteredWorkspaceUserIntegrations) {
       try {
-        // Process with user context for logging
-        await runWithUserContext(
+        const organizationId = userSlackIntegration.organization_id;
+        if (!organizationId) continue;
+        const fullUser = await getUserForOrg(
           userSlackIntegration.user.id,
-          userSlackIntegration.user.email,
-          async () => {
-            const eventProcessor = new EventProcessor(
-              slackEvent,
-              userSlackIntegration.user,
-            );
-            const results = await eventProcessor.process();
+          organizationId,
+        );
+        if (!fullUser) continue;
+        await runWithUserContext(fullUser, async () => {
+          const eventProcessor = new EventProcessor(slackEvent, fullUser);
+          const results = await eventProcessor.process();
 
-            // Log results for this user
-            if (
-              results.length > 0 &&
-              results.some((r) => r.success || r.agentConfig !== null)
-            ) {
-              totalMatches += results.filter(
-                (r) => r.success || r.agentConfig !== null,
-              ).length;
-              logger.info(
-                `User ${userSlackIntegration.user.email}: ${results.length} automation(s) matched`,
-                {
-                  userId: userSlackIntegration.user.id,
-                  email: userSlackIntegration.user.email,
-                  resultsCount: results.length,
-                  teamId,
-                },
-              );
-              for (const result of results) {
-                if (result.success) {
-                  logger.debug(
-                    `  ✓ Agent "${result.agentConfig?.name}" processed successfully`,
-                    {
-                      agentName: result.agentConfig?.name,
-                      userId: userSlackIntegration.user.id,
-                    },
-                  );
-                } else if (result.agentConfig) {
-                  logger.warn(
-                    `  ⚠ Agent "${result.agentConfig?.name}": ${result.message}`,
-                    {
-                      agentName: result.agentConfig?.name,
-                      message: result.message,
-                      userId: userSlackIntegration.user.id,
-                    },
-                  );
-                }
+          // Log results for this user
+          if (
+            results.length > 0 &&
+            results.some((r) => r.success || r.agentConfig !== null)
+          ) {
+            totalMatches += results.filter(
+              (r) => r.success || r.agentConfig !== null,
+            ).length;
+            logger.info(
+              `User ${fullUser.email}: ${results.length} automation(s) matched`,
+              {
+                userId: fullUser.id,
+                email: fullUser.email,
+                resultsCount: results.length,
+                teamId,
+              },
+            );
+            for (const result of results) {
+              if (result.success) {
+                logger.debug(
+                  `  ✓ Agent "${result.agentConfig?.name}" processed successfully`,
+                  {
+                    agentName: result.agentConfig?.name,
+                    userId: fullUser.id,
+                  },
+                );
+              } else if (result.agentConfig) {
+                logger.warn(
+                  `  ⚠ Agent "${result.agentConfig?.name}": ${result.message}`,
+                  {
+                    agentName: result.agentConfig?.name,
+                    message: result.message,
+                    userId: fullUser.id,
+                  },
+                );
               }
             }
-          },
-        );
+          }
+        });
       } catch (error) {
         logger.error(
-          `Error processing automations for user ${userSlackIntegration.user.email}`,
+          `Error processing automations for user ${userSlackIntegration.user.id}`,
           {
             error,
             userId: userSlackIntegration.user.id,
-            email: userSlackIntegration.user.email,
           },
         );
         // Continue processing other users even if one fails
@@ -1532,7 +1521,6 @@ export interface SlackEventData {
   attachments?: SlackAttachment[];
   // File attachments (including images)
   files?: SlackFile[];
-  // Stored files with full metadata (images, documents)
   storedFiles?: StoredFile[];
 }
 
