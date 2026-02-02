@@ -16,6 +16,7 @@ datasource db {
 
 model users {
   id              String   @id @default(cuid())
+  workos_id       String?
   email           String   @unique
   display_name    String
   github_username String?  @unique
@@ -41,6 +42,8 @@ model users {
   posthog_integrations      posthog_integrations[]
   launchdarkly_integrations launchdarkly_integrations[]
   datadog_integrations      datadog_integrations[]
+
+  @@index([workos_id])
 }
 
 model github_repositories {
