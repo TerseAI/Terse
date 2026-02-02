@@ -5,7 +5,11 @@ import { uuidv4 } from "zod/v4";
 import { INTEGRATION_REGISTRY } from "../../integrations/abstract/IntegrationRegistry";
 import logger from "../../logger";
 import type { AgentDraft } from "../../routes/agents";
-import { applyAgentForUser, updateAgentForUser } from "../../routes/agents";
+import {
+  applyAgentForUser,
+  isUuidV4,
+  updateAgentForUser,
+} from "../../routes/agents";
 import type { ConfigInstance } from "../../shared/Configs";
 import { ConfigType } from "../../shared/Configs";
 import { FrontendRoutes } from "../../shared/FrontendRoutes";
@@ -16,10 +20,11 @@ export type ChatAgentContext = {
   chatInterface: ChatInterface;
   userId: string;
   organizationId: string;
+  sessionId: string;
 };
 
 export function buildChatAgentTools(
-  chatInterface: ChatInterface,
+  chatInterface: ChatInterface
 ): Tool<ChatAgentContext>[] {
   return [
     tool({
@@ -32,27 +37,41 @@ export function buildChatAgentTools(
           .string()
           .nullable()
           .describe(
-            "The ID of the agent to update. If not provided, a new agent will be created.",
+            "The ID of the agent to update. If not provided, a new agent will be created."
           ),
       }),
       execute: async (
         { agent, id },
-        runContext?: RunContext<ChatAgentContext>,
+        runContext?: RunContext<ChatAgentContext>
       ): Promise<string> => {
         logger.info("Slack chat interface applyAgent", { agent, id });
         const userId = runContext?.context?.userId;
         const organizationId = runContext?.context?.organizationId;
         if (!userId || !organizationId) {
           throw new Error(
-            "User ID and organization ID are required to apply agent",
+            "User ID and organization ID are required to apply agent"
           );
         }
 
         try {
           const draft = toAgentDraft(agent);
+          const sessionId = runContext?.context?.sessionId;
+          const createWithId =
+            !id &&
+            chatInterface.name === "Web" &&
+            sessionId &&
+            isUuidV4(sessionId)
+              ? { createWithId: sessionId }
+              : undefined;
           const result = id
             ? await updateAgentForUser(userId, organizationId, id, draft)
-            : await applyAgentForUser(userId, organizationId, draft);
+            : await applyAgentForUser(
+                userId,
+                organizationId,
+                draft,
+                createWithId
+              );
+
           await chatInterface.navigate(FrontendRoutes.AGENTS.DETAIL(result.id));
           return `Agent applied successfully (${result.id})`;
         } catch (error) {
@@ -72,7 +91,7 @@ export function buildChatAgentTools(
       }),
       execute: async (
         { integration }: { integration: IntegrationType },
-        runContext?: RunContext<ChatAgentContext>,
+        runContext?: RunContext<ChatAgentContext>
       ): Promise<string> => {
         return await chatInterface.promptForIntegration(integration);
       },
@@ -95,7 +114,7 @@ export function buildChatAgentTools(
           integrationType,
           query,
         }: { integrationType: IntegrationType; query: string | null },
-        runContext?: RunContext<ChatAgentContext>,
+        runContext?: RunContext<ChatAgentContext>
       ): Promise<string> => {
         logger.info("Fetching resources for integration type", {
           integrationType,
@@ -105,13 +124,13 @@ export function buildChatAgentTools(
         const organizationId = runContext?.context?.organizationId;
         if (!userId || !organizationId) {
           throw new Error(
-            "User ID and organization ID are required to fetch resources",
+            "User ID and organization ID are required to fetch resources"
           );
         }
         return await fetchResourcesForIntegrationType(
           integrationType,
           organizationId,
-          query ?? undefined,
+          query ?? undefined
         );
       },
     }),
@@ -123,7 +142,7 @@ const NonEmptyString = z.string().min(1);
 const BaseConfigSchema = z
   .object({
     integrationId: NonEmptyString.describe(
-      'Integration instance ID. Use the ID from the user’s connected integrations. Use "system" only for TIME_TRIGGER configs.',
+      'Integration instance ID. Use the ID from the user’s connected integrations. Use "system" only for TIME_TRIGGER configs.'
     ),
     configType: z
       .nativeEnum(ConfigType)
@@ -248,13 +267,13 @@ const TimeTriggerConfigSchema = BaseConfigSchema.extend({
   cronExpression: z
     .string()
     .describe(
-      'ALL TIMES ARE IN UTC. The cron expression to schedule the automation. Must be a valid cron expression. Use this format: "minute hour day-of-month month day-of-week"',
+      'ALL TIMES ARE IN UTC. The cron expression to schedule the automation. Must be a valid cron expression. Use this format: "minute hour day-of-month month day-of-week"'
     ),
 });
 
 function enforceNonSystemIntegrationId(
   config: { configType: ConfigType; integrationId?: string },
-  ctx: z.RefinementCtx,
+  ctx: z.RefinementCtx
 ): void {
   if (
     config.configType !== ConfigType.TIME_TRIGGER &&
@@ -374,7 +393,7 @@ export const AgentSchema = z
 type AgentSchemaInput = z.infer<typeof AgentSchema>;
 
 function toConfigInstance<T extends Record<string, any>>(
-  config: T,
+  config: T
 ): T & ConfigInstance {
   return {
     ...config,
@@ -423,10 +442,10 @@ function toAgentDraft(agent: AgentSchemaInput): AgentDraft {
 async function fetchResourcesForIntegrationType(
   integrationType: IntegrationType,
   organizationId: string,
-  query?: string,
+  query?: string
 ): Promise<string> {
   const manager = INTEGRATION_REGISTRY.find(
-    (m) => m.integrationType === integrationType,
+    (m) => m.integrationType === integrationType
   );
   if (!manager) {
     throw new Error(`Unknown integration type: ${integrationType}`);
@@ -435,12 +454,10 @@ async function fetchResourcesForIntegrationType(
   if (manager.fetchResourcesForOrganization) {
     const results = await manager.fetchResourcesForOrganization(
       organizationId,
-      query,
+      query
     );
     return JSON.stringify({ resources: results });
   }
 
-  return JSON.stringify(
-    "This is a system integration. No config is needed.",
-  );
+  return JSON.stringify("This is a system integration. No config is needed.");
 }
