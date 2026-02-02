@@ -119,7 +119,7 @@ model linear_integrations {
 model user_slack_integrations {
   id                       String   @id @default(cuid())
   user_id                  String
-  organization_id          String
+  organization_id          String?
   slack_team_id            String
   authed_user_id           String
   authed_user_access_token String?
@@ -180,7 +180,7 @@ model atlassian_integrations {
 model gmail_integrations {
   id                          String    @id @default(cuid())
   user_id                     String
-  organization_id             String
+  organization_id             String?
   email                       String
   history_id                  String
   watch_expiration            DateTime
@@ -232,7 +232,7 @@ model processed_slack_events {
 model notion_integrations {
   id                String   @id @default(cuid())
   user_id           String
-  organization_id   String
+  organization_id   String?
   workspace_id      String?
   workspace_name    String?
   integration_token String
@@ -385,7 +385,7 @@ model datadog_integrations {
 model automations {
   id               String   @id @default(cuid())
   user_id          String
-  organization_id  String
+  organization_id  String?
   name             String
   is_active        Boolean  @default(true)
   require_approval Boolean  @default(false)
