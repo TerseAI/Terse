@@ -97,5 +97,35 @@ DROP TYPE "TicketEventType";
 -- CreateIndex
 CREATE INDEX "automations_organization_id_idx" ON "automations"("organization_id");
 
+-- CreateIndex
+CREATE INDEX "atlassian_integrations_organization_id_idx" ON "atlassian_integrations"("organization_id");
+
+-- CreateIndex
+CREATE INDEX "datadog_integrations_organization_id_idx" ON "datadog_integrations"("organization_id");
+
+-- CreateIndex
+CREATE INDEX "figma_integrations_organization_id_idx" ON "figma_integrations"("organization_id");
+
+-- CreateIndex
+CREATE INDEX "github_app_tokens_organization_id_idx" ON "github_app_tokens"("organization_id");
+
+-- CreateIndex
+CREATE INDEX "gmail_integrations_organization_id_idx" ON "gmail_integrations"("organization_id");
+
+-- CreateIndex
+CREATE INDEX "launchdarkly_integrations_organization_id_idx" ON "launchdarkly_integrations"("organization_id");
+
+-- CreateIndex
+CREATE INDEX "linear_integrations_organization_id_idx" ON "linear_integrations"("organization_id");
+
+-- CreateIndex
+CREATE INDEX "notion_integrations_organization_id_idx" ON "notion_integrations"("organization_id");
+
+-- CreateIndex
+CREATE INDEX "posthog_integrations_organization_id_idx" ON "posthog_integrations"("organization_id");
+
+-- CreateIndex
+CREATE INDEX "user_slack_integrations_organization_id_idx" ON "user_slack_integrations"("organization_id");
+
 -- AddForeignKey
 ALTER TABLE "pending_approvals" ADD CONSTRAINT "pending_approvals_usersId_fkey" FOREIGN KEY ("usersId") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
