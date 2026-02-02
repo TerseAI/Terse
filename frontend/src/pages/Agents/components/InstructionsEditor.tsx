@@ -56,6 +56,7 @@ function InstructionsEditorContent({ text, prompt, setPrompt }: InstructionsEdit
                     onKeyDown={(e) => {
                         if (e.key === "Enter" || e.key === " ") setShowMarkdown(false);
                     }}
+                    className="flex-1 min-h-0 flex flex-col"
                 >
                     <div className="flex-1 min-h-0 overflow-auto react-markdown rounded-md p-2 border border-foreground/10 bg-background shadow-sm hover:border-foreground/15 transition">
                         <ReactMarkdown>{prompt?.text ?? clickHerePlaceholder}</ReactMarkdown>
