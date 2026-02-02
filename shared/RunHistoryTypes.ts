@@ -98,6 +98,7 @@ export type RunHistoryStreamingParams = {
     runId?: string;
     userId?: string;
     agentId?: string;
+    organizationId?: string;
 };
 
 export type RunHistoryStreamingParamsWithCallback = RunHistoryStreamingParams & {

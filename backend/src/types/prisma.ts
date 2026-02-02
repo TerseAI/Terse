@@ -1,6 +1,5 @@
 import {
   $Enums,
-  activity_events,
   approval_slack_messages,
   atlassian_integrations,
   automation_confluence_configs,
@@ -25,9 +24,6 @@ import {
   PrismaClient,
   run_history_raw_events,
   slack_integrations,
-  sub_activity_commit_associations,
-  sub_activity_events,
-  ticket_activity_events,
   user_github_repositories,
   user_notification_destinations,
   user_slack_integrations,
@@ -57,14 +53,6 @@ export type UserSlackIntegrationWithUser =
   }>;
 
 export type UserGithubRepository = user_github_repositories;
-
-export type ActivityEvent = activity_events;
-
-export type TicketActivityEvent = ticket_activity_events;
-
-export type SubActivityEvent = sub_activity_events;
-
-export type SubActivityCommitAssociation = sub_activity_commit_associations;
 
 export type GmailIntegration = gmail_integrations;
 
@@ -269,7 +257,6 @@ export type RunHistoryActionType = $Enums.RunHistoryActionType;
 
 // Re-export the original types too
 export {
-  activity_events,
   approval_slack_messages,
   atlassian_integrations,
   automation_confluence_configs,
@@ -288,9 +275,6 @@ export {
   notion_integrations,
   output_change_attributions,
   slack_integrations,
-  sub_activity_commit_associations,
-  sub_activity_events,
-  ticket_activity_events,
   user_github_repositories,
   user_notification_destinations,
   user_slack_integrations,

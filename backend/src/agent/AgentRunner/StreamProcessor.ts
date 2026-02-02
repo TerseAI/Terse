@@ -73,16 +73,16 @@ export class TextDeltaAggregator {
 
 export class StreamEventEmitter {
     private io: Server | null;
-    private userRoom: string;
+    private room: string;
     private runId: string;
     private agentId: string;
 
     constructor(io: Server | null, params: RunHistoryStreamingParams) {
         this.io = io;
-        if (!params.userId) {
-            throw new Error('userId is required for StreamEventEmitter');
+        if (!params.organizationId) {
+            throw new Error('organizationId is required for StreamEventEmitter');
         }
-        this.userRoom = SocketRooms.user(params.userId);
+        this.room = SocketRooms.organization(params.organizationId);
         this.runId = params.runId!;
         this.agentId = params.agentId!;
     }
@@ -102,7 +102,7 @@ export class StreamEventEmitter {
             runHistoryModelEvent,
         };
 
-        this.io.to(this.userRoom).emit(SocketEvents.AGENT_CHAT_EVENT, payload);
+        this.io.to(this.room).emit(SocketEvents.AGENT_CHAT_EVENT, payload);
     }
 
     async storeAndEmit(event: ModelEvent, timestamp: string): Promise<string> {
@@ -120,7 +120,7 @@ export class StreamEventEmitter {
                 agentId: this.agentId,
                 runHistoryModelEvent,
             };
-            this.io.to(this.userRoom).emit(SocketEvents.AGENT_CHAT_EVENT, payload);
+            this.io.to(this.room).emit(SocketEvents.AGENT_CHAT_EVENT, payload);
         }
 
         return eventId;
@@ -138,6 +138,7 @@ export async function processModelEventStream(
         runId,
         userId: options.userId,
         agentId: options.agentId,
+        organizationId: options.organizationId,
     });
 
     try {
@@ -191,5 +192,6 @@ export interface StreamProcessorOptions {
     runId: string;
     userId: string;
     agentId: string;
+    organizationId: string;
     io: Server | null;
 }

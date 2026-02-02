@@ -22,6 +22,10 @@
     --color-success: oklch(0.7 0.27 145);
 } */
 
+/* WorkOS Widgets (AuthKit, Admin Portal, Users Management) – requires Radix Themes + Widgets styles */
+@import "@radix-ui/themes/styles.css";
+@import "@workos-inc/widgets/styles.css";
+
 /* React Markdown styling - simple, no prose wrapper needed */
 .react-markdown {
   overflow-wrap: break-word;
