@@ -15,14 +15,10 @@ datasource db {
 }
 
 model users {
-  id              String   @id @default(cuid())
-  workos_id       String?
-  email           String   @unique
-  display_name    String
-  github_username String?  @unique
-  created_at      DateTime @default(now())
-  updated_at      DateTime @updatedAt
-  is_placeholder  Boolean  @default(false)
+  id         String   @id @default(cuid())
+  workos_id  String   @unique
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 
   user_github_repositories  user_github_repositories[]
   linear_integrations       linear_integrations[]
@@ -42,8 +38,6 @@ model users {
   posthog_integrations      posthog_integrations[]
   launchdarkly_integrations launchdarkly_integrations[]
   datadog_integrations      datadog_integrations[]
-
-  @@index([workos_id])
 }
 
 model github_repositories {
