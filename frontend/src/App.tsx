@@ -77,7 +77,6 @@ function Content() {
 
   // If user is not part of an organization, redirect to org creation
   if (user != null && !user.organizationId) {
-    alert(JSON.stringify(user));
     return <Navigate to={FrontendRoutes.ORGANIZATIONS.CREATE} replace />;
   }
 
