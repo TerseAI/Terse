@@ -4,9 +4,9 @@ import {
   ChatMemorySession,
   recentHistoryCallback,
 } from "../CustomMemorySession";
-import ChatInterface from "./ChatInterfaces/ChatInterface";
 import { buildChatAgentSystemPrompt } from "./ChatAgentSystemPrompt";
 import { buildChatAgentTools, type ChatAgentContext } from "./ChatAgentTools";
+import ChatInterface from "./ChatInterfaces/ChatInterface";
 
 class ChatAgent {
   private memorySession: ChatMemorySession | null = null;
@@ -16,7 +16,7 @@ class ChatAgent {
     private readonly sessionId: string, // This is the external_id (e.g., Slack thread timestamp)
     private readonly userId: string, // Required userId for interfaces
     private readonly organizationId: string, // Required organizationId for interfaces
-    private readonly uiState?: string | null, // UI context from the web interface
+    private readonly uiState?: string | null // UI context from the web interface
   ) {}
 
   private async getMemorySession(): Promise<ChatMemorySession> {
@@ -44,7 +44,7 @@ class ChatAgent {
         this.userId,
         this.organizationId,
         userTimezone,
-        this.uiState,
+        this.uiState
       ),
       model: "gpt-5.2",
       tools: buildChatAgentTools(this.chatInterface),
@@ -66,10 +66,11 @@ class ChatAgent {
           chatInterface: this.chatInterface,
           userId: this.userId,
           organizationId: this.organizationId,
+          sessionId: this.sessionId,
         },
         session: memorySession,
         sessionInputCallback: recentHistoryCallback,
-      },
+      }
     );
 
     for await (const event of result as AsyncIterable<RunStreamEvent>) {
