@@ -14,11 +14,28 @@ const VALID_STATUSES: RunHistoryStatus[] = ["success", "failed", "skipped", "in_
 export async function getRunHistory(req: Request, res: Response) {
   try {
     const prisma: PrismaClient = db();
+    const user = req.session?.user;
+    if (!user) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+    const organizationId = user.organizationId;
+    if (!organizationId) {
+      return res.status(400).json({ error: "Organization context is required" });
+    }
+
     const paramsRequest: GetRunHistoryParamsRequest = req.params as GetRunHistoryParamsRequest;
 
     const agentId = paramsRequest.agentId?.trim();
     if (!agentId) {
       return res.status(400).json({ error: "channelId is required" });
+    }
+
+    // Verify agent belongs to user's organization
+    const agent = await prisma.automations.findFirst({
+      where: { id: agentId, organization_id: organizationId },
+    });
+    if (!agent) {
+      return res.status(404).json({ error: "Agent not found" });
     }
 
     const params = parseGetRunHistoryParams(req.query);
@@ -180,15 +197,23 @@ export async function getChatHistory(req: Request, res: Response) {
   try {
     const prisma: PrismaClient = db();
 
+    const user = req.session?.user;
+    if (!user?.organizationId) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
     // req.params contains URL path parameters
     const runId = (req.params.runId as string | undefined)?.trim();
     if (!runId) {
       return res.status(400).json({ error: "runId is required" });
     }
 
-    // Fetch the run record to get start/end timestamps
-    const runRecord = await prisma.run_history_records.findUnique({
-      where: { id: runId },
+    // Fetch the run record scoped to user's organization
+    const runRecord = await prisma.run_history_records.findFirst({
+      where: {
+        id: runId,
+        automation: { organization_id: user.organizationId },
+      },
       select: {
         timestamp: true,
         updated_at: true,
@@ -241,6 +266,11 @@ export async function getRunHistoryActions(req: Request, res: Response) {
   try {
     const prisma: PrismaClient = db();
 
+    const user = req.session?.user;
+    if (!user?.organizationId) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
     // Get IDs from query params
     const idsParam = (req.query.ids as string | undefined)?.trim();
     if (!idsParam) {
@@ -253,11 +283,14 @@ export async function getRunHistoryActions(req: Request, res: Response) {
       return res.json([]);
     }
 
-    // Fetch actions by IDs
+    // Fetch actions by IDs scoped to user's organization
     const actions = await prisma.run_history_actions.findMany({
       where: {
-        id: { in: ids }
-      }
+        id: { in: ids },
+        run_history_record: {
+          automation: { organization_id: user.organizationId },
+        },
+      },
     });
 
     // Transform to API format

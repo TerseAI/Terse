@@ -1,292 +1,341 @@
-import { Integration, OAuthIntegrationInstallation, ConfigurationFieldDefinition, IntegrationWithResources } from "./abstract/Integration";
-import { db } from "../prismaClient";
-import { NotionIntegration, NotionIntegrationMetadata } from "../shared/Integrations";
-import { OAuthInstallationDetails, NotionResource } from "../shared/types";
-import { AgentTriggerWithConfigs } from "../types/prisma";
-import jwt from "jsonwebtoken";
-import { notion as notionConfig, jwt as jwtSettings, urls } from "../config/settings";
 import { Request, Response } from "express";
-import { IntegrationType, InstallationOptionsFor, AdditionalStateParams } from "../shared/Integrations";
+import jwt from "jsonwebtoken";
+import {
+  jwt as jwtSettings,
+  notion as notionConfig,
+  urls,
+} from "../config/settings";
 import logger from "../logger";
-import { createOAuthStateToken } from "../utility/oauth";
-import { integrationTaskQueue } from "./IntegrationTaskQueues";
-import { IntegrationCompletedTask } from "./IntegrationCompletedTask";
+import { db } from "../prismaClient";
+import { fetchNotionResources } from "../routes/notion";
 import { FrontendRoutes } from "../shared/FrontendRoutes";
-import { Client } from "@notionhq/client";
-import { extractPageTitle } from "../utility/notion";
+import {
+  AdditionalStateParams,
+  InstallationOptionsFor,
+  IntegrationType,
+  NotionIntegration,
+  NotionIntegrationMetadata,
+} from "../shared/Integrations";
+import { NotionResource, OAuthInstallationDetails } from "../shared/types";
+import { AgentTriggerWithConfigs } from "../types/prisma";
+import { createOAuthStateToken } from "../utility/oauth";
+import {
+  ConfigurationFieldDefinition,
+  Integration,
+  IntegrationWithResources,
+  OAuthIntegrationInstallation,
+} from "./abstract/Integration";
+import { IntegrationCompletedTask } from "./IntegrationCompletedTask";
+import { integrationTaskQueue } from "./IntegrationTaskQueues";
 
-export class NotionIntegrationManager implements Integration<NotionIntegration, never, typeof NotionIntegrationMetadata, NotionResource>, OAuthIntegrationInstallation<IntegrationType.NOTION> {
-    constructor() { }
-    integrationType: IntegrationType = IntegrationType.NOTION;
+export class NotionIntegrationManager
+  implements
+    Integration<
+      NotionIntegration,
+      never,
+      typeof NotionIntegrationMetadata,
+      NotionResource
+    >,
+    OAuthIntegrationInstallation<IntegrationType.NOTION>
+{
+  constructor() {}
+  integrationType: IntegrationType = IntegrationType.NOTION;
 
-    getConfigurationFields(): ConfigurationFieldDefinition[] {
-        return [];
-    }
+  getConfigurationFields(): ConfigurationFieldDefinition[] {
+    return [];
+  }
 
-    async getInstancesForUser(userId: string): Promise<NotionIntegration[]> {
-        const notionIntegrations = await db().notion_integrations.findMany({
-            where: { user_id: userId },
-            select: {
-                id: true,
-                workspace_id: true,
-                workspace_name: true,
-            }
-        });
-        return notionIntegrations.map(ni => ({
-            id: ni.id,
-            workspaceId: ni.workspace_id || undefined,
-            workspaceName: ni.workspace_name || undefined,
-        }));
-    }
+  async getInstancesForOrganization(
+    organizationId: string,
+  ): Promise<NotionIntegration[]> {
+    const notionIntegrations = await db().notion_integrations.findMany({
+      where: { organization_id: organizationId },
+      select: {
+        id: true,
+        workspace_id: true,
+        workspace_name: true,
+      },
+    });
+    return notionIntegrations.map((ni) => ({
+      id: ni.id,
+      workspaceId: ni.workspace_id || undefined,
+      workspaceName: ni.workspace_name || undefined,
+    }));
+  }
 
-    formatIntegrationInstanceForAgent(instance: NotionIntegration): string {
-        const details: string[] = [];
-        if (instance.workspaceName) {
-            details.push(`workspace "${instance.workspaceName}"`);
-        } else if (instance.workspaceId) {
-            details.push(`workspaceId ${instance.workspaceId}`);
-        }
-        const detailText = details.length ? ` (${details.join(", ")})` : "";
-        return `Notion${detailText} [id: ${instance.id}]`;
-    }
-
-    async getAllActiveInstances(): Promise<NotionIntegration[]> {
-        const notionIntegrations = await db().notion_integrations.findMany({
-            select: {
-                id: true,
-                workspace_id: true,
-                workspace_name: true,
-            }
-        });
-        return notionIntegrations.map(ni => ({
-            id: ni.id,
-            workspaceId: ni.workspace_id || undefined,
-            workspaceName: ni.workspace_name || undefined,
-        }));
-    }
-
-    async processWebhookEvent(event: never): Promise<void> {
-        // Notion webhooks are handled elsewhere
-        throw new Error("Notion webhooks are not processed through this integration manager");
-    }
-
-    async getInstallationUrl(userId: string, options?: InstallationOptionsFor<IntegrationType.NOTION>, additionalStatePayload?: AdditionalStateParams): Promise<OAuthInstallationDetails> {
-        // Note: options parameter is required by interface but NotionIntegration uses NoInstallationOptions
-        // additionalStatePayload allows passing extra state variables (e.g., chat metadata for ChatAgent resumption)
-        // Generate state token for security (prevents CSRF)
-        const state = createOAuthStateToken({
-            userId,
-            additionalFields: { timestamp: Date.now() },
-            additionalStatePayload,
-        });
-
-        const clientId = notionConfig.clientId;
-        const redirectUri = notionConfig.redirectUri;
-
-        // Build OAuth URL with proper encoding
-        const authUrl = new URL("https://api.notion.com/v1/oauth/authorize");
-        authUrl.searchParams.append("client_id", clientId);
-        authUrl.searchParams.append("response_type", "code");
-        authUrl.searchParams.append("owner", "user");
-        authUrl.searchParams.append("redirect_uri", redirectUri);
-        authUrl.searchParams.append("state", state);
-
-        return {
-            oauthUrl: authUrl.toString()
-        };
-    }
-
-    async processInstallationCallback(req: Request, res: Response): Promise<void> {
-        const { code, state, error } = req.query;
-
-        if (error) {
-            logger.error("Notion OAuth error", { error: String(error) });
-            res.redirect(`${urls.frontend}${FrontendRoutes.OAUTH.ERROR}`);
-            return;
-        }
-
-        if (!code || !state) {
-            res.status(400).json({ error: "Missing code or state parameter" });
-            return;
-        }
-
+  async fetchResourcesForOrganization(
+    organizationId: string,
+    query?: string,
+  ): Promise<IntegrationWithResources<NotionIntegration, NotionResource>[]> {
+    const integrations = await this.getInstancesForOrganization(organizationId);
+    return Promise.all(
+      integrations.map(async (integration) => {
         try {
-            // Verify state token to prevent CSRF attacks
-            const decoded = jwt.verify(state as string, jwtSettings.secret) as {
-                userId: string;
-                timestamp: number;
-                chatId?: string;
-                channel?: string;
-                integrationType?: string;
-            };
-
-            // Exchange authorization code for access token
-            const tokenResponse = await fetch("https://api.notion.com/v1/oauth/token", {
-                method: "POST",
-                headers: {
-                    Authorization: `Basic ${Buffer.from(
-                        `${notionConfig.clientId}:${notionConfig.clientSecret}`
-                    ).toString("base64")}`,
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                    grant_type: "authorization_code",
-                    code: code,
-                    redirect_uri: notionConfig.redirectUri,
-                }),
-            });
-
-            if (!tokenResponse.ok) {
-                const errorText = await tokenResponse.text();
-                logger.error("Notion token exchange failed", { error: errorText });
-                throw new Error(`Notion token exchange failed: ${errorText}`);
-            }
-
-            const tokenData = await tokenResponse.json();
-            const { access_token, workspace_id, workspace_name } = tokenData;
-
-            logger.info("🔑 Received Notion access token for user", { userId: decoded.userId, workspaceName: workspace_name || workspace_id });
-
-            // Check if a connection for this workspace already exists
-            const existing = await db().notion_integrations.findFirst({
-                where: {
-                    user_id: decoded.userId,
-                    workspace_id: workspace_id || null,
-                },
-            });
-
-            let integrationId: string;
-            if (!existing) {
-                const newIntegration = await db().notion_integrations.create({
-                    data: {
-                        user_id: decoded.userId,
-                        workspace_id: workspace_id || null,
-                        workspace_name: workspace_name || null,
-                        integration_token: access_token,
-                    },
-                });
-                integrationId = newIntegration.id;
-            } else {
-                // Update existing connection with new token (in case it was revoked and re-authorized)
-                await db().notion_integrations.update({
-                    where: { id: existing.id },
-                    data: {
-                        integration_token: access_token,
-                    },
-                });
-                integrationId = existing.id;
-                logger.info("✅ Updated Notion connection token", { workspaceName: workspace_name || "Workspace", integrationId: existing.id, userId: decoded.userId });
-            }
-
-            logger.info("✅ Notion OAuth completed for user", { userId: decoded.userId, workspaceName: workspace_name || workspace_id });
-
-            // Emit integration completed task (includes full state payload for chat metadata detection)
-            integrationTaskQueue.emit(new IntegrationCompletedTask(
-                IntegrationType.NOTION,
-                integrationId,
-                decoded.userId,
-                decoded,
-                new Date()
-            ));
-
-            // Redirect to success page which will auto-close the popup
-            res.redirect(`${urls.frontend}${FrontendRoutes.OAUTH.SUCCESS}`);
+          const response = await fetchNotionResources(
+            organizationId,
+            integration.id,
+            query ?? "",
+          );
+          return { integration, resources: response.resources };
         } catch (error) {
-            logger.error("Error in Notion OAuth callback", { error });
-            res.redirect(`${urls.frontend}${FrontendRoutes.OAUTH.ERROR}`);
+          logger.warn(
+            `Failed to fetch resources for Notion integration ${integration.id}`,
+            { error, integrationId: integration.id },
+          );
+          return { integration, resources: [] };
         }
+      }),
+    );
+  }
+
+  formatIntegrationInstanceForAgent(instance: NotionIntegration): string {
+    const details: string[] = [];
+    if (instance.workspaceName) {
+      details.push(`workspace "${instance.workspaceName}"`);
+    } else if (instance.workspaceId) {
+      details.push(`workspaceId ${instance.workspaceId}`);
+    }
+    const detailText = details.length ? ` (${details.join(", ")})` : "";
+    return `Notion${detailText} [id: ${instance.id}]`;
+  }
+
+  async getAllActiveInstances(): Promise<NotionIntegration[]> {
+    const notionIntegrations = await db().notion_integrations.findMany({
+      select: {
+        id: true,
+        workspace_id: true,
+        workspace_name: true,
+      },
+    });
+    return notionIntegrations.map((ni) => ({
+      id: ni.id,
+      workspaceId: ni.workspace_id || undefined,
+      workspaceName: ni.workspace_name || undefined,
+    }));
+  }
+
+  async processWebhookEvent(event: never): Promise<void> {
+    // Notion webhooks are handled elsewhere
+    throw new Error(
+      "Notion webhooks are not processed through this integration manager",
+    );
+  }
+
+  async getInstallationUrl(
+    userId: string,
+    organizationId: string,
+    options?: InstallationOptionsFor<IntegrationType.NOTION>,
+    additionalStatePayload?: AdditionalStateParams,
+  ): Promise<OAuthInstallationDetails> {
+    // Note: options parameter is required by interface but NotionIntegration uses NoInstallationOptions
+    // additionalStatePayload allows passing extra state variables (e.g., chat metadata for ChatAgent resumption)
+    // Generate state token for security (prevents CSRF)
+    const state = createOAuthStateToken({
+      userId,
+      organizationId,
+      additionalFields: { timestamp: Date.now() },
+      additionalStatePayload,
+    });
+
+    const clientId = notionConfig.clientId;
+    const redirectUri = notionConfig.redirectUri;
+
+    // Build OAuth URL with proper encoding
+    const authUrl = new URL("https://api.notion.com/v1/oauth/authorize");
+    authUrl.searchParams.append("client_id", clientId);
+    authUrl.searchParams.append("response_type", "code");
+    authUrl.searchParams.append("owner", "user");
+    authUrl.searchParams.append("redirect_uri", redirectUri);
+    authUrl.searchParams.append("state", state);
+
+    return {
+      oauthUrl: authUrl.toString(),
+    };
+  }
+
+  async processInstallationCallback(
+    req: Request,
+    res: Response,
+  ): Promise<void> {
+    const { code, state, error } = req.query;
+
+    if (error) {
+      logger.error("Notion OAuth error", { error: String(error) });
+      res.redirect(`${urls.frontend}${FrontendRoutes.OAUTH.ERROR}`);
+      return;
     }
 
-    deleteInstallation(integrationId: string): Promise<void> {
-        return Promise.resolve();
+    if (!code || !state) {
+      res.status(400).json({ error: "Missing code or state parameter" });
+      return;
     }
 
-    async setupAgentTrigger(integrationId: string, automationInput: AgentTriggerWithConfigs): Promise<void> {
-        // Notion doesn't require any setup for automation inputs
-        // Webhooks are managed at the integration level
-    }
+    try {
+      // Verify state token to prevent CSRF attacks
+      const decoded = jwt.verify(state as string, jwtSettings.secret) as {
+        userId: string;
+        organizationId: string;
+        timestamp: number;
+        chatId?: string;
+        channel?: string;
+        integrationType?: string;
+      };
 
-    async teardownAgentTrigger(integrationId: string, automationInput: AgentTriggerWithConfigs): Promise<void> {
-        // Notion doesn't require any teardown for automation inputs
-        // Webhooks are managed at the integration level
-    }
-
-    async refreshToken(integrationId: string): Promise<boolean> {
-        // Notion OAuth doesn't use refresh tokens - tokens are long-lived
-        // Return false to indicate no refresh was needed/performed
-        return false;
-    }
-
-    async getAccessToken(integrationId: string): Promise<string | null> {
-        try {
-            const integration = await db().notion_integrations.findUnique({
-                where: { id: integrationId },
-                select: {
-                    integration_token: true,
-                },
-            });
-
-            if (!integration) {
-                logger.error(`Notion integration ${integrationId} not found`, { integrationId });
-                return null;
-            }
-
-            // Notion tokens are long-lived and don't expire, so just return the token
-            return integration.integration_token || null;
-        } catch (error) {
-            logger.error(`Error getting Notion access token for integration ${integrationId}`, { error, integrationId });
-            return null;
-        }
-    }
-
-    async fetchResourcesForInstance(userId: string, integrationId: string, query?: string): Promise<NotionResource[]> {
-        const integration = await db().notion_integrations.findFirst({
-            where: { id: integrationId, user_id: userId },
+      if (
+        !decoded.organizationId ||
+        typeof decoded.organizationId !== "string"
+      ) {
+        logger.error("Notion OAuth: organizationId is required in state", {
+          userId: decoded.userId,
         });
+        res.redirect(`${urls.frontend}${FrontendRoutes.OAUTH.ERROR}`);
+        return;
+      }
 
-        if (!integration) {
-            throw new Error("Notion integration not found");
-        }
+      // Exchange authorization code for access token
+      const tokenResponse = await fetch(
+        "https://api.notion.com/v1/oauth/token",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Basic ${Buffer.from(
+              `${notionConfig.clientId}:${notionConfig.clientSecret}`,
+            ).toString("base64")}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            grant_type: "authorization_code",
+            code: code,
+            redirect_uri: notionConfig.redirectUri,
+          }),
+        },
+      );
 
-        const accessToken = await this.getAccessToken(integrationId);
-        if (!accessToken) {
-            throw new Error("Could not get valid access token");
-        }
+      if (!tokenResponse.ok) {
+        const errorText = await tokenResponse.text();
+        logger.error("Notion token exchange failed", { error: errorText });
+        throw new Error(`Notion token exchange failed: ${errorText}`);
+      }
 
-        const notionClient = new Client({ auth: accessToken });
-        const searchResponse = await notionClient.search({ query: query || "", page_size: 100 });
+      const tokenData = await tokenResponse.json();
+      const { access_token, workspace_id, workspace_name } = tokenData;
 
-        let resources: NotionResource[] = searchResponse.results
-            .map((result: any) => {
-                if (result.object === 'data_source') {
-                    return { id: result.id, title: result.title?.[0]?.plain_text || "Untitled Database", url: result.url, type: 'database' as const };
-                } else if (result.object === 'page') {
-                    return { id: result.id, title: extractPageTitle(result), url: 'url' in result ? result.url : '', type: 'page' as const };
-                }
-                return null;
-            })
-            .filter((resource): resource is NotionResource => resource !== null);
+      logger.info("🔑 Received Notion access token for user", {
+        userId: decoded.userId,
+        workspaceName: workspace_name || workspace_id,
+      });
 
-        if (!query) {
-            resources = resources.sort((a, b) => a.title.localeCompare(b.title, undefined, { sensitivity: 'base' }));
-        }
+      // Check if a connection for this workspace already exists
+      const existing = await db().notion_integrations.findFirst({
+        where: {
+          organization_id: decoded.organizationId,
+          workspace_id: workspace_id || null,
+        },
+      });
 
-        return resources;
+      let integrationId: string;
+      if (!existing) {
+        const newIntegration = await db().notion_integrations.create({
+          data: {
+            user_id: decoded.userId,
+            organization_id: decoded.organizationId,
+            workspace_id: workspace_id || null,
+            workspace_name: workspace_name || null,
+            integration_token: access_token,
+          },
+        });
+        integrationId = newIntegration.id;
+      } else {
+        // Update existing connection with new token (in case it was revoked and re-authorized)
+        await db().notion_integrations.update({
+          where: { id: existing.id },
+          data: {
+            integration_token: access_token,
+            organization_id: decoded.organizationId,
+          },
+        });
+        integrationId = existing.id;
+        logger.info("✅ Updated Notion connection token", {
+          workspaceName: workspace_name || "Workspace",
+          integrationId: existing.id,
+          userId: decoded.userId,
+        });
+      }
+
+      logger.info("✅ Notion OAuth completed for user", {
+        userId: decoded.userId,
+        workspaceName: workspace_name || workspace_id,
+      });
+
+      // Emit integration completed task (includes full state payload for chat metadata detection)
+      integrationTaskQueue.emit(
+        new IntegrationCompletedTask(
+          IntegrationType.NOTION,
+          integrationId,
+          decoded.userId,
+          decoded,
+          new Date(),
+        ),
+      );
+
+      // Redirect to success page which will auto-close the popup
+      res.redirect(`${urls.frontend}${FrontendRoutes.OAUTH.SUCCESS}`);
+    } catch (error) {
+      logger.error("Error in Notion OAuth callback", { error });
+      res.redirect(`${urls.frontend}${FrontendRoutes.OAUTH.ERROR}`);
     }
+  }
 
-    async fetchResourcesForUser(userId: string, query?: string): Promise<IntegrationWithResources<NotionIntegration, NotionResource>[]> {
-        const integrations = await this.getInstancesForUser(userId);
-        return Promise.all(
-            integrations.map(async (integration) => {
-                try {
-                    const resources = await this.fetchResourcesForInstance(userId, integration.id, query);
-                    return { integration, resources };
-                } catch (error) {
-                    logger.warn(`Failed to fetch resources for Notion integration ${integration.id}`, { error, integrationId: integration.id });
-                    return { integration, resources: [] };
-                }
-            })
-        );
+  deleteInstallation(integrationId: string): Promise<void> {
+    return Promise.resolve();
+  }
+
+  async setupAgentTrigger(
+    integrationId: string,
+    automationInput: AgentTriggerWithConfigs,
+  ): Promise<void> {
+    // Notion doesn't require any setup for automation inputs
+    // Webhooks are managed at the integration level
+  }
+
+  async teardownAgentTrigger(
+    integrationId: string,
+    automationInput: AgentTriggerWithConfigs,
+  ): Promise<void> {
+    // Notion doesn't require any teardown for automation inputs
+    // Webhooks are managed at the integration level
+  }
+
+  async refreshToken(integrationId: string): Promise<boolean> {
+    // Notion OAuth doesn't use refresh tokens - tokens are long-lived
+    // Return false to indicate no refresh was needed/performed
+    return false;
+  }
+
+  async getAccessToken(integrationId: string): Promise<string | null> {
+    try {
+      const integration = await db().notion_integrations.findUnique({
+        where: { id: integrationId },
+        select: {
+          integration_token: true,
+        },
+      });
+
+      if (!integration) {
+        logger.error(`Notion integration ${integrationId} not found`, {
+          integrationId,
+        });
+        return null;
+      }
+
+      // Notion tokens are long-lived and don't expire, so just return the token
+      return integration.integration_token || null;
+    } catch (error) {
+      logger.error(
+        `Error getting Notion access token for integration ${integrationId}`,
+        { error, integrationId },
+      );
+      return null;
     }
+  }
 }
-

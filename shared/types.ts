@@ -1,15 +1,27 @@
-import { Project, Ticket } from "./TicketSystem";
 import { ConfigInstance, ConfigType } from "./Configs";
-import { RunHistoryActionType } from "./RunHistoryTypes";
 import { IntegrationType } from "./Integrations";
+import { RunHistoryActionType } from "./RunHistoryTypes";
+import { Project, Ticket } from "./TicketSystem";
+
+export type Role = "admin" | "user";
 
 export type User = {
   id: string;
+  workosId: string;
+  organizationId: string;
+  organizationName: string;
   email: string;
-  display_name: string;
-  github_username: string | null;
-  is_placeholder: boolean;
+  displayName: string;
+  firstName: string | null;
+  lastName: string | null;
+  displayPhotoUrl: string;
+  roles: Role[];
 };
+
+export type UserNoOrganization = Omit<
+  User,
+  "organizationId" | "organizationName" | "roles"
+>;
 
 export type SubActivity = {
   summary: string;
@@ -66,7 +78,7 @@ export type JiraCredentialsValidationResponse = {
   error?: string;
 };
 
-export type NotionResourceType = 'database' | 'page';
+export type NotionResourceType = "database" | "page";
 export type NotionResource = {
   id: string;
   title: string;
@@ -138,18 +150,17 @@ export type SlackUserResponse = {
 
 export type SlackUsersResponse = {
   users: SlackUserResponse[];
-}
+};
 
 /**
  * Slack channel type enum
  */
 export enum SlackChannelType {
-  CHANNEL = 'channel',
-  GROUP = 'group',
-  MPIM = 'mpim',
-  IM = 'im'
+  CHANNEL = "channel",
+  GROUP = "group",
+  MPIM = "mpim",
+  IM = "im",
 }
-
 
 export type ConfluencePage = {
   id: string;
@@ -182,7 +193,12 @@ export type ConfluenceResourcesResponse = {
 export type JiraResourcesResponse = {
   success: boolean;
   resources: {
-    projects: Array<{ id: string; key: string; name: string; projectTypeKey: string }>;
+    projects: Array<{
+      id: string;
+      key: string;
+      name: string;
+      projectTypeKey: string;
+    }>;
     baseUrl: string;
     cloudId: string;
   };
@@ -200,7 +216,7 @@ export type UseConfluenceResourcesReturn<MutateType = any> = {
 
 // Figma webhook and API types
 export enum FigmaEventTypes {
-  FILE_COMMENT = 'FILE_COMMENT',
+  FILE_COMMENT = "FILE_COMMENT",
 }
 
 /**
@@ -230,8 +246,8 @@ export interface FigmaWebhookComment {
  * Extracted images for visual context of comments
  */
 export interface FigmaCommentImageUrls {
-  nodeImage?: string;      // Image of the specific node the comment is on
-  fullFrame?: string;      // Full frame/page image
+  nodeImage?: string; // Image of the specific node the comment is on
+  fullFrame?: string; // Full frame/page image
 }
 
 /**
@@ -265,10 +281,10 @@ export type FigmaFrameOffsetRegionData = {
 };
 
 export type FigmaPositioningData =
-  | { type: 'Vector'; data: FigmaVectorData }
-  | { type: 'FrameOffset'; data: FigmaFrameOffsetData }
-  | { type: 'Region'; data: FigmaRegionData }
-  | { type: 'FrameOffsetRegion'; data: FigmaFrameOffsetRegionData };
+  | { type: "Vector"; data: FigmaVectorData }
+  | { type: "FrameOffset"; data: FigmaFrameOffsetData }
+  | { type: "Region"; data: FigmaRegionData }
+  | { type: "FrameOffsetRegion"; data: FigmaFrameOffsetRegionData };
 
 /**
  * Figma client_meta structure
@@ -286,7 +302,6 @@ export type FigmaClientMeta = {
   node_id: string;
   node_offset: { x: number; y: number };
 };
-
 
 /**
  * Figma API comment response structure
@@ -365,85 +380,85 @@ export type TransientAgentOutput = {
 };
 
 export type AgentKnowledgeBase = {
-    id: string;
-    config: ConfigInstance;
+  id: string;
+  config: ConfigInstance;
 };
 
 export type TransientKnowledgeBase = {
-    id: string;
-    config?: ConfigInstance;
-    configType: ConfigType;
+  id: string;
+  config?: ConfigInstance;
+  configType: ConfigType;
 };
 
 // Template types - simplified config references without integrationId
 export type TemplateConfigRef = {
-    configType: ConfigType;
-    integrationType: IntegrationType;
+  configType: ConfigType;
+  integrationType: IntegrationType;
 };
 
 export type TemplateTrigger = {
-    config: TemplateConfigRef;
+  config: TemplateConfigRef;
 };
 
 export type TemplateOutput = {
-    config: TemplateConfigRef;
+  config: TemplateConfigRef;
 };
 
 export type TemplateKnowledgeBase = {
-    config: TemplateConfigRef;
+  config: TemplateConfigRef;
 };
 
 export type AgentTemplate = {
-    name: string;
-    description: string;
-    chatPrompt: string; // Short prompt to pre-fill chat input when template is selected
-    prompt: AgentPrompt;
-    triggers: TemplateTrigger[];
-    outputs: TemplateOutput[];
-    knowledgeBases?: TemplateKnowledgeBase[];
-    requireApproval: boolean;
-    isActive: boolean;
+  name: string;
+  description: string;
+  chatPrompt: string; // Short prompt to pre-fill chat input when template is selected
+  prompt: AgentPrompt;
+  triggers: TemplateTrigger[];
+  outputs: TemplateOutput[];
+  knowledgeBases?: TemplateKnowledgeBase[];
+  requireApproval: boolean;
+  isActive: boolean;
 };
 
 export type Agent = {
-    id: string;
-    name: string;
-    isActive: boolean;
-    requireApproval: boolean;
-    prompt: AgentPrompt;
-    triggers: AgentTrigger[];
-    outputs: AgentOutput[];
-    knowledgeBases?: AgentKnowledgeBase[];
-    notificationSettings?: AgentNotificationSettings;
-    toolApprovals?: string[];
-    updatedAt?: string;
+  id: string;
+  name: string;
+  isActive: boolean;
+  requireApproval: boolean;
+  prompt: AgentPrompt;
+  triggers: AgentTrigger[];
+  outputs: AgentOutput[];
+  knowledgeBases?: AgentKnowledgeBase[];
+  notificationSettings?: AgentNotificationSettings;
+  toolApprovals?: string[];
+  updatedAt?: string;
 };
 
 export type AgentNotificationSettings = {
-    enabled: boolean;
-    actionTypes: RunHistoryActionType[];
+  enabled: boolean;
+  actionTypes: RunHistoryActionType[];
 };
 
 export type AgentUpdate = {
-    name?: string;
-    triggers?: AgentTrigger[];
-    outputs?: AgentOutput[];
-    prompt?: AgentPrompt;
-    isActive?: boolean;
-    requireApproval?: boolean;
-    knowledgeBases?: AgentKnowledgeBase[];
-    notificationSettings?: AgentNotificationSettings;
-    toolApprovals?: string[];
+  name?: string;
+  triggers?: AgentTrigger[];
+  outputs?: AgentOutput[];
+  prompt?: AgentPrompt;
+  isActive?: boolean;
+  requireApproval?: boolean;
+  knowledgeBases?: AgentKnowledgeBase[];
+  notificationSettings?: AgentNotificationSettings;
+  toolApprovals?: string[];
 };
 
 export type AgentsResponse = {
-    agents: Agent[];
-    pagination: {
-        page: number;
-        limit: number;
-        total: number;
-        totalPages: number;
-    };
+  agents: Agent[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
 };
 
 export type RecentAgent = Agent & {
@@ -458,24 +473,23 @@ export type GithubAppInstallationCallbackRequest = {
   installationId: number;
   accountName: string | null;
   repositories: Repository[];
-}
+};
 
 export type Repository = {
   name: string;
   owner: string;
   id: number; // This is the official id from github! Not to be confused with the id from github_repositories table in the DB!!!
-}
+};
 
-export type GetGithubRepositoriesForIntegrationRequest = {
-}
+export type GetGithubRepositoriesForIntegrationRequest = {};
 
 export type GetGithubRepositoriesForIntegrationResponse = {
   repositories: Repository[];
-}
+};
 
 export type OAuthInstallationDetails = {
   oauthUrl: string;
-}
+};
 
 export enum DayOfWeek {
   Sun = "Sun",
