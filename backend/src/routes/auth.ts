@@ -13,6 +13,13 @@ import { workos } from "../utility/workos";
 
 export const WORKOS_SESSION_COOKIE_NAME = "TERSE_WORKOS_SESSION";
 
+export const WORKOS_SESSION_COOKIE_OPTIONS = {
+  path: "/",
+  httpOnly: true,
+  secure: settings.nodeEnv === "production",
+  sameSite: "lax" as const,
+};
+
 export async function login(req: Request, res: Response) {
   const authorizationUrl = workos.userManagement.getAuthorizationUrl({
     provider: "authkit",
@@ -27,7 +34,7 @@ export async function logout(req: Request, res: Response) {
     cookiePassword: settings.workos.cookiePassword,
   });
   const url = await session.getLogoutUrl({ returnTo: settings.urls.backend });
-  res.clearCookie(WORKOS_SESSION_COOKIE_NAME);
+  res.clearCookie(WORKOS_SESSION_COOKIE_NAME, WORKOS_SESSION_COOKIE_OPTIONS);
   res.redirect(url);
 }
 
@@ -55,7 +62,7 @@ export async function me(req: Request, res: Response) {
       {
         error,
         userId: user.id,
-      },
+      }
     );
     return res.send(user);
   }
@@ -115,19 +122,18 @@ function createAuthMiddleware(requireOrganization: boolean) {
         req.session.isUserInitiated = true;
       }
 
-      const sealedSession = refreshedSessionResult.sealedSession;
-
       if (requireOrganization && !user.organizationId) {
         return sendOrganizationRequired(req, res);
       }
 
-      // update the cookie
-      res.cookie(WORKOS_SESSION_COOKIE_NAME, sealedSession, {
-        path: "/",
-        httpOnly: true,
-        secure: settings.nodeEnv === "production",
-        sameSite: "lax",
-      });
+      // update the cookie if we have a sealed session
+      if (refreshedSessionResult.sealedSession) {
+        res.cookie(
+          WORKOS_SESSION_COOKIE_NAME,
+          refreshedSessionResult.sealedSession,
+          WORKOS_SESSION_COOKIE_OPTIONS
+        );
+      }
       return next();
     } catch (error) {
       logger.error("Failed to authorize user", {
@@ -213,7 +219,7 @@ export async function callback(req: Request, res: Response) {
       .send(
         `Authentication failed: ${errorMessage}. ` +
           `Please <a href="${settings.urls.frontend}">return to the app</a> and try again. ` +
-          `If the problem persists, clear your cookies for this site.`,
+          `If the problem persists, clear your cookies for this site.`
       );
   }
 }
@@ -246,7 +252,7 @@ export async function getWorkOSWidgetToken(req: Request, res: Response) {
 export async function getOrCreateDbUserFromWorkOS(
   authResult:
     | AuthenticateWithSessionCookieSuccessResponse
-    | RefreshSessionSuccessResponse,
+    | RefreshSessionSuccessResponse
 ): Promise<User> {
   const prisma = db();
   const workosUser = authResult.user;
@@ -268,7 +274,7 @@ export async function getOrCreateDbUserFromWorkOS(
   let organizationName = undefined;
   if (authResult.organizationId) {
     const organization = await workos.organizations.getOrganization(
-      authResult.organizationId,
+      authResult.organizationId
     );
     organizationName = organization.name;
   }

@@ -18,8 +18,8 @@ import OAuthSuccess from "./pages/OAuthSuccess";
 import OrganizationCreationPage from "./pages/OrganizationCreationPage";
 import ProfilePage from "./pages/ProfilePage";
 import { AuthProvider, useAuth } from "./services/auth";
-import { FrontendRoutes } from "./shared/FrontendRoutes";
 import { ModelContextProvider } from "./services/ModelContextProvider";
+import { FrontendRoutes } from "./shared/FrontendRoutes";
 import { disconnectSocket, initializeSocket } from "./socket";
 
 function App() {
@@ -73,8 +73,11 @@ function Content() {
     return <Spin />;
   }
 
+
+
   // If user is not part of an organization, redirect to org creation
   if (user != null && !user.organizationId) {
+    alert(JSON.stringify(user));
     return <Navigate to={FrontendRoutes.ORGANIZATIONS.CREATE} replace />;
   }
 

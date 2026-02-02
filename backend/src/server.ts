@@ -155,7 +155,7 @@ app.use(
   cors({
     origin: true,
     credentials: true,
-  }),
+  })
 );
 
 // Access logging middleware - only in production (too noisy for local dev)
@@ -202,12 +202,12 @@ app.use((req: Request, res: Response, next: NextFunction) => {
     if (res.statusCode >= 400) {
       logger.warn(
         `📤 ${req.method} ${req.path} ${res.statusCode}`,
-        responseInfo,
+        responseInfo
       );
     } else {
       logger.info(
         `📤 ${req.method} ${req.path} ${res.statusCode}`,
-        responseInfo,
+        responseInfo
       );
     }
 
@@ -259,26 +259,26 @@ app.get(ApiRoutes.AUTH.WORKOS_CALLBACK, (req, res) => {
 });
 
 app.get(ApiRoutes.WORKOS.WIDGET_TOKEN, authMiddleware, (req, res) =>
-  getWorkOSWidgetToken(req, res),
+  getWorkOSWidgetToken(req, res)
 );
 
 // MARK: Organizations (WorkOS) - auth without org required so user can create org
 app.post(ApiRoutes.ORGANIZATIONS.CREATE, authMiddlewareAllowNoOrg, (req, res) =>
-  createOrganization(req, res),
+  createOrganization(req, res)
 );
 
 app.get(
   ApiRoutes.ORGANIZATIONS.GET_CURRENT,
   authMiddlewareAllowNoOrg,
-  (req, res) => getCurrentOrganization(req, res),
+  (req, res) => getCurrentOrganization(req, res)
 );
 
 app.get(ApiRoutes.ORGANIZATIONS.LIST, authMiddleware, (req, res) =>
-  getUserOrganizations(req, res),
+  getUserOrganizations(req, res)
 );
 
 app.post(ApiRoutes.ORGANIZATIONS.SWITCH, authMiddleware, (req, res) =>
-  switchOrganization(req, res),
+  switchOrganization(req, res)
 );
 
 // MARK: STATS
@@ -297,7 +297,7 @@ app.get(
   authMiddleware,
   async (req, res) => {
     getRunHistory(req, res);
-  },
+  }
 );
 
 app.get(
@@ -305,7 +305,7 @@ app.get(
   authMiddleware,
   async (req, res) => {
     getChatHistory(req, res);
-  },
+  }
 );
 
 // MARK: BUILDER CHAT
@@ -315,7 +315,7 @@ app.get(
   authMiddleware,
   async (req, res) => {
     getBuilderChatHistory(req, res);
-  },
+  }
 );
 
 // MARK: SESSION
@@ -339,7 +339,7 @@ app.get(
   authMiddleware,
   async (req, res) => {
     getGithubRepositoriesForIntegration(req, res);
-  },
+  }
 );
 
 app.post(ApiRoutes.GITHUB.UNIFIED_EVENT, async (req, res) => {
@@ -386,7 +386,7 @@ app.delete(
   authMiddleware,
   async (req, res) => {
     deleteGmailIntegration(req, res);
-  },
+  }
 );
 
 app.post(ApiRoutes.WEBHOOKS.GMAIL, async (req, res) => {
@@ -472,7 +472,7 @@ app.post(
   authMiddleware,
   async (req, res) => {
     handleManualTrigger(req, res);
-  },
+  }
 );
 
 // MARK: SLACK
@@ -486,7 +486,7 @@ app.get(
   authMiddleware,
   async (req, res) => {
     getCurrentSlackIntegration(req, res);
-  },
+  }
 );
 
 app.get(ApiRoutes.SLACK.OAUTH_CALLBACK, async (req, res) => {
@@ -522,7 +522,7 @@ app.get(
   authMiddleware,
   async (req, res) => {
     getLaunchDarklyIntegrations(req, res);
-  },
+  }
 );
 
 app.post(
@@ -530,7 +530,7 @@ app.post(
   authMiddleware,
   async (req, res) => {
     createOrUpdateLaunchDarklyIntegration(req, res);
-  },
+  }
 );
 
 app.get(
@@ -538,7 +538,7 @@ app.get(
   authMiddleware,
   async (req, res) => {
     getLaunchDarklyProjects(req, res);
-  },
+  }
 );
 
 app.get(
@@ -546,7 +546,7 @@ app.get(
   authMiddleware,
   async (req, res) => {
     getLaunchDarklyEnvironments(req, res);
-  },
+  }
 );
 
 // MARK: DATADOG
@@ -602,7 +602,7 @@ app.post(
   authMiddleware,
   async (req, res) => {
     generateQuestionsRoute(req, res);
-  },
+  }
 );
 
 app.post(
@@ -610,7 +610,7 @@ app.post(
   authMiddleware,
   async (req, res) => {
     generatePromptRoute(req, res);
-  },
+  }
 );
 
 // MARK: INTEGRATIONS
@@ -620,7 +620,7 @@ app.get(
   authMiddleware,
   async (req, res) => {
     getIntegrationInstallationDetails(req, res);
-  },
+  }
 );
 
 app.get("/integrations", authMiddleware, async (req, res) => {
@@ -646,7 +646,7 @@ app.put(
   authMiddleware,
   async (req, res) => {
     updateNotificationDestination(req, res);
-  },
+  }
 );
 
 app.delete(
@@ -654,7 +654,7 @@ app.delete(
   authMiddleware,
   async (req, res) => {
     deleteNotificationDestination(req, res);
-  },
+  }
 );
 
 // MARK: TOOLS THAT REQUIRE APPROVALS
@@ -664,7 +664,7 @@ app.post(
   authMiddleware,
   async (req, res) => {
     toolsThatRequireApprovalsRoute(req, res);
-  },
+  }
 );
 
 /**
@@ -696,7 +696,7 @@ process.on(
       stack,
     });
     // Log but don't crash - this is a safety net for promises we might have missed
-  },
+  }
 );
 
 try {
