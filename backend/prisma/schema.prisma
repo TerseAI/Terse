@@ -385,7 +385,6 @@ model datadog_integrations {
 model automations {
   id               String   @id @default(cuid())
   user_id          String
-  // Update this to not be nullable in a future migration
   organization_id  String
   name             String
   is_active        Boolean  @default(true)
