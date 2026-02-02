@@ -56,7 +56,7 @@ export function SnippetView({ snippet }: { snippet: ChatSnippet }) {
         }
 
         return (
-            <div className="max-w-72">
+            <div>
                 <IntegrationCard
                     integration={integrationType}
                     isActive={false}

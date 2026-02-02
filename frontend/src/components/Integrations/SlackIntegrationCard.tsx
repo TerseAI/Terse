@@ -50,6 +50,19 @@ function SlackIntegrationCard({ className, isActive = true, stateToken, compact 
     const summary = integrations[0]?.teamName;
 
     if (compact) {
+        if (showConnectionOptions) {
+            return (
+                <div className={cn("p-3 rounded-lg border border-border bg-card/50", className)}>
+                    <SlackConnectionOptions
+                        isBotUser={isBotUser}
+                        setIsBotUser={setIsBotUser}
+                        onBack={handleBack}
+                        onConnect={connect}
+                        isConnecting={isConnecting}
+                    />
+                </div>
+            );
+        }
         return (
             <CompactIntegrationRow
                 integration={IntegrationType.SLACK}
