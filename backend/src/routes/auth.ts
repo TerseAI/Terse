@@ -39,14 +39,43 @@ export async function logout(req: Request, res: Response) {
 }
 
 export async function me(req: Request, res: Response) {
+  logger.info("[/me] Endpoint called", {
+    hasSessionCookie: !!req.cookies[WORKOS_SESSION_COOKIE_NAME],
+    hasSession: !!req.session,
+    hasSessionUser: !!req.session?.user,
+    cookies: Object.keys(req.cookies || {}),
+  });
+
   const user = req.session?.user || null;
   if (!user) {
+    logger.warn("[/me] No user in session, returning 401", {
+      sessionKeys: req.session ? Object.keys(req.session) : [],
+    });
     return res.status(401).send("Unauthorized");
   }
+
+  logger.info("[/me] User found in session", {
+    userId: user.id,
+    workosId: user.workosId,
+    email: user.email,
+    organizationId: user.organizationId,
+  });
+
   // Always fetch fresh profile data from WorkOS so profile updates (e.g., from User Profile widget)
   // are reflected immediately when the frontend calls refreshUser()
   try {
+    logger.info("[/me] Fetching fresh user from WorkOS", {
+      workosId: user.workosId,
+    });
     const workOSUser = await workos.userManagement.getUser(user.workosId);
+    logger.info("[/me] Successfully fetched WorkOS user", {
+      workosUserId: workOSUser.id,
+      email: workOSUser.email,
+      hasFirstName: !!workOSUser.firstName,
+      hasLastName: !!workOSUser.lastName,
+      hasProfilePicture: !!workOSUser.profilePictureUrl,
+    });
+
     const refreshedUser: User = {
       ...user,
       email: workOSUser.email,
@@ -55,13 +84,22 @@ export async function me(req: Request, res: Response) {
       lastName: workOSUser.lastName || null,
       displayPhotoUrl: workOSUser.profilePictureUrl || "",
     };
+
+    logger.info("[/me] Returning refreshed user", {
+      userId: refreshedUser.id,
+      email: refreshedUser.email,
+    });
     return res.send(refreshedUser);
   } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const errorStack = error instanceof Error ? error.stack : undefined;
     logger.warn(
-      "Failed to fetch fresh user from WorkOS, returning session user",
+      "[/me] Failed to fetch fresh user from WorkOS, returning session user",
       {
-        error,
+        error: errorMessage,
+        stack: errorStack,
         userId: user.id,
+        workosId: user.workosId,
       }
     );
     return res.send(user);
@@ -166,13 +204,34 @@ function sendOrganizationRequired(req: Request, res: Response) {
 }
 
 export async function callback(req: Request, res: Response) {
+  logger.info("[/callback] Endpoint called", {
+    hasCode: !!req.query.code,
+    queryParams: Object.keys(req.query || {}),
+    hasError: !!req.query.error,
+    error: req.query.error,
+    errorDescription: req.query.error_description,
+  });
+
   const code = req.query.code as string;
 
   if (!code) {
+    logger.warn("[/callback] No code provided in query params", {
+      query: req.query,
+    });
     return res.status(400).send("No code provided");
   }
 
+  logger.info("[/callback] Code received, authenticating with WorkOS", {
+    codeLength: code.length,
+    codePrefix: code.substring(0, 10) + "...",
+    clientId: settings.workos.clientId,
+    redirectUri: settings.workos.redirectUri,
+  });
+
   try {
+    logger.info(
+      "[/callback] Calling workos.userManagement.authenticateWithCode"
+    );
     const authenticateResponse =
       await workos.userManagement.authenticateWithCode({
         clientId: settings.workos.clientId,
@@ -182,23 +241,70 @@ export async function callback(req: Request, res: Response) {
           cookiePassword: settings.workos.cookiePassword,
         },
       });
+
+    logger.info("[/callback] authenticateWithCode response received", {
+      hasSealedSession: !!authenticateResponse.sealedSession,
+      hasUser: !!authenticateResponse.user,
+      userId: authenticateResponse.user?.id,
+      userEmail: authenticateResponse.user?.email,
+      hasOrganizationId: !!authenticateResponse.organizationId,
+      organizationId: authenticateResponse.organizationId,
+    });
+
     if (!authenticateResponse.sealedSession) {
+      logger.error("[/callback] No sealed session in authenticate response", {
+        responseKeys: Object.keys(authenticateResponse),
+      });
       return res.status(401).send("No sealed session provided");
     }
+
+    logger.info("[/callback] Loading sealed session");
     const workosSession = workos.userManagement.loadSealedSession({
       sessionData: authenticateResponse.sealedSession,
       cookiePassword: settings.workos.cookiePassword,
     });
+
+    logger.info("[/callback] Authenticating loaded session");
     const authResult = await workosSession.authenticate();
+
+    logger.info("[/callback] Session authentication result", {
+      authenticated: authResult.authenticated,
+      reason: !authResult.authenticated
+        ? (authResult as any).reason
+        : undefined,
+      userId: authResult.authenticated ? authResult.user?.id : undefined,
+      organizationId: authResult.authenticated
+        ? authResult.organizationId
+        : undefined,
+      roles: authResult.authenticated ? authResult.roles : undefined,
+    });
+
     if (!authResult.authenticated) {
+      logger.error("[/callback] Session authentication failed", {
+        reason: (authResult as any).reason,
+      });
       return res.status(401).send("Failed to authenticate");
     }
 
     // Create user record in database if it doesn't already
     // exist
-    await getOrCreateDbUserFromWorkOS(authResult);
+    logger.info("[/callback] Creating/fetching user from database", {
+      workosUserId: authResult.user.id,
+      email: authResult.user.email,
+    });
+    const dbUser = await getOrCreateDbUserFromWorkOS(authResult);
+    logger.info("[/callback] Database user ready", {
+      dbUserId: dbUser.id,
+      workosId: dbUser.workosId,
+      organizationId: dbUser.organizationId,
+    });
 
     // Store the session in a cookie
+    logger.info("[/callback] Setting session cookie", {
+      cookieName: WORKOS_SESSION_COOKIE_NAME,
+      secure: settings.nodeEnv === "production",
+      sealedSessionLength: authenticateResponse.sealedSession.length,
+    });
     res.cookie(WORKOS_SESSION_COOKIE_NAME, authenticateResponse.sealedSession, {
       path: "/",
       httpOnly: true,
@@ -207,10 +313,27 @@ export async function callback(req: Request, res: Response) {
     });
 
     // Redirect the user to the homepage
+    logger.info(
+      "[/callback] Authentication successful, redirecting to frontend",
+      {
+        redirectUrl: settings.urls.frontend,
+      }
+    );
     return res.redirect(settings.urls.frontend);
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    logger.error("WorkOS callback error", { error, message: errorMessage });
+    const errorStack = error instanceof Error ? error.stack : undefined;
+    const errorName = error instanceof Error ? error.name : "Unknown";
+
+    logger.error("[/callback] WorkOS callback error", {
+      errorName,
+      errorMessage,
+      errorStack,
+      code: code ? `${code.substring(0, 10)}...` : undefined,
+      clientId: settings.workos.clientId,
+      redirectUri: settings.workos.redirectUri,
+    });
+
     // Don't redirect to /login here as it causes an infinite redirect loop
     // Clear any stale session cookie and show an error
     res.clearCookie(WORKOS_SESSION_COOKIE_NAME);
