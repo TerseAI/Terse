@@ -147,9 +147,9 @@ export class GithubIntegrationManager implements Integration<GithubIntegration, 
         const githubAppUser = await getGithubAppUser(authToken.access_token);
 
         await db().github_app_tokens.upsert({
-            where: { user_id_github_username: { user_id: user_id, github_username: githubAppUser.name } },
+            where: { user_id_github_username: { user_id: user_id, github_username: githubAppUser.login } },
             update: { access_token: authToken.access_token },
-            create: { user_id: user_id, github_username: githubAppUser.name, access_token: authToken.access_token }
+            create: { user_id: user_id, github_username: githubAppUser.login, access_token: authToken.access_token }
         });
 
         logger.info("[GitHub Setup URL Installation] Upsert completed", { installationId: installation_id_number, userId: user_id });
