@@ -1,35 +1,26 @@
 interface PaginationControlsProps {
-    page: number;
-    totalPages: number;
-    total: number;
-    limit: number;
-    onPageChange: (page: number) => void;
-    onLimitChange: (limit: number) => void;
+    page: number
+    totalPages: number
+    total: number
+    limit: number
+    onPageChange: (page: number) => void
+    onLimitChange: (limit: number) => void
 }
 
-export function PaginationControls({
-    page,
-    totalPages,
-    total,
-    limit,
-    onPageChange,
-    onLimitChange,
-}: PaginationControlsProps) {
+export function PaginationControls({ page, totalPages, total, limit, onPageChange, onLimitChange }: PaginationControlsProps) {
     return (
         <div className="flex items-center justify-between">
             <div className="flex items-center gap-4 px-1">
                 <div className="text-sm text-[theme(text-secondary)]">
                     {totalPages > 1 ? (
                         <>
-                            Showing <span className="font-medium text-[theme(text-primary)]">{(page - 1) * limit + 1}</span> to{' '}
-                            <span className="font-medium text-[theme(text-primary)]">
-                                {Math.min(page * limit, total)}
-                            </span>{' '}
-                            of <span className="font-medium text-[theme(text-primary)]">{total}</span> channels
+                            Showing <span className="font-medium text-[theme(text-primary)]">{(page - 1) * limit + 1}</span> to{" "}
+                            <span className="font-medium text-[theme(text-primary)]">{Math.min(page * limit, total)}</span> of <span className="font-medium text-[theme(text-primary)]">{total}</span>{" "}
+                            channels
                         </>
                     ) : (
                         <>
-                            <span className="font-medium text-[theme(text-primary)]">{total}</span> {total === 1 ? 'channel' : 'channels'}
+                            <span className="font-medium text-[theme(text-primary)]">{total}</span> {total === 1 ? "channel" : "channels"}
                         </>
                     )}
                 </div>
@@ -41,7 +32,7 @@ export function PaginationControls({
                         <select
                             id="items-per-page"
                             value={limit}
-                            onChange={(e) => onLimitChange(Number(e.target.value))}
+                            onChange={e => onLimitChange(Number(e.target.value))}
                             className="px-3 py-1.5 text-sm text-[theme(text-primary)] bg-[theme(background-light)] border border-[theme(border)] rounded-md hover:bg-[theme(background)] focus:outline-none focus:ring-2 focus:ring-[theme(--color-accent)] transition-colors"
                         >
                             <option value={25}>25</option>
@@ -72,5 +63,5 @@ export function PaginationControls({
                 </div>
             )}
         </div>
-    );
+    )
 }

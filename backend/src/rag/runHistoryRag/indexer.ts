@@ -1,52 +1,46 @@
-import { TurboPufferSearch } from '../turbopufferSearch';
-import { SearchItem } from '../searchTypes';
-import { EmbeddingSystem } from '../../search/EmbeddingSystem';
-import { openai } from '../../config/settings';
-import { extractConversationContent } from './conversationExtractor';
-import { RunHistoryRawEventWithRelations } from '../../types/prisma';
-import { HydratorType, RAGNamespace } from '../../types/rag';
-import { Indexer } from '../indexer';
-import { Filter } from '@turbopuffer/turbopuffer/resources/index';
-import { AgentInputItem } from '@openai/agents-core';
+import { AgentInputItem } from "@openai/agents-core"
+import { Filter } from "@turbopuffer/turbopuffer/resources/index"
 
+import { openai } from "../../config/settings"
+import { EmbeddingSystem } from "../../search/EmbeddingSystem"
+import { RunHistoryRawEventWithRelations } from "../../types/prisma"
+import { HydratorType, RAGNamespace } from "../../types/rag"
+import { Indexer } from "../indexer"
+import { SearchItem } from "../searchTypes"
+import { TurboPufferSearch } from "../turbopufferSearch"
+
+import { extractConversationContent } from "./conversationExtractor"
 
 export interface RunHistoryMetadata {
-    run_history_record_id: string;
-    channel_id: string;
-    sequence_order: number;
-    created_at: string;
+    run_history_record_id: string
+    channel_id: string
+    sequence_order: number
+    created_at: string
 }
 
 export class RunHistoryMemory implements Indexer<RunHistoryRawEventWithRelations> {
-    private search: TurboPufferSearch<RunHistoryMetadata, RAGNamespace.RUN_HISTORY_MEMORY>;
-    private embeddingProvider: EmbeddingSystem;
+    private search: TurboPufferSearch<RunHistoryMetadata, RAGNamespace.RUN_HISTORY_MEMORY>
+    private embeddingProvider: EmbeddingSystem
 
-    constructor(
-        userId: string,
-        namespace: RAGNamespace.RUN_HISTORY_MEMORY = RAGNamespace.RUN_HISTORY_MEMORY
-    ) {
-        this.embeddingProvider = new EmbeddingSystem(openai.apiKey);
-        this.search = new TurboPufferSearch<RunHistoryMetadata, RAGNamespace.RUN_HISTORY_MEMORY>(
-            this.embeddingProvider, 
-            namespace,
-            userId
-        );
+    constructor(userId: string, namespace: RAGNamespace.RUN_HISTORY_MEMORY = RAGNamespace.RUN_HISTORY_MEMORY) {
+        this.embeddingProvider = new EmbeddingSystem(openai.apiKey)
+        this.search = new TurboPufferSearch<RunHistoryMetadata, RAGNamespace.RUN_HISTORY_MEMORY>(this.embeddingProvider, namespace, userId)
     }
 
     async remember(event: RunHistoryRawEventWithRelations): Promise<void> {
-        await this.rememberBulk([event]);
+        await this.rememberBulk([event])
     }
 
     async rememberBulk(events: RunHistoryRawEventWithRelations[]): Promise<void> {
-        if (events.length === 0) return;
+        if (events.length === 0) return
 
         const searchItems: SearchItem<RunHistoryMetadata>[] = events.map(event => {
-            const conversationContent = prepareConversationContent(event.raw_event_json);
+            const conversationContent = prepareConversationContent(event.raw_event_json)
 
             // Extract channel_id from the automation relation
-            const channelId = event.run_history_record?.automation?.id;
+            const channelId = event.run_history_record?.automation?.id
             if (!channelId) {
-                throw new Error(`Channel ID not found for run history raw event: ${event.id}`);
+                throw new Error(`Channel ID not found for run history raw event: ${event.id}`)
             }
             return {
                 id: event.id,
@@ -59,44 +53,40 @@ export class RunHistoryMemory implements Indexer<RunHistoryRawEventWithRelations
                     sequence_order: event.sequence_order,
                     created_at: event.created_at.toISOString()
                 }
-            };
+            }
         })
 
-        await this.search.bulkInsert(searchItems);
+        await this.search.bulkInsert(searchItems)
     }
 
-    async findSimilarInputEvents(
-        query: string,
-        channelId: string,
-        topK: number = 10
-    ): Promise<RunHistoryRawEventWithRelations[]> {
+    async findSimilarInputEvents(query: string, channelId: string, topK: number = 10): Promise<RunHistoryRawEventWithRelations[]> {
         const filters: Filter[] = [
             ["sequence_order", "Eq", 0],
             ["channel_id", "Eq", channelId]
-        ];
+        ]
 
-        const results = await this.search.search(query, {
+        const results = (await this.search.search(query, {
             topK,
             filters: filters.length > 1 ? ["And", filters] : filters[0]
-        }) as RunHistoryRawEventWithRelations[];
+        })) as RunHistoryRawEventWithRelations[]
 
-        return results;
+        return results
     }
 }
 
 const prepareConversationContent = (rawEvent: string | AgentInputItem | unknown): string => {
     // Handle case where rawEvent is already an object
-    if (typeof rawEvent === 'object' && rawEvent !== null) {
-        return extractConversationContent(rawEvent as AgentInputItem);
+    if (typeof rawEvent === "object" && rawEvent !== null) {
+        return extractConversationContent(rawEvent as AgentInputItem)
     }
-    
+
     // Handle case where rawEvent is a string that needs parsing
-    if (typeof rawEvent === 'string') {
-        const event = JSON.parse(rawEvent) as AgentInputItem;
-        return extractConversationContent(event);
+    if (typeof rawEvent === "string") {
+        const event = JSON.parse(rawEvent) as AgentInputItem
+        return extractConversationContent(event)
     }
-    
+
     // Fallback: stringify and parse if it's something else
-    const event = JSON.parse(JSON.stringify(rawEvent)) as AgentInputItem;
-    return extractConversationContent(event);
+    const event = JSON.parse(JSON.stringify(rawEvent)) as AgentInputItem
+    return extractConversationContent(event)
 }

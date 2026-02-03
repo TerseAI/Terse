@@ -1,36 +1,30 @@
-import useSWR from 'swr';
-import { BackendProvider } from '@/services/backend';
-import type { GetRunHistoryParams, GetRunHistoryResponse, RunHistoryStatus } from '@/shared/RunHistoryTypes';
-import { runHistoryKey } from '@/shared/InvalidationKeys';
+import useSWR from "swr"
+
+import { BackendProvider } from "@/services/backend"
+import { runHistoryKey } from "@/shared/InvalidationKeys"
+import type { GetRunHistoryParams, GetRunHistoryResponse, RunHistoryStatus } from "@/shared/RunHistoryTypes"
 
 type UseRunHistoryParams = {
-    agentId: string | null | undefined;
-    page?: number;
-    pageSize?: number;
-    searchQuery?: string;
-    dateRange?: { from: Date | undefined; to: Date | undefined };
-    selectedStatuses: Set<RunHistoryStatus>;
-};
+    agentId: string | null | undefined
+    page?: number
+    pageSize?: number
+    searchQuery?: string
+    dateRange?: { from: Date | undefined; to: Date | undefined }
+    selectedStatuses: Set<RunHistoryStatus>
+}
 
-export function useRunHistory({
-    agentId,
-    page = 1,
-    pageSize = 10,
-    searchQuery = '',
-    dateRange = { from: undefined, to: undefined },
-    selectedStatuses,
-}: UseRunHistoryParams) {
+export function useRunHistory({ agentId, page = 1, pageSize = 10, searchQuery = "", dateRange = { from: undefined, to: undefined }, selectedStatuses }: UseRunHistoryParams) {
     // Convert date range to ISO strings
     const toLocalStartISOString = (d?: Date) => {
-        if (!d) return undefined;
-        const local = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
-        return new Date(local.getTime() - local.getTimezoneOffset() * 60000).toISOString();
-    };
+        if (!d) return undefined
+        const local = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0)
+        return new Date(local.getTime() - local.getTimezoneOffset() * 60000).toISOString()
+    }
     const toLocalEndISOString = (d?: Date) => {
-        if (!d) return undefined;
-        const local = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
-        return new Date(local.getTime() - local.getTimezoneOffset() * 60000).toISOString();
-    };
+        if (!d) return undefined
+        const local = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999)
+        return new Date(local.getTime() - local.getTimezoneOffset() * 60000).toISOString()
+    }
 
     const params: GetRunHistoryParams = {
         page,
@@ -38,8 +32,8 @@ export function useRunHistory({
         q: searchQuery.trim() || undefined,
         start: toLocalStartISOString(dateRange.from),
         end: toLocalEndISOString(dateRange.to ?? dateRange.from),
-        status: Array.from(selectedStatuses).sort(),
-    };
+        status: Array.from(selectedStatuses).sort()
+    }
 
     if (!agentId) {
         return {
@@ -50,22 +44,23 @@ export function useRunHistory({
             isLoading: false,
             isError: null,
             isValidating: false,
-            mutate: () => {},
-        };
+            mutate: () => {}
+        }
     }
 
-    const key = runHistoryKey(agentId, params);
-
+    const key = runHistoryKey(agentId, params)
 
     const { data, error, isValidating, mutate } = useSWR<GetRunHistoryResponse>(
         key,
-        agentId ? async () => {
-            return BackendProvider.getRunHistory(agentId, params);
-        } : null,
+        agentId
+            ? async () => {
+                  return BackendProvider.getRunHistory(agentId, params)
+              }
+            : null,
         {
-            keepPreviousData: true,
+            keepPreviousData: true
         }
-    );
+    )
 
     return {
         runs: data?.items ?? [],
@@ -75,6 +70,6 @@ export function useRunHistory({
         isLoading: !data && !error && !!agentId,
         isError: error,
         isValidating,
-        mutate,
-    };
+        mutate
+    }
 }

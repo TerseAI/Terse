@@ -1,140 +1,129 @@
-import { useState, useEffect } from "react";
-import { Button } from "./ui/button";
-import {
-    Dialog,
-    DialogContent,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from "./ui/dialog";
-import { Input } from "./ui/input";
-import { Label } from "./ui/label";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "./ui/accordion";
-import { extractTeamIdFromFigmaUrl, extractFileKeyFromFigmaUrl, buildFigmaFileUrl } from "../utility/figmaUtils";
-import { Check } from "lucide-react";
+import { useEffect, useState } from "react"
+
+import { Check } from "lucide-react"
+
+import { buildFigmaFileUrl, extractFileKeyFromFigmaUrl, extractTeamIdFromFigmaUrl } from "../utility/figmaUtils"
+
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "./ui/accordion"
+import { Button } from "./ui/button"
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "./ui/dialog"
+import { Input } from "./ui/input"
+import { Label } from "./ui/label"
 
 interface FigmaConfigDialogProps {
-    open: boolean;
-    onClose: () => void;
-    onSave: (fileKey: string, fileName?: string, teamId?: string) => void;
-    currentFileKey?: string;
-    currentFileName?: string;
-    currentTeamId?: string;
+    open: boolean
+    onClose: () => void
+    onSave: (fileKey: string, fileName?: string, teamId?: string) => void
+    currentFileKey?: string
+    currentFileName?: string
+    currentTeamId?: string
 }
 
 // Rename export for backward compatibility
-export const FigmaTeamIdDialog = FigmaConfigDialog;
+export const FigmaTeamIdDialog = FigmaConfigDialog
 
-export function FigmaConfigDialog({
-    open,
-    onClose,
-    onSave,
-    currentFileKey,
-    currentTeamId,
-}: FigmaConfigDialogProps) {
-    const [fileUrl, setFileUrl] = useState("");
-    const [teamUrl, setTeamUrl] = useState("");
-    const [extractedFileKey, setExtractedFileKey] = useState<string | null>(null);
-    const [extractedTeamId, setExtractedTeamId] = useState<string | null>(null);
-    const [fileError, setFileError] = useState<string | null>(null);
-    const [teamError, setTeamError] = useState<string | null>(null);
+export function FigmaConfigDialog({ open, onClose, onSave, currentFileKey, currentTeamId }: FigmaConfigDialogProps) {
+    const [fileUrl, setFileUrl] = useState("")
+    const [teamUrl, setTeamUrl] = useState("")
+    const [extractedFileKey, setExtractedFileKey] = useState<string | null>(null)
+    const [extractedTeamId, setExtractedTeamId] = useState<string | null>(null)
+    const [fileError, setFileError] = useState<string | null>(null)
+    const [teamError, setTeamError] = useState<string | null>(null)
 
     // Initialize URLs from current values when dialog opens
     useEffect(() => {
         if (open) {
             // Reset and reload values when dialog opens
             if (currentFileKey) {
-                setFileUrl(buildFigmaFileUrl(currentFileKey));
-                setExtractedFileKey(currentFileKey);
+                setFileUrl(buildFigmaFileUrl(currentFileKey))
+                setExtractedFileKey(currentFileKey)
             } else {
-                setFileUrl("");
-                setExtractedFileKey(null);
+                setFileUrl("")
+                setExtractedFileKey(null)
             }
-            
+
             if (currentTeamId) {
                 // Set teamUrl to the team ID (it can be just the ID or a URL)
-                setTeamUrl(currentTeamId);
-                setExtractedTeamId(currentTeamId);
+                setTeamUrl(currentTeamId)
+                setExtractedTeamId(currentTeamId)
             } else {
-                setTeamUrl("");
-                setExtractedTeamId(null);
+                setTeamUrl("")
+                setExtractedTeamId(null)
             }
-            
+
             // Clear errors when dialog opens
-            setFileError(null);
-            setTeamError(null);
+            setFileError(null)
+            setTeamError(null)
         } else {
             // Reset when dialog closes
-            setFileUrl("");
-            setTeamUrl("");
-            setExtractedFileKey(null);
-            setExtractedTeamId(null);
-            setFileError(null);
-            setTeamError(null);
+            setFileUrl("")
+            setTeamUrl("")
+            setExtractedFileKey(null)
+            setExtractedTeamId(null)
+            setFileError(null)
+            setTeamError(null)
         }
-    }, [open, currentFileKey, currentTeamId]);
+    }, [open, currentFileKey, currentTeamId])
 
     const handleFileUrlChange = (value: string) => {
-        setFileUrl(value);
-        setFileError(null);
-        
+        setFileUrl(value)
+        setFileError(null)
+
         if (value.trim()) {
-            const fileKey = extractFileKeyFromFigmaUrl(value);
+            const fileKey = extractFileKeyFromFigmaUrl(value)
             if (fileKey) {
-                setExtractedFileKey(fileKey);
-                setFileError(null);
+                setExtractedFileKey(fileKey)
+                setFileError(null)
             } else {
-                setExtractedFileKey(null);
+                setExtractedFileKey(null)
                 if (value.trim().length > 10) {
-                    setFileError("Please enter a valid file ID (22+ alphanumeric characters) or file URL");
+                    setFileError("Please enter a valid file ID (22+ alphanumeric characters) or file URL")
                 }
             }
         } else {
-            setExtractedFileKey(null);
+            setExtractedFileKey(null)
         }
-    };
+    }
 
     const handleTeamUrlChange = (value: string) => {
-        setTeamUrl(value);
-        setTeamError(null);
-        
+        setTeamUrl(value)
+        setTeamError(null)
+
         if (value.trim()) {
-            const teamId = extractTeamIdFromFigmaUrl(value);
+            const teamId = extractTeamIdFromFigmaUrl(value)
             if (teamId) {
-                setExtractedTeamId(teamId);
-                setTeamError(null);
+                setExtractedTeamId(teamId)
+                setTeamError(null)
             } else {
-                setExtractedTeamId(null);
+                setExtractedTeamId(null)
                 if (value.trim().length > 5) {
-                    setTeamError("Please enter a valid team ID (numbers only) or team URL");
+                    setTeamError("Please enter a valid team ID (numbers only) or team URL")
                 }
             }
         } else {
-            setExtractedTeamId(null);
+            setExtractedTeamId(null)
         }
-    };
+    }
 
     const handleSave = () => {
         if (!extractedFileKey) {
-            setFileError("Please enter a valid file ID or file URL");
-            return;
+            setFileError("Please enter a valid file ID or file URL")
+            return
         }
         if (!extractedTeamId) {
-            setTeamError("Please enter a valid team ID or team URL");
-            return;
+            setTeamError("Please enter a valid team ID or team URL")
+            return
         }
 
         // Extract file name from URL if possible
-        const urlParts = fileUrl.split('/');
-        const fileNamePart = urlParts[urlParts.length - 1];
-        const fileName = fileNamePart && fileNamePart.includes('?') 
-            ? fileNamePart.split('?')[0] 
-            : fileNamePart;
-        const cleanFileName = fileName && fileName !== extractedFileKey ? decodeURIComponent(fileName) : undefined;
+        const urlParts = fileUrl.split("/")
+        const fileNamePart = urlParts[urlParts.length - 1]
+        const fileName = fileNamePart && fileNamePart.includes("?") ? fileNamePart.split("?")[0] : fileNamePart
+        const cleanFileName = fileName && fileName !== extractedFileKey ? decodeURIComponent(fileName) : undefined
 
-        onSave(extractedFileKey, cleanFileName, extractedTeamId);
-        onClose();
-    };
+        onSave(extractedFileKey, cleanFileName, extractedTeamId)
+        onClose()
+    }
 
     return (
         <Dialog open={open} onOpenChange={onClose}>
@@ -154,12 +143,10 @@ export function FigmaConfigDialog({
                             type="text"
                             placeholder="Team ID or URL (e.g., 1557541588002670308 or https://www.figma.com/files/team/...)"
                             value={teamUrl}
-                            onChange={(e) => handleTeamUrlChange(e.target.value)}
+                            onChange={e => handleTeamUrlChange(e.target.value)}
                             className={teamError ? "border-red-500" : ""}
                         />
-                        {teamError && (
-                            <p className="text-sm text-red-600">{teamError}</p>
-                        )}
+                        {teamError && <p className="text-sm text-red-600">{teamError}</p>}
                         {extractedTeamId && (
                             <div className="flex items-center gap-2 p-2 rounded-lg bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800">
                                 <Check className="w-4 h-4 text-green-600 dark:text-green-400 shrink-0" />
@@ -168,9 +155,7 @@ export function FigmaConfigDialog({
                                 </span>
                             </div>
                         )}
-                        <p className="text-xs text-[theme(text-secondary)]">
-                            Paste your team ID directly or the admin console URL / any Figma file URL from your team workspace.
-                        </p>
+                        <p className="text-xs text-[theme(text-secondary)]">Paste your team ID directly or the admin console URL / any Figma file URL from your team workspace.</p>
                     </div>
 
                     <Accordion type="single" collapsible className="w-full">
@@ -202,13 +187,11 @@ export function FigmaConfigDialog({
                             type="text"
                             placeholder="File ID or URL (e.g., abc123def456... or https://www.figma.com/design/...)"
                             value={fileUrl}
-                            onChange={(e) => handleFileUrlChange(e.target.value)}
+                            onChange={e => handleFileUrlChange(e.target.value)}
                             className={fileError ? "border-red-500" : ""}
                             disabled={!extractedTeamId}
                         />
-                        {fileError && (
-                            <p className="text-sm text-red-600">{fileError}</p>
-                        )}
+                        {fileError && <p className="text-sm text-red-600">{fileError}</p>}
                         {extractedFileKey && (
                             <div className="flex items-center gap-2 p-2 rounded-lg bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800">
                                 <Check className="w-4 h-4 text-green-600 dark:text-green-400 shrink-0" />
@@ -218,27 +201,20 @@ export function FigmaConfigDialog({
                             </div>
                         )}
                         <p className="text-xs text-[theme(text-secondary)]">
-                            {extractedTeamId 
-                                ? "Paste your file ID directly or a Figma file URL to monitor for comments"
-                                : "Please provide your team ID first"}
+                            {extractedTeamId ? "Paste your file ID directly or a Figma file URL to monitor for comments" : "Please provide your team ID first"}
                         </p>
                     </div>
-
                 </div>
 
                 <DialogFooter>
                     <Button variant="outline" onClick={onClose}>
                         Cancel
                     </Button>
-                    <Button
-                        onClick={handleSave}
-                        disabled={!extractedFileKey || !extractedTeamId}
-                    >
+                    <Button onClick={handleSave} disabled={!extractedFileKey || !extractedTeamId}>
                         Save Configuration
                     </Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
-    );
+    )
 }
-

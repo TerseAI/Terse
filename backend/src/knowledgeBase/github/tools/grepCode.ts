@@ -1,12 +1,13 @@
-import { RunContext, tool } from "@openai/agents";
-import { z } from "zod";
-import logger from "../../../logger";
-import { createGitHubClient, searchCode, getGitHubAccessToken } from "../githubApiClient";
-import { IntegrationType } from "../../../shared/Integrations";
-import { RunHistoryActionType } from "@prisma/client";
-import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner";
-import { Session } from "../../../types/session";
-import { ToolName } from "../../../tools/ToolNames";
+import { RunContext, tool } from "@openai/agents"
+import { RunHistoryActionType } from "@prisma/client"
+import { z } from "zod"
+
+import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
+import logger from "../../../logger"
+import { IntegrationType } from "../../../shared/Integrations"
+import { ToolName } from "../../../tools/ToolNames"
+import { Session } from "../../../types/session"
+import { createGitHubClient, getGitHubAccessToken, searchCode } from "../githubApiClient"
 
 /**
  * Tool for grep-style exact text search in GitHub repositories.
@@ -33,102 +34,98 @@ Examples:
 
 This is more precise than semantic search - use it when you know exactly what text to find.`,
     parameters: z.object({
-        repositoryNames: z.array(z.string()).describe('Array of repository full names (owner/repo format) to search in.'),
+        repositoryNames: z.array(z.string()).describe("Array of repository full names (owner/repo format) to search in."),
         pattern: z.string().describe('The exact text pattern to search for. For function calls, include the opening parenthesis (e.g., "fetchUser("). For strings, include quotes if needed.'),
         fileExtension: z.union([z.string(), z.null()]).describe('Filter by file extension (e.g., "ts", "js", "py"). Do not include the dot. Use null to search all file types.'),
         path: z.union([z.string(), z.null()]).describe('Filter by directory path (e.g., "src/services" to only search in that directory). Use null to search everywhere.'),
-        perPage: z.number().describe('Number of results to return (default: 20, max: 100)'),
-        page: z.union([z.number().int().min(1), z.null()]).describe('Page number for pagination (default: 1). Use this to fetch additional results if there are more than perPage results. Use null for page 1. Must be a positive integer >= 1.'),
+        perPage: z.number().describe("Number of results to return (default: 20, max: 100)"),
+        page: z
+            .union([z.number().int().min(1), z.null()])
+            .describe("Page number for pagination (default: 1). Use this to fetch additional results if there are more than perPage results. Use null for page 1. Must be a positive integer >= 1.")
     }),
     execute: async ({ repositoryNames, pattern, fileExtension, path, perPage = 20, page }, runContext?: RunContext<SessionWithTracking<Session>>) => {
         if (!runContext?.context) {
-            throw new Error("No context provided");
+            throw new Error("No context provided")
         }
 
         if (repositoryNames.length === 0) {
-            throw new Error("No repositories provided. The repositoryNames parameter must contain at least one repository.");
+            throw new Error("No repositories provided. The repositoryNames parameter must contain at least one repository.")
         }
 
-        const accessToken = await getGitHubAccessToken(runContext.context.user.id);
+        const accessToken = await getGitHubAccessToken(runContext.context.user.id)
         if (!accessToken) {
-            throw new Error(`GitHub access token not found for user`);
+            throw new Error(`GitHub access token not found for user`)
         }
 
-        const client = createGitHubClient(accessToken);
+        const client = createGitHubClient(accessToken)
 
         // Build query - wrap in quotes for exact match if not already quoted
-        let query = pattern;
+        let query = pattern
         if (!pattern.startsWith('"') && !pattern.endsWith('"')) {
             // GitHub code search uses quotes for exact matching
-            query = `"${pattern}"`;
-        }
-        
-        if (fileExtension) {
-            query += ` extension:${fileExtension}`;
-        }
-        if (path) {
-            query += ` path:${path}`;
+            query = `"${pattern}"`
         }
 
-        const pageNumber = Math.max(1, page ?? 1);
-        const normalizedPerPage = Math.min(perPage || 20, 100);
+        if (fileExtension) {
+            query += ` extension:${fileExtension}`
+        }
+        if (path) {
+            query += ` path:${path}`
+        }
+
+        const pageNumber = Math.max(1, page ?? 1)
+        const normalizedPerPage = Math.min(perPage || 20, 100)
         const requestParams = {
-            tool: 'grepGitHubCode',
+            tool: "grepGitHubCode",
             pattern,
             query,
             filters: { fileExtension, path },
             repositories: repositoryNames,
             perPage: normalizedPerPage,
-            page: pageNumber,
-        };
-        logger.info('[GitHub KB] grepGitHubCode - Request', requestParams);
-        logger.debug('[GitHub KB] grepGitHubCode - Full request params', { requestParams });
+            page: pageNumber
+        }
+        logger.info("[GitHub KB] grepGitHubCode - Request", requestParams)
+        logger.debug("[GitHub KB] grepGitHubCode - Full request params", { requestParams })
 
         try {
-            const results = await searchCode(
-                client,
-                query,
-                repositoryNames,
-                { perPage: normalizedPerPage, page: pageNumber }
-            );
+            const results = await searchCode(client, query, repositoryNames, { perPage: normalizedPerPage, page: pageNumber })
 
-            logger.debug('[GitHub KB] grepGitHubCode - Raw API response', {
+            logger.debug("[GitHub KB] grepGitHubCode - Raw API response", {
                 totalCount: results.totalCount,
                 itemCount: results.items.length,
                 items: results.items.map(item => ({
                     path: item.path,
                     repository: item.repository.fullName,
                     sha: item.sha,
-                    textMatchCount: item.textMatches?.length || 0,
-                })),
-            });
+                    textMatchCount: item.textMatches?.length || 0
+                }))
+            })
 
             // Format results with line-focused snippets
             const formattedResults = results.items.map((item, index) => {
                 // Extract the matching lines from text matches
-                const matchingLines = item.textMatches?.map(match => {
-                    // Try to extract the line containing the match
-                    const lines = match.fragment.split('\n');
-                    const matchingLinesInFragment = lines.filter(line => 
-                        line.toLowerCase().includes(pattern.toLowerCase().replace(/"/g, ''))
-                    );
-                    return matchingLinesInFragment.length > 0 
-                        ? matchingLinesInFragment.join('\n') 
-                        : match.fragment;
-                }).join('\n') || '(match found, no preview)';
-                
+                const matchingLines =
+                    item.textMatches
+                        ?.map(match => {
+                            // Try to extract the line containing the match
+                            const lines = match.fragment.split("\n")
+                            const matchingLinesInFragment = lines.filter(line => line.toLowerCase().includes(pattern.toLowerCase().replace(/"/g, "")))
+                            return matchingLinesInFragment.length > 0 ? matchingLinesInFragment.join("\n") : match.fragment
+                        })
+                        .join("\n") || "(match found, no preview)"
+
                 return {
                     index: index + 1,
                     repository: item.repository.fullName,
                     file: item.path,
                     url: item.htmlUrl,
-                    matches: matchingLines,
-                };
-            });
+                    matches: matchingLines
+                }
+            })
 
             const paginationInfo = results.pagination.hasMore
                 ? ` Page ${results.pagination.page} (${formattedResults.length} results shown). More results available - use page ${results.pagination.page + 1} to see more.`
-                : ` Page ${results.pagination.page} (${formattedResults.length} results shown).`;
+                : ` Page ${results.pagination.page} (${formattedResults.length} results shown).`
 
             const response = {
                 success: true,
@@ -140,52 +137,54 @@ This is more precise than semantic search - use it when you know exactly what te
                 pagination: {
                     page: results.pagination.page,
                     perPage: results.pagination.perPage,
-                    hasMore: results.pagination.hasMore,
+                    hasMore: results.pagination.hasMore
                 },
                 results: formattedResults,
-                message: results.totalCount === 0 
-                    ? `No exact matches found for "${pattern}". Try a different pattern or use searchGitHubCode for semantic search.`
-                    : `Found ${results.totalCount} files containing "${pattern}".${paginationInfo}`,
-                tip: formattedResults.length > 0 
-                    ? 'Use readGitHubFile to see the full file contents and surrounding context.'
-                    : 'Try a partial match or use searchGitHubCode for broader semantic search.',
-            };
+                message:
+                    results.totalCount === 0
+                        ? `No exact matches found for "${pattern}". Try a different pattern or use searchGitHubCode for semantic search.`
+                        : `Found ${results.totalCount} files containing "${pattern}".${paginationInfo}`,
+                tip:
+                    formattedResults.length > 0
+                        ? "Use readGitHubFile to see the full file contents and surrounding context."
+                        : "Try a partial match or use searchGitHubCode for broader semantic search."
+            }
 
-            logger.info('[GitHub KB] grepGitHubCode - Response', {
+            logger.info("[GitHub KB] grepGitHubCode - Response", {
                 success: true,
                 totalCount: results.totalCount,
-                resultsReturned: formattedResults.length,
-            });
-            logger.debug('[GitHub KB] grepGitHubCode - Full response', { response });
+                resultsReturned: formattedResults.length
+            })
+            logger.debug("[GitHub KB] grepGitHubCode - Full response", { response })
 
             // Return action as part of the result
             const action = {
-                action: 'Searched GitHub code (exact match)',
+                action: "Searched GitHub code (exact match)",
                 integration: IntegrationType.GITHUB,
-                target: repositoryNames.join(', '),
-                details: `Exact text search for "${pattern}": Found ${results.totalCount} file(s) containing pattern${results.pagination.hasMore ? ` (showing page ${results.pagination.page})` : ''}`,
+                target: repositoryNames.join(", "),
+                details: `Exact text search for "${pattern}": Found ${results.totalCount} file(s) containing pattern${results.pagination.hasMore ? ` (showing page ${results.pagination.page})` : ""}`,
                 url: `https://github.com/search?q=${encodeURIComponent(query)}&type=code`,
                 type: RunHistoryActionType.read,
-                isReadOnly: true,
-            };
+                isReadOnly: true
+            }
 
             return {
                 ...response,
-                actions: [action],
-            };
+                actions: [action]
+            }
         } catch (error: any) {
-            logger.error('[GitHub KB] grepGitHubCode - Failed', { 
-                pattern, 
-                query, 
+            logger.error("[GitHub KB] grepGitHubCode - Failed", {
+                pattern,
+                query,
                 error: error.message,
-                stack: error.stack,
-            });
+                stack: error.stack
+            })
             return {
                 success: false,
                 error: error.message,
                 pattern,
-                tip: 'If searching for special characters, they may need to be escaped. Try simplifying the pattern.',
-            };
+                tip: "If searching for special characters, they may need to be escaped. Try simplifying the pattern."
+            }
         }
-    },
-});
+    }
+})

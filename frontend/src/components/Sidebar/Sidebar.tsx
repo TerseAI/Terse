@@ -1,4 +1,9 @@
-import { Button } from "@/components/ui/button";
+import { Link, useLocation, useNavigate } from "react-router-dom"
+
+import type { LucideIcon } from "lucide-react"
+import { Bell, Home, Plug, Plus, Zap } from "lucide-react"
+
+import { Button } from "@/components/ui/button"
 import {
     Sidebar,
     SidebarContent,
@@ -11,32 +16,25 @@ import {
     SidebarMenuSkeleton,
     SidebarMenuSub,
     SidebarMenuSubButton,
-    SidebarMenuSubItem,
-} from "@/components/ui/sidebar";
-import { useAgents } from "@/hooks/api/useAgents";
-import { FrontendRoutes } from "@/shared/FrontendRoutes";
-import { Agent } from "@/shared/types";
-import type { LucideIcon } from "lucide-react";
-import { Bell, Home, Plug, Plus, Zap } from "lucide-react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
-import { AppSidebarFooter } from "./SidebarFooter";
-import { AppSidebarHeader } from "./SidebarHeader";
+    SidebarMenuSubItem
+} from "@/components/ui/sidebar"
+import { useAgents } from "@/hooks/api/useAgents"
+import { FrontendRoutes } from "@/shared/FrontendRoutes"
+import { Agent } from "@/shared/types"
+
+import { AppSidebarFooter } from "./SidebarFooter"
+import { AppSidebarHeader } from "./SidebarHeader"
 
 export function AppSidebar() {
-    const { agents, isLoading } = useAgents({ limit: 100 });
-    const navigate = useNavigate();
+    const { agents, isLoading } = useAgents({ limit: 100 })
+    const navigate = useNavigate()
 
     return (
         <Sidebar>
             <AppSidebarHeader />
             <SidebarContent>
                 <div className="px-3 py-4">
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        className="w-full gap-2"
-                        onClick={() => navigate(FrontendRoutes.AGENTS.SETUP)}
-                    >
+                    <Button variant="outline" size="sm" className="w-full gap-2" onClick={() => navigate(FrontendRoutes.AGENTS.SETUP)}>
                         <Plus className="size-4" />
                         Add Agent
                     </Button>
@@ -61,17 +59,17 @@ export function AppSidebar() {
 }
 
 interface ApplicationNavigationProps {
-    agents: Agent[];
-    loading: boolean;
+    agents: Agent[]
+    loading: boolean
 }
 
 function ApplicationNavigation({ agents, loading }: ApplicationNavigationProps) {
-    const location = useLocation();
-    const applicationItems = DefaultApplicationItems;
+    const location = useLocation()
+    const applicationItems = DefaultApplicationItems
 
     return (
         <SidebarMenu>
-            {applicationItems.map((item) => (
+            {applicationItems.map(item => (
                 <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton asChild isActive={location.pathname === item.url}>
                         <Link to={item.url}>
@@ -79,9 +77,7 @@ function ApplicationNavigation({ agents, loading }: ApplicationNavigationProps) 
                             <span>{item.title}</span>
                         </Link>
                     </SidebarMenuButton>
-                    {item.title === "Agents" && (
-                        <AgentsList agents={agents} loading={loading} />
-                    )}
+                    {item.title === "Agents" && <AgentsList agents={agents} loading={loading} />}
                 </SidebarMenuItem>
             ))}
         </SidebarMenu>
@@ -89,11 +85,11 @@ function ApplicationNavigation({ agents, loading }: ApplicationNavigationProps) 
 }
 
 function SettingsNavigation() {
-    const location = useLocation();
+    const location = useLocation()
 
     return (
         <SidebarMenu>
-            {SettingsItems.map((item) => (
+            {SettingsItems.map(item => (
                 <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton asChild isActive={location.pathname === item.url}>
                         <Link to={item.url}>
@@ -108,11 +104,11 @@ function SettingsNavigation() {
 }
 
 interface AgentsListProps {
-    agents: Agent[];
-    loading: boolean;
+    agents: Agent[]
+    loading: boolean
 }
 function AgentsList({ agents, loading }: AgentsListProps) {
-    const navigate = useNavigate();
+    const navigate = useNavigate()
 
     if (loading) {
         return (
@@ -132,17 +128,12 @@ function AgentsList({ agents, loading }: AgentsListProps) {
 
     return (
         <SidebarMenuSub>
-            {agents.map((agent) => (
+            {agents.map(agent => (
                 <AgentListItem key={agent.id} agent={agent} />
             ))}
             <SidebarMenuSubItem>
                 <SidebarMenuSubButton asChild>
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        className="gap-1 text-xs text-muted-foreground"
-                        onClick={() => navigate(FrontendRoutes.AGENTS.SETUP)}
-                    >
+                    <Button variant="ghost" size="sm" className="gap-1 text-xs text-muted-foreground" onClick={() => navigate(FrontendRoutes.AGENTS.SETUP)}>
                         <Plus className="size-3 !text-muted-foreground hover:!text-foreground" color="currentColor" />
                         Add Agent
                     </Button>
@@ -153,12 +144,12 @@ function AgentsList({ agents, loading }: AgentsListProps) {
 }
 
 interface AgentListItemProps {
-    agent: Agent;
+    agent: Agent
 }
 
 function AgentListItem({ agent }: AgentListItemProps) {
-    const location = useLocation();
-    const isActive = location.pathname === FrontendRoutes.AGENTS.DETAIL(agent.id);
+    const location = useLocation()
+    const isActive = location.pathname === FrontendRoutes.AGENTS.DETAIL(agent.id)
 
     return (
         <SidebarMenuSubItem>
@@ -171,13 +162,13 @@ function AgentListItem({ agent }: AgentListItemProps) {
     )
 }
 
-export default Sidebar;
+export default Sidebar
 
 interface NavItem {
-    title: string;
-    url: string;
-    icon: LucideIcon;
-    iconColor?: string;
+    title: string
+    url: string
+    icon: LucideIcon
+    iconColor?: string
 }
 
 const DefaultApplicationItems: NavItem[] = [
@@ -185,13 +176,13 @@ const DefaultApplicationItems: NavItem[] = [
         title: "Home",
         url: FrontendRoutes.APP,
         icon: Home,
-        iconColor: "text-primary",
+        iconColor: "text-primary"
     },
     {
         title: "Agents",
         url: FrontendRoutes.AGENTS.LIST,
         icon: Zap,
-        iconColor: "text-primary",
+        iconColor: "text-primary"
     }
 ]
 
@@ -200,12 +191,12 @@ const SettingsItems: NavItem[] = [
         title: "Integrations",
         url: FrontendRoutes.INTEGRATIONS,
         icon: Plug,
-        iconColor: "text-primary",
+        iconColor: "text-primary"
     },
     {
         title: "Notifications",
         url: FrontendRoutes.NOTIFICATIONS,
         icon: Bell,
-        iconColor: "text-primary",
+        iconColor: "text-primary"
     }
 ]

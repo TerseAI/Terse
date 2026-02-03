@@ -1,94 +1,75 @@
-import { useState } from "react";
-import { ChevronRightIcon } from '@heroicons/react/24/outline';
-import { FunctionCallEvent } from "./Turn";
-import FunctionCallItem from "./FunctionCallItem";
-import ShinyText from "../ShinyText";
-import { getToolDisplayFromCall } from "../../utility/toolDisplayUtils";
+import { useState } from "react"
+
+import { ChevronRightIcon } from "@heroicons/react/24/outline"
+
+import { getToolDisplayFromCall } from "../../utility/toolDisplayUtils"
+import ShinyText from "../ShinyText"
+
+import FunctionCallItem from "./FunctionCallItem"
+import { FunctionCallEvent } from "./Turn"
 
 interface ToolCallsSummaryProps {
-    calls: FunctionCallEvent[];
-    isTurnFailure?: boolean;
-    onApprove?: (stepId: string) => void;
-    onReject?: (stepId: string) => void;
+    calls: FunctionCallEvent[]
+    isTurnFailure?: boolean
+    onApprove?: (stepId: string) => void
+    onReject?: (stepId: string) => void
 }
 
 export default function ToolCallsSummary({ calls, isTurnFailure = false, onApprove, onReject }: ToolCallsSummaryProps) {
-    const [isExpanded, setIsExpanded] = useState(false);
+    const [isExpanded, setIsExpanded] = useState(false)
 
-    if (calls.length === 0) return null;
+    if (calls.length === 0) return null
 
-    const generatingCalls = calls.filter(c => c.isGeneratingParams);
-    const runningCalls = calls.filter(c => c.isRunning && !c.isGeneratingParams);
-    const completedCalls = calls.filter(c => !c.isRunning && !c.isGeneratingParams);
-    const hasAnyWaitingForApproval = calls.some(c => c.isWaitingForApproval && !c.isRejected);
+    const generatingCalls = calls.filter(c => c.isGeneratingParams)
+    const runningCalls = calls.filter(c => c.isRunning && !c.isGeneratingParams)
+    const completedCalls = calls.filter(c => !c.isRunning && !c.isGeneratingParams)
+    const hasAnyWaitingForApproval = calls.some(c => c.isWaitingForApproval && !c.isRejected)
 
     // Auto-expand if any call is waiting for approval
-    const shouldShowExpanded = isExpanded || hasAnyWaitingForApproval;
+    const shouldShowExpanded = isExpanded || hasAnyWaitingForApproval
 
     // Format in-progress calls into single lines using display names
-    const generatingText = formatToolCallsWithDisplay(generatingCalls, 'preparing');
-    const runningText = formatToolCallsWithDisplay(runningCalls, 'executing');
+    const generatingText = formatToolCallsWithDisplay(generatingCalls, "preparing")
+    const runningText = formatToolCallsWithDisplay(runningCalls, "executing")
 
     return (
         <div className="w-fit space-y-2">
             {/* Show shiny text for generating params */}
             {generatingText && (
                 <div className="py-1">
-                    <ShinyText
-                        text={generatingText}
-                        speed={1.5}
-                        className="text-sm"
-                    />
+                    <ShinyText text={generatingText} speed={1.5} className="text-sm" />
                 </div>
             )}
 
             {/* Show shiny text for running calls */}
             {runningText && (
                 <div className="py-1">
-                    <ShinyText
-                        text={runningText}
-                        speed={1.5}
-                        className="text-sm"
-                    />
+                    <ShinyText text={runningText} speed={1.5} className="text-sm" />
                 </div>
             )}
 
             {/* Show expandable summary for completed calls */}
             {completedCalls.length > 0 && (
                 <>
-                    <button
-                        onClick={() => setIsExpanded(!isExpanded)}
-                        className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors py-1"
-                    >
-                        <ChevronRightIcon
-                            className={`w-3 h-3 transition-transform duration-200 ${shouldShowExpanded ? 'rotate-90' : ''}`}
-                        />
+                    <button onClick={() => setIsExpanded(!isExpanded)} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors py-1">
+                        <ChevronRightIcon className={`w-3 h-3 transition-transform duration-200 ${shouldShowExpanded ? "rotate-90" : ""}`} />
                         <span>
-                            {completedCalls.length} tool call{completedCalls.length !== 1 ? 's' : ''}
-                            {hasAnyWaitingForApproval && (
-                                <span className="text-yellow-500 ml-1">(approval needed)</span>
-                            )}
+                            {completedCalls.length} tool call{completedCalls.length !== 1 ? "s" : ""}
+                            {hasAnyWaitingForApproval && <span className="text-yellow-500 ml-1">(approval needed)</span>}
                         </span>
                     </button>
 
                     {shouldShowExpanded && (
                         <div className="ml-4 mt-2 space-y-2">
                             {completedCalls.map((call, index) => (
-                                <FunctionCallItem
-                                    key={`${call.id}-${index}`}
-                                    call={call}
-                                    index={index}
-                                    isTurnFailure={isTurnFailure}
-                                    onApprove={onApprove}
-                                    onReject={onReject}
-                                />
+                                <FunctionCallItem key={`${call.id}-${index}`} call={call} index={index} isTurnFailure={isTurnFailure} onApprove={onApprove} onReject={onReject} />
                             ))}
                         </div>
                     )}
                 </>
             )}
         </div>
-    );
+    )
 }
 
 /**
@@ -99,47 +80,42 @@ export default function ToolCallsSummary({ calls, isTurnFailure = false, onAppro
  * - Multiple same: "Fetching resources from Notion x2..."
  * - Multiple different: "Fetching resources from Notion and Creating ticket..."
  */
-function formatToolCallsWithDisplay(
-    calls: FunctionCallEvent[],
-    phase: 'preparing' | 'executing'
-): string {
-    if (calls.length === 0) return "";
+function formatToolCallsWithDisplay(calls: FunctionCallEvent[], phase: "preparing" | "executing"): string {
+    if (calls.length === 0) return ""
 
     // Get display text for each call
-    const displayTexts = calls.map(call =>
-        getToolDisplayFromCall(call.name, phase, call.parameters, call.result)
-    );
+    const displayTexts = calls.map(call => getToolDisplayFromCall(call.name, phase, call.parameters, call.result))
 
     // Count occurrences of each display text
-    const counts = new Map<string, number>();
+    const counts = new Map<string, number>()
     for (const text of displayTexts) {
-        counts.set(text, (counts.get(text) || 0) + 1);
+        counts.set(text, (counts.get(text) || 0) + 1)
     }
 
     // Build formatted parts preserving order of first occurrence
-    const seen = new Set<string>();
-    const parts: string[] = [];
+    const seen = new Set<string>()
+    const parts: string[] = []
     for (const text of displayTexts) {
-        if (seen.has(text)) continue;
-        seen.add(text);
+        if (seen.has(text)) continue
+        seen.add(text)
 
-        const count = counts.get(text)!;
+        const count = counts.get(text)!
         if (count > 1) {
-            parts.push(`${text} x${count}`);
+            parts.push(`${text} x${count}`)
         } else {
-            parts.push(text);
+            parts.push(text)
         }
     }
 
     // Join parts with proper grammar
-    let joined: string;
+    let joined: string
     if (parts.length === 1) {
-        joined = parts[0];
+        joined = parts[0]
     } else if (parts.length === 2) {
-        joined = `${parts[0]} and ${parts[1]}`;
+        joined = `${parts[0]} and ${parts[1]}`
     } else {
-        joined = `${parts.slice(0, -1).join(", ")}, and ${parts[parts.length - 1]}`;
+        joined = `${parts.slice(0, -1).join(", ")}, and ${parts[parts.length - 1]}`
     }
 
-    return `${joined}...`;
+    return `${joined}...`
 }

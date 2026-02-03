@@ -1,69 +1,62 @@
-import { RunHistoryRecord } from "../../../shared/RunHistoryTypes";
-import RunHistoryItemHeader from "./RunHistoryItemHeader";
-import RunHistoryChatDrawer from "../RunHistoryChatDrawer";
-import { Button } from "@/components/ui/button";
-import { MessageSquare } from "lucide-react";
-import RunHistoryStatusBadge from "../RunHistoryStatusBadge";
-import { formatTimestamp } from "@/utility/timeUtils";
+import { MessageSquare } from "lucide-react"
+
+import { Button } from "@/components/ui/button"
+import { formatTimestamp } from "@/utility/timeUtils"
+
+import { RunHistoryRecord } from "../../../shared/RunHistoryTypes"
+import RunHistoryChatDrawer from "../RunHistoryChatDrawer"
+import RunHistoryStatusBadge from "../RunHistoryStatusBadge"
+
+import RunHistoryItemHeader from "./RunHistoryItemHeader"
 
 type Props = {
-    run: RunHistoryRecord;
-    runs?: RunHistoryRecord[];
-    currentRunIndex?: number;
-    isDrawerOpen?: boolean;
-    onDrawerOpenChange?: (open: boolean) => void;
-    onNavigateToRun?: (runId: string) => void;
-    isFullscreen?: boolean;
-    onFullscreenChange?: (fullscreen: boolean) => void;
-    isInitialOpen?: boolean;
-};
+    run: RunHistoryRecord
+    runs?: RunHistoryRecord[]
+    currentRunIndex?: number
+    isDrawerOpen?: boolean
+    onDrawerOpenChange?: (open: boolean) => void
+    onNavigateToRun?: (runId: string) => void
+    isFullscreen?: boolean
+    onFullscreenChange?: (fullscreen: boolean) => void
+    isInitialOpen?: boolean
+}
 
-export default function RunHistoryItem({ 
-    run, 
-    runs, 
-    currentRunIndex, 
+export default function RunHistoryItem({
+    run,
+    runs,
+    currentRunIndex,
     isDrawerOpen = false,
     onDrawerOpenChange,
     onNavigateToRun,
     isFullscreen = false,
     onFullscreenChange,
-    isInitialOpen = true,
+    isInitialOpen = true
 }: Props) {
     const handleDrawerOpen = () => {
         if (onDrawerOpenChange) {
-            onDrawerOpenChange(true);
+            onDrawerOpenChange(true)
         }
-    };
-    
+    }
+
     const handleDrawerClose = (open: boolean) => {
         if (onDrawerOpenChange) {
-            onDrawerOpenChange(open);
+            onDrawerOpenChange(open)
         }
-    };
+    }
 
     const copyToClipboard = (text: string) => {
         if (navigator?.clipboard?.writeText) {
-            navigator.clipboard.writeText(text).catch(() => {});
+            navigator.clipboard.writeText(text).catch(() => {})
         }
-    };
+    }
 
     return (
         <div className="overflow-hidden bg-card border border-border rounded-lg md:mb-3 min-w-[640px] md:min-w-0 shrink-0 md:shrink">
             <div className="flex flex-col gap-3 px-4 py-3 md:flex-row md:items-center">
-                <RunHistoryItemHeader
-                    run={run}
-                    formattedTimestamp={formatTimestamp(run.timestamp)}
-                    onCopy={copyToClipboard}
-                />
+                <RunHistoryItemHeader run={run} formattedTimestamp={formatTimestamp(run.timestamp)} onCopy={copyToClipboard} />
                 <div className="flex items-center gap-3 md:ml-auto">
                     <RunHistoryStatusBadge status={run.status} filtered={run.filtered} />
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handleDrawerOpen}
-                        className="flex items-center gap-2"
-                        title="View chat"
-                    >
+                    <Button variant="outline" size="sm" onClick={handleDrawerOpen} className="flex items-center gap-2" title="View chat">
                         <MessageSquare className="w-4 h-4" />
                     </Button>
                 </div>
@@ -77,9 +70,9 @@ export default function RunHistoryItem({
                 filtered={run.filtered}
                 runs={runs}
                 currentRunIndex={currentRunIndex}
-                onNavigate={(newRunId) => {
+                onNavigate={newRunId => {
                     if (onNavigateToRun) {
-                        onNavigateToRun(newRunId);
+                        onNavigateToRun(newRunId)
                     }
                 }}
                 isFullscreen={isFullscreen}
@@ -87,7 +80,5 @@ export default function RunHistoryItem({
                 isInitialOpen={isInitialOpen}
             />
         </div>
-    );
+    )
 }
-
-

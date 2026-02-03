@@ -1,26 +1,28 @@
-import chalk from 'chalk';
-import { Search, SearchError, EmbeddingError, EmbeddingProvider } from './search';
-import logger from '../logger';
-import { SearchItem, SearchResult, SearchOptions } from './SearchItem';
-import { Pool } from 'pg';
-import { toSql } from 'pgvector';
+import chalk from "chalk"
+import { Pool } from "pg"
+import { toSql } from "pgvector"
+
+import logger from "../logger"
+
+import { SearchItem, SearchOptions, SearchResult } from "./SearchItem"
+import { EmbeddingError, EmbeddingProvider, Search, SearchError } from "./search"
 
 export class PostgreSQLSearch implements Search {
-    private pool: Pool;
-    private embeddingClient: EmbeddingProvider;
+    private pool: Pool
+    private embeddingClient: EmbeddingProvider
 
     constructor(pool: Pool, embeddingClient: EmbeddingProvider) {
-        this.pool = pool;
-        this.embeddingClient = embeddingClient;
+        this.pool = pool
+        this.embeddingClient = embeddingClient
     }
 
     async search(query: string, options: SearchOptions): Promise<SearchResult[]> {
-        const embedding = await this.embed(query);
-        const embeddingVector = toSql(embedding);
+        const embedding = await this.embed(query)
+        const embeddingVector = toSql(embedding)
 
-        const limit = Math.min(options.limit || 20, 100);
+        const limit = Math.min(options.limit || 20, 100)
 
-        logger.debug('🔍 Search options', { options });
+        logger.debug("🔍 Search options", { options })
 
         try {
             const results = await this.pool.query(
@@ -32,16 +34,10 @@ export class PostgreSQLSearch implements Search {
                    AND (1 - (embedding <=> $1)) > $4
                  ORDER BY embedding <=> $1 
                  LIMIT $5`,
-                [
-                    embeddingVector,
-                    options.teamId,
-                    options.entityTypes || null,
-                    options.minSimilarity || 0.0,
-                    limit
-                ]
-            );
+                [embeddingVector, options.teamId, options.entityTypes || null, options.minSimilarity || 0.0, limit]
+            )
 
-            logger.debug(`Search results count`, { count: results.rows.length, query: query.substring(0, 100) });
+            logger.debug(`Search results count`, { count: results.rows.length, query: query.substring(0, 100) })
 
             return results.rows.map(row => ({
                 id: row.id,
@@ -50,25 +46,25 @@ export class PostgreSQLSearch implements Search {
                 content: row.content,
                 similarity: (row.similarity || 0.0) as number,
                 metadata: row.metadata || {}
-            }));
+            }))
         } catch (error) {
-            logger.error('Search database error', { error });
-            throw new SearchError('Database error', error as Error);
+            logger.error("Search database error", { error })
+            throw new SearchError("Database error", error as Error)
         }
     }
 
     async embed(text: string): Promise<number[]> {
         try {
-            return await this.embeddingClient.embed(text);
+            return await this.embeddingClient.embed(text)
         } catch (error) {
-            throw new EmbeddingError('Invalid response', error as Error);
+            throw new EmbeddingError("Invalid response", error as Error)
         }
     }
 
     async insert(item: SearchItem): Promise<void> {
-        const content = item.content;
-        const embedding = await this.embed(content);
-        const embeddingVector = toSql(embedding);
+        const content = item.content
+        const embedding = await this.embed(content)
+        const embeddingVector = toSql(embedding)
 
         try {
             await this.pool.query(
@@ -80,19 +76,11 @@ export class PostgreSQLSearch implements Search {
                     embedding = EXCLUDED.embedding,
                     metadata = EXCLUDED.metadata,
                     updated_at = NOW()`,
-                [
-                    item.id,
-                    item.teamId,
-                    item.entityType,
-                    item.entityId,
-                    item.content,
-                    embeddingVector,
-                    item.metadata
-                ]
-            );
+                [item.id, item.teamId, item.entityType, item.entityId, item.content, embeddingVector, item.metadata]
+            )
         } catch (error) {
-            logger.error('Error inserting search content', { error, itemId: item.id, entityType: item.entityType, entityId: item.entityId });
-            throw new SearchError('Database error', error as Error);
+            logger.error("Error inserting search content", { error, itemId: item.id, entityType: item.entityType, entityId: item.entityId })
+            throw new SearchError("Database error", error as Error)
         }
     }
 
@@ -102,36 +90,36 @@ export class PostgreSQLSearch implements Search {
                 `DELETE FROM semantic_search_index 
                  WHERE entity_id = $1 AND entity_type = $2 AND team_id = $3`,
                 [entityId, entityType, teamId]
-            );
+            )
         } catch (error) {
-            throw new SearchError('Database error', error as Error);
+            throw new SearchError("Database error", error as Error)
         }
     }
 
     async bulkInsert(items: SearchItem[]): Promise<void> {
         if (items.length === 0) {
-            return;
+            return
         }
 
         // Batch embed all items
-        const embeddings: number[][] = [];
+        const embeddings: number[][] = []
         for (const item of items) {
-            const embedding = await this.embed(item.content);
-            embeddings.push(embedding);
+            const embedding = await this.embed(item.content)
+            embeddings.push(embedding)
         }
 
-        logger.info(`Bulk inserting search items`, { count: items.length });
+        logger.info(`Bulk inserting search items`, { count: items.length })
 
         // Use proper parameterized queries for each item
-        const client = await this.pool.connect();
+        const client = await this.pool.connect()
         try {
-            await client.query('BEGIN');
+            await client.query("BEGIN")
 
             for (let i = 0; i < items.length; i++) {
-                const item = items[i];
-                const embeddingVector = toSql(embeddings[i]);
+                const item = items[i]
+                const embeddingVector = toSql(embeddings[i])
 
-                logger.debug(`Inserting search item`, { itemId: item.id, entityType: item.entityType, entityId: item.entityId, teamId: item.teamId, contentLength: item.content?.length });
+                logger.debug(`Inserting search item`, { itemId: item.id, entityType: item.entityType, entityId: item.entityId, teamId: item.teamId, contentLength: item.content?.length })
 
                 try {
                     await client.query(
@@ -143,22 +131,14 @@ export class PostgreSQLSearch implements Search {
                             embedding = EXCLUDED.embedding, 
                             metadata = EXCLUDED.metadata, 
                             updated_at = NOW()`,
-                        [
-                            item.id,
-                            item.teamId,
-                            item.entityType,
-                            item.entityId,
-                            item.content,
-                            embeddingVector,
-                            item.metadata
-                        ]
-                    );
-                    logger.debug(`✅ Successfully inserted search item`, { itemIndex: i + 1, totalItems: items.length, itemId: item.id });
+                        [item.id, item.teamId, item.entityType, item.entityId, item.content, embeddingVector, item.metadata]
+                    )
+                    logger.debug(`✅ Successfully inserted search item`, { itemIndex: i + 1, totalItems: items.length, itemId: item.id })
                 } catch (insertError) {
-                    logger.error(`❌ Failed to insert search item`, { 
-                        error: insertError instanceof Error ? insertError.message : String(insertError), 
+                    logger.error(`❌ Failed to insert search item`, {
+                        error: insertError instanceof Error ? insertError.message : String(insertError),
                         stack: insertError instanceof Error ? insertError.stack : undefined,
-                        itemIndex: i + 1, 
+                        itemIndex: i + 1,
                         totalItems: items.length,
                         itemId: item.id,
                         teamId: item.teamId,
@@ -166,33 +146,33 @@ export class PostgreSQLSearch implements Search {
                         entityId: item.entityId,
                         contentLength: item.content?.length,
                         metadata: item.metadata
-                    });
-                    throw insertError;
+                    })
+                    throw insertError
                 }
             }
 
-            await client.query('COMMIT');
-            logger.info(`✅ Successfully committed all search items`, { count: items.length });
+            await client.query("COMMIT")
+            logger.info(`✅ Successfully committed all search items`, { count: items.length })
         } catch (error) {
-            logger.error('❌ Transaction failed, rolling back', { error, itemCount: items.length });
-            await client.query('ROLLBACK');
-            throw new SearchError('Database error', error as Error);
+            logger.error("❌ Transaction failed, rolling back", { error, itemCount: items.length })
+            await client.query("ROLLBACK")
+            throw new SearchError("Database error", error as Error)
         } finally {
-            client.release();
+            client.release()
         }
     }
 
     async update(item: SearchItem): Promise<void> {
         // For PostgreSQL, update is the same as insert due to ON CONFLICT
-        await this.insert(item);
+        await this.insert(item)
     }
 }
 
 interface SearchResultRow {
-    id: string;
-    entity_type: string;
-    entity_id: number;
-    content: string;
-    metadata: any;
-    similarity: number | null;
+    id: string
+    entity_type: string
+    entity_id: number
+    content: string
+    metadata: any
+    similarity: number | null
 }

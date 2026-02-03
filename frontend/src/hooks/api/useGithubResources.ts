@@ -1,17 +1,18 @@
-import useSWR, { type KeyedMutator } from 'swr';
-import { BackendProvider } from '@/services/backend';
-import type { GetGithubRepositoriesForIntegrationResponse, Repository} from '@/shared/types';
-import { githubRepositoriesKey } from "@/shared/InvalidationKeys";
+import useSWR, { type KeyedMutator } from "swr"
+
+import { BackendProvider } from "@/services/backend"
+import { githubRepositoriesKey } from "@/shared/InvalidationKeys"
+import type { GetGithubRepositoriesForIntegrationResponse, Repository } from "@/shared/types"
 
 type UseGithubResourcesReturn = {
-    repositories: Repository[];
-    response: GetGithubRepositoriesForIntegrationResponse | undefined;
-    isLoading: boolean;
-    isError: boolean;
-    error: unknown;
-    isValidating: boolean;
-    mutate: KeyedMutator<GetGithubRepositoriesForIntegrationResponse>;
-};
+    repositories: Repository[]
+    response: GetGithubRepositoriesForIntegrationResponse | undefined
+    isLoading: boolean
+    isError: boolean
+    error: unknown
+    isValidating: boolean
+    mutate: KeyedMutator<GetGithubRepositoriesForIntegrationResponse>
+}
 
 export function useGithubResources(installationId: number | null | undefined): UseGithubResourcesReturn {
     const { data, error, isLoading, isValidating, mutate } = useSWR<GetGithubRepositoriesForIntegrationResponse>(
@@ -20,11 +21,11 @@ export function useGithubResources(installationId: number | null | undefined): U
         {
             keepPreviousData: true,
             revalidateOnFocus: false,
-            revalidateOnReconnect: true,
-        },
-    );
+            revalidateOnReconnect: true
+        }
+    )
 
-    const loading = (isLoading || (!data && !error));
+    const loading = isLoading || (!data && !error)
 
     return {
         repositories: data?.repositories ?? [],
@@ -33,6 +34,6 @@ export function useGithubResources(installationId: number | null | undefined): U
         isError: Boolean(error),
         error,
         isValidating,
-        mutate,
-    };
+        mutate
+    }
 }

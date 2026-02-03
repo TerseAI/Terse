@@ -1,4 +1,4 @@
-import { useFeatureFlagEnabled } from 'posthog-js/react';
+import { useFeatureFlagEnabled } from "posthog-js/react"
 
 /**
  * Hook to check if a feature flag is enabled
@@ -6,6 +6,5 @@ import { useFeatureFlagEnabled } from 'posthog-js/react';
  * @returns boolean indicating if the feature flag is enabled
  */
 export function useFeatureFlag(flagKey: string): boolean {
-  return useFeatureFlagEnabled(flagKey) ?? false;
+    return useFeatureFlagEnabled(flagKey) ?? false
 }
-

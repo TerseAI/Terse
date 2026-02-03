@@ -1,92 +1,84 @@
-import { useState, useRef, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { Check, MessageSquare, GitBranch, Zap, ArrowRight, HelpCircle } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
-import { useIntegrations } from "@/hooks/api/useIntegrations";
-import { useOAuthSuccessListener } from "@/hooks/useOAuthSuccessListener";
-import { FrontendRoutes } from "@/shared/FrontendRoutes";
-import { BackendProvider } from "@/services/backend";
-import { IntegrationType } from "@/shared/Integrations";
+import { useEffect, useRef, useState } from "react"
+import { useNavigate } from "react-router-dom"
+
+import { ArrowRight, Check, GitBranch, HelpCircle, MessageSquare, Zap } from "lucide-react"
+
+import { Button } from "@/components/ui/button"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { useIntegrations } from "@/hooks/api/useIntegrations"
+import { useOAuthSuccessListener } from "@/hooks/useOAuthSuccessListener"
+import { BackendProvider } from "@/services/backend"
+import { FrontendRoutes } from "@/shared/FrontendRoutes"
+import { IntegrationType } from "@/shared/Integrations"
 
 enum OnboardingStep {
     CONNECT_SLACK = 1,
     ADD_INTEGRATION = 2,
-    CREATE_AGENT = 3,
+    CREATE_AGENT = 3
 }
 
-function deriveOnboardingStep(
-    hasSlackIntegration: boolean,
-    hasOtherIntegrations: boolean
-): OnboardingStep {
-    if (!hasSlackIntegration) return OnboardingStep.CONNECT_SLACK;
-    if (!hasOtherIntegrations) return OnboardingStep.ADD_INTEGRATION;
-    return OnboardingStep.CREATE_AGENT;
+function deriveOnboardingStep(hasSlackIntegration: boolean, hasOtherIntegrations: boolean): OnboardingStep {
+    if (!hasSlackIntegration) return OnboardingStep.CONNECT_SLACK
+    if (!hasOtherIntegrations) return OnboardingStep.ADD_INTEGRATION
+    return OnboardingStep.CREATE_AGENT
 }
 
 export function HomeEmptyState() {
-    const navigate = useNavigate();
-    const { integrations: activeIntegrations, mutate } = useIntegrations();
-    const [isConnectingSlack, setIsConnectingSlack] = useState(false);
-    const popupRef = useRef<Window | null>(null);
+    const navigate = useNavigate()
+    const { integrations: activeIntegrations, mutate } = useIntegrations()
+    const [isConnectingSlack, setIsConnectingSlack] = useState(false)
+    const popupRef = useRef<Window | null>(null)
 
-    const hasSlackIntegration = activeIntegrations?.some(
-        (integration) => integration.toLowerCase() === 'slack'
-    ) ?? false;
+    const hasSlackIntegration = activeIntegrations?.some(integration => integration.toLowerCase() === "slack") ?? false
 
-    const hasOtherIntegrations = activeIntegrations
-        ? activeIntegrations.length > (hasSlackIntegration ? 1 : 0)
-        : false;
+    const hasOtherIntegrations = activeIntegrations ? activeIntegrations.length > (hasSlackIntegration ? 1 : 0) : false
 
-    const currentStep = deriveOnboardingStep(hasSlackIntegration, hasOtherIntegrations);
+    const currentStep = deriveOnboardingStep(hasSlackIntegration, hasOtherIntegrations)
 
     // Listen for OAuth success and refetch integrations + reset connecting state
     useOAuthSuccessListener(mutate, () => {
-        setIsConnectingSlack(false);
-    });
+        setIsConnectingSlack(false)
+    })
 
     // Monitor popup closure to reset connecting state if user closes without completing
     useEffect(() => {
-        if (!isConnectingSlack) return;
+        if (!isConnectingSlack) return
 
         const checkPopupClosed = setInterval(() => {
             // Check if popup exists and is closed
             if (popupRef.current && popupRef.current.closed) {
-                clearInterval(checkPopupClosed);
-                setIsConnectingSlack(false);
-                popupRef.current = null;
+                clearInterval(checkPopupClosed)
+                setIsConnectingSlack(false)
+                popupRef.current = null
             }
-        }, 500);
+        }, 500)
 
-        return () => clearInterval(checkPopupClosed);
-    }, [isConnectingSlack]);
+        return () => clearInterval(checkPopupClosed)
+    }, [isConnectingSlack])
 
     const connectSlack = async () => {
-        setIsConnectingSlack(true);
+        setIsConnectingSlack(true)
         try {
-            const installationDetails = await BackendProvider.getIntegrationInstallationDetails(
-                IntegrationType.SLACK,
-                { isBotUser: true }
-            );
+            const installationDetails = await BackendProvider.getIntegrationInstallationDetails(IntegrationType.SLACK, { isBotUser: true })
 
             if (installationDetails?.oauthUrl) {
-                const popup = window.open(installationDetails.oauthUrl, 'oauth-popup', 'width=600,height=700');
-                popupRef.current = popup;
+                const popup = window.open(installationDetails.oauthUrl, "oauth-popup", "width=600,height=700")
+                popupRef.current = popup
 
                 // If popup was blocked, reset state immediately
                 if (!popup) {
-                    console.error('Popup was blocked');
-                    setIsConnectingSlack(false);
+                    console.error("Popup was blocked")
+                    setIsConnectingSlack(false)
                 }
             } else {
-                console.error('OAuth URL not available');
-                setIsConnectingSlack(false);
+                console.error("OAuth URL not available")
+                setIsConnectingSlack(false)
             }
         } catch (error) {
-            console.error('Error initiating Slack OAuth:', error);
-            setIsConnectingSlack(false);
+            console.error("Error initiating Slack OAuth:", error)
+            setIsConnectingSlack(false)
         }
-    };
+    }
 
     const steps = [
         {
@@ -98,7 +90,7 @@ export function HomeEmptyState() {
             completed: hasSlackIntegration,
             action: connectSlack,
             buttonText: isConnectingSlack ? "Connecting..." : "Connect Slack",
-            disabled: isConnectingSlack,
+            disabled: isConnectingSlack
         },
         {
             step: OnboardingStep.ADD_INTEGRATION,
@@ -108,7 +100,7 @@ export function HomeEmptyState() {
             icon: <GitBranch className="h-5 w-5" />,
             completed: hasOtherIntegrations,
             action: () => navigate(FrontendRoutes.INTEGRATIONS),
-            buttonText: "Add Integration",
+            buttonText: "Add Integration"
         },
         {
             step: OnboardingStep.CREATE_AGENT,
@@ -118,45 +110,43 @@ export function HomeEmptyState() {
             icon: <Zap className="h-5 w-5" />,
             completed: false,
             action: () => navigate(FrontendRoutes.AGENTS.SETUP),
-            buttonText: "Create Agent",
-        },
-    ];
+            buttonText: "Create Agent"
+        }
+    ]
 
     return (
         <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center p-6">
             <div className="w-full max-w-lg">
                 {/* Header */}
                 <div className="text-center mb-10">
-                    <h1 className="text-2xl font-semibold tracking-tight mb-2">
-                        Welcome to Terse
-                    </h1>
-                    <p className="text-muted-foreground text-sm">
-                        Let's get your workspace set up in a few steps
-                    </p>
+                    <h1 className="text-2xl font-semibold tracking-tight mb-2">Welcome to Terse</h1>
+                    <p className="text-muted-foreground text-sm">Let's get your workspace set up in a few steps</p>
                 </div>
 
                 {/* Steps */}
                 <div className="space-y-3">
                     {steps.map((stepConfig, index) => {
-                        const isActive = stepConfig.step === currentStep;
-                        const isPast = stepConfig.step < currentStep;
-                        const isFuture = stepConfig.step > currentStep;
+                        const isActive = stepConfig.step === currentStep
+                        const isPast = stepConfig.step < currentStep
+                        const isFuture = stepConfig.step > currentStep
 
                         return (
                             <div
                                 key={stepConfig.step}
                                 className={`
                                     relative border rounded-xl p-5 transition-all
-                                    ${isActive ? 'border-foreground/20 bg-muted/30' : 'border-border'}
-                                    ${isFuture ? 'opacity-50' : ''}
+                                    ${isActive ? "border-foreground/20 bg-muted/30" : "border-border"}
+                                    ${isFuture ? "opacity-50" : ""}
                                 `}
                             >
                                 <div className="flex gap-4">
                                     {/* Step indicator */}
-                                    <div className={`
+                                    <div
+                                        className={`
                                         flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-medium
-                                        ${stepConfig.completed ? 'bg-foreground text-background' : isActive ? 'bg-foreground text-background' : 'bg-muted text-muted-foreground'}
-                                    `}>
+                                        ${stepConfig.completed ? "bg-foreground text-background" : isActive ? "bg-foreground text-background" : "bg-muted text-muted-foreground"}
+                                    `}
+                                    >
                                         {stepConfig.completed ? <Check className="h-4 w-4" /> : stepConfig.step}
                                     </div>
 
@@ -172,32 +162,19 @@ export function HomeEmptyState() {
                                                     {stepConfig.tooltip}
                                                 </TooltipContent>
                                             </Tooltip>
-                                            {stepConfig.completed && (
-                                                <span className="text-xs text-muted-foreground">Complete</span>
-                                            )}
+                                            {stepConfig.completed && <span className="text-xs text-muted-foreground">Complete</span>}
                                         </div>
-                                        <p className="text-sm text-muted-foreground mb-4">
-                                            {stepConfig.description}
-                                        </p>
+                                        <p className="text-sm text-muted-foreground mb-4">{stepConfig.description}</p>
 
                                         {isActive && (
-                                            <Button
-                                                onClick={stepConfig.action}
-                                                size="sm"
-                                                disabled={stepConfig.disabled}
-                                            >
+                                            <Button onClick={stepConfig.action} size="sm" disabled={stepConfig.disabled}>
                                                 {stepConfig.buttonText}
                                                 <ArrowRight className="h-3.5 w-3.5" />
                                             </Button>
                                         )}
 
                                         {stepConfig.completed && (
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={() => navigate(FrontendRoutes.INTEGRATIONS)}
-                                                className="text-muted-foreground"
-                                            >
+                                            <Button variant="ghost" size="sm" onClick={() => navigate(FrontendRoutes.INTEGRATIONS)} className="text-muted-foreground">
                                                 Manage
                                                 <ArrowRight className="h-3.5 w-3.5" />
                                             </Button>
@@ -207,28 +184,25 @@ export function HomeEmptyState() {
 
                                 {/* Connector line - centered on the 40px circle: p-5 (20px) + half of w-10 (20px) - half of line width (1px) */}
                                 {index < steps.length - 1 && (
-                                    <div className={`
+                                    <div
+                                        className={`
                                         absolute left-[calc(1.25rem+1.25rem-1px)] top-[4.25rem] w-0.5 h-[calc(100%-2.5rem)]
-                                        ${isPast ? 'bg-foreground' : 'bg-border'}
-                                    `} />
+                                        ${isPast ? "bg-foreground" : "bg-border"}
+                                    `}
+                                    />
                                 )}
                             </div>
-                        );
+                        )
                     })}
                 </div>
 
                 {/* Skip link */}
                 <div className="text-center mt-8">
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => navigate(FrontendRoutes.AGENTS.SETUP)}
-                        className="text-muted-foreground text-xs"
-                    >
+                    <Button variant="ghost" size="sm" onClick={() => navigate(FrontendRoutes.AGENTS.SETUP)} className="text-muted-foreground text-xs">
                         Skip setup and create an agent
                     </Button>
                 </div>
             </div>
         </div>
-    );
+    )
 }

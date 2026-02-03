@@ -1,18 +1,18 @@
-import { Agent } from "@openai/agents";
-import { z } from "zod";
-import { identityHistoryCallback, RunHistoryChatMemorySession } from "../CustomMemorySession";
-import { runnerFactory } from "../runner";
-import { settings } from "../../config/settings";
-import { db } from "../../prismaClient";
-import { ModelEvent, ToolCall } from "../../shared/ModelEvents";
-import logger from "../../logger";
+import { Agent } from "@openai/agents"
+import { z } from "zod"
 
+import { settings } from "../../config/settings"
+import logger from "../../logger"
+import { db } from "../../prismaClient"
+import { ModelEvent, ToolCall } from "../../shared/ModelEvents"
+import { RunHistoryChatMemorySession, identityHistoryCallback } from "../CustomMemorySession"
+import { runnerFactory } from "../runner"
 
 const ApprovalSummaryClassification = z.object({
     approvalSummary: z.string()
-});
+})
 
-type ApprovalSummaryClassificationType = z.infer<typeof ApprovalSummaryClassification>;
+type ApprovalSummaryClassificationType = z.infer<typeof ApprovalSummaryClassification>
 
 // --- Agent ---
 
@@ -39,17 +39,11 @@ IMPORTANT: Return ONLY a valid JSON object with this exact format:
 
 Do not include any markdown formatting, code blocks, or explanations. Only return the JSON object.`,
     model: "gpt-5-nano",
-    outputType: ApprovalSummaryClassification,
-});
+    outputType: ApprovalSummaryClassification
+})
 
-
-export async function generateApprovalSummary(
-    runId: string,
-    userId: string,
-    agentId: string,
-    stepId: string
-): Promise<ApprovalSummaryClassificationType> {
-    const prisma = db();
+export async function generateApprovalSummary(runId: string, userId: string, agentId: string, stepId: string): Promise<ApprovalSummaryClassificationType> {
+    const prisma = db()
 
     // Fetch run history record to get trigger information
     const runRecord = await prisma.run_history_records.findUnique({
@@ -60,57 +54,54 @@ export async function generateApprovalSummary(
             trigger_source: true,
             trigger_title: true,
             trigger_subheader: true,
-            trigger_url: true,
-        },
-    });
+            trigger_url: true
+        }
+    })
 
     if (!runRecord) {
-        logger.error(`[generateApprovalSummary] Run record not found for runId: ${runId}`);
-        return { approvalSummary: 'Unable to generate summary: run record not found' };
+        logger.error(`[generateApprovalSummary] Run record not found for runId: ${runId}`)
+        return { approvalSummary: "Unable to generate summary: run record not found" }
     }
 
     // Fetch all chat events for the run to find the ToolCall event
     const chatEvents = await prisma.run_history_chat_events.findMany({
         where: {
-            run_history_record_id: runId,
+            run_history_record_id: runId
         },
-        orderBy: [
-            { timestamp: "asc" },
-            { id: "asc" },
-        ],
-    });
+        orderBy: [{ timestamp: "asc" }, { id: "asc" }]
+    })
 
     // Find the ToolCall event matching the stepId
-    let toolCallEvent: ToolCall | null = null;
+    let toolCallEvent: ToolCall | null = null
     for (const chatEvent of chatEvents) {
-        const modelEvent = chatEvent.event_json as ModelEvent;
+        const modelEvent = chatEvent.event_json as ModelEvent
         if (modelEvent.type === "ToolCall" && modelEvent.step_id === stepId) {
-            toolCallEvent = modelEvent;
-            break;
+            toolCallEvent = modelEvent
+            break
         }
     }
 
     // Build trigger description
-    const triggerDescription = buildTriggerDescription(runRecord);
+    const triggerDescription = buildTriggerDescription(runRecord)
 
     // Construct user prompt based on whether we found a ToolCall event or need to fallback to actions
-    let userPrompt: string;
+    let userPrompt: string
 
     if (!toolCallEvent) {
-        logger.warn(`[generateApprovalSummary] ToolCall event not found for stepId: ${stepId} in runId: ${runId}`);
+        logger.warn(`[generateApprovalSummary] ToolCall event not found for stepId: ${stepId} in runId: ${runId}`)
         // Fallback: try to get action details from run_history_actions
         const runActions = await prisma.run_history_actions.findMany({
             where: {
                 run_history_record_id: runId,
-                step_id: stepId,
-            },
-        });
+                step_id: stepId
+            }
+        })
 
         if (runActions.length === 0) {
-            return { approvalSummary: 'Unable to generate summary: tool call not found' };
+            return { approvalSummary: "Unable to generate summary: tool call not found" }
         }
 
-        const action = runActions[0];
+        const action = runActions[0]
         userPrompt = `Context (do NOT mention this context in the output; it is for grounding only):
 ${triggerDescription}
 
@@ -120,16 +111,16 @@ Requested action to summarize (focus only on what will be done):
 - Target: ${action.target}
 - Details: ${action.details}
 
-Return the single-sentence "I'm going to ..." approvalSummary.`;
+Return the single-sentence "I'm going to ..." approvalSummary.`
     } else {
         // Format JSON parameters for readability
-        let formattedParameters = toolCallEvent.parameters;
+        let formattedParameters = toolCallEvent.parameters
         try {
-            const parsedParams = JSON.parse(toolCallEvent.parameters);
-            formattedParameters = JSON.stringify(parsedParams, null, 2);
+            const parsedParams = JSON.parse(toolCallEvent.parameters)
+            formattedParameters = JSON.stringify(parsedParams, null, 2)
         } catch {
             // If parameters aren't valid JSON, use them as-is
-            formattedParameters = toolCallEvent.parameters;
+            formattedParameters = toolCallEvent.parameters
         }
 
         // Construct user prompt with tool call details
@@ -142,54 +133,54 @@ Tool call to summarize (focus only on what will be done):
 - Parameters:
 ${formattedParameters}
 
-Return the single-sentence "I'm going to ..." approvalSummary.`;
+Return the single-sentence "I'm going to ..." approvalSummary.`
     }
 
     const session = new RunHistoryChatMemorySession({
         sessionId: runId,
         skipSave: true,
         filterIncompleteToolCalls: true
-    });
+    })
 
     const runner = runnerFactory({
         runId: runId,
         userId: userId,
         agentId: agentId,
-        env: settings.nodeEnv,
-    });
-    const result = await runner.run(approvalSummaryAgent, [{ role: 'user', content: userPrompt }], {
+        env: settings.nodeEnv
+    })
+    const result = await runner.run(approvalSummaryAgent, [{ role: "user", content: userPrompt }], {
         session,
-        sessionInputCallback: identityHistoryCallback,
-    });
+        sessionInputCallback: identityHistoryCallback
+    })
 
-    return result.finalOutput ?? { approvalSummary: '' };
+    return result.finalOutput ?? { approvalSummary: "" }
 }
 
 function buildTriggerDescription(runRecord: {
-    event: string;
-    trigger_integration: string;
-    trigger_source: string;
-    trigger_title: string | null;
-    trigger_subheader: string | null;
-    trigger_url: string | null;
+    event: string
+    trigger_integration: string
+    trigger_source: string
+    trigger_title: string | null
+    trigger_subheader: string | null
+    trigger_url: string | null
 }): string {
-    const parts: string[] = [];
+    const parts: string[] = []
 
-    parts.push(`Event: ${runRecord.event}`);
-    parts.push(`Integration: ${runRecord.trigger_integration}`);
-    parts.push(`Source: ${runRecord.trigger_source}`);
+    parts.push(`Event: ${runRecord.event}`)
+    parts.push(`Integration: ${runRecord.trigger_integration}`)
+    parts.push(`Source: ${runRecord.trigger_source}`)
 
     if (runRecord.trigger_title) {
-        parts.push(`Title: ${runRecord.trigger_title}`);
+        parts.push(`Title: ${runRecord.trigger_title}`)
     }
 
     if (runRecord.trigger_subheader) {
-        parts.push(`Subheader: ${runRecord.trigger_subheader}`);
+        parts.push(`Subheader: ${runRecord.trigger_subheader}`)
     }
 
     if (runRecord.trigger_url) {
-        parts.push(`URL: ${runRecord.trigger_url}`);
+        parts.push(`URL: ${runRecord.trigger_url}`)
     }
 
-    return parts.join('\n');
+    return parts.join("\n")
 }

@@ -1,18 +1,19 @@
-import useSWR, { type KeyedMutator } from 'swr';
-import { BackendProvider } from '@/services/backend';
-import type { SlackChannel, SlackChannelsResponse } from '@/shared/types';
-import { slackChannelsKey } from '@/shared/InvalidationKeys';
+import useSWR, { type KeyedMutator } from "swr"
+
+import { BackendProvider } from "@/services/backend"
+import { slackChannelsKey } from "@/shared/InvalidationKeys"
+import type { SlackChannel, SlackChannelsResponse } from "@/shared/types"
 
 type UseSlackChannelsReturn = {
-    channels: SlackChannel[];
-    response: SlackChannelsResponse | undefined;
-    selectedChannelId: string | null | undefined;
-    isLoading: boolean;
-    isError: boolean;
-    error: unknown;
-    isValidating: boolean;
-    mutate: KeyedMutator<SlackChannelsResponse>;
-};
+    channels: SlackChannel[]
+    response: SlackChannelsResponse | undefined
+    selectedChannelId: string | null | undefined
+    isLoading: boolean
+    isError: boolean
+    error: unknown
+    isValidating: boolean
+    mutate: KeyedMutator<SlackChannelsResponse>
+}
 
 export function useSlackChannels(integrationId: string | null | undefined): UseSlackChannelsReturn {
     const { data, error, isLoading, isValidating, mutate } = useSWR<SlackChannelsResponse>(
@@ -21,11 +22,11 @@ export function useSlackChannels(integrationId: string | null | undefined): UseS
         {
             keepPreviousData: true,
             revalidateOnFocus: false,
-            revalidateOnReconnect: true,
-        },
-    );
+            revalidateOnReconnect: true
+        }
+    )
 
-    const loading = Boolean(integrationId) && (isLoading || (!data && !error));
+    const loading = Boolean(integrationId) && (isLoading || (!data && !error))
 
     return {
         channels: data?.channels ?? [],
@@ -35,8 +36,6 @@ export function useSlackChannels(integrationId: string | null | undefined): UseS
         isError: Boolean(error),
         error,
         isValidating,
-        mutate,
-    };
+        mutate
+    }
 }
-
-

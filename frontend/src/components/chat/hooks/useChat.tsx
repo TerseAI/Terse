@@ -1,28 +1,21 @@
-import { useCompletionSocket, type ChatEventSubscription } from './useCompletionSocket';
-import { useChatTurns } from './useChatTurns';
-import { useChatInput } from './useChatInput';
-import { type ModelRequest, type ToolCallComplete, type ToolCall } from '../../../shared/ModelEvents';
-import { Turn } from '../Turn';
+import { type ModelRequest, type ToolCall, type ToolCallComplete } from "../../../shared/ModelEvents"
+import { Turn } from "../Turn"
+
+import { useChatInput } from "./useChatInput"
+import { useChatTurns } from "./useChatTurns"
+import { type ChatEventSubscription, useCompletionSocket } from "./useCompletionSocket"
 
 interface UseChatOptions {
-    subscribeToEvents?: ChatEventSubscription | null;
-    sendMessage: (message: ModelRequest) => void;
-    initialTurns?: Turn[];
-    onUserMessage?: (message: string) => void;
-    onToolCall?: (req: ToolCall) => void;
-    onToolCallComplete?: (req: ToolCallComplete) => void;
-    addUserTurnsLocally?: boolean;
+    subscribeToEvents?: ChatEventSubscription | null
+    sendMessage: (message: ModelRequest) => void
+    initialTurns?: Turn[]
+    onUserMessage?: (message: string) => void
+    onToolCall?: (req: ToolCall) => void
+    onToolCallComplete?: (req: ToolCallComplete) => void
+    addUserTurnsLocally?: boolean
 }
 
-export function useChat({
-    subscribeToEvents,
-    sendMessage: sendModelRequest,
-    initialTurns,
-    onUserMessage,
-    onToolCall,
-    onToolCallComplete,
-    addUserTurnsLocally = false,
-}: UseChatOptions) {
+export function useChat({ subscribeToEvents, sendMessage: sendModelRequest, initialTurns, onUserMessage, onToolCall, onToolCallComplete, addUserTurnsLocally = false }: UseChatOptions) {
     const {
         turns,
         isPendingAssistantResponse,
@@ -37,21 +30,21 @@ export function useChat({
         handleToolApprovalRequest,
         handleToolApprovalResponse,
         addUserTurn,
-        handleSnippet,
-    } = useChatTurns({initialTurns});
+        handleSnippet
+    } = useChatTurns({ initialTurns })
 
-    const { sendMessage: sendSocketMessage} = useCompletionSocket({
+    const { sendMessage: sendSocketMessage } = useCompletionSocket({
         subscribeToEvents,
         sendMessage: sendModelRequest,
         onDelta: handleDelta,
         onToolCallGenerating: handleToolCallGenerating,
         onToolCall: (req: ToolCall) => {
-            handleToolCall(req);
-            onToolCall?.(req);
+            handleToolCall(req)
+            onToolCall?.(req)
         },
         onToolCallComplete: (req: ToolCallComplete) => {
-            handleToolCallComplete(req);
-            onToolCallComplete?.(req);
+            handleToolCallComplete(req)
+            onToolCallComplete?.(req)
         },
         onFailure: handleFailure,
         onNaturalStop: handleNaturalStop,
@@ -59,18 +52,18 @@ export function useChat({
         onThinking: handleThinking,
         onToolApprovalRequest: handleToolApprovalRequest,
         onToolApprovalResponse: handleToolApprovalResponse,
-        onSnippet: handleSnippet,
-    });
+        onSnippet: handleSnippet
+    })
 
     const { input, setInput, sendMessage } = useChatInput({
         sendMessage: sendSocketMessage,
         onUserMessage: (message: string) => {
             if (addUserTurnsLocally) {
-                addUserTurn(message);
+                addUserTurn(message)
             }
-            onUserMessage?.(message);
+            onUserMessage?.(message)
         }
-    });
+    })
 
     return {
         turns,
@@ -79,6 +72,6 @@ export function useChat({
         setInput,
         sendMessage,
         sendModelRequest: sendSocketMessage,
-        handleToolApprovalResponse,
-    };
+        handleToolApprovalResponse
+    }
 }

@@ -1,26 +1,27 @@
-import { Output, ToolboxEntry } from "../abstract/Output";
-import { Tool } from "@openai/agents";
-import { AgentOutputWithConfigs, PrismaTransaction } from "../../types/prisma";
-import { db } from "../../prismaClient";
-import { NotionConfig } from "../../shared/Configs";
-import { OutputConfigType } from "@prisma/client";
-import { notionQueryDatabaseTool, notionModifyPageTool, notionGetSchemaTool } from "./tools";
-import { IntegrationType } from "../../shared/Integrations";
+import { Tool } from "@openai/agents"
+import { OutputConfigType } from "@prisma/client"
+
+import { db } from "../../prismaClient"
+import { NotionConfig } from "../../shared/Configs"
+import { IntegrationType } from "../../shared/Integrations"
+import { AgentOutputWithConfigs, PrismaTransaction } from "../../types/prisma"
+import { Output, ToolboxEntry } from "../abstract/Output"
+
+import { notionGetSchemaTool, notionModifyPageTool, notionQueryDatabaseTool } from "./tools"
 
 export class NotionDatabaseOutput extends Output<NotionConfig> {
     constructor() {
         const toolbox: ToolboxEntry[] = [
-            { tool: notionGetSchemaTool as Tool, isReadOnly: true, integration: IntegrationType.NOTION, displayName: 'Get datasource schema' },
-            { tool: notionQueryDatabaseTool as Tool, isReadOnly: true, integration: IntegrationType.NOTION, displayName: 'Query database' },
-            { tool: notionModifyPageTool as Tool, isReadOnly: false, integration: IntegrationType.NOTION, displayName: 'Modify page' },
-        ];
-        super(OutputConfigType.NOTION_DATABASE, toolbox);
+            { tool: notionGetSchemaTool as Tool, isReadOnly: true, integration: IntegrationType.NOTION, displayName: "Get datasource schema" },
+            { tool: notionQueryDatabaseTool as Tool, isReadOnly: true, integration: IntegrationType.NOTION, displayName: "Query database" },
+            { tool: notionModifyPageTool as Tool, isReadOnly: false, integration: IntegrationType.NOTION, displayName: "Modify page" }
+        ]
+        super(OutputConfigType.NOTION_DATABASE, toolbox)
     }
-
 
     async validateConfig(output: NotionConfig, _userId: string): Promise<void> {
         if (!output.databaseId) {
-            throw new Error('Invalid output config for notion_database: missing databaseId');
+            throw new Error("Invalid output config for notion_database: missing databaseId")
         }
     }
 
@@ -28,33 +29,33 @@ export class NotionDatabaseOutput extends Output<NotionConfig> {
         await tx.automation_notion_configs.create({
             data: {
                 automation_output_id: channelOutputId,
-                database_id: output.databaseId || '',
-                database_name: output.databaseName || '',
-            },
-        });
+                database_id: output.databaseId || "",
+                database_name: output.databaseName || ""
+            }
+        })
     }
 
     protected getSystemInstructionsForConfigs(configs: AgentOutputWithConfigs[]): string {
         if (configs.length === 0) {
-            throw new Error('No Notion database configs provided');
+            throw new Error("No Notion database configs provided")
         }
-        
-        const sections: string[] = [];
-        sections.push('=== NOTION DATABASE OUTPUT ===');
-        
+
+        const sections: string[] = []
+        sections.push("=== NOTION DATABASE OUTPUT ===")
+
         // List all available configurations
-        const configList: string[] = [];
+        const configList: string[] = []
         for (const config of configs) {
             if (!config.notion_config) {
-                throw new Error('Notion database config not found');
+                throw new Error("Notion database config not found")
             }
-            const databaseId = config.notion_config.database_id;
-            const databaseName = config.notion_config.database_name;
-            configList.push(`  • Integration ID: ${config.integration_id} - Database Name: ${databaseName || 'N/A'}, Database ID: ${databaseId || 'N/A'}`);
+            const databaseId = config.notion_config.database_id
+            const databaseName = config.notion_config.database_name
+            configList.push(`  • Integration ID: ${config.integration_id} - Database Name: ${databaseName || "N/A"}, Database ID: ${databaseId || "N/A"}`)
         }
-        sections.push('Available configurations:');
-        sections.push(configList.join('\n'));
-        sections.push('\nWhen calling Notion database tools, you MUST include the `integrationId` and `databaseId` parameters matching one of the configurations listed above.');
+        sections.push("Available configurations:")
+        sections.push(configList.join("\n"))
+        sections.push("\nWhen calling Notion database tools, you MUST include the `integrationId` and `databaseId` parameters matching one of the configurations listed above.")
         sections.push(`
 ==========================
 NOTION DATABASE OUTPUT INSTRUCTIONS
@@ -111,9 +112,8 @@ QUERY STRATEGY:
 - Extract key keywords from the content you're trying to match (e.g., ticket titles, project names) and search for those keywords
 
 This workflow ensures you work with the database correctly and prevents duplicate entries.
-`);
-        
-        return sections.join('\n');
+`)
+
+        return sections.join("\n")
     }
 }
-

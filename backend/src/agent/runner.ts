@@ -1,11 +1,10 @@
-import { Runner } from "@openai/agents-core";
-
+import { Runner } from "@openai/agents-core"
 
 type RunnerConfig = {
-    agentId: string;
-    runId: string;
-    userId: string;
-    env: string;
+    agentId: string
+    runId: string
+    userId: string
+    env: string
 }
 
 /**
@@ -19,7 +18,7 @@ export function runnerFactory(config: RunnerConfig): Runner {
             agentId: config.agentId,
             runId: config.runId,
             userId: config.userId,
-            env: config.env,
-        },
+            env: config.env
+        }
     })
 }

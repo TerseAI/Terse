@@ -1,24 +1,22 @@
-import { Button } from "@/components/ui/button";
-import { Copy, RotateCcw } from "lucide-react";
-import { toast } from "sonner";
-import { Step3ReviewProps } from "./types";
-import ReactMarkdown from "react-markdown";
-import { LoadingAnimation } from "./LoadingAnimation";
+import ReactMarkdown from "react-markdown"
 
-export function Step3Review({
-    generatedPrompt,
-    isLoading,
-    onRestart,
-    onDone
-}: Step3ReviewProps) {
+import { Copy, RotateCcw } from "lucide-react"
+import { toast } from "sonner"
+
+import { Button } from "@/components/ui/button"
+
+import { LoadingAnimation } from "./LoadingAnimation"
+import { Step3ReviewProps } from "./types"
+
+export function Step3Review({ generatedPrompt, isLoading, onRestart, onDone }: Step3ReviewProps) {
     const handleCopy = async () => {
         try {
-            await navigator.clipboard.writeText(generatedPrompt);
-            toast.success('Prompt copied to clipboard!');
+            await navigator.clipboard.writeText(generatedPrompt)
+            toast.success("Prompt copied to clipboard!")
         } catch (err) {
-            toast.error('Failed to copy prompt');
+            toast.error("Failed to copy prompt")
         }
-    };
+    }
 
     if (isLoading) {
         return (
@@ -26,7 +24,7 @@ export function Step3Review({
                 <h3 className="text-lg font-semibold mb-4">Generating your prompt</h3>
                 <LoadingAnimation />
             </div>
-        );
+        )
     }
 
     return (
@@ -36,9 +34,7 @@ export function Step3Review({
                 <div className="space-y-2">
                     <div className="min-h-[300px] p-3 border rounded-md bg-background overflow-auto">
                         <div className="react-markdown">
-                            <ReactMarkdown>
-                                {generatedPrompt}
-                            </ReactMarkdown>
+                            <ReactMarkdown>{generatedPrompt}</ReactMarkdown>
                         </div>
                     </div>
                     <div className="flex justify-end">
@@ -48,20 +44,15 @@ export function Step3Review({
                         </Button>
                     </div>
                 </div>
-                <p className="text-sm text-muted-foreground mt-2">
-                    Click "Done" to use this prompt in the Instructions field.
-                </p>
+                <p className="text-sm text-muted-foreground mt-2">Click "Done" to use this prompt in the Instructions field.</p>
             </div>
             <div className="flex justify-end gap-2">
                 <Button variant="outline" onClick={onRestart}>
                     <RotateCcw className="h-4 w-4 mr-2" />
                     Restart
                 </Button>
-                <Button onClick={onDone}>
-                    Done
-                </Button>
+                <Button onClick={onDone}>Done</Button>
             </div>
         </div>
-    );
+    )
 }
-

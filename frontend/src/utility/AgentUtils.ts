@@ -1,10 +1,8 @@
-import { AgentTrigger, AgentOutput, TransientAgentTrigger, TransientAgentOutput, AgentKnowledgeBase, TransientKnowledgeBase } from "@/shared/types";
+import { AgentKnowledgeBase, AgentOutput, AgentTrigger, TransientAgentOutput, TransientAgentTrigger, TransientKnowledgeBase } from "@/shared/types"
 
-export function getDefaultAgentName(
-    totalCount: number = 0
-): string {
+export function getDefaultAgentName(totalCount: number = 0): string {
     // Generate "Automation #x"
-    return `Automation #${totalCount + 1}`;
+    return `Automation #${totalCount + 1}`
 }
 
 /**
@@ -15,8 +13,8 @@ export function toTransientAgentTrigger(input: AgentTrigger): TransientAgentTrig
     return {
         id: input.id,
         config: input.config,
-        configType: input.config.configType,
-    };
+        configType: input.config.configType
+    }
 }
 
 /**
@@ -27,8 +25,8 @@ export function toTransientAgentOutput(output: AgentOutput): TransientAgentOutpu
     return {
         id: output.id,
         config: output.config,
-        configType: output.config.configType,
-    };
+        configType: output.config.configType
+    }
 }
 
 /**
@@ -37,12 +35,12 @@ export function toTransientAgentOutput(output: AgentOutput): TransientAgentOutpu
  */
 export function toAgentTrigger(input: TransientAgentTrigger): AgentTrigger | null {
     if (!input.config) {
-        return null;
+        return null
     }
     return {
         id: input.id,
-        config: input.config,
-    };
+        config: input.config
+    }
 }
 
 /**
@@ -51,12 +49,12 @@ export function toAgentTrigger(input: TransientAgentTrigger): AgentTrigger | nul
  */
 export function toAgentOutput(output: TransientAgentOutput | undefined): AgentOutput | undefined {
     if (!output || !output.config) {
-        return undefined;
+        return undefined
     }
     return {
         id: output.id,
-        config: output.config,
-    };
+        config: output.config
+    }
 }
 
 /**
@@ -66,8 +64,8 @@ export function toTransientKnowledgeBase(kb: AgentKnowledgeBase): TransientKnowl
     return {
         id: kb.id,
         config: kb.config,
-        configType: kb.config.configType,
-    };
+        configType: kb.config.configType
+    }
 }
 
 /**
@@ -76,10 +74,10 @@ export function toTransientKnowledgeBase(kb: AgentKnowledgeBase): TransientKnowl
  */
 export function toAgentKnowledgeBase(kb: TransientKnowledgeBase): AgentKnowledgeBase | null {
     if (!kb.config) {
-        return null;
+        return null
     }
     return {
         id: kb.id,
-        config: kb.config,
-    };
+        config: kb.config
+    }
 }
