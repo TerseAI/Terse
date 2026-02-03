@@ -3,15 +3,32 @@ import { FigmaIntegration, IntegrationType } from "@/shared/Integrations"
 import { IntegrationCardHeader } from "./helpers/IntegrationCardHeader";
 import { IntegrationCardFooter } from "./helpers/IntegrationCardFooter";
 import { IntegrationItem } from "./helpers/IntegrationItem";
+import { CompactIntegrationRow } from "./CompactIntegrationRow";
 import { useOAuthConnection } from "@/hooks/useOAuthConnection";
 import { cn } from "@/lib/utils";
 import { useFigmaIntegrations } from "@/hooks/api/useFigmaIntegrations";
 import { Skeleton } from "../ui/skeleton";
 import { Palette } from "lucide-react";
 
-function FigmaIntegrationCard({ className, isActive = true, stateToken }: { className?: string; isActive?: boolean; stateToken?: string }) {
+function FigmaIntegrationCard({ className, isActive = true, stateToken, compact = false }: { className?: string; isActive?: boolean; stateToken?: string; compact?: boolean }) {
     const { connect, isConnecting } = useOAuthConnection<IntegrationType.FIGMA>(IntegrationType.FIGMA, {}, stateToken);
-    const { integrations, isLoading } = useFigmaIntegrations(); 
+    const { integrations, isLoading } = useFigmaIntegrations();
+
+    const isConnected = integrations.length > 0;
+    const summary = integrations[0]?.handle || integrations[0]?.figma_user_id;
+
+    if (compact) {
+        return (
+            <CompactIntegrationRow
+                integration={IntegrationType.FIGMA}
+                isConnected={isConnected}
+                summary={summary}
+                connect={connect}
+                isConnecting={isConnecting}
+                className={className}
+            />
+        );
+    }
 
     return (
         <Card className={cn(className)}>

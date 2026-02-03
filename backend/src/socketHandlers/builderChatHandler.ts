@@ -21,9 +21,10 @@ export function registerBuilderChatHandler(
 
         const userMessage = message.user_message;
         const uiState = message.ui_state;
-        logger.info(`[builder:chat:message] Processing message`, { sessionId, userId, userMessage, hasUiState: !!uiState });
+        const timezone = message.timezone;
+        logger.info(`[builder:chat:message] Processing message`, { sessionId, userId, userMessage, hasUiState: !!uiState, timezone });
 
-        const webChatInterface = new WebChatInterface(sessionId, userId, socket, organizationId);
+        const webChatInterface = new WebChatInterface(sessionId, userId, socket, organizationId, timezone);
         const chatAgent = new ChatAgent(webChatInterface, sessionId, userId, organizationId, uiState);
         await chatAgent.run(userMessage);
     });

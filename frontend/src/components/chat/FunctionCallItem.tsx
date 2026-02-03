@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { ClockIcon, XMarkIcon, PaperAirplaneIcon, CheckIcon, NoSymbolIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
-import Spin, { Size } from "../loading/Spin";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "../ui/accordion";
 import ToolCallParameters from "../ToolCallParameters";
 import { ChangedItem } from "../../shared/ModelEvents";
@@ -9,6 +8,7 @@ import RunHistoryActionItem from "../RunHistory/RunHistoryActionItem";
 import { EntityType } from "../../shared/Entities";
 import { FunctionCallEvent } from "./Turn";
 import { Button } from "../ui/button";
+import { getToolDisplayFromCall } from "../../utility/toolDisplayUtils";
 
 interface FunctionCallItemProps {
     call: FunctionCallEvent;
@@ -148,6 +148,10 @@ export default function FunctionCallItem({ call, isTurnFailure = false, index, o
     const [isExpanded, setIsExpanded] = useState(false);
     const callKey = `function-call-${call.id}-${index}`;
 
+    // Get display name based on current state
+    const phase = call.isRunning ? 'executing' : 'complete';
+    const displayName = getToolDisplayFromCall(call.name, phase, call.parameters, call.result);
+
     const handleApprove = () => {
         if (!onApprove) {
             console.error('No onApprove handler available');
@@ -188,8 +192,6 @@ export default function FunctionCallItem({ call, isTurnFailure = false, index, o
                                     <svg className="w-4 h-4 text-blue-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                                     </svg>
-                                ) : call.isRunning ? (
-                                    <Spin size={Size.Tiny} />
                                 ) : (
                                     <svg className="w-4 h-4 text-primary flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -197,7 +199,7 @@ export default function FunctionCallItem({ call, isTurnFailure = false, index, o
                                 )}
                                 <div className="text-sm flex-1 text-left min-w-0 overflow-hidden">
                                     <span className="truncate block">
-                                        {call.name}
+                                        {displayName}
                                         {call.isWaitingForApproval && (
                                             <span className="text-yellow-500 ml-1">(waiting for approval)</span>
                                         )}
@@ -211,11 +213,6 @@ export default function FunctionCallItem({ call, isTurnFailure = false, index, o
                                             <span className="text-blue-500 ml-1">(waiting for your input)</span>
                                         )}
                                     </span>
-                                    {call.result && !call.isWaitingForUserInput && (
-                                        <span className="text-muted-foreground ml-2 font-mono bg-background px-2 py-0.5 rounded text-xs whitespace-nowrap">
-                                            → {call.result}
-                                        </span>
-                                    )}
                                 </div>
                             </div>
                         </AccordionTrigger>
@@ -242,7 +239,7 @@ export default function FunctionCallItem({ call, isTurnFailure = false, index, o
             </Accordion>
             {call.isWaitingForUserInput && (
                 <ToolResultInput
-                    toolName={call.name}
+                    toolName={displayName}
                     parameters={call.parameters}
                     onSubmit={() => {}}
                 />
@@ -253,7 +250,7 @@ export default function FunctionCallItem({ call, isTurnFailure = false, index, o
                         Approval Required
                     </div>
                     <div className="text-sm text-muted-foreground mb-3">
-                        The bot wants to execute: <span className="font-medium text-foreground">{call.name}</span>
+                        The bot wants to execute: <span className="font-medium text-foreground">{displayName}</span>
                     </div>
                     <div className="flex gap-2">
                         <Button

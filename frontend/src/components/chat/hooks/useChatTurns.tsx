@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { type Turn } from '../Turn';
-import { type TextDelta, type ToolCall, type ToolCallComplete, type Failure, FilterResult, type ChatSnippetPayload, type ChatSnippet } from '../../../shared/ModelEvents';
+import { type TextDelta, type ToolCallGenerating, type ToolCall, type ToolCallComplete, type Failure, FilterResult, type ChatSnippetPayload, type ChatSnippet } from '../../../shared/ModelEvents';
 import { filterOutThinkingOnlyTurns } from '../utils/turnUtils';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -67,59 +67,105 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
         });
     };
 
+    const handleToolCallGenerating = ({ tool_name, step_id }: ToolCallGenerating) => {
+        // Track current step_id
+        currentStepIdRef.current = step_id;
+
+        setTurns(prev => {
+            const updated = [...prev];
+            const last = updated[updated.length - 1];
+
+            // If last turn is an assistant turn, add generating tool call to it
+            if (last && last.role === 'assistant') {
+                // Check if this tool call already exists
+                const existingCallIndex = last.function_calls.findIndex(call => call.id === step_id);
+
+                if (existingCallIndex === -1) {
+                    // Add new tool call in generating state
+                    last.function_calls.push({
+                        id: step_id,
+                        name: tool_name,
+                        isGeneratingParams: true,
+                        isRunning: false,
+                        isWaitingForApproval: false,
+                        isWaitingForUserInput: false,
+                    });
+                }
+                last.isGenerating = true;
+                return updated;
+            }
+
+            // Otherwise create new assistant turn
+            return [...updated, {
+                role: 'assistant',
+                text: "",
+                function_calls: [{
+                    id: step_id,
+                    name: tool_name,
+                    isGeneratingParams: true,
+                    isRunning: false,
+                    isWaitingForApproval: false,
+                    isWaitingForUserInput: false,
+                }],
+                isGenerating: true,
+                step_id,
+            }];
+        });
+    };
+
     const handleToolCall = ({ summary, step_id, parameters }: ToolCall) => {
         // Track current step_id
         currentStepIdRef.current = step_id;
-        
+
         setTurns(prev => {
-            // Find the turn with the matching step_id
-            const existingTurnIndex = prev.findIndex(turn => turn.step_id === step_id);
+            const updated = [...prev];
+            const last = updated[updated.length - 1];
 
-            if (existingTurnIndex === -1) {
-                return [...prev, {
-                    role: 'assistant',
-                    text: "",
-                    function_calls: [{ id: step_id, name: summary, isRunning: false, isWaitingForApproval: false, isWaitingForUserInput: false, parameters }],
-                    isGenerating: true,
-                    step_id,
-                }];
+            // If last turn is an assistant turn, add tool call to it
+            if (last && last.role === 'assistant') {
+                // Check if this tool call already exists (by step_id which is the unique call ID)
+                const existingCallIndex = last.function_calls.findIndex(call => call.id === step_id);
+
+                if (existingCallIndex !== -1) {
+                    // Update existing tool call - transition from generating to running
+                    last.function_calls[existingCallIndex] = {
+                        ...last.function_calls[existingCallIndex],
+                        isGeneratingParams: false,
+                        isRunning: true,
+                        parameters
+                    };
+                } else {
+                    // Add new tool call (in case we missed the generating event)
+                    last.function_calls.push({
+                        id: step_id,
+                        name: summary,
+                        isGeneratingParams: false,
+                        isRunning: true,
+                        isWaitingForApproval: false,
+                        isWaitingForUserInput: false,
+                        parameters
+                    });
+                }
+                last.isGenerating = true;
+                return updated;
             }
 
-            const existingTurn = prev[existingTurnIndex];
-
-            // Check if this tool call already exists
-            const existingCallIndex = existingTurn.function_calls.findIndex(call => call.id === step_id && call.name === summary);
-            if (existingCallIndex !== -1) {
-                // Update existing tool call with new parameters
-                const updatedTurn = {
-                    ...existingTurn,
-                    function_calls: existingTurn.function_calls.map((call, index) =>
-                        index === existingCallIndex
-                            ? { ...call, parameters }
-                            : call
-                    )
-                };
-
-                return [
-                    ...prev.slice(0, existingTurnIndex),
-                    updatedTurn,
-                    ...prev.slice(existingTurnIndex + 1)
-                ];
-            }
-
-            // Create new turn with added tool call (immutable update)
-            const updatedTurn = {
-                ...existingTurn,
-                function_calls: [...existingTurn.function_calls, { id: step_id, name: summary, isRunning: false, isWaitingForApproval: false, isWaitingForUserInput: false, parameters }],
-                isGenerating: true
-            };
-
-            // Create new turns array with updated turn (immutable update)
-            return [
-                ...prev.slice(0, existingTurnIndex),
-                updatedTurn,
-                ...prev.slice(existingTurnIndex + 1)
-            ];
+            // Otherwise create new assistant turn
+            return [...updated, {
+                role: 'assistant',
+                text: "",
+                function_calls: [{
+                    id: step_id,
+                    name: summary,
+                    isGeneratingParams: false,
+                    isRunning: true,
+                    isWaitingForApproval: false,
+                    isWaitingForUserInput: false,
+                    parameters
+                }],
+                isGenerating: true,
+                step_id,
+            }];
         });
     };
 
@@ -374,6 +420,7 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
         turns: filterOutThinkingOnlyTurns(turns),
         isPendingAssistantResponse,
         handleDelta,
+        handleToolCallGenerating,
         handleToolCall,
         handleToolApprovalRequest,
         handleToolApprovalResponse,

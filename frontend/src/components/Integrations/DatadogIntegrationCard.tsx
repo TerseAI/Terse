@@ -1,15 +1,16 @@
 import { Card, CardContent, CardFooter } from "../ui/card";
-import { DatadogIntegration, IntegrationType } from "@/shared/Integrations"
+import { DatadogIntegration, IntegrationType, INTEGRATION_METADATA } from "@/shared/Integrations"
 import { IntegrationCardHeader } from "./helpers/IntegrationCardHeader";
 import { IntegrationItem } from "./helpers/IntegrationItem";
+import { CompactIntegrationRow } from "./CompactIntegrationRow";
 import { cn } from "@/lib/utils";
 import { useDatadogIntegrations } from "@/hooks/api/useDatadogIntegrations";
 import { Skeleton } from "../ui/skeleton";
-import { BarChart3, Eye, EyeOff, Info } from "lucide-react";
+import { BarChart3, Eye, EyeOff } from "lucide-react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
-import { Tooltip, TooltipTrigger, TooltipContent } from "../ui/tooltip";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "../ui/dialog";
 import { useState } from "react";
 import { BackendProvider } from "@/services/backend";
 import {
@@ -28,8 +29,8 @@ const DATADOG_REGIONS = [
     { value: 'ap1', label: 'AP1 (ap1.datadoghq.com)' },
 ];
 
-function DatadogIntegrationCard({ className, isActive = true, stateToken }: { className?: string; isActive?: boolean; stateToken?: string }) {
-    const { integrations, isLoading, mutate } = useDatadogIntegrations(); 
+function DatadogIntegrationCard({ className, isActive = true, stateToken, compact = false }: { className?: string; isActive?: boolean; stateToken?: string; compact?: boolean }) {
+    const { integrations, isLoading, mutate } = useDatadogIntegrations();
     const [showForm, setShowForm] = useState(false);
     const [apiKey, setApiKey] = useState("");
     const [appKey, setAppKey] = useState("");
@@ -71,39 +72,69 @@ function DatadogIntegrationCard({ className, isActive = true, stateToken }: { cl
         setError(null);
     };
 
+    const isConnected = integrations.length > 0;
+    const summary = integrations[0] ? `Region: ${integrations[0].region.toUpperCase()}` : undefined;
+
+    const formDialog = (
+        <Dialog open={showForm} onOpenChange={(open) => !open && handleCancel()}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Connect {INTEGRATION_METADATA[IntegrationType.DATADOG].name}</DialogTitle>
+                    <DialogDescription>
+                        Enter your Datadog API credentials to connect your account.
+                    </DialogDescription>
+                </DialogHeader>
+                <DatadogForm
+                    apiKey={apiKey}
+                    setApiKey={setApiKey}
+                    appKey={appKey}
+                    setAppKey={setAppKey}
+                    showApiKey={showApiKey}
+                    setShowApiKey={setShowApiKey}
+                    showAppKey={showAppKey}
+                    setShowAppKey={setShowAppKey}
+                    region={region}
+                    setRegion={setRegion}
+                    onSubmit={handleSubmit}
+                    onCancel={handleCancel}
+                    isSubmitting={isSubmitting}
+                    error={error}
+                />
+            </DialogContent>
+        </Dialog>
+    );
+
+    if (compact) {
+        return (
+            <>
+                <CompactIntegrationRow
+                    integration={IntegrationType.DATADOG}
+                    isConnected={isConnected}
+                    summary={summary}
+                    connect={handleConnect}
+                    isConnecting={isSubmitting}
+                    className={className}
+                />
+                {formDialog}
+            </>
+        );
+    }
+
     return (
-        <Card className={cn(className)}>
-            <IntegrationCardHeader integration={IntegrationType.DATADOG} isActive={isActive} />
-            <CardContent>
-                {showForm ? (
-                    <DatadogForm
-                        apiKey={apiKey}
-                        setApiKey={setApiKey}
-                        appKey={appKey}
-                        setAppKey={setAppKey}
-                        showApiKey={showApiKey}
-                        setShowApiKey={setShowApiKey}
-                        showAppKey={showAppKey}
-                        setShowAppKey={setShowAppKey}
-                        region={region}
-                        setRegion={setRegion}
-                        onSubmit={handleSubmit}
-                        onCancel={handleCancel}
-                        isSubmitting={isSubmitting}
-                        error={error}
-                    />
-                ) : (
+        <>
+            <Card className={cn(className)}>
+                <IntegrationCardHeader integration={IntegrationType.DATADOG} isActive={isActive} />
+                <CardContent>
                     <DatadogCardContent integrations={integrations} isLoading={isLoading} />
-                )}
-            </CardContent>
-            <CardFooter>
-                {!showForm && (
+                </CardContent>
+                <CardFooter>
                     <Button variant="outline" onClick={handleConnect}>
                         {integrations.length > 0 ? "Update" : "Connect"}
                     </Button>
-                )}
-            </CardFooter>
-        </Card>
+                </CardFooter>
+            </Card>
+            {formDialog}
+        </>
     )
 }
 
@@ -178,25 +209,7 @@ function DatadogForm({
     return (
         <form onSubmit={onSubmit} className="space-y-4">
             <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                    <Label htmlFor="region">Region</Label>
-                    <Tooltip>
-                        <TooltipTrigger asChild>
-                            <button
-                                type="button"
-                                className="text-muted-foreground hover:text-foreground transition-colors"
-                            >
-                                <Info className="h-4 w-4" />
-                            </button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                            <div className="flex flex-col gap-1">
-                                <span>Select your Datadog region</span>
-                                <span className="text-xs">This determines which Datadog site your API keys are for</span>
-                            </div>
-                        </TooltipContent>
-                    </Tooltip>
-                </div>
+                <Label htmlFor="region">Region</Label>
                 <Select value={region} onValueChange={setRegion} disabled={isSubmitting}>
                     <SelectTrigger>
                         <SelectValue placeholder="Select region" />
@@ -212,32 +225,7 @@ function DatadogForm({
             </div>
 
             <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                    <Label htmlFor="apiKey">API Key</Label>
-                    <Tooltip>
-                        <TooltipTrigger asChild>
-                            <button
-                                type="button"
-                                className="text-muted-foreground hover:text-foreground transition-colors"
-                            >
-                                <Info className="h-4 w-4" />
-                            </button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                            <div className="flex flex-col gap-1">
-                                <span>Get your API key from Datadog</span>
-                                <a
-                                    href="https://app.datadoghq.com/organization-settings/api-keys"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="underline hover:no-underline"
-                                >
-                                    Open API keys page
-                                </a>
-                            </div>
-                        </TooltipContent>
-                    </Tooltip>
-                </div>
+                <Label htmlFor="apiKey">API Key</Label>
                 <div className="relative">
                     <Input
                         id="apiKey"
@@ -265,32 +253,7 @@ function DatadogForm({
             </div>
 
             <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                    <Label htmlFor="appKey">Application Key</Label>
-                    <Tooltip>
-                        <TooltipTrigger asChild>
-                            <button
-                                type="button"
-                                className="text-muted-foreground hover:text-foreground transition-colors"
-                            >
-                                <Info className="h-4 w-4" />
-                            </button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                            <div className="flex flex-col gap-1">
-                                <span>Get your Application key from Datadog</span>
-                                <a
-                                    href="https://app.datadoghq.com/organization-settings/application-keys"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="underline hover:no-underline"
-                                >
-                                    Open Application keys page
-                                </a>
-                            </div>
-                        </TooltipContent>
-                    </Tooltip>
-                </div>
+                <Label htmlFor="appKey">Application Key</Label>
                 <div className="relative">
                     <Input
                         id="appKey"

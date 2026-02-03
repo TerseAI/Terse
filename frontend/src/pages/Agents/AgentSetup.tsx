@@ -12,12 +12,15 @@ import { ChatEventPayload } from '@/components/chat/hooks/useCompletionSocket';
 import { AgentTemplate } from '@/shared/types';
 
 const AGENT_SETUP_PLACEHOLDERS = [
-    "Build me an agent that summarizes my Slack messages daily",
-    "Create a workflow that monitors GitHub PRs and posts updates",
-    "Set up an agent to track competitor pricing changes",
-    "Build an automation that syncs Notion tasks to Linear",
-    "Create a daily standup bot for my team",
-];
+    "An agent that reads my Slack every day and tells me only what actually matters",
+    "Something that tracks GitHub PRs across all my repos and nudges me when I need to act",
+    "Automatically update Linear and post in Slack when my PRs get merged",
+    "Generate my standup update from GitHub, Slack, and calendar activity",
+    "Notify me when a PR is blocked or waiting on review too long",
+    "Watch CI failures and alert the right people before things pile up",
+    "Tell me if we’re actually ready to ship without checking five different tools",
+    "Draft weekly release notes from merged PRs and commits",
+  ];
 
 const ANIMATION_DURATION = 0.8;
 const ANIMATION_EASE: Easing = [0.4, 0, 0.2, 1];
