@@ -93,6 +93,24 @@ export function tryExtractTextDelta(event: RunStreamEvent): ModelEvent | null {
     return null;
 }
 
+export function tryExtractToolCallGenerating(event: RunStreamEvent): ModelEvent | null {
+    // Check for function_call output item being added (before arguments are complete)
+    if (
+        event.type === "raw_model_stream_event" &&
+        (event as any).data?.type === "model" &&
+        (event as any).data?.event?.type === "response.output_item.added" &&
+        (event as any).data?.event?.item?.type === "function_call"
+    ) {
+        const item = (event as any).data.event.item;
+        return {
+            type: "ToolCallGenerating",
+            tool_name: item.name || "unknown",
+            step_id: item.call_id || item.id || "unknown",
+        };
+    }
+    return null;
+}
+
 export function tryExtractToolCall(
     event: RunStreamEvent,
     toolToIntegrationMap?: Map<string, string>

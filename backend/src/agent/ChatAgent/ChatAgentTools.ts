@@ -5,7 +5,11 @@ import { uuidv4 } from "zod/v4";
 import { INTEGRATION_REGISTRY } from "../../integrations/abstract/IntegrationRegistry";
 import logger from "../../logger";
 import type { AgentDraft } from "../../routes/agents";
-import { applyAgentForUser, updateAgentForUser } from "../../routes/agents";
+import {
+  applyAgentForUser,
+  isUuidV4,
+  updateAgentForUser,
+} from "../../routes/agents";
 import type { ConfigInstance } from "../../shared/Configs";
 import { ConfigType } from "../../shared/Configs";
 import { FrontendRoutes } from "../../shared/FrontendRoutes";
@@ -16,10 +20,11 @@ export type ChatAgentContext = {
   chatInterface: ChatInterface;
   userId: string;
   organizationId: string;
+  sessionId: string;
 };
 
 export function buildChatAgentTools(
-  chatInterface: ChatInterface,
+  chatInterface: ChatInterface
 ): Tool<ChatAgentContext>[] {
   return [
     tool({
@@ -32,27 +37,41 @@ export function buildChatAgentTools(
           .string()
           .nullable()
           .describe(
-            "The ID of the agent to update. If not provided, a new agent will be created.",
+            "The ID of the agent to update. If not provided, a new agent will be created."
           ),
       }),
       execute: async (
         { agent, id },
-        runContext?: RunContext<ChatAgentContext>,
+        runContext?: RunContext<ChatAgentContext>
       ): Promise<string> => {
         logger.info("Slack chat interface applyAgent", { agent, id });
         const userId = runContext?.context?.userId;
         const organizationId = runContext?.context?.organizationId;
         if (!userId || !organizationId) {
           throw new Error(
-            "User ID and organization ID are required to apply agent",
+            "User ID and organization ID are required to apply agent"
           );
         }
 
         try {
           const draft = toAgentDraft(agent);
+          const sessionId = runContext?.context?.sessionId;
+          const createWithId =
+            !id &&
+            chatInterface.name === "Web" &&
+            sessionId &&
+            isUuidV4(sessionId)
+              ? { createWithId: sessionId }
+              : undefined;
           const result = id
             ? await updateAgentForUser(userId, organizationId, id, draft)
-            : await applyAgentForUser(userId, organizationId, draft);
+            : await applyAgentForUser(
+                userId,
+                organizationId,
+                draft,
+                createWithId
+              );
+
           await chatInterface.navigate(FrontendRoutes.AGENTS.DETAIL(result.id));
           return `Agent applied successfully (${result.id})`;
         } catch (error) {
@@ -64,7 +83,7 @@ export function buildChatAgentTools(
     tool({
       name: "promptForIntegration",
       description:
-        "Prompt for an integration. You can also call this if the user needs to re-configure an integration. Ex: Add repos to github or more pages to Notion.",
+        "IMPORTANT: Only call this once per turn! The UX is very bad if this called multiple times in a single turn. Call it once, wait for the reply then call it again if another integration is needed. Prompt for an integration. You can also call this if the user needs to re-configure an integration. Ex: Add repos to github or more pages to Notion.",
       parameters: z.object({
         integration: z
           .nativeEnum(IntegrationType)
@@ -72,7 +91,7 @@ export function buildChatAgentTools(
       }),
       execute: async (
         { integration }: { integration: IntegrationType },
-        runContext?: RunContext<ChatAgentContext>,
+        runContext?: RunContext<ChatAgentContext>
       ): Promise<string> => {
         return await chatInterface.promptForIntegration(integration);
       },
@@ -95,7 +114,7 @@ export function buildChatAgentTools(
           integrationType,
           query,
         }: { integrationType: IntegrationType; query: string | null },
-        runContext?: RunContext<ChatAgentContext>,
+        runContext?: RunContext<ChatAgentContext>
       ): Promise<string> => {
         logger.info("Fetching resources for integration type", {
           integrationType,
@@ -105,13 +124,13 @@ export function buildChatAgentTools(
         const organizationId = runContext?.context?.organizationId;
         if (!userId || !organizationId) {
           throw new Error(
-            "User ID and organization ID are required to fetch resources",
+            "User ID and organization ID are required to fetch resources"
           );
         }
         return await fetchResourcesForIntegrationType(
           integrationType,
           organizationId,
-          query ?? undefined,
+          query ?? undefined
         );
       },
     }),
@@ -123,7 +142,7 @@ const NonEmptyString = z.string().min(1);
 const BaseConfigSchema = z
   .object({
     integrationId: NonEmptyString.describe(
-      'Integration instance ID. Use the ID from the user’s connected integrations. Use "system" only for TIME_TRIGGER configs.',
+      'The integration instance ID (CUID format like "cm..."). When using fetchResourcesForIntegration, this is the "integration.id" field - NOT teamId, channelId, workspaceId, or any resource ID. Use "system" only for TIME_TRIGGER configs.'
     ),
     configType: z
       .nativeEnum(ConfigType)
@@ -147,66 +166,104 @@ const GmailOutputConfigSchema = BaseConfigSchema.extend({
 const FigmaConfigSchema = BaseConfigSchema.extend({
   configType: z.literal(ConfigType.FIGMA),
   integrationType: z.literal(IntegrationType.FIGMA),
-  fileKey: NonEmptyString,
-  fileName: z.string().nullable(),
-  teamId: NonEmptyString,
+  fileKey: NonEmptyString.describe(
+    "The Figma file key. From fetchResourcesForIntegration, use the file's key from resources[]."
+  ),
+  fileName: z.string().nullable().describe(
+    "The Figma file display name. From fetchResourcesForIntegration, use the file's name from resources[]."
+  ),
+  teamId: NonEmptyString.describe(
+    "The Figma team ID. From fetchResourcesForIntegration, use the file's teamId from resources[]."
+  ),
 });
 
 const SlackConfigSchema = BaseConfigSchema.extend({
   configType: z.literal(ConfigType.SLACK),
   integrationType: z.literal(IntegrationType.SLACK),
-  channelId: NonEmptyString.nullable(),
-  channelName: NonEmptyString.nullable(),
-  listenToUserDms: z.boolean().nullable(),
+  channelId: NonEmptyString.nullable().describe(
+    'The Slack channel ID (starts with "C" like "C12345"). From fetchResourcesForIntegration, use "resources[].id". Required unless listenToUserDms is true.'
+  ),
+  channelName: NonEmptyString.nullable().describe(
+    'The channel display name (e.g., "general"). From fetchResourcesForIntegration, use "resources[].name".'
+  ),
+  listenToUserDms: z.boolean().nullable().describe(
+    "Set to true to listen to direct messages. If true, channelId is not required."
+  ),
   userIds: z.array(NonEmptyString).nullable(),
 });
 
 const SlackOutputConfigSchema = BaseConfigSchema.extend({
   configType: z.literal(ConfigType.SLACK_OUTPUT),
   integrationType: z.literal(IntegrationType.SLACK),
-  channelId: NonEmptyString.nullable(),
-  channelName: NonEmptyString.nullable(),
+  channelId: NonEmptyString.nullable().describe(
+    'The Slack channel ID (starts with "C" like "C12345"). From fetchResourcesForIntegration, use "resources[].id".'
+  ),
+  channelName: NonEmptyString.nullable().describe(
+    'The channel display name (e.g., "general"). From fetchResourcesForIntegration, use "resources[].name".'
+  ),
 });
 
 const NotionDatabaseConfigSchema = BaseConfigSchema.extend({
   configType: z.literal(ConfigType.NOTION_DATABASE),
   integrationType: z.literal(IntegrationType.NOTION),
-  databaseId: NonEmptyString.nullable(),
-  databaseName: z.string().nullable(),
+  databaseId: NonEmptyString.nullable().describe(
+    "The Notion database ID. From fetchResourcesForIntegration, use the database's id from resources[]."
+  ),
+  databaseName: z.string().nullable().describe(
+    "The database display name. From fetchResourcesForIntegration, use the database's name from resources[]."
+  ),
 });
 
 const NotionPageConfigSchema = BaseConfigSchema.extend({
   configType: z.literal(ConfigType.NOTION_PAGE),
   integrationType: z.literal(IntegrationType.NOTION),
-  pageId: NonEmptyString.nullable(),
-  pageName: z.string().nullable(),
+  pageId: NonEmptyString.nullable().describe(
+    "The Notion page ID. From fetchResourcesForIntegration, use the page's id from resources[]."
+  ),
+  pageName: z.string().nullable().describe(
+    "The page display name. From fetchResourcesForIntegration, use the page's name from resources[]."
+  ),
 });
 
 const LinearInputConfigSchema = BaseConfigSchema.extend({
   configType: z.literal(ConfigType.LINEAR_INPUT),
   integrationType: z.literal(IntegrationType.LINEAR),
-  projectId: NonEmptyString.nullable(),
-  projectName: z.string().nullable(),
+  projectId: NonEmptyString.nullable().describe(
+    "The Linear project ID. From fetchResourcesForIntegration, use the project's id from resources[]."
+  ),
+  projectName: z.string().nullable().describe(
+    "The project display name. From fetchResourcesForIntegration, use the project's name from resources[]."
+  ),
 });
 
 const LinearOutputConfigSchema = BaseConfigSchema.extend({
   configType: z.literal(ConfigType.LINEAR_OUTPUT),
   integrationType: z.literal(IntegrationType.LINEAR),
-  teamId: NonEmptyString.nullable(),
-  teamName: z.string().nullable(),
+  teamId: NonEmptyString.nullable().describe(
+    "The Linear team ID. From fetchResourcesForIntegration, use the team's id from resources[]."
+  ),
+  teamName: z.string().nullable().describe(
+    "The team display name. From fetchResourcesForIntegration, use the team's name from resources[]."
+  ),
 });
 
 const GitHubConfigSchema = BaseConfigSchema.extend({
   configType: z.literal(ConfigType.GITHUB),
   integrationType: z.literal(IntegrationType.GITHUB),
-  repositoryIds: z.array(z.number()).min(1),
+  repositoryIds: z.array(z.number()).min(1).describe(
+    "Array of GitHub repository IDs (numeric). From fetchResourcesForIntegration, use the repo's id from resources[]."
+  ),
 });
 
 const GitHubKnowledgeBaseConfigSchema = BaseConfigSchema.extend({
   configType: z.literal(ConfigType.GITHUB_KB),
   integrationType: z.literal(IntegrationType.GITHUB),
-  repositoryIds: z.array(z.number()).min(1),
-  repositoryNames: z.array(NonEmptyString).min(1),
+  repositoryIds: z.array(z.number()).min(1).describe(
+    "Array of GitHub repository IDs (numeric). From fetchResourcesForIntegration, use the repo's id from resources[]."
+  ),
+  repositoryNames: z.array(NonEmptyString).min(1).describe(
+    "Array of repository names matching the repositoryIds. From fetchResourcesForIntegration, use the repo's name from resources[]."
+  ),
 });
 
 const JiraConfigSchema = BaseConfigSchema.extend({
@@ -248,13 +305,13 @@ const TimeTriggerConfigSchema = BaseConfigSchema.extend({
   cronExpression: z
     .string()
     .describe(
-      'ALL TIMES ARE IN UTC. The cron expression to schedule the automation. Must be a valid cron expression. Use this format: "minute hour day-of-month month day-of-week"',
+      'ALL TIMES ARE IN UTC. The cron expression to schedule the automation. Must be a valid cron expression. Use this format: "minute hour day-of-month month day-of-week"'
     ),
 });
 
 function enforceNonSystemIntegrationId(
   config: { configType: ConfigType; integrationId?: string },
-  ctx: z.RefinementCtx,
+  ctx: z.RefinementCtx
 ): void {
   if (
     config.configType !== ConfigType.TIME_TRIGGER &&
@@ -374,7 +431,7 @@ export const AgentSchema = z
 type AgentSchemaInput = z.infer<typeof AgentSchema>;
 
 function toConfigInstance<T extends Record<string, any>>(
-  config: T,
+  config: T
 ): T & ConfigInstance {
   return {
     ...config,
@@ -423,10 +480,10 @@ function toAgentDraft(agent: AgentSchemaInput): AgentDraft {
 async function fetchResourcesForIntegrationType(
   integrationType: IntegrationType,
   organizationId: string,
-  query?: string,
+  query?: string
 ): Promise<string> {
   const manager = INTEGRATION_REGISTRY.find(
-    (m) => m.integrationType === integrationType,
+    (m) => m.integrationType === integrationType
   );
   if (!manager) {
     throw new Error(`Unknown integration type: ${integrationType}`);
@@ -435,12 +492,10 @@ async function fetchResourcesForIntegrationType(
   if (manager.fetchResourcesForOrganization) {
     const results = await manager.fetchResourcesForOrganization(
       organizationId,
-      query,
+      query
     );
     return JSON.stringify({ resources: results });
   }
 
-  return JSON.stringify(
-    "This is a system integration. No config is needed.",
-  );
+  return JSON.stringify("This is a system integration. No config is needed.");
 }
