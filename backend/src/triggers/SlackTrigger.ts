@@ -24,7 +24,7 @@ export class SlackTrigger implements Trigger<SlackConfig> {
                 channel_id: trigger.channelId,
                 channel_name: trigger.channelName,
                 listen_to_user_dms: trigger.listenToUserDms,
-                user_ids: trigger.userIds,
+                user_ids: trigger.userIds || [],
             },
         });
     }
