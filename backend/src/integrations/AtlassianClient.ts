@@ -4,11 +4,9 @@ import { db } from "../prismaClient";
 import { fetchConfluenceResources } from "../routes/confluence";
 import { fetchJiraResources } from "../routes/jira";
 import { ApiRoutes } from "../shared/ApiRoutes";
-import {
-  AtlassianIntegration,
-  IntegrationType,
-} from "../shared/Integrations";
+import { AtlassianIntegration, IntegrationType } from "../shared/Integrations";
 import { generateWebhookSecret } from "../utility/webhookSecrets";
+import { FetchResourcesOptions } from "./abstract/FetchResourcesOptions";
 import { IntegrationWithResources } from "./abstract/Integration";
 
 /** Combined Jira + Confluence resource shape returned by fetchResourcesForOrganization */
@@ -22,12 +20,12 @@ const OAUTH_TOKEN_REFRESH_THRESHOLD_MS = 1000 * 60 * 30; // 30 minutes (expires 
 /**
  * AtlassianClient provides API methods for interacting with Atlassian services.
  * This class is separated from AtlassianIntegrationManager to avoid circular dependencies.
- * 
+ *
  * Use this class when you need to:
  * - Get access tokens for API calls
  * - Query integration instances
  * - Manage webhooks
- * 
+ *
  * For OAuth installation and webhook event processing, use AtlassianIntegrationManager instead.
  */
 export class AtlassianClient {
@@ -35,7 +33,7 @@ export class AtlassianClient {
 
   async getAccessToken(
     integrationId: string,
-    userId?: string,
+    userId?: string
   ): Promise<string | null> {
     try {
       const integration = await db().atlassian_integrations.findUnique({
@@ -68,13 +66,13 @@ export class AtlassianClient {
       ) {
         logger.info(
           `Atlassian access token expiring soon for integration ${integrationId}, refreshing...`,
-          { integrationId },
+          { integrationId }
         );
 
         if (!integration.refresh_token || integration.refresh_token === "") {
           logger.error(
             `No refresh token available for Atlassian integration ${integrationId}`,
-            { integrationId },
+            { integrationId }
           );
           return null;
         }
@@ -93,14 +91,14 @@ export class AtlassianClient {
               client_secret: settings.atlassian.clientSecret,
               refresh_token: integration.refresh_token,
             }),
-          },
+          }
         );
 
         if (!tokenResponse.ok) {
           const errorText = await tokenResponse.text();
           logger.error(
             `Atlassian token refresh failed for integration ${integrationId}`,
-            { error: errorText, integrationId },
+            { error: errorText, integrationId }
           );
           // Return existing token as fallback - it might still work
           return integration.access_token;
@@ -112,7 +110,7 @@ export class AtlassianClient {
         if (!access_token) {
           logger.error(
             `No access token received from Atlassian refresh for integration ${integrationId}`,
-            { integrationId },
+            { integrationId }
           );
           // Return existing token as fallback
           return integration.access_token;
@@ -133,7 +131,7 @@ export class AtlassianClient {
 
         logger.info(
           `Successfully refreshed Atlassian access token for integration ${integrationId}`,
-          { integrationId },
+          { integrationId }
         );
         return access_token;
       }
@@ -146,7 +144,7 @@ export class AtlassianClient {
         {
           error,
           integrationId,
-        },
+        }
       );
       // Return null on error - caller should handle
       return null;
@@ -178,7 +176,7 @@ export class AtlassianClient {
           {
             where: { id: integrationId },
             select: { token_expiry: true },
-          },
+          }
         );
 
         if (
@@ -218,14 +216,14 @@ export class AtlassianClient {
     } catch (error) {
       logger.error(
         `Error refreshing Atlassian token for integration ${integrationId}`,
-        { error, integrationId },
+        { error, integrationId }
       );
       return false;
     }
   }
 
   async getInstancesForOrganization(
-    organizationId: string,
+    organizationId: string
   ): Promise<AtlassianIntegration[]> {
     const integrations = await db().atlassian_integrations.findMany({
       where: { organization_id: organizationId },
@@ -264,11 +262,11 @@ export class AtlassianClient {
   async fetchResourcesForOrganization(
     organizationId: string,
     query?: string,
+    _options?: FetchResourcesOptions
   ): Promise<
     IntegrationWithResources<AtlassianIntegration, AtlassianResource>[]
   > {
-    const integrations =
-      await this.getInstancesForOrganization(organizationId);
+    const integrations = await this.getInstancesForOrganization(organizationId);
     const normalizedQuery = query?.trim().toLowerCase();
     const matchesQuery = (value: string | undefined | null): boolean => {
       if (!normalizedQuery) return true;
@@ -283,14 +281,14 @@ export class AtlassianClient {
             fetchConfluenceResources(
               organizationId,
               integration.id,
-              query ?? "",
+              query ?? ""
             ),
           ]);
           const projects = jiraResponse.resources?.projects ?? [];
           const filteredProjects = normalizedQuery
             ? projects.filter(
                 (project: { name?: string; key?: string }) =>
-                  matchesQuery(project.name) || matchesQuery(project.key),
+                  matchesQuery(project.name) || matchesQuery(project.key)
               )
             : projects;
           return {
@@ -305,14 +303,14 @@ export class AtlassianClient {
         } catch (error) {
           logger.warn(
             `Failed to fetch resources for Atlassian integration ${integration.id}`,
-            { error, integrationId: integration.id },
+            { error, integrationId: integration.id }
           );
           return {
             integration,
             resources: [],
           };
         }
-      }),
+      })
     );
   }
 
@@ -358,12 +356,12 @@ export class AtlassianClient {
             await this.deleteJiraWebhook(
               integration.cloud_id,
               accessToken,
-              integration.webhook_id,
+              integration.webhook_id
             );
           } catch (error) {
             logger.error(
               "⚠️  Failed to delete webhook during integration deletion",
-              { error, integrationId },
+              { error, integrationId }
             );
             // Continue with deletion even if webhook deletion fails
           }
@@ -377,7 +375,7 @@ export class AtlassianClient {
 
       logger.info(
         "✅ [JIRA INTEGRATION MANAGER] Deleted Atlassian integration:",
-        { integrationId },
+        { integrationId }
       );
     } catch (error) {
       logger.error("Error deleting Atlassian integration:", { error });
@@ -394,7 +392,7 @@ export class AtlassianClient {
   async createJiraWebhook(
     cloudId: string,
     accessToken: string,
-    accountId: string,
+    accountId: string
   ): Promise<{ webhookId: string; webhookSecret: string }> {
     const webhookSecret = generateWebhookSecret(32);
     const backendUrl = urls.backend;
@@ -409,7 +407,7 @@ export class AtlassianClient {
     ];
 
     const webhookUrl = `${backendUrl}${ApiRoutes.WEBHOOKS.JIRA_BY_ACCOUNT_ID.build(
-      accountId,
+      accountId
     )}`;
 
     // For Jira Cloud OAuth 2.0 apps, use the REST API v3 webhook endpoint
@@ -454,7 +452,7 @@ export class AtlassianClient {
 
     if (!Array.isArray(webhookResults) || webhookResults.length === 0) {
       throw new Error(
-        "Invalid webhook response format: missing webhookRegistrationResult array",
+        "Invalid webhook response format: missing webhookRegistrationResult array"
       );
     }
 
@@ -463,7 +461,7 @@ export class AtlassianClient {
     // Check for errors
     if (firstResult.errors && firstResult.errors.length > 0) {
       throw new Error(
-        `Webhook registration failed: ${firstResult.errors.join(", ")}`,
+        `Webhook registration failed: ${firstResult.errors.join(", ")}`
       );
     }
 
@@ -488,7 +486,7 @@ export class AtlassianClient {
   async deleteJiraWebhook(
     cloudId: string,
     accessToken: string,
-    webhookId: string,
+    webhookId: string
   ): Promise<void> {
     // For Jira Cloud OAuth 2.0 apps, delete webhooks using the REST API v3 endpoint
     // Format: DELETE /rest/api/3/webhook with body { "webhookIds": [id1, id2, ...] }

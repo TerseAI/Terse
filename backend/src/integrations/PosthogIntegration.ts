@@ -8,6 +8,7 @@ import {
 } from "../shared/Integrations";
 import { PosthogProject } from "../shared/types";
 import { AgentTriggerWithConfigs } from "../types/prisma";
+import { FetchResourcesOptions } from "./abstract/FetchResourcesOptions";
 import {
   FormFieldDefinition,
   FormIntegrationInstallation,
@@ -31,7 +32,7 @@ export class PosthogIntegrationManager
   integrationType: IntegrationType = IntegrationType.POSTHOG;
 
   async getInstancesForOrganization(
-    organizationId: string,
+    organizationId: string
   ): Promise<PosthogIntegration[]> {
     const posthogIntegrations = await db().posthog_integrations.findMany({
       where: { organization_id: organizationId },
@@ -51,6 +52,7 @@ export class PosthogIntegrationManager
   async fetchResourcesForOrganization(
     organizationId: string,
     query?: string,
+    _options?: FetchResourcesOptions
   ): Promise<IntegrationWithResources<PosthogIntegration, PosthogProject>[]> {
     const integrations = await this.getInstancesForOrganization(organizationId);
     return Promise.all(
@@ -59,7 +61,7 @@ export class PosthogIntegrationManager
           const response = await fetchPosthogProjects(
             organizationId,
             integration.id,
-            query ?? "",
+            query ?? ""
           );
           const projects = response.projects ?? response;
           return {
@@ -69,11 +71,11 @@ export class PosthogIntegrationManager
         } catch (error) {
           logger.warn(
             `Failed to fetch resources for Posthog integration ${integration.id}`,
-            { error, integrationId: integration.id },
+            { error, integrationId: integration.id }
           );
           return { integration, resources: [] };
         }
-      }),
+      })
     );
   }
 
@@ -108,7 +110,7 @@ export class PosthogIntegrationManager
   async processWebhookEvent(event: never): Promise<void> {
     // Posthog webhooks are handled elsewhere
     throw new Error(
-      "Posthog webhooks are not processed through this integration manager",
+      "Posthog webhooks are not processed through this integration manager"
     );
   }
 
@@ -118,12 +120,12 @@ export class PosthogIntegrationManager
 
   async setupAgentTrigger(
     integrationId: string,
-    automationInput: AgentTriggerWithConfigs,
+    automationInput: AgentTriggerWithConfigs
   ): Promise<void> {}
 
   async teardownAgentTrigger(
     integrationId: string,
-    automationInput: AgentTriggerWithConfigs,
+    automationInput: AgentTriggerWithConfigs
   ): Promise<void> {}
 
   getFormFields(): FormFieldDefinition[] {
@@ -140,7 +142,7 @@ export class PosthogIntegrationManager
   }
 
   async processFormSubmission(
-    input: FormSubmissionInput,
+    input: FormSubmissionInput
   ): Promise<FormSubmissionResult> {
     const { userId, organizationId, formValues } = input;
     const { apiKey } = formValues;
@@ -163,7 +165,7 @@ export class PosthogIntegrationManager
             Authorization: `Bearer ${apiKey}`,
             "Content-Type": "application/json",
           },
-        },
+        }
       );
 
       if (!validationResponse.ok) {

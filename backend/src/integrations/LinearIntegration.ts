@@ -26,6 +26,7 @@ import { AgentTriggerWithConfigs } from "../types/prisma";
 import { LinearWebhookPayload } from "../utility/LinearWebhookPayload";
 import { createOAuthStateToken } from "../utility/oauth";
 import { getUserForOrg } from "../utility/workos";
+import { FetchResourcesOptions } from "./abstract/FetchResourcesOptions";
 import { InputEvent } from "./abstract/InputEvent";
 import {
   ConfigurationFieldDefinition,
@@ -54,7 +55,7 @@ export class LinearIntegrationManager
   }
 
   async getInstancesForOrganization(
-    organizationId: string,
+    organizationId: string
   ): Promise<LinearIntegration[]> {
     const linearIntegrations = await db().linear_integrations.findMany({
       where: { organization_id: organizationId },
@@ -73,6 +74,7 @@ export class LinearIntegrationManager
   async fetchResourcesForOrganization(
     organizationId: string,
     query?: string,
+    _options?: FetchResourcesOptions
   ): Promise<IntegrationWithResources<LinearIntegration, LinearTeam>[]> {
     const integrations = await this.getInstancesForOrganization(organizationId);
     const normalizedQuery = query?.trim().toLowerCase();
@@ -86,22 +88,22 @@ export class LinearIntegrationManager
         try {
           const response = await fetchLinearTeams(
             organizationId,
-            integration.id,
+            integration.id
           );
           const teams = normalizedQuery
             ? response.filter(
-                (team) => matchesQuery(team.name) || matchesQuery(team.key),
+                (team) => matchesQuery(team.name) || matchesQuery(team.key)
               )
             : response;
           return { integration, resources: teams };
         } catch (error) {
           logger.warn(
             `Failed to fetch resources for Linear integration ${integration.id}`,
-            { error, integrationId: integration.id },
+            { error, integrationId: integration.id }
           );
           return { integration, resources: [] };
         }
-      }),
+      })
     );
   }
 
@@ -142,7 +144,7 @@ export class LinearIntegrationManager
     if (!workspaceIdentifier) {
       logger.warn(
         "⚠️  [LINEAR INTEGRATION MANAGER] No workspace identifier found in webhook payload",
-        { eventType: event.type, action: event.action },
+        { eventType: event.type, action: event.action }
       );
       return;
     }
@@ -159,21 +161,21 @@ export class LinearIntegrationManager
     if (matchingIntegrations.length === 0) {
       logger.warn(
         `⚠️  [LINEAR INTEGRATION MANAGER] No integrations found for workspace: ${workspaceIdentifier}`,
-        { workspaceIdentifier, eventType: event.type },
+        { workspaceIdentifier, eventType: event.type }
       );
       return;
     }
 
     logger.info(
       `✅ [LINEAR INTEGRATION MANAGER] Found ${matchingIntegrations.length} matching integration(s)`,
-      { count: matchingIntegrations.length, workspaceIdentifier },
+      { count: matchingIntegrations.length, workspaceIdentifier }
     );
 
     // Process event for each matching integration
     for (const integration of matchingIntegrations) {
       const user = await getUserForOrg(
         integration.user_id,
-        integration.organization_id,
+        integration.organization_id
       );
       if (!user) {
         continue;
@@ -188,7 +190,7 @@ export class LinearIntegrationManager
             if (!accessToken) {
               logger.warn(
                 `⚠️  [LINEAR INTEGRATION MANAGER] Could not get valid access token for integration ${integration.id}`,
-                { integrationId: integration.id },
+                { integrationId: integration.id }
               );
               // Continue with original event if token cannot be obtained
             } else {
@@ -202,7 +204,7 @@ export class LinearIntegrationManager
                   // The event already has most data, but we can add any missing fields
                   logger.debug(
                     `📊 [LINEAR INTEGRATION MANAGER] Enriched issue context for ${event.data.id}`,
-                    { issueId: event.data.id, integrationId: integration.id },
+                    { issueId: event.data.id, integrationId: integration.id }
                   );
                 } catch (error) {
                   logger.warn(
@@ -211,7 +213,7 @@ export class LinearIntegrationManager
                       error,
                       issueId: event.data.id,
                       integrationId: integration.id,
-                    },
+                    }
                   );
                   // Continue with original event if enrichment fails
                 }
@@ -220,7 +222,7 @@ export class LinearIntegrationManager
           } catch (error) {
             logger.warn(
               `⚠️  [LINEAR INTEGRATION MANAGER] Error enriching context`,
-              { error, integrationId: integration.id },
+              { error, integrationId: integration.id }
             );
             // Continue with original event if enrichment fails
           }
@@ -238,7 +240,7 @@ export class LinearIntegrationManager
             integrationId: integration.id,
             eventType: event.type,
             action: event.action,
-          },
+          }
         );
         // Continue processing other integrations even if one fails
       }
@@ -249,7 +251,7 @@ export class LinearIntegrationManager
     userId: string,
     organizationId: string,
     options?: InstallationOptionsFor<IntegrationType.LINEAR>,
-    additionalStatePayload?: AdditionalStateParams,
+    additionalStatePayload?: AdditionalStateParams
   ): Promise<OAuthInstallationDetails> {
     // Generate state token for security (prevents CSRF)
     const state = createOAuthStateToken({
@@ -279,7 +281,7 @@ export class LinearIntegrationManager
 
   async processInstallationCallback(
     req: Request,
-    res: Response,
+    res: Response
   ): Promise<void> {
     const { code, state, error } = req.query;
 
@@ -417,8 +419,8 @@ export class LinearIntegrationManager
           integrationId,
           decoded.userId,
           decoded,
-          new Date(),
-        ),
+          new Date()
+        )
       );
 
       // Redirect to success page which will auto-close the popup
@@ -435,7 +437,7 @@ export class LinearIntegrationManager
 
   async setupAgentTrigger(
     integrationId: string,
-    agentTrigger: AgentTriggerWithConfigs,
+    agentTrigger: AgentTriggerWithConfigs
   ): Promise<void> {
     // Linear doesn't require any setup for channel inputs
     // Webhooks are managed at the integration level
@@ -443,7 +445,7 @@ export class LinearIntegrationManager
 
   async teardownAgentTrigger(
     integrationId: string,
-    agentTrigger: AgentTriggerWithConfigs,
+    agentTrigger: AgentTriggerWithConfigs
   ): Promise<void> {
     // Linear doesn't require any teardown for channel inputs
     // Webhooks are managed at the integration level
@@ -511,7 +513,7 @@ export class LinearIntegrationManager
     } catch (error) {
       logger.error(
         `Error refreshing Linear token for integration ${integrationId}`,
-        { error, integrationId },
+        { error, integrationId }
       );
       return false;
     }
@@ -539,13 +541,13 @@ export class LinearIntegrationManager
       ) {
         logger.info(
           `Linear access token expiring soon for integration ${integrationId}, refreshing...`,
-          { integrationId },
+          { integrationId }
         );
 
         if (!integration.refresh_token) {
           logger.error(
             `No refresh token available for Linear integration ${integrationId}`,
-            { integrationId },
+            { integrationId }
           );
           return integration.access_token; // Return existing token as fallback
         }
@@ -565,14 +567,14 @@ export class LinearIntegrationManager
               "Content-Type": "application/x-www-form-urlencoded",
             },
             body: params.toString(),
-          },
+          }
         );
 
         if (!tokenResponse.ok) {
           const errorText = await tokenResponse.text();
           logger.error(
             `Linear token refresh failed for integration ${integrationId}`,
-            { error: errorText, integrationId },
+            { error: errorText, integrationId }
           );
           // Return existing token as fallback - it might still work
           return integration.access_token;
@@ -584,7 +586,7 @@ export class LinearIntegrationManager
         if (!access_token) {
           logger.error(
             `No access token received from Linear refresh for integration ${integrationId}`,
-            { integrationId },
+            { integrationId }
           );
           // Return existing token as fallback
           return integration.access_token;
@@ -605,7 +607,7 @@ export class LinearIntegrationManager
 
         logger.info(
           `Successfully refreshed Linear access token for integration ${integrationId}`,
-          { integrationId },
+          { integrationId }
         );
         return access_token;
       }
@@ -615,7 +617,7 @@ export class LinearIntegrationManager
     } catch (error) {
       logger.error(
         `Error getting Linear access token for integration ${integrationId}`,
-        { error, integrationId },
+        { error, integrationId }
       );
       // Return null on error - caller should handle
       return null;
@@ -659,7 +661,7 @@ export class LinearEvent extends InputEvent {
       issueSections.push(`Issue: ${issue.identifier} - ${issue.title}`);
       if (issue.description) {
         issueSections.push(
-          `Description:\n${indentMultiline(issue.description)}`,
+          `Description:\n${indentMultiline(issue.description)}`
         );
       }
       issueSections.push(`Priority: ${issue.priorityLabel || issue.priority}`);
@@ -694,8 +696,8 @@ export class LinearEvent extends InputEvent {
       // Generic event data
       sections.push(
         `Event Data:\n${indentMultiline(
-          JSON.stringify(this.data.data, null, 2),
-        )}`,
+          JSON.stringify(this.data.data, null, 2)
+        )}`
       );
     }
 
@@ -726,7 +728,7 @@ export class LinearEvent extends InputEvent {
         configType: agentTrigger.config_type,
         eventType: this.data.type,
         action: this.data.action,
-      },
+      }
     );
     // Check if integration type matches
     if (agentTrigger.config_type !== InputConfigType.LINEAR) {

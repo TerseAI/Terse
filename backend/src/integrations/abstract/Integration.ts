@@ -8,6 +8,7 @@ import {
 } from "../../shared/Integrations";
 import { OAuthInstallationDetails } from "../../shared/types";
 import { AgentTriggerWithConfigs } from "../../types/prisma";
+import type { FetchResourcesOptions } from "./FetchResourcesOptions";
 
 export interface IntegrationWithResources<T extends IntegrationInstance, R> {
   integration: T;
@@ -19,7 +20,7 @@ export interface Integration<
   T extends IntegrationInstance,
   W,
   M extends IntegrationDetails,
-  R,
+  R
 > {
   integrationType: IntegrationType;
   getInstancesForOrganization(organizationId: string): Promise<T[]>;
@@ -29,16 +30,17 @@ export interface Integration<
   deleteInstallation(integrationId: string): Promise<void>;
   setupAgentTrigger(
     integrationId: string,
-    agentTrigger: AgentTriggerWithConfigs,
+    agentTrigger: AgentTriggerWithConfigs
   ): Promise<void>;
   teardownAgentTrigger(
     integrationId: string,
-    agentTrigger: AgentTriggerWithConfigs,
+    agentTrigger: AgentTriggerWithConfigs
   ): Promise<void>;
 
   fetchResourcesForOrganization?(
     organizationId: string,
     query?: string,
+    options?: FetchResourcesOptions
   ): Promise<IntegrationWithResources<T, R>[]>;
 }
 
@@ -69,7 +71,7 @@ export interface FormSubmissionResult {
 export interface FormIntegrationInstallation<T extends IntegrationType> {
   getFormFields(): FormFieldDefinition[];
   processFormSubmission(
-    input: FormSubmissionInput,
+    input: FormSubmissionInput
   ): Promise<FormSubmissionResult>;
 }
 
@@ -94,7 +96,7 @@ export interface OAuthIntegrationInstallation<T extends IntegrationType> {
     userId: string,
     organizationId: string,
     options?: InstallationOptionsFor<T>,
-    additionalStatePayload?: AdditionalStateParams,
+    additionalStatePayload?: AdditionalStateParams
   ): Promise<OAuthInstallationDetails>;
   processInstallationCallback(req: Request, res: Response): Promise<void>;
   refreshToken(integrationId: string): Promise<boolean>;
@@ -104,7 +106,7 @@ export interface OAuthIntegrationInstallation<T extends IntegrationType> {
 
 // Type guards
 export function isOAuthIntegrationInstallation<T extends IntegrationType>(
-  obj: any,
+  obj: any
 ): obj is OAuthIntegrationInstallation<T> {
   return (
     obj !== null &&
@@ -115,7 +117,7 @@ export function isOAuthIntegrationInstallation<T extends IntegrationType>(
 }
 
 export function isFormIntegrationInstallation<T extends IntegrationType>(
-  obj: any,
+  obj: any
 ): obj is FormIntegrationInstallation<T> {
   return (
     obj !== null &&
@@ -133,7 +135,7 @@ export function isFormIntegrationInstallation<T extends IntegrationType>(
  * Returns null if user is not authenticated.
  */
 export function parseFormSubmissionFromRequest(
-  req: Request,
+  req: Request
 ): FormSubmissionInput | null {
   if (!req.session?.user) {
     return null;
