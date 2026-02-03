@@ -8,7 +8,7 @@ import { KnowledgeBaseFactory } from "../knowledgeBase/abstract/KnowledgeBaseFac
 import logger from "../logger";
 import { OutputFactory } from "../outputs/abstract/OutputFactory";
 import { db } from "../prismaClient";
-import { emitCacheInvalidationWithKey } from "../realtimeSocket";
+import { emitCacheInvalidationWithKey, emitCacheInvalidationWithWildcard } from "../realtimeSocket";
 import { ConfigInstance } from "../shared/Configs";
 import { IntegrationType } from "../shared/Integrations";
 import {
@@ -42,6 +42,7 @@ import {
   convertPrismaKnowledgeBaseConfigToConfigInstance,
   convertPrismaOutputConfigToConfigInstance,
 } from "../utility/typeConverters";
+import { agentDetailKey } from "../shared/InvalidationKeys";
 
 export type AgentDraft = Omit<Agent, "id"> & { id?: string };
 
@@ -719,6 +720,7 @@ export async function updateAgentForUser(
 
   // Invalidate recent agents cache
   emitCacheInvalidationWithKey(organizationId, "recentAgents");
+  emitCacheInvalidationWithWildcard(organizationId, "agent", agentId);
 
   return { id: agentId };
 }

@@ -142,7 +142,7 @@ const NonEmptyString = z.string().min(1);
 const BaseConfigSchema = z
   .object({
     integrationId: NonEmptyString.describe(
-      'Integration instance ID. Use the ID from the user’s connected integrations. Use "system" only for TIME_TRIGGER configs.'
+      'The integration instance ID (CUID format like "cm..."). When using fetchResourcesForIntegration, this is the "integration.id" field - NOT teamId, channelId, workspaceId, or any resource ID. Use "system" only for TIME_TRIGGER configs.'
     ),
     configType: z
       .nativeEnum(ConfigType)
@@ -166,66 +166,104 @@ const GmailOutputConfigSchema = BaseConfigSchema.extend({
 const FigmaConfigSchema = BaseConfigSchema.extend({
   configType: z.literal(ConfigType.FIGMA),
   integrationType: z.literal(IntegrationType.FIGMA),
-  fileKey: NonEmptyString,
-  fileName: z.string().nullable(),
-  teamId: NonEmptyString,
+  fileKey: NonEmptyString.describe(
+    "The Figma file key. From fetchResourcesForIntegration, use the file's key from resources[]."
+  ),
+  fileName: z.string().nullable().describe(
+    "The Figma file display name. From fetchResourcesForIntegration, use the file's name from resources[]."
+  ),
+  teamId: NonEmptyString.describe(
+    "The Figma team ID. From fetchResourcesForIntegration, use the file's teamId from resources[]."
+  ),
 });
 
 const SlackConfigSchema = BaseConfigSchema.extend({
   configType: z.literal(ConfigType.SLACK),
   integrationType: z.literal(IntegrationType.SLACK),
-  channelId: NonEmptyString.nullable(),
-  channelName: NonEmptyString.nullable(),
-  listenToUserDms: z.boolean().nullable(),
+  channelId: NonEmptyString.nullable().describe(
+    'The Slack channel ID (starts with "C" like "C12345"). From fetchResourcesForIntegration, use "resources[].id". Required unless listenToUserDms is true.'
+  ),
+  channelName: NonEmptyString.nullable().describe(
+    'The channel display name (e.g., "general"). From fetchResourcesForIntegration, use "resources[].name".'
+  ),
+  listenToUserDms: z.boolean().nullable().describe(
+    "Set to true to listen to direct messages. If true, channelId is not required."
+  ),
   userIds: z.array(NonEmptyString).nullable(),
 });
 
 const SlackOutputConfigSchema = BaseConfigSchema.extend({
   configType: z.literal(ConfigType.SLACK_OUTPUT),
   integrationType: z.literal(IntegrationType.SLACK),
-  channelId: NonEmptyString.nullable(),
-  channelName: NonEmptyString.nullable(),
+  channelId: NonEmptyString.nullable().describe(
+    'The Slack channel ID (starts with "C" like "C12345"). From fetchResourcesForIntegration, use "resources[].id".'
+  ),
+  channelName: NonEmptyString.nullable().describe(
+    'The channel display name (e.g., "general"). From fetchResourcesForIntegration, use "resources[].name".'
+  ),
 });
 
 const NotionDatabaseConfigSchema = BaseConfigSchema.extend({
   configType: z.literal(ConfigType.NOTION_DATABASE),
   integrationType: z.literal(IntegrationType.NOTION),
-  databaseId: NonEmptyString.nullable(),
-  databaseName: z.string().nullable(),
+  databaseId: NonEmptyString.nullable().describe(
+    "The Notion database ID. From fetchResourcesForIntegration, use the database's id from resources[]."
+  ),
+  databaseName: z.string().nullable().describe(
+    "The database display name. From fetchResourcesForIntegration, use the database's name from resources[]."
+  ),
 });
 
 const NotionPageConfigSchema = BaseConfigSchema.extend({
   configType: z.literal(ConfigType.NOTION_PAGE),
   integrationType: z.literal(IntegrationType.NOTION),
-  pageId: NonEmptyString.nullable(),
-  pageName: z.string().nullable(),
+  pageId: NonEmptyString.nullable().describe(
+    "The Notion page ID. From fetchResourcesForIntegration, use the page's id from resources[]."
+  ),
+  pageName: z.string().nullable().describe(
+    "The page display name. From fetchResourcesForIntegration, use the page's name from resources[]."
+  ),
 });
 
 const LinearInputConfigSchema = BaseConfigSchema.extend({
   configType: z.literal(ConfigType.LINEAR_INPUT),
   integrationType: z.literal(IntegrationType.LINEAR),
-  projectId: NonEmptyString.nullable(),
-  projectName: z.string().nullable(),
+  projectId: NonEmptyString.nullable().describe(
+    "The Linear project ID. From fetchResourcesForIntegration, use the project's id from resources[]."
+  ),
+  projectName: z.string().nullable().describe(
+    "The project display name. From fetchResourcesForIntegration, use the project's name from resources[]."
+  ),
 });
 
 const LinearOutputConfigSchema = BaseConfigSchema.extend({
   configType: z.literal(ConfigType.LINEAR_OUTPUT),
   integrationType: z.literal(IntegrationType.LINEAR),
-  teamId: NonEmptyString.nullable(),
-  teamName: z.string().nullable(),
+  teamId: NonEmptyString.nullable().describe(
+    "The Linear team ID. From fetchResourcesForIntegration, use the team's id from resources[]."
+  ),
+  teamName: z.string().nullable().describe(
+    "The team display name. From fetchResourcesForIntegration, use the team's name from resources[]."
+  ),
 });
 
 const GitHubConfigSchema = BaseConfigSchema.extend({
   configType: z.literal(ConfigType.GITHUB),
   integrationType: z.literal(IntegrationType.GITHUB),
-  repositoryIds: z.array(z.number()).min(1),
+  repositoryIds: z.array(z.number()).min(1).describe(
+    "Array of GitHub repository IDs (numeric). From fetchResourcesForIntegration, use the repo's id from resources[]."
+  ),
 });
 
 const GitHubKnowledgeBaseConfigSchema = BaseConfigSchema.extend({
   configType: z.literal(ConfigType.GITHUB_KB),
   integrationType: z.literal(IntegrationType.GITHUB),
-  repositoryIds: z.array(z.number()).min(1),
-  repositoryNames: z.array(NonEmptyString).min(1),
+  repositoryIds: z.array(z.number()).min(1).describe(
+    "Array of GitHub repository IDs (numeric). From fetchResourcesForIntegration, use the repo's id from resources[]."
+  ),
+  repositoryNames: z.array(NonEmptyString).min(1).describe(
+    "Array of repository names matching the repositoryIds. From fetchResourcesForIntegration, use the repo's name from resources[]."
+  ),
 });
 
 const JiraConfigSchema = BaseConfigSchema.extend({
