@@ -424,8 +424,9 @@ export async function applyAgentForUser(
   // Set up agent triggers (e.g., create webhooks for Figma)
   await setupAgentTriggers(agentWithRelations);
 
-  // Invalidate recent agents cache
+  // Invalidate recent agents and agent list caches
   emitCacheInvalidationWithKey(organizationId, "recentAgents");
+  emitCacheInvalidationWithKey(organizationId, "agents");
 
   // Track agent created analytics event
   trackAgentCreated(userId, {
