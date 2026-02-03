@@ -3,6 +3,7 @@ import { ChevronRightIcon } from '@heroicons/react/24/outline';
 import { FunctionCallEvent } from "./Turn";
 import FunctionCallItem from "./FunctionCallItem";
 import ShinyText from "../ShinyText";
+import { getToolDisplayFromCall } from "../../utility/toolDisplayUtils";
 
 interface ToolCallsSummaryProps {
     calls: FunctionCallEvent[];
@@ -24,9 +25,9 @@ export default function ToolCallsSummary({ calls, isTurnFailure = false, onAppro
     // Auto-expand if any call is waiting for approval
     const shouldShowExpanded = isExpanded || hasAnyWaitingForApproval;
 
-    // Format in-progress calls into single lines
-    const generatingText = formatToolCallsText(generatingCalls.map(c => c.name), "preparing");
-    const runningText = formatToolCallsText(runningCalls.map(c => c.name), "calling");
+    // Format in-progress calls into single lines using display names
+    const generatingText = formatToolCallsWithDisplay(generatingCalls, 'preparing');
+    const runningText = formatToolCallsWithDisplay(runningCalls, 'executing');
 
     return (
         <div className="w-fit space-y-2">
@@ -91,38 +92,42 @@ export default function ToolCallsSummary({ calls, isTurnFailure = false, onAppro
 }
 
 /**
- * Formats a list of tool call names into a human-readable single-line string.
+ * Formats a list of tool calls into a human-readable single-line string using display names.
  *
- *
- * Examples with prefix "calling":
- * - ["fetchResources"] -> "calling fetchResources..."
- * - ["fetchResources", "fetchResources"] -> "calling fetchResources x2..."
- * - ["fetchResources", "applyAgent"] -> "calling fetchResources and applyAgent..."
- * - ["fetchResources", "fetchResources", "applyAgent"] -> "calling fetchResources x2 and applyAgent..."
- * - ["a", "b", "c"] -> "calling a, b, and c..."
- * - ["a", "a", "b", "c"] -> "calling a x2, b, and c..."
+ * Examples:
+ * - Single call: "Fetching resources from Notion..."
+ * - Multiple same: "Fetching resources from Notion x2..."
+ * - Multiple different: "Fetching resources from Notion and Creating ticket..."
  */
-export function formatToolCallsText(toolNames: string[], prefix: string): string {
-    if (toolNames.length === 0) return "";
+function formatToolCallsWithDisplay(
+    calls: FunctionCallEvent[],
+    phase: 'preparing' | 'executing'
+): string {
+    if (calls.length === 0) return "";
 
-    // Count occurrences of each tool name
+    // Get display text for each call
+    const displayTexts = calls.map(call =>
+        getToolDisplayFromCall(call.name, phase, call.parameters, call.result)
+    );
+
+    // Count occurrences of each display text
     const counts = new Map<string, number>();
-    for (const name of toolNames) {
-        counts.set(name, (counts.get(name) || 0) + 1);
+    for (const text of displayTexts) {
+        counts.set(text, (counts.get(text) || 0) + 1);
     }
 
     // Build formatted parts preserving order of first occurrence
     const seen = new Set<string>();
     const parts: string[] = [];
-    for (const name of toolNames) {
-        if (seen.has(name)) continue;
-        seen.add(name);
+    for (const text of displayTexts) {
+        if (seen.has(text)) continue;
+        seen.add(text);
 
-        const count = counts.get(name)!;
+        const count = counts.get(text)!;
         if (count > 1) {
-            parts.push(`${name} x${count}`);
+            parts.push(`${text} x${count}`);
         } else {
-            parts.push(name);
+            parts.push(text);
         }
     }
 
@@ -136,5 +141,5 @@ export function formatToolCallsText(toolNames: string[], prefix: string): string
         joined = `${parts.slice(0, -1).join(", ")}, and ${parts[parts.length - 1]}`;
     }
 
-    return `${prefix} ${joined}...`;
+    return `${joined}...`;
 }

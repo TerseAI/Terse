@@ -8,6 +8,7 @@ import RunHistoryActionItem from "../RunHistory/RunHistoryActionItem";
 import { EntityType } from "../../shared/Entities";
 import { FunctionCallEvent } from "./Turn";
 import { Button } from "../ui/button";
+import { getToolDisplayFromCall } from "../../utility/toolDisplayUtils";
 
 interface FunctionCallItemProps {
     call: FunctionCallEvent;
@@ -147,6 +148,10 @@ export default function FunctionCallItem({ call, isTurnFailure = false, index, o
     const [isExpanded, setIsExpanded] = useState(false);
     const callKey = `function-call-${call.id}-${index}`;
 
+    // Get display name based on current state
+    const phase = call.isRunning ? 'executing' : 'complete';
+    const displayName = getToolDisplayFromCall(call.name, phase, call.parameters, call.result);
+
     const handleApprove = () => {
         if (!onApprove) {
             console.error('No onApprove handler available');
@@ -194,7 +199,7 @@ export default function FunctionCallItem({ call, isTurnFailure = false, index, o
                                 )}
                                 <div className="text-sm flex-1 text-left min-w-0 overflow-hidden">
                                     <span className="truncate block">
-                                        {call.name}
+                                        {displayName}
                                         {call.isWaitingForApproval && (
                                             <span className="text-yellow-500 ml-1">(waiting for approval)</span>
                                         )}
@@ -208,11 +213,6 @@ export default function FunctionCallItem({ call, isTurnFailure = false, index, o
                                             <span className="text-blue-500 ml-1">(waiting for your input)</span>
                                         )}
                                     </span>
-                                    {call.result && !call.isWaitingForUserInput && (
-                                        <span className="text-muted-foreground ml-2 font-mono bg-background px-2 py-0.5 rounded text-xs whitespace-nowrap">
-                                            → {call.result}
-                                        </span>
-                                    )}
                                 </div>
                             </div>
                         </AccordionTrigger>
@@ -239,7 +239,7 @@ export default function FunctionCallItem({ call, isTurnFailure = false, index, o
             </Accordion>
             {call.isWaitingForUserInput && (
                 <ToolResultInput
-                    toolName={call.name}
+                    toolName={displayName}
                     parameters={call.parameters}
                     onSubmit={() => {}}
                 />
@@ -250,7 +250,7 @@ export default function FunctionCallItem({ call, isTurnFailure = false, index, o
                         Approval Required
                     </div>
                     <div className="text-sm text-muted-foreground mb-3">
-                        The bot wants to execute: <span className="font-medium text-foreground">{call.name}</span>
+                        The bot wants to execute: <span className="font-medium text-foreground">{displayName}</span>
                     </div>
                     <div className="flex gap-2">
                         <Button
