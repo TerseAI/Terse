@@ -1,4 +1,4 @@
-import { initializeSlackWebClient } from "../../integrations/SlackIntegration"
+import { initializeSlackWebClient } from "../../integrations/SlackClient"
 import logger from "../../logger"
 import { db } from "../../prismaClient"
 import { IntegrationType } from "../../shared/Integrations"

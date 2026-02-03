@@ -1,7 +1,7 @@
 import { KnownBlock, LogLevel, WebClient } from "@slack/web-api"
 
 import { settings } from "../config/settings"
-import { initializeSlackWebClient } from "../integrations/SlackIntegration"
+import { initializeSlackWebClient } from "../integrations/SlackClient"
 import logger from "../logger"
 import { db } from "../prismaClient"
 import { FrontendRoutes } from "../shared/FrontendRoutes"

@@ -1,6 +1,6 @@
 import { Socket } from "socket.io"
 
-import { initializeSlackWebClient } from "../../integrations/SlackIntegration"
+import { initializeSlackWebClient } from "../../integrations/SlackClient"
 import logger from "../../logger"
 import { db } from "../../prismaClient"
 import { getRealtimeSocket } from "../../realtimeSocket"

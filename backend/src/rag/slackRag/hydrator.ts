@@ -1,4 +1,5 @@
-import { SlackEvent, SlackEventData, initializeSlackWebClient } from "../../integrations/SlackIntegration"
+import { initializeSlackWebClient } from "../../integrations/SlackClient"
+import { SlackEvent, SlackEventData } from "../../integrations/SlackIntegration"
 import logger from "../../logger"
 import { db } from "../../prismaClient"
 import { HydratorType } from "../../types/rag"

@@ -11,12 +11,11 @@ import { jwt as jwtConfig, slack as slackConfig, urls } from "../config/settings
 import logger, { runWithUserContext } from "../logger"
 import { db } from "../prismaClient"
 import { Identifiable } from "../rag/Hydrator"
-import { fetchSlackChannelsForIntegration } from "../routes/slack"
 import { FileCategory, FileDownloadResult, StoredFile, buildSlackFileKey, ensureStoredWithMetadata, isSupportedFileType } from "../services/FileStorageService"
 import { FrontendRoutes } from "../shared/FrontendRoutes"
 import { AdditionalStateParams, InstallationOptionsFor, IntegrationType, SlackIntegration, SlackIntegrationMetadata } from "../shared/Integrations"
 import { RunHistoryTrigger } from "../shared/RunHistoryTypes"
-import { OAuthInstallationDetails, SlackChannel as SlackChannelShared, SlackChannelType } from "../shared/types"
+import { OAuthInstallationDetails, SlackChannel as SlackChannelShared, SlackChannelType, SlackChannelsResponse } from "../shared/types"
 import { SlackAttachment, SlackFile, SlackMessageImage, extractImagesFromMessage, extractTextFromAttachments, extractTextFromBlocks, pickSlackFileUrl } from "../slack/blockKitHelpers"
 import { AgentTriggerWithConfigs, UserSlackIntegration, UserSlackIntegrationWithUser } from "../types/prisma"
 import { HydratorType } from "../types/rag"
@@ -26,6 +25,7 @@ import { getUserForOrg } from "../utility/workos"
 
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask"
 import { integrationTaskQueue } from "./IntegrationTaskQueues"
+import { initializeSlackWebClient } from "./SlackClient"
 import { FetchResourcesOptions } from "./abstract/FetchResourcesOptions"
 import { InputEvent } from "./abstract/InputEvent"
 import { ConfigurationFieldDefinition, Integration, IntegrationWithResources, OAuthIntegrationInstallation } from "./abstract/Integration"
@@ -507,6 +507,151 @@ export class SlackIntegrationManager
             logger.error(`Error getting Slack access token for integration ${integrationId}`, { error, integrationId })
             return null
         }
+    }
+}
+
+// MARK: - Slack Channel Fetching
+
+type SlackRouteError = Error & {
+    statusCode?: number
+    details?: string
+    code?: string
+}
+
+function createSlackRouteError(message: string, statusCode: number, details?: string, code?: string): SlackRouteError {
+    const error = new Error(message) as SlackRouteError
+    error.statusCode = statusCode
+    error.details = details
+    error.code = code
+    return error
+}
+
+const getSlackToken = (integration: UserSlackIntegrationWithUser) => {
+    return integration.authed_user_access_token || integration.slack_integration.access_token
+}
+
+/**
+ * Fetches Slack channels for an integration.
+ * Moved here from routes/slack.ts to avoid circular dependency.
+ */
+export const fetchSlackChannelsForIntegration = async (userId: string, organizationId: string, integrationId: string): Promise<SlackChannelsResponse> => {
+    if (!integrationId) {
+        throw createSlackRouteError("integrationId is required", 400)
+    }
+    if (!organizationId) {
+        throw createSlackRouteError("Organization context is required", 400)
+    }
+
+    const userSlackIntegration = await db().user_slack_integrations.findFirst({
+        where: {
+            id: integrationId,
+            organization_id: organizationId
+        },
+        include: {
+            slack_integration: true,
+            user: true
+        }
+    })
+
+    if (!userSlackIntegration || !userSlackIntegration.slack_integration) {
+        throw createSlackRouteError("Slack integration not found", 404)
+    }
+
+    const token = getSlackToken(userSlackIntegration)
+    const isBotUser = userSlackIntegration.is_bot_user
+    const teamName = userSlackIntegration.slack_integration.team_name
+    const authedUserId = userSlackIntegration.authed_user_id
+    const teamId = userSlackIntegration.slack_team_id
+
+    logger.debug(`🔵 [SLACK CHANNELS] integration: team="${teamName}", user_id="${authedUserId}", team_id="${teamId}"`, { teamName, authedUserId, teamId, integrationId })
+
+    const client = new WebClient(token, {
+        logLevel: LogLevel.ERROR
+    })
+
+    try {
+        const [publicChannels, privateChannels, mpimChannels] = await Promise.all([
+            client.conversations.list({
+                types: "public_channel",
+                exclude_archived: true,
+                limit: 1000
+            }),
+            client.conversations.list({
+                types: "private_channel",
+                exclude_archived: true,
+                limit: 1000
+            }),
+            client.conversations.list({
+                types: "mpim",
+                exclude_archived: true,
+                limit: 1000
+            })
+        ])
+
+        const channels: SlackChannelShared[] = []
+
+        if (publicChannels.ok && publicChannels.channels) {
+            for (const channel of publicChannels.channels) {
+                if (channel.id && channel.name && (!isBotUser || channel.is_member)) {
+                    channels.push({
+                        id: channel.id,
+                        name: channel.name,
+                        isPrivate: false,
+                        isArchived: channel.is_archived || false,
+                        isMPIM: false
+                    })
+                }
+            }
+        }
+
+        if (privateChannels.ok && privateChannels.channels) {
+            for (const channel of privateChannels.channels) {
+                if (channel.id && channel.name) {
+                    channels.push({
+                        id: channel.id,
+                        name: channel.name,
+                        isPrivate: true,
+                        isArchived: channel.is_archived || false,
+                        isMPIM: false
+                    })
+                }
+            }
+        }
+
+        if (mpimChannels.ok && mpimChannels.channels) {
+            for (const channel of mpimChannels.channels) {
+                if (channel.id && channel.name) {
+                    channels.push({
+                        id: channel.id,
+                        name: channel.name,
+                        isPrivate: true,
+                        isArchived: channel.is_archived || false,
+                        isMPIM: true
+                    })
+                }
+            }
+        }
+
+        channels.sort((a, b) => a.name.localeCompare(b.name))
+
+        return {
+            channels,
+            selectedChannelId: null
+        }
+    } catch (error: any) {
+        logger.error("Error fetching Slack channels", {
+            error,
+            integrationId,
+            userId
+        })
+
+        const isInvalidAuth = error?.data?.error === "invalid_auth" || (error?.code === "slack_webapi_platform_error" && error?.data?.error === "invalid_auth")
+
+        if (isInvalidAuth) {
+            throw createSlackRouteError("Slack authentication failed", 401, "The Slack integration token is invalid or expired. Please reconnect your Slack integration.", "SLACK_INVALID_AUTH")
+        }
+
+        throw createSlackRouteError("Failed to fetch channels", 500, error.message)
     }
 }
 
@@ -1090,12 +1235,8 @@ export function isValidSlackSig(req: Request) {
     return isValid
 }
 
-export function initializeSlackWebClient(integration: UserSlackIntegrationWithUser): WebClient {
-    const token = integration.authed_user_access_token || integration.slack_integration.access_token
-    return new WebClient(token, {
-        logLevel: LogLevel.INFO
-    })
-}
+// Re-export from SlackClient for backwards compatibility
+export { initializeSlackWebClient } from "./SlackClient"
 
 export async function downloadSlackFiles(files: SlackFile[], teamId: string, botToken: string): Promise<StoredFile[]> {
     try {

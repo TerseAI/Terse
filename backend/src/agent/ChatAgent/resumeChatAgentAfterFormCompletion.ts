@@ -1,7 +1,7 @@
 import { GenericMessageEvent } from "@slack/types"
 import { WebClient } from "@slack/web-api"
 
-import { initializeSlackWebClient } from "../../integrations/SlackIntegration"
+import { initializeSlackWebClient } from "../../integrations/SlackClient"
 import logger from "../../logger"
 import { db } from "../../prismaClient"
 import { IntegrationType } from "../../shared/Integrations"

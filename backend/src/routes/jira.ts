@@ -1,9 +1,8 @@
 import { Request, Response } from "express"
 
-import { AtlassianClient } from "../integrations/AtlassianClient"
+import { AtlassianClient, fetchJiraResources } from "../integrations/AtlassianClient"
 import { AtlassianIntegrationManager } from "../integrations/AtlassianIntegration"
 import logger from "../logger"
-import { db } from "../prismaClient"
 import { JiraWebhookPayload } from "../utility/JiraWebhookPayload"
 
 export async function getAtlassianIntegrations(req: Request, res: Response) {
@@ -123,70 +122,5 @@ export async function getJiraResources(req: Request, res: Response) {
             success: false,
             error: error.message || "Failed to fetch Jira resources"
         })
-    }
-}
-
-export async function fetchJiraResources(organizationId: string, integrationId: string) {
-    const integration = await db().atlassian_integrations.findFirst({
-        where: {
-            id: integrationId,
-            organization_id: organizationId
-        }
-    })
-
-    if (!integration) {
-        throw new Error("Integration not found")
-    }
-
-    if (!integration.cloud_id) {
-        throw new Error("Integration missing cloud_id")
-    }
-
-    const client = new AtlassianClient()
-    const accessToken = await client.getAccessToken(integrationId)
-    if (!accessToken) {
-        throw new Error("Could not get valid access token")
-    }
-
-    const cloudId = integration.cloud_id
-    const baseUrl = integration.base_url
-
-    let projects: Array<{
-        id: string
-        key: string
-        name: string
-        projectTypeKey: string
-    }> = []
-
-    try {
-        const projectsResponse = await fetch(`https://api.atlassian.com/ex/jira/${cloudId}/rest/api/3/project`, {
-            method: "GET",
-            headers: {
-                Authorization: `Bearer ${accessToken}`,
-                Accept: "application/json"
-            }
-        })
-
-        if (projectsResponse.ok) {
-            const projectsData = await projectsResponse.json()
-            projects = projectsData.map((p: any) => ({
-                id: p.id,
-                key: p.key,
-                name: p.name,
-                projectTypeKey: p.projectTypeKey || "software"
-            }))
-        }
-    } catch (error) {
-        logger.warn("⚠️  Could not fetch projects:", { error })
-        throw new Error("Failed to fetch projects")
-    }
-
-    return {
-        success: true,
-        resources: {
-            projects: projects,
-            baseUrl: baseUrl,
-            cloudId: cloudId
-        }
     }
 }
