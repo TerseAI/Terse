@@ -18,6 +18,12 @@ const GmailConfigSchema = BaseConfigSchema.extend({
     integrationType: z.literal(IntegrationType.GMAIL)
 })
 
+// Gmail Output config schema
+const GmailOutputConfigSchema = BaseConfigSchema.extend({
+    configType: z.literal(ConfigType.GMAIL_OUTPUT),
+    integrationType: z.literal(IntegrationType.GMAIL)
+})
+
 // Figma config schema
 const FigmaConfigSchema = BaseConfigSchema.extend({
     configType: z.literal(ConfigType.FIGMA),
@@ -130,6 +136,7 @@ const TimeTriggerConfigSchema = BaseConfigSchema.extend({
 // Union of all config schemas
 export const ConfigTemplateSchema = z.discriminatedUnion("configType", [
     GmailConfigSchema,
+    GmailOutputConfigSchema,
     FigmaConfigSchema,
     SlackConfigSchema,
     SlackOutputConfigSchema,
@@ -184,9 +191,13 @@ const AgentKnowledgeBaseTemplateSchema = z
     })
     .strict()
 
+// Template category schema
+const TemplateCategorySchema = z.enum(["ship", "users", "align", "track"])
+
 // Main Agent template schema
 export const AgentTemplateSchema = z
     .object({
+        category: TemplateCategorySchema,
         name: z.string().min(1, "Template name is required"),
         description: z.string().min(1, "Template description is required"),
         prompt: AgentPromptSchema,

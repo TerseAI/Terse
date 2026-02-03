@@ -1,17 +1,26 @@
 import { useCallback, useMemo, useRef, useState } from "react"
 
 import { AnimatePresence, Easing, motion } from "framer-motion"
-import { Loader2 } from "lucide-react"
+import type { LucideIcon } from "lucide-react"
+import { FileText, Loader2, MessageCircle, Rocket, Users } from "lucide-react"
 import { v4 as uuidv4 } from "uuid"
 
 import { TemplateCard } from "@/components/Agents/TemplateCard"
 import { Chat, ChatHandle } from "@/components/chat/Chat"
 import { ChatEventPayload } from "@/components/chat/hooks/useCompletionSocket"
+import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { useTemplates } from "@/hooks/api/useTemplates"
 import { ModelRequest, SendModelRequest } from "@/shared/ModelEvents"
-import { AgentTemplate } from "@/shared/types"
+import { AgentTemplate, TemplateCategory } from "@/shared/types"
 import { sendBuilderMessage, subscribeToBuilderChat } from "@/socket"
+
+const TEMPLATE_CATEGORIES: { id: TemplateCategory; label: string; icon: LucideIcon }[] = [
+    { id: "ship", label: "Ship Faster", icon: Rocket },
+    { id: "users", label: "Understand Users", icon: Users },
+    { id: "align", label: "Stay Aligned", icon: MessageCircle },
+    { id: "track", label: "Track Everything", icon: FileText }
+]
 
 const AGENT_SETUP_PLACEHOLDERS = [
     "An agent that reads my Slack every day and tells me only what actually matters",
@@ -30,7 +39,10 @@ const ANIMATION_EASE: Easing = [0.4, 0, 0.2, 1]
 export default function AgentSetup() {
     const { templates, isLoading } = useTemplates()
     const [hasStartedChat, setHasStartedChat] = useState(false)
+    const [selectedCategory, setSelectedCategory] = useState<TemplateCategory>("ship")
     const chatRef = useRef<ChatHandle>(null)
+
+    const filteredTemplates = useMemo(() => templates.filter(t => t.category === selectedCategory), [templates, selectedCategory])
 
     // Generate a session ID for this setup flow
     const sessionId = useMemo(() => uuidv4(), [])
@@ -199,23 +211,60 @@ export default function AgentSetup() {
                                         <div className="h-px flex-1 bg-border" />
                                     </div>
 
+                                    {/* Category chips */}
+                                    <div className="flex flex-wrap justify-between items-center gap-2 py-1">
+                                        {TEMPLATE_CATEGORIES.map(({ id, label, icon: Icon }) => (
+                                            <motion.div
+                                                key={id}
+                                                initial={false}
+                                                animate={{
+                                                    scale: selectedCategory === id ? 1.02 : 1
+                                                }}
+                                                transition={{ duration: 0.2, ease: "easeOut" }}
+                                            >
+                                                <Button
+                                                    variant={selectedCategory === id ? "secondary" : "outline"}
+                                                    size="lg"
+                                                    className="h-11 px-5 gap-2 text-base font-medium"
+                                                    onClick={() => setSelectedCategory(id)}
+                                                >
+                                                    <Icon className="size-5 shrink-0" />
+                                                    {label}
+                                                </Button>
+                                            </motion.div>
+                                        ))}
+                                    </div>
+
                                     {/* Templates Grid */}
                                     {isLoading ? (
                                         <div className="flex items-center justify-center py-8">
                                             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                                         </div>
-                                    ) : templates.length > 0 ? (
-                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                            {templates.map((template, index) => (
-                                                <TemplateCard key={index} template={template} onSelect={handleTemplateSelect} />
-                                            ))}
-                                        </div>
                                     ) : (
-                                        <Card className="border-dashed">
-                                            <CardContent className="flex flex-col items-center justify-center py-6 text-center">
-                                                <p className="text-muted-foreground text-sm">No templates available yet</p>
-                                            </CardContent>
-                                        </Card>
+                                        <AnimatePresence mode="wait">
+                                            {filteredTemplates.length > 0 ? (
+                                                <motion.div
+                                                    key={selectedCategory}
+                                                    initial={{ opacity: 0, y: 8 }}
+                                                    animate={{ opacity: 1, y: 0 }}
+                                                    exit={{ opacity: 0, y: -8 }}
+                                                    transition={{ duration: 0.25, ease: "easeOut" }}
+                                                    className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+                                                >
+                                                    {filteredTemplates.map((template, index) => (
+                                                        <TemplateCard key={index} template={template} onSelect={handleTemplateSelect} />
+                                                    ))}
+                                                </motion.div>
+                                            ) : (
+                                                <motion.div key={`empty-${selectedCategory}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
+                                                    <Card className="border-dashed">
+                                                        <CardContent className="flex flex-col items-center justify-center py-6 text-center">
+                                                            <p className="text-muted-foreground text-sm">No templates in this category yet</p>
+                                                        </CardContent>
+                                                    </Card>
+                                                </motion.div>
+                                            )}
+                                        </AnimatePresence>
                                     )}
                                 </div>
                             </div>
