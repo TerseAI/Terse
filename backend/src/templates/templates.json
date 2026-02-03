@@ -95,7 +95,7 @@
         "isActive": true
     },
     {
-        "category": "align",
+        "category": "sync",
         "name": "Detect Information Drift Between Figma and PRD",
         "description": "Catch when your designs and specs fall out of sync before it causes rework",
         "chatPrompt": "Create an agent that monitors Figma for discussions that conflict with my PRD in Confluence, alerting me when designs and specs drift out of sync.",
@@ -122,7 +122,7 @@
         "isActive": true
     },
     {
-        "category": "align",
+        "category": "sync",
         "name": "Release Notes Builder",
         "description": "Stop spending hours manually writing release notes every week",
         "chatPrompt": "Every monday morning at 9am, go through all the merged PRs and generate a customer-facing weekly changelog, posting it to Slack.",
@@ -282,7 +282,7 @@
         "isActive": true
     },
     {
-        "category": "align",
+        "category": "sync",
         "name": "Team Newsletter",
         "description": "Auto-generated weekly update delivered to your inbox",
         "chatPrompt": "Every Friday, aggregate the week's key updates from our tools (PRs merged, tickets closed, milestones) and send me a formatted weekly digest via Gmail.",
@@ -295,6 +295,14 @@
                     "configType": "time_trigger",
                     "integrationType": "cron_job",
                     "cronExpression": "0 9 * * 5"
+                }
+            }
+        ],
+        "knowledgeBases": [
+            {
+                "config": {
+                    "configType": "github_kb",
+                    "integrationType": "github"
                 }
             }
         ],

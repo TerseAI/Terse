@@ -16,9 +16,9 @@ import { AgentTemplate, TemplateCategory } from "@/shared/types"
 import { sendBuilderMessage, subscribeToBuilderChat } from "@/socket"
 
 const TEMPLATE_CATEGORIES: { id: TemplateCategory; label: string; icon: LucideIcon }[] = [
-    { id: "ship", label: "Ship Faster", icon: Rocket },
+    { id: "ship", label: "Ship Fast", icon: Rocket },
     { id: "users", label: "Understand Users", icon: Users },
-    { id: "align", label: "Stay Aligned", icon: MessageCircle },
+    { id: "sync", label: "Stay in Sync", icon: MessageCircle },
     { id: "track", label: "Track Everything", icon: FileText }
 ]
 

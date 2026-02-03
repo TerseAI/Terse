@@ -408,7 +408,7 @@ export type TemplateKnowledgeBase = {
 export type TemplateCategory =
     | "ship" // Ship Faster
     | "users" // Understand Users
-    | "align" // Stay Aligned
+    | "sync" // Stay in Sync
     | "track" // Track Everything
 
 export type AgentTemplate = {

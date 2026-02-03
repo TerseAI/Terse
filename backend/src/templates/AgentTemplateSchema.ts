@@ -192,7 +192,7 @@ const AgentKnowledgeBaseTemplateSchema = z
     .strict()
 
 // Template category schema
-const TemplateCategorySchema = z.enum(["ship", "users", "align", "track"])
+const TemplateCategorySchema = z.enum(["ship", "users", "sync", "track"])
 
 // Main Agent template schema
 export const AgentTemplateSchema = z
