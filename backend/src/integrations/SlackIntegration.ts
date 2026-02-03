@@ -55,6 +55,7 @@ import { HydratorType } from "../types/rag";
 import { Jwt } from "../utility/jwt";
 import { createOAuthStateToken } from "../utility/oauth";
 import { getUserForOrg } from "../utility/workos";
+import { FetchResourcesOptions } from "./abstract/FetchResourcesOptions";
 import { InputEvent } from "./abstract/InputEvent";
 import {
   ConfigurationFieldDefinition,
@@ -79,7 +80,7 @@ export class SlackIntegrationManager
   integrationType: IntegrationType = IntegrationType.SLACK;
 
   async getInstancesForOrganization(
-    organizationId: string,
+    organizationId: string
   ): Promise<SlackIntegration[]> {
     const userSlackIntegrations = await db().user_slack_integrations.findMany({
       where: {
@@ -100,6 +101,7 @@ export class SlackIntegrationManager
   async fetchResourcesForOrganization(
     organizationId: string,
     query?: string,
+    _options?: FetchResourcesOptions
   ): Promise<IntegrationWithResources<SlackIntegration, SlackChannelShared>[]> {
     const integrations = await this.getInstancesForOrganization(organizationId);
     const normalizedQuery = query?.trim().toLowerCase();
@@ -124,7 +126,7 @@ export class SlackIntegrationManager
           const response = await fetchSlackChannelsForIntegration(
             usi.user_id,
             organizationId,
-            integration.id,
+            integration.id
           );
           const channels = normalizedQuery
             ? response.channels.filter((channel) => matchesQuery(channel.name))
@@ -133,11 +135,11 @@ export class SlackIntegrationManager
         } catch (error) {
           logger.warn(
             `Failed to fetch resources for Slack integration ${integration.id}`,
-            { error, integrationId: integration.id },
+            { error, integrationId: integration.id }
           );
           return { integration, resources: [] };
         }
-      }),
+      })
     );
   }
 
@@ -227,7 +229,7 @@ export class SlackIntegrationManager
           handleSlackMessage(
             event,
             team_id,
-            authorizations as SlackAuthorizations[],
+            authorizations as SlackAuthorizations[]
           ).catch((error) => {
             logger.error("Error processing Slack message in background", {
               error,
@@ -266,7 +268,7 @@ export class SlackIntegrationManager
     userId: string,
     organizationId: string,
     options?: InstallationOptionsFor<IntegrationType.SLACK>,
-    additionalStatePayload?: AdditionalStateParams,
+    additionalStatePayload?: AdditionalStateParams
   ): Promise<OAuthInstallationDetails> {
     if (!options) {
       throw new Error("Slack integration requires options (isBotUser)");
@@ -298,7 +300,7 @@ export class SlackIntegrationManager
 
   async processInstallationCallback(
     req: Request,
-    res: Response,
+    res: Response
   ): Promise<void> {
     const frontendUrl = urls.frontend;
 
@@ -365,7 +367,7 @@ export class SlackIntegrationManager
           headers: {
             "Content-Type": "application/x-www-form-urlencoded",
           },
-        },
+        }
       );
 
       logger.debug("Slack OAuth response", { data: response.data });
@@ -393,7 +395,7 @@ export class SlackIntegrationManager
         if (slackIntegration) {
           logger.info(
             "Slack integration already exists, continuing with adding user relation",
-            { teamId: team.id },
+            { teamId: team.id }
           );
           // Update existing integration with user_scope
           await tx.slack_integrations.update({
@@ -487,7 +489,7 @@ export class SlackIntegrationManager
             slack_team_id: team.id,
             is_bot_user: !isUserType,
           },
-        },
+        }
       );
 
       if (!userSlackIntegration) {
@@ -506,8 +508,8 @@ export class SlackIntegrationManager
           userSlackIntegration.id,
           decoded.userId,
           decoded,
-          new Date(),
-        ),
+          new Date()
+        )
       );
 
       logger.info("Slack OAuth completed successfully", {
@@ -545,7 +547,7 @@ export class SlackIntegrationManager
 
   async setupAgentTrigger(
     integrationId: string,
-    agentTrigger: AgentTriggerWithConfigs,
+    agentTrigger: AgentTriggerWithConfigs
   ): Promise<void> {
     // Slack doesn't require any setup for channel inputs
     // Webhooks are managed at the integration level
@@ -553,7 +555,7 @@ export class SlackIntegrationManager
 
   async teardownAgentTrigger(
     integrationId: string,
-    agentTrigger: AgentTriggerWithConfigs,
+    agentTrigger: AgentTriggerWithConfigs
   ): Promise<void> {
     // Slack doesn't require any teardown for channel inputs
     // Webhooks are managed at the integration level
@@ -589,7 +591,7 @@ export class SlackIntegrationManager
     } catch (error) {
       logger.error(
         `Error getting Slack access token for integration ${integrationId}`,
-        { error, integrationId },
+        { error, integrationId }
       );
       return null;
     }
@@ -771,7 +773,7 @@ async function deactivateToken(token: string) {
 function processSlackApiResult<T>(
   result: SlackApiSettledResult<T>,
   successLabel: string,
-  errorPrefix: string,
+  errorPrefix: string
 ): { success: boolean; data?: T; error?: string } {
   if (result.status === "fulfilled" && result.value.ok) {
     // Successfully fulfilled and ok
@@ -803,7 +805,7 @@ function extractChannelName(
   },
   userResult: { success: boolean; data?: { user?: SlackUser }; error?: string },
   eventUserId: string,
-  defaultChannelId: string,
+  defaultChannelId: string
 ): string | undefined {
   if (!channelResult.success || !channelResult.data?.channel) {
     return undefined;
@@ -895,7 +897,7 @@ function extractUserName(userResult: {
 async function handleSlackMessage(
   event: SlackMessageEvent,
   teamId: string,
-  authorizations: SlackAuthorizations[],
+  authorizations: SlackAuthorizations[]
 ) {
   try {
     logger.debug("Processing Slack message event", {
@@ -1001,7 +1003,7 @@ async function handleSlackMessage(
         workspaceUserIntegrations.map(async (integration) => ({
           integration,
           isMember: await isInChannel(integration),
-        })),
+        }))
       );
       filteredWorkspaceUserIntegrations = channelMembershipChecks
         .filter(({ isMember }) => isMember)
@@ -1016,7 +1018,7 @@ async function handleSlackMessage(
     }
 
     const client: WebClient = initializeSlackWebClient(
-      filteredWorkspaceUserIntegrations[0],
+      filteredWorkspaceUserIntegrations[0]
     );
 
     logger.debug(
@@ -1026,7 +1028,7 @@ async function handleSlackMessage(
         user: messageEvent.user,
         messageTs: messageEvent.ts,
         teamId,
-      },
+      }
     );
 
     // Fetch all available data from Slack API in parallel
@@ -1060,19 +1062,19 @@ async function handleSlackMessage(
     const channelResult = processSlackApiResult<{ channel?: SlackChannel }>(
       channelInfo as SlackApiSettledResult<{ channel?: SlackChannel }>,
       "Channel info",
-      "Failed to fetch channel info",
+      "Failed to fetch channel info"
     );
 
     const userResult = processSlackApiResult<{ user?: SlackUser }>(
       userInfo as SlackApiSettledResult<{ user?: SlackUser }>,
       "User info",
-      "Failed to fetch user info",
+      "Failed to fetch user info"
     );
 
     const permalinkApiResult = processSlackApiResult<{ permalink?: string }>(
       permalinkResult as SlackApiSettledResult<{ permalink?: string }>,
       "Message permalink",
-      "Failed to fetch message permalink",
+      "Failed to fetch message permalink"
     );
 
     // Extract channel name and metadata
@@ -1080,7 +1082,7 @@ async function handleSlackMessage(
       channelResult,
       userResult,
       messageEvent.user!,
-      messageEvent.channel!,
+      messageEvent.channel!
     );
 
     // Extract user information
@@ -1103,7 +1105,7 @@ async function handleSlackMessage(
       processSlackApiResult<SlackFullMessageResponse>(
         fullMessageResult as SlackApiSettledResult<SlackFullMessageResponse>,
         "Full message",
-        "Failed to fetch full message",
+        "Failed to fetch full message"
       );
 
     // Use blocks/attachments/files from API if not in event payload
@@ -1125,21 +1127,21 @@ async function handleSlackMessage(
         blocks = fullMessage.blocks as KnownBlock[];
         logger.debug(
           `✓ Extracted blocks from full message API (${blocks.length} blocks)`,
-          { channel: messageEvent.channel, messageTs: messageEvent.ts },
+          { channel: messageEvent.channel, messageTs: messageEvent.ts }
         );
       }
       if (!attachments && fullMessage.attachments) {
         attachments = fullMessage.attachments as SlackAttachment[];
         logger.debug(
           `✓ Extracted attachments from full message API (${attachments.length} attachments)`,
-          { channel: messageEvent.channel, messageTs: messageEvent.ts },
+          { channel: messageEvent.channel, messageTs: messageEvent.ts }
         );
       }
       if (!files && fullMessage.files) {
         files = fullMessage.files as SlackFile[];
         logger.debug(
           `✓ Extracted files from full message API (${files.length} files)`,
-          { channel: messageEvent.channel, messageTs: messageEvent.ts },
+          { channel: messageEvent.channel, messageTs: messageEvent.ts }
         );
       }
       // Also update text if it was empty in the event but present in full message
@@ -1191,7 +1193,7 @@ async function handleSlackMessage(
         if (!organizationId) continue;
         const fullUser = await getUserForOrg(
           userSlackIntegration.user.id,
-          organizationId,
+          organizationId
         );
         if (!fullUser) continue;
         await runWithUserContext(fullUser, async () => {
@@ -1204,7 +1206,7 @@ async function handleSlackMessage(
             results.some((r) => r.success || r.agentConfig !== null)
           ) {
             totalMatches += results.filter(
-              (r) => r.success || r.agentConfig !== null,
+              (r) => r.success || r.agentConfig !== null
             ).length;
             logger.info(
               `User ${fullUser.email}: ${results.length} automation(s) matched`,
@@ -1213,7 +1215,7 @@ async function handleSlackMessage(
                 email: fullUser.email,
                 resultsCount: results.length,
                 teamId,
-              },
+              }
             );
             for (const result of results) {
               if (result.success) {
@@ -1222,7 +1224,7 @@ async function handleSlackMessage(
                   {
                     agentName: result.agentConfig?.name,
                     userId: fullUser.id,
-                  },
+                  }
                 );
               } else if (result.agentConfig) {
                 logger.warn(
@@ -1231,7 +1233,7 @@ async function handleSlackMessage(
                     agentName: result.agentConfig?.name,
                     message: result.message,
                     userId: fullUser.id,
-                  },
+                  }
                 );
               }
             }
@@ -1243,7 +1245,7 @@ async function handleSlackMessage(
           {
             error,
             userId: userSlackIntegration.user.id,
-          },
+          }
         );
         // Continue processing other users even if one fails
       }
@@ -1251,7 +1253,7 @@ async function handleSlackMessage(
 
     logger.info(
       `Slack message processed - ${totalMatches} total automation(s) matched across all workspace users`,
-      { totalMatches, teamId, channel: messageEvent.channel },
+      { totalMatches, teamId, channel: messageEvent.channel }
     );
   } catch (error) {
     logger.error("Error handling Slack message", { error, teamId });
@@ -1273,7 +1275,7 @@ export function isValidSlackSig(req: Request) {
   const signingSecret = slackConfig.signingSecret || slackConfig.clientSecret;
   if (!signingSecret) {
     logger.warn(
-      "No signing secret found - need SLACK_SIGNING_SECRET environment variable",
+      "No signing secret found - need SLACK_SIGNING_SECRET environment variable"
     );
     return false;
   }
@@ -1296,7 +1298,7 @@ export function isValidSlackSig(req: Request) {
 }
 
 export function initializeSlackWebClient(
-  integration: UserSlackIntegrationWithUser,
+  integration: UserSlackIntegrationWithUser
 ): WebClient {
   const token =
     integration.authed_user_access_token ||
@@ -1309,7 +1311,7 @@ export function initializeSlackWebClient(
 export async function downloadSlackFiles(
   files: SlackFile[],
   teamId: string,
-  botToken: string,
+  botToken: string
 ): Promise<StoredFile[]> {
   try {
     const supportedFiles = filterSupportedSlackFiles(files);
@@ -1321,15 +1323,13 @@ export async function downloadSlackFiles(
       logger.warn(
         `Skipping file downloads - bot token is missing 'files:read' scope. ` +
           `Users need to re-install the Slack app to grant file access.`,
-        { teamId, fileCount: supportedFiles.length },
+        { teamId, fileCount: supportedFiles.length }
       );
       return [];
     }
 
     const storedFiles = await Promise.all(
-      supportedFiles.map((file) =>
-        processSlackFile({ file, teamId, botToken }),
-      ),
+      supportedFiles.map((file) => processSlackFile({ file, teamId, botToken }))
     );
 
     return storedFiles.filter((f): f is StoredFile => f !== null);
@@ -1375,7 +1375,7 @@ async function processSlackFile(args: {
       primaryKey,
       async (): Promise<FileDownloadResult> => {
         return downloadSlackFile({ downloadUrl, botToken, file });
-      },
+      }
     );
 
     if (storedFile) {
@@ -1417,7 +1417,7 @@ async function hasFilesReadScope(botToken: string): Promise<boolean> {
     const scopes = authResult.response_metadata?.scopes as string[] | undefined;
     if (!scopes) {
       logger.warn(
-        "Could not determine bot token scopes - response_metadata.scopes not present",
+        "Could not determine bot token scopes - response_metadata.scopes not present"
       );
       // Fall back to attempting the download (will be validated by isValidFileResponse)
       return true;
@@ -1427,8 +1427,8 @@ async function hasFilesReadScope(botToken: string): Promise<boolean> {
     if (!hasFilesRead) {
       logger.warn(
         `Bot token is missing 'files:read' scope. Current scopes: ${scopes.join(
-          ", ",
-        )}. ` + `Users need to re-install the Slack app to grant file access.`,
+          ", "
+        )}. ` + `Users need to re-install the Slack app to grant file access.`
       );
     }
 
@@ -1452,7 +1452,7 @@ async function downloadSlackFile(args: {
 
   if (!response.ok) {
     throw new Error(
-      `Failed to download Slack file: ${response.status} ${response.statusText}`,
+      `Failed to download Slack file: ${response.status} ${response.statusText}`
     );
   }
 

@@ -11,6 +11,7 @@ import {
 } from "../shared/Integrations";
 import { LaunchDarklyProject } from "../shared/types";
 import { AgentTriggerWithConfigs } from "../types/prisma";
+import { FetchResourcesOptions } from "./abstract/FetchResourcesOptions";
 import {
   FormFieldDefinition,
   FormIntegrationInstallation,
@@ -34,7 +35,7 @@ export class LaunchDarklyIntegrationManager
   integrationType: IntegrationType = IntegrationType.LAUNCHDARKLY;
 
   async getInstancesForOrganization(
-    organizationId: string,
+    organizationId: string
   ): Promise<LaunchDarklyIntegration[]> {
     const launchdarklyIntegrations =
       await db().launchdarkly_integrations.findMany({
@@ -55,6 +56,7 @@ export class LaunchDarklyIntegrationManager
   async fetchResourcesForOrganization(
     organizationId: string,
     query?: string,
+    _options?: FetchResourcesOptions
   ): Promise<
     IntegrationWithResources<
       LaunchDarklyIntegration,
@@ -70,30 +72,30 @@ export class LaunchDarklyIntegrationManager
           const projectsResponse = await fetchLaunchDarklyProjects(
             organizationId,
             integration.id,
-            query ?? "",
+            query ?? ""
           );
           const projectsWithEnvironments = await Promise.all(
             projectsResponse.projects.map(async (project) => {
               const envsResponse = await fetchLaunchDarklyEnvironments(
                 organizationId,
                 integration.id,
-                project.key,
+                project.key
               );
               return {
                 ...project,
                 environments: envsResponse.environments,
               };
-            }),
+            })
           );
           return { integration, resources: projectsWithEnvironments };
         } catch (error) {
           logger.warn(
             `Failed to fetch resources for LaunchDarkly integration ${integration.id}`,
-            { error, integrationId: integration.id },
+            { error, integrationId: integration.id }
           );
           return { integration, resources: [] };
         }
-      }),
+      })
     );
   }
 
@@ -129,7 +131,7 @@ export class LaunchDarklyIntegrationManager
   async processWebhookEvent(event: never): Promise<void> {
     // LaunchDarkly webhooks are handled elsewhere
     throw new Error(
-      "LaunchDarkly webhooks are not processed through this integration manager",
+      "LaunchDarkly webhooks are not processed through this integration manager"
     );
   }
 
@@ -139,12 +141,12 @@ export class LaunchDarklyIntegrationManager
 
   async setupAgentTrigger(
     integrationId: string,
-    automationInput: AgentTriggerWithConfigs,
+    automationInput: AgentTriggerWithConfigs
   ): Promise<void> {}
 
   async teardownAgentTrigger(
     integrationId: string,
-    automationInput: AgentTriggerWithConfigs,
+    automationInput: AgentTriggerWithConfigs
   ): Promise<void> {}
 
   getFormFields(): FormFieldDefinition[] {
@@ -161,7 +163,7 @@ export class LaunchDarklyIntegrationManager
   }
 
   async processFormSubmission(
-    input: FormSubmissionInput,
+    input: FormSubmissionInput
   ): Promise<FormSubmissionResult> {
     const { userId, organizationId, formValues } = input;
     const { apiKey } = formValues;
@@ -185,7 +187,7 @@ export class LaunchDarklyIntegrationManager
             Authorization: apiKey,
             "Content-Type": "application/json",
           },
-        },
+        }
       );
 
       // Reject all non-2xx responses
@@ -224,7 +226,7 @@ export class LaunchDarklyIntegrationManager
               Authorization: apiKey,
               "Content-Type": "application/json",
             },
-          },
+          }
         );
 
         if (tokensResponse.ok) {
