@@ -268,10 +268,10 @@ export default function AgentSetupTab({
                                     <button
                                         onClick={() => setActiveSection(step.id)}
                                         className={cn(
-                                            "flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all",
+                                            "flex items-center gap-3 px-4 py-2.5 rounded-lg border transition-colors",
                                             isActive
-                                                ? "bg-background border border-border shadow-sm"
-                                                : "hover:bg-background/50",
+                                                ? "bg-background border-border shadow-sm"
+                                                : "border-transparent hover:bg-background/50",
                                         )}
                                     >
                                         <div className={cn(
@@ -315,10 +315,10 @@ export default function AgentSetupTab({
                         <button
                             onClick={() => setActiveSection('knowledgeBase')}
                             className={cn(
-                                "flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all",
+                                "flex items-center gap-2 px-3 py-2 rounded-lg text-sm border transition-colors",
                                 activeSection === 'knowledgeBase'
-                                    ? "bg-background border border-border shadow-sm text-foreground"
-                                    : "text-muted-foreground hover:bg-background/50 hover:text-foreground",
+                                    ? "bg-background border-border shadow-sm text-foreground"
+                                    : "border-transparent text-muted-foreground hover:bg-background/50 hover:text-foreground",
                             )}
                         >
                             <Database className="w-4 h-4" />
@@ -332,10 +332,10 @@ export default function AgentSetupTab({
                         <button
                             onClick={() => setActiveSection('alerts')}
                             className={cn(
-                                "flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all",
+                                "flex items-center gap-2 px-3 py-2 rounded-lg text-sm border transition-colors",
                                 activeSection === 'alerts'
-                                    ? "bg-background border border-border shadow-sm text-foreground"
-                                    : "text-muted-foreground hover:bg-background/50 hover:text-foreground",
+                                    ? "bg-background border-border shadow-sm text-foreground"
+                                    : "border-transparent text-muted-foreground hover:bg-background/50 hover:text-foreground",
                             )}
                         >
                             <Bell className="w-4 h-4" />

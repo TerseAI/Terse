@@ -4,7 +4,7 @@ import { useState } from "react";
 import TokenStream from "./TokenStream";
 
 import { ChangedItem, SharedErrorContext, ChatSnippet } from "../../shared/ModelEvents";
-import FunctionCallItem from "./FunctionCallItem";
+import ToolCallsSummary from "./ToolCallsSummary";
 import { SnippetView } from "./SnippetView";
 
 interface Turn {
@@ -29,6 +29,7 @@ interface Turn {
 interface FunctionCallEvent {
     id: string;
     name: string;
+    isGeneratingParams?: boolean;
     isRunning: boolean;
     isWaitingForApproval?: boolean;
     isRejected?: boolean;
@@ -84,16 +85,12 @@ function TurnView({ role, text, function_calls, isFailure = false, isGenerating 
                         </div>
                     </div>
                 )}
-                {function_calls.map((call, index) => (
-                    <FunctionCallItem
-                        key={index}
-                        call={call}
-                        isTurnFailure={isFailure}
-                        index={index}
-                        onApprove={onApprove}
-                        onReject={onReject}
-                    />
-                ))}
+                <ToolCallsSummary 
+                    calls={function_calls} 
+                    isTurnFailure={isFailure}
+                    onApprove={onApprove}
+                    onReject={onReject}
+                />
 
                 {snippets.length > 0 && (
                     <div className="space-y-2 mt-2">

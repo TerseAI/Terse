@@ -159,7 +159,23 @@ export function initializeSocket() {
     (payload: { key?: string; id?: string }) => {
       const { key, id } = payload || {};
       if (key && id) {
-        mutate((k) => Array.isArray(k) && k[0] === key && k[1] === id);
+        // Match keys where k[1] is either the id directly OR an object containing { id }
+        mutate((k) => {
+          if (!Array.isArray(k) || k[0] !== key) return false;
+          const secondElement = k[1];
+          // Direct match (e.g., ['runHistory', agentId])
+          if (secondElement === id) return true;
+          // Object with id property (e.g., ['agent', { id: agentId }])
+          if (
+            typeof secondElement === "object" &&
+            secondElement !== null &&
+            "id" in secondElement &&
+            secondElement.id === id
+          ) {
+            return true;
+          }
+          return false;
+        });
       } else if (key) {
         mutate((k) => Array.isArray(k) && k[0] === key);
       }

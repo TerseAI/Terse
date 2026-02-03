@@ -10,6 +10,7 @@ import {
 import { IntegrationType } from "@/shared/Integrations"
 import { IntegrationCardHeader } from "./helpers/IntegrationCardHeader";
 import { IntegrationCardFooter } from "./helpers/IntegrationCardFooter";
+import { CompactIntegrationRow } from "./CompactIntegrationRow";
 import { useOAuthConnection } from "@/hooks/useOAuthConnection";
 import { cn } from "@/lib/utils";
 import { ExternalLink, Github } from "lucide-react";
@@ -22,7 +23,7 @@ import DropdownSelect from "../ui/DropdownSelect";
 // Number of repositories to show on the card before showing "View all" button
 const REPOSITORY_DISPLAY_THRESHOLD = 3;
 
-function GithubIntegrationCard({ className, isActive = true, stateToken }: { className?: string; isActive?: boolean; stateToken?: string }) {
+function GithubIntegrationCard({ className, isActive = true, stateToken, compact = false }: { className?: string; isActive?: boolean; stateToken?: string; compact?: boolean }) {
     const { connect, isConnecting } = useOAuthConnection<IntegrationType.GITHUB>(IntegrationType.GITHUB, {}, stateToken);
     const { integrations, isLoading: isLoadingIntegrations } = useGithubIntegrations();
     const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -54,6 +55,22 @@ function GithubIntegrationCard({ className, isActive = true, stateToken }: { cla
         }
     };
 
+    const isConnected = integrations.length > 0;
+    const summary = integrations[0]?.account_name || (repositories.length > 0 ? `${repositories.length} repositories` : undefined);
+
+    if (compact) {
+        return (
+            <CompactIntegrationRow
+                integration={IntegrationType.GITHUB}
+                isConnected={isConnected}
+                summary={summary}
+                connect={connect}
+                isConnecting={isConnecting}
+                className={className}
+            />
+        );
+    }
+
     return (
         <>
             <Card className={cn(className)}>
@@ -81,20 +98,20 @@ function GithubIntegrationCard({ className, isActive = true, stateToken }: { cla
                                     placeholder="No connection selected"
                                 />
                             </div>
-                            <GithubCardContent 
-                                repositories={repositories} 
-                                isLoading={isLoadingRepositories} 
-                                onViewAll={() => setIsDialogOpen(true)} 
+                            <GithubCardContent
+                                repositories={repositories}
+                                isLoading={isLoadingRepositories}
+                                onViewAll={() => setIsDialogOpen(true)}
                             />
                         </>
                     )}
                 </CardContent>
                 <IntegrationCardFooter connect={connect} isConnecting={isConnecting} />
             </Card>
-            <RepositoriesDialog 
-                repositories={repositories} 
-                open={isDialogOpen} 
-                onOpenChange={setIsDialogOpen} 
+            <RepositoriesDialog
+                repositories={repositories}
+                open={isDialogOpen}
+                onOpenChange={setIsDialogOpen}
             />
         </>
     )
