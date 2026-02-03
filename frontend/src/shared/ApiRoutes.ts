@@ -163,6 +163,9 @@ export const ApiRoutes = {
 
     // Templates routes
     TEMPLATES: "/templates",
+    PUBLIC: {
+        TEMPLATES: "/public/templates"
+    },
 
     // Prompt builder routes
     PROMPT_BUILDER: {

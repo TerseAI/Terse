@@ -1,4 +1,5 @@
-import { useCallback, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useSearchParams } from "react-router-dom"
 
 import { AnimatePresence, Easing, motion } from "framer-motion"
 import type { LucideIcon } from "lucide-react"
@@ -16,10 +17,10 @@ import { AgentTemplate, TemplateCategory } from "@/shared/types"
 import { sendBuilderMessage, subscribeToBuilderChat } from "@/socket"
 
 const TEMPLATE_CATEGORIES: { id: TemplateCategory; label: string; icon: LucideIcon }[] = [
-    { id: "ship", label: "Ship Fast", icon: Rocket },
     { id: "users", label: "Understand Users", icon: Users },
     { id: "sync", label: "Stay in Sync", icon: MessageCircle },
-    { id: "track", label: "Track Everything", icon: FileText }
+    { id: "track", label: "Track Everything", icon: FileText },
+    { id: "ship", label: "Ship Fast", icon: Rocket }
 ]
 
 const AGENT_SETUP_PLACEHOLDERS = [
@@ -39,18 +40,54 @@ const ANIMATION_EASE: Easing = [0.4, 0, 0.2, 1]
 export default function AgentSetup() {
     const { templates, isLoading } = useTemplates()
     const [hasStartedChat, setHasStartedChat] = useState(false)
-    const [selectedCategory, setSelectedCategory] = useState<TemplateCategory>("ship")
+    const [selectedCategory, setSelectedCategory] = useState<TemplateCategory>("users")
     const chatRef = useRef<ChatHandle>(null)
+    const appliedDeepLinkKey = useRef<string | null>(null)
+    const [searchParams] = useSearchParams()
 
     const filteredTemplates = useMemo(() => templates.filter(t => t.category === selectedCategory), [templates, selectedCategory])
 
     // Generate a session ID for this setup flow
     const sessionId = useMemo(() => uuidv4(), [])
 
-    const handleTemplateSelect = (template: AgentTemplate) => {
+    const handleTemplateSelect = useCallback((template: AgentTemplate) => {
         chatRef.current?.setInput(template.chatPrompt)
         chatRef.current?.focus()
-    }
+    }, [])
+
+    // Apply deep link params: templateId (pre-populate from template + set category) and/or prompt (arbitrary user input)
+    useEffect(() => {
+        const templateIdParam = searchParams.get("templateId")
+        const promptParam = searchParams.get("prompt")
+
+        if (!templateIdParam && !promptParam) return
+
+        const key = `${templateIdParam ?? ""}|${promptParam ?? ""}`
+        if (appliedDeepLinkKey.current === key) return
+
+        // Chat content: custom prompt takes precedence over template's chatPrompt
+        let chatContent: string | null = null
+        if (promptParam) {
+            chatContent = promptParam
+        } else if (templateIdParam && templates.length > 0) {
+            const matched = templates.find(t => t.id === templateIdParam)
+            chatContent = matched?.chatPrompt ?? null
+        }
+
+        if (chatContent) {
+            appliedDeepLinkKey.current = key
+            chatRef.current?.setInput(chatContent)
+            chatRef.current?.focus()
+        }
+
+        // Set category from template when templateId is present
+        if (templateIdParam && templates.length > 0) {
+            const matched = templates.find(t => t.id === templateIdParam)
+            if (matched) {
+                setSelectedCategory(matched.category)
+            }
+        }
+    }, [searchParams, templates])
 
     const subscribeToEvents = useCallback(
         (callback: (payload: ChatEventPayload) => void) => {
@@ -251,8 +288,8 @@ export default function AgentSetup() {
                                                     transition={{ duration: 0.25, ease: "easeOut" }}
                                                     className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
                                                 >
-                                                    {filteredTemplates.map((template, index) => (
-                                                        <TemplateCard key={index} template={template} onSelect={handleTemplateSelect} />
+                                                    {filteredTemplates.map(template => (
+                                                        <TemplateCard key={template.id} template={template} onSelect={handleTemplateSelect} />
                                                     ))}
                                                 </motion.div>
                                             ) : (

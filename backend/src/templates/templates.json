@@ -1,5 +1,6 @@
 [
     {
+        "id": "automated-todo-list",
         "category": "track",
         "name": "Automated Todo List",
         "description": "Never lose track of tasks buried in emails and tickets again",
@@ -33,6 +34,7 @@
         "isActive": true
     },
     {
+        "id": "ticket-enrichment",
         "category": "users",
         "name": "Ticket Enrichment",
         "description": "Stop losing bug reports in Slack threads—turn user issues into actionable tickets",
@@ -68,6 +70,7 @@
         "isActive": true
     },
     {
+        "id": "feedback-aggregator",
         "category": "users",
         "name": "Feedback Aggregator",
         "description": "Stop missing valuable user insights scattered across Slack conversations",
@@ -95,6 +98,7 @@
         "isActive": true
     },
     {
+        "id": "figma-prd-drift-detector",
         "category": "sync",
         "name": "Detect Information Drift Between Figma and PRD",
         "description": "Catch when your designs and specs fall out of sync before it causes rework",
@@ -122,6 +126,7 @@
         "isActive": true
     },
     {
+        "id": "release-notes-builder",
         "category": "sync",
         "name": "Release Notes Builder",
         "description": "Stop spending hours manually writing release notes every week",
@@ -158,6 +163,7 @@
         "isActive": true
     },
     {
+        "id": "pr-context-builder",
         "category": "ship",
         "name": "PR Context Builder",
         "description": "Get a 2-min briefing before you review the code",
@@ -193,6 +199,7 @@
         "isActive": true
     },
     {
+        "id": "change-impact-scanner",
         "category": "ship",
         "name": "Change Impact Scanner",
         "description": "Understand what might break before you merge",
@@ -228,6 +235,7 @@
         "isActive": true
     },
     {
+        "id": "design-review-prep",
         "category": "track",
         "name": "Design Review Prep",
         "description": "Questions to ask in tomorrow's design review",
@@ -255,6 +263,7 @@
         "isActive": true
     },
     {
+        "id": "design-decision-capturer",
         "category": "track",
         "name": "Design Decision Capturer",
         "description": "Never re-debate the same design decision again",
@@ -282,6 +291,7 @@
         "isActive": true
     },
     {
+        "id": "team-newsletter",
         "category": "sync",
         "name": "Team Newsletter",
         "description": "Auto-generated weekly update delivered to your inbox",
@@ -318,6 +328,7 @@
         "isActive": true
     },
     {
+        "id": "competitor-changelog-monitor",
         "category": "users",
         "name": "Competitor Changelog Monitor",
         "description": "What did competitors ship this week?",
@@ -346,6 +357,7 @@
         "isActive": true
     },
     {
+        "id": "stale-pr-reminder",
         "category": "ship",
         "name": "Stale PR Reminder",
         "description": "Nudge reviewers about PRs that have been open too long",

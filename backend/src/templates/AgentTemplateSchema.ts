@@ -197,6 +197,7 @@ const TemplateCategorySchema = z.enum(["ship", "users", "sync", "track"])
 // Main Agent template schema
 export const AgentTemplateSchema = z
     .object({
+        id: z.string().min(1, "Template id is required"),
         category: TemplateCategorySchema,
         name: z.string().min(1, "Template name is required"),
         description: z.string().min(1, "Template description is required"),

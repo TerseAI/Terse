@@ -1,5 +1,5 @@
 import { useEffect } from "react"
-import { Navigate, Outlet, Route, BrowserRouter as Router, Routes } from "react-router-dom"
+import { Navigate, Outlet, Route, BrowserRouter as Router, Routes, useNavigate } from "react-router-dom"
 
 import { AnimatePresence } from "framer-motion"
 
@@ -9,6 +9,7 @@ import Spin from "./components/loading/Spin"
 import { ThemeProvider } from "./components/theme-provider"
 import { SidebarProvider } from "./components/ui/sidebar"
 import { Toaster } from "./components/ui/sonner"
+import { POST_LOGIN_REDIRECT_KEY } from "./constants/storageKeys"
 import AgentDetail from "./pages/Agents/AgentDetail"
 import AgentSetup from "./pages/Agents/AgentSetup"
 import AgentsList from "./pages/Agents/AgentsList"
@@ -56,6 +57,7 @@ function App() {
 
 function Content() {
     const { user, isLoading } = useAuth()
+    const navigate = useNavigate()
 
     // Initialize socket when user is authenticated
     useEffect(() => {
@@ -70,6 +72,20 @@ function Content() {
             disconnectSocket()
         }
     }, [user])
+
+    useEffect(() => {
+        if (!user?.organizationId) {
+            return
+        }
+
+        const storedRedirect = localStorage.getItem(POST_LOGIN_REDIRECT_KEY)
+        if (!storedRedirect) {
+            return
+        }
+
+        localStorage.removeItem(POST_LOGIN_REDIRECT_KEY)
+        navigate(storedRedirect, { replace: true })
+    }, [navigate, user?.organizationId])
 
     if (isLoading) {
         return <Spin />

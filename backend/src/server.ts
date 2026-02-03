@@ -35,7 +35,7 @@ import { getChatHistory, getRunHistory, getRunHistoryActions } from "./routes/ru
 import { handleManualTrigger, handleScheduleWebhook } from "./routes/schedule"
 import { getCurrentSlackIntegration, getSlackChannels, getSlackIntegrations, getSlackUsers, slackOAuthCallback } from "./routes/slack"
 import { getStats } from "./routes/stats"
-import { getTemplates } from "./routes/templates"
+import { getPublicTemplates, getTemplates } from "./routes/templates"
 import { toolsThatRequireApprovalsRoute } from "./routes/tools"
 import { handleWorkOSWebhook } from "./routes/workos"
 import { registerSocketGetter } from "./services/CacheInvalidationService"
@@ -434,6 +434,10 @@ app.delete(ApiRoutes.AGENTS.BY_ID.pattern, authMiddleware, async (req, res) => {
 })
 
 // MARK: TEMPLATES
+
+app.get(ApiRoutes.PUBLIC.TEMPLATES, async (req, res) => {
+    getPublicTemplates(req, res)
+})
 
 app.get("/templates", authMiddleware, async (req, res) => {
     getTemplates(req, res)

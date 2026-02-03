@@ -415,6 +415,7 @@ export type TemplateCategory =
   | "track"; // Track Everything
 
 export type AgentTemplate = {
+  id: string;
   category: TemplateCategory;
   name: string;
   description: string;
