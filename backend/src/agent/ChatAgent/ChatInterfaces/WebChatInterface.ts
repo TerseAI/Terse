@@ -21,15 +21,22 @@ import ChatInterface from "./ChatInterface";
 class WebChatInterface extends ChatInterface {
   name: string = "Web";
   private readonly socket: Socket;
+  private readonly timezone: string | null;
 
   constructor(
     sessionId: string,
     userId: string,
     socket: Socket,
-    organizationId?: string
+    organizationId?: string,
+    timezone?: string
   ) {
     super(sessionId, userId, organizationId);
     this.socket = socket;
+    this.timezone = timezone ?? null;
+  }
+
+  async getUserTimezone(): Promise<string | null> {
+    return this.timezone;
   }
 
   private emitEvent(event: ModelEvent): void {
