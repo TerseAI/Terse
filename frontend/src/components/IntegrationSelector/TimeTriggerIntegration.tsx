@@ -7,10 +7,15 @@ import { CalendarClockIcon } from "@/components/icons/IntegrationIcons";
 import { Button } from "@/components/ui/button";
 import { ManualTriggerDialog } from "../ManualTriggerDialog";
 
-export function TimeTriggerIntegration({ input, variant, setConfig }: InputConfigSelectorProps) {
+export function TimeTriggerIntegration({ input, variant, setConfig, isAgentSaved }: InputConfigSelectorProps) {
     const existingConfig = input.config as TimeTriggerConfig | undefined;
     const hasSchedule = existingConfig?.cronExpression?.trim();
     const [showManualTrigger, setShowManualTrigger] = useState(false);
+
+    // Only show the manual trigger button when:
+    // 1. A schedule is configured (hasSchedule)
+    // 2. The agent has been saved to the backend (isAgentSaved)
+    const canShowManualTrigger = hasSchedule && isAgentSaved;
 
     if (variant === 'card') {
         if (!hasSchedule || !existingConfig) {
@@ -40,7 +45,7 @@ export function TimeTriggerIntegration({ input, variant, setConfig }: InputConfi
                 }
             />
 
-            {hasSchedule && (
+            {canShowManualTrigger && (
                 <div className="pt-2 border-t border-border/50">
                     <Button
                         variant="outline"

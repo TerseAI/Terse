@@ -348,7 +348,7 @@ export default function AgentSetupTab({
                 <div className="flex-1 min-h-0 overflow-y-auto">
                     <div className="p-6 max-w-4xl">
                         <div className={activeSection === 'triggers' ? 'block' : 'hidden'}>
-                            <InputLayout inputs={inputs} setInputs={setInputs} isIncomplete={triggersIncomplete} />
+                            <InputLayout inputs={inputs} setInputs={setInputs} isIncomplete={triggersIncomplete} isAgentSaved={!!agentId} />
                         </div>
 
                         <div className={activeSection === 'knowledgeBase' ? 'block' : 'hidden'}>
@@ -402,7 +402,7 @@ export default function AgentSetupTab({
     )
 }
 
-function InputLayout({ inputs, setInputs }: { inputs: TransientAgentTrigger[], setInputs: (inputs: TransientAgentTrigger[]) => void, isIncomplete: boolean }) {
+function InputLayout({ inputs, setInputs, isAgentSaved }: { inputs: TransientAgentTrigger[], setInputs: (inputs: TransientAgentTrigger[]) => void, isIncomplete: boolean, isAgentSaved: boolean }) {
     const [showAddModal, setShowAddModal] = useState(false);
 
     const handleSelectPlatform = (config: ConfigType) => {
@@ -428,7 +428,7 @@ function InputLayout({ inputs, setInputs }: { inputs: TransientAgentTrigger[], s
 
             <div className="space-y-2">
                 {inputs.map((input) => (
-                    <InputCard key={input.id} input={input} inputs={inputs} setInputs={setInputs} handleRemove={handleRemove} />
+                    <InputCard key={input.id} input={input} inputs={inputs} setInputs={setInputs} handleRemove={handleRemove} isAgentSaved={isAgentSaved} />
                 ))}
                 <Button
                     variant="outline"
@@ -449,7 +449,7 @@ function InputLayout({ inputs, setInputs }: { inputs: TransientAgentTrigger[], s
     )
 }
 
-function InputCard({ input, inputs, setInputs, handleRemove }: { input: TransientAgentTrigger, inputs: TransientAgentTrigger[], setInputs: (inputs: TransientAgentTrigger[]) => void, handleRemove: (id: string) => void }) {
+function InputCard({ input, inputs, setInputs, handleRemove, isAgentSaved }: { input: TransientAgentTrigger, inputs: TransientAgentTrigger[], setInputs: (inputs: TransientAgentTrigger[]) => void, handleRemove: (id: string) => void, isAgentSaved: boolean }) {
     const needsConfiguration = !input.config || !input.config.isComplete();
     const [showDetailsDialog, setShowDetailsDialog] = useState(false);
     const [draftConfig, setDraftConfig] = useState<ConfigInstance | undefined>(input.config);
@@ -478,6 +478,7 @@ function InputCard({ input, inputs, setInputs, handleRemove }: { input: Transien
         input: draftInput,
         setConfig: setDraftConfig,
         variant: "card",
+        isAgentSaved,
     };
 
     return (
