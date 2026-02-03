@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect } from "react";
-import { type ToolCall, type ToolCallComplete, type TextDelta, type Failure, type ModelRequest, FilterResult, type ToolApprovalRequest, ToolApprovalResponse, type ModelEvent, type ChatSnippetPayload } from "../../../shared/ModelEvents";
+import { type ToolCall, type ToolCallGenerating, type ToolCallComplete, type TextDelta, type Failure, type ModelRequest, FilterResult, type ToolApprovalRequest, ToolApprovalResponse, type ModelEvent, type ChatSnippetPayload } from "../../../shared/ModelEvents";
 
 export type ChatEventPayload = {
     runHistoryModelEvent: ModelEvent;
@@ -11,6 +11,7 @@ export type UseCompletionSocketOptions = {
     subscribeToEvents?: ChatEventSubscription | null;
     sendMessage: (message: ModelRequest) => void;
     onDelta: (delta: TextDelta) => void;
+    onToolCallGenerating: (toolCallGenerating: ToolCallGenerating) => void;
     onToolCall: (toolCall: ToolCall) => void;
     onToolCallComplete: (toolCallComplete: ToolCallComplete) => void;
     onFailure: (failure: Failure) => void;
@@ -23,9 +24,10 @@ export type UseCompletionSocketOptions = {
 };
 
 export function useCompletionSocket(options: UseCompletionSocketOptions) {
-    const { subscribeToEvents, sendMessage, onDelta, onToolCall, onToolCallComplete, onFailure, onNaturalStop, onFilterResult, onThinking, onToolApprovalRequest, onToolApprovalResponse, onSnippet } = options;
+    const { subscribeToEvents, sendMessage, onDelta, onToolCallGenerating, onToolCall, onToolCallComplete, onFailure, onNaturalStop, onFilterResult, onThinking, onToolApprovalRequest, onToolApprovalResponse, onSnippet } = options;
 
     const onDeltaRef = useRef(onDelta);
+    const onToolCallGeneratingRef = useRef(onToolCallGenerating);
     const onToolCallRef = useRef(onToolCall);
     const onToolCallCompleteRef = useRef(onToolCallComplete);
     const onFailureRef = useRef(onFailure);
@@ -41,6 +43,7 @@ export function useCompletionSocket(options: UseCompletionSocketOptions) {
     // Keep refs updated with latest versions
     useEffect(() => {
         onDeltaRef.current = onDelta;
+        onToolCallGeneratingRef.current = onToolCallGenerating;
         onToolCallRef.current = onToolCall;
         onToolCallCompleteRef.current = onToolCallComplete;
         onFailureRef.current = onFailure;
@@ -50,7 +53,7 @@ export function useCompletionSocket(options: UseCompletionSocketOptions) {
         onToolApprovalRequestRef.current = onToolApprovalRequest;
         onToolApprovalResponseRef.current = onToolApprovalResponse;
         onSnippetRef.current = onSnippet;
-    }, [onDelta, onToolCall, onToolCallComplete, onFailure, onNaturalStop, onFilterResult, onThinking, onToolApprovalRequest, onSnippet]);
+    }, [onDelta, onToolCallGenerating, onToolCall, onToolCallComplete, onFailure, onNaturalStop, onFilterResult, onThinking, onToolApprovalRequest, onSnippet]);
 
     // Subscribe to events
     useEffect(() => {
@@ -67,6 +70,9 @@ export function useCompletionSocket(options: UseCompletionSocketOptions) {
             switch (message.type) {
                 case 'TextDelta':
                     onDeltaRef.current(message);
+                    break;
+                case 'ToolCallGenerating':
+                    onToolCallGeneratingRef.current(message);
                     break;
                 case 'ToolCall':
                     onToolCallRef.current(message);

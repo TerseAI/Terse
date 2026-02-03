@@ -57,33 +57,16 @@ const GlowingTextField = forwardRef<GlowingTextFieldHandle, GlowingTextFieldProp
     // Track if user has typed substantial content (more than a short sentence)
     const hasSubstantialContent = inputValue.length > 100;
 
-    const getFontSize = () => {
-        // When there's substantial content in large mode, reduce font size for better readability
-        if (size === Size.Large && hasSubstantialContent) {
-            return 'text-base';
-        }
+    const getSizeClasses = () => {
+        // Explicit line-height matching font size, with padding for vertical centering
         switch (size) {
             case Size.Small:
-                return 'text-sm';
-            case Size.Medium:
-                return 'text-base';
+                return 'text-sm leading-[14px] py-[13px] px-3';
             case Size.Large:
-                return 'text-lg';
-            default:
-                return 'text-base';
-        }
-    };
-
-    const getPadding = () => {
-        switch (size) {
-            case Size.Small:
-                return 'px-3 py-3';
+                return 'text-lg leading-[18px] p-4';
             case Size.Medium:
-                return 'px-4 py-4';
-            case Size.Large:
-                return 'p-4';
             default:
-                return 'px-4 py-4';
+                return 'text-base leading-[16px] py-[14px] px-4';
         }
     };
 
@@ -170,8 +153,8 @@ const GlowingTextField = forwardRef<GlowingTextFieldHandle, GlowingTextFieldProp
     const chipPlaceholders = placeholders.filter((_, idx) => idx !== currentPlaceholderIndex);
 
     return (
-        <div className={`flex flex-col gap-3 w-full max-w-full overflow-visible`}>
-            <div className="grid place-items-stretch overflow-visible">
+        <div className={`flex flex-col w-full max-w-full overflow-visible`}>
+            <div className="grid place-items-center overflow-visible">
                 {isLoading && (
                     <div className="absolute inset-0 pointer-events-none overflow-visible">
                         <div className="absolute left-1/2 top-1/2 w-full h-full animate-rect-orbit overflow-visible">
@@ -196,19 +179,15 @@ const GlowingTextField = forwardRef<GlowingTextFieldHandle, GlowingTextFieldProp
                         className={`
                                 w-full
                                 text-foreground
-                                ${getFontSize()}
                                 resize-none
-                                ${getPadding()}
+                                ${getSizeClasses()}
                                 ${onSend ? 'pr-14' : ''}
-                                ${isLarge && !hasSubstantialContent ? 'leading-relaxed' : 'leading-normal'}
-                                placeholder:italic
                                 placeholder:text-muted-foreground
                                 rounded-lg
                                 focus:outline-none
+                                bg-transparent
+                                m-2 block
                             `}
-                        style={{
-                            transition: 'height 0.2s cubic-bezier(0.4, 0, 0.2, 1), padding 0.2s cubic-bezier(0.4, 0, 0.2, 1), font-size 0.2s cubic-bezier(0.4, 0, 0.2, 1), line-height 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                        }}
                         onChange={onInputChange}
                         onKeyDown={handleKeyDownInternal}
                         value={inputValue}

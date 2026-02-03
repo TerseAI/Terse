@@ -4,6 +4,7 @@ import { IntegrationType, SlackIntegration } from "@/shared/Integrations"
 import { IntegrationCardHeader } from "./helpers/IntegrationCardHeader";
 import { IntegrationCardFooter } from "./helpers/IntegrationCardFooter";
 import { IntegrationItem } from "./helpers/IntegrationItem";
+import { CompactIntegrationRow } from "./CompactIntegrationRow";
 import { CountDisplay } from "./helpers/CountDisplay";
 import { useSlackChannels } from "@/hooks/api/useSlackChannels";
 import { useSlackIntegrations } from "@/hooks/api/useSlackIntegrations";
@@ -13,7 +14,7 @@ import { useState } from "react";
 import { SlackConnectionOptions } from "./helpers/SlackConnectionOptions";
 import { BackendProvider } from "@/services/backend";
 
-function SlackIntegrationCard({ className, isActive = true, stateToken }: { className?: string; isActive?: boolean; stateToken?: string }) {
+function SlackIntegrationCard({ className, isActive = true, stateToken, compact = false }: { className?: string; isActive?: boolean; stateToken?: string; compact?: boolean }) {
     const [showConnectionOptions, setShowConnectionOptions] = useState(false);
     const [isBotUser, setIsBotUser] = useState(true);
     const [isConnecting, setIsConnecting] = useState(false);
@@ -43,6 +44,35 @@ function SlackIntegrationCard({ className, isActive = true, stateToken }: { clas
         } finally {
             setIsConnecting(false);
         }
+    }
+
+    const isConnected = integrations.length > 0;
+    const summary = integrations[0]?.teamName;
+
+    if (compact) {
+        if (showConnectionOptions) {
+            return (
+                <div className={cn("p-3 rounded-lg border border-border bg-card/50", className)}>
+                    <SlackConnectionOptions
+                        isBotUser={isBotUser}
+                        setIsBotUser={setIsBotUser}
+                        onBack={handleBack}
+                        onConnect={connect}
+                        isConnecting={isConnecting}
+                    />
+                </div>
+            );
+        }
+        return (
+            <CompactIntegrationRow
+                integration={IntegrationType.SLACK}
+                isConnected={isConnected}
+                summary={summary}
+                connect={handleConnectClick}
+                isConnecting={isConnecting}
+                className={className}
+            />
+        );
     }
 
     return (

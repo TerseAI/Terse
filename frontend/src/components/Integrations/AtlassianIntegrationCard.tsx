@@ -3,15 +3,32 @@ import { IntegrationType } from "@/shared/Integrations"
 import { IntegrationCardHeader } from "./helpers/IntegrationCardHeader";
 import { IntegrationCardFooter } from "./helpers/IntegrationCardFooter";
 import { IntegrationItem } from "./helpers/IntegrationItem";
+import { CompactIntegrationRow } from "./CompactIntegrationRow";
 import { useOAuthConnection } from "@/hooks/useOAuthConnection";
 import { cn } from "@/lib/utils";
 import { useAtlassianIntegrations } from "@/hooks/api/useAtlassianIntegrations";
 import { Skeleton } from "../ui/skeleton";
 import { Globe, Mail } from "lucide-react";
 
-function AtlassianIntegrationCard({ className, isActive = true, stateToken }: { className?: string; isActive?: boolean; stateToken?: string }) {
+function AtlassianIntegrationCard({ className, isActive = true, stateToken, compact = false }: { className?: string; isActive?: boolean; stateToken?: string; compact?: boolean }) {
     const { connect, isConnecting } = useOAuthConnection<IntegrationType.ATLASSIAN>(IntegrationType.ATLASSIAN, {}, stateToken);
-    const { integrations, isLoading } = useAtlassianIntegrations(); 
+    const { integrations, isLoading } = useAtlassianIntegrations();
+
+    const isConnected = integrations.length > 0;
+    const summary = integrations[0]?.baseUrl || integrations[0]?.email;
+
+    if (compact) {
+        return (
+            <CompactIntegrationRow
+                integration={IntegrationType.ATLASSIAN}
+                isConnected={isConnected}
+                summary={summary}
+                connect={connect}
+                isConnecting={isConnecting}
+                className={className}
+            />
+        );
+    }
 
     return (
         <Card className={cn(className)}>

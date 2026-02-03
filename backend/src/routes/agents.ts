@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { version as uuidVersion, validate as validateUuid } from "uuid";
 import {
   INTEGRATION_REGISTRY,
   isSystemIntegration,
@@ -7,7 +8,7 @@ import { KnowledgeBaseFactory } from "../knowledgeBase/abstract/KnowledgeBaseFac
 import logger from "../logger";
 import { OutputFactory } from "../outputs/abstract/OutputFactory";
 import { db } from "../prismaClient";
-import { emitCacheInvalidationWithKey } from "../realtimeSocket";
+import { emitCacheInvalidationWithKey, emitCacheInvalidationWithWildcard } from "../realtimeSocket";
 import { ConfigInstance } from "../shared/Configs";
 import { IntegrationType } from "../shared/Integrations";
 import {
@@ -41,25 +42,30 @@ import {
   convertPrismaKnowledgeBaseConfigToConfigInstance,
   convertPrismaOutputConfigToConfigInstance,
 } from "../utility/typeConverters";
+import { agentDetailKey } from "../shared/InvalidationKeys";
 
 export type AgentDraft = Omit<Agent, "id"> & { id?: string };
+
+export function isUuidV4(s: string): boolean {
+  return validateUuid(s) && uuidVersion(s) === 4;
+}
 
 async function createTriggerConfig(
   tx: PrismaTransaction,
   triggerId: string,
   config: AgentTrigger,
-  userId: string,
+  userId: string
 ): Promise<void> {
   logger.debug("🔵 [TRIGGER CONFIG] config", {
     triggerId,
     config: JSON.stringify(config, null, 2),
   });
   const trigger = TRIGGER_REGISTRY.find(
-    (trigger) => trigger.configType === config.config.configType,
+    (trigger) => trigger.configType === config.config.configType
   );
   if (!trigger) {
     throw new Error(
-      `Trigger not found for integration type: ${config.config.configType}`,
+      `Trigger not found for integration type: ${config.config.configType}`
     );
   }
   await trigger.validateConfig(config.config, userId);
@@ -70,14 +76,14 @@ async function createOutputConfig(
   tx: PrismaTransaction,
   outputId: string,
   config: ConfigInstance,
-  userId: string,
+  userId: string
 ): Promise<void> {
   const output = OutputFactory.OUTPUT_REGISTRY.get(
-    convertConfigTypeToOutputConfigType(config.configType),
+    convertConfigTypeToOutputConfigType(config.configType)
   );
   if (!output) {
     throw new Error(
-      `Output not found for integration type: ${config.configType}`,
+      `Output not found for integration type: ${config.configType}`
     );
   }
   await output().validateConfig(config, userId);
@@ -88,45 +94,45 @@ async function createKnowledgeBaseConfig(
   tx: PrismaTransaction,
   knowledgeBaseId: string,
   config: ConfigInstance,
-  userId: string,
+  userId: string
 ): Promise<void> {
   // Convert plain object to proper instance if needed
   const configInstance =
     convertPlainObjectToKnowledgeBaseConfigInstance(config);
 
   const knowledgeBase = KnowledgeBaseFactory.KNOWLEDGE_BASE_REGISTRY.get(
-    convertConfigTypeToKnowledgeBaseConfigType(configInstance.configType),
+    convertConfigTypeToKnowledgeBaseConfigType(configInstance.configType)
   );
   if (!knowledgeBase) {
     throw new Error(
-      `Knowledge base not found for integration type: ${configInstance.configType}`,
+      `Knowledge base not found for integration type: ${configInstance.configType}`
     );
   }
   await knowledgeBase().validateConfig(configInstance, userId);
   await knowledgeBase().addKnowledgeBaseToAgent(
     tx,
     knowledgeBaseId,
-    configInstance,
+    configInstance
   );
 }
 
 async function validateUserOwnsIntegration(
   organizationId: string,
   integrationType: IntegrationType,
-  integrationId: string,
+  integrationId: string
 ): Promise<boolean> {
   // System integrations are not owned by a user
   if (isSystemIntegration(integrationType)) {
     return true;
   }
   const integration = INTEGRATION_REGISTRY.find(
-    (integration) => integration.integrationType === integrationType,
+    (integration) => integration.integrationType === integrationType
   );
   if (!integration) {
     throw new Error(`Integration ${integrationType} not found`);
   }
   const instances = await integration.getInstancesForOrganization(
-    organizationId,
+    organizationId
   );
   return instances.some((instance) => instance.id === integrationId);
 }
@@ -134,7 +140,7 @@ async function validateUserOwnsIntegration(
 async function upsertNotificationSettings(
   tx: PrismaTransaction,
   automationId: string,
-  settings: AgentNotificationSettings,
+  settings: AgentNotificationSettings
 ): Promise<void> {
   await tx.automation_notification_settings.upsert({
     where: { automation_id: automationId },
@@ -151,14 +157,14 @@ async function upsertNotificationSettings(
 }
 
 function validateAndDeduplicateToolApprovals(
-  toolApprovals: string[],
+  toolApprovals: string[]
 ): string[] {
   // Deduplicate tool approvals to prevent unique constraint violations
   const uniqueToolApprovals = Array.from(new Set(toolApprovals));
 
   // Validate all tool names
   const invalidToolNames = uniqueToolApprovals.filter(
-    (toolName) => !isValidToolName(toolName),
+    (toolName) => !isValidToolName(toolName)
   );
   if (invalidToolNames.length > 0) {
     throw new Error(`Invalid tool names: ${invalidToolNames.join(", ")}`);
@@ -167,10 +173,13 @@ function validateAndDeduplicateToolApprovals(
   return uniqueToolApprovals;
 }
 
+export type ApplyAgentOptions = { createWithId?: string };
+
 export async function applyAgentForUser(
   userId: string,
   organizationId: string,
   draft: AgentDraft,
+  options?: ApplyAgentOptions
 ): Promise<{ id: string }> {
   const {
     name,
@@ -215,11 +224,17 @@ export async function applyAgentForUser(
 
   const prisma = db();
 
+  const createWithId =
+    options?.createWithId && isUuidV4(options.createWithId)
+      ? options.createWithId
+      : undefined;
+
   // Create new agent
   const agent = await prisma.$transaction(async (tx) => {
     // Create agent
     const newAgent = await tx.automations.create({
       data: {
+        ...(createWithId && { id: createWithId }),
         user_id: userId,
         organization_id: organizationId,
         name,
@@ -241,7 +256,7 @@ export async function applyAgentForUser(
       const integrationType = trigger.config.integrationType;
       if (!integrationType) {
         throw new Error(
-          `Unknown integration type: ${trigger.config.integrationType}`,
+          `Unknown integration type: ${trigger.config.integrationType}`
         );
       }
 
@@ -249,18 +264,18 @@ export async function applyAgentForUser(
       const integrationId = trigger.config.integrationId;
       if (!integrationId && !isSystemIntegration(integrationType)) {
         throw new Error(
-          `Integration ID is required for ${trigger.config.integrationType}`,
+          `Integration ID is required for ${trigger.config.integrationType}`
         );
       }
 
       const isOwner = await validateUserOwnsIntegration(
         organizationId,
         integrationType,
-        integrationId || "system",
+        integrationId || "system"
       );
       if (!isOwner) {
         throw new Error(
-          `Integration ${trigger.config.integrationType} not found or not owned by user`,
+          `Integration ${trigger.config.integrationType} not found or not owned by user`
         );
       }
 
@@ -268,7 +283,7 @@ export async function applyAgentForUser(
         data: {
           automation_id: newAgent.id,
           config_type: convertConfigTypeToInputConfigType(
-            trigger.config.configType,
+            trigger.config.configType
           ),
           // System integrations use 'system' as a sentinel integration ID
           integration_id: integrationId || "system",
@@ -287,17 +302,17 @@ export async function applyAgentForUser(
       const outputIntegrationId = output.config.integrationId;
       if (!outputIntegrationId) {
         throw new Error(
-          `Integration ID is required for ${output.config.integrationType}`,
+          `Integration ID is required for ${output.config.integrationType}`
         );
       }
       const isOwner = await validateUserOwnsIntegration(
         organizationId,
         outputIntegrationType,
-        outputIntegrationId,
+        outputIntegrationId
       );
       if (!isOwner) {
         throw new Error(
-          `Integration ${output.config.integrationType} not found or not owned by user`,
+          `Integration ${output.config.integrationType} not found or not owned by user`
         );
       }
 
@@ -329,7 +344,7 @@ export async function applyAgentForUser(
         const integrationType = kb.config.integrationType;
         if (!integrationType) {
           throw new Error(
-            `Unknown integration type: ${kb.config.integrationType}`,
+            `Unknown integration type: ${kb.config.integrationType}`
           );
         }
 
@@ -337,18 +352,18 @@ export async function applyAgentForUser(
         const integrationId = kb.config.integrationId;
         if (!integrationId) {
           throw new Error(
-            `Integration ID is required for ${kb.config.integrationType}`,
+            `Integration ID is required for ${kb.config.integrationType}`
           );
         }
 
         const isOwner = await validateUserOwnsIntegration(
           organizationId,
           integrationType,
-          integrationId,
+          integrationId
         );
         if (!isOwner) {
           throw new Error(
-            `Integration ${kb.config.integrationType} not found or not owned by user`,
+            `Integration ${kb.config.integrationType} not found or not owned by user`
           );
         }
 
@@ -356,7 +371,7 @@ export async function applyAgentForUser(
           data: {
             automation_id: newAgent.id,
             config_type: convertConfigTypeToKnowledgeBaseConfigType(
-              kb.config.configType,
+              kb.config.configType
             ),
             integration_id: integrationId,
           },
@@ -366,7 +381,7 @@ export async function applyAgentForUser(
           tx,
           newKnowledgeBase.id,
           kb.config,
-          userId,
+          userId
         );
       }
     }
@@ -429,7 +444,7 @@ export async function updateAgentForUser(
   userId: string,
   organizationId: string,
   agentId: string,
-  update: Partial<AgentUpdate>,
+  update: Partial<AgentUpdate>
 ): Promise<{ id: string }> {
   const {
     name,
@@ -514,7 +529,7 @@ export async function updateAgentForUser(
         const integrationType = trigger.config.integrationType;
         if (!integrationType) {
           throw new Error(
-            `Unknown integration type: ${trigger.config.integrationType}`,
+            `Unknown integration type: ${trigger.config.integrationType}`
           );
         }
 
@@ -522,18 +537,18 @@ export async function updateAgentForUser(
         const integrationId = trigger.config.integrationId;
         if (!integrationId && !isSystemIntegration(integrationType)) {
           throw new Error(
-            `Integration ID is required for ${trigger.config.integrationType}`,
+            `Integration ID is required for ${trigger.config.integrationType}`
           );
         }
 
         const isOwner = await validateUserOwnsIntegration(
           organizationId,
           integrationType,
-          integrationId || "system",
+          integrationId || "system"
         );
         if (!isOwner) {
           throw new Error(
-            `Integration ${trigger.config.integrationType} not found or not owned by user`,
+            `Integration ${trigger.config.integrationType} not found or not owned by user`
           );
         }
 
@@ -541,7 +556,7 @@ export async function updateAgentForUser(
           data: {
             automation_id: agentId,
             config_type: convertConfigTypeToInputConfigType(
-              trigger.config.configType,
+              trigger.config.configType
             ),
             // System integrations use 'system' as a sentinel integration ID
             integration_id: integrationId || "system",
@@ -565,7 +580,7 @@ export async function updateAgentForUser(
         const outputIntegrationType = output.config.integrationType;
         if (!outputIntegrationType) {
           throw new Error(
-            `Unknown integration type: ${output.config.integrationType}`,
+            `Unknown integration type: ${output.config.integrationType}`
           );
         }
 
@@ -573,18 +588,18 @@ export async function updateAgentForUser(
         const outputIntegrationId = output.config.integrationId;
         if (!outputIntegrationId) {
           throw new Error(
-            `Integration ID is required for ${output.config.integrationType}`,
+            `Integration ID is required for ${output.config.integrationType}`
           );
         }
 
         const isOwner = await validateUserOwnsIntegration(
           organizationId,
           outputIntegrationType,
-          outputIntegrationId,
+          outputIntegrationId
         );
         if (!isOwner) {
           throw new Error(
-            `Integration ${output.config.integrationType} not found or not owned by user`,
+            `Integration ${output.config.integrationType} not found or not owned by user`
           );
         }
 
@@ -615,7 +630,7 @@ export async function updateAgentForUser(
           const integrationType = kb.config.integrationType;
           if (!integrationType) {
             throw new Error(
-              `Unknown integration type: ${kb.config.integrationType}`,
+              `Unknown integration type: ${kb.config.integrationType}`
             );
           }
 
@@ -623,18 +638,18 @@ export async function updateAgentForUser(
           const integrationId = kb.config.integrationId;
           if (!integrationId) {
             throw new Error(
-              `Integration ID is required for ${kb.config.integrationType}`,
+              `Integration ID is required for ${kb.config.integrationType}`
             );
           }
 
           const isOwner = await validateUserOwnsIntegration(
             organizationId,
             integrationType,
-            integrationId,
+            integrationId
           );
           if (!isOwner) {
             throw new Error(
-              `Integration ${kb.config.integrationType} not found or not owned by user`,
+              `Integration ${kb.config.integrationType} not found or not owned by user`
             );
           }
 
@@ -642,7 +657,7 @@ export async function updateAgentForUser(
             data: {
               automation_id: agentId,
               config_type: convertConfigTypeToKnowledgeBaseConfigType(
-                kb.config.configType,
+                kb.config.configType
               ),
               integration_id: integrationId,
             },
@@ -653,7 +668,7 @@ export async function updateAgentForUser(
             tx,
             newKnowledgeBase.id,
             kb.config,
-            userId,
+            userId
           );
         }
       }
@@ -705,6 +720,7 @@ export async function updateAgentForUser(
 
   // Invalidate recent agents cache
   emitCacheInvalidationWithKey(organizationId, "recentAgents");
+  emitCacheInvalidationWithWildcard(organizationId, "agent", agentId);
 
   return { id: agentId };
 }
@@ -980,7 +996,7 @@ export async function updateAgent(req: Request, res: Response) {
       userId,
       organizationId,
       agentId,
-      update,
+      update
     );
     res.status(200).json({ success: true, id });
   } catch (error) {
@@ -1057,7 +1073,7 @@ export async function deleteAgent(req: Request, res: Response) {
 
 // Helper function to transform AgentWithRelations to frontend Agent format
 function transformAgentToFrontendFormat(
-  agent: AgentWithRelations & Partial<AgentWithNotificationSettingsRelations>,
+  agent: AgentWithRelations & Partial<AgentWithNotificationSettingsRelations>
 ): Agent {
   if (!agent.outputs || agent.outputs.length === 0) {
     throw new Error(`Agent outputs not found for agent ${agent.id}`);
@@ -1097,7 +1113,7 @@ function transformAgentToFrontendFormat(
 }
 
 async function setupAgentTriggers(
-  agent: AgentWithTriggerRelations,
+  agent: AgentWithTriggerRelations
 ): Promise<void> {
   for (const trigger of agent.inputs) {
     try {
@@ -1107,7 +1123,7 @@ async function setupAgentTriggers(
 
       // Find the integration from the registry
       const integration = INTEGRATION_REGISTRY.find(
-        (int) => int.integrationType === integrationType,
+        (int) => int.integrationType === integrationType
       );
 
       if (integration) {
@@ -1118,7 +1134,7 @@ async function setupAgentTriggers(
             configType: trigger.config_type,
             triggerId: trigger.id,
             integrationId: trigger.integration_id,
-          },
+          }
         );
       } else {
         logger.warn(
@@ -1127,13 +1143,13 @@ async function setupAgentTriggers(
             integrationType,
             configType: trigger.config_type,
             triggerId: trigger.id,
-          },
+          }
         );
       }
     } catch (error) {
       logger.error(
         `❌ Error setting up ${trigger.config_type} trigger (ID: ${trigger.id})`,
-        { error, configType: trigger.config_type, triggerId: trigger.id },
+        { error, configType: trigger.config_type, triggerId: trigger.id }
       );
     }
   }
@@ -1144,7 +1160,7 @@ async function setupAgentTriggers(
  * Called before an agent is deleted.
  */
 async function tearDownAgentTriggers(
-  agent: AgentWithTriggerRelations,
+  agent: AgentWithTriggerRelations
 ): Promise<void> {
   for (const trigger of agent.inputs) {
     try {
@@ -1154,7 +1170,7 @@ async function tearDownAgentTriggers(
 
       // Find the integration from the registry
       const integration = INTEGRATION_REGISTRY.find(
-        (int) => int.integrationType === integrationType,
+        (int) => int.integrationType === integrationType
       );
 
       if (integration) {
@@ -1165,7 +1181,7 @@ async function tearDownAgentTriggers(
             configType: trigger.config_type,
             triggerId: trigger.id,
             integrationId: trigger.integration_id,
-          },
+          }
         );
       } else {
         logger.warn(
@@ -1174,7 +1190,7 @@ async function tearDownAgentTriggers(
             integrationType,
             configType: trigger.config_type,
             triggerId: trigger.id,
-          },
+          }
         );
       }
     } catch (error) {

@@ -144,8 +144,8 @@ function TokenStream({ text, disableAnimation = false }: { text: string, disable
         };
     }, [tokens, text, buffer.length, disableAnimation]);
 
-    // Show formatted version
-    if (showFormatted && finalText) {
+    // Show formatted version (only if finalText matches current text to avoid stale content)
+    if (showFormatted && finalText === text) {
         return (
             <div className="text-foreground text-md leading-relaxed whitespace-pre-wrap text-wrap-pretty select-text">
                 {processMarkdown(finalText)}
