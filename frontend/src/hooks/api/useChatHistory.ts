@@ -1,27 +1,30 @@
-import useSWR from 'swr';
-import { BackendProvider } from '@/services/backend';
-import type { RunHistoryModelEvent } from '@/shared/RunHistoryTypes';
+import useSWR from "swr"
+
+import { BackendProvider } from "@/services/backend"
+import type { RunHistoryModelEvent } from "@/shared/RunHistoryTypes"
 
 type ChatHistoryResponse = {
-    events: Array<RunHistoryModelEvent>;
-    startTimestamp?: string;
-    endTimestamp?: string;
-    status?: string;
-};
+    events: Array<RunHistoryModelEvent>
+    startTimestamp?: string
+    endTimestamp?: string
+    status?: string
+}
 
 export function useChatHistory(runId: string | null | undefined) {
-    const key = runId ? ['chatHistory', runId] : null;
+    const key = runId ? ["chatHistory", runId] : null
 
     const { data, error, isLoading, isValidating, mutate } = useSWR<ChatHistoryResponse>(
         key,
-        runId ? async () => {
-            return BackendProvider.getChatHistory(runId);
-        } : null,
+        runId
+            ? async () => {
+                  return BackendProvider.getChatHistory(runId)
+              }
+            : null,
         {
             revalidateOnFocus: false,
-            revalidateOnReconnect: false,
+            revalidateOnReconnect: false
         }
-    );
+    )
 
     return {
         events: data?.events ?? [],
@@ -31,7 +34,6 @@ export function useChatHistory(runId: string | null | undefined) {
         isLoading: isLoading && !!runId,
         isError: error,
         isValidating,
-        mutate,
-    };
+        mutate
+    }
 }
-

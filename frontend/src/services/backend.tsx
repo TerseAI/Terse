@@ -1,5 +1,6 @@
-import axios from 'axios';
-import { ApiRoutes } from '../shared/ApiRoutes';
+import axios from "axios"
+
+import { ApiRoutes } from "../shared/ApiRoutes"
 import {
     AtlassianIntegration,
     DatadogIntegration,
@@ -13,18 +14,18 @@ import {
     LinearIntegration,
     NotionIntegration,
     PosthogIntegration,
-    SlackIntegration,
-} from "../shared/Integrations";
-import { CreateNotificationDestinationRequest, NotificationDestination } from '../shared/Notifications';
-import { GenerateSurveyPromptRequest, GenerateSurveyPromptResponse, GenerateSurveyQuestionsRequest, GenerateSurveyQuestionsResponse } from "../shared/PromptBuilderTypes";
-import type { RunHistoryActionWithId, RunHistoryModelEvent } from "../shared/RunHistoryTypes";
-import { GetRunHistoryParams, GetRunHistoryResponse } from '../shared/RunHistoryTypes';
-import { GetToolsThatRequireApprovalsRequest, GetToolsThatRequireApprovalsResponse } from '../shared/ToolsTypes';
+    SlackIntegration
+} from "../shared/Integrations"
+import { CreateNotificationDestinationRequest, NotificationDestination } from "../shared/Notifications"
+import { GenerateSurveyPromptRequest, GenerateSurveyPromptResponse, GenerateSurveyQuestionsRequest, GenerateSurveyQuestionsResponse } from "../shared/PromptBuilderTypes"
+import type { RunHistoryActionWithId, RunHistoryModelEvent } from "../shared/RunHistoryTypes"
+import { GetRunHistoryParams, GetRunHistoryResponse } from "../shared/RunHistoryTypes"
+import { GetToolsThatRequireApprovalsRequest, GetToolsThatRequireApprovalsResponse } from "../shared/ToolsTypes"
 import {
     Agent,
-    AgentsResponse,
     AgentTemplate,
     AgentUpdate,
+    AgentsResponse,
     ConfluenceResourcesResponse,
     DatadogIndexesResponse,
     GetGithubRepositoriesForIntegrationResponse,
@@ -39,33 +40,33 @@ import {
     RecentAgent,
     SlackChannelsResponse,
     SlackUsersResponse,
-    StatsResponse,
-} from "../shared/types";
-import { User } from "../types/User";
-import { deserializeConfig } from '../utility/ConfigUtils';
+    StatsResponse
+} from "../shared/types"
+import { User } from "../types/User"
+import { deserializeConfig } from "../utility/ConfigUtils"
 
-const backendBaseUrl = '/api';
+const backendBaseUrl = "/api"
 // For browser redirects (login/logout), we need the actual backend URL since window.location.href
 // bypasses Vite's proxy. Falls back to /api for production where the proxy is handled by nginx/etc.
-const backendRedirectUrl = import.meta.env.VITE_BACKEND_REDIRECT_URL || '/api';
+const backendRedirectUrl = import.meta.env.VITE_BACKEND_REDIRECT_URL || "/api"
 
 // Global 401 handler: when session is invalidated (e.g., user revokes session in WorkOS widget),
 // redirect to login so the user gets a fresh session. The backend clears the cookie on auth failure.
 axios.interceptors.response.use(
-    (response) => response,
-    (error) => {
+    response => response,
+    error => {
         if (error.response?.status === 401) {
-            window.location.href = `${backendRedirectUrl}${ApiRoutes.AUTH.LOGIN}`;
+            window.location.href = `${backendRedirectUrl}${ApiRoutes.AUTH.LOGIN}`
         }
-        return Promise.reject(error);
+        return Promise.reject(error)
     }
-);
+)
 
 interface BackendService {
     /**
      * Retrieves the currently authenticated user
      */
-    getCurrentUser(): Promise<User>;
+    getCurrentUser(): Promise<User>
 
     /**
      * Retrieves users by their IDs
@@ -75,806 +76,828 @@ interface BackendService {
     /**
      * Creates a user
      */
-    createUser(name: string, email: string, password: string): Promise<User>;
+    createUser(name: string, email: string, password: string): Promise<User>
 
     /**
      * Authenticates a user with email and password
      */
-    authenticateUser(email: string, password: string): Promise<User>;
+    authenticateUser(email: string, password: string): Promise<User>
 
     /**
      * Gets statistics for the homepage dashboard
      * @param timezone - Optional IANA timezone string (e.g., "America/New_York")
      */
-    getStats(timezone?: string): Promise<StatsResponse>;
+    getStats(timezone?: string): Promise<StatsResponse>
 
     /**
      * Returns the installation details for a given integration type
      */
-    getIntegrationInstallationDetails<T extends IntegrationType>(integrationType: T, options?: InstallationOptionsFor<T>, stateToken?: string): Promise<OAuthInstallationDetails>;
+    getIntegrationInstallationDetails<T extends IntegrationType>(integrationType: T, options?: InstallationOptionsFor<T>, stateToken?: string): Promise<OAuthInstallationDetails>
 
     /**
      * Returns all integrations with their active status for the current user
      */
-    getAllIntegrations(): Promise<IntegrationWithStatus[]>;
+    getAllIntegrations(): Promise<IntegrationWithStatus[]>
 
     /**
      * Returns the active integrations for the current user
      */
-    getActiveIntegrations(): Promise<IntegrationType[]>;
+    getActiveIntegrations(): Promise<IntegrationType[]>
 
     /**
      * Requests a GitHub app installation URL
      */
-    requestGitHubAppInstallationUrl(): Promise<{ installationUrl: string }>;
+    requestGitHubAppInstallationUrl(): Promise<{ installationUrl: string }>
 
     /**
      * Gets the GitHub repositories for a specific installation
      */
-    getGithubRepositoriesForIntegration(installationId: number): Promise<GetGithubRepositoriesForIntegrationResponse>;
+    getGithubRepositoriesForIntegration(installationId: number): Promise<GetGithubRepositoriesForIntegrationResponse>
 
     /**
      * Gets the current Slack integration
      */
-    getCurrentSlackIntegration(): Promise<SlackIntegration>;
+    getCurrentSlackIntegration(): Promise<SlackIntegration>
 
     /**
      * Gets the Jira API key
      */
-    getJiraApiKey(): Promise<AtlassianIntegration>;
+    getJiraApiKey(): Promise<AtlassianIntegration>
 
     /**
      * Sets the Jira API key
      */
-    setJiraApiKey(email: string, baseUrl: string, apiKey: string, projectKey?: string): Promise<{ success: boolean; connection?: AtlassianIntegration; error?: string }>;
+    setJiraApiKey(email: string, baseUrl: string, apiKey: string, projectKey?: string): Promise<{ success: boolean; connection?: AtlassianIntegration; error?: string }>
 
     /**
      * Validates Jira credentials and fetches available projects
      */
-    validateJiraCredentials(baseUrl: string, email: string, apiKey: string): Promise<JiraCredentialsValidationResponse>;
+    validateJiraCredentials(baseUrl: string, email: string, apiKey: string): Promise<JiraCredentialsValidationResponse>
 
     /**
      * Deletes the Jira API key
      */
-    deleteJiraApiKey(): Promise<void>;
+    deleteJiraApiKey(): Promise<void>
 
     /**
      * Searches Confluence pages by title (search is optional, empty returns all)
      */
-    getConfluenceResources(integrationId: string, search?: string): Promise<ConfluenceResourcesResponse>;
+    getConfluenceResources(integrationId: string, search?: string): Promise<ConfluenceResourcesResponse>
 
     /**
      * Gets Jira resources (projects) for a specific integration
      */
-    getJiraResources(integrationId: string): Promise<JiraResourcesResponse>;
+    getJiraResources(integrationId: string): Promise<JiraResourcesResponse>
 
     /**
      * Gets Linear teams for a specific integration
      */
-    getLinearTeams(integrationId: string): Promise<LinearTeam[]>;
+    getLinearTeams(integrationId: string): Promise<LinearTeam[]>
 
     /**
      * Gets all Gmail integrations for the current user
      */
-    getGmailIntegrations(): Promise<GmailIntegration[]>;
+    getGmailIntegrations(): Promise<GmailIntegration[]>
 
     /**
      * Gets all Atlassian integrations for the current user
      */
-    getAtlassianIntegrations(): Promise<AtlassianIntegration[]>;
+    getAtlassianIntegrations(): Promise<AtlassianIntegration[]>
 
     /**
      * Gets all Figma integrations for the current user
      */
-    getFigmaIntegrations(): Promise<FigmaIntegration[]>;
+    getFigmaIntegrations(): Promise<FigmaIntegration[]>
 
     /**
      * Gets all GitHub integrations for the current user
      */
-    getGithubIntegrations(): Promise<GithubIntegration[]>;
+    getGithubIntegrations(): Promise<GithubIntegration[]>
 
     /**
      * Gets all Linear integrations for the current user
      */
-    getLinearIntegrations(): Promise<LinearIntegration[]>;
+    getLinearIntegrations(): Promise<LinearIntegration[]>
 
     /**
      * Gets all Notion integrations for the current user
      */
-    getNotionIntegrations(): Promise<NotionIntegration[]>;
+    getNotionIntegrations(): Promise<NotionIntegration[]>
 
     /**
      * Gets all Slack integrations for the current user
      */
-    getSlackIntegrations(): Promise<SlackIntegration[]>;
+    getSlackIntegrations(): Promise<SlackIntegration[]>
 
     /**
      * Deletes the Gmail integration
      */
-    deleteGmailIntegration(): Promise<void>;
+    deleteGmailIntegration(): Promise<void>
     /**
      * Deletes the Notion integration
      */
-    deleteNotionIntegration(): Promise<void>;
+    deleteNotionIntegration(): Promise<void>
 
     /**
      * Searches Notion pages and databases by title
      * @param search - optional search term, empty returns all
      * @param type - optional filter: "page" or "database"
      */
-    getNotionResources(integrationId: string, search?: string, type?: 'page' | 'database'): Promise<NotionResourcesResponse>;
+    getNotionResources(integrationId: string, search?: string, type?: "page" | "database"): Promise<NotionResourcesResponse>
 
     /**
      * Gets all Posthog integrations for the current user
      */
-    getPosthogIntegrations(): Promise<PosthogIntegration[]>;
+    getPosthogIntegrations(): Promise<PosthogIntegration[]>
 
     /**
      * Creates or updates a Posthog integration with API key
      */
-    createOrUpdatePosthogIntegration(apiKey: string, stateToken?: string): Promise<{ success: boolean; email: string | null; orgName: string | null }>;
+    createOrUpdatePosthogIntegration(apiKey: string, stateToken?: string): Promise<{ success: boolean; email: string | null; orgName: string | null }>
 
     /**
      * Gets all LaunchDarkly integrations for the current user
      */
-    getLaunchDarklyIntegrations(): Promise<LaunchDarklyIntegration[]>;
+    getLaunchDarklyIntegrations(): Promise<LaunchDarklyIntegration[]>
 
     /**
      * Creates or updates a LaunchDarkly integration with API key
      */
-    createOrUpdateLaunchDarklyIntegration(apiKey: string, stateToken?: string): Promise<{ success: boolean; email: string | null }>;
+    createOrUpdateLaunchDarklyIntegration(apiKey: string, stateToken?: string): Promise<{ success: boolean; email: string | null }>
 
     /**
      * Gets LaunchDarkly projects for an integration
      * @param integrationId - The LaunchDarkly integration ID
      */
-    getLaunchDarklyProjects(integrationId: string): Promise<LaunchDarklyProjectsResponse>;
+    getLaunchDarklyProjects(integrationId: string): Promise<LaunchDarklyProjectsResponse>
 
     /**
      * Gets LaunchDarkly environments for a project
      * @param integrationId - The LaunchDarkly integration ID
      * @param projectKey - The LaunchDarkly project key
      */
-    getLaunchDarklyEnvironments(integrationId: string, projectKey: string): Promise<LaunchDarklyEnvironmentsResponse>;
+    getLaunchDarklyEnvironments(integrationId: string, projectKey: string): Promise<LaunchDarklyEnvironmentsResponse>
 
     /**
      * Gets all Datadog integrations for the current user
      */
-    getDatadogIntegrations(): Promise<DatadogIntegration[]>;
+    getDatadogIntegrations(): Promise<DatadogIntegration[]>
 
     /**
      * Creates or updates a Datadog integration with API key, APP key, and region
      */
-    createOrUpdateDatadogIntegration(apiKey: string, appKey: string, region: string, stateToken?: string): Promise<{ success: boolean; region: string }>;
+    createOrUpdateDatadogIntegration(apiKey: string, appKey: string, region: string, stateToken?: string): Promise<{ success: boolean; region: string }>
 
     /**
      * Gets Datadog log indexes for an integration
      * @param integrationId - The Datadog integration ID
      */
-    getDatadogIndexes(integrationId: string): Promise<DatadogIndexesResponse>;
+    getDatadogIndexes(integrationId: string): Promise<DatadogIndexesResponse>
 
     /**
      * Gets Posthog projects for an integration
      * @param integrationId - The Posthog integration ID
      * @param search - Optional search term to filter projects
      */
-    getPosthogProjects(integrationId: string, search?: string): Promise<PosthogProjectsResponse>;
+    getPosthogProjects(integrationId: string, search?: string): Promise<PosthogProjectsResponse>
 
     /**
      * Gets available channels for a Slack integration
      */
-    getSlackChannels(integrationId: string): Promise<SlackChannelsResponse>;
+    getSlackChannels(integrationId: string): Promise<SlackChannelsResponse>
 
     /**
      * Gets available users for a Slack integration
      */
-    getSlackUsers(integrationId: string): Promise<SlackUsersResponse>;
+    getSlackUsers(integrationId: string): Promise<SlackUsersResponse>
 
     /**
      * Requests a session socket token
      */
-    requestSessionSocketToken(): Promise<string>;
+    requestSessionSocketToken(): Promise<string>
 
     /**
      * Gets all agents for the user with pagination
      */
-    getUserAgents(page?: number, limit?: number, isActive?: boolean, search?: string): Promise<AgentsResponse>;
+    getUserAgents(page?: number, limit?: number, isActive?: boolean, search?: string): Promise<AgentsResponse>
 
     /**
      * Gets recently modified agents with last event processed time
      */
-    getRecentAgents(limit?: number): Promise<RecentAgent[]>;
+    getRecentAgents(limit?: number): Promise<RecentAgent[]>
 
     /**
      * Gets a single agent by ID
      */
-    getAgentById(id: string): Promise<Agent>;
+    getAgentById(id: string): Promise<Agent>
 
     /**
      * Creates a new agent
      */
-    createAgent(data: AgentUpdate): Promise<{ success: boolean; id: string }>;
+    createAgent(data: AgentUpdate): Promise<{ success: boolean; id: string }>
 
     /**
      * Updates an existing agent
      */
-    updateAgent(id: string, data: AgentUpdate): Promise<{ success: boolean; id: string }>;
+    updateAgent(id: string, data: AgentUpdate): Promise<{ success: boolean; id: string }>
 
     /**
      * Deletes an agent
      */
-    deleteAgent(id: string): Promise<{ success: boolean; message: string }>;
+    deleteAgent(id: string): Promise<{ success: boolean; message: string }>
 
     /**
      * Fetch run history for a specific agent with filters and pagination
      */
-    getRunHistory(agentId: string, params: GetRunHistoryParams): Promise<GetRunHistoryResponse>;
+    getRunHistory(agentId: string, params: GetRunHistoryParams): Promise<GetRunHistoryResponse>
 
     /**
      * Fetch chat history for a specific run
      */
-    getChatHistory(runId: string): Promise<{ events: Array<RunHistoryModelEvent>; startTimestamp?: string; endTimestamp?: string; status?: string }>;
+    getChatHistory(runId: string): Promise<{ events: Array<RunHistoryModelEvent>; startTimestamp?: string; endTimestamp?: string; status?: string }>
 
     /**
      * Fetch builder chat history for a session
      */
-    getBuilderChatHistory(sessionId: string): Promise<{ events: Array<RunHistoryModelEvent>; startTimestamp: string | null; endTimestamp: string | null }>;
+    getBuilderChatHistory(sessionId: string): Promise<{ events: Array<RunHistoryModelEvent>; startTimestamp: string | null; endTimestamp: string | null }>
 
     /**
      * Fetch run history actions by IDs
      */
-    getRunHistoryActions(ids: string[]): Promise<RunHistoryActionWithId[]>;
+    getRunHistoryActions(ids: string[]): Promise<RunHistoryActionWithId[]>
 
     /**
      * Generates clarifying questions for prompt builder
      */
-    generatePromptBuilderQuestions(request: GenerateSurveyQuestionsRequest): Promise<GenerateSurveyQuestionsResponse>;
+    generatePromptBuilderQuestions(request: GenerateSurveyQuestionsRequest): Promise<GenerateSurveyQuestionsResponse>
 
     /**
      * Generates a prompt based on description and answers
      */
-    generatePromptBuilderPrompt(request: GenerateSurveyPromptRequest): Promise<GenerateSurveyPromptResponse>;
+    generatePromptBuilderPrompt(request: GenerateSurveyPromptRequest): Promise<GenerateSurveyPromptResponse>
 
     /**
      * Gets all notification destinations for the current user
      */
-    getNotificationDestinations(): Promise<NotificationDestination[]>;
+    getNotificationDestinations(): Promise<NotificationDestination[]>
 
     /**
      * Creates a new notification destination
      */
-    createNotificationDestination(destination: CreateNotificationDestinationRequest): Promise<NotificationDestination>;
+    createNotificationDestination(destination: CreateNotificationDestinationRequest): Promise<NotificationDestination>
 
     /**
      * Updates an existing notification destination
      */
-    updateNotificationDestination(destination: NotificationDestination): Promise<NotificationDestination>;
+    updateNotificationDestination(destination: NotificationDestination): Promise<NotificationDestination>
 
     /**
      * Deletes a notification destination
      */
-    deleteNotificationDestination(destination: NotificationDestination): Promise<void>;
+    deleteNotificationDestination(destination: NotificationDestination): Promise<void>
 
     /**
      * Gets all available agent templates
      */
-    getTemplates(): Promise<AgentTemplate[]>;
+    getTemplates(): Promise<AgentTemplate[]>
 
     /**
      * Manually triggers a scheduled automation trigger
      * @param triggerId - The ID of the time trigger to trigger
      * @param context - Optional context explaining why the trigger is being run manually
      */
-    triggerManually(triggerId: string, context?: string): Promise<{ received: boolean; message: string }>;
+    triggerManually(triggerId: string, context?: string): Promise<{ received: boolean; message: string }>
 
     /**
      * Gets write-only tools that require approval for the given skills and knowledge bases
      */
-    getToolsThatRequireApprovals(request: GetToolsThatRequireApprovalsRequest): Promise<GetToolsThatRequireApprovalsResponse>;
+    getToolsThatRequireApprovals(request: GetToolsThatRequireApprovalsRequest): Promise<GetToolsThatRequireApprovalsResponse>
 
     /**
      * Redirects to the login endpoint
      */
-    loginRedirect(): void;
+    loginRedirect(): void
 
     /**
      * Redirects to the logout endpoint
      */
-    logoutRedirect(): void;
+    logoutRedirect(): void
 
     /**
      * Creates a new organization
      * Optionally updates the user's first/last name in WorkOS when provided (e.g., for users without social auth).
      */
-    createOrganization(name: string, firstName?: string, lastName?: string): Promise<{ id: string; name: string }>;
+    createOrganization(name: string, firstName?: string, lastName?: string): Promise<{ id: string; name: string }>
 
     /**
      * Gets the current organization
      */
-    getCurrentOrganization(): Promise<{ id: string; name: string }>;
+    getCurrentOrganization(): Promise<{ id: string; name: string }>
 
     /**
      * Gets organizations the user belongs to
      */
-    getUserOrganizations(): Promise<{ organizations: { id: string; name: string }[] }>;
+    getUserOrganizations(): Promise<{ organizations: { id: string; name: string }[] }>
 
     /**
      * Switches the session to a different organization
      */
-    switchOrganization(organizationId: string): Promise<{ success?: boolean; redirectUrl?: string }>;
+    switchOrganization(organizationId: string): Promise<{ success?: boolean; redirectUrl?: string }>
 
     /**
      * Gets the WorkOS widget token
      */
-    getWidgetToken(): Promise<{ token: string; expiresAt: string }>;
+    getWidgetToken(): Promise<{ token: string; expiresAt: string }>
 }
 
 export const BackendProvider: BackendService = {
     getCurrentUser: () => {
-        return axios.get<User>(`${backendBaseUrl}${ApiRoutes.AUTH.ME}`, { withCredentials: true })
+        return axios
+            .get<User>(`${backendBaseUrl}${ApiRoutes.AUTH.ME}`, { withCredentials: true })
             .then(response => {
-                return response.data;
+                return response.data
             })
             .catch(error => {
-                throw error;
-            });
+                throw error
+            })
     },
 
     getUserById: (id: string) => {
-        return axios.get<User>(`${backendBaseUrl}${ApiRoutes.USERS.BY_ID.build(id)}`, { withCredentials: true })
+        return axios
+            .get<User>(`${backendBaseUrl}${ApiRoutes.USERS.BY_ID.build(id)}`, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
-                console.error('Error fetching user:', error);
-                throw error;
-            });
+                console.error("Error fetching user:", error)
+                throw error
+            })
     },
 
     createUser: (name: string, email: string, password: string) => {
-        return axios.post(`${backendBaseUrl}${ApiRoutes.USERS.CREATE}`, { name, email, password }, { withCredentials: true })
+        return axios
+            .post(`${backendBaseUrl}${ApiRoutes.USERS.CREATE}`, { name, email, password }, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
-                console.error('Error creating user:', error);
-                throw error;
-            });
+                console.error("Error creating user:", error)
+                throw error
+            })
     },
 
     authenticateUser: (email: string, password: string) => {
-        return axios.post(`${backendBaseUrl}${ApiRoutes.AUTH.LOGIN}`, { email, password }, { withCredentials: true })
+        return axios
+            .post(`${backendBaseUrl}${ApiRoutes.AUTH.LOGIN}`, { email, password }, { withCredentials: true })
             .then(response => {
-                return response.data;
+                return response.data
             })
             .catch(error => {
-                console.error('Error logging in:', error);
-                throw error;
-            });
+                console.error("Error logging in:", error)
+                throw error
+            })
     },
 
     getStats: (timezone?: string) => {
-        const params = timezone ? { tz: timezone } : {};
-        return axios.get(`${backendBaseUrl}${ApiRoutes.STATS}`, { withCredentials: true, params })
+        const params = timezone ? { tz: timezone } : {}
+        return axios
+            .get(`${backendBaseUrl}${ApiRoutes.STATS}`, { withCredentials: true, params })
             .then(response => response.data)
             .catch(error => {
-                console.error('Error getting stats:', error);
-                throw error;
-            });
+                console.error("Error getting stats:", error)
+                throw error
+            })
     },
 
     getIntegrationInstallationDetails: <T extends IntegrationType>(integrationType: T, options?: InstallationOptionsFor<T>, stateToken?: string) => {
-        const params = new URLSearchParams();
+        const params = new URLSearchParams()
         if (options) {
-            params.append('options', JSON.stringify(options));
+            params.append("options", JSON.stringify(options))
         }
         if (stateToken) {
-            params.append('state', stateToken);
+            params.append("state", stateToken)
         }
-        const queryString = params.toString();
-        const url = `${backendBaseUrl}${ApiRoutes.INTEGRATIONS.INSTALLATION_DETAILS_BY_TYPE.build(integrationType)}${queryString ? `?${queryString}` : ''}`;
-        return axios.get(url, { withCredentials: true })
+        const queryString = params.toString()
+        const url = `${backendBaseUrl}${ApiRoutes.INTEGRATIONS.INSTALLATION_DETAILS_BY_TYPE.build(integrationType)}${queryString ? `?${queryString}` : ""}`
+        return axios
+            .get(url, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
-                console.error('Error getting integration installation details:', error);
-                throw error;
-            });
+                console.error("Error getting integration installation details:", error)
+                throw error
+            })
     },
 
     getAllIntegrations: () => {
-        return axios.get(`${backendBaseUrl}${ApiRoutes.INTEGRATIONS.LIST}`, { withCredentials: true })
+        return axios
+            .get(`${backendBaseUrl}${ApiRoutes.INTEGRATIONS.LIST}`, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
-                console.error('Error getting all integrations:', error);
-                throw error;
-            });
+                console.error("Error getting all integrations:", error)
+                throw error
+            })
     },
 
     getActiveIntegrations: () => {
-        return axios.get(`${backendBaseUrl}${ApiRoutes.INTEGRATIONS.ACTIVE}`, { withCredentials: true })
+        return axios
+            .get(`${backendBaseUrl}${ApiRoutes.INTEGRATIONS.ACTIVE}`, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
-                console.error('Error getting active integrations:', error);
-                throw error;
-            });
+                console.error("Error getting active integrations:", error)
+                throw error
+            })
     },
 
     getGithubRepositoriesForIntegration: (installationId: number) => {
-        return axios.get(`${backendBaseUrl}${ApiRoutes.GITHUB.GET_REPOSITORIES_FOR_INTEGRATION}`, {
-            params: { installation_id: installationId },
-            withCredentials: true
-        })
+        return axios
+            .get(`${backendBaseUrl}${ApiRoutes.GITHUB.GET_REPOSITORIES_FOR_INTEGRATION}`, {
+                params: { installation_id: installationId },
+                withCredentials: true
+            })
             .then(response => response.data)
             .catch(error => {
-                console.error('Error getting GitHub repositories for integration:', error);
-                throw error;
-            });
+                console.error("Error getting GitHub repositories for integration:", error)
+                throw error
+            })
     },
 
     requestGitHubAppInstallationUrl: () => {
-        return axios.get(`${backendBaseUrl}${ApiRoutes.GITHUB.INSTALLATION_URL}`, { withCredentials: true })
+        return axios
+            .get(`${backendBaseUrl}${ApiRoutes.GITHUB.INSTALLATION_URL}`, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
-                console.error('Error requesting GitHub app installation URL:', error);
-                throw error;
-            });
+                console.error("Error requesting GitHub app installation URL:", error)
+                throw error
+            })
     },
 
     getCurrentSlackIntegration: () => {
-        return axios.get(`${backendBaseUrl}${ApiRoutes.SLACK.GET_CURRENT_INTEGRATION}`, { withCredentials: true })
+        return axios
+            .get(`${backendBaseUrl}${ApiRoutes.SLACK.GET_CURRENT_INTEGRATION}`, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
-                console.error('Error getting current Slack integration:', error);
-                throw error;
-            });
+                console.error("Error getting current Slack integration:", error)
+                throw error
+            })
     },
 
     getJiraApiKey: () => {
-        return axios.get(`${backendBaseUrl}${ApiRoutes.JIRA.GET_API_KEY}`, { withCredentials: true })
+        return axios
+            .get(`${backendBaseUrl}${ApiRoutes.JIRA.GET_API_KEY}`, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
-                console.error('Error getting Jira API key:', error);
-                throw error;
-            });
+                console.error("Error getting Jira API key:", error)
+                throw error
+            })
     },
 
     setJiraApiKey: (email: string, baseUrl: string, apiKey: string, projectKey?: string) => {
-        return axios.post(`${backendBaseUrl}${ApiRoutes.JIRA.SET_API_KEY}`, { email, baseUrl, apiKey, projectKey }, { withCredentials: true })
+        return axios
+            .post(`${backendBaseUrl}${ApiRoutes.JIRA.SET_API_KEY}`, { email, baseUrl, apiKey, projectKey }, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
-                console.error('Error setting Jira API key:', error);
-                const errorMessage = error.response?.data?.error || 'Failed to create Jira connection';
-                throw { success: false, error: errorMessage };
-            });
+                console.error("Error setting Jira API key:", error)
+                const errorMessage = error.response?.data?.error || "Failed to create Jira connection"
+                throw { success: false, error: errorMessage }
+            })
     },
 
     validateJiraCredentials: (baseUrl: string, email: string, apiKey: string) => {
-        return axios.post(`${backendBaseUrl}${ApiRoutes.JIRA.VALIDATE_AND_FETCH_PROJECTS}`, { baseUrl, email, apiKey }, { withCredentials: true })
+        return axios
+            .post(`${backendBaseUrl}${ApiRoutes.JIRA.VALIDATE_AND_FETCH_PROJECTS}`, { baseUrl, email, apiKey }, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
-                console.error('Error validating Jira credentials:', error);
-                const errorMessage = error.response?.data?.error || 'Failed to validate credentials';
-                return { valid: false, error: errorMessage };
-            });
+                console.error("Error validating Jira credentials:", error)
+                const errorMessage = error.response?.data?.error || "Failed to validate credentials"
+                return { valid: false, error: errorMessage }
+            })
     },
 
     deleteJiraApiKey: () => {
-        return axios.delete(`${backendBaseUrl}${ApiRoutes.JIRA.DELETE_CREDENTIALS}`, { withCredentials: true })
+        return axios
+            .delete(`${backendBaseUrl}${ApiRoutes.JIRA.DELETE_CREDENTIALS}`, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
-                console.error('Error deleting Jira API key:', error);
-                throw error;
-            });
+                console.error("Error deleting Jira API key:", error)
+                throw error
+            })
     },
 
     getConfluenceResources: (integrationId: string, search?: string) => {
-        const params = new URLSearchParams({ integrationId });
+        const params = new URLSearchParams({ integrationId })
         if (search) {
-            params.append('search', search);
+            params.append("search", search)
         }
-        return axios.get<ConfluenceResourcesResponse>(`${backendBaseUrl}${ApiRoutes.CONFLUENCE.RESOURCES}?${params.toString()}`, { withCredentials: true })
+        return axios
+            .get<ConfluenceResourcesResponse>(`${backendBaseUrl}${ApiRoutes.CONFLUENCE.RESOURCES}?${params.toString()}`, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
-                console.error('Error searching Confluence resources:', error);
-                throw error;
-            });
+                console.error("Error searching Confluence resources:", error)
+                throw error
+            })
     },
 
     getJiraResources: (integrationId: string) => {
-        return axios.get<JiraResourcesResponse>(`${backendBaseUrl}${ApiRoutes.JIRA.RESOURCES}?integrationId=${encodeURIComponent(integrationId)}`, { withCredentials: true })
+        return axios
+            .get<JiraResourcesResponse>(`${backendBaseUrl}${ApiRoutes.JIRA.RESOURCES}?integrationId=${encodeURIComponent(integrationId)}`, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
-                console.error('Error fetching Jira resources:', error);
-                throw error;
-            });
+                console.error("Error fetching Jira resources:", error)
+                throw error
+            })
     },
 
     getLinearTeams: (integrationId: string) => {
-        return axios.get<LinearTeam[]>(`${backendBaseUrl}${ApiRoutes.LINEAR.TEAMS}?integrationId=${encodeURIComponent(integrationId)}`, { withCredentials: true })
+        return axios
+            .get<LinearTeam[]>(`${backendBaseUrl}${ApiRoutes.LINEAR.TEAMS}?integrationId=${encodeURIComponent(integrationId)}`, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
-                console.error('Error fetching Linear teams:', error);
-                throw error;
-            });
+                console.error("Error fetching Linear teams:", error)
+                throw error
+            })
     },
 
     getGmailIntegrations: () => {
-        return axios.get<GmailIntegration[]>(`${backendBaseUrl}${ApiRoutes.GMAIL.INTEGRATIONS}`, { withCredentials: true })
+        return axios
+            .get<GmailIntegration[]>(`${backendBaseUrl}${ApiRoutes.GMAIL.INTEGRATIONS}`, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
-                console.error('Error getting Gmail integrations:', error);
-                throw error;
-            });
+                console.error("Error getting Gmail integrations:", error)
+                throw error
+            })
     },
 
     getAtlassianIntegrations: () => {
-        return axios.get<AtlassianIntegration[]>(`${backendBaseUrl}${ApiRoutes.ATLASSIAN.INTEGRATIONS}`, { withCredentials: true })
+        return axios
+            .get<AtlassianIntegration[]>(`${backendBaseUrl}${ApiRoutes.ATLASSIAN.INTEGRATIONS}`, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
-                console.error('Error getting Atlassian integrations:', error);
-                throw error;
-            });
+                console.error("Error getting Atlassian integrations:", error)
+                throw error
+            })
     },
 
     getFigmaIntegrations: () => {
-        return axios.get<FigmaIntegration[]>(`${backendBaseUrl}${ApiRoutes.FIGMA.INTEGRATIONS}`, { withCredentials: true })
+        return axios
+            .get<FigmaIntegration[]>(`${backendBaseUrl}${ApiRoutes.FIGMA.INTEGRATIONS}`, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
-                console.error('Error getting Figma integrations:', error);
-                throw error;
-            });
+                console.error("Error getting Figma integrations:", error)
+                throw error
+            })
     },
 
     getGithubIntegrations: () => {
-        return axios.get<GithubIntegration[]>(`${backendBaseUrl}${ApiRoutes.GITHUB.INTEGRATIONS}`, { withCredentials: true })
+        return axios
+            .get<GithubIntegration[]>(`${backendBaseUrl}${ApiRoutes.GITHUB.INTEGRATIONS}`, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
-                console.error('Error getting GitHub integrations:', error);
-                throw error;
-            });
+                console.error("Error getting GitHub integrations:", error)
+                throw error
+            })
     },
 
     getLinearIntegrations: () => {
-        return axios.get<LinearIntegration[]>(`${backendBaseUrl}${ApiRoutes.LINEAR.INTEGRATIONS}`, { withCredentials: true })
+        return axios
+            .get<LinearIntegration[]>(`${backendBaseUrl}${ApiRoutes.LINEAR.INTEGRATIONS}`, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
-                console.error('Error getting Linear integrations:', error);
-                throw error;
-            });
+                console.error("Error getting Linear integrations:", error)
+                throw error
+            })
     },
 
     getNotionIntegrations: () => {
-        return axios.get<NotionIntegration[]>(`${backendBaseUrl}${ApiRoutes.NOTION.INTEGRATIONS}`, { withCredentials: true })
+        return axios
+            .get<NotionIntegration[]>(`${backendBaseUrl}${ApiRoutes.NOTION.INTEGRATIONS}`, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
-                console.error('Error getting Notion integrations:', error);
-                throw error;
-            });
+                console.error("Error getting Notion integrations:", error)
+                throw error
+            })
     },
 
     getPosthogIntegrations: () => {
-        return axios.get<PosthogIntegration[]>(`${backendBaseUrl}${ApiRoutes.POSTHOG.INTEGRATIONS}`, { withCredentials: true })
+        return axios
+            .get<PosthogIntegration[]>(`${backendBaseUrl}${ApiRoutes.POSTHOG.INTEGRATIONS}`, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
-                console.error('Error getting Posthog integrations:', error);
-                throw error;
-            });
+                console.error("Error getting Posthog integrations:", error)
+                throw error
+            })
     },
 
     createOrUpdatePosthogIntegration: (apiKey: string, stateToken?: string) => {
-        const body: any = { apiKey };
+        const body: any = { apiKey }
         if (stateToken) {
-            body.state = stateToken;
+            body.state = stateToken
         }
-        return axios.post<{ success: boolean; email: string | null; orgName: string | null }>(
-            `${backendBaseUrl}${ApiRoutes.POSTHOG.INTEGRATIONS}`,
-            body,
-            { withCredentials: true }
-        )
+        return axios
+            .post<{ success: boolean; email: string | null; orgName: string | null }>(`${backendBaseUrl}${ApiRoutes.POSTHOG.INTEGRATIONS}`, body, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
-                console.error('Error creating/updating Posthog integration:', error);
-                throw error;
-            });
+                console.error("Error creating/updating Posthog integration:", error)
+                throw error
+            })
     },
 
     getLaunchDarklyIntegrations: () => {
-        return axios.get<LaunchDarklyIntegration[]>(`${backendBaseUrl}${ApiRoutes.LAUNCHDARKLY.INTEGRATIONS}`, { withCredentials: true })
+        return axios
+            .get<LaunchDarklyIntegration[]>(`${backendBaseUrl}${ApiRoutes.LAUNCHDARKLY.INTEGRATIONS}`, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
-                console.error('Error getting LaunchDarkly integrations:', error);
-                throw error;
-            });
+                console.error("Error getting LaunchDarkly integrations:", error)
+                throw error
+            })
     },
 
     getDatadogIntegrations: () => {
-        return axios.get<DatadogIntegration[]>(`${backendBaseUrl}${ApiRoutes.DATADOG.INTEGRATIONS}`, { withCredentials: true })
+        return axios
+            .get<DatadogIntegration[]>(`${backendBaseUrl}${ApiRoutes.DATADOG.INTEGRATIONS}`, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
-                console.error('Error getting Datadog integrations:', error);
-                throw error;
-            });
+                console.error("Error getting Datadog integrations:", error)
+                throw error
+            })
     },
 
     createOrUpdateLaunchDarklyIntegration: (apiKey: string, stateToken?: string) => {
-        const body: any = { apiKey };
+        const body: any = { apiKey }
         if (stateToken) {
-            body.state = stateToken;
+            body.state = stateToken
         }
-        return axios.post<{ success: boolean; email: string | null }>(
-            `${backendBaseUrl}${ApiRoutes.LAUNCHDARKLY.INTEGRATIONS}`,
-            body,
-            { withCredentials: true }
-        )
+        return axios
+            .post<{ success: boolean; email: string | null }>(`${backendBaseUrl}${ApiRoutes.LAUNCHDARKLY.INTEGRATIONS}`, body, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
-                console.error('Error creating/updating LaunchDarkly integration:', error);
-                throw error;
-            });
+                console.error("Error creating/updating LaunchDarkly integration:", error)
+                throw error
+            })
     },
 
     createOrUpdateDatadogIntegration: (apiKey: string, appKey: string, region: string, stateToken?: string) => {
-        const body: any = { apiKey, appKey, region };
+        const body: any = { apiKey, appKey, region }
         if (stateToken) {
-            body.state = stateToken;
+            body.state = stateToken
         }
-        return axios.post<{ success: boolean; region: string }>(
-            `${backendBaseUrl}${ApiRoutes.DATADOG.INTEGRATIONS}`,
-            body,
-            { withCredentials: true }
-        )
+        return axios
+            .post<{ success: boolean; region: string }>(`${backendBaseUrl}${ApiRoutes.DATADOG.INTEGRATIONS}`, body, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
-                console.error('Error creating/updating Datadog integration:', error);
-                throw error;
-            });
+                console.error("Error creating/updating Datadog integration:", error)
+                throw error
+            })
     },
 
     getLaunchDarklyProjects: (integrationId: string) => {
-        return axios.get<LaunchDarklyProjectsResponse>(
-            `${backendBaseUrl}${ApiRoutes.LAUNCHDARKLY.PROJECTS_BY_INTEGRATION_ID.build(integrationId)}`,
-            { withCredentials: true }
-        )
+        return axios
+            .get<LaunchDarklyProjectsResponse>(`${backendBaseUrl}${ApiRoutes.LAUNCHDARKLY.PROJECTS_BY_INTEGRATION_ID.build(integrationId)}`, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
-                console.error('Error fetching LaunchDarkly projects:', error);
-                throw error;
-            });
+                console.error("Error fetching LaunchDarkly projects:", error)
+                throw error
+            })
     },
 
     getLaunchDarklyEnvironments: (integrationId: string, projectKey: string) => {
-        return axios.get<LaunchDarklyEnvironmentsResponse>(
-            `${backendBaseUrl}${ApiRoutes.LAUNCHDARKLY.ENVIRONMENTS_BY_INTEGRATION_AND_PROJECT.build(integrationId, projectKey)}`,
-            { withCredentials: true }
-        )
+        return axios
+            .get<LaunchDarklyEnvironmentsResponse>(`${backendBaseUrl}${ApiRoutes.LAUNCHDARKLY.ENVIRONMENTS_BY_INTEGRATION_AND_PROJECT.build(integrationId, projectKey)}`, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
-                console.error('Error fetching LaunchDarkly environments:', error);
-                throw error;
-            });
+                console.error("Error fetching LaunchDarkly environments:", error)
+                throw error
+            })
     },
 
     getDatadogIndexes: (integrationId: string) => {
-        return axios.get<DatadogIndexesResponse>(
-            `${backendBaseUrl}/datadog/indexes`,
-            {
+        return axios
+            .get<DatadogIndexesResponse>(`${backendBaseUrl}/datadog/indexes`, {
                 params: { integrationId },
                 withCredentials: true
-            }
-        )
+            })
             .then(response => response.data)
             .catch(error => {
-                console.error('Error getting Datadog indexes:', error);
-                throw error;
-            });
+                console.error("Error getting Datadog indexes:", error)
+                throw error
+            })
     },
 
     getPosthogProjects: (integrationId: string, search?: string) => {
-        const params = new URLSearchParams({ integrationId });
+        const params = new URLSearchParams({ integrationId })
         if (search) {
-            params.append('search', search);
+            params.append("search", search)
         }
-        return axios.get<PosthogProjectsResponse>(`${backendBaseUrl}${ApiRoutes.POSTHOG.PROJECTS}?${params.toString()}`, { withCredentials: true })
+        return axios
+            .get<PosthogProjectsResponse>(`${backendBaseUrl}${ApiRoutes.POSTHOG.PROJECTS}?${params.toString()}`, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
-                console.error('Error fetching Posthog projects:', error);
-                throw error;
-            });
+                console.error("Error fetching Posthog projects:", error)
+                throw error
+            })
     },
 
     getSlackIntegrations: () => {
-        return axios.get<SlackIntegration[]>(`${backendBaseUrl}${ApiRoutes.SLACK.INTEGRATIONS}`, { withCredentials: true })
+        return axios
+            .get<SlackIntegration[]>(`${backendBaseUrl}${ApiRoutes.SLACK.INTEGRATIONS}`, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
-                console.error('Error getting Slack integrations:', error);
-                throw error;
-            });
+                console.error("Error getting Slack integrations:", error)
+                throw error
+            })
     },
 
     deleteGmailIntegration: () => {
-        return axios.delete(`${backendBaseUrl}/gmail/delete-integration`, { withCredentials: true })
+        return axios
+            .delete(`${backendBaseUrl}/gmail/delete-integration`, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
-                console.error('Error deleting Gmail integration:', error);
-                throw error;
-            });
+                console.error("Error deleting Gmail integration:", error)
+                throw error
+            })
     },
 
     deleteNotionIntegration: () => {
-        return axios.delete(`${backendBaseUrl}${ApiRoutes.NOTION.DELETE_INTEGRATION}`, { withCredentials: true })
+        return axios
+            .delete(`${backendBaseUrl}${ApiRoutes.NOTION.DELETE_INTEGRATION}`, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
-                console.error('Error deleting Notion integration:', error);
-                throw error;
-            });
+                console.error("Error deleting Notion integration:", error)
+                throw error
+            })
     },
 
-    getNotionResources: (integrationId: string, search?: string, type?: 'page' | 'database') => {
-        const params = new URLSearchParams({ integrationId });
+    getNotionResources: (integrationId: string, search?: string, type?: "page" | "database") => {
+        const params = new URLSearchParams({ integrationId })
         if (search) {
-            params.append('search', search);
+            params.append("search", search)
         }
         if (type) {
-            params.append('type', type);
+            params.append("type", type)
         }
-        return axios.get<NotionResourcesResponse>(`${backendBaseUrl}${ApiRoutes.NOTION.RESOURCES}?${params.toString()}`, { withCredentials: true })
+        return axios
+            .get<NotionResourcesResponse>(`${backendBaseUrl}${ApiRoutes.NOTION.RESOURCES}?${params.toString()}`, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
-                console.error('Error searching Notion resources:', error);
-                throw error;
-            });
+                console.error("Error searching Notion resources:", error)
+                throw error
+            })
     },
 
     getSlackChannels: (integrationId: string) => {
-        return axios.get<SlackChannelsResponse>(`${backendBaseUrl}${ApiRoutes.SLACK.CHANNELS}?integrationId=${encodeURIComponent(integrationId)}`, { withCredentials: true })
+        return axios
+            .get<SlackChannelsResponse>(`${backendBaseUrl}${ApiRoutes.SLACK.CHANNELS}?integrationId=${encodeURIComponent(integrationId)}`, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
-                console.error('Error fetching Slack channels:', error);
-                throw error;
-            });
+                console.error("Error fetching Slack channels:", error)
+                throw error
+            })
     },
 
     getSlackUsers: (integrationId: string) => {
-        return axios.get<SlackUsersResponse>(`${backendBaseUrl}${ApiRoutes.SLACK.USERS}?integrationId=${encodeURIComponent(integrationId)}`, { withCredentials: true })
+        return axios
+            .get<SlackUsersResponse>(`${backendBaseUrl}${ApiRoutes.SLACK.USERS}?integrationId=${encodeURIComponent(integrationId)}`, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
-                console.error('Error fetching Slack users:', error);
-                throw error;
-            });
+                console.error("Error fetching Slack users:", error)
+                throw error
+            })
     },
 
     requestSessionSocketToken: () => {
-        return axios.get<{ token: string } | string>(`${backendBaseUrl}${ApiRoutes.SESSION.TOKEN}`, { withCredentials: true })
+        return axios
+            .get<{ token: string } | string>(`${backendBaseUrl}${ApiRoutes.SESSION.TOKEN}`, { withCredentials: true })
             .then(response => {
-                const data = response.data;
-                return typeof data === 'string' ? data : data.token;
+                const data = response.data
+                return typeof data === "string" ? data : data.token
             })
             .catch(error => {
-                console.error('Error requesting session socket token:', error);
-                throw error;
-            });
+                console.error("Error requesting session socket token:", error)
+                throw error
+            })
     },
 
     getUserAgents: (page = 1, limit = 10, isActive?: boolean, search?: string) => {
-        const params = new URLSearchParams();
-        params.append('page', page.toString());
-        params.append('limit', limit.toString());
+        const params = new URLSearchParams()
+        params.append("page", page.toString())
+        params.append("limit", limit.toString())
         if (isActive !== undefined) {
-            params.append('isActive', isActive.toString());
+            params.append("isActive", isActive.toString())
         }
         if (search) {
-            params.append('search', search);
+            params.append("search", search)
         }
 
-        return axios.get<AgentsResponse>(`${backendBaseUrl}${ApiRoutes.AGENTS.LIST}?${params.toString()}`, { withCredentials: true })
+        return axios
+            .get<AgentsResponse>(`${backendBaseUrl}${ApiRoutes.AGENTS.LIST}?${params.toString()}`, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
-                console.error('Error getting agents:', error);
-                throw error;
-            });
+                console.error("Error getting agents:", error)
+                throw error
+            })
     },
 
     getRecentAgents: (limit = 3) => {
-        const params = new URLSearchParams();
-        params.append('limit', limit.toString());
+        const params = new URLSearchParams()
+        params.append("limit", limit.toString())
 
-        return axios.get<RecentAgent[]>(`${backendBaseUrl}${ApiRoutes.AGENTS.RECENT}?${params.toString()}`, { withCredentials: true })
+        return axios
+            .get<RecentAgent[]>(`${backendBaseUrl}${ApiRoutes.AGENTS.RECENT}?${params.toString()}`, { withCredentials: true })
             .then(response => {
                 // Deserialize configs from JSON to class instances
                 return response.data.map(agent => ({
@@ -883,256 +906,262 @@ export const BackendProvider: BackendService = {
                         ...trigger,
                         config: deserializeConfig(trigger.config)
                     })),
-                    outputs: agent.outputs ? agent.outputs.map(output => ({
-                        ...output,
-                        config: deserializeConfig(output.config)
-                    })) : []
-                }));
+                    outputs: agent.outputs
+                        ? agent.outputs.map(output => ({
+                              ...output,
+                              config: deserializeConfig(output.config)
+                          }))
+                        : []
+                }))
             })
             .catch(error => {
-                console.error('Error getting recent agents:', error);
-                throw error;
-            });
+                console.error("Error getting recent agents:", error)
+                throw error
+            })
     },
 
     getAgentById: (id: string) => {
-        return axios.get<Agent>(`${backendBaseUrl}${ApiRoutes.AGENTS.BY_ID.build(id)}`, { withCredentials: true })
+        return axios
+            .get<Agent>(`${backendBaseUrl}${ApiRoutes.AGENTS.BY_ID.build(id)}`, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
-                console.error('Error getting agent:', error);
-                throw error;
-            });
+                console.error("Error getting agent:", error)
+                throw error
+            })
     },
 
     createAgent: (data: Agent) => {
-        return axios.post<{ success: boolean; id: string }>(`${backendBaseUrl}${ApiRoutes.AGENTS.LIST}`,
-            data,
-            { withCredentials: true }
-        )
+        return axios
+            .post<{ success: boolean; id: string }>(`${backendBaseUrl}${ApiRoutes.AGENTS.LIST}`, data, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
-                console.error('Error creating agent:', error);
-                throw error;
-            });
+                console.error("Error creating agent:", error)
+                throw error
+            })
     },
 
     updateAgent: (id: string, data: AgentUpdate) => {
-        return axios.patch<{ success: boolean; id: string }>(`${backendBaseUrl}${ApiRoutes.AGENTS.BY_ID.build(id)}`,
-            data,
-            { withCredentials: true }
-        )
+        return axios
+            .patch<{ success: boolean; id: string }>(`${backendBaseUrl}${ApiRoutes.AGENTS.BY_ID.build(id)}`, data, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
-                console.error('Error updating agent:', error);
-                throw error;
-            });
+                console.error("Error updating agent:", error)
+                throw error
+            })
     },
 
     deleteAgent: (id: string) => {
-        return axios.delete<{ success: boolean; message: string }>(`${backendBaseUrl}${ApiRoutes.AGENTS.BY_ID.build(id)}`, { withCredentials: true })
+        return axios
+            .delete<{ success: boolean; message: string }>(`${backendBaseUrl}${ApiRoutes.AGENTS.BY_ID.build(id)}`, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
-                console.error('Error deleting agent:', error);
-                throw error;
-            });
+                console.error("Error deleting agent:", error)
+                throw error
+            })
     },
 
     getRunHistory: (agentId, params) => {
-        const usp = new URLSearchParams();
-        if (params.page) usp.append('page', String(params.page));
-        if (params.pageSize) usp.append('pageSize', String(params.pageSize));
-        if (params.q) usp.append('q', params.q);
-        if (params.start) usp.append('start', params.start);
-        if (params.end) usp.append('end', params.end);
-        if (params.status && params.status.length) usp.append('status', params.status.join(','));
-        const url = `${backendBaseUrl}${ApiRoutes.RUN_HISTORY.BY_AGENT_ID.build(agentId)}${usp.toString() ? `?${usp.toString()}` : ''}`;
-        return axios.get<GetRunHistoryResponse>(url, { withCredentials: true })
+        const usp = new URLSearchParams()
+        if (params.page) usp.append("page", String(params.page))
+        if (params.pageSize) usp.append("pageSize", String(params.pageSize))
+        if (params.q) usp.append("q", params.q)
+        if (params.start) usp.append("start", params.start)
+        if (params.end) usp.append("end", params.end)
+        if (params.status && params.status.length) usp.append("status", params.status.join(","))
+        const url = `${backendBaseUrl}${ApiRoutes.RUN_HISTORY.BY_AGENT_ID.build(agentId)}${usp.toString() ? `?${usp.toString()}` : ""}`
+        return axios
+            .get<GetRunHistoryResponse>(url, { withCredentials: true })
             .then(r => r.data)
             .catch(error => {
-                console.error('Error fetching run history:', error);
-                throw error;
-            });
+                console.error("Error fetching run history:", error)
+                throw error
+            })
     },
 
-    getChatHistory: (runId) => {
-        const url = `${backendBaseUrl}${ApiRoutes.RUN_HISTORY.CHAT_BY_RUN_ID.build(runId)}`;
-        return axios.get<{ events: Array<RunHistoryModelEvent>; startTimestamp?: string; endTimestamp?: string; status?: string }>(url, { withCredentials: true })
+    getChatHistory: runId => {
+        const url = `${backendBaseUrl}${ApiRoutes.RUN_HISTORY.CHAT_BY_RUN_ID.build(runId)}`
+        return axios
+            .get<{ events: Array<RunHistoryModelEvent>; startTimestamp?: string; endTimestamp?: string; status?: string }>(url, { withCredentials: true })
             .then(r => r.data)
             .catch(error => {
-                console.error('Error fetching chat history:', error);
-                throw error;
-            });
+                console.error("Error fetching chat history:", error)
+                throw error
+            })
     },
 
-    getBuilderChatHistory: (sessionId) => {
-        const url = `${backendBaseUrl}${ApiRoutes.BUILDER_CHAT.HISTORY_BY_SESSION_ID.build(sessionId)}`;
-        return axios.get<{ events: Array<RunHistoryModelEvent>; startTimestamp: string | null; endTimestamp: string | null }>(url, { withCredentials: true })
+    getBuilderChatHistory: sessionId => {
+        const url = `${backendBaseUrl}${ApiRoutes.BUILDER_CHAT.HISTORY_BY_SESSION_ID.build(sessionId)}`
+        return axios
+            .get<{ events: Array<RunHistoryModelEvent>; startTimestamp: string | null; endTimestamp: string | null }>(url, { withCredentials: true })
             .then(r => r.data)
             .catch(error => {
-                console.error('Error fetching builder chat history:', error);
-                throw error;
-            });
+                console.error("Error fetching builder chat history:", error)
+                throw error
+            })
     },
 
-    getRunHistoryActions: (ids) => {
-        const usp = new URLSearchParams();
-        usp.append('ids', ids.join(','));
-        const url = `${backendBaseUrl}${ApiRoutes.RUN_HISTORY.ACTIONS}?${usp.toString()}`;
-        return axios.get<RunHistoryActionWithId[]>(url, { withCredentials: true })
+    getRunHistoryActions: ids => {
+        const usp = new URLSearchParams()
+        usp.append("ids", ids.join(","))
+        const url = `${backendBaseUrl}${ApiRoutes.RUN_HISTORY.ACTIONS}?${usp.toString()}`
+        return axios
+            .get<RunHistoryActionWithId[]>(url, { withCredentials: true })
             .then(r => r.data)
             .catch(error => {
-                console.error('Error fetching run history actions:', error);
-                throw error;
-            });
+                console.error("Error fetching run history actions:", error)
+                throw error
+            })
     },
 
     generatePromptBuilderQuestions: (request: GenerateSurveyQuestionsRequest) => {
-        return axios.post<GenerateSurveyQuestionsResponse>(
-            `${backendBaseUrl}${ApiRoutes.PROMPT_BUILDER.GENERATE_QUESTIONS}`,
-            request,
-            { withCredentials: true }
-        )
+        return axios
+            .post<GenerateSurveyQuestionsResponse>(`${backendBaseUrl}${ApiRoutes.PROMPT_BUILDER.GENERATE_QUESTIONS}`, request, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
-                console.error('Error generating questions:', error);
-                throw error;
-            });
+                console.error("Error generating questions:", error)
+                throw error
+            })
     },
 
     getNotificationDestinations: () => {
-        return axios.get<NotificationDestination[]>(`${backendBaseUrl}${ApiRoutes.NOTIFICATION_DESTINATIONS.LIST}`, { withCredentials: true })
+        return axios
+            .get<NotificationDestination[]>(`${backendBaseUrl}${ApiRoutes.NOTIFICATION_DESTINATIONS.LIST}`, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
-                console.error('Error getting notification destinations:', error);
-                throw error;
-            });
+                console.error("Error getting notification destinations:", error)
+                throw error
+            })
     },
 
     generatePromptBuilderPrompt: (request: GenerateSurveyPromptRequest) => {
-        return axios.post<GenerateSurveyPromptResponse>(
-            `${backendBaseUrl}${ApiRoutes.PROMPT_BUILDER.GENERATE_PROMPT}`,
-            request,
-            { withCredentials: true }
-        )
+        return axios
+            .post<GenerateSurveyPromptResponse>(`${backendBaseUrl}${ApiRoutes.PROMPT_BUILDER.GENERATE_PROMPT}`, request, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
-                console.error('Error generating prompt:', error);
-                throw error;
-            });
+                console.error("Error generating prompt:", error)
+                throw error
+            })
     },
 
     createNotificationDestination: (destination: CreateNotificationDestinationRequest) => {
-        return axios.post<NotificationDestination>(`${backendBaseUrl}${ApiRoutes.NOTIFICATION_DESTINATIONS.LIST}`, destination, { withCredentials: true })
+        return axios
+            .post<NotificationDestination>(`${backendBaseUrl}${ApiRoutes.NOTIFICATION_DESTINATIONS.LIST}`, destination, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
-                console.error('Error creating notification destination:', error);
-                throw error;
-            });
+                console.error("Error creating notification destination:", error)
+                throw error
+            })
     },
 
     updateNotificationDestination: (destination: NotificationDestination) => {
-        return axios.put<NotificationDestination>(`${backendBaseUrl}${ApiRoutes.NOTIFICATION_DESTINATIONS.BY_ID.build(destination.id)}`, destination, { withCredentials: true })
+        return axios
+            .put<NotificationDestination>(`${backendBaseUrl}${ApiRoutes.NOTIFICATION_DESTINATIONS.BY_ID.build(destination.id)}`, destination, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
-                console.error('Error updating notification destination:', error);
-                throw error;
-            });
+                console.error("Error updating notification destination:", error)
+                throw error
+            })
     },
 
     deleteNotificationDestination: (destination: NotificationDestination) => {
-        return axios.delete<void>(`${backendBaseUrl}${ApiRoutes.NOTIFICATION_DESTINATIONS.BY_ID.build(destination.id)}`, { withCredentials: true })
+        return axios
+            .delete<void>(`${backendBaseUrl}${ApiRoutes.NOTIFICATION_DESTINATIONS.BY_ID.build(destination.id)}`, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
-                console.error('Error deleting notification destination:', error);
-                throw error;
-            });
+                console.error("Error deleting notification destination:", error)
+                throw error
+            })
     },
 
     getTemplates: () => {
-        return axios.get<AgentTemplate[]>(`${backendBaseUrl}${ApiRoutes.TEMPLATES}`, { withCredentials: true })
+        return axios
+            .get<AgentTemplate[]>(`${backendBaseUrl}${ApiRoutes.TEMPLATES}`, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
-                console.error('Error getting templates:', error);
-                throw error;
-            });
+                console.error("Error getting templates:", error)
+                throw error
+            })
     },
 
     triggerManually: (triggerId: string, context?: string) => {
-        return axios.post<{ received: boolean; message: string }>(
-            `${backendBaseUrl}${ApiRoutes.SCHEDULE.TRIGGER_BY_INPUT_ID.build(triggerId)}`,
-            { context },
-            { withCredentials: true }
-        )
+        return axios
+            .post<{ received: boolean; message: string }>(`${backendBaseUrl}${ApiRoutes.SCHEDULE.TRIGGER_BY_INPUT_ID.build(triggerId)}`, { context }, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
-                console.error('Error triggering manually:', error);
-                throw error;
-            });
+                console.error("Error triggering manually:", error)
+                throw error
+            })
     },
 
     getToolsThatRequireApprovals: (request: GetToolsThatRequireApprovalsRequest) => {
-        return axios.post<GetToolsThatRequireApprovalsResponse>(`${backendBaseUrl}${ApiRoutes.TOOLS.THAT_REQUIRE_APPROVALS}`, request, { withCredentials: true })
+        return axios
+            .post<GetToolsThatRequireApprovalsResponse>(`${backendBaseUrl}${ApiRoutes.TOOLS.THAT_REQUIRE_APPROVALS}`, request, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
-                console.error('Error getting tools that require approvals:', error);
-                throw error;
-            });
+                console.error("Error getting tools that require approvals:", error)
+                throw error
+            })
     },
 
     loginRedirect: () => {
-        window.location.href = `${backendRedirectUrl}${ApiRoutes.AUTH.LOGIN}`;
+        window.location.href = `${backendRedirectUrl}${ApiRoutes.AUTH.LOGIN}`
     },
 
     logoutRedirect: () => {
-        window.location.href = `${backendRedirectUrl}${ApiRoutes.AUTH.LOGOUT}`;
+        window.location.href = `${backendRedirectUrl}${ApiRoutes.AUTH.LOGOUT}`
     },
 
     createOrganization: (name: string, firstName?: string, lastName?: string) => {
-        return axios.post<{ id: string; name: string }>(`${backendBaseUrl}${ApiRoutes.ORGANIZATIONS.CREATE}`, { name, firstName, lastName }, { withCredentials: true })
+        return axios
+            .post<{ id: string; name: string }>(`${backendBaseUrl}${ApiRoutes.ORGANIZATIONS.CREATE}`, { name, firstName, lastName }, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
-                console.error('Error creating organization:', error);
-                throw error;
-            });
+                console.error("Error creating organization:", error)
+                throw error
+            })
     },
 
     getCurrentOrganization: () => {
-        return axios.get<{ id: string; name: string }>(`${backendBaseUrl}${ApiRoutes.ORGANIZATIONS.GET_CURRENT}`, { withCredentials: true })
+        return axios
+            .get<{ id: string; name: string }>(`${backendBaseUrl}${ApiRoutes.ORGANIZATIONS.GET_CURRENT}`, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
-                console.error('Error getting current organization:', error);
-                throw error;
-            });
+                console.error("Error getting current organization:", error)
+                throw error
+            })
     },
 
     getUserOrganizations: () => {
-        return axios.get<{ organizations: { id: string; name: string }[] }>(`${backendBaseUrl}${ApiRoutes.ORGANIZATIONS.LIST}`, { withCredentials: true })
+        return axios
+            .get<{ organizations: { id: string; name: string }[] }>(`${backendBaseUrl}${ApiRoutes.ORGANIZATIONS.LIST}`, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
-                console.error('Error getting user organizations:', error);
-                throw error;
-            });
+                console.error("Error getting user organizations:", error)
+                throw error
+            })
     },
 
     switchOrganization: (organizationId: string) => {
-        return axios.post<{ success?: boolean; redirectUrl?: string }>(`${backendBaseUrl}${ApiRoutes.ORGANIZATIONS.SWITCH}`, { organizationId }, { withCredentials: true })
+        return axios
+            .post<{ success?: boolean; redirectUrl?: string }>(`${backendBaseUrl}${ApiRoutes.ORGANIZATIONS.SWITCH}`, { organizationId }, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
-                const data = error.response?.data;
+                const data = error.response?.data
                 if (data?.redirectUrl) {
-                    return Promise.reject({ ...error, redirectUrl: data.redirectUrl });
+                    return Promise.reject({ ...error, redirectUrl: data.redirectUrl })
                 }
-                console.error('Error switching organization:', error);
-                throw error;
-            });
+                console.error("Error switching organization:", error)
+                throw error
+            })
     },
 
     getWidgetToken: () => {
-        return axios.get<{ token: string; expiresAt: string }>(`${backendBaseUrl}${ApiRoutes.WORKOS.WIDGET_TOKEN}`, { withCredentials: true })
+        return axios
+            .get<{ token: string; expiresAt: string }>(`${backendBaseUrl}${ApiRoutes.WORKOS.WIDGET_TOKEN}`, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
-                console.error('Error getting widget token:', error);
-                throw error;
-            });
-    },
+                console.error("Error getting widget token:", error)
+                throw error
+            })
+    }
 }

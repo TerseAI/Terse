@@ -1,40 +1,36 @@
-import { Plus, AlertTriangleIcon } from 'lucide-react';
-import { Button } from '../ui/button';
-import DropdownSelect from '../ui/DropdownSelect';
-import { IntegrationType, GmailIntegration as GmailIntegrationType } from "@/shared/Integrations"
-import { GmailOutputConfig, ConfigType } from '../../shared/Configs';
-import { InputConfigSelectorProps } from './types';
-import { useGmailIntegrations } from '@/hooks/api/useGmailIntegrations';
-import { useOAuthConnection } from '@/hooks/useOAuthConnection';
-import { useIntegrationId } from '@/hooks/useIntegrationId';
-import { IconForConfigType } from '../../pages/Agents/components/Integration';
-import { StatusOption } from '../ui/DropdownSelect';
+import { AlertTriangleIcon, Plus } from "lucide-react"
 
-export function GmailOutputIntegration({
-    input,
-    variant,
-    setConfig
-}: InputConfigSelectorProps) {
-    const { integrations, isLoading } = useGmailIntegrations();
-    const currentConfig = input.config as GmailOutputConfig | undefined;
-    const [selectedIntegrationId, setSelectedIntegrationId] = useIntegrationId(currentConfig, ConfigType.GMAIL_OUTPUT);
+import { useGmailIntegrations } from "@/hooks/api/useGmailIntegrations"
+import { useIntegrationId } from "@/hooks/useIntegrationId"
+import { useOAuthConnection } from "@/hooks/useOAuthConnection"
+import { GmailIntegration as GmailIntegrationType, IntegrationType } from "@/shared/Integrations"
 
-    const { connect: connectOAuth, isConnecting: isOAuthConnecting } = useOAuthConnection<IntegrationType.GMAIL>(
-        IntegrationType.GMAIL,
-        {}
-    );
+import { IconForConfigType } from "../../pages/Agents/components/Integration"
+import { ConfigType, GmailOutputConfig } from "../../shared/Configs"
+import DropdownSelect from "../ui/DropdownSelect"
+import { StatusOption } from "../ui/DropdownSelect"
+import { Button } from "../ui/button"
+
+import { InputConfigSelectorProps } from "./types"
+
+export function GmailOutputIntegration({ input, variant, setConfig }: InputConfigSelectorProps) {
+    const { integrations, isLoading } = useGmailIntegrations()
+    const currentConfig = input.config as GmailOutputConfig | undefined
+    const [selectedIntegrationId, setSelectedIntegrationId] = useIntegrationId(currentConfig, ConfigType.GMAIL_OUTPUT)
+
+    const { connect: connectOAuth, isConnecting: isOAuthConnecting } = useOAuthConnection<IntegrationType.GMAIL>(IntegrationType.GMAIL, {})
 
     function onSelectIntegration(value: string) {
-        const integration = integrations.find((integration: GmailIntegrationType) => integration.id === value);
+        const integration = integrations.find((integration: GmailIntegrationType) => integration.id === value)
         if (integration) {
-            setSelectedIntegrationId(integration.id);
-            const config = new GmailOutputConfig(integration.id);
-            setConfig(config);
+            setSelectedIntegrationId(integration.id)
+            const config = new GmailOutputConfig(integration.id)
+            setConfig(config)
         }
     }
 
     function onClickConnect() {
-        connectOAuth();
+        connectOAuth()
     }
 
     if (isLoading) {
@@ -43,66 +39,57 @@ export function GmailOutputIntegration({
                 <div className="animate-spin rounded-full h-4 w-4 border-2 border-accent border-t-transparent"></div>
                 Loading connections...
             </div>
-        );
+        )
     }
 
     if (integrations.length === 0) {
-        if (variant === 'card') {
+        if (variant === "card") {
             return (
                 <div className="flex items-center gap-1 text-xs text-muted-foreground">
                     <AlertTriangleIcon className="size-3 text-yellow-500" />
                     Connect Gmail
                 </div>
-            );
+            )
         }
         return (
             <div className="flex flex-col items-center gap-3 p-4 rounded-lg border border-dashed border-input bg-card text-center">
-                <div className="text-sm text-muted-foreground">
-                    No Gmail accounts connected
-                </div>
-                <Button
-                    onClick={onClickConnect}
-                    disabled={isOAuthConnecting}
-                >
+                <div className="text-sm text-muted-foreground">No Gmail accounts connected</div>
+                <Button onClick={onClickConnect} disabled={isOAuthConnecting}>
                     <Plus className="w-4 h-4" />
-                    {isOAuthConnecting ? 'Connecting...' : `Connect Gmail`}
+                    {isOAuthConnecting ? "Connecting..." : `Connect Gmail`}
                 </Button>
             </div>
-        );
+        )
     }
 
     const connectionSelections: StatusOption[] = integrations.map((integration: GmailIntegrationType) => ({
         label: integration.email,
         value: integration.id
-    }));
+    }))
 
-    let selectedOption = connectionSelections.find(option => option.value === currentConfig?.integrationId);
+    let selectedOption = connectionSelections.find(option => option.value === currentConfig?.integrationId)
     if (!selectedIntegrationId && !selectedOption && connectionSelections.length === 1) {
-        const defaultIntegration = connectionSelections[0];
-        setSelectedIntegrationId(defaultIntegration.value);
-        setConfig(new GmailOutputConfig(defaultIntegration.value));
-        selectedOption = defaultIntegration;
+        const defaultIntegration = connectionSelections[0]
+        setSelectedIntegrationId(defaultIntegration.value)
+        setConfig(new GmailOutputConfig(defaultIntegration.value))
+        selectedOption = defaultIntegration
     } else if (!selectedOption) {
-        selectedOption = connectionSelections[0];
+        selectedOption = connectionSelections[0]
     }
 
     // Card variant: compact view
-    if (variant === 'card') {
-        const hasConfig = !!currentConfig && !!currentConfig.integrationId;
-        const isComplete = hasConfig;
+    if (variant === "card") {
+        const hasConfig = !!currentConfig && !!currentConfig.integrationId
+        const isComplete = hasConfig
         if (!isComplete) {
             return (
                 <div className="flex items-center gap-1 text-xs text-muted-foreground">
                     <AlertTriangleIcon className="size-3 text-yellow-500" />
                     Configure
                 </div>
-            );
+            )
         }
-        return (
-            <div className="text-sm">
-                {selectedOption ? selectedOption.label : 'No connection selected'}
-            </div>
-        );
+        return <div className="text-sm">{selectedOption ? selectedOption.label : "No connection selected"}</div>
     }
 
     // Dialog variant: full view
@@ -110,7 +97,7 @@ export function GmailOutputIntegration({
         <div className="flex flex-col gap-3 min-w-0 overflow-hidden">
             <div className="flex flex-row gap-2 items-center">
                 <div className="w-8 h-8 flex items-center justify-center shrink-0">
-                    <IconForConfigType type={ConfigType.GMAIL_OUTPUT}/>
+                    <IconForConfigType type={ConfigType.GMAIL_OUTPUT} />
                 </div>
                 <div className="flex-1 min-w-0">
                     <DropdownSelect
@@ -119,25 +106,19 @@ export function GmailOutputIntegration({
                         setSelected={onSelectIntegration}
                         placeholder="No connection selected"
                         additionalAction={{
-                            label: 'Connect Another Gmail',
+                            label: "Connect Another Gmail",
                             onClick: onClickConnect
                         }}
                     />
                 </div>
             </div>
 
-            <div className="text-xs text-muted-foreground">
-                Terse will send emails from this Gmail account
-            </div>
+            <div className="text-xs text-muted-foreground">Terse will send emails from this Gmail account</div>
 
-            <Button
-                onClick={onClickConnect}
-                disabled={isOAuthConnecting}
-                variant="outline"
-            >
+            <Button onClick={onClickConnect} disabled={isOAuthConnecting} variant="outline">
                 <Plus className="w-4 h-4" />
-                {isOAuthConnecting ? 'Connecting...' : "Connect Another Gmail"}
+                {isOAuthConnecting ? "Connecting..." : "Connect Another Gmail"}
             </Button>
         </div>
-    );
+    )
 }

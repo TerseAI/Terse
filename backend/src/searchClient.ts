@@ -1,20 +1,21 @@
-import { Pool } from "pg";
-import { EmbeddingSystem } from "./search/EmbeddingSystem";
-import { PostgreSQLSearch } from "./search/SearchProvider";
-import { Search } from "./search/search";
-import { database, openai } from "./config/settings";
+import { Pool } from "pg"
 
-let searchClient: Search | undefined;
+import { database, openai } from "./config/settings"
+import { EmbeddingSystem } from "./search/EmbeddingSystem"
+import { PostgreSQLSearch } from "./search/SearchProvider"
+import { Search } from "./search/search"
+
+let searchClient: Search | undefined
 
 export function search(): Search {
     const pool = new Pool({
-        connectionString: database.searchUrl,
-    });
+        connectionString: database.searchUrl
+    })
 
     if (!searchClient) {
-        searchClient = new PostgreSQLSearch(pool, new EmbeddingSystem(openai.apiKey));
+        searchClient = new PostgreSQLSearch(pool, new EmbeddingSystem(openai.apiKey))
     }
-    return searchClient;
-  }
-  
-  export type { Search }; 
+    return searchClient
+}
+
+export type { Search }

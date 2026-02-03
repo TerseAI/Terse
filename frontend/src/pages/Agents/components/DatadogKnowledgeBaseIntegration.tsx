@@ -1,122 +1,111 @@
-import { DatadogConfig } from "@/shared/Configs";
-import { KnowledgeBaseSelectorProps } from "./KnowledgeBaseSelector";
-import { useDatadogIntegrations } from "@/hooks/api/useDatadogIntegrations";
-import { useDatadogIndexes } from "@/hooks/api/useDatadogIndexes";
-import type { DatadogIndex } from "@/shared/types";
-import { BackendProvider } from "@/services/backend";
-import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
-import { Plus, AlertTriangleIcon, Eye, EyeOff, Info } from "lucide-react";
-import { useState } from "react";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
+import { useState } from "react"
+
+import { AlertTriangleIcon, Eye, EyeOff, Info, Plus } from "lucide-react"
+
+import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Skeleton } from "@/components/ui/skeleton"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { useDatadogIndexes } from "@/hooks/api/useDatadogIndexes"
+import { useDatadogIntegrations } from "@/hooks/api/useDatadogIntegrations"
+import { BackendProvider } from "@/services/backend"
+import { DatadogConfig } from "@/shared/Configs"
+import type { DatadogIndex } from "@/shared/types"
+
+import { KnowledgeBaseSelectorProps } from "./KnowledgeBaseSelector"
 
 const DATADOG_REGIONS = [
-    { value: 'us', label: 'US (datadoghq.com)' },
-    { value: 'eu', label: 'EU (datadoghq.eu)' },
-    { value: 'us3', label: 'US3 (us3.datadoghq.com)' },
-    { value: 'us5', label: 'US5 (us5.datadoghq.com)' },
-    { value: 'ap1', label: 'AP1 (ap1.datadoghq.com)' },
-];
+    { value: "us", label: "US (datadoghq.com)" },
+    { value: "eu", label: "EU (datadoghq.eu)" },
+    { value: "us3", label: "US3 (us3.datadoghq.com)" },
+    { value: "us5", label: "US5 (us5.datadoghq.com)" },
+    { value: "ap1", label: "AP1 (ap1.datadoghq.com)" }
+]
 
 export function DatadogKnowledgeBaseIntegration({ knowledgeBase, variant, setConfig }: KnowledgeBaseSelectorProps) {
-    const { integrations, isLoading, mutate } = useDatadogIntegrations();
-    const datadogConfig = (knowledgeBase.config as DatadogConfig) || new DatadogConfig('', ["main"]);
-    const selectedIntegrationId = datadogConfig.integrationId || null;
-    
+    const { integrations, isLoading, mutate } = useDatadogIntegrations()
+    const datadogConfig = (knowledgeBase.config as DatadogConfig) || new DatadogConfig("", ["main"])
+    const selectedIntegrationId = datadogConfig.integrationId || null
+
     // Fetch indexes for the selected integration
-    const { indexes, isLoading: isLoadingIndexes } = useDatadogIndexes(selectedIntegrationId);
-    
+    const { indexes, isLoading: isLoadingIndexes } = useDatadogIndexes(selectedIntegrationId)
+
     // Form state for connecting new integration
-    const [showConnectForm, setShowConnectForm] = useState(false);
-    const [apiKey, setApiKey] = useState("");
-    const [appKey, setAppKey] = useState("");
-    const [showApiKey, setShowApiKey] = useState(false);
-    const [showAppKey, setShowAppKey] = useState(false);
-    const [region, setRegion] = useState("us");
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+    const [showConnectForm, setShowConnectForm] = useState(false)
+    const [apiKey, setApiKey] = useState("")
+    const [appKey, setAppKey] = useState("")
+    const [showApiKey, setShowApiKey] = useState(false)
+    const [showAppKey, setShowAppKey] = useState(false)
+    const [region, setRegion] = useState("us")
+    const [isSubmitting, setIsSubmitting] = useState(false)
+    const [error, setError] = useState<string | null>(null)
 
     const handleConnect = () => {
-        setShowConnectForm(true);
-        setError(null);
-    };
+        setShowConnectForm(true)
+        setError(null)
+    }
 
     const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setError(null);
-        setIsSubmitting(true);
+        e.preventDefault()
+        setError(null)
+        setIsSubmitting(true)
 
         try {
-            await BackendProvider.createOrUpdateDatadogIntegration(apiKey, appKey, region);
-            setShowConnectForm(false);
-            setApiKey("");
-            setAppKey("");
-            setRegion("us");
-            mutate(); // Refresh integrations list
+            await BackendProvider.createOrUpdateDatadogIntegration(apiKey, appKey, region)
+            setShowConnectForm(false)
+            setApiKey("")
+            setAppKey("")
+            setRegion("us")
+            mutate() // Refresh integrations list
         } catch (err: any) {
-            setError(err.response?.data?.error || err.message || "Failed to connect Datadog integration");
+            setError(err.response?.data?.error || err.message || "Failed to connect Datadog integration")
         } finally {
-            setIsSubmitting(false);
+            setIsSubmitting(false)
         }
-    };
+    }
 
     const handleCancel = () => {
-        setShowConnectForm(false);
-        setApiKey("");
-        setAppKey("");
-        setRegion("us");
-        setError(null);
-    };
+        setShowConnectForm(false)
+        setApiKey("")
+        setAppKey("")
+        setRegion("us")
+        setError(null)
+    }
 
     if (isLoading) {
-        return <Skeleton className="h-20 w-full" />;
+        return <Skeleton className="h-20 w-full" />
     }
 
     // Card variant handling
-    if (variant === 'card') {
+    if (variant === "card") {
         if (integrations.length === 0) {
             return (
                 <div className="flex items-center gap-1 text-xs text-muted-foreground">
                     <AlertTriangleIcon className="size-3 text-yellow-500" />
                     Connect Datadog
                 </div>
-            );
+            )
         }
-        const selectedIntegration = integrations.find(i => i.id === selectedIntegrationId);
-        const hasIndexes = datadogConfig.defaultIndexes && datadogConfig.defaultIndexes.length > 0;
-        const displayText = hasIndexes
-            ? `Indexes: ${datadogConfig.defaultIndexes.join(', ')}`
-            : (selectedIntegration ? 'Configure indexes' : 'Select integration');
-        return (
-            <div className="text-xs text-center">
-                {displayText}
-            </div>
-        );
+        const selectedIntegration = integrations.find(i => i.id === selectedIntegrationId)
+        const hasIndexes = datadogConfig.defaultIndexes && datadogConfig.defaultIndexes.length > 0
+        const displayText = hasIndexes ? `Indexes: ${datadogConfig.defaultIndexes.join(", ")}` : selectedIntegration ? "Configure indexes" : "Select integration"
+        return <div className="text-xs text-center">{displayText}</div>
     }
 
     // Dialog variant - no integrations and not showing form
     if (integrations.length === 0 && !showConnectForm) {
         return (
             <div className="flex flex-col gap-3 p-4 rounded-lg border border-dashed border-input bg-card">
-                <div className="text-sm text-muted-foreground">
-                    No Datadog integrations connected. Connect your Datadog account to get started.
-                </div>
+                <div className="text-sm text-muted-foreground">No Datadog integrations connected. Connect your Datadog account to get started.</div>
                 <Button onClick={handleConnect}>
                     <Plus className="w-4 h-4" />
                     Connect Datadog
                 </Button>
             </div>
-        );
+        )
     }
 
     // Show connect form
@@ -129,10 +118,7 @@ export function DatadogKnowledgeBaseIntegration({ knowledgeBase, variant, setCon
                             <Label htmlFor="region">Region</Label>
                             <Tooltip>
                                 <TooltipTrigger asChild>
-                                    <button
-                                        type="button"
-                                        className="text-muted-foreground hover:text-foreground transition-colors"
-                                    >
+                                    <button type="button" className="text-muted-foreground hover:text-foreground transition-colors">
                                         <Info className="h-4 w-4" />
                                     </button>
                                 </TooltipTrigger>
@@ -149,7 +135,7 @@ export function DatadogKnowledgeBaseIntegration({ knowledgeBase, variant, setCon
                                 <SelectValue placeholder="Select region" />
                             </SelectTrigger>
                             <SelectContent>
-                                {DATADOG_REGIONS.map((r) => (
+                                {DATADOG_REGIONS.map(r => (
                                     <SelectItem key={r.value} value={r.value}>
                                         {r.label}
                                     </SelectItem>
@@ -163,22 +149,14 @@ export function DatadogKnowledgeBaseIntegration({ knowledgeBase, variant, setCon
                             <Label htmlFor="apiKey">API Key</Label>
                             <Tooltip>
                                 <TooltipTrigger asChild>
-                                    <button
-                                        type="button"
-                                        className="text-muted-foreground hover:text-foreground transition-colors"
-                                    >
+                                    <button type="button" className="text-muted-foreground hover:text-foreground transition-colors">
                                         <Info className="h-4 w-4" />
                                     </button>
                                 </TooltipTrigger>
                                 <TooltipContent>
                                     <div className="flex flex-col gap-1">
                                         <span>Get your API key from Datadog</span>
-                                        <a
-                                            href="https://app.datadoghq.com/organization-settings/api-keys"
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="underline hover:no-underline"
-                                        >
+                                        <a href="https://app.datadoghq.com/organization-settings/api-keys" target="_blank" rel="noopener noreferrer" className="underline hover:no-underline">
                                             Open API keys page
                                         </a>
                                     </div>
@@ -202,11 +180,7 @@ export function DatadogKnowledgeBaseIntegration({ knowledgeBase, variant, setCon
                                 className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                                 disabled={isSubmitting}
                             >
-                                {showApiKey ? (
-                                    <EyeOff className="h-4 w-4" />
-                                ) : (
-                                    <Eye className="h-4 w-4" />
-                                )}
+                                {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                             </button>
                         </div>
                     </div>
@@ -216,22 +190,14 @@ export function DatadogKnowledgeBaseIntegration({ knowledgeBase, variant, setCon
                             <Label htmlFor="appKey">Application Key</Label>
                             <Tooltip>
                                 <TooltipTrigger asChild>
-                                    <button
-                                        type="button"
-                                        className="text-muted-foreground hover:text-foreground transition-colors"
-                                    >
+                                    <button type="button" className="text-muted-foreground hover:text-foreground transition-colors">
                                         <Info className="h-4 w-4" />
                                     </button>
                                 </TooltipTrigger>
                                 <TooltipContent>
                                     <div className="flex flex-col gap-1">
                                         <span>Get your Application key from Datadog</span>
-                                        <a
-                                            href="https://app.datadoghq.com/organization-settings/application-keys"
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="underline hover:no-underline"
-                                        >
+                                        <a href="https://app.datadoghq.com/organization-settings/application-keys" target="_blank" rel="noopener noreferrer" className="underline hover:no-underline">
                                             Open Application keys page
                                         </a>
                                     </div>
@@ -255,18 +221,12 @@ export function DatadogKnowledgeBaseIntegration({ knowledgeBase, variant, setCon
                                 className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                                 disabled={isSubmitting}
                             >
-                                {showAppKey ? (
-                                    <EyeOff className="h-4 w-4" />
-                                ) : (
-                                    <Eye className="h-4 w-4" />
-                                )}
+                                {showAppKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                             </button>
                         </div>
                     </div>
 
-                    {error && (
-                        <p className="text-sm text-destructive">{error}</p>
-                    )}
+                    {error && <p className="text-sm text-destructive">{error}</p>}
 
                     <div className="flex gap-2">
                         <Button type="submit" disabled={isSubmitting || !apiKey || !appKey || !region}>
@@ -278,71 +238,58 @@ export function DatadogKnowledgeBaseIntegration({ knowledgeBase, variant, setCon
                     </div>
                 </form>
             </div>
-        );
+        )
     }
 
     const updateIntegrationId = (integrationId: string) => {
         // When changing integration, reset to default "main" index
-        const newDatadogConfig = new DatadogConfig(
-            integrationId,
-            ["main"]
-        );
-        setConfig(newDatadogConfig);
-    };
+        const newDatadogConfig = new DatadogConfig(integrationId, ["main"])
+        setConfig(newDatadogConfig)
+    }
 
     const toggleIndex = (indexId: string) => {
-        const currentIndexes = datadogConfig.defaultIndexes || [];
-        const isSelected = currentIndexes.includes(indexId);
-        
-        let newIndexes: string[];
+        const currentIndexes = datadogConfig.defaultIndexes || []
+        const isSelected = currentIndexes.includes(indexId)
+
+        let newIndexes: string[]
         if (isSelected) {
             // Remove the index
-            newIndexes = currentIndexes.filter(id => id !== indexId);
+            newIndexes = currentIndexes.filter(id => id !== indexId)
             // Ensure at least one index is selected (default to "main" if empty)
             if (newIndexes.length === 0) {
-                newIndexes = ["main"];
+                newIndexes = ["main"]
             }
         } else {
             // Add the index
-            newIndexes = [...currentIndexes, indexId];
+            newIndexes = [...currentIndexes, indexId]
         }
-        
-        const newDatadogConfig = new DatadogConfig(
-            datadogConfig.integrationId,
-            newIndexes
-        );
-        setConfig(newDatadogConfig);
-    };
+
+        const newDatadogConfig = new DatadogConfig(datadogConfig.integrationId, newIndexes)
+        setConfig(newDatadogConfig)
+    }
 
     return (
         <div className="space-y-4">
             <div className="space-y-2">
                 <Label>Datadog Integration</Label>
-                <Select
-                    value={selectedIntegrationId || ''}
-                    onValueChange={updateIntegrationId}
-                >
+                <Select value={selectedIntegrationId || ""} onValueChange={updateIntegrationId}>
                     <SelectTrigger className="w-full">
                         <SelectValue placeholder="Select an integration" />
                     </SelectTrigger>
                     <SelectContent>
-                        {integrations.map((integration) => {
-                            const regionLabel = DATADOG_REGIONS.find(r => r.value === integration.region)?.label || integration.region.toUpperCase();
+                        {integrations.map(integration => {
+                            const regionLabel = DATADOG_REGIONS.find(r => r.value === integration.region)?.label || integration.region.toUpperCase()
                             return (
                                 <SelectItem key={integration.id} value={integration.id}>
                                     Datadog ({regionLabel})
                                 </SelectItem>
-                            );
+                            )
                         })}
                     </SelectContent>
                 </Select>
             </div>
 
-            <Button
-                onClick={handleConnect}
-                variant="outline"
-                size="sm"
-            >
+            <Button onClick={handleConnect} variant="outline" size="sm">
                 <Plus className="w-4 h-4" />
                 Connect Another Datadog
             </Button>
@@ -354,10 +301,7 @@ export function DatadogKnowledgeBaseIntegration({ knowledgeBase, variant, setCon
                         <Label>Default Indexes</Label>
                         <Tooltip>
                             <TooltipTrigger asChild>
-                                <button
-                                    type="button"
-                                    className="text-muted-foreground hover:text-foreground transition-colors"
-                                >
+                                <button type="button" className="text-muted-foreground hover:text-foreground transition-colors">
                                     <Info className="h-4 w-4" />
                                 </button>
                             </TooltipTrigger>
@@ -372,43 +316,26 @@ export function DatadogKnowledgeBaseIntegration({ knowledgeBase, variant, setCon
                     {isLoadingIndexes ? (
                         <Skeleton className="h-32 w-full" />
                     ) : indexes.length === 0 ? (
-                        <p className="text-sm text-muted-foreground">
-                            No indexes found. Make sure your Datadog integration has access to log indexes.
-                        </p>
+                        <p className="text-sm text-muted-foreground">No indexes found. Make sure your Datadog integration has access to log indexes.</p>
                     ) : (
                         <div className="space-y-2 max-h-48 overflow-y-auto border rounded-md p-3">
                             {indexes.map((index: DatadogIndex) => {
-                                const isSelected = datadogConfig.defaultIndexes?.includes(index.id) || false;
+                                const isSelected = datadogConfig.defaultIndexes?.includes(index.id) || false
                                 return (
                                     <div key={index.id} className="flex items-center space-x-2">
-                                        <Checkbox
-                                            id={`index-${index.id}`}
-                                            checked={isSelected}
-                                            onCheckedChange={() => toggleIndex(index.id)}
-                                        />
-                                        <Label 
-                                            htmlFor={`index-${index.id}`} 
-                                            className="font-normal cursor-pointer flex-1"
-                                        >
+                                        <Checkbox id={`index-${index.id}`} checked={isSelected} onCheckedChange={() => toggleIndex(index.id)} />
+                                        <Label htmlFor={`index-${index.id}`} className="font-normal cursor-pointer flex-1">
                                             {index.name}
-                                            {index.retentionDays && (
-                                                <span className="text-xs text-muted-foreground ml-2">
-                                                    ({index.retentionDays} days retention)
-                                                </span>
-                                            )}
+                                            {index.retentionDays && <span className="text-xs text-muted-foreground ml-2">({index.retentionDays} days retention)</span>}
                                         </Label>
                                     </div>
-                                );
+                                )
                             })}
                         </div>
                     )}
-                    {datadogConfig.defaultIndexes.length > 0 && (
-                        <p className="text-sm text-muted-foreground">
-                            Selected: {datadogConfig.defaultIndexes.join(', ')}
-                        </p>
-                    )}
+                    {datadogConfig.defaultIndexes.length > 0 && <p className="text-sm text-muted-foreground">Selected: {datadogConfig.defaultIndexes.join(", ")}</p>}
                 </div>
             )}
         </div>
-    );
+    )
 }

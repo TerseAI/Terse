@@ -4,22 +4,22 @@
  */
 
 export interface Task {
-    taskName: string;
+    taskName: string
 }
 
 export interface TaskListener<T extends Task> {
-    taskName: string;
-    onTask(task: T): void | Promise<void>;
+    taskName: string
+    onTask(task: T): void | Promise<void>
 }
 
 export interface TaskEmitter<T extends Task> {
-    emit(task: T): void;
+    emit(task: T): void
 }
 
 /** Cleanup function returned by addListener - call to unsubscribe */
-export type Unsubscribe = () => void;
+export type Unsubscribe = () => void
 
 export interface TaskQueue<T extends Task> extends TaskEmitter<T> {
-    addListener(listener: TaskListener<T>): Unsubscribe;
-    removeListener(listener: TaskListener<T>): void;
+    addListener(listener: TaskListener<T>): Unsubscribe
+    removeListener(listener: TaskListener<T>): void
 }

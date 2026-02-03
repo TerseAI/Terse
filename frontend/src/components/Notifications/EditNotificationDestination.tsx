@@ -1,11 +1,12 @@
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../ui/dialog"
 import { NotificationDestination } from "../../shared/Notifications"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../ui/dialog"
+
 import { NotificationDestinationForm } from "./NotificationDestinationForm"
 
 interface EditNotificationDestinationProps {
-    destination: NotificationDestination;
-    open: boolean;
-    onOpenChange: (open: boolean) => void;
+    destination: NotificationDestination
+    open: boolean
+    onOpenChange: (open: boolean) => void
 }
 
 export function EditNotificationDestinationDialog({ destination, open, onOpenChange }: EditNotificationDestinationProps) {
@@ -16,13 +17,8 @@ export function EditNotificationDestinationDialog({ destination, open, onOpenCha
                     <DialogTitle>Edit Notification Destination</DialogTitle>
                     <DialogDescription>Update where you receive notifications when a background agent makes a change.</DialogDescription>
                 </DialogHeader>
-                <NotificationDestinationForm 
-                    existingDestination={destination}
-                    onSuccess={() => onOpenChange(false)} 
-                    onCancel={() => onOpenChange(false)}
-                />
+                <NotificationDestinationForm existingDestination={destination} onSuccess={() => onOpenChange(false)} onCancel={() => onOpenChange(false)} />
             </DialogContent>
         </Dialog>
     )
 }
-

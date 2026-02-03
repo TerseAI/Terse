@@ -1,15 +1,17 @@
-import OpenAI from 'openai';
-import { openai as openaiConfig } from '../../config/settings';
-import { GenerateSurveyQuestionsRequest, SurveyQuestion, SurveyQuestionType } from '../../shared/PromptBuilderTypes';
-import { formatConfigContext } from './promptBuilderHelpers';
+import OpenAI from "openai"
 
-const openai = new OpenAI({ apiKey: openaiConfig.apiKey });
+import { openai as openaiConfig } from "../../config/settings"
+import { GenerateSurveyQuestionsRequest, SurveyQuestion, SurveyQuestionType } from "../../shared/PromptBuilderTypes"
+
+import { formatConfigContext } from "./promptBuilderHelpers"
+
+const openai = new OpenAI({ apiKey: openaiConfig.apiKey })
 
 export async function generateSurveyQuestions(request: GenerateSurveyQuestionsRequest): Promise<SurveyQuestion[]> {
-  try {
-    const configContext = formatConfigContext(request.inputConfigs, request.outputConfigs, request.knowledgeBaseConfigs);
-    
-    const systemPrompt = `You are an expert at understanding automation workflows and helping users create effective prompts for AI agents.
+    try {
+        const configContext = formatConfigContext(request.inputConfigs, request.outputConfigs, request.knowledgeBaseConfigs)
+
+        const systemPrompt = `You are an expert at understanding automation workflows and helping users create effective prompts for AI agents.
 
 Your task is to generate up to 3 clarifying multiple-choice questions to help refine a user's automation prompt.
 
@@ -20,7 +22,7 @@ Context:
 - Output Destinations: ${request.outputConfigs?.length || 0} configured
 - Knowledge Bases: ${request.knowledgeBaseConfigs?.length || 0} configured
 ${configContext}
-${request.existingPrompt ? `- Existing Prompt: ${request.existingPrompt}` : '- No existing prompt'}
+${request.existingPrompt ? `- Existing Prompt: ${request.existingPrompt}` : "- No existing prompt"}
 
 Guidelines:
 1. Generate 1-3 questions maximum
@@ -87,64 +89,63 @@ Example format:
       }
     }
   ]
-}`;
+}`
 
-    const userPrompt = `User's initial description:
+        const userPrompt = `User's initial description:
 ${request.description}
 
-Generate clarifying questions to help refine this automation prompt.`;
+Generate clarifying questions to help refine this automation prompt.`
 
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-5.1',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt }
-      ],
-      response_format: { type: 'json_object' },
-      temperature: 0.7,
-      max_completion_tokens: 1000
-    });
+        const completion = await openai.chat.completions.create({
+            model: "gpt-5.1",
+            messages: [
+                { role: "system", content: systemPrompt },
+                { role: "user", content: userPrompt }
+            ],
+            response_format: { type: "json_object" },
+            temperature: 0.7,
+            max_completion_tokens: 1000
+        })
 
-    const content = completion.choices?.[0]?.message?.content?.trim();
-    if (!content) {
-      throw new Error('No response from OpenAI');
+        const content = completion.choices?.[0]?.message?.content?.trim()
+        if (!content) {
+            throw new Error("No response from OpenAI")
+        }
+
+        // Parse the JSON response
+        const parsed = JSON.parse(content)
+
+        // Handle both array and object with questions array
+        let questions: SurveyQuestion[] = []
+        if (Array.isArray(parsed)) {
+            questions = parsed
+        } else if (parsed.questions && Array.isArray(parsed.questions)) {
+            questions = parsed.questions
+        } else if (parsed.question && parsed.options) {
+            // Single question wrapped in object
+            questions = [parsed]
+        } else {
+            throw new Error("Invalid response format from OpenAI")
+        }
+
+        // Validate and ensure max 3 questions
+        questions = questions.slice(0, 3)
+
+        questions = questions.map(q => ({
+            question: q.question || "",
+            type: (q.type === "multiple" ? "multiple" : "single") as SurveyQuestionType,
+            allowWriteIn: q.allowWriteIn === true,
+            options: {
+                a: q.options?.a || "",
+                b: q.options?.b || "",
+                c: q.options?.c || "",
+                d: q.options?.d || "",
+                e: q.options?.e || "Skip this question"
+            }
+        }))
+
+        return questions
+    } catch (err: any) {
+        throw new Error(`OpenAI API error: ${err.message || err}`)
     }
-
-    // Parse the JSON response
-    const parsed = JSON.parse(content);
-    
-    // Handle both array and object with questions array
-    let questions: SurveyQuestion[] = [];
-    if (Array.isArray(parsed)) {
-      questions = parsed;
-    } else if (parsed.questions && Array.isArray(parsed.questions)) {
-      questions = parsed.questions;
-    } else if (parsed.question && parsed.options) {
-      // Single question wrapped in object
-      questions = [parsed];
-    } else {
-      throw new Error('Invalid response format from OpenAI');
-    }
-
-    // Validate and ensure max 3 questions
-    questions = questions.slice(0, 3);
-    
-    questions = questions.map(q => ({
-      question: q.question || '',
-      type: (q.type === 'multiple' ? 'multiple' : 'single') as SurveyQuestionType,
-      allowWriteIn: q.allowWriteIn === true,
-      options: {
-        a: q.options?.a || '',
-        b: q.options?.b || '',
-        c: q.options?.c || '',
-        d: q.options?.d || '',
-        e: q.options?.e || 'Skip this question'
-      }
-    }));
-
-    return questions;
-  } catch (err: any) {
-    throw new Error(`OpenAI API error: ${err.message || err}`);
-  }
 }
-

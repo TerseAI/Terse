@@ -1,21 +1,21 @@
-import { IntegrationType } from "../../shared/Integrations";
-import { AgentTriggerWithConfigs } from "../../types/prisma";
-import { RunHistoryTrigger } from "../../shared/RunHistoryTypes";
-import { Identifiable } from "../../rag/Hydrator";
-import { StoredFile } from "../../services/FileStorageService";
+import { Identifiable } from "../../rag/Hydrator"
+import { StoredFile } from "../../services/FileStorageService"
+import { IntegrationType } from "../../shared/Integrations"
+import { RunHistoryTrigger } from "../../shared/RunHistoryTypes"
+import { AgentTriggerWithConfigs } from "../../types/prisma"
 
 export abstract class InputEvent {
-    abstract readonly integrationType: IntegrationType;
+    abstract readonly integrationType: IntegrationType
 
     constructor() {
         // No initialization needed - integrationType is set by subclasses
     }
 
     // This method will be used to format the Event into the format expected by the LLM. MUST BE A STRING
-    abstract formatForAgentRunner(): string;
+    abstract formatForAgentRunner(): string
 
     // Use this for formatting how we log this
-    abstract debugLog(): string;
+    abstract debugLog(): string
 
     /**
      * Check if this event matches the given agent trigger.
@@ -23,14 +23,14 @@ export abstract class InputEvent {
      * @param agentTrigger The agent trigger to check against (with config relations loaded)
      * @returns true if this event matches the agent trigger
      */
-    abstract matchesAgentTrigger(agentTrigger: AgentTriggerWithConfigs): boolean;
+    abstract matchesAgentTrigger(agentTrigger: AgentTriggerWithConfigs): boolean
 
     /**
      * Create trigger metadata for run history.
      * Each event subclass implements its own metadata extraction.
      * @returns RunHistoryTrigger with event-specific fields
      */
-    abstract createTriggerMetadata(): RunHistoryTrigger;
+    abstract createTriggerMetadata(): RunHistoryTrigger
 
     /**
      * Get file attachments associated with this event with full metadata.
@@ -41,7 +41,7 @@ export abstract class InputEvent {
     getFiles(): StoredFile[] {
         // Default implementation returns empty array
         // Subclasses can override to return files with full metadata
-        return [];
+        return []
     }
 
     /**
@@ -50,7 +50,7 @@ export abstract class InputEvent {
      * @returns true if this event implements Identifiable
      */
     isIdentifiable(): this is InputEvent & Identifiable {
-        return 'entityType' in this && 'entityId' in this;
+        return "entityType" in this && "entityId" in this
     }
 
     /**
@@ -62,9 +62,8 @@ export abstract class InputEvent {
             return {
                 entityType: this.entityType,
                 entityId: this.entityId
-            };
+            }
         }
-        return null;
+        return null
     }
 }
-

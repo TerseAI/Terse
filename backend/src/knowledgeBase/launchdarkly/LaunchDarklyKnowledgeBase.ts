@@ -1,16 +1,17 @@
-import { Session } from "../../types/session";
-import { AgentKnowledgeBaseWithConfigs, PrismaTransaction, User } from "../../types/prisma";
-import { KnowledgeBaseConfigType } from "@prisma/client";
-import { LaunchDarklyConfig } from "../../shared/Configs";
-import { IntegrationType } from "../../shared/Integrations";
-import { ToolboxEntry } from "../../outputs/abstract/Output";
-import { KnowledgeBase } from "../abstract/KnowledgeBase";
-import { Tool } from "@openai/agents";
-import { listLaunchDarklyFlagsTool } from "./tools/listFeatureFlags";
-import { getLaunchDarklyFlagDetailsTool } from "./tools/getFeatureFlagDetails";
-import { db } from "../../prismaClient";
-import logger from "../../logger";
+import { Tool } from "@openai/agents"
+import { KnowledgeBaseConfigType } from "@prisma/client"
 
+import logger from "../../logger"
+import { ToolboxEntry } from "../../outputs/abstract/Output"
+import { db } from "../../prismaClient"
+import { LaunchDarklyConfig } from "../../shared/Configs"
+import { IntegrationType } from "../../shared/Integrations"
+import { AgentKnowledgeBaseWithConfigs, PrismaTransaction, User } from "../../types/prisma"
+import { Session } from "../../types/session"
+import { KnowledgeBase } from "../abstract/KnowledgeBase"
+
+import { getLaunchDarklyFlagDetailsTool } from "./tools/getFeatureFlagDetails"
+import { listLaunchDarklyFlagsTool } from "./tools/listFeatureFlags"
 
 /**
  * LaunchDarkly Knowledge Base implementation.
@@ -19,20 +20,19 @@ import logger from "../../logger";
 export class LaunchDarklyKnowledgeBase extends KnowledgeBase<LaunchDarklyConfig> {
     constructor() {
         const toolbox: ToolboxEntry[] = [
-            { tool: listLaunchDarklyFlagsTool as Tool, isReadOnly: true, integration: IntegrationType.LAUNCHDARKLY, displayName: 'List feature flags' },
-            { tool: getLaunchDarklyFlagDetailsTool as Tool, isReadOnly: true, integration: IntegrationType.LAUNCHDARKLY, displayName: 'Get flag details' },
-        ];
+            { tool: listLaunchDarklyFlagsTool as Tool, isReadOnly: true, integration: IntegrationType.LAUNCHDARKLY, displayName: "List feature flags" },
+            { tool: getLaunchDarklyFlagDetailsTool as Tool, isReadOnly: true, integration: IntegrationType.LAUNCHDARKLY, displayName: "Get flag details" }
+        ]
 
-        super(KnowledgeBaseConfigType.LAUNCHDARKLY, toolbox);
+        super(KnowledgeBaseConfigType.LAUNCHDARKLY, toolbox)
     }
-
 
     async validateConfig(knowledgeBase: LaunchDarklyConfig, _userId: string): Promise<void> {
         if (!knowledgeBase.projectKey) {
-            throw new Error('Invalid knowledge base config for launchdarkly: missing projectKey');
+            throw new Error("Invalid knowledge base config for launchdarkly: missing projectKey")
         }
         if (!knowledgeBase.environmentKeys || knowledgeBase.environmentKeys.length === 0) {
-            throw new Error('Invalid knowledge base config for launchdarkly: requires at least one environment key');
+            throw new Error("Invalid knowledge base config for launchdarkly: requires at least one environment key")
         }
     }
 
@@ -41,9 +41,9 @@ export class LaunchDarklyKnowledgeBase extends KnowledgeBase<LaunchDarklyConfig>
             data: {
                 automation_knowledge_base_id: channelKnowledgeBaseId,
                 project_key: knowledgeBase.projectKey,
-                environment_keys: knowledgeBase.environmentKeys,
+                environment_keys: knowledgeBase.environmentKeys
             }
-        });
+        })
     }
 
     /**
@@ -52,27 +52,27 @@ export class LaunchDarklyKnowledgeBase extends KnowledgeBase<LaunchDarklyConfig>
      */
     protected getSystemInstructionsForConfigs(configs: AgentKnowledgeBaseWithConfigs[]): string {
         if (configs.length === 0) {
-            throw new Error('No LaunchDarkly KB configs provided');
+            throw new Error("No LaunchDarkly KB configs provided")
         }
-        
-        const sections: string[] = [];
+
+        const sections: string[] = []
 
         // Header
-        sections.push('=== LAUNCHDARKLY KNOWLEDGE BASE ===');
-        
+        sections.push("=== LAUNCHDARKLY KNOWLEDGE BASE ===")
+
         // List all available configurations
-        const configList: string[] = [];
+        const configList: string[] = []
         for (const config of configs) {
             if (!config.launchdarkly_config) {
-                throw new Error('LaunchDarkly config not found');
+                throw new Error("LaunchDarkly config not found")
             }
-            const projectKey = config.launchdarkly_config.project_key;
-            const environmentKeys = config.launchdarkly_config.environment_keys || [];
-            configList.push(`  • Integration ID: ${config.integration_id} - Project: ${projectKey}, Environments: ${environmentKeys.join(', ')}`);
+            const projectKey = config.launchdarkly_config.project_key
+            const environmentKeys = config.launchdarkly_config.environment_keys || []
+            configList.push(`  • Integration ID: ${config.integration_id} - Project: ${projectKey}, Environments: ${environmentKeys.join(", ")}`)
         }
-        sections.push('Available configurations:');
-        sections.push(configList.join('\n'));
-        sections.push('\nWhen calling LaunchDarkly tools, you MUST include the `integrationId` parameter matching one of the integration IDs listed above.');
+        sections.push("Available configurations:")
+        sections.push(configList.join("\n"))
+        sections.push("\nWhen calling LaunchDarkly tools, you MUST include the `integrationId` parameter matching one of the integration IDs listed above.")
 
         // Usage strategy
         sections.push(`
@@ -84,8 +84,8 @@ WORKFLOW:
 BEST PRACTICES:
 - Always specify which environment you're referring to
 - Link to LaunchDarkly UI for users to view/edit flags directly
-- Clarify current state vs targeting rules when discussing flag behavior`);
+- Clarify current state vs targeting rules when discussing flag behavior`)
 
-        return sections.join('\n');
+        return sections.join("\n")
     }
 }

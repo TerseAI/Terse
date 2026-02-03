@@ -1,48 +1,49 @@
-import { RunContext, tool } from "@openai/agents";
-import { z } from "zod";
-import { Client } from '@notionhq/client';
-import { GetDataSourceResponse } from '@notionhq/client/build/src/api-endpoints';
-import { IntegrationType } from "../../../shared/Integrations";
-import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner";
-import { formatError } from "../../../tools/toolUtils";
-import { ToolName } from "../../../tools/ToolNames";
-import logger from "../../../logger";
-import { Session } from "../../../types/session";
-import { NotionIntegrationManager } from "../../../integrations/NotionIntegration";
+import { Client } from "@notionhq/client"
+import { GetDataSourceResponse } from "@notionhq/client/build/src/api-endpoints"
+import { RunContext, tool } from "@openai/agents"
+import { z } from "zod"
+
+import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
+import { NotionIntegrationManager } from "../../../integrations/NotionIntegration"
+import logger from "../../../logger"
+import { IntegrationType } from "../../../shared/Integrations"
+import { ToolName } from "../../../tools/ToolNames"
+import { formatError } from "../../../tools/toolUtils"
+import { Session } from "../../../types/session"
 
 // Helper function to extract readable values from Notion property objects
 function extractPropertyValue(property: any): any {
     switch (property.type) {
-        case 'title':
-            return property.title.map((t: any) => t.plain_text).join('');
-        case 'rich_text':
-            return property.rich_text.map((t: any) => t.plain_text).join('');
-        case 'number':
-            return property.number;
-        case 'select':
-            return property.select?.name || null;
-        case 'multi_select':
-            return property.multi_select.map((s: any) => s.name);
-        case 'date':
-            return property.date;
-        case 'checkbox':
-            return property.checkbox;
-        case 'url':
-            return property.url;
-        case 'email':
-            return property.email;
-        case 'phone_number':
-            return property.phone_number;
-        case 'status':
-            return property.status?.name || null;
-        case 'people':
-            return property.people.map((p: any) => p.name || p.id);
-        case 'files':
-            return property.files.map((f: any) => f.name);
-        case 'relation':
-            return property.relation.map((r: any) => r.id);
+        case "title":
+            return property.title.map((t: any) => t.plain_text).join("")
+        case "rich_text":
+            return property.rich_text.map((t: any) => t.plain_text).join("")
+        case "number":
+            return property.number
+        case "select":
+            return property.select?.name || null
+        case "multi_select":
+            return property.multi_select.map((s: any) => s.name)
+        case "date":
+            return property.date
+        case "checkbox":
+            return property.checkbox
+        case "url":
+            return property.url
+        case "email":
+            return property.email
+        case "phone_number":
+            return property.phone_number
+        case "status":
+            return property.status?.name || null
+        case "people":
+            return property.people.map((p: any) => p.name || p.id)
+        case "files":
+            return property.files.map((f: any) => f.name)
+        case "relation":
+            return property.relation.map((r: any) => r.id)
         default:
-            return null;
+            return null
     }
 }
 
@@ -81,10 +82,15 @@ FILTER_PROPERTIES:
 
 NOTE: This tool does NOT return the database schema. Use notion_get_schema if you need schema information.`,
     parameters: z.object({
-        integrationId: z.string().describe('The integration ID of the Notion workspace to use.'),
-        databaseId: z.string().describe('The Notion database ID (data source ID) to query.'),
-        filter_properties: z.array(z.string()).nullable().optional().describe('Array of property names or IDs to include in results. Only these properties will be returned, improving performance. Use property names from the database schema.'),
-        filter: z.string().nullable().optional().describe(`JSON string with filter object to query pages matching specific criteria. Supports complex filtering with AND/OR logic, property filters, and timestamp filters.
+        integrationId: z.string().describe("The integration ID of the Notion workspace to use."),
+        databaseId: z.string().describe("The Notion database ID (data source ID) to query."),
+        filter_properties: z
+            .array(z.string())
+            .nullable()
+            .optional()
+            .describe("Array of property names or IDs to include in results. Only these properties will be returned, improving performance. Use property names from the database schema."),
+        filter: z.string().nullable().optional()
+            .describe(`JSON string with filter object to query pages matching specific criteria. Supports complex filtering with AND/OR logic, property filters, and timestamp filters.
 
 BASIC STRUCTURE:
 - Property filter: { "property": "Property Name", "type": { "condition": value } }
@@ -211,120 +217,121 @@ EXAMPLES:
 - Simple: "{\\"property\\": \\"Task completed\\", \\"checkbox\\": {\\"equals\\": true}}"
 - Compound: "{\\"and\\": [{\\"property\\": \\"Done\\", \\"checkbox\\": {\\"equals\\": true}}, {\\"or\\": [{\\"property\\": \\"Tags\\", \\"multi_select\\": {\\"contains\\": \\"A\\"}}, {\\"property\\": \\"Tags\\", \\"multi_select\\": {\\"contains\\": \\"B\\"}}]}]}"
 - Timestamp: "{\\"timestamp\\": \\"created_time\\", \\"created_time\\": {\\"on_or_after\\": \\"2023-02-08\\"}}"`),
-        page_size: z.number().int().min(1).max(100).nullable().optional().describe('Number of results per page (1-100). Default returns all results. Use pagination for large databases.'),
-        start_cursor: z.string().nullable().optional().describe('Cursor from previous response to fetch next page. Use next_cursor from response when has_more is true.'),
-        result_type: z.enum(['page', 'data_source']).nullable().optional().describe('Filter results to only pages or data sources. Only relevant for wiki databases.'),
+        page_size: z.number().int().min(1).max(100).nullable().optional().describe("Number of results per page (1-100). Default returns all results. Use pagination for large databases."),
+        start_cursor: z.string().nullable().optional().describe("Cursor from previous response to fetch next page. Use next_cursor from response when has_more is true."),
+        result_type: z.enum(["page", "data_source"]).nullable().optional().describe("Filter results to only pages or data sources. Only relevant for wiki databases.")
     }),
     execute: async ({ integrationId, databaseId, filter_properties, filter, page_size, start_cursor, result_type }, runContext?: RunContext<SessionWithTracking<Session>>) => {
-        logger.debug("Executing notion_query_database tool with filters", { integrationId, databaseId, filter_properties, filter, page_size, start_cursor });
+        logger.debug("Executing notion_query_database tool with filters", { integrationId, databaseId, filter_properties, filter, page_size, start_cursor })
         if (!runContext?.context) {
-            throw new Error("No context provided");
+            throw new Error("No context provided")
         }
 
-        const manager = new NotionIntegrationManager();
-        const accessToken = await manager.getAccessToken(integrationId);
+        const manager = new NotionIntegrationManager()
+        const accessToken = await manager.getAccessToken(integrationId)
         if (!accessToken) {
-            throw new Error(`Notion integration not found or access denied for integrationId: ${integrationId}`);
+            throw new Error(`Notion integration not found or access denied for integrationId: ${integrationId}`)
         }
 
         const notion = new Client({
-            auth: accessToken,
-        });
+            auth: accessToken
+        })
 
         // Build query parameters
         const queryParams: any = {
-            data_source_id: databaseId,
-        };
+            data_source_id: databaseId
+        }
 
         if (filter_properties && filter_properties.length > 0) {
-            queryParams.filter_properties = filter_properties;
+            queryParams.filter_properties = filter_properties
         }
 
         if (filter) {
             // Parse the JSON string
-            let parsedFilter: Record<string, any>;
+            let parsedFilter: Record<string, any>
             try {
-                parsedFilter = JSON.parse(filter);
+                parsedFilter = JSON.parse(filter)
             } catch (error) {
                 return {
                     pages: [],
                     total_returned: 0,
                     has_more: false,
                     next_cursor: null,
-                    error: 'Invalid JSON in filter parameter',
-                    hint: 'Ensure filter is a valid JSON string'
-                };
+                    error: "Invalid JSON in filter parameter",
+                    hint: "Ensure filter is a valid JSON string"
+                }
             }
             // Filter is validated by Notion API at runtime, so we can safely pass it through
-            queryParams.filter = parsedFilter;
+            queryParams.filter = parsedFilter
         }
-        
+
         if (page_size) {
-            queryParams.page_size = page_size;
+            queryParams.page_size = page_size
         }
 
         if (start_cursor) {
-            queryParams.start_cursor = start_cursor;
+            queryParams.start_cursor = start_cursor
         }
-        
+
         if (result_type) {
-            queryParams.result_type = result_type;
+            queryParams.result_type = result_type
         }
 
         // Fetch pages using data source query with filters
-        const response = await notion.dataSources.query(queryParams);
+        const response = await notion.dataSources.query(queryParams)
 
         // Retrieve data source info to get the database URL
         const dataSourceInfo: GetDataSourceResponse = await notion.dataSources.retrieve({
-            data_source_id: databaseId,
-        });
-        const databaseUrl = 'url' in dataSourceInfo ? dataSourceInfo.url : undefined;
-        const databaseName = 'title' in dataSourceInfo ? (dataSourceInfo.title?.[0]?.plain_text || 'Unknown Database') : 'Unknown Database';
+            data_source_id: databaseId
+        })
+        const databaseUrl = "url" in dataSourceInfo ? dataSourceInfo.url : undefined
+        const databaseName = "title" in dataSourceInfo ? dataSourceInfo.title?.[0]?.plain_text || "Unknown Database" : "Unknown Database"
 
         // Convert to readable format
-        const pages = response.results.map((page: any) => {
-            if (!page.properties) return null;
+        const pages = response.results
+            .map((page: any) => {
+                if (!page.properties) return null
 
-            // Extract all properties as simple key-value pairs
-            const properties: Record<string, any> = {};
-            for (const [key, value] of Object.entries(page.properties)) {
-                properties[key] = extractPropertyValue(value);
-            }
+                // Extract all properties as simple key-value pairs
+                const properties: Record<string, any> = {}
+                for (const [key, value] of Object.entries(page.properties)) {
+                    properties[key] = extractPropertyValue(value)
+                }
 
-            return {
-                page_id: page.id,
-                properties: properties,
-                url: page.url,
-                created_time: page.created_time,
-                last_edited_time: page.last_edited_time,
-            };
-        }).filter(Boolean);
+                return {
+                    page_id: page.id,
+                    properties: properties,
+                    url: page.url,
+                    created_time: page.created_time,
+                    last_edited_time: page.last_edited_time
+                }
+            })
+            .filter(Boolean)
 
         // Return action as part of the result
-        const filterDescription = filter ? 'with filters' : 'without filters';
+        const filterDescription = filter ? "with filters" : "without filters"
         const action = {
-            action: 'Queried database',
+            action: "Queried database",
             integration: IntegrationType.NOTION,
             target: databaseName,
-            details: `Queried database ${filterDescription} and retrieved ${pages.length} ${pages.length === 1 ? 'page' : 'pages'}`,
+            details: `Queried database ${filterDescription} and retrieved ${pages.length} ${pages.length === 1 ? "page" : "pages"}`,
             url: databaseUrl as string | undefined,
-            type: 'read',
-        };
+            type: "read"
+        }
 
-        logger.debug("Notion query database tool response", { 
-            pages_count: pages.length, 
+        logger.debug("Notion query database tool response", {
+            pages_count: pages.length,
             has_more: response.has_more,
-            next_cursor: response.next_cursor 
-        });
+            next_cursor: response.next_cursor
+        })
 
         return {
             pages: pages,
             total_returned: pages.length,
             actions: [action],
             has_more: response.has_more || false,
-            next_cursor: response.next_cursor || null,
-        };
+            next_cursor: response.next_cursor || null
+        }
     },
     errorFunction: formatError
-});
-
+})

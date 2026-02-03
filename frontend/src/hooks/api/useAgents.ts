@@ -1,32 +1,29 @@
-import useSWR, { mutate, type KeyedMutator } from 'swr';
-import { BackendProvider } from '@/services/backend';
-import type {
-    Agent,
-    AgentsResponse,
-    AgentUpdate,
-} from '@/shared/types';
-import { deserializeConfig } from '@/utility/ConfigUtils';
-import { agentListKey, agentDetailKey, type AgentListArgs } from '@/shared/InvalidationKeys';
+import useSWR, { type KeyedMutator, mutate } from "swr"
+
+import { BackendProvider } from "@/services/backend"
+import { type AgentListArgs, agentDetailKey, agentListKey } from "@/shared/InvalidationKeys"
+import type { Agent, AgentUpdate, AgentsResponse } from "@/shared/types"
+import { deserializeConfig } from "@/utility/ConfigUtils"
 
 type UpdateAgentArgs = {
-    id: string;
-    data: AgentUpdate;
-    mutateAgent?: KeyedMutator<Agent>;
-};
+    id: string
+    data: AgentUpdate
+    mutateAgent?: KeyedMutator<Agent>
+}
 
 type ListMutationContext = {
-    params: AgentListArgs;
-    mutateList: KeyedMutator<AgentsResponse>;
-};
+    params: AgentListArgs
+    mutateList: KeyedMutator<AgentsResponse>
+}
 
 export function useAgents(params: AgentListArgs = {}) {
-    const key = agentListKey(params);
+    const key = agentListKey(params)
 
     const { data, error, isValidating, mutate } = useSWR<AgentsResponse>(
         key,
         async () => {
-            const { page = 1, limit = 25, isActive, search } = params;
-            const response = await BackendProvider.getUserAgents(page, limit, isActive, search);
+            const { page = 1, limit = 25, isActive, search } = params
+            const response = await BackendProvider.getUserAgents(page, limit, isActive, search)
             // Deserialize configs from JSON to class instances
             return {
                 ...response,
@@ -36,21 +33,23 @@ export function useAgents(params: AgentListArgs = {}) {
                         ...trigger,
                         config: deserializeConfig(trigger.config)
                     })),
-                    outputs: agent.outputs ? agent.outputs.map(output => ({
-                        ...output,
-                        config: deserializeConfig(output.config)
-                    })) : [],
+                    outputs: agent.outputs
+                        ? agent.outputs.map(output => ({
+                              ...output,
+                              config: deserializeConfig(output.config)
+                          }))
+                        : [],
                     knowledgeBases: agent.knowledgeBases?.map(kb => ({
                         ...kb,
                         config: deserializeConfig(kb.config)
                     }))
                 }))
-            };
+            }
         },
         {
-            keepPreviousData: true,
-        },
-    );
+            keepPreviousData: true
+        }
+    )
 
     return {
         agents: data?.agents ?? [],
@@ -58,93 +57,94 @@ export function useAgents(params: AgentListArgs = {}) {
         isLoading: !data && !error,
         isError: error,
         isValidating,
-        mutate,
-    };
+        mutate
+    }
 }
 
 export function useAgent(id: string | null) {
-    const key = agentDetailKey(id);
+    const key = agentDetailKey(id)
 
     const { data, error, isValidating, mutate } = useSWR<Agent>(
         key,
-        id ? async () => {
-            const agent = await BackendProvider.getAgentById(id);
-            // Deserialize configs from JSON to class instances
-            return {
-                ...agent,
-                triggers: agent.triggers.map(trigger => ({
-                    ...trigger,
-                    config: deserializeConfig(trigger.config)
-                })),
-                outputs: agent.outputs ? agent.outputs.map(output => ({
-                    ...output,
-                    config: deserializeConfig(output.config)
-                })) : [],
-                knowledgeBases: agent.knowledgeBases?.map(kb => ({
-                    ...kb,
-                    config: deserializeConfig(kb.config)
-                }))
-            };
-        } : null,
-    );
+        id
+            ? async () => {
+                  const agent = await BackendProvider.getAgentById(id)
+                  // Deserialize configs from JSON to class instances
+                  return {
+                      ...agent,
+                      triggers: agent.triggers.map(trigger => ({
+                          ...trigger,
+                          config: deserializeConfig(trigger.config)
+                      })),
+                      outputs: agent.outputs
+                          ? agent.outputs.map(output => ({
+                                ...output,
+                                config: deserializeConfig(output.config)
+                            }))
+                          : [],
+                      knowledgeBases: agent.knowledgeBases?.map(kb => ({
+                          ...kb,
+                          config: deserializeConfig(kb.config)
+                      }))
+                  }
+              }
+            : null
+    )
 
     return {
         agent: data,
         isLoading: !!id && !data && !error,
         isError: error,
         isValidating,
-        mutate,
-    };
+        mutate
+    }
 }
 
 function invalidateAgentLists() {
-    return mutate((key) => Array.isArray(key) && key[0] === 'agents');
+    return mutate(key => Array.isArray(key) && key[0] === "agents")
 }
 
 function invalidateAgentDetail(id: string) {
-    return mutate(agentDetailKey(id));
+    return mutate(agentDetailKey(id))
 }
 
 export function useAgentMutations() {
     const createAgent = async (data: AgentUpdate) => {
-        const result = await BackendProvider.createAgent(data);
-        await invalidateAgentLists();
-        return result;
-    };
+        const result = await BackendProvider.createAgent(data)
+        await invalidateAgentLists()
+        return result
+    }
 
     const updateAgent = async ({ id, data, mutateAgent }: UpdateAgentArgs) => {
-        await BackendProvider.updateAgent(id, data);
+        await BackendProvider.updateAgent(id, data)
 
         if (mutateAgent) {
-            await mutateAgent();
+            await mutateAgent()
         } else {
-            await invalidateAgentDetail(id);
+            await invalidateAgentDetail(id)
         }
 
-        await invalidateAgentLists();
-    };
+        await invalidateAgentLists()
+    }
 
     const deleteAgent = async (id: string) => {
-        const result = await BackendProvider.deleteAgent(id);
-        await invalidateAgentDetail(id);
-        await invalidateAgentLists();
-        return result;
-    };
+        const result = await BackendProvider.deleteAgent(id)
+        await invalidateAgentDetail(id)
+        await invalidateAgentLists()
+        return result
+    }
 
-    const toggleAgentActive = async (
-        agent: Agent,
-        listContext?: ListMutationContext,
-    ) => {
-        const newStatus = !agent.isActive;
+    const toggleAgentActive = async (agent: Agent, listContext?: ListMutationContext) => {
+        const newStatus = !agent.isActive
 
         if (listContext) {
-            const { mutateList, params } = listContext;
+            const { mutateList, params } = listContext
 
             await mutateList(
                 async () => {
-                    await BackendProvider.updateAgent(agent.id, { isActive: newStatus });
-                    const { page = 1, limit = 25, isActive, search } = params;
-                    const response = await BackendProvider.getUserAgents(page, limit, isActive, search);
+                    await BackendProvider.updateAgent(agent.id, { isActive: newStatus })
+                    const { page = 1, limit = 25, isActive, search } = params
+                    const response = await BackendProvider.getUserAgents(page, limit, isActive, search)
                     // Deserialize configs from JSON to class instances
                     return {
                         ...response,
@@ -154,49 +154,50 @@ export function useAgentMutations() {
                                 ...trigger,
                                 config: deserializeConfig(trigger.config)
                             })),
-                            outputs: agent.outputs ? agent.outputs.map(output => ({
-                                ...output,
-                                config: deserializeConfig(output.config)
-                            })) : [],
+                            outputs: agent.outputs
+                                ? agent.outputs.map(output => ({
+                                      ...output,
+                                      config: deserializeConfig(output.config)
+                                  }))
+                                : [],
                             knowledgeBases: agent.knowledgeBases?.map(kb => ({
                                 ...kb,
                                 config: deserializeConfig(kb.config)
                             }))
                         }))
-                    };
+                    }
                 },
                 {
                     optimisticData: (currentData?: AgentsResponse, displayedData?: AgentsResponse) => {
-                        const snapshot = currentData ?? displayedData ?? {
-                            agents: [],
-                            pagination: {
-                                page: params.page ?? 1,
-                                limit: params.limit ?? 25,
-                                total: 0,
-                                totalPages: 1,
-                            },
-                        };
+                        const snapshot = currentData ??
+                            displayedData ?? {
+                                agents: [],
+                                pagination: {
+                                    page: params.page ?? 1,
+                                    limit: params.limit ?? 25,
+                                    total: 0,
+                                    totalPages: 1
+                                }
+                            }
 
                         return {
                             ...snapshot,
-                            agents: snapshot.agents.map((item) =>
-                                item.id === agent.id ? { ...item, isActive: newStatus } : item,
-                            ),
-                        };
+                            agents: snapshot.agents.map(item => (item.id === agent.id ? { ...item, isActive: newStatus } : item))
+                        }
                     },
                     rollbackOnError: true,
-                    revalidate: false,
-                },
-            );
+                    revalidate: false
+                }
+            )
         } else {
-            await BackendProvider.updateAgent(agent.id, { isActive: newStatus });
+            await BackendProvider.updateAgent(agent.id, { isActive: newStatus })
         }
 
-        await invalidateAgentDetail(agent.id);
-        await invalidateAgentLists();
+        await invalidateAgentDetail(agent.id)
+        await invalidateAgentLists()
 
-        return { ...agent, isActive: newStatus };
-    };
+        return { ...agent, isActive: newStatus }
+    }
 
     return {
         createAgent,
@@ -204,6 +205,6 @@ export function useAgentMutations() {
         deleteAgent,
         toggleAgentActive,
         invalidateAgentLists,
-        invalidateAgentDetail,
-    };
+        invalidateAgentDetail
+    }
 }

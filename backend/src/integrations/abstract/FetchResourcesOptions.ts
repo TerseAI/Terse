@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from "zod"
 
 /**
  * Options for fetchResourcesForOrganization.
@@ -10,22 +10,17 @@ import { z } from "zod";
 
 // Notion-specific fetch options
 const NotionFetchOptionsSchema = z.object({
-  objectType: z
-    .enum(["page", "database"])
-    .nullable()
-    .describe(
-      "Filter by resource type. 'database' for structured data tables, 'page' for documents."
-    ),
-});
+    objectType: z.enum(["page", "database"]).nullable().describe("Filter by resource type. 'database' for structured data tables, 'page' for documents.")
+})
 
 // Combined fetch options schema for all integrations.
 // Use .nullable() for optional keys so OpenAI's strict schema (required array) is satisfied.
 export const FetchResourcesOptionsSchema = z
-  .object({
-    notion: NotionFetchOptionsSchema.nullable(),
-  })
-  .nullable()
-  .describe("Optional integration-specific filtering options");
+    .object({
+        notion: NotionFetchOptionsSchema.nullable()
+    })
+    .nullable()
+    .describe("Optional integration-specific filtering options")
 
 // Type inferred from schema - always stays in sync
-export type FetchResourcesOptions = z.infer<typeof FetchResourcesOptionsSchema>;
+export type FetchResourcesOptions = z.infer<typeof FetchResourcesOptionsSchema>

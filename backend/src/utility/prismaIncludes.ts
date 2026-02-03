@@ -13,8 +13,8 @@ export function getInputConfigInclude() {
         github_config: true,
         gmail_config: true,
         figma_config: true,
-        time_trigger_config: true,
-    } as const;
+        time_trigger_config: true
+    } as const
 }
 
 /**
@@ -31,8 +31,8 @@ export function getOutputConfigInclude() {
         confluence_config: true,
         github_config: true,
         gmail_config: true,
-        figma_config: true,
-    } as const;
+        figma_config: true
+    } as const
 }
 
 /**
@@ -43,8 +43,8 @@ export function getKnowledgeBaseConfigInclude() {
         posthog_config: true,
         github_kb_config: true,
         launchdarkly_config: true,
-        datadog_config: true,
-    } as const;
+        datadog_config: true
+    } as const
 }
 
 /**
@@ -64,5 +64,5 @@ export function getAgentHydrationInclude() {
             include: getKnowledgeBaseConfigInclude()
         },
         tool_approvals: true
-    } as const;
+    } as const
 }

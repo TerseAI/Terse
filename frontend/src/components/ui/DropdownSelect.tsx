@@ -1,32 +1,26 @@
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuRadioGroup,
-    DropdownMenuRadioItem,
-    DropdownMenuTrigger,
-} from "./dropdown-menu";
-import { Button } from "./button";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown } from "lucide-react"
+
+import { Button } from "./button"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuTrigger } from "./dropdown-menu"
 
 export type StatusOption = {
-    label: string;
-    value: string;
+    label: string
+    value: string
 }
 
 type DropdownSelectProps = {
-    statusOptions: StatusOption[];
-    selectedOption: StatusOption | null;
-    setSelected: (value: string) => void;
+    statusOptions: StatusOption[]
+    selectedOption: StatusOption | null
+    setSelected: (value: string) => void
     additionalAction?: {
-        label: string;
-        onClick: () => void;
-    };
-    placeholder?: string;
-    modal?: boolean;
+        label: string
+        onClick: () => void
+    }
+    placeholder?: string
+    modal?: boolean
 }
 
-const DropdownSelect = ({ statusOptions, selectedOption, setSelected, additionalAction, placeholder = 'Select an option', modal = true }: DropdownSelectProps) => {
+const DropdownSelect = ({ statusOptions, selectedOption, setSelected, additionalAction, placeholder = "Select an option", modal = true }: DropdownSelectProps) => {
     return (
         <DropdownMenu modal={modal}>
             <DropdownMenuTrigger asChild>
@@ -36,21 +30,14 @@ const DropdownSelect = ({ statusOptions, selectedOption, setSelected, additional
                 </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent className="max-h-60" align="start">
-                <DropdownMenuRadioGroup
-                    value={selectedOption?.value ?? ''}
-                    onValueChange={setSelected}
-                >
+                <DropdownMenuRadioGroup value={selectedOption?.value ?? ""} onValueChange={setSelected}>
                     {statusOptions.map((option, idx) => (
                         <DropdownMenuRadioItem key={idx} value={option.value}>
                             {option.label}
                         </DropdownMenuRadioItem>
                     ))}
                 </DropdownMenuRadioGroup>
-                {additionalAction && (
-                    <DropdownMenuItem onClick={additionalAction.onClick}>
-                        {additionalAction.label}
-                    </DropdownMenuItem>
-                )}
+                {additionalAction && <DropdownMenuItem onClick={additionalAction.onClick}>{additionalAction.label}</DropdownMenuItem>}
             </DropdownMenuContent>
         </DropdownMenu>
     )

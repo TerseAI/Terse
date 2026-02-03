@@ -1,35 +1,30 @@
-import { Plus, AlertTriangleIcon } from 'lucide-react';
-import { Button } from '../ui/button';
-import DropdownSelect from '../ui/DropdownSelect';
-import { LinearIntegration as LinearIntegrationType, IntegrationType } from "@/shared/Integrations"
-import { LinearOutputConfig, ConfigType } from '../../shared/Configs';
-import { InputConfigSelectorProps } from './types';
-import { useLinearIntegrations } from '@/hooks/api/useLinearIntegrations';
-import { useOAuthConnection } from '@/hooks/useOAuthConnection';
-import { useIntegrationId } from '@/hooks/useIntegrationId';
-import { IconForConfigType } from '../../pages/Agents/components/Integration';
-import { LinearTeamSelector } from './LinearTeamSelector';
+import { AlertTriangleIcon, Plus } from "lucide-react"
 
-export function LinearOutputIntegration({
-    input,
-    variant,
-    setConfig
-}: InputConfigSelectorProps) {
-    const { integrations, isLoading } = useLinearIntegrations();
-    const { connect: connectOAuth, isConnecting: isOAuthConnecting } = useOAuthConnection<IntegrationType.LINEAR>(IntegrationType.LINEAR, {});
-    const currentConfig = input.config as LinearOutputConfig | undefined;
-    const [selectedIntegrationId] = useIntegrationId(currentConfig, ConfigType.LINEAR_OUTPUT);
+import { useLinearIntegrations } from "@/hooks/api/useLinearIntegrations"
+import { useIntegrationId } from "@/hooks/useIntegrationId"
+import { useOAuthConnection } from "@/hooks/useOAuthConnection"
+import { IntegrationType, LinearIntegration as LinearIntegrationType } from "@/shared/Integrations"
+
+import { IconForConfigType } from "../../pages/Agents/components/Integration"
+import { ConfigType, LinearOutputConfig } from "../../shared/Configs"
+import DropdownSelect from "../ui/DropdownSelect"
+import { Button } from "../ui/button"
+
+import { LinearTeamSelector } from "./LinearTeamSelector"
+import { InputConfigSelectorProps } from "./types"
+
+export function LinearOutputIntegration({ input, variant, setConfig }: InputConfigSelectorProps) {
+    const { integrations, isLoading } = useLinearIntegrations()
+    const { connect: connectOAuth, isConnecting: isOAuthConnecting } = useOAuthConnection<IntegrationType.LINEAR>(IntegrationType.LINEAR, {})
+    const currentConfig = input.config as LinearOutputConfig | undefined
+    const [selectedIntegrationId] = useIntegrationId(currentConfig, ConfigType.LINEAR_OUTPUT)
 
     function onSelect(value: string) {
-        const integration = integrations.find((integration: LinearIntegrationType) => integration.id === value);
+        const integration = integrations.find((integration: LinearIntegrationType) => integration.id === value)
         if (integration) {
             // Preserve existing team and project when switching integrations
-            const linearConfig = new LinearOutputConfig(
-                integration.id,
-                currentConfig?.teamId,
-                currentConfig?.teamName
-            );
-            setConfig(linearConfig);
+            const linearConfig = new LinearOutputConfig(integration.id, currentConfig?.teamId, currentConfig?.teamName)
+            setConfig(linearConfig)
         }
     }
 
@@ -39,57 +34,48 @@ export function LinearOutputIntegration({
                 <div className="animate-spin rounded-full h-4 w-4 border-2 border-accent border-t-transparent"></div>
                 Loading connections...
             </div>
-        );
+        )
     }
 
     if (integrations.length === 0) {
-        if (variant === 'card') {
+        if (variant === "card") {
             return (
                 <div className="flex items-center gap-1 text-xs text-muted-foreground">
                     <AlertTriangleIcon className="size-3 text-yellow-500" />
                     Connect Linear
                 </div>
-            );
+            )
         }
         return (
             <div className="flex flex-col items-center gap-3 p-4 rounded-lg border border-dashed border-input bg-card text-center">
-                <div className="text-sm text-muted-foreground">
-                    No Linear accounts connected
-                </div>
-                <Button
-                    onClick={connectOAuth}
-                    disabled={isOAuthConnecting}
-                >
+                <div className="text-sm text-muted-foreground">No Linear accounts connected</div>
+                <Button onClick={connectOAuth} disabled={isOAuthConnecting}>
                     <Plus className="w-4 h-4" />
-                    {isOAuthConnecting ? 'Connecting...' : `Connect Linear`}
+                    {isOAuthConnecting ? "Connecting..." : `Connect Linear`}
                 </Button>
             </div>
-        );
+        )
     }
 
     const connectionSelections = integrations.map((integration: LinearIntegrationType) => ({
-        label: integration.workspaceName || 'Unknown Team',
+        label: integration.workspaceName || "Unknown Team",
         value: integration.id
-    }));
+    }))
 
     let selectedOption = connectionSelections.find(option => option.value === currentConfig?.integrationId)
     if (!selectedIntegrationId && !selectedOption && connectionSelections.length == 1) {
-        const defaultIntegration = connectionSelections[0];
-        setConfig(new LinearOutputConfig(
-            defaultIntegration.value,
-            currentConfig?.teamId,
-            currentConfig?.teamName
-        ));
-        selectedOption = defaultIntegration;
+        const defaultIntegration = connectionSelections[0]
+        setConfig(new LinearOutputConfig(defaultIntegration.value, currentConfig?.teamId, currentConfig?.teamName))
+        selectedOption = defaultIntegration
     } else if (!selectedOption) {
-        selectedOption = connectionSelections[0];
+        selectedOption = connectionSelections[0]
     }
 
     // Card variant: compact view
-    if (variant === 'card') {
-        const hasConfig = !!currentConfig && !!currentConfig.integrationId;
-        const needsTeam = !currentConfig?.teamId;
-        const isComplete = hasConfig && !needsTeam;
+    if (variant === "card") {
+        const hasConfig = !!currentConfig && !!currentConfig.integrationId
+        const needsTeam = !currentConfig?.teamId
+        const isComplete = hasConfig && !needsTeam
         if (!isComplete) {
             if (!hasConfig) {
                 return (
@@ -97,7 +83,7 @@ export function LinearOutputIntegration({
                         <AlertTriangleIcon className="size-3 text-yellow-500" />
                         Configure
                     </div>
-                );
+                )
             }
             if (needsTeam) {
                 return (
@@ -105,20 +91,16 @@ export function LinearOutputIntegration({
                         <AlertTriangleIcon className="size-3 text-yellow-500" />
                         Select team
                     </div>
-                );
+                )
             }
             return (
                 <div className="flex items-center gap-1 text-xs text-muted-foreground">
                     <AlertTriangleIcon className="size-3 text-yellow-500" />
                     Configure
                 </div>
-            );
+            )
         }
-        return (
-            <div className="text-sm">
-                {currentConfig?.teamName || selectedOption?.label || 'No connection selected'}
-            </div>
-        );
+        return <div className="text-sm">{currentConfig?.teamName || selectedOption?.label || "No connection selected"}</div>
     }
 
     // Dialog variant: full view
@@ -126,7 +108,7 @@ export function LinearOutputIntegration({
         <div className="flex flex-col gap-3 min-w-0 overflow-hidden">
             <div className="flex flex-row gap-2 items-center">
                 <div className="w-8 h-8 flex items-center justify-center shrink-0">
-                    <IconForConfigType type={ConfigType.LINEAR_OUTPUT}/>
+                    <IconForConfigType type={ConfigType.LINEAR_OUTPUT} />
                 </div>
                 <div className="flex-1 min-w-0">
                     <DropdownSelect
@@ -135,7 +117,7 @@ export function LinearOutputIntegration({
                         setSelected={onSelect}
                         placeholder="No connection selected"
                         additionalAction={{
-                            label: 'Connect Another Linear',
+                            label: "Connect Another Linear",
                             onClick: connectOAuth
                         }}
                     />
@@ -145,35 +127,22 @@ export function LinearOutputIntegration({
             {/* Team selector - required for output, optional for input */}
             {selectedIntegrationId && (
                 <div className="mt-3 pt-3 border-t border-border min-w-0 overflow-hidden">
-                    {!currentConfig?.teamId && (
-                        <p className="text-sm text-muted-foreground mb-3">
-                            Select a team to continue
-                        </p>
-                    )}
+                    {!currentConfig?.teamId && <p className="text-sm text-muted-foreground mb-3">Select a team to continue</p>}
                     <LinearTeamSelector
                         integrationId={selectedIntegrationId}
                         selectedTeamId={currentConfig?.teamId}
                         onSelect={(teamId: string, teamName: string) => {
-                            const updatedConfig = new LinearOutputConfig(
-                                selectedIntegrationId,
-                                teamId,
-                                teamName
-                            );
-                            setConfig(updatedConfig);
+                            const updatedConfig = new LinearOutputConfig(selectedIntegrationId, teamId, teamName)
+                            setConfig(updatedConfig)
                         }}
                     />
                 </div>
             )}
 
-            <Button
-                onClick={connectOAuth}
-                disabled={isOAuthConnecting}
-                variant="outline"
-            >
+            <Button onClick={connectOAuth} disabled={isOAuthConnecting} variant="outline">
                 <Plus className="w-4 h-4" />
-                {isOAuthConnecting ? 'Connecting...' : "Connect Another Linear"}
+                {isOAuthConnecting ? "Connecting..." : "Connect Another Linear"}
             </Button>
         </div>
-    );
+    )
 }
-

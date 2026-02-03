@@ -1,27 +1,27 @@
+import { Tool } from "@openai/agents"
+import { OutputConfigType } from "@prisma/client"
 
-import { Tool } from "@openai/agents";
-import { AgentOutputWithConfigs, PrismaTransaction, User } from "../../types/prisma";
-import { Output, ToolboxEntry } from "../abstract/Output";
-import { db } from "../../prismaClient";
-import { OutputConfigType } from "@prisma/client";
-import { NotionPageConfig } from "../../shared/Configs";
-import { notionQueryPageTool, notionModifyBlocksTool, fetchRelatedEventsTool } from "./tools";
-import { IntegrationType } from "../../shared/Integrations";
+import { db } from "../../prismaClient"
+import { NotionPageConfig } from "../../shared/Configs"
+import { IntegrationType } from "../../shared/Integrations"
+import { AgentOutputWithConfigs, PrismaTransaction, User } from "../../types/prisma"
+import { Output, ToolboxEntry } from "../abstract/Output"
+
+import { fetchRelatedEventsTool, notionModifyBlocksTool, notionQueryPageTool } from "./tools"
 
 export class NotionPageOutput extends Output<NotionPageConfig> {
     constructor() {
         const toolbox: ToolboxEntry[] = [
-            { tool: notionQueryPageTool as Tool, isReadOnly: true, integration: IntegrationType.NOTION, displayName: 'Query Page' },
-            { tool: notionModifyBlocksTool as Tool, isReadOnly: false, integration: IntegrationType.NOTION, displayName: 'Modify Blocks' },
-            { tool: fetchRelatedEventsTool as Tool, isReadOnly: true, integration: IntegrationType.NOTION, displayName: 'Fetch related events' },
-        ];
-        super(OutputConfigType.NOTION_PAGE, toolbox);
+            { tool: notionQueryPageTool as Tool, isReadOnly: true, integration: IntegrationType.NOTION, displayName: "Query Page" },
+            { tool: notionModifyBlocksTool as Tool, isReadOnly: false, integration: IntegrationType.NOTION, displayName: "Modify Blocks" },
+            { tool: fetchRelatedEventsTool as Tool, isReadOnly: true, integration: IntegrationType.NOTION, displayName: "Fetch related events" }
+        ]
+        super(OutputConfigType.NOTION_PAGE, toolbox)
     }
-
 
     async validateConfig(output: NotionPageConfig, _userId: string): Promise<void> {
         if (!output.pageId) {
-            throw new Error('Invalid output config for notion_page: missing pageId');
+            throw new Error("Invalid output config for notion_page: missing pageId")
         }
     }
 
@@ -29,36 +29,36 @@ export class NotionPageOutput extends Output<NotionPageConfig> {
         await tx.automation_notion_page_configs.create({
             data: {
                 automation_output_id: channelOutputId,
-                page_id: output.pageId || '',
-                page_name: output.pageName || '',
-            },
-        });
+                page_id: output.pageId || "",
+                page_name: output.pageName || ""
+            }
+        })
     }
 
     protected getSystemInstructionsForConfigs(configs: AgentOutputWithConfigs[]): string {
         if (configs.length === 0) {
-            throw new Error('No Notion page configs provided');
+            throw new Error("No Notion page configs provided")
         }
-        
-        const sections: string[] = [];
-        sections.push('=== NOTION PAGE OUTPUT ===');
-        
+
+        const sections: string[] = []
+        sections.push("=== NOTION PAGE OUTPUT ===")
+
         // List all available configurations
-        const configList: string[] = [];
+        const configList: string[] = []
         for (const config of configs) {
             if (!config.notion_page_config) {
-                throw new Error('Notion page config not found');
+                throw new Error("Notion page config not found")
             }
-            const pageId = config.notion_page_config.page_id;
-            const pageName = config.notion_page_config.page_name;
-            configList.push(`  • Integration ID: ${config.integration_id} - Page Name: ${pageName || 'N/A'}, Page ID: ${pageId || 'N/A'}`);
+            const pageId = config.notion_page_config.page_id
+            const pageName = config.notion_page_config.page_name
+            configList.push(`  • Integration ID: ${config.integration_id} - Page Name: ${pageName || "N/A"}, Page ID: ${pageId || "N/A"}`)
         }
-        sections.push('Available configurations:');
-        sections.push(configList.join('\n'));
-        sections.push('\nWhen calling Notion page tools, you MUST include the `integrationId` and `pageId` parameters matching one of the configurations listed above.');
-        sections.push('\n' + NOTION_PAGE_FOOTER_INSTRUCTIONS);
-        
-        return sections.join('\n');
+        sections.push("Available configurations:")
+        sections.push(configList.join("\n"))
+        sections.push("\nWhen calling Notion page tools, you MUST include the `integrationId` and `pageId` parameters matching one of the configurations listed above.")
+        sections.push("\n" + NOTION_PAGE_FOOTER_INSTRUCTIONS)
+
+        return sections.join("\n")
     }
 }
 
@@ -103,4 +103,4 @@ Where:
 - If a Terse footer already exists (identified by text starting with "Updated by Terse" or matching user's custom format), UPDATE it with the new values rather than creating a duplicate
 - The footer must ALWAYS be at the very end of the page content
 - Use the bullet separator (•) between each metadata item (unless user specifies otherwise)
-`.trim();
+`.trim()

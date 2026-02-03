@@ -1,19 +1,20 @@
-import { SlackIntegrationManager } from "../integrations/SlackIntegration";
-import { ConfigType, SlackConfig } from "../shared/Configs";
-import { Trigger } from "./Trigger";
-import { PrismaTransaction } from "../types/prisma";
+import { SlackIntegrationManager } from "../integrations/SlackIntegration"
+import { ConfigType, SlackConfig } from "../shared/Configs"
+import { PrismaTransaction } from "../types/prisma"
+
+import { Trigger } from "./Trigger"
 
 export class SlackTrigger implements Trigger<SlackConfig> {
-    integrationManager: SlackIntegrationManager;
-    configType: ConfigType = ConfigType.SLACK;
+    integrationManager: SlackIntegrationManager
+    configType: ConfigType = ConfigType.SLACK
 
     constructor() {
-        this.integrationManager = new SlackIntegrationManager();
+        this.integrationManager = new SlackIntegrationManager()
     }
 
     async validateConfig(trigger: SlackConfig, _userId: string): Promise<void> {
         if (!trigger.channelId && !trigger.listenToUserDms) {
-            throw new Error('Invalid trigger config for slack: requires channelId or listenToUserDms=true');
+            throw new Error("Invalid trigger config for slack: requires channelId or listenToUserDms=true")
         }
     }
 
@@ -24,8 +25,8 @@ export class SlackTrigger implements Trigger<SlackConfig> {
                 channel_id: trigger.channelId,
                 channel_name: trigger.channelName,
                 listen_to_user_dms: trigger.listenToUserDms,
-                user_ids: trigger.userIds || [],
-            },
-        });
+                user_ids: trigger.userIds || []
+            }
+        })
     }
 }

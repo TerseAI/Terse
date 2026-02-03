@@ -1,36 +1,33 @@
-import { ExternalLink } from "lucide-react";
-import type { RunHistoryAction, RunHistoryStatus } from "../../shared/RunHistoryTypes";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "../ui/accordion";
-import { cn } from "@/lib/utils";
-import { IconForIntegration } from "../../pages/Agents/components/Integration";
-import { capitalize } from "../../lib/utils";
+import { ExternalLink } from "lucide-react"
+
+import { cn } from "@/lib/utils"
+
+import { capitalize } from "../../lib/utils"
+import { IconForIntegration } from "../../pages/Agents/components/Integration"
+import type { RunHistoryAction, RunHistoryStatus } from "../../shared/RunHistoryTypes"
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "../ui/accordion"
 
 type Props = {
-    runId: string;
-    index: number;
-    action: RunHistoryAction;
-    runStatus: RunHistoryStatus;
-    isExpanded: boolean;
-    onToggle: (actionKey: string) => void;
-};
+    runId: string
+    index: number
+    action: RunHistoryAction
+    runStatus: RunHistoryStatus
+    isExpanded: boolean
+    onToggle: (actionKey: string) => void
+}
 
 export default function RunHistoryActionItem({ runId, index, action, runStatus, isExpanded, onToggle }: Props) {
-    const actionKey = `${runId}-action-${index}`;
+    const actionKey = `${runId}-action-${index}`
 
     const formatAction = (s: string) => {
         return s
-            .split('_')
+            .split("_")
             .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-            .join(' ');
-    };
+            .join(" ")
+    }
 
     return (
-        <Accordion
-            type="single"
-            collapsible
-            value={isExpanded ? actionKey : ""}
-            onValueChange={() => onToggle(actionKey)}
-        >
+        <Accordion type="single" collapsible value={isExpanded ? actionKey : ""} onValueChange={() => onToggle(actionKey)}>
             <div className="rounded-lg border border-border">
                 <AccordionItem value={actionKey} className="border-b-0">
                     <AccordionTrigger className="py-2 px-2 hover:no-underline">
@@ -44,13 +41,7 @@ export default function RunHistoryActionItem({ runId, index, action, runStatus, 
                                         {formatAction(action.action)} on {capitalize(action.integration)} → {action.target}
                                     </span>
                                     {action.url && (
-                                        <a
-                                            href={action.url}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            onClick={(e) => e.stopPropagation()}
-                                            className="text-primary hover:opacity-80 transition-opacity"
-                                        >
+                                        <a href={action.url} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="text-primary hover:opacity-80 transition-opacity">
                                             <ExternalLink className="w-3 h-3" />
                                         </a>
                                     )}
@@ -59,20 +50,10 @@ export default function RunHistoryActionItem({ runId, index, action, runStatus, 
                         </div>
                     </AccordionTrigger>
                     <AccordionContent>
-                        <div
-                            className={cn(
-                                "p-2",
-                                runStatus === "failed" ? "text-destructive" : "text-muted-foreground"
-                            )}
-                        >
-                            {action.details}
-                        </div>
+                        <div className={cn("p-2", runStatus === "failed" ? "text-destructive" : "text-muted-foreground")}>{action.details}</div>
                     </AccordionContent>
                 </AccordionItem>
             </div>
         </Accordion>
-    );
+    )
 }
-
-
-

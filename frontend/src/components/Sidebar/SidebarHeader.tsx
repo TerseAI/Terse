@@ -1,15 +1,12 @@
-import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
-import { SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "../ui/sidebar";
+import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar"
+import { SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "../ui/sidebar"
 
 export function AppSidebarHeader() {
     return (
         <SidebarHeader>
             <SidebarMenu>
                 <SidebarMenuItem>
-                    <SidebarMenuButton
-                        size="lg"
-                        className="cursor-default"
-                    >
+                    <SidebarMenuButton size="lg" className="cursor-default">
                         <div className="bg-white text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
                             <Avatar>
                                 <AvatarImage src="/terse.png" alt="Terse" />

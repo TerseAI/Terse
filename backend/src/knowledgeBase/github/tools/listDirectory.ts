@@ -1,12 +1,13 @@
-import { RunContext, tool } from "@openai/agents";
-import { z } from "zod";
-import logger from "../../../logger";
-import { createGitHubClient, listDirectory, parseRepoFullName, getRepositoryInfo, getTree, getBranch, getGitHubAccessToken } from "../githubApiClient";
-import { IntegrationType } from "../../../shared/Integrations";
-import { RunHistoryActionType } from "@prisma/client";
-import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner";
-import { Session } from "../../../types/session";
-import { ToolName } from "../../../tools/ToolNames";
+import { RunContext, tool } from "@openai/agents"
+import { RunHistoryActionType } from "@prisma/client"
+import { z } from "zod"
+
+import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
+import logger from "../../../logger"
+import { IntegrationType } from "../../../shared/Integrations"
+import { ToolName } from "../../../tools/ToolNames"
+import { Session } from "../../../types/session"
+import { createGitHubClient, getBranch, getGitHubAccessToken, getRepositoryInfo, getTree, listDirectory, parseRepoFullName } from "../githubApiClient"
 
 /**
  * Tool for listing directory contents in GitHub repositories.
@@ -24,211 +25,211 @@ Start with the root directory (empty path) to see the top-level structure, then 
     parameters: z.object({
         repository: z.string().describe('The repository in "owner/repo" format (e.g., "facebook/react"). Must be one of the configured repositories.'),
         path: z.string().describe('The directory path to list (e.g., "src/components"). Use empty string "" for root directory.'),
-        recursive: z.boolean().describe('If true, list all files recursively (can be large for big repos). Use false for single-level listing.'),
+        recursive: z.boolean().describe("If true, list all files recursively (can be large for big repos). Use false for single-level listing.")
     }),
-    execute: async ({ repository, path = '', recursive = false }, runContext?: RunContext<SessionWithTracking<Session>>) => {
+    execute: async ({ repository, path = "", recursive = false }, runContext?: RunContext<SessionWithTracking<Session>>) => {
         if (!runContext?.context) {
-            throw new Error("No context provided");
+            throw new Error("No context provided")
         }
 
-        const accessToken = await getGitHubAccessToken(runContext.context.user.id);
+        const accessToken = await getGitHubAccessToken(runContext.context.user.id)
         if (!accessToken) {
-            throw new Error(`GitHub access token not found for user`);
+            throw new Error(`GitHub access token not found for user`)
         }
 
-        const client = createGitHubClient(accessToken);
-        const { owner, repo } = parseRepoFullName(repository);
+        const client = createGitHubClient(accessToken)
+        const { owner, repo } = parseRepoFullName(repository)
 
         const requestParams = {
-            tool: 'listGitHubDirectory',
+            tool: "listGitHubDirectory",
             repository,
             owner,
             repo,
-            path: path || '(root)',
-            recursive,
-        };
-        logger.info('[GitHub KB] listGitHubDirectory - Request', requestParams);
-        logger.debug('[GitHub KB] listGitHubDirectory - Full request params', { requestParams });
+            path: path || "(root)",
+            recursive
+        }
+        logger.info("[GitHub KB] listGitHubDirectory - Request", requestParams)
+        logger.debug("[GitHub KB] listGitHubDirectory - Full request params", { requestParams })
 
         try {
             if (recursive) {
                 // Use Git Trees API for recursive listing
-                const repoInfo = await getRepositoryInfo(client, owner, repo);
+                const repoInfo = await getRepositoryInfo(client, owner, repo)
                 if (!repoInfo) {
-                    throw new Error('Failed to get repository info');
+                    throw new Error("Failed to get repository info")
                 }
 
-                logger.debug('[GitHub KB] listGitHubDirectory - Got repo info', {
+                logger.debug("[GitHub KB] listGitHubDirectory - Got repo info", {
                     defaultBranch: repoInfo.defaultBranch,
-                    fullName: repoInfo.fullName,
-                });
+                    fullName: repoInfo.fullName
+                })
 
                 // Get the tree SHA for the default branch
-                const branchInfo = await getBranch(client, owner, repo, repoInfo.defaultBranch);
-                const treeSha = branchInfo.treeSha;
+                const branchInfo = await getBranch(client, owner, repo, repoInfo.defaultBranch)
+                const treeSha = branchInfo.treeSha
 
-                logger.debug('[GitHub KB] listGitHubDirectory - Got branch info', {
+                logger.debug("[GitHub KB] listGitHubDirectory - Got branch info", {
                     treeSha,
-                    commitSha: branchInfo.commitSha,
-                });
+                    commitSha: branchInfo.commitSha
+                })
 
-                const treeResult = await getTree(client, owner, repo, treeSha, true);
+                const treeResult = await getTree(client, owner, repo, treeSha, true)
 
-                logger.debug('[GitHub KB] listGitHubDirectory - Got tree', {
+                logger.debug("[GitHub KB] listGitHubDirectory - Got tree", {
                     itemCount: treeResult.tree.length,
-                    truncated: treeResult.truncated,
-                });
+                    truncated: treeResult.truncated
+                })
 
                 // Filter to only show items within the specified path
-                let items = treeResult.tree;
+                let items = treeResult.tree
                 if (path) {
-                    items = items.filter(item => item.path.startsWith(path + '/') || item.path === path);
+                    items = items.filter(item => item.path.startsWith(path + "/") || item.path === path)
                 }
 
                 // Format as a tree structure
                 const formattedItems = items.map(item => ({
                     path: item.path,
-                    type: item.type === 'blob' ? 'file' : 'directory',
-                    size: item.size,
-                }));
+                    type: item.type === "blob" ? "file" : "directory",
+                    size: item.size
+                }))
 
                 // Group by directory for easier reading
-                const directories = new Set<string>();
-                const files: typeof formattedItems = [];
-                
+                const directories = new Set<string>()
+                const files: typeof formattedItems = []
+
                 formattedItems.forEach(item => {
-                    if (item.type === 'directory') {
-                        directories.add(item.path);
+                    if (item.type === "directory") {
+                        directories.add(item.path)
                     } else {
-                        files.push(item);
+                        files.push(item)
                     }
-                });
+                })
 
                 const response = {
                     success: true,
                     repository,
-                    path: path || '(root)',
+                    path: path || "(root)",
                     recursive: true,
                     truncated: treeResult.truncated,
                     totalItems: formattedItems.length,
                     directories: Array.from(directories).sort(),
                     files: files.slice(0, 200).map(f => ({
                         path: f.path,
-                        size: f.size,
+                        size: f.size
                     })),
-                    warning: treeResult.truncated 
-                        ? 'Results truncated due to repository size. Use a more specific path.'
-                        : files.length > 200 
-                            ? `Showing first 200 of ${files.length} files. Use a more specific path to narrow results.`
-                            : undefined,
-                };
+                    warning: treeResult.truncated
+                        ? "Results truncated due to repository size. Use a more specific path."
+                        : files.length > 200
+                          ? `Showing first 200 of ${files.length} files. Use a more specific path to narrow results.`
+                          : undefined
+                }
 
-                logger.info('[GitHub KB] listGitHubDirectory - Response (recursive)', {
+                logger.info("[GitHub KB] listGitHubDirectory - Response (recursive)", {
                     success: true,
                     totalItems: formattedItems.length,
                     dirCount: directories.size,
                     fileCount: files.length,
-                    truncated: treeResult.truncated,
-                });
-                logger.debug('[GitHub KB] listGitHubDirectory - Full response', { response });
+                    truncated: treeResult.truncated
+                })
+                logger.debug("[GitHub KB] listGitHubDirectory - Full response", { response })
 
                 // Return action as part of the result
                 const action = {
-                    action: 'Listed GitHub directory',
+                    action: "Listed GitHub directory",
                     integration: IntegrationType.GITHUB,
                     target: repository,
-                    details: `Listed directory "${path || '(root)'}" recursively: ${formattedItems.length} item(s) (${directories.size} directory/ies, ${files.length} file(s))`,
-                    url: `https://github.com/${owner}/${repo}/tree/${repoInfo.defaultBranch}/${path || ''}`,
+                    details: `Listed directory "${path || "(root)"}" recursively: ${formattedItems.length} item(s) (${directories.size} directory/ies, ${files.length} file(s))`,
+                    url: `https://github.com/${owner}/${repo}/tree/${repoInfo.defaultBranch}/${path || ""}`,
                     type: RunHistoryActionType.read,
-                    isReadOnly: true,
-                };
+                    isReadOnly: true
+                }
 
                 return {
                     ...response,
-                    actions: [action],
-                };
+                    actions: [action]
+                }
             } else {
                 // Use Contents API for non-recursive listing
-                const entries = await listDirectory(client, owner, repo, path);
+                const entries = await listDirectory(client, owner, repo, path)
 
-                logger.debug('[GitHub KB] listGitHubDirectory - Got entries', {
+                logger.debug("[GitHub KB] listGitHubDirectory - Got entries", {
                     entryCount: entries.length,
-                    entries: entries.map(e => ({ name: e.name, type: e.type })),
-                });
+                    entries: entries.map(e => ({ name: e.name, type: e.type }))
+                })
 
                 // Separate directories and files
-                const directories = entries.filter(e => e.type === 'dir').sort((a, b) => a.name.localeCompare(b.name));
-                const files = entries.filter(e => e.type === 'file').sort((a, b) => a.name.localeCompare(b.name));
-                const other = entries.filter(e => e.type !== 'dir' && e.type !== 'file');
+                const directories = entries.filter(e => e.type === "dir").sort((a, b) => a.name.localeCompare(b.name))
+                const files = entries.filter(e => e.type === "file").sort((a, b) => a.name.localeCompare(b.name))
+                const other = entries.filter(e => e.type !== "dir" && e.type !== "file")
 
                 // Format output
                 const formattedDirs = directories.map(d => ({
-                    name: d.name + '/',
+                    name: d.name + "/",
                     path: d.path,
-                    type: 'directory' as const,
-                }));
+                    type: "directory" as const
+                }))
 
                 const formattedFiles = files.map(f => ({
                     name: f.name,
                     path: f.path,
-                    type: 'file' as const,
-                    size: f.size,
-                }));
+                    type: "file" as const,
+                    size: f.size
+                }))
 
                 const response = {
                     success: true,
                     repository,
-                    path: path || '(root)',
+                    path: path || "(root)",
                     recursive: false,
                     totalItems: entries.length,
                     directories: formattedDirs,
                     files: formattedFiles,
                     other: other.length > 0 ? other.map(o => ({ name: o.name, type: o.type })) : undefined,
-                    tip: 'Use readGitHubFile to read file contents, or list a subdirectory to explore further.',
-                };
+                    tip: "Use readGitHubFile to read file contents, or list a subdirectory to explore further."
+                }
 
-                logger.info('[GitHub KB] listGitHubDirectory - Response', {
+                logger.info("[GitHub KB] listGitHubDirectory - Response", {
                     success: true,
                     totalItems: entries.length,
                     dirCount: directories.length,
-                    fileCount: files.length,
-                });
-                logger.debug('[GitHub KB] listGitHubDirectory - Full response', { response });
+                    fileCount: files.length
+                })
+                logger.debug("[GitHub KB] listGitHubDirectory - Full response", { response })
 
                 // Return action as part of the result
-                const repoInfo = await getRepositoryInfo(client, owner, repo);
-                const defaultBranch = repoInfo?.defaultBranch || 'HEAD';
+                const repoInfo = await getRepositoryInfo(client, owner, repo)
+                const defaultBranch = repoInfo?.defaultBranch || "HEAD"
                 const action = {
-                    action: 'Listed GitHub directory',
+                    action: "Listed GitHub directory",
                     integration: IntegrationType.GITHUB,
                     target: repository,
-                    details: `Listed directory "${path || '(root)'}": ${entries.length} item(s) (${directories.length} directory/ies, ${files.length} file(s))`,
-                    url: `https://github.com/${owner}/${repo}/tree/${defaultBranch}/${path || ''}`,
+                    details: `Listed directory "${path || "(root)"}": ${entries.length} item(s) (${directories.length} directory/ies, ${files.length} file(s))`,
+                    url: `https://github.com/${owner}/${repo}/tree/${defaultBranch}/${path || ""}`,
                     type: RunHistoryActionType.read,
-                    isReadOnly: true,
-                };
+                    isReadOnly: true
+                }
 
                 return {
                     ...response,
-                    actions: [action],
-                };
+                    actions: [action]
+                }
             }
         } catch (error: any) {
-            logger.error('[GitHub KB] listGitHubDirectory - Failed', { 
-                repository, 
-                path: path || '(root)', 
+            logger.error("[GitHub KB] listGitHubDirectory - Failed", {
+                repository,
+                path: path || "(root)",
                 error: error.message,
-                stack: error.stack,
-            });
+                stack: error.stack
+            })
             return {
                 success: false,
                 error: error.message,
                 repository,
-                path: path || '(root)',
-                tip: error.message.includes('not a directory') 
-                    ? 'This path is a file. Use readGitHubFile to read its contents.'
-                    : 'Check that the path exists. Use an empty path to list the root directory.',
-            };
+                path: path || "(root)",
+                tip: error.message.includes("not a directory")
+                    ? "This path is a file. Use readGitHubFile to read its contents."
+                    : "Check that the path exists. Use an empty path to list the root directory."
+            }
         }
-    },
-});
+    }
+})

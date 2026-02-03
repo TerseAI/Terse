@@ -1,90 +1,83 @@
-import { Agent, AgentOutputType, run, RunStreamEvent } from "@openai/agents";
-import logger from "../../logger";
-import {
-  ChatMemorySession,
-  recentHistoryCallback,
-} from "../CustomMemorySession";
-import { buildChatAgentSystemPrompt } from "./ChatAgentSystemPrompt";
-import { buildChatAgentTools, type ChatAgentContext } from "./ChatAgentTools";
-import ChatInterface from "./ChatInterfaces/ChatInterface";
+import { Agent, AgentOutputType, RunStreamEvent, run } from "@openai/agents"
+
+import logger from "../../logger"
+import { ChatMemorySession, recentHistoryCallback } from "../CustomMemorySession"
+
+import { buildChatAgentSystemPrompt } from "./ChatAgentSystemPrompt"
+import { type ChatAgentContext, buildChatAgentTools } from "./ChatAgentTools"
+import ChatInterface from "./ChatInterfaces/ChatInterface"
 
 class ChatAgent {
-  private memorySession: ChatMemorySession | null = null;
+    private memorySession: ChatMemorySession | null = null
 
-  constructor(
-    private readonly chatInterface: ChatInterface,
-    private readonly sessionId: string, // This is the external_id (e.g., Slack thread timestamp)
-    private readonly userId: string, // Required userId for interfaces
-    private readonly organizationId: string, // Required organizationId for interfaces
-    private readonly uiState?: string | null // UI context from the web interface
-  ) {}
+    constructor(
+        private readonly chatInterface: ChatInterface,
+        private readonly sessionId: string, // This is the external_id (e.g., Slack thread timestamp)
+        private readonly userId: string, // Required userId for interfaces
+        private readonly organizationId: string, // Required organizationId for interfaces
+        private readonly uiState?: string | null // UI context from the web interface
+    ) {}
 
-  private async getMemorySession(): Promise<ChatMemorySession> {
-    if (this.memorySession) {
-      return this.memorySession;
+    private async getMemorySession(): Promise<ChatMemorySession> {
+        if (this.memorySession) {
+            return this.memorySession
+        }
+
+        // Create the memory session
+        this.memorySession = new ChatMemorySession({
+            sessionId: this.sessionId
+        })
+
+        return this.memorySession
     }
 
-    // Create the memory session
-    this.memorySession = new ChatMemorySession({
-      sessionId: this.sessionId,
-    });
+    async run(message: string): Promise<string> {
+        logger.info("Starting chat agent run for message in interface", {
+            message,
+            interface: this.chatInterface.name
+        })
+        const userTimezone = await this.chatInterface.getUserTimezone()
+        const agent = new Agent<ChatAgentContext, AgentOutputType>({
+            name: "Terse Automation Assistant",
+            instructions: await buildChatAgentSystemPrompt(this.userId, this.organizationId, userTimezone, this.uiState),
+            model: "gpt-5.2",
+            tools: buildChatAgentTools(this.chatInterface)
+        })
 
-    return this.memorySession;
-  }
+        const memorySession = await this.getMemorySession()
 
-  async run(message: string): Promise<string> {
-    logger.info("Starting chat agent run for message in interface", {
-      message,
-      interface: this.chatInterface.name,
-    });
-    const userTimezone = await this.chatInterface.getUserTimezone();
-    const agent = new Agent<ChatAgentContext, AgentOutputType>({
-      name: "Terse Automation Assistant",
-      instructions: await buildChatAgentSystemPrompt(
-        this.userId,
-        this.organizationId,
-        userTimezone,
-        this.uiState
-      ),
-      model: "gpt-5.2",
-      tools: buildChatAgentTools(this.chatInterface),
-    });
+        const result = await run(
+            agent,
+            [
+                {
+                    role: "user",
+                    content: message
+                }
+            ],
+            {
+                stream: true,
+                context: {
+                    chatInterface: this.chatInterface,
+                    userId: this.userId,
+                    organizationId: this.organizationId,
+                    sessionId: this.sessionId
+                },
+                session: memorySession,
+                sessionInputCallback: recentHistoryCallback
+            }
+        )
 
-    const memorySession = await this.getMemorySession();
+        for await (const event of result as AsyncIterable<RunStreamEvent>) {
+            this.chatInterface.processStreamEvent(this.sessionId, event)
+        }
 
-    const result = await run(
-      agent,
-      [
-        {
-          role: "user",
-          content: message,
-        },
-      ],
-      {
-        stream: true,
-        context: {
-          chatInterface: this.chatInterface,
-          userId: this.userId,
-          organizationId: this.organizationId,
-          sessionId: this.sessionId,
-        },
-        session: memorySession,
-        sessionInputCallback: recentHistoryCallback,
-      }
-    );
+        const finalOutput = typeof result.finalOutput === "string" ? result.finalOutput : ""
+        await this.chatInterface.processMessageEnd(this.sessionId, finalOutput)
 
-    for await (const event of result as AsyncIterable<RunStreamEvent>) {
-      this.chatInterface.processStreamEvent(this.sessionId, event);
+        logger.info("Chat agent run completed", { finalOutput })
+
+        return finalOutput
     }
-
-    const finalOutput =
-      typeof result.finalOutput === "string" ? result.finalOutput : "";
-    await this.chatInterface.processMessageEnd(this.sessionId, finalOutput);
-
-    logger.info("Chat agent run completed", { finalOutput });
-
-    return finalOutput;
-  }
 }
 
-export default ChatAgent;
+export default ChatAgent

@@ -1,14 +1,16 @@
-import { IntegrationTitle } from "@/pages/Agents/components/IntegrationTitle";
-import { CardHeader, CardTitle } from "../../ui/card";
-import { Badge } from "../../ui/badge";
-import { BadgeCheckIcon } from "lucide-react";
+import { BadgeCheckIcon } from "lucide-react"
+
+import { cn } from "@/lib/utils"
+import { IntegrationTitle } from "@/pages/Agents/components/IntegrationTitle"
 import { IntegrationType } from "@/shared/Integrations"
-import { cn } from "@/lib/utils";
+
+import { Badge } from "../../ui/badge"
+import { CardHeader, CardTitle } from "../../ui/card"
 
 interface IntegrationCardHeaderProps {
-    integration: IntegrationType;
-    isActive?: boolean;
-    compact?: boolean;
+    integration: IntegrationType
+    isActive?: boolean
+    compact?: boolean
 }
 
 export function IntegrationCardHeader({ integration, isActive = true, compact = false }: IntegrationCardHeaderProps) {
@@ -26,6 +28,5 @@ export function IntegrationCardHeader({ integration, isActive = true, compact = 
                 </div>
             </CardTitle>
         </CardHeader>
-    );
+    )
 }
-

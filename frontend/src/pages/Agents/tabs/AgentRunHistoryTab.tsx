@@ -1,8 +1,8 @@
-import RunHistory from "../../../components/RunHistory/index";
+import RunHistory from "../../../components/RunHistory/index"
 
 type AgentRunHistoryTabProps = {
-    agentId: string | null;
-};
+    agentId: string | null
+}
 
 export default function AgentRunHistoryTab({ agentId }: AgentRunHistoryTabProps) {
     return (
@@ -11,5 +11,5 @@ export default function AgentRunHistoryTab({ agentId }: AgentRunHistoryTabProps)
                 <RunHistory agentId={agentId} />
             </div>
         </div>
-    );
+    )
 }

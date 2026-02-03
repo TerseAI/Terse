@@ -1,76 +1,60 @@
-import { db } from "../../prismaClient";
-import SlackChatInterface from "./ChatInterfaces/SlackChatInterface";
-import ChatAgent from "./ChatAgent";
-import logger from "../../logger";
-import { initializeSlackWebClient } from "../../integrations/SlackIntegration";
-import { IntegrationType } from "../../shared/Integrations";
+import { initializeSlackWebClient } from "../../integrations/SlackIntegration"
+import logger from "../../logger"
+import { db } from "../../prismaClient"
+import { IntegrationType } from "../../shared/Integrations"
 
+import ChatAgent from "./ChatAgent"
+import SlackChatInterface from "./ChatInterfaces/SlackChatInterface"
 
-export async function resumeChatAgentAfterOAuth(
-    userId: string,
-    chatId: string,
-    channel: string,
-    integrationType: IntegrationType,
-    integrationId: string,
-    messageTs?: string
-): Promise<void> {
+export async function resumeChatAgentAfterOAuth(userId: string, chatId: string, channel: string, integrationType: IntegrationType, integrationId: string, messageTs?: string): Promise<void> {
     try {
         // Get user's Slack integration to create WebClient
         const userSlackIntegration = await db().user_slack_integrations.findFirst({
             where: {
-                user_id: userId,
+                user_id: userId
             },
             include: {
                 slack_integration: true,
-                user: true,
+                user: true
             },
             orderBy: {
-                created_at: 'desc',
-            },
-        });
+                created_at: "desc"
+            }
+        })
 
         if (!userSlackIntegration?.slack_integration) {
-            logger.error('Cannot resume ChatAgent: No Slack integration found for user', { userId });
-            return;
+            logger.error("Cannot resume ChatAgent: No Slack integration found for user", { userId })
+            return
         }
 
         // Create WebClient
-        const client = initializeSlackWebClient(userSlackIntegration as any);
+        const client = initializeSlackWebClient(userSlackIntegration as any)
 
         // Create SlackChatInterface
-        const organizationId = userSlackIntegration.organization_id;
-        const slackChatInterface = new SlackChatInterface(
-            channel,
-            client,
-            userId,
-            organizationId,
-            userSlackIntegration.authed_user_id,
-            chatId,
-        );
+        const organizationId = userSlackIntegration.organization_id
+        const slackChatInterface = new SlackChatInterface(channel, client, userId, organizationId, userSlackIntegration.authed_user_id, chatId)
 
         // If messageTs is provided, set it to replace the message instead of posting new one
         if (messageTs) {
-            slackChatInterface.setMessageTsToReplace(messageTs);
+            slackChatInterface.setMessageTsToReplace(messageTs)
         }
 
         // Create ChatAgent
-        const chatAgent = new ChatAgent(
-            slackChatInterface,
-            chatId,
-            userId,
-            organizationId,
-        );
+        const chatAgent = new ChatAgent(slackChatInterface, chatId, userId, organizationId)
 
         // Get integration name from type
-        const integrationName = integrationType.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (l) => l.toUpperCase());
+        const integrationName = integrationType
+            .replace(/_/g, " ")
+            .toLowerCase()
+            .replace(/\b\w/g, l => l.toUpperCase())
 
         // Run the agent with a message about successful connection
-        const message = `The ${integrationName} integration has been successfully connected. Integration ID: ${integrationId}`;
-        await chatAgent.run(message);
+        const message = `The ${integrationName} integration has been successfully connected. Integration ID: ${integrationId}`
+        await chatAgent.run(message)
 
-        logger.info('ChatAgent resumed after OAuth', { userId, chatId, channel, integrationType, integrationId });
+        logger.info("ChatAgent resumed after OAuth", { userId, chatId, channel, integrationType, integrationId })
     } catch (error) {
-        logger.error('Error resuming ChatAgent after OAuth', { error, userId, chatId, channel, integrationType, integrationId });
+        logger.error("Error resuming ChatAgent after OAuth", { error, userId, chatId, channel, integrationType, integrationId })
         // Don't throw - we don't want to break the OAuth callback flow
     }
 }

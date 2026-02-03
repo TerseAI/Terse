@@ -1,38 +1,33 @@
-import { Card, CardContent, CardHeader, CardTitle } from "../../../components/ui/card";
-import { Badge } from "../../../components/ui/badge";
-import { Clock } from "lucide-react";
-import { AppsList } from "../../../components/Agents/AppsList";
-import { Agent } from "../../../shared/types";
-import { useNavigate } from "react-router-dom";
-import { FrontendRoutes } from "@/shared/FrontendRoutes";
+import { useNavigate } from "react-router-dom"
+
+import { Clock } from "lucide-react"
+
+import { FrontendRoutes } from "@/shared/FrontendRoutes"
+
+import { AppsList } from "../../../components/Agents/AppsList"
+import { Badge } from "../../../components/ui/badge"
+import { Card, CardContent, CardHeader, CardTitle } from "../../../components/ui/card"
+import { Agent } from "../../../shared/types"
 
 export interface AgentCardProps {
-    agent: Agent & { lastEdited: string; lastEventProcessedAt: string };
+    agent: Agent & { lastEdited: string; lastEventProcessedAt: string }
 }
 
 export function AgentCard({ agent }: AgentCardProps) {
-    const navigate = useNavigate();
+    const navigate = useNavigate()
 
     const handleClick = () => {
-        navigate(FrontendRoutes.AGENTS.DETAIL(agent.id));
-    };
+        navigate(FrontendRoutes.AGENTS.DETAIL(agent.id))
+    }
 
     return (
-        <Card 
-            className="hover:shadow-md transition-shadow relative cursor-pointer"
-            onClick={handleClick}
-        >
+        <Card className="hover:shadow-md transition-shadow relative cursor-pointer" onClick={handleClick}>
             <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
                     <div className="flex-1 min-w-0">
-                        <CardTitle className="text-lg font-semibold truncate mb-2">
-                            {agent.name}
-                        </CardTitle>
+                        <CardTitle className="text-lg font-semibold truncate mb-2">{agent.name}</CardTitle>
                         <div className="flex items-center gap-2 flex-wrap">
-                            <Badge
-                                variant={agent.isActive ? "default" : "outline"}
-                                className="text-xs"
-                            >
+                            <Badge variant={agent.isActive ? "default" : "outline"} className="text-xs">
                                 {agent.isActive ? "Active" : "Inactive"}
                             </Badge>
                             <div className="flex items-center gap-1 text-xs text-muted-foreground">
@@ -51,6 +46,5 @@ export function AgentCard({ agent }: AgentCardProps) {
                 <span>{agent.lastEventProcessedAt}</span>
             </div>
         </Card>
-    );
+    )
 }
-

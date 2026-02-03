@@ -1,33 +1,27 @@
-import { Card, CardContent } from "../ui/card";
+import { Target } from "lucide-react"
+
+import { useLinearIntegrations } from "@/hooks/api/useLinearIntegrations"
+import { useOAuthConnection } from "@/hooks/useOAuthConnection"
+import { cn } from "@/lib/utils"
 import { IntegrationType } from "@/shared/Integrations"
-import { IntegrationCardHeader } from "./helpers/IntegrationCardHeader";
-import { IntegrationCardFooter } from "./helpers/IntegrationCardFooter";
-import { IntegrationItem } from "./helpers/IntegrationItem";
-import { CompactIntegrationRow } from "./CompactIntegrationRow";
-import { cn } from "@/lib/utils";
-import { useLinearIntegrations } from "@/hooks/api/useLinearIntegrations";
-import { useOAuthConnection } from "@/hooks/useOAuthConnection";
-import { Skeleton } from "../ui/skeleton";
-import { Target } from "lucide-react";
+
+import { Card, CardContent } from "../ui/card"
+import { Skeleton } from "../ui/skeleton"
+
+import { CompactIntegrationRow } from "./CompactIntegrationRow"
+import { IntegrationCardFooter } from "./helpers/IntegrationCardFooter"
+import { IntegrationCardHeader } from "./helpers/IntegrationCardHeader"
+import { IntegrationItem } from "./helpers/IntegrationItem"
 
 function LinearIntegrationCard({ className, isActive = true, stateToken, compact = false }: { className?: string; isActive?: boolean; stateToken?: string; compact?: boolean }) {
-    const { integrations, isLoading } = useLinearIntegrations();
-    const { connect, isConnecting } = useOAuthConnection<IntegrationType.LINEAR>(IntegrationType.LINEAR, {}, stateToken);
+    const { integrations, isLoading } = useLinearIntegrations()
+    const { connect, isConnecting } = useOAuthConnection<IntegrationType.LINEAR>(IntegrationType.LINEAR, {}, stateToken)
 
-    const isConnected = integrations.length > 0;
-    const summary = integrations[0]?.workspaceName;
+    const isConnected = integrations.length > 0
+    const summary = integrations[0]?.workspaceName
 
     if (compact) {
-        return (
-            <CompactIntegrationRow
-                integration={IntegrationType.LINEAR}
-                isConnected={isConnected}
-                summary={summary}
-                connect={connect}
-                isConnecting={isConnecting}
-                className={className}
-            />
-        );
+        return <CompactIntegrationRow integration={IntegrationType.LINEAR} isConnected={isConnected} summary={summary} connect={connect} isConnecting={isConnecting} className={className} />
     }
 
     return (
@@ -41,14 +35,14 @@ function LinearIntegrationCard({ className, isActive = true, stateToken, compact
     )
 }
 
-function LinearCardContent({ integrations, isLoading }: { integrations: Array<{ id: string; workspaceName?: string; linearTeamName?: string }>, isLoading: boolean }) {
+function LinearCardContent({ integrations, isLoading }: { integrations: Array<{ id: string; workspaceName?: string; linearTeamName?: string }>; isLoading: boolean }) {
     if (isLoading) {
         return (
             <div className="space-y-3">
                 <Skeleton className="h-12 w-full" />
                 <Skeleton className="h-12 w-full" />
             </div>
-        );
+        )
     }
 
     if (integrations.length === 0) {
@@ -58,21 +52,16 @@ function LinearCardContent({ integrations, isLoading }: { integrations: Array<{ 
                 <p className="text-sm text-muted-foreground">No Linear integrations connected</p>
                 <p className="text-xs text-muted-foreground/70 mt-1">Connect your Linear workspace to get started</p>
             </div>
-        );
+        )
     }
 
     return (
         <div className="space-y-2">
-            {integrations.map((integration) => (
-                <IntegrationItem
-                    key={integration.id}
-                    icon={<Target className="w-4 h-4" />}
-                    title={integration.workspaceName || 'Unknown Workspace'}
-                />
+            {integrations.map(integration => (
+                <IntegrationItem key={integration.id} icon={<Target className="w-4 h-4" />} title={integration.workspaceName || "Unknown Workspace"} />
             ))}
         </div>
-    );
+    )
 }
 
-export default LinearIntegrationCard;
-
+export default LinearIntegrationCard

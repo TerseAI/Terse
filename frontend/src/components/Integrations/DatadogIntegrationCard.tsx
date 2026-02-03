@@ -1,88 +1,84 @@
-import { Card, CardContent, CardFooter } from "../ui/card";
-import { DatadogIntegration, IntegrationType, INTEGRATION_METADATA } from "@/shared/Integrations"
-import { IntegrationCardHeader } from "./helpers/IntegrationCardHeader";
-import { IntegrationItem } from "./helpers/IntegrationItem";
-import { CompactIntegrationRow } from "./CompactIntegrationRow";
-import { cn } from "@/lib/utils";
-import { useDatadogIntegrations } from "@/hooks/api/useDatadogIntegrations";
-import { Skeleton } from "../ui/skeleton";
-import { BarChart3, Eye, EyeOff } from "lucide-react";
-import { Button } from "../ui/button";
-import { Input } from "../ui/input";
-import { Label } from "../ui/label";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "../ui/dialog";
-import { useState } from "react";
-import { BackendProvider } from "@/services/backend";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "../ui/select";
+import { useState } from "react"
+
+import { BarChart3, Eye, EyeOff } from "lucide-react"
+
+import { useDatadogIntegrations } from "@/hooks/api/useDatadogIntegrations"
+import { cn } from "@/lib/utils"
+import { BackendProvider } from "@/services/backend"
+import { DatadogIntegration, INTEGRATION_METADATA, IntegrationType } from "@/shared/Integrations"
+
+import { Button } from "../ui/button"
+import { Card, CardContent, CardFooter } from "../ui/card"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../ui/dialog"
+import { Input } from "../ui/input"
+import { Label } from "../ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select"
+import { Skeleton } from "../ui/skeleton"
+
+import { CompactIntegrationRow } from "./CompactIntegrationRow"
+import { IntegrationCardHeader } from "./helpers/IntegrationCardHeader"
+import { IntegrationItem } from "./helpers/IntegrationItem"
 
 const DATADOG_REGIONS = [
-    { value: 'us', label: 'US (datadoghq.com)' },
-    { value: 'eu', label: 'EU (datadoghq.eu)' },
-    { value: 'us3', label: 'US3 (us3.datadoghq.com)' },
-    { value: 'us5', label: 'US5 (us5.datadoghq.com)' },
-    { value: 'ap1', label: 'AP1 (ap1.datadoghq.com)' },
-];
+    { value: "us", label: "US (datadoghq.com)" },
+    { value: "eu", label: "EU (datadoghq.eu)" },
+    { value: "us3", label: "US3 (us3.datadoghq.com)" },
+    { value: "us5", label: "US5 (us5.datadoghq.com)" },
+    { value: "ap1", label: "AP1 (ap1.datadoghq.com)" }
+]
 
 function DatadogIntegrationCard({ className, isActive = true, stateToken, compact = false }: { className?: string; isActive?: boolean; stateToken?: string; compact?: boolean }) {
-    const { integrations, isLoading, mutate } = useDatadogIntegrations();
-    const [showForm, setShowForm] = useState(false);
-    const [apiKey, setApiKey] = useState("");
-    const [appKey, setAppKey] = useState("");
-    const [showApiKey, setShowApiKey] = useState(false);
-    const [showAppKey, setShowAppKey] = useState(false);
-    const [region, setRegion] = useState("us");
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+    const { integrations, isLoading, mutate } = useDatadogIntegrations()
+    const [showForm, setShowForm] = useState(false)
+    const [apiKey, setApiKey] = useState("")
+    const [appKey, setAppKey] = useState("")
+    const [showApiKey, setShowApiKey] = useState(false)
+    const [showAppKey, setShowAppKey] = useState(false)
+    const [region, setRegion] = useState("us")
+    const [isSubmitting, setIsSubmitting] = useState(false)
+    const [error, setError] = useState<string | null>(null)
 
     const handleConnect = () => {
-        setShowForm(true);
-        setError(null);
-    };
+        setShowForm(true)
+        setError(null)
+    }
 
     const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setError(null);
-        setIsSubmitting(true);
+        e.preventDefault()
+        setError(null)
+        setIsSubmitting(true)
 
         try {
-            await BackendProvider.createOrUpdateDatadogIntegration(apiKey, appKey, region, stateToken);
-            setShowForm(false);
-            setApiKey("");
-            setAppKey("");
-            setRegion("us");
-            mutate(); // Refresh integrations list
+            await BackendProvider.createOrUpdateDatadogIntegration(apiKey, appKey, region, stateToken)
+            setShowForm(false)
+            setApiKey("")
+            setAppKey("")
+            setRegion("us")
+            mutate() // Refresh integrations list
         } catch (err: any) {
-            setError(err.response?.data?.error || err.message || "Failed to connect Datadog integration");
+            setError(err.response?.data?.error || err.message || "Failed to connect Datadog integration")
         } finally {
-            setIsSubmitting(false);
+            setIsSubmitting(false)
         }
-    };
+    }
 
     const handleCancel = () => {
-        setShowForm(false);
-        setApiKey("");
-        setAppKey("");
-        setRegion("us");
-        setError(null);
-    };
+        setShowForm(false)
+        setApiKey("")
+        setAppKey("")
+        setRegion("us")
+        setError(null)
+    }
 
-    const isConnected = integrations.length > 0;
-    const summary = integrations[0] ? `Region: ${integrations[0].region.toUpperCase()}` : undefined;
+    const isConnected = integrations.length > 0
+    const summary = integrations[0] ? `Region: ${integrations[0].region.toUpperCase()}` : undefined
 
     const formDialog = (
-        <Dialog open={showForm} onOpenChange={(open) => !open && handleCancel()}>
+        <Dialog open={showForm} onOpenChange={open => !open && handleCancel()}>
             <DialogContent>
                 <DialogHeader>
                     <DialogTitle>Connect {INTEGRATION_METADATA[IntegrationType.DATADOG].name}</DialogTitle>
-                    <DialogDescription>
-                        Enter your Datadog API credentials to connect your account.
-                    </DialogDescription>
+                    <DialogDescription>Enter your Datadog API credentials to connect your account.</DialogDescription>
                 </DialogHeader>
                 <DatadogForm
                     apiKey={apiKey}
@@ -102,22 +98,15 @@ function DatadogIntegrationCard({ className, isActive = true, stateToken, compac
                 />
             </DialogContent>
         </Dialog>
-    );
+    )
 
     if (compact) {
         return (
             <>
-                <CompactIntegrationRow
-                    integration={IntegrationType.DATADOG}
-                    isConnected={isConnected}
-                    summary={summary}
-                    connect={handleConnect}
-                    isConnecting={isSubmitting}
-                    className={className}
-                />
+                <CompactIntegrationRow integration={IntegrationType.DATADOG} isConnected={isConnected} summary={summary} connect={handleConnect} isConnecting={isSubmitting} className={className} />
                 {formDialog}
             </>
-        );
+        )
     }
 
     return (
@@ -138,14 +127,14 @@ function DatadogIntegrationCard({ className, isActive = true, stateToken, compac
     )
 }
 
-function DatadogCardContent({ integrations, isLoading }: { integrations: Array<DatadogIntegration>, isLoading: boolean }) {
+function DatadogCardContent({ integrations, isLoading }: { integrations: Array<DatadogIntegration>; isLoading: boolean }) {
     if (isLoading) {
         return (
             <div className="space-y-3">
                 <Skeleton className="h-12 w-full" />
                 <Skeleton className="h-12 w-full" />
             </div>
-        );
+        )
     }
 
     if (integrations.length === 0) {
@@ -155,24 +144,17 @@ function DatadogCardContent({ integrations, isLoading }: { integrations: Array<D
                 <p className="text-sm text-muted-foreground">No Datadog integrations connected</p>
                 <p className="text-xs text-muted-foreground/70 mt-1">Connect your Datadog account to get started</p>
             </div>
-        );
+        )
     }
 
     return (
         <div className="space-y-2">
-            {integrations.map((integration) => {
-                const regionLabel = DATADOG_REGIONS.find(r => r.value === integration.region)?.label || integration.region;
-                return (
-                    <IntegrationItem
-                        key={integration.id}
-                        icon={<BarChart3 className="w-4 h-4" />}
-                        title={`Datadog (${regionLabel})`}
-                        description={`Region: ${integration.region.toUpperCase()}`}
-                    />
-                );
+            {integrations.map(integration => {
+                const regionLabel = DATADOG_REGIONS.find(r => r.value === integration.region)?.label || integration.region
+                return <IntegrationItem key={integration.id} icon={<BarChart3 className="w-4 h-4" />} title={`Datadog (${regionLabel})`} description={`Region: ${integration.region.toUpperCase()}`} />
             })}
         </div>
-    );
+    )
 }
 
 function DatadogForm({
@@ -189,22 +171,22 @@ function DatadogForm({
     onSubmit,
     onCancel,
     isSubmitting,
-    error,
+    error
 }: {
-    apiKey: string;
-    setApiKey: (value: string) => void;
-    appKey: string;
-    setAppKey: (value: string) => void;
-    showApiKey: boolean;
-    setShowApiKey: (value: boolean) => void;
-    showAppKey: boolean;
-    setShowAppKey: (value: boolean) => void;
-    region: string;
-    setRegion: (value: string) => void;
-    onSubmit: (e: React.FormEvent) => void;
-    onCancel: () => void;
-    isSubmitting: boolean;
-    error: string | null;
+    apiKey: string
+    setApiKey: (value: string) => void
+    appKey: string
+    setAppKey: (value: string) => void
+    showApiKey: boolean
+    setShowApiKey: (value: boolean) => void
+    showAppKey: boolean
+    setShowAppKey: (value: boolean) => void
+    region: string
+    setRegion: (value: string) => void
+    onSubmit: (e: React.FormEvent) => void
+    onCancel: () => void
+    isSubmitting: boolean
+    error: string | null
 }) {
     return (
         <form onSubmit={onSubmit} className="space-y-4">
@@ -215,7 +197,7 @@ function DatadogForm({
                         <SelectValue placeholder="Select region" />
                     </SelectTrigger>
                     <SelectContent>
-                        {DATADOG_REGIONS.map((r) => (
+                        {DATADOG_REGIONS.map(r => (
                             <SelectItem key={r.value} value={r.value}>
                                 {r.label}
                             </SelectItem>
@@ -231,7 +213,7 @@ function DatadogForm({
                         id="apiKey"
                         type={showApiKey ? "text" : "password"}
                         value={apiKey}
-                        onChange={(e) => setApiKey(e.target.value)}
+                        onChange={e => setApiKey(e.target.value)}
                         placeholder="Enter your Datadog API key"
                         disabled={isSubmitting}
                         required
@@ -243,11 +225,7 @@ function DatadogForm({
                         className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                         disabled={isSubmitting}
                     >
-                        {showApiKey ? (
-                            <EyeOff className="h-4 w-4" />
-                        ) : (
-                            <Eye className="h-4 w-4" />
-                        )}
+                        {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
                 </div>
             </div>
@@ -259,7 +237,7 @@ function DatadogForm({
                         id="appKey"
                         type={showAppKey ? "text" : "password"}
                         value={appKey}
-                        onChange={(e) => setAppKey(e.target.value)}
+                        onChange={e => setAppKey(e.target.value)}
                         placeholder="Enter your Datadog Application key"
                         disabled={isSubmitting}
                         required
@@ -271,18 +249,12 @@ function DatadogForm({
                         className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                         disabled={isSubmitting}
                     >
-                        {showAppKey ? (
-                            <EyeOff className="h-4 w-4" />
-                        ) : (
-                            <Eye className="h-4 w-4" />
-                        )}
+                        {showAppKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
                 </div>
             </div>
 
-            {error && (
-                <p className="text-sm text-destructive">{error}</p>
-            )}
+            {error && <p className="text-sm text-destructive">{error}</p>}
 
             <div className="flex gap-2">
                 <Button type="submit" disabled={isSubmitting || !apiKey || !appKey || !region}>
@@ -293,7 +265,7 @@ function DatadogForm({
                 </Button>
             </div>
         </form>
-    );
+    )
 }
 
-export default DatadogIntegrationCard;
+export default DatadogIntegrationCard

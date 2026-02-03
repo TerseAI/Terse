@@ -1,5 +1,3 @@
-
-
 // export function useIntegration(integrationType: IntegrationType) {
 //     const { integrationStatus, isLoading, isError, mutate } = useIntegrations();
 
@@ -27,4 +25,3 @@
 //         mutate,
 //     };
 // }
-

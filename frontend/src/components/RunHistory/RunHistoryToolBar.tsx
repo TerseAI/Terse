@@ -1,40 +1,36 @@
-import { useState } from "react";
-import type { RunHistoryStatus } from "../../shared/RunHistoryTypes";
-import RunHistoryPagination from "./RunHistoryPagination";
-import { SearchBar } from "../Agents/SearchBar";
-import DateRangePicker from "./DatePicker";
-import StatusFilter from "./StatusFilter";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "../ui/select";
+import { useState } from "react"
 
-type DateRangeType = { from: Date | undefined; to: Date | undefined };
+import type { RunHistoryStatus } from "../../shared/RunHistoryTypes"
+import { SearchBar } from "../Agents/SearchBar"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select"
+
+import DateRangePicker from "./DatePicker"
+import RunHistoryPagination from "./RunHistoryPagination"
+import StatusFilter from "./StatusFilter"
+
+type DateRangeType = { from: Date | undefined; to: Date | undefined }
 
 type Props = {
-    filteredCount: number;
-    startIndex: number;
-    runsPerPage: number;
+    filteredCount: number
+    startIndex: number
+    runsPerPage: number
 
-    searchQuery: string;
-    onSearchChange: (value: string) => void;
+    searchQuery: string
+    onSearchChange: (value: string) => void
 
-    dateRange: DateRangeType;
-    onDateRangeChange: (next: DateRangeType) => void;
+    dateRange: DateRangeType
+    onDateRangeChange: (next: DateRangeType) => void
 
-    selectedStatuses: Set<RunHistoryStatus>;
-    onToggleStatus: (status: RunHistoryStatus) => void;
+    selectedStatuses: Set<RunHistoryStatus>
+    onToggleStatus: (status: RunHistoryStatus) => void
 
-    runsPerPageValue: number;
-    onRunsPerPageChange: (value: number) => void;
+    runsPerPageValue: number
+    onRunsPerPageChange: (value: number) => void
 
-    currentPage: number;
-    totalPages: number;
-    onPageChange: (page: number) => void;
-};
+    currentPage: number
+    totalPages: number
+    onPageChange: (page: number) => void
+}
 
 export default function RunHistoryToolBar({
     filteredCount,
@@ -52,8 +48,8 @@ export default function RunHistoryToolBar({
     totalPages,
     onPageChange
 }: Props) {
-    const [isDateOpen, setIsDateOpen] = useState(false);
-    const [isStatusOpen, setIsStatusOpen] = useState(false);
+    const [isDateOpen, setIsDateOpen] = useState(false)
+    const [isStatusOpen, setIsStatusOpen] = useState(false)
 
     return (
         <div className="mb-6 space-y-4 relative">
@@ -63,10 +59,7 @@ export default function RunHistoryToolBar({
                 </div>
                 <div className="flex items-center gap-2">
                     <span className="text-muted-foreground text-sm">Events per page:</span>
-                    <Select
-                        value={String(runsPerPageValue)}
-                        onValueChange={(value) => onRunsPerPageChange(Number(value))}
-                    >
+                    <Select value={String(runsPerPageValue)} onValueChange={value => onRunsPerPageChange(Number(value))}>
                         <SelectTrigger className="w-20">
                             <SelectValue />
                         </SelectTrigger>
@@ -87,10 +80,10 @@ export default function RunHistoryToolBar({
                         dateRange={dateRange}
                         onDateRangeChange={onDateRangeChange}
                         open={isDateOpen}
-                        onOpenChange={(open) => {
-                            setIsDateOpen(open);
+                        onOpenChange={open => {
+                            setIsDateOpen(open)
                             if (open) {
-                                setIsStatusOpen(false);
+                                setIsStatusOpen(false)
                             }
                         }}
                     />
@@ -99,10 +92,10 @@ export default function RunHistoryToolBar({
                         selectedStatuses={selectedStatuses}
                         onToggleStatus={onToggleStatus}
                         open={isStatusOpen}
-                        onOpenChange={(open) => {
-                            setIsStatusOpen(open);
+                        onOpenChange={open => {
+                            setIsStatusOpen(open)
                             if (open) {
-                                setIsDateOpen(false);
+                                setIsDateOpen(false)
                             }
                         }}
                     />
@@ -111,16 +104,9 @@ export default function RunHistoryToolBar({
 
             <div className="flex items-center justify-between gap-4">
                 <div className="flex items-center justify-start gap-4">
-                    <RunHistoryPagination
-                        currentPage={currentPage}
-                        totalPages={totalPages}
-                        onPageChange={onPageChange}
-                    />
+                    <RunHistoryPagination currentPage={currentPage} totalPages={totalPages} onPageChange={onPageChange} />
                 </div>
             </div>
         </div>
-    );
+    )
 }
-
-
-

@@ -1,59 +1,62 @@
-import { Button } from "@/components/ui/button";
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { FrontendRoutes } from "@/shared/FrontendRoutes";
-import EditableTextField from '../../../components/ui/EditableTextField';
-import { AgentKnowledgeBase, AgentNotificationSettings as AgentNotificationSettingsType, AgentUpdate, TransientAgentTrigger, TransientAgentOutput } from "@/shared/types";
-import { toast } from "sonner";
-import { getDefaultAgentName, toAgentTrigger, toAgentOutput, toAgentKnowledgeBase } from "@/utility/AgentUtils";
-import { useAgentCount } from "@/hooks/api/useAgentCount";
-import { useAgentMutations } from "@/hooks/api/useAgents";
-import { type KeyedMutator } from 'swr';
-import { Agent, AgentTrigger, AgentOutput, AgentPrompt, TransientKnowledgeBase } from "@/shared/types";
-import { AddTriggerModal } from "../components/AddTriggerModal";
-import { AddKnowledgeBaseModal } from "../components/AddKnowledgeBaseModal";
-import { AddOutputModal } from "../components/AddOutputModal";
-import { KnowledgeBaseSelector } from "../components/KnowledgeBaseSelector";
-import { CONFIG_DETAILS, ConfigInstance, ConfigType } from "../../../shared/Configs";
-import { v4 as uuidv4 } from 'uuid';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "../../../components/ui/dialog";
-import { InputConfigSelectorProps, IntegrationSelector } from "../../../components/IntegrationSelector";
-import { PlusIcon, XIcon, Zap, FileText, Wrench, Bell, Database, ChevronRight, Check } from "lucide-react";
-import { cn } from "../../../lib/utils";
-import { Badge } from "../../../components/ui/badge";
-import AgentNotificationSettings from "../AgentNotificationSettings";
-import AgentApprovalSettings from "../AgentApprovalSettings";
-import { InstructionsEditor } from "../components/InstructionsEditor";
-import { IconForConfigType } from "../components/Integration";
-import { BuilderChat } from "../../../components/chat/BuilderChat";
-import { useModelContext } from "../../../services/ModelContextProvider";
-import { AgentSetUpPageContext } from "../../../utility/AgentModelDonation";
+import { useState } from "react"
+import { useNavigate } from "react-router-dom"
 
-export type SetupSection = 'triggers' | 'knowledgeBase' | 'prompt' | 'skills' | 'alerts';
+import { Bell, Check, ChevronRight, Database, FileText, PlusIcon, Wrench, XIcon, Zap } from "lucide-react"
+import { toast } from "sonner"
+import { type KeyedMutator } from "swr"
+import { v4 as uuidv4 } from "uuid"
+
+import { Button } from "@/components/ui/button"
+import { useAgentCount } from "@/hooks/api/useAgentCount"
+import { useAgentMutations } from "@/hooks/api/useAgents"
+import { FrontendRoutes } from "@/shared/FrontendRoutes"
+import { AgentKnowledgeBase, AgentNotificationSettings as AgentNotificationSettingsType, AgentUpdate, TransientAgentOutput, TransientAgentTrigger } from "@/shared/types"
+import { Agent, AgentOutput, AgentPrompt, AgentTrigger, TransientKnowledgeBase } from "@/shared/types"
+import { getDefaultAgentName, toAgentKnowledgeBase, toAgentOutput, toAgentTrigger } from "@/utility/AgentUtils"
+
+import { InputConfigSelectorProps, IntegrationSelector } from "../../../components/IntegrationSelector"
+import { BuilderChat } from "../../../components/chat/BuilderChat"
+import EditableTextField from "../../../components/ui/EditableTextField"
+import { Badge } from "../../../components/ui/badge"
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "../../../components/ui/dialog"
+import { cn } from "../../../lib/utils"
+import { useModelContext } from "../../../services/ModelContextProvider"
+import { CONFIG_DETAILS, ConfigInstance, ConfigType } from "../../../shared/Configs"
+import { AgentSetUpPageContext } from "../../../utility/AgentModelDonation"
+import AgentApprovalSettings from "../AgentApprovalSettings"
+import AgentNotificationSettings from "../AgentNotificationSettings"
+import { AddKnowledgeBaseModal } from "../components/AddKnowledgeBaseModal"
+import { AddOutputModal } from "../components/AddOutputModal"
+import { AddTriggerModal } from "../components/AddTriggerModal"
+import { InstructionsEditor } from "../components/InstructionsEditor"
+import { IconForConfigType } from "../components/Integration"
+import { KnowledgeBaseSelector } from "../components/KnowledgeBaseSelector"
+
+export type SetupSection = "triggers" | "knowledgeBase" | "prompt" | "skills" | "alerts"
 export type AgentSetupTabProps = {
-    agentId: string | null;
-    name: string | null;
-    setName: (name: string) => void;
-    inputs: TransientAgentTrigger[];
-    setInputs: (inputs: TransientAgentTrigger[]) => void;
-    outputs: TransientAgentOutput[];
-    setOutputs: (outputs: TransientAgentOutput[]) => void;
-    knowledgeBases: TransientKnowledgeBase[];
-    setKnowledgeBases: (knowledgeBases: TransientKnowledgeBase[]) => void;
-    prompt: AgentPrompt | undefined;
-    setPrompt: (prompt: AgentPrompt | undefined) => void;
-    isActive: boolean;
-    setIsActive: (isActive: boolean) => void;
-    requireApproval: boolean;
-    setRequireApproval: (requireApproval: boolean) => void;
-    toolApprovals: string[];
-    setToolApprovals: (toolApprovals: string[]) => void;
-    notificationSettings: AgentNotificationSettingsType;
-    setNotificationSettings: (settings: AgentNotificationSettingsType) => void;
-    isLoading: boolean;
-    mutate: KeyedMutator<Agent>;
-    updatedAt?: string;
-};
+    agentId: string | null
+    name: string | null
+    setName: (name: string) => void
+    inputs: TransientAgentTrigger[]
+    setInputs: (inputs: TransientAgentTrigger[]) => void
+    outputs: TransientAgentOutput[]
+    setOutputs: (outputs: TransientAgentOutput[]) => void
+    knowledgeBases: TransientKnowledgeBase[]
+    setKnowledgeBases: (knowledgeBases: TransientKnowledgeBase[]) => void
+    prompt: AgentPrompt | undefined
+    setPrompt: (prompt: AgentPrompt | undefined) => void
+    isActive: boolean
+    setIsActive: (isActive: boolean) => void
+    requireApproval: boolean
+    setRequireApproval: (requireApproval: boolean) => void
+    toolApprovals: string[]
+    setToolApprovals: (toolApprovals: string[]) => void
+    notificationSettings: AgentNotificationSettingsType
+    setNotificationSettings: (settings: AgentNotificationSettingsType) => void
+    isLoading: boolean
+    mutate: KeyedMutator<Agent>
+    updatedAt?: string
+}
 
 function SaveAgentButton({
     defaultName,
@@ -70,24 +73,24 @@ function SaveAgentButton({
     mutate,
     onSaveSuccess
 }: {
-    defaultName: string;
-    agentId: string | null;
-    name: string | null;
-    inputs: AgentTrigger[];
-    outputs: AgentOutput[];
-    knowledgeBases: AgentKnowledgeBase[];
-    prompt: AgentPrompt | undefined;
-    isActive: boolean;
-    requireApproval: boolean;
-    toolApprovals: string[];
-    notificationSettings: AgentNotificationSettingsType;
-    mutate: KeyedMutator<Agent>;
-    onSaveSuccess?: () => void;
+    defaultName: string
+    agentId: string | null
+    name: string | null
+    inputs: AgentTrigger[]
+    outputs: AgentOutput[]
+    knowledgeBases: AgentKnowledgeBase[]
+    prompt: AgentPrompt | undefined
+    isActive: boolean
+    requireApproval: boolean
+    toolApprovals: string[]
+    notificationSettings: AgentNotificationSettingsType
+    mutate: KeyedMutator<Agent>
+    onSaveSuccess?: () => void
 }) {
-    const navigate = useNavigate();
-    const [isSaving, setIsSaving] = useState(false);
-    const [saveSuccess, setSaveSuccess] = useState(false);
-    const { createAgent, updateAgent } = useAgentMutations();
+    const navigate = useNavigate()
+    const [isSaving, setIsSaving] = useState(false)
+    const [saveSuccess, setSaveSuccess] = useState(false)
+    const { createAgent, updateAgent } = useAgentMutations()
 
     // Validation: all required fields must be present
     // Each integration reports its own completeness
@@ -96,17 +99,17 @@ function SaveAgentButton({
         inputs.every(i => i != null && i.config != null && i.config.isComplete()) &&
         outputs.length > 0 &&
         outputs.every(o => o != null && o.config != null && o.config.isComplete()) &&
-        !!prompt?.text; // Ensure prompt is not empty
+        !!prompt?.text // Ensure prompt is not empty
 
-    const isEditMode = !!agentId;
+    const isEditMode = !!agentId
 
     const handleSave = async () => {
-        if (!isComplete || !inputs.length || !outputs.length) return;
+        if (!isComplete || !inputs.length || !outputs.length) return
 
-        setIsSaving(true);
+        setIsSaving(true)
         try {
             const agentData: AgentUpdate = {
-                name: name || defaultName || '',
+                name: name || defaultName || "",
                 triggers: inputs,
                 outputs,
                 knowledgeBases,
@@ -115,48 +118,44 @@ function SaveAgentButton({
                 requireApproval,
                 toolApprovals,
                 notificationSettings
-            };
+            }
 
             if (isEditMode) {
                 // Update existing agent
                 await updateAgent({
                     id: agentId!,
                     data: agentData,
-                    mutateAgent: mutate,
-                });
+                    mutateAgent: mutate
+                })
             } else if (isComplete && agentData.outputs && agentData.outputs.length > 0 && agentData.triggers && agentData.triggers.length > 0) {
                 // Create new agent
-                const creation = await createAgent(agentData);
+                const creation = await createAgent(agentData)
 
                 if (creation?.id) {
-                    navigate(FrontendRoutes.AGENTS.DETAIL(creation.id), { replace: true });
+                    navigate(FrontendRoutes.AGENTS.DETAIL(creation.id), { replace: true })
                 }
             }
 
-            toast.success('Agent saved successfully');
+            toast.success("Agent saved successfully")
 
             // Notify parent that save was successful
-            onSaveSuccess?.();
+            onSaveSuccess?.()
 
-            setSaveSuccess(true);
+            setSaveSuccess(true)
             setTimeout(() => {
-                setSaveSuccess(false);
-            }, 1000);
+                setSaveSuccess(false)
+            }, 1000)
         } catch (error) {
-            console.error('Error saving agent:', error);
-            alert('Failed to save agent. Please try again.');
+            console.error("Error saving agent:", error)
+            alert("Failed to save agent. Please try again.")
         } finally {
-            setIsSaving(false);
+            setIsSaving(false)
         }
-    };
+    }
 
     return (
-        <Button
-            onClick={handleSave}
-            disabled={!isComplete || isSaving}
-            className="min-w-24 w-fit"
-        >
-            {isSaving ? 'Saving...' : saveSuccess ? 'Saved!' : isComplete ? 'Save' : 'Complete All Steps'}
+        <Button onClick={handleSave} disabled={!isComplete || isSaving} className="min-w-24 w-fit">
+            {isSaving ? "Saving..." : saveSuccess ? "Saved!" : isComplete ? "Save" : "Complete All Steps"}
         </Button>
     )
 }
@@ -180,50 +179,49 @@ export default function AgentSetupTab({
     setNotificationSettings,
     toolApprovals,
     setToolApprovals,
-    mutate,
+    mutate
 }: AgentSetupTabProps) {
-    const { totalCount } = useAgentCount();
-    const defaultName = getDefaultAgentName(totalCount);
-    const { getStateJSON, donate } = useModelContext();
+    const { totalCount } = useAgentCount()
+    const defaultName = getDefaultAgentName(totalCount)
+    const { getStateJSON, donate } = useModelContext()
 
-    const agentInputs = inputs.map(toAgentTrigger).filter((i): i is AgentTrigger => i != null);
-    const agentOutputs = outputs.map(toAgentOutput).filter((o): o is AgentOutput => o != null);
-    const agentKnowledgeBases = knowledgeBases.map(toAgentKnowledgeBase).filter((kb): kb is AgentKnowledgeBase => kb != null);
+    const agentInputs = inputs.map(toAgentTrigger).filter((i): i is AgentTrigger => i != null)
+    const agentOutputs = outputs.map(toAgentOutput).filter((o): o is AgentOutput => o != null)
+    const agentKnowledgeBases = knowledgeBases.map(toAgentKnowledgeBase).filter((kb): kb is AgentKnowledgeBase => kb != null)
 
-    const triggersIncomplete =
-        inputs.length === 0 || inputs.some((i) => !i || !i.config || !i.config.isComplete());
-    const promptIncomplete = !prompt?.text || prompt.text.trim() === '';
-    const skillsIncomplete = outputs.length === 0 || outputs.some((o) => !o || !o.config || !o.config.isComplete());
+    const triggersIncomplete = inputs.length === 0 || inputs.some(i => !i || !i.config || !i.config.isComplete())
+    const promptIncomplete = !prompt?.text || prompt.text.trim() === ""
+    const skillsIncomplete = outputs.length === 0 || outputs.some(o => !o || !o.config || !o.config.isComplete())
 
     // Step definitions for the builder flow
     const steps = [
         {
-            id: 'triggers' as const,
-            label: 'Triggers',
-            description: 'What starts this agent',
+            id: "triggers" as const,
+            label: "Triggers",
+            description: "What starts this agent",
             icon: Zap,
             isComplete: !triggersIncomplete,
-            count: inputs.length,
+            count: inputs.length
         },
         {
-            id: 'prompt' as const,
-            label: 'Instructions',
-            description: 'What the agent does',
+            id: "prompt" as const,
+            label: "Instructions",
+            description: "What the agent does",
             icon: FileText,
-            isComplete: !promptIncomplete,
+            isComplete: !promptIncomplete
         },
         {
-            id: 'skills' as const,
-            label: 'Skills',
-            description: 'What the agent can use',
+            id: "skills" as const,
+            label: "Skills",
+            description: "What the agent can use",
             icon: Wrench,
             isComplete: !skillsIncomplete,
-            count: outputs.length,
-        },
-    ];
-    const [activeSection, setActiveSection] = useState<SetupSection>('triggers');
+            count: outputs.length
+        }
+    ]
+    const [activeSection, setActiveSection] = useState<SetupSection>("triggers")
 
-    donate('Agent Set Up Page Context', new AgentSetUpPageContext(activeSection));
+    donate("Agent Set Up Page Context", new AgentSetUpPageContext(activeSection))
 
     return (
         <div className="grid grid-cols-20 h-full">
@@ -232,12 +230,7 @@ export default function AgentSetupTab({
                 <div className="border-b border-border px-6 py-4">
                     <div className="flex items-center justify-between gap-4">
                         <div className="flex items-center gap-4 min-w-0">
-                            <EditableTextField
-                                className="text-lg font-medium"
-                                value={name || ''}
-                                placeholder={defaultName}
-                                onSave={(value) => setName(value)}
-                            />
+                            <EditableTextField className="text-lg font-medium" value={name || ""} placeholder={defaultName} onSave={value => setName(value)} />
                         </div>
                         <SaveAgentButton
                             defaultName={defaultName}
@@ -260,8 +253,8 @@ export default function AgentSetupTab({
                 <div className="border-b border-border px-6 py-4 bg-muted/30">
                     <div className="flex items-center gap-2">
                         {steps.map((step, index) => {
-                            const isActive = activeSection === step.id;
-                            const StepIcon = step.icon;
+                            const isActive = activeSection === step.id
+                            const StepIcon = step.icon
 
                             return (
                                 <div key={step.id} className="flex items-center">
@@ -269,43 +262,32 @@ export default function AgentSetupTab({
                                         onClick={() => setActiveSection(step.id)}
                                         className={cn(
                                             "flex items-center gap-3 px-4 py-2.5 rounded-lg border transition-colors",
-                                            isActive
-                                                ? "bg-background border-border shadow-sm"
-                                                : "border-transparent hover:bg-background/50",
+                                            isActive ? "bg-background border-border shadow-sm" : "border-transparent hover:bg-background/50"
                                         )}
                                     >
-                                        <div className={cn(
-                                            "flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium transition-colors",
-                                            step.isComplete
-                                                ? "bg-foreground text-background"
-                                                : isActive
-                                                    ? "bg-foreground/10 text-foreground border border-foreground/20"
-                                                    : "bg-muted text-muted-foreground"
-                                        )}>
-                                            {step.isComplete ? (
-                                                <Check className="w-4 h-4" />
-                                            ) : (
-                                                <StepIcon className="w-4 h-4" />
+                                        <div
+                                            className={cn(
+                                                "flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium transition-colors",
+                                                step.isComplete
+                                                    ? "bg-foreground text-background"
+                                                    : isActive
+                                                      ? "bg-foreground/10 text-foreground border border-foreground/20"
+                                                      : "bg-muted text-muted-foreground"
                                             )}
+                                        >
+                                            {step.isComplete ? <Check className="w-4 h-4" /> : <StepIcon className="w-4 h-4" />}
                                         </div>
                                         <div className="text-left">
-                                            <div className={cn(
-                                                "text-sm font-medium",
-                                                isActive ? "text-foreground" : "text-muted-foreground"
-                                            )}>
+                                            <div className={cn("text-sm font-medium", isActive ? "text-foreground" : "text-muted-foreground")}>
                                                 {step.label}
-                                                {step.count !== undefined && step.count > 0 && (
-                                                    <span className="ml-1.5 text-xs text-muted-foreground">({step.count})</span>
-                                                )}
+                                                {step.count !== undefined && step.count > 0 && <span className="ml-1.5 text-xs text-muted-foreground">({step.count})</span>}
                                             </div>
                                             <div className="text-xs text-muted-foreground">{step.description}</div>
                                         </div>
                                     </button>
-                                    {index < steps.length - 1 && (
-                                        <ChevronRight className="w-4 h-4 text-muted-foreground/50 mx-1" />
-                                    )}
+                                    {index < steps.length - 1 && <ChevronRight className="w-4 h-4 text-muted-foreground/50 mx-1" />}
                                 </div>
-                            );
+                            )
                         })}
 
                         {/* Separator */}
@@ -313,12 +295,12 @@ export default function AgentSetupTab({
 
                         {/* Optional sections */}
                         <button
-                            onClick={() => setActiveSection('knowledgeBase')}
+                            onClick={() => setActiveSection("knowledgeBase")}
                             className={cn(
                                 "flex items-center gap-2 px-3 py-2 rounded-lg text-sm border transition-colors",
-                                activeSection === 'knowledgeBase'
+                                activeSection === "knowledgeBase"
                                     ? "bg-background border-border shadow-sm text-foreground"
-                                    : "border-transparent text-muted-foreground hover:bg-background/50 hover:text-foreground",
+                                    : "border-transparent text-muted-foreground hover:bg-background/50 hover:text-foreground"
                             )}
                         >
                             <Database className="w-4 h-4" />
@@ -330,12 +312,12 @@ export default function AgentSetupTab({
                             )}
                         </button>
                         <button
-                            onClick={() => setActiveSection('alerts')}
+                            onClick={() => setActiveSection("alerts")}
                             className={cn(
                                 "flex items-center gap-2 px-3 py-2 rounded-lg text-sm border transition-colors",
-                                activeSection === 'alerts'
+                                activeSection === "alerts"
                                     ? "bg-background border-border shadow-sm text-foreground"
-                                    : "border-transparent text-muted-foreground hover:bg-background/50 hover:text-foreground",
+                                    : "border-transparent text-muted-foreground hover:bg-background/50 hover:text-foreground"
                             )}
                         >
                             <Bell className="w-4 h-4" />
@@ -347,15 +329,15 @@ export default function AgentSetupTab({
                 {/* Main Content */}
                 <div className="flex-1 min-h-0 overflow-y-auto">
                     <div className="p-6 max-w-4xl">
-                        <div className={activeSection === 'triggers' ? 'block' : 'hidden'}>
+                        <div className={activeSection === "triggers" ? "block" : "hidden"}>
                             <InputLayout inputs={inputs} setInputs={setInputs} isIncomplete={triggersIncomplete} />
                         </div>
 
-                        <div className={activeSection === 'knowledgeBase' ? 'block' : 'hidden'}>
+                        <div className={activeSection === "knowledgeBase" ? "block" : "hidden"}>
                             <KnowledgeBaseLayout knowledgeBases={knowledgeBases} setKnowledgeBases={setKnowledgeBases} />
                         </div>
 
-                        <div className={activeSection === 'prompt' ? 'block' : 'hidden'}>
+                        <div className={activeSection === "prompt" ? "block" : "hidden"}>
                             <div className="h-[calc(100vh-16rem)] min-h-[420px]">
                                 <InstructionsEditor
                                     prompt={prompt}
@@ -368,23 +350,16 @@ export default function AgentSetupTab({
                             </div>
                         </div>
 
-                        <div className={activeSection === 'skills' ? 'block' : 'hidden'}>
+                        <div className={activeSection === "skills" ? "block" : "hidden"}>
                             <OutputLayout outputs={outputs} setOutputs={setOutputs} isIncomplete={skillsIncomplete} />
                         </div>
 
-                        <div className={cn(activeSection === 'alerts' ? 'block' : 'hidden', 'space-y-6')}>
+                        <div className={cn(activeSection === "alerts" ? "block" : "hidden", "space-y-6")}>
                             <div>
                                 <h2 className="text-lg font-medium mb-1">Alerts & Approval</h2>
-                                <p className="text-sm text-muted-foreground mb-4">
-                                    Configure when you want to be notified and whether actions need your approval.
-                                </p>
+                                <p className="text-sm text-muted-foreground mb-4">Configure when you want to be notified and whether actions need your approval.</p>
                             </div>
-                            <AgentApprovalSettings
-                                outputs={outputs}
-                                knowledgeBases={knowledgeBases}
-                                toolApprovals={toolApprovals}
-                                onToolApprovalsChange={setToolApprovals}
-                            />
+                            <AgentApprovalSettings outputs={outputs} knowledgeBases={knowledgeBases} toolApprovals={toolApprovals} onToolApprovalsChange={setToolApprovals} />
                             <AgentNotificationSettings settings={notificationSettings} onChange={setNotificationSettings} />
                         </div>
                     </div>
@@ -393,109 +368,101 @@ export default function AgentSetupTab({
 
             {/* Builder Chat */}
             <div className="border-l border-border col-span-6 h-full min-h-0">
-                <BuilderChat 
-                    getStateJSON={() => getStateJSON()} 
-                    agentId={agentId}
-                />
+                <BuilderChat getStateJSON={() => getStateJSON()} agentId={agentId} />
             </div>
         </div>
     )
 }
 
-function InputLayout({ inputs, setInputs }: { inputs: TransientAgentTrigger[], setInputs: (inputs: TransientAgentTrigger[]) => void, isIncomplete: boolean }) {
-    const [showAddModal, setShowAddModal] = useState(false);
+function InputLayout({ inputs, setInputs }: { inputs: TransientAgentTrigger[]; setInputs: (inputs: TransientAgentTrigger[]) => void; isIncomplete: boolean }) {
+    const [showAddModal, setShowAddModal] = useState(false)
 
     const handleSelectPlatform = (config: ConfigType) => {
-        const newInputId = uuidv4(); // We need to mint a placeholder ID for the new input so that we can identify it later.
-        const newInput: TransientAgentTrigger = { id: newInputId, config: undefined, configType: config };
-        const newInputs: TransientAgentTrigger[] = [...inputs, newInput];
-        setInputs(newInputs);
-        setShowAddModal(false);
-    };
+        const newInputId = uuidv4() // We need to mint a placeholder ID for the new input so that we can identify it later.
+        const newInput: TransientAgentTrigger = { id: newInputId, config: undefined, configType: config }
+        const newInputs: TransientAgentTrigger[] = [...inputs, newInput]
+        setInputs(newInputs)
+        setShowAddModal(false)
+    }
 
     const handleRemove = (id: string) => {
-        setInputs(inputs.filter(input => input.id !== id));
-    };
+        setInputs(inputs.filter(input => input.id !== id))
+    }
 
     return (
         <div className="space-y-4">
             <div>
                 <h2 className="text-lg font-medium mb-1">Triggers</h2>
-                <p className="text-sm text-muted-foreground">
-                    Events that will activate this agent. Add integrations like Slack, GitHub, or Gmail to listen for activity.
-                </p>
+                <p className="text-sm text-muted-foreground">Events that will activate this agent. Add integrations like Slack, GitHub, or Gmail to listen for activity.</p>
             </div>
 
             <div className="space-y-2">
-                {inputs.map((input) => (
+                {inputs.map(input => (
                     <InputCard key={input.id} input={input} inputs={inputs} setInputs={setInputs} handleRemove={handleRemove} />
                 ))}
-                <Button
-                    variant="outline"
-                    onClick={() => setShowAddModal(true)}
-                    className="w-full h-14 border-dashed hover:border-solid hover:bg-muted/50"
-                >
+                <Button variant="outline" onClick={() => setShowAddModal(true)} className="w-full h-14 border-dashed hover:border-solid hover:bg-muted/50">
                     <PlusIcon className="size-4 mr-2" />
                     Add trigger
                 </Button>
             </div>
 
-            <AddTriggerModal
-                isOpen={showAddModal}
-                onClose={() => setShowAddModal(false)}
-                onSelectIntegration={handleSelectPlatform}
-            />
+            <AddTriggerModal isOpen={showAddModal} onClose={() => setShowAddModal(false)} onSelectIntegration={handleSelectPlatform} />
         </div>
     )
 }
 
-function InputCard({ input, inputs, setInputs, handleRemove }: { input: TransientAgentTrigger, inputs: TransientAgentTrigger[], setInputs: (inputs: TransientAgentTrigger[]) => void, handleRemove: (id: string) => void }) {
-    const needsConfiguration = !input.config || !input.config.isComplete();
-    const [showDetailsDialog, setShowDetailsDialog] = useState(false);
-    const [draftConfig, setDraftConfig] = useState<ConfigInstance | undefined>(input.config);
+function InputCard({
+    input,
+    inputs,
+    setInputs,
+    handleRemove
+}: {
+    input: TransientAgentTrigger
+    inputs: TransientAgentTrigger[]
+    setInputs: (inputs: TransientAgentTrigger[]) => void
+    handleRemove: (id: string) => void
+}) {
+    const needsConfiguration = !input.config || !input.config.isComplete()
+    const [showDetailsDialog, setShowDetailsDialog] = useState(false)
+    const [draftConfig, setDraftConfig] = useState<ConfigInstance | undefined>(input.config)
 
-    const draftInput = { ...input, config: draftConfig };
-    const isDraftValid = draftConfig?.isComplete() ?? false;
+    const draftInput = { ...input, config: draftConfig }
+    const isDraftValid = draftConfig?.isComplete() ?? false
 
     const handleOpenDialog = () => {
-        setDraftConfig(input.config);
-        setShowDetailsDialog(true);
-    };
+        setDraftConfig(input.config)
+        setShowDetailsDialog(true)
+    }
 
     const handleCancel = () => {
-        setDraftConfig(input.config);
-        setShowDetailsDialog(false);
-    };
+        setDraftConfig(input.config)
+        setShowDetailsDialog(false)
+    }
 
     const handleDone = () => {
         if (draftConfig) {
-            setInputs(inputs.map(i => i.id === input.id ? { ...i, config: draftConfig, configType: draftConfig.configType } : i));
+            setInputs(inputs.map(i => (i.id === input.id ? { ...i, config: draftConfig, configType: draftConfig.configType } : i)))
         }
-        setShowDetailsDialog(false);
-    };
+        setShowDetailsDialog(false)
+    }
 
     const selectorProps: InputConfigSelectorProps = {
         input: draftInput,
         setConfig: setDraftConfig,
-        variant: "card",
-    };
+        variant: "card"
+    }
 
     return (
         <>
             <div
-                className={cn(
-                    "flex items-center gap-4 p-4 border rounded-lg cursor-pointer transition-colors hover:bg-muted/50",
-                    needsConfiguration && "border-yellow-500/50"
-                )}
+                className={cn("flex items-center gap-4 p-4 border rounded-lg cursor-pointer transition-colors hover:bg-muted/50", needsConfiguration && "border-yellow-500/50")}
                 onClick={handleOpenDialog}
             >
                 <div className="w-10 h-10 shrink-0">
                     <IconForConfigType type={input.configType} />
                 </div>
                 <div className="flex-1 min-w-0">
-                    <div className="font-medium text-sm">
-                        {CONFIG_DETAILS[input.configType].name}
-                    </div>
+                    <div className="font-medium text-sm">{CONFIG_DETAILS[input.configType].name}</div>
                     <div className="text-xs text-muted-foreground truncate">
                         <IntegrationSelector {...selectorProps} variant="card" />
                     </div>
@@ -508,22 +475,34 @@ function InputCard({ input, inputs, setInputs, handleRemove }: { input: Transien
                 <Button
                     variant="ghost"
                     size="icon-sm"
-                    onClick={(e) => { e.stopPropagation(); handleRemove(input.id); }}
+                    onClick={e => {
+                        e.stopPropagation()
+                        handleRemove(input.id)
+                    }}
                     className="shrink-0 hover:text-destructive"
                 >
                     <XIcon className="w-4 h-4" />
                 </Button>
             </div>
 
-            <Dialog open={showDetailsDialog} onOpenChange={(open) => { if (!open) handleCancel(); }}>
+            <Dialog
+                open={showDetailsDialog}
+                onOpenChange={open => {
+                    if (!open) handleCancel()
+                }}
+            >
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>{needsConfiguration ? "Configure Trigger" : "Trigger Details"}</DialogTitle>
                     </DialogHeader>
                     <IntegrationSelector {...selectorProps} variant="dialog" />
                     <DialogFooter>
-                        <Button variant="outline" onClick={handleCancel}>Cancel</Button>
-                        <Button onClick={handleDone} disabled={!isDraftValid}>Done</Button>
+                        <Button variant="outline" onClick={handleCancel}>
+                            Cancel
+                        </Button>
+                        <Button onClick={handleDone} disabled={!isDraftValid}>
+                            Done
+                        </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
@@ -531,104 +510,99 @@ function InputCard({ input, inputs, setInputs, handleRemove }: { input: Transien
     )
 }
 
-function OutputLayout({ outputs, setOutputs }: { outputs: TransientAgentOutput[], setOutputs: (outputs: TransientAgentOutput[]) => void, isIncomplete: boolean }) {
-    const [showAddModal, setShowAddModal] = useState(false);
+function OutputLayout({ outputs, setOutputs }: { outputs: TransientAgentOutput[]; setOutputs: (outputs: TransientAgentOutput[]) => void; isIncomplete: boolean }) {
+    const [showAddModal, setShowAddModal] = useState(false)
 
     const handleSelectOutput = (configType: ConfigType) => {
-        const newOutputId = uuidv4();
+        const newOutputId = uuidv4()
         const newOutput: TransientAgentOutput = {
             id: newOutputId,
             config: undefined,
-            configType: configType,
-        };
-        const newOutputs = [...outputs, newOutput];
-        setOutputs(newOutputs);
-        setShowAddModal(false);
-    };
+            configType: configType
+        }
+        const newOutputs = [...outputs, newOutput]
+        setOutputs(newOutputs)
+        setShowAddModal(false)
+    }
 
     const handleRemove = (id: string) => {
-        setOutputs(outputs.filter(output => output.id !== id));
-    };
+        setOutputs(outputs.filter(output => output.id !== id))
+    }
 
     return (
         <div className="space-y-4">
             <div>
                 <h2 className="text-lg font-medium mb-1">Skills</h2>
-                <p className="text-sm text-muted-foreground">
-                    Tools and integrations the agent can use to take action. Add skills like GitHub, Linear, or Slack.
-                </p>
+                <p className="text-sm text-muted-foreground">Tools and integrations the agent can use to take action. Add skills like GitHub, Linear, or Slack.</p>
             </div>
 
             <div className="space-y-2">
-                {outputs.map((output) => (
+                {outputs.map(output => (
                     <SkillCard key={output.id} output={output} outputs={outputs} setOutputs={setOutputs} handleRemove={handleRemove} />
                 ))}
-                <Button
-                    variant="outline"
-                    onClick={() => setShowAddModal(true)}
-                    className="w-full h-14 border-dashed hover:border-solid hover:bg-muted/50"
-                >
+                <Button variant="outline" onClick={() => setShowAddModal(true)} className="w-full h-14 border-dashed hover:border-solid hover:bg-muted/50">
                     <PlusIcon className="size-4 mr-2" />
                     Add skill
                 </Button>
             </div>
 
-            <AddOutputModal
-                isOpen={showAddModal}
-                onClose={() => setShowAddModal(false)}
-                onSelectOutput={handleSelectOutput}
-            />
+            <AddOutputModal isOpen={showAddModal} onClose={() => setShowAddModal(false)} onSelectOutput={handleSelectOutput} />
         </div>
     )
 }
 
-function SkillCard({ output, outputs, setOutputs, handleRemove }: { output: TransientAgentOutput, outputs: TransientAgentOutput[], setOutputs: (outputs: TransientAgentOutput[]) => void, handleRemove: (id: string) => void }) {
-    const [showDetailsDialog, setShowDetailsDialog] = useState(false);
-    const needsConfiguration = !output.config || !output.config.isComplete();
-    const [draftConfig, setDraftConfig] = useState<ConfigInstance | undefined>(output.config);
+function SkillCard({
+    output,
+    outputs,
+    setOutputs,
+    handleRemove
+}: {
+    output: TransientAgentOutput
+    outputs: TransientAgentOutput[]
+    setOutputs: (outputs: TransientAgentOutput[]) => void
+    handleRemove: (id: string) => void
+}) {
+    const [showDetailsDialog, setShowDetailsDialog] = useState(false)
+    const needsConfiguration = !output.config || !output.config.isComplete()
+    const [draftConfig, setDraftConfig] = useState<ConfigInstance | undefined>(output.config)
 
-    const draftOutput = { ...output, config: draftConfig };
-    const isDraftValid = draftConfig?.isComplete() ?? false;
+    const draftOutput = { ...output, config: draftConfig }
+    const isDraftValid = draftConfig?.isComplete() ?? false
 
     const handleOpenDialog = () => {
-        setDraftConfig(output.config);
-        setShowDetailsDialog(true);
-    };
+        setDraftConfig(output.config)
+        setShowDetailsDialog(true)
+    }
 
     const handleCancel = () => {
-        setDraftConfig(output.config);
-        setShowDetailsDialog(false);
-    };
+        setDraftConfig(output.config)
+        setShowDetailsDialog(false)
+    }
 
     const handleDone = () => {
         if (draftConfig) {
-            setOutputs(outputs.map(o => o.id === output.id ? { ...o, config: draftConfig, configType: draftConfig.configType } : o));
+            setOutputs(outputs.map(o => (o.id === output.id ? { ...o, config: draftConfig, configType: draftConfig.configType } : o)))
         }
-        setShowDetailsDialog(false);
-    };
+        setShowDetailsDialog(false)
+    }
 
     const selectorProps: InputConfigSelectorProps = {
         input: draftOutput,
         setConfig: setDraftConfig,
-        variant: "card",
-    };
+        variant: "card"
+    }
 
     return (
         <>
             <div
-                className={cn(
-                    "flex items-center gap-4 p-4 border rounded-lg cursor-pointer transition-colors hover:bg-muted/50",
-                    needsConfiguration && "border-yellow-500/50"
-                )}
+                className={cn("flex items-center gap-4 p-4 border rounded-lg cursor-pointer transition-colors hover:bg-muted/50", needsConfiguration && "border-yellow-500/50")}
                 onClick={handleOpenDialog}
             >
                 <div className="w-10 h-10 shrink-0">
                     <IconForConfigType type={output.configType} />
                 </div>
                 <div className="flex-1 min-w-0">
-                    <div className="font-medium text-sm">
-                        {CONFIG_DETAILS[output.configType].name}
-                    </div>
+                    <div className="font-medium text-sm">{CONFIG_DETAILS[output.configType].name}</div>
                     <div className="text-xs text-muted-foreground truncate">
                         <IntegrationSelector {...selectorProps} variant="card" />
                     </div>
@@ -641,22 +615,34 @@ function SkillCard({ output, outputs, setOutputs, handleRemove }: { output: Tran
                 <Button
                     variant="ghost"
                     size="icon-sm"
-                    onClick={(e) => { e.stopPropagation(); handleRemove(output.id); }}
+                    onClick={e => {
+                        e.stopPropagation()
+                        handleRemove(output.id)
+                    }}
                     className="shrink-0 hover:text-destructive"
                 >
                     <XIcon className="w-4 h-4" />
                 </Button>
             </div>
 
-            <Dialog open={showDetailsDialog} onOpenChange={(open) => { if (!open) handleCancel(); }}>
+            <Dialog
+                open={showDetailsDialog}
+                onOpenChange={open => {
+                    if (!open) handleCancel()
+                }}
+            >
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>{needsConfiguration ? "Configure Skill" : "Skill Details"}</DialogTitle>
                     </DialogHeader>
                     <IntegrationSelector {...selectorProps} variant="dialog" />
                     <DialogFooter>
-                        <Button variant="outline" onClick={handleCancel}>Cancel</Button>
-                        <Button onClick={handleDone} disabled={!isDraftValid}>Done</Button>
+                        <Button variant="outline" onClick={handleCancel}>
+                            Cancel
+                        </Button>
+                        <Button onClick={handleDone} disabled={!isDraftValid}>
+                            Done
+                        </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
@@ -664,85 +650,84 @@ function SkillCard({ output, outputs, setOutputs, handleRemove }: { output: Tran
     )
 }
 
-function KnowledgeBaseLayout({ knowledgeBases, setKnowledgeBases }: { knowledgeBases: TransientKnowledgeBase[], setKnowledgeBases: (knowledgeBases: TransientKnowledgeBase[]) => void }) {
-    const [showAddModal, setShowAddModal] = useState(false);
+function KnowledgeBaseLayout({ knowledgeBases, setKnowledgeBases }: { knowledgeBases: TransientKnowledgeBase[]; setKnowledgeBases: (knowledgeBases: TransientKnowledgeBase[]) => void }) {
+    const [showAddModal, setShowAddModal] = useState(false)
 
     const handleSelectKnowledgeBase = (configType: ConfigType) => {
-        const newKnowledgeBaseId = uuidv4();
+        const newKnowledgeBaseId = uuidv4()
         const newKnowledgeBase: TransientKnowledgeBase = {
             id: newKnowledgeBaseId,
             config: undefined,
             configType: configType
-        };
-        const newKnowledgeBases = [...knowledgeBases, newKnowledgeBase];
-        setKnowledgeBases(newKnowledgeBases);
-        setShowAddModal(false);
-    };
+        }
+        const newKnowledgeBases = [...knowledgeBases, newKnowledgeBase]
+        setKnowledgeBases(newKnowledgeBases)
+        setShowAddModal(false)
+    }
 
     const handleRemove = (id: string) => {
-        setKnowledgeBases(knowledgeBases.filter(kb => kb.id !== id));
-    };
+        setKnowledgeBases(knowledgeBases.filter(kb => kb.id !== id))
+    }
 
     return (
         <div className="flex flex-col gap-3">
-            {knowledgeBases.map((kb) => (
+            {knowledgeBases.map(kb => (
                 <KnowledgeBaseCard key={kb.id} knowledgeBase={kb} knowledgeBases={knowledgeBases} setKnowledgeBases={setKnowledgeBases} handleRemove={handleRemove} />
             ))}
-            <Button
-                variant="outline"
-                onClick={() => setShowAddModal(true)}
-                className="w-full justify-center border-dashed py-3"
-            >
+            <Button variant="outline" onClick={() => setShowAddModal(true)} className="w-full justify-center border-dashed py-3">
                 <PlusIcon className="w-4 h-4 mr-2" />
                 Add knowledge base
             </Button>
-            <AddKnowledgeBaseModal
-                isOpen={showAddModal}
-                onClose={() => setShowAddModal(false)}
-                onSelectKnowledgeBase={handleSelectKnowledgeBase}
-            />
+            <AddKnowledgeBaseModal isOpen={showAddModal} onClose={() => setShowAddModal(false)} onSelectKnowledgeBase={handleSelectKnowledgeBase} />
         </div>
     )
 }
 
-function KnowledgeBaseCard({ knowledgeBase, knowledgeBases, setKnowledgeBases, handleRemove }: { knowledgeBase: TransientKnowledgeBase, knowledgeBases: TransientKnowledgeBase[], setKnowledgeBases: (knowledgeBases: TransientKnowledgeBase[]) => void, handleRemove: (id: string) => void }) {
-    const [showDetailsDialog, setShowDetailsDialog] = useState(false);
-    const needsConfiguration = !knowledgeBase.config || !knowledgeBase.config.isComplete();
-    const [draftConfig, setDraftConfig] = useState<ConfigInstance | undefined>(knowledgeBase.config);
+function KnowledgeBaseCard({
+    knowledgeBase,
+    knowledgeBases,
+    setKnowledgeBases,
+    handleRemove
+}: {
+    knowledgeBase: TransientKnowledgeBase
+    knowledgeBases: TransientKnowledgeBase[]
+    setKnowledgeBases: (knowledgeBases: TransientKnowledgeBase[]) => void
+    handleRemove: (id: string) => void
+}) {
+    const [showDetailsDialog, setShowDetailsDialog] = useState(false)
+    const needsConfiguration = !knowledgeBase.config || !knowledgeBase.config.isComplete()
+    const [draftConfig, setDraftConfig] = useState<ConfigInstance | undefined>(knowledgeBase.config)
 
-    const draftKnowledgeBase = { ...knowledgeBase, config: draftConfig };
-    const isDraftValid = draftConfig?.isComplete() ?? false;
+    const draftKnowledgeBase = { ...knowledgeBase, config: draftConfig }
+    const isDraftValid = draftConfig?.isComplete() ?? false
 
     const handleOpenDialog = () => {
-        setDraftConfig(knowledgeBase.config);
-        setShowDetailsDialog(true);
-    };
+        setDraftConfig(knowledgeBase.config)
+        setShowDetailsDialog(true)
+    }
 
     const handleCancel = () => {
-        setDraftConfig(knowledgeBase.config);
-        setShowDetailsDialog(false);
-    };
+        setDraftConfig(knowledgeBase.config)
+        setShowDetailsDialog(false)
+    }
 
     const handleDone = () => {
         if (draftConfig) {
-            setKnowledgeBases(knowledgeBases.map(kb => kb.id === knowledgeBase.id ? { ...kb, config: draftConfig, configType: draftConfig.configType } : kb));
+            setKnowledgeBases(knowledgeBases.map(kb => (kb.id === knowledgeBase.id ? { ...kb, config: draftConfig, configType: draftConfig.configType } : kb)))
         }
-        setShowDetailsDialog(false);
-    };
+        setShowDetailsDialog(false)
+    }
 
     const selectorProps = {
         knowledgeBase: draftKnowledgeBase,
         setConfig: setDraftConfig,
-        variant: "card" as const,
-    };
+        variant: "card" as const
+    }
 
     return (
         <>
             <div
-                className={cn(
-                    "flex items-center gap-4 p-4 border rounded-lg cursor-pointer transition-colors hover:bg-muted/50",
-                    needsConfiguration && "border-yellow-500/50"
-                )}
+                className={cn("flex items-center gap-4 p-4 border rounded-lg cursor-pointer transition-colors hover:bg-muted/50", needsConfiguration && "border-yellow-500/50")}
                 onClick={handleOpenDialog}
             >
                 <div className="w-10 h-10 shrink-0">
@@ -762,22 +747,34 @@ function KnowledgeBaseCard({ knowledgeBase, knowledgeBases, setKnowledgeBases, h
                 <Button
                     variant="ghost"
                     size="icon-sm"
-                    onClick={(e) => { e.stopPropagation(); handleRemove(knowledgeBase.id); }}
+                    onClick={e => {
+                        e.stopPropagation()
+                        handleRemove(knowledgeBase.id)
+                    }}
                     className="hover:text-destructive shrink-0"
                 >
                     <XIcon className="w-4 h-4" />
                 </Button>
             </div>
 
-            <Dialog open={showDetailsDialog} onOpenChange={(open) => { if (!open) handleCancel(); }}>
+            <Dialog
+                open={showDetailsDialog}
+                onOpenChange={open => {
+                    if (!open) handleCancel()
+                }}
+            >
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>{needsConfiguration ? "Configure Knowledge Base" : "Knowledge Base Details"}</DialogTitle>
                     </DialogHeader>
                     <KnowledgeBaseSelector {...selectorProps} variant="dialog" />
                     <DialogFooter>
-                        <Button variant="outline" onClick={handleCancel}>Cancel</Button>
-                        <Button onClick={handleDone} disabled={!isDraftValid}>Done</Button>
+                        <Button variant="outline" onClick={handleCancel}>
+                            Cancel
+                        </Button>
+                        <Button onClick={handleDone} disabled={!isDraftValid}>
+                            Done
+                        </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

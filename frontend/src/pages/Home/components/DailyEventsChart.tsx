@@ -1,18 +1,19 @@
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../../components/ui/card";
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "../../../components/ui/chart";
-import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
-import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "../../../components/ui/empty";
-import { BarChart3, Clock } from "lucide-react";
-import { DailyEventCount } from "../../../shared/types";
-import { DateTime } from "luxon";
+import { BarChart3, Clock } from "lucide-react"
+import { DateTime } from "luxon"
+import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts"
+
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../../components/ui/card"
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "../../../components/ui/chart"
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "../../../components/ui/empty"
+import { DailyEventCount } from "../../../shared/types"
 
 interface DailyEventsChartProps {
-    eventsPerDay: DailyEventCount[];
-    timezone?: string;
+    eventsPerDay: DailyEventCount[]
+    timezone?: string
 }
 
 function formatTimezone(tz: string): string {
-    const dt = DateTime.now().setZone(tz);
+    const dt = DateTime.now().setZone(tz)
     return dt.isValid && dt.offsetNameLong ? dt.offsetNameLong : tz
 }
 
@@ -20,9 +21,9 @@ export function DailyEventsChart({ eventsPerDay, timezone }: DailyEventsChartPro
     const chartConfig = {
         events: {
             label: "Events",
-            color: "var(--chart-1)",
-        },
-    };
+            color: "var(--chart-1)"
+        }
+    }
 
     return (
         <div>
@@ -40,33 +41,12 @@ export function DailyEventsChart({ eventsPerDay, timezone }: DailyEventsChartPro
                 <CardContent className="-ml-6">
                     {eventsPerDay.length > 0 ? (
                         <ChartContainer config={chartConfig} className="h-[300px] w-full [&>div]:!w-full">
-                            <AreaChart 
-                                data={eventsPerDay}
-                                margin={{ left: 24, right: 24, top: 0, bottom: 0 }}
-                            >
+                            <AreaChart data={eventsPerDay} margin={{ left: 24, right: 24, top: 0, bottom: 0 }}>
                                 <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis
-                                    dataKey="date"
-                                    tickLine={false}
-                                    axisLine={false}
-                                    tickMargin={8}
-                                />
-                                <YAxis
-                                    tickLine={false}
-                                    axisLine={false}
-                                    tickMargin={8}
-                                />
-                                <ChartTooltip
-                                    cursor={false}
-                                    content={<ChartTooltipContent indicator="dot" />}
-                                />
-                                <Area
-                                    type="monotone"
-                                    dataKey="events"
-                                    stroke="var(--color-events)"
-                                    fill="var(--color-events)"
-                                    fillOpacity={0.2}
-                                />
+                                <XAxis dataKey="date" tickLine={false} axisLine={false} tickMargin={8} />
+                                <YAxis tickLine={false} axisLine={false} tickMargin={8} />
+                                <ChartTooltip cursor={false} content={<ChartTooltipContent indicator="dot" />} />
+                                <Area type="monotone" dataKey="events" stroke="var(--color-events)" fill="var(--color-events)" fillOpacity={0.2} />
                             </AreaChart>
                         </ChartContainer>
                     ) : (
@@ -76,15 +56,12 @@ export function DailyEventsChart({ eventsPerDay, timezone }: DailyEventsChartPro
                                     <BarChart3 className="text-primary" />
                                 </EmptyMedia>
                                 <EmptyTitle>No events yet</EmptyTitle>
-                                <EmptyDescription>
-                                    Event processing data will appear here once your automations start running
-                                </EmptyDescription>
+                                <EmptyDescription>Event processing data will appear here once your automations start running</EmptyDescription>
                             </EmptyHeader>
                         </Empty>
                     )}
                 </CardContent>
             </Card>
         </div>
-    );
+    )
 }
-

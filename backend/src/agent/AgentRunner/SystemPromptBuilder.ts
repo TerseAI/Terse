@@ -1,74 +1,72 @@
-import { Session } from "../../types/session";
-import { AgentWithRelations } from '../../types/prisma';
-import { Output } from '../../outputs/abstract/Output';
-import { ConfigInstance } from '../../shared/Configs';
-import { db } from '../../prismaClient';
-import { InputEvent } from '../../integrations/abstract/InputEvent';
-import { RunHistoryMemory } from '../../rag/runHistoryRag/indexer';
-import { extractConversationContent } from '../../rag/runHistoryRag/conversationExtractor';
-import type { AgentInputItem } from '@openai/agents-core';
-import logger from '../../logger';
-import { KnowledgeBase } from '../../knowledgeBase/abstract/KnowledgeBase';
-import { RunHistoryStatus } from '@prisma/client';
-import { settings } from '../../config/settings';
-import { FrontendRoutes } from '../../shared/FrontendRoutes';
+import type { AgentInputItem } from "@openai/agents-core"
+import { RunHistoryStatus } from "@prisma/client"
+
+import { settings } from "../../config/settings"
+import { InputEvent } from "../../integrations/abstract/InputEvent"
+import { KnowledgeBase } from "../../knowledgeBase/abstract/KnowledgeBase"
+import logger from "../../logger"
+import { Output } from "../../outputs/abstract/Output"
+import { db } from "../../prismaClient"
+import { extractConversationContent } from "../../rag/runHistoryRag/conversationExtractor"
+import { RunHistoryMemory } from "../../rag/runHistoryRag/indexer"
+import { ConfigInstance } from "../../shared/Configs"
+import { FrontendRoutes } from "../../shared/FrontendRoutes"
+import { AgentWithRelations } from "../../types/prisma"
+import { Session } from "../../types/session"
 
 export interface RunContext {
-    runId: string;
+    runId: string
 }
 
 export interface SystemPromptBuilderDependencies<T extends Session, TConfig extends ConfigInstance, KBConfig extends ConfigInstance> {
-    session: T;
-    agent: AgentWithRelations;
-    outputs: Output<TConfig>[];
-    knowledgeBases?: KnowledgeBase<KBConfig>[];
+    session: T
+    agent: AgentWithRelations
+    outputs: Output<TConfig>[]
+    knowledgeBases?: KnowledgeBase<KBConfig>[]
 }
 
 interface Section {
-    header: string;
-    content: string;
+    header: string
+    content: string
 }
 
-type SectionBuilder = () => Section | null | Promise<Section | null>;
+type SectionBuilder = () => Section | null | Promise<Section | null>
 
 export class SystemPromptBuilder<T extends Session, TConfig extends ConfigInstance, KBConfig extends ConfigInstance> {
-    private sections: SectionBuilder[] = [];
+    private sections: SectionBuilder[] = []
 
     constructor(
         private deps: SystemPromptBuilderDependencies<T, TConfig, KBConfig>,
         private runContext: RunContext
-    ) { }
+    ) {}
 
     withSection(builder: SectionBuilder): this {
-        this.sections.push(builder);
-        return this;
+        this.sections.push(builder)
+        return this
     }
 
     withStandardSections(): this {
-        return this
-            .withSection(() => this.buildTimeSection())
+        return this.withSection(() => this.buildTimeSection())
             .withSection(() => this.buildCoreInstructions())
             .withSection(() => this.buildRunContextSection())
             .withSection(() => this.buildDirectivesSection())
             .withSection(() => this.buildDeepLinkingSection())
             .withSection(() => this.buildOutputsSection())
-            .withSection(() => this.buildKnowledgeBasesSection());
+            .withSection(() => this.buildKnowledgeBasesSection())
     }
 
     /**
      * Precursor support for RAG, keeping around if we want to use this again in the future.
      */
     withSimilarEventsSection(inputEvent: InputEvent): this {
-        return this.withSection(() => this.buildSimilarEventsSection(inputEvent));
+        return this.withSection(() => this.buildSimilarEventsSection(inputEvent))
     }
 
     async build(): Promise<string> {
-        const results = await Promise.all(this.sections.map(fn => fn()));
-        const validSections = results.filter((s): s is Section => s !== null);
+        const results = await Promise.all(this.sections.map(fn => fn()))
+        const validSections = results.filter((s): s is Section => s !== null)
 
-        return validSections
-            .map((section, index) => this.formatSection(section, index))
-            .join('\n\n');
+        return validSections.map((section, index) => this.formatSection(section, index)).join("\n\n")
     }
 
     private formatSection(section: Section, index: number): string {
@@ -77,22 +75,22 @@ export class SystemPromptBuilder<T extends Session, TConfig extends ConfigInstan
 ${index}. ${section.header}
 =====================
 ${section.content}
-`.trim();
+`.trim()
     }
 
     private buildTimeSection(): Section {
-        const currentTimeUtc = new Date().toISOString();
+        const currentTimeUtc = new Date().toISOString()
         return {
-            header: 'CURRENT TIME',
+            header: "CURRENT TIME",
             content: `The current time in UTC is: ${currentTimeUtc}
 
 Use this information to understand temporal context.`
-        };
+        }
     }
 
     private async buildRunContextSection(): Promise<Section> {
-        const { runId } = this.runContext;
-        const prisma = db();
+        const { runId } = this.runContext
+        const prisma = db()
 
         // Fetch current run with automation details
         const runRecord = await prisma.run_history_records.findUnique({
@@ -104,16 +102,16 @@ Use this information to understand temporal context.`
                     select: { name: true }
                 }
             }
-        });
+        })
 
         if (!runRecord) {
             return {
-                header: 'RUNTIME CONTEXT',
-                content: 'Processing event (run record not found)'
-            };
+                header: "RUNTIME CONTEXT",
+                content: "Processing event (run record not found)"
+            }
         }
 
-        const automationName = runRecord.automation?.name ?? 'Unknown Automation';
+        const automationName = runRecord.automation?.name ?? "Unknown Automation"
 
         // Count how many events were processed before this one for the same automation
         const previousEventCount = await prisma.run_history_records.count({
@@ -126,68 +124,64 @@ Use this information to understand temporal context.`
                     in: [RunHistoryStatus.success]
                 }
             }
-        });
+        })
 
-        const eventPosition = previousEventCount + 1;
+        const eventPosition = previousEventCount + 1
 
         return {
-            header: 'RUNTIME CONTEXT',
+            header: "RUNTIME CONTEXT",
             content: `You are processing an event for automation: "${automationName}"
 This is event #${eventPosition} processed by this automation.`
-        };
+        }
     }
-
-
 
     private buildCoreInstructions(): Section {
         return {
-            header: 'CORE INSTRUCTIONS',
+            header: "CORE INSTRUCTIONS",
             content: CORE_INSTRUCTIONS
-        };
+        }
     }
 
     private async buildDirectivesSection(): Promise<Section | null> {
-        const prisma = db();
-        const directives = await prisma.directive_records.findMany({
+        const prisma = db()
+        const directives = (await prisma.directive_records.findMany({
             where: {
                 automation_id: this.deps.agent.id,
-                is_active: true,
+                is_active: true
             },
             orderBy: {
-                created_at: 'asc',
+                created_at: "asc"
             },
             select: {
-                directive_description: true,
-            },
-        }) as { directive_description: string }[];
+                directive_description: true
+            }
+        })) as { directive_description: string }[]
 
-        if (directives.length === 0) return null;
+        if (directives.length === 0) return null
 
-        const directivesList = directives
-            .map((d: { directive_description: string }, i: number) => `${i + 1}. ${d.directive_description}`)
-            .join('\n');
+        const directivesList = directives.map((d: { directive_description: string }, i: number) => `${i + 1}. ${d.directive_description}`).join("\n")
 
         return {
-            header: 'USER DIRECTIVES',
+            header: "USER DIRECTIVES",
             content: `The user has established the following standing directives for this automation. These are rules, preferences, or policies that apply to all interactions:
 
 ${directivesList}
 
 Follow these directives in addition to the USER INSTRUCTIONS provided in each message. If a directive conflicts with a specific request in a message, the message takes precedence for that interaction only.`
-        };
+        }
     }
 
     private buildDeepLinkingSection(): Section {
-        const frontendUrl = settings.urls.frontend;
-        const agentId = this.deps.agent.id;
-        const runId = this.runContext.runId;
+        const frontendUrl = settings.urls.frontend
+        const agentId = this.deps.agent.id
+        const runId = this.runContext.runId
 
-        const channelLink = `${frontendUrl}${FrontendRoutes.AGENTS.DETAIL(agentId)}`;
-        const channelHistoryLink = `${frontendUrl}${FrontendRoutes.AGENTS.HISTORY(agentId)}`;
-        const specificRunLink = `${frontendUrl}${FrontendRoutes.AGENTS.RUN_HISTORY(agentId, runId)}`;
+        const channelLink = `${frontendUrl}${FrontendRoutes.AGENTS.DETAIL(agentId)}`
+        const channelHistoryLink = `${frontendUrl}${FrontendRoutes.AGENTS.HISTORY(agentId)}`
+        const specificRunLink = `${frontendUrl}${FrontendRoutes.AGENTS.RUN_HISTORY(agentId, runId)}`
 
         return {
-            header: 'DEEP LINKING TO TERSE APPLICATION',
+            header: "DEEP LINKING TO TERSE APPLICATION",
             content: `You can create links to specific pages within the Terse application to help users navigate to relevant content.
 
 BASE URL: ${frontendUrl}
@@ -196,17 +190,17 @@ The base URL is automatically determined from the environment (localhost for dev
 AVAILABLE LINK TYPES:
 
 1. Channel Detail Page:
-   Format: ${frontendUrl}${FrontendRoutes.AGENTS.DETAIL('{agentId}')}
+   Format: ${frontendUrl}${FrontendRoutes.AGENTS.DETAIL("{agentId}")}
    Example: ${channelLink}
    Use when: Referencing a specific automation/channel
 
 2. Run History (Channel Activity Tab):
-   Format: ${frontendUrl}${FrontendRoutes.AGENTS.HISTORY('{agentId}')}
+   Format: ${frontendUrl}${FrontendRoutes.AGENTS.HISTORY("{agentId}")}
    Example: ${channelHistoryLink}
    Use when: Directing users to view all runs for a channel
 
 3. Specific Run History:
-   Format: ${frontendUrl}${FrontendRoutes.AGENTS.RUN_HISTORY('{agentId}', '{runId}')}
+   Format: ${frontendUrl}${FrontendRoutes.AGENTS.RUN_HISTORY("{agentId}", "{runId}")}
    Example: ${specificRunLink}
    Use when: Referencing a specific run execution
 
@@ -215,112 +209,110 @@ CURRENT CONTEXT:
 - Current Run ID: ${runId}
 
 When explicitly asked by the user, include these links in your responses to help users navigate to relevant parts of the application. For example, you might include a link to the current run's history when explaining what actions were taken, or link to the channel page when referencing the automation configuration.`
-        };
+        }
     }
 
     private buildOutputsSection(): Section | null {
         if (!this.deps.outputs || this.deps.outputs.length === 0) {
-            return null;
+            return null
         }
 
-        const outputSections: string[] = [];
+        const outputSections: string[] = []
 
         for (const output of this.deps.outputs) {
             if (!output || output.configs.length === 0) {
-                continue;
+                continue
             }
 
-            const instructions = output.getSystemInstructions();
-            outputSections.push(instructions);
+            const instructions = output.getSystemInstructions()
+            outputSections.push(instructions)
         }
 
         if (outputSections.length === 0) {
-            return null;
+            return null
         }
 
         return {
-            header: 'OUTPUT INSTRUCTIONS',
-            content: outputSections.join('\n\n')
-        };
+            header: "OUTPUT INSTRUCTIONS",
+            content: outputSections.join("\n\n")
+        }
     }
 
     private buildKnowledgeBasesSection(): Section | null {
         if (!this.deps.knowledgeBases || this.deps.knowledgeBases.length === 0) {
-            return null;
+            return null
         }
 
-        const kbSections: string[] = [];
+        const kbSections: string[] = []
 
         for (const kb of this.deps.knowledgeBases) {
             if (!kb || kb.configs.length === 0) {
-                continue;
+                continue
             }
 
-            const instructions = kb.getSystemInstructions();
-            kbSections.push(instructions);
+            const instructions = kb.getSystemInstructions()
+            kbSections.push(instructions)
         }
 
         if (kbSections.length === 0) {
-            return null;
+            return null
         }
 
         return {
-            header: 'KNOWLEDGE BASE INSTRUCTIONS',
-            content: kbSections.join('\n\n')
-        };
+            header: "KNOWLEDGE BASE INSTRUCTIONS",
+            content: kbSections.join("\n\n")
+        }
     }
 
     private async buildSimilarEventsSection(inputEvent: InputEvent): Promise<Section | null> {
         try {
             // Extract searchable content from the current input event
-            const currentEventContent = inputEvent.formatForAgentRunner();
+            const currentEventContent = inputEvent.formatForAgentRunner()
 
             if (!currentEventContent || !currentEventContent.trim()) {
-                return null;
+                return null
             }
 
-            const agentId = this.deps.agent.id;
-            const runHistoryMemory = new RunHistoryMemory(this.deps.agent.user_id);
+            const agentId = this.deps.agent.id
+            const runHistoryMemory = new RunHistoryMemory(this.deps.agent.user_id)
 
             // Find similar past input events (top 5)
-            const similarEvents = await runHistoryMemory.findSimilarInputEvents(
-                currentEventContent,
-                agentId,
-                5
-            );
+            const similarEvents = await runHistoryMemory.findSimilarInputEvents(currentEventContent, agentId, 5)
 
             if (similarEvents.length === 0) {
-                return null;
+                return null
             }
 
             // Extract content from the events for display
             const eventContents = similarEvents.map(event => {
-                const rawEvent: AgentInputItem = typeof event.raw_event_json === 'string'
-                    ? JSON.parse(event.raw_event_json) as AgentInputItem
-                    : event.raw_event_json as AgentInputItem;
-                const content = extractConversationContent(rawEvent);
-                const eventChannelId = event.run_history_record?.automation?.id || agentId || 'N/A';
-                const date = event.created_at.toISOString().split('T')[0];
-                return { content, agentId: eventChannelId, date };
-            });
+                const rawEvent: AgentInputItem = typeof event.raw_event_json === "string" ? (JSON.parse(event.raw_event_json) as AgentInputItem) : (event.raw_event_json as AgentInputItem)
+                const content = extractConversationContent(rawEvent)
+                const eventChannelId = event.run_history_record?.automation?.id || agentId || "N/A"
+                const date = event.created_at.toISOString().split("T")[0]
+                return { content, agentId: eventChannelId, date }
+            })
 
-            const similarEventsList = eventContents.map((event, index) => `
+            const similarEventsList = eventContents
+                .map(
+                    (event, index) => `
 ${index + 1}. ${event.content}
    (Channel: ${event.agentId}, Date: ${event.date})
-`).join('\n');
+`
+                )
+                .join("\n")
 
             return {
-                header: 'SIMILAR PAST INPUT EVENTS',
+                header: "SIMILAR PAST INPUT EVENTS",
                 content: `Here are similar past input events that may provide context for how similar requests were handled:
 
 ${similarEventsList}
 
 Use these examples as reference for understanding the user's intent and how similar requests were processed in the past.`
-            };
+            }
         } catch (error) {
-            logger.error('Error fetching similar past input events', { error, agentId: this.deps.agent.id, runId: this.runContext.runId });
+            logger.error("Error fetching similar past input events", { error, agentId: this.deps.agent.id, runId: this.runContext.runId })
             // Return null to continue without similar events if there's an error
-            return null;
+            return null
         }
     }
 }
@@ -608,4 +600,4 @@ You:
 - Keep humans in the loop for ambiguous or high-impact changes
 - Avoid busywork and noisy updates.
 - Strive to make every change feel like something a careful senior engineer or tech writer would be happy to commit.
-`.trim();
+`.trim()

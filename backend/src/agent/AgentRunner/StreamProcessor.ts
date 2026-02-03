@@ -1,197 +1,186 @@
-import { Server } from 'socket.io';
-import { ModelEvent } from '../../shared/ModelEvents';
-import { storeChatEvent } from './runHistory';
-import type { RunHistoryModelEvent, RunHistoryModelSocketEvent, RunHistoryStreamingParams } from '../../shared/RunHistoryTypes';
-import { randomString } from '../../utility/strings';
-import { emitCacheInvalidationWithWildcard } from '../../services/CacheInvalidationService';
-import logger from '../../logger';
-import { SocketEvents, SocketRooms } from '../../shared/SocketEvents';
+import { Server } from "socket.io"
+
+import logger from "../../logger"
+import { emitCacheInvalidationWithWildcard } from "../../services/CacheInvalidationService"
+import { ModelEvent } from "../../shared/ModelEvents"
+import type { RunHistoryModelEvent, RunHistoryModelSocketEvent, RunHistoryStreamingParams } from "../../shared/RunHistoryTypes"
+import { SocketEvents, SocketRooms } from "../../shared/SocketEvents"
+import { randomString } from "../../utility/strings"
+
+import { storeChatEvent } from "./runHistory"
 
 export class TextDeltaAggregator {
-    private accumulatedDeltas = new Map<string, AccumulatedDelta>();
-    private lastStepId: string | null = null;
-    private runId: string;
+    private accumulatedDeltas = new Map<string, AccumulatedDelta>()
+    private lastStepId: string | null = null
+    private runId: string
 
     constructor(runId: string) {
-        this.runId = runId;
+        this.runId = runId
     }
 
     accumulate(event: TextDeltaEvent, timestamp: string): AccumulatedDelta {
-        const { step_id, delta } = event;
+        const { step_id, delta } = event
 
         if (!this.accumulatedDeltas.has(step_id)) {
-            this.accumulatedDeltas.set(step_id, { text: delta, firstTimestamp: timestamp });
+            this.accumulatedDeltas.set(step_id, { text: delta, firstTimestamp: timestamp })
         } else {
-            const accumulated = this.accumulatedDeltas.get(step_id)!;
-            accumulated.text += delta;
+            const accumulated = this.accumulatedDeltas.get(step_id)!
+            accumulated.text += delta
         }
 
-        this.lastStepId = step_id;
-        return this.accumulatedDeltas.get(step_id)!;
+        this.lastStepId = step_id
+        return this.accumulatedDeltas.get(step_id)!
     }
 
     async commitStep(stepId: string): Promise<string | undefined> {
-        const accumulated = this.accumulatedDeltas.get(stepId);
+        const accumulated = this.accumulatedDeltas.get(stepId)
         if (!accumulated || accumulated.eventId) {
-            return accumulated?.eventId;
+            return accumulated?.eventId
         }
 
         const finalEvent: ModelEvent = {
-            type: 'TextDelta',
+            type: "TextDelta",
             step_id: stepId,
-            delta: accumulated.text,
-        };
+            delta: accumulated.text
+        }
 
-        const timestamp = accumulated.firstTimestamp ? new Date(accumulated.firstTimestamp) : undefined;
-        const eventId = await storeChatEvent(this.runId, finalEvent, timestamp);
-        accumulated.eventId = eventId;
+        const timestamp = accumulated.firstTimestamp ? new Date(accumulated.firstTimestamp) : undefined
+        const eventId = await storeChatEvent(this.runId, finalEvent, timestamp)
+        accumulated.eventId = eventId
 
-        this.accumulatedDeltas.delete(stepId);
-        return eventId;
+        this.accumulatedDeltas.delete(stepId)
+        return eventId
     }
 
     async commitLastTextDeltaStep(): Promise<void> {
         if (this.lastStepId) {
-            await this.commitStep(this.lastStepId);
+            await this.commitStep(this.lastStepId)
         }
     }
 
     getEventId(stepId: string): string | undefined {
-        return this.accumulatedDeltas.get(stepId)?.eventId;
+        return this.accumulatedDeltas.get(stepId)?.eventId
     }
 
     getLastStepId(): string | null {
-        return this.lastStepId;
+        return this.lastStepId
     }
 
     async handleStepTransition(newStepId: string): Promise<void> {
         if (this.lastStepId && this.lastStepId !== newStepId) {
-            await this.commitStep(this.lastStepId);
+            await this.commitStep(this.lastStepId)
         }
     }
 }
 
 export class StreamEventEmitter {
-    private io: Server | null;
-    private room: string;
-    private runId: string;
-    private agentId: string;
+    private io: Server | null
+    private room: string
+    private runId: string
+    private agentId: string
 
     constructor(io: Server | null, params: RunHistoryStreamingParams) {
-        this.io = io;
+        this.io = io
         if (!params.organizationId) {
-            throw new Error('organizationId is required for StreamEventEmitter');
+            throw new Error("organizationId is required for StreamEventEmitter")
         }
-        this.room = SocketRooms.organization(params.organizationId);
-        this.runId = params.runId!;
-        this.agentId = params.agentId!;
+        this.room = SocketRooms.organization(params.organizationId)
+        this.runId = params.runId!
+        this.agentId = params.agentId!
     }
 
-    emitTextDelta(event: TextDeltaEvent, timestamp: string, eventId: string = ''): void {
-        if (!this.io) return;
+    emitTextDelta(event: TextDeltaEvent, timestamp: string, eventId: string = ""): void {
+        if (!this.io) return
 
         const runHistoryModelEvent: RunHistoryModelEvent = {
             ...event,
             id: eventId,
-            timestamp,
-        };
+            timestamp
+        }
 
         const payload: RunHistoryModelSocketEvent = {
             runId: this.runId,
             agentId: this.agentId,
-            runHistoryModelEvent,
-        };
+            runHistoryModelEvent
+        }
 
-        this.io.to(this.room).emit(SocketEvents.AGENT_CHAT_EVENT, payload);
+        this.io.to(this.room).emit(SocketEvents.AGENT_CHAT_EVENT, payload)
     }
 
     async storeAndEmit(event: ModelEvent, timestamp: string): Promise<string> {
-        const eventId = await storeChatEvent(this.runId, event);
+        const eventId = await storeChatEvent(this.runId, event)
 
         if (this.io) {
             const runHistoryModelEvent: RunHistoryModelEvent = {
                 ...event,
                 id: eventId,
-                timestamp,
-            };
+                timestamp
+            }
 
             const payload: RunHistoryModelSocketEvent = {
                 runId: this.runId,
                 agentId: this.agentId,
-                runHistoryModelEvent,
-            };
-            this.io.to(this.room).emit(SocketEvents.AGENT_CHAT_EVENT, payload);
+                runHistoryModelEvent
+            }
+            this.io.to(this.room).emit(SocketEvents.AGENT_CHAT_EVENT, payload)
         }
 
-        return eventId;
+        return eventId
     }
 }
 
-export async function processModelEventStream(
-    eventStream: AsyncGenerator<ModelEvent, void, unknown>,
-    options: StreamProcessorOptions
-): Promise<void> {
-    const { runId } = options;
-    
-    const aggregator = new TextDeltaAggregator(runId);
+export async function processModelEventStream(eventStream: AsyncGenerator<ModelEvent, void, unknown>, options: StreamProcessorOptions): Promise<void> {
+    const { runId } = options
+
+    const aggregator = new TextDeltaAggregator(runId)
     const emitter = new StreamEventEmitter(options.io, {
         runId,
         userId: options.userId,
         agentId: options.agentId,
-        organizationId: options.organizationId,
-    });
+        organizationId: options.organizationId
+    })
 
     try {
         for await (const event of eventStream) {
-            const timestamp = new Date().toISOString();
+            const timestamp = new Date().toISOString()
 
-            if (event.type === 'TextDelta') {
-                await handleTextDeltaEvent(event, timestamp, aggregator, emitter);
+            if (event.type === "TextDelta") {
+                await handleTextDeltaEvent(event, timestamp, aggregator, emitter)
             } else {
-                await handleNonTextDeltaEvent(event, timestamp, aggregator, emitter);
+                await handleNonTextDeltaEvent(event, timestamp, aggregator, emitter)
             }
         }
         // Finalize any remaining steps at the end of the stream
-        await aggregator.commitLastTextDeltaStep();
+        await aggregator.commitLastTextDeltaStep()
     } catch (error) {
-        logger.error('Error processing model event stream', { error, runId: options.runId, userId: options.userId, agentId: options.agentId });
+        logger.error("Error processing model event stream", { error, runId: options.runId, userId: options.userId, agentId: options.agentId })
     }
 }
 
-async function handleTextDeltaEvent(
-    event: TextDeltaEvent,
-    timestamp: string,
-    aggregator: TextDeltaAggregator,
-    emitter: StreamEventEmitter
-): Promise<void> {
-    await aggregator.handleStepTransition(event.step_id);
-    aggregator.accumulate(event, timestamp);
-    const eventId = aggregator.getEventId(event.step_id) || randomString(15);
-    emitter.emitTextDelta(event, timestamp, eventId);
+async function handleTextDeltaEvent(event: TextDeltaEvent, timestamp: string, aggregator: TextDeltaAggregator, emitter: StreamEventEmitter): Promise<void> {
+    await aggregator.handleStepTransition(event.step_id)
+    aggregator.accumulate(event, timestamp)
+    const eventId = aggregator.getEventId(event.step_id) || randomString(15)
+    emitter.emitTextDelta(event, timestamp, eventId)
 }
 
-async function handleNonTextDeltaEvent(
-    event: ModelEvent,
-    timestamp: string,
-    aggregator: TextDeltaAggregator,
-    emitter: StreamEventEmitter
-): Promise<void> {
-    await aggregator.commitLastTextDeltaStep();
-    await emitter.storeAndEmit(event, timestamp);
+async function handleNonTextDeltaEvent(event: ModelEvent, timestamp: string, aggregator: TextDeltaAggregator, emitter: StreamEventEmitter): Promise<void> {
+    await aggregator.commitLastTextDeltaStep()
+    await emitter.storeAndEmit(event, timestamp)
 }
 
-type TextDeltaEvent = Extract<ModelEvent, { type: 'TextDelta' }>;
+type TextDeltaEvent = Extract<ModelEvent, { type: "TextDelta" }>
 
 type AccumulatedDelta = {
-    text: string;
-    firstTimestamp: string;
-    eventId?: string;
-};
+    text: string
+    firstTimestamp: string
+    eventId?: string
+}
 
 export interface StreamProcessorOptions {
-    runId: string;
-    userId: string;
-    agentId: string;
-    organizationId: string;
-    io: Server | null;
+    runId: string
+    userId: string
+    agentId: string
+    organizationId: string
+    io: Server | null
 }

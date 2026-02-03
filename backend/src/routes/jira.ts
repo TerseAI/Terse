@@ -1,33 +1,32 @@
-import { Request, Response } from "express";
-import { AtlassianClient } from "../integrations/AtlassianClient";
-import { AtlassianIntegrationManager } from "../integrations/AtlassianIntegration";
-import logger from "../logger";
-import { db } from "../prismaClient";
-import { JiraWebhookPayload } from "../utility/JiraWebhookPayload";
+import { Request, Response } from "express"
+
+import { AtlassianClient } from "../integrations/AtlassianClient"
+import { AtlassianIntegrationManager } from "../integrations/AtlassianIntegration"
+import logger from "../logger"
+import { db } from "../prismaClient"
+import { JiraWebhookPayload } from "../utility/JiraWebhookPayload"
 
 export async function getAtlassianIntegrations(req: Request, res: Response) {
-  if (!req.session?.user) {
-    res.status(401).json({ error: "Unauthorized" });
-    return;
-  }
+    if (!req.session?.user) {
+        res.status(401).json({ error: "Unauthorized" })
+        return
+    }
 
-  try {
-    const client = new AtlassianClient();
-    const integrations = await client.getInstancesForOrganization(
-      req.session.user.organizationId,
-    );
-    res.status(200).json(integrations);
-  } catch (error) {
-    logger.error("Error fetching Atlassian integrations:", { error });
-    res.status(500).json({ error: "Failed to fetch Atlassian integrations" });
-  }
+    try {
+        const client = new AtlassianClient()
+        const integrations = await client.getInstancesForOrganization(req.session.user.organizationId)
+        res.status(200).json(integrations)
+    } catch (error) {
+        logger.error("Error fetching Atlassian integrations:", { error })
+        res.status(500).json({ error: "Failed to fetch Atlassian integrations" })
+    }
 }
 
 // OAuth Functions
 export const atlassianOAuthCallback = async (req: Request, res: Response) => {
-  const integration = new AtlassianIntegrationManager();
-  await integration.processInstallationCallback(req, res);
-};
+    const integration = new AtlassianIntegrationManager()
+    await integration.processInstallationCallback(req, res)
+}
 
 /**
  * Verify Jira webhook authenticity by checking if the webhook payload matches
@@ -35,177 +34,159 @@ export const atlassianOAuthCallback = async (req: Request, res: Response) => {
  * so we verify by matching the user email and base URL from the payload.
  */
 function verifyJiraWebhook(event: JiraWebhookPayload): boolean {
-  // Extract base URL from issue self URL
-  let baseUrl: string | null = null;
-  if (event.issue?.self) {
-    try {
-      const url = new URL(event.issue.self);
-      baseUrl = `${url.protocol}//${url.hostname}`;
-    } catch (error) {
-      logger.warn("⚠️  Could not parse issue URL:", {
-        issueUrl: event.issue.self,
-      });
-      return false;
+    // Extract base URL from issue self URL
+    let baseUrl: string | null = null
+    if (event.issue?.self) {
+        try {
+            const url = new URL(event.issue.self)
+            baseUrl = `${url.protocol}//${url.hostname}`
+        } catch (error) {
+            logger.warn("⚠️  Could not parse issue URL:", {
+                issueUrl: event.issue.self
+            })
+            return false
+        }
     }
-  }
 
-  // Extract user email from event
-  const userEmail = event.user?.emailAddress;
+    // Extract user email from event
+    const userEmail = event.user?.emailAddress
 
-  if (!baseUrl && !userEmail) {
-    logger.warn(
-      "⚠️  [JIRA WEBHOOK] No base URL or user email found in webhook payload",
-    );
-    return false;
-  }
+    if (!baseUrl && !userEmail) {
+        logger.warn("⚠️  [JIRA WEBHOOK] No base URL or user email found in webhook payload")
+        return false
+    }
 
-  // Webhook is valid if we have the required data - actual matching happens in processWebhookEvent
-  return true;
+    // Webhook is valid if we have the required data - actual matching happens in processWebhookEvent
+    return true
 }
 
 export const handleJiraWebhook = async (req: Request, res: Response) => {
-  try {
-    // Parse JSON body
-    let body: JiraWebhookPayload;
     try {
-      body = req.body as JiraWebhookPayload;
+        // Parse JSON body
+        let body: JiraWebhookPayload
+        try {
+            body = req.body as JiraWebhookPayload
+        } catch (error) {
+            logger.error("Failed to parse JSON body:", { error })
+            return res.sendStatus(400)
+        }
+
+        // Verify webhook authenticity
+        if (!verifyJiraWebhook(body)) {
+            logger.error("Invalid webhook payload")
+            return res.sendStatus(401)
+        }
+
+        // Ack early, avoid spamming the webhook
+        res.status(200).json({ received: true })
+
+        // Process webhook event asynchronously
+        const integration = new AtlassianIntegrationManager()
+        await integration.processWebhookEvent(body)
     } catch (error) {
-      logger.error("Failed to parse JSON body:", { error });
-      return res.sendStatus(400);
+        logger.error("Error processing webhook:", { error })
+        // Indicate to Jira that there was a server error so the webhook is retried later
+        return res.sendStatus(500)
     }
-
-    // Verify webhook authenticity
-    if (!verifyJiraWebhook(body)) {
-      logger.error("Invalid webhook payload");
-      return res.sendStatus(401);
-    }
-
-    // Ack early, avoid spamming the webhook
-    res.status(200).json({ received: true });
-
-    // Process webhook event asynchronously
-    const integration = new AtlassianIntegrationManager();
-    await integration.processWebhookEvent(body);
-  } catch (error) {
-    logger.error("Error processing webhook:", { error });
-    // Indicate to Jira that there was a server error so the webhook is retried later
-    return res.sendStatus(500);
-  }
-};
+}
 
 // Legacy function for backward compatibility
-export const processJiraWebhook = async (
-  userId: string,
-  event: JiraWebhookPayload,
-) => {
-  const integration = new AtlassianIntegrationManager();
-  await integration.processWebhookEvent(event);
-};
+export const processJiraWebhook = async (userId: string, event: JiraWebhookPayload) => {
+    const integration = new AtlassianIntegrationManager()
+    await integration.processWebhookEvent(event)
+}
 
 /**
  * Get all resources a user has access to for a Jira integration
  * Lists: Projects, Issue Types, Statuses, Priorities, Users
  */
 export async function getJiraResources(req: Request, res: Response) {
-  const user = req.session?.user;
-  if (!user) {
-    return res.status(401).json({ success: false, error: "Unauthorized" });
-  }
-
-  const { integrationId } = req.query;
-  if (!integrationId || typeof integrationId !== "string") {
-    return res
-      .status(400)
-      .json({ success: false, error: "integrationId is required" });
-  }
-
-  try {
-    if (!user.organizationId) {
-      return res
-        .status(400)
-        .json({ success: false, error: "Organization context is required" });
+    const user = req.session?.user
+    if (!user) {
+        return res.status(401).json({ success: false, error: "Unauthorized" })
     }
-    const response = await fetchJiraResources(
-      user.organizationId,
-      integrationId,
-    );
-    return res.status(200).json(response);
-  } catch (error: any) {
-    logger.error("Error fetching Jira resources:", { error });
-    return res.status(500).json({
-      success: false,
-      error: error.message || "Failed to fetch Jira resources",
-    });
-  }
+
+    const { integrationId } = req.query
+    if (!integrationId || typeof integrationId !== "string") {
+        return res.status(400).json({ success: false, error: "integrationId is required" })
+    }
+
+    try {
+        if (!user.organizationId) {
+            return res.status(400).json({ success: false, error: "Organization context is required" })
+        }
+        const response = await fetchJiraResources(user.organizationId, integrationId)
+        return res.status(200).json(response)
+    } catch (error: any) {
+        logger.error("Error fetching Jira resources:", { error })
+        return res.status(500).json({
+            success: false,
+            error: error.message || "Failed to fetch Jira resources"
+        })
+    }
 }
 
-export async function fetchJiraResources(
-  organizationId: string,
-  integrationId: string,
-) {
-  const integration = await db().atlassian_integrations.findFirst({
-    where: {
-      id: integrationId,
-      organization_id: organizationId,
-    },
-  });
+export async function fetchJiraResources(organizationId: string, integrationId: string) {
+    const integration = await db().atlassian_integrations.findFirst({
+        where: {
+            id: integrationId,
+            organization_id: organizationId
+        }
+    })
 
-  if (!integration) {
-    throw new Error("Integration not found");
-  }
-
-  if (!integration.cloud_id) {
-    throw new Error("Integration missing cloud_id");
-  }
-
-  const client = new AtlassianClient();
-  const accessToken = await client.getAccessToken(integrationId);
-  if (!accessToken) {
-    throw new Error("Could not get valid access token");
-  }
-
-  const cloudId = integration.cloud_id;
-  const baseUrl = integration.base_url;
-
-  let projects: Array<{
-    id: string;
-    key: string;
-    name: string;
-    projectTypeKey: string;
-  }> = [];
-
-  try {
-    const projectsResponse = await fetch(
-      `https://api.atlassian.com/ex/jira/${cloudId}/rest/api/3/project`,
-      {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          Accept: "application/json",
-        },
-      },
-    );
-
-    if (projectsResponse.ok) {
-      const projectsData = await projectsResponse.json();
-      projects = projectsData.map((p: any) => ({
-        id: p.id,
-        key: p.key,
-        name: p.name,
-        projectTypeKey: p.projectTypeKey || "software",
-      }));
+    if (!integration) {
+        throw new Error("Integration not found")
     }
-  } catch (error) {
-    logger.warn("⚠️  Could not fetch projects:", { error });
-    throw new Error("Failed to fetch projects");
-  }
 
-  return {
-    success: true,
-    resources: {
-      projects: projects,
-      baseUrl: baseUrl,
-      cloudId: cloudId,
-    },
-  };
+    if (!integration.cloud_id) {
+        throw new Error("Integration missing cloud_id")
+    }
+
+    const client = new AtlassianClient()
+    const accessToken = await client.getAccessToken(integrationId)
+    if (!accessToken) {
+        throw new Error("Could not get valid access token")
+    }
+
+    const cloudId = integration.cloud_id
+    const baseUrl = integration.base_url
+
+    let projects: Array<{
+        id: string
+        key: string
+        name: string
+        projectTypeKey: string
+    }> = []
+
+    try {
+        const projectsResponse = await fetch(`https://api.atlassian.com/ex/jira/${cloudId}/rest/api/3/project`, {
+            method: "GET",
+            headers: {
+                Authorization: `Bearer ${accessToken}`,
+                Accept: "application/json"
+            }
+        })
+
+        if (projectsResponse.ok) {
+            const projectsData = await projectsResponse.json()
+            projects = projectsData.map((p: any) => ({
+                id: p.id,
+                key: p.key,
+                name: p.name,
+                projectTypeKey: p.projectTypeKey || "software"
+            }))
+        }
+    } catch (error) {
+        logger.warn("⚠️  Could not fetch projects:", { error })
+        throw new Error("Failed to fetch projects")
+    }
+
+    return {
+        success: true,
+        resources: {
+            projects: projects,
+            baseUrl: baseUrl,
+            cloudId: cloudId
+        }
+    }
 }

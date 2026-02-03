@@ -1,33 +1,34 @@
-import { useState } from 'react';
-import { type ModelRequest } from '../../../shared/ModelEvents';
+import { useState } from "react"
+
+import { type ModelRequest } from "../../../shared/ModelEvents"
 
 interface UseChatInputOptions {
-    sendMessage: (message: ModelRequest) => void;
-    onUserMessage?: (message: string) => void;
+    sendMessage: (message: ModelRequest) => void
+    onUserMessage?: (message: string) => void
 }
 
 export function useChatInput({ sendMessage: sendModelRequest, onUserMessage }: UseChatInputOptions) {
-    const [input, setInput] = useState('');
+    const [input, setInput] = useState("")
 
     const sendMessage = async (message: string) => {
-        setInput('');
-        onUserMessage?.(message);
-        
+        setInput("")
+        onUserMessage?.(message)
+
         const modelRequest: ModelRequest = {
-            type: 'SendModelRequest',
+            type: "SendModelRequest",
             user_message: message,
-            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-        };
-        try {
-            sendModelRequest(modelRequest);
-        } catch (error) {
-            console.error('Failed to send message:', error);
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
         }
-    };
+        try {
+            sendModelRequest(modelRequest)
+        } catch (error) {
+            console.error("Failed to send message:", error)
+        }
+    }
 
     return {
         input,
         setInput,
         sendMessage
-    };
-} 
+    }
+}

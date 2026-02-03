@@ -1,14 +1,15 @@
-import { ConfigType, LinearInputConfig } from "../shared/Configs";
-import { Trigger } from "./Trigger";
-import { PrismaTransaction } from "../types/prisma";
-import { LinearIntegrationManager } from "../integrations/LinearIntegration";
+import { LinearIntegrationManager } from "../integrations/LinearIntegration"
+import { ConfigType, LinearInputConfig } from "../shared/Configs"
+import { PrismaTransaction } from "../types/prisma"
+
+import { Trigger } from "./Trigger"
 
 export class LinearTrigger implements Trigger<LinearInputConfig> {
-    integrationManager: LinearIntegrationManager;
-    configType: ConfigType = ConfigType.LINEAR_INPUT;
+    integrationManager: LinearIntegrationManager
+    configType: ConfigType = ConfigType.LINEAR_INPUT
 
     constructor() {
-        this.integrationManager = new LinearIntegrationManager();
+        this.integrationManager = new LinearIntegrationManager()
     }
 
     async validateConfig(_trigger: LinearInputConfig, _userId: string): Promise<void> {
@@ -20,8 +21,8 @@ export class LinearTrigger implements Trigger<LinearInputConfig> {
             data: {
                 automation_input_id: agentTriggerId,
                 project_id: trigger.projectId || null,
-                project_name: trigger.projectName || null,
+                project_name: trigger.projectName || null
             }
-        });
+        })
     }
 }

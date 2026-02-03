@@ -1,15 +1,16 @@
-import useSWR from 'swr';
-import { BackendProvider } from '@/services/backend';
-import { userOrganizationsKey } from '@/shared/InvalidationKeys';
+import useSWR from "swr"
 
-type Organization = { id: string; name: string };
+import { BackendProvider } from "@/services/backend"
+import { userOrganizationsKey } from "@/shared/InvalidationKeys"
+
+type Organization = { id: string; name: string }
 
 export function useUserOrganizations() {
     const { data, error, isLoading, isValidating, mutate } = useSWR<{
-        organizations: Organization[];
+        organizations: Organization[]
     }>(userOrganizationsKey(), () => BackendProvider.getUserOrganizations(), {
-        revalidateOnFocus: false,
-    });
+        revalidateOnFocus: false
+    })
 
     return {
         organizations: data?.organizations ?? [],
@@ -17,6 +18,6 @@ export function useUserOrganizations() {
         isError: Boolean(error),
         error,
         isValidating,
-        mutate,
-    };
+        mutate
+    }
 }

@@ -1,84 +1,84 @@
-import { ConfigType } from "@/shared/Configs";
-import { IntegrationType } from "@/shared/Integrations";
 import {
-    GithubIcon,
-    LinearIcon,
-    SlackIcon,
-    GmailIcon,
-    NotionIcon,
-    FigmaIcon,
-    JiraIcon,
-    ConfluenceIcon,
-    JiraConfluenceIcon,
-    PosthogIcon,
     CalendarClockIcon,
-    LaunchDarklyIcon,
+    ConfluenceIcon,
     DatadogIcon,
-} from "@/components/icons/IntegrationIcons";
+    FigmaIcon,
+    GithubIcon,
+    GmailIcon,
+    JiraConfluenceIcon,
+    JiraIcon,
+    LaunchDarklyIcon,
+    LinearIcon,
+    NotionIcon,
+    PosthogIcon,
+    SlackIcon
+} from "@/components/icons/IntegrationIcons"
+import { ConfigType } from "@/shared/Configs"
+import { IntegrationType } from "@/shared/Integrations"
 
 export function IconForConfigType({ type }: { type: ConfigType }) {
     switch (type) {
         case ConfigType.GITHUB:
         case ConfigType.GITHUB_KB:
-            return <GithubIcon />;
+            return <GithubIcon />
         case ConfigType.LINEAR_INPUT:
         case ConfigType.LINEAR_OUTPUT:
-            return <LinearIcon />;
+            return <LinearIcon />
         case ConfigType.SLACK:
         case ConfigType.SLACK_OUTPUT:
-            return <SlackIcon />;
+            return <SlackIcon />
         case ConfigType.GMAIL:
         case ConfigType.GMAIL_OUTPUT:
-            return <GmailIcon />;
+            return <GmailIcon />
         case ConfigType.NOTION_DATABASE:
         case ConfigType.NOTION_PAGE:
-            return <NotionIcon />;
+            return <NotionIcon />
         case ConfigType.FIGMA:
-            return <FigmaIcon />;
+            return <FigmaIcon />
         case ConfigType.JIRA:
-            return <JiraIcon />;
+            return <JiraIcon />
         case ConfigType.CONFLUENCE:
-            return <ConfluenceIcon />;
+            return <ConfluenceIcon />
         case ConfigType.POSTHOG:
-            return <PosthogIcon />;
+            return <PosthogIcon />
         case ConfigType.LAUNCHDARKLY:
-            return <LaunchDarklyIcon />;
+            return <LaunchDarklyIcon />
         case ConfigType.TIME_TRIGGER:
-            return <CalendarClockIcon />;
+            return <CalendarClockIcon />
         case ConfigType.DATADOG:
-            return <DatadogIcon />;
+            return <DatadogIcon />
         default:
             // Exhaustive check: TypeScript will error if any IntegrationType case is missing
-            throw type satisfies never;
+            throw type satisfies never
     }
 }
 
 export function IconForIntegration({ integration }: { integration: IntegrationType }) {
     switch (integration) {
         case IntegrationType.GITHUB:
-            return <GithubIcon />;
+            return <GithubIcon />
         case IntegrationType.LINEAR:
-            return <LinearIcon />;
+            return <LinearIcon />
         case IntegrationType.SLACK:
-            return <SlackIcon />;
+            return <SlackIcon />
         case IntegrationType.GMAIL:
-            return <GmailIcon />;
+            return <GmailIcon />
         case IntegrationType.NOTION:
-            return <NotionIcon />;
+            return <NotionIcon />
         case IntegrationType.FIGMA:
-            return <FigmaIcon />;
+            return <FigmaIcon />
         case IntegrationType.ATLASSIAN:
-            return <JiraConfluenceIcon />;
+            return <JiraConfluenceIcon />
         case IntegrationType.TERSE:
         case IntegrationType.CRON_JOB:
-            return <CalendarClockIcon />;
+            return <CalendarClockIcon />
         case IntegrationType.POSTHOG:
-            return <PosthogIcon />;
+            return <PosthogIcon />
         case IntegrationType.LAUNCHDARKLY:
-            return <LaunchDarklyIcon />;
+            return <LaunchDarklyIcon />
         case IntegrationType.DATADOG:
             return <DatadogIcon />
         default:
-            throw integration satisfies never;
+            throw integration satisfies never
     }
 }

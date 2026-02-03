@@ -1,29 +1,28 @@
-import { Bell } from "lucide-react";
-import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "../components/ui/empty";
-import { NotificationDestination } from "../shared/Notifications";
-import { NotificationDestinationItem } from "../components/Notifications/NotificationDestination";
-import { useNotificationDestinations } from "../hooks/api/useNotificationDestinations";
-import { Skeleton } from "../components/ui/skeleton";
-import { AddNotificationDestination } from "../components/Notifications/AddNotificationDestination";
+import { Bell } from "lucide-react"
+
+import { AddNotificationDestination } from "../components/Notifications/AddNotificationDestination"
+import { NotificationDestinationItem } from "../components/Notifications/NotificationDestination"
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "../components/ui/empty"
+import { Skeleton } from "../components/ui/skeleton"
+import { useNotificationDestinations } from "../hooks/api/useNotificationDestinations"
+import { NotificationDestination } from "../shared/Notifications"
 
 function NotificationsPage() {
-    const { notificationDestinations, isError, isValidating } = useNotificationDestinations();
+    const { notificationDestinations, isError, isValidating } = useNotificationDestinations()
 
     if (isValidating) {
-        return <LoadingNotificationChannelList />;
+        return <LoadingNotificationChannelList />
     }
 
     if (isError || notificationDestinations == undefined) {
-        return <ErrorNotificationChannelList />;
+        return <ErrorNotificationChannelList />
     }
 
     return (
         <div className="flex flex-col h-full p-4">
             <div className="flex flex-row justify-between items-center mb-4">
                 <h3 className="text-xl font-bold text-foreground">Notification Destinations</h3>
-                {notificationDestinations.length > 0 && (
-                    <AddNotificationDestination />
-                )}
+                {notificationDestinations.length > 0 && <AddNotificationDestination />}
             </div>
 
             <NotificationChannelList notificationDestinations={notificationDestinations} />
@@ -50,7 +49,7 @@ function NotificationChannelList({ notificationDestinations }: { notificationDes
     }
     return (
         <div className="flex flex-col gap-4">
-            {notificationDestinations.map((channel) => (
+            {notificationDestinations.map(channel => (
                 <NotificationDestinationItem key={channel.id} destination={channel} />
             ))}
         </div>
@@ -73,4 +72,4 @@ function ErrorNotificationChannelList() {
     )
 }
 
-export default NotificationsPage;
+export default NotificationsPage

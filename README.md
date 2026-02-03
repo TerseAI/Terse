@@ -54,24 +54,6 @@ That's it! The repo includes:
   ```bash
   pnpm run format:check
   ```
-
-### Our Style
-
-| Rule | Value |
-|------|-------|
-| Semicolons | No |
-| Quotes | Double |
-| Indentation | 4 spaces |
-| Trailing commas | No |
-| Arrow function parens | Only when multiple params |
-| Max line width | 200 |
-
-### Troubleshooting
-
-- **Not formatting?** Make sure the Prettier extension is installed and enabled
-- **Wrong formatter?** Check that Prettier is set as the default formatter (should be automatic from `.vscode/settings.json`)
-- **Conflicts with ESLint?** Prettier handles formatting, ESLint handles code quality—they work together
-
 ## Local Dev
 
 you will need to make an ngrok account and get a dedicated dev url + access token. Then set the following env variables in backend/.env

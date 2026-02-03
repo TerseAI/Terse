@@ -1,25 +1,25 @@
 export enum Integration {
     // Ticketing systems
-    JIRA = 'jira',
-    LINEAR = 'linear',
+    JIRA = "jira",
+    LINEAR = "linear",
 
     // Messaging systems
-    SLACK = 'slack',
+    SLACK = "slack",
 
     // Source control
-    GITHUB = 'github',
+    GITHUB = "github",
 
     // Note-taking systems
-    NOTION = 'notion',
+    NOTION = "notion",
 
-    NOTION_PAGE = 'notion_page',
+    NOTION_PAGE = "notion_page",
 
     // Mail
-    GMAIL = 'gmail',
+    GMAIL = "gmail",
 
     // Design tools
-    FIGMA = 'figma',
+    FIGMA = "figma",
 
     // Documentation
-    CONFLUENCE = 'confluence',
+    CONFLUENCE = "confluence"
 }

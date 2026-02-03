@@ -1,27 +1,28 @@
-import { Activity, Zap, Hash } from "lucide-react";
-import { StatsResponse } from "../../shared/types";
+import { Activity, Hash, Zap } from "lucide-react"
+
+import { StatsResponse } from "../../shared/types"
 
 export interface MetricData {
-    label: string;
-    value: string;
-    change: string;
-    trend: "up" | "down";
-    description: string;
-    subtext: string;
-    icon: React.ComponentType<{ className?: string }>;
+    label: string
+    value: string
+    change: string
+    trend: "up" | "down"
+    description: string
+    subtext: string
+    icon: React.ComponentType<{ className?: string }>
 }
 
 export function formatNumber(num: number): string {
-    return num.toLocaleString();
+    return num.toLocaleString()
 }
 
 export function getTrend(change: string): "up" | "down" {
-    return change.startsWith("+") || (!change.startsWith("-") && change !== "0%") ? "up" : "down";
+    return change.startsWith("+") || (!change.startsWith("-") && change !== "0%") ? "up" : "down"
 }
 
 export function transformStatsToMetrics(stats: StatsResponse | null): MetricData[] {
     if (!stats) {
-        return [];
+        return []
     }
 
     return [
@@ -32,7 +33,7 @@ export function transformStatsToMetrics(stats: StatsResponse | null): MetricData
             trend: getTrend(stats.totalEventsProcessedChange),
             description: "This month",
             subtext: "Compared to previous month",
-            icon: Activity,
+            icon: Activity
         },
         {
             label: "Actions Taken",
@@ -41,7 +42,7 @@ export function transformStatsToMetrics(stats: StatsResponse | null): MetricData
             trend: getTrend(stats.actionsTakenChange),
             description: "This month",
             subtext: "Compared to previous month",
-            icon: Zap,
+            icon: Zap
         },
         {
             label: "Number of Channels",
@@ -50,8 +51,7 @@ export function transformStatsToMetrics(stats: StatsResponse | null): MetricData
             trend: getTrend(stats.numberOfAgentsChange),
             description: "Total active channels",
             subtext: "Change from previous month",
-            icon: Hash,
-        },
-    ];
+            icon: Hash
+        }
+    ]
 }
-

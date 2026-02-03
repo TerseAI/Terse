@@ -1,24 +1,23 @@
-import { Tool } from "@openai/agents";
-import { AgentOutputWithConfigs, PrismaTransaction, User } from "../../types/prisma";
-import { Output, ToolboxEntry } from "../abstract/Output";
-import { db } from "../../prismaClient";
-import { OutputConfigType } from "@prisma/client";
-import { SlackOutputConfig } from "../../shared/Configs";
-import { slackSendMessageTool } from "./tools/sendMessage";
-import { IntegrationType } from "../../shared/Integrations";
+import { Tool } from "@openai/agents"
+import { OutputConfigType } from "@prisma/client"
+
+import { db } from "../../prismaClient"
+import { SlackOutputConfig } from "../../shared/Configs"
+import { IntegrationType } from "../../shared/Integrations"
+import { AgentOutputWithConfigs, PrismaTransaction, User } from "../../types/prisma"
+import { Output, ToolboxEntry } from "../abstract/Output"
+
+import { slackSendMessageTool } from "./tools/sendMessage"
 
 export class SlackOutput extends Output<SlackOutputConfig> {
     constructor() {
-        const toolbox: ToolboxEntry[] = [
-            { tool: slackSendMessageTool as Tool, isReadOnly: false, integration: IntegrationType.SLACK, displayName: 'Send message' },
-        ];
-        super(OutputConfigType.SLACK_CHANNEL, toolbox);
+        const toolbox: ToolboxEntry[] = [{ tool: slackSendMessageTool as Tool, isReadOnly: false, integration: IntegrationType.SLACK, displayName: "Send message" }]
+        super(OutputConfigType.SLACK_CHANNEL, toolbox)
     }
-
 
     async validateConfig(output: SlackOutputConfig, _userId: string): Promise<void> {
         if (!output.channelId) {
-            throw new Error('Invalid output config for slack_output: missing channelId');
+            throw new Error("Invalid output config for slack_output: missing channelId")
         }
     }
 
@@ -29,34 +28,34 @@ export class SlackOutput extends Output<SlackOutputConfig> {
                 channel_id: output.channelId || null,
                 channel_name: output.channelName || null,
                 listen_to_user_dms: false, // Not applicable for outputs
-                user_ids: [], // Not applicable for outputs
-            },
-        });
+                user_ids: [] // Not applicable for outputs
+            }
+        })
     }
 
     protected getSystemInstructionsForConfigs(configs: AgentOutputWithConfigs[]): string {
         if (configs.length === 0) {
-            throw new Error('No Slack configs provided');
+            throw new Error("No Slack configs provided")
         }
-        
-        const sections: string[] = [];
-        
+
+        const sections: string[] = []
+
         // List all available configurations
-        const configList: string[] = [];
+        const configList: string[] = []
         for (const config of configs) {
             if (!config.slack_config) {
-                throw new Error('Slack config not found');
+                throw new Error("Slack config not found")
             }
-            const channelId = config.slack_config.channel_id;
-            const channelName = config.slack_config.channel_name;
-            configList.push(`  • Integration ID: ${config.integration_id} - Channel Name: ${channelName || 'N/A'}, Channel ID: ${channelId || 'N/A'}`);
+            const channelId = config.slack_config.channel_id
+            const channelName = config.slack_config.channel_name
+            configList.push(`  • Integration ID: ${config.integration_id} - Channel Name: ${channelName || "N/A"}, Channel ID: ${channelId || "N/A"}`)
         }
-        sections.push('Available configurations:');
-        sections.push(configList.join('\n'));
-        sections.push('\nWhen calling Slack tools, you MUST include the `integrationId` and `channelId` parameters matching one of the configurations listed above.');
-        sections.push('\n' + SLACK_OUTPUT_INSTRUCTIONS);
-        
-        return sections.join('\n');
+        sections.push("Available configurations:")
+        sections.push(configList.join("\n"))
+        sections.push("\nWhen calling Slack tools, you MUST include the `integrationId` and `channelId` parameters matching one of the configurations listed above.")
+        sections.push("\n" + SLACK_OUTPUT_INSTRUCTIONS)
+
+        return sections.join("\n")
     }
 }
 
@@ -89,4 +88,4 @@ BEST PRACTICES:
 - Keep concise and actionable
 - Include relevant links
 - For thread conversations, always use the \`thread_ts\` from previous message results to maintain thread context
-`.trim();
+`.trim()
