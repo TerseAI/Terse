@@ -1,5 +1,11 @@
 import { GetRunHistoryParams } from "./RunHistoryTypes";
 
+export const currentUserKey = (): readonly [string] => ['currentUser'];
+
+export const userOrganizationsKey = (): readonly [string] => ['userOrganizations'];
+
+export const widgetTokenKey = (): readonly [string] => ['widgetToken'];
+
 export const integrationsKey = (): readonly [string] => ['integrations'];
 
 export const notificationDestinationsKey = (): readonly [string] => ['notificationDestinations'];
@@ -149,4 +155,9 @@ export const agentListKey = ({ page = 1, limit = 25, isActive, search }: AgentLi
 export const agentDetailKey = (id: string | null): readonly [string, { id: string }] | null => {
     if (!id) return null;
     return ['agent', { id }];
+};
+
+export const builderChatHistoryKey = (sessionId: string | null | undefined): readonly [string, string] | null => {
+    if (!sessionId) return null;
+    return ['builderChatHistory', sessionId] as const;
 };

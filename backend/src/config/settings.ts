@@ -38,6 +38,14 @@ export const settings = {
     searchUrl: requireEnv('SEARCH_DATABASE_URL'),
   },
 
+  workos: {
+    clientId: requireEnv("WORKOS_CLIENT_ID"),
+    apiKey: requireEnv("WORKOS_API_KEY"),
+    cookiePassword: requireEnv("WORKOS_COOKIE_PASSWORD"),
+    redirectUri: requireEnv("WORKOS_REDIRECT_URI"),
+    webhookSecret: optionalEnv("WORKOS_WEBHOOK_SECRET"),
+  },
+
   // API keys
   openai: {
     apiKey: requireEnv('OPENAI_API_KEY'),
@@ -67,15 +75,9 @@ export const settings = {
     clientId: requireEnv('GITHUB_CLIENT_ID'),
     clientSecret: requireEnv('GITHUB_CLIENT_SECRET'),
     integrateCallbackUrl: requireEnv('GITHUB_APP_CALLBACK_URL'),
-    loginCallbackUrl: requireEnv('GITHUB_LOGIN_CALLBACK_URL'),
+    loginCallbackUrl: optionalEnv('GITHUB_LOGIN_CALLBACK_URL'),
     appName: requireEnv('GITHUB_APP_NAME'),
-    loginRedirect: requireEnv('GITHUB_LOGIN_REDIRECT'),
-  },
-
-  // Google Auth (reuses Gmail client credentials)
-  googleAuth: {
-    callbackUrl: requireEnv('GOOGLE_AUTH_CALLBACK_URL'),
-    loginRedirect: requireEnv('GOOGLE_LOGIN_REDIRECT'),
+    loginRedirect: optionalEnv('GITHUB_LOGIN_REDIRECT'),
   },
 
   // Notion OAuth
@@ -163,7 +165,6 @@ export const {
   nodeEnv,
   gmail,
   githubApp,
-  googleAuth,
   notion,
   figma,
   slack,

@@ -28,7 +28,10 @@ export async function getStats(req: Request, res: Response) {
     }
 
     const prisma = db();
-    const userId = user.id;
+    const organizationId = user.organizationId;
+    if (!organizationId) {
+        return res.status(400).json({ error: "Organization context is required" });
+    }
 
     // Get user's timezone from query param, validate it, or fall back to UTC
     const requestedTimezone = req.query.tz as string | undefined;
@@ -82,14 +85,14 @@ export async function getStats(req: Request, res: Response) {
         // 1. Current period total events
         prisma.run_history_records.count({
             where: {
-                automation: { user_id: userId },
+                automation: { organization_id: organizationId },
                 timestamp: { gte: currentPeriodStart },
             },
         }),
         // 2. Previous period total events
         prisma.run_history_records.count({
             where: {
-                automation: { user_id: userId },
+                automation: { organization_id: organizationId },
                 timestamp: { gte: previousPeriodStart, lte: previousPeriodEnd },
             },
         }),
@@ -97,7 +100,7 @@ export async function getStats(req: Request, res: Response) {
         prisma.run_history_actions.count({
             where: {
                 run_history_record: {
-                    automation: { user_id: userId },
+                    automation: { organization_id: organizationId },
                     timestamp: { gte: currentPeriodStart },
                 },
                 is_read_only: false,
@@ -107,7 +110,7 @@ export async function getStats(req: Request, res: Response) {
         prisma.run_history_actions.count({
             where: {
                 run_history_record: {
-                    automation: { user_id: userId },
+                    automation: { organization_id: organizationId },
                     timestamp: { gte: previousPeriodStart, lte: previousPeriodEnd },
                 },
                 is_read_only: false,
@@ -115,11 +118,11 @@ export async function getStats(req: Request, res: Response) {
         }),
         // 5. Current channels count
         prisma.automations.count({
-            where: { user_id: userId },
+            where: { organization_id: organizationId },
         }),
         // 6. Previous period channels count
         prisma.automations.count({
-            where: { user_id: userId, created_at: { lte: previousPeriodEnd } },
+            where: { organization_id: organizationId, created_at: { lte: previousPeriodEnd } },
         }),
         // 7. Daily events aggregation using raw SQL for performance
         // Use AT TIME ZONE to group events by the user's local date
@@ -128,7 +131,7 @@ export async function getStats(req: Request, res: Response) {
             SELECT DATE(rhr.timestamp AT TIME ZONE 'UTC' AT TIME ZONE ${timezone}) as event_date, COUNT(*) as count
             FROM run_history_records rhr
             INNER JOIN automations a ON rhr.automation_id = a.id
-            WHERE a.user_id = ${userId} AND rhr.timestamp >= ${chartStartDate}
+            WHERE a.organization_id = ${organizationId} AND rhr.timestamp >= ${chartStartDate}
             GROUP BY 1
             ORDER BY 1
         `,
@@ -136,7 +139,7 @@ export async function getStats(req: Request, res: Response) {
         prisma.run_history_actions.findMany({
             where: {
                 run_history_record: {
-                    automation: { user_id: userId },
+                    automation: { organization_id: organizationId },
                 },
                 is_read_only: false,
             },

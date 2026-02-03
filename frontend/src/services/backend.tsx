@@ -45,27 +45,27 @@ import { User } from "../types/User";
 import { deserializeConfig } from '../utility/ConfigUtils';
 
 const backendBaseUrl = '/api';
+// For browser redirects (login/logout), we need the actual backend URL since window.location.href
+// bypasses Vite's proxy. Falls back to /api for production where the proxy is handled by nginx/etc.
+const backendRedirectUrl = import.meta.env.VITE_BACKEND_REDIRECT_URL || '/api';
+
+// Global 401 handler: when session is invalidated (e.g., user revokes session in WorkOS widget),
+// redirect to login so the user gets a fresh session. The backend clears the cookie on auth failure.
+axios.interceptors.response.use(
+    (response) => response,
+    (error) => {
+        if (error.response?.status === 401) {
+            window.location.href = `${backendRedirectUrl}${ApiRoutes.AUTH.LOGIN}`;
+        }
+        return Promise.reject(error);
+    }
+);
 
 interface BackendService {
     /**
      * Retrieves the currently authenticated user
      */
     getCurrentUser(): Promise<User>;
-
-    /**
-     * Sets the session cookie
-     */
-    setSession(token: string): Promise<void>;
-
-    /**
-     * Retrieves github login URL
-     */
-    getGithubLogInURL(): Promise<{ url: string }>;
-
-    /**
-     * Retrieves google login URL
-     */
-    getGoogleLogInURL(): Promise<{ url: string }>;
 
     /**
      * Retrieves users by their IDs
@@ -81,11 +81,6 @@ interface BackendService {
      * Authenticates a user with email and password
      */
     authenticateUser(email: string, password: string): Promise<User>;
-
-    /**
-     * Terminates the current user session
-     */
-    terminateSession(): Promise<void>;
 
     /**
      * Gets statistics for the homepage dashboard
@@ -321,6 +316,11 @@ interface BackendService {
     getChatHistory(runId: string): Promise<{ events: Array<RunHistoryModelEvent>; startTimestamp?: string; endTimestamp?: string; status?: string }>;
 
     /**
+     * Fetch builder chat history for a session
+     */
+    getBuilderChatHistory(sessionId: string): Promise<{ events: Array<RunHistoryModelEvent>; startTimestamp: string | null; endTimestamp: string | null }>;
+
+    /**
      * Fetch run history actions by IDs
      */
     getRunHistoryActions(ids: string[]): Promise<RunHistoryActionWithId[]>;
@@ -371,6 +371,42 @@ interface BackendService {
      * Gets write-only tools that require approval for the given skills and knowledge bases
      */
     getToolsThatRequireApprovals(request: GetToolsThatRequireApprovalsRequest): Promise<GetToolsThatRequireApprovalsResponse>;
+
+    /**
+     * Redirects to the login endpoint
+     */
+    loginRedirect(): void;
+
+    /**
+     * Redirects to the logout endpoint
+     */
+    logoutRedirect(): void;
+
+    /**
+     * Creates a new organization
+     * Optionally updates the user's first/last name in WorkOS when provided (e.g., for users without social auth).
+     */
+    createOrganization(name: string, firstName?: string, lastName?: string): Promise<{ id: string; name: string }>;
+
+    /**
+     * Gets the current organization
+     */
+    getCurrentOrganization(): Promise<{ id: string; name: string }>;
+
+    /**
+     * Gets organizations the user belongs to
+     */
+    getUserOrganizations(): Promise<{ organizations: { id: string; name: string }[] }>;
+
+    /**
+     * Switches the session to a different organization
+     */
+    switchOrganization(organizationId: string): Promise<{ success?: boolean; redirectUrl?: string }>;
+
+    /**
+     * Gets the WorkOS widget token
+     */
+    getWidgetToken(): Promise<{ token: string; expiresAt: string }>;
 }
 
 export const BackendProvider: BackendService = {
@@ -380,33 +416,6 @@ export const BackendProvider: BackendService = {
                 return response.data;
             })
             .catch(error => {
-                throw error;
-            });
-    },
-
-    getGithubLogInURL: () => {
-        return axios.get<{ url: string }>(`${backendBaseUrl}${ApiRoutes.AUTH.GITHUB_LOGIN_URL}`, { withCredentials: true })
-            .then(response => response.data)
-            .catch(error => {
-                console.error('Error getting GitHub login URL:', error);
-                throw error;
-            });
-    },
-
-    getGoogleLogInURL: () => {
-        return axios.get<{ url: string }>(`${backendBaseUrl}${ApiRoutes.AUTH.GOOGLE_LOGIN_URL}`, { withCredentials: true })
-            .then(response => response.data)
-            .catch(error => {
-                console.error('Error getting Google login URL:', error);
-                throw error;
-            });
-    },
-
-    setSession: (token: string) => {
-        return axios.post(`${backendBaseUrl}${ApiRoutes.AUTH.SET_SESSION}`, { token }, { withCredentials: true })
-            .then(response => response.data)
-            .catch(error => {
-                console.error('Error setting session:', error);
                 throw error;
             });
     },
@@ -436,16 +445,6 @@ export const BackendProvider: BackendService = {
             })
             .catch(error => {
                 console.error('Error logging in:', error);
-                throw error;
-            });
-    },
-
-    terminateSession: () => {
-        return axios.post(`${backendBaseUrl}${ApiRoutes.AUTH.LOGOUT}`, {}, { withCredentials: true })
-            .then(_ => {
-            })
-            .catch(error => {
-                console.error('Error logging out:', error);
                 throw error;
             });
     },
@@ -841,8 +840,11 @@ export const BackendProvider: BackendService = {
     },
 
     requestSessionSocketToken: () => {
-        return axios.get(`${backendBaseUrl}${ApiRoutes.SESSION.TOKEN}`, { withCredentials: true })
-            .then(response => response.data)
+        return axios.get<{ token: string } | string>(`${backendBaseUrl}${ApiRoutes.SESSION.TOKEN}`, { withCredentials: true })
+            .then(response => {
+                const data = response.data;
+                return typeof data === 'string' ? data : data.token;
+            })
             .catch(error => {
                 console.error('Error requesting session socket token:', error);
                 throw error;
@@ -962,6 +964,16 @@ export const BackendProvider: BackendService = {
             });
     },
 
+    getBuilderChatHistory: (sessionId) => {
+        const url = `${backendBaseUrl}${ApiRoutes.BUILDER_CHAT.HISTORY_BY_SESSION_ID.build(sessionId)}`;
+        return axios.get<{ events: Array<RunHistoryModelEvent>; startTimestamp: string | null; endTimestamp: string | null }>(url, { withCredentials: true })
+            .then(r => r.data)
+            .catch(error => {
+                console.error('Error fetching builder chat history:', error);
+                throw error;
+            });
+    },
+
     getRunHistoryActions: (ids) => {
         const usp = new URLSearchParams();
         usp.append('ids', ids.join(','));
@@ -1063,6 +1075,63 @@ export const BackendProvider: BackendService = {
             .then(response => response.data)
             .catch(error => {
                 console.error('Error getting tools that require approvals:', error);
+                throw error;
+            });
+    },
+
+    loginRedirect: () => {
+        window.location.href = `${backendRedirectUrl}${ApiRoutes.AUTH.LOGIN}`;
+    },
+
+    logoutRedirect: () => {
+        window.location.href = `${backendRedirectUrl}${ApiRoutes.AUTH.LOGOUT}`;
+    },
+
+    createOrganization: (name: string, firstName?: string, lastName?: string) => {
+        return axios.post<{ id: string; name: string }>(`${backendBaseUrl}${ApiRoutes.ORGANIZATIONS.CREATE}`, { name, firstName, lastName }, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error creating organization:', error);
+                throw error;
+            });
+    },
+
+    getCurrentOrganization: () => {
+        return axios.get<{ id: string; name: string }>(`${backendBaseUrl}${ApiRoutes.ORGANIZATIONS.GET_CURRENT}`, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error getting current organization:', error);
+                throw error;
+            });
+    },
+
+    getUserOrganizations: () => {
+        return axios.get<{ organizations: { id: string; name: string }[] }>(`${backendBaseUrl}${ApiRoutes.ORGANIZATIONS.LIST}`, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error getting user organizations:', error);
+                throw error;
+            });
+    },
+
+    switchOrganization: (organizationId: string) => {
+        return axios.post<{ success?: boolean; redirectUrl?: string }>(`${backendBaseUrl}${ApiRoutes.ORGANIZATIONS.SWITCH}`, { organizationId }, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                const data = error.response?.data;
+                if (data?.redirectUrl) {
+                    return Promise.reject({ ...error, redirectUrl: data.redirectUrl });
+                }
+                console.error('Error switching organization:', error);
+                throw error;
+            });
+    },
+
+    getWidgetToken: () => {
+        return axios.get<{ token: string; expiresAt: string }>(`${backendBaseUrl}${ApiRoutes.WORKOS.WIDGET_TOKEN}`, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error getting widget token:', error);
                 throw error;
             });
     },

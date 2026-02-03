@@ -1,20 +1,21 @@
 import { Card, CardContent, CardFooter } from "../ui/card";
-import { PosthogIntegration, IntegrationType } from "@/shared/Integrations"
+import { PosthogIntegration, IntegrationType, INTEGRATION_METADATA } from "@/shared/Integrations"
 import { IntegrationCardHeader } from "./helpers/IntegrationCardHeader";
 import { IntegrationItem } from "./helpers/IntegrationItem";
+import { CompactIntegrationRow } from "./CompactIntegrationRow";
 import { cn } from "@/lib/utils";
 import { usePosthogIntegrations } from "@/hooks/api/usePosthogIntegrations";
 import { Skeleton } from "../ui/skeleton";
-import { Palette, Eye, EyeOff, Info } from "lucide-react";
+import { Palette, Eye, EyeOff } from "lucide-react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
-import { Tooltip, TooltipTrigger, TooltipContent } from "../ui/tooltip";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "../ui/dialog";
 import { useState } from "react";
 import { BackendProvider } from "@/services/backend";
 
-function PosthogIntegrationCard({ className, isActive = true, stateToken }: { className?: string; isActive?: boolean; stateToken?: string }) {
-    const { integrations, isLoading, mutate } = usePosthogIntegrations(); 
+function PosthogIntegrationCard({ className, isActive = true, stateToken, compact = false }: { className?: string; isActive?: boolean; stateToken?: string; compact?: boolean }) {
+    const { integrations, isLoading, mutate } = usePosthogIntegrations();
     const [showForm, setShowForm] = useState(false);
     const [apiKey, setApiKey] = useState("");
     const [showApiKey, setShowApiKey] = useState(false);
@@ -49,33 +50,63 @@ function PosthogIntegrationCard({ className, isActive = true, stateToken }: { cl
         setError(null);
     };
 
+    const isConnected = integrations.length > 0;
+    const summary = integrations[0]?.email ?? integrations[0]?.orgName ?? undefined;
+
+    const formDialog = (
+        <Dialog open={showForm} onOpenChange={(open) => !open && handleCancel()}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Connect {INTEGRATION_METADATA[IntegrationType.POSTHOG].name}</DialogTitle>
+                    <DialogDescription>
+                        Enter your PostHog API key to connect your account.
+                    </DialogDescription>
+                </DialogHeader>
+                <PosthogForm
+                    apiKey={apiKey}
+                    setApiKey={setApiKey}
+                    showApiKey={showApiKey}
+                    setShowApiKey={setShowApiKey}
+                    onSubmit={handleSubmit}
+                    onCancel={handleCancel}
+                    isSubmitting={isSubmitting}
+                    error={error}
+                />
+            </DialogContent>
+        </Dialog>
+    );
+
+    if (compact) {
+        return (
+            <>
+                <CompactIntegrationRow
+                    integration={IntegrationType.POSTHOG}
+                    isConnected={isConnected}
+                    summary={summary}
+                    connect={handleConnect}
+                    isConnecting={isSubmitting}
+                    className={className}
+                />
+                {formDialog}
+            </>
+        );
+    }
+
     return (
-        <Card className={cn(className)}>
-            <IntegrationCardHeader integration={IntegrationType.POSTHOG} isActive={isActive} />
-            <CardContent>
-                {showForm ? (
-                    <PosthogForm
-                        apiKey={apiKey}
-                        setApiKey={setApiKey}
-                        showApiKey={showApiKey}
-                        setShowApiKey={setShowApiKey}
-                        onSubmit={handleSubmit}
-                        onCancel={handleCancel}
-                        isSubmitting={isSubmitting}
-                        error={error}
-                    />
-                ) : (
+        <>
+            <Card className={cn(className)}>
+                <IntegrationCardHeader integration={IntegrationType.POSTHOG} isActive={isActive} />
+                <CardContent>
                     <PosthogCardContent integrations={integrations} isLoading={isLoading} />
-                )}
-            </CardContent>
-            <CardFooter>
-                {!showForm && (
+                </CardContent>
+                <CardFooter>
                     <Button variant="outline" onClick={handleConnect}>
                         {integrations.length > 0 ? "Update" : "Connect"}
                     </Button>
-                )}
-            </CardFooter>
-        </Card>
+                </CardFooter>
+            </Card>
+            {formDialog}
+        </>
     )
 }
 
@@ -135,32 +166,7 @@ function PosthogForm({
     return (
         <form onSubmit={onSubmit} className="space-y-4">
             <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                    <Label htmlFor="apiKey">API Key</Label>
-                    <Tooltip>
-                        <TooltipTrigger asChild>
-                            <button
-                                type="button"
-                                className="text-muted-foreground hover:text-foreground transition-colors"
-                            >
-                                <Info className="h-4 w-4" />
-                            </button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                            <div className="flex flex-col gap-1">
-                                <span>Get your API key from PostHog</span>
-                                <a
-                                    href="https://us.posthog.com/project/user-api-keys"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="underline hover:no-underline"
-                                >
-                                    Open API keys page
-                                </a>
-                            </div>
-                        </TooltipContent>
-                    </Tooltip>
-                </div>
+                <Label htmlFor="apiKey">API Key</Label>
                 <div className="relative">
                     <Input
                         id="apiKey"

@@ -24,11 +24,23 @@ import { AppSidebarHeader } from "./SidebarHeader";
 
 export function AppSidebar() {
     const { agents, isLoading } = useAgents({ limit: 100 });
+    const navigate = useNavigate();
 
     return (
         <Sidebar>
             <AppSidebarHeader />
             <SidebarContent>
+                <div className="px-3 py-4">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full gap-2"
+                        onClick={() => navigate(FrontendRoutes.AGENTS.SETUP)}
+                    >
+                        <Plus className="size-4" />
+                        Add Agent
+                    </Button>
+                </div>
                 <SidebarGroup>
                     <SidebarGroupLabel>Application</SidebarGroupLabel>
                     <SidebarGroupContent>
@@ -195,5 +207,5 @@ const SettingsItems: NavItem[] = [
         url: FrontendRoutes.NOTIFICATIONS,
         icon: Bell,
         iconColor: "text-primary",
-    },
+    }
 ]
