@@ -6,6 +6,7 @@ import { githubApp, urls } from "../config/settings";
 import logger, { runWithUserContext } from "../logger";
 import { db } from "../prismaClient";
 import {
+  GithubAppInstallation,
   GithubAppInstallationRepository,
   GithubAppInstallationRepositoryResponse,
   GithubAppInstallationResponse,
@@ -624,41 +625,75 @@ export async function exchangeCodeForAccessToken(
   };
 }
 
-export async function getAppInstallationsForUser(
-  oAuthToken: string,
-): Promise<GithubAppInstallationResponse> {
-  try {
-    const resp: AxiosResponse<GithubAppInstallationResponse> = await axios.get(
-      "https://api.github.com/user/installations",
-      {
-        headers: {
-          Authorization: `Bearer ${oAuthToken}`,
-          Accept: "application/vnd.github+json",
-        },
-      },
-    );
-    return resp.data;
-  } catch (error) {
-    logger.error("Error getting app installations for user", { error });
-    return { total_count: 0, installations: [] };
-  }
+export async function getAppInstallationsForUser(oAuthToken: string): Promise<GithubAppInstallationResponse> {
+    try {
+        const allInstallations: GithubAppInstallation[] = [];
+        let page = 1;
+        const perPage = 100; // Max allowed by GitHub API
+
+        while (true) {
+            const resp: AxiosResponse<GithubAppInstallationResponse> = await axios.get(
+                'https://api.github.com/user/installations',
+                {
+                    headers: {
+                        Authorization: `Bearer ${oAuthToken}`,
+                        Accept: 'application/vnd.github+json',
+                    },
+                    params: {
+                        per_page: perPage,
+                        page,
+                    },
+                }
+            );
+
+            allInstallations.push(...resp.data.installations);
+
+            // If we got fewer than perPage, we've reached the last page
+            if (resp.data.installations.length < perPage) {
+                break;
+            }
+
+            page++;
+        }
+
+        return { total_count: allInstallations.length, installations: allInstallations };
+    } catch (error) {
+        logger.error('Error getting app installations for user', { error });
+        return { total_count: 0, installations: [] };
+    }
 }
 
-export async function getAppInstallationRepositories(
-  oAuthToken: string,
-  installationId: number,
-): Promise<GithubAppInstallationRepository[]> {
-  const resp: AxiosResponse<GithubAppInstallationRepositoryResponse> =
-    await axios.get(
-      `https://api.github.com/user/installations/${installationId}/repositories`,
-      {
-        headers: {
-          Authorization: `Bearer ${oAuthToken}`,
-          Accept: "application/vnd.github+json",
-        },
-      },
-    );
-  return resp.data.repositories;
+export async function getAppInstallationRepositories(oAuthToken: string, installationId: number): Promise<GithubAppInstallationRepository[]> {
+    const allRepositories: GithubAppInstallationRepository[] = [];
+    let page = 1;
+    const perPage = 100; // Max allowed by GitHub API
+
+    while (true) {
+        const resp: AxiosResponse<GithubAppInstallationRepositoryResponse> = await axios.get(
+            `https://api.github.com/user/installations/${installationId}/repositories`,
+            {
+                headers: {
+                    Authorization: `Bearer ${oAuthToken}`,
+                    Accept: 'application/vnd.github+json',
+                },
+                params: {
+                    per_page: perPage,
+                    page,
+                },
+            }
+        );
+
+        allRepositories.push(...resp.data.repositories);
+
+        // If we got fewer than perPage, we've reached the last page
+        if (resp.data.repositories.length < perPage) {
+            break;
+        }
+
+        page++;
+    }
+
+    return allRepositories;
 }
 
 // Given an installation, we need to fetch all users that are associated with that installation.
