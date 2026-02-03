@@ -4,7 +4,6 @@ import { usePosthogIntegrations } from "@/hooks/api/usePosthogIntegrations";
 import { PosthogProjectSelector } from "@/components/PosthogProjectSelector";
 import { BackendProvider } from "@/services/backend";
 import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,7 +20,7 @@ import {
 
 export function PostHogKnowledgeBaseIntegration({ knowledgeBase, variant, setConfig }: KnowledgeBaseSelectorProps) {
     const { integrations, isLoading, mutate } = usePosthogIntegrations();
-    const posthogConfig = (knowledgeBase.config as PosthogConfig) || new PosthogConfig('', '', undefined, false, false);
+    const posthogConfig = (knowledgeBase.config as PosthogConfig) || new PosthogConfig('', '', undefined);
     const selectedIntegrationId = posthogConfig.integrationId || null;
     
     // Form state for connecting new integration
@@ -178,9 +177,7 @@ export function PostHogKnowledgeBaseIntegration({ knowledgeBase, variant, setCon
         const newPosthogConfig = new PosthogConfig(
             integrationId,
             '', // Clear project when integration changes
-            undefined,
-            posthogConfig.canReadLogs,
-            posthogConfig.canReadSessionRecordings
+            undefined
         );
         setConfig(newPosthogConfig);
     };
@@ -189,31 +186,7 @@ export function PostHogKnowledgeBaseIntegration({ knowledgeBase, variant, setCon
         const newPosthogConfig = new PosthogConfig(
             posthogConfig.integrationId,
             projectId,
-            projectName,
-            posthogConfig.canReadLogs,
-            posthogConfig.canReadSessionRecordings
-        );
-        setConfig(newPosthogConfig);
-    };
-
-    const updateCanReadLogs = (canReadLogs: boolean) => {
-        const newPosthogConfig = new PosthogConfig(
-            posthogConfig.integrationId,
-            posthogConfig.projectId,
-            posthogConfig.projectName,
-            canReadLogs,
-            posthogConfig.canReadSessionRecordings
-        );
-        setConfig(newPosthogConfig);
-    };
-
-    const updateCanReadSessionRecordings = (canReadSessionRecordings: boolean) => {
-        const newPosthogConfig = new PosthogConfig(
-            posthogConfig.integrationId,
-            posthogConfig.projectId,
-            posthogConfig.projectName,
-            posthogConfig.canReadLogs,
-            canReadSessionRecordings
+            projectName
         );
         setConfig(newPosthogConfig);
     };
@@ -264,32 +237,6 @@ export function PostHogKnowledgeBaseIntegration({ knowledgeBase, variant, setCon
                     )}
                 </div>
             )}
-
-            <div className="space-y-3">
-                <Label>Available Tools</Label>
-                <div className="space-y-2">
-                    <div className="flex items-center space-x-2">
-                        <Checkbox
-                            id="read-logs"
-                            checked={posthogConfig.canReadLogs}
-                            onCheckedChange={updateCanReadLogs}
-                        />
-                        <Label htmlFor="read-logs" className="font-normal cursor-pointer">
-                            Read logs
-                        </Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                        <Checkbox
-                            id="read-session-recordings"
-                            checked={posthogConfig.canReadSessionRecordings}
-                            onCheckedChange={updateCanReadSessionRecordings}
-                        />
-                        <Label htmlFor="read-session-recordings" className="font-normal cursor-pointer">
-                            Look at relevant session recordings
-                        </Label>
-                    </div>
-                </div>
-            </div>
         </div>
     );
 }

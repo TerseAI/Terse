@@ -504,9 +504,7 @@ export const convertPrismaKnowledgeBaseConfigToConfigInstance = (channelKnowledg
         return new PosthogConfig(
             integrationId,
             posthogIntegration.project_id,
-            posthogIntegration.project_name || undefined,
-            posthogIntegration.can_read_logs || false,
-            posthogIntegration.can_read_session_recordings || false
+            posthogIntegration.project_name || undefined
         );
     }
 
@@ -565,9 +563,7 @@ export const convertPlainObjectToKnowledgeBaseConfigInstance = (config: any): Co
             return new PosthogConfig(
                 config.integrationId,
                 config.projectId,
-                config.projectName,
-                config.canReadLogs || false,
-                config.canReadSessionRecordings || false
+                config.projectName
             );
         case ConfigType.GITHUB_KB:
             return new GitHubKBConfig(

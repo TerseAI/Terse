@@ -18,7 +18,6 @@ export const searchSessionsTool = tool({
     parameters: z.object({
         integrationId: z.string().describe('The integration ID of the PostHog knowledge base to use.'),
         projectId: z.string().describe('The PostHog project ID.'),
-        canReadSessionRecordings: z.boolean().default(false).describe('Whether session recordings access is enabled for this knowledge base.'),
         userEmail: z.string().email().describe('The email address of the user to query session recordings for. Must be a valid email address.'),
         limit: z.number().default(10).describe('Maximum number of session recordings to return (default: 10, max: 100)'),
         offset: z.number().default(0).describe('Offset for pagination (default: 0)'),
@@ -26,13 +25,9 @@ export const searchSessionsTool = tool({
         dateFrom: z.union([z.string(), z.null()]).describe('Start date for filtering (ISO format or relative like "-7d"). If not provided and last7Days is true, defaults to 7 days ago. If not provided and last7Days is false, no date restriction is applied.'),
         dateTo: z.union([z.string(), z.null()]).describe('End date for filtering (ISO format or relative like "now"). If not provided, defaults to now.'),
     }),
-    execute: async ({ integrationId, projectId, canReadSessionRecordings, userEmail, limit = 10, offset = 0, last7Days = false, dateFrom, dateTo }, runContext?: RunContext<SessionWithTracking<Session>>) => {
+    execute: async ({ integrationId, projectId, userEmail, limit = 10, offset = 0, last7Days = false, dateFrom, dateTo }, runContext?: RunContext<SessionWithTracking<Session>>) => {
         if (!runContext?.context) {
             throw new Error("No context provided");
-        }
-
-        if (canReadSessionRecordings !== true) {
-            throw new Error("PostHog session recordings access is not enabled for this knowledge base.");
         }
 
         const posthogApiKey = await getPosthogApiKeyByIntegrationId(integrationId, runContext.context.user.id);

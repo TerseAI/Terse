@@ -328,8 +328,6 @@ const PosthogConfigSchema = BaseConfigSchema.extend({
   integrationType: z.literal(IntegrationType.POSTHOG),
   projectId: NonEmptyString,
   projectName: z.string().nullable(),
-  canReadLogs: z.boolean().nullable(),
-  canReadSessionRecordings: z.boolean().nullable(),
 });
 
 const LaunchDarklyConfigSchema = BaseConfigSchema.extend({

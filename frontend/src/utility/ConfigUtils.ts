@@ -105,9 +105,7 @@ export function deserializeConfig(jsonConfig: any): ConfigInstance {
             return new PosthogConfig(
                 integrationId,
                 posthogConfig.projectId,
-                posthogConfig.projectName,
-                posthogConfig.canReadLogs,
-                posthogConfig.canReadSessionRecordings
+                posthogConfig.projectName
             );
         case ConfigType.TIME_TRIGGER:
             const timeTriggerConfig = jsonConfig as TimeTriggerConfig;

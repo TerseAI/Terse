@@ -18,7 +18,6 @@ export const searchLogsTool = tool({
     parameters: z.object({
         integrationId: z.string().describe('The integration ID of the PostHog knowledge base to use.'),
         projectId: z.string().describe('The PostHog project ID.'),
-        canReadLogs: z.boolean().default(false).describe('Whether logs access is enabled for this knowledge base.'),
         userEmail: z.union([z.string(), z.null()]).optional().describe('Optional: User email to filter logs by (e.g., "user@example.com").'),
         severityLevels: z.union([z.array(z.enum(['error', 'warn', 'info', 'debug'])), z.null()]).describe('Optional: Array of log severity levels to filter by (e.g., ["error", "warn"]). If not provided, all severity levels are included.'),
         messageSearch: z.union([z.string(), z.null()]).describe('Optional: Text to search for within log messages. Searches are case-insensitive and match partial text.'),
@@ -28,13 +27,9 @@ export const searchLogsTool = tool({
         dateFrom: z.union([z.string(), z.null()]).describe('Start date for filtering (ISO format or relative like "-7d"). If not provided and last7Days is true, defaults to 7 days ago. If not provided and last7Days is false, no date restriction is applied.'),
         dateTo: z.union([z.string(), z.null()]).describe('End date for filtering (ISO format or relative like "now"). If not provided, defaults to now.'),
     }),
-    execute: async ({ integrationId, projectId, canReadLogs, userEmail, severityLevels, messageSearch, limit = 50, offset = 0, last7Days = false, dateFrom, dateTo }, runContext?: RunContext<SessionWithTracking<Session>>) => {
+    execute: async ({ integrationId, projectId, userEmail, severityLevels, messageSearch, limit = 50, offset = 0, last7Days = false, dateFrom, dateTo }, runContext?: RunContext<SessionWithTracking<Session>>) => {
         if (!runContext?.context) {
             throw new Error("No context provided");
-        }
-
-        if (canReadLogs !== true) {
-            throw new Error("PostHog logs access is not enabled for this knowledge base.");
         }
 
         // Normalize null to undefined for easier handling

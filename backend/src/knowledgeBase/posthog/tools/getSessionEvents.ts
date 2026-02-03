@@ -20,18 +20,13 @@ export const getSessionEventsTool = tool({
     parameters: z.object({
         integrationId: z.string().describe('The integration ID of the PostHog knowledge base to use.'),
         projectId: z.string().describe('The PostHog project ID.'),
-        canReadSessionRecordings: z.boolean().default(false).describe('Whether session recordings access is enabled for this knowledge base.'),
         sessionId: z.string().uuid().describe('The PostHog session ID (UUID format) to fetch events for. You can get this from searchPosthogSessions.'),
         startSeconds: z.union([z.number().min(0), z.null()]).describe('Optional: Start time in seconds from the beginning of the session. If not provided, starts from the beginning.'),
         endSeconds: z.union([z.number().min(0), z.null()]).describe('Optional: End time in seconds from the beginning of the session. If not provided, goes until the end.'),
     }),
-    execute: async ({ integrationId, projectId, canReadSessionRecordings, sessionId, startSeconds, endSeconds }, runContext?: RunContext<SessionWithTracking<Session>>) => {
+    execute: async ({ integrationId, projectId, sessionId, startSeconds, endSeconds }, runContext?: RunContext<SessionWithTracking<Session>>) => {
         if (!runContext?.context) {
             throw new Error("No context provided");
-        }
-
-        if (canReadSessionRecordings !== true) {
-            throw new Error("PostHog session recordings access is not enabled for this knowledge base.");
         }
 
         const posthogApiKey = await getPosthogApiKeyByIntegrationId(integrationId, runContext.context.user.id);
