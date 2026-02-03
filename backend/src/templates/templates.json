@@ -139,7 +139,7 @@
                 "config": {
                     "configType": "time_trigger",
                     "integrationType": "cron_job",
-                    "cronExpression": "0 9 * * *"
+                    "cronExpression": "0 9 * * 1"
                 }
             }
         ],
