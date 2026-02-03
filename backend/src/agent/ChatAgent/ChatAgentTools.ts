@@ -2,6 +2,10 @@ import { RunContext, tool } from "@openai/agents";
 import { Tool } from "@openai/agents-core";
 import { z } from "zod";
 import { uuidv4 } from "zod/v4";
+import {
+  FetchResourcesOptions,
+  FetchResourcesOptionsSchema,
+} from "../../integrations/abstract/FetchResourcesOptions";
 import { INTEGRATION_REGISTRY } from "../../integrations/abstract/IntegrationRegistry";
 import logger from "../../logger";
 import type { AgentDraft } from "../../routes/agents";
@@ -108,17 +112,26 @@ export function buildChatAgentTools(
           .string()
           .nullable()
           .describe("Optional query to filter resources by name/title"),
+        options: FetchResourcesOptionsSchema.describe(
+          "Optional integration-specific filtering options"
+        ),
       }),
       execute: async (
         {
           integrationType,
           query,
-        }: { integrationType: IntegrationType; query: string | null },
+          options,
+        }: {
+          integrationType: IntegrationType;
+          query: string | null;
+          options?: FetchResourcesOptions;
+        },
         runContext?: RunContext<ChatAgentContext>
       ): Promise<string> => {
         logger.info("Fetching resources for integration type", {
           integrationType,
           query,
+          options,
         });
         const userId = runContext?.context?.userId;
         const organizationId = runContext?.context?.organizationId;
@@ -130,7 +143,8 @@ export function buildChatAgentTools(
         return await fetchResourcesForIntegrationType(
           integrationType,
           organizationId,
-          query ?? undefined
+          query ?? undefined,
+          options
         );
       },
     }),
@@ -169,9 +183,12 @@ const FigmaConfigSchema = BaseConfigSchema.extend({
   fileKey: NonEmptyString.describe(
     "The Figma file key. From fetchResourcesForIntegration, use the file's key from resources[]."
   ),
-  fileName: z.string().nullable().describe(
-    "The Figma file display name. From fetchResourcesForIntegration, use the file's name from resources[]."
-  ),
+  fileName: z
+    .string()
+    .nullable()
+    .describe(
+      "The Figma file display name. From fetchResourcesForIntegration, use the file's name from resources[]."
+    ),
   teamId: NonEmptyString.describe(
     "The Figma team ID. From fetchResourcesForIntegration, use the file's teamId from resources[]."
   ),
@@ -186,9 +203,12 @@ const SlackConfigSchema = BaseConfigSchema.extend({
   channelName: NonEmptyString.nullable().describe(
     'The channel display name (e.g., "general"). From fetchResourcesForIntegration, use "resources[].name".'
   ),
-  listenToUserDms: z.boolean().nullable().describe(
-    "Set to true to listen to direct messages. If true, channelId is not required."
-  ),
+  listenToUserDms: z
+    .boolean()
+    .nullable()
+    .describe(
+      "Set to true to listen to direct messages. If true, channelId is not required."
+    ),
   userIds: z.array(NonEmptyString).nullable(),
 });
 
@@ -209,9 +229,12 @@ const NotionDatabaseConfigSchema = BaseConfigSchema.extend({
   databaseId: NonEmptyString.nullable().describe(
     "The Notion database ID. From fetchResourcesForIntegration, use the database's id from resources[]."
   ),
-  databaseName: z.string().nullable().describe(
-    "The database display name. From fetchResourcesForIntegration, use the database's name from resources[]."
-  ),
+  databaseName: z
+    .string()
+    .nullable()
+    .describe(
+      "The database display name. From fetchResourcesForIntegration, use the database's name from resources[]."
+    ),
 });
 
 const NotionPageConfigSchema = BaseConfigSchema.extend({
@@ -220,9 +243,12 @@ const NotionPageConfigSchema = BaseConfigSchema.extend({
   pageId: NonEmptyString.nullable().describe(
     "The Notion page ID. From fetchResourcesForIntegration, use the page's id from resources[]."
   ),
-  pageName: z.string().nullable().describe(
-    "The page display name. From fetchResourcesForIntegration, use the page's name from resources[]."
-  ),
+  pageName: z
+    .string()
+    .nullable()
+    .describe(
+      "The page display name. From fetchResourcesForIntegration, use the page's name from resources[]."
+    ),
 });
 
 const LinearInputConfigSchema = BaseConfigSchema.extend({
@@ -231,9 +257,12 @@ const LinearInputConfigSchema = BaseConfigSchema.extend({
   projectId: NonEmptyString.nullable().describe(
     "The Linear project ID. From fetchResourcesForIntegration, use the project's id from resources[]."
   ),
-  projectName: z.string().nullable().describe(
-    "The project display name. From fetchResourcesForIntegration, use the project's name from resources[]."
-  ),
+  projectName: z
+    .string()
+    .nullable()
+    .describe(
+      "The project display name. From fetchResourcesForIntegration, use the project's name from resources[]."
+    ),
 });
 
 const LinearOutputConfigSchema = BaseConfigSchema.extend({
@@ -242,28 +271,40 @@ const LinearOutputConfigSchema = BaseConfigSchema.extend({
   teamId: NonEmptyString.nullable().describe(
     "The Linear team ID. From fetchResourcesForIntegration, use the team's id from resources[]."
   ),
-  teamName: z.string().nullable().describe(
-    "The team display name. From fetchResourcesForIntegration, use the team's name from resources[]."
-  ),
+  teamName: z
+    .string()
+    .nullable()
+    .describe(
+      "The team display name. From fetchResourcesForIntegration, use the team's name from resources[]."
+    ),
 });
 
 const GitHubConfigSchema = BaseConfigSchema.extend({
   configType: z.literal(ConfigType.GITHUB),
   integrationType: z.literal(IntegrationType.GITHUB),
-  repositoryIds: z.array(z.number()).min(1).describe(
-    "Array of GitHub repository IDs (numeric). From fetchResourcesForIntegration, use the repo's id from resources[]."
-  ),
+  repositoryIds: z
+    .array(z.number())
+    .min(1)
+    .describe(
+      "Array of GitHub repository IDs (numeric). From fetchResourcesForIntegration, use the repo's id from resources[]."
+    ),
 });
 
 const GitHubKnowledgeBaseConfigSchema = BaseConfigSchema.extend({
   configType: z.literal(ConfigType.GITHUB_KB),
   integrationType: z.literal(IntegrationType.GITHUB),
-  repositoryIds: z.array(z.number()).min(1).describe(
-    "Array of GitHub repository IDs (numeric). From fetchResourcesForIntegration, use the repo's id from resources[]."
-  ),
-  repositoryNames: z.array(NonEmptyString).min(1).describe(
-    "Array of repository names matching the repositoryIds. From fetchResourcesForIntegration, use the repo's name from resources[]."
-  ),
+  repositoryIds: z
+    .array(z.number())
+    .min(1)
+    .describe(
+      "Array of GitHub repository IDs (numeric). From fetchResourcesForIntegration, use the repo's id from resources[]."
+    ),
+  repositoryNames: z
+    .array(NonEmptyString)
+    .min(1)
+    .describe(
+      "Array of repository names matching the repositoryIds. From fetchResourcesForIntegration, use the repo's name from resources[]."
+    ),
 });
 
 const JiraConfigSchema = BaseConfigSchema.extend({
@@ -480,7 +521,8 @@ function toAgentDraft(agent: AgentSchemaInput): AgentDraft {
 async function fetchResourcesForIntegrationType(
   integrationType: IntegrationType,
   organizationId: string,
-  query?: string
+  query?: string,
+  options?: FetchResourcesOptions
 ): Promise<string> {
   const manager = INTEGRATION_REGISTRY.find(
     (m) => m.integrationType === integrationType
@@ -492,7 +534,8 @@ async function fetchResourcesForIntegrationType(
   if (manager.fetchResourcesForOrganization) {
     const results = await manager.fetchResourcesForOrganization(
       organizationId,
-      query
+      query,
+      options
     );
     return JSON.stringify({ resources: results });
   }

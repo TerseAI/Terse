@@ -19,6 +19,7 @@ import {
 import { NotionResource, OAuthInstallationDetails } from "../shared/types";
 import { AgentTriggerWithConfigs } from "../types/prisma";
 import { createOAuthStateToken } from "../utility/oauth";
+import { FetchResourcesOptions } from "./abstract/FetchResourcesOptions";
 import {
   ConfigurationFieldDefinition,
   Integration,
@@ -46,7 +47,7 @@ export class NotionIntegrationManager
   }
 
   async getInstancesForOrganization(
-    organizationId: string,
+    organizationId: string
   ): Promise<NotionIntegration[]> {
     const notionIntegrations = await db().notion_integrations.findMany({
       where: { organization_id: organizationId },
@@ -66,8 +67,10 @@ export class NotionIntegrationManager
   async fetchResourcesForOrganization(
     organizationId: string,
     query?: string,
+    options?: FetchResourcesOptions
   ): Promise<IntegrationWithResources<NotionIntegration, NotionResource>[]> {
     const integrations = await this.getInstancesForOrganization(organizationId);
+    const typeFilter = options?.notion?.objectType ?? undefined;
     return Promise.all(
       integrations.map(async (integration) => {
         try {
@@ -75,16 +78,17 @@ export class NotionIntegrationManager
             organizationId,
             integration.id,
             query ?? "",
+            typeFilter
           );
           return { integration, resources: response.resources };
         } catch (error) {
           logger.warn(
             `Failed to fetch resources for Notion integration ${integration.id}`,
-            { error, integrationId: integration.id },
+            { error, integrationId: integration.id }
           );
           return { integration, resources: [] };
         }
-      }),
+      })
     );
   }
 
@@ -117,7 +121,7 @@ export class NotionIntegrationManager
   async processWebhookEvent(event: never): Promise<void> {
     // Notion webhooks are handled elsewhere
     throw new Error(
-      "Notion webhooks are not processed through this integration manager",
+      "Notion webhooks are not processed through this integration manager"
     );
   }
 
@@ -125,7 +129,7 @@ export class NotionIntegrationManager
     userId: string,
     organizationId: string,
     options?: InstallationOptionsFor<IntegrationType.NOTION>,
-    additionalStatePayload?: AdditionalStateParams,
+    additionalStatePayload?: AdditionalStateParams
   ): Promise<OAuthInstallationDetails> {
     // Note: options parameter is required by interface but NotionIntegration uses NoInstallationOptions
     // additionalStatePayload allows passing extra state variables (e.g., chat metadata for ChatAgent resumption)
@@ -155,7 +159,7 @@ export class NotionIntegrationManager
 
   async processInstallationCallback(
     req: Request,
-    res: Response,
+    res: Response
   ): Promise<void> {
     const { code, state, error } = req.query;
 
@@ -199,7 +203,7 @@ export class NotionIntegrationManager
           method: "POST",
           headers: {
             Authorization: `Basic ${Buffer.from(
-              `${notionConfig.clientId}:${notionConfig.clientSecret}`,
+              `${notionConfig.clientId}:${notionConfig.clientSecret}`
             ).toString("base64")}`,
             "Content-Type": "application/json",
           },
@@ -208,7 +212,7 @@ export class NotionIntegrationManager
             code: code,
             redirect_uri: notionConfig.redirectUri,
           }),
-        },
+        }
       );
 
       if (!tokenResponse.ok) {
@@ -274,8 +278,8 @@ export class NotionIntegrationManager
           integrationId,
           decoded.userId,
           decoded,
-          new Date(),
-        ),
+          new Date()
+        )
       );
 
       // Redirect to success page which will auto-close the popup
@@ -292,7 +296,7 @@ export class NotionIntegrationManager
 
   async setupAgentTrigger(
     integrationId: string,
-    automationInput: AgentTriggerWithConfigs,
+    automationInput: AgentTriggerWithConfigs
   ): Promise<void> {
     // Notion doesn't require any setup for automation inputs
     // Webhooks are managed at the integration level
@@ -300,7 +304,7 @@ export class NotionIntegrationManager
 
   async teardownAgentTrigger(
     integrationId: string,
-    automationInput: AgentTriggerWithConfigs,
+    automationInput: AgentTriggerWithConfigs
   ): Promise<void> {
     // Notion doesn't require any teardown for automation inputs
     // Webhooks are managed at the integration level
@@ -333,7 +337,7 @@ export class NotionIntegrationManager
     } catch (error) {
       logger.error(
         `Error getting Notion access token for integration ${integrationId}`,
-        { error, integrationId },
+        { error, integrationId }
       );
       return null;
     }

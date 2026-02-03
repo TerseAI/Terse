@@ -34,6 +34,7 @@ import {
 import { getUserForOrg } from "../utility/workos";
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask";
 import { integrationTaskQueue } from "./IntegrationTaskQueues";
+import { FetchResourcesOptions } from "./abstract/FetchResourcesOptions";
 import { InputEvent } from "./abstract/InputEvent";
 import {
   ConfigurationFieldDefinition,
@@ -60,7 +61,7 @@ export class GithubIntegrationManager
   }
 
   async getInstancesForOrganization(
-    organizationId: string,
+    organizationId: string
   ): Promise<GithubIntegration[]> {
     const organizationAccounts = await db().github_app_tokens.findMany({
       where: { organization_id: organizationId },
@@ -68,14 +69,14 @@ export class GithubIntegrationManager
     const installations = await Promise.all(
       organizationAccounts.map(async (oa) => {
         const appInstallations = await getAppInstallationsForUser(
-          oa.access_token,
+          oa.access_token
         );
         return appInstallations.installations.map((ai) => ({
           id: ai.id.toString(),
           installation_id: ai.id,
           account_name: ai.account.login,
         }));
-      }),
+      })
     );
     return installations.flat();
   }
@@ -83,6 +84,7 @@ export class GithubIntegrationManager
   async fetchResourcesForOrganization(
     organizationId: string,
     query?: string,
+    _options?: FetchResourcesOptions
   ): Promise<IntegrationWithResources<GithubIntegration, Repository>[]> {
     const integrations = await this.getInstancesForOrganization(organizationId);
     const normalizedQuery = query?.trim().toLowerCase();
@@ -101,24 +103,24 @@ export class GithubIntegrationManager
         try {
           const response = await fetchGithubRepositoriesForIntegration(
             organizationId,
-            String(installationId),
+            String(installationId)
           );
           const repositories = normalizedQuery
             ? response.repositories.filter(
                 (repo) =>
                   matchesQuery(`${repo.owner}/${repo.name}`) ||
-                  matchesQuery(repo.name),
+                  matchesQuery(repo.name)
               )
             : response.repositories;
           return { integration, resources: repositories };
         } catch (error) {
           logger.warn(
             `Failed to fetch resources for GitHub integration ${integration.id}`,
-            { error, integrationId: integration.id },
+            { error, integrationId: integration.id }
           );
           return { integration, resources: [] };
         }
-      }),
+      })
     );
   }
 
@@ -151,16 +153,16 @@ export class GithubIntegrationManager
   }
 
   async processWebhookEvent(
-    event: GithubAppUnifiedEventRequest,
+    event: GithubAppUnifiedEventRequest
   ): Promise<void> {
     const users: PrismaUser[] = await resolveUsersForGithubInstallation(
-      event.installationId,
+      event.installationId
     );
 
     if (users.length === 0) {
       logger.warn(
         `⚠️  No users found for GitHub event from ${event.installationId}`,
-        { installationId: event.installationId, eventType: event.eventType },
+        { installationId: event.installationId, eventType: event.eventType }
       );
       return;
     }
@@ -185,7 +187,7 @@ export class GithubIntegrationManager
     userId: string,
     organizationId: string,
     options?: InstallationOptionsFor<IntegrationType.GITHUB>,
-    additionalStatePayload?: AdditionalStateParams,
+    additionalStatePayload?: AdditionalStateParams
   ): Promise<OAuthInstallationDetails> {
     const appName = githubApp.appName;
     const clientId = githubApp.clientId;
@@ -200,7 +202,7 @@ export class GithubIntegrationManager
     });
 
     const installationUrl: string = `https://github.com/apps/${appName}/installations/new?client_id=${clientId}&redirect_uri=${encodeURIComponent(
-      redirectUri,
+      redirectUri
     )}&target_type=repositories&state=${state}`;
 
     return {
@@ -210,7 +212,7 @@ export class GithubIntegrationManager
 
   async processInstallationCallback(
     req: Request,
-    res: Response,
+    res: Response
   ): Promise<void> {
     const { installation_id, setup_action, state, code } = req.query as {
       installation_id: string;
@@ -234,7 +236,7 @@ export class GithubIntegrationManager
       if (!user_id || typeof user_id !== "string") {
         logger.error(
           "[GitHub Setup URL Installation] ERROR: userId is required in state",
-          { installationId: installation_id },
+          { installationId: installation_id }
         );
         res
           .status(400)
@@ -245,7 +247,7 @@ export class GithubIntegrationManager
       if (!organizationId || typeof organizationId !== "string") {
         logger.error(
           "[GitHub Setup URL Installation] ERROR: organizationId is required in state",
-          { userId: user_id, installationId: installation_id },
+          { userId: user_id, installationId: installation_id }
         );
         res.status(400).json({
           message:
@@ -272,7 +274,7 @@ export class GithubIntegrationManager
       if (isNaN(installation_id_number)) {
         logger.error(
           "[GitHub Setup URL Installation] ERROR: Installation ID is not a number",
-          { installationId: installation_id, userId: user_id },
+          { installationId: installation_id, userId: user_id }
         );
         res.status(400).json({ message: "Installation ID is not a number" });
         return;
@@ -323,8 +325,8 @@ export class GithubIntegrationManager
           githubInstallation.id, // Use user_github_installation.id as integrationId
           user_id,
           stateData,
-          new Date(),
-        ),
+          new Date()
+        )
       );
 
       res.redirect(`${urls.frontend}${FrontendRoutes.OAUTH.SUCCESS}`);
@@ -343,7 +345,7 @@ export class GithubIntegrationManager
 
   async setupAgentTrigger(
     integrationId: string,
-    agentTrigger: AgentTriggerWithConfigs,
+    agentTrigger: AgentTriggerWithConfigs
   ): Promise<void> {
     // GitHub doesn't require any setup for channel inputs
     // Webhooks are managed at the integration level
@@ -351,7 +353,7 @@ export class GithubIntegrationManager
 
   async teardownAgentTrigger(
     integrationId: string,
-    agentTrigger: AgentTriggerWithConfigs,
+    agentTrigger: AgentTriggerWithConfigs
   ): Promise<void> {
     // GitHub doesn't require any teardown for channel inputs
     // Webhooks are managed at the integration level
@@ -388,7 +390,7 @@ export class GithubIntegrationManager
     } catch (error) {
       logger.error(
         `Error getting GitHub access token for installation ${integrationId}`,
-        { error, integrationId },
+        { error, integrationId }
       );
       return null;
     }
@@ -404,7 +406,7 @@ export class GithubEvent extends InputEvent {
 
   constructor(
     data: GithubAppUnifiedEventRequest,
-    storedFiles: StoredFile[] = [],
+    storedFiles: StoredFile[] = []
   ) {
     super();
     this.data = data;
@@ -506,9 +508,7 @@ export class GithubEvent extends InputEvent {
 
           if (commit.fileDiffs.length > 3) {
             commitLines.push(
-              `\n   ... and ${
-                commit.fileDiffs.length - 3
-              } more file(s) changed`,
+              `\n   ... and ${commit.fileDiffs.length - 3} more file(s) changed`
             );
           }
         }
@@ -552,7 +552,7 @@ export class GithubEvent extends InputEvent {
           repositoryId: this.data.repository.id,
           repositoryIds: githubConfig?.repository_ids,
           agentTriggerId: agentTrigger.id,
-        },
+        }
       );
       return false;
     }
@@ -578,7 +578,7 @@ export class GithubEvent extends InputEvent {
 
 // MARK: - Helper Functions - GITHUB REST API
 export async function getGithubAppUser(
-  githubAppAccessToken: string,
+  githubAppAccessToken: string
 ): Promise<GithubAppUser> {
   const resp = await axios.get("https://api.github.com/user", {
     headers: {
@@ -596,7 +596,7 @@ export async function getGithubAppUser(
 
 export async function exchangeCodeForAccessToken(
   code: string,
-  redirectUri?: string,
+  redirectUri?: string
 ): Promise<{
   access_token: string;
   refresh_token: string;
@@ -612,7 +612,7 @@ export async function exchangeCodeForAccessToken(
     },
     {
       headers: { Accept: "application/json" },
-    },
+    }
   );
 
   const accessToken = tokenResp.data.access_token;
@@ -625,97 +625,104 @@ export async function exchangeCodeForAccessToken(
   };
 }
 
-export async function getAppInstallationsForUser(oAuthToken: string): Promise<GithubAppInstallationResponse> {
-    try {
-        const allInstallations: GithubAppInstallation[] = [];
-        let page = 1;
-        const perPage = 100; // Max allowed by GitHub API
-
-        while (true) {
-            const resp: AxiosResponse<GithubAppInstallationResponse> = await axios.get(
-                'https://api.github.com/user/installations',
-                {
-                    headers: {
-                        Authorization: `Bearer ${oAuthToken}`,
-                        Accept: 'application/vnd.github+json',
-                    },
-                    params: {
-                        per_page: perPage,
-                        page,
-                    },
-                }
-            );
-
-            allInstallations.push(...resp.data.installations);
-
-            // If we got fewer than perPage, we've reached the last page
-            if (resp.data.installations.length < perPage) {
-                break;
-            }
-
-            page++;
-        }
-
-        return { total_count: allInstallations.length, installations: allInstallations };
-    } catch (error) {
-        logger.error('Error getting app installations for user', { error });
-        return { total_count: 0, installations: [] };
-    }
-}
-
-export async function getAppInstallationRepositories(oAuthToken: string, installationId: number): Promise<GithubAppInstallationRepository[]> {
-    const allRepositories: GithubAppInstallationRepository[] = [];
+export async function getAppInstallationsForUser(
+  oAuthToken: string
+): Promise<GithubAppInstallationResponse> {
+  try {
+    const allInstallations: GithubAppInstallation[] = [];
     let page = 1;
     const perPage = 100; // Max allowed by GitHub API
 
     while (true) {
-        const resp: AxiosResponse<GithubAppInstallationRepositoryResponse> = await axios.get(
-            `https://api.github.com/user/installations/${installationId}/repositories`,
-            {
-                headers: {
-                    Authorization: `Bearer ${oAuthToken}`,
-                    Accept: 'application/vnd.github+json',
-                },
-                params: {
-                    per_page: perPage,
-                    page,
-                },
-            }
-        );
+      const resp: AxiosResponse<GithubAppInstallationResponse> =
+        await axios.get("https://api.github.com/user/installations", {
+          headers: {
+            Authorization: `Bearer ${oAuthToken}`,
+            Accept: "application/vnd.github+json",
+          },
+          params: {
+            per_page: perPage,
+            page,
+          },
+        });
 
-        allRepositories.push(...resp.data.repositories);
+      allInstallations.push(...resp.data.installations);
 
-        // If we got fewer than perPage, we've reached the last page
-        if (resp.data.repositories.length < perPage) {
-            break;
-        }
+      // If we got fewer than perPage, we've reached the last page
+      if (resp.data.installations.length < perPage) {
+        break;
+      }
 
-        page++;
+      page++;
     }
 
-    return allRepositories;
+    return {
+      total_count: allInstallations.length,
+      installations: allInstallations,
+    };
+  } catch (error) {
+    logger.error("Error getting app installations for user", { error });
+    return { total_count: 0, installations: [] };
+  }
+}
+
+export async function getAppInstallationRepositories(
+  oAuthToken: string,
+  installationId: number
+): Promise<GithubAppInstallationRepository[]> {
+  const allRepositories: GithubAppInstallationRepository[] = [];
+  let page = 1;
+  const perPage = 100; // Max allowed by GitHub API
+
+  while (true) {
+    const resp: AxiosResponse<GithubAppInstallationRepositoryResponse> =
+      await axios.get(
+        `https://api.github.com/user/installations/${installationId}/repositories`,
+        {
+          headers: {
+            Authorization: `Bearer ${oAuthToken}`,
+            Accept: "application/vnd.github+json",
+          },
+          params: {
+            per_page: perPage,
+            page,
+          },
+        }
+      );
+
+    allRepositories.push(...resp.data.repositories);
+
+    // If we got fewer than perPage, we've reached the last page
+    if (resp.data.repositories.length < perPage) {
+      break;
+    }
+
+    page++;
+  }
+
+  return allRepositories;
 }
 
 // Given an installation, we need to fetch all users that are associated with that installation.
 export async function resolveUsersForGithubInstallation(
-  installationId: number,
+  installationId: number
 ): Promise<PrismaUser[]> {
   return db().$transaction(async (tx) => {
     const githubAppUsers = await tx.github_app_tokens.findMany();
     const installationResults = await Promise.all(
       githubAppUsers.map(async (user) => {
         const installations = await getAppInstallationsForUser(
-          user.access_token,
+          user.access_token
         );
         return {
           userId: user.user_id,
           installations: installations.installations,
         };
-      }),
+      })
     );
     const userIds = installationResults
       .filter((result) =>
-        result.installations.some((inst) => inst.id === installationId),
+        result.installations.some((inst) => inst.id === installationId)
       )
       .map((result) => result.userId);
     const users = await tx.users.findMany({
