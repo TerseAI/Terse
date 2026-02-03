@@ -1,0 +1,121 @@
+.terse-brand {
+    height: 100%;
+    width: 100%;
+    background: #09090b;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  
+  .terse-content {
+    position: relative;
+    z-index: 10;
+    padding: 3rem;
+    width: 100%;
+    max-width: 800px;
+  }
+  
+  .terse-logo {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 2rem;
+  }
+  
+  .terse-logo span {
+    font-size: 1rem;
+    font-weight: 500;
+    color: #fff;
+    letter-spacing: -0.01em;
+  }
+  
+  .terse-label {
+    font-size: 0.875rem;
+    color: #71717a;
+    margin: 0 0 2rem 0;
+    font-weight: 400;
+  }
+  
+  .terse-carousel {
+    position: relative;
+    overflow: hidden;
+    mask-image: linear-gradient(to right, transparent, black 5%, black 95%, transparent);
+    -webkit-mask-image: linear-gradient(to right, transparent, black 5%, black 95%, transparent);
+  }
+  
+  .terse-carousel-track {
+    display: flex;
+    gap: 3rem;
+    animation: scroll 30s linear infinite;
+    width: max-content;
+  }
+  
+  .terse-slide {
+    flex-shrink: 0;
+    width: 340px;
+  }
+  
+  @keyframes scroll {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(calc(-340px * 5 - 3rem * 5)); }
+  }
+  
+  .terse-slide h2 {
+    font-size: 1.25rem;
+    font-weight: 500;
+    color: #fafafa;
+    margin: 0 0 0.375rem 0;
+    letter-spacing: -0.02em;
+    white-space: nowrap;
+  }
+  
+  .terse-slide p {
+    font-size: 0.875rem;
+    color: #71717a;
+    margin: 0 0 1rem 0;
+    line-height: 1.4;
+  }
+  
+  .terse-flow {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  
+  .terse-integration {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.375rem 0.625rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    font-size: 0.75rem;
+    color: #a1a1aa;
+    font-weight: 450;
+    white-space: nowrap;
+  }
+  
+  .terse-integration svg {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+  }
+  
+  .terse-arrow {
+    color: #3f3f46;
+    font-size: 0.875rem;
+  }
+  
+  .terse-carousel:hover .terse-carousel-track {
+    animation-play-state: paused;
+  }
+  
+  @media (max-height: 500px) {
+    .terse-content { padding: 2rem; }
+    .terse-label { margin-bottom: 1.5rem; }
+  }
