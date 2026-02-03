@@ -1,6 +1,6 @@
 /**
  * Centralized definition of all tool names used in the system.
- * 
+ *
  * This enum ensures type safety and prevents typos when referencing tool names.
  * All tool definitions must use values from this enum, and the validation
  * function will enforce that all tool names are present here.
@@ -8,79 +8,79 @@
 
 export const ToolName = {
     // Linear Tools
-    LINEAR_CREATE_TICKET: 'linear_create_ticket',
-    LINEAR_UPDATE_TICKET: 'linear_update_ticket',
-    LINEAR_SEARCH_TICKET: 'linear_search_ticket',
+    LINEAR_CREATE_TICKET: "linear_create_ticket",
+    LINEAR_UPDATE_TICKET: "linear_update_ticket",
+    LINEAR_SEARCH_TICKET: "linear_search_ticket",
 
     // Jira Tools
-    JIRA_CREATE_TICKET: 'jira_create_ticket',
-    JIRA_UPDATE_TICKET: 'jira_update_ticket',
-    JIRA_SEARCH_TICKET: 'jira_search_ticket',
+    JIRA_CREATE_TICKET: "jira_create_ticket",
+    JIRA_UPDATE_TICKET: "jira_update_ticket",
+    JIRA_SEARCH_TICKET: "jira_search_ticket",
 
     // Notion Tools
-    NOTION_MODIFY_PAGE: 'notion_modify_page',
-    NOTION_MODIFY_BLOCKS: 'notion_modify_blocks',
-    NOTION_QUERY_PAGE: 'notion_query_page',
-    NOTION_QUERY_DATABASE: 'notion_query_database',
-    NOTION_GET_SCHEMA: 'notion_get_schema',
-    NOTION_FETCH_RELATED_EVENTS: 'notion_fetch_related_events',
+    NOTION_MODIFY_PAGE: "notion_modify_page",
+    NOTION_MODIFY_BLOCKS: "notion_modify_blocks",
+    NOTION_QUERY_PAGE: "notion_query_page",
+    NOTION_QUERY_DATABASE: "notion_query_database",
+    NOTION_GET_SCHEMA: "notion_get_schema",
+    NOTION_FETCH_RELATED_EVENTS: "notion_fetch_related_events",
 
     // Gmail Tools
-    GMAIL_SEND_EMAIL: 'gmail_send_email',
+    GMAIL_SEND_EMAIL: "gmail_send_email",
 
     // Slack Tools
-    SLACK_SEND_MESSAGE: 'slack_send_message',
+    SLACK_SEND_MESSAGE: "slack_send_message",
 
     // Confluence Tools
-    CONFLUENCE_QUERY_PAGE: 'confluence_query_page',
-    CONFLUENCE_ADD_COMMENT: 'confluence_add_comment',
+    CONFLUENCE_QUERY_PAGE: "confluence_query_page",
+    CONFLUENCE_ADD_COMMENT: "confluence_add_comment",
 
     // GitHub Knowledge Base Tools
-    GITHUB_SEARCH_CODE: 'searchGitHubCode',
-    GITHUB_READ_FILE: 'readGitHubFile',
-    GITHUB_LIST_PULL_REQUESTS: 'listGitHubPullRequests',
-    GITHUB_LIST_DIRECTORY: 'listGitHubDirectory',
-    GITHUB_LIST_COMMITS: 'listGitHubCommits',
-    GITHUB_GREP_CODE: 'grepGitHubCode',
-    GITHUB_SUMMARIZE_PULL_REQUEST_DIFF: 'summarizeGitHubPullRequestDiff',
+    GITHUB_SEARCH_CODE: "searchGitHubCode",
+    GITHUB_READ_FILE: "readGitHubFile",
+    GITHUB_LIST_PULL_REQUESTS: "listGitHubPullRequests",
+    GITHUB_LIST_DIRECTORY: "listGitHubDirectory",
+    GITHUB_LIST_COMMITS: "listGitHubCommits",
+    GITHUB_GREP_CODE: "grepGitHubCode",
+    GITHUB_SUMMARIZE_PULL_REQUEST_DIFF: "summarizeGitHubPullRequestDiff",
 
     // PostHog Knowledge Base Tools
-    POSTHOG_SEARCH_SESSIONS: 'searchPosthogSessions',
-    POSTHOG_SEARCH_LOGS: 'searchPosthogLogs',
-    POSTHOG_GET_SESSION_EVENTS: 'getPosthogSessionEvents',
+    POSTHOG_SEARCH_SESSIONS: "searchPosthogSessions",
+    POSTHOG_SEARCH_LOGS: "searchPosthogLogs",
+    POSTHOG_GET_SESSION_EVENTS: "getPosthogSessionEvents",
 
     // LaunchDarkly Knowledge Base Tools
-    LAUNCHDARKLY_LIST_FEATURE_FLAGS: 'listLaunchDarklyFlags',
-    LAUNCHDARKLY_GET_FEATURE_FLAG_DETAILS: 'getLaunchDarklyFlagDetails',
+    LAUNCHDARKLY_LIST_FEATURE_FLAGS: "listLaunchDarklyFlags",
+    LAUNCHDARKLY_GET_FEATURE_FLAG_DETAILS: "getLaunchDarklyFlagDetails",
 
     // Datadog Knowledge Base Tools
-    DATADOG_SEARCH_LOGS: 'searchDatadogLogs',
-    DATADOG_SEARCH_RUM_EVENTS: 'searchRumEvents',
-    DATADOG_LIST_RUM_EVENTS: 'listRumEvents',
-    DATADOG_AGGREGATE_RUM_EVENTS: 'aggregateRumEvents',
+    DATADOG_SEARCH_LOGS: "searchDatadogLogs",
+    DATADOG_SEARCH_RUM_EVENTS: "searchRumEvents",
+    DATADOG_LIST_RUM_EVENTS: "listRumEvents",
+    DATADOG_AGGREGATE_RUM_EVENTS: "aggregateRumEvents",
 
     // Terse
-    WEB_SEARCH: 'web_search',
-} as const;
+    WEB_SEARCH: "web_search"
+} as const
 
 /**
  * Type for all valid tool names
  */
-export type ToolName = typeof ToolName[keyof typeof ToolName];
+export type ToolName = (typeof ToolName)[keyof typeof ToolName]
 
 /**
  * Array of all valid tool names for runtime validation
  */
-export const ALL_TOOL_NAMES: readonly string[] = Object.values(ToolName);
+export const ALL_TOOL_NAMES: readonly string[] = Object.values(ToolName)
 
 /**
  * Set of all valid tool names for O(1) lookup
  */
-export const VALID_TOOL_NAMES_SET = new Set(ALL_TOOL_NAMES);
+export const VALID_TOOL_NAMES_SET = new Set(ALL_TOOL_NAMES)
 
 /**
  * Type guard to check if a string is a valid tool name
  */
 export function isValidToolName(name: string): name is ToolName {
-    return VALID_TOOL_NAMES_SET.has(name);
+    return VALID_TOOL_NAMES_SET.has(name)
 }

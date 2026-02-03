@@ -1,38 +1,39 @@
-import { Agent, run } from "@openai/agents";
-import { z } from "zod";
-import { identityHistoryCallback, RunHistoryChatMemorySession } from "../CustomMemorySession";
-import { db } from "../../prismaClient";
-import { EventEmitterTaskQueue } from "../../tasks/abstract/eventEmitterTasks";
-import { Task } from "../../tasks/abstract/tasks";
-import { runnerFactory } from "../runner";
-import { settings } from "../../config/settings";
-import logger from "../../logger";
+import { Agent, run } from "@openai/agents"
+import { z } from "zod"
 
-const DIRECTIVE_TASK_NAME = "DIRECTIVE_TASK" as const;
+import { settings } from "../../config/settings"
+import logger from "../../logger"
+import { db } from "../../prismaClient"
+import { EventEmitterTaskQueue } from "../../tasks/abstract/eventEmitterTasks"
+import { Task } from "../../tasks/abstract/tasks"
+import { RunHistoryChatMemorySession, identityHistoryCallback } from "../CustomMemorySession"
+import { runnerFactory } from "../runner"
+
+const DIRECTIVE_TASK_NAME = "DIRECTIVE_TASK" as const
 
 export class DirectiveTask implements Task {
-  readonly taskName = DIRECTIVE_TASK_NAME;
-  constructor(
-    public automationId: string,
-    public runHistoryId: string,
-    public runHistoryChatEventId: string,
-    public userId: string,
-    public message: string,
-  ) {}
+    readonly taskName = DIRECTIVE_TASK_NAME
+    constructor(
+        public automationId: string,
+        public runHistoryId: string,
+        public runHistoryChatEventId: string,
+        public userId: string,
+        public message: string
+    ) {}
 }
 
 const DirectiveClassification = z.object({
-  isDirective: z.boolean(),
-  directiveDescription: z.string()
-});
+    isDirective: z.boolean(),
+    directiveDescription: z.string()
+})
 
-type DirectiveClassificationType = z.infer<typeof DirectiveClassification>;
+type DirectiveClassificationType = z.infer<typeof DirectiveClassification>
 
 // --- Agent ---
 
 const directiveAgent = new Agent({
-  name: "Directive Classifier Agent",
-  instructions: `You are a classifier that decides whether the **latest user message** is a DIRECTIVE to the Terse AI system.
+    name: "Directive Classifier Agent",
+    instructions: `You are a classifier that decides whether the **latest user message** is a DIRECTIVE to the Terse AI system.
 
 ### Definition
 
@@ -92,74 +93,61 @@ Return a JSON object with:
   - If \`isDirective = false\`: an **empty string**.
 
 Do not include explanations or any extra fields. Only output the JSON object.`,
-  model: "gpt-5-nano",
-  outputType: DirectiveClassification,
-});
-
-
-async function classifyDirective(
-  task: DirectiveTask
-): Promise<DirectiveClassificationType> {
-  const session = new RunHistoryChatMemorySession({
-    sessionId: task.runHistoryId,
-    skipSave: true,
-  });
-
-  const runner = runnerFactory({
-    runId: task.runHistoryId,
-    userId: task.userId,
-    agentId: task.automationId,
-    env: settings.nodeEnv,
+    model: "gpt-5-nano",
+    outputType: DirectiveClassification
 })
 
-  const result = await runner.run(directiveAgent, [{ role: 'user', content: task.message }], { 
-    session, 
-    sessionInputCallback: identityHistoryCallback,
-  });
+async function classifyDirective(task: DirectiveTask): Promise<DirectiveClassificationType> {
+    const session = new RunHistoryChatMemorySession({
+        sessionId: task.runHistoryId,
+        skipSave: true
+    })
 
-  return result.finalOutput ?? { isDirective: false, directiveDescription: '' };
+    const runner = runnerFactory({
+        runId: task.runHistoryId,
+        userId: task.userId,
+        agentId: task.automationId,
+        env: settings.nodeEnv
+    })
+
+    const result = await runner.run(directiveAgent, [{ role: "user", content: task.message }], {
+        session,
+        sessionInputCallback: identityHistoryCallback
+    })
+
+    return result.finalOutput ?? { isDirective: false, directiveDescription: "" }
 }
 
-async function persistDirective(
-  automationId: string,
-  runHistoryId: string,
-  runHistoryChatEventId: string,
-  directiveDescription: string
-): Promise<string> {
-  const prisma = db();
-  const directiveRecord = await prisma.directive_records.create({
-    data: {
-      automation_id: automationId,
-      run_history_record_id: runHistoryId,
-      run_history_chat_event_id: runHistoryChatEventId,
-      directive_description: directiveDescription,
-    },
-  });
-  return directiveRecord.id;
+async function persistDirective(automationId: string, runHistoryId: string, runHistoryChatEventId: string, directiveDescription: string): Promise<string> {
+    const prisma = db()
+    const directiveRecord = await prisma.directive_records.create({
+        data: {
+            automation_id: automationId,
+            run_history_record_id: runHistoryId,
+            run_history_chat_event_id: runHistoryChatEventId,
+            directive_description: directiveDescription
+        }
+    })
+    return directiveRecord.id
 }
 
 // --- Task Queue ---
 
-export const directiveTaskQueue = new EventEmitterTaskQueue<DirectiveTask>();
+export const directiveTaskQueue = new EventEmitterTaskQueue<DirectiveTask>()
 
 directiveTaskQueue.addListener({
-  taskName: DIRECTIVE_TASK_NAME,
-  onTask: async (task: DirectiveTask) => {
-    try {
-      logger.info(`[Directive] Classifying message: "${task.message.slice(0, 100)}${task.message.length > 100 ? '...' : ''}"`);
-      const directive = await classifyDirective(task);
-      logger.info(`[Directive] Result: isDirective=${directive.isDirective}${directive.isDirective ? `, description="${directive.directiveDescription}"` : ''}`);
-      if (directive.isDirective) {
-        await persistDirective(
-          task.automationId,
-          task.runHistoryId,
-          task.runHistoryChatEventId,
-          directive.directiveDescription
-        );
-        logger.info(`[Directive] Persisted directive for automation ${task.automationId}`);
-      }
-    } catch (error) {
-      logger.error(`[Directive] Failed to process directive task:`, { error });
+    taskName: DIRECTIVE_TASK_NAME,
+    onTask: async (task: DirectiveTask) => {
+        try {
+            logger.info(`[Directive] Classifying message: "${task.message.slice(0, 100)}${task.message.length > 100 ? "..." : ""}"`)
+            const directive = await classifyDirective(task)
+            logger.info(`[Directive] Result: isDirective=${directive.isDirective}${directive.isDirective ? `, description="${directive.directiveDescription}"` : ""}`)
+            if (directive.isDirective) {
+                await persistDirective(task.automationId, task.runHistoryId, task.runHistoryChatEventId, directive.directiveDescription)
+                logger.info(`[Directive] Persisted directive for automation ${task.automationId}`)
+            }
+        } catch (error) {
+            logger.error(`[Directive] Failed to process directive task:`, { error })
+        }
     }
-  }
-});
+})

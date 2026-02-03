@@ -1,5 +1,5 @@
-import logger from '../../logger';
-import { db } from '../../prismaClient';
+import logger from "../../logger"
+import { db } from "../../prismaClient"
 
 /**
  * Get PostHog API key by integration ID
@@ -7,18 +7,18 @@ import { db } from '../../prismaClient';
  */
 export async function getPosthogApiKeyByIntegrationId(integrationId: string, userId: string): Promise<string | null> {
     const integration = await db().posthog_integrations.findUnique({
-        where: { id: integrationId },
-    });
+        where: { id: integrationId }
+    })
 
     if (!integration) {
-        logger.warn('PostHog integration not found', { integrationId, userId });
-        return null;
+        logger.warn("PostHog integration not found", { integrationId, userId })
+        return null
     }
 
     if (integration.user_id !== userId) {
-        logger.warn('PostHog integration does not belong to user', { integrationId, userId, tokenUserId: integration.user_id });
-        return null;
+        logger.warn("PostHog integration does not belong to user", { integrationId, userId, tokenUserId: integration.user_id })
+        return null
     }
 
-    return integration.api_key;
+    return integration.api_key
 }

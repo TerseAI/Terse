@@ -1,15 +1,17 @@
-import { useState, useCallback, useMemo, useRef } from 'react';
-import { v4 as uuidv4 } from 'uuid';
-import { motion, AnimatePresence, Easing } from 'framer-motion';
-import { Loader2 } from 'lucide-react';
-import { useTemplates } from '@/hooks/api/useTemplates';
-import { TemplateCard } from '@/components/Agents/TemplateCard';
-import { Card, CardContent } from '@/components/ui/card';
-import { Chat, ChatHandle } from '@/components/chat/Chat';
-import { subscribeToBuilderChat, sendBuilderMessage } from '@/socket';
-import { ModelRequest, SendModelRequest } from '@/shared/ModelEvents';
-import { ChatEventPayload } from '@/components/chat/hooks/useCompletionSocket';
-import { AgentTemplate } from '@/shared/types';
+import { useCallback, useMemo, useRef, useState } from "react"
+
+import { AnimatePresence, Easing, motion } from "framer-motion"
+import { Loader2 } from "lucide-react"
+import { v4 as uuidv4 } from "uuid"
+
+import { TemplateCard } from "@/components/Agents/TemplateCard"
+import { Chat, ChatHandle } from "@/components/chat/Chat"
+import { ChatEventPayload } from "@/components/chat/hooks/useCompletionSocket"
+import { Card, CardContent } from "@/components/ui/card"
+import { useTemplates } from "@/hooks/api/useTemplates"
+import { ModelRequest, SendModelRequest } from "@/shared/ModelEvents"
+import { AgentTemplate } from "@/shared/types"
+import { sendBuilderMessage, subscribeToBuilderChat } from "@/socket"
 
 const AGENT_SETUP_PLACEHOLDERS = [
     "An agent that reads my Slack every day and tells me only what actually matters",
@@ -19,100 +21,106 @@ const AGENT_SETUP_PLACEHOLDERS = [
     "Notify me when a PR is blocked or waiting on review too long",
     "Watch CI failures and alert the right people before things pile up",
     "Tell me if we’re actually ready to ship without checking five different tools",
-    "Draft weekly release notes from merged PRs and commits",
-  ];
+    "Draft weekly release notes from merged PRs and commits"
+]
 
-const ANIMATION_DURATION = 0.8;
-const ANIMATION_EASE: Easing = [0.4, 0, 0.2, 1];
+const ANIMATION_DURATION = 0.8
+const ANIMATION_EASE: Easing = [0.4, 0, 0.2, 1]
 
 export default function AgentSetup() {
-    const { templates, isLoading } = useTemplates();
-    const [hasStartedChat, setHasStartedChat] = useState(false);
-    const chatRef = useRef<ChatHandle>(null);
+    const { templates, isLoading } = useTemplates()
+    const [hasStartedChat, setHasStartedChat] = useState(false)
+    const chatRef = useRef<ChatHandle>(null)
 
     // Generate a session ID for this setup flow
-    const sessionId = useMemo(() => uuidv4(), []);
+    const sessionId = useMemo(() => uuidv4(), [])
 
     const handleTemplateSelect = (template: AgentTemplate) => {
-        chatRef.current?.setInput(template.chatPrompt);
-        chatRef.current?.focus();
-    };
+        chatRef.current?.setInput(template.chatPrompt)
+        chatRef.current?.focus()
+    }
 
-    const subscribeToEvents = useCallback((callback: (payload: ChatEventPayload) => void) => {
-        const unsubscribe = subscribeToBuilderChat(sessionId, (payload) => {
-            callback({
-                runHistoryModelEvent: payload.event,
-            });
-        });
-        return unsubscribe;
-    }, [sessionId]);
+    const subscribeToEvents = useCallback(
+        (callback: (payload: ChatEventPayload) => void) => {
+            const unsubscribe = subscribeToBuilderChat(sessionId, payload => {
+                callback({
+                    runHistoryModelEvent: payload.event
+                })
+            })
+            return unsubscribe
+        },
+        [sessionId]
+    )
 
-    const sendMessage = useCallback((message: ModelRequest) => {
-        // Mark that the user has started chatting
-        if (!hasStartedChat) {
-            setHasStartedChat(true);
-        }
+    const sendMessage = useCallback(
+        (message: ModelRequest) => {
+            // Mark that the user has started chatting
+            if (!hasStartedChat) {
+                setHasStartedChat(true)
+            }
 
-        if (message.type === 'SendModelRequest') {
-            const enrichedMessage: { type: 'SendModelRequest' } & SendModelRequest = {
-                ...message,
-                ui_state: JSON.stringify({ page: 'agent-setup' }),
-            };
-            sendBuilderMessage(sessionId, enrichedMessage);
-        } else {
-            sendBuilderMessage(sessionId, message);
-        }
-    }, [sessionId, hasStartedChat]);
+            if (message.type === "SendModelRequest") {
+                const enrichedMessage: { type: "SendModelRequest" } & SendModelRequest = {
+                    ...message,
+                    ui_state: JSON.stringify({ page: "agent-setup" })
+                }
+                sendBuilderMessage(sessionId, enrichedMessage)
+            } else {
+                sendBuilderMessage(sessionId, message)
+            }
+        },
+        [sessionId, hasStartedChat]
+    )
 
     const handleUserMessage = useCallback(() => {
         if (!hasStartedChat) {
-            setHasStartedChat(true);
+            setHasStartedChat(true)
         }
-    }, [hasStartedChat]);
+    }, [hasStartedChat])
 
     // Animation variants for synchronized transitions
     const headerVariants = {
         visible: {
-            opacity: 1,
+            opacity: 1
         },
         hidden: {
             opacity: 0,
-            filter: 'blur(8px)',
-        },
-    };
+            filter: "blur(8px)"
+        }
+    }
 
     const chatSectionVariants = {
         initial: {
-            minHeight: 200,
+            minHeight: 200
         },
         expanded: {
             flexGrow: 1,
-            minHeight: 0,
-        },
-    };
+            minHeight: 0
+        }
+    }
 
     const templatesVariants = {
         visible: {
             opacity: 1,
-            filter: 'blur(0px)',
-            y: 0,
+            filter: "blur(0px)",
+            y: 0
         },
         hidden: {
             opacity: 0,
-            filter: 'blur(8px)',
-            y: 300,
-        },
-    };
+            filter: "blur(8px)",
+            y: 300
+        }
+    }
 
     return (
         <div className="flex flex-col h-full w-full">
             {/* Header - wrapper collapses immediately, content fades out */}
             <div
                 style={{
-                    height: hasStartedChat ? 0 : 'auto',
-                    overflow: 'visible',
+                    height: hasStartedChat ? 0 : "auto",
+                    overflow: "visible",
                     marginTop: hasStartedChat ? 0 : 32,
-                    marginBottom: hasStartedChat ? 0 : 8,
+                    marginBottom: hasStartedChat ? 0 : 8
                 }}
             >
                 <AnimatePresence>
@@ -125,7 +133,7 @@ export default function AgentSetup() {
                             exit="hidden"
                             transition={{
                                 duration: ANIMATION_DURATION / 4,
-                                ease: ANIMATION_EASE,
+                                ease: ANIMATION_EASE
                             }}
                         >
                             <h1 className="text-2xl font-semibold text-foreground">Create a new agent</h1>
@@ -143,7 +151,7 @@ export default function AgentSetup() {
                 animate={hasStartedChat ? "expanded" : "initial"}
                 transition={{
                     duration: ANIMATION_DURATION,
-                    ease: ANIMATION_EASE,
+                    ease: ANIMATION_EASE
                 }}
             >
                 <div className="flex-1 min-h-0 w-full">
@@ -164,9 +172,9 @@ export default function AgentSetup() {
             <div
                 className="relative"
                 style={{
-                    height: hasStartedChat ? 0 : 'auto',
-                    overflow: 'visible',
-                    transition: 'none',
+                    height: hasStartedChat ? 0 : "auto",
+                    overflow: "visible",
+                    transition: "none"
                 }}
             >
                 <AnimatePresence>
@@ -179,7 +187,7 @@ export default function AgentSetup() {
                             exit="hidden"
                             transition={{
                                 duration: ANIMATION_DURATION,
-                                ease: ANIMATION_EASE,
+                                ease: ANIMATION_EASE
                             }}
                         >
                             <div className="p-6">
@@ -199,19 +207,13 @@ export default function AgentSetup() {
                                     ) : templates.length > 0 ? (
                                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                             {templates.map((template, index) => (
-                                                <TemplateCard
-                                                    key={index}
-                                                    template={template}
-                                                    onSelect={handleTemplateSelect}
-                                                />
+                                                <TemplateCard key={index} template={template} onSelect={handleTemplateSelect} />
                                             ))}
                                         </div>
                                     ) : (
                                         <Card className="border-dashed">
                                             <CardContent className="flex flex-col items-center justify-center py-6 text-center">
-                                                <p className="text-muted-foreground text-sm">
-                                                    No templates available yet
-                                                </p>
+                                                <p className="text-muted-foreground text-sm">No templates available yet</p>
                                             </CardContent>
                                         </Card>
                                     )}
@@ -222,5 +224,5 @@ export default function AgentSetup() {
                 </AnimatePresence>
             </div>
         </div>
-    );
+    )
 }

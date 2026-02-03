@@ -1,17 +1,11 @@
-import { flexRender, Table } from '@tanstack/react-table';
-import { Agent } from '../../shared/types';
-import {
-    Table as ShadcnTable,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from '../ui/table';
+import { Table, flexRender } from "@tanstack/react-table"
+
+import { Agent } from "../../shared/types"
+import { Table as ShadcnTable, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table"
 
 interface TableContentProps {
-    table: Table<Agent>;
-    onEdit: (channel: Agent) => void;
+    table: Table<Agent>
+    onEdit: (channel: Agent) => void
 }
 
 export function TableContent({ table, onEdit }: TableContentProps) {
@@ -22,14 +16,7 @@ export function TableContent({ table, onEdit }: TableContentProps) {
                     {table.getHeaderGroups().map(headerGroup => (
                         <TableRow key={headerGroup.id}>
                             {headerGroup.headers.map(header => (
-                                <TableHead key={header.id}>
-                                    {header.isPlaceholder
-                                        ? null
-                                        : flexRender(
-                                              header.column.columnDef.header,
-                                              header.getContext()
-                                          )}
-                                </TableHead>
+                                <TableHead key={header.id}>{header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}</TableHead>
                             ))}
                         </TableRow>
                     ))}
@@ -37,16 +24,9 @@ export function TableContent({ table, onEdit }: TableContentProps) {
                 <TableBody>
                     {table.getRowModel().rows?.length ? (
                         table.getRowModel().rows.map(row => (
-                            <TableRow
-                                key={row.id}
-                                data-state={row.getIsSelected() && "selected"}
-                                className="cursor-pointer"
-                                onClick={() => onEdit(row.original)}
-                            >
+                            <TableRow key={row.id} data-state={row.getIsSelected() && "selected"} className="cursor-pointer" onClick={() => onEdit(row.original)}>
                                 {row.getVisibleCells().map(cell => (
-                                    <TableCell key={cell.id}>
-                                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                                    </TableCell>
+                                    <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
                                 ))}
                             </TableRow>
                         ))
@@ -60,5 +40,5 @@ export function TableContent({ table, onEdit }: TableContentProps) {
                 </TableBody>
             </ShadcnTable>
         </div>
-    );
+    )
 }

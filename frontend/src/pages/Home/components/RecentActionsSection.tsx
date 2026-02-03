@@ -1,12 +1,14 @@
-import { Card, CardContent, CardHeader, CardTitle } from "../../../components/ui/card";
-import { ScrollArea } from "../../../components/ui/scroll-area";
-import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "../../../components/ui/empty";
-import { PlayCircle } from "lucide-react";
-import { ActionItem } from "./ActionItem";
-import { RunHistoryAction } from "../../../shared/RunHistoryTypes";
+import { PlayCircle } from "lucide-react"
+
+import { Card, CardContent, CardHeader, CardTitle } from "../../../components/ui/card"
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "../../../components/ui/empty"
+import { ScrollArea } from "../../../components/ui/scroll-area"
+import { RunHistoryAction } from "../../../shared/RunHistoryTypes"
+
+import { ActionItem } from "./ActionItem"
 
 interface RecentActionsSectionProps {
-    recentActions: (RunHistoryAction & { timestamp: string; agentName: string })[];
+    recentActions: (RunHistoryAction & { timestamp: string; agentName: string })[]
 }
 
 export function RecentActionsSection({ recentActions }: RecentActionsSectionProps) {
@@ -33,15 +35,12 @@ export function RecentActionsSection({ recentActions }: RecentActionsSectionProp
                                     <PlayCircle className="text-primary" />
                                 </EmptyMedia>
                                 <EmptyTitle>No actions yet</EmptyTitle>
-                                <EmptyDescription>
-                                    Actions taken by your channels will appear here once they start processing events
-                                </EmptyDescription>
+                                <EmptyDescription>Actions taken by your channels will appear here once they start processing events</EmptyDescription>
                             </EmptyHeader>
                         </Empty>
                     )}
                 </CardContent>
             </Card>
         </div>
-    );
+    )
 }
-

@@ -1,17 +1,18 @@
-import { Tool } from "@openai/agents";
-import { Session } from "../../types/session";
-import { AgentKnowledgeBaseWithConfigs, PrismaTransaction, User } from "../../types/prisma";
-import { KnowledgeBaseConfigType } from "@prisma/client";
-import { ConfigInstance, PosthogConfig } from "../../shared/Configs";
-import { IntegrationType } from "../../shared/Integrations";
-import { ToolboxEntry } from "../../outputs/abstract/Output";
-import { KnowledgeBase } from "../abstract/KnowledgeBase";
-import { searchLogsTool } from "./tools/searchLogs";
-import { searchSessionsTool } from "./tools/searchSessions";
-import { getSessionEventsTool } from "./tools/getSessionEvents";
-import { db } from "../../prismaClient";
-import logger from "../../logger";
+import { Tool } from "@openai/agents"
+import { KnowledgeBaseConfigType } from "@prisma/client"
 
+import logger from "../../logger"
+import { ToolboxEntry } from "../../outputs/abstract/Output"
+import { db } from "../../prismaClient"
+import { ConfigInstance, PosthogConfig } from "../../shared/Configs"
+import { IntegrationType } from "../../shared/Integrations"
+import { AgentKnowledgeBaseWithConfigs, PrismaTransaction, User } from "../../types/prisma"
+import { Session } from "../../types/session"
+import { KnowledgeBase } from "../abstract/KnowledgeBase"
+
+import { getSessionEventsTool } from "./tools/getSessionEvents"
+import { searchLogsTool } from "./tools/searchLogs"
+import { searchSessionsTool } from "./tools/searchSessions"
 
 /**
  * PostHog Knowledge Base implementation.
@@ -20,21 +21,20 @@ import logger from "../../logger";
 export class PosthogKnowledgeBase extends KnowledgeBase<PosthogConfig> {
     constructor() {
         const toolbox: ToolboxEntry[] = [
-            { tool: searchLogsTool as Tool, isReadOnly: true, integration: IntegrationType.POSTHOG, displayName: 'Search logs' },
-            { tool: searchSessionsTool as Tool, isReadOnly: true, integration: IntegrationType.POSTHOG, displayName: 'Search sessions' },
-            { tool: getSessionEventsTool as Tool, isReadOnly: true, integration: IntegrationType.POSTHOG, displayName: 'Get session events' },
-        ];
+            { tool: searchLogsTool as Tool, isReadOnly: true, integration: IntegrationType.POSTHOG, displayName: "Search logs" },
+            { tool: searchSessionsTool as Tool, isReadOnly: true, integration: IntegrationType.POSTHOG, displayName: "Search sessions" },
+            { tool: getSessionEventsTool as Tool, isReadOnly: true, integration: IntegrationType.POSTHOG, displayName: "Get session events" }
+        ]
 
-        super(KnowledgeBaseConfigType.POSTHOG, toolbox);
+        super(KnowledgeBaseConfigType.POSTHOG, toolbox)
     }
-
 
     async validateConfig(knowledgeBase: PosthogConfig, _userId: string): Promise<void> {
         if (!knowledgeBase.projectId) {
-            throw new Error('Invalid knowledge base config for posthog: missing projectId');
+            throw new Error("Invalid knowledge base config for posthog: missing projectId")
         }
         if (!knowledgeBase.canReadLogs && !knowledgeBase.canReadSessionRecordings) {
-            throw new Error('Invalid knowledge base config for posthog: requires canReadLogs or canReadSessionRecordings');
+            throw new Error("Invalid knowledge base config for posthog: requires canReadLogs or canReadSessionRecordings")
         }
     }
 
@@ -46,9 +46,9 @@ export class PosthogKnowledgeBase extends KnowledgeBase<PosthogConfig> {
                 project_id: knowledgeBase.projectId,
                 project_name: knowledgeBase.projectName || null,
                 can_read_logs: knowledgeBase.canReadLogs ?? false,
-                can_read_session_recordings: knowledgeBase.canReadSessionRecordings ?? false,
+                can_read_session_recordings: knowledgeBase.canReadSessionRecordings ?? false
             }
-        });
+        })
     }
 
     /**
@@ -57,88 +57,83 @@ export class PosthogKnowledgeBase extends KnowledgeBase<PosthogConfig> {
      */
     protected getSystemInstructionsForConfigs(configs: AgentKnowledgeBaseWithConfigs[]): string {
         if (configs.length === 0) {
-            throw new Error('No PostHog KB configs provided');
+            throw new Error("No PostHog KB configs provided")
         }
-        
-        const sections: string[] = [];
+
+        const sections: string[] = []
 
         // Header
-        sections.push('=== POSTHOG KNOWLEDGE BASE ===');
-        
+        sections.push("=== POSTHOG KNOWLEDGE BASE ===")
+
         // List all available configurations
-        const configList: string[] = [];
+        const configList: string[] = []
         for (const config of configs) {
             if (!config.posthog_config) {
-                throw new Error('PostHog config not found');
+                throw new Error("PostHog config not found")
             }
-            const projectId = config.posthog_config.project_id;
-            const projectName = config.posthog_config.project_name;
-            const canReadLogs = config.posthog_config.can_read_logs;
-            const canReadSessionRecordings = config.posthog_config.can_read_session_recordings;
-            const permissions = [];
-            if (canReadLogs) permissions.push('logs');
-            if (canReadSessionRecordings) permissions.push('session recordings');
-            configList.push(`  • Integration ID: ${config.integration_id} - Project Name: ${projectName || 'N/A'}, Project ID: ${projectId || 'N/A'} (${permissions.join(', ')})`);
+            const projectId = config.posthog_config.project_id
+            const projectName = config.posthog_config.project_name
+            const canReadLogs = config.posthog_config.can_read_logs
+            const canReadSessionRecordings = config.posthog_config.can_read_session_recordings
+            const permissions = []
+            if (canReadLogs) permissions.push("logs")
+            if (canReadSessionRecordings) permissions.push("session recordings")
+            configList.push(`  • Integration ID: ${config.integration_id} - Project Name: ${projectName || "N/A"}, Project ID: ${projectId || "N/A"} (${permissions.join(", ")})`)
         }
-        sections.push('Available configurations:');
-        sections.push(configList.join('\n'));
-        sections.push('\nWhen calling PostHog tools, you MUST include the `integrationId` parameter matching one of the integration IDs listed above.');
-        
+        sections.push("Available configurations:")
+        sections.push(configList.join("\n"))
+        sections.push("\nWhen calling PostHog tools, you MUST include the `integrationId` parameter matching one of the integration IDs listed above.")
+
         // Available tools section - list tools per integration ID
-        const toolsByIntegration: string[] = [];
+        const toolsByIntegration: string[] = []
         for (const config of configs) {
             if (!config.posthog_config) {
-                throw new Error('PostHog config not found');
+                throw new Error("PostHog config not found")
             }
-            const integrationId = config.integration_id;
-            const projectName = config.posthog_config.project_name || 'N/A';
-            const canReadLogs = config.posthog_config.can_read_logs ?? false;
-            const canReadSessionRecordings = config.posthog_config.can_read_session_recordings ?? false;
-            
-            const availableTools: string[] = [];
-            
+            const integrationId = config.integration_id
+            const projectName = config.posthog_config.project_name || "N/A"
+            const canReadLogs = config.posthog_config.can_read_logs ?? false
+            const canReadSessionRecordings = config.posthog_config.can_read_session_recordings ?? false
+
+            const availableTools: string[] = []
+
             if (canReadLogs) {
-                availableTools.push('searchPosthogLogs');
+                availableTools.push("searchPosthogLogs")
             }
             if (canReadSessionRecordings) {
-                availableTools.push('searchPosthogSessions', 'getPosthogSessionEvents');
+                availableTools.push("searchPosthogSessions", "getPosthogSessionEvents")
             }
-            
+
             if (availableTools.length > 0) {
-                toolsByIntegration.push(
-                    `  Integration ID ${integrationId} (${projectName}): ${availableTools.join(', ')}`
-                );
+                toolsByIntegration.push(`  Integration ID ${integrationId} (${projectName}): ${availableTools.join(", ")}`)
             }
         }
-        
+
         if (toolsByIntegration.length > 0) {
-            sections.push('\nAVAILABLE TOOLS BY INTEGRATION:');
-            sections.push(toolsByIntegration.join('\n'));
-            sections.push('\nTOOL DESCRIPTIONS:');
-            
+            sections.push("\nAVAILABLE TOOLS BY INTEGRATION:")
+            sections.push(toolsByIntegration.join("\n"))
+            sections.push("\nTOOL DESCRIPTIONS:")
+
             // Check if any config has logs permission
             if (configs.some(c => c.posthog_config?.can_read_logs)) {
                 sections.push(
-                    '• searchPosthogLogs: Query backend logs with flexible filtering options. ' +
-                    'Can filter by user email, log severity levels (error, warn, info, debug), message text search, or combinations. ' +
-                    'At least one filter must be provided. Returns log entries with timestamps, severity, messages, and attributes. ' +
-                    'Supports pagination (offset parameter) and date filtering.'
-                );
+                    "• searchPosthogLogs: Query backend logs with flexible filtering options. " +
+                        "Can filter by user email, log severity levels (error, warn, info, debug), message text search, or combinations. " +
+                        "At least one filter must be provided. Returns log entries with timestamps, severity, messages, and attributes. " +
+                        "Supports pagination (offset parameter) and date filtering."
+                )
             }
-            
+
             // Check if any config has session recordings permission
             if (configs.some(c => c.posthog_config?.can_read_session_recordings)) {
+                sections.push("• searchPosthogSessions: Find session recordings for a user by email. " + "Returns session IDs, timestamps, duration, and replay URLs.")
                 sections.push(
-                    '• searchPosthogSessions: Find session recordings for a user by email. ' +
-                    'Returns session IDs, timestamps, duration, and replay URLs.'
-                );
-                sections.push(
-                    '• getPosthogSessionEvents: Decode a session\'s events (clicks, inputs, console logs, errors, navigation). ' +
-                    'Use startSeconds/endSeconds to focus on specific time windows within a session.'
-                );
+                    "• getPosthogSessionEvents: Decode a session's events (clicks, inputs, console logs, errors, navigation). " +
+                        "Use startSeconds/endSeconds to focus on specific time windows within a session."
+                )
             }
         }
-        
+
         sections.push(`
 INVESTIGATION STRATEGY:
 Investigate like a human engineer would - be thorough and iterative, not superficial.
@@ -231,9 +226,8 @@ Always summarize your investigation with citations:
 - Link to PostHog views so users can verify your findings
 - Any patterns or anomalies observed (with evidence)
 - What you ruled out and why
-- Suggested next steps if inconclusive`);
+- Suggested next steps if inconclusive`)
 
-        return sections.join('\n');
+        return sections.join("\n")
     }
 }
-

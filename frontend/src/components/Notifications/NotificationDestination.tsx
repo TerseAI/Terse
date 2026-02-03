@@ -1,23 +1,26 @@
-import { useState } from "react";
-import { Button } from "../ui/button";
-import { EmailNotificationDestination, NotificationDestination, NotificationDestinationType, SlackNotificationDestination } from "../../shared/Notifications";
-import { GmailIcon, SlackIcon } from "../icons/IntegrationIcons";
-import { formatMPIMChannelName } from "../SlackChannelSelector";
-import { BackendProvider } from "../../services/backend";
-import { mutate } from "swr";
-import { notificationDestinationsKey } from "../../shared/InvalidationKeys";
-import { Item, ItemMedia, ItemContent, ItemTitle, ItemDescription, ItemActions } from "../ui/item";
-import { Pencil, Trash2 } from "lucide-react";
-import { toast } from "sonner";
-import { EditNotificationDestinationDialog } from "./EditNotificationDestination";
+import { useState } from "react"
+
+import { Pencil, Trash2 } from "lucide-react"
+import { toast } from "sonner"
+import { mutate } from "swr"
+
+import { BackendProvider } from "../../services/backend"
+import { notificationDestinationsKey } from "../../shared/InvalidationKeys"
+import { EmailNotificationDestination, NotificationDestination, NotificationDestinationType, SlackNotificationDestination } from "../../shared/Notifications"
+import { formatMPIMChannelName } from "../SlackChannelSelector"
+import { GmailIcon, SlackIcon } from "../icons/IntegrationIcons"
+import { Button } from "../ui/button"
+import { Item, ItemActions, ItemContent, ItemDescription, ItemMedia, ItemTitle } from "../ui/item"
+
+import { EditNotificationDestinationDialog } from "./EditNotificationDestination"
 
 export function NotificationDestinationItem({ destination }: { destination: NotificationDestination }) {
-    const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+    const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
 
     async function deleteDestination() {
-        await BackendProvider.deleteNotificationDestination(destination);
-        mutate(notificationDestinationsKey());
-        toast.info("Notification destination deleted successfully");
+        await BackendProvider.deleteNotificationDestination(destination)
+        mutate(notificationDestinationsKey())
+        toast.info("Notification destination deleted successfully")
     }
 
     return (
@@ -30,9 +33,7 @@ export function NotificationDestinationItem({ destination }: { destination: Noti
                     <ItemTitle>
                         <NotificationDestinationName destination={destination} />
                     </ItemTitle>
-                    <ItemDescription>
-                        {destination.type === NotificationDestinationType.EMAIL ? "Email notifications" : "Slack notifications"}
-                    </ItemDescription>
+                    <ItemDescription>{destination.type === NotificationDestinationType.EMAIL ? "Email notifications" : "Slack notifications"}</ItemDescription>
                 </ItemContent>
                 <ItemActions>
                     <Button variant="ghost" size="icon" onClick={() => setIsEditDialogOpen(true)} className="h-8 w-8 text-muted-foreground hover:text-foreground">
@@ -43,12 +44,8 @@ export function NotificationDestinationItem({ destination }: { destination: Noti
                     </Button>
                 </ItemActions>
             </Item>
-            
-            <EditNotificationDestinationDialog 
-                destination={destination}
-                open={isEditDialogOpen}
-                onOpenChange={setIsEditDialogOpen}
-            />
+
+            <EditNotificationDestinationDialog destination={destination} open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen} />
         </>
     )
 }
@@ -64,13 +61,13 @@ function NotificationDestinationIcon({ type }: { type: NotificationDestinationTy
 }
 
 function NotificationDestinationName({ destination }: { destination: NotificationDestination }) {
-    const emailDestination = destination as EmailNotificationDestination;
-    const slackDestination = destination as SlackNotificationDestination;
+    const emailDestination = destination as EmailNotificationDestination
+    const slackDestination = destination as SlackNotificationDestination
     if (emailDestination.email) {
         return <>{emailDestination.email}</>
     }
     if (slackDestination.slackChannelName) {
         return <>#{formatMPIMChannelName(slackDestination.slackChannelName)}</>
     }
-    return <>Unknown destination</> 
+    return <>Unknown destination</>
 }

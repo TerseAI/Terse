@@ -1,9 +1,10 @@
-import { ExternalLink } from "lucide-react";
-import { RunHistoryAction } from "../../../shared/RunHistoryTypes";
-import { IconForIntegration } from "../../Agents/components/Integration";
+import { ExternalLink } from "lucide-react"
+
+import { RunHistoryAction } from "../../../shared/RunHistoryTypes"
+import { IconForIntegration } from "../../Agents/components/Integration"
 
 export interface ActionItemProps {
-    action: RunHistoryAction & { timestamp: string; agentName: string };
+    action: RunHistoryAction & { timestamp: string; agentName: string }
 }
 
 export function ActionItem({ action }: ActionItemProps) {
@@ -19,25 +20,17 @@ export function ActionItem({ action }: ActionItemProps) {
                     <div className="flex items-center gap-2">
                         <p className="text-sm font-medium">{action.action}</p>
                         {action.url && (
-                            <a
-                                href={action.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-primary hover:opacity-80 transition-opacity"
-                            >
+                            <a href={action.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:opacity-80 transition-opacity">
                                 <ExternalLink className="w-3 h-3" />
                             </a>
                         )}
                     </div>
-                    <span className="text-xs text-muted-foreground whitespace-nowrap">
-                        {action.timestamp}
-                    </span>
+                    <span className="text-xs text-muted-foreground whitespace-nowrap">{action.timestamp}</span>
                 </div>
                 <p className="text-xs text-muted-foreground mb-1">
                     {action.agentName} • {action.details}
                 </p>
             </div>
         </div>
-    );
+    )
 }
-

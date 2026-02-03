@@ -1,9 +1,9 @@
 interface DeletingModalProps {
-    isDeleting: boolean;
+    isDeleting: boolean
 }
 
 export function DeletingModal({ isDeleting }: DeletingModalProps) {
-    if (!isDeleting) return null;
+    if (!isDeleting) return null
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -14,5 +14,5 @@ export function DeletingModal({ isDeleting }: DeletingModalProps) {
                 </div>
             </div>
         </div>
-    );
+    )
 }

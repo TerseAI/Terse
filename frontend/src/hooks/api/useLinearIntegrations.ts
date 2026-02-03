@@ -1,32 +1,29 @@
-import useSWR, { type KeyedMutator } from 'swr';
-import { BackendProvider } from '@/services/backend';
-import type { LinearIntegration } from '@/shared/Integrations';
-import { linearIntegrationsKey } from "@/shared/InvalidationKeys";
-import { useOAuthSuccessListener } from '@/hooks/useOAuthSuccessListener';
+import useSWR, { type KeyedMutator } from "swr"
+
+import { useOAuthSuccessListener } from "@/hooks/useOAuthSuccessListener"
+import { BackendProvider } from "@/services/backend"
+import type { LinearIntegration } from "@/shared/Integrations"
+import { linearIntegrationsKey } from "@/shared/InvalidationKeys"
 
 type UseLinearIntegrationsReturn = {
-    integrations: LinearIntegration[];
-    isLoading: boolean;
-    isError: boolean;
-    error: unknown;
-    isValidating: boolean;
-    mutate: KeyedMutator<LinearIntegration[]>;
-};
+    integrations: LinearIntegration[]
+    isLoading: boolean
+    isError: boolean
+    error: unknown
+    isValidating: boolean
+    mutate: KeyedMutator<LinearIntegration[]>
+}
 
 export function useLinearIntegrations(): UseLinearIntegrationsReturn {
-    const { data, error, isLoading, isValidating, mutate } = useSWR<LinearIntegration[]>(
-        linearIntegrationsKey(),
-        () => BackendProvider.getLinearIntegrations(),
-        {
-            keepPreviousData: true,
-            revalidateOnFocus: false,
-            revalidateOnReconnect: true,
-        },
-    );
+    const { data, error, isLoading, isValidating, mutate } = useSWR<LinearIntegration[]>(linearIntegrationsKey(), () => BackendProvider.getLinearIntegrations(), {
+        keepPreviousData: true,
+        revalidateOnFocus: false,
+        revalidateOnReconnect: true
+    })
 
-    useOAuthSuccessListener(mutate);
+    useOAuthSuccessListener(mutate)
 
-    const loading = (isLoading || (!data && !error));
+    const loading = isLoading || (!data && !error)
 
     return {
         integrations: data ?? [],
@@ -34,7 +31,6 @@ export function useLinearIntegrations(): UseLinearIntegrationsReturn {
         isError: Boolean(error),
         error,
         isValidating,
-        mutate,
-    };
+        mutate
+    }
 }
-

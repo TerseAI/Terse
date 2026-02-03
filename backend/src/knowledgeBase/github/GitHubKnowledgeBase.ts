@@ -1,20 +1,22 @@
-import { Tool } from "@openai/agents";
-import { Session } from "../../types/session";
-import { AgentKnowledgeBaseWithConfigs, PrismaTransaction, User } from "../../types/prisma";
-import { KnowledgeBaseConfigType } from "@prisma/client";
-import { GitHubKBConfig } from "../../shared/Configs";
-import { IntegrationType } from "../../shared/Integrations";
-import { ToolboxEntry } from "../../outputs/abstract/Output";
-import { KnowledgeBase } from "../abstract/KnowledgeBase";
-import { searchGitHubCodeTool } from "./tools/searchCode";
-import { grepGitHubCodeTool } from "./tools/grepCode";
-import { readGitHubFileTool } from "./tools/readFile";
-import { listGitHubDirectoryTool } from "./tools/listDirectory";
-import { listGitHubPullRequestsTool } from "./tools/listPullRequests";
-import { listGitHubCommitsTool } from "./tools/listCommits";
-import { summarizeGitHubPullRequestDiffTool } from "./tools/summarizePullRequestDiff";
-import logger from "../../logger";
-import { validateGithubRepositoryIds } from "../../integrations/githubValidation";
+import { Tool } from "@openai/agents"
+import { KnowledgeBaseConfigType } from "@prisma/client"
+
+import { validateGithubRepositoryIds } from "../../integrations/githubValidation"
+import logger from "../../logger"
+import { ToolboxEntry } from "../../outputs/abstract/Output"
+import { GitHubKBConfig } from "../../shared/Configs"
+import { IntegrationType } from "../../shared/Integrations"
+import { AgentKnowledgeBaseWithConfigs, PrismaTransaction, User } from "../../types/prisma"
+import { Session } from "../../types/session"
+import { KnowledgeBase } from "../abstract/KnowledgeBase"
+
+import { grepGitHubCodeTool } from "./tools/grepCode"
+import { listGitHubCommitsTool } from "./tools/listCommits"
+import { listGitHubDirectoryTool } from "./tools/listDirectory"
+import { listGitHubPullRequestsTool } from "./tools/listPullRequests"
+import { readGitHubFileTool } from "./tools/readFile"
+import { searchGitHubCodeTool } from "./tools/searchCode"
+import { summarizeGitHubPullRequestDiffTool } from "./tools/summarizePullRequestDiff"
 
 /**
  * GitHub Knowledge Base implementation.
@@ -23,27 +25,26 @@ import { validateGithubRepositoryIds } from "../../integrations/githubValidation
 export class GitHubKnowledgeBase extends KnowledgeBase<GitHubKBConfig> {
     constructor() {
         const toolbox: ToolboxEntry[] = [
-            { tool: searchGitHubCodeTool as Tool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: 'Search code' },
-            { tool: grepGitHubCodeTool as Tool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: 'Grep code' },
-            { tool: readGitHubFileTool as Tool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: 'Read file' },
-            { tool: listGitHubDirectoryTool as Tool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: 'List directory' },
-            { tool: listGitHubPullRequestsTool as Tool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: 'List pull requests' },
-            { tool: listGitHubCommitsTool as Tool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: 'List commits' },
-            { tool: summarizeGitHubPullRequestDiffTool as Tool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: 'Summarize PR diff' },
-        ];
+            { tool: searchGitHubCodeTool as Tool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: "Search code" },
+            { tool: grepGitHubCodeTool as Tool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: "Grep code" },
+            { tool: readGitHubFileTool as Tool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: "Read file" },
+            { tool: listGitHubDirectoryTool as Tool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: "List directory" },
+            { tool: listGitHubPullRequestsTool as Tool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: "List pull requests" },
+            { tool: listGitHubCommitsTool as Tool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: "List commits" },
+            { tool: summarizeGitHubPullRequestDiffTool as Tool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: "Summarize PR diff" }
+        ]
 
-        super(KnowledgeBaseConfigType.GITHUB, toolbox);
+        super(KnowledgeBaseConfigType.GITHUB, toolbox)
     }
-
 
     async validateConfig(knowledgeBase: GitHubKBConfig, userId: string): Promise<void> {
         await validateGithubRepositoryIds({
             userId,
             integrationId: knowledgeBase.integrationId,
             repositoryIds: knowledgeBase.repositoryIds,
-            configTypeLabel: 'github_kb',
-            contextLabel: 'knowledge base',
-        });
+            configTypeLabel: "github_kb",
+            contextLabel: "knowledge base"
+        })
     }
 
     async addKnowledgeBaseToAgent(tx: PrismaTransaction, channelKnowledgeBaseId: string, knowledgeBase: GitHubKBConfig): Promise<void> {
@@ -51,9 +52,9 @@ export class GitHubKnowledgeBase extends KnowledgeBase<GitHubKBConfig> {
             data: {
                 automation_knowledge_base_id: channelKnowledgeBaseId,
                 repository_ids: knowledgeBase.repositoryIds,
-                repository_names: knowledgeBase.repositoryNames,
+                repository_names: knowledgeBase.repositoryNames
             }
-        });
+        })
     }
 
     /**
@@ -62,31 +63,35 @@ export class GitHubKnowledgeBase extends KnowledgeBase<GitHubKBConfig> {
      */
     protected getSystemInstructionsForConfigs(configs: AgentKnowledgeBaseWithConfigs[]): string {
         if (configs.length === 0) {
-            throw new Error('No GitHub KB configs provided');
+            throw new Error("No GitHub KB configs provided")
         }
-        
-        const sections: string[] = [];
+
+        const sections: string[] = []
 
         // Header
-        sections.push('=== GITHUB CODEBASE KNOWLEDGE BASE ===');
-        
+        sections.push("=== GITHUB CODEBASE KNOWLEDGE BASE ===")
+
         // List all available configurations
-        const configList: string[] = [];
+        const configList: string[] = []
         for (const config of configs) {
             if (!config.github_kb_config) {
-                throw new Error('GitHub KB config not found');
+                throw new Error("GitHub KB config not found")
             }
-            const repositoryNames = config.github_kb_config.repository_names || [];
-            const repositoryIds = config.github_kb_config.repository_ids || [];
-            const repoDetails = repositoryNames.map((name, idx) => {
-                const id = repositoryIds[idx] || 'N/A';
-                return `${name} (ID: ${id})`;
-            }).join(', ');
-            configList.push(`  • Integration ID: ${config.integration_id} - Repositories: ${repoDetails || 'N/A'}`);
+            const repositoryNames = config.github_kb_config.repository_names || []
+            const repositoryIds = config.github_kb_config.repository_ids || []
+            const repoDetails = repositoryNames
+                .map((name, idx) => {
+                    const id = repositoryIds[idx] || "N/A"
+                    return `${name} (ID: ${id})`
+                })
+                .join(", ")
+            configList.push(`  • Integration ID: ${config.integration_id} - Repositories: ${repoDetails || "N/A"}`)
         }
-        sections.push('Available configurations:');
-        sections.push(configList.join('\n'));
-        sections.push('\nNOTE: GitHub tools automatically use the user\'s GitHub access token. You do NOT need to provide an `integrationId` parameter when calling GitHub tools - the tools use the authenticated user\'s token internally.');
+        sections.push("Available configurations:")
+        sections.push(configList.join("\n"))
+        sections.push(
+            "\nNOTE: GitHub tools automatically use the user's GitHub access token. You do NOT need to provide an `integrationId` parameter when calling GitHub tools - the tools use the authenticated user's token internally."
+        )
 
         // Available tools section
         sections.push(`
@@ -118,7 +123,7 @@ AVAILABLE TOOLS:
   context about what you're looking for to help focus the analysis.
   Use after finding a PR with listGitHubPullRequests to understand what was changed.
   Example: summarizeGitHubPullRequestDiff with pullNumber 123 to get a summary of PR #123.
-  Example with context: summarizeGitHubPullRequestDiff with pullNumber 123 and context "authentication changes".`);
+  Example with context: summarizeGitHubPullRequestDiff with pullNumber 123 and context "authentication changes".`)
 
         sections.push(`
 CODE EXPLORATION STRATEGY:
@@ -193,8 +198,8 @@ When explaining code to the user:
 - Include relevant code snippets
 - Explain the "why" not just the "what"
 - Link related concepts together
-- Suggest next areas to explore if relevant`);
+- Suggest next areas to explore if relevant`)
 
-        return sections.join('\n');
+        return sections.join("\n")
     }
 }

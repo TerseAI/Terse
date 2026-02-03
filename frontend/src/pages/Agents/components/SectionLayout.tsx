@@ -1,17 +1,18 @@
-import { forwardRef, ReactNode } from "react";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
+import { ReactNode, forwardRef } from "react"
+
+import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
+import { Skeleton } from "@/components/ui/skeleton"
 
 interface SectionLayoutProps {
-    subtitle?: string;
-    children: ReactNode;
-    icon?: ReactNode;
-    isLoading?: boolean;
+    subtitle?: string
+    children: ReactNode
+    icon?: ReactNode
+    isLoading?: boolean
 }
 
 export const SectionLayout = forwardRef<HTMLDivElement, SectionLayoutProps>(({ subtitle = "", children, icon, isLoading = false }, ref) => {
     if (isLoading) {
-        return <SectionLayoutSkeleton showIcon={!!icon} showSubtitle={!!subtitle} />;
+        return <SectionLayoutSkeleton showIcon={!!icon} showSubtitle={!!subtitle} />
     }
 
     return (
@@ -29,16 +30,14 @@ export const SectionLayout = forwardRef<HTMLDivElement, SectionLayoutProps>(({ s
                     )}
                 </div>
             </div> */}
-            <div className="p-4 h-full flex flex-col items-center justify-center">
-                {children}
-            </div>
+            <div className="p-4 h-full flex flex-col items-center justify-center">{children}</div>
         </div>
-    );
+    )
 })
 
 interface SectionLayoutSkeletonProps {
-    showIcon?: boolean;
-    showSubtitle?: boolean;
+    showIcon?: boolean
+    showSubtitle?: boolean
 }
 
 export function SectionLayoutSkeleton({ showIcon: _showIcon = false, showSubtitle: _showSubtitle = false }: SectionLayoutSkeletonProps) {
@@ -64,6 +63,5 @@ export function SectionLayoutSkeleton({ showIcon: _showIcon = false, showSubtitl
                 </Card>
             </div>
         </div>
-    );
+    )
 }
-

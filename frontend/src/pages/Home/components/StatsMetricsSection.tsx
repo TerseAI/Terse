@@ -1,12 +1,14 @@
-import { Card, CardContent, CardHeader } from "../../../components/ui/card";
-import { Skeleton } from "../../../components/ui/skeleton";
-import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "../../../components/ui/empty";
-import { BarChart3 } from "lucide-react";
-import { MetricCard, MetricCardProps } from "./MetricCard";
+import { BarChart3 } from "lucide-react"
+
+import { Card, CardContent, CardHeader } from "../../../components/ui/card"
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "../../../components/ui/empty"
+import { Skeleton } from "../../../components/ui/skeleton"
+
+import { MetricCard, MetricCardProps } from "./MetricCard"
 
 interface StatsMetricsSectionProps {
-    isLoading: boolean;
-    metrics: MetricCardProps[];
+    isLoading: boolean
+    metrics: MetricCardProps[]
 }
 
 export function StatsMetricsSection({ isLoading, metrics }: StatsMetricsSectionProps) {
@@ -14,7 +16,7 @@ export function StatsMetricsSection({ isLoading, metrics }: StatsMetricsSectionP
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {isLoading ? (
                 <>
-                    {[1, 2, 3].map((i) => (
+                    {[1, 2, 3].map(i => (
                         <Card key={i} className="relative">
                             <CardHeader className="pb-4">
                                 <div className="flex items-start justify-between">
@@ -41,9 +43,7 @@ export function StatsMetricsSection({ isLoading, metrics }: StatsMetricsSectionP
                     ))}
                 </>
             ) : metrics.length > 0 ? (
-                metrics.map((metric) => (
-                    <MetricCard key={metric.label} {...metric} />
-                ))
+                metrics.map(metric => <MetricCard key={metric.label} {...metric} />)
             ) : (
                 <div className="col-span-3">
                     <Empty className="border-0">
@@ -52,14 +52,11 @@ export function StatsMetricsSection({ isLoading, metrics }: StatsMetricsSectionP
                                 <BarChart3 className="text-primary" />
                             </EmptyMedia>
                             <EmptyTitle>No stats available</EmptyTitle>
-                            <EmptyDescription>
-                                Statistics will appear here once you start using automations
-                            </EmptyDescription>
+                            <EmptyDescription>Statistics will appear here once you start using automations</EmptyDescription>
                         </EmptyHeader>
                     </Empty>
                 </div>
             )}
         </div>
-    );
+    )
 }
-

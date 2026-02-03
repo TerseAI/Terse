@@ -1,70 +1,82 @@
-import { forwardRef, useImperativeHandle, useRef, useEffect } from "react";
-import { ChatLayout, type ChatLayoutHandle } from "./ChatLayout";
-import { useChat } from "./hooks/useChat";
-import { Turn } from "./Turn";
-import { type ChatEventSubscription } from "./hooks/useCompletionSocket";
-import { type ModelRequest } from "../../shared/ModelEvents";
+import { forwardRef, useEffect, useImperativeHandle, useRef } from "react"
+
+import { type ModelRequest } from "../../shared/ModelEvents"
+
+import { ChatLayout, type ChatLayoutHandle } from "./ChatLayout"
+import { Turn } from "./Turn"
+import { useChat } from "./hooks/useChat"
+import { type ChatEventSubscription } from "./hooks/useCompletionSocket"
 
 type ChatProps = {
-    initialTurns?: Turn[];
-    EmptyContentPlaceholder?: React.ReactNode;
-    subscribeToEvents?: ChatEventSubscription | null;
-    sendMessage: (message: ModelRequest) => void;
-    onUserMessage?: (message: string) => void;
-    onHandleApprove?: (stepId: string) => void;
-    onHandleReject?: (stepId: string) => void;
-    addUserTurnsLocally?: boolean;
-    inputSize?: 'small' | 'medium' | 'large';
-    placeholders?: string[];
-    showPlaceholderChips?: boolean;
-};
+    initialTurns?: Turn[]
+    EmptyContentPlaceholder?: React.ReactNode
+    subscribeToEvents?: ChatEventSubscription | null
+    sendMessage: (message: ModelRequest) => void
+    onUserMessage?: (message: string) => void
+    onHandleApprove?: (stepId: string) => void
+    onHandleReject?: (stepId: string) => void
+    addUserTurnsLocally?: boolean
+    inputSize?: "small" | "medium" | "large"
+    placeholders?: string[]
+    showPlaceholderChips?: boolean
+}
 
 export type ChatHandle = ChatLayoutHandle & {
-    setInput: (value: string) => void;
-    focus: () => void;
-};
+    setInput: (value: string) => void
+    focus: () => void
+}
 
-const Chat = forwardRef<ChatHandle, ChatProps>(function Chat({
-    initialTurns,
-    EmptyContentPlaceholder,
-    subscribeToEvents,
-    sendMessage,
-    onUserMessage,
-    onHandleApprove,
-    onHandleReject,
-    addUserTurnsLocally,
-    inputSize = 'small',
-    placeholders = [],
-    showPlaceholderChips = false,
-}, ref) {
-    const chatLayoutRef = useRef<ChatLayoutHandle>(null);
-    const hasScrolledToBottomRef = useRef(false);
-    const { turns, isPendingAssistantResponse, input, setInput, sendMessage: sendUserMessage, sendModelRequest } = useChat({
+const Chat = forwardRef<ChatHandle, ChatProps>(function Chat(
+    {
+        initialTurns,
+        EmptyContentPlaceholder,
+        subscribeToEvents,
+        sendMessage,
+        onUserMessage,
+        onHandleApprove,
+        onHandleReject,
+        addUserTurnsLocally,
+        inputSize = "small",
+        placeholders = [],
+        showPlaceholderChips = false
+    },
+    ref
+) {
+    const chatLayoutRef = useRef<ChatLayoutHandle>(null)
+    const hasScrolledToBottomRef = useRef(false)
+    const {
+        turns,
+        isPendingAssistantResponse,
+        input,
+        setInput,
+        sendMessage: sendUserMessage,
+        sendModelRequest
+    } = useChat({
         subscribeToEvents,
         sendMessage,
         initialTurns,
         onUserMessage,
         onToolCall: () => {},
         onToolCallComplete: () => {},
-        addUserTurnsLocally,
-    });
+        addUserTurnsLocally
+    })
 
     // Scroll to bottom when initialTurns are first rendered
     useEffect(() => {
         if (initialTurns && initialTurns.length > 0 && !hasScrolledToBottomRef.current) {
-            hasScrolledToBottomRef.current = true;
+            hasScrolledToBottomRef.current = true
             requestAnimationFrame(() => {
-                chatLayoutRef.current?.scrollToBottom();
-            });
+                chatLayoutRef.current?.scrollToBottom()
+            })
         }
-    }, [initialTurns]);
+    }, [initialTurns])
 
     // Expose both ChatLayout methods and setInput to parent
     useImperativeHandle(ref, () => ({
         scrollToBottom: () => chatLayoutRef.current?.scrollToBottom(),
         focus: () => chatLayoutRef.current?.focus(),
-        setInput,
-    }));
+        setInput
+    }))
 
     return (
         <ChatLayout
@@ -82,7 +94,7 @@ const Chat = forwardRef<ChatHandle, ChatProps>(function Chat({
             inputSize={inputSize}
             showPlaceholderChips={showPlaceholderChips}
         />
-    );
-});
+    )
+})
 
 export { Chat }

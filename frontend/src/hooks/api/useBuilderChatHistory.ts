@@ -1,31 +1,34 @@
-import useSWR from 'swr';
-import { BackendProvider } from '@/services/backend';
-import type { RunHistoryModelEvent } from '@/shared/RunHistoryTypes';
-import { builderChatHistoryKey } from '@/shared/InvalidationKeys';
+import useSWR from "swr"
+
+import { BackendProvider } from "@/services/backend"
+import { builderChatHistoryKey } from "@/shared/InvalidationKeys"
+import type { RunHistoryModelEvent } from "@/shared/RunHistoryTypes"
 
 type BuilderChatHistoryResponse = {
-    events: Array<RunHistoryModelEvent>;
-    startTimestamp: string | null;
-    endTimestamp: string | null;
-};
+    events: Array<RunHistoryModelEvent>
+    startTimestamp: string | null
+    endTimestamp: string | null
+}
 
 /**
  * Hook to fetch builder chat history for a session.
  * Returns ModelEvents that can be converted to Turns via convertRunHistoryEventsToTurns.
  */
 export function useBuilderChatHistory(sessionId: string | null | undefined) {
-    const key = builderChatHistoryKey(sessionId);
+    const key = builderChatHistoryKey(sessionId)
 
     const { data, error, isLoading, isValidating, mutate } = useSWR<BuilderChatHistoryResponse>(
         key,
-        sessionId ? async () => {
-            return BackendProvider.getBuilderChatHistory(sessionId);
-        } : null,
+        sessionId
+            ? async () => {
+                  return BackendProvider.getBuilderChatHistory(sessionId)
+              }
+            : null,
         {
             revalidateOnFocus: false,
-            revalidateOnReconnect: false,
+            revalidateOnReconnect: false
         }
-    );
+    )
 
     return {
         events: data?.events ?? [],
@@ -34,6 +37,6 @@ export function useBuilderChatHistory(sessionId: string | null | undefined) {
         isLoading: isLoading && !!sessionId,
         isError: error,
         isValidating,
-        mutate,
-    };
+        mutate
+    }
 }

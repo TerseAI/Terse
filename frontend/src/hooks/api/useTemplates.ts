@@ -1,25 +1,26 @@
-import useSWR from 'swr';
-import { BackendProvider } from '@/services/backend';
-import type { AgentTemplate } from '@/shared/types';
+import useSWR from "swr"
+
+import { BackendProvider } from "@/services/backend"
+import type { AgentTemplate } from "@/shared/types"
 
 export function useTemplates() {
     const { data, error, isValidating } = useSWR<AgentTemplate[]>(
-        'templates',
+        "templates",
         async () => {
-            return BackendProvider.getTemplates();
+            return BackendProvider.getTemplates()
         },
         {
             revalidateOnFocus: false,
-            dedupingInterval: 60000, // Cache for 1 minute
+            dedupingInterval: 60000 // Cache for 1 minute
         }
-    );
+    )
 
     return {
         templates: data ?? [],
         isLoading: !data && !error,
         isError: error,
-        isValidating,
-    };
+        isValidating
+    }
 }
 
-export type { AgentTemplate };
+export type { AgentTemplate }

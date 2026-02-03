@@ -1,53 +1,52 @@
-import { useAgents } from "../../hooks/api/useAgents";
-import { useRecentAgents } from "../../hooks/api/useRecentAgents";
-import { useStats } from "../../hooks/api/useStats";
-import { IntegrationType } from "../../shared/Integrations";
-import { RunHistoryAction } from "../../shared/RunHistoryTypes";
-import { formatRelativeTime } from "../../utility/timeUtils";
-import { DailyEventsChart } from "./components/DailyEventsChart";
-import { HomeEmptyState } from "./components/HomeEmptyState";
-import { RecentActionsSection } from "./components/RecentActionsSection";
-import { RecentAgentsSection } from "./components/RecentAgentsSection";
-import { StatsMetricsSection } from "./components/StatsMetricsSection";
-import { transformStatsToMetrics } from "./utils";
+import { useAgents } from "../../hooks/api/useAgents"
+import { useRecentAgents } from "../../hooks/api/useRecentAgents"
+import { useStats } from "../../hooks/api/useStats"
+import { IntegrationType } from "../../shared/Integrations"
+import { RunHistoryAction } from "../../shared/RunHistoryTypes"
+import { formatRelativeTime } from "../../utility/timeUtils"
+
+import { DailyEventsChart } from "./components/DailyEventsChart"
+import { HomeEmptyState } from "./components/HomeEmptyState"
+import { RecentActionsSection } from "./components/RecentActionsSection"
+import { RecentAgentsSection } from "./components/RecentAgentsSection"
+import { StatsMetricsSection } from "./components/StatsMetricsSection"
+import { transformStatsToMetrics } from "./utils"
 
 function Home() {
-    const { agents: allAgents, isLoading: isLoadingAllAgents } = useAgents({ limit: 1 });
-    const { agents: recentAgentsData, isLoading: isLoadingAgents } = useRecentAgents(3);
-    const { stats, isLoading: isLoadingStats } = useStats();
+    const { agents: allAgents, isLoading: isLoadingAllAgents } = useAgents({ limit: 1 })
+    const { agents: recentAgentsData, isLoading: isLoadingAgents } = useRecentAgents(3)
+    const { stats, isLoading: isLoadingStats } = useStats()
 
-    const hasNoAgents = !isLoadingAllAgents && allAgents.length === 0;
+    const hasNoAgents = !isLoadingAllAgents && allAgents.length === 0
 
     // Show empty state if user has no agents
     if (hasNoAgents) {
-        return <HomeEmptyState />;
+        return <HomeEmptyState />
     }
 
-    const metrics = transformStatsToMetrics(stats);
+    const metrics = transformStatsToMetrics(stats)
 
     const recentAgents = recentAgentsData.map(agent => ({
         ...agent,
         lastEdited: formatRelativeTime(agent.updatedAt),
-        lastEventProcessedAt: agent.lastEventProcessedAt
-            ? formatRelativeTime(agent.lastEventProcessedAt)
-            : "Never",
-    }));
+        lastEventProcessedAt: agent.lastEventProcessedAt ? formatRelativeTime(agent.lastEventProcessedAt) : "Never"
+    }))
 
-    const eventsPerDay = stats?.dailyEvents || [];
-    const timezone = stats?.timezone;
+    const eventsPerDay = stats?.dailyEvents || []
+    const timezone = stats?.timezone
 
     const recentActions: (RunHistoryAction & { timestamp: string; agentName: string })[] = stats?.recentActions
-        ? stats.recentActions.map((action) => ({
-            action: action.action,
-            integration: action.integration as IntegrationType,
-            target: action.target,
-            details: action.details,
-            url: action.url,
-            timestamp: formatRelativeTime(action.timestamp),
-            agentName: action.agentName,
-            type: action.type,
-        }))
-        : [];
+        ? stats.recentActions.map(action => ({
+              action: action.action,
+              integration: action.integration as IntegrationType,
+              target: action.target,
+              details: action.details,
+              url: action.url,
+              timestamp: formatRelativeTime(action.timestamp),
+              agentName: action.agentName,
+              type: action.type
+          }))
+        : []
 
     return (
         <div className="mx-auto p-8 space-y-8">
@@ -58,13 +57,9 @@ function Home() {
                 <RecentActionsSection recentActions={recentActions} />
             </div>
 
-            <RecentAgentsSection
-                isLoading={isLoadingAgents}
-                agents={recentAgents}
-            />
+            <RecentAgentsSection isLoading={isLoadingAgents} agents={recentAgents} />
         </div>
-    );
+    )
 }
 
-export default Home;
-
+export default Home

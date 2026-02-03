@@ -1,74 +1,56 @@
 import { IntegrationType } from "@/shared/Integrations"
-import NotionIntegrationCard from "./NotionIntegrationCard";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "../ui/card";
-import { Skeleton } from "../ui/skeleton";
-import GmailIntegrationCard from "./GmailIntegrationCard";
-import SlackIntegrationCard from "./SlackIntegrationCard";
-import LinearIntegrationCard from "./LinearIntegrationCard";
-import GithubIntegrationCard from "./GithubIntegrationCard";
-import AtlassianIntegrationCard from "./AtlassianIntegrationCard";
-import FigmaIntegrationCard from "./FigmaIntegrationCard";
-import PosthogIntegrationCard from "./PosthogIntegrationCard";
-import LaunchDarklyIntegrationCard from "./LaunchDarklyIntegrationCard";
-import DatadogIntegrationCard from "./DatadogIntegrationCard";
+
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "../ui/card"
+import { Skeleton } from "../ui/skeleton"
+
+import AtlassianIntegrationCard from "./AtlassianIntegrationCard"
+import DatadogIntegrationCard from "./DatadogIntegrationCard"
+import FigmaIntegrationCard from "./FigmaIntegrationCard"
+import GithubIntegrationCard from "./GithubIntegrationCard"
+import GmailIntegrationCard from "./GmailIntegrationCard"
+import LaunchDarklyIntegrationCard from "./LaunchDarklyIntegrationCard"
+import LinearIntegrationCard from "./LinearIntegrationCard"
+import NotionIntegrationCard from "./NotionIntegrationCard"
+import PosthogIntegrationCard from "./PosthogIntegrationCard"
+import SlackIntegrationCard from "./SlackIntegrationCard"
 
 export interface IntegrationCardProps {
-    className?: string;
-    isActive?: boolean;
-    stateToken?: string;
-    compact?: boolean;
+    className?: string
+    isActive?: boolean
+    stateToken?: string
+    compact?: boolean
 }
 
 function IntegrationCard({ integration, isActive = true, stateToken, compact = false }: { integration: IntegrationType; isActive?: boolean; stateToken?: string; compact?: boolean }) {
-    const cardClassName = "min-w-sm max-w-sm";
+    const cardClassName = "min-w-sm max-w-sm"
 
     switch (integration) {
         case IntegrationType.NOTION:
-            return (
-                <NotionIntegrationCard className={cardClassName} isActive={isActive} stateToken={stateToken} compact={compact} />
-            );
+            return <NotionIntegrationCard className={cardClassName} isActive={isActive} stateToken={stateToken} compact={compact} />
         case IntegrationType.SLACK:
-            return (
-                <SlackIntegrationCard className={cardClassName} isActive={isActive} stateToken={stateToken} compact={compact} />
-            );
+            return <SlackIntegrationCard className={cardClassName} isActive={isActive} stateToken={stateToken} compact={compact} />
         case IntegrationType.LINEAR:
-            return (
-                <LinearIntegrationCard className={cardClassName} isActive={isActive} stateToken={stateToken} compact={compact} />
-            );
+            return <LinearIntegrationCard className={cardClassName} isActive={isActive} stateToken={stateToken} compact={compact} />
         case IntegrationType.GITHUB:
-            return (
-                <GithubIntegrationCard className={cardClassName} isActive={isActive} stateToken={stateToken} compact={compact} />
-            );
+            return <GithubIntegrationCard className={cardClassName} isActive={isActive} stateToken={stateToken} compact={compact} />
         case IntegrationType.GMAIL:
-            return (
-                <GmailIntegrationCard className={cardClassName} isActive={isActive} stateToken={stateToken} compact={compact} />
-            );
+            return <GmailIntegrationCard className={cardClassName} isActive={isActive} stateToken={stateToken} compact={compact} />
         case IntegrationType.ATLASSIAN:
-            return (
-                <AtlassianIntegrationCard className={cardClassName} isActive={isActive} stateToken={stateToken} compact={compact} />
-            );
+            return <AtlassianIntegrationCard className={cardClassName} isActive={isActive} stateToken={stateToken} compact={compact} />
         case IntegrationType.FIGMA:
-            return (
-                <FigmaIntegrationCard className={cardClassName} isActive={isActive} stateToken={stateToken} compact={compact} />
-            );
+            return <FigmaIntegrationCard className={cardClassName} isActive={isActive} stateToken={stateToken} compact={compact} />
         case IntegrationType.TERSE:
         case IntegrationType.CRON_JOB:
             return null
         case IntegrationType.POSTHOG:
-            return (
-                <PosthogIntegrationCard className={cardClassName} isActive={isActive} stateToken={stateToken} compact={compact} />
-            );
+            return <PosthogIntegrationCard className={cardClassName} isActive={isActive} stateToken={stateToken} compact={compact} />
         case IntegrationType.LAUNCHDARKLY:
-            return (
-                <LaunchDarklyIntegrationCard className={cardClassName} isActive={isActive} stateToken={stateToken} compact={compact} />
-            );
+            return <LaunchDarklyIntegrationCard className={cardClassName} isActive={isActive} stateToken={stateToken} compact={compact} />
         case IntegrationType.DATADOG:
-            return (
-                <DatadogIntegrationCard className={cardClassName} isActive={isActive} stateToken={stateToken} compact={compact} />
-            );
+            return <DatadogIntegrationCard className={cardClassName} isActive={isActive} stateToken={stateToken} compact={compact} />
         default:
             // Exhaustive check: TypeScript will error if any IntegrationType case is missing
-            throw integration satisfies never;
+            throw integration satisfies never
     }
 }
 
@@ -91,4 +73,4 @@ export function IntegrationCardSkeleton() {
     )
 }
 
-export default IntegrationCard;
+export default IntegrationCard

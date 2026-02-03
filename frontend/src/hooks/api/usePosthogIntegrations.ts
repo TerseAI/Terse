@@ -1,32 +1,29 @@
-import useSWR, { type KeyedMutator } from 'swr';
-import { BackendProvider } from '@/services/backend';
-import type { PosthogIntegration } from '@/shared/Integrations';
-import { posthogIntegrationsKey } from "@/shared/InvalidationKeys";
-import { useOAuthSuccessListener } from '@/hooks/useOAuthSuccessListener';
+import useSWR, { type KeyedMutator } from "swr"
+
+import { useOAuthSuccessListener } from "@/hooks/useOAuthSuccessListener"
+import { BackendProvider } from "@/services/backend"
+import type { PosthogIntegration } from "@/shared/Integrations"
+import { posthogIntegrationsKey } from "@/shared/InvalidationKeys"
 
 type UsePosthogIntegrationsReturn = {
-    integrations: PosthogIntegration[];
-    isLoading: boolean;
-    isError: boolean;
-    error: unknown;
-    isValidating: boolean;
-    mutate: KeyedMutator<PosthogIntegration[]>;
-};
+    integrations: PosthogIntegration[]
+    isLoading: boolean
+    isError: boolean
+    error: unknown
+    isValidating: boolean
+    mutate: KeyedMutator<PosthogIntegration[]>
+}
 
 export function usePosthogIntegrations(): UsePosthogIntegrationsReturn {
-    const { data, error, isLoading, isValidating, mutate } = useSWR<PosthogIntegration[]>(
-        posthogIntegrationsKey(),
-        () => BackendProvider.getPosthogIntegrations(),
-        {
-            keepPreviousData: true,
-            revalidateOnFocus: false,
-            revalidateOnReconnect: true,
-        },
-    );
+    const { data, error, isLoading, isValidating, mutate } = useSWR<PosthogIntegration[]>(posthogIntegrationsKey(), () => BackendProvider.getPosthogIntegrations(), {
+        keepPreviousData: true,
+        revalidateOnFocus: false,
+        revalidateOnReconnect: true
+    })
 
-    useOAuthSuccessListener(mutate);
+    useOAuthSuccessListener(mutate)
 
-    const loading = (isLoading || (!data && !error));
+    const loading = isLoading || (!data && !error)
 
     return {
         integrations: data ?? [],
@@ -34,7 +31,6 @@ export function usePosthogIntegrations(): UsePosthogIntegrationsReturn {
         isError: Boolean(error),
         error,
         isValidating,
-        mutate,
-    };
+        mutate
+    }
 }
-

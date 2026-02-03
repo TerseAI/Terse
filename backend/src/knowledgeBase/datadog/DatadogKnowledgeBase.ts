@@ -1,18 +1,19 @@
-import { Session } from "../../types/session";
-import { AgentKnowledgeBaseWithConfigs, PrismaTransaction, User } from "../../types/prisma";
-import { KnowledgeBaseConfigType } from "@prisma/client";
-import { DatadogConfig } from "../../shared/Configs";
-import { IntegrationType } from "../../shared/Integrations";
-import { ToolboxEntry } from "../../outputs/abstract/Output";
-import { KnowledgeBase } from "../abstract/KnowledgeBase";
-import { Tool } from "@openai/agents";
-import { searchDatadogLogsTool } from "./tools/searchLogs";
-import { searchRumEventsTool } from "./tools/searchRumEvents";
-import { listRumEventsTool } from "./tools/listRumEvents";
-import { aggregateRumEventsTool } from "./tools/aggregateRumEvents";
-import { db } from "../../prismaClient";
-import logger from "../../logger";
+import { Tool } from "@openai/agents"
+import { KnowledgeBaseConfigType } from "@prisma/client"
 
+import logger from "../../logger"
+import { ToolboxEntry } from "../../outputs/abstract/Output"
+import { db } from "../../prismaClient"
+import { DatadogConfig } from "../../shared/Configs"
+import { IntegrationType } from "../../shared/Integrations"
+import { AgentKnowledgeBaseWithConfigs, PrismaTransaction, User } from "../../types/prisma"
+import { Session } from "../../types/session"
+import { KnowledgeBase } from "../abstract/KnowledgeBase"
+
+import { aggregateRumEventsTool } from "./tools/aggregateRumEvents"
+import { listRumEventsTool } from "./tools/listRumEvents"
+import { searchDatadogLogsTool } from "./tools/searchLogs"
+import { searchRumEventsTool } from "./tools/searchRumEvents"
 
 /**
  * Datadog Knowledge Base implementation.
@@ -21,51 +22,48 @@ import logger from "../../logger";
 export class DatadogKnowledgeBase extends KnowledgeBase<DatadogConfig> {
     constructor() {
         const toolbox: ToolboxEntry[] = [
-            { tool: searchDatadogLogsTool as Tool, isReadOnly: true, integration: IntegrationType.DATADOG, displayName: 'Search logs' },
-            { tool: listRumEventsTool as Tool, isReadOnly: true, integration: IntegrationType.DATADOG, displayName: 'List events' },
-            { tool: searchRumEventsTool as Tool, isReadOnly: true, integration: IntegrationType.DATADOG, displayName: 'Search RUM events' },
-            { tool: aggregateRumEventsTool as Tool, isReadOnly: true, integration: IntegrationType.DATADOG, displayName: 'Aggregate RUM events' },
-        ];
+            { tool: searchDatadogLogsTool as Tool, isReadOnly: true, integration: IntegrationType.DATADOG, displayName: "Search logs" },
+            { tool: listRumEventsTool as Tool, isReadOnly: true, integration: IntegrationType.DATADOG, displayName: "List events" },
+            { tool: searchRumEventsTool as Tool, isReadOnly: true, integration: IntegrationType.DATADOG, displayName: "Search RUM events" },
+            { tool: aggregateRumEventsTool as Tool, isReadOnly: true, integration: IntegrationType.DATADOG, displayName: "Aggregate RUM events" }
+        ]
 
-        super(KnowledgeBaseConfigType.DATADOG, toolbox);
+        super(KnowledgeBaseConfigType.DATADOG, toolbox)
     }
-
 
     async addKnowledgeBaseToAgent(tx: PrismaTransaction, channelKnowledgeBaseId: string, knowledgeBase: DatadogConfig): Promise<void> {
         // Use unchecked input to bypass relation checks
         await tx.automation_datadog_configs.create({
             data: {
                 automation_knowledge_base_id: channelKnowledgeBaseId,
-                default_indexes: knowledgeBase.defaultIndexes && knowledgeBase.defaultIndexes.length > 0 
-                    ? knowledgeBase.defaultIndexes 
-                    : ["main"],
+                default_indexes: knowledgeBase.defaultIndexes && knowledgeBase.defaultIndexes.length > 0 ? knowledgeBase.defaultIndexes : ["main"]
             }
-        });
+        })
     }
 
     async validateConfig(knowledgeBase: DatadogConfig, userId: string): Promise<void> {
         // Check that the config is complete
         if (!knowledgeBase.isComplete()) {
-            throw new Error('Datadog config is incomplete: integrationId is required');
+            throw new Error("Datadog config is incomplete: integrationId is required")
         }
 
         // Check that the integration exists
         const integration = await db().datadog_integrations.findUnique({
-            where: { id: knowledgeBase.integrationId },
-        });
+            where: { id: knowledgeBase.integrationId }
+        })
 
         if (!integration) {
-            throw new Error(`Datadog integration not found: ${knowledgeBase.integrationId}`);
+            throw new Error(`Datadog integration not found: ${knowledgeBase.integrationId}`)
         }
 
         // Validate that the integration belongs to the user
         if (integration.user_id !== userId) {
-            throw new Error(`Datadog integration does not belong to user: ${userId}`);
+            throw new Error(`Datadog integration does not belong to user: ${userId}`)
         }
 
         // Validate that defaultIndexes is a valid array
         if (knowledgeBase.defaultIndexes && !Array.isArray(knowledgeBase.defaultIndexes)) {
-            throw new Error('Datadog config defaultIndexes must be an array');
+            throw new Error("Datadog config defaultIndexes must be an array")
         }
     }
 
@@ -75,26 +73,26 @@ export class DatadogKnowledgeBase extends KnowledgeBase<DatadogConfig> {
      */
     protected getSystemInstructionsForConfigs(configs: AgentKnowledgeBaseWithConfigs[]): string {
         if (configs.length === 0) {
-            throw new Error('No Datadog KB configs provided');
+            throw new Error("No Datadog KB configs provided")
         }
-        
-        const sections: string[] = [];
+
+        const sections: string[] = []
 
         // Header
-        sections.push('=== DATADOG KNOWLEDGE BASE ===');
-        
+        sections.push("=== DATADOG KNOWLEDGE BASE ===")
+
         // List all available configurations
-        const configList: string[] = [];
+        const configList: string[] = []
         for (const config of configs) {
             if (!config.datadog_config) {
-                throw new Error('Datadog config not found');
+                throw new Error("Datadog config not found")
             }
-            const defaultIndexes = config.datadog_config.default_indexes || ["main"];
-            configList.push(`  • Integration ID: ${config.integration_id} - Default indexes: ${defaultIndexes.join(', ')}`);
+            const defaultIndexes = config.datadog_config.default_indexes || ["main"]
+            configList.push(`  • Integration ID: ${config.integration_id} - Default indexes: ${defaultIndexes.join(", ")}`)
         }
-        sections.push('Available configurations:');
-        sections.push(configList.join('\n'));
-        sections.push('\nWhen calling Datadog tools, you MUST include the `integrationId` parameter matching one of the integration IDs listed above.');
+        sections.push("Available configurations:")
+        sections.push(configList.join("\n"))
+        sections.push("\nWhen calling Datadog tools, you MUST include the `integrationId` parameter matching one of the integration IDs listed above.")
 
         // Available tools section
         sections.push(`
@@ -125,8 +123,8 @@ CITING:
 - Aggregations: function/metric, grouping, values, time range, link
 
 REPORTING:
-Summarize with citations: specific entries/events with timestamps and IDs, patterns observed, what was ruled out, next steps.`);
+Summarize with citations: specific entries/events with timestamps and IDs, patterns observed, what was ruled out, next steps.`)
 
-        return sections.join('\n');
+        return sections.join("\n")
     }
 }

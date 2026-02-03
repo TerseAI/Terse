@@ -1,74 +1,62 @@
-import { useState, useEffect } from "react";
-import { Card, CardContent } from "../ui/card";
-import { Button } from "../ui/button";
-import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-} from "../ui/dialog";
+import { useEffect, useState } from "react"
+
+import { ExternalLink, Github } from "lucide-react"
+
+import { useGithubIntegrations } from "@/hooks/api/useGithubIntegrations"
+import { useGithubResources } from "@/hooks/api/useGithubResources"
+import { useOAuthConnection } from "@/hooks/useOAuthConnection"
+import { cn } from "@/lib/utils"
 import { IntegrationType } from "@/shared/Integrations"
-import { IntegrationCardHeader } from "./helpers/IntegrationCardHeader";
-import { IntegrationCardFooter } from "./helpers/IntegrationCardFooter";
-import { CompactIntegrationRow } from "./CompactIntegrationRow";
-import { useOAuthConnection } from "@/hooks/useOAuthConnection";
-import { cn } from "@/lib/utils";
-import { ExternalLink, Github } from "lucide-react";
-import { useGithubIntegrations } from "@/hooks/api/useGithubIntegrations";
-import { useGithubResources } from "@/hooks/api/useGithubResources";
-import { Skeleton } from "../ui/skeleton";
-import { Repository } from "@/shared/types";
-import DropdownSelect from "../ui/DropdownSelect";
+import { Repository } from "@/shared/types"
+
+import DropdownSelect from "../ui/DropdownSelect"
+import { Button } from "../ui/button"
+import { Card, CardContent } from "../ui/card"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog"
+import { Skeleton } from "../ui/skeleton"
+
+import { CompactIntegrationRow } from "./CompactIntegrationRow"
+import { IntegrationCardFooter } from "./helpers/IntegrationCardFooter"
+import { IntegrationCardHeader } from "./helpers/IntegrationCardHeader"
 
 // Number of repositories to show on the card before showing "View all" button
-const REPOSITORY_DISPLAY_THRESHOLD = 3;
+const REPOSITORY_DISPLAY_THRESHOLD = 3
 
 function GithubIntegrationCard({ className, isActive = true, stateToken, compact = false }: { className?: string; isActive?: boolean; stateToken?: string; compact?: boolean }) {
-    const { connect, isConnecting } = useOAuthConnection<IntegrationType.GITHUB>(IntegrationType.GITHUB, {}, stateToken);
-    const { integrations, isLoading: isLoadingIntegrations } = useGithubIntegrations();
-    const [isDialogOpen, setIsDialogOpen] = useState(false);
-    const [selectedInstallationId, setSelectedInstallationId] = useState<number | null>(null);
+    const { connect, isConnecting } = useOAuthConnection<IntegrationType.GITHUB>(IntegrationType.GITHUB, {}, stateToken)
+    const { integrations, isLoading: isLoadingIntegrations } = useGithubIntegrations()
+    const [isDialogOpen, setIsDialogOpen] = useState(false)
+    const [selectedInstallationId, setSelectedInstallationId] = useState<number | null>(null)
 
     // Update selected installation when integrations are loaded
     useEffect(() => {
         if (integrations.length > 0 && selectedInstallationId === null) {
-            setSelectedInstallationId(integrations[0].installation_id);
+            setSelectedInstallationId(integrations[0].installation_id)
         }
-    }, [integrations, selectedInstallationId]);
+    }, [integrations, selectedInstallationId])
 
     // Fetch repositories only for the selected installation
-    const { repositories, isLoading: isLoadingRepositories } = useGithubResources(selectedInstallationId);
+    const { repositories, isLoading: isLoadingRepositories } = useGithubResources(selectedInstallationId)
 
-    const connectionSelections = integrations.map((integration) => ({
-        label: integration.account_name || 'Unknown Account',
+    const connectionSelections = integrations.map(integration => ({
+        label: integration.account_name || "Unknown Account",
         value: integration.installation_id.toString()
-    }));
+    }))
 
-    const selectedOption = connectionSelections.find(
-        option => option.value === selectedInstallationId?.toString()
-    ) || connectionSelections[0];
+    const selectedOption = connectionSelections.find(option => option.value === selectedInstallationId?.toString()) || connectionSelections[0]
 
     const handleInstallationChange = (value: string) => {
-        const installationId = parseInt(value);
+        const installationId = parseInt(value)
         if (!isNaN(installationId)) {
-            setSelectedInstallationId(installationId);
+            setSelectedInstallationId(installationId)
         }
-    };
+    }
 
-    const isConnected = integrations.length > 0;
-    const summary = integrations[0]?.account_name || (repositories.length > 0 ? `${repositories.length} repositories` : undefined);
+    const isConnected = integrations.length > 0
+    const summary = integrations[0]?.account_name || (repositories.length > 0 ? `${repositories.length} repositories` : undefined)
 
     if (compact) {
-        return (
-            <CompactIntegrationRow
-                integration={IntegrationType.GITHUB}
-                isConnected={isConnected}
-                summary={summary}
-                connect={connect}
-                isConnecting={isConnecting}
-                className={className}
-            />
-        );
+        return <CompactIntegrationRow integration={IntegrationType.GITHUB} isConnected={isConnected} summary={summary} connect={connect} isConnecting={isConnecting} className={className} />
     }
 
     return (
@@ -91,40 +79,27 @@ function GithubIntegrationCard({ className, isActive = true, stateToken, compact
                         <>
                             <div className="mb-4">
                                 <label className="text-sm font-medium mb-1.5 block">Connection</label>
-                                <DropdownSelect
-                                    statusOptions={connectionSelections}
-                                    selectedOption={selectedOption}
-                                    setSelected={handleInstallationChange}
-                                    placeholder="No connection selected"
-                                />
+                                <DropdownSelect statusOptions={connectionSelections} selectedOption={selectedOption} setSelected={handleInstallationChange} placeholder="No connection selected" />
                             </div>
-                            <GithubCardContent
-                                repositories={repositories}
-                                isLoading={isLoadingRepositories}
-                                onViewAll={() => setIsDialogOpen(true)}
-                            />
+                            <GithubCardContent repositories={repositories} isLoading={isLoadingRepositories} onViewAll={() => setIsDialogOpen(true)} />
                         </>
                     )}
                 </CardContent>
                 <IntegrationCardFooter connect={connect} isConnecting={isConnecting} />
             </Card>
-            <RepositoriesDialog
-                repositories={repositories}
-                open={isDialogOpen}
-                onOpenChange={setIsDialogOpen}
-            />
+            <RepositoriesDialog repositories={repositories} open={isDialogOpen} onOpenChange={setIsDialogOpen} />
         </>
     )
 }
 
-function GithubCardContent({ repositories, isLoading, onViewAll }: { repositories: Repository[], isLoading: boolean, onViewAll: () => void }) {
+function GithubCardContent({ repositories, isLoading, onViewAll }: { repositories: Repository[]; isLoading: boolean; onViewAll: () => void }) {
     if (isLoading) {
         return (
             <div className="space-y-3">
                 <Skeleton className="h-12 w-full" />
                 <Skeleton className="h-12 w-full" />
             </div>
-        );
+        )
     }
 
     if (repositories.length === 0) {
@@ -134,25 +109,21 @@ function GithubCardContent({ repositories, isLoading, onViewAll }: { repositorie
                 <p className="text-sm text-muted-foreground">No GitHub repositories connected</p>
                 <p className="text-xs text-muted-foreground/70 mt-1">Connect your GitHub repositories to get started</p>
             </div>
-        );
+        )
     }
 
     // Show first N repos on the card, with a button to view all if there are more
-    const displayRepos = repositories.slice(0, REPOSITORY_DISPLAY_THRESHOLD);
-    const hasMore = repositories.length > REPOSITORY_DISPLAY_THRESHOLD;
+    const displayRepos = repositories.slice(0, REPOSITORY_DISPLAY_THRESHOLD)
+    const hasMore = repositories.length > REPOSITORY_DISPLAY_THRESHOLD
 
     return (
         <div className="flex flex-col gap-2 text-sm text-muted-foreground min-w-50">
             <div className="font-semibold text-foreground">
-                {repositories.length} {repositories.length === 1 ? 'repository' : 'repositories'} connected
+                {repositories.length} {repositories.length === 1 ? "repository" : "repositories"} connected
             </div>
             <ul className="list-disc list-inside space-y-1 ml-2">
-                {displayRepos.map((repo) => (
-                    <li key={repo.id}>
-                        {repo.owner && repo.name 
-                            ? `${repo.owner}/${repo.name}`
-                            : repo.name || 'Unknown Repository'}
-                    </li>
+                {displayRepos.map(repo => (
+                    <li key={repo.id}>{repo.owner && repo.name ? `${repo.owner}/${repo.name}` : repo.name || "Unknown Repository"}</li>
                 ))}
             </ul>
             {hasMore && (
@@ -164,15 +135,7 @@ function GithubCardContent({ repositories, isLoading, onViewAll }: { repositorie
     )
 }
 
-function RepositoriesDialog({ 
-    repositories, 
-    open, 
-    onOpenChange 
-}: { 
-    repositories: Repository[], 
-    open: boolean, 
-    onOpenChange: (open: boolean) => void 
-}) {
+function RepositoriesDialog({ repositories, open, onOpenChange }: { repositories: Repository[]; open: boolean; onOpenChange: (open: boolean) => void }) {
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
@@ -181,39 +144,23 @@ function RepositoriesDialog({
                 </DialogHeader>
                 <div className="flex-1 overflow-y-auto min-h-0">
                     {repositories.length === 0 ? (
-                        <div className="text-sm text-muted-foreground py-4">
-                            No repositories connected
-                        </div>
+                        <div className="text-sm text-muted-foreground py-4">No repositories connected</div>
                     ) : (
                         <ul className="space-y-2">
-                            {repositories.map((repo) => {
-                                const repoName = repo.owner && repo.name 
-                                    ? `${repo.owner}/${repo.name}`
-                                    : repo.name || 'Unknown Repository';
-                                const repoUrl = repo.owner && repo.name
-                                    ? `https://github.com/${repo.owner}/${repo.name}`
-                                    : null;
+                            {repositories.map(repo => {
+                                const repoName = repo.owner && repo.name ? `${repo.owner}/${repo.name}` : repo.name || "Unknown Repository"
+                                const repoUrl = repo.owner && repo.name ? `https://github.com/${repo.owner}/${repo.name}` : null
 
                                 return (
-                                    <li 
-                                        key={repo.id} 
-                                        className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
-                                    >
-                                        <span className="text-sm font-medium text-foreground">
-                                            {repoName}
-                                        </span>
+                                    <li key={repo.id} className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors">
+                                        <span className="text-sm font-medium text-foreground">{repoName}</span>
                                         {repoUrl && (
-                                            <a
-                                                href={repoUrl}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="text-muted-foreground hover:text-foreground transition-colors"
-                                            >
+                                            <a href={repoUrl} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground transition-colors">
                                                 <ExternalLink className="h-4 w-4" />
                                             </a>
                                         )}
                                     </li>
-                                );
+                                )
                             })}
                         </ul>
                     )}
@@ -223,5 +170,4 @@ function RepositoriesDialog({
     )
 }
 
-export default GithubIntegrationCard;
-
+export default GithubIntegrationCard

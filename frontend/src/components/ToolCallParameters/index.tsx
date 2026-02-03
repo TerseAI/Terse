@@ -1,59 +1,46 @@
 const ToolTypes = {
-    SEARCH: 'search',
-    OPEN_PAGE: 'open_page',
+    SEARCH: "search",
+    OPEN_PAGE: "open_page"
 }
 
-
-
 interface ToolCallParametersProps {
-    parameters: string;
+    parameters: string
 }
 
 const ToolCallParameters = ({ parameters }: ToolCallParametersProps) => {
-    let parsedParameters: any;
+    let parsedParameters: any
     try {
-        parsedParameters = JSON.parse(parameters);
+        parsedParameters = JSON.parse(parameters)
     } catch (error) {
-        console.error(error);
-        return <div>Invalid JSON</div>;
+        console.error(error)
+        return <div>Invalid JSON</div>
     }
 
     // Don't display if parameters are empty ({} or empty object)
-    if (parsedParameters && typeof parsedParameters === 'object' && Object.keys(parsedParameters).length === 0) {
-        return null;
+    if (parsedParameters && typeof parsedParameters === "object" && Object.keys(parsedParameters).length === 0) {
+        return null
     }
 
     switch (parsedParameters?.type) {
         case ToolTypes.SEARCH:
-            return <SearchParameters {...parsedParameters} />;
+            return <SearchParameters {...parsedParameters} />
         case ToolTypes.OPEN_PAGE:
-            return <OpenPageParameters {...parsedParameters} />;
+            return <OpenPageParameters {...parsedParameters} />
         default:
-            return <pre className="text-sm text-foreground whitespace-pre-wrap font-mono select-text">
-            {JSON.stringify(parsedParameters, null, 2)}
-        </pre>
+            return <pre className="text-sm text-foreground whitespace-pre-wrap font-mono select-text">{JSON.stringify(parsedParameters, null, 2)}</pre>
     }
 }
 
-
-
 interface SearchParametersProps {
-    type: string;
-    query: string;  
+    type: string
+    query: string
 }
 const SearchParameters = ({ query }: SearchParametersProps) => {
-    return <pre className="text-sm text-foreground whitespace-pre-wrap font-mono select-text">
-        Searching for: {query}
-    </pre>
+    return <pre className="text-sm text-foreground whitespace-pre-wrap font-mono select-text">Searching for: {query}</pre>
 }
-
 
 const OpenPageParameters = () => {
-    return <pre className="text-sm text-foreground whitespace-pre-wrap font-mono select-text">
-        Opening page
-    </pre>
+    return <pre className="text-sm text-foreground whitespace-pre-wrap font-mono select-text">Opening page</pre>
 }
 
-
-
-export default ToolCallParameters;
+export default ToolCallParameters
