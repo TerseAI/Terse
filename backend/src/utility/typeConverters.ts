@@ -453,11 +453,7 @@ export const convertPrismaKnowledgeBaseConfigToConfigInstance = (channelKnowledg
         if (!posthogIntegration.project_id) {
             throw new Error("Posthog config requires project_id")
         }
-        return new PosthogConfig(
-            integrationId,
-            posthogIntegration.project_id,
-            posthogIntegration.project_name || undefined
-        )
+        return new PosthogConfig(integrationId, posthogIntegration.project_id, posthogIntegration.project_name || undefined)
     }
 
     if (channelKnowledgeBase.github_kb_config) {

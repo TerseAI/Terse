@@ -20,12 +20,7 @@ export const searchEventsTool = tool({
     parameters: z.object({
         integrationId: z.string().describe("The integration ID of the PostHog knowledge base to use."),
         projectId: z.string().describe("The PostHog project ID."),
-        countByEventNameOnly: z
-            .boolean()
-            .default(true)
-            .describe(
-                "If true (default), returns only event names and their counts. If false, returns full event list (larger response)."
-            ),
+        countByEventNameOnly: z.boolean().default(true).describe("If true (default), returns only event names and their counts. If false, returns full event list (larger response)."),
         customEventsOnly: z
             .boolean()
             .default(true)
@@ -33,10 +28,7 @@ export const searchEventsTool = tool({
                 "If true (default), only include custom events (exclude PostHog built-in events whose names start with $, e.g. $pageview, $autocapture). If false, include all events. Use true to get counts for events the project actually tracks (works for any user's project)."
             ),
         userEmail: z.union([z.string(), z.null()]).optional().describe('Optional: User email to filter events by (e.g., "user@example.com").'),
-        eventName: z
-            .union([z.string(), z.null()])
-            .optional()
-            .describe('Optional: Specific event name to filter by (e.g., "$pageview", "button_clicked", "form_submitted").'),
+        eventName: z.union([z.string(), z.null()]).optional().describe('Optional: Specific event name to filter by (e.g., "$pageview", "button_clicked", "form_submitted").'),
         propertyFilters: z
             .union([
                 z.array(
@@ -169,7 +161,7 @@ export const searchEventsTool = tool({
 
                 // Client-side filter: remove $ events if customEventsOnly is true (safety net if HogQL filter didn't work)
                 if (customEventsOnly) {
-                    eventCounts = eventCounts.filter((e) => !e.eventName.startsWith("$"))
+                    eventCounts = eventCounts.filter(e => !e.eventName.startsWith("$"))
                 }
 
                 const dateDesc = dateFromValue ? ` from ${dateFromValue}` : ""

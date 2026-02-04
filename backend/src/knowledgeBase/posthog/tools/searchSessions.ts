@@ -36,10 +36,7 @@ export const searchSessionsTool = tool({
             ),
         dateTo: z.union([z.string(), z.null()]).describe('End date for filtering (ISO format or relative like "now"). If not provided, defaults to now.')
     }),
-    execute: async (
-        { integrationId, projectId, userEmail, limit = 10, offset = 0, last7Days = false, dateFrom, dateTo },
-        runContext?: RunContext<SessionWithTracking<Session>>
-    ) => {
+    execute: async ({ integrationId, projectId, userEmail, limit = 10, offset = 0, last7Days = false, dateFrom, dateTo }, runContext?: RunContext<SessionWithTracking<Session>>) => {
         if (!runContext?.context) {
             throw new Error("No context provided")
         }
