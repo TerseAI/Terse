@@ -51,7 +51,7 @@ export function OrgLogo({ organizationId, alt, size = "md", className }: OrgLogo
                     alt={alt}
                     onLoad={handleLoad}
                     onError={handleError}
-                    className={cn("rounded-md object-cover transition-opacity duration-200", sizeClass, imageLoaded ? "opacity-100" : "opacity-0")}
+                    className={cn("rounded-md transition-opacity duration-200", sizeClass, imageLoaded ? "opacity-100" : "opacity-0")}
                 />
             )}
         </div>
