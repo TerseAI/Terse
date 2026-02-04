@@ -2,8 +2,11 @@ import { useState } from "react"
 
 import { AlertTriangleIcon, Plus } from "lucide-react"
 
+import { SlackConnectionOptions } from "@/components/Integrations/helpers/SlackConnectionOptions"
 import { MultiSelect } from "@/components/MultiSelect"
+import DropdownSelect, { StatusOption } from "@/components/ui/DropdownSelect"
 import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useSlackChannels } from "@/hooks/api/useSlackChannels"
@@ -12,9 +15,6 @@ import { useSlackUsers } from "@/hooks/api/useSlackUsers"
 import { useOAuthConnection } from "@/hooks/useOAuthConnection"
 import { SlackKBConfig } from "@/shared/Configs"
 import { IntegrationType, SlackIntegration as SlackIntegrationType } from "@/shared/Integrations"
-import { SlackConnectionOptions } from "@/components/Integrations/helpers/SlackConnectionOptions"
-import DropdownSelect, { StatusOption } from "@/components/ui/DropdownSelect"
-import { Checkbox } from "@/components/ui/checkbox"
 
 import { KnowledgeBaseSelectorProps } from "./KnowledgeBaseSelector"
 
@@ -75,15 +75,7 @@ export function SlackKnowledgeBaseIntegration({ knowledgeBase, variant, setConfi
 
     // Connection options screen
     if (showConnectionOptions) {
-        return (
-            <SlackConnectionOptions
-                isBotUser={isBotUser}
-                setIsBotUser={setIsBotUser}
-                onBack={() => setShowConnectionOptions(false)}
-                onConnect={handleConnect}
-                isConnecting={isOAuthConnecting}
-            />
-        )
+        return <SlackConnectionOptions isBotUser={isBotUser} setIsBotUser={setIsBotUser} onBack={() => setShowConnectionOptions(false)} onConnect={handleConnect} isConnecting={isOAuthConnecting} />
     }
 
     // No integrations: show connect prompt
@@ -159,12 +151,7 @@ export function SlackKnowledgeBaseIntegration({ knowledgeBase, variant, setConfi
         <div className="flex flex-col gap-3">
             <div className="flex flex-col gap-1.5">
                 <Label className="font-medium">Slack Workspace</Label>
-                <DropdownSelect
-                    statusOptions={connectionSelections}
-                    selectedOption={selectedOption}
-                    setSelected={updateIntegrationId}
-                    placeholder="No connection selected"
-                />
+                <DropdownSelect statusOptions={connectionSelections} selectedOption={selectedOption} setSelected={updateIntegrationId} placeholder="No connection selected" />
             </div>
 
             <Button onClick={() => setShowConnectionOptions(true)} disabled={isOAuthConnecting} variant="outline">
@@ -202,11 +189,7 @@ export function SlackKnowledgeBaseIntegration({ knowledgeBase, variant, setConfi
 
                         {hasUserToken ? (
                             <div className="flex items-center gap-2">
-                                <Checkbox
-                                    id="slack-kb-allow-dms"
-                                    checked={slackConfig.allowDms}
-                                    onCheckedChange={checked => updateAllowDms(checked === true)}
-                                />
+                                <Checkbox id="slack-kb-allow-dms" checked={slackConfig.allowDms} onCheckedChange={checked => updateAllowDms(checked === true)} />
                                 <Label htmlFor="slack-kb-allow-dms" className="text-sm font-normal cursor-pointer">
                                     Include DMs in search
                                 </Label>

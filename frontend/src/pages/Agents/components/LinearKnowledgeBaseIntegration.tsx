@@ -1,15 +1,14 @@
 import { AlertTriangleIcon, Plus } from "lucide-react"
 
+import { Button } from "@/components/ui/button"
+import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Skeleton } from "@/components/ui/skeleton"
 import { useLinearIntegrations } from "@/hooks/api/useLinearIntegrations"
 import { useLinearTeams } from "@/hooks/api/useLinearTeams"
 import { useOAuthConnection } from "@/hooks/useOAuthConnection"
 import { LinearKBConfig } from "@/shared/Configs"
 import { IntegrationType, LinearIntegration as LinearIntegrationType } from "@/shared/Integrations"
-
-import { Button } from "@/components/ui/button"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Skeleton } from "@/components/ui/skeleton"
 
 import { KnowledgeBaseSelectorProps } from "./KnowledgeBaseSelector"
 
@@ -34,11 +33,7 @@ export function LinearKnowledgeBaseIntegration({ knowledgeBase, variant, setConf
                 </div>
             )
         }
-        const displayText = linearConfig.teamName
-            ? `${linearConfig.teamName}`
-            : linearConfig.integrationId
-              ? "Linear connected"
-              : "Select workspace"
+        const displayText = linearConfig.teamName ? `${linearConfig.teamName}` : linearConfig.integrationId ? "Linear connected" : "Select workspace"
         return <div className="text-xs text-center">{displayText}</div>
     }
 
@@ -69,7 +64,7 @@ export function LinearKnowledgeBaseIntegration({ knowledgeBase, variant, setConf
 
     const connectionSelections = integrations.map((integration: LinearIntegrationType) => ({
         label: integration.workspaceName || "Unknown workspace",
-        value: integration.id,
+        value: integration.id
     }))
 
     return (
@@ -93,11 +88,7 @@ export function LinearKnowledgeBaseIntegration({ knowledgeBase, variant, setConf
             {selectedIntegrationId && (
                 <div className="space-y-2">
                     <Label>Team (optional)</Label>
-                    <Select
-                        value={linearConfig.teamId || "__ALL__"}
-                        onValueChange={updateTeam}
-                        disabled={teamsLoading}
-                    >
+                    <Select value={linearConfig.teamId || "__ALL__"} onValueChange={updateTeam} disabled={teamsLoading}>
                         <SelectTrigger className="w-full">
                             <SelectValue placeholder="All teams" />
                         </SelectTrigger>

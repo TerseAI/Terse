@@ -1,8 +1,8 @@
 import { Tool } from "@openai/agents"
 import { KnowledgeBaseConfigType } from "@prisma/client"
 
-import { linearSearchTicketTool } from "../../outputs/linear/tools/searchTicket"
 import { ToolboxEntry } from "../../outputs/abstract/Output"
+import { linearSearchTicketTool } from "../../outputs/linear/tools/searchTicket"
 import { LinearKBConfig } from "../../shared/Configs"
 import { IntegrationType } from "../../shared/Integrations"
 import { AgentKnowledgeBaseWithConfigs, PrismaTransaction } from "../../types/prisma"
@@ -21,14 +21,14 @@ export class LinearKnowledgeBase extends KnowledgeBase<LinearKBConfig> {
                 tool: linearSearchTicketTool as Tool,
                 isReadOnly: true,
                 integration: IntegrationType.LINEAR,
-                displayName: "Search tickets",
+                displayName: "Search tickets"
             },
             {
                 tool: linearReadTicketTool as Tool,
                 isReadOnly: true,
                 integration: IntegrationType.LINEAR,
-                displayName: "Read ticket",
-            },
+                displayName: "Read ticket"
+            }
         ]
 
         super(KnowledgeBaseConfigType.LINEAR, toolbox)
@@ -38,19 +38,15 @@ export class LinearKnowledgeBase extends KnowledgeBase<LinearKBConfig> {
         // Linear KB only requires integrationId; no extra validation needed
     }
 
-    async addKnowledgeBaseToAgent(
-        tx: PrismaTransaction,
-        agentKnowledgeBaseId: string,
-        knowledgeBase: LinearKBConfig
-    ): Promise<void> {
+    async addKnowledgeBaseToAgent(tx: PrismaTransaction, agentKnowledgeBaseId: string, knowledgeBase: LinearKBConfig): Promise<void> {
         await tx.automation_linear_kb_configs.create({
             data: {
                 automation_knowledge_base_id: agentKnowledgeBaseId,
                 team_id: knowledgeBase.teamId ?? undefined,
                 team_name: knowledgeBase.teamName ?? undefined,
                 project_id: knowledgeBase.projectId ?? undefined,
-                project_name: knowledgeBase.projectName ?? undefined,
-            },
+                project_name: knowledgeBase.projectName ?? undefined
+            }
         })
     }
 

@@ -18,7 +18,7 @@ export class KnowledgeBaseFactory {
         [KnowledgeBaseConfigType.LAUNCHDARKLY, () => new LaunchDarklyKnowledgeBase()],
         [KnowledgeBaseConfigType.DATADOG, () => new DatadogKnowledgeBase()],
         [KnowledgeBaseConfigType.LINEAR, () => new LinearKnowledgeBase()],
-        [KnowledgeBaseConfigType.SLACK, () => new SlackKnowledgeBase()],
+        [KnowledgeBaseConfigType.SLACK, () => new SlackKnowledgeBase()]
     ])
 
     /**

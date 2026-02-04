@@ -21,14 +21,14 @@ export class SlackKnowledgeBase extends KnowledgeBase<SlackKBConfig> {
                 tool: slackListChannelsTool as Tool,
                 isReadOnly: true,
                 integration: IntegrationType.SLACK,
-                displayName: "List channels",
+                displayName: "List channels"
             },
             {
                 tool: slackReadConversationTool as Tool,
                 isReadOnly: true,
                 integration: IntegrationType.SLACK,
-                displayName: "Read conversation",
-            },
+                displayName: "Read conversation"
+            }
         ]
 
         super(KnowledgeBaseConfigType.SLACK, toolbox)
@@ -38,11 +38,7 @@ export class SlackKnowledgeBase extends KnowledgeBase<SlackKBConfig> {
         // Validation is done at save time (channel IDs / allowDms)
     }
 
-    async addKnowledgeBaseToAgent(
-        tx: PrismaTransaction,
-        agentKnowledgeBaseId: string,
-        knowledgeBase: SlackKBConfig
-    ): Promise<void> {
+    async addKnowledgeBaseToAgent(tx: PrismaTransaction, agentKnowledgeBaseId: string, knowledgeBase: SlackKBConfig): Promise<void> {
         await tx.automation_slack_kb_configs.create({
             data: {
                 automation_knowledge_base_id: agentKnowledgeBaseId,
@@ -50,8 +46,8 @@ export class SlackKnowledgeBase extends KnowledgeBase<SlackKBConfig> {
                 channel_names: knowledgeBase.channelNames ?? [],
                 allow_dms: knowledgeBase.allowDms ?? false,
                 user_ids: knowledgeBase.userIds ?? [],
-                user_names: knowledgeBase.userNames ?? [],
-            },
+                user_names: knowledgeBase.userNames ?? []
+            }
         })
     }
 

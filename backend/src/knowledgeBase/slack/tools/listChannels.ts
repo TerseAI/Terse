@@ -64,7 +64,7 @@ Supports pagination: if the response includes nextCursor and hasMore, pass nextC
             const typesParam = types === "all" ? undefined : types === "im" ? "im" : types === "mpim" ? "mpim" : types === "private" ? "private_channel" : "public_channel"
 
             const result = await client.conversations.list({
-                limit,
+                limit: limit ?? undefined,
                 exclude_archived: excludeArchived,
                 ...(typesParam && { types: typesParam }),
                 ...(cursor && { cursor })
