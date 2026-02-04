@@ -16,10 +16,22 @@ import { getPosthogApiKeyByIntegrationId } from "../posthogApiClient"
 export const searchEventsTool = tool({
     name: ToolName.POSTHOG_SEARCH_EVENTS,
     description:
-        "Query PostHog analytics events to find pageviews, button clicks, and other tracked user actions. Returns events data and a link to view events in PostHog. You can filter by event name, user email, custom properties, or combinations. Use this when you need to investigate specific user actions, find patterns in user behavior, or understand what events were triggered. Different from session recordings - this shows discrete tracked events.",
+        "Query PostHog analytics events. Use countByEventNameOnly: true (default) to get counts per event name. Use customEventsOnly: true (default) to exclude PostHog built-in events (names starting with $) and return only the project's custom-tracked events. Works for any PostHog project.",
     parameters: z.object({
         integrationId: z.string().describe("The integration ID of the PostHog knowledge base to use."),
         projectId: z.string().describe("The PostHog project ID."),
+        countByEventNameOnly: z
+            .boolean()
+            .default(true)
+            .describe(
+                "If true (default), returns only event names and their counts. If false, returns full event list (larger response)."
+            ),
+        customEventsOnly: z
+            .boolean()
+            .default(true)
+            .describe(
+                "If true (default), only include custom events (exclude PostHog built-in events whose names start with $, e.g. $pageview, $autocapture). If false, include all events. Use true to get counts for events the project actually tracks (works for any user's project)."
+            ),
         userEmail: z.union([z.string(), z.null()]).optional().describe('Optional: User email to filter events by (e.g., "user@example.com").'),
         eventName: z
             .union([z.string(), z.null()])
@@ -38,8 +50,8 @@ export const searchEventsTool = tool({
             ])
             .optional()
             .describe("Optional: Array of property filters to apply. Each filter has a key, value, and operator."),
-        limit: z.number().default(50).describe("Maximum number of events to return (default: 50, max: 250)"),
-        offset: z.number().default(0).describe("Offset for pagination (default: 0). Use with limit to page through results."),
+        limit: z.number().default(50).describe("Maximum number of events to return when countByEventNameOnly is false (default: 50, max: 100). Ignored when countByEventNameOnly is true."),
+        offset: z.number().default(0).describe("Offset for pagination when countByEventNameOnly is false (default: 0). Ignored when countByEventNameOnly is true."),
         last7Days: z
             .boolean()
             .default(false)
@@ -54,7 +66,7 @@ export const searchEventsTool = tool({
         dateTo: z.union([z.string(), z.null()]).describe('End date for filtering (ISO format or relative like "now"). If not provided, defaults to now.')
     }),
     execute: async (
-        { integrationId, projectId, userEmail, eventName, propertyFilters, limit = 50, offset = 0, last7Days = false, dateFrom, dateTo },
+        { integrationId, projectId, countByEventNameOnly = true, customEventsOnly = true, userEmail, eventName, propertyFilters, limit = 50, offset = 0, last7Days = false, dateFrom, dateTo },
         runContext?: RunContext<SessionWithTracking<Session>>
     ) => {
         if (!runContext?.context) {
@@ -87,14 +99,109 @@ export const searchEventsTool = tool({
                 userEmail: normalizedUserEmail,
                 eventName: normalizedEventName,
                 projectId,
+                countByEventNameOnly,
+                customEventsOnly,
                 limit,
                 offset,
                 dateFrom: dateFromValue
             })
 
+            // Counts-only path: use HogQL to return just event name -> count (small response, no context overflow)
+            if (countByEventNameOnly) {
+                const eventsLink = `${posthogHost}/project/${projectId}/events`
+                const whereParts: string[] = []
+                if (dateFromValue) {
+                    if (dateFromValue === "-7d") {
+                        whereParts.push("timestamp >= now() - INTERVAL 7 DAY")
+                    } else {
+                        whereParts.push(`timestamp >= '${dateFromValue}'`)
+                    }
+                }
+                if (dateToValue) {
+                    whereParts.push(`timestamp <= '${dateToValue}'`)
+                }
+                if (normalizedEventName) {
+                    whereParts.push(`event = '${normalizedEventName.replace(/'/g, "''")}'`)
+                }
+                // Exclude PostHog built-in events (names start with $). Custom events = what the project tracks.
+                if (customEventsOnly) {
+                    // Use LIKE for broader compatibility (works in ClickHouse/HogQL)
+                    whereParts.push("event NOT LIKE '$%'")
+                }
+                const whereClause = whereParts.length > 0 ? ` WHERE ${whereParts.join(" AND ")}` : ""
+                const hogql = `SELECT event, count() as count FROM events${whereClause} GROUP BY event ORDER BY count DESC LIMIT 500`
+
+                const queryUrl = `${posthogHost}/api/projects/${projectId}/query/`
+                const queryRes = await fetch(queryUrl, {
+                    method: "POST",
+                    headers: {
+                        Authorization: `Bearer ${posthogApiKey}`,
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        query: { kind: "HogQLQuery", query: hogql },
+                        name: "event_counts_by_name"
+                    })
+                })
+
+                if (!queryRes.ok) {
+                    const errText = await queryRes.text()
+                    logger.error("PostHog HogQL query error", { status: queryRes.status, error: errText, projectId })
+                    if (queryRes.status === 401) {
+                        throw new Error("PostHog API key is invalid or expired. Please update your PostHog integration.")
+                    }
+                    throw new Error(`Failed to query PostHog event counts: ${errText}`)
+                }
+
+                const queryData = (await queryRes.json()) as {
+                    results?: Array<{ event?: string; count?: number } | unknown[]>
+                    query_status?: { results?: Array<{ event?: string; count?: number } | unknown[]> }
+                }
+                const rawResults = queryData?.results ?? queryData?.query_status?.results
+                const rows = Array.isArray(rawResults) ? rawResults : []
+                let eventCounts = rows.map((row: { event?: string; count?: number } | unknown[]) => {
+                    if (Array.isArray(row)) {
+                        return { eventName: String(row[0] ?? "unknown"), count: Number(row[1] ?? 0) }
+                    }
+                    const r = row as { event?: string; count?: number }
+                    return { eventName: r.event ?? "unknown", count: typeof r.count === "number" ? r.count : 0 }
+                })
+
+                // Client-side filter: remove $ events if customEventsOnly is true (safety net if HogQL filter didn't work)
+                if (customEventsOnly) {
+                    eventCounts = eventCounts.filter((e) => !e.eventName.startsWith("$"))
+                }
+
+                const dateDesc = dateFromValue ? ` from ${dateFromValue}` : ""
+                const eventLabel = customEventsOnly ? "custom events" : "event types"
+                const action = {
+                    action: "Searched PostHog event counts",
+                    integration: IntegrationType.POSTHOG,
+                    target: projectId,
+                    details: `${eventLabel}: ${eventCounts.length}${dateDesc}. View events: ${eventsLink}`,
+                    url: eventsLink,
+                    type: RunHistoryActionType.read,
+                    isReadOnly: true
+                }
+
+                return {
+                    success: true,
+                    countByEventNameOnly: true,
+                    customEventsOnly,
+                    eventCounts,
+                    totalEventTypes: eventCounts.length,
+                    eventsLink,
+                    message: `Count of times each ${eventLabel} was called: ${eventCounts.length}${dateDesc}. View in PostHog: ${eventsLink}`,
+                    actions: [action]
+                }
+            }
+
+            // Full events path: cap limit to avoid context/tracing overflow
+            const cappedLimit = Math.min(limit, 100)
+
             // Build query parameters
             const params = new URLSearchParams({
-                limit: Math.min(limit, 250).toString(),
+                limit: cappedLimit.toString(),
                 offset: offset.toString()
             })
 
@@ -203,13 +310,12 @@ export const searchEventsTool = tool({
                 return timeB - timeA // Descending order
             })
 
+            // Keep payload small: only essential fields; omit full properties to avoid context/tracing overflow
             const formattedEvents = sortedEvents.map((event: any) => ({
                 id: event.id || event.uuid,
                 event: event.event,
                 timestamp: event.timestamp || event.created_at || event.time,
                 distinctId: event.distinct_id,
-                properties: event.properties || {},
-                personId: event.person?.uuid || event.person_id,
                 url: event.properties?.$current_url || event.properties?.url
             }))
 
@@ -238,7 +344,7 @@ export const searchEventsTool = tool({
                 events: formattedEvents,
                 eventsLink,
                 pagination: {
-                    limit: Math.min(limit, 250),
+                    limit: cappedLimit,
                     offset,
                     hasMore: hasNext,
                     nextOffset,
