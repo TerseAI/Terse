@@ -4,7 +4,6 @@ import { AlertTriangleIcon, Eye, EyeOff, Info, Plus } from "lucide-react"
 
 import { PosthogProjectSelector } from "@/components/PosthogProjectSelector"
 import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -18,7 +17,7 @@ import { KnowledgeBaseSelectorProps } from "./KnowledgeBaseSelector"
 
 export function PostHogKnowledgeBaseIntegration({ knowledgeBase, variant, setConfig }: KnowledgeBaseSelectorProps) {
     const { integrations, isLoading, mutate } = usePosthogIntegrations()
-    const posthogConfig = (knowledgeBase.config as PosthogConfig) || new PosthogConfig("", "", undefined, false, false)
+    const posthogConfig = (knowledgeBase.config as PosthogConfig) || new PosthogConfig("", "")
     const selectedIntegrationId = posthogConfig.integrationId || null
 
     // Form state for connecting new integration
@@ -152,26 +151,13 @@ export function PostHogKnowledgeBaseIntegration({ knowledgeBase, variant, setCon
         // When changing integration, clear project selection
         const newPosthogConfig = new PosthogConfig(
             integrationId,
-            "", // Clear project when integration changes
-            undefined,
-            posthogConfig.canReadLogs,
-            posthogConfig.canReadSessionRecordings
+            "" // Clear project when integration changes
         )
         setConfig(newPosthogConfig)
     }
 
     const updateProject = (projectId: string, projectName: string) => {
-        const newPosthogConfig = new PosthogConfig(posthogConfig.integrationId, projectId, projectName, posthogConfig.canReadLogs, posthogConfig.canReadSessionRecordings)
-        setConfig(newPosthogConfig)
-    }
-
-    const updateCanReadLogs = (canReadLogs: boolean) => {
-        const newPosthogConfig = new PosthogConfig(posthogConfig.integrationId, posthogConfig.projectId, posthogConfig.projectName, canReadLogs, posthogConfig.canReadSessionRecordings)
-        setConfig(newPosthogConfig)
-    }
-
-    const updateCanReadSessionRecordings = (canReadSessionRecordings: boolean) => {
-        const newPosthogConfig = new PosthogConfig(posthogConfig.integrationId, posthogConfig.projectId, posthogConfig.projectName, posthogConfig.canReadLogs, canReadSessionRecordings)
+        const newPosthogConfig = new PosthogConfig(posthogConfig.integrationId, projectId, projectName)
         setConfig(newPosthogConfig)
     }
     return (
@@ -212,24 +198,6 @@ export function PostHogKnowledgeBaseIntegration({ knowledgeBase, variant, setCon
                     {!posthogConfig.projectId && <p className="text-sm text-muted-foreground">Please select a project to continue</p>}
                 </div>
             )}
-
-            <div className="space-y-3">
-                <Label>Available Tools</Label>
-                <div className="space-y-2">
-                    <div className="flex items-center space-x-2">
-                        <Checkbox id="read-logs" checked={posthogConfig.canReadLogs} onCheckedChange={updateCanReadLogs} />
-                        <Label htmlFor="read-logs" className="font-normal cursor-pointer">
-                            Read logs
-                        </Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                        <Checkbox id="read-session-recordings" checked={posthogConfig.canReadSessionRecordings} onCheckedChange={updateCanReadSessionRecordings} />
-                        <Label htmlFor="read-session-recordings" className="font-normal cursor-pointer">
-                            Look at relevant session recordings
-                        </Label>
-                    </div>
-                </div>
-            </div>
         </div>
     )
 }
