@@ -281,7 +281,20 @@ export default function AgentSetup() {
                                                         (() => {
                                                             const categoryTemplates = templates.filter(t => t.category === selectedCategory)
                                                             return categoryTemplates.length > 0 ? (
-                                                                categoryTemplates.map(template => <TemplateCard key={template.id} template={template} onSelect={handleTemplateSelect} />)
+                                                                categoryTemplates.map((template, index) => (
+                                                                    <motion.div
+                                                                        key={template.id}
+                                                                        initial={{ opacity: 0, y: 12 }}
+                                                                        animate={{ opacity: 1, y: 0 }}
+                                                                        transition={{
+                                                                            duration: 0.3,
+                                                                            delay: index * 0.05,
+                                                                            ease: ANIMATION_EASE
+                                                                        }}
+                                                                    >
+                                                                        <TemplateCard template={template} onSelect={handleTemplateSelect} />
+                                                                    </motion.div>
+                                                                ))
                                                             ) : (
                                                                 <Card className="col-span-full border-dashed">
                                                                     <CardContent className="flex flex-col items-center justify-center py-6 text-center">
