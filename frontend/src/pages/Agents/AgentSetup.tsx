@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useSearchParams } from "react-router-dom"
 
-import { Tab, TabGroup, TabList, TabPanel, TabPanels } from "@headlessui/react"
+import { Tab, TabGroup, TabList, TabPanels } from "@headlessui/react"
 import { AnimatePresence, Easing, motion } from "framer-motion"
 import type { LucideIcon } from "lucide-react"
 import { FileText, Loader2, MessageCircle, Rocket, Users } from "lucide-react"
@@ -34,8 +34,14 @@ const AGENT_SETUP_PLACEHOLDERS = [
     "Draft weekly release notes from merged PRs and commits"
 ]
 
-const ANIMATION_DURATION = 0.8
+const ANIMATION_DURATION = 1.0
 const ANIMATION_EASE: Easing = [0.4, 0, 0.2, 1]
+
+const panelVariants = {
+    enter: { opacity: 0, y: 8 },
+    center: { opacity: 1, y: 0 },
+    exit: { opacity: 0, y: -8 }
+}
 
 export default function AgentSetup() {
     const { templates, isLoading } = useTemplates()
@@ -248,12 +254,12 @@ export default function AgentSetup() {
 
                                     {/* Category tabs (same styling as Agent Detail) */}
                                     <TabGroup selectedIndex={TEMPLATE_CATEGORIES.findIndex(c => c.id === selectedCategory)} onChange={index => setSelectedCategory(TEMPLATE_CATEGORIES[index].id)}>
-                                        <TabList className="flex gap-2 border-b border-input">
+                                        <TabList className="flex w-full gap-2 border-b border-input">
                                             {TEMPLATE_CATEGORIES.map(({ id, label, icon: Icon }) => (
                                                 <Tab
                                                     key={id}
                                                     className={({ selected }) =>
-                                                        `px-3 py-2 text-sm font-medium rounded-t-md border-b-2 -mb-px inline-flex items-center gap-2 ${selected ? "text-foreground border-primary" : "text-muted-foreground border-transparent hover:text-foreground"}`
+                                                        `flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium rounded-t-md border-b-2 -mb-px ${selected ? "text-foreground border-primary" : "text-muted-foreground border-transparent hover:text-foreground"}`
                                                     }
                                                 >
                                                     <Icon className="h-4 w-4" />
@@ -261,31 +267,37 @@ export default function AgentSetup() {
                                                 </Tab>
                                             ))}
                                         </TabList>
-                                        <TabPanels className="pt-4">
-                                            {TEMPLATE_CATEGORIES.map(({ id }) => {
-                                                const categoryTemplates = templates.filter(t => t.category === id)
-                                                return (
-                                                    <TabPanel key={id}>
-                                                        {isLoading ? (
-                                                            <div className="flex items-center justify-center py-8">
-                                                                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                                                            </div>
-                                                        ) : categoryTemplates.length > 0 ? (
-                                                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                                                                {categoryTemplates.map(template => (
-                                                                    <TemplateCard key={template.id} template={template} onSelect={handleTemplateSelect} />
-                                                                ))}
-                                                            </div>
-                                                        ) : (
-                                                            <Card className="border-dashed">
-                                                                <CardContent className="flex flex-col items-center justify-center py-6 text-center">
-                                                                    <p className="text-muted-foreground text-sm">No templates in this category yet</p>
-                                                                </CardContent>
-                                                            </Card>
-                                                        )}
-                                                    </TabPanel>
-                                                )
-                                            })}
+                                        <TabPanels className="pt-4 overflow-hidden">
+                                            <AnimatePresence mode="wait" initial={false}>
+                                                <motion.div
+                                                    key={selectedCategory}
+                                                    variants={panelVariants}
+                                                    initial="enter"
+                                                    animate="center"
+                                                    exit="exit"
+                                                    transition={{ duration: 0.2, ease: ANIMATION_EASE }}
+                                                    className="grid grid-cols-1 sm:grid-cols-3 gap-4"
+                                                >
+                                                    {isLoading ? (
+                                                        <div className="col-span-full flex items-center justify-center py-8">
+                                                            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                                                        </div>
+                                                    ) : (
+                                                        (() => {
+                                                            const categoryTemplates = templates.filter(t => t.category === selectedCategory)
+                                                            return categoryTemplates.length > 0 ? (
+                                                                categoryTemplates.map(template => <TemplateCard key={template.id} template={template} onSelect={handleTemplateSelect} />)
+                                                            ) : (
+                                                                <Card className="col-span-full border-dashed">
+                                                                    <CardContent className="flex flex-col items-center justify-center py-6 text-center">
+                                                                        <p className="text-muted-foreground text-sm">No templates in this category yet</p>
+                                                                    </CardContent>
+                                                                </Card>
+                                                            )
+                                                        })()
+                                                    )}
+                                                </motion.div>
+                                            </AnimatePresence>
                                         </TabPanels>
                                     </TabGroup>
                                 </div>
