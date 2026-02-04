@@ -526,11 +526,10 @@ export class PosthogConfig implements ConfigInstance {
         public integrationId: string,
         public projectId: string,
         public projectName?: string
-    ) {
-    }
+    ) {}
 
     isComplete(): boolean {
-        return !!this.projectId;
+        return !!this.projectId
     }
 
     formatForAgent(): string {
@@ -541,7 +540,7 @@ export class PosthogConfig implements ConfigInstance {
         if (this.projectName) {
             parts.push(`Project: ${this.projectName}`)
         }
-        return parts.join('\n');
+        return parts.join("\n")
     }
 }
 
