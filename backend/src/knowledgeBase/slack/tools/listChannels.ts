@@ -61,12 +61,21 @@ Supports pagination: if the response includes nextCursor and hasMore, pass nextC
             const client = initializeSlackWebClient(userSlackIntegration)
 
             const excludeArchived = true
-            const typesParam = types === "all" || types === null ? undefined : types === "im" ? "im" : types === "mpim" ? "mpim" : types === "private" ? "private_channel" : "public_channel"
+            const typesParam =
+                types === "all" || types === null
+                    ? "public_channel,private_channel,im,mpim"
+                    : types === "im"
+                      ? "im"
+                      : types === "mpim"
+                        ? "mpim"
+                        : types === "private"
+                          ? "private_channel"
+                          : "public_channel"
 
             const result = await client.conversations.list({
                 limit: limit ?? undefined,
                 exclude_archived: excludeArchived,
-                ...(typesParam && { types: typesParam }),
+                types: typesParam,
                 ...(cursor && { cursor })
             })
 
