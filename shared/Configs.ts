@@ -525,14 +525,12 @@ export class PosthogConfig implements ConfigInstance {
     constructor(
         public integrationId: string,
         public projectId: string,
-        public projectName?: string,
-        public canReadLogs?: boolean,
-        public canReadSessionRecordings?: boolean
-    ) {}
+        public projectName?: string
+    ) {
+    }
 
     isComplete(): boolean {
-        // Confluence only requires integrationId (base check handled in isInputComplete)
-        return !!(this.projectId && (this.canReadLogs || this.canReadSessionRecordings))
+        return !!this.projectId;
     }
 
     formatForAgent(): string {
@@ -543,13 +541,7 @@ export class PosthogConfig implements ConfigInstance {
         if (this.projectName) {
             parts.push(`Project: ${this.projectName}`)
         }
-        if (this.canReadLogs) {
-            parts.push(`Can read logs: Yes`)
-        }
-        if (this.canReadSessionRecordings) {
-            parts.push(`Can read session recordings: Yes`)
-        }
-        return parts.join("\n")
+        return parts.join('\n');
     }
 }
 

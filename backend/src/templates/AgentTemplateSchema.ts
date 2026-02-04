@@ -121,9 +121,7 @@ const PosthogConfigSchema = BaseConfigSchema.extend({
     configType: z.literal(ConfigType.POSTHOG),
     integrationType: z.literal(IntegrationType.POSTHOG),
     projectId: z.string().optional(),
-    projectName: z.string().optional(),
-    canReadLogs: z.boolean().optional(),
-    canReadSessionRecordings: z.boolean().optional()
+    projectName: z.string().optional()
 })
 
 // Time Trigger config schema
