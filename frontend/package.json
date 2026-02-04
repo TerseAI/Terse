@@ -4,8 +4,8 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "format": "prettier --write \"src/**/*.{ts,tsx}\"",
-    "format:check": "prettier --check \"src/**/*.{ts,tsx}\"",
+    "format": "prettier --config ../.prettierrc --write \"src/**/*.{ts,tsx}\" \"../shared/**/*.ts\"",
+    "format:check": "prettier --config ../.prettierrc --check \"src/**/*.{ts,tsx}\" \"../shared/**/*.ts\"",
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",

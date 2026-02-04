@@ -7,27 +7,21 @@ import { cn } from "@/lib/utils"
 
 const Tabs = TabsPrimitive.Root
 
-const tabsListVariants = cva(
-    "inline-flex items-center justify-center text-muted-foreground",
-    {
-        variants: {
-            variant: {
-                default: "h-9 rounded-lg bg-muted p-1",
-                line: "w-full flex border-b border-border -mb-px"
-            }
-        },
-        defaultVariants: {
-            variant: "default"
+const tabsListVariants = cva("inline-flex items-center justify-center text-muted-foreground", {
+    variants: {
+        variant: {
+            default: "h-9 rounded-lg bg-muted p-1",
+            line: "w-full flex border-b border-border -mb-px"
         }
+    },
+    defaultVariants: {
+        variant: "default"
     }
-)
+})
 
-const TabsList = React.forwardRef<
-    React.ElementRef<typeof TabsPrimitive.List>,
-    React.ComponentPropsWithoutRef<typeof TabsPrimitive.List> & VariantProps<typeof tabsListVariants>
->(({ className, variant, ...props }, ref) => (
-    <TabsPrimitive.List ref={ref} className={cn(tabsListVariants({ variant }), className)} {...props} />
-))
+const TabsList = React.forwardRef<React.ElementRef<typeof TabsPrimitive.List>, React.ComponentPropsWithoutRef<typeof TabsPrimitive.List> & VariantProps<typeof tabsListVariants>>(
+    ({ className, variant, ...props }, ref) => <TabsPrimitive.List ref={ref} className={cn(tabsListVariants({ variant }), className)} {...props} />
+)
 TabsList.displayName = TabsPrimitive.List.displayName
 
 const tabsTriggerVariants = cva(
@@ -35,10 +29,8 @@ const tabsTriggerVariants = cva(
     {
         variants: {
             variant: {
-                default:
-                    "rounded-md px-3 py-1 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm",
-                line:
-                    "flex-1 border-b-2 border-transparent px-3 py-2 data-[state=active]:border-primary data-[state=active]:text-foreground data-[state=inactive]:hover:text-foreground"
+                default: "rounded-md px-3 py-1 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm",
+                line: "flex-1 border-b-2 border-transparent px-3 py-2 data-[state=active]:border-primary data-[state=active]:text-foreground data-[state=inactive]:hover:text-foreground"
             }
         },
         defaultVariants: {
@@ -47,18 +39,12 @@ const tabsTriggerVariants = cva(
     }
 )
 
-const TabsTrigger = React.forwardRef<
-    React.ElementRef<typeof TabsPrimitive.Trigger>,
-    React.ComponentPropsWithoutRef<typeof TabsPrimitive.Trigger> & VariantProps<typeof tabsTriggerVariants>
->(({ className, variant, ...props }, ref) => (
-    <TabsPrimitive.Trigger ref={ref} className={cn(tabsTriggerVariants({ variant }), className)} {...props} />
-))
+const TabsTrigger = React.forwardRef<React.ElementRef<typeof TabsPrimitive.Trigger>, React.ComponentPropsWithoutRef<typeof TabsPrimitive.Trigger> & VariantProps<typeof tabsTriggerVariants>>(
+    ({ className, variant, ...props }, ref) => <TabsPrimitive.Trigger ref={ref} className={cn(tabsTriggerVariants({ variant }), className)} {...props} />
+)
 TabsTrigger.displayName = TabsPrimitive.Trigger.displayName
 
-const TabsContent = React.forwardRef<
-    React.ElementRef<typeof TabsPrimitive.Content>,
-    React.ComponentPropsWithoutRef<typeof TabsPrimitive.Content>
->(({ className, ...props }, ref) => (
+const TabsContent = React.forwardRef<React.ElementRef<typeof TabsPrimitive.Content>, React.ComponentPropsWithoutRef<typeof TabsPrimitive.Content>>(({ className, ...props }, ref) => (
     <TabsPrimitive.Content ref={ref} className={cn("mt-2 outline-none", className)} {...props} />
 ))
 TabsContent.displayName = TabsPrimitive.Content.displayName

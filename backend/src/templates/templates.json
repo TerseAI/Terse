@@ -392,5 +392,42 @@
         ],
         "requireApproval": false,
         "isActive": true
+    },
+    {
+        "id": "daily-metrics-briefing",
+        "category": "sync",
+        "name": "Daily Metrics Briefing",
+        "description": "Build daily metrics brief using analytics platform",
+        "chatPrompt": "Build an agent that runs daily, checks Posthog events for daily metrics and builds a brief that gets posted to Slack.",
+        "prompt": {
+            "text": "On a daily schedule, use Posthog to gather the last 24 hours of events and logs. Produce a short metrics brief: key numbers (e.g. active users, main events), notable trends vs yesterday, and any errors or warnings worth attention. Post the brief to the configured Slack channel or DM. Keep it scannable—bullet points, one link to Posthog for details. If there's no data, say so and still post."
+        },
+        "triggers": [
+            {
+                "config": {
+                    "configType": "time_trigger",
+                    "integrationType": "cron_job",
+                    "cronExpression": "0 10 * * 1-5"
+                }
+            }
+        ],
+        "knowledgeBases": [
+            {
+                "config": {
+                    "configType": "POSTHOG",
+                    "integrationType": "posthog"
+                }
+            }
+        ],
+        "outputs": [
+            {
+                "config": {
+                    "configType": "slack_output",
+                    "integrationType": "slack"
+                }
+            }
+        ],
+        "requireApproval": false,
+        "isActive": true
     }
 ]

@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -e
 
+cd backend && pnpm run format && cd ..
+cd frontend && pnpm run format && cd ..
+
 # Run build in backend
 npm --prefix backend run build
 
