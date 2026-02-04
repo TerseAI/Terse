@@ -25,3 +25,61 @@ export async function getTemplates(req: Request, res: Response): Promise<void> {
         res.status(500).json({ error: "Failed to fetch templates" })
     }
 }
+
+type PublicTemplate = Pick<AgentTemplate, "id" | "name" | "description" | "category" | "chatPrompt"> & {
+    triggers: Array<{
+        config: {
+            configType: AgentTemplate["triggers"][number]["config"]["configType"]
+            integrationType: AgentTemplate["triggers"][number]["config"]["integrationType"]
+        }
+    }>
+    outputs: Array<{
+        config: {
+            configType: AgentTemplate["outputs"][number]["config"]["configType"]
+            integrationType: AgentTemplate["outputs"][number]["config"]["integrationType"]
+        }
+    }>
+    knowledgeBases: Array<{
+        config: {
+            configType: NonNullable<AgentTemplate["knowledgeBases"]>[number]["config"]["configType"]
+            integrationType: NonNullable<AgentTemplate["knowledgeBases"]>[number]["config"]["integrationType"]
+        }
+    }>
+}
+
+export async function getPublicTemplates(req: Request, res: Response): Promise<void> {
+    try {
+        validateTemplates(templates)
+
+        const publicTemplates: PublicTemplate[] = (templates as AgentTemplate[]).map(template => ({
+            id: template.id,
+            name: template.name,
+            description: template.description,
+            category: template.category,
+            chatPrompt: template.chatPrompt,
+            triggers: template.triggers.map(trigger => ({
+                config: {
+                    configType: trigger.config.configType,
+                    integrationType: trigger.config.integrationType
+                }
+            })),
+            outputs: template.outputs.map(output => ({
+                config: {
+                    configType: output.config.configType,
+                    integrationType: output.config.integrationType
+                }
+            })),
+            knowledgeBases: (template.knowledgeBases ?? []).map(kb => ({
+                config: {
+                    configType: kb.config.configType,
+                    integrationType: kb.config.integrationType
+                }
+            }))
+        }))
+
+        res.status(200).json(publicTemplates)
+    } catch (error) {
+        logger.error("Error fetching public templates", { error })
+        res.status(500).json({ error: "Failed to fetch templates" })
+    }
+}
