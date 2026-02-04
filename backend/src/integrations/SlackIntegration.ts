@@ -954,19 +954,15 @@ async function handleSlackMessage(event: SlackMessageEvent, teamId: string, auth
 
         const channelType = messageEvent.channel_type
         const isPublicChannel = channelType === SlackChannelType.CHANNEL
-        const isDM = channelType === SlackChannelType.IM || channelType === SlackChannelType.MPIM
+        const isIM = channelType === SlackChannelType.IM
+        const isMPIM = channelType === SlackChannelType.MPIM
 
         // Expected Slack API errors that should be logged at warn level, not error
-        const expectedSlackApiErrors = new Set([
-            "channel_not_found",
-            "token_revoked",
-            "not_in_channel",
-            "missing_scope",
-            "account_inactive",
-            "invalid_auth"
-        ])
+        const expectedSlackApiErrors = new Set(["channel_not_found", "token_revoked", "not_in_channel", "missing_scope", "account_inactive", "invalid_auth"])
 
-        const isInChannel = async (integration: UserSlackIntegrationWithUser) => {
+        // Check if user is in channel via conversations.members API
+        // Used for private channels (groups) and MPIM (group DMs)
+        const isInChannelViaApi = async (integration: UserSlackIntegrationWithUser) => {
             try {
                 const botClient = initializeSlackWebClient(integration)
 
@@ -985,12 +981,14 @@ async function handleSlackMessage(event: SlackMessageEvent, teamId: string, auth
                             error,
                             errorCode,
                             channel: messageEvent.channel,
+                            channelType,
                             teamId
                         })
                     } else {
                         logger.error(`Error getting members`, {
                             error,
                             channel: messageEvent.channel,
+                            channelType,
                             teamId
                         })
                     }
@@ -1005,6 +1003,7 @@ async function handleSlackMessage(event: SlackMessageEvent, teamId: string, auth
                     logger.warn(`⚠ Could not get members - ${errorMsg}`, {
                         error: errorMsg,
                         channel: messageEvent.channel,
+                        channelType,
                         teamId
                     })
                     return false
@@ -1019,12 +1018,14 @@ async function handleSlackMessage(event: SlackMessageEvent, teamId: string, auth
                         error,
                         errorCode,
                         channel: messageEvent.channel,
+                        channelType,
                         teamId
                     })
                 } else {
                     logger.error(`Error getting members`, {
                         error,
                         channel: messageEvent.channel,
+                        channelType,
                         teamId
                     })
                 }
@@ -1032,18 +1033,62 @@ async function handleSlackMessage(event: SlackMessageEvent, teamId: string, auth
             }
         }
 
-        // Filter integrations: public channels and DMs include all, private channels only include users who are members
-        // Note: DMs (IM/MPIM) don't support conversations.members API reliably, so we skip the membership check
+        // For 1:1 DMs (IM), check if user is a participant without calling conversations.members
+        // In a 1:1 DM, the participants are the message sender and the DM partner (from channel info)
+        const isIMParticipant = async (integration: UserSlackIntegrationWithUser, dmPartnerId: string | undefined): Promise<boolean> => {
+            const authedUserId = integration.authed_user_id
+            const messageSenderId = messageEvent.user
+            // User is a participant if they are either the sender or the DM partner
+            return authedUserId === messageSenderId || authedUserId === dmPartnerId
+        }
+
+        // Filter integrations based on channel type
         let filteredWorkspaceUserIntegrations: UserSlackIntegrationWithUser[]
-        if (isPublicChannel || isDM) {
-            // Public channels and DMs: include all workspace integrations
+
+        if (isPublicChannel) {
+            // Public channels: include all workspace integrations
             filteredWorkspaceUserIntegrations = workspaceUserIntegrations
+        } else if (isIM) {
+            // 1:1 DMs: conversations.members doesn't work reliably, so check participants directly
+            // We need to get the DM partner ID from conversations.info first
+            let dmPartnerId: string | undefined
+            try {
+                const firstIntegration = workspaceUserIntegrations[0]
+                if (firstIntegration) {
+                    const client = initializeSlackWebClient(firstIntegration)
+                    const channelInfo = await client.conversations.info({ channel: messageEvent.channel! })
+                    // For IMs, the 'user' field contains the other participant's ID
+                    dmPartnerId = (channelInfo.channel as { user?: string } | undefined)?.user
+                }
+            } catch (error) {
+                logger.warn(`Could not get DM channel info for participant check`, {
+                    error,
+                    channel: messageEvent.channel,
+                    teamId
+                })
+            }
+
+            // Filter to only integrations where the user is a participant in the DM
+            const participantChecks = await Promise.all(
+                workspaceUserIntegrations.map(async integration => ({
+                    integration,
+                    isParticipant: await isIMParticipant(integration, dmPartnerId)
+                }))
+            )
+            filteredWorkspaceUserIntegrations = participantChecks.filter(({ isParticipant }) => isParticipant).map(({ integration }) => integration)
+
+            logger.debug(`Filtered DM integrations: ${filteredWorkspaceUserIntegrations.length}/${workspaceUserIntegrations.length}`, {
+                channel: messageEvent.channel,
+                dmPartnerId,
+                messageSender: messageEvent.user,
+                teamId
+            })
         } else {
-            // Private channels (groups): only include integrations where the user is in the channel
+            // Private channels (groups) and MPIM (group DMs): use conversations.members API
             const channelMembershipChecks = await Promise.all(
                 workspaceUserIntegrations.map(async integration => ({
                     integration,
-                    isMember: await isInChannel(integration)
+                    isMember: await isInChannelViaApi(integration)
                 }))
             )
             filteredWorkspaceUserIntegrations = channelMembershipChecks.filter(({ isMember }) => isMember).map(({ integration }) => integration)
