@@ -126,18 +126,15 @@ export const searchLogsTool = tool({
                         date_to: dateTo ?? null
                     },
                     searchTerm: "", // Not used - message filtering is done via filterGroup
-                    filterGroup:
-                        filterConditions.length > 0
-                            ? {
-                                  type: "AND",
-                                  values: [
-                                      {
-                                          type: "AND",
-                                          values: filterConditions
-                                      }
-                                  ]
-                              }
-                            : undefined,
+                    filterGroup: {
+                        type: "AND",
+                        values: [
+                            {
+                                type: "AND",
+                                values: filterConditions
+                            }
+                        ]
+                    },
                     severityLevels: normalizedSeverityLevels && normalizedSeverityLevels.length > 0 ? normalizedSeverityLevels : [],
                     serviceNames: []
                 }
