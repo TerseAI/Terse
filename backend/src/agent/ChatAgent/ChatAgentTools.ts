@@ -185,7 +185,7 @@ const GitHubConfigSchema = BaseConfigSchema.extend({
 })
 
 const GitHubKnowledgeBaseConfigSchema = BaseConfigSchema.extend({
-    configType: z.literal(ConfigType.GITHUB_KB),
+    configType: z.literal(ConfigType.GITHUB_KB).describe("Use ONLY for GitHub repository knowledge bases. Do NOT use for PostHog, LaunchDarkly, or Datadog."),
     integrationType: z.literal(IntegrationType.GITHUB),
     repositoryIds: z.array(z.number()).min(1).describe("Array of GitHub repository IDs (numeric). From fetchResourcesForIntegration, use the repo's id from resources[]."),
     repositoryNames: z.array(NonEmptyString).min(1).describe("Array of repository names matching the repositoryIds. From fetchResourcesForIntegration, use the repo's name from resources[].")
@@ -208,21 +208,21 @@ const ConfluenceConfigSchema = BaseConfigSchema.extend({
 })
 
 const PosthogConfigSchema = BaseConfigSchema.extend({
-    configType: z.literal(ConfigType.POSTHOG),
+    configType: z.literal(ConfigType.POSTHOG).describe("Use for PostHog analytics knowledge bases. Requires projectId."),
     integrationType: z.literal(IntegrationType.POSTHOG),
-    projectId: NonEmptyString,
-    projectName: z.string().nullable()
+    projectId: NonEmptyString.describe("The PostHog project ID. From fetchResourcesForIntegration with integrationType=POSTHOG, use resources[].id."),
+    projectName: z.string().nullable().describe("The PostHog project name. From fetchResourcesForIntegration, use resources[].name.")
 })
 
 const LaunchDarklyConfigSchema = BaseConfigSchema.extend({
-    configType: z.literal(ConfigType.LAUNCHDARKLY),
+    configType: z.literal(ConfigType.LAUNCHDARKLY).describe("Use for LaunchDarkly feature flag knowledge bases. Requires projectKey and environmentKeys."),
     integrationType: z.literal(IntegrationType.LAUNCHDARKLY),
-    projectKey: NonEmptyString,
-    environmentKeys: z.array(NonEmptyString).min(1)
+    projectKey: NonEmptyString.describe("The LaunchDarkly project key. From fetchResourcesForIntegration with integrationType=LAUNCHDARKLY."),
+    environmentKeys: z.array(NonEmptyString).min(1).describe("Array of LaunchDarkly environment keys to include.")
 })
 
 const DatadogConfigSchema = BaseConfigSchema.extend({
-    configType: z.literal(ConfigType.DATADOG),
+    configType: z.literal(ConfigType.DATADOG).describe("Use for Datadog log knowledge bases."),
     integrationType: z.literal(IntegrationType.DATADOG),
     defaultIndexes: z.array(NonEmptyString).default(["main"]).describe('Log indexes to search (e.g. ["main"]). From fetchResourcesForIntegration or use ["main"].')
 })
@@ -277,6 +277,9 @@ const OutputConfigSchema = z
 
 const KnowledgeBaseConfigSchema = z
     .discriminatedUnion("configType", [GitHubKnowledgeBaseConfigSchema, PosthogConfigSchema, LaunchDarklyConfigSchema, DatadogConfigSchema])
+    .describe(
+        "Knowledge base config. IMPORTANT: Match configType to integration - use POSTHOG for PostHog projects, LAUNCHDARKLY for LaunchDarkly, DATADOG for Datadog, and github_kb ONLY for GitHub repos."
+    )
     .superRefine((value, ctx) => {
         enforceNonSystemIntegrationId(value, ctx)
     })
