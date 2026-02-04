@@ -99,13 +99,13 @@ export class SlackEventHydrator extends Hydrator<SlackEvent> {
                 channelName = (channelInfo.channel as any)?.name
             } catch (channelError: any) {
                 // Handle channel not found or access denied errors
+                // These are expected for DMs (IM/MPIM) or private channels the token can't access
                 const errorCode = channelError?.data?.error || channelError?.code
                 if (errorCode === "channel_not_found" || errorCode === "not_in_channel" || errorCode === "missing_scope") {
-                    logger.error(`Channel not found or access denied for channelId: ${channelId} (permalink: ${permalink}). Error: ${errorCode}`)
+                    logger.warn(`Could not fetch channel info for channelId: ${channelId} (${errorCode}). Continuing without channel name.`)
                 } else {
-                    logger.error(`Failed to fetch channel info for channelId: ${channelId}`, channelError)
+                    logger.warn(`Failed to fetch channel info for channelId: ${channelId}. Continuing without channel name.`, channelError)
                 }
-                // Continue without channel name
             }
 
             // Get user info
