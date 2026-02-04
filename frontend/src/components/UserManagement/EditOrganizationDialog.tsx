@@ -146,7 +146,7 @@ export function EditOrganizationDialog({ open, onOpenChange }: EditOrganizationD
                                     <AvatarFallback>{(orgName || currentOrgName).slice(0, 2).toUpperCase()}</AvatarFallback>
                                 </Avatar>
                                 {logoPreview && (
-                                    <Button type="button" variant="destructive" size="icon" onClick={clearLogo} disabled={isSaving} className="absolute -top-2 -right-2 h-5 w-5 rounded-full">
+                                    <Button type="button" variant="default" size="icon" onClick={clearLogo} disabled={isSaving} className="absolute -top-2 -right-2 h-5 w-5 rounded-full">
                                         <X className="h-3 w-3" />
                                     </Button>
                                 )}

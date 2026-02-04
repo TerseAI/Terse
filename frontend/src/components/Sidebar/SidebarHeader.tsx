@@ -7,8 +7,8 @@ import { useAuth } from "@/services/auth"
 import { BackendProvider } from "@/services/backend"
 
 import { EditOrganizationDialog } from "../UserManagement/EditOrganizationDialog"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "../ui/dropdown-menu"
 import { OrgLogo } from "../ui/OrgLogo"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "../ui/dropdown-menu"
 import { SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "../ui/sidebar"
 
 export function AppSidebarHeader() {
