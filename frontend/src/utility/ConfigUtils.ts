@@ -81,7 +81,7 @@ export function deserializeConfig(jsonConfig: any): ConfigInstance {
             return new ConfluenceConfig(integrationId, confluenceConfig.spaceName, confluenceConfig.spaceId, confluenceConfig.pageId, confluenceConfig.pageName)
         case ConfigType.POSTHOG:
             const posthogConfig = jsonConfig as PosthogConfig
-            return new PosthogConfig(integrationId, posthogConfig.projectId, posthogConfig.projectName, posthogConfig.canReadLogs, posthogConfig.canReadSessionRecordings)
+            return new PosthogConfig(integrationId, posthogConfig.projectId, posthogConfig.projectName)
         case ConfigType.TIME_TRIGGER:
             const timeTriggerConfig = jsonConfig as TimeTriggerConfig
             return new TimeTriggerConfig(timeTriggerConfig.cronExpression)

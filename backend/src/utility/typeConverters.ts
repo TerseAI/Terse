@@ -456,9 +456,7 @@ export const convertPrismaKnowledgeBaseConfigToConfigInstance = (channelKnowledg
         return new PosthogConfig(
             integrationId,
             posthogIntegration.project_id,
-            posthogIntegration.project_name || undefined,
-            posthogIntegration.can_read_logs || false,
-            posthogIntegration.can_read_session_recordings || false
+            posthogIntegration.project_name || undefined
         )
     }
 
@@ -498,7 +496,7 @@ export const convertPlainObjectToKnowledgeBaseConfigInstance = (config: any): Co
         case ConfigType.DATADOG:
             return new DatadogConfig(config.integrationId, config.defaultIndexes || ["main"])
         case ConfigType.POSTHOG:
-            return new PosthogConfig(config.integrationId, config.projectId, config.projectName, config.canReadLogs || false, config.canReadSessionRecordings || false)
+            return new PosthogConfig(config.integrationId, config.projectId, config.projectName)
         case ConfigType.GITHUB_KB:
             return new GitHubKBConfig(config.integrationId, config.repositoryIds || [], config.repositoryNames || [])
         case ConfigType.LAUNCHDARKLY:
