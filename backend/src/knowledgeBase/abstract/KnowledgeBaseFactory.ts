@@ -5,7 +5,9 @@ import { AgentKnowledgeBaseWithConfigs, AgentWithRelations } from "../../types/p
 import { DatadogKnowledgeBase } from "../datadog/DatadogKnowledgeBase"
 import { GitHubKnowledgeBase } from "../github/GitHubKnowledgeBase"
 import { LaunchDarklyKnowledgeBase } from "../launchdarkly/LaunchDarklyKnowledgeBase"
+import { LinearKnowledgeBase } from "../linear/LinearKnowledgeBase"
 import { PosthogKnowledgeBase } from "../posthog/PosthogKnowledgeBase"
+import { SlackKnowledgeBase } from "../slack/SlackKnowledgeBase"
 
 import { KnowledgeBase } from "./KnowledgeBase"
 
@@ -14,7 +16,9 @@ export class KnowledgeBaseFactory {
         [KnowledgeBaseConfigType.POSTHOG, () => new PosthogKnowledgeBase()],
         [KnowledgeBaseConfigType.GITHUB, () => new GitHubKnowledgeBase()],
         [KnowledgeBaseConfigType.LAUNCHDARKLY, () => new LaunchDarklyKnowledgeBase()],
-        [KnowledgeBaseConfigType.DATADOG, () => new DatadogKnowledgeBase()]
+        [KnowledgeBaseConfigType.DATADOG, () => new DatadogKnowledgeBase()],
+        [KnowledgeBaseConfigType.LINEAR, () => new LinearKnowledgeBase()],
+        [KnowledgeBaseConfigType.SLACK, () => new SlackKnowledgeBase()]
     ])
 
     /**

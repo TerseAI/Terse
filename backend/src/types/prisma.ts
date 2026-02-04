@@ -103,6 +103,8 @@ export type AgentKnowledgeBaseWithConfigs = Prisma.automation_knowledge_basesGet
         github_kb_config: true
         launchdarkly_config: true
         datadog_config: true
+        linear_kb_config: true
+        slack_kb_config: true
     }
 }>
 
