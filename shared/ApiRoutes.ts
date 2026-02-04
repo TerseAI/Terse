@@ -29,6 +29,14 @@ export const ApiRoutes = {
     GET_CURRENT: "/organizations/current",
     LIST: "/organizations",
     SWITCH: "/organizations/switch",
+    UPDATE: "/organizations",
+    LOGO_UPLOAD_URL: "/organizations/logo/upload-url",
+    LOGO: {
+      pattern: "/organizations/:organizationId/logo",
+      build: (organizationId: string) =>
+        `/organizations/${encodeURIComponent(organizationId)}/logo`,
+      params: { organizationId: "string" } as const,
+    },
   },
 
   // Stats routes
