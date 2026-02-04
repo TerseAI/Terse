@@ -223,6 +223,12 @@ const LaunchDarklyConfigSchema = BaseConfigSchema.extend({
     environmentKeys: z.array(NonEmptyString).min(1)
 })
 
+const DatadogConfigSchema = BaseConfigSchema.extend({
+    configType: z.literal(ConfigType.DATADOG),
+    integrationType: z.literal(IntegrationType.DATADOG),
+    defaultIndexes: z.array(NonEmptyString).default(["main"]).describe('Log indexes to search (e.g. ["main"]). From fetchResourcesForIntegration or use ["main"].')
+})
+
 const TimeTriggerConfigSchema = BaseConfigSchema.extend({
     configType: z.literal(ConfigType.TIME_TRIGGER),
     integrationType: z.literal(IntegrationType.CRON_JOB),
@@ -271,9 +277,11 @@ const OutputConfigSchema = z
         enforceNonSystemIntegrationId(value, ctx)
     })
 
-const KnowledgeBaseConfigSchema = z.discriminatedUnion("configType", [GitHubKnowledgeBaseConfigSchema, PosthogConfigSchema, LaunchDarklyConfigSchema]).superRefine((value, ctx) => {
-    enforceNonSystemIntegrationId(value, ctx)
-})
+const KnowledgeBaseConfigSchema = z
+    .discriminatedUnion("configType", [GitHubKnowledgeBaseConfigSchema, PosthogConfigSchema, LaunchDarklyConfigSchema, DatadogConfigSchema])
+    .superRefine((value, ctx) => {
+        enforceNonSystemIntegrationId(value, ctx)
+    })
 
 const AgentTriggerSchema = z
     .object({
