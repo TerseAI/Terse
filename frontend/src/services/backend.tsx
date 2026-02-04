@@ -409,6 +409,26 @@ interface BackendService {
      * Gets the WorkOS widget token
      */
     getWidgetToken(): Promise<{ token: string; expiresAt: string }>
+
+    /**
+     * Gets a presigned URL for uploading an organization logo (admin only)
+     */
+    getOrgLogoUploadUrl(contentType: string): Promise<string>
+
+    /**
+     * Gets the logo URL for an organization
+     */
+    getOrgLogoUrl(organizationId: string): Promise<string | null>
+
+    /**
+     * Uploads an organization logo using presigned URL
+     */
+    uploadOrgLogo(file: File): Promise<void>
+
+    /**
+     * Updates organization settings (admin only)
+     */
+    updateOrganization(name: string): Promise<{ id: string; name: string }>
 }
 
 export const BackendProvider: BackendService = {
@@ -1175,6 +1195,50 @@ export const BackendProvider: BackendService = {
             .then(response => response.data)
             .catch(error => {
                 console.error("Error getting widget token:", error)
+                throw error
+            })
+    },
+
+    getOrgLogoUploadUrl: (contentType: string) => {
+        return axios
+            .get<{ uploadUrl: string }>(`${backendBaseUrl}${ApiRoutes.ORGANIZATIONS.LOGO_UPLOAD_URL}`, {
+                params: { contentType },
+                withCredentials: true
+            })
+            .then(response => response.data.uploadUrl)
+            .catch(error => {
+                console.error("Error getting logo upload URL:", error)
+                throw error
+            })
+    },
+
+    getOrgLogoUrl: (organizationId: string) => {
+        return axios
+            .get<{ logoUrl: string | null }>(`${backendBaseUrl}${ApiRoutes.ORGANIZATIONS.LOGO.build(organizationId)}`, { withCredentials: true })
+            .then(response => response.data.logoUrl)
+            .catch(error => {
+                console.error("Error getting logo URL:", error)
+                throw error
+            })
+    },
+
+    uploadOrgLogo: async (file: File) => {
+        const contentType = file.type
+        const uploadUrl = await BackendProvider.getOrgLogoUploadUrl(contentType)
+
+        await axios.put(uploadUrl, file, {
+            headers: {
+                "Content-Type": contentType
+            }
+        })
+    },
+
+    updateOrganization: (name: string) => {
+        return axios
+            .put<{ id: string; name: string }>(`${backendBaseUrl}${ApiRoutes.ORGANIZATIONS.UPDATE}`, { name }, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error("Error updating organization:", error)
                 throw error
             })
     }
