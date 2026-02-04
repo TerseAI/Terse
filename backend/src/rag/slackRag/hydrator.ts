@@ -104,7 +104,8 @@ export class SlackEventHydrator extends Hydrator<SlackEvent> {
                 if (errorCode === "channel_not_found" || errorCode === "not_in_channel" || errorCode === "missing_scope") {
                     logger.warn(`Could not fetch channel info for channelId: ${channelId} (${errorCode}). Continuing without channel name.`)
                 } else {
-                    logger.warn(`Failed to fetch channel info for channelId: ${channelId}. Continuing without channel name.`, channelError)
+                    // Unexpected errors (network, rate limit, auth) should remain at error level
+                    logger.error(`Failed to fetch channel info for channelId: ${channelId}. Continuing without channel name.`, channelError)
                 }
             }
 
