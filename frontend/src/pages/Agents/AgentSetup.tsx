@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useSearchParams } from "react-router-dom"
 
+import { Tab, TabGroup, TabList, TabPanel, TabPanels } from "@headlessui/react"
 import { AnimatePresence, Easing, motion } from "framer-motion"
 import type { LucideIcon } from "lucide-react"
 import { FileText, Loader2, MessageCircle, Rocket, Users } from "lucide-react"
@@ -9,7 +10,6 @@ import { v4 as uuidv4 } from "uuid"
 import { TemplateCard } from "@/components/Agents/TemplateCard"
 import { Chat, ChatHandle } from "@/components/chat/Chat"
 import { ChatEventPayload } from "@/components/chat/hooks/useCompletionSocket"
-import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { useTemplates } from "@/hooks/api/useTemplates"
 import { ModelRequest, SendModelRequest } from "@/shared/ModelEvents"
@@ -44,8 +44,6 @@ export default function AgentSetup() {
     const chatRef = useRef<ChatHandle>(null)
     const appliedDeepLinkKey = useRef<string | null>(null)
     const [searchParams] = useSearchParams()
-
-    const filteredTemplates = useMemo(() => templates.filter(t => t.category === selectedCategory), [templates, selectedCategory])
 
     // Generate a session ID for this setup flow
     const sessionId = useMemo(() => uuidv4(), [])
@@ -248,61 +246,48 @@ export default function AgentSetup() {
                                         <div className="h-px flex-1 bg-border" />
                                     </div>
 
-                                    {/* Category chips */}
-                                    <div className="flex flex-wrap justify-between items-center gap-2 py-1">
-                                        {TEMPLATE_CATEGORIES.map(({ id, label, icon: Icon }) => (
-                                            <motion.div
-                                                key={id}
-                                                initial={false}
-                                                animate={{
-                                                    scale: selectedCategory === id ? 1.02 : 1
-                                                }}
-                                                transition={{ duration: 0.2, ease: "easeOut" }}
-                                            >
-                                                <Button
-                                                    variant={selectedCategory === id ? "secondary" : "outline"}
-                                                    size="lg"
-                                                    className="h-11 px-5 gap-2 text-base font-medium"
-                                                    onClick={() => setSelectedCategory(id)}
+                                    {/* Category tabs (same styling as Agent Detail) */}
+                                    <TabGroup selectedIndex={TEMPLATE_CATEGORIES.findIndex(c => c.id === selectedCategory)} onChange={index => setSelectedCategory(TEMPLATE_CATEGORIES[index].id)}>
+                                        <TabList className="flex gap-2 border-b border-input">
+                                            {TEMPLATE_CATEGORIES.map(({ id, label, icon: Icon }) => (
+                                                <Tab
+                                                    key={id}
+                                                    className={({ selected }) =>
+                                                        `px-3 py-2 text-sm font-medium rounded-t-md border-b-2 -mb-px inline-flex items-center gap-2 ${selected ? "text-foreground border-primary" : "text-muted-foreground border-transparent hover:text-foreground"}`
+                                                    }
                                                 >
-                                                    <Icon className="size-5 shrink-0" />
-                                                    {label}
-                                                </Button>
-                                            </motion.div>
-                                        ))}
-                                    </div>
-
-                                    {/* Templates Grid */}
-                                    {isLoading ? (
-                                        <div className="flex items-center justify-center py-8">
-                                            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                                        </div>
-                                    ) : (
-                                        <AnimatePresence mode="wait">
-                                            {filteredTemplates.length > 0 ? (
-                                                <motion.div
-                                                    key={selectedCategory}
-                                                    initial={{ opacity: 0, y: 8 }}
-                                                    animate={{ opacity: 1, y: 0 }}
-                                                    exit={{ opacity: 0, y: -8 }}
-                                                    transition={{ duration: 0.25, ease: "easeOut" }}
-                                                    className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
-                                                >
-                                                    {filteredTemplates.map(template => (
-                                                        <TemplateCard key={template.id} template={template} onSelect={handleTemplateSelect} />
-                                                    ))}
-                                                </motion.div>
-                                            ) : (
-                                                <motion.div key={`empty-${selectedCategory}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
-                                                    <Card className="border-dashed">
-                                                        <CardContent className="flex flex-col items-center justify-center py-6 text-center">
-                                                            <p className="text-muted-foreground text-sm">No templates in this category yet</p>
-                                                        </CardContent>
-                                                    </Card>
-                                                </motion.div>
-                                            )}
-                                        </AnimatePresence>
-                                    )}
+                                                    <Icon className="h-4 w-4" />
+                                                    <span>{label}</span>
+                                                </Tab>
+                                            ))}
+                                        </TabList>
+                                        <TabPanels className="pt-4">
+                                            {TEMPLATE_CATEGORIES.map(({ id }) => {
+                                                const categoryTemplates = templates.filter(t => t.category === id)
+                                                return (
+                                                    <TabPanel key={id}>
+                                                        {isLoading ? (
+                                                            <div className="flex items-center justify-center py-8">
+                                                                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                                                            </div>
+                                                        ) : categoryTemplates.length > 0 ? (
+                                                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                                                {categoryTemplates.map(template => (
+                                                                    <TemplateCard key={template.id} template={template} onSelect={handleTemplateSelect} />
+                                                                ))}
+                                                            </div>
+                                                        ) : (
+                                                            <Card className="border-dashed">
+                                                                <CardContent className="flex flex-col items-center justify-center py-6 text-center">
+                                                                    <p className="text-muted-foreground text-sm">No templates in this category yet</p>
+                                                                </CardContent>
+                                                            </Card>
+                                                        )}
+                                                    </TabPanel>
+                                                )
+                                            })}
+                                        </TabPanels>
+                                    </TabGroup>
                                 </div>
                             </div>
                         </motion.div>
