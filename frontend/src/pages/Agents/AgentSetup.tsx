@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useSearchParams } from "react-router-dom"
 
-import { Tab, TabGroup, TabList, TabPanels } from "@headlessui/react"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { AnimatePresence, Easing, motion } from "framer-motion"
 import type { LucideIcon } from "lucide-react"
 import { FileText, Loader2, MessageCircle, Rocket, Users } from "lucide-react"
@@ -252,22 +252,17 @@ export default function AgentSetup() {
                                         <div className="h-px flex-1 bg-border" />
                                     </div>
 
-                                    {/* Category tabs (same styling as Agent Detail) */}
-                                    <TabGroup selectedIndex={TEMPLATE_CATEGORIES.findIndex(c => c.id === selectedCategory)} onChange={index => setSelectedCategory(TEMPLATE_CATEGORIES[index].id)}>
-                                        <TabList className="flex w-full gap-2 border-b border-input">
+                                    {/* Category tabs */}
+                                    <Tabs value={selectedCategory} onValueChange={v => setSelectedCategory(v as TemplateCategory)}>
+                                        <TabsList variant="line" className="w-full">
                                             {TEMPLATE_CATEGORIES.map(({ id, label, icon: Icon }) => (
-                                                <Tab
-                                                    key={id}
-                                                    className={({ selected }) =>
-                                                        `flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium rounded-t-md border-b-2 -mb-px ${selected ? "text-foreground border-primary" : "text-muted-foreground border-transparent hover:text-foreground"}`
-                                                    }
-                                                >
+                                                <TabsTrigger key={id} value={id} variant="line" className="flex items-center gap-2">
                                                     <Icon className="h-4 w-4" />
                                                     <span>{label}</span>
-                                                </Tab>
+                                                </TabsTrigger>
                                             ))}
-                                        </TabList>
-                                        <TabPanels className="pt-4 overflow-hidden">
+                                        </TabsList>
+                                        <div className="pt-4 overflow-hidden">
                                             <AnimatePresence mode="wait" initial={false}>
                                                 <motion.div
                                                     key={selectedCategory}
@@ -298,8 +293,8 @@ export default function AgentSetup() {
                                                     )}
                                                 </motion.div>
                                             </AnimatePresence>
-                                        </TabPanels>
-                                    </TabGroup>
+                                        </div>
+                                    </Tabs>
                                 </div>
                             </div>
                         </motion.div>
