@@ -151,11 +151,11 @@ export const agentDetailKey = (id: string | null): readonly [string, { id: strin
 }
 
 export const builderChatHistoryKey = (sessionId: string | null | undefined): readonly [string, string] | null => {
-    if (!sessionId) return null;
-    return ['builderChatHistory', sessionId] as const;
-};
+    if (!sessionId) return null
+    return ["builderChatHistory", sessionId] as const
+}
 
 export const orgLogoKey = (organizationId: string | null | undefined): readonly [string, string] | null => {
-    if (!organizationId) return null;
-    return ['orgLogo', organizationId] as const;
-};
+    if (!organizationId) return null
+    return ["orgLogo", organizationId] as const
+}

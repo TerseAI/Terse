@@ -146,8 +146,7 @@ export const ApiRoutes = {
         },
         ENVIRONMENTS_BY_INTEGRATION_AND_PROJECT: {
             pattern: "/launchdarkly/integrations/:integrationId/projects/:projectKey/environments",
-            build: (integrationId: string, projectKey: string) =>
-                `/launchdarkly/integrations/${encodeURIComponent(integrationId)}/projects/${encodeURIComponent(projectKey)}/environments`,
+            build: (integrationId: string, projectKey: string) => `/launchdarkly/integrations/${encodeURIComponent(integrationId)}/projects/${encodeURIComponent(projectKey)}/environments`,
             params: { integrationId: "string", projectKey: "string" } as const
         }
     },
