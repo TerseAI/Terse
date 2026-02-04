@@ -671,7 +671,7 @@ export class LinearKBConfig implements ConfigInstance {
     ) {}
 
     isComplete(): boolean {
-        return true
+        return !!this.integrationId
     }
 
     formatForAgent(): string {

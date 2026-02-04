@@ -140,7 +140,9 @@ const SlackKBConfigSchema = BaseConfigSchema.extend({
     integrationType: z.literal(IntegrationType.SLACK),
     channelIds: z.array(z.string()).optional(),
     channelNames: z.array(z.string()).optional(),
-    allowDms: z.boolean().optional()
+    allowDms: z.boolean().optional(),
+    userIds: z.array(z.string()).optional(),
+    userNames: z.array(z.string()).optional()
 })
 
 // Time Trigger config schema

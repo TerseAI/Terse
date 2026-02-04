@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 
 import { AlertTriangleIcon, Plus } from "lucide-react"
 
@@ -33,6 +33,13 @@ export function SlackKnowledgeBaseIntegration({ knowledgeBase, variant, setConfi
 
     const { channels, isLoading: channelsLoading } = useSlackChannels(selectedIntegrationId)
     const { users, isLoading: usersLoading } = useSlackUsers(hasUserToken ? selectedIntegrationId : null)
+
+    // Auto-select integration when there's exactly one and none is currently selected
+    useEffect(() => {
+        if (!selectedIntegrationId && integrations.length === 1) {
+            setConfig(new SlackKBConfig(integrations[0].id, [], [], false, [], []))
+        }
+    }, [selectedIntegrationId, integrations, setConfig])
 
     const handleConnect = async () => {
         await connectOAuth()
@@ -136,14 +143,7 @@ export function SlackKnowledgeBaseIntegration({ knowledgeBase, variant, setConfi
         value: integration.id
     }))
 
-    let selectedOption = connectionSelections.find(option => option.value === selectedIntegrationId)
-    if (!selectedIntegrationId && !selectedOption && connectionSelections.length === 1) {
-        const defaultIntegration = connectionSelections[0]
-        updateIntegrationId(defaultIntegration.value)
-        selectedOption = defaultIntegration
-    } else if (!selectedOption) {
-        selectedOption = connectionSelections[0]
-    }
+    const selectedOption = connectionSelections.find(option => option.value === selectedIntegrationId) ?? connectionSelections[0] ?? null
 
     const hasFilters = (slackConfig.channelIds?.length ?? 0) > 0 || slackConfig.allowDms || (slackConfig.userIds?.length ?? 0) > 0
 

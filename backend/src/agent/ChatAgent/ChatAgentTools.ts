@@ -239,9 +239,15 @@ const LinearKnowledgeBaseConfigSchema = BaseConfigSchema.extend({
 const SlackKnowledgeBaseConfigSchema = BaseConfigSchema.extend({
     configType: z.literal(ConfigType.SLACK_KB).describe("Use for Slack conversation history knowledge bases. Read channel and DM history."),
     integrationType: z.literal(IntegrationType.SLACK),
-    channelIds: z.array(z.string()).nullable().optional().describe("Slack channel IDs to read. From fetchResourcesForIntegration with integrationType=SLACK (channels), use resources[].id."),
+    channelIds: z
+        .array(z.string())
+        .nullable()
+        .optional()
+        .describe("Slack channel IDs to read. From fetchResourcesForIntegration with integrationType=SLACK (channels), use resources[].id. If omitted, reads from all accessible channels."),
     channelNames: z.array(z.string()).nullable().optional().describe("Display names for the channels, matching channelIds order."),
-    allowDms: z.boolean().describe("Whether to allow reading the user's DMs. Provide at least one of channelIds or allowDms=true.")
+    allowDms: z.boolean().optional().default(false).describe("Whether to allow reading DMs. Only applicable for Slack user integrations (not workspace bot integrations)."),
+    userIds: z.array(z.string()).nullable().optional().describe("Specific Slack user IDs to filter DM conversations. If omitted, reads from all accessible DMs."),
+    userNames: z.array(z.string()).nullable().optional().describe("Display names for the users, matching userIds order.")
 })
 
 const TimeTriggerConfigSchema = BaseConfigSchema.extend({
