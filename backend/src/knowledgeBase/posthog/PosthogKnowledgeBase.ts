@@ -105,8 +105,7 @@ export class PosthogKnowledgeBase extends KnowledgeBase<PosthogConfig> {
                 "Use startSeconds/endSeconds to focus on specific time windows within a session."
         )
         sections.push(
-            "• searchPosthogEvents: Query analytics events (pageviews, button clicks, custom tracked events). " +
-                "Filter by event name, user email, or custom properties. Use this to find specific user actions or analyze behavioral patterns."
+            "• searchPosthogEvents: Query analytics events. Use countByEventNameOnly: true and customEventsOnly: true (defaults) to get counts for the project's custom-tracked events only (excludes PostHog built-ins like $pageview). Works for any user's PostHog project. Use customEventsOnly: false to include all events."
         )
 
         sections.push(`
