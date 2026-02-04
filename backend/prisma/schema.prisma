@@ -486,8 +486,8 @@ model automation_knowledge_bases {
   github_kb_config    automation_github_kb_configs?
   datadog_config      automation_datadog_configs?
   launchdarkly_config automation_launchdarkly_configs?
-  linear_kb_config   automation_linear_kb_configs?
-  slack_kb_config    automation_slack_kb_configs?
+  linear_kb_config    automation_linear_kb_configs?
+  slack_kb_config     automation_slack_kb_configs?
 
   @@index([automation_id])
   @@index([config_type, integration_id])
@@ -550,7 +550,7 @@ model automation_datadog_configs {
 // Linear Knowledge Base Configuration
 model automation_linear_kb_configs {
   id                           String  @id @default(cuid())
-  automation_knowledge_base_id  String  @unique
+  automation_knowledge_base_id String  @unique
   team_id                      String?
   team_name                    String?
   project_id                   String?
@@ -562,7 +562,7 @@ model automation_linear_kb_configs {
 // Slack Knowledge Base Configuration
 model automation_slack_kb_configs {
   id                           String   @id @default(cuid())
-  automation_knowledge_base_id  String   @unique
+  automation_knowledge_base_id String   @unique
   channel_ids                  String[]
   channel_names                String[]
   allow_dms                    Boolean  @default(false)
