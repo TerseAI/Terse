@@ -11,44 +11,13 @@
 // Type definitions for route objects
 
 export const ApiRoutes = {
-  // Authentication routes
-  AUTH: {
-    ME: "/me",
-    LOGIN: "/login",
-    LOGOUT: "/logout",
-    GITHUB_APP_CALLBACK: "/auth/github-app/callback",
-    WORKOS_CALLBACK: "/auth/workos/callback",
-  },
-
-  WORKOS: {
-    WIDGET_TOKEN: "/auth/workos/widget-token",
-  },
-
-  ORGANIZATIONS: {
-    CREATE: "/organizations",
-    GET_CURRENT: "/organizations/current",
-    LIST: "/organizations",
-    SWITCH: "/organizations/switch",
-    UPDATE: "/organizations",
-    LOGO_UPLOAD_URL: "/organizations/logo/upload-url",
-    LOGO: {
-      pattern: "/organizations/:organizationId/logo",
-      build: (organizationId: string) =>
-        `/organizations/${encodeURIComponent(organizationId)}/logo`,
-      params: { organizationId: "string" } as const,
-    },
-  },
-
-  // Stats routes
-  STATS: "/stats",
-
-  // Run history routes
-  RUN_HISTORY: {
-    ACTIONS: "/run-history/actions",
-    BY_AGENT_ID: {
-      pattern: "/run-history/:agentId",
-      build: (agentId: string) => `/run-history/${encodeURIComponent(agentId)}`,
-      params: { agentId: "string" } as const,
+    // Authentication routes
+    AUTH: {
+        ME: "/me",
+        LOGIN: "/login",
+        LOGOUT: "/logout",
+        GITHUB_APP_CALLBACK: "/auth/github-app/callback",
+        WORKOS_CALLBACK: "/auth/workos/callback"
     },
 
     WORKOS: {
@@ -59,7 +28,14 @@ export const ApiRoutes = {
         CREATE: "/organizations",
         GET_CURRENT: "/organizations/current",
         LIST: "/organizations",
-        SWITCH: "/organizations/switch"
+        SWITCH: "/organizations/switch",
+        UPDATE: "/organizations",
+        LOGO_UPLOAD_URL: "/organizations/logo/upload-url",
+        LOGO: {
+            pattern: "/organizations/:organizationId/logo",
+            build: (organizationId: string) => `/organizations/${encodeURIComponent(organizationId)}/logo`,
+            params: { organizationId: "string" } as const
+        }
     },
 
     // Stats routes
@@ -170,7 +146,8 @@ export const ApiRoutes = {
         },
         ENVIRONMENTS_BY_INTEGRATION_AND_PROJECT: {
             pattern: "/launchdarkly/integrations/:integrationId/projects/:projectKey/environments",
-            build: (integrationId: string, projectKey: string) => `/launchdarkly/integrations/${encodeURIComponent(integrationId)}/projects/${encodeURIComponent(projectKey)}/environments`,
+            build: (integrationId: string, projectKey: string) =>
+                `/launchdarkly/integrations/${encodeURIComponent(integrationId)}/projects/${encodeURIComponent(projectKey)}/environments`,
             params: { integrationId: "string", projectKey: "string" } as const
         }
     },
