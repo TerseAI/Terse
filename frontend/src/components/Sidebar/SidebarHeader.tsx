@@ -2,14 +2,13 @@ import { useState } from "react"
 
 import { Check, ChevronsUpDown, Settings } from "lucide-react"
 
-import { useOrgLogo } from "@/hooks/api/useOrgLogo"
 import { useUserOrganizations } from "@/hooks/api/useUserOrganizations"
 import { useAuth } from "@/services/auth"
 import { BackendProvider } from "@/services/backend"
 
 import { EditOrganizationDialog } from "../UserManagement/EditOrganizationDialog"
-import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "../ui/dropdown-menu"
+import { OrgLogo } from "../ui/OrgLogo"
 import { SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "../ui/sidebar"
 
 export function AppSidebarHeader() {
@@ -20,8 +19,6 @@ export function AppSidebarHeader() {
     const currentOrgName = user?.organizationName || "Organization"
     const currentOrgId = user?.organizationId
     const hasOrgs = organizations.length > 0
-
-    const { logoUrl } = useOrgLogo(currentOrgId)
 
     const handleSwitch = async (organizationId: string) => {
         if (organizationId === currentOrgId) return
@@ -45,12 +42,7 @@ export function AppSidebarHeader() {
 
     const headerContent = (
         <SidebarMenuButton size="lg" className={hasOrgs ? "cursor-pointer" : "cursor-default"}>
-            <div className="bg-white text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
-                <Avatar>
-                    <AvatarImage src={logoUrl || "/terse.png"} alt={currentOrgName} />
-                    <AvatarFallback>{currentOrgName.slice(0, 2).toUpperCase()}</AvatarFallback>
-                </Avatar>
-            </div>
+            <OrgLogo organizationId={currentOrgId} alt={currentOrgName} />
             <div className="flex flex-col gap-0.5 leading-none">
                 <span className="font-medium">{currentOrgName}</span>
                 <span className="text-xs text-muted-foreground">Terse AI</span>
@@ -70,6 +62,7 @@ export function AppSidebarHeader() {
                                 <DropdownMenuContent side="bottom" className="min-w-56" align="start">
                                     {organizations.map(org => (
                                         <DropdownMenuItem key={org.id} onClick={() => handleSwitch(org.id)}>
+                                            <OrgLogo organizationId={org.id} alt={org.name} size="sm" className="mr-2" />
                                             <span>{org.name}</span>
                                             {org.id === currentOrgId && <Check className="ml-auto size-4" />}
                                         </DropdownMenuItem>

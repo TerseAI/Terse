@@ -5,12 +5,14 @@ import { orgLogoKey } from "@/shared/InvalidationKeys"
 
 export function useOrgLogo(organizationId: string | null | undefined) {
     const { data, error, isLoading, isValidating, mutate } = useSWR<string | null>(orgLogoKey(organizationId), () => BackendProvider.getOrgLogoUrl(organizationId!), {
-        revalidateOnFocus: false
+        revalidateOnFocus: false,
+        revalidateIfStale: false,
+        dedupingInterval: 60000
     })
 
     return {
         logoUrl: data ?? null,
-        isLoading: isLoading || (!data && !error && !!organizationId),
+        isLoading,
         isError: Boolean(error),
         error,
         isValidating,
