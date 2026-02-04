@@ -8,9 +8,7 @@ type Organization = { id: string; name: string }
 export function useUserOrganizations() {
     const { data, error, isLoading, isValidating, mutate } = useSWR<{
         organizations: Organization[]
-    }>(userOrganizationsKey(), () => BackendProvider.getUserOrganizations(), {
-        revalidateOnFocus: false
-    })
+    }>(userOrganizationsKey(), () => BackendProvider.getUserOrganizations())
 
     return {
         organizations: data?.organizations ?? [],

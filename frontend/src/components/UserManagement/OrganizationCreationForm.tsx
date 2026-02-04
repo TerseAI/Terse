@@ -1,10 +1,10 @@
-import { useMemo, useState } from "react"
+import { useMemo, useRef, useState } from "react"
 import { useForm } from "react-hook-form"
 import { useNavigate } from "react-router-dom"
 
 import { zodResolver } from "@hookform/resolvers/zod"
 import { AxiosError } from "axios"
-import { Loader2 } from "lucide-react"
+import { ImagePlus, Loader2, X } from "lucide-react"
 import * as z from "zod"
 
 import { Button } from "@/components/ui/button"
@@ -20,6 +20,9 @@ export default function OrganizationCreationForm() {
     const [isLoading, setIsLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [success, setSuccess] = useState(false)
+    const [logoFile, setLogoFile] = useState<File | null>(null)
+    const [logoPreview, setLogoPreview] = useState<string | null>(null)
+    const fileInputRef = useRef<HTMLInputElement>(null)
     const navigate = useNavigate()
     const { user, refreshUser } = useAuth()
 
@@ -61,13 +64,55 @@ export default function OrganizationCreationForm() {
         defaultValues: { name: "", firstName: "", lastName: "" }
     })
 
+    function handleLogoSelect(e: React.ChangeEvent<HTMLInputElement>) {
+        const file = e.target.files?.[0]
+        if (!file) return
+
+        if (!file.type.startsWith("image/")) {
+            setError("Please select an image file")
+            return
+        }
+
+        if (file.size > 5 * 1024 * 1024) {
+            setError("Logo must be less than 5MB")
+            return
+        }
+
+        setLogoFile(file)
+        setLogoPreview(URL.createObjectURL(file))
+        setError(null)
+    }
+
+    function clearLogo() {
+        setLogoFile(null)
+        if (logoPreview) {
+            URL.revokeObjectURL(logoPreview)
+            setLogoPreview(null)
+        }
+        if (fileInputRef.current) {
+            fileInputRef.current.value = ""
+        }
+    }
+
     async function onSubmit(values: OrganizationCreationFormValues) {
         setError(null)
         setIsLoading(true)
         try {
             await BackendProvider.createOrganization(values.name, values.firstName, values.lastName)
-            setSuccess(true)
             await refreshUser()
+
+            // Upload logo if selected (after org is created and user session is refreshed)
+            if (logoFile) {
+                try {
+                    await BackendProvider.uploadOrgLogo(logoFile)
+                } catch {
+                    // Logo upload failed but org was created - continue anyway
+                    console.error("Failed to upload logo, but organization was created")
+                }
+            }
+
+            setSuccess(true)
+
             const storedRedirect = localStorage.getItem(POST_LOGIN_REDIRECT_KEY)
             if (storedRedirect && isSafeRedirectPath(storedRedirect)) {
                 localStorage.removeItem(POST_LOGIN_REDIRECT_KEY)
@@ -157,6 +202,27 @@ export default function OrganizationCreationForm() {
                                 </FormItem>
                             )}
                         />
+                        <FormItem>
+                            <FormLabel>Organization logo</FormLabel>
+                            <FormControl>
+                                <div className="flex items-center gap-4">
+                                    {logoPreview ? (
+                                        <div className="relative">
+                                            <img src={logoPreview} alt="Logo preview" className="h-16 w-16 rounded-lg object-cover border" />
+                                            <Button type="button" variant="destructive" size="icon" onClick={clearLogo} disabled={isLoading} className="absolute -top-2 -right-2 h-5 w-5 rounded-full">
+                                                <X className="h-3 w-3" />
+                                            </Button>
+                                        </div>
+                                    ) : (
+                                        <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isLoading} className="h-16 w-16 rounded-lg border-dashed">
+                                            <ImagePlus className="h-6 w-6 text-muted-foreground" />
+                                        </Button>
+                                    )}
+                                    <Input ref={fileInputRef} type="file" accept="image/*" onChange={handleLogoSelect} className="hidden" />
+                                    <span className="text-xs text-muted-foreground">Optional. Max 5MB.</span>
+                                </div>
+                            </FormControl>
+                        </FormItem>
                         {error && <p className="text-sm text-destructive">{error}</p>}
                     </CardContent>
                     <CardFooter className="flex justify-end pt-6">

@@ -154,3 +154,8 @@ export const builderChatHistoryKey = (sessionId: string | null | undefined): rea
     if (!sessionId) return null
     return ["builderChatHistory", sessionId] as const
 }
+
+export const orgLogoKey = (organizationId: string | null | undefined): readonly [string, string] | null => {
+    if (!organizationId) return null
+    return ["orgLogo", organizationId] as const
+}
