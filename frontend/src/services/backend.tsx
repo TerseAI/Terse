@@ -1,6 +1,6 @@
 import axios from "axios"
 
-import { isSafeRedirectPath, POST_LOGIN_REDIRECT_KEY } from "../constants/storageKeys"
+import { POST_LOGIN_REDIRECT_KEY, isSafeRedirectPath } from "../constants/storageKeys"
 import { ApiRoutes } from "../shared/ApiRoutes"
 import {
     AtlassianIntegration,

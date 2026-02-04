@@ -206,7 +206,7 @@ export const AgentTemplateSchema = z
         outputs: z.array(AgentOutputTemplateSchema).min(1, "At least one output is required"),
         knowledgeBases: z.array(AgentKnowledgeBaseTemplateSchema).optional(),
         requireApproval: z.boolean().optional().default(false),
-        chatPrompt: z.string().optional(),
+        chatPrompt: z.string().min(1, "Template chatPrompt is required"),
         isActive: z.boolean().optional().default(true),
         notificationSettings: AgentNotificationSettingsSchema
     })
