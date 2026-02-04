@@ -1,12 +1,10 @@
 import { Tab, TabGroup, TabList, TabPanel, TabPanels } from "@headlessui/react"
-import { Building2, Monitor, Shield, User2, Users } from "lucide-react"
+import { Monitor, Shield, User2, Users } from "lucide-react"
 
-import { OrganizationSwitcherWidget } from "@/components/OrganizationSwitcher/OrganizationSwitcherWidget"
 import { UserTable } from "@/components/UserManagement/UserManagement"
 import { UserProfileWidget } from "@/components/UserProfile/UserProfileWidget"
 import { UserSecurityWidget } from "@/components/UserProfile/UserSecurityWidget"
 import { UserSessionsWidget } from "@/components/UserProfile/UserSessionsWidget"
-import { useUserOrganizations } from "@/hooks/api/useUserOrganizations"
 import { useAuth } from "@/services/auth"
 
 const tabClass = ({ selected }: { selected: boolean }) =>
@@ -17,8 +15,6 @@ const tabClass = ({ selected }: { selected: boolean }) =>
 export default function ProfilePage() {
     const { user } = useAuth()
     const isAdmin = user?.roles.includes("admin") ?? false
-    const { organizations } = useUserOrganizations()
-    const hasMultipleOrgs = organizations.length > 1
 
     return (
         <div className="flex flex-col h-full p-4">
@@ -37,12 +33,6 @@ export default function ProfilePage() {
                         <Shield className="h-4 w-4" />
                         <span>Security</span>
                     </Tab>
-                    {hasMultipleOrgs && (
-                        <Tab className={tabClass}>
-                            <Building2 className="h-4 w-4" />
-                            <span>Organizations</span>
-                        </Tab>
-                    )}
                     {isAdmin && (
                         <Tab className={tabClass}>
                             <Users className="h-4 w-4" />
@@ -60,11 +50,6 @@ export default function ProfilePage() {
                     <TabPanel className="flex-1 min-h-0 flex flex-col">
                         <UserSecurityWidget />
                     </TabPanel>
-                    {hasMultipleOrgs && (
-                        <TabPanel className="flex-1 min-h-0 flex flex-col">
-                            <OrganizationSwitcherWidget />
-                        </TabPanel>
-                    )}
                     {isAdmin && (
                         <TabPanel className="flex-1 min-h-0 flex flex-col">
                             <UserTable />
