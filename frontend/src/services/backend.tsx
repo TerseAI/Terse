@@ -1,5 +1,6 @@
 import axios from "axios"
 
+import { POST_LOGIN_REDIRECT_KEY, isSafeRedirectPath } from "../constants/storageKeys"
 import { ApiRoutes } from "../shared/ApiRoutes"
 import {
     AtlassianIntegration,
@@ -1104,6 +1105,19 @@ export const BackendProvider: BackendService = {
     },
 
     loginRedirect: () => {
+        try {
+            const { pathname, search, hash } = window.location
+            const redirectPath = `${pathname}${search}${hash}`.replace(/#$/, "")
+
+            if (redirectPath && redirectPath !== "/" && redirectPath !== "/app" && isSafeRedirectPath(redirectPath)) {
+                localStorage.setItem(POST_LOGIN_REDIRECT_KEY, redirectPath)
+            } else {
+                localStorage.removeItem(POST_LOGIN_REDIRECT_KEY)
+            }
+        } catch (error) {
+            console.error("Failed to store post-login redirect", error)
+        }
+
         window.location.href = `${backendRedirectUrl}${ApiRoutes.AUTH.LOGIN}`
     },
 

@@ -265,5 +265,143 @@ export const ApiRoutes = {
         `/builder-chat/${encodeURIComponent(sessionId)}/history`,
       params: { sessionId: "string" } as const,
     },
-  },
-} as const;
+
+    // Slack routes
+    SLACK: {
+        INTEGRATIONS: "/slack/integrations",
+        GET_CURRENT_INTEGRATION: "/slack/get-current-integration",
+        OAUTH_CALLBACK: "/slack/oauth-callback",
+        CHANNELS: "/slack/channels",
+        USERS: "/slack/users",
+        EVENTS: "/slack/events"
+    },
+
+    // Posthog routes
+    POSTHOG: {
+        INTEGRATIONS: "/posthog/integrations",
+        PROJECTS: "/posthog/projects"
+    },
+
+    // LaunchDarkly routes
+    LAUNCHDARKLY: {
+        INTEGRATIONS: "/launchdarkly/integrations",
+        PROJECTS_BY_INTEGRATION_ID: {
+            pattern: "/launchdarkly/integrations/:integrationId/projects",
+            build: (integrationId: string) => `/launchdarkly/integrations/${encodeURIComponent(integrationId)}/projects`,
+            params: { integrationId: "string" } as const
+        },
+        ENVIRONMENTS_BY_INTEGRATION_AND_PROJECT: {
+            pattern: "/launchdarkly/integrations/:integrationId/projects/:projectKey/environments",
+            build: (integrationId: string, projectKey: string) => `/launchdarkly/integrations/${encodeURIComponent(integrationId)}/projects/${encodeURIComponent(projectKey)}/environments`,
+            params: { integrationId: "string", projectKey: "string" } as const
+        }
+    },
+
+    // Datadog routes
+    DATADOG: {
+        INTEGRATIONS: "/datadog/integrations",
+        INDEXES: "/datadog/indexes"
+    },
+
+    // Agents routes
+    AGENTS: {
+        LIST: "/agents",
+        RECENT: "/agents/recent",
+        BY_ID: {
+            pattern: "/agents/:id",
+            build: (id: string) => `/agents/${encodeURIComponent(id)}`,
+            params: { id: "string" } as const
+        }
+    },
+
+    // Templates routes
+    TEMPLATES: "/templates",
+    PUBLIC: {
+        TEMPLATES: "/public/templates"
+    },
+
+    // Prompt builder routes
+    PROMPT_BUILDER: {
+        GENERATE_QUESTIONS: "/prompt-builder/generate-questions",
+        GENERATE_PROMPT: "/prompt-builder/generate-prompt"
+    },
+
+    // Tools routes
+    TOOLS: {
+        THAT_REQUIRE_APPROVALS: "/tools/that-require-approvals"
+    },
+
+    // Integrations routes
+    INTEGRATIONS: {
+        INSTALLATION_DETAILS_BY_TYPE: {
+            pattern: "/integrations/:integrationType/installation-details",
+            build: (integrationType: string) => `/integrations/${encodeURIComponent(integrationType)}/installation-details`,
+            params: { integrationType: "string" } as const
+        },
+        LIST: "/integrations",
+        ACTIVE: "/integrations/active"
+    },
+
+    // Notification destinations routes
+    NOTIFICATION_DESTINATIONS: {
+        LIST: "/notification-destinations",
+        BY_ID: {
+            pattern: "/notification-destinations/:id",
+            build: (id: string) => `/notification-destinations/${encodeURIComponent(id)}`,
+            params: { id: "string" } as const
+        }
+    },
+
+    // Webhooks routes
+    WEBHOOKS: {
+        GMAIL: "/webhooks/gmail",
+        FIGMA: "/webhooks/figma",
+        WORKOS: "/webhooks/workos",
+        JIRA_BY_ACCOUNT_ID: {
+            pattern: "/webhooks/jira/:accountId",
+            build: (accountId: string) => `/webhooks/jira/${encodeURIComponent(accountId)}`,
+            params: { accountId: "string" } as const
+        },
+        LINEAR_BY_USER_ID: {
+            pattern: "/webhooks/linear/:userId",
+            build: (userId: string) => `/webhooks/linear/${encodeURIComponent(userId)}`,
+            params: { userId: "string" } as const
+        },
+        SCHEDULE_BY_INPUT_ID: {
+            pattern: "/webhooks/schedule/:inputId",
+            build: (inputId: string) => `/webhooks/schedule/${encodeURIComponent(inputId)}`,
+            params: { inputId: "string" } as const
+        }
+    },
+
+    // Schedule routes
+    SCHEDULE: {
+        TRIGGER_BY_INPUT_ID: {
+            pattern: "/schedule/trigger/:inputId",
+            build: (inputId: string) => `/schedule/trigger/${encodeURIComponent(inputId)}`,
+            params: { inputId: "string" } as const
+        }
+    },
+
+    // Refresh tokens route
+    REFRESH_TOKENS: "/refresh-tokens",
+
+    // Users routes
+    USERS: {
+        CREATE: "/users",
+        BY_ID: {
+            pattern: "/users/:id",
+            build: (id: string) => `/users/${encodeURIComponent(id)}`,
+            params: { id: "string" } as const
+        }
+    },
+
+    // Builder chat routes
+    BUILDER_CHAT: {
+        HISTORY_BY_SESSION_ID: {
+            pattern: "/builder-chat/:sessionId/history",
+            build: (sessionId: string) => `/builder-chat/${encodeURIComponent(sessionId)}/history`,
+            params: { sessionId: "string" } as const
+        }
+    }
+} as const

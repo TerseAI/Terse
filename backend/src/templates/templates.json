@@ -1,155 +1,433 @@
 [
-  {
-    "name": "Automated Todo List",
-    "description": "Never lose track of tasks buried in emails and tickets again",
-    "chatPrompt": "Build me an agent that monitors my emails and Linear issues, then automatically updates my Notion todo list with actionable tasks. Prioritize items where real people are asking me for something.",
-    "prompt": {
-      "text": "Look at my emails and Linear issues, And auto update my personal todo-list.\n\nYou can ignore Build warning from Render.\n\nBe sure to cross reference github PRs with the Linear Ticket associated to it.\n\nFor linear, you only place items that are assigned to me. Never add something that is unassigned or assigned to someone else.\n\nAlso be on the lookout for duplicates. But make sure we process duplicates from Linear.\n\nIn general, if it's from a real person, and they are asking me for something, I expect it to be tracked!\n\nFor linear, make sure to show the tickets I have assigned to me that are in progress.\n\nIf you see similar Tasks, don't make separate pages, I'd prefer you use the notes section or right the details into the page itself.\n\nI expect people tagging me in Linear/Github to show up (with low priority).\n\nNEVER PUT A BOT NOTIFICATION ON THE TODO LIST:\n\nEx: LinearBot, VercelBot etc...\n\nI should wake up in the morning and have a good idea of what to prioritize for my day.\n\nThink really hard! Make no mistakes!"
+    {
+        "id": "automated-todo-list",
+        "category": "track",
+        "name": "Automated Todo List",
+        "description": "Track tasks from emails and tickets in one place",
+        "chatPrompt": "Build me an agent that monitors my emails and Linear issues, then automatically updates my Notion todo list with actionable tasks. Prioritize items where real people are asking me for something.",
+        "prompt": {
+            "text": "Look at my emails and Linear issues, And auto update my personal todo-list.\n\nYou can ignore Build warning from Render.\n\nBe sure to cross reference github PRs with the Linear Ticket associated to it.\n\nFor linear, you only place items that are assigned to me. Never add something that is unassigned or assigned to someone else.\n\nAlso be on the lookout for duplicates. But make sure we process duplicates from Linear.\n\nIn general, if it's from a real person, and they are asking me for something, I expect it to be tracked!\n\nFor linear, make sure to show the tickets I have assigned to me that are in progress.\n\nIf you see similar Tasks, don't make separate pages, I'd prefer you use the notes section or right the details into the page itself.\n\nI expect people tagging me in Linear/Github to show up (with low priority).\n\nNEVER PUT A BOT NOTIFICATION ON THE TODO LIST:\n\nEx: LinearBot, VercelBot etc...\n\nI should wake up in the morning and have a good idea of what to prioritize for my day.\n\nThink really hard! Make no mistakes!"
+        },
+        "triggers": [
+            {
+                "config": {
+                    "configType": "gmail",
+                    "integrationType": "gmail"
+                }
+            },
+            {
+                "config": {
+                    "configType": "linear_input",
+                    "integrationType": "linear"
+                }
+            }
+        ],
+        "outputs": [
+            {
+                "config": {
+                    "configType": "notion_database",
+                    "integrationType": "notion"
+                }
+            }
+        ],
+        "requireApproval": false,
+        "isActive": true
     },
-    "triggers": [
-      {
-        "config": {
-          "configType": "gmail",
-          "integrationType": "gmail"
-        }
-      },
-      {
-        "config": {
-          "configType": "linear_input",
-          "integrationType": "linear"
-        }
-      }
-    ],
-    "outputs": [
-      {
-        "config": {
-          "configType": "notion_database",
-          "integrationType": "notion"
-        }
-      }
-    ],
-    "requireApproval": false,
-    "isActive": true
-  },
-  {
-    "name": "Ticket Enrichment",
-    "description": "Stop losing bug reports in Slack threads—turn user issues into actionable tickets",
-    "chatPrompt": "Create an agent that monitors my Slack channel for bug reports and automatically creates enriched Linear tickets with root cause hypotheses, relevant code links, and Posthog data.",
-    "prompt": {
-      "text": "Bug Triage Agent — Prompt for Automation\n\nYou monitor the Slack channel for user reports and automated alerts about the Terse repo and create a first-line Linear issue when you detect a potential bug. Use Slack as the input source and send the resulting issue to the Linear destination named `linear_output`.\n\n## Primary goal\nWhen a Slack message indicates a possible software bug, produce a structured Linear issue containing: a concise hypothesis about the root cause, links to relevant GitHub files/PRs, and relevant Posthog event/log excerpts or links.\n\n## Trigger conditions (when to act)\nCreate a new Linear issue or comment on an existing one when a user reports a problem in slack with the software.\n\nDo NOT create an issue for:\n- general usage questions, feature requests, design discussions\n- duplicates — if an existing Linear issue covers it, add evidence as a comment instead.\n\n## Prioritization rules\n- P0/P1 (high): 500 errors, data loss, auth/payment failures, regression affecting many users, reproducible crash in production.\n- P2: consistent bugs with realistic reproduction steps, affecting a subset of users.\n- P3: minor UI/UX issues, one-off errors without reproduction.\n\nIf severity is unclear, mark as P2 and include recommended escalation steps.\n\n## What to extract from Slack\n- exact error text, stack trace, and timestamps\n- environment (production/staging/local), browser/OS, user id or session if provided\n- steps the reporter took (copy verbatim)\n- frequency (first time / repeat / many users)\n- any attached logs, screenshots, or session links\n\n## External checks to perform (always do these)\n1. GitHub (Terse repo)\n   - search for files, recent commits, or open PRs that reference the error text, function names, or affected modules.\n   - include links to relevant files and PRs and note relevant commit messages or PR titles.\n2. Posthog\n   - search for related events, session recordings, or matching error events in the last 72 hours.\n   - capture event excerpts (message, stack, count) or provide Posthog links and a short summary of trends (e.g., count in last 24h).\n\nDocument what searches you ran and their key findings.\n\n## Description template\n- Summary: one-line summary.\n- Severity: P0/P1/P2/P3 and short justification.\n- Steps to Reproduce: numbered steps (copy reporter text and add any agent steps).\n- Expected: what should happen.\n- Actual: observed behavior and full error text/stack trace.\n- Evidence: Slack message excerpt (quoted), screenshots, timestamps.\n- Posthog findings: event excerpts, counts/trends, session links.\n- Relevant Code / PRs: bullet list with human-readable file paths or PR titles + links.\n- Hypothesis (ranked): 1–3 concise hypotheses about root cause, ranked by likelihood.\n- Suggested Next Steps: reproduction steps to perform, tests to run, code areas to inspect, suggested assignee.\n- Search notes: brief note on GitHub/Posthog search queries run and results (to avoid duplication).\n\n## Tone and style\n- Professional, concise, investigative.\n- Use clear, non-speculative language: label uncertain statements as hypotheses and provide reasoning.\n- Prioritize evidence over conjecture. Every hypothesis must cite the evidence that supports it.\n\n## Duplicate handling\nBefore creating an issue, search existing Linear issues for duplicates:\n- If found and relevant, append a comment with fresh evidence (Slack excerpt, Posthog findings, repro steps).\n- If none found, create a new issue.\n\n## Minimal example (for reference)\nTitle: \"500 on /api/checkout when cart contains null item\"\n\nDescription (snippet):\n- Summary: Customers see 500 for carts with null item.\n- Severity: P1 — affects checkout flow.\n- Steps to Reproduce: 1) Add item with null id to cart...\n- Posthog findings: event `checkout_error` occurred 120 times in last 24h (link).\n- Relevant Code: src/checkout/processor.js (link)\n- Hypothesis: Missing null-check in cart normalization => unhandled exception.\n- Suggested Next Steps: Add null-check, write unit test, deploy canary.\n\nFollow these instructions exactly when processing Slack events and creating issues in linear_output."
+    {
+        "id": "ticket-enrichment",
+        "category": "users",
+        "name": "Ticket Enrichment",
+        "description": "Turn Slack bug reports into actionable tickets",
+        "chatPrompt": "Create an agent that monitors my Slack channel for bug reports and automatically creates enriched Linear tickets with root cause hypotheses, relevant code links, and Posthog data.",
+        "prompt": {
+            "text": "Bug Triage Agent — Prompt for Automation\n\nYou monitor the Slack channel for user reports and automated alerts about the Terse repo and create a first-line Linear issue when you detect a potential bug. Use Slack as the input source and send the resulting issue to the Linear destination named `linear_output`.\n\n## Primary goal\nWhen a Slack message indicates a possible software bug, produce a structured Linear issue containing: a concise hypothesis about the root cause, links to relevant GitHub files/PRs, and relevant Posthog event/log excerpts or links.\n\n## Trigger conditions (when to act)\nCreate a new Linear issue or comment on an existing one when a user reports a problem in slack with the software.\n\nDo NOT create an issue for:\n- general usage questions, feature requests, design discussions\n- duplicates — if an existing Linear issue covers it, add evidence as a comment instead.\n\n## Prioritization rules\n- P0/P1 (high): 500 errors, data loss, auth/payment failures, regression affecting many users, reproducible crash in production.\n- P2: consistent bugs with realistic reproduction steps, affecting a subset of users.\n- P3: minor UI/UX issues, one-off errors without reproduction.\n\nIf severity is unclear, mark as P2 and include recommended escalation steps.\n\n## What to extract from Slack\n- exact error text, stack trace, and timestamps\n- environment (production/staging/local), browser/OS, user id or session if provided\n- steps the reporter took (copy verbatim)\n- frequency (first time / repeat / many users)\n- any attached logs, screenshots, or session links\n\n## External checks to perform (always do these)\n1. GitHub (Terse repo)\n   - search for files, recent commits, or open PRs that reference the error text, function names, or affected modules.\n   - include links to relevant files and PRs and note relevant commit messages or PR titles.\n2. Posthog\n   - search for related events, session recordings, or matching error events in the last 72 hours.\n   - capture event excerpts (message, stack, count) or provide Posthog links and a short summary of trends (e.g., count in last 24h).\n\nDocument what searches you ran and their key findings.\n\n## Description template\n- Summary: one-line summary.\n- Severity: P0/P1/P2/P3 and short justification.\n- Steps to Reproduce: numbered steps (copy reporter text and add any agent steps).\n- Expected: what should happen.\n- Actual: observed behavior and full error text/stack trace.\n- Evidence: Slack message excerpt (quoted), screenshots, timestamps.\n- Posthog findings: event excerpts, counts/trends, session links.\n- Relevant Code / PRs: bullet list with human-readable file paths or PR titles + links.\n- Hypothesis (ranked): 1–3 concise hypotheses about root cause, ranked by likelihood.\n- Suggested Next Steps: reproduction steps to perform, tests to run, code areas to inspect, suggested assignee.\n- Search notes: brief note on GitHub/Posthog search queries run and results (to avoid duplication).\n\n## Tone and style\n- Professional, concise, investigative.\n- Use clear, non-speculative language: label uncertain statements as hypotheses and provide reasoning.\n- Prioritize evidence over conjecture. Every hypothesis must cite the evidence that supports it.\n\n## Duplicate handling\nBefore creating an issue, search existing Linear issues for duplicates:\n- If found and relevant, append a comment with fresh evidence (Slack excerpt, Posthog findings, repro steps).\n- If none found, create a new issue.\n\n## Minimal example (for reference)\nTitle: \"500 on /api/checkout when cart contains null item\"\n\nDescription (snippet):\n- Summary: Customers see 500 for carts with null item.\n- Severity: P1 — affects checkout flow.\n- Steps to Reproduce: 1) Add item with null id to cart...\n- Posthog findings: event `checkout_error` occurred 120 times in last 24h (link).\n- Relevant Code: src/checkout/processor.js (link)\n- Hypothesis: Missing null-check in cart normalization => unhandled exception.\n- Suggested Next Steps: Add null-check, write unit test, deploy canary.\n\nFollow these instructions exactly when processing Slack events and creating issues in linear_output."
+        },
+        "triggers": [
+            {
+                "config": {
+                    "configType": "slack",
+                    "integrationType": "slack"
+                }
+            }
+        ],
+        "outputs": [
+            {
+                "config": {
+                    "configType": "linear_output",
+                    "integrationType": "linear"
+                }
+            }
+        ],
+        "knowledgeBases": [
+            {
+                "config": {
+                    "configType": "POSTHOG",
+                    "integrationType": "posthog"
+                }
+            }
+        ],
+        "requireApproval": false,
+        "isActive": true
     },
-    "triggers": [
-      {
-        "config": {
-          "configType": "slack",
-          "integrationType": "slack"
-        }
-      }
-    ],
-    "outputs": [
-      {
-        "config": {
-          "configType": "linear_output",
-          "integrationType": "linear"
-        }
-      }
-    ],
-    "knowledgeBases": [
-      {
-        "config": {
-          "configType": "POSTHOG",
-          "integrationType": "posthog"
-        }
-      }
-    ],
-    "requireApproval": false,
-    "isActive": true
-  },
-  {
-    "name": "Feedback Aggregator",
-    "description": "Stop missing valuable user insights scattered across Slack conversations",
-    "chatPrompt": "Build an agent that monitors my Slack channel for user feedback and continuously updates a Notion page with a synthesis of user problems, needs, and desires.",
-    "prompt": {
-      "text": "Constantly monitor the slack channel for user feedback on our app and continuously update the Notion page to reflect your synthesis of user problems, needs and desires."
+    {
+        "id": "feedback-aggregator",
+        "category": "users",
+        "name": "Feedback Aggregator",
+        "description": "Surface user insights scattered across Slack",
+        "chatPrompt": "Build an agent that monitors my Slack channel for user feedback and continuously updates a Notion page with a synthesis of user problems, needs, and desires.",
+        "prompt": {
+            "text": "Constantly monitor the slack channel for user feedback on our app and continuously update the Notion page to reflect your synthesis of user problems, needs and desires."
+        },
+        "triggers": [
+            {
+                "config": {
+                    "configType": "slack",
+                    "integrationType": "slack"
+                }
+            }
+        ],
+        "outputs": [
+            {
+                "config": {
+                    "configType": "notion_page",
+                    "integrationType": "notion"
+                }
+            }
+        ],
+        "requireApproval": false,
+        "isActive": true
     },
-    "triggers": [
-      {
-        "config": {
-          "configType": "slack",
-          "integrationType": "slack"
-        }
-      }
-    ],
-    "outputs": [
-      {
-        "config": {
-          "configType": "notion_page",
-          "integrationType": "notion"
-        }
-      }
-    ],
-    "requireApproval": false,
-    "isActive": true
-  },
-  {
-    "name": "Detect Information Drift Between Figma and PRD",
-    "description": "Catch when your designs and specs fall out of sync before it causes rework",
-    "chatPrompt": "Create an agent that monitors Figma for discussions that conflict with my PRD in Confluence, alerting me when designs and specs drift out of sync.",
-    "prompt": {
-      "text": "Monitor Figma for conflicting discussions with the PRD."
+    {
+        "id": "figma-prd-drift-detector",
+        "category": "sync",
+        "name": "Detect Information Drift",
+        "description": "Alert when designs and specs drift out of sync",
+        "chatPrompt": "Create an agent that monitors Figma for discussions that conflict with my PRD in Confluence, alerting me when designs and specs drift out of sync.",
+        "prompt": {
+            "text": "Monitor Figma for conflicting discussions with the PRD."
+        },
+        "triggers": [
+            {
+                "config": {
+                    "configType": "figma",
+                    "integrationType": "figma"
+                }
+            }
+        ],
+        "outputs": [
+            {
+                "config": {
+                    "configType": "confluence",
+                    "integrationType": "atlassian"
+                }
+            }
+        ],
+        "requireApproval": false,
+        "isActive": true
     },
-    "triggers": [
-      {
-        "config": {
-          "configType": "figma",
-          "integrationType": "figma"
-        }
-      }
-    ],
-    "outputs": [
-      {
-        "config": {
-          "configType": "confluence",
-          "integrationType": "atlassian"
-        }
-      }
-    ],
-    "requireApproval": false,
-    "isActive": true
-  },
-  {
-    "name": "Release Notes Builder",
-    "description": "Stop spending hours manually writing release notes every week",
-    "chatPrompt": "Every monday morning at 9am, go through all the merged PRs and generate a customer-facing weekly changelog, posting it to Slack.",
-    "prompt": {
-      "text": "# Weekly Customer-Facing Changelog Generator (for GitHub input)\n\nPurpose\n- Read landed GitHub PRs/commits and maintain a running draft of a customer-facing weekly changelog focused on features, UX improvements, and bug fixes. Produce a ready-to-publish markdown draft each run.\n\nInputs\n- Source: GitHub (merged PRs, don't look at simple commit pushes).\n- Time window: include items merged since the last published changelog or since the last run if no published date provided.\n\nPrimary goals\n- Extract customer-facing changes only: features, UX improvements, bug fixes.\n- Exclude internal-only work (refactors, tests, CI, dependency bumps) unless there is clear customer impact.\n- Collapse related PRs into concise, high-level changelog entries.\n- Output a clean markdown draft with three sections: Features, UX Improvements, Bug Fixes.\n\nExtraction & classification rules\n1. Identify candidate PRs/commits using:\n   - PR title, labels, description, linked issue, changed files, and commit messages.\n2. Classify into one of three categories:\n   - Feature: new capabilities, commands, endpoints, or major enhancements.\n   - UX Improvement: UI/UX changes, clearer flows, documentation or onboarding improvements that affect customers.\n   - Bug Fix: fixes that resolve user-facing errors, crashes, incorrect behavior.\n3. Use keyword heuristics (examples): feature/add/implement/introduce, improve/ui/ux/experience, fix/bug/resolve/patch. Use labels and changed file paths to help (e.g., files under docs/, src/ui/, api/ are more likely customer-facing).\n\nFiltering rules (exclude unless clearly customer-impacting)\n- Exclude PRs primarily labeled or described as: refactor, chore, test, ci, deps, lint.\n- Include such PRs only if:\n  - The PR touches user-facing code or documentation, or\n  - The description explicitly states customer impact (e.g., \"fixes data loss for customers\").\n- Exclude routine dependency bumps and internal tooling changes.\n\nCollapsing & grouping rules\n- Group related PRs into one entry when they:\n  - Share the same linked issue or epic, OR\n  - Have similar titles/keywords and touch the same product area, OR\n  - All contribute to a single customer-visible outcome (e.g., multiple backend and UI PRs that enable one feature).\n- When grouping, synthesize a single high-level headline and one-line description.\n\nOutput format and structure (must be produced in Markdown)\n- Top: Draft header with week range or \"Draft — week of YYYY-MM-DD\" and a one-line summary highlight (optional).\n- Then three sections in this exact order:\n\n# Features\n- Bullet list. Each bullet:\n  - Headline (8–14 words): concise benefit-first phrase (what changed for the customer).\n  - Optional 1–2 sentence plain-language description (why it matters).\n  - Example bullet:\n    - Improved file export reliability — Exports now complete successfully for large projects (see PRs).\n\n# UX Improvements\n- Same bullet format, focusing on visual/flow/documentation improvements.\n\n# Bug Fixes\n- Same bullet format, focusing on user-facing fixes and whether any action is required.\n\n- If a section has no items: include a single line \"No customer-facing items this week.\"\n\nTone and style\n- Customer-facing, concise, non-technical, benefit-oriented.\n- Use plain language; avoid implementation details or internal terminology.\n- Neutral and factual (no marketing superlatives).\n\nOperational rules (running draft & deduplication)\n- Maintain a running draft: mark which PRs/commits have already been included to avoid duplication across weeks. If that metadata is unavailable, deduplicate by canonical title and linked issue.\n- For each new run, only include merged/landed items since last included marker.\n- If uncertain about classification, place the item in a draft \"Potential\" list and flag for human review (include the PR title and short reason).\n\nExamples\n- Input PR titles:\n  - \"Add multi-file export\" → Feature bullet: \"Multi-file export — Export entire projects as a single archive, making backups faster.\"\n  - \"Fix crash when saving large notes\" → Bug Fix bullet: \"Fix saving crash for large notes — Prevents app crashes when saving very large notes; no action required from customers.\"\n  - \"Improve onboarding checklist copy\" → UX Improvement bullet: \"Clearer onboarding checklist — Updated wording to make first steps easier for new users.\"\n\nRules summary (quick)\n- Focus: features, UX improvements, bug fixes.\n- Exclude internal-only work unless customer-facing.\n- Collapse related items into single entries.\n- Output: markdown with three sections, concise benefit-first bullets.\n- Tone: customer-facing, plain, neutral.\n\nIf any item is ambiguous, add it to a short \"Pending review\" block at the end with a one-line reason for review."
+    {
+        "id": "release-notes-builder",
+        "category": "sync",
+        "name": "Release Notes Builder",
+        "description": "Auto-generate weekly release notes from PRs",
+        "chatPrompt": "Every monday morning at 9am, go through all the merged PRs and generate a customer-facing weekly changelog, posting it to Slack.",
+        "prompt": {
+            "text": "# Weekly Customer-Facing Changelog Generator (for GitHub input)\n\nPurpose\n- Read landed GitHub PRs/commits and maintain a running draft of a customer-facing weekly changelog focused on features, UX improvements, and bug fixes. Produce a ready-to-publish markdown draft each run.\n\nInputs\n- Source: GitHub (merged PRs, don't look at simple commit pushes).\n- Time window: include items merged since the last published changelog or since the last run if no published date provided.\n\nPrimary goals\n- Extract customer-facing changes only: features, UX improvements, bug fixes.\n- Exclude internal-only work (refactors, tests, CI, dependency bumps) unless there is clear customer impact.\n- Collapse related PRs into concise, high-level changelog entries.\n- Output a clean markdown draft with three sections: Features, UX Improvements, Bug Fixes.\n\nExtraction & classification rules\n1. Identify candidate PRs/commits using:\n   - PR title, labels, description, linked issue, changed files, and commit messages.\n2. Classify into one of three categories:\n   - Feature: new capabilities, commands, endpoints, or major enhancements.\n   - UX Improvement: UI/UX changes, clearer flows, documentation or onboarding improvements that affect customers.\n   - Bug Fix: fixes that resolve user-facing errors, crashes, incorrect behavior.\n3. Use keyword heuristics (examples): feature/add/implement/introduce, improve/ui/ux/experience, fix/bug/resolve/patch. Use labels and changed file paths to help (e.g., files under docs/, src/ui/, api/ are more likely customer-facing).\n\nFiltering rules (exclude unless clearly customer-impacting)\n- Exclude PRs primarily labeled or described as: refactor, chore, test, ci, deps, lint.\n- Include such PRs only if:\n  - The PR touches user-facing code or documentation, or\n  - The description explicitly states customer impact (e.g., \"fixes data loss for customers\").\n- Exclude routine dependency bumps and internal tooling changes.\n\nCollapsing & grouping rules\n- Group related PRs into one entry when they:\n  - Share the same linked issue or epic, OR\n  - Have similar titles/keywords and touch the same product area, OR\n  - All contribute to a single customer-visible outcome (e.g., multiple backend and UI PRs that enable one feature).\n- When grouping, synthesize a single high-level headline and one-line description.\n\nOutput format and structure (must be produced in Markdown)\n- Top: Draft header with week range or \"Draft — week of YYYY-MM-DD\" and a one-line summary highlight (optional).\n- Then three sections in this exact order:\n\n# Features\n- Bullet list. Each bullet:\n  - Headline (8–14 words): concise benefit-first phrase (what changed for the customer).\n  - Optional 1–2 sentence plain-language description (why it matters).\n  - Example bullet:\n    - Improved file export reliability — Exports now complete successfully for large projects (see PRs).\n\n# UX Improvements\n- Same bullet format, focusing on visual/flow/documentation improvements.\n\n# Bug Fixes\n- Same bullet format, focusing on user-facing fixes and whether any action is required.\n\n- If a section has no items: include a single line \"No customer-facing items this week.\"\n\nTone and style\n- Customer-facing, concise, non-technical, benefit-oriented.\n- Use plain language; avoid implementation details or internal terminology.\n- Neutral and factual (no marketing superlatives).\n\nOperational rules (running draft & deduplication)\n- Maintain a running draft: mark which PRs/commits have already been included to avoid duplication across weeks. If that metadata is unavailable, deduplicate by canonical title and linked issue.\n- For each new run, only include merged/landed items since last included marker.\n- If uncertain about classification, place the item in a draft \"Potential\" list and flag for human review (include the PR title and short reason).\n\nExamples\n- Input PR titles:\n  - \"Add multi-file export\" → Feature bullet: \"Multi-file export — Export entire projects as a single archive, making backups faster.\"\n  - \"Fix crash when saving large notes\" → Bug Fix bullet: \"Fix saving crash for large notes — Prevents app crashes when saving very large notes; no action required from customers.\"\n  - \"Improve onboarding checklist copy\" → UX Improvement bullet: \"Clearer onboarding checklist — Updated wording to make first steps easier for new users.\"\n\nRules summary (quick)\n- Focus: features, UX improvements, bug fixes.\n- Exclude internal-only work unless customer-facing.\n- Collapse related items into single entries.\n- Output: markdown with three sections, concise benefit-first bullets.\n- Tone: customer-facing, plain, neutral.\n\nIf any item is ambiguous, add it to a short \"Pending review\" block at the end with a one-line reason for review."
+        },
+        "triggers": [
+            {
+                "config": {
+                    "configType": "time_trigger",
+                    "integrationType": "cron_job",
+                    "cronExpression": "0 9 * * 1"
+                }
+            }
+        ],
+        "knowledgeBases": [
+            {
+                "config": {
+                    "configType": "github_kb",
+                    "integrationType": "github"
+                }
+            }
+        ],
+        "outputs": [
+            {
+                "config": {
+                    "configType": "slack_output",
+                    "integrationType": "slack"
+                }
+            }
+        ],
+        "requireApproval": false,
+        "isActive": true
     },
-    "triggers": [
-      {
-        "config": {
-          "configType": "time_trigger",
-          "integrationType": "cron_job",
-          "cronExpression": "0 9 * * *"
-        }
-      }
-    ],
-    "knowledgeBases": [
-      {
-        "config": {
-          "configType": "github_kb",
-          "integrationType": "github"
-        }
-      }
-    ],
-    "outputs": [
-      {
-        "config": {
-          "configType": "slack_output",
-          "integrationType": "slack"
-        }
-      }
-    ],
-    "requireApproval": false,
-    "isActive": true
-  }
+    {
+        "id": "pr-context-builder",
+        "category": "ship",
+        "name": "PR Context Builder",
+        "description": "Get a 2-min briefing before you review the code",
+        "chatPrompt": "Build an agent that when a GitHub PR is opened or updated, sends me a short Slack DM with context: what changed, why it matters, and key things to look for in the review.",
+        "prompt": {
+            "text": "When a GitHub PR is opened or updated, produce a 2-minute briefing for the reviewer. Include: 1) One-line summary of what changed. 2) Why it matters (linked issue or context). 3) Key areas to focus on during review (risky files, edge cases). 4) Any related PRs or dependencies. Keep it concise and actionable. Send the briefing to the configured Slack DM."
+        },
+        "triggers": [
+            {
+                "config": {
+                    "configType": "github",
+                    "integrationType": "github"
+                }
+            }
+        ],
+        "knowledgeBases": [
+            {
+                "config": {
+                    "configType": "github_kb",
+                    "integrationType": "github"
+                }
+            }
+        ],
+        "outputs": [
+            {
+                "config": {
+                    "configType": "slack_output",
+                    "integrationType": "slack"
+                }
+            }
+        ],
+        "requireApproval": false,
+        "isActive": true
+    },
+    {
+        "id": "change-impact-scanner",
+        "category": "ship",
+        "name": "Change Impact Scanner",
+        "description": "Understand what might break before you merge",
+        "chatPrompt": "Create an agent that analyzes GitHub PRs and DMs me on Slack with a short impact report: which areas of the codebase or features might be affected, and what to test or watch for.",
+        "prompt": {
+            "text": "When a GitHub PR is opened or updated, analyze the changed files and produce an impact report. Identify: 1) Which features or modules are touched. 2) Potential breakage points (API changes, shared utilities, config). 3) Suggested tests or manual checks. 4) Any downstream services or consumers that might be affected. Be concise. Send the report to the configured Slack DM."
+        },
+        "triggers": [
+            {
+                "config": {
+                    "configType": "github",
+                    "integrationType": "github"
+                }
+            }
+        ],
+        "knowledgeBases": [
+            {
+                "config": {
+                    "configType": "github_kb",
+                    "integrationType": "github"
+                }
+            }
+        ],
+        "outputs": [
+            {
+                "config": {
+                    "configType": "slack_output",
+                    "integrationType": "slack"
+                }
+            }
+        ],
+        "requireApproval": false,
+        "isActive": true
+    },
+    {
+        "id": "design-review-prep",
+        "category": "track",
+        "name": "Design Review Prep",
+        "description": "Questions to ask in tomorrow's design review",
+        "chatPrompt": "Build an agent that watches Figma file changes and updates a Notion page with prepared questions and discussion points for the next design review.",
+        "prompt": {
+            "text": "Monitor Figma for file changes (new frames, updated components, comments). Before each design review, update the configured Notion page with: 1) Summary of what changed since last review. 2) Questions to ask the designer (accessibility, edge cases, states). 3) Open comments or threads that need resolution. 4) Any drift from the PRD or existing patterns. Keep the page scannable and actionable for the review meeting."
+        },
+        "triggers": [
+            {
+                "config": {
+                    "configType": "figma",
+                    "integrationType": "figma"
+                }
+            }
+        ],
+        "outputs": [
+            {
+                "config": {
+                    "configType": "notion_page",
+                    "integrationType": "notion"
+                }
+            }
+        ],
+        "requireApproval": false,
+        "isActive": true
+    },
+    {
+        "id": "design-decision-capturer",
+        "category": "track",
+        "name": "Design Decision Capturer",
+        "description": "Never re-debate the same design decision again",
+        "chatPrompt": "Create an agent that turns Figma comments into structured entries in a Notion database, so design decisions are recorded and searchable.",
+        "prompt": {
+            "text": "Monitor Figma for comments and discussions. When a design decision is made (e.g. \"we're going with option A because...\"), create or update an entry in the configured Notion database. Each entry should include: decision summary, context (file/frame), rationale, date, and link to the Figma thread. Use a consistent format so the team can search past decisions and avoid re-debating. Never create duplicate entries for the same decision."
+        },
+        "triggers": [
+            {
+                "config": {
+                    "configType": "figma",
+                    "integrationType": "figma"
+                }
+            }
+        ],
+        "outputs": [
+            {
+                "config": {
+                    "configType": "notion_database",
+                    "integrationType": "notion"
+                }
+            }
+        ],
+        "requireApproval": false,
+        "isActive": true
+    },
+    {
+        "id": "team-newsletter",
+        "category": "sync",
+        "name": "Team Newsletter",
+        "description": "Weekly digest delivered to your inbox",
+        "chatPrompt": "Every Friday, aggregate the week's key updates from our tools (PRs merged, tickets closed, milestones) and send me a formatted weekly digest via Gmail.",
+        "prompt": {
+            "text": "On a weekly schedule (Friday), gather the past week's highlights: merged PRs, closed issues/tickets, key decisions, and milestones. Produce a concise, readable newsletter (bullet points or short sections). Send it via the configured Gmail output as an email to the specified recipients. Tone: internal, factual, scannable. Exclude noise (e.g. minor chores, bot activity)."
+        },
+        "triggers": [
+            {
+                "config": {
+                    "configType": "time_trigger",
+                    "integrationType": "cron_job",
+                    "cronExpression": "0 9 * * 5"
+                }
+            }
+        ],
+        "knowledgeBases": [
+            {
+                "config": {
+                    "configType": "github_kb",
+                    "integrationType": "github"
+                }
+            }
+        ],
+        "outputs": [
+            {
+                "config": {
+                    "configType": "gmail_output",
+                    "integrationType": "gmail"
+                }
+            }
+        ],
+        "requireApproval": false,
+        "isActive": true
+    },
+    {
+        "id": "competitor-changelog-monitor",
+        "category": "users",
+        "name": "Competitor Monitor",
+        "description": "What did competitors ship this week?",
+        "chatPrompt": "Build an agent that runs weekly, checks public changelogs or release notes for specified competitors, and posts a summary to Slack.",
+        "prompt": {
+            "text": "On a weekly schedule, gather public changelog or release note updates for the configured competitors (e.g. from their blogs, status pages, or product updates). Summarize: what they shipped, key features or fixes, and any implications for us. Post the summary to the configured Slack channel or DM. Be concise and factual. If no public updates are found, say so clearly."
+        },
+        "triggers": [
+            {
+                "config": {
+                    "configType": "time_trigger",
+                    "integrationType": "cron_job",
+                    "cronExpression": "0 9 * * 1"
+                }
+            }
+        ],
+        "outputs": [
+            {
+                "config": {
+                    "configType": "slack_output",
+                    "integrationType": "slack"
+                }
+            }
+        ],
+        "requireApproval": false,
+        "isActive": true
+    },
+    {
+        "id": "stale-pr-reminder",
+        "category": "ship",
+        "name": "Stale PR Reminder",
+        "description": "Nudge reviewers about PRs that have been open too long",
+        "chatPrompt": "Build an agent that runs daily, checks GitHub for open PRs that have been waiting for review too long, and posts a short summary to Slack so the team can unblock them.",
+        "prompt": {
+            "text": "On a daily schedule, query the configured GitHub repositories for open pull requests. Identify PRs that have been open for more than 2 business days (or 48 hours) without a review, or that have had no activity in the last 24 hours. For each such PR, include: title, author, link, days open, and suggested reviewers if available. Post a concise summary to the configured Slack channel or DM. Group by repository if multiple repos are configured. If no stale PRs are found, post a brief message saying so. Keep the message actionable: the goal is to unblock shipping, not to shame anyone."
+        },
+        "triggers": [
+            {
+                "config": {
+                    "configType": "time_trigger",
+                    "integrationType": "cron_job",
+                    "cronExpression": "0 10 * * 1-5"
+                }
+            }
+        ],
+        "knowledgeBases": [
+            {
+                "config": {
+                    "configType": "github_kb",
+                    "integrationType": "github"
+                }
+            }
+        ],
+        "outputs": [
+            {
+                "config": {
+                    "configType": "slack_output",
+                    "integrationType": "slack"
+                }
+            }
+        ],
+        "requireApproval": false,
+        "isActive": true
+    },
+    {
+        "id": "daily-metrics-briefing",
+        "category": "sync",
+        "name": "Daily Metrics Briefing",
+        "description": "Build daily metrics brief using analytics platform",
+        "chatPrompt": "Build an agent that runs daily, checks Posthog events for daily metrics and builds a brief that gets posted to Slack.",
+        "prompt": {
+            "text": "On a daily schedule, use Posthog to gather the last 24 hours of events and logs. Produce a short metrics brief: key numbers (e.g. active users, main events), notable trends vs yesterday, and any errors or warnings worth attention. Post the brief to the configured Slack channel or DM. Keep it scannable—bullet points, one link to Posthog for details. If there's no data, say so and still post."
+        },
+        "triggers": [
+            {
+                "config": {
+                    "configType": "time_trigger",
+                    "integrationType": "cron_job",
+                    "cronExpression": "0 10 * * 1-5"
+                }
+            }
+        ],
+        "knowledgeBases": [
+            {
+                "config": {
+                    "configType": "POSTHOG",
+                    "integrationType": "posthog"
+                }
+            }
+        ],
+        "outputs": [
+            {
+                "config": {
+                    "configType": "slack_output",
+                    "integrationType": "slack"
+                }
+            }
+        ],
+        "requireApproval": false,
+        "isActive": true
+    }
 ]

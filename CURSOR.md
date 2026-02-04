@@ -393,6 +393,43 @@ These validations are enforced in:
 ✅ **DO** add `needsApproval` function to all write tools using `createNeedsApprovalFunction()`  
 ✅ **DO** run the server locally to verify validations pass before committing
 
+## Formatting Rules
+
+**All code must follow Prettier as configured in `.prettierrc`.** CI runs `pnpm run format:check` in both backend and frontend; PRs must pass.
+
+### Prettier (source of truth: `.prettierrc`)
+
+- **Semicolons**: none (`semi: false`)
+- **Quotes**: double for strings (`singleQuote: false`)
+- **Indentation**: 4 spaces (`tabWidth: 4`)
+- **Trailing commas**: none (`trailingComma: "none"`)
+- **Print width**: 200 (`printWidth: 200`)
+- **Arrow functions**: omit parens when single param (`arrowParens: "avoid"`)
+- **Line endings**: LF (`endOfLine: "lf"`)
+
+### Import order
+
+Imports are sorted by the `@trivago/prettier-plugin-sort-imports` plugin. Order:
+
+1. `react`
+2. Third-party modules
+3. `@/` aliases
+4. Relative `../`
+5. Relative `./`
+
+Use `importOrderSeparation: true` (blank line between groups). Sort specifiers within each import.
+
+### Before committing
+
+Run format so CI passes:
+
+```bash
+# In /backend and /frontend
+pnpm run format
+# or
+pnpm run format:check   # fails if not formatted
+```
+
 ## Code Style Guidelines
 
 ### General
@@ -488,17 +525,18 @@ export async function getUserChannels(req: Request, res: Response) {
 
 ## Things We DO NOT Want
 
-1. ❌ `useCallback` in frontend code
-2. ❌ Excessive comments—code should be self-documenting
-3. ❌ JSDoc comments
-4. ❌ JavaScript files—TypeScript only
-5. ❌ Direct API calls without using `BackendProvider`
-6. ❌ Inline styles or CSS files—use Tailwind only
-7. ❌ Skipping `pnpm run build` validation before committing
-8. ❌ Using npm or yarn instead of pnpm
-9. ❌ Stray strings allowed UNLESS absolutely necessary (e.g., `const tokenType = authed_user?.token_type || 'user';` where `'user'` is outputted from an API and could be an enum type)
-10. ❌ Defining variables as `false` or `true` where you could just use a not operator (e.g., `const actualIsBotUser = isUserType && authed_user.access_token ? false : true;` should be `const actualIsBotUser = !(isUserType && authed_user.access_token);`)
-11. ❌ Non-exhaustive maps—when defining maps, ensure they're exhaustive using TypeScript's type system (see `shared/Configs.ts` lines 401-427 for an example with `ConfigMetadataMap`)
+1. ❌ Code that fails `pnpm run format:check`—follow Prettier (see **Formatting Rules** above)
+2. ❌ `useCallback` in frontend code
+3. ❌ Excessive comments—code should be self-documenting
+4. ❌ JSDoc comments
+5. ❌ JavaScript files—TypeScript only
+6. ❌ Direct API calls without using `BackendProvider`
+7. ❌ Inline styles or CSS files—use Tailwind only
+8. ❌ Skipping `pnpm run build` validation before committing
+9. ❌ Using npm or yarn instead of pnpm
+10. ❌ Stray strings allowed UNLESS absolutely necessary (e.g., `const tokenType = authed_user?.token_type || 'user';` where `'user'` is outputted from an API and could be an enum type)
+11. ❌ Defining variables as `false` or `true` where you could just use a not operator (e.g., `const actualIsBotUser = isUserType && authed_user.access_token ? false : true;` should be `const actualIsBotUser = !(isUserType && authed_user.access_token);`)
+12. ❌ Non-exhaustive maps—when defining maps, ensure they're exhaustive using TypeScript's type system (see `shared/Configs.ts` lines 401-427 for an example with `ConfigMetadataMap`)
 
 ## URL and Socket Event Standards
 

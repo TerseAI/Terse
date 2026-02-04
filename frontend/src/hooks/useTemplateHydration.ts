@@ -24,8 +24,7 @@ export function useTemplateHydration(templateId: string | undefined, templates: 
         }
     }
 
-    const templateIndex = parseInt(templateId, 10)
-    const template = templates[templateIndex]
+    const template = templates.find(candidate => candidate.id === templateId)
 
     if (!template) {
         return {
