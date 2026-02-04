@@ -127,13 +127,57 @@ if (slackReceiver?.receiver) {
     logger.info("✅ Slack Bolt router mounted at /slack")
 }
 
+// Routes that need larger body limits for webhooks with potentially large payloads
+const LARGE_BODY_LIMIT_ROUTES: string[] = [ApiRoutes.GITHUB.UNIFIED_EVENT]
+const LARGE_BODY_LIMIT = "10mb"
+const DEFAULT_BODY_LIMIT = "1mb"
+
 // Parse JSON for all routes except Slack events, Linear webhook, and WorkOS webhook (which need raw body for signature verification)
 app.use((req, res, next) => {
     if (req.path === "/slack/events" || req.path === "/linear/webhook" || req.path === ApiRoutes.WEBHOOKS.WORKOS) {
         next()
     } else {
-        bodyParser.json()(req, res, next)
+        // Use larger limit for webhook routes that may receive large payloads (e.g., GitHub PR events with large bodies)
+        const limit = LARGE_BODY_LIMIT_ROUTES.includes(req.path) ? LARGE_BODY_LIMIT : DEFAULT_BODY_LIMIT
+        bodyParser.json({ limit })(req, res, next)
     }
+})
+
+// Error handling middleware for body-parser errors (must be after body parsing middleware)
+// This catches PayloadTooLargeError and other body parsing errors
+app.use((err: Error & { type?: string; statusCode?: number }, req: Request, res: Response, next: NextFunction) => {
+    // Handle payload too large errors
+    if (err.type === "entity.too.large") {
+        const contentLength = req.get("content-length")
+        logger.warn("[Webhook] Payload too large", {
+            path: req.path,
+            method: req.method,
+            contentLength: contentLength ? parseInt(contentLength) : undefined,
+            contentType: req.get("content-type"),
+            ip: req.ip || req.socket.remoteAddress || "unknown",
+            userAgent: req.get("user-agent")
+        })
+        return res.status(413).json({
+            error: "Payload too large",
+            message: `Request body exceeded the maximum allowed size. Path: ${req.path}`
+        })
+    }
+
+    // Handle JSON syntax errors
+    if (err instanceof SyntaxError && err.statusCode === 400 && "body" in err) {
+        logger.warn("[Request] Invalid JSON body", {
+            path: req.path,
+            method: req.method,
+            error: err.message
+        })
+        return res.status(400).json({
+            error: "Invalid JSON",
+            message: "Request body contains invalid JSON"
+        })
+    }
+
+    // Pass other errors to the next error handler
+    next(err)
 })
 app.use(cookieParser())
 
