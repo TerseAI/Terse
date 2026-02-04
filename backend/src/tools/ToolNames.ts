@@ -11,6 +11,7 @@ export const ToolName = {
     LINEAR_CREATE_TICKET: "linear_create_ticket",
     LINEAR_UPDATE_TICKET: "linear_update_ticket",
     LINEAR_SEARCH_TICKET: "linear_search_ticket",
+    LINEAR_READ_TICKET: "linear_read_ticket",
 
     // Jira Tools
     JIRA_CREATE_TICKET: "jira_create_ticket",
@@ -30,6 +31,8 @@ export const ToolName = {
 
     // Slack Tools
     SLACK_SEND_MESSAGE: "slack_send_message",
+    SLACK_LIST_CHANNELS: "slack_list_channels",
+    SLACK_READ_CONVERSATION: "slack_read_conversation",
 
     // Confluence Tools
     CONFLUENCE_QUERY_PAGE: "confluence_query_page",

@@ -227,6 +227,29 @@ const DatadogConfigSchema = BaseConfigSchema.extend({
     defaultIndexes: z.array(NonEmptyString).default(["main"]).describe('Log indexes to search (e.g. ["main"]). From fetchResourcesForIntegration or use ["main"].')
 })
 
+const LinearKnowledgeBaseConfigSchema = BaseConfigSchema.extend({
+    configType: z.literal(ConfigType.LINEAR_KB).describe("Use for Linear ticket knowledge bases. Search and read Linear issues."),
+    integrationType: z.literal(IntegrationType.LINEAR),
+    teamId: z.string().nullable().optional(),
+    teamName: z.string().nullable().optional(),
+    projectId: z.string().nullable().optional(),
+    projectName: z.string().nullable().optional()
+})
+
+const SlackKnowledgeBaseConfigSchema = BaseConfigSchema.extend({
+    configType: z.literal(ConfigType.SLACK_KB).describe("Use for Slack conversation history knowledge bases. Read channel and DM history."),
+    integrationType: z.literal(IntegrationType.SLACK),
+    channelIds: z
+        .array(z.string())
+        .nullable()
+        .optional()
+        .describe("Slack channel IDs to read. From fetchResourcesForIntegration with integrationType=SLACK (channels), use resources[].id. If omitted, reads from all accessible channels."),
+    channelNames: z.array(z.string()).nullable().optional().describe("Display names for the channels, matching channelIds order."),
+    allowDms: z.boolean().optional().default(false).describe("Whether to allow reading DMs. Only applicable for Slack user integrations (not workspace bot integrations)."),
+    userIds: z.array(z.string()).nullable().optional().describe("Specific Slack user IDs to filter DM conversations. If omitted, reads from all accessible DMs."),
+    userNames: z.array(z.string()).nullable().optional().describe("Display names for the users, matching userIds order.")
+})
+
 const TimeTriggerConfigSchema = BaseConfigSchema.extend({
     configType: z.literal(ConfigType.TIME_TRIGGER),
     integrationType: z.literal(IntegrationType.CRON_JOB),
@@ -276,10 +299,15 @@ const OutputConfigSchema = z
     })
 
 const KnowledgeBaseConfigSchema = z
-    .discriminatedUnion("configType", [GitHubKnowledgeBaseConfigSchema, PosthogConfigSchema, LaunchDarklyConfigSchema, DatadogConfigSchema])
-    .describe(
-        "Knowledge base config. IMPORTANT: Match configType to integration - use POSTHOG for PostHog projects, LAUNCHDARKLY for LaunchDarkly, DATADOG for Datadog, and github_kb ONLY for GitHub repos."
-    )
+    .discriminatedUnion("configType", [
+        GitHubKnowledgeBaseConfigSchema,
+        PosthogConfigSchema,
+        LaunchDarklyConfigSchema,
+        DatadogConfigSchema,
+        LinearKnowledgeBaseConfigSchema,
+        SlackKnowledgeBaseConfigSchema
+    ])
+    .describe("Knowledge base config. Match configType to integration: POSTHOG, LAUNCHDARKLY, DATADOG, github_kb for GitHub repos, linear_kb for Linear tickets, slack_kb for Slack history.")
     .superRefine((value, ctx) => {
         enforceNonSystemIntegrationId(value, ctx)
     })

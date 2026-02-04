@@ -8,6 +8,7 @@ type ToolOccurrence = {
     toolName: string
     source: "output" | "knowledgeBase"
     configType: string
+    tool: { name: string }
 }
 
 /**
@@ -41,7 +42,8 @@ export function validateAllToolNames(): void {
             toolOccurrences.get(toolName)!.push({
                 toolName,
                 source: "output",
-                configType: outputConfigType
+                configType: outputConfigType,
+                tool: entry.tool
             })
         })
     })
@@ -67,7 +69,8 @@ export function validateAllToolNames(): void {
             toolOccurrences.get(toolName)!.push({
                 toolName,
                 source: "knowledgeBase",
-                configType: kbConfigType
+                configType: kbConfigType,
+                tool: entry.tool
             })
         })
     })
@@ -84,20 +87,19 @@ export function validateAllToolNames(): void {
         throw new Error(errorMessage)
     }
 
-    // Check for duplicates
-    const duplicates = Array.from(toolOccurrences.entries())
-        .filter(([, occurrences]) => occurrences.length > 1)
-        .map(([toolName, occurrences]) => ({ toolName, occurrences }))
+    // Check for duplicates: only error when the same tool name is used by different tool implementations.
+    // Intentional reuse (e.g. linear_search_ticket in both Output and Knowledge Base) is allowed when it's the same tool reference.
+    const duplicateEntries = Array.from(toolOccurrences.entries()).filter(([, occurrences]) => occurrences.length > 1)
 
-    if (duplicates.length > 0) {
-        const errorMessages = duplicates.map(({ toolName, occurrences }) => {
+    for (const [toolName, occurrences] of duplicateEntries) {
+        const firstTool = occurrences[0].tool
+        const allSameTool = occurrences.every(occ => occ.tool === firstTool)
+        if (!allSameTool) {
             const sources = occurrences.map(occ => `${occ.source === "output" ? "OutputFactory" : "KnowledgeBaseFactory"} (${occ.configType})`).join(" and ")
-            return `Duplicate tool name '${toolName}' found in: ${sources}`
-        })
-
-        const errorMessage = `Duplicate tool names detected. The application cannot start.\n\n${errorMessages.join("\n")}`
-        logger.error("Tool name validation failed - duplicates", { duplicates })
-        throw new Error(errorMessage)
+            const errorMessage = `Duplicate tool name '${toolName}' found in: ${sources}. The same tool name must refer to the same tool implementation (e.g. reuse the same tool reference in both Output and Knowledge Base).`
+            logger.error("Tool name validation failed - duplicate names with different implementations", { toolName, occurrences })
+            throw new Error(errorMessage)
+        }
     }
 }
 
