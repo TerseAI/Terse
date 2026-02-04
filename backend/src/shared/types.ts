@@ -405,7 +405,15 @@ export type TemplateKnowledgeBase = {
     config: TemplateConfigRef
 }
 
+export type TemplateCategory =
+    | "ship" // Ship Faster
+    | "users" // Understand Users
+    | "sync" // Stay in Sync
+    | "track" // Track Everything
+
 export type AgentTemplate = {
+    id: string
+    category: TemplateCategory
     name: string
     description: string
     chatPrompt: string // Short prompt to pre-fill chat input when template is selected

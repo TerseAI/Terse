@@ -5,8 +5,8 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "format": "prettier --write \"src/**/*.ts\"",
-    "format:check": "prettier --check \"src/**/*.ts\"",
+    "format": "prettier --config ../.prettierrc --write \"src/**/*.ts\" \"../shared/**/*.ts\"",
+    "format:check": "prettier --config ../.prettierrc --check \"src/**/*.ts\" \"../shared/**/*.ts\"",
     "dev": "tsx watch src/server.ts",
     "dev:tunnel": "./scripts/dev-with-tunnel.sh",
     "prebuild": "node ../scripts/copy-shared.js",

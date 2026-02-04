@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
+import { POST_LOGIN_REDIRECT_KEY, isSafeRedirectPath } from "@/constants/storageKeys"
 import { useAuth } from "@/services/auth"
 import { BackendProvider } from "@/services/backend"
 import { FrontendRoutes } from "@/shared/FrontendRoutes"
@@ -111,7 +112,15 @@ export default function OrganizationCreationForm() {
             }
 
             setSuccess(true)
-            navigate(FrontendRoutes.APP, { replace: true })
+
+            const storedRedirect = localStorage.getItem(POST_LOGIN_REDIRECT_KEY)
+            if (storedRedirect && isSafeRedirectPath(storedRedirect)) {
+                localStorage.removeItem(POST_LOGIN_REDIRECT_KEY)
+                navigate(storedRedirect, { replace: true })
+            } else {
+                if (storedRedirect) localStorage.removeItem(POST_LOGIN_REDIRECT_KEY)
+                navigate(FrontendRoutes.APP, { replace: true })
+            }
         } catch (err) {
             const message = err instanceof AxiosError && typeof err.response?.data?.error === "string" ? err.response.data.error : "Something went wrong. Please try again."
             setError(message)

@@ -1,17 +1,27 @@
-import { useCallback, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useSearchParams } from "react-router-dom"
 
 import { AnimatePresence, Easing, motion } from "framer-motion"
-import { Loader2 } from "lucide-react"
+import type { LucideIcon } from "lucide-react"
+import { FileText, Loader2, MessageCircle, Rocket, Users } from "lucide-react"
 import { v4 as uuidv4 } from "uuid"
 
 import { TemplateCard } from "@/components/Agents/TemplateCard"
 import { Chat, ChatHandle } from "@/components/chat/Chat"
 import { ChatEventPayload } from "@/components/chat/hooks/useCompletionSocket"
 import { Card, CardContent } from "@/components/ui/card"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useTemplates } from "@/hooks/api/useTemplates"
 import { ModelRequest, SendModelRequest } from "@/shared/ModelEvents"
-import { AgentTemplate } from "@/shared/types"
+import { AgentTemplate, TemplateCategory } from "@/shared/types"
 import { sendBuilderMessage, subscribeToBuilderChat } from "@/socket"
+
+const TEMPLATE_CATEGORIES: { id: TemplateCategory; label: string; icon: LucideIcon }[] = [
+    { id: "users", label: "Understand Users", icon: Users },
+    { id: "sync", label: "Stay in Sync", icon: MessageCircle },
+    { id: "track", label: "Track Everything", icon: FileText },
+    { id: "ship", label: "Ship Fast", icon: Rocket }
+]
 
 const AGENT_SETUP_PLACEHOLDERS = [
     "An agent that reads my Slack every day and tells me only what actually matters",
@@ -24,21 +34,64 @@ const AGENT_SETUP_PLACEHOLDERS = [
     "Draft weekly release notes from merged PRs and commits"
 ]
 
-const ANIMATION_DURATION = 0.8
+const ANIMATION_DURATION = 1.0
 const ANIMATION_EASE: Easing = [0.4, 0, 0.2, 1]
+
+const panelVariants = {
+    enter: { opacity: 0, y: 8 },
+    center: { opacity: 1, y: 0 },
+    exit: { opacity: 0, y: -8 }
+}
 
 export default function AgentSetup() {
     const { templates, isLoading } = useTemplates()
     const [hasStartedChat, setHasStartedChat] = useState(false)
+    const [selectedCategory, setSelectedCategory] = useState<TemplateCategory>("users")
     const chatRef = useRef<ChatHandle>(null)
+    const appliedDeepLinkKey = useRef<string | null>(null)
+    const [searchParams] = useSearchParams()
 
     // Generate a session ID for this setup flow
     const sessionId = useMemo(() => uuidv4(), [])
 
-    const handleTemplateSelect = (template: AgentTemplate) => {
+    const handleTemplateSelect = useCallback((template: AgentTemplate) => {
         chatRef.current?.setInput(template.chatPrompt)
         chatRef.current?.focus()
-    }
+    }, [])
+
+    // Apply deep link params: templateId (pre-populate from template + set category) and/or prompt (arbitrary user input)
+    useEffect(() => {
+        const templateIdParam = searchParams.get("templateId")
+        const promptParam = searchParams.get("prompt")
+
+        if (!templateIdParam && !promptParam) return
+
+        const key = `${templateIdParam ?? ""}|${promptParam ?? ""}`
+        if (appliedDeepLinkKey.current === key) return
+
+        // Chat content: custom prompt takes precedence over template's chatPrompt
+        let chatContent: string | null = null
+        if (promptParam) {
+            chatContent = promptParam
+        } else if (templateIdParam && templates.length > 0) {
+            const matched = templates.find(t => t.id === templateIdParam)
+            chatContent = matched?.chatPrompt ?? null
+        }
+
+        if (chatContent) {
+            appliedDeepLinkKey.current = key
+            chatRef.current?.setInput(chatContent)
+            chatRef.current?.focus()
+        }
+
+        // Set category from template when templateId is present
+        if (templateIdParam && templates.length > 0) {
+            const matched = templates.find(t => t.id === templateIdParam)
+            if (matched) {
+                setSelectedCategory(matched.category)
+            }
+        }
+    }, [searchParams, templates])
 
     const subscribeToEvents = useCallback(
         (callback: (payload: ChatEventPayload) => void) => {
@@ -199,24 +252,49 @@ export default function AgentSetup() {
                                         <div className="h-px flex-1 bg-border" />
                                     </div>
 
-                                    {/* Templates Grid */}
-                                    {isLoading ? (
-                                        <div className="flex items-center justify-center py-8">
-                                            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                                        </div>
-                                    ) : templates.length > 0 ? (
-                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                            {templates.map((template, index) => (
-                                                <TemplateCard key={index} template={template} onSelect={handleTemplateSelect} />
+                                    {/* Category tabs */}
+                                    <Tabs value={selectedCategory} onValueChange={v => setSelectedCategory(v as TemplateCategory)}>
+                                        <TabsList variant="line" className="w-full">
+                                            {TEMPLATE_CATEGORIES.map(({ id, label, icon: Icon }) => (
+                                                <TabsTrigger key={id} value={id} variant="line" className="flex items-center gap-2">
+                                                    <Icon className="h-4 w-4" />
+                                                    <span>{label}</span>
+                                                </TabsTrigger>
                                             ))}
+                                        </TabsList>
+                                        <div className="pt-4 overflow-hidden">
+                                            <AnimatePresence mode="wait" initial={false}>
+                                                <motion.div
+                                                    key={selectedCategory}
+                                                    variants={panelVariants}
+                                                    initial="enter"
+                                                    animate="center"
+                                                    exit="exit"
+                                                    transition={{ duration: 0.2, ease: ANIMATION_EASE }}
+                                                    className="grid grid-cols-1 sm:grid-cols-3 gap-4"
+                                                >
+                                                    {isLoading ? (
+                                                        <div className="col-span-full flex items-center justify-center py-8">
+                                                            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                                                        </div>
+                                                    ) : (
+                                                        (() => {
+                                                            const categoryTemplates = templates.filter(t => t.category === selectedCategory)
+                                                            return categoryTemplates.length > 0 ? (
+                                                                categoryTemplates.map(template => <TemplateCard key={template.id} template={template} onSelect={handleTemplateSelect} />)
+                                                            ) : (
+                                                                <Card className="col-span-full border-dashed">
+                                                                    <CardContent className="flex flex-col items-center justify-center py-6 text-center">
+                                                                        <p className="text-muted-foreground text-sm">No templates in this category yet</p>
+                                                                    </CardContent>
+                                                                </Card>
+                                                            )
+                                                        })()
+                                                    )}
+                                                </motion.div>
+                                            </AnimatePresence>
                                         </div>
-                                    ) : (
-                                        <Card className="border-dashed">
-                                            <CardContent className="flex flex-col items-center justify-center py-6 text-center">
-                                                <p className="text-muted-foreground text-sm">No templates available yet</p>
-                                            </CardContent>
-                                        </Card>
-                                    )}
+                                    </Tabs>
                                 </div>
                             </div>
                         </motion.div>
