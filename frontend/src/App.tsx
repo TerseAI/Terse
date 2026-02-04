@@ -9,7 +9,7 @@ import Spin from "./components/loading/Spin"
 import { ThemeProvider } from "./components/theme-provider"
 import { SidebarProvider } from "./components/ui/sidebar"
 import { Toaster } from "./components/ui/sonner"
-import { POST_LOGIN_REDIRECT_KEY } from "./constants/storageKeys"
+import { POST_LOGIN_REDIRECT_KEY, isSafeRedirectPath } from "./constants/storageKeys"
 import AgentDetail from "./pages/Agents/AgentDetail"
 import AgentSetup from "./pages/Agents/AgentSetup"
 import AgentsList from "./pages/Agents/AgentsList"
@@ -79,7 +79,8 @@ function Content() {
         }
 
         const storedRedirect = localStorage.getItem(POST_LOGIN_REDIRECT_KEY)
-        if (!storedRedirect) {
+        if (!storedRedirect || !isSafeRedirectPath(storedRedirect)) {
+            if (storedRedirect) localStorage.removeItem(POST_LOGIN_REDIRECT_KEY)
             return
         }
 

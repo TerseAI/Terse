@@ -1,6 +1,6 @@
 import axios from "axios"
 
-import { POST_LOGIN_REDIRECT_KEY } from "../constants/storageKeys"
+import { isSafeRedirectPath, POST_LOGIN_REDIRECT_KEY } from "../constants/storageKeys"
 import { ApiRoutes } from "../shared/ApiRoutes"
 import {
     AtlassianIntegration,
@@ -1109,7 +1109,7 @@ export const BackendProvider: BackendService = {
             const { pathname, search, hash } = window.location
             const redirectPath = `${pathname}${search}${hash}`.replace(/#$/, "")
 
-            if (redirectPath && redirectPath !== "/" && redirectPath !== "/app") {
+            if (redirectPath && redirectPath !== "/" && redirectPath !== "/app" && isSafeRedirectPath(redirectPath)) {
                 localStorage.setItem(POST_LOGIN_REDIRECT_KEY, redirectPath)
             } else {
                 localStorage.removeItem(POST_LOGIN_REDIRECT_KEY)
