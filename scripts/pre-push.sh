@@ -1,6 +1,9 @@
 #!/usr/bin/env zsh
 set -e
 
+cd backend && pnpm run format && cd ..
+cd frontend && pnpm run format && cd ..
+
 # Run build in backend
 pnpm --prefix backend run build
 

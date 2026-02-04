@@ -18,6 +18,12 @@ const GmailConfigSchema = BaseConfigSchema.extend({
     integrationType: z.literal(IntegrationType.GMAIL)
 })
 
+// Gmail Output config schema
+const GmailOutputConfigSchema = BaseConfigSchema.extend({
+    configType: z.literal(ConfigType.GMAIL_OUTPUT),
+    integrationType: z.literal(IntegrationType.GMAIL)
+})
+
 // Figma config schema
 const FigmaConfigSchema = BaseConfigSchema.extend({
     configType: z.literal(ConfigType.FIGMA),
@@ -128,6 +134,7 @@ const TimeTriggerConfigSchema = BaseConfigSchema.extend({
 // Union of all config schemas
 export const ConfigTemplateSchema = z.discriminatedUnion("configType", [
     GmailConfigSchema,
+    GmailOutputConfigSchema,
     FigmaConfigSchema,
     SlackConfigSchema,
     SlackOutputConfigSchema,
@@ -182,9 +189,14 @@ const AgentKnowledgeBaseTemplateSchema = z
     })
     .strict()
 
+// Template category schema
+const TemplateCategorySchema = z.enum(["ship", "users", "sync", "track"])
+
 // Main Agent template schema
 export const AgentTemplateSchema = z
     .object({
+        id: z.string().min(1, "Template id is required"),
+        category: TemplateCategorySchema,
         name: z.string().min(1, "Template name is required"),
         description: z.string().min(1, "Template description is required"),
         prompt: AgentPromptSchema,
@@ -192,7 +204,7 @@ export const AgentTemplateSchema = z
         outputs: z.array(AgentOutputTemplateSchema).min(1, "At least one output is required"),
         knowledgeBases: z.array(AgentKnowledgeBaseTemplateSchema).optional(),
         requireApproval: z.boolean().optional().default(false),
-        chatPrompt: z.string().optional(),
+        chatPrompt: z.string().min(1, "Template chatPrompt is required"),
         isActive: z.boolean().optional().default(true),
         notificationSettings: AgentNotificationSettingsSchema
     })
