@@ -27,7 +27,7 @@ import { createOrUpdateLaunchDarklyIntegration, getLaunchDarklyEnvironments, get
 import { getLinearIntegrations, getLinearTeams, handleLinearWebhook, linearOAuthCallback } from "./routes/linear"
 import { createNotificationDestination, deleteNotificationDestination, getNotificationDestinations, updateNotificationDestination } from "./routes/notificationDestinations"
 import { getNotionIntegrations, getNotionResources, notionOAuthCallback } from "./routes/notion"
-import { createOrganization, getCurrentOrganization, getUserOrganizations, switchOrganization } from "./routes/organization"
+import { createOrganization, getCurrentOrganization, getLogoUploadUrl, getLogoUrl, getUserOrganizations, switchOrganization, updateOrganization } from "./routes/organization"
 import { createOrUpdatePosthogIntegration, getPosthogIntegrations, getPosthogProjects } from "./routes/posthog"
 import { generatePromptRoute, generateQuestionsRoute } from "./routes/promptBuilder"
 import { refreshAllTokens } from "./routes/refreshTokens"
@@ -212,6 +212,12 @@ app.get(ApiRoutes.ORGANIZATIONS.GET_CURRENT, authMiddlewareAllowNoOrg, (req, res
 app.get(ApiRoutes.ORGANIZATIONS.LIST, authMiddleware, (req, res) => getUserOrganizations(req, res))
 
 app.post(ApiRoutes.ORGANIZATIONS.SWITCH, authMiddleware, (req, res) => switchOrganization(req, res))
+
+app.put(ApiRoutes.ORGANIZATIONS.UPDATE, authMiddleware, (req, res) => updateOrganization(req, res))
+
+app.get(ApiRoutes.ORGANIZATIONS.LOGO_UPLOAD_URL, authMiddleware, (req, res) => getLogoUploadUrl(req, res))
+
+app.get(ApiRoutes.ORGANIZATIONS.LOGO.pattern, authMiddleware, (req, res) => getLogoUrl(req, res))
 
 // MARK: STATS
 app.get(ApiRoutes.STATS, authMiddleware, async (req, res) => {
