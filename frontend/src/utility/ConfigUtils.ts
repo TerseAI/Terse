@@ -11,11 +11,13 @@ import {
     JiraConfig,
     LaunchDarklyConfig,
     LinearInputConfig,
+    LinearKBConfig,
     LinearOutputConfig,
     NotionConfig,
     NotionPageConfig,
     PosthogConfig,
     SlackConfig,
+    SlackKBConfig,
     SlackOutputConfig,
     TimeTriggerConfig
 } from "@/shared/Configs"
@@ -99,6 +101,25 @@ export function deserializeConfig(jsonConfig: any): ConfigInstance {
         case ConfigType.DATADOG:
             const datadogConfig = jsonConfig as DatadogConfig
             return new DatadogConfig(integrationId, datadogConfig.defaultIndexes)
+        case ConfigType.LINEAR_KB:
+            const linearKBConfig = jsonConfig as LinearKBConfig
+            return new LinearKBConfig(
+                integrationId,
+                linearKBConfig.teamId,
+                linearKBConfig.teamName,
+                linearKBConfig.projectId,
+                linearKBConfig.projectName
+            )
+        case ConfigType.SLACK_KB:
+            const slackKBConfig = jsonConfig as SlackKBConfig
+            return new SlackKBConfig(
+                integrationId,
+                slackKBConfig.channelIds,
+                slackKBConfig.channelNames,
+                slackKBConfig.allowDms ?? false,
+                slackKBConfig.userIds,
+                slackKBConfig.userNames
+            )
 
         default:
             const _exhaustive: never = configType

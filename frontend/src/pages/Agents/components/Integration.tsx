@@ -23,9 +23,11 @@ export function IconForConfigType({ type }: { type: ConfigType }) {
             return <GithubIcon />
         case ConfigType.LINEAR_INPUT:
         case ConfigType.LINEAR_OUTPUT:
+        case ConfigType.LINEAR_KB:
             return <LinearIcon />
         case ConfigType.SLACK:
         case ConfigType.SLACK_OUTPUT:
+        case ConfigType.SLACK_KB:
             return <SlackIcon />
         case ConfigType.GMAIL:
         case ConfigType.GMAIL_OUTPUT:

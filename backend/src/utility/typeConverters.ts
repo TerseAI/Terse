@@ -13,11 +13,13 @@ import {
     JiraConfig,
     LaunchDarklyConfig,
     LinearInputConfig,
+    LinearKBConfig,
     LinearOutputConfig,
     NotionConfig,
     NotionPageConfig,
     PosthogConfig,
     SlackConfig,
+    SlackKBConfig,
     SlackOutputConfig,
     TimeTriggerConfig
 } from "../shared/Configs"
@@ -340,6 +342,10 @@ export const convertConfigTypeToInputConfigType = (configType: ConfigType): Inpu
             throw new Error("GMAIL_OUTPUT is an output type, not an input type")
         case ConfigType.DATADOG:
             throw new Error("DATADOG is not an input config type")
+        case ConfigType.LINEAR_KB:
+            throw new Error("LINEAR_KB is a knowledge base type, not an input type")
+        case ConfigType.SLACK_KB:
+            throw new Error("SLACK_KB is a knowledge base type, not an input type")
         default:
             throw configType satisfies never
     }
@@ -437,8 +443,12 @@ export const convertConfigTypeToKnowledgeBaseConfigType = (configType: ConfigTyp
             return KnowledgeBaseConfigType.LAUNCHDARKLY
         case ConfigType.DATADOG:
             return KnowledgeBaseConfigType.DATADOG
+        case ConfigType.LINEAR_KB:
+            return KnowledgeBaseConfigType.LINEAR
+        case ConfigType.SLACK_KB:
+            return KnowledgeBaseConfigType.SLACK
         default:
-            throw new Error(`ConfigType ${configType} is not a valid knowledge base config type. Supported knowledge base config types are: POSTHOG, GITHUB_KB, DATADOG.`)
+            throw new Error(`ConfigType ${configType} is not a valid knowledge base config type. Supported knowledge base config types are: POSTHOG, GITHUB_KB, DATADOG, LINEAR_KB, SLACK_KB.`)
     }
 }
 
@@ -473,6 +483,16 @@ export const convertPrismaKnowledgeBaseConfigToConfigInstance = (channelKnowledg
         return new DatadogConfig(integrationId, datadogConfig.default_indexes && datadogConfig.default_indexes.length > 0 ? datadogConfig.default_indexes : ["main"])
     }
 
+    if (channelKnowledgeBase.linear_kb_config) {
+        const c = channelKnowledgeBase.linear_kb_config
+        return new LinearKBConfig(integrationId, c.team_id ?? undefined, c.team_name ?? undefined, c.project_id ?? undefined, c.project_name ?? undefined)
+    }
+
+    if (channelKnowledgeBase.slack_kb_config) {
+        const c = channelKnowledgeBase.slack_kb_config
+        return new SlackKBConfig(integrationId, c.channel_ids ?? [], c.channel_names ?? [], c.allow_dms ?? false, c.user_ids ?? [], c.user_names ?? [])
+    }
+
     throw new Error(`Unsupported knowledge base config type: ${channelKnowledgeBase.config_type}`)
 }
 
@@ -497,6 +517,10 @@ export const convertPlainObjectToKnowledgeBaseConfigInstance = (config: any): Co
             return new GitHubKBConfig(config.integrationId, config.repositoryIds || [], config.repositoryNames || [])
         case ConfigType.LAUNCHDARKLY:
             return new LaunchDarklyConfig(config.integrationId, config.projectKey, config.environmentKeys || [])
+        case ConfigType.LINEAR_KB:
+            return new LinearKBConfig(config.integrationId, config.teamId, config.teamName, config.projectId, config.projectName)
+        case ConfigType.SLACK_KB:
+            return new SlackKBConfig(config.integrationId, config.channelIds, config.channelNames, config.allowDms ?? false, config.userIds, config.userNames)
         default:
             throw new Error(`Unsupported knowledge base config type: ${config.configType}`)
     }

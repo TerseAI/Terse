@@ -118,6 +118,25 @@ const PosthogConfigSchema = BaseConfigSchema.extend({
     projectName: z.string().optional()
 })
 
+// Linear Knowledge Base config schema
+const LinearKBConfigSchema = BaseConfigSchema.extend({
+    configType: z.literal(ConfigType.LINEAR_KB),
+    integrationType: z.literal(IntegrationType.LINEAR),
+    teamId: z.string().optional(),
+    teamName: z.string().optional(),
+    projectId: z.string().optional(),
+    projectName: z.string().optional()
+})
+
+// Slack Knowledge Base config schema
+const SlackKBConfigSchema = BaseConfigSchema.extend({
+    configType: z.literal(ConfigType.SLACK_KB),
+    integrationType: z.literal(IntegrationType.SLACK),
+    channelIds: z.array(z.string()).optional(),
+    channelNames: z.array(z.string()).optional(),
+    allowDms: z.boolean().optional()
+})
+
 // Time Trigger config schema
 const TimeTriggerConfigSchema = BaseConfigSchema.extend({
     configType: z.literal(ConfigType.TIME_TRIGGER),
@@ -140,6 +159,8 @@ export const ConfigTemplateSchema = z.discriminatedUnion("configType", [
     JiraConfigSchema,
     ConfluenceConfigSchema,
     PosthogConfigSchema,
+    LinearKBConfigSchema,
+    SlackKBConfigSchema,
     TimeTriggerConfigSchema
 ])
 

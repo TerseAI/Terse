@@ -18,6 +18,8 @@ export enum ConfigType {
     DATADOG = "DATADOG",
     TIME_TRIGGER = 'time_trigger',
     LAUNCHDARKLY = 'launchdarkly',
+    LINEAR_KB = 'linear_kb',
+    SLACK_KB = 'slack_kb',
 }
 
 // MARK: Config Metadata
@@ -185,6 +187,24 @@ export const LaunchDarklyConfigMetadata = {
     isKnowledgeBase: true,
 } as const satisfies ConfigDetails;
 
+export const LinearKBConfigMetadata = {
+    configType: ConfigType.LINEAR_KB,
+    name: 'Linear',
+    description: 'Search and read Linear tickets',
+    isInput: false,
+    isOutput: false,
+    isKnowledgeBase: true,
+} as const satisfies ConfigDetails;
+
+export const SlackKBConfigMetadata = {
+    configType: ConfigType.SLACK_KB,
+    name: 'Slack',
+    description: 'Read Slack conversation history',
+    isInput: false,
+    isOutput: false,
+    isKnowledgeBase: true,
+} as const satisfies ConfigDetails;
+
 export type ConfigDetailsMap = Record<ConfigType, ConfigDetails>;
 
 export const CONFIG_DETAILS: ConfigDetailsMap = {
@@ -205,6 +225,8 @@ export const CONFIG_DETAILS: ConfigDetailsMap = {
     [ConfigType.DATADOG]: DatadogConfigMetadata,
     [ConfigType.TIME_TRIGGER]: TimeTriggerConfigMetadata,
     [ConfigType.LAUNCHDARKLY]: LaunchDarklyConfigMetadata,
+    [ConfigType.LINEAR_KB]: LinearKBConfigMetadata,
+    [ConfigType.SLACK_KB]: SlackKBConfigMetadata,
 } as const satisfies ConfigDetailsMap;
 
 export interface ConfigInstance {
@@ -661,6 +683,81 @@ export class LaunchDarklyConfig implements ConfigInstance {
     }
 }
 
+export class LinearKBConfig implements ConfigInstance {
+    integrationType: IntegrationType = IntegrationType.LINEAR;
+    configType: ConfigType = ConfigType.LINEAR_KB;
+
+    constructor(
+        public integrationId: string,
+        public teamId?: string,
+        public teamName?: string,
+        public projectId?: string,
+        public projectName?: string,
+    ) {}
+
+    isComplete(): boolean {
+        return true;
+    }
+
+    formatForAgent(): string {
+        const parts = [`Type: Linear Knowledge Base`, `Integration ID: ${this.integrationId}`];
+        if (this.teamName) {
+            parts.push(`Team: ${this.teamName}`);
+        } else if (this.teamId) {
+            parts.push(`Team ID: ${this.teamId}`);
+        }
+        if (this.projectName) {
+            parts.push(`Project: ${this.projectName}`);
+        } else if (this.projectId) {
+            parts.push(`Project ID: ${this.projectId}`);
+        }
+        return parts.join('\n');
+    }
+}
+
+export class SlackKBConfig implements ConfigInstance {
+    integrationType: IntegrationType = IntegrationType.SLACK;
+    configType: ConfigType = ConfigType.SLACK_KB;
+
+    constructor(
+        public integrationId: string,
+        public channelIds?: string[],
+        public channelNames?: string[],
+        public allowDms: boolean = false,
+        public userIds?: string[],
+        public userNames?: string[],
+    ) {}
+
+    isComplete(): boolean {
+        // Only requires an integration to be selected - channels/users/DMs are optional filters
+        return !!this.integrationId;
+    }
+
+    formatForAgent(): string {
+        const parts = [`Type: Slack Knowledge Base`, `Integration ID: ${this.integrationId}`];
+        const hasChannels = this.channelNames?.length || this.channelIds?.length;
+        const hasUsers = this.userNames?.length || this.userIds?.length;
+        
+        if (this.channelNames?.length) {
+            parts.push(`Channels: ${this.channelNames.join(', ')}`);
+        } else if (this.channelIds?.length) {
+            parts.push(`Channel IDs: ${this.channelIds.join(', ')}`);
+        }
+        if (this.allowDms) {
+            parts.push('Allow DMs: Yes');
+        }
+        if (this.userNames?.length) {
+            parts.push(`Filter to users: ${this.userNames.join(', ')}`);
+        } else if (this.userIds?.length) {
+            parts.push(`Filter to user IDs: ${this.userIds.join(', ')}`);
+        }
+        if (!hasChannels && !this.allowDms && !hasUsers) {
+            parts.push('Access: All channels and conversations the integration can access');
+        }
+        return parts.join('\n');
+    }
+}
+
 // To be studied Later!!
 type EnsureExhaustiveMetadata<T extends Record<ConfigType, new (...args: any[]) => ConfigInstance>> = T;
 
@@ -682,6 +779,8 @@ export type ConfigMetadataMap = EnsureExhaustiveMetadata<{
     [ConfigType.DATADOG]: typeof DatadogConfig;
     [ConfigType.TIME_TRIGGER]: typeof TimeTriggerConfig;
     [ConfigType.LAUNCHDARKLY]: typeof LaunchDarklyConfig;
+    [ConfigType.LINEAR_KB]: typeof LinearKBConfig;
+    [ConfigType.SLACK_KB]: typeof SlackKBConfig;
 }>;
 
 export const CONFIG_METADATA: ConfigMetadataMap = {
@@ -702,4 +801,6 @@ export const CONFIG_METADATA: ConfigMetadataMap = {
     [ConfigType.DATADOG]: DatadogConfig,
     [ConfigType.TIME_TRIGGER]: TimeTriggerConfig,
     [ConfigType.LAUNCHDARKLY]: LaunchDarklyConfig,
+    [ConfigType.LINEAR_KB]: LinearKBConfig,
+    [ConfigType.SLACK_KB]: SlackKBConfig,
 } as const satisfies ConfigMetadataMap;
