@@ -429,5 +429,408 @@
         ],
         "requireApproval": false,
         "isActive": true
+    },
+    {
+        "id": "incident-postmortem-draft",
+        "category": "track",
+        "name": "Incident Postmortem Draft",
+        "description": "Draft postmortem summaries from incident channels",
+        "chatPrompt": "Build an agent that runs daily, scans Slack channels matching incident-<id>, and creates postmortem draft summaries in Notion for review prep.",
+        "prompt": {
+            "text": "Run daily to scan Slack for channels matching `incident-*`. For each active incident channel, create a Notion page with a postmortem draft.\n\nExtract from each channel: timeline (when detected, responded, resolved), impact (users/systems affected), root cause discussion, resolution, and action items mentioned.\n\nStructure each Notion page with: Summary, Timeline, Impact, Root Cause (mark as draft), Resolution, Action Items, and Open Questions. Link back to the Slack channel. Skip channels that already have a completed postmortem page."
+        },
+        "triggers": [
+            {
+                "config": {
+                    "configType": "time_trigger",
+                    "integrationType": "cron_job",
+                    "cronExpression": "0 9 * * *"
+                }
+            }
+        ],
+        "knowledgeBases": [
+            {
+                "config": {
+                    "configType": "slack_kb",
+                    "integrationType": "slack"
+                }
+            }
+        ],
+        "outputs": [
+            {
+                "config": {
+                    "configType": "notion_page",
+                    "integrationType": "notion"
+                }
+            }
+        ],
+        "requireApproval": false,
+        "isActive": true
+    },
+    {
+        "id": "tech-debt-ledger",
+        "category": "track",
+        "name": "Tech Debt Ledger",
+        "description": "Track tech debt from PR comments in a central ledger",
+        "chatPrompt": "Build an agent that monitors merged GitHub PRs for TODO, FIXME, tech-debt, and hack comments, then tracks them in a Notion database.",
+        "prompt": {
+            "text": "When a PR is merged, scan the diff for tech debt markers: TODO, FIXME, HACK, XXX, and reviewer comments like \"refactor later\" or \"temporary fix\".\n\nFor each item found, create a Notion database entry with: description, file path, PR link, author, type (TODO/FIXME/HACK), and priority (High for critical paths, Medium for core features, Low otherwise).\n\nCheck for duplicates before creating entries. If a TODO was removed in a PR, mark its entry as Resolved. Ignore test files and auto-generated code."
+        },
+        "triggers": [
+            {
+                "config": {
+                    "configType": "github",
+                    "integrationType": "github"
+                }
+            }
+        ],
+        "knowledgeBases": [
+            {
+                "config": {
+                    "configType": "github_kb",
+                    "integrationType": "github"
+                }
+            }
+        ],
+        "outputs": [
+            {
+                "config": {
+                    "configType": "notion_database",
+                    "integrationType": "notion"
+                }
+            }
+        ],
+        "requireApproval": false,
+        "isActive": true
+    },
+    {
+        "id": "sprint-summary-tool",
+        "category": "track",
+        "name": "Sprint Summary Tool",
+        "description": "Generate sprint retrospective prep from Linear, GitHub, and Slack",
+        "chatPrompt": "Build an agent that runs Monday morning, reviews the past sprint across Linear, GitHub, and Slack, and creates a Notion page with a sprint summary template pre-filled with context.",
+        "prompt": {
+            "text": "Run Monday morning to compile a sprint summary from the past week. Create a Notion page with:\n\n1. Quick stats: issues completed, PRs merged, completion rate\n2. What shipped: completed Linear issues grouped by feature/epic with PR links\n3. In progress: work carrying over to next sprint\n4. Key decisions from Slack discussions\n5. Blockers encountered\n6. Discussion points for retro (wins, friction points, open items)\n\nPull data from Linear (completed/in-progress issues), GitHub (merged PRs), and Slack (decisions, blockers, wins). Include links throughout."
+        },
+        "triggers": [
+            {
+                "config": {
+                    "configType": "time_trigger",
+                    "integrationType": "cron_job",
+                    "cronExpression": "0 9 * * 1"
+                }
+            }
+        ],
+        "knowledgeBases": [
+            {
+                "config": {
+                    "configType": "linear_kb",
+                    "integrationType": "linear"
+                }
+            },
+            {
+                "config": {
+                    "configType": "github_kb",
+                    "integrationType": "github"
+                }
+            },
+            {
+                "config": {
+                    "configType": "slack_kb",
+                    "integrationType": "slack"
+                }
+            }
+        ],
+        "outputs": [
+            {
+                "config": {
+                    "configType": "notion_page",
+                    "integrationType": "notion"
+                }
+            }
+        ],
+        "requireApproval": false,
+        "isActive": true
+    },
+    {
+        "id": "oncall-handoff-report",
+        "category": "sync",
+        "name": "On-call Handoff Report",
+        "description": "Generate weekly on-call handoff reports from support activity",
+        "chatPrompt": "Build an agent that runs weekly, reviews Slack support channels and Linear tickets, and DMs the incoming on-call person with a handoff briefing.",
+        "prompt": {
+            "text": "Run Friday to compile a handoff report and DM it to the incoming on-call person.\n\nOn-call rotation (configure with your team):\n1. @person1\n2. @person2\n3. @person3\n\nInclude in the handoff:\n- Active issues needing attention (with Linear links)\n- Watch list: issues that might flare up\n- Stats: total requests, P0/P1 count\n- Recurring themes observed\n- Brief notes for context\n\nPull from Slack support channel and Linear tickets. Keep it concise and actionable—prioritize open issues at the top."
+        },
+        "triggers": [
+            {
+                "config": {
+                    "configType": "time_trigger",
+                    "integrationType": "cron_job",
+                    "cronExpression": "0 17 * * 5"
+                }
+            }
+        ],
+        "knowledgeBases": [
+            {
+                "config": {
+                    "configType": "slack_kb",
+                    "integrationType": "slack"
+                }
+            },
+            {
+                "config": {
+                    "configType": "linear_kb",
+                    "integrationType": "linear"
+                }
+            }
+        ],
+        "outputs": [
+            {
+                "config": {
+                    "configType": "slack_output",
+                    "integrationType": "slack"
+                }
+            }
+        ],
+        "requireApproval": false,
+        "isActive": true
+    },
+    {
+        "id": "meeting-action-item-tracker",
+        "category": "sync",
+        "name": "Meeting Action Item Tracker",
+        "description": "Extract action items from meeting notes and create Linear tickets",
+        "chatPrompt": "Build an agent that monitors a Slack channel for meeting notes, automatically detects action items, and creates Linear tickets for follow-up.",
+        "prompt": {
+            "text": "Monitor Slack for meeting notes (longer structured messages with bullets, attendees, or \"meeting notes\" keywords). Auto-detect action items by looking for: \"Action:\", \"TODO:\", \"@person will...\", checkbox items, or deadline mentions.\n\nFor each action item, create a Linear ticket with the task title, context from the meeting, assignee, and link back to the Slack message. After creating tickets, reply in a thread: \"Created [N] action items in Linear: [list with links]\".\n\nSkip vague discussion points—only create tickets for clear tasks with identifiable owners."
+        },
+        "triggers": [
+            {
+                "config": {
+                    "configType": "slack",
+                    "integrationType": "slack"
+                }
+            }
+        ],
+        "outputs": [
+            {
+                "config": {
+                    "configType": "linear_output",
+                    "integrationType": "linear"
+                }
+            }
+        ],
+        "requireApproval": false,
+        "isActive": true
+    },
+    {
+        "id": "cross-team-dependency-alert",
+        "category": "sync",
+        "name": "Cross Team Dependency Alert",
+        "description": "Alert when another team's changes might break your integrations",
+        "chatPrompt": "Build an agent that monitors merged PRs in another team's GitHub repo and alerts you in Slack when there are breaking changes to APIs, schemas, or exports you depend on.",
+        "prompt": {
+            "text": "Monitor merged PRs in another team's repo for breaking changes. Alert on Slack when changes affect your dependencies.\n\nDependencies to watch (configure these):\n- API endpoints: [/api/v1/users, etc.]\n- Schemas/Types: [UserSchema, etc.]\n- Exported functions: [validateUser, etc.]\n- File paths: [src/shared/*, etc.]\n\nBreaking changes include: removed/renamed endpoints, changed response shapes, removed fields, changed function signatures, removed exports.\n\nAlert format: PR link, what changed, which dependencies are affected, recommended action. Classify as Breaking (requires action) or Potentially Breaking (review recommended)."
+        },
+        "triggers": [
+            {
+                "config": {
+                    "configType": "github",
+                    "integrationType": "github"
+                }
+            }
+        ],
+        "knowledgeBases": [
+            {
+                "config": {
+                    "configType": "github_kb",
+                    "integrationType": "github"
+                }
+            }
+        ],
+        "outputs": [
+            {
+                "config": {
+                    "configType": "slack_output",
+                    "integrationType": "slack"
+                }
+            }
+        ],
+        "requireApproval": false,
+        "isActive": true
+    },
+    {
+        "id": "pr-review-router",
+        "category": "ship",
+        "name": "PR Review Router",
+        "description": "Suggest the best reviewers when a PR is opened",
+        "chatPrompt": "Build an agent that when a PR is opened, analyzes the changed files and suggests the best-suited teammates for review based on CODEOWNERS and recent activity, then sends them a Slack message.",
+        "prompt": {
+            "text": "When a PR is opened, analyze changed files and suggest 1-2 reviewers. Send them a Slack DM with the PR link.\n\nReviewer selection (in priority order):\n1. CODEOWNERS file mappings\n2. Recent activity on affected files\n3. Past review history for similar areas\n\nTeam expertise (configure these):\n- Frontend: [@person1, @person2]\n- Backend: [@person3, @person4]\n\nSlack message: PR title, link, why they were chosen, brief overview of changes, and focus areas for review. Never suggest the PR author. Skip draft PRs."
+        },
+        "triggers": [
+            {
+                "config": {
+                    "configType": "github",
+                    "integrationType": "github"
+                }
+            }
+        ],
+        "knowledgeBases": [
+            {
+                "config": {
+                    "configType": "github_kb",
+                    "integrationType": "github"
+                }
+            }
+        ],
+        "outputs": [
+            {
+                "config": {
+                    "configType": "slack_output",
+                    "integrationType": "slack"
+                }
+            }
+        ],
+        "requireApproval": false,
+        "isActive": true
+    },
+    {
+        "id": "test-plan-generator",
+        "category": "ship",
+        "name": "Test Plan Generator",
+        "description": "Generate QA test plans for open PRs",
+        "chatPrompt": "Build an agent that when a PR is opened, analyzes the changes and generates a manual QA test plan plus suggestions for unit/integration tests, sending it to the author via Slack.",
+        "prompt": {
+            "text": "When a PR is opened, analyze the changes and send the author a test plan via Slack.\n\nManual QA checklist:\n- Happy path scenarios with steps to verify\n- Edge cases and expected behavior\n- Error handling scenarios\n- Regression checks for related features\n\nSuggested automated tests:\n- Unit tests for changed functions\n- Integration tests where appropriate\n- Note any test coverage gaps\n\nBe specific to the actual changes—include concrete steps and expected results. For bug fixes, always include a regression test for the original bug."
+        },
+        "triggers": [
+            {
+                "config": {
+                    "configType": "github",
+                    "integrationType": "github"
+                }
+            }
+        ],
+        "knowledgeBases": [
+            {
+                "config": {
+                    "configType": "github_kb",
+                    "integrationType": "github"
+                }
+            }
+        ],
+        "outputs": [
+            {
+                "config": {
+                    "configType": "slack_output",
+                    "integrationType": "slack"
+                }
+            }
+        ],
+        "requireApproval": false,
+        "isActive": true
+    },
+    {
+        "id": "feature-flag-janitor",
+        "category": "ship",
+        "name": "Feature Flag Janitor",
+        "description": "Find stale feature flags ready for cleanup",
+        "chatPrompt": "Build an agent that runs weekly, reviews recent PRs for feature flag usage, checks LaunchDarkly for flag status, and reports opportunities to clean up stale flags.",
+        "prompt": {
+            "text": "Run weekly to find stale feature flags. Scan last week's PRs and codebase for flag references, then check LaunchDarkly for status.\n\nReady for removal:\n- 100% rolled out for 30+ days → remove flag, keep enabled code\n- Turned off for 30+ days → remove flag and dead code\n- Archived or doesn't exist in LaunchDarkly → remove orphaned reference\n\nPost a Slack report with: flags ready for cleanup (with file locations), flags to review, and total count. Never recommend removing flags with partial rollout or user targeting."
+        },
+        "triggers": [
+            {
+                "config": {
+                    "configType": "time_trigger",
+                    "integrationType": "cron_job",
+                    "cronExpression": "0 9 * * 1"
+                }
+            }
+        ],
+        "knowledgeBases": [
+            {
+                "config": {
+                    "configType": "github_kb",
+                    "integrationType": "github"
+                }
+            }
+        ],
+        "outputs": [
+            {
+                "config": {
+                    "configType": "slack_output",
+                    "integrationType": "slack"
+                }
+            }
+        ],
+        "requireApproval": false,
+        "isActive": true
+    },
+    {
+        "id": "community-questions-aggregator",
+        "category": "users",
+        "name": "Community Questions Aggregator",
+        "description": "Surface common questions and draft doc improvements",
+        "chatPrompt": "Build an agent that monitors a community Slack channel for common questions and creates draft documentation improvements in Notion.",
+        "prompt": {
+            "text": "Monitor the Slack channel for questions (messages with \"?\", \"how do I\", \"I need help with\", etc.). Group similar questions by topic and count frequency.\n\nFor questions asked 3+ times, create draft documentation in the Notion page:\n- Common question variants\n- Draft content that answers the question\n- Suggested placement in docs\n\nLink to original Slack threads for context. Focus on recurring patterns that indicate doc gaps, not one-off support issues. Update incrementally."
+        },
+        "triggers": [
+            {
+                "config": {
+                    "configType": "slack",
+                    "integrationType": "slack"
+                }
+            }
+        ],
+        "outputs": [
+            {
+                "config": {
+                    "configType": "notion_page",
+                    "integrationType": "notion"
+                }
+            }
+        ],
+        "requireApproval": false,
+        "isActive": true
+    },
+    {
+        "id": "session-replay-summarizer",
+        "category": "users",
+        "name": "Session Replay Summarizer",
+        "description": "Summarize high-frustration user sessions from Posthog",
+        "chatPrompt": "Build an agent that runs daily, scans Posthog for high-frustration sessions (rage clicks, errors, long sessions), and generates a summary of what went wrong.",
+        "prompt": {
+            "text": "Run daily to scan Posthog for high-frustration sessions. Look for: rage clicks, dead clicks, errors, and sessions longer than 10 minutes.\n\nSelect 3-5 representative sessions showing different issues. For each, summarize: what the user was trying to do, where they got stuck, what went wrong, and a suggested fix. Include Posthog session links.\n\nPost to Slack with a TL;DR of main issues, individual session summaries, and patterns observed across sessions. If no frustration signals found, report that as a positive signal."
+        },
+        "triggers": [
+            {
+                "config": {
+                    "configType": "time_trigger",
+                    "integrationType": "cron_job",
+                    "cronExpression": "0 9 * * 1-5"
+                }
+            }
+        ],
+        "knowledgeBases": [
+            {
+                "config": {
+                    "configType": "POSTHOG",
+                    "integrationType": "posthog"
+                }
+            }
+        ],
+        "outputs": [
+            {
+                "config": {
+                    "configType": "slack_output",
+                    "integrationType": "slack"
+                }
+            }
+        ],
+        "requireApproval": false,
+        "isActive": true
     }
 ]
