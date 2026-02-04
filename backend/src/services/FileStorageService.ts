@@ -257,3 +257,52 @@ export function buildSlackFileKey(teamId: string, fileId: string): string {
     const hash = md5Hash(fileId)
     return `slack/${teamId}/${hash}`
 }
+
+// Organization logo helpers
+
+export function buildOrgLogoKey(workosOrgId: string): string {
+    return `org-logos/${workosOrgId}`
+}
+
+export async function getOrgLogoUploadUrl(workosOrgId: string, contentType: string): Promise<string | null> {
+    const primaryKey = buildOrgLogoKey(workosOrgId)
+    const file = getFile(primaryKey)
+
+    if (!file) {
+        logger.debug("GCS not configured, cannot generate upload URL", { workosOrgId })
+        return null
+    }
+
+    try {
+        const [signedUrl] = await file.getSignedUrl({
+            version: "v4",
+            action: "write",
+            expires: Date.now() + 15 * 60 * 1000, // 15 minutes
+            contentType
+        })
+        return signedUrl
+    } catch (error) {
+        logger.error("Error generating org logo upload URL", { workosOrgId, error })
+        return null
+    }
+}
+
+export async function getOrgLogoDownloadUrl(workosOrgId: string): Promise<string | null> {
+    const primaryKey = buildOrgLogoKey(workosOrgId)
+    const file = getFile(primaryKey)
+
+    if (!file) {
+        return null
+    }
+
+    try {
+        const [exists] = await file.exists()
+        if (!exists) {
+            return null
+        }
+        return await generatePresignedUrl(file)
+    } catch (error) {
+        logger.error("Error getting org logo download URL", { workosOrgId, error })
+        return null
+    }
+}

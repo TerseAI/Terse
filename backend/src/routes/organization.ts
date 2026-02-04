@@ -2,6 +2,7 @@ import { Request, Response } from "express"
 
 import { settings } from "../config/settings"
 import logger from "../logger"
+import { getOrgLogoDownloadUrl, getOrgLogoUploadUrl } from "../services/FileStorageService"
 import { workos } from "../utility/workos"
 
 import { WORKOS_SESSION_COOKIE_NAME } from "./auth"
@@ -211,5 +212,111 @@ export async function switchOrganization(req: Request, res: Response) {
             error: "Failed to switch organization.",
             redirectUrl: settings.urls.frontend
         })
+    }
+}
+
+export async function getLogoUploadUrl(req: Request, res: Response) {
+    const user = req.session?.user
+    if (!user) {
+        return res.status(401).json({ error: "Unauthorized" })
+    }
+
+    // Check if user is admin
+    if (!user.roles?.includes("admin")) {
+        return res.status(403).json({ error: "Only admins can upload organization logos" })
+    }
+
+    if (!user.organizationId) {
+        return res.status(400).json({ error: "No organization" })
+    }
+
+    const contentType = req.query.contentType as string
+    if (!contentType || !contentType.startsWith("image/")) {
+        return res.status(400).json({ error: "Invalid content type. Must be an image." })
+    }
+
+    try {
+        const uploadUrl = await getOrgLogoUploadUrl(user.organizationId, contentType)
+        if (!uploadUrl) {
+            return res.status(500).json({ error: "Failed to generate upload URL" })
+        }
+        return res.json({ uploadUrl })
+    } catch (error) {
+        logger.error("Failed to generate logo upload URL", {
+            error,
+            userId: user.id,
+            organizationId: user.organizationId
+        })
+        return res.status(500).json({ error: "Failed to generate upload URL" })
+    }
+}
+
+export async function getLogoUrl(req: Request, res: Response) {
+    const user = req.session?.user
+    if (!user) {
+        return res.status(401).json({ error: "Unauthorized" })
+    }
+
+    const organizationId = req.params.organizationId as string
+    if (!organizationId) {
+        return res.status(400).json({ error: "Organization ID required" })
+    }
+
+    try {
+        const logoUrl = await getOrgLogoDownloadUrl(organizationId)
+        return res.json({ logoUrl })
+    } catch (error) {
+        logger.error("Failed to get logo URL", {
+            error,
+            userId: user.id,
+            organizationId
+        })
+        return res.status(500).json({ error: "Failed to get logo URL" })
+    }
+}
+
+export async function updateOrganization(req: Request, res: Response) {
+    const user = req.session?.user
+    if (!user) {
+        return res.status(401).json({ error: "Unauthorized" })
+    }
+
+    // Check if user is admin
+    if (!user.roles?.includes("admin")) {
+        return res.status(403).json({ error: "Only admins can update organization settings" })
+    }
+
+    if (!user.organizationId) {
+        return res.status(400).json({ error: "No organization" })
+    }
+
+    const name = req.body?.name as string | undefined
+    if (!name || typeof name !== "string" || name.trim() === "") {
+        return res.status(400).json({ error: "Organization name is required" })
+    }
+
+    try {
+        const organization = await workos.organizations.updateOrganization({
+            organization: user.organizationId,
+            name: name.trim()
+        })
+
+        logger.info("Organization updated", {
+            organizationId: organization.id,
+            userId: user.id,
+            name: organization.name
+        })
+
+        return res.json({
+            id: organization.id,
+            name: organization.name
+        })
+    } catch (error) {
+        logger.error("Failed to update organization", {
+            error,
+            userId: user.id,
+            organizationId: user.organizationId
+        })
+        return res.status(500).json({ error: "Failed to update organization" })
     }
 }
