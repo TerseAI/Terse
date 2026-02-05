@@ -13,6 +13,7 @@ import { SlackIntegration } from "./SlackIntegration"
 import { SlackOutputIntegration } from "./SlackOutputIntegration"
 import { TimeTriggerIntegration } from "./TimeTriggerIntegration"
 import { InputConfigSelectorProps } from "./types"
+import { WebBrowsingIntegration } from "./WebBrowsingIntegration"
 
 export function IntegrationSelector(props: InputConfigSelectorProps) {
     switch (props.input.config?.configType || props.input.configType) {
@@ -51,6 +52,9 @@ export function IntegrationSelector(props: InputConfigSelectorProps) {
 
         case ConfigType.TIME_TRIGGER:
             return <TimeTriggerIntegration input={props.input} variant={props.variant} setConfig={props.setConfig} />
+
+        case ConfigType.WEB_BROWSING:
+            return <WebBrowsingIntegration input={props.input} variant={props.variant} setConfig={props.setConfig} />
 
         default:
             throw new Error(`Unsupported config type: ${props.input.configType}`)

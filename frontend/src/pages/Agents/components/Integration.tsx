@@ -11,7 +11,8 @@ import {
     LinearIcon,
     NotionIcon,
     PosthogIcon,
-    SlackIcon
+    SlackIcon,
+    WebBrowsingIcon
 } from "@/components/icons/IntegrationIcons"
 import { ConfigType } from "@/shared/Configs"
 import { IntegrationType } from "@/shared/Integrations"
@@ -49,6 +50,8 @@ export function IconForConfigType({ type }: { type: ConfigType }) {
             return <CalendarClockIcon />
         case ConfigType.DATADOG:
             return <DatadogIcon />
+        case ConfigType.WEB_BROWSING:
+            return <WebBrowsingIcon />
         default:
             // Exhaustive check: TypeScript will error if any IntegrationType case is missing
             throw type satisfies never
