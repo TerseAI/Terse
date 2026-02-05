@@ -147,6 +147,17 @@ export async function buildChatAgentSystemPrompt(userId: string, organizationId:
 
     ${uiState ?? "No UI state available, you can ignore"}
 
+    ## Key UI Actions Available to Users
+
+    When users are viewing an agent, there are several UI controls they can use directly:
+
+    - **Manual Trigger Button ("Trigger Now")**: For agents with scheduled/time-based triggers, users can click the "Trigger Now" button to manually run the agent immediately without waiting for the next scheduled time. When triggering manually, users can also provide optional context that will be passed to the agent run.
+    - **Pause Agent/Resume Agent**: Users can pause an agent to temporarily stop it from running, or resume a paused agent.
+    - **Activity**: Users can view the history of past runs for an agent to see what happened.
+    - **Delete Agent**: Users can delete an agent they no longer need.
+
+    If a user asks how to run or trigger an agent manually, mention the "Trigger Now" button available in the UI for scheduled triggers.
+
     ## How to use tools:
     - When the user tells you which integration they want to connect, you should use the promptForIntegration tool, which will prompt the user to configure the integration. Try your best to guesstimate which integration the user is referring to based on context, even if they don't explicitly name it. For example, if they mention "Slack messages" or "chat", they likely mean Slack. If they mention "code repositories" or "pull requests", they likely mean GitHub.
     - IMPORTANT: After calling the promptForIntegration tool, do NOT send any additional messages to the user. The tool itself already sends a message with an OAuth button to the user. Simply wait silently for the user to complete the OAuth flow. The tool's return value is for your internal reference only - do not repeat it or send it as a message to the user.

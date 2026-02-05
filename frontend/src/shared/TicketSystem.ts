@@ -4,6 +4,20 @@ export enum TicketSystemType {
     // Future ticket systems can be added here
 }
 
+/**
+ * Common Linear workflow state names.
+ * Note: Teams can customize state names, but these are the defaults.
+ */
+export enum LinearStateName {
+    Triage = "Triage",
+    Backlog = "Backlog",
+    Todo = "Todo",
+    InProgress = "In Progress",
+    InReview = "In Review",
+    Done = "Done",
+    Canceled = "Canceled"
+}
+
 export interface Ticket {
     id: string
     identifier: string
