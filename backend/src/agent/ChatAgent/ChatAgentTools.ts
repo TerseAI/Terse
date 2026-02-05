@@ -177,7 +177,7 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
                         const [summaryResult, filterResult] = await Promise.all([
                             generateEventSummary(integrationType, eventData),
                             agentPrompt
-                                ? filterEvent(event, agentPrompt).catch(err => {
+                                ? filterEvent(event, agentPrompt, false).catch(err => {
                                       logger.warn("[getSampleEvents] Filter preview failed for event", {
                                           entityId: identifiable.entityId,
                                           error: err instanceof Error ? err.message : String(err)

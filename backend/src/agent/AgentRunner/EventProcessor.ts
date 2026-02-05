@@ -196,7 +196,7 @@ export class EventProcessor {
         // Filter the event using AI to see if it's relevant to this agent
         let filterResult
         try {
-            const filterResponse = await filterEvent(this.inputEvent, agent.prompt, {
+            const filterResponse = await filterEvent(this.inputEvent, agent.prompt, true, {
                 runId,
                 userId: this.user.id,
                 agentId: agent.id,
