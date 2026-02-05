@@ -346,8 +346,6 @@ export const convertConfigTypeToInputConfigType = (configType: ConfigType): Inpu
             throw new Error("LINEAR_KB is a knowledge base type, not an input type")
         case ConfigType.SLACK_KB:
             throw new Error("SLACK_KB is a knowledge base type, not an input type")
-        case ConfigType.WEB_BROWSING:
-            throw new Error("WEB_BROWSING is an output type, not an input type")
         default:
             throw configType satisfies never
     }
