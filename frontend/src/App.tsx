@@ -14,6 +14,9 @@ import AgentDetail from "./pages/Agents/AgentDetail"
 import AgentSetup from "./pages/Agents/AgentSetup"
 import AgentsList from "./pages/Agents/AgentsList"
 import Home from "./pages/Home"
+import HomeCommandCenter from "./pages/prototypes/home-redesign/CommandCenter"
+import HomeAnalyticsDashboard from "./pages/prototypes/home-redesign/AnalyticsDashboard"
+import HomeSplitView from "./pages/prototypes/home-redesign/SplitView"
 import IntegrationPage from "./pages/IntegrationPage"
 import NotificationsPage from "./pages/Notifications"
 import OAuthError from "./pages/OAuthError"
@@ -43,6 +46,9 @@ function App() {
                             <Route path="integrations" element={<IntegrationPage />} />
                             <Route path="notifications" element={<NotificationsPage />} />
                             <Route path="profile" element={<ProfilePage />} />
+                            <Route path="prototypes/home-redesign/command-center" element={<HomeCommandCenter />} />
+                            <Route path="prototypes/home-redesign/analytics-dashboard" element={<HomeAnalyticsDashboard />} />
+                            <Route path="prototypes/home-redesign/split-view" element={<HomeSplitView />} />
                         </Route>
                         <Route path={FrontendRoutes.ORGANIZATIONS.CREATE} element={<OrganizationCreationPage />} />
                         <Route path={FrontendRoutes.OAUTH.SUCCESS} element={<OAuthSuccess />} />
