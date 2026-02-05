@@ -1,6 +1,7 @@
+import { useSearchParams } from "react-router-dom"
+
 import { Tab, TabGroup, TabList, TabPanel, TabPanels } from "@headlessui/react"
 import { Monitor, Shield, User2, Users } from "lucide-react"
-import { useSearchParams } from "react-router-dom"
 
 import { UserTable } from "@/components/UserManagement/UserManagement"
 import { UserProfileWidget } from "@/components/UserProfile/UserProfileWidget"
