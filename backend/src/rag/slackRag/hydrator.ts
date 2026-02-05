@@ -1,8 +1,8 @@
 import { initializeSlackWebClient } from "../../integrations/SlackClient"
 import { SlackEvent, SlackEventData } from "../../integrations/SlackIntegration"
 import logger from "../../logger"
-import { SlackChannelType } from "../../shared/types"
 import { db } from "../../prismaClient"
+import { SlackChannelType } from "../../shared/types"
 import { HydratorType } from "../../types/rag"
 import { HydrationContext, Hydrator, Identifiable } from "../Hydrator"
 

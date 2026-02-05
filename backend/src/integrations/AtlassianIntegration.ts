@@ -687,7 +687,7 @@ export class AtlassianIntegrationManager
             maxResults: String(maxResults),
             fields: "summary,description,status,priority,issuetype,project,assignee,creator,created,updated,labels,duedate"
         })
-        const response = await fetch(`https://api.atlassian.com/ex/jira/${cloudId}/rest/api/3/search?${params.toString()}`, {
+        const response = await fetch(`https://api.atlassian.com/ex/jira/${cloudId}/rest/api/3/search/jql?${params.toString()}`, {
             headers: {
                 Authorization: `Bearer ${accessToken}`,
                 Accept: "application/json"
@@ -801,6 +801,20 @@ function convertJiraIssueToWebhookPayload(issue: { id: string; self: string; key
 
 // MARK: - Event Definition
 
+/** Convert Jira description to plain text. Handles both string and ADF (Atlassian Document Format). */
+function jiraDescriptionToPlainText(description: unknown): string {
+    if (typeof description === "string") return description
+    if (description == null) return ""
+    const node = description as { type?: string; text?: string; content?: unknown[] }
+    if (node.text) return node.text
+    if (node.type === "hardBreak") return "\n"
+    if (Array.isArray(node.content)) {
+        const blockSeparator = node.type === "doc" ? "\n" : ""
+        return node.content.map(child => jiraDescriptionToPlainText(child)).join(blockSeparator)
+    }
+    return String(description)
+}
+
 export class JiraEvent extends InputEvent implements Identifiable {
     readonly integrationType: IntegrationType = IntegrationType.ATLASSIAN
     entityType = HydratorType.JIRA_EVENT
@@ -839,7 +853,8 @@ export class JiraEvent extends InputEvent implements Identifiable {
 
             issueSections.push(`Issue: ${issue.key} - ${issue.fields.summary}`)
             if (issue.fields.description) {
-                issueSections.push(`Description:\n${indentMultiline(issue.fields.description)}`)
+                const descriptionText = jiraDescriptionToPlainText(issue.fields.description)
+                issueSections.push(`Description:\n${indentMultiline(descriptionText)}`)
             }
             issueSections.push(`Status: ${issue.fields.status.name}`)
             if (issue.fields.priority) {
