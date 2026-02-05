@@ -148,6 +148,38 @@ export class GithubEventHydrator extends Hydrator<GithubEvent> {
                 return new GithubEvent(eventData, [])
             }
 
+            if (type === "push") {
+                // identifier is the branch name; fetch the latest commit from that branch
+                const branch = identifier
+                const { data: branchData } = await octokit.repos.getBranch({ owner, repo: name, branch })
+                const latestCommit = branchData.commit
+                const eventData: GithubAppUnifiedEventRequest = {
+                    username: latestCommit.commit?.author?.name ?? "",
+                    installationId,
+                    repositoryName: repo.full_name,
+                    eventType: "push",
+                    branch,
+                    repository: {
+                        id: repo.id,
+                        name: repo.name,
+                        owner: repo.owner?.login ?? owner,
+                        defaultBranch: repo.default_branch ?? "main"
+                    },
+                    sender: {
+                        login: latestCommit.author?.login ?? latestCommit.commit?.author?.name ?? "",
+                        email: latestCommit.commit?.author?.email
+                    },
+                    commits: [
+                        {
+                            sha: latestCommit.sha,
+                            name: latestCommit.commit?.message?.split("\n")[0] ?? "",
+                            fileDiffs: []
+                        }
+                    ]
+                }
+                return new GithubEvent(eventData, [])
+            }
+
             logger.warn(`Unsupported GitHub entity type: ${type}`)
             return null
         } catch (error) {
