@@ -29,7 +29,6 @@ import { createNotificationDestination, deleteNotificationDestination, getNotifi
 import { getNotionIntegrations, getNotionResources, notionOAuthCallback } from "./routes/notion"
 import { createOrganization, getCurrentOrganization, getLogoUploadUrl, getLogoUrl, getUserOrganizations, switchOrganization, updateOrganization } from "./routes/organization"
 import { createOrUpdatePosthogIntegration, getPosthogIntegrations, getPosthogProjects } from "./routes/posthog"
-import { generatePromptRoute, generateQuestionsRoute } from "./routes/promptBuilder"
 import { refreshAllTokens } from "./routes/refreshTokens"
 import { getChatHistory, getRunHistory, getRunHistoryActions } from "./routes/runHistory"
 import { handleManualTrigger, handleScheduleWebhook } from "./routes/schedule"
@@ -491,16 +490,6 @@ app.get(ApiRoutes.PUBLIC.TEMPLATES, async (req, res) => {
 
 app.get("/templates", authMiddleware, async (req, res) => {
     getTemplates(req, res)
-})
-
-// MARK: PROMPT BUILDER
-
-app.post("/prompt-builder/generate-questions", authMiddleware, async (req, res) => {
-    generateQuestionsRoute(req, res)
-})
-
-app.post("/prompt-builder/generate-prompt", authMiddleware, async (req, res) => {
-    generatePromptRoute(req, res)
 })
 
 // MARK: INTEGRATIONS
