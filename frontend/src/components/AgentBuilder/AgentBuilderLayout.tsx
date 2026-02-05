@@ -147,9 +147,7 @@ export function AgentBuilderLayout({ header }: AgentBuilderLayoutProps) {
     }
 
     const chatSectionVariants = {
-        initial: {
-            minHeight: 200
-        },
+        initial: {},
         expanded: {
             flexGrow: 1,
             minHeight: 0
@@ -210,7 +208,7 @@ export function AgentBuilderLayout({ header }: AgentBuilderLayoutProps) {
                     ease: ANIMATION_EASE
                 }}
             >
-                <div className="flex-1 min-h-0 w-full border border-red-500">
+                <div className="flex-1 min-h-0 w-full">
                     <Chat
                         ref={chatRef}
                         key={sessionId}
