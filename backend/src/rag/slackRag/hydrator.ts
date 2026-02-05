@@ -61,7 +61,9 @@ export class SlackEventHydrator extends Hydrator<SlackEvent> {
         })
     }
 
-    private async fetchFromSlack(permalink: string): Promise<SlackEvent | null> {
+    private async fetchFromSlack(entityId: string): Promise<SlackEvent | null> {
+        const [teamId, permalink] = entityId.split(":")
+
         const parsed = parsePermalink(permalink)
         if (!parsed) {
             logger.error(`Invalid Slack permalink: ${permalink}`)
@@ -70,9 +72,12 @@ export class SlackEventHydrator extends Hydrator<SlackEvent> {
 
         const { channelId, timestamp } = parsed
 
-        // Find all Slack integrations for the user and prefer user token (is_bot_user = false) as it's more permissive
+        // Find Slack integrations for the org, optionally scoped to teamId
         const userSlackIntegrations = await db().user_slack_integrations.findMany({
-            where: { user_id: this.ctx.userId },
+            where: {
+                organization_id: this.ctx.organizationId,
+                ...(teamId && { slack_team_id: teamId })
+            },
             include: {
                 slack_integration: true,
                 user: true

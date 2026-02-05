@@ -2,12 +2,9 @@ import { Octokit } from "@octokit/rest"
 
 import { getAppInstallationsForUser } from "../../integrations/GithubIntegration"
 import { GithubEvent } from "../../integrations/GithubIntegration"
-import { isOAuthIntegrationInstallation } from "../../integrations/abstract/Integration"
-import { INTEGRATION_REGISTRY } from "../../integrations/abstract/IntegrationRegistry"
 import logger from "../../logger"
 import { db } from "../../prismaClient"
 import type { GithubAppUnifiedEventRequest } from "../../routes/GithubTypes"
-import { IntegrationType } from "../../shared/Integrations"
 import { HydratorType } from "../../types/rag"
 import { HydrationContext, Hydrator, Identifiable } from "../Hydrator"
 
@@ -55,22 +52,31 @@ export class GithubEventHydrator extends Hydrator<GithubEvent> {
             return null
         }
 
-        const githubToken = await db().github_app_tokens.findFirst({
-            where: this.ctx.organizationId ? { organization_id: this.ctx.organizationId } : undefined
+        if (!this.ctx.organizationId) {
+            logger.error("GitHub hydrator requires organizationId in context")
+            return null
+        }
+
+        const githubTokens = await db().github_app_tokens.findMany({
+            where: { organization_id: this.ctx.organizationId }
         })
-        if (!githubToken?.access_token) {
-            logger.error("No GitHub OAuth token found for user org")
+
+        let accessToken: string | null = null
+        for (const token of githubTokens) {
+            const installations = await getAppInstallationsForUser(token.access_token)
+            const installation = installations.installations?.find((inst: { id: number }) => inst.id === installationId)
+            if (installation) {
+                accessToken = token.access_token
+                break
+            }
+        }
+
+        if (!accessToken) {
+            logger.error(`No GitHub token found for org with access to installation ${installationId}`)
             return null
         }
 
-        const installations = await getAppInstallationsForUser(githubToken.access_token)
-        const installation = installations.installations?.find((inst: { id: number }) => inst.id === installationId)
-        if (!installation) {
-            logger.error(`Installation ${installationId} not found for user`)
-            return null
-        }
-
-        const octokit = new Octokit({ auth: githubToken.access_token })
+        const octokit = new Octokit({ auth: accessToken })
 
         try {
             const { data: repo } = await octokit.request("GET /repositories/{repo_id}", { repo_id: repoId })
@@ -86,7 +92,7 @@ export class GithubEventHydrator extends Hydrator<GithubEvent> {
                     username: pr.user?.login ?? "",
                     installationId,
                     repositoryName: repo.full_name,
-                    eventType: pr.state === "closed" ? "pull_request.closed" : "pull_request.opened",
+                    eventType: pr.merged ? "pull_request.merged" : pr.state === "closed" ? "pull_request.closed" : "pull_request.opened",
                     repository: {
                         id: repo.id,
                         name: repo.name,

@@ -832,7 +832,7 @@ export class SlackEvent extends InputEvent implements Identifiable {
     constructor(data: SlackEventData) {
         super()
         this.data = data
-        this.entityId = data.permalink || ""
+        this.entityId = `${data.teamId}:${data.permalink || ""}`
     }
 
     formatForAgentRunner(): string {

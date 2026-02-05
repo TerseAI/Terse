@@ -39,7 +39,14 @@ export class FigmaCommentEventHydrator extends Hydrator<FigmaCommentEvent> {
             logger.error(`Invalid Figma entityId format: ${entityId}`)
             return null
         }
-        const [fileKey, commentId] = parts
+        let integrationId: string | undefined
+        let fileKey: string
+        let commentId: string
+        if (parts.length >= 3) {
+            [integrationId, fileKey, commentId] = parts
+        } else {
+            [fileKey, commentId] = parts
+        }
 
         if (!this.ctx.organizationId) {
             logger.error("Figma hydrator requires organizationId in context")
@@ -47,7 +54,10 @@ export class FigmaCommentEventHydrator extends Hydrator<FigmaCommentEvent> {
         }
 
         const integration = await db().figma_integrations.findFirst({
-            where: { organization_id: this.ctx.organizationId }
+            where: {
+                ...(integrationId && { id: integrationId }),
+                organization_id: this.ctx.organizationId
+            }
         })
         if (!integration) {
             logger.error(`No Figma integration found for organization`)
@@ -85,6 +95,7 @@ export class FigmaCommentEventHydrator extends Hydrator<FigmaCommentEvent> {
             }))
 
             const data: FigmaCommentEventData = {
+                integrationId: integration.id,
                 commentId,
                 fileKey,
                 fileUrl: fileMetadata?.url ?? `https://www.figma.com/file/${fileKey}`,

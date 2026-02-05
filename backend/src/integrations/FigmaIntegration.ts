@@ -791,6 +791,7 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
         const events: InputEvent[] = []
         for (const comment of recentComments) {
             const eventData: FigmaCommentEventData = {
+                integrationId: figmaIntegration.id,
                 commentId: comment.id,
                 fileKey,
                 fileUrl: `https://www.figma.com/file/${fileKey}`,
@@ -972,6 +973,7 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
         const positioningDataOrUndefined = positioningData ?? undefined
 
         const figmaEvent = new FigmaCommentEvent({
+            integrationId: integration.id,
             commentId: commentId,
             fileKey: fileKey,
             fileUrl: fileMetadata.url,
@@ -1003,7 +1005,9 @@ export class FigmaCommentEvent extends InputEvent implements Identifiable {
     constructor(data: FigmaCommentEventData) {
         super()
         this.data = data
-        this.entityId = `${data.fileKey}:${data.commentId}`
+        this.entityId = data.integrationId
+            ? `${data.integrationId}:${data.fileKey}:${data.commentId}`
+            : `${data.fileKey}:${data.commentId}`
     }
 
     formatForAgentRunner(): string {

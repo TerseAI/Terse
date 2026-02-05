@@ -333,6 +333,7 @@ export interface FigmaCommentThreadEntry {
  * This combines data from webhook, API, and enriched context
  */
 export interface FigmaCommentEventData {
+    integrationId: string
     commentId: string
     fileKey: string
     fileUrl: string
