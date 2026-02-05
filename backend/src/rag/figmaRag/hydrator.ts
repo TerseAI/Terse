@@ -43,9 +43,9 @@ export class FigmaCommentEventHydrator extends Hydrator<FigmaCommentEvent> {
         let fileKey: string
         let commentId: string
         if (parts.length >= 3) {
-            [integrationId, fileKey, commentId] = parts
+            ;[integrationId, fileKey, commentId] = parts
         } else {
-            [fileKey, commentId] = parts
+            ;[fileKey, commentId] = parts
         }
 
         if (!this.ctx.organizationId) {

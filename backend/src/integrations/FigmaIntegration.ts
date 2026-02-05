@@ -1005,9 +1005,7 @@ export class FigmaCommentEvent extends InputEvent implements Identifiable {
     constructor(data: FigmaCommentEventData) {
         super()
         this.data = data
-        this.entityId = data.integrationId
-            ? `${data.integrationId}:${data.fileKey}:${data.commentId}`
-            : `${data.fileKey}:${data.commentId}`
+        this.entityId = data.integrationId ? `${data.integrationId}:${data.fileKey}:${data.commentId}` : `${data.fileKey}:${data.commentId}`
     }
 
     formatForAgentRunner(): string {
