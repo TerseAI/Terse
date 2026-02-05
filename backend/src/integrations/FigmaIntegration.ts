@@ -8,6 +8,7 @@ import logger, { runWithUserContext } from "../logger"
 import { db } from "../prismaClient"
 import { FileCategory, StoredFile } from "../services/FileStorageService"
 import { ApiRoutes } from "../shared/ApiRoutes"
+import { ConfigInstance, ConfigType, FigmaConfig as FigmaConfigClass } from "../shared/Configs"
 import { FrontendRoutes } from "../shared/FrontendRoutes"
 import { AdditionalStateParams, FigmaIntegration, FigmaIntegrationMetadata, InstallationOptionsFor, IntegrationType } from "../shared/Integrations"
 import { RunHistoryTrigger } from "../shared/RunHistoryTypes"
@@ -729,6 +730,78 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
             // Return null on error - caller should handle
             return null
         }
+    }
+
+    async getSampleEvents(integrationId: string, triggerConfig: ConfigInstance, options?: { limit?: number }): Promise<InputEvent[]> {
+        if (triggerConfig.configType !== ConfigType.FIGMA) {
+            return []
+        }
+        const figmaConfig = triggerConfig as FigmaConfigClass
+
+        const limit = Math.min(options?.limit ?? 5, 10)
+        const fileKey = figmaConfig.fileKey
+        if (!fileKey) {
+            return []
+        }
+
+        const figmaIntegration = await db().figma_integrations.findUnique({
+            where: { id: integrationId }
+        })
+        if (!figmaIntegration) {
+            throw new Error(`Figma integration ${integrationId} not found`)
+        }
+
+        const accessToken = await this.getAccessToken(integrationId)
+        if (!accessToken) {
+            throw new Error(`Figma access token not found for integration ${integrationId}. Please reconnect.`)
+        }
+
+        const commentsResponse = await fetch(`https://api.figma.com/v1/files/${fileKey}/comments`, {
+            method: "GET",
+            headers: { Authorization: `Bearer ${accessToken}` }
+        })
+        if (!commentsResponse.ok) {
+            const errorText = await commentsResponse.text()
+            logger.error(`Failed to fetch Figma comments for file ${fileKey}`, { error: errorText, fileKey })
+            throw new Error(`Failed to fetch comments from Figma: ${commentsResponse.status}`)
+        }
+
+        const commentsData = await commentsResponse.json()
+        const comments = (commentsData.comments || []) as FigmaApiComment[]
+        const recentComments = comments.slice(-limit).reverse()
+
+        let fileMetadata: { name?: string; folder_name?: string } | undefined
+        try {
+            const fileResponse = await fetch(`https://api.figma.com/v1/files/${fileKey}`, {
+                headers: { Authorization: `Bearer ${accessToken}` }
+            })
+            if (fileResponse.ok) {
+                const fileData = await fileResponse.json()
+                fileMetadata = {
+                    name: fileData.name,
+                    folder_name: fileData.document?.name
+                }
+            }
+        } catch {
+            // optional
+        }
+
+        const events: InputEvent[] = []
+        for (const comment of recentComments) {
+            const eventData: FigmaCommentEventData = {
+                commentId: comment.id,
+                fileKey,
+                fileUrl: `https://www.figma.com/file/${fileKey}`,
+                nodeId: comment.client_meta?.node_id,
+                message: comment.message || "",
+                author: comment.user,
+                createdAt: comment.created_at,
+                resolved: comment.resolved_at !== null,
+                fileMetadata
+            }
+            events.push(new FigmaCommentEvent(eventData))
+        }
+        return events
     }
 
     /**

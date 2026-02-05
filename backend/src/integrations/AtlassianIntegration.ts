@@ -7,6 +7,7 @@ import { settings, urls } from "../config/settings"
 import logger, { runWithUserContext } from "../logger"
 import { db } from "../prismaClient"
 import { StoredFile } from "../services/FileStorageService"
+import { ConfigInstance, ConfigType, JiraConfig as JiraConfigClass } from "../shared/Configs"
 import { FrontendRoutes } from "../shared/FrontendRoutes"
 import { AdditionalStateParams, AtlassianIntegration, AtlassianIntegrationMetadata, InstallationOptionsFor, IntegrationType } from "../shared/Integrations"
 import { RunHistoryTrigger } from "../shared/RunHistoryTypes"
@@ -621,6 +622,177 @@ export class AtlassianIntegrationManager
                 integrationId
             })
             // Don't throw - allow automation teardown to continue even if webhook deletion fails
+        }
+    }
+
+    async getSampleEvents(integrationId: string, triggerConfig: ConfigInstance, options?: { limit?: number }): Promise<InputEvent[]> {
+        if (triggerConfig.configType !== ConfigType.JIRA) {
+            return []
+        }
+        const jiraConfig = triggerConfig as JiraConfigClass
+
+        const limit = Math.min(options?.limit ?? 5, 10)
+        await this.refreshToken(integrationId)
+
+        const atlassianIntegration = await db().atlassian_integrations.findUnique({
+            where: { id: integrationId }
+        })
+        if (!atlassianIntegration?.cloud_id || !atlassianIntegration.access_token) {
+            throw new Error(`Atlassian integration ${integrationId} not found or missing credentials`)
+        }
+
+        const accessToken = await this.getAccessToken(integrationId)
+        if (!accessToken) {
+            throw new Error(`Atlassian access token not found for integration ${integrationId}. Please reconnect.`)
+        }
+
+        let jqlQuery: string
+        if (jiraConfig.projectKey) {
+            jqlQuery = `project = ${jiraConfig.projectKey} ORDER BY created DESC`
+        } else {
+            const projectKeys = await this.fetchAccessibleProjectKeysForSample(atlassianIntegration.cloud_id, accessToken)
+            if (projectKeys.length === 0) {
+                return []
+            }
+            jqlQuery = `project in (${projectKeys.join(",")}) ORDER BY created DESC`
+        }
+
+        const issues = await this.searchJiraIssuesForSample(atlassianIntegration.cloud_id, accessToken, jqlQuery, limit)
+        const events: InputEvent[] = issues.map(issue => new JiraEvent(convertJiraIssueToWebhookPayload(issue), integrationId))
+        return events
+    }
+
+    private async fetchAccessibleProjectKeysForSample(cloudId: string, accessToken: string): Promise<string[]> {
+        const response = await fetch(`https://api.atlassian.com/ex/jira/${cloudId}/rest/api/3/project`, {
+            headers: {
+                Authorization: `Bearer ${accessToken}`,
+                Accept: "application/json"
+            }
+        })
+        if (!response.ok) return []
+        const projects = (await response.json()) as Array<{ key: string }>
+        return (projects || []).map(p => p.key)
+    }
+
+    private async searchJiraIssuesForSample(
+        cloudId: string,
+        accessToken: string,
+        jqlQuery: string,
+        maxResults: number
+    ): Promise<Array<{ id: string; self: string; key: string; fields: Record<string, unknown> }>> {
+        const params = new URLSearchParams({
+            jql: jqlQuery,
+            maxResults: String(maxResults),
+            fields: "summary,description,status,priority,issuetype,project,assignee,creator,created,updated,labels,duedate"
+        })
+        const response = await fetch(`https://api.atlassian.com/ex/jira/${cloudId}/rest/api/3/search?${params.toString()}`, {
+            headers: {
+                Authorization: `Bearer ${accessToken}`,
+                Accept: "application/json"
+            }
+        })
+        if (!response.ok) {
+            const errorText = await response.text()
+            logger.error("Jira search failed for sample events", { status: response.status, error: errorText })
+            throw new Error(`Failed to search Jira issues: ${response.status}`)
+        }
+        const data = (await response.json()) as { issues?: Array<{ id: string; self: string; key: string; fields: Record<string, unknown> }> }
+        return data.issues || []
+    }
+}
+
+// MARK: - Event Definition
+
+function createDefaultJiraUser(): JiraWebhookPayload["user"] {
+    return {
+        self: "",
+        name: "Unknown",
+        key: "",
+        emailAddress: "",
+        avatarUrls: { "48x48": "", "24x24": "", "16x16": "", "32x32": "" },
+        displayName: "Unknown",
+        active: true
+    }
+}
+
+function convertJiraIssueToWebhookPayload(issue: { id: string; self: string; key: string; fields: Record<string, unknown> }): JiraWebhookPayload {
+    const fields = issue.fields as any
+    const status = fields?.status || {}
+    const priority = fields?.priority || {}
+    const issuetype = fields?.issuetype || {}
+    const project = fields?.project || {}
+    const creator = fields?.creator || createDefaultJiraUser()
+
+    return {
+        timestamp: Date.now(),
+        webhookEvent: "jira:issue_created",
+        user: creator,
+        issue: {
+            id: issue.id,
+            self: issue.self,
+            key: issue.key,
+            fields: {
+                statuscategorychangedate: fields?.updated || new Date().toISOString(),
+                issuetype: {
+                    self: issuetype.self || "",
+                    id: issuetype.id || "",
+                    description: issuetype.description || "",
+                    iconUrl: issuetype.iconUrl || "",
+                    name: issuetype.name || "",
+                    subtask: issuetype.subtask || false,
+                    avatarId: issuetype.avatarId
+                },
+                project: {
+                    self: project.self || "",
+                    id: project.id || "",
+                    key: project.key || "",
+                    name: project.name || "",
+                    projectTypeKey: project.projectTypeKey || "software",
+                    simplified: project.simplified || false,
+                    avatarUrls: project.avatarUrls || { "48x48": "", "24x24": "", "16x16": "", "32x32": "" }
+                },
+                fixVersions: [],
+                workratio: 0,
+                watches: { self: "", watchCount: 0, isWatching: false },
+                created: fields?.created || new Date().toISOString(),
+                priority: {
+                    self: priority.self || "",
+                    iconUrl: priority.iconUrl || "",
+                    name: priority.name || "",
+                    id: priority.id || ""
+                },
+                labels: (fields?.labels as string[]) || [],
+                versions: [],
+                issuelinks: [],
+                assignee: fields?.assignee ?? null,
+                updated: fields?.updated || new Date().toISOString(),
+                status: {
+                    self: status.self || "",
+                    description: status.description || "",
+                    iconUrl: status.iconUrl || "",
+                    name: status.name || "",
+                    id: status.id || "",
+                    statusCategory: status.statusCategory || {
+                        self: "",
+                        id: 0,
+                        key: "",
+                        colorName: "",
+                        name: ""
+                    }
+                },
+                components: [],
+                timetracking: {},
+                attachment: [],
+                description: fields?.description,
+                summary: fields?.summary || "",
+                creator,
+                subtasks: [],
+                reporter: fields?.reporter || creator,
+                aggregateprogress: { progress: 0, total: 0 },
+                duedate: fields?.duedate,
+                progress: { progress: 0, total: 0 },
+                votes: { self: "", votes: 0, hasVoted: false }
+            }
         }
     }
 }

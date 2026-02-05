@@ -12,6 +12,7 @@ import logger, { runWithUserContext } from "../logger"
 import { db } from "../prismaClient"
 import { Identifiable } from "../rag/Hydrator"
 import { FileCategory, FileDownloadResult, StoredFile, buildSlackFileKey, ensureStoredWithMetadata, isSupportedFileType } from "../services/FileStorageService"
+import { ConfigInstance, ConfigType, SlackConfig as SlackConfigClass } from "../shared/Configs"
 import { FrontendRoutes } from "../shared/FrontendRoutes"
 import { AdditionalStateParams, InstallationOptionsFor, IntegrationType, SlackIntegration, SlackIntegrationMetadata } from "../shared/Integrations"
 import { RunHistoryTrigger } from "../shared/RunHistoryTypes"
@@ -507,6 +508,171 @@ export class SlackIntegrationManager
             logger.error(`Error getting Slack access token for integration ${integrationId}`, { error, integrationId })
             return null
         }
+    }
+
+    async getSampleEvents(integrationId: string, triggerConfig: ConfigInstance, options?: { limit?: number }): Promise<InputEvent[]> {
+        if (triggerConfig.configType !== ConfigType.SLACK) {
+            return []
+        }
+        const slackConfig = triggerConfig as SlackConfigClass
+
+        const limit = Math.min(options?.limit ?? 5, 10)
+        const prisma = db()
+
+        const userSlackIntegration = await prisma.user_slack_integrations.findUnique({
+            where: { id: integrationId },
+            include: { slack_integration: true }
+        })
+
+        if (!userSlackIntegration?.slack_integration) {
+            throw new Error(`Slack integration ${integrationId} not found`)
+        }
+
+        // TODO: Token should not be picked. we should have
+        // a hard fail if we are using the bot token to listen
+        // to user DMs. but token really should be chosen based on
+        // if user chose bot or user in UI. Might be able to tell
+        // based on the tokens that are set, need to verify.
+        const token = slackConfig.listenToUserDms ? userSlackIntegration.authed_user_access_token : userSlackIntegration.slack_integration.access_token
+        if (!token) {
+            throw new Error(`Slack access token not found for integration ${integrationId}. Please reconnect your Slack workspace.`)
+        }
+
+        const client = new WebClient(token, { logLevel: LogLevel.ERROR })
+        const teamId = userSlackIntegration.slack_integration.team_id
+
+        let messages: Array<{
+            channel: string
+            ts: string
+            user?: string
+            text?: string
+            thread_ts?: string
+            channel_type?: SlackChannelType
+            blocks?: unknown[]
+            attachments?: unknown[]
+            files?: unknown[]
+        }> = []
+
+        if (slackConfig.listenToUserDms) {
+            if (!userSlackIntegration.authed_user_id) {
+                throw new Error("Slack user ID not found. User token may not be properly configured.")
+            }
+            const imList = await client.conversations.list({
+                types: "im",
+                limit: 20,
+                exclude_archived: true
+            })
+            if (!imList.ok || !imList.channels?.length) {
+                return []
+            }
+            for (const im of imList.channels.slice(0, 3)) {
+                if (!im.id) continue
+                const history = await client.conversations.history({
+                    channel: im.id,
+                    limit: Math.ceil(limit / 2)
+                })
+                if (history.ok && history.messages?.length) {
+                    for (const msg of history.messages) {
+                        if (msg.ts && msg.user && !msg.bot_id) {
+                            messages.push({
+                                channel: im.id,
+                                ts: msg.ts,
+                                user: msg.user,
+                                text: msg.text,
+                                thread_ts: msg.thread_ts,
+                                channel_type: SlackChannelType.IM,
+                                blocks: msg.blocks,
+                                attachments: msg.attachments,
+                                files: msg.files
+                            })
+                        }
+                    }
+                }
+            }
+            messages = messages.sort((a, b) => (b.ts > a.ts ? 1 : -1)).slice(0, limit)
+        } else if (slackConfig.channelId) {
+            const history = await client.conversations.history({
+                channel: slackConfig.channelId,
+                limit
+            })
+            if (!history.ok || !history.messages?.length) {
+                return []
+            }
+            for (const msg of history.messages) {
+                if (msg.ts && msg.user && !msg.bot_id) {
+                    messages.push({
+                        channel: slackConfig.channelId,
+                        ts: msg.ts,
+                        user: msg.user,
+                        text: msg.text,
+                        thread_ts: msg.thread_ts,
+                        channel_type: undefined,
+                        blocks: msg.blocks,
+                        attachments: msg.attachments,
+                        files: msg.files
+                    })
+                }
+            }
+        } else {
+            return []
+        }
+
+        const events: InputEvent[] = []
+        for (const msg of messages) {
+            const [channelInfo, userInfo, permalinkResult, fullMessageResult] = await Promise.allSettled([
+                client.conversations.info({ channel: msg.channel }),
+                client.users.info({ user: msg.user! }),
+                client.chat.getPermalink({ channel: msg.channel, message_ts: msg.ts }),
+                client.conversations.history({
+                    channel: msg.channel,
+                    oldest: msg.ts,
+                    latest: msg.ts,
+                    inclusive: true,
+                    limit: 1
+                })
+            ])
+
+            const channelResult = processSlackApiResult<{ channel?: SlackChannel }>(channelInfo as SlackApiSettledResult<{ channel?: SlackChannel }>, "Channel info", "Failed to fetch channel info")
+            const userResult = processSlackApiResult<{ user?: SlackUser }>(userInfo as SlackApiSettledResult<{ user?: SlackUser }>, "User info", "Failed to fetch user info")
+            const permalinkApiResult = processSlackApiResult<{ permalink?: string }>(
+                permalinkResult as SlackApiSettledResult<{ permalink?: string }>,
+                "Message permalink",
+                "Failed to fetch message permalink"
+            )
+            const channelName = extractChannelName(channelResult, userResult, msg.user!, msg.channel)
+            const userName = extractUserName(userResult)
+            const permalink = permalinkApiResult.success ? permalinkApiResult.data?.permalink : undefined
+
+            let blocks = msg.blocks as KnownBlock[] | undefined
+            let attachments = msg.attachments as SlackAttachment[] | undefined
+            let files = msg.files as SlackFile[] | undefined
+            let text = msg.text || ""
+            if (fullMessageResult.status === "fulfilled" && fullMessageResult.value.ok && fullMessageResult.value.messages?.[0]) {
+                const full = fullMessageResult.value.messages[0]
+                if (!blocks && full.blocks) blocks = full.blocks as KnownBlock[]
+                if (!attachments && full.attachments) attachments = full.attachments as SlackAttachment[]
+                if (!files && full.files) files = full.files as SlackFile[]
+                if (!text && full.text) text = full.text
+            }
+
+            const slackEventData: SlackEventData = {
+                channelId: msg.channel,
+                channelName,
+                userId: msg.user!,
+                userName,
+                text,
+                timestamp: msg.ts,
+                threadTimestamp: msg.thread_ts,
+                teamId,
+                permalink,
+                channelType: msg.channel_type,
+                blocks,
+                attachments,
+                files
+            }
+            events.push(new SlackEvent(slackEventData))
+        }
+        return events
     }
 }
 

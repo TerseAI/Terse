@@ -9,6 +9,7 @@ import { OAUTH_TOKEN_REFRESH_THRESHOLD_MS, gmail as gmailConfig, urls } from "..
 import logger, { runWithUserContext } from "../logger"
 import { db } from "../prismaClient"
 import { FileDownloadResult, StoredFile, buildGmailFileKey, ensureStoredWithMetadata, isSupportedFileType } from "../services/FileStorageService"
+import { ConfigInstance, ConfigType } from "../shared/Configs"
 import { FrontendRoutes } from "../shared/FrontendRoutes"
 import { AdditionalStateParams, GmailIntegration, GmailIntegrationMetadata, InstallationOptionsFor, IntegrationType } from "../shared/Integrations"
 import { RunHistoryTrigger } from "../shared/RunHistoryTypes"
@@ -512,6 +513,43 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
             logger.error(`Error getting Gmail access token for integration ${integrationId}`, { error, integrationId })
             return null
         }
+    }
+
+    async getSampleEvents(integrationId: string, triggerConfig: ConfigInstance, options?: { limit?: number }): Promise<InputEvent[]> {
+        if (triggerConfig.configType !== ConfigType.GMAIL) {
+            return []
+        }
+
+        const limit = Math.min(options?.limit ?? 5, 10)
+        const gmailIntegration = await db().gmail_integrations.findUnique({
+            where: { id: integrationId }
+        })
+        if (!gmailIntegration) {
+            throw new Error(`Gmail integration ${integrationId} not found`)
+        }
+
+        const accessToken = await refreshAccessTokenIfNeeded(gmailIntegration)
+        const oauth2Client = getOAuth2Client()
+        oauth2Client.setCredentials({
+            access_token: accessToken,
+            refresh_token: gmailIntegration.refresh_token
+        })
+        const gmail = google.gmail({ version: "v1", auth: oauth2Client })
+
+        const listResponse = await gmail.users.messages.list({
+            userId: "me",
+            labelIds: ["INBOX"],
+            maxResults: limit
+        })
+        const messageIds = (listResponse.data.messages?.map(m => m.id).filter(Boolean) as string[]) || []
+        const events: InputEvent[] = []
+        for (const messageId of messageIds) {
+            const eventData = await fetchAndParseEmail(gmail, messageId)
+            if (eventData) {
+                events.push(new GmailEvent(eventData, integrationId))
+            }
+        }
+        return events
     }
 }
 

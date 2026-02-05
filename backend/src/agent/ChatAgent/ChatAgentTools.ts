@@ -12,6 +12,7 @@ import type { ConfigInstance } from "../../shared/Configs"
 import { ConfigType } from "../../shared/Configs"
 import { FrontendRoutes } from "../../shared/FrontendRoutes"
 import { IntegrationType } from "../../shared/Integrations"
+import { convertPlainObjectToInputConfigInstance } from "../../utility/typeConverters"
 
 import ChatInterface from "./ChatInterfaces/ChatInterface"
 
@@ -97,6 +98,40 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
                     throw new Error("User ID and organization ID are required to fetch resources")
                 }
                 return await fetchResourcesForIntegrationType(integrationType, organizationId, query ?? undefined, options)
+            }
+        }),
+        tool({
+            name: "getSampleEvents",
+            description: "Call this when you want to fetch sample events to test out your agent.",
+            parameters: z.object({
+                integrationId: z.string().describe("The integration ID to fetch sample events for"),
+                integrationType: z.nativeEnum(IntegrationType).describe("The integration type to fetch sample events for"),
+                triggerConfig: AgentTriggerSchema.describe("The trigger config to fetch sample events for"),
+                options: z
+                    .object({
+                        limit: z.number().nullable().describe("The number of sample events to fetch")
+                    })
+                    .nullable()
+            }),
+            execute: async ({
+                integrationId,
+                integrationType,
+                triggerConfig,
+                options
+            }: {
+                integrationId: string
+                integrationType: IntegrationType
+                triggerConfig: z.infer<typeof AgentTriggerSchema>
+                options: { limit: number | null } | null
+            }): Promise<string> => {
+                const manager = INTEGRATION_REGISTRY.find(m => m.integrationType === integrationType)
+                if (!manager || !manager.getSampleEvents) {
+                    throw new Error(`Integration type ${integrationType} does not support sample events`)
+                }
+                const configInstance = convertPlainObjectToInputConfigInstance(triggerConfig.config)
+                const normalizedOptions = options == null ? undefined : { limit: options.limit ?? undefined }
+                const inputEvents = await manager.getSampleEvents(integrationId, configInstance, normalizedOptions)
+                return JSON.stringify(inputEvents)
             }
         })
     ]
