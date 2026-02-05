@@ -375,7 +375,7 @@ function SidebarMenuSkeleton({
 
 function SidebarMenuSub({ className, ...props }: React.ComponentProps<"ul">) {
     return (
-        <div className="relative ml-4 pl-4">
+        <div className="relative ml-3 pl-3">
             <div className="absolute left-0 top-0 bottom-0 w-px bg-sidebar-border" />
             <ul className={cn("flex min-w-0 flex-col gap-0.5", className)} {...props} />
         </div>
