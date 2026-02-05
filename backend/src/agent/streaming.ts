@@ -113,24 +113,9 @@ export function tryExtractToolCall(event: RunStreamEvent, toolToIntegrationMap?:
     if (event.type === "run_item_stream_event" && event.name === "tool_called") {
         const item = (event as ToolCalledEvent).item.rawItem
 
-        // Handle hosted tool calls
-        if (item.type === "hosted_tool_call") {
-            const integration = IntegrationType.TERSE
-            const parameters = item.providerData?.action ? JSON.stringify(item.providerData.action) : JSON.stringify(item.providerData || {})
-
-            return {
-                type: "ToolCall",
-                summary: item.name,
-                step_id: item.id || item.callId || "unknown",
-                parameters,
-                integration
-            }
-        }
-
         // Handle regular function calls
         if (item.type === "function_call") {
             const integration = toolToIntegrationMap?.get(item.name) || "unknown"
-
             return {
                 type: "ToolCall",
                 summary: item.name,
