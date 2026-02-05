@@ -27,9 +27,7 @@ Use this tool to find existing Linear issues before creating new ones or to look
             .array(z.enum(linearStateNameValues as [string, ...string[]]))
             .nullable()
             .optional()
-            .describe(
-                `Filter to only include issues with these state names. Available states: ${linearStateNameValues.join(", ")}. When not provided, returns issues in all states.`
-            ),
+            .describe(`Filter to only include issues with these state names. Available states: ${linearStateNameValues.join(", ")}. When not provided, returns issues in all states.`),
         limit: z.number().nullable().optional().describe("Maximum number of issues to return. Defaults to 10 if not provided."),
         after: z.string().nullable().optional().describe("Cursor for pagination. Use the endCursor from the previous response to fetch the next page of results.")
     }),
