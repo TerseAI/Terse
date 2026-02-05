@@ -20,11 +20,18 @@ Use this tool to find existing Linear issues before creating new ones or to look
     parameters: z.object({
         integrationId: z.string().describe("The integration ID of the Linear integration to use."),
         issueDescription: z.string().describe("The search query or description to search for in Linear issues. This will search in issue titles, descriptions, and other fields."),
-        excludeDone: z.boolean().nullable().optional().describe('Whether to exclude issues with state "Done". Defaults to true if not provided.'),
+        excludeDone: z.boolean().nullable().optional().describe('Whether to exclude issues with state "Done". Defaults to true if not provided. Ignored if stateNames is provided.'),
+        stateNames: z
+            .array(z.string())
+            .nullable()
+            .optional()
+            .describe(
+                'Filter to only include issues with these state names (e.g., ["Backlog", "Todo", "In Progress"]). When provided, only issues matching these states are returned and excludeDone is ignored.'
+            ),
         limit: z.number().nullable().optional().describe("Maximum number of issues to return. Defaults to 10 if not provided."),
         after: z.string().nullable().optional().describe("Cursor for pagination. Use the endCursor from the previous response to fetch the next page of results.")
     }),
-    execute: async ({ integrationId, issueDescription, excludeDone = true, limit = 10, after }, runContext?: RunContext<SessionWithTracking<Session>>) => {
+    execute: async ({ integrationId, issueDescription, excludeDone = true, stateNames, limit = 10, after }, runContext?: RunContext<SessionWithTracking<Session>>) => {
         logger.debug("🛠️ Executing linear_search_ticket tool", { integrationId, issueDescription, excludeDone, limit, after })
 
         if (!runContext?.context) {
@@ -44,13 +51,22 @@ Use this tool to find existing Linear issues before creating new ones or to look
 
         try {
             // Build filter options
-            const filter: IssueFilter | undefined = excludeDone
-                ? {
-                      state: {
-                          name: { neq: "Done" }
-                      }
-                  }
-                : undefined
+            // If stateNames is provided, filter to only those states (ignoring excludeDone)
+            // Otherwise, use excludeDone to optionally exclude "Done" state
+            let filter: IssueFilter | undefined
+            if (stateNames && stateNames.length > 0) {
+                filter = {
+                    state: {
+                        name: { in: stateNames }
+                    }
+                }
+            } else if (excludeDone) {
+                filter = {
+                    state: {
+                        name: { neq: "Done" }
+                    }
+                }
+            }
 
             // Search for issues using searchIssues method with pagination
             // Using first parameter to limit results and orderBy updatedAt for most recent
