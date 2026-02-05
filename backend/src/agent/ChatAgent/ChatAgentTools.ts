@@ -219,9 +219,9 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
             parameters: z.object({
                 entityType: z.string().describe("The entity type from getSampleEvents (e.g., 'slack_message_event', 'github_event')"),
                 entityId: z.string().describe("The entity ID from getSampleEvents"),
-                agentId: z.string().nullable().describe("Optional: specific agent ID to test. If null, runs against all matching agents.")
+                agentId: z.string().describe("The agent ID to test the sample event against")
             }),
-            execute: async ({ entityType, entityId }, runContext?: RunContext<ChatAgentContext>): Promise<string> => {
+            execute: async ({ entityType, entityId, agentId }, runContext?: RunContext<ChatAgentContext>): Promise<string> => {
                 const userId = runContext?.context?.userId
                 const organizationId = runContext?.context?.organizationId
                 if (!userId || !organizationId) {
@@ -251,7 +251,7 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
                 }
 
                 const eventProcessor = new EventProcessor(inputEvent, user)
-                const processResults = await eventProcessor.process()
+                const processResults = await eventProcessor.processSingleAgent(agentId)
                 logger.info("[executeSampleEvent] EventProcessor finished", {
                     entityType,
                     entityId,
