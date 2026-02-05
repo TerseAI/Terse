@@ -627,7 +627,7 @@ export class AtlassianIntegrationManager
         }
     }
 
-    async getSampleEvents(integrationId: string, triggerConfig: ConfigInstance, options?: { limit?: number }): Promise<InputEvent[]> {
+    async getSampleEvents(integrationId: string, organizationId: string, triggerConfig: ConfigInstance, options?: { limit?: number }): Promise<InputEvent[]> {
         if (triggerConfig.configType !== ConfigType.JIRA) {
             return []
         }
@@ -637,7 +637,7 @@ export class AtlassianIntegrationManager
         await this.refreshToken(integrationId)
 
         const atlassianIntegration = await db().atlassian_integrations.findUnique({
-            where: { id: integrationId }
+            where: { id: integrationId, organization_id: organizationId }
         })
         if (!atlassianIntegration?.cloud_id || !atlassianIntegration.access_token) {
             throw new Error(`Atlassian integration ${integrationId} not found or missing credentials`)

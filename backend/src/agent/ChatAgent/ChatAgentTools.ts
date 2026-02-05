@@ -144,7 +144,7 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
                 }
 
                 const configInstance = toConfigInstance(normalizeConfig(triggerConfig.config))
-                const inputEvents = await manager.getSampleEvents(integrationId, configInstance, { limit })
+                const inputEvents = await manager.getSampleEvents(integrationId, organizationId, configInstance, { limit })
                 logger.info("[getSampleEvents] Fetched raw events from integration", {
                     integrationType,
                     count: inputEvents.length

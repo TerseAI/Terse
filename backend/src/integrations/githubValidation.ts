@@ -28,17 +28,9 @@ export async function validateGithubRepositoryIds({ userId, integrationId, repos
         throw new Error(`Invalid ${contextLabel} config for ${configTypeLabel}: no GitHub access token found for user`)
     }
 
-    const terseInstallation = await db().user_github_installation.findUnique({
-        where: { id: integrationId },
-        select: { installation_id: true }
-    })
-    if (!terseInstallation) {
-        throw new Error(`Invalid ${contextLabel} config for ${configTypeLabel}: integration not found`)
-    }
-    const githubInstallationId = terseInstallation.installation_id
-
     const installations = await getAppInstallationsForUser(accessToken.access_token)
-    const targetInstallation = installations.installations.find(installation => installation.id === githubInstallationId)
+    const integrationInstallationId = Number(integrationId)
+    const targetInstallation = installations.installations.find(installation => (!Number.isNaN(integrationInstallationId) ? installation.id === integrationInstallationId : false))
 
     if (!targetInstallation) {
         throw new Error(`Invalid ${contextLabel} config for ${configTypeLabel}: installation not found`)

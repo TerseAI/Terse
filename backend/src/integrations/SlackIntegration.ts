@@ -510,7 +510,7 @@ export class SlackIntegrationManager
         }
     }
 
-    async getSampleEvents(integrationId: string, triggerConfig: ConfigInstance, options?: { limit?: number }): Promise<InputEvent[]> {
+    async getSampleEvents(integrationId: string, organizationId: string, triggerConfig: ConfigInstance, options?: { limit?: number }): Promise<InputEvent[]> {
         if (triggerConfig.configType !== ConfigType.SLACK) {
             return []
         }
@@ -520,7 +520,7 @@ export class SlackIntegrationManager
         const prisma = db()
 
         const userSlackIntegration = await prisma.user_slack_integrations.findUnique({
-            where: { id: integrationId },
+            where: { id: integrationId, organization_id: organizationId },
             include: { slack_integration: true }
         })
 

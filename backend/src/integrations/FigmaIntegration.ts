@@ -734,7 +734,7 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
         }
     }
 
-    async getSampleEvents(integrationId: string, triggerConfig: ConfigInstance, options?: { limit?: number }): Promise<InputEvent[]> {
+    async getSampleEvents(integrationId: string, organizationId: string, triggerConfig: ConfigInstance, options?: { limit?: number }): Promise<InputEvent[]> {
         if (triggerConfig.configType !== ConfigType.FIGMA) {
             return []
         }
@@ -747,7 +747,7 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
         }
 
         const figmaIntegration = await db().figma_integrations.findUnique({
-            where: { id: integrationId }
+            where: { id: integrationId, organization_id: organizationId }
         })
         if (!figmaIntegration) {
             throw new Error(`Figma integration ${integrationId} not found`)

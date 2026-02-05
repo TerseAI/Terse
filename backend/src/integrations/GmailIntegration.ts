@@ -517,14 +517,14 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
         }
     }
 
-    async getSampleEvents(integrationId: string, triggerConfig: ConfigInstance, options?: { limit?: number }): Promise<InputEvent[]> {
+    async getSampleEvents(integrationId: string, organizationId: string, triggerConfig: ConfigInstance, options?: { limit?: number }): Promise<InputEvent[]> {
         if (triggerConfig.configType !== ConfigType.GMAIL) {
             return []
         }
 
         const limit = Math.min(options?.limit ?? 5, 10)
         const gmailIntegration = await db().gmail_integrations.findUnique({
-            where: { id: integrationId }
+            where: { id: integrationId, organization_id: organizationId }
         })
         if (!gmailIntegration) {
             throw new Error(`Gmail integration ${integrationId} not found`)

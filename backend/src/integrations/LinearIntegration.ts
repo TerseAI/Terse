@@ -503,14 +503,14 @@ export class LinearIntegrationManager
         }
     }
 
-    async getSampleEvents(integrationId: string, triggerConfig: ConfigInstance, options?: { limit?: number }): Promise<InputEvent[]> {
+    async getSampleEvents(integrationId: string, organizationId: string, triggerConfig: ConfigInstance, options?: { limit?: number }): Promise<InputEvent[]> {
         if (triggerConfig.configType !== ConfigType.LINEAR_INPUT) {
             return []
         }
 
         const limit = Math.min(options?.limit ?? 5, 10)
         const linearIntegration = await db().linear_integrations.findUnique({
-            where: { id: integrationId }
+            where: { id: integrationId, organization_id: organizationId }
         })
         if (!linearIntegration) {
             throw new Error(`Linear integration ${integrationId} not found`)

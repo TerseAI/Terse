@@ -49,29 +49,17 @@ export class GithubIntegrationManager
         const organizationAccounts = await db().github_app_tokens.findMany({
             where: { organization_id: organizationId }
         })
-        const installationsFromApi = await Promise.all(
+        const installations = await Promise.all(
             organizationAccounts.map(async oa => {
                 const appInstallations = await getAppInstallationsForUser(oa.access_token)
-                return appInstallations.installations
+                return appInstallations.installations.map(ai => ({
+                    id: ai.id.toString(),
+                    installation_id: ai.id,
+                    account_name: ai.account.login
+                }))
             })
         )
-        const apiInstallationIds = [...new Set(installationsFromApi.flat().map(ai => ai.id))]
-        if (apiInstallationIds.length === 0) return []
-
-        const terseInstallations = await db().user_github_installation.findMany({
-            where: { installation_id: { in: apiInstallationIds } },
-            select: { id: true, installation_id: true, account_name: true }
-        })
-        const byInstallationId = new Map(installationsFromApi.flat().map(ai => [ai.id, ai]))
-
-        return terseInstallations.map(ugi => {
-            const apiAccount = byInstallationId.get(ugi.installation_id)?.account?.login
-            return {
-                id: ugi.id,
-                installation_id: ugi.installation_id,
-                account_name: ugi.account_name ?? apiAccount ?? null
-            }
-        })
+        return installations.flat()
     }
 
     async fetchResourcesForOrganization(organizationId: string, query?: string, _options?: FetchResourcesOptions): Promise<IntegrationWithResources<GithubIntegration, Repository>[]> {
@@ -340,16 +328,16 @@ export class GithubIntegrationManager
         }
     }
 
-    async getSampleEvents(integrationId: string, triggerConfig: ConfigInstance, options?: { limit?: number }): Promise<InputEvent[]> {
+    async getSampleEvents(integrationId: string, organizationId: string, triggerConfig: ConfigInstance, options?: { limit?: number }): Promise<InputEvent[]> {
         if (triggerConfig.configType !== ConfigType.GITHUB) {
             return []
         }
         const githubConfig = triggerConfig as GitHubConfigClass
 
         const maxEvents = Math.min(options?.limit ?? 6, 10)
-        const installation = await db().user_github_installation.findUnique({
-            where: { id: integrationId }
-        })
+
+        const installations = await this.getInstancesForOrganization(organizationId)
+        const installation = installations.find(i => i.id === integrationId)
         if (!installation) {
             throw new Error(`GitHub integration ${integrationId} not found`)
         }
