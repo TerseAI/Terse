@@ -180,7 +180,7 @@ const DefaultApplicationItems: NavItem[] = [
     },
     {
         title: "Agents",
-        url: FrontendRoutes.AGENTS.LIST,
+        url: FrontendRoutes.AGENTS.SETUP,
         icon: Zap,
         iconColor: "text-primary"
     }
