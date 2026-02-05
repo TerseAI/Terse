@@ -1,8 +1,8 @@
 import { LinearClient } from "@linear/sdk"
 
+import { LinearEvent } from "../../integrations/LinearIntegration"
 import { isOAuthIntegrationInstallation } from "../../integrations/abstract/Integration"
 import { INTEGRATION_REGISTRY } from "../../integrations/abstract/IntegrationRegistry"
-import { LinearEvent } from "../../integrations/LinearIntegration"
 import logger from "../../logger"
 import { db } from "../../prismaClient"
 import { IntegrationType } from "../../shared/Integrations"
@@ -113,9 +113,7 @@ export class LinearEventHydrator extends Hydrator<LinearEvent> {
                               type: state.type ?? "unstarted"
                           }
                         : { id: "", color: "", name: "Unknown", type: "unstarted" },
-                    team: team
-                        ? { id: team.id, key: team.key ?? "", name: team.name ?? "Unknown" }
-                        : { id: "", key: "", name: "Unknown" },
+                    team: team ? { id: team.id, key: team.key ?? "", name: team.name ?? "Unknown" } : { id: "", key: "", name: "Unknown" },
                     labels: [],
                     description: issue.description ?? undefined
                 },

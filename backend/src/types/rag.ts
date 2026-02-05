@@ -1,7 +1,7 @@
+import type { JiraEvent } from "../integrations/AtlassianIntegration"
 import type { FigmaCommentEvent } from "../integrations/FigmaIntegration"
 import type { GithubEvent } from "../integrations/GithubIntegration"
 import type { GmailEvent } from "../integrations/GmailIntegration"
-import type { JiraEvent } from "../integrations/AtlassianIntegration"
 import type { LinearEvent } from "../integrations/LinearIntegration"
 import type { SlackEvent } from "../integrations/SlackIntegration"
 import logger from "../logger"

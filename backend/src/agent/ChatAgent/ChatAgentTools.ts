@@ -129,14 +129,25 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
                     throw new Error("User ID and organization ID are required")
                 }
 
+                const limit = options?.limit ?? 5
+                logger.info("[getSampleEvents] Starting", {
+                    integrationId,
+                    integrationType,
+                    limit,
+                    agentId: agentId ?? null
+                })
+
                 const manager = INTEGRATION_REGISTRY.find(m => m.integrationType === integrationType)
                 if (!manager || !manager.getSampleEvents) {
+                    logger.warn("[getSampleEvents] Integration does not support sample events", { integrationType })
                     throw new Error(`Integration ${integrationType} does not support sample events`)
                 }
 
                 const configInstance = toConfigInstance(normalizeConfig(triggerConfig.config))
-                const inputEvents = await manager.getSampleEvents(integrationId, configInstance, {
-                    limit: options?.limit ?? 5
+                const inputEvents = await manager.getSampleEvents(integrationId, configInstance, { limit })
+                logger.info("[getSampleEvents] Fetched raw events from integration", {
+                    integrationType,
+                    count: inputEvents.length
                 })
 
                 let agentPrompt = null
@@ -146,54 +157,58 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
                         include: { prompt: true }
                     })
                     agentPrompt = agent?.prompt
+                    logger.info("[getSampleEvents] Filter preview", { agentId, hasPrompt: !!agentPrompt })
                 }
 
-                const results: Array<{
-                    entityType: string
-                    entityId: string
-                    summary: string
-                    integrationType: string
-                    wouldBeFiltered: boolean
-                    filterReason: string | null
-                    filterConfidence: number | null
-                }> = []
-
-                for (const event of inputEvents) {
-                    if (!event.isIdentifiable()) {
-                        logger.warn(`Event is not identifiable, skipping: ${event.debugLog()}`)
-                        continue
-                    }
-
-                    const identifiable = event.getIdentifiableInfo()!
-                    const eventData = (event as unknown as { data: unknown }).data
-
-                    const { summary } = await generateEventSummary(integrationType, eventData)
-
-                    let wouldBeFiltered = false
-                    let filterReason: string | null = null
-                    let filterConfidence: number | null = null
-
-                    if (agentPrompt) {
-                        try {
-                            const filterResult = await filterEvent(event, agentPrompt)
-                            wouldBeFiltered = !filterResult.result.isRelevant
-                            filterReason = filterResult.result.reason
-                            filterConfidence = filterResult.result.confidence
-                        } catch {
-                            filterReason = "Filter preview failed"
-                        }
-                    }
-
-                    results.push({
-                        entityType: identifiable.entityType,
-                        entityId: identifiable.entityId,
-                        summary,
-                        integrationType,
-                        wouldBeFiltered,
-                        filterReason,
-                        filterConfidence
+                const identifiableEvents = inputEvents.filter(e => e.isIdentifiable())
+                const skipped = inputEvents.length - identifiableEvents.length
+                if (skipped > 0) {
+                    logger.warn("[getSampleEvents] Skipped non-identifiable events", {
+                        skipped,
+                        samples: inputEvents.filter(e => !e.isIdentifiable()).map(e => e.debugLog())
                     })
                 }
+
+                const results = await Promise.all(
+                    identifiableEvents.map(async event => {
+                        const identifiable = event.getIdentifiableInfo()!
+                        const eventData = (event as unknown as { data: unknown }).data
+
+                        const [summaryResult, filterResult] = await Promise.all([
+                            generateEventSummary(integrationType, eventData),
+                            agentPrompt
+                                ? filterEvent(event, agentPrompt).catch(err => {
+                                      logger.warn("[getSampleEvents] Filter preview failed for event", {
+                                          entityId: identifiable.entityId,
+                                          error: err instanceof Error ? err.message : String(err)
+                                      })
+                                      return null
+                                  })
+                                : Promise.resolve(null)
+                        ])
+
+                        const summary = summaryResult.summary
+                        const wouldBeFiltered = filterResult ? !filterResult.result.isRelevant : false
+                        const filterReason = filterResult?.result.reason ?? (agentPrompt ? "Filter preview failed" : null)
+                        const filterConfidence = filterResult?.result.confidence ?? null
+
+                        return {
+                            entityType: identifiable.entityType,
+                            entityId: identifiable.entityId,
+                            summary,
+                            integrationType,
+                            wouldBeFiltered,
+                            filterReason,
+                            filterConfidence
+                        }
+                    })
+                )
+
+                logger.info("[getSampleEvents] Completed", {
+                    integrationType,
+                    eventCount: results.length,
+                    entityIds: results.map(r => r.entityId)
+                })
 
                 return JSON.stringify({ events: results })
             }
@@ -213,6 +228,8 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
                     throw new Error("User ID and organization ID are required")
                 }
 
+                logger.info("[executeSampleEvent] Starting", { entityType, entityId })
+
                 const hydratorType = requireHydratorType(entityType)
                 const hydrator = requireHydrator(hydratorType, { userId, organizationId })
 
@@ -221,14 +238,31 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
                     entityId
                 })
                 const inputEvent = hydrated as InputEvent
+                logger.info("[executeSampleEvent] Hydrated event", {
+                    entityType,
+                    entityId,
+                    debugLog: inputEvent.debugLog()
+                })
 
                 const user = await getUserForOrg(userId, organizationId)
                 if (!user) {
+                    logger.error("[executeSampleEvent] User not found", { userId, organizationId })
                     throw new Error("User not found")
                 }
 
                 const eventProcessor = new EventProcessor(inputEvent, user)
                 const processResults = await eventProcessor.process()
+                logger.info("[executeSampleEvent] EventProcessor finished", {
+                    entityType,
+                    entityId,
+                    resultCount: processResults.length,
+                    results: processResults.map(r => ({
+                        agentId: r.agentConfig?.id,
+                        agentName: r.agentConfig?.name,
+                        success: r.success,
+                        requiresApproval: r.approvalResult?.status === "awaiting_approval"
+                    }))
+                })
 
                 const formattedResults = processResults.map(r => ({
                     agentId: r.agentConfig?.id ?? null,
@@ -238,6 +272,7 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
                     requiresApproval: r.approvalResult?.status === "awaiting_approval"
                 }))
 
+                logger.info("[executeSampleEvent] Completed", { entityType, entityId })
                 return JSON.stringify({
                     processed: true,
                     entityType,

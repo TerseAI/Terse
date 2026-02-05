@@ -8,6 +8,7 @@ import { EventProcessor } from "../agent/AgentRunner/EventProcessor"
 import { githubApp, urls } from "../config/settings"
 import logger, { runWithUserContext } from "../logger"
 import { db } from "../prismaClient"
+import { Identifiable } from "../rag/Hydrator"
 import {
     GithubAppInstallation,
     GithubAppInstallationRepository,
@@ -24,11 +25,10 @@ import { AdditionalStateParams, GithubIntegration, GithubIntegrationMetadata, In
 import { RunHistoryTrigger } from "../shared/RunHistoryTypes"
 import { OAuthInstallationDetails, Repository } from "../shared/types"
 import { AgentTriggerWithConfigs, User as PrismaUser } from "../types/prisma"
+import { HydratorType } from "../types/rag"
 import { OAuthStateEncodingFormat, createOAuthStateToken, decodeOAuthStateToken } from "../utility/oauth"
 import { getUserForOrg } from "../utility/workos"
 
-import { Identifiable } from "../rag/Hydrator"
-import { HydratorType } from "../types/rag"
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask"
 import { integrationTaskQueue } from "./IntegrationTaskQueues"
 import { FetchResourcesOptions } from "./abstract/FetchResourcesOptions"

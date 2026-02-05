@@ -1,14 +1,14 @@
 import { Octokit } from "@octokit/rest"
 
-import { isOAuthIntegrationInstallation } from "../../integrations/abstract/Integration"
-import { INTEGRATION_REGISTRY } from "../../integrations/abstract/IntegrationRegistry"
 import { getAppInstallationsForUser } from "../../integrations/GithubIntegration"
 import { GithubEvent } from "../../integrations/GithubIntegration"
+import { isOAuthIntegrationInstallation } from "../../integrations/abstract/Integration"
+import { INTEGRATION_REGISTRY } from "../../integrations/abstract/IntegrationRegistry"
 import logger from "../../logger"
 import { db } from "../../prismaClient"
+import type { GithubAppUnifiedEventRequest } from "../../routes/GithubTypes"
 import { IntegrationType } from "../../shared/Integrations"
 import { HydratorType } from "../../types/rag"
-import type { GithubAppUnifiedEventRequest } from "../../routes/GithubTypes"
 import { HydrationContext, Hydrator, Identifiable } from "../Hydrator"
 
 export class GithubEventHydrator extends Hydrator<GithubEvent> {
@@ -56,9 +56,7 @@ export class GithubEventHydrator extends Hydrator<GithubEvent> {
         }
 
         const githubToken = await db().github_app_tokens.findFirst({
-            where: this.ctx.organizationId
-                ? { organization_id: this.ctx.organizationId }
-                : undefined
+            where: this.ctx.organizationId ? { organization_id: this.ctx.organizationId } : undefined
         })
         if (!githubToken?.access_token) {
             logger.error("No GitHub OAuth token found for user org")

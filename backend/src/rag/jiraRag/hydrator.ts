@@ -1,6 +1,6 @@
+import { JiraEvent } from "../../integrations/AtlassianIntegration"
 import { isOAuthIntegrationInstallation } from "../../integrations/abstract/Integration"
 import { INTEGRATION_REGISTRY } from "../../integrations/abstract/IntegrationRegistry"
-import { JiraEvent } from "../../integrations/AtlassianIntegration"
 import logger from "../../logger"
 import { db } from "../../prismaClient"
 import { IntegrationType } from "../../shared/Integrations"
@@ -63,16 +63,13 @@ export class JiraEventHydrator extends Hydrator<JiraEvent> {
         }
 
         try {
-            const issueResponse = await fetch(
-                `https://api.atlassian.com/ex/jira/${integration.cloud_id}/rest/api/3/issue/${issueKey}`,
-                {
-                    method: "GET",
-                    headers: {
-                        Authorization: `Bearer ${accessToken}`,
-                        Accept: "application/json"
-                    }
+            const issueResponse = await fetch(`https://api.atlassian.com/ex/jira/${integration.cloud_id}/rest/api/3/issue/${issueKey}`, {
+                method: "GET",
+                headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                    Accept: "application/json"
                 }
-            )
+            })
             if (!issueResponse.ok) {
                 logger.error(`Jira issue ${issueKey} not found or inaccessible`, { status: issueResponse.status })
                 return null

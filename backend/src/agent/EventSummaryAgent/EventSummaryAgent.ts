@@ -25,10 +25,7 @@ IMPORTANT: Return ONLY a valid JSON object: {"summary": "..."}`,
     outputType: EventSummarySchema
 })
 
-export async function generateEventSummary(
-    integrationType: IntegrationType,
-    eventData: unknown
-): Promise<{ summary: string }> {
+export async function generateEventSummary(integrationType: IntegrationType, eventData: unknown): Promise<{ summary: string }> {
     const formattedEventData = JSON.stringify(eventData, null, 2)
     const userPrompt = `Summarize this ${integrationType} event:\n\n${formattedEventData}`
 
