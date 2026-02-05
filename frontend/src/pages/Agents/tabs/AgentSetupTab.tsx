@@ -59,19 +59,7 @@ export type AgentSetupTabProps = {
     updatedAt?: string
 }
 
-function DeleteAgentDialog({
-    isOpen,
-    onClose,
-    onConfirm,
-    agentName,
-    isDeleting
-}: {
-    isOpen: boolean
-    onClose: () => void
-    onConfirm: () => void
-    agentName: string
-    isDeleting: boolean
-}) {
+function DeleteAgentDialog({ isOpen, onClose, onConfirm, agentName, isDeleting }: { isOpen: boolean; onClose: () => void; onConfirm: () => void; agentName: string; isDeleting: boolean }) {
     return (
         <Dialog open={isOpen} onOpenChange={open => !open && onClose()}>
             <DialogContent>
