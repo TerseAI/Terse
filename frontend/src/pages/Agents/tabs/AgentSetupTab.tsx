@@ -342,8 +342,14 @@ export default function AgentSetupTab({
                 {/* Header */}
                 <div className="border-b border-border px-6 py-4">
                     <div className="flex items-center justify-between gap-4">
-                        <div className="flex items-center gap-4 min-w-0">
+                        <div className="flex items-center gap-3 min-w-0">
                             <EditableTextField className="text-lg font-medium" value={name || ""} placeholder={defaultName} onSave={value => setName(value)} />
+                            {agentId && !isActive && (
+                                <Badge variant="outline" className="text-muted-foreground">
+                                    <Pause className="h-3 w-3 mr-1" />
+                                    Paused
+                                </Badge>
+                            )}
                         </div>
                         <div className="flex items-center gap-2">
                             <SaveAgentButton
