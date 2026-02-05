@@ -218,6 +218,7 @@ function DatadogForm({
                         disabled={isSubmitting}
                         required
                         className="pr-10"
+                        autoComplete="off"
                     />
                     <button
                         type="button"
@@ -242,6 +243,7 @@ function DatadogForm({
                         disabled={isSubmitting}
                         required
                         className="pr-10"
+                        autoComplete="off"
                     />
                     <button
                         type="button"

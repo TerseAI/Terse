@@ -174,12 +174,6 @@ export const ApiRoutes = {
         TEMPLATES: "/public/templates"
     },
 
-    // Prompt builder routes
-    PROMPT_BUILDER: {
-        GENERATE_QUESTIONS: "/prompt-builder/generate-questions",
-        GENERATE_PROMPT: "/prompt-builder/generate-prompt"
-    },
-
     // Tools routes
     TOOLS: {
         THAT_REQUIRE_APPROVALS: "/tools/that-require-approvals"

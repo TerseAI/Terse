@@ -122,6 +122,7 @@ export function PostHogKnowledgeBaseIntegration({ knowledgeBase, variant, setCon
                                 disabled={isSubmitting}
                                 required
                                 className="pr-10"
+                                autoComplete="off"
                             />
                             <button
                                 type="button"
