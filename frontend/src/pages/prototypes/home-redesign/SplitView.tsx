@@ -12,10 +12,10 @@ import { ModelRequest, SendModelRequest } from "@/shared/ModelEvents"
 import { sendBuilderMessage, subscribeToBuilderChat } from "@/socket"
 
 const SPLIT_VIEW_PLACEHOLDERS = [
-    "What's happening in my workspace today?",
-    "Help me catch up on what I missed",
-    "Show me what needs my attention",
-    "Create a new agent to monitor..."
+    "Build an agent that watches CI failures and alerts the right people",
+    "I need something that tracks GitHub PRs and nudges me when I need to act",
+    "Help me connect Slack to get started",
+    "Create an agent that drafts weekly release notes from merged PRs"
 ]
 
 // Context suggestion for the left panel
@@ -74,18 +74,18 @@ function CompactStat({ label, value, change, trend }: CompactStatProps) {
 const MOCK_SUGGESTIONS = [
     {
         icon: GitPullRequest,
-        title: "Review 3 pending PRs",
-        description: "2 from your team need immediate attention"
+        title: "Build a PR review agent",
+        description: "Get notified when PRs need your attention"
     },
     {
         icon: MessageSquare,
-        title: "Catch up on #engineering",
-        description: "47 messages since you last checked"
+        title: "Create a Slack digest agent",
+        description: "Summarize important messages daily"
     },
     {
         icon: Activity,
-        title: "Check CI status",
-        description: "2 pipelines completed, 1 failed"
+        title: "Set up CI monitoring",
+        description: "Alert the team when builds fail"
     }
 ]
 
@@ -146,7 +146,7 @@ export default function SplitView() {
     }, [hasStartedChat])
 
     const handleSuggestionClick = useCallback((suggestion: typeof MOCK_SUGGESTIONS[0]) => {
-        chatRef.current?.setInput(`Help me ${suggestion.title.toLowerCase()}`)
+        chatRef.current?.setInput(`I want to ${suggestion.title.toLowerCase()}`)
         chatRef.current?.focus()
     }, [])
 
@@ -167,7 +167,7 @@ export default function SplitView() {
                             <h1 className="text-xl font-semibold">Your Workspace</h1>
                         </div>
                         <p className="text-sm text-muted-foreground">
-                            Ask questions, run tasks, or explore what's happening
+                            Build agents, connect integrations, or manage your automations
                         </p>
                     </div>
 

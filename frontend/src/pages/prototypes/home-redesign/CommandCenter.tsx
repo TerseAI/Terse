@@ -12,10 +12,10 @@ import { ModelRequest, SendModelRequest } from "@/shared/ModelEvents"
 import { sendBuilderMessage, subscribeToBuilderChat } from "@/socket"
 
 const COMMAND_CENTER_PLACEHOLDERS = [
-    "What happened in Slack while I was away?",
-    "Summarize my team's GitHub activity from today",
-    "Any PRs waiting on my review?",
-    "What should I focus on right now?"
+    "Build an agent that reads Slack every day and tells me what actually matters",
+    "I want to get notified when PRs are waiting on review too long",
+    "Create something that generates my standup from GitHub and Slack",
+    "Help me connect my GitHub account"
 ]
 
 // Compact stat display for the command center
@@ -116,7 +116,7 @@ export default function CommandCenter() {
                         >
                             <h1 className="text-3xl font-semibold mb-2">What can I help you with?</h1>
                             <p className="text-muted-foreground mb-6">
-                                Ask about your workspace, create tasks, or let your agents work for you.
+                                Build new agents, connect integrations, or ask about your existing automations.
                             </p>
                         </motion.div>
                     )}

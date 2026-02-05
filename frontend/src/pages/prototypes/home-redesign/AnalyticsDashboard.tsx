@@ -13,9 +13,9 @@ import { ModelRequest, SendModelRequest } from "@/shared/ModelEvents"
 import { sendBuilderMessage, subscribeToBuilderChat } from "@/socket"
 
 const QUICK_ACTION_PROMPTS = [
-    "Summarize today's activity",
-    "Check PR status",
-    "What needs my attention?"
+    "Create a new agent",
+    "Connect an integration",
+    "Show my agents"
 ]
 
 // Prominent metric card with visual emphasis
@@ -264,7 +264,7 @@ export default function AnalyticsDashboard() {
                                                 onUserMessage={handleUserMessage}
                                                 addUserTurnsLocally={true}
                                                 inputSize="small"
-                                                placeholders={["Ask a quick question or run a task..."]}
+                                                placeholders={["Build an agent or connect an integration..."]}
                                             />
                                         </motion.div>
                                     )}
