@@ -12,8 +12,8 @@ import { NotionIntegration } from "./NotionIntegration"
 import { SlackIntegration } from "./SlackIntegration"
 import { SlackOutputIntegration } from "./SlackOutputIntegration"
 import { TimeTriggerIntegration } from "./TimeTriggerIntegration"
-import { InputConfigSelectorProps } from "./types"
 import { WebBrowsingIntegration } from "./WebBrowsingIntegration"
+import { InputConfigSelectorProps } from "./types"
 
 export function IntegrationSelector(props: InputConfigSelectorProps) {
     switch (props.input.config?.configType || props.input.configType) {

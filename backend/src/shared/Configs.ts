@@ -19,7 +19,8 @@ export enum ConfigType {
     TIME_TRIGGER = "time_trigger",
     LAUNCHDARKLY = "launchdarkly",
     LINEAR_KB = "linear_kb",
-    SLACK_KB = "slack_kb"
+    SLACK_KB = "slack_kb",
+    WEB_BROWSING = "web_browsing"
 }
 
 // MARK: Config Metadata
@@ -204,6 +205,15 @@ export const SlackKBConfigMetadata = {
     isKnowledgeBase: true
 } as const satisfies ConfigDetails
 
+export const WebBrowsingConfigMetadata = {
+    configType: ConfigType.WEB_BROWSING,
+    name: "Web Browsing",
+    description: "Search and browse the web for information",
+    isInput: false,
+    isOutput: true,
+    isKnowledgeBase: false
+} as const satisfies ConfigDetails
+
 export type ConfigDetailsMap = Record<ConfigType, ConfigDetails>
 
 export const CONFIG_DETAILS: ConfigDetailsMap = {
@@ -225,7 +235,8 @@ export const CONFIG_DETAILS: ConfigDetailsMap = {
     [ConfigType.TIME_TRIGGER]: TimeTriggerConfigMetadata,
     [ConfigType.LAUNCHDARKLY]: LaunchDarklyConfigMetadata,
     [ConfigType.LINEAR_KB]: LinearKBConfigMetadata,
-    [ConfigType.SLACK_KB]: SlackKBConfigMetadata
+    [ConfigType.SLACK_KB]: SlackKBConfigMetadata,
+    [ConfigType.WEB_BROWSING]: WebBrowsingConfigMetadata
 } as const satisfies ConfigDetailsMap
 
 export interface ConfigInstance {
@@ -733,6 +744,24 @@ export class SlackKBConfig implements ConfigInstance {
     }
 }
 
+export class WebBrowsingConfig implements ConfigInstance {
+    integrationType: IntegrationType = IntegrationType.TERSE
+    configType: ConfigType = ConfigType.WEB_BROWSING
+    // System integration - no real integration ID needed
+    integrationId: string = "system"
+
+    constructor() {}
+
+    isComplete(): boolean {
+        // Web browsing requires no configuration - always complete
+        return true
+    }
+
+    formatForAgent(): string {
+        return `Type: Web Browsing\nCapability: Search and browse the web for information`
+    }
+}
+
 // To be studied Later!!
 type EnsureExhaustiveMetadata<T extends Record<ConfigType, new (...args: any[]) => ConfigInstance>> = T
 
@@ -756,6 +785,7 @@ export type ConfigMetadataMap = EnsureExhaustiveMetadata<{
     [ConfigType.LAUNCHDARKLY]: typeof LaunchDarklyConfig
     [ConfigType.LINEAR_KB]: typeof LinearKBConfig
     [ConfigType.SLACK_KB]: typeof SlackKBConfig
+    [ConfigType.WEB_BROWSING]: typeof WebBrowsingConfig
 }>
 
 export const CONFIG_METADATA: ConfigMetadataMap = {
@@ -777,5 +807,6 @@ export const CONFIG_METADATA: ConfigMetadataMap = {
     [ConfigType.TIME_TRIGGER]: TimeTriggerConfig,
     [ConfigType.LAUNCHDARKLY]: LaunchDarklyConfig,
     [ConfigType.LINEAR_KB]: LinearKBConfig,
-    [ConfigType.SLACK_KB]: SlackKBConfig
+    [ConfigType.SLACK_KB]: SlackKBConfig,
+    [ConfigType.WEB_BROWSING]: WebBrowsingConfig
 } as const satisfies ConfigMetadataMap
