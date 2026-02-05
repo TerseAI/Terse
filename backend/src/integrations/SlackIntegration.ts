@@ -573,7 +573,7 @@ export class SlackIntegrationManager
                 })
                 if (history.ok && history.messages?.length) {
                     for (const msg of history.messages) {
-                        if (msg.ts && msg.user && !msg.bot_id) {
+                        if (msg.ts && msg.user) {
                             messages.push({
                                 channel: im.id,
                                 ts: msg.ts,
@@ -599,7 +599,7 @@ export class SlackIntegrationManager
                 return []
             }
             for (const msg of history.messages) {
-                if (msg.ts && msg.user && !msg.bot_id) {
+                if (msg.ts && msg.user) {
                     messages.push({
                         channel: slackConfig.channelId,
                         ts: msg.ts,
