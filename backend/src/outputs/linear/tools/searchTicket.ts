@@ -8,24 +8,31 @@ import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
 import { LinearIntegrationManager } from "../../../integrations/LinearIntegration"
 import logger from "../../../logger"
 import { IntegrationType } from "../../../shared/Integrations"
+import { LinearStateName } from "../../../shared/TicketSystem"
 import { ToolName } from "../../../tools/ToolNames"
 import { formatError } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
 
+const linearStateNameValues = Object.values(LinearStateName)
+
 export const linearSearchTicketTool = tool({
     name: ToolName.LINEAR_SEARCH_TICKET,
-    description: `Search for Linear issues/tickets by description or query. Returns issues that match the search criteria, excluding completed issues by default unless specified otherwise.
+    description: `Search for Linear issues/tickets by description or query. Returns all matching issues by default.
 
 Use this tool to find existing Linear issues before creating new ones or to look up ticket information.`,
     parameters: z.object({
         integrationId: z.string().describe("The integration ID of the Linear integration to use."),
         issueDescription: z.string().describe("The search query or description to search for in Linear issues. This will search in issue titles, descriptions, and other fields."),
-        excludeDone: z.boolean().nullable().optional().describe('Whether to exclude issues with state "Done". Defaults to true if not provided.'),
+        stateNames: z
+            .array(z.enum(linearStateNameValues as [string, ...string[]]))
+            .nullable()
+            .optional()
+            .describe(`Filter to only include issues with these state names. Available states: ${linearStateNameValues.join(", ")}. When not provided, returns issues in all states.`),
         limit: z.number().nullable().optional().describe("Maximum number of issues to return. Defaults to 10 if not provided."),
         after: z.string().nullable().optional().describe("Cursor for pagination. Use the endCursor from the previous response to fetch the next page of results.")
     }),
-    execute: async ({ integrationId, issueDescription, excludeDone = true, limit = 10, after }, runContext?: RunContext<SessionWithTracking<Session>>) => {
-        logger.debug("🛠️ Executing linear_search_ticket tool", { integrationId, issueDescription, excludeDone, limit, after })
+    execute: async ({ integrationId, issueDescription, stateNames, limit = 10, after }, runContext?: RunContext<SessionWithTracking<Session>>) => {
+        logger.debug("🛠️ Executing linear_search_ticket tool", { integrationId, issueDescription, stateNames, limit, after })
 
         if (!runContext?.context) {
             throw new Error("No context provided")
@@ -43,14 +50,15 @@ Use this tool to find existing Linear issues before creating new ones or to look
         })
 
         try {
-            // Build filter options
-            const filter: IssueFilter | undefined = excludeDone
-                ? {
-                      state: {
-                          name: { neq: "Done" }
+            // Build filter options - filter by state names if provided
+            const filter: IssueFilter | undefined =
+                stateNames && stateNames.length > 0
+                    ? {
+                          state: {
+                              name: { in: stateNames }
+                          }
                       }
-                  }
-                : undefined
+                    : undefined
 
             // Search for issues using searchIssues method with pagination
             // Using first parameter to limit results and orderBy updatedAt for most recent
