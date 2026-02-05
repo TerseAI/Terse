@@ -155,6 +155,8 @@ function AgentOptionsMenu({
             if (result?.id) {
                 toast.success("Agent cloned successfully")
                 navigate(FrontendRoutes.AGENTS.DETAIL(result.id))
+            } else {
+                toast.error("Failed to clone agent: no ID returned")
             }
         } catch (error) {
             console.error("Failed to clone agent:", error)
