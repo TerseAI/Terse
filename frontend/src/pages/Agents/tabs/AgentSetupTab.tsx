@@ -1,12 +1,13 @@
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 
-import { Bell, Check, ChevronRight, Database, FileText, PlusIcon, Wrench, XIcon, Zap } from "lucide-react"
+import { Bell, Check, ChevronRight, Database, FileText, Pause, Play, PlusIcon, Trash2, Wrench, XIcon, Zap } from "lucide-react"
 import { toast } from "sonner"
 import { type KeyedMutator } from "swr"
 import { v4 as uuidv4 } from "uuid"
 
 import { Button } from "@/components/ui/button"
+import { Switch } from "@/components/ui/switch"
 import { useAgentCount } from "@/hooks/api/useAgentCount"
 import { useAgentMutations } from "@/hooks/api/useAgents"
 import { FrontendRoutes } from "@/shared/FrontendRoutes"
@@ -18,7 +19,7 @@ import { InputConfigSelectorProps, IntegrationSelector } from "../../../componen
 import { BuilderChat } from "../../../components/chat/BuilderChat"
 import EditableTextField from "../../../components/ui/EditableTextField"
 import { Badge } from "../../../components/ui/badge"
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "../../../components/ui/dialog"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../../../components/ui/dialog"
 import { cn } from "../../../lib/utils"
 import { useModelContext } from "../../../services/ModelContextProvider"
 import { CONFIG_DETAILS, ConfigInstance, ConfigType } from "../../../shared/Configs"
@@ -56,6 +57,134 @@ export type AgentSetupTabProps = {
     isLoading: boolean
     mutate: KeyedMutator<Agent>
     updatedAt?: string
+}
+
+function DeleteAgentDialog({
+    isOpen,
+    onClose,
+    onConfirm,
+    agentName,
+    isDeleting
+}: {
+    isOpen: boolean
+    onClose: () => void
+    onConfirm: () => void
+    agentName: string
+    isDeleting: boolean
+}) {
+    return (
+        <Dialog open={isOpen} onOpenChange={open => !open && onClose()}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Delete Agent</DialogTitle>
+                    <DialogDescription>
+                        Are you sure you want to delete <span className="font-semibold">{agentName}</span>? This action cannot be undone and will remove all associated run history.
+                    </DialogDescription>
+                </DialogHeader>
+                <DialogFooter>
+                    <Button variant="outline" onClick={onClose} disabled={isDeleting}>
+                        Cancel
+                    </Button>
+                    <Button variant="destructive" onClick={onConfirm} disabled={isDeleting}>
+                        {isDeleting ? "Deleting..." : "Delete Agent"}
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    )
+}
+
+function AgentControls({
+    agentId,
+    agentName,
+    isActive,
+    onToggleActive,
+    mutate
+}: {
+    agentId: string | null
+    agentName: string
+    isActive: boolean
+    onToggleActive: (active: boolean) => void
+    mutate: KeyedMutator<Agent>
+}) {
+    const navigate = useNavigate()
+    const { deleteAgent, updateAgent } = useAgentMutations()
+    const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+    const [isDeleting, setIsDeleting] = useState(false)
+    const [isToggling, setIsToggling] = useState(false)
+
+    // Only show controls for existing agents
+    if (!agentId) {
+        return null
+    }
+
+    const handleToggleActive = async () => {
+        setIsToggling(true)
+        try {
+            await updateAgent({
+                id: agentId,
+                data: { isActive: !isActive },
+                mutateAgent: mutate
+            })
+            onToggleActive(!isActive)
+            toast.success(isActive ? "Agent paused" : "Agent resumed")
+        } catch (error) {
+            console.error("Failed to toggle agent status:", error)
+            toast.error("Failed to update agent status")
+        } finally {
+            setIsToggling(false)
+        }
+    }
+
+    const handleDelete = async () => {
+        setIsDeleting(true)
+        try {
+            await deleteAgent(agentId)
+            toast.success("Agent deleted")
+            navigate(FrontendRoutes.AGENTS.SETUP)
+        } catch (error) {
+            console.error("Failed to delete agent:", error)
+            toast.error("Failed to delete agent")
+        } finally {
+            setIsDeleting(false)
+            setShowDeleteDialog(false)
+        }
+    }
+
+    return (
+        <>
+            <div className="flex items-center gap-3">
+                {/* Pause/Resume Toggle */}
+                <div className="flex items-center gap-2">
+                    <Switch checked={isActive} onCheckedChange={handleToggleActive} disabled={isToggling} id="agent-active-toggle" />
+                    <label htmlFor="agent-active-toggle" className={cn("text-sm cursor-pointer select-none", isActive ? "text-foreground" : "text-muted-foreground")}>
+                        {isActive ? (
+                            <span className="flex items-center gap-1">
+                                <Play className="h-3 w-3" />
+                                Active
+                            </span>
+                        ) : (
+                            <span className="flex items-center gap-1">
+                                <Pause className="h-3 w-3" />
+                                Paused
+                            </span>
+                        )}
+                    </label>
+                </div>
+
+                {/* Separator */}
+                <div className="w-px h-6 bg-border" />
+
+                {/* Delete Button */}
+                <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => setShowDeleteDialog(true)}>
+                    <Trash2 className="h-4 w-4 mr-1" />
+                    Delete
+                </Button>
+            </div>
+
+            <DeleteAgentDialog isOpen={showDeleteDialog} onClose={() => setShowDeleteDialog(false)} onConfirm={handleDelete} agentName={agentName} isDeleting={isDeleting} />
+        </>
+    )
 }
 
 function SaveAgentButton({
@@ -173,6 +302,7 @@ export default function AgentSetupTab({
     setKnowledgeBases,
     setPrompt,
     isActive,
+    setIsActive,
     requireApproval,
     setRequireApproval: _setRequireApproval, // Kept for backward compatibility but not used (we use toolApprovals instead)
     notificationSettings,
@@ -232,20 +362,23 @@ export default function AgentSetupTab({
                         <div className="flex items-center gap-4 min-w-0">
                             <EditableTextField className="text-lg font-medium" value={name || ""} placeholder={defaultName} onSave={value => setName(value)} />
                         </div>
-                        <SaveAgentButton
-                            defaultName={defaultName}
-                            agentId={agentId}
-                            name={name}
-                            inputs={agentInputs}
-                            outputs={agentOutputs}
-                            knowledgeBases={agentKnowledgeBases}
-                            prompt={prompt}
-                            isActive={isActive}
-                            requireApproval={requireApproval}
-                            toolApprovals={toolApprovals}
-                            notificationSettings={notificationSettings}
-                            mutate={mutate}
-                        />
+                        <div className="flex items-center gap-4">
+                            <AgentControls agentId={agentId} agentName={name || defaultName} isActive={isActive} onToggleActive={setIsActive} mutate={mutate} />
+                            <SaveAgentButton
+                                defaultName={defaultName}
+                                agentId={agentId}
+                                name={name}
+                                inputs={agentInputs}
+                                outputs={agentOutputs}
+                                knowledgeBases={agentKnowledgeBases}
+                                prompt={prompt}
+                                isActive={isActive}
+                                requireApproval={requireApproval}
+                                toolApprovals={toolApprovals}
+                                notificationSettings={notificationSettings}
+                                mutate={mutate}
+                            />
+                        </div>
                     </div>
                 </div>
 
