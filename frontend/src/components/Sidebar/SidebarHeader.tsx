@@ -1,10 +1,12 @@
 import { useState } from "react"
+import { useNavigate } from "react-router-dom"
 
-import { Check, ChevronsUpDown, Settings } from "lucide-react"
+import { Check, ChevronsUpDown, Settings, Users } from "lucide-react"
 
 import { useUserOrganizations } from "@/hooks/api/useUserOrganizations"
 import { useAuth } from "@/services/auth"
 import { BackendProvider } from "@/services/backend"
+import { FrontendRoutes } from "@/shared/FrontendRoutes"
 
 import { EditOrganizationDialog } from "../UserManagement/EditOrganizationDialog"
 import { OrgLogo } from "../ui/OrgLogo"
@@ -14,7 +16,9 @@ import { SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "
 export function AppSidebarHeader() {
     const { user } = useAuth()
     const { organizations } = useUserOrganizations()
+    const navigate = useNavigate()
     const [editDialogOpen, setEditDialogOpen] = useState(false)
+    const isAdmin = user?.roles.includes("admin") ?? false
 
     const currentOrgName = user?.organizationName || "Organization"
     const currentOrgId = user?.organizationId
@@ -72,6 +76,12 @@ export function AppSidebarHeader() {
                                         <Settings className="size-4 mr-2" />
                                         <span>Edit Organization</span>
                                     </DropdownMenuItem>
+                                    {isAdmin && (
+                                        <DropdownMenuItem onClick={() => navigate(FrontendRoutes.USER_MANAGEMENT)}>
+                                            <Users className="size-4 mr-2" />
+                                            <span>User Management</span>
+                                        </DropdownMenuItem>
+                                    )}
                                 </DropdownMenuContent>
                             </DropdownMenu>
                             <EditOrganizationDialog open={editDialogOpen} onOpenChange={setEditDialogOpen} />
