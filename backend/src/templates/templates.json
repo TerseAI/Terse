@@ -755,6 +755,12 @@
                     "configType": "github_kb",
                     "integrationType": "github"
                 }
+            },
+            {
+                "config": {
+                    "configType": "launchdarkly",
+                    "integrationType": "launchdarkly"
+                }
             }
         ],
         "outputs": [
