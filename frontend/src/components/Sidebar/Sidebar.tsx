@@ -34,7 +34,7 @@ export function AppSidebar() {
             <AppSidebarHeader />
             <SidebarContent>
                 <div className="px-3 py-4">
-                    <Button variant="outline" size="sm" className="w-full gap-2" onClick={() => navigate(FrontendRoutes.AGENTS.SETUP)}>
+                    <Button variant="outline" size="sm" className="w-full gap-2" onClick={() => navigate(FrontendRoutes.AGENTS.SETUP_NEW())}>
                         <Plus className="size-4" />
                         Add Agent
                     </Button>
@@ -133,7 +133,7 @@ function AgentsList({ agents, loading }: AgentsListProps) {
             ))}
             <SidebarMenuSubItem>
                 <SidebarMenuSubButton asChild>
-                    <Button variant="ghost" size="sm" className="gap-1 text-xs text-muted-foreground" onClick={() => navigate(FrontendRoutes.AGENTS.SETUP)}>
+                    <Button variant="ghost" size="sm" className="gap-1 text-xs text-muted-foreground" onClick={() => navigate(FrontendRoutes.AGENTS.SETUP_NEW())}>
                         <Plus className="size-3 !text-muted-foreground hover:!text-foreground" color="currentColor" />
                         Add Agent
                     </Button>

@@ -37,7 +37,7 @@ export function EmptyState({ hasFilters }: EmptyStateProps) {
                 <EmptyTitle>No agents yet</EmptyTitle>
                 <EmptyDescription>Create your first agent to get started</EmptyDescription>
             </EmptyHeader>
-            <Button onClick={() => navigate(FrontendRoutes.AGENTS.SETUP)}>
+            <Button onClick={() => navigate(FrontendRoutes.AGENTS.SETUP_NEW())}>
                 <Plus className="h-4 w-4" />
                 Create agent
             </Button>

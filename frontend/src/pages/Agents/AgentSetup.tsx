@@ -51,8 +51,10 @@ export default function AgentSetup() {
     const appliedDeepLinkKey = useRef<string | null>(null)
     const [searchParams] = useSearchParams()
 
-    // Generate a session ID for this setup flow
-    const sessionId = useMemo(() => uuidv4(), [])
+    // Derive session ID from URL param (allows resetting by changing the param)
+    // Falls back to a generated UUID for direct navigation without params
+    const sessionParam = searchParams.get("session")
+    const sessionId = useMemo(() => sessionParam ?? uuidv4(), [sessionParam])
 
     const handleTemplateSelect = useCallback((template: AgentTemplate) => {
         chatRef.current?.setInput(template.chatPrompt)

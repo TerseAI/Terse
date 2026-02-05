@@ -32,7 +32,7 @@ export function TemplatesGrid() {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {templates.map((template, index) => (
-                    <TemplateCard key={index} template={template} onSelect={() => navigate(FrontendRoutes.AGENTS.SETUP, { state: { template } })} />
+                    <TemplateCard key={index} template={template} onSelect={() => navigate(`${FrontendRoutes.AGENTS.SETUP_NEW()}&templateId=${encodeURIComponent(template.id)}`)} />
                 ))}
             </div>
         </div>

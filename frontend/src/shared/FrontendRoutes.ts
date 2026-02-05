@@ -21,6 +21,8 @@ export const FrontendRoutes = {
     AGENTS: {
         LIST: "/app/agents",
         SETUP: "/app/agents/setup",
+        /** Generates a setup URL with a fresh session ID to force a new chat session */
+        SETUP_NEW: () => `/app/agents/setup?session=${Date.now()}`,
         NEW: "/app/agents/new",
         NEW_WITH_TEMPLATE: {
             pattern: "/app/agents/new/template/:templateId",

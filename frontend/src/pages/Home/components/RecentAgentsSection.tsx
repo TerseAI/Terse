@@ -44,7 +44,7 @@ export function RecentAgentsSection({ isLoading, agents }: RecentAgentsSectionPr
                         <EmptyDescription>Create your first agent to start automating your workflow</EmptyDescription>
                     </EmptyHeader>
                     <EmptyContent>
-                        <Button variant="default" onClick={() => navigate(FrontendRoutes.AGENTS.SETUP)}>
+                        <Button variant="default" onClick={() => navigate(FrontendRoutes.AGENTS.SETUP_NEW())}>
                             <Plus className="h-4 w-4" />
                             Create Agent
                         </Button>

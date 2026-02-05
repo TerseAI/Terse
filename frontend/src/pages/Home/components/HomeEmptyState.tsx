@@ -109,7 +109,7 @@ export function HomeEmptyState() {
             tooltip: "Agents automate repetitive tasks. They listen for events and take action so you can focus on what matters.",
             icon: <Zap className="h-5 w-5" />,
             completed: false,
-            action: () => navigate(FrontendRoutes.AGENTS.SETUP),
+            action: () => navigate(FrontendRoutes.AGENTS.SETUP_NEW()),
             buttonText: "Create Agent"
         }
     ]
@@ -198,7 +198,7 @@ export function HomeEmptyState() {
 
                 {/* Skip link */}
                 <div className="text-center mt-8">
-                    <Button variant="ghost" size="sm" onClick={() => navigate(FrontendRoutes.AGENTS.SETUP)} className="text-muted-foreground text-xs">
+                    <Button variant="ghost" size="sm" onClick={() => navigate(FrontendRoutes.AGENTS.SETUP_NEW())} className="text-muted-foreground text-xs">
                         Skip setup and create an agent
                     </Button>
                 </div>

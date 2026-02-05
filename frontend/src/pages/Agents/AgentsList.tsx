@@ -44,7 +44,7 @@ export default function AgentsList() {
     }
 
     const handleCreateNew = () => {
-        navigate(FrontendRoutes.AGENTS.SETUP)
+        navigate(FrontendRoutes.AGENTS.SETUP_NEW())
     }
 
     return (
