@@ -1,5 +1,6 @@
 import { Tab, TabGroup, TabList, TabPanel, TabPanels } from "@headlessui/react"
 import { Monitor, Shield, User2, Users } from "lucide-react"
+import { useSearchParams } from "react-router-dom"
 
 import { UserTable } from "@/components/UserManagement/UserManagement"
 import { UserProfileWidget } from "@/components/UserProfile/UserProfileWidget"
@@ -12,14 +13,20 @@ const tabClass = ({ selected }: { selected: boolean }) =>
         selected ? "text-foreground border-primary" : "text-muted-foreground border-transparent hover:text-foreground"
     }`
 
+const TAB_INDICES = { profile: 0, sessions: 1, security: 2, users: 3 } as const
+
 export default function ProfilePage() {
     const { user } = useAuth()
+    const [searchParams] = useSearchParams()
     const isAdmin = user?.roles.includes("admin") ?? false
+
+    const tabParam = searchParams.get("tab") as keyof typeof TAB_INDICES | null
+    const defaultIndex = tabParam && TAB_INDICES[tabParam] !== undefined ? TAB_INDICES[tabParam] : 0
 
     return (
         <div className="flex flex-col h-full p-4">
             <h1 className="text-xl font-bold text-foreground mb-5">Account Settings</h1>
-            <TabGroup className="flex flex-col flex-1 min-h-0">
+            <TabGroup defaultIndex={defaultIndex} className="flex flex-col flex-1 min-h-0">
                 <TabList className="flex gap-2 border-b border-input shrink-0">
                     <Tab className={tabClass}>
                         <User2 className="h-4 w-4" />
