@@ -1,9 +1,26 @@
 import { initializeSlackWebClient } from "../../integrations/SlackClient"
 import { SlackEvent, SlackEventData } from "../../integrations/SlackIntegration"
 import logger from "../../logger"
+import { SlackChannelType } from "../../shared/types"
 import { db } from "../../prismaClient"
 import { HydratorType } from "../../types/rag"
 import { HydrationContext, Hydrator, Identifiable } from "../Hydrator"
+
+// Derive SlackChannelType from conversations.info channel object
+function channelTypeFromConversation(channel: { is_im?: boolean; is_mpim?: boolean; is_private?: boolean }): SlackChannelType {
+    if (channel.is_im) return SlackChannelType.IM
+    if (channel.is_mpim) return SlackChannelType.MPIM
+    if (channel.is_private) return SlackChannelType.GROUP
+    return SlackChannelType.CHANNEL
+}
+
+// Fallback when conversations.info fails: infer from channel ID prefix
+function channelTypeFromId(channelId: string): SlackChannelType {
+    const prefix = channelId.charAt(0).toUpperCase()
+    if (prefix === "D") return SlackChannelType.IM
+    if (prefix === "G") return SlackChannelType.GROUP
+    return SlackChannelType.CHANNEL
+}
 
 // Parse Slack permalink: https://workspace.slack.com/archives/CHANNEL_ID/p1234567890123456
 function parsePermalink(permalink: string): { channelId: string; timestamp: string } | null {
@@ -92,17 +109,22 @@ export class SlackEventHydrator extends Hydrator<SlackEvent> {
                 return null
             }
 
-            // Get channel info
+            // Get channel info (includes channelType for agent trigger matching)
             let channelName: string | undefined
+            let channelType: SlackChannelType = channelTypeFromId(channelId)
             try {
                 const channelInfo = await client.conversations.info({ channel: channelId })
-                channelName = (channelInfo.channel as any)?.name
+                const channel = channelInfo.channel as { name?: string; is_im?: boolean; is_mpim?: boolean; is_private?: boolean } | undefined
+                if (channel) {
+                    channelName = channel.name
+                    channelType = channelTypeFromConversation(channel)
+                }
             } catch (channelError: any) {
                 // Handle channel not found or access denied errors
                 // These are expected for DMs (IM/MPIM) or private channels the token can't access
                 const errorCode = channelError?.data?.error || channelError?.code
                 if (errorCode === "channel_not_found" || errorCode === "not_in_channel" || errorCode === "missing_scope") {
-                    logger.warn(`Could not fetch channel info for channelId: ${channelId} (${errorCode}). Continuing without channel name.`)
+                    logger.warn(`Could not fetch channel info for channelId: ${channelId} (${errorCode}). Continuing without channel name, using channelType fallback.`)
                 } else {
                     // Unexpected errors (network, rate limit, auth) should remain at error level
                     logger.error(`Failed to fetch channel info for channelId: ${channelId}. Continuing without channel name.`, channelError)
@@ -123,6 +145,7 @@ export class SlackEventHydrator extends Hydrator<SlackEvent> {
             const eventData: SlackEventData = {
                 channelId,
                 channelName,
+                channelType,
                 userId: message.user || "",
                 userName,
                 text: message.text || "",
