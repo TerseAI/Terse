@@ -3,16 +3,23 @@ import { Tool } from "@openai/agents-core"
 import { z } from "zod"
 import { uuidv4 } from "zod/v4"
 
+import { filterEvent } from "../../agent/AgentRunner/EventFilter"
+import { EventProcessor } from "../../agent/AgentRunner/EventProcessor"
+import { generateEventSummary } from "../../agent/EventSummaryAgent/EventSummaryAgent"
 import { FetchResourcesOptions, FetchResourcesOptionsSchema } from "../../integrations/abstract/FetchResourcesOptions"
+import { InputEvent } from "../../integrations/abstract/InputEvent"
 import { INTEGRATION_REGISTRY } from "../../integrations/abstract/IntegrationRegistry"
 import logger from "../../logger"
+import { db } from "../../prismaClient"
+import { requireHydrator } from "../../rag/HydratorRegistry"
 import type { AgentDraft } from "../../routes/agents"
 import { applyAgentForUser, isUuidV4, updateAgentForUser } from "../../routes/agents"
 import type { ConfigInstance } from "../../shared/Configs"
 import { ConfigType } from "../../shared/Configs"
 import { FrontendRoutes } from "../../shared/FrontendRoutes"
 import { IntegrationType } from "../../shared/Integrations"
-import { convertPlainObjectToInputConfigInstance } from "../../utility/typeConverters"
+import { requireHydratorType } from "../../types/rag"
+import { getUserForOrg } from "../../utility/workos"
 
 import ChatInterface from "./ChatInterfaces/ChatInterface"
 
@@ -102,36 +109,141 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
         }),
         tool({
             name: "getSampleEvents",
-            description: "Call this when you want to fetch sample events to test out your agent.",
+            description:
+                "Fetch sample events to test your agent. Returns event references (entityType + entityId) and AI-generated summaries. Use executeSampleEvent with the entityType and entityId to run a specific event.",
             parameters: z.object({
                 integrationId: z.string().describe("The integration ID to fetch sample events for"),
-                integrationType: z.nativeEnum(IntegrationType).describe("The integration type to fetch sample events for"),
+                integrationType: z.nativeEnum(IntegrationType).describe("The integration type"),
                 triggerConfig: AgentTriggerSchema.describe("The trigger config to fetch sample events for"),
+                agentId: z.string().nullable().describe("Optional agent ID to preview filter results against"),
                 options: z
                     .object({
-                        limit: z.number().nullable().describe("The number of sample events to fetch")
+                        limit: z.number().nullable().describe("Number of sample events to fetch (default 5)")
                     })
                     .nullable()
             }),
-            execute: async ({
-                integrationId,
-                integrationType,
-                triggerConfig,
-                options
-            }: {
-                integrationId: string
-                integrationType: IntegrationType
-                triggerConfig: z.infer<typeof AgentTriggerSchema>
-                options: { limit: number | null } | null
-            }): Promise<string> => {
+            execute: async ({ integrationId, integrationType, triggerConfig, agentId, options }, runContext?: RunContext<ChatAgentContext>): Promise<string> => {
+                const userId = runContext?.context?.userId
+                const organizationId = runContext?.context?.organizationId
+                if (!userId || !organizationId) {
+                    throw new Error("User ID and organization ID are required")
+                }
+
                 const manager = INTEGRATION_REGISTRY.find(m => m.integrationType === integrationType)
                 if (!manager || !manager.getSampleEvents) {
-                    throw new Error(`Integration type ${integrationType} does not support sample events`)
+                    throw new Error(`Integration ${integrationType} does not support sample events`)
                 }
-                const configInstance = convertPlainObjectToInputConfigInstance(triggerConfig.config)
-                const normalizedOptions = options == null ? undefined : { limit: options.limit ?? undefined }
-                const inputEvents = await manager.getSampleEvents(integrationId, configInstance, normalizedOptions)
-                return JSON.stringify(inputEvents)
+
+                const configInstance = toConfigInstance(normalizeConfig(triggerConfig.config))
+                const inputEvents = await manager.getSampleEvents(integrationId, configInstance, {
+                    limit: options?.limit ?? 5
+                })
+
+                let agentPrompt = null
+                if (agentId) {
+                    const agent = await db().automations.findUnique({
+                        where: { id: agentId },
+                        include: { prompt: true }
+                    })
+                    agentPrompt = agent?.prompt
+                }
+
+                const results: Array<{
+                    entityType: string
+                    entityId: string
+                    summary: string
+                    integrationType: string
+                    wouldBeFiltered: boolean
+                    filterReason: string | null
+                    filterConfidence: number | null
+                }> = []
+
+                for (const event of inputEvents) {
+                    if (!event.isIdentifiable()) {
+                        logger.warn(`Event is not identifiable, skipping: ${event.debugLog()}`)
+                        continue
+                    }
+
+                    const identifiable = event.getIdentifiableInfo()!
+                    const eventData = (event as unknown as { data: unknown }).data
+
+                    const { summary } = await generateEventSummary(integrationType, eventData)
+
+                    let wouldBeFiltered = false
+                    let filterReason: string | null = null
+                    let filterConfidence: number | null = null
+
+                    if (agentPrompt) {
+                        try {
+                            const filterResult = await filterEvent(event, agentPrompt)
+                            wouldBeFiltered = !filterResult.result.isRelevant
+                            filterReason = filterResult.result.reason
+                            filterConfidence = filterResult.result.confidence
+                        } catch {
+                            filterReason = "Filter preview failed"
+                        }
+                    }
+
+                    results.push({
+                        entityType: identifiable.entityType,
+                        entityId: identifiable.entityId,
+                        summary,
+                        integrationType,
+                        wouldBeFiltered,
+                        filterReason,
+                        filterConfidence
+                    })
+                }
+
+                return JSON.stringify({ events: results })
+            }
+        }),
+        tool({
+            name: "executeSampleEvent",
+            description: "Execute a sample event to test how your agent responds. Use entityType and entityId from getSampleEvents.",
+            parameters: z.object({
+                entityType: z.string().describe("The entity type from getSampleEvents (e.g., 'slack_message_event', 'github_event')"),
+                entityId: z.string().describe("The entity ID from getSampleEvents"),
+                agentId: z.string().nullable().describe("Optional: specific agent ID to test. If null, runs against all matching agents.")
+            }),
+            execute: async ({ entityType, entityId }, runContext?: RunContext<ChatAgentContext>): Promise<string> => {
+                const userId = runContext?.context?.userId
+                const organizationId = runContext?.context?.organizationId
+                if (!userId || !organizationId) {
+                    throw new Error("User ID and organization ID are required")
+                }
+
+                const hydratorType = requireHydratorType(entityType)
+                const hydrator = requireHydrator(hydratorType, { userId, organizationId })
+
+                const hydrated = await hydrator.hydrate({
+                    entityType: hydratorType,
+                    entityId
+                })
+                const inputEvent = hydrated as InputEvent
+
+                const user = await getUserForOrg(userId, organizationId)
+                if (!user) {
+                    throw new Error("User not found")
+                }
+
+                const eventProcessor = new EventProcessor(inputEvent, user)
+                const processResults = await eventProcessor.process()
+
+                const formattedResults = processResults.map(r => ({
+                    agentId: r.agentConfig?.id ?? null,
+                    agentName: r.agentConfig?.name ?? null,
+                    success: r.success,
+                    message: r.message,
+                    requiresApproval: r.approvalResult?.status === "awaiting_approval"
+                }))
+
+                return JSON.stringify({
+                    processed: true,
+                    entityType,
+                    entityId,
+                    results: formattedResults
+                })
             }
         })
     ]

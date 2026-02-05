@@ -16,6 +16,8 @@ import { RunHistoryTrigger } from "../shared/RunHistoryTypes"
 import { LinearTeam, OAuthInstallationDetails } from "../shared/types"
 import { LinearAdapter } from "../ticketing/linear"
 import { AgentTriggerWithConfigs } from "../types/prisma"
+import { Identifiable } from "../rag/Hydrator"
+import { HydratorType } from "../types/rag"
 import { LinearWebhookPayload } from "../utility/LinearWebhookPayload"
 import { createOAuthStateToken } from "../utility/oauth"
 import { getUserForOrg } from "../utility/workos"
@@ -588,8 +590,10 @@ export class LinearIntegrationManager
 
 // MARK: - LinearEvent
 
-export class LinearEvent extends InputEvent {
+export class LinearEvent extends InputEvent implements Identifiable {
     readonly integrationType: IntegrationType = IntegrationType.LINEAR
+    entityType = HydratorType.LINEAR_EVENT
+    entityId: string
     data: LinearWebhookPayload
     private integrationId: string
 
@@ -597,6 +601,8 @@ export class LinearEvent extends InputEvent {
         super()
         this.data = data
         this.integrationId = integrationId
+        const dataId = (data.data as { id?: string })?.id
+        this.entityId = `${integrationId}:${dataId ?? "unknown"}`
     }
 
     formatForAgentRunner(): string {

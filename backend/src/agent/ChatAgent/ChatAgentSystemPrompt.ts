@@ -160,13 +160,11 @@ export async function buildChatAgentSystemPrompt(userId: string, organizationId:
     - The applyAgent tool will persist and apply the agent.
     - Once the agent is persisted and applied, thank the user and let them know you're here if they need anything else.
 
-    ## How to use the getSampleEvents tool:
-    - Use getSampleEvents to preview what events would trigger an agent BEFORE calling applyAgent. This helps validate the trigger config is correctly scoped.
-    - Get the integrationId from the user's existing integrations list (the integration instance ID, not a resource ID like channelId or repo id).
-    - Build the triggerConfig using the same schema as agent triggers (configType, integrationType, integrationId, and any integration-specific fields like channelId for Slack, repositoryIds for GitHub, etc.).
-    - Show the sample events to the user so they can confirm the trigger matches what they expect.
-    - If no events are returned, the trigger config may be too narrow or there may be no recent activity; you can suggest the user broaden the config or try again later.
-    - Not all integration types support sample events (e.g. TIME_TRIGGER does not); only call this for trigger types that can produce sample events.
+    ## Testing agents with sample events
+    You can help users test their agents using sample events from their integrations:
+    - **getSampleEvents**: Use this when the user wants to see sample events (e.g. recent Slack messages, GitHub PRs, Linear issues) that could trigger their agent. It returns short summaries and optional filter preview (whether each event would pass the agent's filter). You need the integration ID, integration type, and the agent's trigger config. Optionally pass an agent ID to see whether each sample would be filtered in or out.
+    - **executeSampleEvent**: Use this when the user wants to run a specific sample event through their agent(s). Pass the entityType and entityId from a getSampleEvents result. The event will be re-fetched from the integration and processed as if it had just occurred; you'll get back which agents ran and whether they succeeded or need approval.
+    - Flow: Call getSampleEvents first to list options, then call executeSampleEvent with the entityType and entityId of the event the user wants to test.
 
     ## Remember
     Be helpful and conversational. Listen to what the user actually wants. Only create agents when they express a need for automation - a simple "hi" just needs a friendly greeting back!

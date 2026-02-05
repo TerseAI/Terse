@@ -27,6 +27,8 @@ import { AgentTriggerWithConfigs, User as PrismaUser } from "../types/prisma"
 import { OAuthStateEncodingFormat, createOAuthStateToken, decodeOAuthStateToken } from "../utility/oauth"
 import { getUserForOrg } from "../utility/workos"
 
+import { Identifiable } from "../rag/Hydrator"
+import { HydratorType } from "../types/rag"
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask"
 import { integrationTaskQueue } from "./IntegrationTaskQueues"
 import { FetchResourcesOptions } from "./abstract/FetchResourcesOptions"
@@ -408,8 +410,10 @@ export class GithubIntegrationManager
 
 // MARK: - GithubEvent
 
-export class GithubEvent extends InputEvent {
+export class GithubEvent extends InputEvent implements Identifiable {
     readonly integrationType: IntegrationType = IntegrationType.GITHUB
+    entityType = HydratorType.GITHUB_EVENT
+    entityId: string
     data: GithubAppUnifiedEventRequest
     private storedFiles: StoredFile[]
 
@@ -417,6 +421,13 @@ export class GithubEvent extends InputEvent {
         super()
         this.data = data
         this.storedFiles = storedFiles
+        if (data.pullRequest) {
+            this.entityId = `${data.installationId}:${data.repository.id}:pr/${data.pullRequest.number}`
+        } else if (data.commits?.length) {
+            this.entityId = `${data.installationId}:${data.repository.id}:commit/${data.commits[0].sha}`
+        } else {
+            this.entityId = `${data.installationId}:${data.repository.id}:push/${data.branch ?? "main"}`
+        }
     }
 
     formatForAgentRunner(): string {

@@ -4,6 +4,8 @@ import jwt from "jsonwebtoken"
 
 import { EventProcessor } from "../agent/AgentRunner/EventProcessor"
 import { OAUTH_TOKEN_REFRESH_THRESHOLD_MS, figma as figmaConfig, jwt as jwtConfig, nodeEnv, urls } from "../config/settings"
+import { Identifiable } from "../rag/Hydrator"
+import { HydratorType } from "../types/rag"
 import logger, { runWithUserContext } from "../logger"
 import { db } from "../prismaClient"
 import { FileCategory, StoredFile } from "../services/FileStorageService"
@@ -992,13 +994,16 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
 
 // MARK: - FigmaCommentEvent
 
-export class FigmaCommentEvent extends InputEvent {
+export class FigmaCommentEvent extends InputEvent implements Identifiable {
     readonly integrationType: IntegrationType = IntegrationType.FIGMA
+    entityType = HydratorType.FIGMA_COMMENT_EVENT
+    entityId: string
     data: FigmaCommentEventData
 
     constructor(data: FigmaCommentEventData) {
         super()
         this.data = data
+        this.entityId = `${data.fileKey}:${data.commentId}`
     }
 
     formatForAgentRunner(): string {

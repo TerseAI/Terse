@@ -8,6 +8,7 @@ import { EventProcessor } from "../agent/AgentRunner/EventProcessor"
 import { OAUTH_TOKEN_REFRESH_THRESHOLD_MS, gmail as gmailConfig, urls } from "../config/settings"
 import logger, { runWithUserContext } from "../logger"
 import { db } from "../prismaClient"
+import { Identifiable } from "../rag/Hydrator"
 import { FileDownloadResult, StoredFile, buildGmailFileKey, ensureStoredWithMetadata, isSupportedFileType } from "../services/FileStorageService"
 import { ConfigInstance, ConfigType } from "../shared/Configs"
 import { FrontendRoutes } from "../shared/FrontendRoutes"
@@ -15,6 +16,7 @@ import { AdditionalStateParams, GmailIntegration, GmailIntegrationMetadata, Inst
 import { RunHistoryTrigger } from "../shared/RunHistoryTypes"
 import { OAuthInstallationDetails } from "../shared/types"
 import { AgentTriggerWithConfigs, GmailIntegration as PrismaGmailIntegration, User } from "../types/prisma"
+import { HydratorType } from "../types/rag"
 import { OAuthStateEncodingFormat, createOAuthStateToken, decodeOAuthStateToken } from "../utility/oauth"
 import { getUserForOrg } from "../utility/workos"
 
@@ -553,8 +555,10 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
     }
 }
 
-export class GmailEvent extends InputEvent {
+export class GmailEvent extends InputEvent implements Identifiable {
     readonly integrationType: IntegrationType = IntegrationType.GMAIL
+    entityType = HydratorType.GMAIL_EVENT
+    entityId: string
     data: GmailEventData
     private integrationId: string
 
@@ -562,6 +566,7 @@ export class GmailEvent extends InputEvent {
         super()
         this.data = data
         this.integrationId = integrationId
+        this.entityId = `${integrationId}:${data.id}`
     }
 
     formatForAgentRunner(): string {
@@ -853,7 +858,7 @@ async function fetchNewMessageIds(integration: PrismaGmailIntegration, oldHistor
     return messageIds
 }
 
-async function fetchAndParseEmail(gmail: gmail_v1.Gmail, messageId: string): Promise<GmailEventData | null> {
+export async function fetchAndParseEmail(gmail: gmail_v1.Gmail, messageId: string): Promise<GmailEventData | null> {
     try {
         const messageResponse = await gmail.users.messages.get({
             userId: "me",

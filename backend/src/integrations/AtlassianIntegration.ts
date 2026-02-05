@@ -17,6 +17,8 @@ import { JiraWebhookPayload } from "../utility/JiraWebhookPayload"
 import { createOAuthStateToken } from "../utility/oauth"
 import { getUserForOrg } from "../utility/workos"
 
+import { Identifiable } from "../rag/Hydrator"
+import { HydratorType } from "../types/rag"
 import { AtlassianClient, AtlassianResource } from "./AtlassianClient"
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask"
 import { integrationTaskQueue } from "./IntegrationTaskQueues"
@@ -799,8 +801,10 @@ function convertJiraIssueToWebhookPayload(issue: { id: string; self: string; key
 
 // MARK: - Event Definition
 
-export class JiraEvent extends InputEvent {
+export class JiraEvent extends InputEvent implements Identifiable {
     readonly integrationType: IntegrationType = IntegrationType.ATLASSIAN
+    entityType = HydratorType.JIRA_EVENT
+    entityId: string
     data: JiraWebhookPayload
     private integrationId: string
     private storedFiles: StoredFile[]
@@ -810,6 +814,8 @@ export class JiraEvent extends InputEvent {
         this.data = data
         this.integrationId = integrationId
         this.storedFiles = storedFiles
+        const issue = data.issue
+        this.entityId = `${integrationId}:${issue?.key ?? issue?.id ?? "unknown"}`
     }
 
     formatForAgentRunner(): string {
