@@ -6,7 +6,7 @@ import { useSWRConfig } from "swr"
 import { useOrgLogo } from "@/hooks/api/useOrgLogo"
 import { useAuth } from "@/services/auth"
 import { BackendProvider } from "@/services/backend"
-import { orgLogoKey } from "@/shared/InvalidationKeys"
+import { orgLogoKey, userOrganizationsKey } from "@/shared/InvalidationKeys"
 
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar"
 import { Button } from "../ui/button"
@@ -100,6 +100,7 @@ export function EditOrganizationDialog({ open, onOpenChange }: EditOrganizationD
             if (orgName.trim() !== currentOrgName) {
                 await BackendProvider.updateOrganization(orgName.trim())
                 await refreshUser()
+                await mutate(userOrganizationsKey())
             }
 
             // Upload logo if selected
