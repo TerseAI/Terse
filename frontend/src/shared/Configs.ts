@@ -604,7 +604,6 @@ export class TimeTriggerConfig implements ConfigInstance {
         const parts = [`Type: Time Trigger`]
         if (this.cronExpression) {
             parts.push(`Schedule (UTC): ${this.cronExpression}`)
-            parts.push(`Manual Trigger: Available via "Trigger Now" button in the UI`)
         }
         return parts.join("\n")
     }
