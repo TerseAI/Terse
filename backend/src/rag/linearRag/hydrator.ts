@@ -43,10 +43,15 @@ export class LinearEventHydrator extends Hydrator<LinearEvent> {
         }
         const [integrationId, issueId] = parts
 
+        if (!this.ctx.organizationId) {
+            logger.error("Linear hydrator requires organizationId in context")
+            return null
+        }
+
         const integration = await db().linear_integrations.findFirst({
             where: {
                 id: integrationId,
-                ...(this.ctx.organizationId && { organization_id: this.ctx.organizationId })
+                organization_id: this.ctx.organizationId
             }
         })
         if (!integration) {

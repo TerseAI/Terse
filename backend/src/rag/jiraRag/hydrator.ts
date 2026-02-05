@@ -41,10 +41,15 @@ export class JiraEventHydrator extends Hydrator<JiraEvent> {
         }
         const [integrationId, issueKey] = parts
 
+        if (!this.ctx.organizationId) {
+            logger.error("Jira hydrator requires organizationId in context")
+            return null
+        }
+
         const integration = await db().atlassian_integrations.findFirst({
             where: {
                 id: integrationId,
-                ...(this.ctx.organizationId && { organization_id: this.ctx.organizationId })
+                organization_id: this.ctx.organizationId
             }
         })
         if (!integration?.cloud_id) {

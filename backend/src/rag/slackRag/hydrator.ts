@@ -72,6 +72,11 @@ export class SlackEventHydrator extends Hydrator<SlackEvent> {
 
         const { channelId, timestamp } = parsed
 
+        if (!this.ctx.organizationId) {
+            logger.error("Slack hydrator requires organizationId in context")
+            return null
+        }
+
         // Find Slack integrations for the org, optionally scoped to teamId
         const userSlackIntegrations = await db().user_slack_integrations.findMany({
             where: {
@@ -85,7 +90,7 @@ export class SlackEventHydrator extends Hydrator<SlackEvent> {
         })
 
         if (userSlackIntegrations.length === 0) {
-            logger.error(`No Slack integration found for user: ${this.ctx.userId}`)
+            logger.error(`No Slack integration found for organization: ${this.ctx.organizationId}`)
             return null
         }
 

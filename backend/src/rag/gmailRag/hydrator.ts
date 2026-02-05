@@ -42,11 +42,16 @@ export class GmailEventHydrator extends Hydrator<GmailEvent> {
         }
         const [integrationId, messageId] = parts
 
+        if (!this.ctx.organizationId) {
+            logger.error("Gmail hydrator requires organizationId in context")
+            return null
+        }
+
         const integration = await db().gmail_integrations.findFirst({
             where: {
                 id: integrationId,
                 is_active: true,
-                ...(this.ctx.organizationId && { organization_id: this.ctx.organizationId })
+                organization_id: this.ctx.organizationId
             }
         })
         if (!integration) {
