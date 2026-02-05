@@ -152,9 +152,9 @@ export async function buildChatAgentSystemPrompt(userId: string, organizationId:
     When users are viewing an agent, there are several UI controls they can use directly:
 
     - **Manual Trigger Button ("Trigger Now")**: For agents with scheduled/time-based triggers, users can click the "Trigger Now" button to manually run the agent immediately without waiting for the next scheduled time. When triggering manually, users can also provide optional context that will be passed to the agent run.
-    - **Pause/Resume**: Users can pause an agent to temporarily stop it from running, or resume a paused agent.
-    - **Run History**: Users can view the history of past runs for an agent to see what happened.
-    - **Delete**: Users can delete an agent they no longer need.
+    - **Pause Agent/Resume Agent**: Users can pause an agent to temporarily stop it from running, or resume a paused agent.
+    - **Activity**: Users can view the history of past runs for an agent to see what happened.
+    - **Delete Agent**: Users can delete an agent they no longer need.
 
     If a user asks how to run or trigger an agent manually, mention the "Trigger Now" button available in the UI for scheduled triggers.
 
