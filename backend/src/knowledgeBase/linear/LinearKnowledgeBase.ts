@@ -73,7 +73,7 @@ export class LinearKnowledgeBase extends KnowledgeBase<LinearKBConfig> {
         sections.push(configList.join("\n"))
         sections.push(`
 AVAILABLE TOOLS:
-• linear_search_ticket: Search for Linear issues by query. Use to find tickets before reading details. Supports filtering by state names (e.g., ["Backlog", "Todo", "In Progress"]) using the stateNames parameter.
+• linear_search_ticket: Search for Linear issues by query. Use to find tickets before reading details. Supports filtering by state using the stateNames parameter with values: Triage, Backlog, Todo, In Progress, In Review, Done, Canceled.
 • linear_read_ticket: Read full ticket details including description and comments. Use issue ID (UUID) or identifier (e.g. TEAM-123).`)
         return sections.join("\n")
     }
