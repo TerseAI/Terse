@@ -1,11 +1,11 @@
 import { useState } from "react"
 
 import type { RunHistoryStatus } from "../../shared/RunHistoryTypes"
-import { SearchBar } from "../Agents/SearchBar"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select"
 
 import DateRangePicker from "./DatePicker"
 import RunHistoryPagination from "./RunHistoryPagination"
+import { SearchBar } from "./SearchBar"
 import StatusFilter from "./StatusFilter"
 
 type DateRangeType = { from: Date | undefined; to: Date | undefined }
