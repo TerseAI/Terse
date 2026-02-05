@@ -43,6 +43,7 @@ export const FrontendRoutes = {
     ACTIVITY: "/app/activity",
     NOTIFICATIONS: "/app/notifications",
     PROFILE: "/app/profile",
+    USER_MANAGEMENT: "/app/profile?tab=users",
     ORGANIZATIONS: {
         CREATE: "/app/organizations/create"
     }
