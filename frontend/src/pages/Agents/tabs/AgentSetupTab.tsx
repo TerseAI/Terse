@@ -461,14 +461,7 @@ export default function AgentSetupTab({
 
                         <div className={activeSection === "prompt" ? "block" : "hidden"}>
                             <div className="h-[calc(100vh-16rem)] min-h-[420px]">
-                                <InstructionsEditor
-                                    prompt={prompt}
-                                    setPrompt={setPrompt}
-                                    agentInputs={agentInputs}
-                                    agentOutputs={agentOutputs}
-                                    knowledgeBases={agentKnowledgeBases}
-                                    isIncomplete={promptIncomplete}
-                                />
+                                <InstructionsEditor prompt={prompt} setPrompt={setPrompt} />
                             </div>
                         </div>
 
