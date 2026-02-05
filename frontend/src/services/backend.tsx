@@ -18,7 +18,6 @@ import {
     SlackIntegration
 } from "../shared/Integrations"
 import { CreateNotificationDestinationRequest, NotificationDestination } from "../shared/Notifications"
-import { GenerateSurveyPromptRequest, GenerateSurveyPromptResponse, GenerateSurveyQuestionsRequest, GenerateSurveyQuestionsResponse } from "../shared/PromptBuilderTypes"
 import type { RunHistoryActionWithId, RunHistoryModelEvent } from "../shared/RunHistoryTypes"
 import { GetRunHistoryParams, GetRunHistoryResponse } from "../shared/RunHistoryTypes"
 import { GetToolsThatRequireApprovalsRequest, GetToolsThatRequireApprovalsResponse } from "../shared/ToolsTypes"
@@ -326,16 +325,6 @@ interface BackendService {
      * Fetch run history actions by IDs
      */
     getRunHistoryActions(ids: string[]): Promise<RunHistoryActionWithId[]>
-
-    /**
-     * Generates clarifying questions for prompt builder
-     */
-    generatePromptBuilderQuestions(request: GenerateSurveyQuestionsRequest): Promise<GenerateSurveyQuestionsResponse>
-
-    /**
-     * Generates a prompt based on description and answers
-     */
-    generatePromptBuilderPrompt(request: GenerateSurveyPromptRequest): Promise<GenerateSurveyPromptResponse>
 
     /**
      * Gets all notification destinations for the current user
@@ -1034,32 +1023,12 @@ export const BackendProvider: BackendService = {
             })
     },
 
-    generatePromptBuilderQuestions: (request: GenerateSurveyQuestionsRequest) => {
-        return axios
-            .post<GenerateSurveyQuestionsResponse>(`${backendBaseUrl}${ApiRoutes.PROMPT_BUILDER.GENERATE_QUESTIONS}`, request, { withCredentials: true })
-            .then(response => response.data)
-            .catch(error => {
-                console.error("Error generating questions:", error)
-                throw error
-            })
-    },
-
     getNotificationDestinations: () => {
         return axios
             .get<NotificationDestination[]>(`${backendBaseUrl}${ApiRoutes.NOTIFICATION_DESTINATIONS.LIST}`, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
                 console.error("Error getting notification destinations:", error)
-                throw error
-            })
-    },
-
-    generatePromptBuilderPrompt: (request: GenerateSurveyPromptRequest) => {
-        return axios
-            .post<GenerateSurveyPromptResponse>(`${backendBaseUrl}${ApiRoutes.PROMPT_BUILDER.GENERATE_PROMPT}`, request, { withCredentials: true })
-            .then(response => response.data)
-            .catch(error => {
-                console.error("Error generating prompt:", error)
                 throw error
             })
     },
