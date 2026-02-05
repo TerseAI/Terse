@@ -1,13 +1,13 @@
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 
-import { Bell, Check, ChevronRight, Database, FileText, Pause, Play, PlusIcon, Trash2, Wrench, XIcon, Zap } from "lucide-react"
+import { Bell, Check, ChevronRight, Database, FileText, MoreVertical, Pause, Play, PlusIcon, Trash2, Wrench, XIcon, Zap } from "lucide-react"
 import { toast } from "sonner"
 import { type KeyedMutator } from "swr"
 import { v4 as uuidv4 } from "uuid"
 
 import { Button } from "@/components/ui/button"
-import { Switch } from "@/components/ui/switch"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { useAgentCount } from "@/hooks/api/useAgentCount"
 import { useAgentMutations } from "@/hooks/api/useAgents"
 import { FrontendRoutes } from "@/shared/FrontendRoutes"
@@ -82,7 +82,7 @@ function DeleteAgentDialog({ isOpen, onClose, onConfirm, agentName, isDeleting }
     )
 }
 
-function AgentControls({
+function AgentOptionsMenu({
     agentId,
     agentName,
     isActive,
@@ -99,15 +99,13 @@ function AgentControls({
     const { deleteAgent, updateAgent } = useAgentMutations()
     const [showDeleteDialog, setShowDeleteDialog] = useState(false)
     const [isDeleting, setIsDeleting] = useState(false)
-    const [isToggling, setIsToggling] = useState(false)
 
-    // Only show controls for existing agents
+    // Only show menu for existing agents
     if (!agentId) {
         return null
     }
 
     const handleToggleActive = async () => {
-        setIsToggling(true)
         try {
             await updateAgent({
                 id: agentId,
@@ -119,8 +117,6 @@ function AgentControls({
         } catch (error) {
             console.error("Failed to toggle agent status:", error)
             toast.error("Failed to update agent status")
-        } finally {
-            setIsToggling(false)
         }
     }
 
@@ -141,34 +137,33 @@ function AgentControls({
 
     return (
         <>
-            <div className="flex items-center gap-3">
-                {/* Pause/Resume Toggle */}
-                <div className="flex items-center gap-2">
-                    <Switch checked={isActive} onCheckedChange={handleToggleActive} disabled={isToggling} id="agent-active-toggle" />
-                    <label htmlFor="agent-active-toggle" className={cn("text-sm cursor-pointer select-none", isActive ? "text-foreground" : "text-muted-foreground")}>
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon">
+                        <MoreVertical className="h-4 w-4" />
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={handleToggleActive}>
                         {isActive ? (
-                            <span className="flex items-center gap-1">
-                                <Play className="h-3 w-3" />
-                                Active
-                            </span>
+                            <>
+                                <Pause className="h-4 w-4" />
+                                Pause Agent
+                            </>
                         ) : (
-                            <span className="flex items-center gap-1">
-                                <Pause className="h-3 w-3" />
-                                Paused
-                            </span>
+                            <>
+                                <Play className="h-4 w-4" />
+                                Resume Agent
+                            </>
                         )}
-                    </label>
-                </div>
-
-                {/* Separator */}
-                <div className="w-px h-6 bg-border" />
-
-                {/* Delete Button */}
-                <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => setShowDeleteDialog(true)}>
-                    <Trash2 className="h-4 w-4 mr-1" />
-                    Delete
-                </Button>
-            </div>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem variant="destructive" onClick={() => setShowDeleteDialog(true)}>
+                        <Trash2 className="h-4 w-4" />
+                        Delete Agent
+                    </DropdownMenuItem>
+                </DropdownMenuContent>
+            </DropdownMenu>
 
             <DeleteAgentDialog isOpen={showDeleteDialog} onClose={() => setShowDeleteDialog(false)} onConfirm={handleDelete} agentName={agentName} isDeleting={isDeleting} />
         </>
@@ -350,8 +345,7 @@ export default function AgentSetupTab({
                         <div className="flex items-center gap-4 min-w-0">
                             <EditableTextField className="text-lg font-medium" value={name || ""} placeholder={defaultName} onSave={value => setName(value)} />
                         </div>
-                        <div className="flex items-center gap-4">
-                            <AgentControls agentId={agentId} agentName={name || defaultName} isActive={isActive} onToggleActive={setIsActive} mutate={mutate} />
+                        <div className="flex items-center gap-2">
                             <SaveAgentButton
                                 defaultName={defaultName}
                                 agentId={agentId}
@@ -366,6 +360,7 @@ export default function AgentSetupTab({
                                 notificationSettings={notificationSettings}
                                 mutate={mutate}
                             />
+                            <AgentOptionsMenu agentId={agentId} agentName={name || defaultName} isActive={isActive} onToggleActive={setIsActive} mutate={mutate} />
                         </div>
                     </div>
                 </div>
