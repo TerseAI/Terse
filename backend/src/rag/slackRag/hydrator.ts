@@ -62,7 +62,14 @@ export class SlackEventHydrator extends Hydrator<SlackEvent> {
     }
 
     private async fetchFromSlack(entityId: string): Promise<SlackEvent | null> {
-        const [teamId, permalink] = entityId.split(":")
+        // Split only on the first colon to preserve colons in the permalink URL
+        const colonIndex = entityId.indexOf(":")
+        if (colonIndex === -1) {
+            logger.error(`Invalid Slack entityId format (missing colon): ${entityId}`)
+            return null
+        }
+        const teamId = entityId.slice(0, colonIndex)
+        const permalink = entityId.slice(colonIndex + 1)
 
         const parsed = parsePermalink(permalink)
         if (!parsed) {
