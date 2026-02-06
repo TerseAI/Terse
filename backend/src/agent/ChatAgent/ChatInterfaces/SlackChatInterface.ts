@@ -315,11 +315,7 @@ class SlackChatInterface extends ChatInterface {
     async askSurveyQuestion(multipleChoiceQuestion: MultipleChoiceQuestion): Promise<string> {
         logger.info("Slack chat interface askSurveyQuestion", { question: multipleChoiceQuestion.question })
         const blockId = `survey_${this.sessionId}__${this.channel}`
-        const blocks = createSurveyQuestionBlocks(
-            multipleChoiceQuestion.question,
-            multipleChoiceQuestion.options,
-            blockId
-        )
+        const blocks = createSurveyQuestionBlocks(multipleChoiceQuestion.question, multipleChoiceQuestion.options, blockId)
         await this.say({
             text: multipleChoiceQuestion.question,
             blocks,

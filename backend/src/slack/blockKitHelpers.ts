@@ -88,11 +88,7 @@ export function createDividerBlock(): KnownBlock {
  * Uses a section (question text) and an actions block with static_select.
  * The block_id on the actions block encodes sessionId and channel for the response handler.
  */
-export function createSurveyQuestionBlocks(
-    question: string,
-    options: { label: string; value: string }[],
-    blockId: string
-): KnownBlock[] {
+export function createSurveyQuestionBlocks(question: string, options: { label: string; value: string }[], blockId: string): KnownBlock[] {
     const sectionBlock: KnownBlock = {
         type: "section",
         text: {
