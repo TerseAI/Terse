@@ -11,6 +11,7 @@ import { SidebarProvider } from "./components/ui/sidebar"
 import { Toaster } from "./components/ui/sonner"
 import { POST_LOGIN_REDIRECT_KEY, isSafeRedirectPath } from "./constants/storageKeys"
 import ActivityPage from "./pages/Activity"
+import StatsPage from "./pages/Stats"
 import AgentDetail from "./pages/Agents/AgentDetail"
 import AgentSetup from "./pages/Agents/AgentSetup"
 import AgentsList from "./pages/Agents/AgentsList"
@@ -42,6 +43,7 @@ function App() {
                             <Route path={FrontendRoutes.AGENTS.NEW_WITH_TEMPLATE.pattern} element={<AgentDetail />} />
                             <Route path={FrontendRoutes.AGENTS.BY_ID.pattern} element={<AgentDetail />} />
                             <Route path="activity" element={<ActivityPage />} />
+                            <Route path="stats" element={<StatsPage />} />
                             <Route path="integrations" element={<IntegrationPage />} />
                             <Route path="notifications" element={<NotificationsPage />} />
                             <Route path="profile" element={<ProfilePage />} />
