@@ -11,8 +11,11 @@ export function registerBuilderChatHandler(socket: Socket, userId: string, organ
         const { sessionId, questionId, value } = payload
         if (!sessionId || questionId === undefined) return
 
+        const answerText = typeof value === "string" ? value : String(value ?? "")
+        if (!answerText.trim()) return
+
         try {
-            const syntheticMessage = `The user answered the survey question (id: ${questionId}) with: ${value}`
+            const syntheticMessage = `The user answered: ${answerText}`
             const webChatInterface = new WebChatInterface(sessionId, userId, socket, organizationId)
             const chatAgent = new ChatAgent(webChatInterface, sessionId, userId, organizationId)
             await chatAgent.run(syntheticMessage)

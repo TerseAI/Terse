@@ -435,9 +435,7 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
                 if (!hasMatch) return turn
                 return {
                     ...turn,
-                    snippets: snippets.map(s =>
-                        s.type === "multiple_choice" && s.questionId === questionId ? { ...s, selectedValue: value } : s
-                    )
+                    snippets: snippets.map(s => (s.type === "multiple_choice" && s.questionId === questionId ? { ...s, selectedValue: value } : s))
                 }
             })
         )

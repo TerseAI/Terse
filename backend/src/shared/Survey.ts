@@ -1,11 +1,9 @@
-
-
 export type MultipleChoiceQuestion = {
-    question: string;
-    options: MultipleChoiceOption[];
+    question: string
+    options: MultipleChoiceOption[]
 }
 
 export type MultipleChoiceOption = {
-    label: string;
-    value: string;
+    label: string
+    value: string
 }

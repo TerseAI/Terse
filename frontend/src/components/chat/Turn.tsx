@@ -45,7 +45,20 @@ interface FunctionCallEvent {
     errorContext?: SharedErrorContext
 }
 
-function TurnView({ role, text, function_calls, isFailure = false, isGenerating = false, isThinking = false, filter_result, snippets = [], disableAnimation = false, onApprove, onReject, onMultipleChoiceAnswer }: Turn) {
+function TurnView({
+    role,
+    text,
+    function_calls,
+    isFailure = false,
+    isGenerating = false,
+    isThinking = false,
+    filter_result,
+    snippets = [],
+    disableAnimation = false,
+    onApprove,
+    onReject,
+    onMultipleChoiceAnswer
+}: Turn) {
     const isUser = role === "user"
     const isAssistantFinishedGenerating = !isGenerating && role === "assistant" && text.length > 0
     // Expanded state - show all steps with status

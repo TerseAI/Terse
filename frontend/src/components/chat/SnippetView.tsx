@@ -6,15 +6,10 @@ import { LinkIcon } from "@heroicons/react/24/outline"
 import { IntegrationType } from "../../shared/Integrations"
 import { ChatSnippet } from "../../shared/ModelEvents"
 import IntegrationCard from "../Integrations/IntegrationCard"
+
 import { MultipleChoiceQuestionForm } from "./MultipleChoiceQuestionForm"
 
-export function SnippetView({
-    snippet,
-    onMultipleChoiceAnswer
-}: {
-    snippet: ChatSnippet
-    onMultipleChoiceAnswer?: (questionId: string, value: string) => void
-}) {
+export function SnippetView({ snippet, onMultipleChoiceAnswer }: { snippet: ChatSnippet; onMultipleChoiceAnswer?: (questionId: string, value: string) => void }) {
     const navigate = useNavigate()
 
     useEffect(() => {
