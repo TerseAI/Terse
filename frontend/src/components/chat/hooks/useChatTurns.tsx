@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react"
 
 import { v4 as uuidv4 } from "uuid"
 
-import { type ChatSnippet, type ChatSnippetPayload, type Failure, FilterResult, type TextDelta, type ToolCall, type ToolCallComplete, type ToolCallGenerating } from "../../../shared/ModelEvents"
+import { type ChatSnippet, type ChatSnippetPayload, type Failure, FilterResult, type RunError, type TextDelta, type ToolCall, type ToolCallComplete, type ToolCallGenerating } from "../../../shared/ModelEvents"
 import { type Turn } from "../Turn"
 import { filterOutThinkingOnlyTurns } from "../utils/turnUtils"
 
@@ -326,6 +326,27 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
         })
     }
 
+    const handleRunError = ({ error, code }: RunError) => {
+        setTurns(prev => {
+            const updated = [...prev]
+            const last = updated[updated.length - 1]
+            if (last) {
+                last.isGenerating = false
+            }
+            return [
+                ...updated,
+                {
+                    role: "assistant",
+                    text: error,
+                    function_calls: [],
+                    step_id: "run-error",
+                    isFailure: true,
+                    ...(code && { errorCode: code })
+                }
+            ]
+        })
+    }
+
     const handleNaturalStop = () => {
         setTurns(prev => {
             const updated = [...prev]
@@ -458,6 +479,7 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
         handleToolApprovalResponse,
         handleToolCallComplete,
         handleFailure,
+        handleRunError,
         handleNaturalStop,
         handleFilterResult,
         handleThinking,

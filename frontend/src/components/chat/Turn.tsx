@@ -5,6 +5,7 @@ import { HandThumbDownIcon as HandThumbDownFilledIcon, HandThumbUpIcon as HandTh
 
 import { ChangedItem, ChatSnippet, SharedErrorContext } from "../../shared/ModelEvents"
 
+import { RunErrorView } from "./RunErrorView"
 import { SnippetView } from "./SnippetView"
 import TokenStream from "./TokenStream"
 import ToolCallsSummary from "./ToolCallsSummary"
@@ -17,6 +18,8 @@ interface Turn {
     isFailure?: boolean
     isGenerating?: boolean
     isThinking?: boolean
+    /** Run-level error code (e.g. context_length_exceeded) for specific UI copy */
+    errorCode?: string
     filter_result?: {
         isRelevant: boolean
         reason: string
@@ -52,6 +55,7 @@ function TurnView({
     isFailure = false,
     isGenerating = false,
     isThinking = false,
+    errorCode,
     filter_result,
     snippets = [],
     disableAnimation = false,
@@ -88,17 +92,23 @@ function TurnView({
                 {(text || isFailure) && (
                     <div className="text-[#F1F1F1] text-md py-2 rounded-8xl select-text">
                         <div className={`prose prose-invert ${isUser ? "bg-stone-900/80 rounded-lg p-3" : ""}`}>
-                            {isFailure && (
-                                <svg className="w-4 h-4 text-red-500 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                            )}
-                            {isUser ? (
-                                <span className="select-text">{text}</span>
+                            {isFailure && errorCode ? (
+                                <RunErrorView error={text} errorCode={errorCode} />
                             ) : (
-                                <div className="select-text">
-                                    <TokenStream text={text} disableAnimation={disableAnimation} />
-                                </div>
+                                <>
+                                    {isFailure && (
+                                        <svg className="w-4 h-4 text-red-500 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                    )}
+                                    {isUser ? (
+                                        <span className="select-text">{text}</span>
+                                    ) : (
+                                        <div className="select-text">
+                                            <TokenStream text={text} disableAnimation={disableAnimation} />
+                                        </div>
+                                    )}
+                                </>
                             )}
                         </div>
                     </div>

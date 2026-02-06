@@ -2,6 +2,7 @@ import { Socket } from "socket.io"
 
 import ChatAgent from "../agent/ChatAgent/ChatAgent"
 import WebChatInterface from "../agent/ChatAgent/ChatInterfaces/WebChatInterface"
+import { buildRunErrorEvent, classifyAgentError } from "../agent/agentErrorUtils"
 import logger from "../logger"
 import { SendModelRequest } from "../shared/ModelEvents"
 import { SocketEvents } from "../shared/SocketEvents"
@@ -20,7 +21,12 @@ export function registerBuilderChatHandler(socket: Socket, userId: string, organ
             const chatAgent = new ChatAgent(webChatInterface, sessionId, userId, organizationId)
             await chatAgent.run(syntheticMessage)
         } catch (error) {
+            const classified = classifyAgentError(error)
             logger.error("Error resuming ChatAgent after survey answer", { error, sessionId, questionId, userId })
+            socket.emit(SocketEvents.BUILDER_CHAT_EVENT, {
+                sessionId,
+                event: buildRunErrorEvent(classified)
+            })
         }
     })
 
@@ -40,6 +46,15 @@ export function registerBuilderChatHandler(socket: Socket, userId: string, organ
 
         const webChatInterface = new WebChatInterface(sessionId, userId, socket, organizationId, timezone)
         const chatAgent = new ChatAgent(webChatInterface, sessionId, userId, organizationId, uiState)
-        await chatAgent.run(userMessage)
+        try {
+            await chatAgent.run(userMessage)
+        } catch (error) {
+            const classified = classifyAgentError(error)
+            logger.error("[builder:chat:message] Error running ChatAgent", { error, sessionId, userId })
+            socket.emit(SocketEvents.BUILDER_CHAT_EVENT, {
+                sessionId,
+                event: buildRunErrorEvent(classified)
+            })
+        }
     })
 }

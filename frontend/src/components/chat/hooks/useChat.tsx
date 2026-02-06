@@ -34,6 +34,7 @@ export function useChat({
         handleToolCall,
         handleToolCallComplete,
         handleFailure,
+        handleRunError,
         handleNaturalStop,
         handleFilterResult,
         handleThinking,
@@ -58,6 +59,7 @@ export function useChat({
             onToolCallComplete?.(req)
         },
         onFailure: handleFailure,
+        onRunError: handleRunError,
         onNaturalStop: handleNaturalStop,
         onFilterResult: handleFilterResult,
         onThinking: handleThinking,

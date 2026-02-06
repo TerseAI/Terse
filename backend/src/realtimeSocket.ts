@@ -4,7 +4,9 @@ import { jwtVerify } from "jose"
 import { createClient } from "redis"
 import { Server, Socket } from "socket.io"
 
+import { classifyAgentError } from "./agent/agentErrorUtils"
 import { AgentRunner } from "./agent/AgentRunner/AgentRunner"
+import { reportRunErrorToRun } from "./agent/AgentRunner/runErrorReporter"
 import { RunContext } from "./agent/AgentRunner/SystemPromptBuilder"
 import { finalizeRunStatus, markRunFailed, storeChatEvent } from "./agent/AgentRunner/runHistory"
 import { DirectiveTask, directiveTaskQueue } from "./agent/DirectiveAgent/DirectiveAgent"
@@ -18,7 +20,7 @@ import { db } from "./prismaClient"
 import { Session } from "./server"
 import { ApprovalService } from "./services/ApprovalService"
 import { ConfigInstance } from "./shared/Configs"
-import { ModelEvent, SendModelRequest, ToolApprovalResponse } from "./shared/ModelEvents"
+import { SendModelRequest, ToolApprovalResponse } from "./shared/ModelEvents"
 import { SocketEvents, SocketRooms } from "./shared/SocketEvents"
 import { registerBuilderChatHandler } from "./socketHandlers/builderChatHandler"
 import { AgentWithRelations } from "./types/prisma"
@@ -278,18 +280,10 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
                     ...(organizationId && { organizationId })
                 })
             } catch (error) {
-                // Log the error and update run history
-                const errorMessage = error instanceof Error ? error.message : "Unknown error"
-                logger.error(`[agent:chat:message] Error running agent: ${errorMessage}`, { error, runId, agentId: agent.id, userId })
-
-                try {
-                    await markRunFailed(runId, errorMessage, "agent")
-                    if (organizationId) {
-                        emitCacheInvalidationWithWildcard(organizationId, "runHistory", agent.id)
-                    }
-                } catch (e) {
-                    logger.error("Failed to mark run as failed", { error: e, runId })
-                }
+                const classified = classifyAgentError(error)
+                logger.error(`[agent:chat:message] Error running agent: ${classified.message}`, { error, runId, agentId: agent.id, userId })
+                await markRunFailedAndInvalidate(runId, classified.message, organizationId ?? undefined, agent.id)
+                await reportRunErrorToRun({ runId, agentId: agent.id, organizationId: organizationId ?? "", classified, io })
                 return
             }
 
@@ -379,6 +373,25 @@ export function emitCacheInvalidationWithWildcard(organizationId: string, key: s
         key,
         id
     })
+}
+
+/**
+ * Mark run as failed and invalidate run history cache. Logs on failure; does not rethrow.
+ */
+export async function markRunFailedAndInvalidate(
+    runId: string,
+    errorMessage: string,
+    organizationId: string | undefined,
+    agentId: string
+): Promise<void> {
+    try {
+        await markRunFailed(runId, errorMessage, "agent")
+        if (organizationId) {
+            emitCacheInvalidationWithWildcard(organizationId, "runHistory", agentId)
+        }
+    } catch (e) {
+        logger.error("Failed to mark run as failed", { error: e, runId })
+    }
 }
 
 function getSocketCorsOrigin(): boolean | string | string[] {

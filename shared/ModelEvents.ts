@@ -15,6 +15,9 @@ export type ChangedItem = { type_name: EntityType; id: string; change_event_type
 
 export type Failure = { error: string; step_id: string }
 
+/** Run-level / agent-level error (e.g. context window exceeded). Use optional code for specific UI handling. */
+export type RunError = { error: string; code?: string }
+
 export type FunctionCall = { function_name: string; result: string; step_id: string }
 
 export type ModelEvent =
@@ -25,6 +28,7 @@ export type ModelEvent =
     | ({ type: "ToolCallComplete" } & ToolCallComplete)
     | ({ type: "TextDelta" } & TextDelta)
     | ({ type: "Failure" } & Failure)
+    | ({ type: "RunError" } & RunError)
     | { type: "NaturalStop"; step_id: string }
     | ({ type: "FilterResult" } & FilterResult)
     | ({ type: "UserMessage" } & UserMessage)
