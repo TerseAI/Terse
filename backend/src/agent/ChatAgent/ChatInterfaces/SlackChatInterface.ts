@@ -6,6 +6,7 @@ import { INTEGRATION_REGISTRY } from "../../../integrations/abstract/Integration
 import logger from "../../../logger"
 import { ConfigType } from "../../../shared/Configs"
 import { IntegrationType } from "../../../shared/Integrations"
+import type { MultipleChoiceQuestion } from "../../../shared/Survey"
 import { createActionBlock, createButton, createIntegrationConnectionMessage } from "../../../slack/blockKitHelpers"
 import { createOAuthStateToken } from "../../../utility/oauth"
 
@@ -309,6 +310,12 @@ class SlackChatInterface extends ChatInterface {
     async promptForConfig(config: ConfigType): Promise<string> {
         logger.info("Slack chat interface promptForConfig", { config })
         return ""
+    }
+
+    async askSurveyQuestion(multipleChoiceQuestion: MultipleChoiceQuestion): Promise<string> {
+        logger.info("Slack chat interface askSurveyQuestion", { question: multipleChoiceQuestion.question })
+        const optionsText = multipleChoiceQuestion.options.map(o => `• ${o.label}`).join("\n")
+        return `Please answer in the thread: ${multipleChoiceQuestion.question}\n\nOptions:\n${optionsText}\n\nYou can also reply with your own answer.`
     }
 
     processStreamEvent(sessionId: string, event: RunStreamEvent): void {

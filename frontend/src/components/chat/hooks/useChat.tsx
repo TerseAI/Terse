@@ -12,10 +12,20 @@ interface UseChatOptions {
     onUserMessage?: (message: string) => void
     onToolCall?: (req: ToolCall) => void
     onToolCallComplete?: (req: ToolCallComplete) => void
+    onMultipleChoiceAnswer?: (questionId: string, value: string) => void
     addUserTurnsLocally?: boolean
 }
 
-export function useChat({ subscribeToEvents, sendMessage: sendModelRequest, initialTurns, onUserMessage, onToolCall, onToolCallComplete, addUserTurnsLocally = false }: UseChatOptions) {
+export function useChat({
+    subscribeToEvents,
+    sendMessage: sendModelRequest,
+    initialTurns,
+    onUserMessage,
+    onToolCall,
+    onToolCallComplete,
+    onMultipleChoiceAnswer,
+    addUserTurnsLocally = false
+}: UseChatOptions) {
     const {
         turns,
         isPendingAssistantResponse,
@@ -30,7 +40,8 @@ export function useChat({ subscribeToEvents, sendMessage: sendModelRequest, init
         handleToolApprovalRequest,
         handleToolApprovalResponse,
         addUserTurn,
-        handleSnippet
+        handleSnippet,
+        handleMultipleChoiceAnswered
     } = useChatTurns({ initialTurns })
 
     const { sendMessage: sendSocketMessage } = useCompletionSocket({
@@ -65,6 +76,11 @@ export function useChat({ subscribeToEvents, sendMessage: sendModelRequest, init
         }
     })
 
+    const handleMultipleChoiceAnswer = (questionId: string, value: string) => {
+        handleMultipleChoiceAnswered(questionId, value)
+        onMultipleChoiceAnswer?.(questionId, value)
+    }
+
     return {
         turns,
         isPendingAssistantResponse,
@@ -72,6 +88,7 @@ export function useChat({ subscribeToEvents, sendMessage: sendModelRequest, init
         setInput,
         sendMessage,
         sendModelRequest: sendSocketMessage,
-        handleToolApprovalResponse
+        handleToolApprovalResponse,
+        handleMultipleChoiceAnswer
     }
 }

@@ -166,6 +166,7 @@ export async function buildChatAgentSystemPrompt(userId: string, organizationId:
     - CRITICAL: For time-trigger (cron) triggers, always set integrationId to "system".
     - CRITICAL: For all other configs, integrationId must be the Integration_Id of the connected app instance (e.g., the specific GitHub, Posthog, Slack integration). Do NOT use "system" for GitHub, Posthog, or any non-cron config.
     - CRITICAL: If you need prompt for multiple integrations, only do one at a time. DO NOT call promptForIntegration multiple times in a single turn.
+    - CRITICAL: If you have a question or series of questions about how the user's integration should be configured, call the askSurveyQuestion tool to ask the user a multiple choice question. Ask one setup question at a time: call askSurveyQuestion once, wait for the user's answer, then continue; do not call it multiple times in a single turn. The user may choose one of the options or write in their own answer; the tool returns whatever string they submit. Do NOT include options that are redundant with the write-in (e.g. "Other", "A different channel (tell me the name)", "Something else")—the UI already has "Or write your own answer" for custom input; only provide concrete choices (e.g. specific channel names, project names).
 
     ## How to use the applyAgent tool:
     - The applyAgent tool will persist and apply the agent.

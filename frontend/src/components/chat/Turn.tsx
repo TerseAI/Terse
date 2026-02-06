@@ -26,6 +26,7 @@ interface Turn {
     disableAnimation?: boolean
     onApprove?: (stepId: string) => void
     onReject?: (stepId: string) => void
+    onMultipleChoiceAnswer?: (questionId: string, value: string) => void
 }
 
 interface FunctionCallEvent {
@@ -44,7 +45,7 @@ interface FunctionCallEvent {
     errorContext?: SharedErrorContext
 }
 
-function TurnView({ role, text, function_calls, isFailure = false, isGenerating = false, isThinking = false, filter_result, snippets = [], disableAnimation = false, onApprove, onReject }: Turn) {
+function TurnView({ role, text, function_calls, isFailure = false, isGenerating = false, isThinking = false, filter_result, snippets = [], disableAnimation = false, onApprove, onReject, onMultipleChoiceAnswer }: Turn) {
     const isUser = role === "user"
     const isAssistantFinishedGenerating = !isGenerating && role === "assistant" && text.length > 0
     // Expanded state - show all steps with status
@@ -94,7 +95,7 @@ function TurnView({ role, text, function_calls, isFailure = false, isGenerating 
                 {snippets.length > 0 && (
                     <div className="space-y-2 mt-2">
                         {snippets.map(snippet => (
-                            <SnippetView key={snippet.id} snippet={snippet} />
+                            <SnippetView key={snippet.id} snippet={snippet} onMultipleChoiceAnswer={onMultipleChoiceAnswer} />
                         ))}
                     </div>
                 )}
