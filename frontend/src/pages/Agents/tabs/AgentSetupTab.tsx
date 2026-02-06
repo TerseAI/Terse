@@ -144,7 +144,7 @@ function AgentOptionsMenu({
                 outputs,
                 knowledgeBases,
                 prompt,
-                isActive,
+                isActive: false,
                 requireApproval,
                 toolApprovals,
                 notificationSettings
