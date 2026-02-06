@@ -3,7 +3,7 @@ import type { RunHistoryChatEventType } from "@prisma/client"
 import { Prisma } from "@prisma/client"
 
 import { db } from "../../prismaClient"
-import { ModelEvent } from "../../shared/ModelEvents"
+import { FailureCategory, ModelEvent } from "../../shared/ModelEvents"
 import type { RunHistoryAction, RunHistoryStatus, RunHistoryTrigger } from "../../shared/RunHistoryTypes"
 import { convertIntegrationTypeToPrismaIntegrationTypeForRunHistory } from "../../utility/typeConverters"
 
@@ -92,7 +92,7 @@ export async function markRunInProgress(runId: string): Promise<void> {
 }
 
 export type FailureStage = "filter" | "agent"
-export type FailureCategory = "context_window_exceeded" | "rate_limit" | "authentication" | "tool_error" | "unknown"
+// FailureCategory is now imported from shared/ModelEvents
 
 export interface MarkRunFailedOptions {
     stage?: FailureStage
@@ -125,6 +125,9 @@ export async function markRunFailed(runId: string, errorMessage: string, stageOr
     if (category) errorMetadata.category = category
     if (userMessage) errorMetadata.userMessage = userMessage
     if (userGuidance) errorMetadata.userGuidance = userGuidance
+    if (stageOrOptions && typeof stageOrOptions !== "string" && stageOrOptions.isRecoverable !== undefined) {
+        errorMetadata.isRecoverable = stageOrOptions.isRecoverable
+    }
 
     // Prefix error message with failure stage for easy identification
     let prefixedMessage = stage ? `[${stage.toUpperCase()}_ERROR] ${errorMessage}` : errorMessage
