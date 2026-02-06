@@ -84,6 +84,52 @@ export function createDividerBlock(): KnownBlock {
 }
 
 /**
+ * Creates Block Kit blocks for a survey multiple-choice question in a message.
+ * Uses a section (question text) and an actions block with static_select.
+ * The block_id on the actions block encodes sessionId and channel for the response handler.
+ */
+export function createSurveyQuestionBlocks(
+    question: string,
+    options: { label: string; value: string }[],
+    blockId: string
+): KnownBlock[] {
+    const sectionBlock: KnownBlock = {
+        type: "section",
+        text: {
+            type: "mrkdwn",
+            text: question
+        }
+    }
+    const actionsBlock: KnownBlock = {
+        type: "actions",
+        block_id: blockId,
+        elements: [
+            {
+                type: "static_select",
+                action_id: "survey_select",
+                placeholder: {
+                    type: "plain_text",
+                    text: "Select an option",
+                    emoji: true
+                },
+                options: options.map(opt => ({
+                    text: { type: "plain_text" as const, text: opt.label, emoji: true },
+                    value: opt.value
+                }))
+            }
+        ]
+    }
+    const writeInHint: KnownBlock = {
+        type: "section",
+        text: {
+            type: "mrkdwn",
+            text: "_Or reply in the thread with your own answer._"
+        }
+    }
+    return [sectionBlock, actionsBlock, writeInHint]
+}
+
+/**
  * Creates a message with integration connection button
  */
 export function createIntegrationConnectionMessage(
@@ -1209,7 +1255,11 @@ export async function removeEyesReaction(client: WebClient, messageEvent: AppMen
             timestamp: messageEvent.ts,
             name: "eyes"
         })
-    } catch (error) {
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error)
+        if (message.includes("no_reaction")) {
+            return
+        }
         logger.error("Error removing reaction from thread message:", { error })
     }
 }
