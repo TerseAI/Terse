@@ -46,7 +46,9 @@ export class GithubEventHydrator extends Hydrator<GithubEvent> {
             logger.error(`Invalid GitHub entityId (installationId or repoId not numeric): ${entityId}`)
             return null
         }
-        const [type, identifier] = typeAndId.split("/")
+        const slashIndex = typeAndId.indexOf("/")
+        const type = slashIndex === -1 ? typeAndId : typeAndId.slice(0, slashIndex)
+        const identifier = slashIndex === -1 ? undefined : typeAndId.slice(slashIndex + 1)
         if (!type || !identifier) {
             logger.error(`Invalid GitHub entityId (type/identifier): ${entityId}`)
             return null
