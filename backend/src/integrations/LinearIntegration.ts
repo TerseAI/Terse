@@ -1,3 +1,4 @@
+import { LinearClient } from "@linear/sdk"
 import { InputConfigType } from "@prisma/client"
 import { Request, Response } from "express"
 import jwt from "jsonwebtoken"
@@ -6,14 +7,17 @@ import { EventProcessor } from "../agent/AgentRunner/EventProcessor"
 import { OAUTH_TOKEN_REFRESH_THRESHOLD_MS, settings, urls } from "../config/settings"
 import logger, { runWithUserContext } from "../logger"
 import { db } from "../prismaClient"
+import { Identifiable } from "../rag/Hydrator"
 import { fetchLinearTeams } from "../routes/linear"
 import { StoredFile } from "../services/FileStorageService"
+import { ConfigInstance, ConfigType } from "../shared/Configs"
 import { FrontendRoutes } from "../shared/FrontendRoutes"
 import { AdditionalStateParams, InstallationOptionsFor, IntegrationType, LinearIntegration, LinearIntegrationMetadata } from "../shared/Integrations"
 import { RunHistoryTrigger } from "../shared/RunHistoryTypes"
 import { LinearTeam, OAuthInstallationDetails } from "../shared/types"
 import { LinearAdapter } from "../ticketing/linear"
 import { AgentTriggerWithConfigs } from "../types/prisma"
+import { HydratorType } from "../types/rag"
 import { LinearWebhookPayload } from "../utility/LinearWebhookPayload"
 import { createOAuthStateToken } from "../utility/oauth"
 import { getUserForOrg } from "../utility/workos"
@@ -498,12 +502,98 @@ export class LinearIntegrationManager
             return null
         }
     }
+
+    async getSampleEvents(integrationId: string, organizationId: string, triggerConfig: ConfigInstance, options?: { limit?: number }): Promise<InputEvent[]> {
+        if (triggerConfig.configType !== ConfigType.LINEAR_INPUT) {
+            return []
+        }
+
+        const limit = Math.min(options?.limit ?? 5, 10)
+        const linearIntegration = await db().linear_integrations.findUnique({
+            where: { id: integrationId, organization_id: organizationId }
+        })
+        if (!linearIntegration) {
+            throw new Error(`Linear integration ${integrationId} not found`)
+        }
+
+        const accessToken = await this.getAccessToken(integrationId)
+        if (!accessToken) {
+            throw new Error(`Linear access token not found for integration ${integrationId}. Please reconnect.`)
+        }
+
+        const client = new LinearClient({ apiKey: accessToken })
+        const issuesResponse = await client.issues({
+            first: limit,
+            orderBy: "updatedAt" as any
+        })
+
+        const events: InputEvent[] = []
+        for (const issue of issuesResponse.nodes) {
+            const [team, state, assignee, creator] = await Promise.all([issue.team, issue.state, issue.assignee, issue.creator])
+
+            const payload: LinearWebhookPayload = {
+                action: "create",
+                actor: {
+                    id: creator?.id || "unknown",
+                    name: creator?.name || "Unknown",
+                    email: creator?.email || "",
+                    url: "",
+                    type: "user"
+                },
+                createdAt: issue.createdAt.toISOString(),
+                data: {
+                    id: issue.id,
+                    createdAt: issue.createdAt.toISOString(),
+                    updatedAt: issue.updatedAt.toISOString(),
+                    number: issue.number,
+                    title: issue.title,
+                    priority: issue.priority,
+                    sortOrder: issue.sortOrder,
+                    prioritySortOrder: 0,
+                    slaType: "",
+                    addedToTeamAt: issue.createdAt.toISOString(),
+                    trashed: false,
+                    labelIds: [],
+                    teamId: team?.id || "",
+                    previousIdentifiers: [],
+                    stateId: state?.id || "",
+                    reactionData: [],
+                    priorityLabel: issue.priorityLabel || "",
+                    identifier: issue.identifier,
+                    url: issue.url,
+                    subscriberIds: [],
+                    state: {
+                        id: state?.id || "",
+                        color: state?.color || "",
+                        name: state?.name || "",
+                        type: state?.type || ""
+                    },
+                    team: {
+                        id: team?.id || "",
+                        key: team?.key || "",
+                        name: team?.name || ""
+                    },
+                    labels: [],
+                    description: issue.description ?? undefined,
+                    assignee: assignee ? { id: assignee.id, name: assignee.name } : undefined
+                },
+                type: "Issue",
+                organizationId: linearIntegration.workspace_id,
+                webhookTimestamp: Date.now(),
+                webhookId: "sample"
+            }
+            events.push(new LinearEvent(payload, integrationId))
+        }
+        return events
+    }
 }
 
 // MARK: - LinearEvent
 
-export class LinearEvent extends InputEvent {
+export class LinearEvent extends InputEvent implements Identifiable {
     readonly integrationType: IntegrationType = IntegrationType.LINEAR
+    entityType = HydratorType.LINEAR_EVENT
+    entityId: string
     data: LinearWebhookPayload
     private integrationId: string
 
@@ -511,6 +601,8 @@ export class LinearEvent extends InputEvent {
         super()
         this.data = data
         this.integrationId = integrationId
+        const dataId = (data.data as { id?: string })?.id
+        this.entityId = `${integrationId}:${dataId ?? "unknown"}`
     }
 
     formatForAgentRunner(): string {
