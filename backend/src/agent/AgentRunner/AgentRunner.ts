@@ -396,7 +396,7 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance, KBCo
     }
 
     private getToolContext(): SessionWithTracking<T> {
-        const toolApprovals = this.agentConfig.tool_approvals.map((ta: any) => ta.tool_name)
+        const toolApprovals = this.agentConfig.tool_approvals?.map((ta: any) => ta.tool_name) ?? []
 
         return {
             ...this.session,

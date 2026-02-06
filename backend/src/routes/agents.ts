@@ -492,17 +492,17 @@ export async function updateAgentForUser(userId: string, organizationId: string,
             await upsertNotificationSettings(tx, agentId, notificationSettings)
         }
 
-        // Update tool approvals if provided
+        // Update tool approvals if provided (explicit null clears all approvals, empty array also clears)
         if (toolApprovals !== undefined) {
-            const uniqueToolApprovals = validateAndDeduplicateToolApprovals(toolApprovals)
-
-            // Delete all existing tool approvals
+            // Delete all existing tool approvals first
             await tx.automation_tool_approvals.deleteMany({
                 where: { automation_id: agentId }
             })
 
-            // Insert new tool approvals if provided
-            if (uniqueToolApprovals.length > 0) {
+            // Only validate and insert if we have actual tool names
+            if (toolApprovals && toolApprovals.length > 0) {
+                const uniqueToolApprovals = validateAndDeduplicateToolApprovals(toolApprovals)
+
                 await tx.automation_tool_approvals.createMany({
                     data: uniqueToolApprovals.map(toolName => ({
                         automation_id: agentId,
@@ -887,7 +887,7 @@ function transformAgentToFrontendFormat(agent: AgentWithRelations & Partial<Agen
                   actionTypes: agent.notification_settings.action_types
               }
             : undefined,
-        toolApprovals: agent.tool_approvals.map((ta: any) => ta.tool_name),
+        toolApprovals: agent.tool_approvals?.map((ta: any) => ta.tool_name) ?? [],
         updatedAt: agent.updated_at.toISOString()
     }
 }
