@@ -1,15 +1,14 @@
 import { useState } from "react"
 import ReactMarkdown from "react-markdown"
 
-import { Info, Maximize2Icon, Sparkles } from "lucide-react"
+import { Info, Maximize2Icon } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { SectionHeader } from "@/components/ui/section-header"
 import { Textarea } from "@/components/ui/textarea"
-import { AgentKnowledgeBase, AgentOutput, AgentPrompt, AgentTrigger } from "@/shared/types"
+import { AgentPrompt } from "@/shared/types"
 
-import { PromptBuilderModal } from "../../../components/PromptBuilder/PromptBuilderModal"
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../../components/ui/tooltip"
 
 const instructionsPlaceholder = `Describe what you want the AI to do with incoming events from your sources.
@@ -30,9 +29,6 @@ const clickHerePlaceholder = `## Click here to edit the prompt`
 interface InstructionsEditorProps {
     prompt: AgentPrompt | undefined
     setPrompt: (prompt: AgentPrompt | undefined) => void
-    agentInputs: AgentTrigger[]
-    agentOutputs: AgentOutput[]
-    knowledgeBases?: AgentKnowledgeBase[]
     isIncomplete?: boolean
 }
 
@@ -75,9 +71,8 @@ function InstructionsEditorContent({ text, prompt, setPrompt }: InstructionsEdit
     )
 }
 
-export function InstructionsEditor({ prompt, setPrompt, agentInputs, agentOutputs, knowledgeBases }: InstructionsEditorProps) {
+export function InstructionsEditor({ prompt, setPrompt }: InstructionsEditorProps) {
     const [isDialogOpen, setIsDialogOpen] = useState(false)
-    const [showPromptBuilder, setShowPromptBuilder] = useState(false)
 
     const text: string = prompt?.text ?? ""
 
@@ -96,15 +91,9 @@ export function InstructionsEditor({ prompt, setPrompt, agentInputs, agentOutput
                         </TooltipContent>
                     </Tooltip>
                 </div>
-                <div className="flex justify-end gap-2">
-                    <Button variant="outline" size="sm" onClick={() => setShowPromptBuilder(true)}>
-                        <Sparkles className="h-4 w-4 mr-2" />
-                        Open Prompt Builder
-                    </Button>
-                    <Button variant="ghost" size="icon-sm" onClick={() => setIsDialogOpen(true)} title="Expand editor">
-                        <Maximize2Icon className="size-4" />
-                    </Button>
-                </div>
+                <Button variant="ghost" size="icon-sm" onClick={() => setIsDialogOpen(true)} title="Expand editor">
+                    <Maximize2Icon className="size-4" />
+                </Button>
             </div>
             <InstructionsEditorContent text={text} prompt={prompt} setPrompt={setPrompt} />
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -115,17 +104,6 @@ export function InstructionsEditor({ prompt, setPrompt, agentInputs, agentOutput
                     <InstructionsEditorContent text={text} prompt={prompt} setPrompt={setPrompt} />
                 </DialogContent>
             </Dialog>
-            <PromptBuilderModal
-                isOpen={showPromptBuilder}
-                onClose={() => setShowPromptBuilder(false)}
-                inputs={agentInputs}
-                outputs={agentOutputs}
-                knowledgeBases={knowledgeBases}
-                existingPrompt={prompt?.text}
-                onPromptGenerated={generatedPrompt => {
-                    setPrompt({ ...prompt, text: generatedPrompt })
-                }}
-            />
         </div>
     )
 }

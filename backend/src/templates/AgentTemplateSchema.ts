@@ -124,6 +124,14 @@ const PosthogConfigSchema = BaseConfigSchema.extend({
     projectName: z.string().optional()
 })
 
+// LaunchDarkly Knowledge Base config schema
+const LaunchDarklyKBConfigSchema = BaseConfigSchema.extend({
+    configType: z.literal(ConfigType.LAUNCHDARKLY),
+    integrationType: z.literal(IntegrationType.LAUNCHDARKLY),
+    projectKey: z.string().optional(),
+    environmentKeys: z.array(z.string()).optional()
+})
+
 // Linear Knowledge Base config schema
 const LinearKBConfigSchema = BaseConfigSchema.extend({
     configType: z.literal(ConfigType.LINEAR_KB),
@@ -168,6 +176,7 @@ export const ConfigTemplateSchema = z.discriminatedUnion("configType", [
     JiraConfigSchema,
     ConfluenceConfigSchema,
     PosthogConfigSchema,
+    LaunchDarklyKBConfigSchema,
     LinearKBConfigSchema,
     SlackKBConfigSchema,
     TimeTriggerConfigSchema

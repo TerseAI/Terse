@@ -24,13 +24,18 @@ function getIntegrationName(integrationType?: string): string {
 /**
  * Display configurations for all tools.
  * Each tool defines how it should be displayed in preparing, executing, and complete phases.
+ *
+ * Phase meanings:
+ * - preparing: The AI is generating parameters for the tool call (thinking/planning)
+ * - executing: The tool is actively running (performing the action)
+ * - complete: The tool has finished
  */
 const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
     // ===================
     // ChatAgent Tools
     // ===================
     applyAgent: {
-        preparing: "Preparing to create automation",
+        preparing: "Planning automation",
         executing: params => {
             const agent = params?.agent as Record<string, unknown> | undefined
             const name = agent?.name as string | undefined
@@ -39,7 +44,7 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
         complete: () => "Automation created"
     },
     promptForIntegration: {
-        preparing: "Preparing integration request",
+        preparing: "Setting up integration",
         executing: params => {
             const integration = getIntegrationName(params?.integration as string | undefined)
             return `Configuring ${integration}`
@@ -47,7 +52,7 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
         complete: () => "Integration configured"
     },
     fetchResourcesForIntegration: {
-        preparing: "Preparing to fetch resources",
+        preparing: "Looking up resources",
         executing: params => {
             const integration = getIntegrationName(params?.integrationType as string | undefined)
             return `Fetching resources from ${integration}`
@@ -59,7 +64,7 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
     // Linear Tools
     // ===================
     linear_create_ticket: {
-        preparing: "Preparing to create ticket",
+        preparing: "Drafting ticket",
         executing: params => {
             const title = params?.title as string | undefined
             return title ? `Creating ticket: "${title}"` : "Creating ticket"
@@ -67,7 +72,7 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
         complete: () => "Ticket created"
     },
     linear_update_ticket: {
-        preparing: "Preparing to update ticket",
+        preparing: "Planning ticket update",
         executing: params => {
             const ticketId = params?.ticketId as string | undefined
             return ticketId ? `Updating ticket ${ticketId}` : "Updating ticket"
@@ -75,7 +80,7 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
         complete: () => "Ticket updated"
     },
     linear_search_ticket: {
-        preparing: "Preparing to search tickets",
+        preparing: "Building search query",
         executing: params => {
             const query = params?.query as string | undefined
             return query ? `Searching tickets for "${query}"` : "Searching tickets"
@@ -87,7 +92,7 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
     // Jira Tools
     // ===================
     jira_create_ticket: {
-        preparing: "Preparing to create ticket",
+        preparing: "Drafting ticket",
         executing: params => {
             const summary = params?.summary as string | undefined
             return summary ? `Creating ticket: "${summary}"` : "Creating ticket"
@@ -95,7 +100,7 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
         complete: () => "Ticket created"
     },
     jira_update_ticket: {
-        preparing: "Preparing to update ticket",
+        preparing: "Planning ticket update",
         executing: params => {
             const issueKey = params?.issueKey as string | undefined
             return issueKey ? `Updating ticket ${issueKey}` : "Updating ticket"
@@ -103,7 +108,7 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
         complete: () => "Ticket updated"
     },
     jira_search_ticket: {
-        preparing: "Preparing to search tickets",
+        preparing: "Building search query",
         executing: params => {
             const query = params?.query as string | undefined
             return query ? `Searching tickets for "${query}"` : "Searching tickets"
@@ -115,32 +120,32 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
     // Notion Tools
     // ===================
     notion_modify_page: {
-        preparing: "Preparing to modify page",
+        preparing: "Planning page changes",
         executing: () => "Modifying page",
         complete: () => "Page modified"
     },
     notion_modify_blocks: {
-        preparing: "Preparing to modify blocks",
+        preparing: "Planning block changes",
         executing: () => "Modifying blocks",
         complete: () => "Blocks modified"
     },
     notion_query_page: {
-        preparing: "Preparing to query page",
+        preparing: "Building page query",
         executing: () => "Querying page",
         complete: result => result || "Query complete"
     },
     notion_query_database: {
-        preparing: "Preparing database query",
+        preparing: "Building database query",
         executing: () => "Querying database",
         complete: result => result || "Query complete"
     },
     notion_get_schema: {
-        preparing: "Preparing to fetch schema",
+        preparing: "Looking up schema",
         executing: () => "Fetching schema",
         complete: () => "Schema fetched"
     },
     notion_fetch_related_events: {
-        preparing: "Preparing to fetch related events",
+        preparing: "Looking up related events",
         executing: () => "Fetching related events",
         complete: result => result || "Events fetched"
     },
@@ -149,7 +154,7 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
     // Gmail Tools
     // ===================
     gmail_send_email: {
-        preparing: "Preparing to send email",
+        preparing: "Composing email",
         executing: params => {
             const to = params?.to as string | undefined
             return to ? `Sending email to ${to}` : "Sending email"
@@ -161,7 +166,7 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
     // Slack Tools
     // ===================
     slack_send_message: {
-        preparing: "Preparing to send message",
+        preparing: "Composing message",
         executing: params => {
             const channel = params?.channel as string | undefined
             return channel ? `Sending message to ${channel}` : "Sending message"
@@ -173,12 +178,12 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
     // Confluence Tools
     // ===================
     confluence_query_page: {
-        preparing: "Preparing to query page",
+        preparing: "Building page query",
         executing: () => "Querying page",
         complete: result => result || "Query complete"
     },
     confluence_add_comment: {
-        preparing: "Preparing to add comment",
+        preparing: "Composing comment",
         executing: () => "Adding comment",
         complete: () => "Comment added"
     },
@@ -187,7 +192,7 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
     // GitHub Tools
     // ===================
     searchGitHubCode: {
-        preparing: "Preparing code search",
+        preparing: "Building code search",
         executing: params => {
             const query = params?.query as string | undefined
             return query ? `Searching code for "${query}"` : "Searching code"
@@ -195,7 +200,7 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
         complete: result => result || "Search complete"
     },
     readGitHubFile: {
-        preparing: "Preparing to read file",
+        preparing: "Locating file",
         executing: params => {
             const path = params?.path as string | undefined
             return path ? `Reading ${path}` : "Reading file"
@@ -203,12 +208,12 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
         complete: () => "File read"
     },
     listGitHubPullRequests: {
-        preparing: "Preparing to list pull requests",
+        preparing: "Looking up pull requests",
         executing: () => "Listing pull requests",
         complete: result => result || "Pull requests listed"
     },
     listGitHubDirectory: {
-        preparing: "Preparing to list directory",
+        preparing: "Locating directory",
         executing: params => {
             const path = params?.path as string | undefined
             return path ? `Listing ${path}` : "Listing directory"
@@ -216,12 +221,12 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
         complete: () => "Directory listed"
     },
     listGitHubCommits: {
-        preparing: "Preparing to list commits",
+        preparing: "Looking up commits",
         executing: () => "Listing commits",
         complete: result => result || "Commits listed"
     },
     grepGitHubCode: {
-        preparing: "Preparing to grep code",
+        preparing: "Building search pattern",
         executing: params => {
             const pattern = params?.pattern as string | undefined
             return pattern ? `Searching for "${pattern}"` : "Searching code"
@@ -229,7 +234,7 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
         complete: result => result || "Search complete"
     },
     summarizeGitHubPullRequestDiff: {
-        preparing: "Preparing to summarize PR",
+        preparing: "Analyzing PR",
         executing: params => {
             const prNumber = params?.prNumber as number | undefined
             return prNumber ? `Summarizing PR #${prNumber}` : "Summarizing PR diff"
@@ -241,17 +246,17 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
     // PostHog Tools
     // ===================
     searchPosthogSessions: {
-        preparing: "Preparing to search sessions",
+        preparing: "Building session query",
         executing: () => "Searching sessions",
         complete: result => result || "Sessions found"
     },
     searchPosthogLogs: {
-        preparing: "Preparing to search logs",
+        preparing: "Building log query",
         executing: () => "Searching logs",
         complete: result => result || "Logs found"
     },
     getPosthogSessionEvents: {
-        preparing: "Preparing to fetch session events",
+        preparing: "Looking up session events",
         executing: () => "Fetching session events",
         complete: result => result || "Events fetched"
     },
@@ -260,12 +265,12 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
     // LaunchDarkly Tools
     // ===================
     listLaunchDarklyFlags: {
-        preparing: "Preparing to list feature flags",
+        preparing: "Looking up feature flags",
         executing: () => "Listing feature flags",
         complete: result => result || "Flags listed"
     },
     getLaunchDarklyFlagDetails: {
-        preparing: "Preparing to fetch flag details",
+        preparing: "Looking up flag details",
         executing: params => {
             const flagKey = params?.flagKey as string | undefined
             return flagKey ? `Fetching flag "${flagKey}"` : "Fetching flag details"
@@ -277,7 +282,7 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
     // Datadog Tools
     // ===================
     searchDatadogLogs: {
-        preparing: "Preparing to search logs",
+        preparing: "Building log query",
         executing: params => {
             const query = params?.query as string | undefined
             return query ? `Searching logs for "${query}"` : "Searching logs"
@@ -285,17 +290,17 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
         complete: result => result || "Logs found"
     },
     searchRumEvents: {
-        preparing: "Preparing to search RUM events",
+        preparing: "Building RUM query",
         executing: () => "Searching RUM events",
         complete: result => result || "RUM events found"
     },
     listRumEvents: {
-        preparing: "Preparing to list RUM events",
+        preparing: "Looking up RUM events",
         executing: () => "Listing RUM events",
         complete: result => result || "RUM events listed"
     },
     aggregateRumEvents: {
-        preparing: "Preparing to aggregate RUM events",
+        preparing: "Building RUM aggregation",
         executing: () => "Aggregating RUM events",
         complete: result => result || "RUM events aggregated"
     },
@@ -304,7 +309,7 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
     // Terse Tools
     // ===================
     web_search: {
-        preparing: "Preparing web search",
+        preparing: "Building search query",
         executing: params => {
             const query = params?.query as string | undefined
             return query ? `Searching web for "${query}"` : "Searching the web"
@@ -358,7 +363,8 @@ export function getToolDisplayForPhase(
 
         switch (phase) {
             case "preparing":
-                return `Preparing to ${readableName}`
+                // Use action-oriented language that indicates planning/thinking phase
+                return `Planning ${readableName}`
             case "executing":
                 return readableName.charAt(0).toUpperCase() + readableName.slice(1)
             case "complete":

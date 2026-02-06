@@ -80,6 +80,7 @@ export function BaseFields({ form, isValidating, isConnecting, onFieldChange }: 
                                 type="password"
                                 placeholder="Your Atlassian API token"
                                 disabled={isValidating || isConnecting}
+                                autoComplete="off"
                                 {...field}
                                 onChange={e => {
                                     field.onChange(e)

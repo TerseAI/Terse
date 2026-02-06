@@ -154,8 +154,9 @@ function AgentListItem({ agent }: AgentListItemProps) {
     return (
         <SidebarMenuSubItem>
             <SidebarMenuSubButton asChild isActive={isActive}>
-                <Link to={FrontendRoutes.AGENTS.DETAIL(agent.id)}>
-                    <span>{agent.name}</span>
+                <Link to={FrontendRoutes.AGENTS.DETAIL(agent.id)} className="flex items-center gap-2">
+                    <span className={`size-2 rounded-full shrink-0 ${agent.isActive ? "bg-green-500" : "bg-muted-foreground"}`} />
+                    <span className="truncate">{agent.name}</span>
                 </Link>
             </SidebarMenuSubButton>
         </SidebarMenuSubItem>
@@ -180,7 +181,7 @@ const DefaultApplicationItems: NavItem[] = [
     },
     {
         title: "Agents",
-        url: FrontendRoutes.AGENTS.LIST,
+        url: FrontendRoutes.AGENTS.SETUP,
         icon: Zap,
         iconColor: "text-primary"
     }

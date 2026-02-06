@@ -64,7 +64,7 @@ export const SlackIntegrationMetadata = {
 export const FigmaIntegrationMetadata = {
     type: IntegrationType.FIGMA,
     name: "Figma",
-    description: "Update designs in Figma",
+    description: "Trigger on Figma file comments (does not support file edits or design changes)",
     isInput: true,
     isOutput: false,
     isKnowledgeBase: false
