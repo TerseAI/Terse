@@ -2,7 +2,7 @@ import { Agent, AgentInputItem, AgentOutputType, RunResult, RunState, RunStreamE
 import { RunHistoryActionType } from "@prisma/client"
 
 import { settings } from "../../config/settings"
-import { ContextWindowError, isContextWindowError, logContextWindowError, MAX_CONTEXT_WINDOW_RETRIES, wrapAsContextWindowError } from "../../errors/ContextWindowError"
+import { ContextWindowError, MAX_CONTEXT_WINDOW_RETRIES, isContextWindowError, logContextWindowError, wrapAsContextWindowError } from "../../errors/ContextWindowError"
 import { InputEvent } from "../../integrations/abstract/InputEvent"
 import { KnowledgeBase } from "../../knowledgeBase/abstract/KnowledgeBase"
 import logger from "../../logger"
