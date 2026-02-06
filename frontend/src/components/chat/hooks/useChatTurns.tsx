@@ -279,21 +279,34 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
         })
     }
 
-    const handleFailure = ({ error }: Failure) => {
+    const handleFailure = ({ error, category, userMessage, userGuidance, isRecoverable, source }: Failure) => {
         setTurns(prev => {
             const updated = [...prev]
             const last = updated[updated.length - 1]
             if (last) {
                 last.isGenerating = false
             }
+
+            // For context window errors, use the provided user-friendly message
+            // For other errors, fall back to the generic message
+            const isContextWindowError = category === "context_window_exceeded"
+            const displayText = isContextWindowError ? "" : `Something went wrong. Please try again. ${error}`
+
             return [
                 ...updated,
                 {
                     role: "assistant",
-                    text: `Something went wrong. Please try again. ${error}`,
+                    text: displayText,
                     function_calls: [],
                     step_id: "",
-                    isFailure: true
+                    isFailure: true,
+                    failureDetails: {
+                        category,
+                        userMessage,
+                        userGuidance,
+                        isRecoverable,
+                        source
+                    }
                 }
             ]
         })

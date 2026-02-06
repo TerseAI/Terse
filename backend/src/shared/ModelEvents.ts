@@ -12,7 +12,36 @@ export type SharedErrorContext = {
 
 export type ChangedItem = { type_name: EntityType; id: string; change_event_type: ChangeEventType }
 
-export type Failure = { error: string; step_id: string }
+/**
+ * Error categories for failures - used to determine UI treatment
+ */
+export type FailureCategory = "context_window_exceeded" | "rate_limit" | "authentication" | "tool_error" | "unknown"
+
+export type Failure = {
+    error: string
+    step_id: string
+    /**
+     * Category of the failure - determines how the UI displays the error
+     * and what guidance is shown to the user
+     */
+    category?: FailureCategory
+    /**
+     * User-friendly message suitable for UI display
+     */
+    userMessage?: string
+    /**
+     * Guidance for the user on how to proceed
+     */
+    userGuidance?: string
+    /**
+     * Whether this error is recoverable (user can retry or continue)
+     */
+    isRecoverable?: boolean
+    /**
+     * Source of the error (e.g., "github", "tool_output", "conversation_history")
+     */
+    source?: string
+}
 
 export type FunctionCall = { function_name: string; result: string; step_id: string }
 

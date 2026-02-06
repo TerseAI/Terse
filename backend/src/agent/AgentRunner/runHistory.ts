@@ -92,12 +92,47 @@ export async function markRunInProgress(runId: string): Promise<void> {
 }
 
 export type FailureStage = "filter" | "agent"
+export type FailureCategory = "context_window_exceeded" | "rate_limit" | "authentication" | "tool_error" | "unknown"
 
-export async function markRunFailed(runId: string, errorMessage: string, stage?: FailureStage): Promise<void> {
+export interface MarkRunFailedOptions {
+    stage?: FailureStage
+    category?: FailureCategory
+    userMessage?: string
+    userGuidance?: string
+    isRecoverable?: boolean
+}
+
+export async function markRunFailed(runId: string, errorMessage: string, stageOrOptions?: FailureStage | MarkRunFailedOptions): Promise<void> {
     const prisma = db()
 
+    // Handle backward compatibility: stage can be a string or an options object
+    let stage: FailureStage | undefined
+    let category: FailureCategory | undefined
+    let userMessage: string | undefined
+    let userGuidance: string | undefined
+
+    if (typeof stageOrOptions === "string") {
+        stage = stageOrOptions
+    } else if (stageOrOptions) {
+        stage = stageOrOptions.stage
+        category = stageOrOptions.category
+        userMessage = stageOrOptions.userMessage
+        userGuidance = stageOrOptions.userGuidance
+    }
+
+    // Build structured error message with metadata
+    const errorMetadata: Record<string, any> = {}
+    if (category) errorMetadata.category = category
+    if (userMessage) errorMetadata.userMessage = userMessage
+    if (userGuidance) errorMetadata.userGuidance = userGuidance
+
     // Prefix error message with failure stage for easy identification
-    const prefixedMessage = stage ? `[${stage.toUpperCase()}_ERROR] ${errorMessage}` : errorMessage
+    let prefixedMessage = stage ? `[${stage.toUpperCase()}_ERROR] ${errorMessage}` : errorMessage
+
+    // If we have metadata, append it as JSON for frontend parsing
+    if (Object.keys(errorMetadata).length > 0) {
+        prefixedMessage += `\n[ERROR_METADATA]${JSON.stringify(errorMetadata)}`
+    }
 
     await prisma.run_history_records.update({
         where: { id: runId },

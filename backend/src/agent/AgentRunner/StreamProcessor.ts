@@ -1,5 +1,6 @@
 import { Server } from "socket.io"
 
+import { ContextWindowError, isContextWindowError, logContextWindowError, wrapAsContextWindowError } from "../../errors/ContextWindowError"
 import logger from "../../logger"
 import { emitCacheInvalidationWithWildcard } from "../../services/CacheInvalidationService"
 import { ModelEvent } from "../../shared/ModelEvents"
@@ -153,7 +154,36 @@ export async function processModelEventStream(eventStream: AsyncGenerator<ModelE
         // Finalize any remaining steps at the end of the stream
         await aggregator.commitLastTextDeltaStep()
     } catch (error) {
-        logger.error("Error processing model event stream", { error, runId: options.runId, userId: options.userId, agentId: options.agentId })
+        // Check if this is a context window error and emit appropriate failure event
+        if (isContextWindowError(error)) {
+            const contextError = wrapAsContextWindowError(error)
+            logContextWindowError(contextError, {
+                runId: options.runId,
+                agentId: options.agentId,
+                userId: options.userId,
+                organizationId: options.organizationId
+            })
+
+            // Emit a Failure event with context window specific details
+            const failureEvent: ModelEvent = {
+                type: "Failure",
+                error: contextError.message,
+                step_id: randomString(15),
+                category: "context_window_exceeded",
+                userMessage: contextError.getUserMessage(),
+                userGuidance: contextError.getUserGuidance(),
+                isRecoverable: true,
+                source: contextError.details.source
+            }
+
+            const timestamp = new Date().toISOString()
+            await emitter.storeAndEmit(failureEvent, timestamp)
+        } else {
+            logger.error("Error processing model event stream", { error, runId: options.runId, userId: options.userId, agentId: options.agentId })
+        }
+
+        // Re-throw the error so it can be handled upstream
+        throw error
     }
 }
 

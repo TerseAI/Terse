@@ -1,5 +1,6 @@
 import { AgentOutputType, Agent as OpenAIAgent, RunResult } from "@openai/agents"
 
+import { ContextWindowError, isContextWindowError, logContextWindowError, wrapAsContextWindowError } from "../../errors/ContextWindowError"
 import { InputEvent } from "../../integrations/abstract/InputEvent"
 import { KnowledgeBase } from "../../knowledgeBase/abstract/KnowledgeBase"
 import { KnowledgeBaseFactory } from "../../knowledgeBase/abstract/KnowledgeBaseFactory"
@@ -243,7 +244,40 @@ export class EventProcessor {
                 organizationId: this.user.organizationId
             })
         } catch (error) {
-            // Log the error and update run history
+            // Check if this is a context window error and handle specially
+            if (isContextWindowError(error)) {
+                const contextError = wrapAsContextWindowError(error)
+
+                // Log with structured telemetry
+                logContextWindowError(contextError, {
+                    runId,
+                    agentId: agent.id,
+                    userId: this.user.id,
+                    organizationId: this.user.organizationId
+                })
+
+                try {
+                    await markRunFailed(runId, contextError.message, {
+                        stage: "agent",
+                        category: "context_window_exceeded",
+                        userMessage: contextError.getUserMessage(),
+                        userGuidance: contextError.getUserGuidance(),
+                        isRecoverable: true
+                    })
+                    emitCacheInvalidationWithWildcard(this.user.organizationId, "runHistory", agent.id)
+                } catch (e) {
+                    logger.error("Failed to mark run as failed (context window error)", {
+                        error: e,
+                        runId,
+                        agentId: agent.id
+                    })
+                }
+
+                // Return a ProcessorResult instead of throwing - this prevents retry loops
+                return new ProcessorResult(false, contextError.getUserMessage(), agent)
+            }
+
+            // Log the error and update run history for non-context-window errors
             const errorMessage = error instanceof Error ? error.message : "Unknown error"
             logger.error(`Error running agent "${agent.name}"`, {
                 error,

@@ -251,17 +251,33 @@ export function convertRunHistoryEventsToTurns(events: ModelEvent[]): Turn[] {
             case "Failure": {
                 const e = event as Failure
                 const lastTurn = turns[turns.length - 1]
+                const isContextWindowError = e.category === "context_window_exceeded"
+
+                // Build failure details for context window errors
+                const failureDetails = {
+                    category: e.category,
+                    userMessage: e.userMessage,
+                    userGuidance: e.userGuidance,
+                    isRecoverable: e.isRecoverable,
+                    source: e.source
+                }
+
                 if (lastTurn && lastTurn.role === "assistant") {
                     lastTurn.isFailure = true
-                    lastTurn.text += `\n\nError: ${e.error}`
+                    lastTurn.failureDetails = failureDetails
+                    // For context window errors, don't append raw error text
+                    if (!isContextWindowError) {
+                        lastTurn.text += `\n\nError: ${e.error}`
+                    }
                     lastTurn.isGenerating = false
                 } else {
                     turns.push({
                         role: "assistant",
-                        text: `Error: ${e.error}`,
+                        text: isContextWindowError ? "" : `Error: ${e.error}`,
                         function_calls: [],
                         step_id: "failure",
                         isFailure: true,
+                        failureDetails,
                         isGenerating: false,
                         disableAnimation: true
                     })
