@@ -2,8 +2,25 @@ import { initializeSlackWebClient } from "../../integrations/SlackClient"
 import { SlackEvent, SlackEventData } from "../../integrations/SlackIntegration"
 import logger from "../../logger"
 import { db } from "../../prismaClient"
+import { SlackChannelType } from "../../shared/types"
 import { HydratorType } from "../../types/rag"
 import { HydrationContext, Hydrator, Identifiable } from "../Hydrator"
+
+// Derive SlackChannelType from conversations.info channel object
+function channelTypeFromConversation(channel: { is_im?: boolean; is_mpim?: boolean; is_private?: boolean }): SlackChannelType {
+    if (channel.is_im) return SlackChannelType.IM
+    if (channel.is_mpim) return SlackChannelType.MPIM
+    if (channel.is_private) return SlackChannelType.GROUP
+    return SlackChannelType.CHANNEL
+}
+
+// Fallback when conversations.info fails: infer from channel ID prefix
+function channelTypeFromId(channelId: string): SlackChannelType {
+    const prefix = channelId.charAt(0).toUpperCase()
+    if (prefix === "D") return SlackChannelType.IM
+    if (prefix === "G") return SlackChannelType.GROUP
+    return SlackChannelType.CHANNEL
+}
 
 // Parse Slack permalink: https://workspace.slack.com/archives/CHANNEL_ID/p1234567890123456
 function parsePermalink(permalink: string): { channelId: string; timestamp: string } | null {
@@ -44,7 +61,16 @@ export class SlackEventHydrator extends Hydrator<SlackEvent> {
         })
     }
 
-    private async fetchFromSlack(permalink: string): Promise<SlackEvent | null> {
+    private async fetchFromSlack(entityId: string): Promise<SlackEvent | null> {
+        // Split only on the first colon to preserve colons in the permalink URL
+        const colonIndex = entityId.indexOf(":")
+        if (colonIndex === -1) {
+            logger.error(`Invalid Slack entityId format (missing colon): ${entityId}`)
+            return null
+        }
+        const teamId = entityId.slice(0, colonIndex)
+        const permalink = entityId.slice(colonIndex + 1)
+
         const parsed = parsePermalink(permalink)
         if (!parsed) {
             logger.error(`Invalid Slack permalink: ${permalink}`)
@@ -53,9 +79,17 @@ export class SlackEventHydrator extends Hydrator<SlackEvent> {
 
         const { channelId, timestamp } = parsed
 
-        // Find all Slack integrations for the user and prefer user token (is_bot_user = false) as it's more permissive
+        if (!this.ctx.organizationId) {
+            logger.error("Slack hydrator requires organizationId in context")
+            return null
+        }
+
+        // Find Slack integrations for the org, optionally scoped to teamId
         const userSlackIntegrations = await db().user_slack_integrations.findMany({
-            where: { user_id: this.ctx.userId },
+            where: {
+                organization_id: this.ctx.organizationId,
+                ...(teamId && { slack_team_id: teamId })
+            },
             include: {
                 slack_integration: true,
                 user: true
@@ -63,7 +97,7 @@ export class SlackEventHydrator extends Hydrator<SlackEvent> {
         })
 
         if (userSlackIntegrations.length === 0) {
-            logger.error(`No Slack integration found for user: ${this.ctx.userId}`)
+            logger.error(`No Slack integration found for organization: ${this.ctx.organizationId}`)
             return null
         }
 
@@ -92,17 +126,22 @@ export class SlackEventHydrator extends Hydrator<SlackEvent> {
                 return null
             }
 
-            // Get channel info
+            // Get channel info (includes channelType for agent trigger matching)
             let channelName: string | undefined
+            let channelType: SlackChannelType = channelTypeFromId(channelId)
             try {
                 const channelInfo = await client.conversations.info({ channel: channelId })
-                channelName = (channelInfo.channel as any)?.name
+                const channel = channelInfo.channel as { name?: string; is_im?: boolean; is_mpim?: boolean; is_private?: boolean } | undefined
+                if (channel) {
+                    channelName = channel.name
+                    channelType = channelTypeFromConversation(channel)
+                }
             } catch (channelError: any) {
                 // Handle channel not found or access denied errors
                 // These are expected for DMs (IM/MPIM) or private channels the token can't access
                 const errorCode = channelError?.data?.error || channelError?.code
                 if (errorCode === "channel_not_found" || errorCode === "not_in_channel" || errorCode === "missing_scope") {
-                    logger.warn(`Could not fetch channel info for channelId: ${channelId} (${errorCode}). Continuing without channel name.`)
+                    logger.warn(`Could not fetch channel info for channelId: ${channelId} (${errorCode}). Continuing without channel name, using channelType fallback.`)
                 } else {
                     // Unexpected errors (network, rate limit, auth) should remain at error level
                     logger.error(`Failed to fetch channel info for channelId: ${channelId}. Continuing without channel name.`, channelError)
@@ -123,6 +162,7 @@ export class SlackEventHydrator extends Hydrator<SlackEvent> {
             const eventData: SlackEventData = {
                 channelId,
                 channelName,
+                channelType,
                 userId: message.user || "",
                 userName,
                 text: message.text || "",

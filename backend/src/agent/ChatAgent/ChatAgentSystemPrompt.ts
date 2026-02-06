@@ -156,7 +156,7 @@ export async function buildChatAgentSystemPrompt(userId: string, organizationId:
     - **Activity**: Users can view the history of past runs for an agent to see what happened.
     - **Delete Agent**: Users can delete an agent they no longer need.
 
-    If a user asks how to run or trigger an agent manually, mention the "Trigger Now" button available in the UI for scheduled triggers.
+    When the user wants to run or trigger a scheduled agent right now (e.g. "trigger it for me", "run it now", "start the task"), call triggerAgentRun with only the agentId (no entityType, entityId) to trigger it immediately. You can also mention the "Trigger Now" button in the UI as an alternative.
 
     ## How to use tools:
     - When the user tells you which integration they want to connect, you should use the promptForIntegration tool, which will prompt the user to configure the integration. Try your best to guesstimate which integration the user is referring to based on context, even if they don't explicitly name it. For example, if they mention "Slack messages" or "chat", they likely mean Slack. If they mention "code repositories" or "pull requests", they likely mean GitHub.
@@ -172,6 +172,13 @@ export async function buildChatAgentSystemPrompt(userId: string, organizationId:
     ## How to use the applyAgent tool:
     - The applyAgent tool will persist and apply the agent.
     - Once the agent is persisted and applied, thank the user and let them know you're here if they need anything else.
+
+    ## Testing agents with sample events
+    You can help users test their agents using sample events from their integrations:
+    - **getSampleEvents**: Use this when the user wants to see sample events (e.g. recent Slack messages, GitHub PRs, Linear issues) that could trigger their agent. It returns short summaries and optional filter preview (whether each event would pass the agent's filter). You need the integration ID, integration type, and the agent's trigger config. Optionally pass an agent ID to see whether each sample would be filtered in or out.
+    - **triggerAgentRun**: Use this when the user wants to run a specific sample event through their agent(s), or to trigger a scheduled agent immediately.
+      - **Cron/scheduled (time-trigger) agents:** To trigger the agent immediately, call triggerAgentRun with **only agentId**. Do not pass entityType or entityId (omit them or pass null). You do not need to call getSampleEvents first for these agents. When the user says they want to run/trigger/start a scheduled agent now, use triggerAgentRun with only agentId to do it for them.
+      - **Event-based agents:** Call getSampleEvents first to list options, then call triggerAgentRun with entityType, entityId, and agentId from the result. The event will be re-fetched from the integration and processed as if it had just occurred; you'll get back which agents ran and whether they succeeded or need approval.
 
     ## Remember
     Be helpful and conversational. Listen to what the user actually wants. Only create agents when they express a need for automation - a simple "hi" just needs a friendly greeting back!

@@ -1,10 +1,12 @@
 import { Request, Response } from "express"
 
+import { ConfigInstance } from "../../shared/Configs"
 import { AdditionalStateParams, InstallationOptionsFor, IntegrationDetails, IntegrationInstance, IntegrationType } from "../../shared/Integrations"
 import { OAuthInstallationDetails } from "../../shared/types"
 import { AgentTriggerWithConfigs } from "../../types/prisma"
 
 import type { FetchResourcesOptions } from "./FetchResourcesOptions"
+import type { InputEvent } from "./InputEvent"
 
 export interface IntegrationWithResources<T extends IntegrationInstance, R> {
     integration: T
@@ -23,6 +25,15 @@ export interface Integration<T extends IntegrationInstance, W, M extends Integra
     teardownAgentTrigger(integrationId: string, agentTrigger: AgentTriggerWithConfigs): Promise<void>
 
     fetchResourcesForOrganization?(organizationId: string, query?: string, options?: FetchResourcesOptions): Promise<IntegrationWithResources<T, R>[]>
+
+    getSampleEvents?(
+        integrationId: string,
+        organizationId: string,
+        triggerConfig: ConfigInstance,
+        options?: {
+            limit?: number
+        }
+    ): Promise<InputEvent[]>
 }
 
 export type FormFieldType = "text" | "password" | "textarea"

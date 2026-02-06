@@ -1,3 +1,5 @@
+import { Octokit } from "@octokit/rest"
+import type { RestEndpointMethodTypes } from "@octokit/rest"
 import { InputConfigType } from "@prisma/client"
 import axios, { AxiosResponse } from "axios"
 import { Request, Response } from "express"
@@ -6,6 +8,7 @@ import { EventProcessor } from "../agent/AgentRunner/EventProcessor"
 import { githubApp, urls } from "../config/settings"
 import logger, { runWithUserContext } from "../logger"
 import { db } from "../prismaClient"
+import { Identifiable } from "../rag/Hydrator"
 import {
     GithubAppInstallation,
     GithubAppInstallationRepository,
@@ -16,11 +19,13 @@ import {
 } from "../routes/GithubTypes"
 import { fetchGithubRepositoriesForIntegration } from "../routes/github"
 import { StoredFile } from "../services/FileStorageService"
+import { ConfigInstance, ConfigType, GitHubConfig as GitHubConfigClass } from "../shared/Configs"
 import { FrontendRoutes } from "../shared/FrontendRoutes"
 import { AdditionalStateParams, GithubIntegration, GithubIntegrationMetadata, InstallationOptionsFor, IntegrationType } from "../shared/Integrations"
 import { RunHistoryTrigger } from "../shared/RunHistoryTypes"
 import { OAuthInstallationDetails, Repository } from "../shared/types"
 import { AgentTriggerWithConfigs, User as PrismaUser } from "../types/prisma"
+import { HydratorType } from "../types/rag"
 import { OAuthStateEncodingFormat, createOAuthStateToken, decodeOAuthStateToken } from "../utility/oauth"
 import { getUserForOrg } from "../utility/workos"
 
@@ -322,12 +327,81 @@ export class GithubIntegrationManager
             return null
         }
     }
+
+    async getSampleEvents(integrationId: string, organizationId: string, triggerConfig: ConfigInstance, options?: { limit?: number }): Promise<InputEvent[]> {
+        if (triggerConfig.configType !== ConfigType.GITHUB) {
+            return []
+        }
+        const githubConfig = triggerConfig as GitHubConfigClass
+
+        const maxEvents = Math.min(options?.limit ?? 6, 10)
+
+        const installations = await this.getInstancesForOrganization(organizationId)
+        const installation = installations.find(i => i.id === integrationId)
+        if (!installation) {
+            throw new Error(`GitHub integration ${integrationId} not found`)
+        }
+
+        const installationIdNum = installation.installation_id
+        const users = await resolveUsersForGithubInstallation(installationIdNum)
+        if (users.length === 0) {
+            throw new Error("No users found with access to this GitHub installation")
+        }
+
+        const tokenRow = await db().github_app_tokens.findFirst({
+            where: { user_id: users[0].id }
+        })
+        if (!tokenRow?.access_token) {
+            throw new Error("No GitHub token found for user. Please connect your GitHub account.")
+        }
+
+        const accessToken = tokenRow.access_token
+        const userInstallations = await getAppInstallationsForUser(accessToken)
+        if (!userInstallations.installations.some(inst => inst.id === installationIdNum)) {
+            throw new Error("Installation not found or access denied.")
+        }
+
+        let repos: Array<{ id: number; owner: string; name: string; defaultBranch: string }> = []
+
+        if (githubConfig.repositoryIds?.length) {
+            for (const repoId of githubConfig.repositoryIds.slice(0, 2)) {
+                const repo = await fetchRepositoryDetailsForSample(accessToken, repoId)
+                if (repo) repos.push(repo)
+            }
+        } else {
+            const installationRepos = await getAppInstallationRepositories(accessToken, installationIdNum)
+            repos = installationRepos.slice(0, 2).map(r => ({
+                id: r.id,
+                owner: r.owner.login,
+                name: r.name,
+                defaultBranch: r.default_branch || "main"
+            }))
+        }
+
+        const events: InputEvent[] = []
+        for (const repo of repos) {
+            const commits = await fetchRecentCommitsForSample(accessToken, repo.owner, repo.name, 2)
+            for (const commit of commits) {
+                const eventData = await createPushEventData(commit, repo, installationIdNum, accessToken)
+                if (eventData) events.push(new GithubEvent(eventData, []))
+            }
+            const pullRequests = await fetchRecentPullRequestsForSample(accessToken, repo.owner, repo.name, 2)
+            for (const pr of pullRequests) {
+                const eventData = await createPullRequestEventData(pr, repo, installationIdNum, accessToken)
+                if (eventData) events.push(new GithubEvent(eventData, []))
+            }
+            if (events.length >= maxEvents) break
+        }
+        return events.slice(0, maxEvents)
+    }
 }
 
 // MARK: - GithubEvent
 
-export class GithubEvent extends InputEvent {
+export class GithubEvent extends InputEvent implements Identifiable {
     readonly integrationType: IntegrationType = IntegrationType.GITHUB
+    entityType = HydratorType.GITHUB_EVENT
+    entityId: string
     data: GithubAppUnifiedEventRequest
     private storedFiles: StoredFile[]
 
@@ -335,6 +409,13 @@ export class GithubEvent extends InputEvent {
         super()
         this.data = data
         this.storedFiles = storedFiles
+        if (data.pullRequest) {
+            this.entityId = `${data.installationId}:${data.repository.id}:pr/${data.pullRequest.number}`
+        } else if (data.commits?.length) {
+            this.entityId = `${data.installationId}:${data.repository.id}:commit/${data.commits[0].sha}`
+        } else {
+            this.entityId = `${data.installationId}:${data.repository.id}:push/${data.branch ?? "main"}`
+        }
     }
 
     formatForAgentRunner(): string {
@@ -620,4 +701,206 @@ export async function resolveUsersForGithubInstallation(installationId: number):
         })
         return users
     })
+}
+
+// MARK: - Sample events helpers
+
+type OctokitCommit = RestEndpointMethodTypes["repos"]["listCommits"]["response"]["data"][number]
+type OctokitCommitDetail = RestEndpointMethodTypes["repos"]["getCommit"]["response"]["data"]
+type OctokitPullRequest = RestEndpointMethodTypes["pulls"]["list"]["response"]["data"][number]
+type OctokitPullRequestCommit = RestEndpointMethodTypes["pulls"]["listCommits"]["response"]["data"][number]
+
+function createOctokitForSample(accessToken: string): Octokit {
+    return new Octokit({ auth: accessToken })
+}
+
+async function fetchRepositoryDetailsForSample(accessToken: string, repoId: number): Promise<{ id: number; owner: string; name: string; defaultBranch: string } | null> {
+    try {
+        const response = await axios.get(`https://api.github.com/repositories/${repoId}`, {
+            headers: {
+                Authorization: `Bearer ${accessToken}`,
+                Accept: "application/vnd.github+json"
+            }
+        })
+        return {
+            id: response.data.id,
+            owner: response.data.owner.login,
+            name: response.data.name,
+            defaultBranch: response.data.default_branch || "main"
+        }
+    } catch (error) {
+        logger.error("Error fetching repository details for sample", { error, repoId })
+        return null
+    }
+}
+
+async function fetchRecentCommitsForSample(accessToken: string, owner: string, repo: string, count: number): Promise<OctokitCommit[]> {
+    try {
+        const octokit = createOctokitForSample(accessToken)
+        const response = await octokit.rest.repos.listCommits({
+            owner,
+            repo,
+            per_page: count
+        })
+        return response.data
+    } catch (error) {
+        logger.error("Error fetching recent commits for sample", { error, owner, repo })
+        return []
+    }
+}
+
+async function fetchCommitDiffForSample(accessToken: string, owner: string, repo: string, sha: string): Promise<OctokitCommitDetail | null> {
+    try {
+        const octokit = createOctokitForSample(accessToken)
+        const response = await octokit.rest.repos.getCommit({
+            owner,
+            repo,
+            ref: sha
+        })
+        return response.data
+    } catch (error) {
+        logger.error("Error fetching commit diff for sample", { error, owner, repo, sha })
+        return null
+    }
+}
+
+async function fetchRecentPullRequestsForSample(accessToken: string, owner: string, repo: string, count: number): Promise<OctokitPullRequest[]> {
+    try {
+        const octokit = createOctokitForSample(accessToken)
+        const response = await octokit.rest.pulls.list({
+            owner,
+            repo,
+            state: "all",
+            sort: "updated",
+            direction: "desc",
+            per_page: count
+        })
+        return response.data
+    } catch (error) {
+        logger.error("Error fetching recent pull requests for sample", { error, owner, repo })
+        return []
+    }
+}
+
+async function fetchPullRequestCommitsForSample(accessToken: string, owner: string, repo: string, prNumber: number): Promise<OctokitPullRequestCommit[]> {
+    try {
+        const octokit = createOctokitForSample(accessToken)
+        const response = await octokit.rest.pulls.listCommits({
+            owner,
+            repo,
+            pull_number: prNumber
+        })
+        return response.data
+    } catch (error) {
+        logger.error("Error fetching PR commits for sample", { error, owner, repo, prNumber })
+        return []
+    }
+}
+
+async function createPushEventData(
+    commit: OctokitCommit,
+    repo: { id: number; owner: string; name: string; defaultBranch: string },
+    installationId: number,
+    accessToken: string
+): Promise<GithubAppUnifiedEventRequest | null> {
+    try {
+        const commitDetails = await fetchCommitDiffForSample(accessToken, repo.owner, repo.name, commit.sha)
+        if (!commitDetails) return null
+
+        const fileDiffs = (commitDetails.files || []).map(file => ({
+            filename: file.filename!,
+            diff: file.patch || ""
+        }))
+
+        return {
+            username: commit.commit.author?.name || commit.author?.login || "unknown",
+            installationId,
+            repositoryName: `${repo.owner}/${repo.name}`,
+            eventType: "push",
+            branch: repo.defaultBranch,
+            commits: [
+                {
+                    sha: commit.sha,
+                    name: commit.commit.message,
+                    fileDiffs
+                }
+            ],
+            repository: {
+                id: repo.id,
+                name: repo.name,
+                owner: repo.owner,
+                defaultBranch: repo.defaultBranch
+            },
+            sender: {
+                login: commit.commit.author?.name || commit.author?.login || "unknown",
+                email: commit.commit.author?.email
+            }
+        }
+    } catch (error) {
+        logger.error("Error creating push event data for sample", { error, commit: commit.sha })
+        return null
+    }
+}
+
+async function createPullRequestEventData(
+    pr: OctokitPullRequest,
+    repo: { id: number; owner: string; name: string; defaultBranch: string },
+    installationId: number,
+    accessToken: string
+): Promise<GithubAppUnifiedEventRequest | null> {
+    try {
+        let eventType: "pull_request.opened" | "pull_request.merged" | "pull_request.closed" = pr.merged_at
+            ? "pull_request.merged"
+            : pr.state === "closed"
+              ? "pull_request.closed"
+              : "pull_request.opened"
+
+        const prCommits = await fetchPullRequestCommitsForSample(accessToken, repo.owner, repo.name, pr.number)
+        const commits = await Promise.all(
+            prCommits.slice(0, 3).map(async commit => {
+                const commitDetails = await fetchCommitDiffForSample(accessToken, repo.owner, repo.name, commit.sha)
+                const fileDiffs = (commitDetails?.files || []).map(file => ({
+                    filename: file.filename!,
+                    diff: file.patch || ""
+                }))
+                return {
+                    sha: commit.sha,
+                    name: commit.commit.message,
+                    fileDiffs
+                }
+            })
+        )
+
+        return {
+            username: pr.user?.login || "unknown",
+            installationId,
+            repositoryName: `${repo.owner}/${repo.name}`,
+            eventType,
+            commits,
+            pullRequest: {
+                id: String(pr.id),
+                number: pr.number,
+                title: pr.title ?? "",
+                body: pr.body ?? undefined,
+                state: pr.state as "open" | "closed",
+                merged: pr.merged_at !== null,
+                head: { ref: pr.head.ref, sha: pr.head.sha },
+                base: { ref: pr.base.ref, sha: pr.base.sha },
+                user: { login: pr.user?.login || "unknown", email: undefined }
+            },
+            repository: {
+                id: repo.id,
+                name: repo.name,
+                owner: repo.owner,
+                defaultBranch: repo.defaultBranch
+            },
+            sender: {
+                login: pr.user?.login || "unknown",
+                email: undefined
+            }
+        }
+    } catch (error) {
+        logger.error("Error creating pull request event data for sample", { error, pr: pr.number })
+        return null
+    }
 }

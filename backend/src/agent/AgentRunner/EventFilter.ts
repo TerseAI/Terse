@@ -88,13 +88,43 @@ You may provide additional context and analysis in your text response, but you M
 `
 }
 
+function buildFilterAgent(): Agent<Session, typeof filterOutputSchema> {
+    const currentTimeUtc = new Date().toISOString()
+    const systemPrompt = buildFilterSystemPrompt(currentTimeUtc)
+    return new Agent<Session, typeof filterOutputSchema>({
+        name: "Agent Event Filter",
+        instructions: systemPrompt,
+        model: "gpt-4o-mini",
+        modelSettings: {
+            temperature: 0.3,
+            maxTokens: 200
+        },
+        tools: [], // No tools - filter should not make tool calls
+        outputType: filterOutputSchema
+    })
+}
+
+function buildFilterHistory(agentPrompt: AgentPrompt, event: InputEvent): AgentInputItem[] {
+    return [
+        {
+            role: "user",
+            content: [
+                {
+                    type: "input_text",
+                    text: buildFilterUserPrompt(agentPrompt.content || "No specific instructions provided", event.formatForAgentRunner())
+                }
+            ]
+        }
+    ]
+}
+
 /**
  * Filters a single event to determine if it's relevant to the agent based on user instructions
  * Returns both the filter result and an async generator for streaming events
  *
- * If streamingParams are provided, automatically handles storing events and emitting them via Socket.IO
+ * If isStreaming is true and trackingParams are provided, automatically handles storing events and emitting them via Socket.IO
  */
-export async function filterEvent(event: InputEvent, agentPrompt: AgentPrompt, streamingParams?: RunHistoryStreamingParams): Promise<{ result: EventFilterResult }> {
+export async function filterEvent(event: InputEvent, agentPrompt: AgentPrompt, isStreaming: boolean, trackingParams?: RunHistoryStreamingParams): Promise<{ result: EventFilterResult }> {
     if (event.integrationType === IntegrationType.CRON_JOB) {
         return {
             result: {
@@ -105,64 +135,35 @@ export async function filterEvent(event: InputEvent, agentPrompt: AgentPrompt, s
         }
     }
 
-    try {
-        const currentTimeUtc = new Date().toISOString()
-        const systemPrompt = buildFilterSystemPrompt(currentTimeUtc)
+    const agent = buildFilterAgent()
+    const history = buildFilterHistory(agentPrompt, event)
+    const runner = runnerFactory({
+        agentId: trackingParams?.agentId || "",
+        runId: trackingParams?.runId || "",
+        userId: trackingParams?.userId || "",
+        env: settings.nodeEnv
+    })
 
-        const agent = new Agent<Session, typeof filterOutputSchema>({
-            name: "Agent Event Filter",
-            instructions: systemPrompt,
-            model: "gpt-4o-mini",
-            modelSettings: {
-                temperature: 0.3,
-                maxTokens: 200
-            },
-            tools: [], // No tools - filter should not make tool calls
-            outputType: filterOutputSchema
-        })
+    if (isStreaming && trackingParams?.runId && trackingParams?.organizationId && trackingParams?.agentId) {
+        try {
+            const result = await runner.run(agent, history, {
+                stream: true,
+                context: undefined as any // Filter agent doesn't need session context
+            })
 
-        const history: AgentInputItem[] = [
-            {
-                role: "user",
-                content: [
-                    {
-                        type: "input_text",
-                        text: buildFilterUserPrompt(agentPrompt.content || "No specific instructions provided", event.formatForAgentRunner())
-                    }
-                ]
+            if (result.interruptions && result.interruptions.length > 0) {
+                throw new Error("Filter agent requested tool approval, which is not supported for event filtering.")
             }
-        ]
-        const runner = runnerFactory({
-            agentId: streamingParams?.agentId || "",
-            runId: streamingParams?.runId || "",
-            userId: streamingParams?.userId || "",
-            env: settings.nodeEnv
-        })
-        const result = await runner.run(agent, history, {
-            stream: true,
-            context: undefined as any // Filter agent doesn't need session context
-        })
 
-        if (result.interruptions && result.interruptions.length > 0) {
-            throw new Error("Filter agent requested tool approval, which is not supported for event filtering.")
-        }
-
-        // Handle streaming and channel management if streamingParams are provided (organization-scoped)
-        if (streamingParams?.runId && streamingParams?.organizationId && streamingParams?.agentId) {
             const io = getRealtimeSocket()
-            const orgRoom = SocketRooms.organization(streamingParams.organizationId)
+            const orgRoom = SocketRooms.organization(trackingParams.organizationId)
 
             try {
                 for await (const modelEvent of transformAgentStreamToModelEvents(result)) {
-                    // Skip TextDelta events from filter agent - we'll store the structured FilterResult instead
                     if (modelEvent.type === "TextDelta") {
                         continue
                     }
-
-                    // Store event in database and get the ID
-                    const eventId = await storeChatEvent(streamingParams.runId, modelEvent)
-
-                    // Emit event via Socket.IO with timestamp and ID
+                    const eventId = await storeChatEvent(trackingParams.runId, modelEvent)
                     if (io) {
                         const runHistoryModelEvent: RunHistoryModelEvent = {
                             ...modelEvent,
@@ -170,8 +171,8 @@ export async function filterEvent(event: InputEvent, agentPrompt: AgentPrompt, s
                             timestamp: new Date().toISOString()
                         }
                         const payload: RunHistoryModelSocketEvent = {
-                            runId: streamingParams.runId,
-                            agentId: streamingParams.agentId,
+                            runId: trackingParams.runId,
+                            agentId: trackingParams.agentId,
                             runHistoryModelEvent
                         }
                         io.to(orgRoom).emit(SocketEvents.AGENT_CHAT_EVENT, payload)
@@ -180,24 +181,17 @@ export async function filterEvent(event: InputEvent, agentPrompt: AgentPrompt, s
             } catch (error) {
                 logger.error("Error streaming filter events", {
                     error,
-                    runId: streamingParams.runId,
-                    agentId: streamingParams.agentId
+                    runId: trackingParams.runId,
+                    agentId: trackingParams.agentId
                 })
-                // Continue with parsing even if streaming fails
             }
-        }
 
-        // Get structured output from result
-        const parsed = result.finalOutput ?? null
-        if (!parsed) {
-            throw new Error("No final output from filter agent")
-        }
+            const parsed = result.finalOutput ?? null
+            if (!parsed) {
+                throw new Error("No final output from filter agent")
+            }
+            parsed.confidence = Math.max(0, Math.min(1, parsed.confidence))
 
-        // Clamp confidence to [0, 1]
-        parsed.confidence = Math.max(0, Math.min(1, parsed.confidence))
-
-        // Store and emit the filter result event if streamingParams are provided
-        if (streamingParams?.runId && streamingParams?.organizationId && streamingParams?.agentId) {
             const filterResultEvent = {
                 type: "FilterResult" as const,
                 isRelevant: parsed.isRelevant,
@@ -205,32 +199,36 @@ export async function filterEvent(event: InputEvent, agentPrompt: AgentPrompt, s
                 confidence: parsed.confidence,
                 step_id: randomString(15)
             }
-            const filterEventId = await storeChatEvent(streamingParams.runId, filterResultEvent)
-
-            const io = getRealtimeSocket()
+            const filterEventId = await storeChatEvent(trackingParams.runId, filterResultEvent)
             if (io) {
-                const orgRoom = SocketRooms.organization(streamingParams.organizationId!)
                 const runHistoryModelEvent: RunHistoryModelEvent = {
                     ...filterResultEvent,
                     id: filterEventId,
                     timestamp: new Date().toISOString()
                 }
                 const payload: RunHistoryModelSocketEvent = {
-                    runId: streamingParams.runId,
-                    agentId: streamingParams.agentId,
+                    runId: trackingParams.runId,
+                    agentId: trackingParams.agentId,
                     runHistoryModelEvent
                 }
                 io.to(orgRoom).emit(SocketEvents.AGENT_CHAT_EVENT, payload)
             }
+            logger.info(`Event filter result for ${event.integrationType}:`, { parsed })
+            return { result: parsed }
+        } catch (error) {
+            throw error
         }
-        logger.info(`Event filter result for ${event.integrationType}:`, {
-            parsed
+    } else {
+        const result = await runner.run(agent, history, {
+            context: undefined as any // Filter agent doesn't need session context
         })
+        const parsed = result.finalOutput ?? null
+        if (!parsed) {
+            throw new Error("No final output from filter agent")
+        }
+        parsed.confidence = Math.max(0, Math.min(1, parsed.confidence))
+        logger.info(`Event filter result for ${event.integrationType}:`, { parsed })
         return { result: parsed }
-    } catch (error) {
-        // Re-throw error to be handled by the caller (EventProcessor)
-        // This allows proper error tracking in run history
-        throw error
     }
 }
 
