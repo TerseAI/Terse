@@ -1,4 +1,4 @@
-import { RunContext, tool } from "@openai/agents"
+import { RunContext, tool, webSearchTool } from "@openai/agents"
 import { Tool } from "@openai/agents-core"
 import { z } from "zod"
 import { uuidv4 } from "zod/v4"
@@ -24,6 +24,7 @@ export type ChatAgentContext = {
 
 export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgentContext>[] {
     return [
+        webSearchTool({ searchContextSize: "medium" }) as Tool<ChatAgentContext>,
         tool({
             name: "applyAgent",
             description:
