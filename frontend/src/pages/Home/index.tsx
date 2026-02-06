@@ -300,10 +300,19 @@ function Home() {
 
                                 {/* ── Stats Row ──────────────────────────── */}
                                 {!isLoadingStats && stats && (
-                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                                        <StatPill label="Events processed" value={formatNumber(totalEvents)} change={stats.totalEventsProcessedChange} />
-                                        <StatPill label="Actions taken" value={formatNumber(actionsTaken)} change={stats.actionsTakenChange} />
-                                        <StatPill label="Active Agents" value={formatNumber(numberOfAgents)} change={stats.numberOfAgentsChange} />
+                                    <div>
+                                        <div className="flex items-center justify-between mb-3">
+                                            <h2 className="text-sm font-medium text-muted-foreground tracking-wide uppercase">Stats</h2>
+                                            <Button variant="ghost" size="sm" className="text-xs text-muted-foreground gap-1" onClick={() => navigate(FrontendRoutes.STATS)}>
+                                                View all stats
+                                                <ArrowUpRight className="w-3 h-3" />
+                                            </Button>
+                                        </div>
+                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                            <StatPill label="Events processed" value={formatNumber(totalEvents)} change={stats.totalEventsProcessedChange} />
+                                            <StatPill label="Actions taken" value={formatNumber(actionsTaken)} change={stats.actionsTakenChange} />
+                                            <StatPill label="Active Agents" value={formatNumber(numberOfAgents)} change={stats.numberOfAgentsChange} />
+                                        </div>
                                     </div>
                                 )}
 
