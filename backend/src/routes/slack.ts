@@ -124,9 +124,15 @@ export const getSlackUsers = async (req: Request, res: Response) => {
         const response = await fetchSlackUsersForIntegration(user.id, user.organizationId, integrationId)
         res.status(200).json(response)
     } catch (error: any) {
-        logger.error("Error fetching Slack users:", { error })
+        logger.error("Error fetching Slack users", {
+            error: error?.message || error,
+            integrationId,
+            userId: user.id
+        })
         res.status(error?.statusCode || 500).json({
-            error: error.message || "Failed to fetch users"
+            error: error?.message || "Failed to fetch users",
+            details: error?.details,
+            code: error?.code
         })
     }
 }
