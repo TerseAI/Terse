@@ -186,13 +186,7 @@ export const convertPrismaConfigToConfigInstance = (channelInput: AgentTriggerWi
 
     if (channelInput.notion_config) {
         const nc = channelInput.notion_config
-        return new NotionConfig(
-            integrationId,
-            nc.database_ids ?? [],
-            nc.database_names ?? [],
-            nc.page_ids ?? [],
-            nc.page_names ?? []
-        )
+        return new NotionConfig(integrationId, nc.database_ids ?? [], nc.database_names ?? [], nc.page_ids ?? [], nc.page_names ?? [])
     }
 
     if (channelInput.linear_config) {
@@ -252,13 +246,7 @@ export const convertPrismaOutputConfigToConfigInstance = (channelOutput: AgentOu
     // Determine which config is present and create the appropriate ConfigInstance
     if (channelOutput.notion_config) {
         const nc = channelOutput.notion_config
-        return new NotionConfig(
-            integrationId,
-            nc.database_ids ?? [],
-            nc.database_names ?? [],
-            nc.page_ids ?? [],
-            nc.page_names ?? []
-        )
+        return new NotionConfig(integrationId, nc.database_ids ?? [], nc.database_names ?? [], nc.page_ids ?? [], nc.page_names ?? [])
     }
 
     if (channelOutput.confluence_config) {
@@ -404,9 +392,7 @@ export const convertConfigTypeToOutputConfigType = (configType: ConfigType): Out
         case ConfigType.GMAIL_OUTPUT:
             return OutputConfigType.GMAIL
         default:
-            throw new Error(
-                `ConfigType ${configType} is not a valid output config type. Supported: NOTION, CONFLUENCE, LINEAR, JIRA, SLACK_OUTPUT, GMAIL_OUTPUT.`
-            )
+            throw new Error(`ConfigType ${configType} is not a valid output config type. Supported: NOTION, CONFLUENCE, LINEAR, JIRA, SLACK_OUTPUT, GMAIL_OUTPUT.`)
     }
 }
 

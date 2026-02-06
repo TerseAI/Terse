@@ -81,12 +81,12 @@ export function NotionResourceSelector(props: NotionResourceSelectorProps) {
     const searchableResources = multi ? resources.filter(r => !excludeIds.includes(r.id)) : resources
 
     const triggerLabel = multi
-        ? (props.selectedResourceIds.length > 0
-              ? `${props.selectedResourceIds.length} ${label}${props.selectedResourceIds.length !== 1 ? "s" : ""} selected`
-              : `Select ${label}s...`)
-        : (props.selectedResourceId && props.selectedResourceName
-              ? props.selectedResourceName
-              : `Select ${label}...`)
+        ? props.selectedResourceIds.length > 0
+            ? `${props.selectedResourceIds.length} ${label}${props.selectedResourceIds.length !== 1 ? "s" : ""} selected`
+            : `Select ${label}s...`
+        : props.selectedResourceId && props.selectedResourceName
+          ? props.selectedResourceName
+          : `Select ${label}...`
 
     return (
         <div className="space-y-2 min-w-0 overflow-hidden">
@@ -107,10 +107,7 @@ export function NotionResourceSelector(props: NotionResourceSelectorProps) {
                                 <p className="text-xs font-medium text-muted-foreground mb-1.5">Selected</p>
                                 <div className="flex flex-wrap gap-1.5">
                                     {props.selectedResourceIds.map((id, i) => (
-                                        <span
-                                            key={id}
-                                            className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-1 text-sm"
-                                        >
+                                        <span key={id} className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-1 text-sm">
                                             <span className="shrink-0">{icon}</span>
                                             <span className="truncate max-w-[140px]">{props.selectedResourceNames[i] ?? id}</span>
                                             <button
@@ -144,7 +141,9 @@ export function NotionResourceSelector(props: NotionResourceSelectorProps) {
                                 <div className="py-6 text-center text-sm text-destructive">{error instanceof Error ? error.message : `Failed to load ${label}s`}</div>
                             )}
                             {!isLoading && !isSearching && !isError && searchableResources.length === 0 && (
-                                <CommandEmpty>{debouncedSearch ? `No ${label}s found for "${debouncedSearch}"` : multi && excludeIds.length > 0 ? "All available selected" : `No ${label}s available`}</CommandEmpty>
+                                <CommandEmpty>
+                                    {debouncedSearch ? `No ${label}s found for "${debouncedSearch}"` : multi && excludeIds.length > 0 ? "All available selected" : `No ${label}s available`}
+                                </CommandEmpty>
                             )}
                             {!isLoading && !isSearching && !isError && searchableResources.length > 0 && (
                                 <CommandGroup heading={multi ? "Search to add" : `${searchableResources.length} ${label}${searchableResources.length !== 1 ? "s" : ""}`}>

@@ -6,14 +6,7 @@ import { IntegrationType } from "../../shared/Integrations"
 import { AgentOutputWithConfigs, PrismaTransaction } from "../../types/prisma"
 import { Output, ToolboxEntry } from "../abstract/Output"
 
-import {
-    fetchRelatedEventsTool,
-    notionGetSchemaTool,
-    notionModifyBlocksTool,
-    notionModifyPageTool,
-    notionQueryDatabaseTool,
-    notionQueryPageTool
-} from "./tools"
+import { fetchRelatedEventsTool, notionGetSchemaTool, notionModifyBlocksTool, notionModifyPageTool, notionQueryDatabaseTool, notionQueryPageTool } from "./tools"
 
 export class NotionOutput extends Output<NotionConfig> {
     constructor() {
@@ -84,7 +77,9 @@ export class NotionOutput extends Output<NotionConfig> {
 
 When calling Notion tools, always use the \`integrationId\` and a \`databaseId\` or \`pageId\` from the allowed list above. Never target a database or page that is not in the list.`)
 
-        sections.push("\n**Database tools** (use with databaseId): `notion_get_schema`, `notion_query_database`, `notion_modify_page`. **Page tools** (use with pageId): `notion_query_page`, `notion_modify_blocks`, `notion_fetch_related_events`. You can create a page in a database then add content to a page; use the right tool and target for each step.")
+        sections.push(
+            "\n**Database tools** (use with databaseId): `notion_get_schema`, `notion_query_database`, `notion_modify_page`. **Page tools** (use with pageId): `notion_query_page`, `notion_modify_blocks`, `notion_fetch_related_events`. You can create a page in a database then add content to a page; use the right tool and target for each step."
+        )
 
         sections.push(`
 NOTION DATABASE WORKFLOW (when using databaseId):

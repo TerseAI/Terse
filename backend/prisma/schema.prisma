@@ -431,9 +431,9 @@ model automation_inputs {
   automation automations @relation(fields: [automation_id], references: [id], onDelete: Cascade)
 
   // Configuration relations (one per integration type)
-  slack_config  automation_slack_configs?
-  notion_config automation_notion_configs?
-  linear_config automation_linear_configs?
+  slack_config        automation_slack_configs?
+  notion_config       automation_notion_configs?
+  linear_config       automation_linear_configs?
   jira_config         automation_jira_configs?
   confluence_config   automation_confluence_configs?
   github_config       automation_github_configs?
@@ -457,14 +457,14 @@ model automation_outputs {
   automation automations @relation(fields: [automation_id], references: [id], onDelete: Cascade)
 
   // Configuration relations (one per integration type)
-  slack_config  automation_slack_configs?
-  notion_config automation_notion_configs?
-  linear_config automation_linear_configs?
-  jira_config        automation_jira_configs?
-  confluence_config  automation_confluence_configs?
-  github_config      automation_github_configs?
-  gmail_config       automation_gmail_configs?
-  figma_config       automation_figma_configs?
+  slack_config      automation_slack_configs?
+  notion_config     automation_notion_configs?
+  linear_config     automation_linear_configs?
+  jira_config       automation_jira_configs?
+  confluence_config automation_confluence_configs?
+  github_config     automation_github_configs?
+  gmail_config      automation_gmail_configs?
+  figma_config      automation_figma_configs?
 
   @@index([automation_id])
   @@index([config_type, integration_id])
@@ -593,9 +593,9 @@ model automation_slack_configs {
 
 // Notion Configuration (unified: list of allowed databases and/or pages)
 model automation_notion_configs {
-  id                   String   @id @default(cuid())
-  automation_input_id  String?  @unique // FK to automation_inputs (mutually exclusive with output_id)
-  automation_output_id String?  @unique // FK to automation_outputs (unique constraint)
+  id                   String  @id @default(cuid())
+  automation_input_id  String? @unique // FK to automation_inputs (mutually exclusive with output_id)
+  automation_output_id String? @unique // FK to automation_outputs (unique constraint)
 
   database_ids   String[] @default([]) // Allowed database IDs (at least one of database_ids or page_ids required for output)
   database_names String[] @default([]) // Display names, parallel to database_ids

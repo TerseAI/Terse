@@ -530,16 +530,6 @@ const OutputConfigSchema = z
     .discriminatedUnion("configType", [SlackOutputConfigSchema, NotionConfigSchema, LinearOutputConfigSchema, JiraConfigSchema, ConfluenceConfigSchema, GmailOutputConfigSchema])
     .superRefine((value, ctx) => {
         enforceNonSystemIntegrationId(value, ctx)
-        if (value.configType === ConfigType.NOTION) {
-            const hasDb = (value.databaseIds?.length ?? 0) > 0
-            const hasPage = (value.pageIds?.length ?? 0) > 0
-            if (!hasDb && !hasPage) {
-                ctx.addIssue({
-                    code: z.ZodIssueCode.custom,
-                    message: "Notion output requires at least one of databaseIds or pageIds to be non-empty."
-                })
-            }
-        }
     })
 
 const KnowledgeBaseConfigSchema = z
