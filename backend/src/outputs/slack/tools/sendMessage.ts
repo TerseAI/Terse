@@ -18,10 +18,11 @@ import { isValidEpochTimestamp } from "../../../utility/strings"
  */
 export const slackSendMessageTool = tool({
     name: ToolName.SLACK_SEND_MESSAGE,
-    description: `Send message to Slack channel. Supports plain text (mrkdwn) or Block Kit (JSON blocks).`,
+    description: `Send message to Slack channel or DM. Supports plain text (mrkdwn) or Block Kit (JSON blocks). Provide either channelId OR userId (for DM).`,
     parameters: z.object({
         integrationId: z.string().describe("The integration ID of the Slack workspace to use."),
-        channelId: z.string().describe("The Slack channel ID to send the message to."),
+        channelId: z.string().optional().describe("The Slack channel ID to send the message to. Required unless userId is provided."),
+        userId: z.string().optional().describe("Slack user ID to send a direct message to. If provided, a DM will be opened with this user."),
         message: z.string().describe("Message content (mrkdwn). Used as fallback for Block Kit or main message."),
         thread_ts: z
             .string()
@@ -33,9 +34,14 @@ export const slackSendMessageTool = tool({
         blocks: z.string().nullable().optional().describe("Block Kit JSON array string for interactive messages with buttons, structured layouts")
     }),
     needsApproval: createNeedsApprovalFunction(ToolName.SLACK_SEND_MESSAGE),
-    execute: async ({ integrationId, channelId, message, thread_ts, blocks: blocksJson }, runContext?: RunContext<SessionWithTracking<Session>>) => {
+    execute: async ({ integrationId, channelId, userId, message, thread_ts, blocks: blocksJson }, runContext?: RunContext<SessionWithTracking<Session>>) => {
         if (!runContext?.context) {
             throw new Error("No context provided")
+        }
+
+        // Validate that either channelId or userId is provided
+        if (!channelId && !userId) {
+            throw new Error("Either channelId or userId must be provided")
         }
 
         // Parse and validate Block Kit blocks if provided
@@ -88,30 +94,62 @@ export const slackSendMessageTool = tool({
 
             const client = new WebClient(slackIntegration.access_token)
 
-            // Get channel name from API
-            let channelName = channelId // fallback to channelId
-            try {
-                const channelInfo = await client.conversations.info({ channel: channelId })
-                if (channelInfo.channel) {
-                    const channel = channelInfo.channel as { name?: string; is_im?: boolean; user?: string }
-                    if (channel.is_im && channel.user) {
-                        // For DMs, try to get the user's name
-                        try {
-                            const userInfo = await client.users.info({ user: channel.user })
-                            if (userInfo.user) {
-                                channelName = userInfo.user.real_name || userInfo.user.name || `DM with ${channel.user}`
-                            }
-                        } catch (userError) {
-                            channelName = `DM with ${channel.user}`
-                        }
-                    } else if (channel.name) {
-                        // For channels, prefix with #
-                        channelName = `#${channel.name}`
+            // If userId is provided, open a DM conversation to get the channel ID
+            let targetChannelId = channelId
+            let channelName = channelId || "" // fallback
+            if (userId) {
+                try {
+                    const conversationResult = await client.conversations.open({ users: userId })
+                    if (!conversationResult.ok || !conversationResult.channel?.id) {
+                        throw new Error(`Failed to open DM conversation: ${conversationResult.error || "No channel returned"}`)
                     }
+                    targetChannelId = conversationResult.channel.id
+                    // Get user's name for display
+                    try {
+                        const userInfo = await client.users.info({ user: userId })
+                        if (userInfo.user) {
+                            channelName = `DM with ${userInfo.user.real_name || userInfo.user.name || userId}`
+                        } else {
+                            channelName = `DM with ${userId}`
+                        }
+                    } catch (userError) {
+                        channelName = `DM with ${userId}`
+                    }
+                    logger.info("[slack_send_message] Opened DM conversation", { userId, dmChannelId: targetChannelId })
+                } catch (error: any) {
+                    logger.error("[slack_send_message] Failed to open DM conversation", { userId, error })
+                    if (error.data?.error === "cannot_dm_bot") {
+                        throw new Error(`Cannot send DM to a bot user`)
+                    } else if (error.data?.error === "user_not_found") {
+                        throw new Error(`User not found: ${userId}`)
+                    }
+                    throw new Error(`Failed to open DM conversation: ${error.message || error}`)
                 }
-            } catch (error) {
-                logger.warn("Failed to fetch Slack channel info for channel name", { error, channelId })
-                // Keep channelName as channelId fallback
+            } else if (targetChannelId) {
+                // Get channel name from API for existing channel
+                try {
+                    const channelInfo = await client.conversations.info({ channel: targetChannelId })
+                    if (channelInfo.channel) {
+                        const channel = channelInfo.channel as { name?: string; is_im?: boolean; user?: string }
+                        if (channel.is_im && channel.user) {
+                            // For DMs, try to get the user's name
+                            try {
+                                const userInfo = await client.users.info({ user: channel.user })
+                                if (userInfo.user) {
+                                    channelName = userInfo.user.real_name || userInfo.user.name || `DM with ${channel.user}`
+                                }
+                            } catch (userError) {
+                                channelName = `DM with ${channel.user}`
+                            }
+                        } else if (channel.name) {
+                            // For channels, prefix with #
+                            channelName = `#${channel.name}`
+                        }
+                    }
+                } catch (error) {
+                    logger.warn("Failed to fetch Slack channel info for channel name", { error, channelId: targetChannelId })
+                    // Keep channelName as channelId fallback
+                }
             }
 
             let validThreadTs
@@ -126,7 +164,7 @@ export const slackSendMessageTool = tool({
             }
 
             const result = await client.chat.postMessage({
-                channel: channelId,
+                channel: targetChannelId!,
                 text: message,
                 blocks: blocks,
                 thread_ts: thread_ts || undefined,
@@ -142,7 +180,7 @@ export const slackSendMessageTool = tool({
 
             // Build Slack message permalink URL
             const messageTs = result.ts?.replace(".", "") || ""
-            const slackPermalink = `https://${userSlackIntegration.slack_integration.team_name || "slack"}.slack.com/archives/${channelId}/p${messageTs}`
+            const slackPermalink = `https://${userSlackIntegration.slack_integration.team_name || "slack"}.slack.com/archives/${targetChannelId}/p${messageTs}`
 
             // Return action as part of the result
             const action = {
@@ -160,7 +198,8 @@ export const slackSendMessageTool = tool({
             })
 
             logger.info(`[Slack Output] Message sent to ${channelName}`, {
-                channelId,
+                channelId: targetChannelId,
+                userId,
                 messageTs: result.ts,
                 threadTs: thread_ts,
                 hasBlocks: !!blocks,
@@ -179,7 +218,8 @@ export const slackSendMessageTool = tool({
         } catch (error: any) {
             logger.error(`[Slack Output] Failed to send message`, {
                 error,
-                channelId
+                channelId,
+                userId
             })
 
             // Provide helpful error messages

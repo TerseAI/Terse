@@ -1,9 +1,10 @@
 import { useState } from "react"
 
-import { AlertTriangleIcon, Hash, Plus } from "lucide-react"
+import { AlertTriangleIcon, Hash, MessageSquare, Plus } from "lucide-react"
 
 import { useSlackChannels } from "@/hooks/api/useSlackChannels"
 import { useSlackIntegrations } from "@/hooks/api/useSlackIntegrations"
+import { useSlackUsers } from "@/hooks/api/useSlackUsers"
 import { useIntegrationId } from "@/hooks/useIntegrationId"
 import { useOAuthConnection } from "@/hooks/useOAuthConnection"
 import { IntegrationType, SlackIntegration as SlackIntegrationType } from "@/shared/Integrations"
@@ -15,7 +16,7 @@ import { SlackConnectionOptions } from "../Integrations/helpers/SlackConnectionO
 import { RefreshButton } from "../RefreshButton"
 import DropdownSelect from "../ui/DropdownSelect"
 import { Button } from "../ui/button"
-import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "../ui/select"
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectSeparator, SelectTrigger, SelectValue } from "../ui/select"
 
 import { InputConfigSelectorProps } from "./types"
 
@@ -33,6 +34,9 @@ export function SlackOutputIntegration({ input, variant, setConfig }: InputConfi
     // Fetch channels with DMs included for output selection
     const { channels, isLoading: channelsLoading, isError: channelsError, error: channelsErrorMsg, isValidating, mutate } = useSlackChannels(selectedIntegrationId)
 
+    // Fetch users for DM selection
+    const { users, isLoading: usersLoading, isValidating: usersIsValidating, mutate: usersMutate } = useSlackUsers(selectedIntegrationId)
+
     const handleConnect = async () => {
         await connectOAuth()
         setShowConnectionOptions(false)
@@ -42,18 +46,32 @@ export function SlackOutputIntegration({ input, variant, setConfig }: InputConfi
         const integration = integrations.find((integration: SlackIntegrationType) => integration.id === value)
         if (integration) {
             setSelectedIntegrationId(integration.id)
-            // Clear channel selection when switching integrations
-            const config = new SlackOutputConfig(integration.id, undefined, undefined)
+            // Clear channel and user selection when switching integrations
+            const config = new SlackOutputConfig(integration.id, undefined, undefined, undefined, undefined)
             setConfig(config)
         }
     }
 
-    function onSelectChannel(channelId: string) {
+    function onSelectDestination(value: string) {
         if (!selectedIntegrationId) return
 
-        const selectedChannel = channels.find(ch => ch.id === channelId)
+        // Check if this is a user selection (prefixed with "user:")
+        if (value.startsWith("user:")) {
+            const userId = value.substring(5)
+            const selectedUser = users.find(u => u.id === userId)
+            if (selectedUser) {
+                // Create config with userId for DM, clearing channelId
+                const config = new SlackOutputConfig(selectedIntegrationId, undefined, undefined, selectedUser.id, selectedUser.name)
+                setConfig(config)
+            }
+            return
+        }
+
+        // Otherwise it's a channel selection
+        const selectedChannel = channels.find(ch => ch.id === value)
         if (selectedChannel) {
-            const config = new SlackOutputConfig(selectedIntegrationId, selectedChannel.id, selectedChannel.name)
+            // Create config with channelId, clearing userId
+            const config = new SlackOutputConfig(selectedIntegrationId, selectedChannel.id, selectedChannel.name, undefined, undefined)
             setConfig(config)
         }
     }
@@ -104,7 +122,7 @@ export function SlackOutputIntegration({ input, variant, setConfig }: InputConfi
     if (!selectedIntegrationId && !selectedOption && connectionSelections.length === 1) {
         const defaultIntegration = connectionSelections[0]
         setSelectedIntegrationId(defaultIntegration.value)
-        setConfig(new SlackOutputConfig(defaultIntegration.value, currentConfig?.channelId, currentConfig?.channelName))
+        setConfig(new SlackOutputConfig(defaultIntegration.value, currentConfig?.channelId, currentConfig?.channelName, currentConfig?.userId, currentConfig?.userName))
         selectedOption = defaultIntegration
     } else if (!selectedOption) {
         selectedOption = connectionSelections[0]
@@ -113,8 +131,8 @@ export function SlackOutputIntegration({ input, variant, setConfig }: InputConfi
     // Card variant: compact view
     if (variant === "card") {
         const hasConfig = !!currentConfig && !!currentConfig.integrationId
-        const needsChannel = !currentConfig?.channelId
-        const isComplete = hasConfig && !needsChannel
+        const needsDestination = !currentConfig?.channelId && !currentConfig?.userId
+        const isComplete = hasConfig && !needsDestination
         if (!isComplete) {
             if (!hasConfig) {
                 return (
@@ -124,7 +142,7 @@ export function SlackOutputIntegration({ input, variant, setConfig }: InputConfi
                     </div>
                 )
             }
-            if (needsChannel) {
+            if (needsDestination) {
                 return (
                     <div className="flex items-center gap-1 text-xs text-muted-foreground">
                         <AlertTriangleIcon className="size-3 text-yellow-500" />
@@ -136,6 +154,15 @@ export function SlackOutputIntegration({ input, variant, setConfig }: InputConfi
                 <div className="flex items-center gap-1 text-xs text-muted-foreground">
                     <AlertTriangleIcon className="size-3 text-yellow-500" />
                     Configure
+                </div>
+            )
+        }
+        // Show DM icon for user destinations, hash for channels
+        if (currentConfig?.userId) {
+            return (
+                <div className="text-sm flex items-center gap-1">
+                    <MessageSquare className="w-3 h-3 text-muted-foreground" />
+                    DM: {currentConfig?.userName || currentConfig?.userId}
                 </div>
             )
         }
@@ -173,13 +200,13 @@ export function SlackOutputIntegration({ input, variant, setConfig }: InputConfi
                 </div>
             </div>
 
-            {/* Channel selector */}
+            {/* Destination selector (channels + DM users) */}
             {selectedIntegrationId && (
                 <div className="mt-3 pt-3 border-t border-border min-w-0 overflow-hidden">
-                    {!currentConfig?.channelId && <p className="text-sm text-muted-foreground mb-3">Select where Terse should send messages</p>}
+                    {!currentConfig?.channelId && !currentConfig?.userId && <p className="text-sm text-muted-foreground mb-3">Select where Terse should send messages</p>}
 
-                    {channelsLoading ? (
-                        <div className="text-sm text-muted-foreground">Loading channels...</div>
+                    {channelsLoading || usersLoading ? (
+                        <div className="text-sm text-muted-foreground">Loading destinations...</div>
                     ) : channelsError ? (
                         <div className="space-y-2">
                             <div className="text-sm text-red-600">{String(channelsErrorMsg)}</div>
@@ -189,12 +216,19 @@ export function SlackOutputIntegration({ input, variant, setConfig }: InputConfi
                         <div className="space-y-2">
                             <div className="flex items-center justify-between">
                                 <label className="text-xs font-medium text-muted-foreground">Destination</label>
-                                <RefreshButton onClick={() => mutate()} isRefreshing={isValidating && !channelsLoading} title="Refresh channel list" />
+                                <RefreshButton
+                                    onClick={() => {
+                                        mutate()
+                                        usersMutate()
+                                    }}
+                                    isRefreshing={(isValidating && !channelsLoading) || (usersIsValidating && !usersLoading)}
+                                    title="Refresh destination list"
+                                />
                             </div>
 
-                            <Select value={currentConfig?.channelId || ""} onValueChange={onSelectChannel}>
+                            <Select value={currentConfig?.userId ? `user:${currentConfig.userId}` : currentConfig?.channelId || ""} onValueChange={onSelectDestination}>
                                 <SelectTrigger className="w-full">
-                                    <SelectValue placeholder="Select a channel" />
+                                    <SelectValue placeholder="Select a channel or user" />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {publicChannels.length > 0 && (
@@ -230,12 +264,28 @@ export function SlackOutputIntegration({ input, variant, setConfig }: InputConfi
                                             ))}
                                         </SelectGroup>
                                     )}
+                                    {users.length > 0 && (
+                                        <>
+                                            <SelectSeparator />
+                                            <SelectGroup>
+                                                <SelectLabel>Direct Messages</SelectLabel>
+                                                {users.map(user => (
+                                                    <SelectItem key={user.id} value={`user:${user.id}`}>
+                                                        <span className="flex items-center gap-2">
+                                                            <MessageSquare className="w-3 h-3" />
+                                                            {user.name}
+                                                        </span>
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectGroup>
+                                        </>
+                                    )}
                                 </SelectContent>
                             </Select>
 
-                            {channels.length > 0 && (
+                            {(channels.length > 0 || users.length > 0) && (
                                 <div className="text-xs text-muted-foreground">
-                                    {channels.length} destination{channels.length !== 1 ? "s" : ""} available
+                                    {channels.length} channel{channels.length !== 1 ? "s" : ""}, {users.length} user{users.length !== 1 ? "s" : ""} available
                                 </div>
                             )}
                         </div>

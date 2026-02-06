@@ -232,7 +232,7 @@ export function SlackConfigurationSelector({
             {showUserFilter && (selectedChannelId || listenToUserDms) && (
                 <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                        <label className="text-xs font-medium text-[theme(text-secondary)]">Selecy Users (Optional)</label>
+                        <label className="text-xs font-medium text-[theme(text-secondary)]">Select Users (Optional)</label>
                         <RefreshButton onClick={handleUsersRefresh} isRefreshing={usersIsValidating && !usersLoading} title="Refresh user list" />
                     </div>
                     <MultiSelect

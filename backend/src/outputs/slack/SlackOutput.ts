@@ -16,8 +16,8 @@ export class SlackOutput extends Output<SlackOutputConfig> {
     }
 
     async validateConfig(output: SlackOutputConfig, _userId: string): Promise<void> {
-        if (!output.channelId) {
-            throw new Error("Invalid output config for slack_output: missing channelId")
+        if (!output.channelId && !output.userId) {
+            throw new Error("Invalid output config for slack_output: missing channelId or userId")
         }
     }
 
@@ -28,7 +28,7 @@ export class SlackOutput extends Output<SlackOutputConfig> {
                 channel_id: output.channelId || null,
                 channel_name: output.channelName || null,
                 listen_to_user_dms: false, // Not applicable for outputs
-                user_ids: [] // Not applicable for outputs
+                user_ids: output.userId ? [output.userId] : [] // Store DM target user if specified
             }
         })
     }
@@ -48,11 +48,18 @@ export class SlackOutput extends Output<SlackOutputConfig> {
             }
             const channelId = config.slack_config.channel_id
             const channelName = config.slack_config.channel_name
-            configList.push(`  • Integration ID: ${config.integration_id} - Channel Name: ${channelName || "N/A"}, Channel ID: ${channelId || "N/A"}`)
+            const userIds = config.slack_config.user_ids || []
+
+            if (channelId) {
+                configList.push(`  • Integration ID: ${config.integration_id} - Channel Name: ${channelName || "N/A"}, Channel ID: ${channelId}`)
+            } else if (userIds.length > 0) {
+                configList.push(`  • Integration ID: ${config.integration_id} - DM Target User ID: ${userIds[0]}`)
+            }
         }
         sections.push("Available configurations:")
         sections.push(configList.join("\n"))
-        sections.push("\nWhen calling Slack tools, you MUST include the `integrationId` and `channelId` parameters matching one of the configurations listed above.")
+        sections.push("\nWhen calling Slack tools, you MUST include the `integrationId` parameter matching one of the configurations listed above.")
+        sections.push("Use `channelId` for channel messages, or `userId` for direct messages, as configured above.")
         sections.push("\n" + SLACK_OUTPUT_INSTRUCTIONS)
 
         return sections.join("\n")
@@ -63,7 +70,12 @@ const SLACK_OUTPUT_INSTRUCTIONS = `
 === SLACK OUTPUT ===
 
 TOOL:
-- slack_send_message: Send messages to Slack channel. Supports plain text (mrkdwn) or Block Kit (buttons, structured layouts).
+- slack_send_message: Send messages to Slack channels or direct messages (DMs). Supports plain text (mrkdwn) or Block Kit (buttons, structured layouts).
+
+TARGETING:
+- Channel: Use \`channelId\` parameter to send to a specific channel
+- Direct Message: Use \`userId\` parameter to send a DM to a specific user. The tool will automatically open a DM conversation.
+- Note: Provide either \`channelId\` OR \`userId\`, not both.
 
 MESSAGE TYPES:
 - Plain text: Simple notifications, short updates. Use \`message\` parameter only.

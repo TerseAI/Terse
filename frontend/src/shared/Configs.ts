@@ -323,12 +323,14 @@ export class SlackOutputConfig implements ConfigInstance {
     constructor(
         public integrationId: string,
         public channelId?: string,
-        public channelName?: string
+        public channelName?: string,
+        public userId?: string,
+        public userName?: string
     ) {}
 
     isComplete(): boolean {
-        // Slack output is complete if channelId is set
-        return !!this.channelId
+        // Slack output is complete if channelId OR userId is set
+        return !!this.channelId || !!this.userId
     }
 
     formatForAgent(): string {
@@ -337,6 +339,11 @@ export class SlackOutputConfig implements ConfigInstance {
             parts.push(`Channel: ${this.channelName}`)
         } else if (this.channelId) {
             parts.push(`Channel ID: ${this.channelId}`)
+        }
+        if (this.userName) {
+            parts.push(`DM User: ${this.userName}`)
+        } else if (this.userId) {
+            parts.push(`DM User ID: ${this.userId}`)
         }
         return parts.join("\n")
     }
