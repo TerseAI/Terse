@@ -1,3 +1,4 @@
+import { db } from "../prismaClient"
 import { SlackIntegrationManager } from "../integrations/SlackIntegration"
 import { ConfigType, SlackConfig } from "../shared/Configs"
 import { PrismaTransaction } from "../types/prisma"
@@ -15,6 +16,14 @@ export class SlackTrigger implements Trigger<SlackConfig> {
     async validateConfig(trigger: SlackConfig, _userId: string): Promise<void> {
         if (!trigger.channelId && !trigger.listenToUserDms) {
             throw new Error("Invalid trigger config for slack: requires channelId or listenToUserDms=true")
+        }
+        if (trigger.listenToUserDms) {
+            const usi = await db().user_slack_integrations.findUnique({
+                where: { id: trigger.integrationId }
+            })
+            if (usi?.is_bot_user) {
+                throw new Error("Listening to your DMs requires a Slack user token. Reconnect Slack with a user token.")
+            }
         }
     }
 

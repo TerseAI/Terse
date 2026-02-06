@@ -1,6 +1,8 @@
 import { Tool } from "@openai/agents"
 import { OutputConfigType } from "@prisma/client"
+import { WebClient } from "@slack/web-api"
 
+import logger from "../../logger"
 import { db } from "../../prismaClient"
 import { SlackOutputConfig } from "../../shared/Configs"
 import { IntegrationType } from "../../shared/Integrations"
@@ -9,6 +11,12 @@ import { Output, ToolboxEntry } from "../abstract/Output"
 
 import { slackSendMessageTool } from "./tools/sendMessage"
 
+interface ResolvedSlackDestination {
+    integrationId: string
+    channelId: string
+    channelName: string
+}
+
 export class SlackOutput extends Output<SlackOutputConfig> {
     constructor() {
         const toolbox: ToolboxEntry[] = [{ tool: slackSendMessageTool as Tool, isReadOnly: false, integration: IntegrationType.SLACK, displayName: "Send message" }]
@@ -16,8 +24,10 @@ export class SlackOutput extends Output<SlackOutputConfig> {
     }
 
     async validateConfig(output: SlackOutputConfig, _userId: string): Promise<void> {
-        if (!output.channelId) {
-            throw new Error("Invalid output config for slack_output: missing channelId")
+        const hasChannel = !!(output.channelId && output.channelId.trim())
+        const hasUsers = (output.userIds?.length ?? 0) > 0
+        if (!hasChannel && !hasUsers) {
+            throw new Error("Invalid output config for slack_output: provide either channelId or at least one userId (for DMs)")
         }
     }
 
@@ -28,9 +38,100 @@ export class SlackOutput extends Output<SlackOutputConfig> {
                 channel_id: output.channelId || null,
                 channel_name: output.channelName || null,
                 listen_to_user_dms: false, // Not applicable for outputs
-                user_ids: [] // Not applicable for outputs
+                user_ids: output.userIds ?? []
             }
         })
+    }
+
+    override async getSystemInstructions(): Promise<string> {
+        const destinations = await this.resolveDestinations(this.configs)
+        return this.buildInstructionsFromDestinations(destinations)
+    }
+
+    private async resolveDestinations(configs: AgentOutputWithConfigs[]): Promise<ResolvedSlackDestination[]> {
+        const destinations: ResolvedSlackDestination[] = []
+
+        for (const config of configs) {
+            if (!config.slack_config) continue
+
+            const integrationId = config.integration_id
+            const channelId = config.slack_config.channel_id
+            const channelName = config.slack_config.channel_name
+            const userIds = config.slack_config.user_ids ?? []
+
+            if (channelId) {
+                destinations.push({
+                    integrationId,
+                    channelId,
+                    channelName: channelName || channelId
+                })
+            }
+
+            if (userIds.length > 0) {
+                const dmChannels = await this.resolveUserIdsToDmChannels(integrationId, userIds)
+                destinations.push(...dmChannels)
+            }
+        }
+
+        return destinations
+    }
+
+    private async resolveUserIdsToDmChannels(integrationId: string, userIds: string[]): Promise<ResolvedSlackDestination[]> {
+        const usi = await db().user_slack_integrations.findUnique({
+            where: { id: integrationId },
+            include: { slack_integration: true }
+        })
+        if (!usi?.slack_integration) {
+            logger.warn("[SlackOutput] Integration not found for DM resolution", { integrationId })
+            return []
+        }
+
+        const token = usi.authed_user_access_token || usi.slack_integration.access_token
+        if (!token) {
+            logger.warn("[SlackOutput] No token for integration", { integrationId })
+            return []
+        }
+
+        const client = new WebClient(token)
+        const results: ResolvedSlackDestination[] = []
+
+        for (const userId of userIds) {
+            try {
+                const { channel } = await client.conversations.open({ users: userId })
+                const id = (channel as { id?: string })?.id
+                if (id) {
+                    let name = `DM with ${userId}`
+                    try {
+                        const userInfo = await client.users.info({ user: userId })
+                        const user = (userInfo as { user?: { real_name?: string; name?: string } }).user
+                        if (user) name = `DM with ${user.real_name || user.name || userId}`
+                    } catch {
+                        // keep default name
+                    }
+                    results.push({ integrationId, channelId: id, channelName: name })
+                }
+            } catch (err) {
+                logger.warn("[SlackOutput] Failed to open DM channel", { integrationId, userId, error: err })
+            }
+        }
+
+        return results
+    }
+
+    private buildInstructionsFromDestinations(destinations: ResolvedSlackDestination[]): string {
+        if (destinations.length === 0) {
+            throw new Error("No Slack output destinations provided")
+        }
+
+        const configList = destinations.map(
+            d => `  • Integration ID: ${d.integrationId} - Channel Name: ${d.channelName}, Channel ID: ${d.channelId}`
+        )
+        const sections: string[] = []
+        sections.push("Available configurations:")
+        sections.push(configList.join("\n"))
+        sections.push("\nWhen calling Slack tools, you MUST include the `integrationId` and `channelId` parameters matching one of the configurations listed above.")
+        sections.push("\n" + SLACK_OUTPUT_INSTRUCTIONS)
+        return sections.join("\n")
     }
 
     protected getSystemInstructionsForConfigs(configs: AgentOutputWithConfigs[]): string {
@@ -38,24 +139,24 @@ export class SlackOutput extends Output<SlackOutputConfig> {
             throw new Error("No Slack configs provided")
         }
 
-        const sections: string[] = []
-
-        // List all available configurations
-        const configList: string[] = []
+        const destinations: ResolvedSlackDestination[] = []
         for (const config of configs) {
-            if (!config.slack_config) {
-                throw new Error("Slack config not found")
-            }
+            if (!config.slack_config) throw new Error("Slack config not found")
             const channelId = config.slack_config.channel_id
-            const channelName = config.slack_config.channel_name
-            configList.push(`  • Integration ID: ${config.integration_id} - Channel Name: ${channelName || "N/A"}, Channel ID: ${channelId || "N/A"}`)
+            if (channelId) {
+                destinations.push({
+                    integrationId: config.integration_id,
+                    channelId,
+                    channelName: config.slack_config.channel_name || channelId
+                })
+            }
         }
-        sections.push("Available configurations:")
-        sections.push(configList.join("\n"))
-        sections.push("\nWhen calling Slack tools, you MUST include the `integrationId` and `channelId` parameters matching one of the configurations listed above.")
-        sections.push("\n" + SLACK_OUTPUT_INSTRUCTIONS)
 
-        return sections.join("\n")
+        if (destinations.length === 0) {
+            throw new Error("No Slack output destinations (channel or resolved DMs). Use getSystemInstructions() when configs include user_ids.")
+        }
+
+        return this.buildInstructionsFromDestinations(destinations)
     }
 }
 
@@ -63,7 +164,7 @@ const SLACK_OUTPUT_INSTRUCTIONS = `
 === SLACK OUTPUT ===
 
 TOOL:
-- slack_send_message: Send messages to Slack channel. Supports plain text (mrkdwn) or Block Kit (buttons, structured layouts).
+- slack_send_message: Send messages to Slack channels or DMs. Use channelId from the listed configurations (includes resolved DM channel IDs when destination is users). Supports plain text (mrkdwn) or Block Kit (buttons, structured layouts).
 
 MESSAGE TYPES:
 - Plain text: Simple notifications, short updates. Use \`message\` parameter only.

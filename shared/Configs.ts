@@ -63,7 +63,7 @@ export const SlackConfigMetadata = {
 export const SlackOutputConfigMetadata = {
     configType: ConfigType.SLACK_OUTPUT,
     name: "Slack",
-    description: "Send messages to Slack channels or DMs",
+    description: "Send messages to Slack channels, group DMs, or direct messages",
     isInput: false,
     isOutput: true,
     isKnowledgeBase: false
@@ -198,7 +198,7 @@ export const LinearKBConfigMetadata = {
 export const SlackKBConfigMetadata = {
     configType: ConfigType.SLACK_KB,
     name: "Slack",
-    description: "Read Slack conversation history",
+    description: "Read Slack conversation history from channels and DMs",
     isInput: false,
     isOutput: false,
     isKnowledgeBase: true
@@ -323,12 +323,14 @@ export class SlackOutputConfig implements ConfigInstance {
     constructor(
         public integrationId: string,
         public channelId?: string,
-        public channelName?: string
+        public channelName?: string,
+        public userIds?: string[],
+        public userNames?: string[]
     ) {}
 
     isComplete(): boolean {
-        // Slack output is complete if channelId is set
-        return !!this.channelId
+        // Slack output is complete if channelId is set or at least one user (DM destination) is set
+        return !!(this.channelId || (this.userIds?.length ?? 0) > 0)
     }
 
     formatForAgent(): string {
@@ -337,6 +339,11 @@ export class SlackOutputConfig implements ConfigInstance {
             parts.push(`Channel: ${this.channelName}`)
         } else if (this.channelId) {
             parts.push(`Channel ID: ${this.channelId}`)
+        }
+        if (this.userNames?.length) {
+            parts.push(`DM users: ${this.userNames.join(", ")}`)
+        } else if (this.userIds?.length) {
+            parts.push(`DM user IDs: ${this.userIds.join(", ")}`)
         }
         return parts.join("\n")
     }

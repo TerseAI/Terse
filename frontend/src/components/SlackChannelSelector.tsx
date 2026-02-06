@@ -18,9 +18,10 @@ interface SlackChannelSelectorProps {
     selectedChannelId: string
     listenToUserDms?: boolean
     selectedUserIds?: string[]
-    showListenToDMsOption?: boolean // Only show DM option for user tokens
-    showUserFilter?: boolean // Only show user filter for user tokens
+    showListenToDMsOption?: boolean // Show DM option (for triggers: only user tokens; for output: both)
+    showUserFilter?: boolean // Show user list (for triggers: only user tokens; for output: both)
     isBotToken?: boolean // Whether this is a bot token (vs user token)
+    mode?: "trigger" | "output" // For output: DM label is "Send to direct messages" and users required when DMs selected
     onSelectChannel: (channelId: string, agentName?: string) => void
     onListenToUserDmsChange: (listenToUserDms: boolean) => void
     onSelectUsers: (userIds: string[]) => void
@@ -34,6 +35,7 @@ export function SlackConfigurationSelector({
     showListenToDMsOption = false,
     showUserFilter = false,
     isBotToken = true, // Default to true (bot) for backward compatibility
+    mode = "trigger",
     onSelectChannel: onSelect,
     onListenToUserDmsChange,
     onSelectUsers
@@ -155,7 +157,9 @@ export function SlackConfigurationSelector({
     const publicChannels = channels.filter(ch => !ch.isPrivate && !ch.isArchived)
     const privateChannels = channels.filter(ch => ch.isPrivate && !ch.isArchived)
 
-    const isIncomplete = !selectedChannelId && !listenToUserDms
+    const isOutputMode = mode === "output"
+    const needsUsersForDms = isOutputMode && listenToUserDms && (selectedUserIds?.length ?? 0) === 0
+    const isIncomplete = !selectedChannelId && !listenToUserDms ? true : needsUsersForDms
 
     return (
         <div className="space-y-2">
@@ -215,7 +219,9 @@ export function SlackConfigurationSelector({
                             <SelectSeparator />
                             <SelectGroup>
                                 <SelectLabel>Direct Messages</SelectLabel>
-                                <SelectItem value="__LISTEN_TO_DMS__">Monitor private direct messages</SelectItem>
+                                <SelectItem value="__LISTEN_TO_DMS__">
+                                    {mode === "output" ? "Send to direct messages" : "Monitor private direct messages"}
+                                </SelectItem>
                             </SelectGroup>
                         </>
                     )}
@@ -226,13 +232,19 @@ export function SlackConfigurationSelector({
                     {channels.length} channel{channels.length !== 1 ? "s" : ""} available
                 </div>
             )}
-            {isIncomplete && <p className="text-xs text-amber-600 dark:text-amber-500">⚠️ Please select a channel {showListenToDMsOption ? "or enable DM listening" : ""} to continue</p>}
+            {isIncomplete && (
+                <p className="text-xs text-amber-600 dark:text-amber-500">
+                    ⚠️ {needsUsersForDms ? "Select at least one user to send DMs to." : `Please select a channel ${showListenToDMsOption ? "or enable DM listening" : ""} to continue`}
+                </p>
+            )}
 
-            {/* User selector - show for both channels and DMs, but only for user tokens */}
+            {/* User selector - for triggers: optional filter when channel or DMs; for output: required when "Send to DMs" selected */}
             {showUserFilter && (selectedChannelId || listenToUserDms) && (
                 <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                        <label className="text-xs font-medium text-[theme(text-secondary)]">Selecy Users (Optional)</label>
+                        <label className="text-xs font-medium text-[theme(text-secondary)]">
+                            Select Users {mode === "output" && listenToUserDms ? "(Required)" : "(Optional)"}
+                        </label>
                         <RefreshButton onClick={handleUsersRefresh} isRefreshing={usersIsValidating && !usersLoading} title="Refresh user list" />
                     </div>
                     <MultiSelect

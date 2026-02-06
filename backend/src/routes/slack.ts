@@ -144,12 +144,8 @@ export const getSlackUsers = async (req: Request, res: Response) => {
         }
 
         const token = getToken(userSlackIntegration)
-        const isBotUser = userSlackIntegration.is_bot_user
 
-        if (isBotUser) {
-            return res.status(400).json({ error: "Bot user cannot fetch users" })
-        }
-
+        // Both bot and user tokens can list users (e.g. for output DM destination selection)
         const client = new WebClient(token, {
             logLevel: LogLevel.ERROR
         })

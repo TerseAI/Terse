@@ -1,6 +1,7 @@
 import { Tool } from "@openai/agents"
 import { KnowledgeBaseConfigType } from "@prisma/client"
 
+import { db } from "../../prismaClient"
 import { ToolboxEntry } from "../../outputs/abstract/Output"
 import { SlackKBConfig } from "../../shared/Configs"
 import { IntegrationType } from "../../shared/Integrations"
@@ -34,8 +35,19 @@ export class SlackKnowledgeBase extends KnowledgeBase<SlackKBConfig> {
         super(KnowledgeBaseConfigType.SLACK, toolbox)
     }
 
-    async validateConfig(_knowledgeBase: SlackKBConfig, _userId: string): Promise<void> {
-        // Validation is done at save time (channel IDs / allowDms)
+    async validateConfig(knowledgeBase: SlackKBConfig, _userId: string): Promise<void> {
+        const allowDms = knowledgeBase.allowDms === true
+        const hasUserFilter = (knowledgeBase.userIds?.length ?? 0) > 0
+        if (allowDms || hasUserFilter) {
+            const usi = await db().user_slack_integrations.findUnique({
+                where: { id: knowledgeBase.integrationId }
+            })
+            if (usi?.is_bot_user) {
+                throw new Error(
+                    "Including DMs in search or filtering by users requires a Slack user token. Reconnect Slack with a user token."
+                )
+            }
+        }
     }
 
     async addKnowledgeBaseToAgent(tx: PrismaTransaction, agentKnowledgeBaseId: string, knowledgeBase: SlackKBConfig): Promise<void> {

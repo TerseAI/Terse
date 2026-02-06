@@ -92,7 +92,13 @@ export function deserializeConfig(jsonConfig: any): ConfigInstance {
             return new GitHubKBConfig(integrationId, githubKBConfig.repositoryIds, githubKBConfig.repositoryNames)
         case ConfigType.SLACK_OUTPUT:
             const slackOutputConfig = jsonConfig as SlackOutputConfig
-            return new SlackOutputConfig(integrationId, slackOutputConfig.channelId, slackOutputConfig.channelName)
+            return new SlackOutputConfig(
+                integrationId,
+                slackOutputConfig.channelId,
+                slackOutputConfig.channelName,
+                slackOutputConfig.userIds,
+                slackOutputConfig.userNames
+            )
         case ConfigType.GMAIL_OUTPUT:
             return new GmailOutputConfig(integrationId)
         case ConfigType.LAUNCHDARKLY:

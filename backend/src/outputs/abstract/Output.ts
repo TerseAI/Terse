@@ -29,9 +29,10 @@ export abstract class Output<TConfig extends ConfigInstance> {
     /**
      * Returns system instructions for this output.
      * Uses the configs property that should be set when the instance is created.
+     * Subclasses may override to perform async work (e.g. resolving DM channel IDs).
      */
-    getSystemInstructions(): string {
-        return this.getSystemInstructionsForConfigs(this.configs)
+    async getSystemInstructions(): Promise<string> {
+        return Promise.resolve(this.getSystemInstructionsForConfigs(this.configs))
     }
 
     /**
