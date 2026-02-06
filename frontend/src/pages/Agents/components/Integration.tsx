@@ -32,8 +32,7 @@ export function IconForConfigType({ type }: { type: ConfigType }) {
         case ConfigType.GMAIL:
         case ConfigType.GMAIL_OUTPUT:
             return <GmailIcon />
-        case ConfigType.NOTION_DATABASE:
-        case ConfigType.NOTION_PAGE:
+        case ConfigType.NOTION:
             return <NotionIcon />
         case ConfigType.FIGMA:
             return <FigmaIcon />

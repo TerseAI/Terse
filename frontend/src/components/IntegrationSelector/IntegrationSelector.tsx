@@ -22,8 +22,7 @@ export function IntegrationSelector(props: InputConfigSelectorProps) {
         case ConfigType.GMAIL_OUTPUT:
             return <GmailOutputIntegration input={props.input} variant={props.variant} setConfig={props.setConfig} />
 
-        case ConfigType.NOTION_DATABASE:
-        case ConfigType.NOTION_PAGE:
+        case ConfigType.NOTION:
             return <NotionIntegration input={props.input} variant={props.variant} setConfig={props.setConfig} />
 
         case ConfigType.SLACK:

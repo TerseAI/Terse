@@ -393,18 +393,13 @@ const SlackOutputConfigSchema = BaseConfigSchema.extend({
         )
 })
 
-const NotionDatabaseConfigSchema = BaseConfigSchema.extend({
-    configType: z.literal(ConfigType.NOTION_DATABASE),
+const NotionConfigSchema = BaseConfigSchema.extend({
+    configType: z.literal(ConfigType.NOTION),
     integrationType: z.literal(IntegrationType.NOTION),
-    databaseId: NonEmptyString.nullable().describe("The Notion database ID. From fetchResourcesForIntegration, use the database's id from resources[]."),
-    databaseName: z.string().nullable().describe("The database display name. From fetchResourcesForIntegration, use the database's name from resources[].")
-})
-
-const NotionPageConfigSchema = BaseConfigSchema.extend({
-    configType: z.literal(ConfigType.NOTION_PAGE),
-    integrationType: z.literal(IntegrationType.NOTION),
-    pageId: NonEmptyString.nullable().describe("The Notion page ID. From fetchResourcesForIntegration, use the page's id from resources[]."),
-    pageName: z.string().nullable().describe("The page display name. From fetchResourcesForIntegration, use the page's name from resources[].")
+    databaseId: NonEmptyString.nullable().optional().describe("The Notion database ID. From fetchResourcesForIntegration, use the database's id from resources[]."),
+    databaseName: z.string().nullable().optional().describe("The database display name."),
+    pageId: NonEmptyString.nullable().optional().describe("The Notion page ID. From fetchResourcesForIntegration, use the page's id from resources[]."),
+    pageName: z.string().nullable().optional().describe("The page display name.")
 })
 
 const LinearInputConfigSchema = BaseConfigSchema.extend({
@@ -532,15 +527,7 @@ const InputConfigSchema = z
     })
 
 const OutputConfigSchema = z
-    .discriminatedUnion("configType", [
-        SlackOutputConfigSchema,
-        NotionDatabaseConfigSchema,
-        NotionPageConfigSchema,
-        LinearOutputConfigSchema,
-        JiraConfigSchema,
-        ConfluenceConfigSchema,
-        GmailOutputConfigSchema
-    ])
+    .discriminatedUnion("configType", [SlackOutputConfigSchema, NotionConfigSchema, LinearOutputConfigSchema, JiraConfigSchema, ConfluenceConfigSchema, GmailOutputConfigSchema])
     .superRefine((value, ctx) => {
         enforceNonSystemIntegrationId(value, ctx)
     })

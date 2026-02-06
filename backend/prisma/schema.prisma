@@ -431,10 +431,9 @@ model automation_inputs {
   automation automations @relation(fields: [automation_id], references: [id], onDelete: Cascade)
 
   // Configuration relations (one per integration type)
-  slack_config        automation_slack_configs?
-  notion_config       automation_notion_configs?
-  notion_page_config  automation_notion_page_configs?
-  linear_config       automation_linear_configs?
+  slack_config  automation_slack_configs?
+  notion_config automation_notion_configs?
+  linear_config automation_linear_configs?
   jira_config         automation_jira_configs?
   confluence_config   automation_confluence_configs?
   github_config       automation_github_configs?
@@ -458,10 +457,9 @@ model automation_outputs {
   automation automations @relation(fields: [automation_id], references: [id], onDelete: Cascade)
 
   // Configuration relations (one per integration type)
-  slack_config       automation_slack_configs?
-  notion_config      automation_notion_configs?
-  notion_page_config automation_notion_page_configs?
-  linear_config      automation_linear_configs?
+  slack_config  automation_slack_configs?
+  notion_config automation_notion_configs?
+  linear_config automation_linear_configs?
   jira_config        automation_jira_configs?
   confluence_config  automation_confluence_configs?
   github_config      automation_github_configs?
@@ -593,14 +591,16 @@ model automation_slack_configs {
   @@index([channel_id])
 }
 
-// Notion Configuration - This is really for Databases!!
+// Notion Configuration (unified: page and/or database)
 model automation_notion_configs {
   id                   String  @id @default(cuid())
   automation_input_id  String? @unique // FK to automation_inputs (mutually exclusive with output_id)
   automation_output_id String? @unique // FK to automation_outputs (unique constraint)
 
-  database_id   String // Database ID (required for outputs, optional for inputs)
-  database_name String // Database display name (for UI, optional)
+  database_id   String? // Database ID (optional; at least one of database_id or page_id required for output)
+  database_name String? // Database display name (for UI, optional)
+  page_id       String? // Page ID (optional)
+  page_name     String? // Page display name (for UI, optional)
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
@@ -609,23 +609,6 @@ model automation_notion_configs {
   automation_output automation_outputs? @relation(fields: [automation_output_id], references: [id], onDelete: Cascade)
 
   @@index([database_id])
-}
-
-// Notion Page Configuration
-model automation_notion_page_configs {
-  id                   String  @id @default(cuid())
-  automation_input_id  String? @unique // FK to automation_inputs (mutually exclusive with output_id)
-  automation_output_id String? @unique // FK to automation_outputs (unique constraint)
-
-  page_id   String // Page ID (required for outputs, optional for inputs)
-  page_name String // Page display name (for UI, optional)
-
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
-
-  automation_input  automation_inputs?  @relation(fields: [automation_input_id], references: [id], onDelete: Cascade)
-  automation_output automation_outputs? @relation(fields: [automation_output_id], references: [id], onDelete: Cascade)
-
   @@index([page_id])
 }
 
@@ -800,8 +783,7 @@ enum InputConfigType {
 }
 
 enum OutputConfigType {
-  NOTION_PAGE
-  NOTION_DATABASE
+  NOTION
   CONFLUENCE
   LINEAR_TICKET
   JIRA_TICKET

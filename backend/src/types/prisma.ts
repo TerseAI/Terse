@@ -11,7 +11,6 @@ import {
     automation_linear_configs,
     automation_notification_settings,
     automation_notion_configs,
-    automation_notion_page_configs,
     automation_outputs,
     automation_prompts,
     automations,
@@ -79,7 +78,6 @@ export type AutomationInputWithConfigs = Prisma.automation_inputsGetPayload<{
     include: {
         slack_config: true
         notion_config: true
-        notion_page_config: true
         linear_config: true
         jira_config: true
         confluence_config: true
@@ -113,7 +111,6 @@ export type AutomationOutputWithConfigs = Prisma.automation_outputsGetPayload<{
     include: {
         slack_config: true
         notion_config: true
-        notion_page_config: true
         linear_config: true
         jira_config: true
         confluence_config: true
@@ -129,9 +126,6 @@ export type NotionIntegration = notion_integrations
 export type AutomationNotionConfig = automation_notion_configs
 export type AgentNotionConfig = automation_notion_configs // Alias for rebranding (formerly ChannelNotionConfig)
 
-export type AutomationNotionPageConfig = automation_notion_page_configs
-export type AgentNotionPageConfig = automation_notion_page_configs // Alias for rebranding (formerly ChannelNotionPageConfig)
-
 export type AutomationConfluenceConfig = automation_confluence_configs
 export type AgentConfluenceConfig = automation_confluence_configs // Alias for rebranding (formerly ChannelConfluenceConfig)
 
@@ -146,7 +140,6 @@ export type AutomationWithInputRelations = Prisma.automationsGetPayload<{
             include: {
                 slack_config: true
                 notion_config: true
-                notion_page_config: true
                 linear_config: true
                 jira_config: true
                 confluence_config: true
@@ -166,7 +159,6 @@ export type AutomationWithOutputRelations = Prisma.automationsGetPayload<{
             include: {
                 slack_config: true
                 notion_config: true
-                notion_page_config: true
                 linear_config: true
                 jira_config: true
                 confluence_config: true
@@ -251,7 +243,6 @@ export {
     automation_linear_configs,
     automation_notification_settings,
     automation_notion_configs,
-    automation_notion_page_configs,
     automation_outputs,
     automation_prompts,
     automations,

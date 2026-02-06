@@ -14,7 +14,6 @@ import {
     LinearKBConfig,
     LinearOutputConfig,
     NotionConfig,
-    NotionPageConfig,
     PosthogConfig,
     SlackConfig,
     SlackKBConfig,
@@ -56,13 +55,15 @@ export function deserializeConfig(jsonConfig: any): ConfigInstance {
             const slackConfig = jsonConfig as SlackConfig
             return new SlackConfig(integrationId, slackConfig.channelId, slackConfig.channelName, slackConfig.listenToUserDms, slackConfig.userIds)
 
-        case ConfigType.NOTION_DATABASE:
+        case ConfigType.NOTION:
             const notionConfig = jsonConfig as NotionConfig
-            return new NotionConfig(integrationId, notionConfig.databaseId, notionConfig.databaseName)
-
-        case ConfigType.NOTION_PAGE:
-            const notionPageConfig = jsonConfig as NotionPageConfig
-            return new NotionPageConfig(integrationId, notionPageConfig.pageId, notionPageConfig.pageName)
+            return new NotionConfig(
+                integrationId,
+                notionConfig.databaseId,
+                notionConfig.databaseName,
+                notionConfig.pageId,
+                notionConfig.pageName
+            )
 
         case ConfigType.LINEAR_INPUT:
             const linearInputConfig = jsonConfig as LinearInputConfig

@@ -6,8 +6,7 @@ export enum ConfigType {
     FIGMA = "figma",
     SLACK = "slack",
     SLACK_OUTPUT = "slack_output",
-    NOTION_PAGE = "notion_page",
-    NOTION_DATABASE = "notion_database",
+    NOTION = "notion",
     LINEAR_INPUT = "linear_input",
     LINEAR_OUTPUT = "linear_output",
     GITHUB = "github",
@@ -78,19 +77,10 @@ export const GmailOutputConfigMetadata = {
     isKnowledgeBase: false
 } as const satisfies ConfigDetails
 
-export const NotionDatabaseConfigMetadata = {
-    configType: ConfigType.NOTION_DATABASE,
-    name: "Notion Database",
-    description: "Update and monitor Notion databases",
-    isInput: false,
-    isOutput: true,
-    isKnowledgeBase: false
-} as const satisfies ConfigDetails
-
-export const NotionPageConfigMetadata = {
-    configType: ConfigType.NOTION_PAGE,
-    name: "Notion Page",
-    description: "Update and monitor Notion pages",
+export const NotionConfigMetadata = {
+    configType: ConfigType.NOTION,
+    name: "Notion",
+    description: "Update and monitor Notion pages and databases",
     isInput: false,
     isOutput: true,
     isKnowledgeBase: false
@@ -212,8 +202,7 @@ export const CONFIG_DETAILS: ConfigDetailsMap = {
     [ConfigType.FIGMA]: FigmaConfigMetadata,
     [ConfigType.SLACK]: SlackConfigMetadata,
     [ConfigType.SLACK_OUTPUT]: SlackOutputConfigMetadata,
-    [ConfigType.NOTION_DATABASE]: NotionDatabaseConfigMetadata,
-    [ConfigType.NOTION_PAGE]: NotionPageConfigMetadata,
+    [ConfigType.NOTION]: NotionConfigMetadata,
     [ConfigType.LINEAR_INPUT]: LinearInputConfigMetadata,
     [ConfigType.LINEAR_OUTPUT]: LinearOutputConfigMetadata,
     [ConfigType.GITHUB]: GitHubConfigMetadata,
@@ -363,51 +352,27 @@ export class GmailOutputConfig implements ConfigInstance {
 
 export class NotionConfig implements ConfigInstance {
     integrationType: IntegrationType = IntegrationType.NOTION
-    configType: ConfigType = ConfigType.NOTION_DATABASE
+    configType: ConfigType = ConfigType.NOTION
 
     constructor(
         public integrationId: string,
         public databaseId?: string,
-        public databaseName?: string
-    ) {}
-
-    isComplete(): boolean {
-        // Notion requires databaseId
-        return !!this.databaseId
-    }
-
-    formatForAgent(): string {
-        const parts = [`Type: Notion Database`, `Integration ID: ${this.integrationId}`]
-        if (this.databaseName) {
-            parts.push(`Database: ${this.databaseName}`)
-        } else if (this.databaseId) {
-            parts.push(`Database ID: ${this.databaseId}`)
-        }
-        return parts.join("\n")
-    }
-}
-
-export class NotionPageConfig implements ConfigInstance {
-    integrationType: IntegrationType = IntegrationType.NOTION
-    configType: ConfigType = ConfigType.NOTION_PAGE
-
-    constructor(
-        public integrationId: string,
+        public databaseName?: string,
         public pageId?: string,
         public pageName?: string
     ) {}
 
     isComplete(): boolean {
-        // Notion Page requires pageId
-        return !!this.pageId
+        return !!(this.databaseId || this.pageId)
     }
 
     formatForAgent(): string {
-        const parts = [`Type: Notion Page`, `Integration ID: ${this.integrationId}`]
-        if (this.pageName) {
-            parts.push(`Page: ${this.pageName}`)
-        } else if (this.pageId) {
-            parts.push(`Page ID: ${this.pageId}`)
+        const parts = [`Type: Notion`, `Integration ID: ${this.integrationId}`]
+        if (this.databaseId || this.databaseName) {
+            parts.push(this.databaseName ? `Database: ${this.databaseName}` : `Database ID: ${this.databaseId}`)
+        }
+        if (this.pageId || this.pageName) {
+            parts.push(this.pageName ? `Page: ${this.pageName}` : `Page ID: ${this.pageId}`)
         }
         return parts.join("\n")
     }
@@ -741,8 +706,7 @@ export type ConfigMetadataMap = EnsureExhaustiveMetadata<{
     [ConfigType.SLACK]: typeof SlackConfig
     [ConfigType.SLACK_OUTPUT]: typeof SlackOutputConfig
     [ConfigType.GMAIL_OUTPUT]: typeof GmailOutputConfig
-    [ConfigType.NOTION_PAGE]: typeof NotionPageConfig
-    [ConfigType.NOTION_DATABASE]: typeof NotionConfig
+    [ConfigType.NOTION]: typeof NotionConfig
     [ConfigType.LINEAR_INPUT]: typeof LinearInputConfig
     [ConfigType.LINEAR_OUTPUT]: typeof LinearOutputConfig
     [ConfigType.GITHUB]: typeof GitHubConfig
@@ -763,8 +727,7 @@ export const CONFIG_METADATA: ConfigMetadataMap = {
     [ConfigType.FIGMA]: FigmaConfig,
     [ConfigType.SLACK]: SlackConfig,
     [ConfigType.SLACK_OUTPUT]: SlackOutputConfig,
-    [ConfigType.NOTION_PAGE]: NotionPageConfig,
-    [ConfigType.NOTION_DATABASE]: NotionConfig,
+    [ConfigType.NOTION]: NotionConfig,
     [ConfigType.LINEAR_INPUT]: LinearInputConfig,
     [ConfigType.LINEAR_OUTPUT]: LinearOutputConfig,
     [ConfigType.GITHUB]: GitHubConfig,

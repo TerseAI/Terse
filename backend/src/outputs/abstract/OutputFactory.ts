@@ -6,8 +6,7 @@ import { ConfluenceOutput } from "../ConfluenceOutput"
 import { GmailOutput } from "../gmail/GmailOutput"
 import { JiraTicketOutput } from "../jira/JiraTicketOutput"
 import { LinearTicketOutput } from "../linear/LinearTicketOutput"
-import { NotionDatabaseOutput } from "../notion/NotionDatabaseOutput"
-import { NotionPageOutput } from "../notion/NotionPageOutput"
+import { NotionOutput } from "../notion/NotionOutput"
 import { SlackOutput } from "../slack/SlackOutput"
 import { TerseSkillsOutput } from "../terse/TerseSkillsOutput"
 
@@ -20,8 +19,7 @@ import { Output } from "./Output"
  */
 export class OutputFactory {
     public static readonly OUTPUT_REGISTRY: Map<OutputConfigType, () => Output<ConfigInstance>> = new Map<OutputConfigType, () => Output<ConfigInstance>>([
-        [OutputConfigType.NOTION_DATABASE, () => new NotionDatabaseOutput()],
-        [OutputConfigType.NOTION_PAGE, () => new NotionPageOutput()],
+        [OutputConfigType.NOTION, () => new NotionOutput()],
         [OutputConfigType.CONFLUENCE, () => new ConfluenceOutput()],
         [OutputConfigType.LINEAR_TICKET, () => new LinearTicketOutput()],
         [OutputConfigType.JIRA_TICKET, () => new JiraTicketOutput()],

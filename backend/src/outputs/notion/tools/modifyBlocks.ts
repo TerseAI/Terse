@@ -134,7 +134,7 @@ Example delete: "{\"operation\": \"delete\", \"block_id\": \"abc123\"}"`)
                     type: "create",
                     output_items: blockIds.map(blockId => ({
                         output_item_id: blockId,
-                        output_item_type: ConfigType.NOTION_PAGE
+                        output_item_type: ConfigType.NOTION
                     }))
                 }
 
@@ -179,7 +179,7 @@ Example delete: "{\"operation\": \"delete\", \"block_id\": \"abc123\"}"`)
                     output_items: [
                         {
                             output_item_id: response.id,
-                            output_item_type: ConfigType.NOTION_PAGE
+                            output_item_type: ConfigType.NOTION
                         }
                     ]
                 }
@@ -217,7 +217,7 @@ Example delete: "{\"operation\": \"delete\", \"block_id\": \"abc123\"}"`)
                     output_items: [
                         {
                             output_item_id: response.id,
-                            output_item_type: ConfigType.NOTION_PAGE
+                            output_item_type: ConfigType.NOTION
                         }
                     ]
                 }
