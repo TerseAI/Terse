@@ -1,8 +1,8 @@
 import { useMemo } from "react"
 import { useNavigate } from "react-router-dom"
 
-import { DateTime } from "luxon"
 import { BarChart3, Clock } from "lucide-react"
+import { DateTime } from "luxon"
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, XAxis, YAxis } from "recharts"
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -357,9 +357,7 @@ function StatsPage() {
                         </div>
 
                         {/* ── Action Types ────────────────────────────────── */}
-                        {(stats.actionTypes?.length ?? 0) > 0 && (
-                            <HorizontalBarSection title="Action Types" description="Types of actions your agents perform" data={stats.actionTypes ?? []} />
-                        )}
+                        {(stats.actionTypes?.length ?? 0) > 0 && <HorizontalBarSection title="Action Types" description="Types of actions your agents perform" data={stats.actionTypes ?? []} />}
                     </>
                 )}
             </div>
