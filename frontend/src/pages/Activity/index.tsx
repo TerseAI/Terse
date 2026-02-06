@@ -3,8 +3,8 @@ import { useNavigate } from "react-router-dom"
 
 import { ExternalLink, MessageSquare, Zap } from "lucide-react"
 
-import RunHistoryChatDrawer from "@/components/RunHistory/RunHistoryChatDrawer"
 import DateRangePicker from "@/components/RunHistory/DatePicker"
+import RunHistoryChatDrawer from "@/components/RunHistory/RunHistoryChatDrawer"
 import RunHistoryEmptyState from "@/components/RunHistory/RunHistoryEmptyState"
 import RunHistoryPagination from "@/components/RunHistory/RunHistoryPagination"
 import RunHistoryStatusBadge from "@/components/RunHistory/RunHistoryStatusBadge"
@@ -23,13 +23,7 @@ import { formatTimestamp } from "@/utility/timeUtils"
 // Sub-components
 // ---------------------------------------------------------------------------
 
-function ActivityRow({
-    run,
-    onOpenChat
-}: {
-    run: RunHistoryRecordWithAgent
-    onOpenChat: (run: RunHistoryRecordWithAgent) => void
-}) {
+function ActivityRow({ run, onOpenChat }: { run: RunHistoryRecordWithAgent; onOpenChat: (run: RunHistoryRecordWithAgent) => void }) {
     const navigate = useNavigate()
     const title = run.trigger.title || run.trigger.source
     const writeActions = (run.actions ?? []).filter(a => a.type !== "read")
@@ -91,13 +85,7 @@ function ActivityRow({
             <span className="text-xs text-muted-foreground whitespace-nowrap w-20 text-right">{formatTimestamp(run.timestamp)}</span>
 
             {/* Chat button */}
-            <Button
-                variant="ghost"
-                size="icon-sm"
-                onClick={() => onOpenChat(run)}
-                className="opacity-0 group-hover:opacity-100 transition-opacity"
-                title="View run details"
-            >
+            <Button variant="ghost" size="icon-sm" onClick={() => onOpenChat(run)} className="opacity-0 group-hover:opacity-100 transition-opacity" title="View run details">
                 <MessageSquare className="w-3.5 h-3.5" />
             </Button>
         </div>
@@ -215,9 +203,7 @@ export default function ActivityPage() {
                 </div>
 
                 <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">
-                        {total === 0 ? "No events" : `Showing ${startIndex + 1}–${Math.min(startIndex + runsPerPage, total)} of ${total}`}
-                    </span>
+                    <span className="text-sm text-muted-foreground">{total === 0 ? "No events" : `Showing ${startIndex + 1}–${Math.min(startIndex + runsPerPage, total)} of ${total}`}</span>
                     <div className="flex items-center gap-3">
                         <div className="flex items-center gap-2">
                             <span className="text-xs text-muted-foreground">Per page</span>

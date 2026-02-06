@@ -86,6 +86,17 @@ export type GetRunHistoryResponse = {
     total: number
 }
 
+export type RunHistoryRecordWithAgent = RunHistoryRecord & {
+    agentName: string
+}
+
+export type GetAllRunHistoryResponse = {
+    items: RunHistoryRecordWithAgent[]
+    page: number
+    pageSize: number
+    total: number
+}
+
 export type RunHistoryModelEvent = ModelEvent & { id: string; timestamp?: string }
 
 export type RunHistoryModelSocketEvent = {

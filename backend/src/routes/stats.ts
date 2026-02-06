@@ -71,53 +71,54 @@ export async function getStats(req: Request, res: Response) {
         .toJSDate()
 
     // Run ALL queries in parallel for maximum performance
-    const [currentTotalEvents, previousTotalEvents, currentActionsCount, previousActionsCount, currentChannelsCount, previousChannelsCount, dailyEventsData, recentActionsData, recentRunsData] = await Promise.all([
-        // 1. Current period total events
-        prisma.run_history_records.count({
-            where: {
-                automation: { organization_id: organizationId },
-                timestamp: { gte: currentPeriodStart }
-            }
-        }),
-        // 2. Previous period total events
-        prisma.run_history_records.count({
-            where: {
-                automation: { organization_id: organizationId },
-                timestamp: { gte: previousPeriodStart, lte: previousPeriodEnd }
-            }
-        }),
-        // 3. Current period actions count (write operations only)
-        prisma.run_history_actions.count({
-            where: {
-                run_history_record: {
+    const [currentTotalEvents, previousTotalEvents, currentActionsCount, previousActionsCount, currentChannelsCount, previousChannelsCount, dailyEventsData, recentActionsData, recentRunsData] =
+        await Promise.all([
+            // 1. Current period total events
+            prisma.run_history_records.count({
+                where: {
                     automation: { organization_id: organizationId },
                     timestamp: { gte: currentPeriodStart }
-                },
-                is_read_only: false
-            }
-        }),
-        // 4. Previous period actions count (write operations only)
-        prisma.run_history_actions.count({
-            where: {
-                run_history_record: {
+                }
+            }),
+            // 2. Previous period total events
+            prisma.run_history_records.count({
+                where: {
                     automation: { organization_id: organizationId },
                     timestamp: { gte: previousPeriodStart, lte: previousPeriodEnd }
-                },
-                is_read_only: false
-            }
-        }),
-        // 5. Current channels count
-        prisma.automations.count({
-            where: { organization_id: organizationId }
-        }),
-        // 6. Previous period channels count
-        prisma.automations.count({
-            where: { organization_id: organizationId, created_at: { lte: previousPeriodEnd } }
-        }),
-        // 7. Daily events aggregation using raw SQL for performance
-        // Use AT TIME ZONE to group events by the user's local date
-        // GROUP BY 1 refers to the first SELECT column (event_date) to avoid parameter duplication issues
-        prisma.$queryRaw<DailyEventRow[]>`
+                }
+            }),
+            // 3. Current period actions count (write operations only)
+            prisma.run_history_actions.count({
+                where: {
+                    run_history_record: {
+                        automation: { organization_id: organizationId },
+                        timestamp: { gte: currentPeriodStart }
+                    },
+                    is_read_only: false
+                }
+            }),
+            // 4. Previous period actions count (write operations only)
+            prisma.run_history_actions.count({
+                where: {
+                    run_history_record: {
+                        automation: { organization_id: organizationId },
+                        timestamp: { gte: previousPeriodStart, lte: previousPeriodEnd }
+                    },
+                    is_read_only: false
+                }
+            }),
+            // 5. Current channels count
+            prisma.automations.count({
+                where: { organization_id: organizationId }
+            }),
+            // 6. Previous period channels count
+            prisma.automations.count({
+                where: { organization_id: organizationId, created_at: { lte: previousPeriodEnd } }
+            }),
+            // 7. Daily events aggregation using raw SQL for performance
+            // Use AT TIME ZONE to group events by the user's local date
+            // GROUP BY 1 refers to the first SELECT column (event_date) to avoid parameter duplication issues
+            prisma.$queryRaw<DailyEventRow[]>`
             SELECT DATE(rhr.timestamp AT TIME ZONE 'UTC' AT TIME ZONE ${timezone}) as event_date, COUNT(*) as count
             FROM run_history_records rhr
             INNER JOIN automations a ON rhr.automation_id = a.id
@@ -125,44 +126,44 @@ export async function getStats(req: Request, res: Response) {
             GROUP BY 1
             ORDER BY 1
         `,
-        // 8. Recent actions (last 10)
-        prisma.run_history_actions.findMany({
-            where: {
-                run_history_record: {
-                    automation: { organization_id: organizationId }
+            // 8. Recent actions (last 10)
+            prisma.run_history_actions.findMany({
+                where: {
+                    run_history_record: {
+                        automation: { organization_id: organizationId }
+                    },
+                    is_read_only: false
                 },
-                is_read_only: false
-            },
-            include: {
-                run_history_record: {
-                    include: {
-                        automation: { select: { name: true } }
+                include: {
+                    run_history_record: {
+                        include: {
+                            automation: { select: { name: true } }
+                        }
                     }
-                }
-            },
-            orderBy: { created_at: "desc" },
-            take: 10
-        }),
-        // 9. Recent non-filtered runs (last 20) across all agents
-        prisma.run_history_records.findMany({
-            where: {
-                automation: { organization_id: organizationId },
-                status: { not: "skipped" }
-            },
-            include: {
-                automation: { select: { name: true } },
-                actions: {
-                    select: {
-                        action: true,
-                        integration: true,
-                        type: true
+                },
+                orderBy: { created_at: "desc" },
+                take: 10
+            }),
+            // 9. Recent non-filtered runs (last 20) across all agents
+            prisma.run_history_records.findMany({
+                where: {
+                    automation: { organization_id: organizationId },
+                    status: { not: "skipped" }
+                },
+                include: {
+                    automation: { select: { name: true } },
+                    actions: {
+                        select: {
+                            action: true,
+                            integration: true,
+                            type: true
+                        }
                     }
-                }
-            },
-            orderBy: { timestamp: "desc" },
-            take: 20
-        })
-    ])
+                },
+                orderBy: { timestamp: "desc" },
+                take: 20
+            })
+        ])
 
     // Calculate metric changes
     const totalEventsChange = calculatePercentageChange(previousTotalEvents, currentTotalEvents)

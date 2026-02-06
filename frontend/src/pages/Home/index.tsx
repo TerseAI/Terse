@@ -5,10 +5,10 @@ import { AnimatePresence, motion } from "framer-motion"
 import { ArrowRight, ArrowUpRight, ExternalLink, MessageSquare, Zap } from "lucide-react"
 import { v4 as uuidv4 } from "uuid"
 
-import { Chat, ChatHandle } from "@/components/chat/Chat"
-import { ChatEventPayload } from "@/components/chat/hooks/useCompletionSocket"
 import RunHistoryChatDrawer from "@/components/RunHistory/RunHistoryChatDrawer"
 import RunHistoryStatusBadge from "@/components/RunHistory/RunHistoryStatusBadge"
+import { Chat, ChatHandle } from "@/components/chat/Chat"
+import { ChatEventPayload } from "@/components/chat/hooks/useCompletionSocket"
 import { Button } from "@/components/ui/button"
 import { useAgents } from "@/hooks/api/useAgents"
 import { useStats } from "@/hooks/api/useStats"
@@ -68,13 +68,7 @@ function StatPill({ label, value, change }: { label: string; value: string; chan
     )
 }
 
-function RunRow({
-    run,
-    onOpenChat
-}: {
-    run: RecentRun
-    onOpenChat: (run: RecentRun) => void
-}) {
+function RunRow({ run, onOpenChat }: { run: RecentRun; onOpenChat: (run: RecentRun) => void }) {
     const navigate = useNavigate()
 
     const title = run.trigger.title || run.trigger.source
@@ -137,13 +131,7 @@ function RunRow({
             <span className="text-xs text-muted-foreground whitespace-nowrap w-16 text-right">{formatTimestamp(run.timestamp)}</span>
 
             {/* Chat button */}
-            <Button
-                variant="ghost"
-                size="icon-sm"
-                onClick={() => onOpenChat(run)}
-                className="opacity-0 group-hover:opacity-100 transition-opacity"
-                title="View run details"
-            >
+            <Button variant="ghost" size="icon-sm" onClick={() => onOpenChat(run)} className="opacity-0 group-hover:opacity-100 transition-opacity" title="View run details">
                 <MessageSquare className="w-3.5 h-3.5" />
             </Button>
         </div>
@@ -303,12 +291,7 @@ function Home() {
             >
                 <AnimatePresence>
                     {!hasStartedChat && (
-                        <motion.div
-                            className="w-full"
-                            initial={{ opacity: 1 }}
-                            exit={{ opacity: 0, filter: "blur(8px)", y: 40 }}
-                            transition={{ duration: ANIMATION_DURATION, ease: ANIMATION_EASE }}
-                        >
+                        <motion.div className="w-full" initial={{ opacity: 1 }} exit={{ opacity: 0, filter: "blur(8px)", y: 40 }} transition={{ duration: ANIMATION_DURATION, ease: ANIMATION_EASE }}>
                             <div className="mx-auto max-w-4xl w-full px-6 pb-8 space-y-6">
                                 {/* ── Divider ─────────────────────────────── */}
                                 <div className="flex items-center gap-4 pt-2">
