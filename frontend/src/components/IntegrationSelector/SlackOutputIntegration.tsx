@@ -133,10 +133,7 @@ export function SlackOutputIntegration({ input, variant, setConfig }: InputConfi
             )
         }
         const isDmOnly = (currentConfig?.userIds?.length ?? 0) > 0 && !currentConfig?.channelId
-        const dmUserNames =
-            isDmOnly && currentConfig?.userIds?.length && users?.length
-                ? currentConfig.userIds.map(id => users.find(u => u.id === id)?.name ?? id).filter(Boolean)
-                : []
+        const dmUserNames = isDmOnly && currentConfig?.userIds?.length && users?.length ? currentConfig.userIds.map(id => users.find(u => u.id === id)?.name ?? id).filter(Boolean) : []
         const summary = isDmOnly
             ? dmUserNames.length > 0
                 ? `DM to ${dmUserNames.join(", ")}`

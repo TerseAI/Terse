@@ -16,11 +16,7 @@ export const slackListUsersTool = tool({
 Returns non-bot members. Optionally filter by name with the query parameter.`,
     parameters: z.object({
         integrationId: z.string().describe("The integration ID of the Slack workspace (user_slack_integrations id)."),
-        query: z
-            .string()
-            .nullable()
-            .optional()
-            .describe("Optional search query to filter users by name. Case-insensitive partial match.")
+        query: z.string().nullable().optional().describe("Optional search query to filter users by name. Case-insensitive partial match.")
     }),
     execute: async ({ integrationId, query }, runContext?: RunContext<SessionWithTracking<Session>>) => {
         logger.debug("🛠️ Executing slack_list_users tool", { integrationId, query })

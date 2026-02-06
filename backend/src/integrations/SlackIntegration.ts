@@ -539,10 +539,9 @@ export class SlackIntegrationManager
         }
 
         // Use user token for DMs when available (user's DMs), otherwise bot token (bot's DMs). Same for channels: bot token.
-        const token =
-            slackConfig.listenToUserDms
-                ? (userSlackIntegration.authed_user_access_token || userSlackIntegration.slack_integration.access_token)
-                : userSlackIntegration.slack_integration.access_token
+        const token = slackConfig.listenToUserDms
+            ? userSlackIntegration.authed_user_access_token || userSlackIntegration.slack_integration.access_token
+            : userSlackIntegration.slack_integration.access_token
         if (!token) {
             throw new Error(`Slack access token not found for integration ${integrationId}. Please reconnect your Slack workspace.`)
         }
@@ -860,12 +859,7 @@ export const fetchSlackUsersForIntegration = async (userId: string, organization
     })
 
     const SLACK_USERS_LIST_TIMEOUT_MS = 15_000
-    const usersResponse = await Promise.race([
-        client.users.list({}),
-        new Promise<never>((_, reject) =>
-            setTimeout(() => reject(new Error("Slack users.list timed out")), SLACK_USERS_LIST_TIMEOUT_MS)
-        )
-    ])
+    const usersResponse = await Promise.race([client.users.list({}), new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Slack users.list timed out")), SLACK_USERS_LIST_TIMEOUT_MS))])
     if (!usersResponse.ok) {
         throw createSlackRouteError("Failed to fetch users", 500)
     }

@@ -64,9 +64,7 @@ export class SlackOutput extends Output<SlackOutputConfig> {
         const sections: string[] = []
         sections.push("Available configurations:")
         sections.push(configList.join("\n"))
-        sections.push(
-            "\nWhen calling Slack tools, you MUST include the `integrationId` and `channelId` parameters matching one of the configurations listed above."
-        )
+        sections.push("\nWhen calling Slack tools, you MUST include the `integrationId` and `channelId` parameters matching one of the configurations listed above.")
         sections.push("\nUse slack_list_users to resolve Slack user IDs to names when needed.")
         sections.push("\n" + SLACK_OUTPUT_INSTRUCTIONS)
         return sections.join("\n")

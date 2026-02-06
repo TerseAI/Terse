@@ -26,8 +26,6 @@ export function SlackKnowledgeBaseIntegration({ knowledgeBase, variant, setConfi
     const slackConfig = (knowledgeBase.config as SlackKBConfig) || new SlackKBConfig("", [], [], false, [], [])
     const selectedIntegrationId = slackConfig.integrationId || null
 
-    const selectedIntegration = integrations.find(i => i.id === selectedIntegrationId)
-
     const { connect: connectOAuth, isConnecting: isOAuthConnecting } = useOAuthConnection<IntegrationType.SLACK>(IntegrationType.SLACK, { isBotUser })
 
     const { channels, isLoading: channelsLoading } = useSlackChannels(selectedIntegrationId)
