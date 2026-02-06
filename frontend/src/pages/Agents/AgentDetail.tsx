@@ -118,6 +118,7 @@ function AgentDetail() {
     // Note: inputs and outputs are already in TransientAgentTrigger/Output format
     const agentProps: AgentSetupTabProps = {
         agentId,
+        templateId,
         name,
         setName,
         inputs,

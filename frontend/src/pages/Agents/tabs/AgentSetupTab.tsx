@@ -36,6 +36,7 @@ import { KnowledgeBaseSelector } from "../components/KnowledgeBaseSelector"
 export type SetupSection = "triggers" | "knowledgeBase" | "prompt" | "skills" | "alerts"
 export type AgentSetupTabProps = {
     agentId: string | null
+    templateId?: string
     name: string | null
     setName: (name: string) => void
     inputs: TransientAgentTrigger[]
@@ -173,6 +174,7 @@ function AgentOptionsMenu({
 function SaveAgentButton({
     defaultName,
     agentId,
+    templateId,
     name,
     inputs,
     outputs,
@@ -187,6 +189,7 @@ function SaveAgentButton({
 }: {
     defaultName: string
     agentId: string | null
+    templateId?: string
     name: string | null
     inputs: AgentTrigger[]
     outputs: AgentOutput[]
@@ -229,7 +232,9 @@ function SaveAgentButton({
                 isActive,
                 requireApproval,
                 toolApprovals,
-                notificationSettings
+                notificationSettings,
+                // Only include templateId when creating a new agent (not editing)
+                ...(agentId ? {} : { templateId })
             }
 
             if (isEditMode) {
@@ -274,6 +279,7 @@ function SaveAgentButton({
 
 export default function AgentSetupTab({
     agentId,
+    templateId,
     name,
     setName,
     inputs,
@@ -355,6 +361,7 @@ export default function AgentSetupTab({
                             <SaveAgentButton
                                 defaultName={defaultName}
                                 agentId={agentId}
+                                templateId={templateId}
                                 name={name}
                                 inputs={agentInputs}
                                 outputs={agentOutputs}

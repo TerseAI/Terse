@@ -428,6 +428,7 @@ export type AgentTemplate = {
 export type Agent = {
     id: string
     name: string
+    templateId?: string // ID of the template used to create this agent (null/undefined if created from scratch)
     isActive: boolean
     requireApproval: boolean
     prompt: AgentPrompt
@@ -446,6 +447,7 @@ export type AgentNotificationSettings = {
 
 export type AgentUpdate = {
     name?: string
+    templateId?: string
     triggers?: AgentTrigger[]
     outputs?: AgentOutput[]
     prompt?: AgentPrompt

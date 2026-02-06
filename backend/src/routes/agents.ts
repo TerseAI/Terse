@@ -111,7 +111,7 @@ function validateAndDeduplicateToolApprovals(toolApprovals: string[]): string[] 
 export type ApplyAgentOptions = { createWithId?: string }
 
 export async function applyAgentForUser(userId: string, organizationId: string, draft: AgentDraft, options?: ApplyAgentOptions): Promise<{ id: string }> {
-    const { name, triggers, outputs, knowledgeBases, prompt, isActive = true, requireApproval = false, notificationSettings, toolApprovals } = draft
+    const { name, triggers, outputs, knowledgeBases, prompt, isActive = true, requireApproval = false, notificationSettings, toolApprovals, templateId } = draft
 
     logger.debug("Outputs from frontend", {
         outputs: JSON.stringify(outputs, null, 2),
@@ -148,6 +148,7 @@ export async function applyAgentForUser(userId: string, organizationId: string, 
                 user_id: userId,
                 organization_id: organizationId,
                 name,
+                template_id: templateId || null,
                 is_active: isActive,
                 require_approval: requireApproval
             }
@@ -743,7 +744,7 @@ export async function createAgent(req: Request, res: Response) {
 
     const userId = req.session.user.id
     const organizationId = req.session.user.organizationId
-    const { name, triggers, outputs, knowledgeBases, prompt, isActive = true, requireApproval = false, notificationSettings, toolApprovals } = req.body as Agent
+    const { name, triggers, outputs, knowledgeBases, prompt, isActive = true, requireApproval = false, notificationSettings, toolApprovals, templateId } = req.body as Agent
 
     try {
         const { id } = await applyAgentForUser(userId, organizationId, {
@@ -755,7 +756,8 @@ export async function createAgent(req: Request, res: Response) {
             isActive,
             requireApproval,
             notificationSettings,
-            toolApprovals
+            toolApprovals,
+            templateId
         })
 
         res.status(201).json({ success: true, id })
@@ -863,6 +865,7 @@ function transformAgentToFrontendFormat(agent: AgentWithRelations & Partial<Agen
     return {
         id: agent.id,
         name: agent.name,
+        templateId: agent.template_id ?? undefined,
         isActive: agent.is_active,
         requireApproval: agent.require_approval ?? false,
         prompt: agent.prompt ? { text: agent.prompt.content } : { text: "" },
