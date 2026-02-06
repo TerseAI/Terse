@@ -6,6 +6,33 @@ import { type ChatSnippet, type ChatSnippetPayload, type Failure, FilterResult, 
 import { type Turn } from "../Turn"
 import { filterOutThinkingOnlyTurns } from "../utils/turnUtils"
 
+/** Find the assistant turn that should receive the snippet (by step_id or last assistant turn). */
+function findTurnForSnippet(turns: Turn[], currentStepId: string | null): { turn: Turn; index: number } | null {
+    if (currentStepId) {
+        const index = turns.findIndex(turn => turn.step_id === currentStepId && turn.role === "assistant")
+        if (index !== -1) return { turn: turns[index], index }
+    }
+    const lastIndex = turns.length - 1
+    if (lastIndex >= 0 && turns[lastIndex].role === "assistant") {
+        return { turn: turns[lastIndex], index: lastIndex }
+    }
+    return null
+}
+
+/**
+ * Merge a new snippet into an existing list. For multiple_choice, replaces any snippet with the same questionId; otherwise appends.
+ */
+function mergeSnippetIntoList(existingSnippets: ChatSnippet[], newSnippet: ChatSnippet, payload: ChatSnippetPayload): ChatSnippet[] {
+    if (payload.type !== "multiple_choice") {
+        return [...existingSnippets, newSnippet]
+    }
+    const existingIndex = existingSnippets.findIndex(s => s.type === "multiple_choice" && s.questionId === payload.questionId)
+    if (existingIndex === -1) {
+        return [...existingSnippets, newSnippet]
+    }
+    return existingSnippets.map((s, i) => (i === existingIndex ? newSnippet : s))
+}
+
 interface UseChatTurnsOptions {
     initialTurns?: Turn[] | undefined
 }
@@ -378,40 +405,15 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
 
         setTurns(prev => {
             const updated = [...prev]
+            const target = findTurnForSnippet(updated, currentStepIdRef.current)
 
-            // Try to find the turn with the current step_id
-            const currentStepId = currentStepIdRef.current
-            let targetTurn: Turn | undefined
-            let targetIndex = -1
-
-            if (currentStepId) {
-                targetIndex = updated.findIndex(turn => turn.step_id === currentStepId && turn.role === "assistant")
-                if (targetIndex !== -1) {
-                    targetTurn = updated[targetIndex]
-                }
+            if (target) {
+                const snippets = mergeSnippetIntoList(target.turn.snippets || [], snippet, snippetPayload)
+                const updatedTurn = { ...target.turn, snippets }
+                return [...updated.slice(0, target.index), updatedTurn, ...updated.slice(target.index + 1)]
             }
 
-            // If no current step_id or turn not found, use the last assistant turn
-            if (!targetTurn) {
-                const lastAssistantIndex = updated.length - 1
-                if (lastAssistantIndex >= 0 && updated[lastAssistantIndex].role === "assistant") {
-                    targetTurn = updated[lastAssistantIndex]
-                    targetIndex = lastAssistantIndex
-                }
-            }
-
-            // Add snippet to the target turn
-            if (targetTurn && targetIndex !== -1) {
-                const updatedTurn = {
-                    ...targetTurn,
-                    snippets: [...(targetTurn.snippets || []), snippet]
-                }
-                return [...updated.slice(0, targetIndex), updatedTurn, ...updated.slice(targetIndex + 1)]
-            }
-
-            // Create a new assistant turn with the snippet if no suitable turn exists
-            // Use current step_id if available, otherwise generate one
-            const stepId = currentStepId || `snippet-${snippet.id}`
+            const stepId = currentStepIdRef.current || `snippet-${snippet.id}`
             return [
                 ...updated,
                 {
@@ -423,6 +425,20 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
                 }
             ]
         })
+    }
+
+    const handleMultipleChoiceAnswered = (questionId: string, value: string) => {
+        setTurns(prev =>
+            prev.map(turn => {
+                const snippets = turn.snippets ?? []
+                const hasMatch = snippets.some(s => s.type === "multiple_choice" && s.questionId === questionId)
+                if (!hasMatch) return turn
+                return {
+                    ...turn,
+                    snippets: snippets.map(s => (s.type === "multiple_choice" && s.questionId === questionId ? { ...s, selectedValue: value } : s))
+                }
+            })
+        )
     }
 
     const clearTurns = () => {
@@ -447,6 +463,7 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
         handleThinking,
         addUserTurn,
         handleSnippet,
+        handleMultipleChoiceAnswered,
         clearTurns
     }
 }

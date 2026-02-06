@@ -7,7 +7,9 @@ import { IntegrationType } from "../../shared/Integrations"
 import { ChatSnippet } from "../../shared/ModelEvents"
 import IntegrationCard from "../Integrations/IntegrationCard"
 
-export function SnippetView({ snippet }: { snippet: ChatSnippet }) {
+import { MultipleChoiceQuestionForm } from "./MultipleChoiceQuestionForm"
+
+export function SnippetView({ snippet, onMultipleChoiceAnswer }: { snippet: ChatSnippet; onMultipleChoiceAnswer?: (questionId: string, value: string) => void }) {
     const navigate = useNavigate()
 
     useEffect(() => {
@@ -53,6 +55,18 @@ export function SnippetView({ snippet }: { snippet: ChatSnippet }) {
                 <IntegrationCard integration={integrationType} isActive={false} stateToken={snippet.stateToken} compact />
                 {snippet.message && <div className="mt-2 text-sm text-muted-foreground">{snippet.message}</div>}
             </div>
+        )
+    }
+
+    if (snippet.type === "multiple_choice") {
+        return (
+            <MultipleChoiceQuestionForm
+                questionId={snippet.questionId}
+                question={snippet.question}
+                options={snippet.options}
+                selectedValue={snippet.selectedValue}
+                onSubmit={value => onMultipleChoiceAnswer?.(snippet.questionId, value)}
+            />
         )
     }
 

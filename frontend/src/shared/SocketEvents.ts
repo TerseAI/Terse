@@ -26,7 +26,8 @@ export const SocketEvents = {
     // Builder chat events
     BUILDER_CHAT_EVENT: "builder:chat:event",
     BUILDER_CHAT_MESSAGE: "builder:chat:message",
-    BUILDER_CHAT_APPROVAL: "builder:chat:approval"
+    BUILDER_CHAT_APPROVAL: "builder:chat:approval",
+    BUILDER_CHAT_MULTIPLE_CHOICE_ANSWER: "builder:chat:multiple_choice_answer"
 } as const
 
 /**
