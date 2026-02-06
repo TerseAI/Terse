@@ -71,22 +71,17 @@ export const slackSendMessageTool = tool({
                 }
             })
 
-            if (!userSlackIntegration) {
+            if (!userSlackIntegration?.slack_integration) {
                 throw new Error(`Slack integration not found: ${integrationId}`)
             }
 
-            // Get the workspace token
-            const slackIntegration = await db().slack_integrations.findFirst({
-                where: {
-                    team_id: userSlackIntegration.slack_team_id
-                }
-            })
-
-            if (!slackIntegration) {
-                throw new Error(`Slack workspace integration not found for team ${userSlackIntegration.slack_team_id}`)
+            // Use the selected integration's token (user token if present, else bot token)
+            const token = userSlackIntegration.authed_user_access_token || userSlackIntegration.slack_integration.access_token
+            if (!token) {
+                throw new Error(`Slack integration has no access token: ${integrationId}`)
             }
 
-            const client = new WebClient(slackIntegration.access_token)
+            const client = new WebClient(token)
 
             // Get channel name from API
             let channelName = channelId // fallback to channelId
