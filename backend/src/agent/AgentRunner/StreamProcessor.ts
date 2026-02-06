@@ -1,6 +1,6 @@
 import { Server } from "socket.io"
 
-import { buildRunErrorEvent, classifyAgentError, type ClassifiedError } from "../agentErrorUtils"
+import { classifyAgentError, type ClassifiedError } from "../agentErrorUtils"
 import logger from "../../logger"
 import { ModelEvent } from "../../shared/ModelEvents"
 import type { RunHistoryModelEvent, RunHistoryModelSocketEvent, RunHistoryStreamingParams } from "../../shared/RunHistoryTypes"
@@ -155,21 +155,16 @@ export async function processModelEventStream(eventStream: AsyncGenerator<ModelE
     } catch (error) {
         const classified = classifyAgentError(error)
         logger.error("Error processing model event stream", { error, runId: options.runId, userId: options.userId, agentId: options.agentId })
-        await handleStreamRunError(options.runId, classified, emitter)
+        await handleStreamRunError(options.runId, classified)
         throw error
     }
 }
 
-async function handleStreamRunError(
-    runId: string,
-    classified: ClassifiedError,
-    emitter: StreamEventEmitter
-): Promise<void> {
+async function handleStreamRunError(runId: string, classified: ClassifiedError): Promise<void> {
     try {
         await markRunFailed(runId, classified.message, "agent")
-        await emitter.storeAndEmit(buildRunErrorEvent(classified), new Date().toISOString())
     } catch (e) {
-        logger.error("Failed to mark run failed or emit RunError from StreamProcessor", { error: e, runId })
+        logger.error("Failed to mark run failed from StreamProcessor", { error: e, runId })
     }
 }
 

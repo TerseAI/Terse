@@ -1,6 +1,6 @@
 import { AgentOutputType, Agent as OpenAIAgent, RunResult } from "@openai/agents"
 
-import { classifyAgentError } from "../../agentErrorUtils"
+import { classifyAgentError } from "../agentErrorUtils"
 import { InputEvent } from "../../integrations/abstract/InputEvent"
 import { KnowledgeBase } from "../../knowledgeBase/abstract/KnowledgeBase"
 import { KnowledgeBaseFactory } from "../../knowledgeBase/abstract/KnowledgeBaseFactory"

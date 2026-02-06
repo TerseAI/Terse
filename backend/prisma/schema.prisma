@@ -847,6 +847,7 @@ enum RunHistoryChatEventType {
   Thinking
   ToolApprovalResponse
   Snippet
+  RunError
 }
 
 // Run History tables
