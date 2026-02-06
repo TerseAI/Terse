@@ -543,6 +543,17 @@ export interface RecentRun {
     }[]
 }
 
+export interface AgentActivityItem {
+    agentId: string
+    agentName: string
+    runCount: number
+}
+
+export interface CountByString {
+    label: string
+    count: number
+}
+
 export interface StatsResponse {
     totalEventsProcessed: number
     totalEventsProcessedChange: string // Percentage change from previous period
@@ -554,4 +565,10 @@ export interface StatsResponse {
     recentActions: RecentAction[] // Recent actions (last 10)
     recentRuns: RecentRun[] // Recent non-filtered run history records (last 20)
     timezone: string // Timezone used for daily events grouping (e.g., "America/New_York" or "UTC")
+    // Insight data
+    agentActivity: AgentActivityItem[] // Top 10 agents by run count (current period)
+    statusBreakdown: CountByString[] // Run counts grouped by status (current period)
+    triggerIntegrations: CountByString[] // Run counts grouped by trigger integration (current period)
+    actionIntegrations: CountByString[] // Action counts grouped by integration (current period, write-only)
+    actionTypes: CountByString[] // Action counts grouped by type (current period, write-only)
 }
