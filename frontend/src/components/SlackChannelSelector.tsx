@@ -6,6 +6,7 @@ import { useSlackChannels } from "@/hooks/api/useSlackChannels"
 
 import { useSlackUsers } from "../hooks/api/useSlackUsers"
 import { capitalize } from "../lib/utils"
+
 import { MultiSelect } from "./MultiSelect"
 import { RefreshButton } from "./RefreshButton"
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectSeparator, SelectTrigger, SelectValue } from "./ui/select"
@@ -185,9 +186,7 @@ export function SlackConfigurationSelector({
                             <SelectSeparator />
                             <SelectGroup>
                                 <SelectLabel>Direct Messages</SelectLabel>
-                                <SelectItem value="__LISTEN_TO_DMS__">
-                                    {mode === "output" ? "Send to direct messages" : "Monitor direct messages"}
-                                </SelectItem>
+                                <SelectItem value="__LISTEN_TO_DMS__">{mode === "output" ? "Send to direct messages" : "Monitor direct messages"}</SelectItem>
                             </SelectGroup>
                         </>
                     )}
@@ -198,22 +197,14 @@ export function SlackConfigurationSelector({
                     {channels.length} channel{channels.length !== 1 ? "s" : ""} available
                 </div>
             )}
-            {isIncomplete && needsUsersForDms && (
-                <p className="text-xs text-muted-foreground">
-                    Select at least one user to send DMs to.
-                </p>
-            )}
+            {isIncomplete && needsUsersForDms && <p className="text-xs text-muted-foreground">Select at least one user to send DMs to.</p>}
 
             {/* User selector - for triggers: optional filter "DMs from these users only"; for output: required when "Send to DMs" selected */}
             {showUserFilter && (selectedChannelId || listenToUserDms) && (
                 <div className="space-y-2">
                     <div className="flex items-center justify-between">
                         <label className="text-xs font-medium text-[theme(text-secondary)]">
-                            {mode === "output" && listenToUserDms
-                                ? "Select Users (Required)"
-                                : listenToUserDms
-                                  ? "Only DMs from these users (optional)"
-                                  : "Select Users (Optional)"}
+                            {mode === "output" && listenToUserDms ? "Select Users (Required)" : listenToUserDms ? "Only DMs from these users (optional)" : "Select Users (Optional)"}
                         </label>
                         <RefreshButton onClick={handleUsersRefresh} isRefreshing={usersIsValidating && !usersLoading} title="Refresh user list" />
                     </div>
@@ -234,9 +225,7 @@ export function SlackConfigurationSelector({
                         displayText={(count, selected) => (count === 0 ? "Select users..." : count === 1 ? selected[0].label : `${count} users selected`)}
                     />
                     {listenToUserDms && mode === "trigger" && (
-                        <p className="text-xs text-muted-foreground">
-                            Leave empty to trigger on all DMs. Select users to only trigger when those users send a direct message.
-                        </p>
+                        <p className="text-xs text-muted-foreground">Leave empty to trigger on all DMs. Select users to only trigger when those users send a direct message.</p>
                     )}
                     {users.length > 0 && (
                         <div className="text-xs text-foreground-muted">
