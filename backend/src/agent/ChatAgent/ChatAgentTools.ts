@@ -112,7 +112,7 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
         tool({
             name: "getSampleEvents",
             description:
-                "Fetch sample events to test your agent. Returns event references (entityType + entityId) and AI-generated summaries. Use executeSampleEvent with the entityType and entityId to run a specific event.",
+                "Fetch sample events to test your agent. Returns event references (entityType + entityId) and AI-generated summaries. Use triggerAgentRun with the entityType and entityId to run a specific event. For cron/scheduled agents, trigger immediately with triggerAgentRun and only agentId (no need to call getSampleEvents first).",
             parameters: z.object({
                 integrationId: z.string().describe("The integration ID to fetch sample events for"),
                 integrationType: z.nativeEnum(IntegrationType).describe("The integration type"),
@@ -222,9 +222,9 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
             }
         }),
         tool({
-            name: "executeSampleEvent",
+            name: "triggerAgentRun",
             description:
-                "Execute a sample event to test how your agent responds. For event-based triggers, use entityType and entityId from getSampleEvents. For cron/time trigger agents, just provide the agentId to trigger it immediately.",
+                "For cron/time trigger agents: call with only agentId (omit or pass null for entityType and entityId) to trigger the agent immediately. For event-based triggers, use entityType and entityId from getSampleEvents.",
             parameters: z.object({
                 entityType: z.string().nullable().describe("The entity type from getSampleEvents. Not needed for cron/time trigger agents."),
                 entityId: z.string().nullable().describe("The entity ID from getSampleEvents. Not needed for cron/time trigger agents."),
@@ -239,7 +239,7 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
 
                 const user = await getUserForOrg(userId, organizationId)
                 if (!user) {
-                    logger.error("[executeSampleEvent] User not found", { userId, organizationId })
+                    logger.error("[triggerAgentRun] User not found", { userId, organizationId })
                     throw new Error("User not found")
                 }
 
@@ -251,7 +251,7 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
                 const isEventBasedTrigger = userEntityType !== null && userEntityId !== null
 
                 if (isEventBasedTrigger) {
-                    logger.info("[executeSampleEvent] Starting", { entityType, entityId })
+                    logger.info("[triggerAgentRun] Starting", { entityType, entityId })
                     const hydratorType = requireHydratorType(userEntityType)
                     const hydrator = requireHydrator(hydratorType, { userId, organizationId })
                     const hydrated = await hydrator.hydrate({
@@ -261,13 +261,13 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
                     inputEvent = hydrated as InputEvent
                     resolvedEntityType = userEntityType
                     resolvedEntityId = userEntityId
-                    logger.info("[executeSampleEvent] Hydrated event", {
+                    logger.info("[triggerAgentRun] Hydrated event", {
                         entityType: userEntityType,
                         entityId: userEntityId,
                         debugLog: inputEvent.debugLog()
                     })
                 } else {
-                    logger.info("[executeSampleEvent] Cron trigger path", { agentId })
+                    logger.info("[triggerAgentRun] Cron trigger path", { agentId })
                     const agent = await db().automations.findUnique({
                         where: { id: agentId, organization_id: organizationId },
                         include: { inputs: { include: { time_trigger_config: true } } }
@@ -286,7 +286,7 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
 
                 const eventProcessor = new EventProcessor(inputEvent, user)
                 const processResults = await eventProcessor.processSingleAgent(agentId)
-                logger.info("[executeSampleEvent] EventProcessor finished", {
+                logger.info("[triggerAgentRun] EventProcessor finished", {
                     entityType: resolvedEntityType,
                     entityId: resolvedEntityId,
                     resultCount: processResults.length,
@@ -306,7 +306,7 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
                     requiresApproval: r.approvalResult?.status === "awaiting_approval"
                 }))
 
-                logger.info("[executeSampleEvent] Completed", {
+                logger.info("[triggerAgentRun] Completed", {
                     entityType: resolvedEntityType,
                     entityId: resolvedEntityId
                 })
