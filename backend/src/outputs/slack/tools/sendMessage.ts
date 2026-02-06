@@ -14,14 +14,14 @@ import { isValidEpochTimestamp } from "../../../utility/strings"
 
 /**
  * Tool for sending messages to Slack channels or DMs.
- * Messages are sent as the Terse bot.
+ * Messages are sent as the bot or as the connected user depending on workspace token type.
  */
 export const slackSendMessageTool = tool({
     name: ToolName.SLACK_SEND_MESSAGE,
-    description: `Send message to Slack channel. Supports plain text (mrkdwn) or Block Kit (JSON blocks).`,
+    description: `Send message to a Slack channel or DM. Supports plain text (mrkdwn) or Block Kit (JSON blocks). Use a channel ID from the configured output destinations (channels and DM channel IDs for configured users).`,
     parameters: z.object({
         integrationId: z.string().describe("The integration ID of the Slack workspace to use."),
-        channelId: z.string().describe("The Slack channel ID to send the message to."),
+        channelId: z.string().describe("Slack channel or DM channel ID from the configured output destinations."),
         message: z.string().describe("Message content (mrkdwn). Used as fallback for Block Kit or main message."),
         thread_ts: z
             .string()
@@ -71,22 +71,17 @@ export const slackSendMessageTool = tool({
                 }
             })
 
-            if (!userSlackIntegration) {
+            if (!userSlackIntegration?.slack_integration) {
                 throw new Error(`Slack integration not found: ${integrationId}`)
             }
 
-            // Get the workspace token
-            const slackIntegration = await db().slack_integrations.findFirst({
-                where: {
-                    team_id: userSlackIntegration.slack_team_id
-                }
-            })
-
-            if (!slackIntegration) {
-                throw new Error(`Slack workspace integration not found for team ${userSlackIntegration.slack_team_id}`)
+            // Use the selected integration's token (user token if present, else bot token)
+            const token = userSlackIntegration.authed_user_access_token || userSlackIntegration.slack_integration.access_token
+            if (!token) {
+                throw new Error(`Slack integration has no access token: ${integrationId}`)
             }
 
-            const client = new WebClient(slackIntegration.access_token)
+            const client = new WebClient(token)
 
             // Get channel name from API
             let channelName = channelId // fallback to channelId

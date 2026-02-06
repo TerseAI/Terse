@@ -388,7 +388,7 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance, KBCo
         const fullSystemPrompt = await builder.build()
 
         this.agent = new Agent<SessionWithTracking<T>, AgentOutputType>({
-            name: "Living Document Automator",
+            name: "Automation Agent",
             instructions: fullSystemPrompt,
             model: this.chooseModel(),
             tools: this.tools

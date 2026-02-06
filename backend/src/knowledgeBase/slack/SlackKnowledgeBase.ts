@@ -8,6 +8,7 @@ import { AgentKnowledgeBaseWithConfigs, PrismaTransaction } from "../../types/pr
 import { KnowledgeBase } from "../abstract/KnowledgeBase"
 
 import { slackListChannelsTool } from "./tools/listChannels"
+import { slackListUsersTool } from "./tools/listUsers"
 import { slackReadConversationTool } from "./tools/readConversation"
 
 /**
@@ -24,6 +25,12 @@ export class SlackKnowledgeBase extends KnowledgeBase<SlackKBConfig> {
                 displayName: "List channels"
             },
             {
+                tool: slackListUsersTool as Tool,
+                isReadOnly: true,
+                integration: IntegrationType.SLACK,
+                displayName: "List users"
+            },
+            {
                 tool: slackReadConversationTool as Tool,
                 isReadOnly: true,
                 integration: IntegrationType.SLACK,
@@ -35,7 +42,7 @@ export class SlackKnowledgeBase extends KnowledgeBase<SlackKBConfig> {
     }
 
     async validateConfig(_knowledgeBase: SlackKBConfig, _userId: string): Promise<void> {
-        // Validation is done at save time (channel IDs / allowDms)
+        // Bot and user tokens both support channels, DMs, and user filters; token type only affects scope (what is visible).
     }
 
     async addKnowledgeBaseToAgent(tx: PrismaTransaction, agentKnowledgeBaseId: string, knowledgeBase: SlackKBConfig): Promise<void> {
@@ -43,10 +50,10 @@ export class SlackKnowledgeBase extends KnowledgeBase<SlackKBConfig> {
             data: {
                 automation_knowledge_base_id: agentKnowledgeBaseId,
                 channel_ids: knowledgeBase.channelIds ?? [],
-                channel_names: knowledgeBase.channelNames ?? [],
+                channel_names: [], // IDs only; hydrate via UI or slack_list_users tool
                 allow_dms: knowledgeBase.allowDms ?? false,
                 user_ids: knowledgeBase.userIds ?? [],
-                user_names: knowledgeBase.userNames ?? []
+                user_names: [] // IDs only; hydrate via UI or slack_list_users tool
             }
         })
     }
@@ -66,22 +73,25 @@ export class SlackKnowledgeBase extends KnowledgeBase<SlackKBConfig> {
             }
             const c = config.slack_kb_config
             const parts = [`Integration ID: ${config.integration_id}`]
-            if (c.channel_names?.length) {
-                parts.push(`Channels: ${c.channel_names.join(", ")}`)
+            if (c.channel_ids?.length) {
+                parts.push(`Channel IDs: ${c.channel_ids.join(", ")}`)
             }
             if (c.allow_dms) {
                 parts.push("DMs: allowed")
             }
-            if (c.user_names?.length) {
-                parts.push(`Users: ${c.user_names.join(", ")}`)
+            if (c.user_ids?.length) {
+                parts.push(`Filter to user IDs: ${c.user_ids.join(", ")}`)
             }
             configList.push(`  • ${parts.join(" - ")}`)
         }
         sections.push("Available configurations:")
         sections.push(configList.join("\n"))
         sections.push(`
+Use slack_list_users to resolve Slack user IDs to names when needed.
+
 AVAILABLE TOOLS:
 • slack_list_channels: List available channels and DMs. Use to discover channel IDs.
+• slack_list_users: List workspace users (id and name). Use to resolve user IDs to names.
 • slack_read_conversation: Read message history from a channel or DM. Use channel ID from slack_list_channels.`)
         return sections.join("\n")
     }

@@ -48,7 +48,9 @@ const SlackOutputConfigSchema = BaseConfigSchema.extend({
     configType: z.literal(ConfigType.SLACK_OUTPUT),
     integrationType: z.literal(IntegrationType.SLACK),
     channelId: z.string().optional(),
-    channelName: z.string().optional()
+    channelName: z.string().optional(),
+    userIds: z.array(z.string()).optional(),
+    userNames: z.array(z.string()).optional()
 })
 
 // Notion Database config schema

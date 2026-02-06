@@ -63,7 +63,7 @@ export const SlackConfigMetadata = {
 export const SlackOutputConfigMetadata = {
     configType: ConfigType.SLACK_OUTPUT,
     name: "Slack",
-    description: "Send messages to Slack channels or DMs",
+    description: "Send messages to Slack channels, group DMs, or direct messages",
     isInput: false,
     isOutput: true,
     isKnowledgeBase: false
@@ -323,20 +323,23 @@ export class SlackOutputConfig implements ConfigInstance {
     constructor(
         public integrationId: string,
         public channelId?: string,
-        public channelName?: string
+        public channelName?: string,
+        public userIds?: string[],
+        public userNames?: string[]
     ) {}
 
     isComplete(): boolean {
-        // Slack output is complete if channelId is set
-        return !!this.channelId
+        // Slack output is complete if channelId is set or at least one user (DM destination) is set
+        return !!(this.channelId || (this.userIds?.length ?? 0) > 0)
     }
 
     formatForAgent(): string {
         const parts = [`Type: Slack Output`, `Integration ID: ${this.integrationId}`]
-        if (this.channelName) {
-            parts.push(`Channel: ${this.channelName}`)
-        } else if (this.channelId) {
+        if (this.channelId) {
             parts.push(`Channel ID: ${this.channelId}`)
+        }
+        if (this.userIds?.length) {
+            parts.push(`DM user IDs: ${this.userIds.join(", ")}`)
         }
         return parts.join("\n")
     }
@@ -710,20 +713,16 @@ export class SlackKBConfig implements ConfigInstance {
 
     formatForAgent(): string {
         const parts = [`Type: Slack Knowledge Base`, `Integration ID: ${this.integrationId}`]
-        const hasChannels = this.channelNames?.length || this.channelIds?.length
-        const hasUsers = this.userNames?.length || this.userIds?.length
+        const hasChannels = (this.channelIds?.length ?? 0) > 0
+        const hasUsers = (this.userIds?.length ?? 0) > 0
 
-        if (this.channelNames?.length) {
-            parts.push(`Channels: ${this.channelNames.join(", ")}`)
-        } else if (this.channelIds?.length) {
+        if (this.channelIds?.length) {
             parts.push(`Channel IDs: ${this.channelIds.join(", ")}`)
         }
         if (this.allowDms) {
             parts.push("Allow DMs: Yes")
         }
-        if (this.userNames?.length) {
-            parts.push(`Filter to users: ${this.userNames.join(", ")}`)
-        } else if (this.userIds?.length) {
+        if (this.userIds?.length) {
             parts.push(`Filter to user IDs: ${this.userIds.join(", ")}`)
         }
         if (!hasChannels && !this.allowDms && !hasUsers) {

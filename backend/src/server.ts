@@ -407,7 +407,7 @@ app.get(ApiRoutes.SLACK.CHANNELS, authMiddleware, async (req, res) => {
 })
 
 app.get(ApiRoutes.SLACK.USERS, authMiddleware, async (req, res) => {
-    getSlackUsers(req, res)
+    await getSlackUsers(req, res)
 })
 
 // MARK: POSTHOG

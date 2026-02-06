@@ -1,11 +1,10 @@
 import { LogLevel, WebClient } from "@slack/web-api"
-import { Member as SlackUser } from "@slack/web-api/dist/types/response/UsersListResponse"
 import { Request, Response } from "express"
 
-import { SlackIntegrationManager, fetchSlackChannelsForIntegration } from "../integrations/SlackIntegration"
+import { SlackIntegrationManager, fetchSlackChannelsForIntegration, fetchSlackUsersForIntegration } from "../integrations/SlackIntegration"
 import logger from "../logger"
 import { db } from "../prismaClient"
-import { SlackUsersResponse, User } from "../shared/types"
+import { User } from "../shared/types"
 import { UserSlackIntegrationWithUser } from "../types/prisma"
 
 // MARK: - Route Handlers
@@ -76,10 +75,6 @@ export async function slackOAuthCallback(req: Request, res: Response) {
     await integration.processInstallationCallback(req, res)
 }
 
-const getToken = (integration: UserSlackIntegrationWithUser) => {
-    return integration.authed_user_access_token || integration.slack_integration.access_token
-}
-
 export const getSlackChannels = async (req: Request, res: Response) => {
     const user = req.session?.user
     if (!user) {
@@ -126,55 +121,19 @@ export const getSlackUsers = async (req: Request, res: Response) => {
     }
 
     try {
-        // Verify user owns this integration and it belongs to their organization
-        // For Slack, integrationId is user_slack_integrations.id
-        const userSlackIntegration = await db().user_slack_integrations.findFirst({
-            where: {
-                id: integrationId,
-                organization_id: user.organizationId
-            },
-            include: {
-                slack_integration: true,
-                user: true
-            }
-        })
-
-        if (!userSlackIntegration || !userSlackIntegration.slack_integration) {
-            return res.status(404).json({ error: "Slack integration not found" })
-        }
-
-        const token = getToken(userSlackIntegration)
-        const isBotUser = userSlackIntegration.is_bot_user
-
-        if (isBotUser) {
-            return res.status(400).json({ error: "Bot user cannot fetch users" })
-        }
-
-        const client = new WebClient(token, {
-            logLevel: LogLevel.ERROR
-        })
-        const users = await client.users.list({})
-        if (!users.ok) {
-            return res.status(500).json({ error: "Failed to fetch users" })
-        }
-        if (!users.members || users.members.length === 0) {
-            return res.status(200).json({ users: [] })
-        }
-
-        const response: SlackUsersResponse = {
-            users:
-                users.members
-                    ?.filter((member): member is SlackUser & { id: string; name: string } => Boolean(member.id && member.name) && !member.is_bot)
-                    .map(member => ({
-                        id: member.id,
-                        name: member.name
-                    })) || []
-        }
-
+        const response = await fetchSlackUsersForIntegration(user.id, user.organizationId, integrationId)
         res.status(200).json(response)
     } catch (error: any) {
-        logger.error("Error fetching Slack users:", { error })
-        res.status(500).json({ error: "Failed to fetch users" })
+        logger.error("Error fetching Slack users", {
+            error: error?.message || error,
+            integrationId,
+            userId: user.id
+        })
+        res.status(error?.statusCode || 500).json({
+            error: error?.message || "Failed to fetch users",
+            details: error?.details,
+            code: error?.code
+        })
     }
 }
 
