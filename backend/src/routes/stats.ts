@@ -2,7 +2,7 @@ import { Request, Response } from "express"
 import { DateTime } from "luxon"
 
 import { db } from "../prismaClient"
-import { DayOfWeek, RecentAction, StatsResponse } from "../shared/types"
+import { DayOfWeek, RecentAction, RecentRun, StatsResponse } from "../shared/types"
 import { convertPrismaIntegrationTypeToIntegrationTypeFromRunHistory } from "../utility/typeConverters"
 
 // Stats configuration constants
@@ -71,7 +71,7 @@ export async function getStats(req: Request, res: Response) {
         .toJSDate()
 
     // Run ALL queries in parallel for maximum performance
-    const [currentTotalEvents, previousTotalEvents, currentActionsCount, previousActionsCount, currentChannelsCount, previousChannelsCount, dailyEventsData, recentActionsData] = await Promise.all([
+    const [currentTotalEvents, previousTotalEvents, currentActionsCount, previousActionsCount, currentChannelsCount, previousChannelsCount, dailyEventsData, recentActionsData, recentRunsData] = await Promise.all([
         // 1. Current period total events
         prisma.run_history_records.count({
             where: {
@@ -142,6 +142,25 @@ export async function getStats(req: Request, res: Response) {
             },
             orderBy: { created_at: "desc" },
             take: 10
+        }),
+        // 9. Recent non-filtered runs (last 20) across all agents
+        prisma.run_history_records.findMany({
+            where: {
+                automation: { organization_id: organizationId },
+                status: { not: "skipped" }
+            },
+            include: {
+                automation: { select: { name: true } },
+                actions: {
+                    select: {
+                        action: true,
+                        integration: true,
+                        type: true
+                    }
+                }
+            },
+            orderBy: { timestamp: "desc" },
+            take: 20
         })
     ])
 
@@ -198,6 +217,28 @@ export async function getStats(req: Request, res: Response) {
         type: action.type
     }))
 
+    // Transform recent runs data
+    const recentRuns: RecentRun[] = recentRunsData.map(run => ({
+        id: run.id,
+        agentId: run.automation_id,
+        agentName: run.automation.name,
+        timestamp: run.timestamp.toISOString(),
+        trigger: {
+            event: run.event,
+            integration: convertPrismaIntegrationTypeToIntegrationTypeFromRunHistory(run.trigger_integration),
+            source: run.trigger_source,
+            title: run.trigger_title ?? undefined,
+            subheader: run.trigger_subheader ?? undefined,
+            url: run.trigger_url ?? undefined
+        },
+        status: run.status,
+        actions: run.actions.map(a => ({
+            action: a.action,
+            integration: convertPrismaIntegrationTypeToIntegrationTypeFromRunHistory(a.integration),
+            type: a.type
+        }))
+    }))
+
     const response: StatsResponse = {
         totalEventsProcessed: currentTotalEvents,
         totalEventsProcessedChange: totalEventsChange,
@@ -207,6 +248,7 @@ export async function getStats(req: Request, res: Response) {
         numberOfAgentsChange: channelsChangeString,
         dailyEvents,
         recentActions,
+        recentRuns,
         timezone
     }
 

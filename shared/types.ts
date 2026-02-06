@@ -1,6 +1,6 @@
 import { ConfigInstance, ConfigType } from "./Configs"
 import { IntegrationType } from "./Integrations"
-import { RunHistoryActionType } from "./RunHistoryTypes"
+import { RunHistoryActionType, RunHistoryStatus } from "./RunHistoryTypes"
 import { Project, Ticket } from "./TicketSystem"
 
 export type Role = "admin" | "user"
@@ -522,6 +522,27 @@ export interface RecentAction {
     type: RunHistoryActionType
 }
 
+export interface RecentRun {
+    id: string
+    agentId: string
+    agentName: string
+    timestamp: string // ISO date string
+    trigger: {
+        event: string
+        integration: IntegrationType
+        source: string
+        title?: string
+        subheader?: string
+        url?: string
+    }
+    status: RunHistoryStatus
+    actions: {
+        action: string
+        integration: IntegrationType
+        type: RunHistoryActionType
+    }[]
+}
+
 export interface StatsResponse {
     totalEventsProcessed: number
     totalEventsProcessedChange: string // Percentage change from previous period
@@ -531,5 +552,6 @@ export interface StatsResponse {
     numberOfAgentsChange: string // Absolute change (e.g., "+2")
     dailyEvents: DailyEventCount[] // Events per day for the last 7 days
     recentActions: RecentAction[] // Recent actions (last 10)
+    recentRuns: RecentRun[] // Recent non-filtered run history records (last 20)
     timezone: string // Timezone used for daily events grouping (e.g., "America/New_York" or "UTC")
 }

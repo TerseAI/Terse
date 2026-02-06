@@ -13,6 +13,7 @@ import { POST_LOGIN_REDIRECT_KEY, isSafeRedirectPath } from "./constants/storage
 import AgentDetail from "./pages/Agents/AgentDetail"
 import AgentSetup from "./pages/Agents/AgentSetup"
 import AgentsList from "./pages/Agents/AgentsList"
+import ActivityPage from "./pages/Activity"
 import Home from "./pages/Home"
 import IntegrationPage from "./pages/IntegrationPage"
 import NotificationsPage from "./pages/Notifications"
@@ -40,6 +41,7 @@ function App() {
                             <Route path="agents/new" element={<AgentDetail />} />
                             <Route path={FrontendRoutes.AGENTS.NEW_WITH_TEMPLATE.pattern} element={<AgentDetail />} />
                             <Route path={FrontendRoutes.AGENTS.BY_ID.pattern} element={<AgentDetail />} />
+                            <Route path="activity" element={<ActivityPage />} />
                             <Route path="integrations" element={<IntegrationPage />} />
                             <Route path="notifications" element={<NotificationsPage />} />
                             <Route path="profile" element={<ProfilePage />} />
