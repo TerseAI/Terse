@@ -5,9 +5,8 @@ import { ModelEvent } from "../../shared/ModelEvents"
 import type { RunHistoryModelEvent, RunHistoryModelSocketEvent, RunHistoryStreamingParams } from "../../shared/RunHistoryTypes"
 import { SocketEvents, SocketRooms } from "../../shared/SocketEvents"
 import { randomString } from "../../utility/strings"
-import { type ClassifiedError, classifyAgentError } from "../agentErrorUtils"
 
-import { markRunFailed, storeChatEvent } from "./runHistory"
+import { storeChatEvent } from "./runHistory"
 
 export class TextDeltaAggregator {
     private accumulatedDeltas = new Map<string, AccumulatedDelta>()
@@ -130,11 +129,9 @@ export class StreamEventEmitter {
 }
 
 export async function processModelEventStream(eventStream: AsyncGenerator<ModelEvent, void, unknown>, options: StreamProcessorOptions): Promise<void> {
-    const { runId } = options
-
-    const aggregator = new TextDeltaAggregator(runId)
+    const aggregator = new TextDeltaAggregator(options.runId)
     const emitter = new StreamEventEmitter(options.io, {
-        runId,
+        runId: options.runId,
         userId: options.userId,
         agentId: options.agentId,
         organizationId: options.organizationId
@@ -153,18 +150,8 @@ export async function processModelEventStream(eventStream: AsyncGenerator<ModelE
         // Finalize any remaining steps at the end of the stream
         await aggregator.commitLastTextDeltaStep()
     } catch (error) {
-        const classified = classifyAgentError(error)
         logger.error("Error processing model event stream", { error, runId: options.runId, userId: options.userId, agentId: options.agentId })
-        await handleStreamRunError(options.runId, classified)
         throw error
-    }
-}
-
-async function handleStreamRunError(runId: string, classified: ClassifiedError): Promise<void> {
-    try {
-        await markRunFailed(runId, classified.message, "agent")
-    } catch (e) {
-        logger.error("Failed to mark run failed from StreamProcessor", { error: e, runId })
     }
 }
 
