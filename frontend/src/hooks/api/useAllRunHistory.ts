@@ -36,11 +36,7 @@ export function useAllRunHistory({ page = 1, pageSize = 20, searchQuery = "", da
 
     const key = allRunHistoryKey(params)
 
-    const { data, error, isValidating, mutate } = useSWR<GetAllRunHistoryResponse>(
-        key,
-        async () => BackendProvider.getAllRunHistory(params),
-        { keepPreviousData: true }
-    )
+    const { data, error, isValidating, mutate } = useSWR<GetAllRunHistoryResponse>(key, async () => BackendProvider.getAllRunHistory(params), { keepPreviousData: true })
 
     return {
         runs: data?.items ?? [],

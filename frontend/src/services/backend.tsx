@@ -975,7 +975,7 @@ export const BackendProvider: BackendService = {
             })
     },
 
-    getAllRunHistory: (params) => {
+    getAllRunHistory: params => {
         const usp = new URLSearchParams()
         if (params.page) usp.append("page", String(params.page))
         if (params.pageSize) usp.append("pageSize", String(params.pageSize))
