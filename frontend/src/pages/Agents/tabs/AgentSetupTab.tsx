@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 
-import { Bell, Check, ChevronRight, Database, FileText, MoreVertical, Pause, Play, PlusIcon, Trash2, Wrench, XIcon, Zap } from "lucide-react"
+import { Bell, Check, ChevronRight, Copy, Database, FileText, MoreVertical, Pause, Play, PlusIcon, Trash2, Wrench, XIcon, Zap } from "lucide-react"
 import { toast } from "sonner"
 import { type KeyedMutator } from "swr"
 import { v4 as uuidv4 } from "uuid"
@@ -87,18 +87,33 @@ function AgentOptionsMenu({
     agentName,
     isActive,
     onToggleActive,
-    mutate
+    mutate,
+    inputs,
+    outputs,
+    knowledgeBases,
+    prompt,
+    requireApproval,
+    toolApprovals,
+    notificationSettings
 }: {
     agentId: string | null
     agentName: string
     isActive: boolean
     onToggleActive: (active: boolean) => void
     mutate: KeyedMutator<Agent>
+    inputs: AgentTrigger[]
+    outputs: AgentOutput[]
+    knowledgeBases: AgentKnowledgeBase[]
+    prompt: AgentPrompt | undefined
+    requireApproval: boolean
+    toolApprovals: string[]
+    notificationSettings: AgentNotificationSettingsType
 }) {
     const navigate = useNavigate()
-    const { deleteAgent, updateAgent } = useAgentMutations()
+    const { deleteAgent, updateAgent, createAgent } = useAgentMutations()
     const [showDeleteDialog, setShowDeleteDialog] = useState(false)
     const [isDeleting, setIsDeleting] = useState(false)
+    const [isCloning, setIsCloning] = useState(false)
 
     // Only show menu for existing agents
     if (!agentId) {
@@ -117,6 +132,37 @@ function AgentOptionsMenu({
         } catch (error) {
             console.error("Failed to toggle agent status:", error)
             toast.error("Failed to update agent status")
+        }
+    }
+
+    const handleClone = async () => {
+        setIsCloning(true)
+        try {
+            const clonedAgentData: AgentUpdate = {
+                name: `${agentName} (copy)`,
+                triggers: inputs,
+                outputs,
+                knowledgeBases,
+                prompt,
+                isActive: false,
+                requireApproval,
+                toolApprovals,
+                notificationSettings
+            }
+
+            const result = await createAgent(clonedAgentData)
+
+            if (result?.id) {
+                toast.success("Agent cloned successfully")
+                navigate(FrontendRoutes.AGENTS.DETAIL(result.id))
+            } else {
+                toast.error("Failed to clone agent: no ID returned")
+            }
+        } catch (error) {
+            console.error("Failed to clone agent:", error)
+            toast.error("Failed to clone agent")
+        } finally {
+            setIsCloning(false)
         }
     }
 
@@ -144,6 +190,10 @@ function AgentOptionsMenu({
                     </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={handleClone} disabled={isCloning}>
+                        <Copy className="h-4 w-4" />
+                        {isCloning ? "Cloning..." : "Clone Agent"}
+                    </DropdownMenuItem>
                     <DropdownMenuItem onClick={handleToggleActive}>
                         {isActive ? (
                             <>
@@ -366,7 +416,20 @@ export default function AgentSetupTab({
                                 notificationSettings={notificationSettings}
                                 mutate={mutate}
                             />
-                            <AgentOptionsMenu agentId={agentId} agentName={name || defaultName} isActive={isActive} onToggleActive={setIsActive} mutate={mutate} />
+                            <AgentOptionsMenu
+                                agentId={agentId}
+                                agentName={name || defaultName}
+                                isActive={isActive}
+                                onToggleActive={setIsActive}
+                                mutate={mutate}
+                                inputs={agentInputs}
+                                outputs={agentOutputs}
+                                knowledgeBases={agentKnowledgeBases}
+                                prompt={prompt}
+                                requireApproval={requireApproval}
+                                toolApprovals={toolApprovals}
+                                notificationSettings={notificationSettings}
+                            />
                         </div>
                     </div>
                 </div>
