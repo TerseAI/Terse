@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 
-import { Bell, Check, ChevronRight, Copy, Database, FileText, MoreVertical, Pause, Play, PlusIcon, Trash2, Wrench, XIcon, Zap } from "lucide-react"
+import { Bell, Check, ChevronLeft, ChevronRight, Copy, Database, FileText, MessageSquare, MoreVertical, Pause, PanelLeftClose, PanelRightClose, Play, PlusIcon, Trash2, Wrench, XIcon, Zap } from "lucide-react"
 import { toast } from "sonner"
 import { type KeyedMutator } from "swr"
 import { v4 as uuidv4 } from "uuid"
@@ -20,6 +20,8 @@ import { BuilderChat } from "../../../components/chat/BuilderChat"
 import EditableTextField from "../../../components/ui/EditableTextField"
 import { Badge } from "../../../components/ui/badge"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../../../components/ui/dialog"
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup, usePanelRef } from "../../../components/ui/resizable"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../../../components/ui/tooltip"
 import { cn } from "../../../lib/utils"
 import { useModelContext } from "../../../services/ModelContextProvider"
 import { CONFIG_DETAILS, ConfigInstance, ConfigType } from "../../../shared/Configs"
@@ -383,172 +385,288 @@ export default function AgentSetupTab({
         }
     ]
     const [activeSection, setActiveSection] = useState<SetupSection>("triggers")
+    const [isAgentPanelCollapsed, setIsAgentPanelCollapsed] = useState(false)
+    const [isChatPanelCollapsed, setIsChatPanelCollapsed] = useState(false)
+    const agentPanelRef = usePanelRef()
+    const chatPanelRef = usePanelRef()
 
     donate("Agent Set Up Page Context", new AgentSetUpPageContext(activeSection))
 
+    const toggleAgentPanel = () => {
+        const panel = agentPanelRef.current
+        if (panel) {
+            if (isAgentPanelCollapsed) {
+                panel.expand()
+            } else {
+                panel.collapse()
+            }
+        }
+    }
+
+    const toggleChatPanel = () => {
+        const panel = chatPanelRef.current
+        if (panel) {
+            if (isChatPanelCollapsed) {
+                panel.expand()
+            } else {
+                panel.collapse()
+            }
+        }
+    }
+
     return (
-        <div className="grid grid-cols-20 h-full">
-            <div className="flex flex-col h-full min-h-0 col-span-14">
-                {/* Header */}
-                <div className="border-b border-border px-6 py-4">
-                    <div className="flex items-center justify-between gap-4">
-                        <div className="flex items-center gap-3 min-w-0">
-                            <EditableTextField className="text-lg font-medium" value={name || ""} placeholder={defaultName} onSave={value => setName(value)} />
-                            {agentId && !isActive && (
-                                <Badge variant="outline" className="text-muted-foreground">
-                                    <Pause className="h-3 w-3 mr-1" />
-                                    Paused
-                                </Badge>
-                            )}
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <SaveAgentButton
-                                defaultName={defaultName}
-                                agentId={agentId}
-                                name={name}
-                                inputs={agentInputs}
-                                outputs={agentOutputs}
-                                knowledgeBases={agentKnowledgeBases}
-                                prompt={prompt}
-                                isActive={isActive}
-                                requireApproval={requireApproval}
-                                toolApprovals={toolApprovals}
-                                notificationSettings={notificationSettings}
-                                mutate={mutate}
-                            />
-                            <AgentOptionsMenu
-                                agentId={agentId}
-                                agentName={name || defaultName}
-                                isActive={isActive}
-                                onToggleActive={setIsActive}
-                                mutate={mutate}
-                                inputs={agentInputs}
-                                outputs={agentOutputs}
-                                knowledgeBases={agentKnowledgeBases}
-                                prompt={prompt}
-                                requireApproval={requireApproval}
-                                toolApprovals={toolApprovals}
-                                notificationSettings={notificationSettings}
-                            />
-                        </div>
-                    </div>
-                </div>
-
-                {/* Builder Steps - Horizontal flow */}
-                <div className="border-b border-border px-6 py-4 bg-muted/30">
-                    <div className="flex items-center gap-2">
-                        {steps.map((step, index) => {
-                            const isActive = activeSection === step.id
-                            const StepIcon = step.icon
-
-                            return (
-                                <div key={step.id} className="flex items-center">
-                                    <button
-                                        onClick={() => setActiveSection(step.id)}
-                                        className={cn(
-                                            "flex items-center gap-3 px-4 py-2.5 rounded-lg border transition-colors",
-                                            isActive ? "bg-background border-border shadow-sm" : "border-transparent hover:bg-background/50"
-                                        )}
-                                    >
-                                        <div
-                                            className={cn(
-                                                "flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium transition-colors",
-                                                step.isComplete
-                                                    ? "bg-foreground text-background"
-                                                    : isActive
-                                                      ? "bg-foreground/10 text-foreground border border-foreground/20"
-                                                      : "bg-muted text-muted-foreground"
-                                            )}
-                                        >
-                                            {step.isComplete ? <Check className="w-4 h-4" /> : <StepIcon className="w-4 h-4" />}
-                                        </div>
-                                        <div className="text-left">
-                                            <div className={cn("text-sm font-medium", isActive ? "text-foreground" : "text-muted-foreground")}>
-                                                {step.label}
-                                                {step.count !== undefined && step.count > 0 && <span className="ml-1.5 text-xs text-muted-foreground">({step.count})</span>}
-                                            </div>
-                                            <div className="text-xs text-muted-foreground">{step.description}</div>
-                                        </div>
-                                    </button>
-                                    {index < steps.length - 1 && <ChevronRight className="w-4 h-4 text-muted-foreground/50 mx-1" />}
+        <TooltipProvider>
+            <ResizablePanelGroup orientation="horizontal" className="h-full relative">
+                {/* Agent Configuration Panel */}
+                <ResizablePanel
+                    panelRef={agentPanelRef}
+                    defaultSize={70}
+                    minSize={30}
+                    collapsible
+                    collapsedSize={0}
+                    onResize={size => {
+                        if (size.asPercentage === 0) {
+                            setIsAgentPanelCollapsed(true)
+                        } else if (isAgentPanelCollapsed) {
+                            setIsAgentPanelCollapsed(false)
+                        }
+                    }}
+                    className={cn("transition-all duration-200", isAgentPanelCollapsed && "min-w-0")}
+                >
+                    <div className="flex flex-col h-full min-h-0">
+                        {/* Header */}
+                        <div className="border-b border-border px-6 py-4">
+                            <div className="flex items-center justify-between gap-4">
+                                <div className="flex items-center gap-3 min-w-0">
+                                    <EditableTextField className="text-lg font-medium" value={name || ""} placeholder={defaultName} onSave={value => setName(value)} />
+                                    {agentId && !isActive && (
+                                        <Badge variant="outline" className="text-muted-foreground">
+                                            <Pause className="h-3 w-3 mr-1" />
+                                            Paused
+                                        </Badge>
+                                    )}
                                 </div>
-                            )
-                        })}
-
-                        {/* Separator */}
-                        <div className="w-px h-8 bg-border mx-2" />
-
-                        {/* Optional sections */}
-                        <button
-                            onClick={() => setActiveSection("knowledgeBase")}
-                            className={cn(
-                                "flex items-center gap-2 px-3 py-2 rounded-lg text-sm border transition-colors",
-                                activeSection === "knowledgeBase"
-                                    ? "bg-background border-border shadow-sm text-foreground"
-                                    : "border-transparent text-muted-foreground hover:bg-background/50 hover:text-foreground"
-                            )}
-                        >
-                            <Database className="w-4 h-4" />
-                            <span>Knowledge</span>
-                            {knowledgeBases.length > 0 && (
-                                <Badge variant="secondary" className="ml-1 text-xs px-1.5 py-0">
-                                    {knowledgeBases.length}
-                                </Badge>
-                            )}
-                        </button>
-                        <button
-                            onClick={() => setActiveSection("alerts")}
-                            className={cn(
-                                "flex items-center gap-2 px-3 py-2 rounded-lg text-sm border transition-colors",
-                                activeSection === "alerts"
-                                    ? "bg-background border-border shadow-sm text-foreground"
-                                    : "border-transparent text-muted-foreground hover:bg-background/50 hover:text-foreground"
-                            )}
-                        >
-                            <Bell className="w-4 h-4" />
-                            <span>Alerts</span>
-                        </button>
-                    </div>
-                </div>
-
-                {/* Main Content */}
-                <div className="flex-1 min-h-0 overflow-y-auto">
-                    <div className="p-6 max-w-4xl">
-                        <div className={activeSection === "triggers" ? "block" : "hidden"}>
-                            <InputLayout inputs={inputs} setInputs={setInputs} isIncomplete={triggersIncomplete} />
-                        </div>
-
-                        <div className={activeSection === "knowledgeBase" ? "block" : "hidden"}>
-                            <KnowledgeBaseLayout knowledgeBases={knowledgeBases} setKnowledgeBases={setKnowledgeBases} />
-                        </div>
-
-                        <div className={activeSection === "prompt" ? "block" : "hidden"}>
-                            <div className="h-[calc(100vh-16rem)] min-h-[420px]">
-                                <InstructionsEditor prompt={prompt} setPrompt={setPrompt} />
+                                <div className="flex items-center gap-2">
+                                    <SaveAgentButton
+                                        defaultName={defaultName}
+                                        agentId={agentId}
+                                        name={name}
+                                        inputs={agentInputs}
+                                        outputs={agentOutputs}
+                                        knowledgeBases={agentKnowledgeBases}
+                                        prompt={prompt}
+                                        isActive={isActive}
+                                        requireApproval={requireApproval}
+                                        toolApprovals={toolApprovals}
+                                        notificationSettings={notificationSettings}
+                                        mutate={mutate}
+                                    />
+                                    <AgentOptionsMenu
+                                        agentId={agentId}
+                                        agentName={name || defaultName}
+                                        isActive={isActive}
+                                        onToggleActive={setIsActive}
+                                        mutate={mutate}
+                                        inputs={agentInputs}
+                                        outputs={agentOutputs}
+                                        knowledgeBases={agentKnowledgeBases}
+                                        prompt={prompt}
+                                        requireApproval={requireApproval}
+                                        toolApprovals={toolApprovals}
+                                        notificationSettings={notificationSettings}
+                                    />
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <Button variant="ghost" size="icon" onClick={toggleAgentPanel}>
+                                                <PanelLeftClose className="h-4 w-4" />
+                                            </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>Collapse agent panel</TooltipContent>
+                                    </Tooltip>
+                                </div>
                             </div>
                         </div>
 
-                        <div className={activeSection === "skills" ? "block" : "hidden"}>
-                            <OutputLayout outputs={outputs} setOutputs={setOutputs} isIncomplete={skillsIncomplete} />
+                        {/* Builder Steps - Horizontal flow */}
+                        <div className="border-b border-border px-6 py-4 bg-muted/30">
+                            <div className="flex items-center gap-2">
+                                {steps.map((step, index) => {
+                                    const isActive = activeSection === step.id
+                                    const StepIcon = step.icon
+
+                                    return (
+                                        <div key={step.id} className="flex items-center">
+                                            <button
+                                                onClick={() => setActiveSection(step.id)}
+                                                className={cn(
+                                                    "flex items-center gap-3 px-4 py-2.5 rounded-lg border transition-colors",
+                                                    isActive ? "bg-background border-border shadow-sm" : "border-transparent hover:bg-background/50"
+                                                )}
+                                            >
+                                                <div
+                                                    className={cn(
+                                                        "flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium transition-colors",
+                                                        step.isComplete
+                                                            ? "bg-foreground text-background"
+                                                            : isActive
+                                                              ? "bg-foreground/10 text-foreground border border-foreground/20"
+                                                              : "bg-muted text-muted-foreground"
+                                                    )}
+                                                >
+                                                    {step.isComplete ? <Check className="w-4 h-4" /> : <StepIcon className="w-4 h-4" />}
+                                                </div>
+                                                <div className="text-left">
+                                                    <div className={cn("text-sm font-medium", isActive ? "text-foreground" : "text-muted-foreground")}>
+                                                        {step.label}
+                                                        {step.count !== undefined && step.count > 0 && <span className="ml-1.5 text-xs text-muted-foreground">({step.count})</span>}
+                                                    </div>
+                                                    <div className="text-xs text-muted-foreground">{step.description}</div>
+                                                </div>
+                                            </button>
+                                            {index < steps.length - 1 && <ChevronRight className="w-4 h-4 text-muted-foreground/50 mx-1" />}
+                                        </div>
+                                    )
+                                })}
+
+                                {/* Separator */}
+                                <div className="w-px h-8 bg-border mx-2" />
+
+                                {/* Optional sections */}
+                                <button
+                                    onClick={() => setActiveSection("knowledgeBase")}
+                                    className={cn(
+                                        "flex items-center gap-2 px-3 py-2 rounded-lg text-sm border transition-colors",
+                                        activeSection === "knowledgeBase"
+                                            ? "bg-background border-border shadow-sm text-foreground"
+                                            : "border-transparent text-muted-foreground hover:bg-background/50 hover:text-foreground"
+                                    )}
+                                >
+                                    <Database className="w-4 h-4" />
+                                    <span>Knowledge</span>
+                                    {knowledgeBases.length > 0 && (
+                                        <Badge variant="secondary" className="ml-1 text-xs px-1.5 py-0">
+                                            {knowledgeBases.length}
+                                        </Badge>
+                                    )}
+                                </button>
+                                <button
+                                    onClick={() => setActiveSection("alerts")}
+                                    className={cn(
+                                        "flex items-center gap-2 px-3 py-2 rounded-lg text-sm border transition-colors",
+                                        activeSection === "alerts"
+                                            ? "bg-background border-border shadow-sm text-foreground"
+                                            : "border-transparent text-muted-foreground hover:bg-background/50 hover:text-foreground"
+                                    )}
+                                >
+                                    <Bell className="w-4 h-4" />
+                                    <span>Alerts</span>
+                                </button>
+                            </div>
                         </div>
 
-                        <div className={cn(activeSection === "alerts" ? "block" : "hidden", "space-y-6")}>
-                            <div>
-                                <h2 className="text-lg font-medium mb-1">Alerts & Approval</h2>
-                                <p className="text-sm text-muted-foreground mb-4">Configure when you want to be notified and whether actions need your approval.</p>
+                        {/* Main Content */}
+                        <div className="flex-1 min-h-0 overflow-y-auto">
+                            <div className="p-6 max-w-4xl">
+                                <div className={activeSection === "triggers" ? "block" : "hidden"}>
+                                    <InputLayout inputs={inputs} setInputs={setInputs} isIncomplete={triggersIncomplete} />
+                                </div>
+
+                                <div className={activeSection === "knowledgeBase" ? "block" : "hidden"}>
+                                    <KnowledgeBaseLayout knowledgeBases={knowledgeBases} setKnowledgeBases={setKnowledgeBases} />
+                                </div>
+
+                                <div className={activeSection === "prompt" ? "block" : "hidden"}>
+                                    <div className="h-[calc(100vh-16rem)] min-h-[420px]">
+                                        <InstructionsEditor prompt={prompt} setPrompt={setPrompt} />
+                                    </div>
+                                </div>
+
+                                <div className={activeSection === "skills" ? "block" : "hidden"}>
+                                    <OutputLayout outputs={outputs} setOutputs={setOutputs} isIncomplete={skillsIncomplete} />
+                                </div>
+
+                                <div className={cn(activeSection === "alerts" ? "block" : "hidden", "space-y-6")}>
+                                    <div>
+                                        <h2 className="text-lg font-medium mb-1">Alerts & Approval</h2>
+                                        <p className="text-sm text-muted-foreground mb-4">Configure when you want to be notified and whether actions need your approval.</p>
+                                    </div>
+                                    <AgentApprovalSettings outputs={outputs} knowledgeBases={knowledgeBases} toolApprovals={toolApprovals} onToolApprovalsChange={setToolApprovals} />
+                                    <AgentNotificationSettings settings={notificationSettings} onChange={setNotificationSettings} />
+                                </div>
                             </div>
-                            <AgentApprovalSettings outputs={outputs} knowledgeBases={knowledgeBases} toolApprovals={toolApprovals} onToolApprovalsChange={setToolApprovals} />
-                            <AgentNotificationSettings settings={notificationSettings} onChange={setNotificationSettings} />
                         </div>
                     </div>
-                </div>
-            </div>
+                </ResizablePanel>
 
-            {/* Builder Chat */}
-            <div className="border-l border-border col-span-6 h-full min-h-0">
-                <BuilderChat getStateJSON={() => getStateJSON()} agentId={agentId} />
-            </div>
-        </div>
+                {/* Resizable Handle */}
+                <ResizableHandle withHandle />
+
+                {/* Builder Chat Panel */}
+                <ResizablePanel
+                    panelRef={chatPanelRef}
+                    defaultSize={30}
+                    minSize={20}
+                    collapsible
+                    collapsedSize={0}
+                    onResize={size => {
+                        if (size.asPercentage === 0) {
+                            setIsChatPanelCollapsed(true)
+                        } else if (isChatPanelCollapsed) {
+                            setIsChatPanelCollapsed(false)
+                        }
+                    }}
+                    className={cn("transition-all duration-200", isChatPanelCollapsed && "min-w-0")}
+                >
+                    <div className="border-l border-border h-full min-h-0 flex flex-col">
+                        {/* Chat Panel Header */}
+                        <div className="border-b border-border px-4 py-3 flex items-center justify-between bg-background">
+                            <div className="flex items-center gap-2">
+                                <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                                <span className="font-medium text-sm">AI Assistant</span>
+                            </div>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button variant="ghost" size="icon" onClick={toggleChatPanel}>
+                                        <PanelRightClose className="h-4 w-4" />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Collapse chat panel</TooltipContent>
+                            </Tooltip>
+                        </div>
+                        {/* Chat Content */}
+                        <div className="flex-1 min-h-0">
+                            <BuilderChat getStateJSON={() => getStateJSON()} agentId={agentId} />
+                        </div>
+                    </div>
+                </ResizablePanel>
+
+                {/* Collapsed Panel Indicators */}
+                {isAgentPanelCollapsed && (
+                    <div className="absolute left-0 top-1/2 -translate-y-1/2 z-10">
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button variant="outline" size="icon" className="h-12 w-6 rounded-l-none border-l-0" onClick={toggleAgentPanel}>
+                                    <ChevronRight className="h-4 w-4" />
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="right">Expand agent panel</TooltipContent>
+                        </Tooltip>
+                    </div>
+                )}
+                {isChatPanelCollapsed && (
+                    <div className="absolute right-0 top-1/2 -translate-y-1/2 z-10">
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button variant="outline" size="icon" className="h-12 w-6 rounded-r-none border-r-0" onClick={toggleChatPanel}>
+                                    <ChevronLeft className="h-4 w-4" />
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="left">Expand chat panel</TooltipContent>
+                        </Tooltip>
+                    </div>
+                )}
+            </ResizablePanelGroup>
+        </TooltipProvider>
     )
 }
 
