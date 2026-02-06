@@ -1,8 +1,8 @@
 import { Server } from "socket.io"
 
-import { buildRunErrorEvent, type ClassifiedError } from "../agentErrorUtils"
 import logger from "../../logger"
 import { SocketEvents, SocketRooms } from "../../shared/SocketEvents"
+import { type ClassifiedError, buildRunErrorEvent } from "../agentErrorUtils"
 
 import { storeChatEvent } from "./runHistory"
 

@@ -2,7 +2,17 @@ import { useEffect, useRef, useState } from "react"
 
 import { v4 as uuidv4 } from "uuid"
 
-import { type ChatSnippet, type ChatSnippetPayload, type Failure, FilterResult, type RunError, type TextDelta, type ToolCall, type ToolCallComplete, type ToolCallGenerating } from "../../../shared/ModelEvents"
+import {
+    type ChatSnippet,
+    type ChatSnippetPayload,
+    type Failure,
+    FilterResult,
+    type RunError,
+    type TextDelta,
+    type ToolCall,
+    type ToolCallComplete,
+    type ToolCallGenerating
+} from "../../../shared/ModelEvents"
 import { type Turn } from "../Turn"
 import { filterOutThinkingOnlyTurns } from "../utils/turnUtils"
 

@@ -1,11 +1,11 @@
 import { Server } from "socket.io"
 
-import { classifyAgentError, type ClassifiedError } from "../agentErrorUtils"
 import logger from "../../logger"
 import { ModelEvent } from "../../shared/ModelEvents"
 import type { RunHistoryModelEvent, RunHistoryModelSocketEvent, RunHistoryStreamingParams } from "../../shared/RunHistoryTypes"
 import { SocketEvents, SocketRooms } from "../../shared/SocketEvents"
 import { randomString } from "../../utility/strings"
+import { type ClassifiedError, classifyAgentError } from "../agentErrorUtils"
 
 import { markRunFailed, storeChatEvent } from "./runHistory"
 

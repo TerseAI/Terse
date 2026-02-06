@@ -7,8 +7,7 @@ type RunErrorViewProps = {
     errorCode?: string
 }
 
-const CONTEXT_LENGTH_MESSAGE =
-    "Context window exceeded. Try starting a new conversation or reducing the amount of context."
+const CONTEXT_LENGTH_MESSAGE = "Context window exceeded. Try starting a new conversation or reducing the amount of context."
 
 export function RunErrorView({ error, errorCode }: RunErrorViewProps) {
     const isContextLength = errorCode === "context_length_exceeded"
@@ -17,12 +16,7 @@ export function RunErrorView({ error, errorCode }: RunErrorViewProps) {
     return (
         <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">
             <div className="flex items-start gap-2">
-                <svg
-                    className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                >
+                <svg className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path
                         strokeLinecap="round"
                         strokeLinejoin="round"

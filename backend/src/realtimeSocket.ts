@@ -4,12 +4,12 @@ import { jwtVerify } from "jose"
 import { createClient } from "redis"
 import { Server, Socket } from "socket.io"
 
-import { classifyAgentError } from "./agent/agentErrorUtils"
 import { AgentRunner } from "./agent/AgentRunner/AgentRunner"
-import { reportRunErrorToRun } from "./agent/AgentRunner/runErrorReporter"
 import { RunContext } from "./agent/AgentRunner/SystemPromptBuilder"
+import { reportRunErrorToRun } from "./agent/AgentRunner/runErrorReporter"
 import { finalizeRunStatus, markRunFailed, storeChatEvent } from "./agent/AgentRunner/runHistory"
 import { DirectiveTask, directiveTaskQueue } from "./agent/DirectiveAgent/DirectiveAgent"
+import { classifyAgentError } from "./agent/agentErrorUtils"
 import { nodeEnv, optional, urls } from "./config/settings"
 import { KnowledgeBase } from "./knowledgeBase/abstract/KnowledgeBase"
 import { KnowledgeBaseFactory } from "./knowledgeBase/abstract/KnowledgeBaseFactory"
@@ -21,6 +21,7 @@ import { Session } from "./server"
 import { ApprovalService } from "./services/ApprovalService"
 import { ConfigInstance } from "./shared/Configs"
 import { SendModelRequest, ToolApprovalResponse } from "./shared/ModelEvents"
+import { ModelEvent } from "./shared/ModelEvents"
 import { SocketEvents, SocketRooms } from "./shared/SocketEvents"
 import { registerBuilderChatHandler } from "./socketHandlers/builderChatHandler"
 import { AgentWithRelations } from "./types/prisma"
@@ -378,12 +379,7 @@ export function emitCacheInvalidationWithWildcard(organizationId: string, key: s
 /**
  * Mark run as failed and invalidate run history cache. Logs on failure; does not rethrow.
  */
-export async function markRunFailedAndInvalidate(
-    runId: string,
-    errorMessage: string,
-    organizationId: string | undefined,
-    agentId: string
-): Promise<void> {
+export async function markRunFailedAndInvalidate(runId: string, errorMessage: string, organizationId: string | undefined, agentId: string): Promise<void> {
     try {
         await markRunFailed(runId, errorMessage, "agent")
         if (organizationId) {
