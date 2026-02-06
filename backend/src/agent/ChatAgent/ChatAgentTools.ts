@@ -373,14 +373,24 @@ const SlackConfigSchema = BaseConfigSchema.extend({
     ),
     channelName: NonEmptyString.nullable().describe('The channel display name (e.g., "general"). From fetchResourcesForIntegration, use "resources[].name".'),
     listenToUserDms: z.boolean().nullable().describe("Set to true to listen to direct messages. If true, channelId is not required."),
-    userIds: z.array(NonEmptyString).nullable()
+    userIds: z
+        .array(NonEmptyString)
+        .nullable()
+        .describe("Slack user IDs when using listenToUserDms. Get IDs via fetchResourcesForIntegration with integrationType=SLACK and options.slack.objectType='users'.")
 })
 
 const SlackOutputConfigSchema = BaseConfigSchema.extend({
     configType: z.literal(ConfigType.SLACK_OUTPUT),
     integrationType: z.literal(IntegrationType.SLACK),
-    channelId: NonEmptyString.nullable().describe('The Slack channel ID (starts with "C" like "C12345"). From fetchResourcesForIntegration, use "resources[].id".'),
-    channelName: NonEmptyString.nullable().describe('The channel display name (e.g., "general"). From fetchResourcesForIntegration, use "resources[].name".')
+    channelId: NonEmptyString.nullable().describe("Slack channel or DM channel ID. Required if userIds is empty; otherwise optional (DM channel IDs are resolved from userIds)."),
+    channelName: NonEmptyString.nullable().describe("The channel display name. From fetchResourcesForIntegration, use resources[].name."),
+    userIds: z
+        .array(NonEmptyString)
+        .nullable()
+        .optional()
+        .describe(
+            "Slack user IDs to send DMs to; used when destination is direct messages. Get IDs via fetchResourcesForIntegration with integrationType=SLACK and options.slack.objectType='users'. At least one of channelId or userIds required."
+        )
 })
 
 const NotionDatabaseConfigSchema = BaseConfigSchema.extend({
@@ -477,10 +487,14 @@ const SlackKnowledgeBaseConfigSchema = BaseConfigSchema.extend({
         .nullable()
         .optional()
         .describe("Slack channel IDs to read. From fetchResourcesForIntegration with integrationType=SLACK (channels), use resources[].id. If omitted, reads from all accessible channels."),
-    channelNames: z.array(z.string()).nullable().optional().describe("Display names for the channels, matching channelIds order."),
     allowDms: z.boolean().optional().default(false).describe("Whether to allow reading DMs. Only applicable for Slack user integrations (not workspace bot integrations)."),
-    userIds: z.array(z.string()).nullable().optional().describe("Specific Slack user IDs to filter DM conversations. If omitted, reads from all accessible DMs."),
-    userNames: z.array(z.string()).nullable().optional().describe("Display names for the users, matching userIds order.")
+    userIds: z
+        .array(z.string())
+        .nullable()
+        .optional()
+        .describe(
+            "Specific Slack user IDs to filter DM conversations. Get IDs via fetchResourcesForIntegration with integrationType=SLACK and options.slack.objectType='users'. If omitted, reads from all accessible DMs."
+        )
 })
 
 const TimeTriggerConfigSchema = BaseConfigSchema.extend({

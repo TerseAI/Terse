@@ -276,7 +276,13 @@ export const convertPrismaOutputConfigToConfigInstance = (channelOutput: AgentOu
     }
 
     if (channelOutput.slack_config) {
-        return new SlackOutputConfig(integrationId, channelOutput.slack_config.channel_id || undefined, channelOutput.slack_config.channel_name || undefined)
+        return new SlackOutputConfig(
+            integrationId,
+            channelOutput.slack_config.channel_id || undefined,
+            channelOutput.slack_config.channel_name || undefined,
+            channelOutput.slack_config.user_ids?.length ? channelOutput.slack_config.user_ids : undefined,
+            undefined // userNames not persisted in DB; can be derived in UI
+        )
     }
 
     if (channelOutput.gmail_config) {
@@ -520,7 +526,7 @@ export const convertPlainObjectToKnowledgeBaseConfigInstance = (config: any): Co
         case ConfigType.LINEAR_KB:
             return new LinearKBConfig(config.integrationId, config.teamId, config.teamName, config.projectId, config.projectName)
         case ConfigType.SLACK_KB:
-            return new SlackKBConfig(config.integrationId, config.channelIds, config.channelNames, config.allowDms ?? false, config.userIds, config.userNames)
+            return new SlackKBConfig(config.integrationId, config.channelIds ?? [], config.channelNames ?? [], config.allowDms ?? false, config.userIds ?? [], config.userNames ?? [])
         default:
             throw new Error(`Unsupported knowledge base config type: ${config.configType}`)
     }

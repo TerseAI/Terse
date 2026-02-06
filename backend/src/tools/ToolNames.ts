@@ -32,6 +32,7 @@ export const ToolName = {
     // Slack Tools
     SLACK_SEND_MESSAGE: "slack_send_message",
     SLACK_LIST_CHANNELS: "slack_list_channels",
+    SLACK_LIST_USERS: "slack_list_users",
     SLACK_READ_CONVERSATION: "slack_read_conversation",
 
     // Confluence Tools

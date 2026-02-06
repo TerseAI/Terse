@@ -1,7 +1,7 @@
 import { Tool } from "@openai/agents"
 import { OutputConfigType } from "@prisma/client"
 
-import { db } from "../../prismaClient"
+import { slackListUsersTool } from "../../knowledgeBase/slack/tools/listUsers"
 import { SlackOutputConfig } from "../../shared/Configs"
 import { IntegrationType } from "../../shared/Integrations"
 import { AgentOutputWithConfigs, PrismaTransaction, User } from "../../types/prisma"
@@ -11,13 +11,18 @@ import { slackSendMessageTool } from "./tools/sendMessage"
 
 export class SlackOutput extends Output<SlackOutputConfig> {
     constructor() {
-        const toolbox: ToolboxEntry[] = [{ tool: slackSendMessageTool as Tool, isReadOnly: false, integration: IntegrationType.SLACK, displayName: "Send message" }]
+        const toolbox: ToolboxEntry[] = [
+            { tool: slackSendMessageTool as Tool, isReadOnly: false, integration: IntegrationType.SLACK, displayName: "Send message" },
+            { tool: slackListUsersTool as Tool, isReadOnly: true, integration: IntegrationType.SLACK, displayName: "List users" }
+        ]
         super(OutputConfigType.SLACK_CHANNEL, toolbox)
     }
 
     async validateConfig(output: SlackOutputConfig, _userId: string): Promise<void> {
-        if (!output.channelId) {
-            throw new Error("Invalid output config for slack_output: missing channelId")
+        const hasChannel = !!(output.channelId && output.channelId.trim())
+        const hasUsers = (output.userIds?.length ?? 0) > 0
+        if (!hasChannel && !hasUsers) {
+            throw new Error("Invalid output config for slack_output: provide either channelId or at least one userId (for DMs)")
         }
     }
 
@@ -28,7 +33,7 @@ export class SlackOutput extends Output<SlackOutputConfig> {
                 channel_id: output.channelId || null,
                 channel_name: output.channelName || null,
                 listen_to_user_dms: false, // Not applicable for outputs
-                user_ids: [] // Not applicable for outputs
+                user_ids: output.userIds ?? []
             }
         })
     }
@@ -38,23 +43,30 @@ export class SlackOutput extends Output<SlackOutputConfig> {
             throw new Error("No Slack configs provided")
         }
 
-        const sections: string[] = []
-
-        // List all available configurations
         const configList: string[] = []
         for (const config of configs) {
-            if (!config.slack_config) {
-                throw new Error("Slack config not found")
-            }
+            if (!config.slack_config) throw new Error("Slack config not found")
             const channelId = config.slack_config.channel_id
             const channelName = config.slack_config.channel_name
-            configList.push(`  • Integration ID: ${config.integration_id} - Channel Name: ${channelName || "N/A"}, Channel ID: ${channelId || "N/A"}`)
+            const userIds = config.slack_config.user_ids ?? []
+            if (channelId) {
+                configList.push(`  • Integration ID: ${config.integration_id} - Channel ID: ${channelId}${channelName ? ` (${channelName})` : ""}`)
+            }
+            if (userIds.length > 0) {
+                configList.push(`  • Integration ID: ${config.integration_id} - User IDs for DMs: ${userIds.join(", ")}`)
+            }
         }
+
+        if (configList.length === 0) {
+            throw new Error("No Slack output destinations (channel or user IDs for DMs).")
+        }
+
+        const sections: string[] = []
         sections.push("Available configurations:")
         sections.push(configList.join("\n"))
         sections.push("\nWhen calling Slack tools, you MUST include the `integrationId` and `channelId` parameters matching one of the configurations listed above.")
+        sections.push("\nUse slack_list_users to resolve Slack user IDs to names when needed.")
         sections.push("\n" + SLACK_OUTPUT_INSTRUCTIONS)
-
         return sections.join("\n")
     }
 }
@@ -62,8 +74,9 @@ export class SlackOutput extends Output<SlackOutputConfig> {
 const SLACK_OUTPUT_INSTRUCTIONS = `
 === SLACK OUTPUT ===
 
-TOOL:
-- slack_send_message: Send messages to Slack channel. Supports plain text (mrkdwn) or Block Kit (buttons, structured layouts).
+TOOLS:
+- slack_send_message: Send messages to Slack channels or DMs. Use channelId from the listed configurations. Supports plain text (mrkdwn) or Block Kit (buttons, structured layouts).
+- slack_list_users: List workspace users (id and name). Use to resolve user IDs to names when needed.
 
 MESSAGE TYPES:
 - Plain text: Simple notifications, short updates. Use \`message\` parameter only.
