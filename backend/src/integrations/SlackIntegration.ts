@@ -531,7 +531,7 @@ export class SlackIntegrationManager
 
         const userSlackIntegration = await prisma.user_slack_integrations.findUnique({
             where: { id: integrationId, organization_id: organizationId },
-            include: { slack_integration: true }
+            include: { slack_integration: true, user: true }
         })
 
         if (!userSlackIntegration?.slack_integration) {
@@ -539,9 +539,7 @@ export class SlackIntegrationManager
         }
 
         // Use user token for DMs when available (user's DMs), otherwise bot token (bot's DMs). Same for channels: bot token.
-        const token = slackConfig.listenToUserDms
-            ? userSlackIntegration.authed_user_access_token || userSlackIntegration.slack_integration.access_token
-            : userSlackIntegration.slack_integration.access_token
+        const token = getSlackToken(userSlackIntegration)
         if (!token) {
             throw new Error(`Slack access token not found for integration ${integrationId}. Please reconnect your Slack workspace.`)
         }

@@ -75,10 +75,6 @@ export async function slackOAuthCallback(req: Request, res: Response) {
     await integration.processInstallationCallback(req, res)
 }
 
-const getToken = (integration: UserSlackIntegrationWithUser) => {
-    return integration.authed_user_access_token || integration.slack_integration.access_token
-}
-
 export const getSlackChannels = async (req: Request, res: Response) => {
     const user = req.session?.user
     if (!user) {

@@ -78,7 +78,7 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
         tool({
             name: "fetchResourcesForIntegration",
             description:
-                "Call this when you need to see what configs you have access to. It returns display names and canonical IDs you can use for the Agent object in applyAgent. For Slack: use options.slack.objectType 'channels' (default) for channels, or 'users' to get workspace users and their Slack user IDs (use when configuring DMs). IMPORTANT: Do not add integrations unless the user explicitly asked for them.",
+                "Call this when you need to see what configs you have access to. It returns display names and canonical IDs you can use for the Agent object in applyAgent. IMPORTANT: Do not add integrations unless the user explicitly asked for them.",
             parameters: z.object({
                 integrationType: z.nativeEnum(IntegrationType).describe("The integration type to fetch resources for"),
                 query: z.string().nullable().describe("Optional query to filter resources by name/title"),
