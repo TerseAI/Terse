@@ -219,9 +219,7 @@ export function SlackConfigurationSelector({
                             <SelectSeparator />
                             <SelectGroup>
                                 <SelectLabel>Direct Messages</SelectLabel>
-                                <SelectItem value="__LISTEN_TO_DMS__">
-                                    {mode === "output" ? "Send to direct messages" : "Monitor private direct messages"}
-                                </SelectItem>
+                                <SelectItem value="__LISTEN_TO_DMS__">{mode === "output" ? "Send to direct messages" : "Monitor private direct messages"}</SelectItem>
                             </SelectGroup>
                         </>
                     )}
@@ -242,9 +240,7 @@ export function SlackConfigurationSelector({
             {showUserFilter && (selectedChannelId || listenToUserDms) && (
                 <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                        <label className="text-xs font-medium text-[theme(text-secondary)]">
-                            Select Users {mode === "output" && listenToUserDms ? "(Required)" : "(Optional)"}
-                        </label>
+                        <label className="text-xs font-medium text-[theme(text-secondary)]">Select Users {mode === "output" && listenToUserDms ? "(Required)" : "(Optional)"}</label>
                         <RefreshButton onClick={handleUsersRefresh} isRefreshing={usersIsValidating && !usersLoading} title="Refresh user list" />
                     </div>
                     <MultiSelect

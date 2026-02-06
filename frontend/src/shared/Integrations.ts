@@ -55,7 +55,8 @@ export const LinearIntegrationMetadata = {
 export const SlackIntegrationMetadata = {
     type: IntegrationType.SLACK,
     name: "Slack",
-    description: "Send and receive messages in Slack (channels, group DMs, and DMs). Triggers and knowledge base can use user token to read your DMs; output can send to channels or users with either token.",
+    description:
+        "Send and receive messages in Slack (channels, group DMs, and DMs). Triggers and knowledge base can use user token to read your DMs; output can send to channels or users with either token.",
     isInput: true,
     isOutput: false,
     isKnowledgeBase: true

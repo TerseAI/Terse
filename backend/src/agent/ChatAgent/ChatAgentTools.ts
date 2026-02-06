@@ -147,8 +147,7 @@ const SlackConfigSchema = BaseConfigSchema.extend({
 const SlackOutputConfigSchema = BaseConfigSchema.extend({
     configType: z.literal(ConfigType.SLACK_OUTPUT),
     integrationType: z.literal(IntegrationType.SLACK),
-    channelId: NonEmptyString.nullable()
-        .describe("Slack channel or DM channel ID. Required if userIds is empty; otherwise optional (DM channel IDs are resolved from userIds)."),
+    channelId: NonEmptyString.nullable().describe("Slack channel or DM channel ID. Required if userIds is empty; otherwise optional (DM channel IDs are resolved from userIds)."),
     channelName: NonEmptyString.nullable().describe("The channel display name. From fetchResourcesForIntegration, use resources[].name."),
     userIds: z.array(NonEmptyString).nullable().optional().describe("Slack user IDs to send DMs to; used when destination is direct messages. At least one of channelId or userIds required."),
     userNames: z.array(z.string()).nullable().optional().describe("Display names for the users in userIds.")

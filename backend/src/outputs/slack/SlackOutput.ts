@@ -123,9 +123,7 @@ export class SlackOutput extends Output<SlackOutputConfig> {
             throw new Error("No Slack output destinations provided")
         }
 
-        const configList = destinations.map(
-            d => `  • Integration ID: ${d.integrationId} - Channel Name: ${d.channelName}, Channel ID: ${d.channelId}`
-        )
+        const configList = destinations.map(d => `  • Integration ID: ${d.integrationId} - Channel Name: ${d.channelName}, Channel ID: ${d.channelId}`)
         const sections: string[] = []
         sections.push("Available configurations:")
         sections.push(configList.join("\n"))

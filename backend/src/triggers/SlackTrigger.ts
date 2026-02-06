@@ -1,5 +1,5 @@
-import { db } from "../prismaClient"
 import { SlackIntegrationManager } from "../integrations/SlackIntegration"
+import { db } from "../prismaClient"
 import { ConfigType, SlackConfig } from "../shared/Configs"
 import { PrismaTransaction } from "../types/prisma"
 

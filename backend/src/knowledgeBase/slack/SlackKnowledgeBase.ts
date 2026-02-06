@@ -1,8 +1,8 @@
 import { Tool } from "@openai/agents"
 import { KnowledgeBaseConfigType } from "@prisma/client"
 
-import { db } from "../../prismaClient"
 import { ToolboxEntry } from "../../outputs/abstract/Output"
+import { db } from "../../prismaClient"
 import { SlackKBConfig } from "../../shared/Configs"
 import { IntegrationType } from "../../shared/Integrations"
 import { AgentKnowledgeBaseWithConfigs, PrismaTransaction } from "../../types/prisma"
@@ -43,9 +43,7 @@ export class SlackKnowledgeBase extends KnowledgeBase<SlackKBConfig> {
                 where: { id: knowledgeBase.integrationId }
             })
             if (usi?.is_bot_user) {
-                throw new Error(
-                    "Including DMs in search or filtering by users requires a Slack user token. Reconnect Slack with a user token."
-                )
+                throw new Error("Including DMs in search or filtering by users requires a Slack user token. Reconnect Slack with a user token.")
             }
         }
     }
