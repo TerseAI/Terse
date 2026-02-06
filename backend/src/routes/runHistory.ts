@@ -11,6 +11,114 @@ import { convertPrismaIntegrationTypeToIntegrationTypeFromRunHistory } from "../
 // Valid status values for validation
 const VALID_STATUSES: RunHistoryStatus[] = ["success", "failed", "skipped", "in_progress", "awaiting_approval"]
 
+/**
+ * Get run history across ALL agents in the organization
+ * Route: GET /api/run-history
+ * Supports same query params as agent-specific run history (q, start, end, status, page, pageSize)
+ */
+export async function getAllRunHistory(req: Request, res: Response) {
+    try {
+        const prisma: PrismaClient = db()
+        const user = req.session?.user
+        if (!user) {
+            return res.status(401).json({ error: "Unauthorized" })
+        }
+        const organizationId = user.organizationId
+        if (!organizationId) {
+            return res.status(400).json({ error: "Organization context is required" })
+        }
+
+        const params = parseGetRunHistoryParams(req.query)
+        const { page, pageSize, skip, take } = parsePageParams(req, 20, 100)
+
+        // Build Prisma where clause scoped to organization (no specific agent)
+        const where: Prisma.run_history_recordsWhereInput = {
+            automation: { organization_id: organizationId }
+        }
+
+        if (params.start || params.end) {
+            const startDate = parseDate(params.start)
+            const endDate = parseDate(params.end)
+            if (startDate || endDate) {
+                where.timestamp = {}
+                if (startDate) where.timestamp.gte = startDate
+                if (endDate) where.timestamp.lte = endDate
+            }
+        }
+
+        if (params.status && params.status.length > 0) {
+            where.status = { in: params.status }
+        }
+
+        if (params.q) {
+            where.OR = [
+                { trigger_title: { contains: params.q, mode: "insensitive" } },
+                { event: { contains: params.q, mode: "insensitive" } },
+                { trigger_source: { contains: params.q, mode: "insensitive" } },
+                { decision_reason: { contains: params.q, mode: "insensitive" } },
+                { automation: { name: { contains: params.q, mode: "insensitive" } } }
+            ]
+        }
+
+        type RunHistoryRecordWithActionsAndAgent = Prisma.run_history_recordsGetPayload<{
+            include: { actions: true; automation: { select: { name: true } } }
+        }>
+
+        const [total, rows] = await prisma.$transaction([
+            prisma.run_history_records.count({ where }),
+            prisma.run_history_records.findMany({
+                where,
+                orderBy: { timestamp: "desc" },
+                include: {
+                    actions: true,
+                    automation: { select: { name: true } }
+                },
+                skip,
+                take
+            })
+        ])
+
+        const items = rows.map((runRecord: RunHistoryRecordWithActionsAndAgent) => {
+            const actions = runRecord.actions.map(action => ({
+                action: action.action,
+                integration: convertPrismaIntegrationTypeToIntegrationTypeFromRunHistory(action.integration),
+                target: action.target,
+                details: action.details,
+                url: action.url ?? undefined,
+                step_id: action.step_id ?? undefined,
+                type: action.type
+            }))
+
+            return {
+                id: runRecord.id,
+                agentId: runRecord.automation_id,
+                agentName: runRecord.automation.name,
+                timestamp: runRecord.timestamp.toISOString(),
+                trigger: {
+                    event: runRecord.event,
+                    integration: convertPrismaIntegrationTypeToIntegrationTypeFromRunHistory(runRecord.trigger_integration),
+                    source: runRecord.trigger_source,
+                    title: runRecord.trigger_title ?? undefined,
+                    subheader: runRecord.trigger_subheader ?? undefined,
+                    url: runRecord.trigger_url ?? undefined
+                },
+                filtered: runRecord.filtered,
+                decision: {
+                    action: runRecord.decision_action,
+                    reasoning: runRecord.decision_reason
+                },
+                actions,
+                status: runRecord.status
+            }
+        })
+
+        res.json({ items, page, pageSize, total })
+    } catch (err) {
+        logger.error("Failed to fetch all run history", { error: err instanceof Error ? err.message : String(err), stack: err instanceof Error ? err.stack : undefined })
+        res.status(500).json({ error: "Failed to fetch run history" })
+    }
+}
+
 export async function getRunHistory(req: Request, res: Response) {
     try {
         const prisma: PrismaClient = db()

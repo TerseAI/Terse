@@ -30,7 +30,7 @@ import { getNotionIntegrations, getNotionResources, notionOAuthCallback } from "
 import { createOrganization, getCurrentOrganization, getLogoUploadUrl, getLogoUrl, getUserOrganizations, switchOrganization, updateOrganization } from "./routes/organization"
 import { createOrUpdatePosthogIntegration, getPosthogIntegrations, getPosthogProjects } from "./routes/posthog"
 import { refreshAllTokens } from "./routes/refreshTokens"
-import { getChatHistory, getRunHistory, getRunHistoryActions } from "./routes/runHistory"
+import { getAllRunHistory, getChatHistory, getRunHistory, getRunHistoryActions } from "./routes/runHistory"
 import { handleManualTrigger, handleScheduleWebhook } from "./routes/schedule"
 import { getCurrentSlackIntegration, getSlackChannels, getSlackIntegrations, getSlackUsers, slackOAuthCallback } from "./routes/slack"
 import { getStats } from "./routes/stats"
@@ -227,6 +227,10 @@ app.get(ApiRoutes.STATS, authMiddleware, async (req, res) => {
 
 app.get(ApiRoutes.RUN_HISTORY.ACTIONS, authMiddleware, async (req, res) => {
     getRunHistoryActions(req, res)
+})
+
+app.get(ApiRoutes.RUN_HISTORY.ALL, authMiddleware, async (req, res) => {
+    getAllRunHistory(req, res)
 })
 
 app.get(ApiRoutes.RUN_HISTORY.BY_AGENT_ID.pattern, authMiddleware, async (req, res) => {

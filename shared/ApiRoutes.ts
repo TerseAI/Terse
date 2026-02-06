@@ -43,6 +43,7 @@ export const ApiRoutes = {
 
     // Run history routes
     RUN_HISTORY: {
+        ALL: "/run-history",
         ACTIONS: "/run-history/actions",
         BY_AGENT_ID: {
             pattern: "/run-history/:agentId",
