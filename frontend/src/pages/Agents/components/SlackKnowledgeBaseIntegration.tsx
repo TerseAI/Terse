@@ -27,12 +27,11 @@ export function SlackKnowledgeBaseIntegration({ knowledgeBase, variant, setConfi
     const selectedIntegrationId = slackConfig.integrationId || null
 
     const selectedIntegration = integrations.find(i => i.id === selectedIntegrationId)
-    const hasUserToken = selectedIntegration?.isBotUser === false
 
     const { connect: connectOAuth, isConnecting: isOAuthConnecting } = useOAuthConnection<IntegrationType.SLACK>(IntegrationType.SLACK, { isBotUser })
 
     const { channels, isLoading: channelsLoading } = useSlackChannels(selectedIntegrationId)
-    const { users, isLoading: usersLoading } = useSlackUsers(hasUserToken ? selectedIntegrationId : null)
+    const { users, isLoading: usersLoading } = useSlackUsers(selectedIntegrationId)
 
     // Auto-select integration when there's exactly one and none is currently selected
     useEffect(() => {
@@ -69,7 +68,7 @@ export function SlackKnowledgeBaseIntegration({ knowledgeBase, variant, setConfi
         if (channelCount > 0) {
             parts.push(`${channelCount} channel${channelCount !== 1 ? "s" : ""}`)
         }
-        if (hasUserToken && slackConfig.allowDms) {
+        if (slackConfig.allowDms) {
             parts.push("DMs")
         }
         if (userCount > 0) {
@@ -114,28 +113,16 @@ export function SlackKnowledgeBaseIntegration({ knowledgeBase, variant, setConfi
 
     const updateChannels = (selectedIds: (string | number)[]) => {
         const ids = selectedIds as string[]
-        const names = ids
-            .map(id => {
-                const ch = channels?.find(c => c.id === id)
-                return ch ? (ch.isPrivate ? ch.name : `#${ch.name}`) : null
-            })
-            .filter((n): n is string => n !== null)
-        setConfig(new SlackKBConfig(slackConfig.integrationId, ids, names, slackConfig.allowDms, slackConfig.userIds, slackConfig.userNames))
+        setConfig(new SlackKBConfig(slackConfig.integrationId, ids, [], slackConfig.allowDms, slackConfig.userIds ?? [], []))
     }
 
     const updateAllowDms = (allowDms: boolean) => {
-        setConfig(new SlackKBConfig(slackConfig.integrationId, slackConfig.channelIds, slackConfig.channelNames, allowDms, slackConfig.userIds, slackConfig.userNames))
+        setConfig(new SlackKBConfig(slackConfig.integrationId, slackConfig.channelIds ?? [], [], allowDms, slackConfig.userIds ?? [], []))
     }
 
     const updateUsers = (selectedIds: (string | number)[]) => {
         const ids = selectedIds as string[]
-        const names = ids
-            .map(id => {
-                const user = users?.find(u => u.id === id)
-                return user?.name ?? null
-            })
-            .filter((n): n is string => n !== null)
-        setConfig(new SlackKBConfig(slackConfig.integrationId, slackConfig.channelIds, slackConfig.channelNames, slackConfig.allowDms, ids, names))
+        setConfig(new SlackKBConfig(slackConfig.integrationId, slackConfig.channelIds ?? [], [], slackConfig.allowDms, ids, []))
     }
 
     const connectionSelections: StatusOption[] = integrations.map((integration: SlackIntegrationType) => ({
@@ -167,6 +154,10 @@ export function SlackKnowledgeBaseIntegration({ knowledgeBase, variant, setConfi
                         </p>
                     )}
 
+                    <p className="text-xs text-muted-foreground mb-2">
+                        With a bot token, only channels and DMs the bot can access are included. With a user token, your channels and DMs are included.
+                    </p>
+
                     <div className="space-y-4">
                         <div className="space-y-2">
                             <Label>Filter by Channels (Optional)</Label>
@@ -187,39 +178,32 @@ export function SlackKnowledgeBaseIntegration({ knowledgeBase, variant, setConfi
                             )}
                         </div>
 
-                        {hasUserToken ? (
-                            <div className="flex items-center gap-2">
-                                <Checkbox id="slack-kb-allow-dms" checked={slackConfig.allowDms} onCheckedChange={checked => updateAllowDms(checked === true)} />
-                                <Label htmlFor="slack-kb-allow-dms" className="text-sm font-normal cursor-pointer">
-                                    Include DMs in search
-                                </Label>
-                            </div>
-                        ) : (
-                            <p className="text-xs text-muted-foreground">This is a bot token. To search DMs, connect with a user token instead.</p>
-                        )}
+                        <div className="flex items-center gap-2">
+                            <Checkbox id="slack-kb-allow-dms" checked={slackConfig.allowDms} onCheckedChange={checked => updateAllowDms(checked === true)} />
+                            <Label htmlFor="slack-kb-allow-dms" className="text-sm font-normal cursor-pointer">
+                                Include DMs in search
+                            </Label>
+                        </div>
 
-                        {/* User filter - only for user tokens */}
-                        {hasUserToken && (
-                            <div className="space-y-2">
-                                <Label>Filter by Users (Optional)</Label>
-                                <MultiSelect
-                                    options={userOptions}
-                                    selectedIds={slackConfig.userIds ?? []}
-                                    onSelect={updateUsers}
-                                    placeholder="All users..."
-                                    searchPlaceholder="Search users..."
-                                    emptyMessage={usersLoading ? "Loading..." : "No users found."}
-                                    displayText={(count, selected) => (count === 0 ? "All users" : count === 1 ? selected[0].label : `${count} users selected`)}
-                                />
-                                {users && users.length > 0 && (
-                                    <div className="text-xs text-muted-foreground">
-                                        {slackConfig.userIds?.length
-                                            ? `${slackConfig.userIds.length} of ${users.length} user${users.length !== 1 ? "s" : ""} selected`
-                                            : `${users.length} user${users.length !== 1 ? "s" : ""} available`}
-                                    </div>
-                                )}
-                            </div>
-                        )}
+                        <div className="space-y-2">
+                            <Label>Filter by Users (Optional)</Label>
+                            <MultiSelect
+                                options={userOptions}
+                                selectedIds={slackConfig.userIds ?? []}
+                                onSelect={updateUsers}
+                                placeholder="All users..."
+                                searchPlaceholder="Search users..."
+                                emptyMessage={usersLoading ? "Loading..." : "No users found."}
+                                displayText={(count, selected) => (count === 0 ? "All users" : count === 1 ? selected[0].label : `${count} users selected`)}
+                            />
+                            {users && users.length > 0 && (
+                                <div className="text-xs text-muted-foreground">
+                                    {slackConfig.userIds?.length
+                                        ? `${slackConfig.userIds.length} of ${users.length} user${users.length !== 1 ? "s" : ""} selected`
+                                        : `${users.length} user${users.length !== 1 ? "s" : ""} available`}
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
             )}

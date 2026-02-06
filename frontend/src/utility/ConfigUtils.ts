@@ -106,7 +106,14 @@ export function deserializeConfig(jsonConfig: any): ConfigInstance {
             return new LinearKBConfig(integrationId, linearKBConfig.teamId, linearKBConfig.teamName, linearKBConfig.projectId, linearKBConfig.projectName)
         case ConfigType.SLACK_KB:
             const slackKBConfig = jsonConfig as SlackKBConfig
-            return new SlackKBConfig(integrationId, slackKBConfig.channelIds, slackKBConfig.channelNames, slackKBConfig.allowDms ?? false, slackKBConfig.userIds, slackKBConfig.userNames)
+            return new SlackKBConfig(
+                integrationId,
+                slackKBConfig.channelIds ?? [],
+                slackKBConfig.channelNames ?? [],
+                slackKBConfig.allowDms ?? false,
+                slackKBConfig.userIds ?? [],
+                slackKBConfig.userNames ?? []
+            )
 
         default:
             const _exhaustive: never = configType

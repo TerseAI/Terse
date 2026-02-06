@@ -212,7 +212,7 @@ When explicitly asked by the user, include these links in your responses to help
         }
     }
 
-    private async buildOutputsSection(): Promise<Section | null> {
+    private buildOutputsSection(): Section | null {
         if (!this.deps.outputs || this.deps.outputs.length === 0) {
             return null
         }
@@ -224,7 +224,7 @@ When explicitly asked by the user, include these links in your responses to help
                 continue
             }
 
-            const instructions = await output.getSystemInstructions()
+            const instructions = output.getSystemInstructions()
             outputSections.push(instructions)
         }
 

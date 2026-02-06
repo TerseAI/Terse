@@ -526,7 +526,14 @@ export const convertPlainObjectToKnowledgeBaseConfigInstance = (config: any): Co
         case ConfigType.LINEAR_KB:
             return new LinearKBConfig(config.integrationId, config.teamId, config.teamName, config.projectId, config.projectName)
         case ConfigType.SLACK_KB:
-            return new SlackKBConfig(config.integrationId, config.channelIds, config.channelNames, config.allowDms ?? false, config.userIds, config.userNames)
+            return new SlackKBConfig(
+                config.integrationId,
+                config.channelIds ?? [],
+                config.channelNames ?? [],
+                config.allowDms ?? false,
+                config.userIds ?? [],
+                config.userNames ?? []
+            )
         default:
             throw new Error(`Unsupported knowledge base config type: ${config.configType}`)
     }

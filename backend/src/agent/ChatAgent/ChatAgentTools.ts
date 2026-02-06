@@ -390,8 +390,7 @@ const SlackOutputConfigSchema = BaseConfigSchema.extend({
         .optional()
         .describe(
             "Slack user IDs to send DMs to; used when destination is direct messages. Get IDs via fetchResourcesForIntegration with integrationType=SLACK and options.slack.objectType='users'. At least one of channelId or userIds required."
-        ),
-    userNames: z.array(z.string()).nullable().optional().describe("Display names for the users in userIds (from fetchResourcesForIntegration resources[].name).")
+        )
 })
 
 const NotionDatabaseConfigSchema = BaseConfigSchema.extend({
@@ -488,7 +487,6 @@ const SlackKnowledgeBaseConfigSchema = BaseConfigSchema.extend({
         .nullable()
         .optional()
         .describe("Slack channel IDs to read. From fetchResourcesForIntegration with integrationType=SLACK (channels), use resources[].id. If omitted, reads from all accessible channels."),
-    channelNames: z.array(z.string()).nullable().optional().describe("Display names for the channels, matching channelIds order."),
     allowDms: z.boolean().optional().default(false).describe("Whether to allow reading DMs. Only applicable for Slack user integrations (not workspace bot integrations)."),
     userIds: z
         .array(z.string())
@@ -496,8 +494,7 @@ const SlackKnowledgeBaseConfigSchema = BaseConfigSchema.extend({
         .optional()
         .describe(
             "Specific Slack user IDs to filter DM conversations. Get IDs via fetchResourcesForIntegration with integrationType=SLACK and options.slack.objectType='users'. If omitted, reads from all accessible DMs."
-        ),
-    userNames: z.array(z.string()).nullable().optional().describe("Display names for the users, matching userIds order (from fetchResourcesForIntegration resources[].name).")
+        )
 })
 
 const TimeTriggerConfigSchema = BaseConfigSchema.extend({

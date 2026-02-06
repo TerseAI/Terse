@@ -1,9 +1,7 @@
 import { Tool } from "@openai/agents"
 import { OutputConfigType } from "@prisma/client"
-import { WebClient } from "@slack/web-api"
 
-import logger from "../../logger"
-import { db } from "../../prismaClient"
+import { slackListUsersTool } from "../../knowledgeBase/slack/tools/listUsers"
 import { SlackOutputConfig } from "../../shared/Configs"
 import { IntegrationType } from "../../shared/Integrations"
 import { AgentOutputWithConfigs, PrismaTransaction, User } from "../../types/prisma"
@@ -11,15 +9,12 @@ import { Output, ToolboxEntry } from "../abstract/Output"
 
 import { slackSendMessageTool } from "./tools/sendMessage"
 
-interface ResolvedSlackDestination {
-    integrationId: string
-    channelId: string
-    channelName: string
-}
-
 export class SlackOutput extends Output<SlackOutputConfig> {
     constructor() {
-        const toolbox: ToolboxEntry[] = [{ tool: slackSendMessageTool as Tool, isReadOnly: false, integration: IntegrationType.SLACK, displayName: "Send message" }]
+        const toolbox: ToolboxEntry[] = [
+            { tool: slackSendMessageTool as Tool, isReadOnly: false, integration: IntegrationType.SLACK, displayName: "Send message" },
+            { tool: slackListUsersTool as Tool, isReadOnly: true, integration: IntegrationType.SLACK, displayName: "List users" }
+        ]
         super(OutputConfigType.SLACK_CHANNEL, toolbox)
     }
 
@@ -43,126 +38,47 @@ export class SlackOutput extends Output<SlackOutputConfig> {
         })
     }
 
-    override async getSystemInstructions(): Promise<string> {
-        const destinations = await this.resolveDestinations(this.configs)
-        return this.buildInstructionsFromDestinations(destinations)
-    }
-
-    private async resolveDestinations(configs: AgentOutputWithConfigs[]): Promise<ResolvedSlackDestination[]> {
-        const destinations: ResolvedSlackDestination[] = []
-
-        for (const config of configs) {
-            if (!config.slack_config) continue
-
-            const integrationId = config.integration_id
-            const channelId = config.slack_config.channel_id
-            const channelName = config.slack_config.channel_name
-            const userIds = config.slack_config.user_ids ?? []
-
-            if (channelId) {
-                destinations.push({
-                    integrationId,
-                    channelId,
-                    channelName: channelName || channelId
-                })
-            }
-
-            if (userIds.length > 0) {
-                const dmChannels = await this.resolveUserIdsToDmChannels(integrationId, userIds)
-                destinations.push(...dmChannels)
-            }
-        }
-
-        return destinations
-    }
-
-    private async resolveUserIdsToDmChannels(integrationId: string, userIds: string[]): Promise<ResolvedSlackDestination[]> {
-        const usi = await db().user_slack_integrations.findUnique({
-            where: { id: integrationId },
-            include: { slack_integration: true }
-        })
-        if (!usi?.slack_integration) {
-            logger.warn("[SlackOutput] Integration not found for DM resolution", { integrationId })
-            return []
-        }
-
-        const token = usi.authed_user_access_token || usi.slack_integration.access_token
-        if (!token) {
-            logger.warn("[SlackOutput] No token for integration", { integrationId })
-            return []
-        }
-
-        const client = new WebClient(token)
-        const results: ResolvedSlackDestination[] = []
-
-        for (const userId of userIds) {
-            try {
-                const { channel } = await client.conversations.open({ users: userId })
-                const id = (channel as { id?: string })?.id
-                if (id) {
-                    let name = `DM with ${userId}`
-                    try {
-                        const userInfo = await client.users.info({ user: userId })
-                        const user = (userInfo as { user?: { real_name?: string; name?: string } }).user
-                        if (user) name = `DM with ${user.real_name || user.name || userId}`
-                    } catch {
-                        // keep default name
-                    }
-                    results.push({ integrationId, channelId: id, channelName: name })
-                }
-            } catch (err) {
-                logger.warn("[SlackOutput] Failed to open DM channel", { integrationId, userId, error: err })
-            }
-        }
-
-        return results
-    }
-
-    private buildInstructionsFromDestinations(destinations: ResolvedSlackDestination[]): string {
-        if (destinations.length === 0) {
-            throw new Error("No Slack output destinations provided")
-        }
-
-        const configList = destinations.map(d => `  • Integration ID: ${d.integrationId} - Channel Name: ${d.channelName}, Channel ID: ${d.channelId}`)
-        const sections: string[] = []
-        sections.push("Available configurations:")
-        sections.push(configList.join("\n"))
-        sections.push("\nWhen calling Slack tools, you MUST include the `integrationId` and `channelId` parameters matching one of the configurations listed above.")
-        sections.push("\n" + SLACK_OUTPUT_INSTRUCTIONS)
-        return sections.join("\n")
-    }
-
     protected getSystemInstructionsForConfigs(configs: AgentOutputWithConfigs[]): string {
         if (configs.length === 0) {
             throw new Error("No Slack configs provided")
         }
 
-        const destinations: ResolvedSlackDestination[] = []
+        const configList: string[] = []
         for (const config of configs) {
             if (!config.slack_config) throw new Error("Slack config not found")
             const channelId = config.slack_config.channel_id
+            const channelName = config.slack_config.channel_name
+            const userIds = config.slack_config.user_ids ?? []
             if (channelId) {
-                destinations.push({
-                    integrationId: config.integration_id,
-                    channelId,
-                    channelName: config.slack_config.channel_name || channelId
-                })
+                configList.push(`  • Integration ID: ${config.integration_id} - Channel ID: ${channelId}${channelName ? ` (${channelName})` : ""}`)
+            }
+            if (userIds.length > 0) {
+                configList.push(`  • Integration ID: ${config.integration_id} - User IDs for DMs: ${userIds.join(", ")}`)
             }
         }
 
-        if (destinations.length === 0) {
-            throw new Error("No Slack output destinations (channel or resolved DMs). Use getSystemInstructions() when configs include user_ids.")
+        if (configList.length === 0) {
+            throw new Error("No Slack output destinations (channel or user IDs for DMs).")
         }
 
-        return this.buildInstructionsFromDestinations(destinations)
+        const sections: string[] = []
+        sections.push("Available configurations:")
+        sections.push(configList.join("\n"))
+        sections.push(
+            "\nWhen calling Slack tools, you MUST include the `integrationId` and `channelId` parameters matching one of the configurations listed above."
+        )
+        sections.push("\nUse slack_list_users to resolve Slack user IDs to names when needed.")
+        sections.push("\n" + SLACK_OUTPUT_INSTRUCTIONS)
+        return sections.join("\n")
     }
 }
 
 const SLACK_OUTPUT_INSTRUCTIONS = `
 === SLACK OUTPUT ===
 
-TOOL:
-- slack_send_message: Send messages to Slack channels or DMs. Use channelId from the listed configurations (includes resolved DM channel IDs when destination is users). Supports plain text (mrkdwn) or Block Kit (buttons, structured layouts).
+TOOLS:
+- slack_send_message: Send messages to Slack channels or DMs. Use channelId from the listed configurations. Supports plain text (mrkdwn) or Block Kit (buttons, structured layouts).
+- slack_list_users: List workspace users (id and name). Use to resolve user IDs to names when needed.
 
 MESSAGE TYPES:
 - Plain text: Simple notifications, short updates. Use \`message\` parameter only.

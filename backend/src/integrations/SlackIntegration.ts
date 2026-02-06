@@ -538,12 +538,11 @@ export class SlackIntegrationManager
             throw new Error(`Slack integration ${integrationId} not found`)
         }
 
-        // TODO: Token should not be picked. we should have
-        // a hard fail if we are using the bot token to listen
-        // to user DMs. but token really should be chosen based on
-        // if user chose bot or user in UI. Might be able to tell
-        // based on the tokens that are set, need to verify.
-        const token = slackConfig.listenToUserDms ? userSlackIntegration.authed_user_access_token : userSlackIntegration.slack_integration.access_token
+        // Use user token for DMs when available (user's DMs), otherwise bot token (bot's DMs). Same for channels: bot token.
+        const token =
+            slackConfig.listenToUserDms
+                ? (userSlackIntegration.authed_user_access_token || userSlackIntegration.slack_integration.access_token)
+                : userSlackIntegration.slack_integration.access_token
         if (!token) {
             throw new Error(`Slack access token not found for integration ${integrationId}. Please reconnect your Slack workspace.`)
         }
@@ -564,9 +563,6 @@ export class SlackIntegrationManager
         }> = []
 
         if (slackConfig.listenToUserDms) {
-            if (!userSlackIntegration.authed_user_id) {
-                throw new Error("Slack user ID not found. User token may not be properly configured.")
-            }
             const imList = await client.conversations.list({
                 types: "im",
                 limit: 20,
@@ -863,7 +859,13 @@ export const fetchSlackUsersForIntegration = async (userId: string, organization
         logLevel: LogLevel.ERROR
     })
 
-    const usersResponse = await client.users.list({})
+    const SLACK_USERS_LIST_TIMEOUT_MS = 15_000
+    const usersResponse = await Promise.race([
+        client.users.list({}),
+        new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error("Slack users.list timed out")), SLACK_USERS_LIST_TIMEOUT_MS)
+        )
+    ])
     if (!usersResponse.ok) {
         throw createSlackRouteError("Failed to fetch users", 500)
     }

@@ -95,7 +95,7 @@ export function SlackOutputIntegration({ input, variant, setConfig }: InputConfi
                 sameIntegration ? currentConfig?.channelId : undefined,
                 sameIntegration ? currentConfig?.channelName : undefined,
                 sameIntegration ? currentConfig?.userIds : undefined,
-                sameIntegration ? currentConfig?.userNames : undefined
+                undefined
             )
         )
         selectedOption = defaultIntegration
@@ -133,9 +133,13 @@ export function SlackOutputIntegration({ input, variant, setConfig }: InputConfi
             )
         }
         const isDmOnly = (currentConfig?.userIds?.length ?? 0) > 0 && !currentConfig?.channelId
+        const dmUserNames =
+            isDmOnly && currentConfig?.userIds?.length && users?.length
+                ? currentConfig.userIds.map(id => users.find(u => u.id === id)?.name ?? id).filter(Boolean)
+                : []
         const summary = isDmOnly
-            ? currentConfig?.userNames?.length
-                ? `DM to ${currentConfig.userNames.join(", ")}`
+            ? dmUserNames.length > 0
+                ? `DM to ${dmUserNames.join(", ")}`
                 : `DM to ${currentConfig?.userIds?.length ?? 0} user${(currentConfig?.userIds?.length ?? 0) === 1 ? "" : "s"}`
             : currentConfig?.channelName || selectedOption?.label || "No connection selected"
         return (
@@ -188,14 +192,13 @@ export function SlackOutputIntegration({ input, variant, setConfig }: InputConfi
                         }}
                         onListenToUserDmsChange={listenToUserDms => {
                             if (listenToUserDms) {
-                                setConfig(new SlackOutputConfig(selectedIntegrationId, undefined, undefined, currentConfig?.userIds ?? [], currentConfig?.userNames))
+                                setConfig(new SlackOutputConfig(selectedIntegrationId, undefined, undefined, currentConfig?.userIds ?? [], undefined))
                             } else {
                                 setConfig(new SlackOutputConfig(selectedIntegrationId, currentConfig?.channelId, currentConfig?.channelName, undefined, undefined))
                             }
                         }}
                         onSelectUsers={userIds => {
-                            const userNames = userIds.map(id => users.find(u => u.id === id)?.name ?? id).filter(Boolean) as string[]
-                            setConfig(new SlackOutputConfig(selectedIntegrationId, undefined, undefined, userIds, userNames.length ? userNames : undefined))
+                            setConfig(new SlackOutputConfig(selectedIntegrationId, undefined, undefined, userIds, undefined))
                         }}
                     />
                 </div>
