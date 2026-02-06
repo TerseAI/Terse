@@ -1,7 +1,7 @@
 import { Link, useLocation, useNavigate } from "react-router-dom"
 
 import type { LucideIcon } from "lucide-react"
-import { Bell, Home, Plug, Plus, Zap } from "lucide-react"
+import { Activity, BarChart3, Bell, Home, Plug, Plus, Zap } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -183,6 +183,18 @@ const DefaultApplicationItems: NavItem[] = [
         title: "Agents",
         url: FrontendRoutes.AGENTS.SETUP,
         icon: Zap,
+        iconColor: "text-primary"
+    },
+    {
+        title: "Activity",
+        url: FrontendRoutes.ACTIVITY,
+        icon: Activity,
+        iconColor: "text-primary"
+    },
+    {
+        title: "Stats",
+        url: FrontendRoutes.STATS,
+        icon: BarChart3,
         iconColor: "text-primary"
     }
 ]

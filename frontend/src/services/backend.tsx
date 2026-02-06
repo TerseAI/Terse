@@ -19,7 +19,7 @@ import {
 } from "../shared/Integrations"
 import { CreateNotificationDestinationRequest, NotificationDestination } from "../shared/Notifications"
 import type { RunHistoryActionWithId, RunHistoryModelEvent } from "../shared/RunHistoryTypes"
-import { GetRunHistoryParams, GetRunHistoryResponse } from "../shared/RunHistoryTypes"
+import { GetAllRunHistoryResponse, GetRunHistoryParams, GetRunHistoryResponse } from "../shared/RunHistoryTypes"
 import { GetToolsThatRequireApprovalsRequest, GetToolsThatRequireApprovalsResponse } from "../shared/ToolsTypes"
 import {
     Agent,
@@ -305,6 +305,11 @@ interface BackendService {
      * Deletes an agent
      */
     deleteAgent(id: string): Promise<{ success: boolean; message: string }>
+
+    /**
+     * Fetch run history across all agents in the organization with filters and pagination
+     */
+    getAllRunHistory(params: GetRunHistoryParams): Promise<GetAllRunHistoryResponse>
 
     /**
      * Fetch run history for a specific agent with filters and pagination
@@ -966,6 +971,24 @@ export const BackendProvider: BackendService = {
             .then(response => response.data)
             .catch(error => {
                 console.error("Error deleting agent:", error)
+                throw error
+            })
+    },
+
+    getAllRunHistory: params => {
+        const usp = new URLSearchParams()
+        if (params.page) usp.append("page", String(params.page))
+        if (params.pageSize) usp.append("pageSize", String(params.pageSize))
+        if (params.q) usp.append("q", params.q)
+        if (params.start) usp.append("start", params.start)
+        if (params.end) usp.append("end", params.end)
+        if (params.status && params.status.length) usp.append("status", params.status.join(","))
+        const url = `${backendBaseUrl}${ApiRoutes.RUN_HISTORY.ALL}${usp.toString() ? `?${usp.toString()}` : ""}`
+        return axios
+            .get<GetAllRunHistoryResponse>(url, { withCredentials: true })
+            .then(r => r.data)
+            .catch(error => {
+                console.error("Error fetching all run history:", error)
                 throw error
             })
     },
