@@ -356,23 +356,27 @@ export class NotionConfig implements ConfigInstance {
 
     constructor(
         public integrationId: string,
-        public databaseId?: string,
-        public databaseName?: string,
-        public pageId?: string,
-        public pageName?: string
+        public databaseIds: string[] = [],
+        public databaseNames: string[] = [],
+        public pageIds: string[] = [],
+        public pageNames: string[] = []
     ) {}
 
     isComplete(): boolean {
-        return !!(this.databaseId || this.pageId)
+        return (this.databaseIds?.length ?? 0) > 0 || (this.pageIds?.length ?? 0) > 0
     }
 
     formatForAgent(): string {
         const parts = [`Type: Notion`, `Integration ID: ${this.integrationId}`]
-        if (this.databaseId || this.databaseName) {
-            parts.push(this.databaseName ? `Database: ${this.databaseName}` : `Database ID: ${this.databaseId}`)
+        const dbIds = this.databaseIds ?? []
+        const dbNames = this.databaseNames ?? []
+        if (dbIds.length > 0) {
+            parts.push(`Databases: ${dbIds.map((id, i) => dbNames[i] || id).join(", ")}`)
         }
-        if (this.pageId || this.pageName) {
-            parts.push(this.pageName ? `Page: ${this.pageName}` : `Page ID: ${this.pageId}`)
+        const pageIds = this.pageIds ?? []
+        const pageNames = this.pageNames ?? []
+        if (pageIds.length > 0) {
+            parts.push(`Pages: ${pageIds.map((id, i) => pageNames[i] || id).join(", ")}`)
         }
         return parts.join("\n")
     }

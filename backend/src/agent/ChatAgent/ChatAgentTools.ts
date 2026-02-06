@@ -396,10 +396,10 @@ const SlackOutputConfigSchema = BaseConfigSchema.extend({
 const NotionConfigSchema = BaseConfigSchema.extend({
     configType: z.literal(ConfigType.NOTION),
     integrationType: z.literal(IntegrationType.NOTION),
-    databaseId: NonEmptyString.nullable().optional().describe("The Notion database ID. From fetchResourcesForIntegration, use the database's id from resources[]."),
-    databaseName: z.string().nullable().optional().describe("The database display name."),
-    pageId: NonEmptyString.nullable().optional().describe("The Notion page ID. From fetchResourcesForIntegration, use the page's id from resources[]."),
-    pageName: z.string().nullable().optional().describe("The page display name.")
+    databaseIds: z.array(z.string()).optional().default([]).describe("Allowed Notion database IDs. From fetchResourcesForIntegration, use databases' id from resources[]."),
+    databaseNames: z.array(z.string()).optional().default([]).describe("Display names for databases, parallel to databaseIds."),
+    pageIds: z.array(z.string()).optional().default([]).describe("Allowed Notion page IDs. From fetchResourcesForIntegration, use pages' id from resources[]."),
+    pageNames: z.array(z.string()).optional().default([]).describe("Display names for pages, parallel to pageIds.")
 })
 
 const LinearInputConfigSchema = BaseConfigSchema.extend({
@@ -530,6 +530,16 @@ const OutputConfigSchema = z
     .discriminatedUnion("configType", [SlackOutputConfigSchema, NotionConfigSchema, LinearOutputConfigSchema, JiraConfigSchema, ConfluenceConfigSchema, GmailOutputConfigSchema])
     .superRefine((value, ctx) => {
         enforceNonSystemIntegrationId(value, ctx)
+        if (value.configType === ConfigType.NOTION) {
+            const hasDb = (value.databaseIds?.length ?? 0) > 0
+            const hasPage = (value.pageIds?.length ?? 0) > 0
+            if (!hasDb && !hasPage) {
+                ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    message: "Notion output requires at least one of databaseIds or pageIds to be non-empty."
+                })
+            }
+        }
     })
 
 const KnowledgeBaseConfigSchema = z

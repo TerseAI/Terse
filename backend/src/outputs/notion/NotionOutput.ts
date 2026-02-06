@@ -29,8 +29,10 @@ export class NotionOutput extends Output<NotionConfig> {
     }
 
     async validateConfig(output: NotionConfig, _userId: string): Promise<void> {
-        if (!output.databaseId && !output.pageId) {
-            throw new Error("Invalid Notion output config: at least one of databaseId or pageId is required")
+        const hasDb = (output.databaseIds?.length ?? 0) > 0
+        const hasPage = (output.pageIds?.length ?? 0) > 0
+        if (!hasDb && !hasPage) {
+            throw new Error("Invalid Notion output config: at least one of databaseIds or pageIds must be non-empty")
         }
     }
 
@@ -38,10 +40,10 @@ export class NotionOutput extends Output<NotionConfig> {
         await tx.automation_notion_configs.create({
             data: {
                 automation_output_id: channelOutputId,
-                database_id: output.databaseId ?? null,
-                database_name: output.databaseName ?? null,
-                page_id: output.pageId ?? null,
-                page_name: output.pageName ?? null
+                database_ids: output.databaseIds ?? [],
+                database_names: output.databaseNames ?? [],
+                page_ids: output.pageIds ?? [],
+                page_names: output.pageNames ?? []
             }
         })
     }
@@ -60,18 +62,27 @@ export class NotionOutput extends Output<NotionConfig> {
                 throw new Error("Notion config not found")
             }
             const nc = config.notion_config
+            const dbIds = nc.database_ids ?? []
+            const dbNames = nc.database_names ?? []
+            const pageIds = nc.page_ids ?? []
+            const pageNames = nc.page_names ?? []
             const parts: string[] = [`Integration ID: ${config.integration_id}`]
-            if (nc.database_id || nc.database_name) {
-                parts.push(`Database: ${nc.database_name || nc.database_id || "N/A"} (databaseId: ${nc.database_id || "—"})`)
+            if (dbIds.length > 0) {
+                parts.push(`Allowed databases: ${dbIds.map((id, i) => `${dbNames[i] || id} (${id})`).join("; ")}`)
             }
-            if (nc.page_id || nc.page_name) {
-                parts.push(`Page: ${nc.page_name || nc.page_id || "N/A"} (pageId: ${nc.page_id || "—"})`)
+            if (pageIds.length > 0) {
+                parts.push(`Allowed pages: ${pageIds.map((id, i) => `${pageNames[i] || id} (${id})`).join("; ")}`)
             }
             configList.push(`  • ${parts.join(" | ")}`)
         }
         sections.push("Available configurations:")
         sections.push(configList.join("\n"))
-        sections.push("\nWhen calling Notion tools, use the `integrationId` and the appropriate target ID (databaseId for database tools, pageId for page tools) from the list above.")
+        sections.push(`
+**RESTRICTION — You may only edit within this scope:**
+- **Databases:** Use only the database IDs listed above. You may query and modify those databases and any **database entries** (rows/pages) that belong to them. Do not use any other database ID.
+- **Pages:** Use only the page IDs listed above. You may query and modify those pages and **all of their subpages** (children, nested pages). Do not use any other page ID as a target.
+
+When calling Notion tools, always use the \`integrationId\` and a \`databaseId\` or \`pageId\` from the allowed list above. Never target a database or page that is not in the list.`)
 
         sections.push("\n**Database tools** (use with databaseId): `notion_get_schema`, `notion_query_database`, `notion_modify_page`. **Page tools** (use with pageId): `notion_query_page`, `notion_modify_blocks`, `notion_fetch_related_events`. You can create a page in a database then add content to a page; use the right tool and target for each step.")
 

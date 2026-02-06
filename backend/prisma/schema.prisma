@@ -591,25 +591,22 @@ model automation_slack_configs {
   @@index([channel_id])
 }
 
-// Notion Configuration (unified: page and/or database)
+// Notion Configuration (unified: list of allowed databases and/or pages)
 model automation_notion_configs {
-  id                   String  @id @default(cuid())
-  automation_input_id  String? @unique // FK to automation_inputs (mutually exclusive with output_id)
-  automation_output_id String? @unique // FK to automation_outputs (unique constraint)
+  id                   String   @id @default(cuid())
+  automation_input_id  String?  @unique // FK to automation_inputs (mutually exclusive with output_id)
+  automation_output_id String?  @unique // FK to automation_outputs (unique constraint)
 
-  database_id   String? // Database ID (optional; at least one of database_id or page_id required for output)
-  database_name String? // Database display name (for UI, optional)
-  page_id       String? // Page ID (optional)
-  page_name     String? // Page display name (for UI, optional)
+  database_ids   String[] @default([]) // Allowed database IDs (at least one of database_ids or page_ids required for output)
+  database_names String[] @default([]) // Display names, parallel to database_ids
+  page_ids       String[] @default([]) // Allowed page IDs
+  page_names     String[] @default([]) // Display names, parallel to page_ids
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
   automation_input  automation_inputs?  @relation(fields: [automation_input_id], references: [id], onDelete: Cascade)
   automation_output automation_outputs? @relation(fields: [automation_output_id], references: [id], onDelete: Cascade)
-
-  @@index([database_id])
-  @@index([page_id])
 }
 
 // Linear Configuration

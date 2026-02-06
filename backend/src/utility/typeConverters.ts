@@ -188,10 +188,10 @@ export const convertPrismaConfigToConfigInstance = (channelInput: AgentTriggerWi
         const nc = channelInput.notion_config
         return new NotionConfig(
             integrationId,
-            nc.database_id ?? undefined,
-            nc.database_name ?? undefined,
-            nc.page_id ?? undefined,
-            nc.page_name ?? undefined
+            nc.database_ids ?? [],
+            nc.database_names ?? [],
+            nc.page_ids ?? [],
+            nc.page_names ?? []
         )
     }
 
@@ -254,10 +254,10 @@ export const convertPrismaOutputConfigToConfigInstance = (channelOutput: AgentOu
         const nc = channelOutput.notion_config
         return new NotionConfig(
             integrationId,
-            nc.database_id ?? undefined,
-            nc.database_name ?? undefined,
-            nc.page_id ?? undefined,
-            nc.page_name ?? undefined
+            nc.database_ids ?? [],
+            nc.database_names ?? [],
+            nc.page_ids ?? [],
+            nc.page_names ?? []
         )
     }
 

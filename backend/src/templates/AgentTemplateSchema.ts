@@ -53,14 +53,14 @@ const SlackOutputConfigSchema = BaseConfigSchema.extend({
     userNames: z.array(z.string()).optional()
 })
 
-// Notion config schema (unified: page and/or database)
+// Notion config schema (unified: list of allowed databases and/or pages)
 const NotionConfigSchema = BaseConfigSchema.extend({
     configType: z.literal(ConfigType.NOTION),
     integrationType: z.literal(IntegrationType.NOTION),
-    databaseId: z.string().optional(),
-    databaseName: z.string().optional(),
-    pageId: z.string().optional(),
-    pageName: z.string().optional()
+    databaseIds: z.array(z.string()).optional().default([]),
+    databaseNames: z.array(z.string()).optional().default([]),
+    pageIds: z.array(z.string()).optional().default([]),
+    pageNames: z.array(z.string()).optional().default([])
 })
 
 // Linear Trigger config schema

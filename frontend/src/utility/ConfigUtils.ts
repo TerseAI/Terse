@@ -59,10 +59,10 @@ export function deserializeConfig(jsonConfig: any): ConfigInstance {
             const notionConfig = jsonConfig as NotionConfig
             return new NotionConfig(
                 integrationId,
-                notionConfig.databaseId,
-                notionConfig.databaseName,
-                notionConfig.pageId,
-                notionConfig.pageName
+                notionConfig.databaseIds ?? [],
+                notionConfig.databaseNames ?? [],
+                notionConfig.pageIds ?? [],
+                notionConfig.pageNames ?? []
             )
 
         case ConfigType.LINEAR_INPUT:

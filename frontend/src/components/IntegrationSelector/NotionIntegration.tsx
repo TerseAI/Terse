@@ -27,17 +27,31 @@ export function NotionIntegration({ input, variant, setConfig }: InputConfigSele
         }
     }, [integrations, selectedIntegrationId, setSelectedIntegrationId])
 
-    const updateConfig = (updates: Partial<Pick<NotionConfig, "databaseId" | "databaseName" | "pageId" | "pageName">>) => {
-        const id = selectedIntegrationId || currentConfig?.integrationId || ""
-        setConfig(
-            new NotionConfig(
-                id,
-                updates.databaseId ?? currentConfig?.databaseId,
-                updates.databaseName ?? currentConfig?.databaseName,
-                updates.pageId ?? currentConfig?.pageId,
-                updates.pageName ?? currentConfig?.pageName
-            )
-        )
+    const id = selectedIntegrationId || currentConfig?.integrationId || ""
+
+    const addDatabase = (resourceId: string, resourceName: string) => {
+        const dbIds = [...(currentConfig?.databaseIds ?? []), resourceId]
+        const dbNames = [...(currentConfig?.databaseNames ?? []), resourceName]
+        setConfig(new NotionConfig(id, dbIds, dbNames, currentConfig?.pageIds ?? [], currentConfig?.pageNames ?? []))
+    }
+    const removeDatabase = (resourceId: string) => {
+        const idx = (currentConfig?.databaseIds ?? []).indexOf(resourceId)
+        if (idx === -1) return
+        const dbIds = (currentConfig?.databaseIds ?? []).filter((_, i) => i !== idx)
+        const dbNames = (currentConfig?.databaseNames ?? []).filter((_, i) => i !== idx)
+        setConfig(new NotionConfig(id, dbIds, dbNames, currentConfig?.pageIds ?? [], currentConfig?.pageNames ?? []))
+    }
+    const addPage = (resourceId: string, resourceName: string) => {
+        const pageIds = [...(currentConfig?.pageIds ?? []), resourceId]
+        const pageNames = [...(currentConfig?.pageNames ?? []), resourceName]
+        setConfig(new NotionConfig(id, currentConfig?.databaseIds ?? [], currentConfig?.databaseNames ?? [], pageIds, pageNames))
+    }
+    const removePage = (resourceId: string) => {
+        const idx = (currentConfig?.pageIds ?? []).indexOf(resourceId)
+        if (idx === -1) return
+        const pageIds = (currentConfig?.pageIds ?? []).filter((_, i) => i !== idx)
+        const pageNames = (currentConfig?.pageNames ?? []).filter((_, i) => i !== idx)
+        setConfig(new NotionConfig(id, currentConfig?.databaseIds ?? [], currentConfig?.databaseNames ?? [], pageIds, pageNames))
     }
 
     if (isLoading) {
@@ -75,8 +89,10 @@ export function NotionIntegration({ input, variant, setConfig }: InputConfigSele
     }))
     const selectedIntegration = connectionSelections.find(c => c.value === selectedIntegrationId) ?? null
 
-    const hasDatabase = !!(currentConfig?.databaseId)
-    const hasPage = !!(currentConfig?.pageId)
+    const dbCount = currentConfig?.databaseIds?.length ?? 0
+    const pageCount = currentConfig?.pageIds?.length ?? 0
+    const hasDatabase = dbCount > 0
+    const hasPage = pageCount > 0
     const isComplete = currentConfig?.isComplete()
 
     if (variant === "card") {
@@ -98,14 +114,18 @@ export function NotionIntegration({ input, variant, setConfig }: InputConfigSele
                 )
             }
         }
+        const summary =
+            dbCount > 0 && pageCount > 0
+                ? `${dbCount} database${dbCount !== 1 ? "s" : ""}, ${pageCount} page${pageCount !== 1 ? "s" : ""}`
+                : dbCount > 0
+                  ? `${dbCount} database${dbCount !== 1 ? "s" : ""}`
+                  : pageCount > 0
+                    ? `${pageCount} page${pageCount !== 1 ? "s" : ""}`
+                    : null
         return (
             <div className="text-sm">
                 {selectedIntegration ? selectedIntegration.label : "No connection selected"}
-                {(hasDatabase || hasPage) && (
-                    <span className="text-muted-foreground ml-1">
-                        ({[hasDatabase && "database", hasPage && "page"].filter(Boolean).join(", ")})
-                    </span>
-                )}
+                {summary && <span className="text-muted-foreground ml-1">({summary})</span>}
             </div>
         )
     }
@@ -133,27 +153,25 @@ export function NotionIntegration({ input, variant, setConfig }: InputConfigSele
                 <div className="mt-3 pt-3 border-t border-border min-w-0 overflow-hidden space-y-4">
                     <p className="text-sm text-muted-foreground">Select at least one: database and/or page</p>
                     <div>
-                        <p className="text-xs font-medium text-muted-foreground mb-1">Database (optional)</p>
+                        <p className="text-xs font-medium text-muted-foreground mb-1">Databases (optional)</p>
                         <NotionResourceSelector
                             integrationId={selectedIntegrationId}
                             resourceType="database"
-                            selectedResourceId={currentConfig?.databaseId}
-                            selectedResourceName={currentConfig?.databaseName}
-                            onSelect={(resourceId: string, resourceName: string) => {
-                                updateConfig({ databaseId: resourceId, databaseName: resourceName })
-                            }}
+                            selectedResourceIds={currentConfig?.databaseIds ?? []}
+                            selectedResourceNames={currentConfig?.databaseNames ?? []}
+                            onAdd={addDatabase}
+                            onRemove={removeDatabase}
                         />
                     </div>
                     <div>
-                        <p className="text-xs font-medium text-muted-foreground mb-1">Page (optional)</p>
+                        <p className="text-xs font-medium text-muted-foreground mb-1">Pages (optional)</p>
                         <NotionResourceSelector
                             integrationId={selectedIntegrationId}
                             resourceType="page"
-                            selectedResourceId={currentConfig?.pageId}
-                            selectedResourceName={currentConfig?.pageName}
-                            onSelect={(resourceId: string, resourceName: string) => {
-                                updateConfig({ pageId: resourceId, pageName: resourceName })
-                            }}
+                            selectedResourceIds={currentConfig?.pageIds ?? []}
+                            selectedResourceNames={currentConfig?.pageNames ?? []}
+                            onAdd={addPage}
+                            onRemove={removePage}
                         />
                     </div>
                 </div>
