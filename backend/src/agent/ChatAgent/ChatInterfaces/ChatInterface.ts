@@ -2,6 +2,7 @@ import { RunStreamEvent } from "@openai/agents"
 
 import { ConfigType } from "../../../shared/Configs"
 import { IntegrationType } from "../../../shared/Integrations"
+import type { MultipleChoiceQuestion } from "../../../shared/Survey"
 
 abstract class ChatInterface {
     abstract name: string
@@ -17,6 +18,7 @@ abstract class ChatInterface {
 
     abstract promptForIntegration(integration: IntegrationType): Promise<string>
     abstract promptForConfig(config: ConfigType): Promise<string>
+    abstract askSurveyQuestion(multipleChoiceQuestion: MultipleChoiceQuestion): Promise<string>
     abstract processStreamEvent(sessionId: string, event: RunStreamEvent): void
     abstract processMessageEnd(sessionId: string, finalOutput: string): Promise<void>
     abstract buildButton(label: string, url: string): Promise<void>

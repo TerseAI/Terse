@@ -14,7 +14,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useTemplates } from "@/hooks/api/useTemplates"
 import { ModelRequest, SendModelRequest } from "@/shared/ModelEvents"
 import { AgentTemplate, TemplateCategory } from "@/shared/types"
-import { sendBuilderMessage, subscribeToBuilderChat } from "@/socket"
+import { sendBuilderMessage, sendBuilderMultipleChoiceAnswer, subscribeToBuilderChat } from "@/socket"
 
 const TEMPLATE_CATEGORIES: { id: TemplateCategory; label: string; icon: LucideIcon }[] = [
     { id: "users", label: "Understand Users", icon: Users },
@@ -135,6 +135,13 @@ export function AgentBuilderLayout({ header }: AgentBuilderLayoutProps) {
         }
     }, [hasStartedChat])
 
+    const handleMultipleChoiceAnswer = useCallback(
+        (questionId: string, value: string) => {
+            sendBuilderMultipleChoiceAnswer(sessionId, questionId, value)
+        },
+        [sessionId]
+    )
+
     // Animation variants for synchronized transitions
     const headerVariants = {
         visible: {
@@ -215,6 +222,7 @@ export function AgentBuilderLayout({ header }: AgentBuilderLayoutProps) {
                         subscribeToEvents={subscribeToEvents}
                         sendMessage={sendMessage}
                         onUserMessage={handleUserMessage}
+                        onMultipleChoiceAnswer={handleMultipleChoiceAnswer}
                         addUserTurnsLocally={true}
                         inputSize={hasStartedChat ? "small" : "large"}
                         placeholders={hasStartedChat ? [] : AGENT_SETUP_PLACEHOLDERS}

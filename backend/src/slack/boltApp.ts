@@ -243,6 +243,71 @@ export async function setupSlackBolt() {
         }
     })
 
+    // Handle survey multiple-choice selection - resume ChatAgent with answer
+    slack.action("survey_select", async ({ ack, body, action, respond, client }) => {
+        await ack()
+
+        try {
+            if (!("selected_option" in action) || !action.selected_option || !("value" in action.selected_option)) {
+                logger.error("[Slack Survey] Action missing selected_option or value")
+                await respond({
+                    text: "Error: No selection received.",
+                    response_type: "ephemeral"
+                })
+                return
+            }
+            const selectedValue = (action.selected_option as { value: string }).value
+            const blockId = (action as { block_id?: string }).block_id ?? (body as any).actions?.[0]?.block_id
+            if (!blockId || typeof blockId !== "string" || !blockId.startsWith("survey_")) {
+                logger.error("[Slack Survey] Invalid or missing block_id", { blockId })
+                await respond({
+                    text: "Error: Invalid survey request.",
+                    response_type: "ephemeral"
+                })
+                return
+            }
+            const payload = blockId.replace(/^survey_/, "").split("__")
+            const sessionId = payload[0]
+            const channel = payload[1]
+            if (!sessionId || !channel) {
+                logger.error("[Slack Survey] Could not parse sessionId or channel from block_id", { blockId })
+                await respond({
+                    text: "Error: Invalid survey request.",
+                    response_type: "ephemeral"
+                })
+                return
+            }
+            const bodyUser = (body as any).user?.id
+            const teamId = (body as any).team?.id
+            if (!bodyUser || !teamId) {
+                logger.error("[Slack Survey] Missing user or team in payload")
+                await respond({
+                    text: "Error: Could not identify user.",
+                    response_type: "ephemeral"
+                })
+                return
+            }
+            const user = await getUserFromSlackUser(bodyUser, teamId)
+            if (!user) {
+                logger.warn("[Slack Survey] No Terse user for Slack user", { slackUserId: bodyUser, teamId })
+                await respond({
+                    text: "Unable to identify your user account. Please ensure you have connected your Slack account to Terse.",
+                    response_type: "ephemeral"
+                })
+                return
+            }
+            const slackChatInterface = new SlackChatInterface(channel, client, user.id, user.organizationId, bodyUser, sessionId)
+            const chatAgent = new ChatAgent(slackChatInterface, sessionId, user.id, user.organizationId)
+            await chatAgent.run(`The user answered: ${selectedValue}`)
+        } catch (error) {
+            logger.error("[Slack Survey] Error resuming ChatAgent after survey answer", { error })
+            await respond({
+                text: "An error occurred while processing your answer. Please try again.",
+                response_type: "ephemeral"
+            })
+        }
+    })
+
     // Handle approve button clicks - process directly
     slack.action(/^approval_approve_(.+)__(.+)$/, async ({ ack, body, action, respond, client }) => {
         await ack()

@@ -531,3 +531,32 @@ export const convertPlainObjectToKnowledgeBaseConfigInstance = (config: any): Co
             throw new Error(`Unsupported knowledge base config type: ${config.configType}`)
     }
 }
+
+/**
+ * Converts a plain object config (e.g. from AgentTriggerSchema / InputConfigSchema) to a ConfigInstance.
+ * Used by getSampleEvents so sample events can be tested without creating an agent/database record.
+ */
+export const convertPlainObjectToInputConfigInstance = (config: any): ConfigInstance => {
+    if (typeof config.isComplete === "function") {
+        return config as ConfigInstance
+    }
+
+    switch (config.configType) {
+        case ConfigType.GMAIL:
+            return new GmailConfig(config.integrationId)
+        case ConfigType.FIGMA:
+            return new FigmaConfig(config.integrationId, config.fileKey, config.fileName || "", config.teamId || "")
+        case ConfigType.SLACK:
+            return new SlackConfig(config.integrationId, config.channelId, config.channelName, config.listenToUserDms ?? false, config.userIds)
+        case ConfigType.LINEAR_INPUT:
+            return new LinearInputConfig(config.integrationId, config.projectId, config.projectName)
+        case ConfigType.GITHUB:
+            return new GitHubConfig(config.integrationId, config.repositoryIds || [])
+        case ConfigType.JIRA:
+            return new JiraConfig(config.integrationId, config.projectKey, config.projectId)
+        case ConfigType.TIME_TRIGGER:
+            return new TimeTriggerConfig(config.cronExpression || "")
+        default:
+            throw new Error(`Unsupported input config type: ${config.configType}`)
+    }
+}

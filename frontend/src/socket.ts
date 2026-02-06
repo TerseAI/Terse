@@ -283,3 +283,11 @@ export function sendBuilderMessage(sessionId: string, message: ModelRequest): vo
     }
     socket.emit(SocketEvents.BUILDER_CHAT_MESSAGE, { sessionId, message })
 }
+
+export function sendBuilderMultipleChoiceAnswer(sessionId: string, questionId: string, value: string): void {
+    if (!socket || !socket.connected) {
+        console.warn("Socket not connected, cannot send multiple choice answer")
+        return
+    }
+    socket.emit(SocketEvents.BUILDER_CHAT_MULTIPLE_CHOICE_ANSWER, { sessionId, questionId, value })
+}

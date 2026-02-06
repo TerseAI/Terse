@@ -6,8 +6,10 @@ import { EventProcessor } from "../agent/AgentRunner/EventProcessor"
 import { OAUTH_TOKEN_REFRESH_THRESHOLD_MS, figma as figmaConfig, jwt as jwtConfig, nodeEnv, urls } from "../config/settings"
 import logger, { runWithUserContext } from "../logger"
 import { db } from "../prismaClient"
+import { Identifiable } from "../rag/Hydrator"
 import { FileCategory, StoredFile } from "../services/FileStorageService"
 import { ApiRoutes } from "../shared/ApiRoutes"
+import { ConfigInstance, ConfigType, FigmaConfig as FigmaConfigClass } from "../shared/Configs"
 import { FrontendRoutes } from "../shared/FrontendRoutes"
 import { AdditionalStateParams, FigmaIntegration, FigmaIntegrationMetadata, InstallationOptionsFor, IntegrationType } from "../shared/Integrations"
 import { RunHistoryTrigger } from "../shared/RunHistoryTypes"
@@ -23,6 +25,7 @@ import {
     User as SessionUser
 } from "../shared/types"
 import { AgentTriggerWithConfigs } from "../types/prisma"
+import { HydratorType } from "../types/rag"
 import { createOAuthStateToken } from "../utility/oauth"
 import { generateWebhookPasscode } from "../utility/webhookSecrets"
 import { getUserForOrg } from "../utility/workos"
@@ -731,6 +734,79 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
         }
     }
 
+    async getSampleEvents(integrationId: string, organizationId: string, triggerConfig: ConfigInstance, options?: { limit?: number }): Promise<InputEvent[]> {
+        if (triggerConfig.configType !== ConfigType.FIGMA) {
+            return []
+        }
+        const figmaConfig = triggerConfig as FigmaConfigClass
+
+        const limit = Math.min(options?.limit ?? 5, 10)
+        const fileKey = figmaConfig.fileKey
+        if (!fileKey) {
+            return []
+        }
+
+        const figmaIntegration = await db().figma_integrations.findUnique({
+            where: { id: integrationId, organization_id: organizationId }
+        })
+        if (!figmaIntegration) {
+            throw new Error(`Figma integration ${integrationId} not found`)
+        }
+
+        const accessToken = await this.getAccessToken(integrationId)
+        if (!accessToken) {
+            throw new Error(`Figma access token not found for integration ${integrationId}. Please reconnect.`)
+        }
+
+        const commentsResponse = await fetch(`https://api.figma.com/v1/files/${fileKey}/comments`, {
+            method: "GET",
+            headers: { Authorization: `Bearer ${accessToken}` }
+        })
+        if (!commentsResponse.ok) {
+            const errorText = await commentsResponse.text()
+            logger.error(`Failed to fetch Figma comments for file ${fileKey}`, { error: errorText, fileKey })
+            throw new Error(`Failed to fetch comments from Figma: ${commentsResponse.status}`)
+        }
+
+        const commentsData = await commentsResponse.json()
+        const comments = (commentsData.comments || []) as FigmaApiComment[]
+        const recentComments = comments.slice(-limit).reverse()
+
+        let fileMetadata: { name?: string; folder_name?: string } | undefined
+        try {
+            const fileResponse = await fetch(`https://api.figma.com/v1/files/${fileKey}`, {
+                headers: { Authorization: `Bearer ${accessToken}` }
+            })
+            if (fileResponse.ok) {
+                const fileData = await fileResponse.json()
+                fileMetadata = {
+                    name: fileData.name,
+                    folder_name: fileData.document?.name
+                }
+            }
+        } catch {
+            // optional
+        }
+
+        const events: InputEvent[] = []
+        for (const comment of recentComments) {
+            const eventData: FigmaCommentEventData = {
+                integrationId: figmaIntegration.id,
+                commentId: comment.id,
+                fileKey,
+                fileUrl: `https://www.figma.com/file/${fileKey}`,
+                nodeId: comment.client_meta?.node_id,
+                message: comment.message || "",
+                author: comment.user,
+                createdAt: comment.created_at,
+                resolved: comment.resolved_at !== null,
+                fileMetadata
+            }
+            events.push(new FigmaCommentEvent(eventData))
+        }
+        return events
+    }
+
     /**
      * Handle FILE_COMMENT webhook events
      * Comment data is included in the webhook payload
@@ -897,6 +973,7 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
         const positioningDataOrUndefined = positioningData ?? undefined
 
         const figmaEvent = new FigmaCommentEvent({
+            integrationId: integration.id,
             commentId: commentId,
             fileKey: fileKey,
             fileUrl: fileMetadata.url,
@@ -919,13 +996,16 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
 
 // MARK: - FigmaCommentEvent
 
-export class FigmaCommentEvent extends InputEvent {
+export class FigmaCommentEvent extends InputEvent implements Identifiable {
     readonly integrationType: IntegrationType = IntegrationType.FIGMA
+    entityType = HydratorType.FIGMA_COMMENT_EVENT
+    entityId: string
     data: FigmaCommentEventData
 
     constructor(data: FigmaCommentEventData) {
         super()
         this.data = data
+        this.entityId = data.integrationId ? `${data.integrationId}:${data.fileKey}:${data.commentId}` : `${data.fileKey}:${data.commentId}`
     }
 
     formatForAgentRunner(): string {

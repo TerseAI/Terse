@@ -1,5 +1,6 @@
 import { RunStreamEvent } from "@openai/agents-core"
 import { Socket } from "socket.io"
+import { uuidv4 } from "zod/v4"
 
 import { INTEGRATION_REGISTRY } from "../../../integrations/abstract/IntegrationRegistry"
 import logger from "../../../logger"
@@ -7,6 +8,7 @@ import { ConfigType } from "../../../shared/Configs"
 import { IntegrationType } from "../../../shared/Integrations"
 import { ModelEvent } from "../../../shared/ModelEvents"
 import { SocketEvents } from "../../../shared/SocketEvents"
+import type { MultipleChoiceQuestion } from "../../../shared/Survey"
 import { createOAuthStateToken } from "../../../utility/oauth"
 import {
     createNaturalStopEvent,
@@ -98,6 +100,20 @@ class WebChatInterface extends ChatInterface {
         logger.info("Web chat interface promptForConfig", { config })
         // For web, configuration is typically handled through the UI
         return `To configure ${config}, please use the settings panel in the interface.`
+    }
+
+    async askSurveyQuestion(multipleChoiceQuestion: MultipleChoiceQuestion): Promise<string> {
+        const questionId = uuidv4().toString()
+        this.emitEvent({
+            type: "Snippet",
+            snippet: {
+                type: "multiple_choice",
+                questionId,
+                question: multipleChoiceQuestion.question,
+                options: multipleChoiceQuestion.options
+            }
+        })
+        return "(Survey question sent; the user's answer will continue the conversation.)"
     }
 
     processStreamEvent(sessionId: string, event: RunStreamEvent): void {

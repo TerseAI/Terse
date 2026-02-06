@@ -113,6 +113,46 @@ export class EventProcessor {
         return results
     }
 
+    /**
+     * Process the event against a single agent by ID, skipping matching logic.
+     * Used for sample event execution (triggerAgentRun) to test a specific agent.
+     */
+    async processSingleAgent(agentId: string): Promise<ProcessorResult[]> {
+        logger.info(`Processing single agent ${agentId} for event: ${this.inputEvent.debugLog()}`)
+
+        const agent = await db().automations.findUnique({
+            where: {
+                id: agentId,
+                organization_id: this.user.organizationId
+            },
+            include: {
+                prompt: true,
+                inputs: {
+                    include: getInputConfigInclude()
+                },
+                outputs: {
+                    include: getOutputConfigInclude()
+                },
+                knowledge_bases: {
+                    include: getKnowledgeBaseConfigInclude()
+                },
+                tool_approvals: true
+            }
+        })
+
+        if (!agent) {
+            return [new ProcessorResult(false, `Agent ${agentId} not found`, null)]
+        }
+
+        try {
+            const result = await this.processAgent(agent)
+            return [result]
+        } catch (error) {
+            logger.error(`Error processing agent ${agentId}`, { error, agentId })
+            return [new ProcessorResult(false, `Error processing agent: ${error instanceof Error ? error.message : "Unknown error"}`, agent)]
+        }
+    }
+
     private createKnowledgeBases(agentKnowledgeBases: AgentWithRelations["knowledge_bases"]): KnowledgeBase<ConfigInstance>[] {
         return KnowledgeBaseFactory.createKnowledgeBasesFromAgent(agentKnowledgeBases)
     }
@@ -156,7 +196,7 @@ export class EventProcessor {
         // Filter the event using AI to see if it's relevant to this agent
         let filterResult
         try {
-            const filterResponse = await filterEvent(this.inputEvent, agent.prompt, {
+            const filterResponse = await filterEvent(this.inputEvent, agent.prompt, true, {
                 runId,
                 userId: this.user.id,
                 agentId: agent.id,

@@ -12,6 +12,8 @@ export type WithIdentity<T> = T & Identifiable
 // Context passed to hydrators for API access, user-specific data, etc.
 export interface HydrationContext {
     userId: string
+    /** Optional: used by event hydrators to resolve org-scoped integrations */
+    organizationId?: string
 }
 
 // Abstract base class that enforces constructor signature

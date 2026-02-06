@@ -15,6 +15,7 @@ type ChatProps = {
     onUserMessage?: (message: string) => void
     onHandleApprove?: (stepId: string) => void
     onHandleReject?: (stepId: string) => void
+    onMultipleChoiceAnswer?: (questionId: string, value: string) => void
     addUserTurnsLocally?: boolean
     inputSize?: "small" | "medium" | "large"
     placeholders?: string[]
@@ -35,6 +36,7 @@ const Chat = forwardRef<ChatHandle, ChatProps>(function Chat(
         onUserMessage,
         onHandleApprove,
         onHandleReject,
+        onMultipleChoiceAnswer,
         addUserTurnsLocally,
         inputSize = "small",
         placeholders = [],
@@ -50,7 +52,8 @@ const Chat = forwardRef<ChatHandle, ChatProps>(function Chat(
         input,
         setInput,
         sendMessage: sendUserMessage,
-        sendModelRequest
+        sendModelRequest,
+        handleMultipleChoiceAnswer
     } = useChat({
         subscribeToEvents,
         sendMessage,
@@ -58,6 +61,7 @@ const Chat = forwardRef<ChatHandle, ChatProps>(function Chat(
         onUserMessage,
         onToolCall: () => {},
         onToolCallComplete: () => {},
+        onMultipleChoiceAnswer,
         addUserTurnsLocally
     })
 
@@ -91,6 +95,7 @@ const Chat = forwardRef<ChatHandle, ChatProps>(function Chat(
             EmptyContentPlaceholder={EmptyContentPlaceholder}
             onApprove={onHandleApprove}
             onReject={onHandleReject}
+            onMultipleChoiceAnswer={handleMultipleChoiceAnswer}
             inputSize={inputSize}
             showPlaceholderChips={showPlaceholderChips}
         />

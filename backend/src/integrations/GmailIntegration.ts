@@ -8,12 +8,15 @@ import { EventProcessor } from "../agent/AgentRunner/EventProcessor"
 import { OAUTH_TOKEN_REFRESH_THRESHOLD_MS, gmail as gmailConfig, urls } from "../config/settings"
 import logger, { runWithUserContext } from "../logger"
 import { db } from "../prismaClient"
+import { Identifiable } from "../rag/Hydrator"
 import { FileDownloadResult, StoredFile, buildGmailFileKey, ensureStoredWithMetadata, isSupportedFileType } from "../services/FileStorageService"
+import { ConfigInstance, ConfigType } from "../shared/Configs"
 import { FrontendRoutes } from "../shared/FrontendRoutes"
 import { AdditionalStateParams, GmailIntegration, GmailIntegrationMetadata, InstallationOptionsFor, IntegrationType } from "../shared/Integrations"
 import { RunHistoryTrigger } from "../shared/RunHistoryTypes"
 import { OAuthInstallationDetails } from "../shared/types"
 import { AgentTriggerWithConfigs, GmailIntegration as PrismaGmailIntegration, User } from "../types/prisma"
+import { HydratorType } from "../types/rag"
 import { OAuthStateEncodingFormat, createOAuthStateToken, decodeOAuthStateToken } from "../utility/oauth"
 import { getUserForOrg } from "../utility/workos"
 
@@ -513,10 +516,49 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
             return null
         }
     }
+
+    async getSampleEvents(integrationId: string, organizationId: string, triggerConfig: ConfigInstance, options?: { limit?: number }): Promise<InputEvent[]> {
+        if (triggerConfig.configType !== ConfigType.GMAIL) {
+            return []
+        }
+
+        const limit = Math.min(options?.limit ?? 5, 10)
+        const gmailIntegration = await db().gmail_integrations.findUnique({
+            where: { id: integrationId, organization_id: organizationId }
+        })
+        if (!gmailIntegration) {
+            throw new Error(`Gmail integration ${integrationId} not found`)
+        }
+
+        const accessToken = await refreshAccessTokenIfNeeded(gmailIntegration)
+        const oauth2Client = getOAuth2Client()
+        oauth2Client.setCredentials({
+            access_token: accessToken,
+            refresh_token: gmailIntegration.refresh_token
+        })
+        const gmail = google.gmail({ version: "v1", auth: oauth2Client })
+
+        const listResponse = await gmail.users.messages.list({
+            userId: "me",
+            labelIds: ["INBOX"],
+            maxResults: limit
+        })
+        const messageIds = (listResponse.data.messages?.map(m => m.id).filter(Boolean) as string[]) || []
+        const events: InputEvent[] = []
+        for (const messageId of messageIds) {
+            const eventData = await fetchAndParseEmail(gmail, messageId)
+            if (eventData) {
+                events.push(new GmailEvent(eventData, integrationId))
+            }
+        }
+        return events
+    }
 }
 
-export class GmailEvent extends InputEvent {
+export class GmailEvent extends InputEvent implements Identifiable {
     readonly integrationType: IntegrationType = IntegrationType.GMAIL
+    entityType = HydratorType.GMAIL_EVENT
+    entityId: string
     data: GmailEventData
     private integrationId: string
 
@@ -524,6 +566,7 @@ export class GmailEvent extends InputEvent {
         super()
         this.data = data
         this.integrationId = integrationId
+        this.entityId = `${integrationId}:${data.id}`
     }
 
     formatForAgentRunner(): string {
@@ -815,7 +858,7 @@ async function fetchNewMessageIds(integration: PrismaGmailIntegration, oldHistor
     return messageIds
 }
 
-async function fetchAndParseEmail(gmail: gmail_v1.Gmail, messageId: string): Promise<GmailEventData | null> {
+export async function fetchAndParseEmail(gmail: gmail_v1.Gmail, messageId: string): Promise<GmailEventData | null> {
     try {
         const messageResponse = await gmail.users.messages.get({
             userId: "me",

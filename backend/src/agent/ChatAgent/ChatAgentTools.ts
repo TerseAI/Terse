@@ -3,15 +3,24 @@ import { Tool } from "@openai/agents-core"
 import { z } from "zod"
 import { uuidv4 } from "zod/v4"
 
+import { filterEvent } from "../../agent/AgentRunner/EventFilter"
+import { EventProcessor } from "../../agent/AgentRunner/EventProcessor"
+import { generateEventSummary } from "../../agent/EventSummaryAgent/EventSummaryAgent"
+import { CronJobEvent } from "../../integrations/CronJobIntegration"
 import { FetchResourcesOptions, FetchResourcesOptionsSchema } from "../../integrations/abstract/FetchResourcesOptions"
+import { InputEvent } from "../../integrations/abstract/InputEvent"
 import { INTEGRATION_REGISTRY } from "../../integrations/abstract/IntegrationRegistry"
 import logger from "../../logger"
+import { db } from "../../prismaClient"
+import { requireHydrator } from "../../rag/HydratorRegistry"
 import type { AgentDraft } from "../../routes/agents"
 import { applyAgentForUser, isUuidV4, updateAgentForUser } from "../../routes/agents"
 import type { ConfigInstance } from "../../shared/Configs"
 import { ConfigType } from "../../shared/Configs"
 import { FrontendRoutes } from "../../shared/FrontendRoutes"
 import { IntegrationType } from "../../shared/Integrations"
+import { requireHydratorType } from "../../types/rag"
+import { getUserForOrg } from "../../utility/workos"
 
 import ChatInterface from "./ChatInterfaces/ChatInterface"
 
@@ -98,6 +107,229 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
                     throw new Error("User ID and organization ID are required to fetch resources")
                 }
                 return await fetchResourcesForIntegrationType(integrationType, organizationId, query ?? undefined, options)
+            }
+        }),
+        tool({
+            name: "askSurveyQuestion",
+            description:
+                "Ask the user a single multiple-choice setup question. Call this once per turn; wait for the user's answer before continuing. The user can choose one of the options or write in their own answer. Returns the selected value or their written text. IMPORTANT: Only provide concrete choice options (e.g. specific channel names, project names). Do NOT add an option that is redundant with the write-in, such as 'Other', 'A different X (tell me the name)', or 'Something else'—the UI already has 'Or write your own answer' for that. CRITICAL: After calling this tool, do NOT send any follow-up message. Output nothing—no confirmation, no explanation. The question is already displayed in the chat; the user will answer there. Your response must be complete silence until the user answers.",
+            parameters: z.object({
+                question: z.string().describe("The question text to show the user"),
+                options: z
+                    .array(z.object({ label: z.string(), value: z.string() }))
+                    .describe("Concrete multiple-choice options only (e.g. specific names/ids). Do not include an 'other' or 'different X' option—the write-in field covers that.")
+            }),
+            execute: async ({ question, options }: { question: string; options: { label: string; value: string }[] }, _runContext?: RunContext<ChatAgentContext>): Promise<string> => {
+                return await chatInterface.askSurveyQuestion({ question, options })
+            }
+        }),
+        tool({
+            name: "getSampleEvents",
+            description:
+                "Fetch sample events to test your agent. Returns event references (entityType + entityId) and AI-generated summaries. Use triggerAgentRun with the entityType and entityId to run a specific event. For cron/scheduled agents, trigger immediately with triggerAgentRun and only agentId (no need to call getSampleEvents first).",
+            parameters: z.object({
+                integrationId: z.string().describe("The integration ID to fetch sample events for"),
+                integrationType: z.nativeEnum(IntegrationType).describe("The integration type"),
+                triggerConfig: AgentTriggerSchema.describe("The trigger config to fetch sample events for"),
+                agentId: z.string().nullable().describe("Optional agent ID to preview filter results against"),
+                options: z
+                    .object({
+                        limit: z.number().nullable().describe("Number of sample events to fetch (default 5)")
+                    })
+                    .nullable()
+            }),
+            execute: async ({ integrationId, integrationType, triggerConfig, agentId, options }, runContext?: RunContext<ChatAgentContext>): Promise<string> => {
+                const userId = runContext?.context?.userId
+                const organizationId = runContext?.context?.organizationId
+                if (!userId || !organizationId) {
+                    throw new Error("User ID and organization ID are required")
+                }
+
+                const limit = options?.limit ?? 5
+                logger.info("[getSampleEvents] Starting", {
+                    integrationId,
+                    integrationType,
+                    limit,
+                    agentId: agentId ?? null
+                })
+
+                const manager = INTEGRATION_REGISTRY.find(m => m.integrationType === integrationType)
+                if (!manager || !manager.getSampleEvents) {
+                    logger.warn("[getSampleEvents] Integration does not support sample events", { integrationType })
+                    throw new Error(`Integration ${integrationType} does not support sample events`)
+                }
+
+                const configInstance = toConfigInstance(normalizeConfig(triggerConfig.config))
+                const inputEvents = await manager.getSampleEvents(integrationId, organizationId, configInstance, { limit })
+                logger.info("[getSampleEvents] Fetched raw events from integration", {
+                    integrationType,
+                    count: inputEvents.length
+                })
+
+                let agentPrompt = null
+                if (agentId) {
+                    const agent = await db().automations.findUnique({
+                        where: { id: agentId },
+                        include: { prompt: true }
+                    })
+                    agentPrompt = agent?.prompt
+                    logger.info("[getSampleEvents] Filter preview", { agentId, hasPrompt: !!agentPrompt })
+                }
+
+                const identifiableEvents = inputEvents.filter(e => e.isIdentifiable())
+                const skipped = inputEvents.length - identifiableEvents.length
+                if (skipped > 0) {
+                    logger.warn("[getSampleEvents] Skipped non-identifiable events", {
+                        skipped,
+                        samples: inputEvents.filter(e => !e.isIdentifiable()).map(e => e.debugLog())
+                    })
+                }
+
+                const results = await Promise.all(
+                    identifiableEvents.map(async event => {
+                        const identifiable = event.getIdentifiableInfo()!
+                        const eventData = (event as unknown as { data: unknown }).data
+
+                        const [summaryResult, filterResult] = await Promise.all([
+                            generateEventSummary(integrationType, eventData).catch(err => {
+                                logger.warn("[getSampleEvents] Summary generation failed for event", {
+                                    entityId: identifiable.entityId,
+                                    error: err instanceof Error ? err.message : String(err)
+                                })
+                                return { summary: `${integrationType} event` }
+                            }),
+                            agentPrompt
+                                ? filterEvent(event, agentPrompt, false).catch(err => {
+                                      logger.warn("[getSampleEvents] Filter preview failed for event", {
+                                          entityId: identifiable.entityId,
+                                          error: err instanceof Error ? err.message : String(err)
+                                      })
+                                      return null
+                                  })
+                                : Promise.resolve(null)
+                        ])
+
+                        const summary = summaryResult.summary
+                        const wouldBeFiltered = filterResult ? !filterResult.result.isRelevant : false
+                        const filterReason = filterResult?.result.reason ?? (agentPrompt ? "Filter preview failed" : null)
+                        const filterConfidence = filterResult?.result.confidence ?? null
+
+                        return {
+                            entityType: identifiable.entityType,
+                            entityId: identifiable.entityId,
+                            summary,
+                            integrationType,
+                            wouldBeFiltered,
+                            filterReason,
+                            filterConfidence
+                        }
+                    })
+                )
+
+                logger.info("[getSampleEvents] Completed", {
+                    integrationType,
+                    eventCount: results.length,
+                    entityIds: results.map(r => r.entityId)
+                })
+
+                return JSON.stringify({ events: results })
+            }
+        }),
+        tool({
+            name: "triggerAgentRun",
+            description:
+                "For cron/time trigger agents: call with only agentId (omit or pass null for entityType and entityId) to trigger the agent immediately. For event-based triggers, use entityType and entityId from getSampleEvents.",
+            parameters: z.object({
+                entityType: z.string().nullable().describe("The entity type from getSampleEvents. Not needed for cron/time trigger agents."),
+                entityId: z.string().nullable().describe("The entity ID from getSampleEvents. Not needed for cron/time trigger agents."),
+                agentId: z.string().describe("The agent ID to test the sample event against")
+            }),
+            execute: async ({ entityType, entityId, agentId }, runContext?: RunContext<ChatAgentContext>): Promise<string> => {
+                const userId = runContext?.context?.userId
+                const organizationId = runContext?.context?.organizationId
+                if (!userId || !organizationId) {
+                    throw new Error("User ID and organization ID are required")
+                }
+
+                const user = await getUserForOrg(userId, organizationId)
+                if (!user) {
+                    logger.error("[triggerAgentRun] User not found", { userId, organizationId })
+                    throw new Error("User not found")
+                }
+
+                let inputEvent: InputEvent
+                let resolvedEntityType: string
+                let resolvedEntityId: string
+                const userEntityId = entityId != null && String(entityId).trim() !== "" ? entityId.trim() : null
+                const userEntityType = entityType != null && String(entityType).trim() !== "" ? entityType.trim() : null
+                const isEventBasedTrigger = userEntityType !== null && userEntityId !== null
+
+                if (isEventBasedTrigger) {
+                    logger.info("[triggerAgentRun] Starting", { entityType, entityId })
+                    const hydratorType = requireHydratorType(userEntityType)
+                    const hydrator = requireHydrator(hydratorType, { userId, organizationId })
+                    const hydrated = await hydrator.hydrate({
+                        entityType: hydratorType,
+                        entityId: userEntityId
+                    })
+                    inputEvent = hydrated as InputEvent
+                    resolvedEntityType = userEntityType
+                    resolvedEntityId = userEntityId
+                    logger.info("[triggerAgentRun] Hydrated event", {
+                        entityType: userEntityType,
+                        entityId: userEntityId,
+                        debugLog: inputEvent.debugLog()
+                    })
+                } else {
+                    logger.info("[triggerAgentRun] Cron trigger path", { agentId })
+                    const agent = await db().automations.findUnique({
+                        where: { id: agentId, organization_id: organizationId },
+                        include: { inputs: { include: { time_trigger_config: true } } }
+                    })
+                    if (!agent) throw new Error("Agent not found")
+                    const timeTriggerInput = agent.inputs.find(i => i.config_type === "TIME_TRIGGER" && i.time_trigger_config)
+                    if (!timeTriggerInput) throw new Error("Agent does not have a time trigger input")
+                    const cronJobEvent = new CronJobEvent({
+                        inputId: timeTriggerInput.id,
+                        isManualTrigger: true
+                    })
+                    inputEvent = cronJobEvent
+                    resolvedEntityType = "cron_trigger"
+                    resolvedEntityId = timeTriggerInput.id
+                }
+
+                const eventProcessor = new EventProcessor(inputEvent, user)
+                const processResults = await eventProcessor.processSingleAgent(agentId)
+                logger.info("[triggerAgentRun] EventProcessor finished", {
+                    entityType: resolvedEntityType,
+                    entityId: resolvedEntityId,
+                    resultCount: processResults.length,
+                    results: processResults.map(r => ({
+                        agentId: r.agentConfig?.id,
+                        agentName: r.agentConfig?.name,
+                        success: r.success,
+                        requiresApproval: r.approvalResult?.status === "awaiting_approval"
+                    }))
+                })
+
+                const formattedResults = processResults.map(r => ({
+                    agentId: r.agentConfig?.id ?? null,
+                    agentName: r.agentConfig?.name ?? null,
+                    success: r.success,
+                    message: r.message,
+                    requiresApproval: r.approvalResult?.status === "awaiting_approval"
+                }))
+
+                logger.info("[triggerAgentRun] Completed", {
+                    entityType: resolvedEntityType,
+                    entityId: resolvedEntityId
+                })
+                return JSON.stringify({
+                    processed: true,
+                    entityType: resolvedEntityType,
+                    entityId: resolvedEntityId,
+                    results: formattedResults
+                })
             }
         })
     ]
