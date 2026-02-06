@@ -6,7 +6,8 @@ import { INTEGRATION_REGISTRY } from "../../../integrations/abstract/Integration
 import logger from "../../../logger"
 import { ConfigType } from "../../../shared/Configs"
 import { IntegrationType } from "../../../shared/Integrations"
-import { createActionBlock, createButton, createIntegrationConnectionMessage } from "../../../slack/blockKitHelpers"
+import type { MultipleChoiceQuestion } from "../../../shared/Survey"
+import { createActionBlock, createButton, createIntegrationConnectionMessage, createSurveyQuestionBlocks } from "../../../slack/blockKitHelpers"
 import { createOAuthStateToken } from "../../../utility/oauth"
 
 import ChatInterface from "./ChatInterface"
@@ -311,6 +312,18 @@ class SlackChatInterface extends ChatInterface {
         return ""
     }
 
+    async askSurveyQuestion(multipleChoiceQuestion: MultipleChoiceQuestion): Promise<string> {
+        logger.info("Slack chat interface askSurveyQuestion", { question: multipleChoiceQuestion.question })
+        const blockId = `survey_${this.sessionId}__${this.channel}`
+        const blocks = createSurveyQuestionBlocks(multipleChoiceQuestion.question, multipleChoiceQuestion.options, blockId)
+        await this.say({
+            text: multipleChoiceQuestion.question,
+            blocks,
+            thread_ts: this.sessionId
+        })
+        return "(Survey question sent; the user's answer will continue the conversation.)"
+    }
+
     processStreamEvent(sessionId: string, event: RunStreamEvent): void {
         // Keep this commented out for now, very spammy.
         //logger.debug('Slack chat interface processStreamEvent:', { event });
@@ -321,6 +334,9 @@ class SlackChatInterface extends ChatInterface {
             messageTsToReplace: this.messageTsToReplace,
             finalOutput
         })
+        if (!finalOutput || !finalOutput.trim()) {
+            return
+        }
         const blocks = buildRichTextBlocks(finalOutput)
 
         // If we have a message timestamp to replace and WebClient, update the message instead of posting new one

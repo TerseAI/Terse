@@ -51,6 +51,14 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
         },
         complete: () => "Integration configured"
     },
+    askSurveyQuestion: {
+        preparing: "Asking a question",
+        executing: params => {
+            const question = (params?.question as string) || "Setup question"
+            return question.length > 40 ? `${question.slice(0, 40)}…` : question
+        },
+        complete: () => "Answer received"
+    },
     fetchResourcesForIntegration: {
         preparing: "Looking up resources",
         executing: params => {

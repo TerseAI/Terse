@@ -20,6 +20,7 @@ interface ChatLayoutProps {
     EmptyContentPlaceholder?: React.ReactNode
     onApprove?: (stepId: string) => void
     onReject?: (stepId: string) => void
+    onMultipleChoiceAnswer?: (questionId: string, value: string) => void
     inputSize?: "small" | "medium" | "large"
     showPlaceholderChips?: boolean
 }
@@ -40,6 +41,7 @@ export const ChatLayout = forwardRef<ChatLayoutHandle, ChatLayoutProps>(function
         EmptyContentPlaceholder,
         onApprove,
         onReject,
+        onMultipleChoiceAnswer,
         inputSize = "small",
         showPlaceholderChips = false
     },
@@ -117,7 +119,7 @@ export const ChatLayout = forwardRef<ChatLayoutHandle, ChatLayoutProps>(function
             <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-4 select-text">
                 <div ref={contentRef} className="space-y-4">
                     {turns.map((turn, index) => (
-                        <TurnView key={index} {...turn} onApprove={onApprove} onReject={onReject} />
+                        <TurnView key={index} {...turn} onApprove={onApprove} onReject={onReject} onMultipleChoiceAnswer={onMultipleChoiceAnswer} />
                     ))}
 
                     {isPendingAssistantResponse && <AwaitingResponseAnimation />}
