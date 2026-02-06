@@ -6,12 +6,15 @@ import { EventProcessor } from "../agent/AgentRunner/EventProcessor"
 import { settings, urls } from "../config/settings"
 import logger, { runWithUserContext } from "../logger"
 import { db } from "../prismaClient"
+import { Identifiable } from "../rag/Hydrator"
 import { StoredFile } from "../services/FileStorageService"
+import { ConfigInstance, ConfigType, JiraConfig as JiraConfigClass } from "../shared/Configs"
 import { FrontendRoutes } from "../shared/FrontendRoutes"
 import { AdditionalStateParams, AtlassianIntegration, AtlassianIntegrationMetadata, InstallationOptionsFor, IntegrationType } from "../shared/Integrations"
 import { RunHistoryTrigger } from "../shared/RunHistoryTypes"
 import { OAuthInstallationDetails } from "../shared/types"
 import { AgentTriggerWithConfigs } from "../types/prisma"
+import { HydratorType } from "../types/rag"
 import { JiraWebhookPayload } from "../utility/JiraWebhookPayload"
 import { createOAuthStateToken } from "../utility/oauth"
 import { getUserForOrg } from "../utility/workos"
@@ -623,12 +626,199 @@ export class AtlassianIntegrationManager
             // Don't throw - allow automation teardown to continue even if webhook deletion fails
         }
     }
+
+    async getSampleEvents(integrationId: string, organizationId: string, triggerConfig: ConfigInstance, options?: { limit?: number }): Promise<InputEvent[]> {
+        if (triggerConfig.configType !== ConfigType.JIRA) {
+            return []
+        }
+        const jiraConfig = triggerConfig as JiraConfigClass
+
+        const limit = Math.min(options?.limit ?? 5, 10)
+        await this.refreshToken(integrationId)
+
+        const atlassianIntegration = await db().atlassian_integrations.findUnique({
+            where: { id: integrationId, organization_id: organizationId }
+        })
+        if (!atlassianIntegration?.cloud_id || !atlassianIntegration.access_token) {
+            throw new Error(`Atlassian integration ${integrationId} not found or missing credentials`)
+        }
+
+        const accessToken = await this.getAccessToken(integrationId)
+        if (!accessToken) {
+            throw new Error(`Atlassian access token not found for integration ${integrationId}. Please reconnect.`)
+        }
+
+        let jqlQuery: string
+        if (jiraConfig.projectKey) {
+            jqlQuery = `project = ${jiraConfig.projectKey} ORDER BY created DESC`
+        } else {
+            const projectKeys = await this.fetchAccessibleProjectKeysForSample(atlassianIntegration.cloud_id, accessToken)
+            if (projectKeys.length === 0) {
+                return []
+            }
+            jqlQuery = `project in (${projectKeys.join(",")}) ORDER BY created DESC`
+        }
+
+        const issues = await this.searchJiraIssuesForSample(atlassianIntegration.cloud_id, accessToken, jqlQuery, limit)
+        const events: InputEvent[] = issues.map(issue => new JiraEvent(convertJiraIssueToWebhookPayload(issue), integrationId))
+        return events
+    }
+
+    private async fetchAccessibleProjectKeysForSample(cloudId: string, accessToken: string): Promise<string[]> {
+        const response = await fetch(`https://api.atlassian.com/ex/jira/${cloudId}/rest/api/3/project`, {
+            headers: {
+                Authorization: `Bearer ${accessToken}`,
+                Accept: "application/json"
+            }
+        })
+        if (!response.ok) return []
+        const projects = (await response.json()) as Array<{ key: string }>
+        return (projects || []).map(p => p.key)
+    }
+
+    private async searchJiraIssuesForSample(
+        cloudId: string,
+        accessToken: string,
+        jqlQuery: string,
+        maxResults: number
+    ): Promise<Array<{ id: string; self: string; key: string; fields: Record<string, unknown> }>> {
+        const params = new URLSearchParams({
+            jql: jqlQuery,
+            maxResults: String(maxResults),
+            fields: "summary,description,status,priority,issuetype,project,assignee,creator,created,updated,labels,duedate"
+        })
+        const response = await fetch(`https://api.atlassian.com/ex/jira/${cloudId}/rest/api/3/search/jql?${params.toString()}`, {
+            headers: {
+                Authorization: `Bearer ${accessToken}`,
+                Accept: "application/json"
+            }
+        })
+        if (!response.ok) {
+            const errorText = await response.text()
+            logger.error("Jira search failed for sample events", { status: response.status, error: errorText })
+            throw new Error(`Failed to search Jira issues: ${response.status}`)
+        }
+        const data = (await response.json()) as { issues?: Array<{ id: string; self: string; key: string; fields: Record<string, unknown> }> }
+        return data.issues || []
+    }
 }
 
 // MARK: - Event Definition
 
-export class JiraEvent extends InputEvent {
+function createDefaultJiraUser(): JiraWebhookPayload["user"] {
+    return {
+        self: "",
+        name: "Unknown",
+        key: "",
+        emailAddress: "",
+        avatarUrls: { "48x48": "", "24x24": "", "16x16": "", "32x32": "" },
+        displayName: "Unknown",
+        active: true
+    }
+}
+
+function convertJiraIssueToWebhookPayload(issue: { id: string; self: string; key: string; fields: Record<string, unknown> }): JiraWebhookPayload {
+    const fields = issue.fields as any
+    const status = fields?.status || {}
+    const priority = fields?.priority || {}
+    const issuetype = fields?.issuetype || {}
+    const project = fields?.project || {}
+    const creator = fields?.creator || createDefaultJiraUser()
+
+    return {
+        timestamp: Date.now(),
+        webhookEvent: "jira:issue_created",
+        user: creator,
+        issue: {
+            id: issue.id,
+            self: issue.self,
+            key: issue.key,
+            fields: {
+                statuscategorychangedate: fields?.updated || new Date().toISOString(),
+                issuetype: {
+                    self: issuetype.self || "",
+                    id: issuetype.id || "",
+                    description: issuetype.description || "",
+                    iconUrl: issuetype.iconUrl || "",
+                    name: issuetype.name || "",
+                    subtask: issuetype.subtask || false,
+                    avatarId: issuetype.avatarId
+                },
+                project: {
+                    self: project.self || "",
+                    id: project.id || "",
+                    key: project.key || "",
+                    name: project.name || "",
+                    projectTypeKey: project.projectTypeKey || "software",
+                    simplified: project.simplified || false,
+                    avatarUrls: project.avatarUrls || { "48x48": "", "24x24": "", "16x16": "", "32x32": "" }
+                },
+                fixVersions: [],
+                workratio: 0,
+                watches: { self: "", watchCount: 0, isWatching: false },
+                created: fields?.created || new Date().toISOString(),
+                priority: {
+                    self: priority.self || "",
+                    iconUrl: priority.iconUrl || "",
+                    name: priority.name || "",
+                    id: priority.id || ""
+                },
+                labels: (fields?.labels as string[]) || [],
+                versions: [],
+                issuelinks: [],
+                assignee: fields?.assignee ?? null,
+                updated: fields?.updated || new Date().toISOString(),
+                status: {
+                    self: status.self || "",
+                    description: status.description || "",
+                    iconUrl: status.iconUrl || "",
+                    name: status.name || "",
+                    id: status.id || "",
+                    statusCategory: status.statusCategory || {
+                        self: "",
+                        id: 0,
+                        key: "",
+                        colorName: "",
+                        name: ""
+                    }
+                },
+                components: [],
+                timetracking: {},
+                attachment: [],
+                description: fields?.description,
+                summary: fields?.summary || "",
+                creator,
+                subtasks: [],
+                reporter: fields?.reporter || creator,
+                aggregateprogress: { progress: 0, total: 0 },
+                duedate: fields?.duedate,
+                progress: { progress: 0, total: 0 },
+                votes: { self: "", votes: 0, hasVoted: false }
+            }
+        }
+    }
+}
+
+// MARK: - Event Definition
+
+/** Convert Jira description to plain text. Handles both string and ADF (Atlassian Document Format). */
+function jiraDescriptionToPlainText(description: unknown): string {
+    if (typeof description === "string") return description
+    if (description == null) return ""
+    const node = description as { type?: string; text?: string; content?: unknown[] }
+    if (node.text) return node.text
+    if (node.type === "hardBreak") return "\n"
+    if (Array.isArray(node.content)) {
+        const blockSeparator = node.type === "doc" ? "\n" : ""
+        return node.content.map(child => jiraDescriptionToPlainText(child)).join(blockSeparator)
+    }
+    return String(description)
+}
+
+export class JiraEvent extends InputEvent implements Identifiable {
     readonly integrationType: IntegrationType = IntegrationType.ATLASSIAN
+    entityType = HydratorType.JIRA_EVENT
+    entityId: string
     data: JiraWebhookPayload
     private integrationId: string
     private storedFiles: StoredFile[]
@@ -638,6 +828,8 @@ export class JiraEvent extends InputEvent {
         this.data = data
         this.integrationId = integrationId
         this.storedFiles = storedFiles
+        const issue = data.issue
+        this.entityId = `${integrationId}:${issue?.key ?? issue?.id ?? "unknown"}`
     }
 
     formatForAgentRunner(): string {
@@ -661,7 +853,8 @@ export class JiraEvent extends InputEvent {
 
             issueSections.push(`Issue: ${issue.key} - ${issue.fields.summary}`)
             if (issue.fields.description) {
-                issueSections.push(`Description:\n${indentMultiline(issue.fields.description)}`)
+                const descriptionText = jiraDescriptionToPlainText(issue.fields.description)
+                issueSections.push(`Description:\n${indentMultiline(descriptionText)}`)
             }
             issueSections.push(`Status: ${issue.fields.status.name}`)
             if (issue.fields.priority) {

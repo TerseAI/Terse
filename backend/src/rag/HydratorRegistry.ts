@@ -1,15 +1,25 @@
 import { HydratorType, HydratorTypeMap, RAGNamespace } from "../types/rag"
 
 import { CompositeHydrator, HydrationContext, Hydrator, Identifiable } from "./Hydrator"
+import { FigmaCommentEventHydrator } from "./figmaRag/hydrator"
+import { GithubEventHydrator } from "./githubRag/hydrator"
+import { GmailEventHydrator } from "./gmailRag/hydrator"
+import { JiraEventHydrator } from "./jiraRag/hydrator"
+import { LinearEventHydrator } from "./linearRag/hydrator"
 import { RunHistoryRawEventHydrator } from "./runHistoryRag/hydrator"
 import { SlackEventHydrator } from "./slackRag/hydrator"
 
 // Type-safe hydrator factory map
-const HYDATOR_FACTORIES: {
+const HYDRATOR_FACTORIES: {
     [K in HydratorType]: (ctx: HydrationContext) => Hydrator<HydratorTypeMap[K]>
 } = {
     [HydratorType.RUN_HISTORY_RAW_EVENT]: ctx => new RunHistoryRawEventHydrator(ctx),
-    [HydratorType.SLACK_MESSAGE_EVENT]: ctx => new SlackEventHydrator(ctx)
+    [HydratorType.SLACK_MESSAGE_EVENT]: ctx => new SlackEventHydrator(ctx),
+    [HydratorType.GITHUB_EVENT]: ctx => new GithubEventHydrator(ctx),
+    [HydratorType.LINEAR_EVENT]: ctx => new LinearEventHydrator(ctx),
+    [HydratorType.GMAIL_EVENT]: ctx => new GmailEventHydrator(ctx),
+    [HydratorType.FIGMA_COMMENT_EVENT]: ctx => new FigmaCommentEventHydrator(ctx),
+    [HydratorType.JIRA_EVENT]: ctx => new JiraEventHydrator(ctx)
 }
 
 // Create a composite hydrator for a namespace with context
@@ -30,7 +40,7 @@ export function createNamespaceHydrator(namespace: RAGNamespace, ctx: HydrationC
 
 // Get a hydrator by type (requires context)
 export function getHydrator<K extends HydratorType>(entityType: K, ctx: HydrationContext): Hydrator<HydratorTypeMap[K]> | undefined {
-    const factory = HYDATOR_FACTORIES[entityType]
+    const factory = HYDRATOR_FACTORIES[entityType]
     return factory ? factory(ctx) : undefined
 }
 
