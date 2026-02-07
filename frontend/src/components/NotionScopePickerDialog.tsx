@@ -110,50 +110,51 @@ export function NotionScopePicker({ integrationId, selectedDatabaseIds, selected
     const resourceList = (
         <ScrollArea className="h-[220px] w-full min-w-0 rounded-md border border-border">
             <div className="w-full min-w-0 overflow-x-hidden">
-            {isLoading && !isSearching && (
-                <div className="flex flex-col items-center justify-center py-10 text-sm text-muted-foreground">
-                    <Loader2 className="mb-2 h-5 w-5 animate-spin" />
-                    Loading...
-                </div>
-            )}
-            {isSearching && (
-                <div className="flex flex-col items-center justify-center py-10 text-sm text-muted-foreground">
-                    <Loader2 className="mb-2 h-5 w-5 animate-spin" />
-                    Searching...
-                </div>
-            )}
-            {!isLoading && !isSearching && isError && <div className="py-4 text-center text-sm text-destructive">{error instanceof Error ? error.message : "Failed to load resources"}</div>}
-            {!isLoading && !isSearching && !isError && resources.length === 0 && (
-                <div className="py-6 text-center text-sm text-muted-foreground">{debouncedSearch ? `No pages or databases match "${debouncedSearch}"` : "No pages or databases available"}</div>
-            )}
-            {!isLoading && !isSearching && !isError && resources.length > 0 && (
-                <div className="min-w-0 overflow-hidden p-1">
-                    {resources.map(resource => {
-                        const checked = isSelected(resource)
-                        const isDb = resource.type === "database"
-                        return (
-                            <label key={resource.id} className={cn("flex cursor-pointer items-center gap-2 overflow-hidden rounded-md px-2 py-1.5 min-w-0 hover:bg-muted/50", "focus-within:bg-muted/50")}>
-                                <Checkbox
-                                    checked={checked}
-                                    onCheckedChange={() => toggleResource(resource)}
-                                    className="mt-0.5 shrink-0"
-                                    aria-label={`${isDb ? "Database" : "Page"}: ${resource.title}`}
-                                />
-                                <span className="flex shrink-0 pt-0.5">
-                                    {isDb ? (
-                                        <DatabaseIcon className="h-4 w-4 text-muted-foreground" />
-                                    ) : (
-                                        <FileIcon className="h-4 w-4 text-muted-foreground" />
-                                    )}
-                                </span>
-                                <div className="min-w-0 flex-1 overflow-hidden">
-                                    <span className="block min-w-0 max-w-full truncate text-sm font-medium" title={resource.title}>{resource.title}</span>
-                                </div>
-                            </label>
-                        )
-                    })}
-                </div>
-            )}
+                {isLoading && !isSearching && (
+                    <div className="flex flex-col items-center justify-center py-10 text-sm text-muted-foreground">
+                        <Loader2 className="mb-2 h-5 w-5 animate-spin" />
+                        Loading...
+                    </div>
+                )}
+                {isSearching && (
+                    <div className="flex flex-col items-center justify-center py-10 text-sm text-muted-foreground">
+                        <Loader2 className="mb-2 h-5 w-5 animate-spin" />
+                        Searching...
+                    </div>
+                )}
+                {!isLoading && !isSearching && isError && <div className="py-4 text-center text-sm text-destructive">{error instanceof Error ? error.message : "Failed to load resources"}</div>}
+                {!isLoading && !isSearching && !isError && resources.length === 0 && (
+                    <div className="py-6 text-center text-sm text-muted-foreground">{debouncedSearch ? `No pages or databases match "${debouncedSearch}"` : "No pages or databases available"}</div>
+                )}
+                {!isLoading && !isSearching && !isError && resources.length > 0 && (
+                    <div className="min-w-0 overflow-hidden p-1">
+                        {resources.map(resource => {
+                            const checked = isSelected(resource)
+                            const isDb = resource.type === "database"
+                            return (
+                                <label
+                                    key={resource.id}
+                                    className={cn("flex cursor-pointer items-center gap-2 overflow-hidden rounded-md px-2 py-1.5 min-w-0 hover:bg-muted/50", "focus-within:bg-muted/50")}
+                                >
+                                    <Checkbox
+                                        checked={checked}
+                                        onCheckedChange={() => toggleResource(resource)}
+                                        className="mt-0.5 shrink-0"
+                                        aria-label={`${isDb ? "Database" : "Page"}: ${resource.title}`}
+                                    />
+                                    <span className="flex shrink-0 pt-0.5">
+                                        {isDb ? <DatabaseIcon className="h-4 w-4 text-muted-foreground" /> : <FileIcon className="h-4 w-4 text-muted-foreground" />}
+                                    </span>
+                                    <div className="min-w-0 flex-1 overflow-hidden">
+                                        <span className="block min-w-0 max-w-full truncate text-sm font-medium" title={resource.title}>
+                                            {resource.title}
+                                        </span>
+                                    </div>
+                                </label>
+                            )
+                        })}
+                    </div>
+                )}
             </div>
         </ScrollArea>
     )
@@ -224,7 +225,9 @@ export function NotionScopePicker({ integrationId, selectedDatabaseIds, selected
                         {localDatabases.map(({ id, name }) => (
                             <span key={id} className="inline-flex max-w-56 items-center gap-1 overflow-hidden rounded-md border border-border bg-muted/50 px-2 py-0.5 text-sm min-w-0">
                                 <DatabaseIcon className="h-3 w-3 shrink-0 text-muted-foreground" />
-                                <span className="min-w-0 truncate" title={name}>{name}</span>
+                                <span className="min-w-0 truncate" title={name}>
+                                    {name}
+                                </span>
                                 <button type="button" className="shrink-0 rounded p-0.5 hover:bg-muted" onClick={() => removeDatabase(id)} aria-label={`Remove ${name}`}>
                                     <X className="h-3 w-3" />
                                 </button>
@@ -233,7 +236,9 @@ export function NotionScopePicker({ integrationId, selectedDatabaseIds, selected
                         {localPages.map(({ id, name }) => (
                             <span key={id} className="inline-flex max-w-56 items-center gap-1 overflow-hidden rounded-md border border-border bg-muted/50 px-2 py-0.5 text-sm min-w-0">
                                 <FileIcon className="h-3 w-3 shrink-0 text-muted-foreground" />
-                                <span className="min-w-0 truncate" title={name}>{name}</span>
+                                <span className="min-w-0 truncate" title={name}>
+                                    {name}
+                                </span>
                                 <button type="button" className="shrink-0 rounded p-0.5 hover:bg-muted" onClick={() => removePage(id)} aria-label={`Remove ${name}`}>
                                     <X className="h-3 w-3" />
                                 </button>

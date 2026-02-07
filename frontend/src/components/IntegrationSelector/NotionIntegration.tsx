@@ -9,7 +9,7 @@ import { IntegrationType, NotionIntegration as NotionIntegrationType } from "@/s
 
 import { IconForConfigType } from "../../pages/Agents/components/Integration"
 import { ConfigType, NotionConfig } from "../../shared/Configs"
-import { NotionScopePicker, type NotionScopeItem } from "../NotionScopePickerDialog"
+import { type NotionScopeItem, NotionScopePicker } from "../NotionScopePickerDialog"
 import DropdownSelect from "../ui/DropdownSelect"
 import { Button } from "../ui/button"
 
