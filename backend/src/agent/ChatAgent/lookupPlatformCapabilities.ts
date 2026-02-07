@@ -3,9 +3,9 @@ import { Tool } from "@openai/agents-core"
 import { OutputConfigType } from "@prisma/client"
 import { z } from "zod"
 
+import type { CapabilityDescription } from "../../capabilityHelpers"
 import { KnowledgeBaseFactory } from "../../knowledgeBase/abstract/KnowledgeBaseFactory"
 import { OutputFactory } from "../../outputs/abstract/OutputFactory"
-import type { CapabilityDescription } from "../../capabilityHelpers"
 import { IntegrationType } from "../../shared/Integrations"
 import { TRIGGER_REGISTRY } from "../../triggers/TriggerRegistry"
 

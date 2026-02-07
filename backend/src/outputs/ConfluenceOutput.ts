@@ -4,13 +4,8 @@ import chalk from "chalk"
 import { z } from "zod"
 
 import { SessionWithTracking } from "../agent/AgentRunner/AgentRunner"
+import { type CapabilityDescription, extractToolMetadata, getConfigMetadata } from "../capabilityHelpers"
 import { AtlassianClient } from "../integrations/AtlassianClient"
-import {
-    extractToolMetadata,
-    getConfigMetadata,
-    type CapabilityDescription
-} from "../capabilityHelpers"
-import { convertOutputConfigTypeToConfigType } from "../utility/typeConverters"
 import logger from "../logger"
 import { db } from "../prismaClient"
 import { ConfluenceConfig } from "../shared/Configs"
@@ -19,6 +14,7 @@ import { ToolName } from "../tools/ToolNames"
 import { createNeedsApprovalFunction, formatError } from "../tools/toolUtils"
 import { AgentOutputWithConfigs, PrismaTransaction } from "../types/prisma"
 import { Session } from "../types/session"
+import { convertOutputConfigTypeToConfigType } from "../utility/typeConverters"
 
 import { Output, ToolboxEntry } from "./abstract/Output"
 

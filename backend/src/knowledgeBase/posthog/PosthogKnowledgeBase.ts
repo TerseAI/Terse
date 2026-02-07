@@ -1,12 +1,8 @@
 import { Tool } from "@openai/agents"
 import { KnowledgeBaseConfigType } from "@prisma/client"
 
+import { type CapabilityDescription, extractToolMetadata, getConfigMetadata } from "../../capabilityHelpers"
 import { ToolboxEntry } from "../../outputs/abstract/Output"
-import {
-    extractToolMetadata,
-    getConfigMetadata,
-    type CapabilityDescription
-} from "../../capabilityHelpers"
 import { ConfigType, PosthogConfig } from "../../shared/Configs"
 import { IntegrationType } from "../../shared/Integrations"
 import { AgentKnowledgeBaseWithConfigs, PrismaTransaction } from "../../types/prisma"

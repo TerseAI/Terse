@@ -1,16 +1,12 @@
 import { Tool } from "@openai/agents"
 import { OutputConfigType } from "@prisma/client"
 
+import { type CapabilityDescription, extractToolMetadata, getConfigMetadata } from "../../capabilityHelpers"
 import { slackListUsersTool } from "../../knowledgeBase/slack/tools/listUsers"
-import {
-    extractToolMetadata,
-    getConfigMetadata,
-    type CapabilityDescription
-} from "../../capabilityHelpers"
 import { SlackOutputConfig } from "../../shared/Configs"
-import { convertOutputConfigTypeToConfigType } from "../../utility/typeConverters"
 import { IntegrationType } from "../../shared/Integrations"
 import { AgentOutputWithConfigs, PrismaTransaction } from "../../types/prisma"
+import { convertOutputConfigTypeToConfigType } from "../../utility/typeConverters"
 import { Output, ToolboxEntry } from "../abstract/Output"
 
 import { slackSendMessageTool } from "./tools/sendMessage"

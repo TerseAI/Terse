@@ -1,14 +1,10 @@
 import { Tool } from "@openai/agents"
 import { KnowledgeBaseConfigType } from "@prisma/client"
 
+import { type CapabilityDescription, extractToolMetadata, getConfigMetadata } from "../../capabilityHelpers"
 import logger from "../../logger"
 import { ToolboxEntry } from "../../outputs/abstract/Output"
 import { db } from "../../prismaClient"
-import {
-    extractToolMetadata,
-    getConfigMetadata,
-    type CapabilityDescription
-} from "../../capabilityHelpers"
 import { ConfigType, DatadogConfig } from "../../shared/Configs"
 import { IntegrationType } from "../../shared/Integrations"
 import { AgentKnowledgeBaseWithConfigs, PrismaTransaction, User } from "../../types/prisma"

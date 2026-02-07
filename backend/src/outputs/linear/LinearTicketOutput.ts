@@ -1,16 +1,12 @@
 import { Tool } from "@openai/agents"
 import { OutputConfigType } from "@prisma/client"
 
+import { type CapabilityDescription, extractToolMetadata, getConfigMetadata } from "../../capabilityHelpers"
 import { db } from "../../prismaClient"
-import {
-    extractToolMetadata,
-    getConfigMetadata,
-    type CapabilityDescription
-} from "../../capabilityHelpers"
 import { LinearOutputConfig } from "../../shared/Configs"
-import { convertOutputConfigTypeToConfigType } from "../../utility/typeConverters"
 import { IntegrationType } from "../../shared/Integrations"
 import { AgentOutputWithConfigs, PrismaTransaction } from "../../types/prisma"
+import { convertOutputConfigTypeToConfigType } from "../../utility/typeConverters"
 import { Output, ToolboxEntry } from "../abstract/Output"
 
 import { linearCreateTicketTool } from "./tools/createTicket"

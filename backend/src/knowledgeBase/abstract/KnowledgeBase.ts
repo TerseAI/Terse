@@ -1,8 +1,8 @@
 // MARK: - Output Integrations
 import { KnowledgeBaseConfigType } from "@prisma/client"
 
-import { ToolboxEntry } from "../../outputs/abstract/Output"
 import { CapabilityDescription } from "../../capabilityHelpers"
+import { ToolboxEntry } from "../../outputs/abstract/Output"
 import { ConfigInstance } from "../../shared/Configs"
 import { AgentKnowledgeBaseWithConfigs, PrismaTransaction } from "../../types/prisma"
 

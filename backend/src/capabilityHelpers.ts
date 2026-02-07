@@ -1,6 +1,6 @@
-import { ConfigType, CONFIG_DETAILS } from "./shared/Configs"
-import { IntegrationType } from "./shared/Integrations"
 import type { ToolboxEntry } from "./outputs/abstract/Output"
+import { CONFIG_DETAILS, ConfigType } from "./shared/Configs"
+import { IntegrationType } from "./shared/Integrations"
 
 // MARK: - Types
 

@@ -1,15 +1,11 @@
 import { Tool } from "@openai/agents"
 import { OutputConfigType } from "@prisma/client"
 
-import {
-    extractToolMetadata,
-    getConfigMetadata,
-    type CapabilityDescription
-} from "../../capabilityHelpers"
+import { type CapabilityDescription, extractToolMetadata, getConfigMetadata } from "../../capabilityHelpers"
 import { GmailOutputConfig } from "../../shared/Configs"
 import { IntegrationType } from "../../shared/Integrations"
-import { convertOutputConfigTypeToConfigType } from "../../utility/typeConverters"
 import { AgentOutputWithConfigs, PrismaTransaction } from "../../types/prisma"
+import { convertOutputConfigTypeToConfigType } from "../../utility/typeConverters"
 import { Output, ToolboxEntry } from "../abstract/Output"
 
 import { gmailSendEmailTool } from "./tools/sendEmail"

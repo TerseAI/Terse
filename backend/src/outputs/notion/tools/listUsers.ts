@@ -22,11 +22,7 @@ Use the returned user IDs in people property format:
 {"Assignee": {"people": [{"object": "user", "id": "<user_id>"}]}}`,
     parameters: z.object({
         integrationId: z.string().describe("The integration ID of the Notion workspace to use."),
-        query: z
-            .string()
-            .nullable()
-            .optional()
-            .describe("Optional search query to filter users by name. Case-insensitive partial match.")
+        query: z.string().nullable().optional().describe("Optional search query to filter users by name. Case-insensitive partial match.")
     }),
     execute: async ({ integrationId, query }, runContext?: RunContext<SessionWithTracking<Session>>) => {
         logger.debug("Executing notion_list_users tool", { integrationId, query })
@@ -60,15 +56,13 @@ Use the returned user IDs in people property format:
                     allUsers.push({ id: u.id, name: name ?? "", email })
                 }
 
-                cursor = response.has_more ? (response.next_cursor as string) ?? undefined : undefined
+                cursor = response.has_more ? ((response.next_cursor as string) ?? undefined) : undefined
             } while (cursor)
 
             let users = allUsers
             if (query?.trim()) {
                 const normalizedQuery = query.trim().toLowerCase()
-                users = allUsers.filter(
-                    u => u.name?.toLowerCase().includes(normalizedQuery) || u.email?.toLowerCase().includes(normalizedQuery)
-                )
+                users = allUsers.filter(u => u.name?.toLowerCase().includes(normalizedQuery) || u.email?.toLowerCase().includes(normalizedQuery))
             }
 
             const action = {

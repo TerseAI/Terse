@@ -1,26 +1,14 @@
 import { Tool } from "@openai/agents"
 import { OutputConfigType } from "@prisma/client"
 
-import { convertOutputConfigTypeToConfigType } from "../../utility/typeConverters"
-import {
-    extractToolMetadata,
-    getConfigMetadata,
-    type CapabilityDescription
-} from "../../capabilityHelpers"
+import { type CapabilityDescription, extractToolMetadata, getConfigMetadata } from "../../capabilityHelpers"
 import { NotionConfig } from "../../shared/Configs"
 import { IntegrationType } from "../../shared/Integrations"
 import { AgentOutputWithConfigs, PrismaTransaction } from "../../types/prisma"
+import { convertOutputConfigTypeToConfigType } from "../../utility/typeConverters"
 import { Output, ToolboxEntry } from "../abstract/Output"
 
-import {
-    fetchRelatedEventsTool,
-    notionGetSchemaTool,
-    notionListUsersTool,
-    notionModifyBlocksTool,
-    notionModifyPageTool,
-    notionQueryDatabaseTool,
-    notionQueryPageTool
-} from "./tools"
+import { fetchRelatedEventsTool, notionGetSchemaTool, notionListUsersTool, notionModifyBlocksTool, notionModifyPageTool, notionQueryDatabaseTool, notionQueryPageTool } from "./tools"
 
 export class NotionOutput extends Output<NotionConfig> {
     constructor() {
