@@ -21,6 +21,7 @@ import {
     SlackConfig,
     SlackKBConfig,
     SlackOutputConfig,
+    TerseOutputConfig,
     TimeTriggerConfig
 } from "../shared/Configs"
 import { IntegrationType } from "../shared/Integrations"
@@ -289,7 +290,13 @@ export const convertPrismaOutputConfigToConfigInstance = (channelOutput: AgentOu
         return new GmailOutputConfig(integrationId)
     }
 
+    // TERSE outputs don't have a config record - they're built-in platform tools
+    if (channelOutput.config_type === OutputConfigType.TERSE) {
+        return new TerseOutputConfig()
+    }
+
     // Type guard to ensure we implement conversion here
+    // Note: TERSE is handled above with an early return, so TypeScript narrows it out here
     switch (channelOutput.config_type) {
         case OutputConfigType.NOTION_PAGE:
         case OutputConfigType.NOTION_DATABASE:
@@ -298,7 +305,6 @@ export const convertPrismaOutputConfigToConfigInstance = (channelOutput: AgentOu
         case OutputConfigType.JIRA_TICKET:
         case OutputConfigType.SLACK_CHANNEL:
         case OutputConfigType.GMAIL:
-        case OutputConfigType.TERSE:
             break
         default:
             throw channelOutput.config_type satisfies never
@@ -352,6 +358,8 @@ export const convertConfigTypeToInputConfigType = (configType: ConfigType): Inpu
             throw new Error("LINEAR_KB is a knowledge base type, not an input type")
         case ConfigType.SLACK_KB:
             throw new Error("SLACK_KB is a knowledge base type, not an input type")
+        case ConfigType.TERSE_OUTPUT:
+            throw new Error("TERSE_OUTPUT is an output type, not an input type")
         default:
             throw configType satisfies never
     }

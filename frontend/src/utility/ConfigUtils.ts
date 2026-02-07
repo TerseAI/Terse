@@ -19,6 +19,7 @@ import {
     SlackConfig,
     SlackKBConfig,
     SlackOutputConfig,
+    TerseOutputConfig,
     TimeTriggerConfig
 } from "@/shared/Configs"
 
@@ -39,6 +40,17 @@ export function deserializeConfig(jsonConfig: any): ConfigInstance {
     // Otherwise, re-instantiate based on configType
     const configType = jsonConfig.configType as ConfigType
     const integrationId = jsonConfig.integrationId
+
+    // Special case: TERSE_OUTPUT doesn't require integrationId
+    if (configType === ConfigType.TERSE_OUTPUT) {
+        return new TerseOutputConfig()
+    }
+
+    // TIME_TRIGGER uses "system" as integrationId
+    if (configType === ConfigType.TIME_TRIGGER) {
+        const timeTriggerConfig = jsonConfig as TimeTriggerConfig
+        return new TimeTriggerConfig(timeTriggerConfig.cronExpression)
+    }
 
     if (!integrationId) {
         throw new Error("Invalid config: missing integrationId")
@@ -84,9 +96,8 @@ export function deserializeConfig(jsonConfig: any): ConfigInstance {
         case ConfigType.POSTHOG:
             const posthogConfig = jsonConfig as PosthogConfig
             return new PosthogConfig(integrationId, posthogConfig.projectId, posthogConfig.projectName)
-        case ConfigType.TIME_TRIGGER:
-            const timeTriggerConfig = jsonConfig as TimeTriggerConfig
-            return new TimeTriggerConfig(timeTriggerConfig.cronExpression)
+        // Note: TIME_TRIGGER and TERSE_OUTPUT are handled above with early returns
+        // TypeScript narrows them out of the type here, so we don't include them in the switch
         case ConfigType.GITHUB_KB:
             const githubKBConfig = jsonConfig as GitHubKBConfig
             return new GitHubKBConfig(integrationId, githubKBConfig.repositoryIds, githubKBConfig.repositoryNames)

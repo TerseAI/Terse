@@ -49,6 +49,9 @@ export function IconForConfigType({ type }: { type: ConfigType }) {
             return <CalendarClockIcon />
         case ConfigType.DATADOG:
             return <DatadogIcon />
+        case ConfigType.TERSE_OUTPUT:
+            // TERSE is a platform output - no specific icon, use null or a generic one
+            return null
         default:
             // Exhaustive check: TypeScript will error if any IntegrationType case is missing
             throw type satisfies never

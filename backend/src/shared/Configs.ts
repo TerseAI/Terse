@@ -19,7 +19,8 @@ export enum ConfigType {
     TIME_TRIGGER = "time_trigger",
     LAUNCHDARKLY = "launchdarkly",
     LINEAR_KB = "linear_kb",
-    SLACK_KB = "slack_kb"
+    SLACK_KB = "slack_kb",
+    TERSE_OUTPUT = "terse_output"
 }
 
 // MARK: Config Metadata
@@ -73,6 +74,15 @@ export const GmailOutputConfigMetadata = {
     configType: ConfigType.GMAIL_OUTPUT,
     name: "Gmail",
     description: "Send emails via Gmail",
+    isInput: false,
+    isOutput: true,
+    isKnowledgeBase: false
+} as const satisfies ConfigDetails
+
+export const TerseOutputConfigMetadata = {
+    configType: ConfigType.TERSE_OUTPUT,
+    name: "Terse",
+    description: "Platform tools like web search",
     isInput: false,
     isOutput: true,
     isKnowledgeBase: false
@@ -225,7 +235,8 @@ export const CONFIG_DETAILS: ConfigDetailsMap = {
     [ConfigType.TIME_TRIGGER]: TimeTriggerConfigMetadata,
     [ConfigType.LAUNCHDARKLY]: LaunchDarklyConfigMetadata,
     [ConfigType.LINEAR_KB]: LinearKBConfigMetadata,
-    [ConfigType.SLACK_KB]: SlackKBConfigMetadata
+    [ConfigType.SLACK_KB]: SlackKBConfigMetadata,
+    [ConfigType.TERSE_OUTPUT]: TerseOutputConfigMetadata
 } as const satisfies ConfigDetailsMap
 
 export interface ConfigInstance {
@@ -358,6 +369,22 @@ export class GmailOutputConfig implements ConfigInstance {
 
     formatForAgent(): string {
         return `Type: Gmail Output\nIntegration ID: ${this.integrationId}`
+    }
+}
+
+export class TerseOutputConfig implements ConfigInstance {
+    integrationType: IntegrationType = IntegrationType.TERSE
+    configType: ConfigType = ConfigType.TERSE_OUTPUT
+    // System integration - no real integration ID needed
+    integrationId: string = "system"
+
+    isComplete(): boolean {
+        // Terse output is always complete - it's a built-in platform feature
+        return true
+    }
+
+    formatForAgent(): string {
+        return `Type: Terse Platform Tools`
     }
 }
 
@@ -755,6 +782,7 @@ export type ConfigMetadataMap = EnsureExhaustiveMetadata<{
     [ConfigType.LAUNCHDARKLY]: typeof LaunchDarklyConfig
     [ConfigType.LINEAR_KB]: typeof LinearKBConfig
     [ConfigType.SLACK_KB]: typeof SlackKBConfig
+    [ConfigType.TERSE_OUTPUT]: typeof TerseOutputConfig
 }>
 
 export const CONFIG_METADATA: ConfigMetadataMap = {
@@ -776,5 +804,6 @@ export const CONFIG_METADATA: ConfigMetadataMap = {
     [ConfigType.TIME_TRIGGER]: TimeTriggerConfig,
     [ConfigType.LAUNCHDARKLY]: LaunchDarklyConfig,
     [ConfigType.LINEAR_KB]: LinearKBConfig,
-    [ConfigType.SLACK_KB]: SlackKBConfig
+    [ConfigType.SLACK_KB]: SlackKBConfig,
+    [ConfigType.TERSE_OUTPUT]: TerseOutputConfig
 } as const satisfies ConfigMetadataMap
