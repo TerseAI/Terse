@@ -1,13 +1,11 @@
 import { Tool } from "@openai/agents"
 import { KnowledgeBaseConfigType } from "@prisma/client"
 
-import logger from "../../logger"
+import { type CapabilityDescription, extractToolMetadata, getConfigMetadata } from "../../capabilityHelpers"
 import { ToolboxEntry } from "../../outputs/abstract/Output"
-import { db } from "../../prismaClient"
-import { LaunchDarklyConfig } from "../../shared/Configs"
+import { ConfigType, LaunchDarklyConfig } from "../../shared/Configs"
 import { IntegrationType } from "../../shared/Integrations"
-import { AgentKnowledgeBaseWithConfigs, PrismaTransaction, User } from "../../types/prisma"
-import { Session } from "../../types/session"
+import { AgentKnowledgeBaseWithConfigs, PrismaTransaction } from "../../types/prisma"
 import { KnowledgeBase } from "../abstract/KnowledgeBase"
 
 import { getLaunchDarklyFlagDetailsTool } from "./tools/getFeatureFlagDetails"
@@ -25,6 +23,41 @@ export class LaunchDarklyKnowledgeBase extends KnowledgeBase<LaunchDarklyConfig>
         ]
 
         super(KnowledgeBaseConfigType.LAUNCHDARKLY, toolbox)
+    }
+
+    getCapabilityDescription(): CapabilityDescription {
+        const meta = getConfigMetadata(ConfigType.LAUNCHDARKLY)
+        const tools = extractToolMetadata(this.toolbox)
+        const systemInstructions = this.getSystemInstructions(true)
+
+        return {
+            name: meta.name,
+            description: meta.description,
+            configType: ConfigType.LAUNCHDARKLY,
+            integrationType: meta.integrationType,
+            role: "knowledgeBase",
+            tools,
+            configFields: {
+                integrationId: "LaunchDarkly integration connection",
+                projectKey: "LaunchDarkly project key",
+                environmentKeys: 'Array of environment keys (e.g. ["production", "staging"])'
+            },
+            systemInstructions
+        }
+    }
+
+    protected getDummyConfigForCapability(): AgentKnowledgeBaseWithConfigs {
+        return {
+            integration_id: "example",
+            config_type: "LAUNCHDARKLY" as any,
+            id: "example",
+            automation_id: "example",
+            launchdarkly_config: {
+                automation_knowledge_base_id: "example",
+                project_key: "example-project",
+                environment_keys: ["production"]
+            }
+        } as any
     }
 
     async validateConfig(knowledgeBase: LaunchDarklyConfig, _userId: string): Promise<void> {

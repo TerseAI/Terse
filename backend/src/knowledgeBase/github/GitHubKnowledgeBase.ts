@@ -1,10 +1,11 @@
 import { Tool } from "@openai/agents"
 import { KnowledgeBaseConfigType } from "@prisma/client"
 
+import { type CapabilityDescription, extractToolMetadata, getConfigMetadata } from "../../capabilityHelpers"
 import { validateGithubRepositoryIds } from "../../integrations/githubValidation"
 import logger from "../../logger"
 import { ToolboxEntry } from "../../outputs/abstract/Output"
-import { GitHubKBConfig } from "../../shared/Configs"
+import { ConfigType, GitHubKBConfig } from "../../shared/Configs"
 import { IntegrationType } from "../../shared/Integrations"
 import { AgentKnowledgeBaseWithConfigs, PrismaTransaction, User } from "../../types/prisma"
 import { Session } from "../../types/session"
@@ -37,6 +38,27 @@ export class GitHubKnowledgeBase extends KnowledgeBase<GitHubKBConfig> {
         super(KnowledgeBaseConfigType.GITHUB, toolbox)
     }
 
+    getCapabilityDescription(): CapabilityDescription {
+        const meta = getConfigMetadata(ConfigType.GITHUB_KB)
+        const tools = extractToolMetadata(this.toolbox)
+        const systemInstructions = this.getSystemInstructions(true)
+
+        return {
+            name: meta.name,
+            description: meta.description,
+            configType: ConfigType.GITHUB_KB,
+            integrationType: meta.integrationType,
+            role: "knowledgeBase",
+            tools,
+            configFields: {
+                integrationId: "GitHub integration connection",
+                repositoryIds: "Array of GitHub repository IDs to include",
+                repositoryNames: "Array of repository names (owner/repo format)"
+            },
+            systemInstructions
+        }
+    }
+
     async validateConfig(knowledgeBase: GitHubKBConfig, userId: string): Promise<void> {
         await validateGithubRepositoryIds({
             userId,
@@ -45,6 +67,20 @@ export class GitHubKnowledgeBase extends KnowledgeBase<GitHubKBConfig> {
             configTypeLabel: "github_kb",
             contextLabel: "knowledge base"
         })
+    }
+
+    protected getDummyConfigForCapability(): AgentKnowledgeBaseWithConfigs {
+        return {
+            integration_id: "example",
+            config_type: "GITHUB" as any,
+            id: "example",
+            automation_id: "example",
+            github_kb_config: {
+                automation_knowledge_base_id: "example",
+                repository_names: ["owner/example-repo"],
+                repository_ids: [0]
+            }
+        } as any
     }
 
     async addKnowledgeBaseToAgent(tx: PrismaTransaction, channelKnowledgeBaseId: string, knowledgeBase: GitHubKBConfig): Promise<void> {

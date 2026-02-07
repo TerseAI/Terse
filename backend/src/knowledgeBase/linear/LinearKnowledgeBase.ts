@@ -3,7 +3,12 @@ import { KnowledgeBaseConfigType } from "@prisma/client"
 
 import { ToolboxEntry } from "../../outputs/abstract/Output"
 import { linearSearchTicketTool } from "../../outputs/linear/tools/searchTicket"
-import { LinearKBConfig } from "../../shared/Configs"
+import {
+    extractToolMetadata,
+    getConfigMetadata,
+    type CapabilityDescription
+} from "../../capabilityHelpers"
+import { ConfigType, LinearKBConfig } from "../../shared/Configs"
 import { IntegrationType } from "../../shared/Integrations"
 import { AgentKnowledgeBaseWithConfigs, PrismaTransaction } from "../../types/prisma"
 import { KnowledgeBase } from "../abstract/KnowledgeBase"
@@ -32,6 +37,45 @@ export class LinearKnowledgeBase extends KnowledgeBase<LinearKBConfig> {
         ]
 
         super(KnowledgeBaseConfigType.LINEAR, toolbox)
+    }
+
+    getCapabilityDescription(): CapabilityDescription {
+        const meta = getConfigMetadata(ConfigType.LINEAR_KB)
+        const tools = extractToolMetadata(this.toolbox)
+        const systemInstructions = this.getSystemInstructions(true)
+
+        return {
+            name: meta.name,
+            description: meta.description,
+            configType: ConfigType.LINEAR_KB,
+            integrationType: meta.integrationType,
+            role: "knowledgeBase",
+            tools,
+            configFields: {
+                integrationId: "Linear integration connection",
+                teamId: "Linear team ID (optional filter)",
+                teamName: "Team display name",
+                projectId: "Linear project ID (optional filter)",
+                projectName: "Project display name"
+            },
+            systemInstructions
+        }
+    }
+
+    protected getDummyConfigForCapability(): AgentKnowledgeBaseWithConfigs {
+        return {
+            integration_id: "example",
+            config_type: "LINEAR" as any,
+            id: "example",
+            automation_id: "example",
+            linear_kb_config: {
+                automation_knowledge_base_id: "example",
+                team_id: null,
+                team_name: null,
+                project_id: null,
+                project_name: null
+            }
+        } as any
     }
 
     async validateConfig(_knowledgeBase: LinearKBConfig, _userId: string): Promise<void> {

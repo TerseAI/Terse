@@ -26,6 +26,7 @@ export interface ConfigDetails {
     configType: ConfigType
     name: string
     description: string
+    integrationType: IntegrationType
     isInput: boolean
     isOutput: boolean
     isKnowledgeBase: boolean
@@ -36,6 +37,7 @@ export const GmailConfigMetadata = {
     configType: ConfigType.GMAIL,
     name: "Gmail",
     description: "Monitor incoming emails",
+    integrationType: IntegrationType.GMAIL,
     isInput: true,
     isOutput: false,
     isKnowledgeBase: false
@@ -45,6 +47,7 @@ export const FigmaConfigMetadata = {
     configType: ConfigType.FIGMA,
     name: "Figma",
     description: "Monitor design changes in Figma files",
+    integrationType: IntegrationType.FIGMA,
     isInput: true,
     isOutput: false,
     isKnowledgeBase: false
@@ -54,6 +57,7 @@ export const SlackConfigMetadata = {
     configType: ConfigType.SLACK,
     name: "Slack",
     description: "Monitor messages in Slack channels or DMs",
+    integrationType: IntegrationType.SLACK,
     isInput: true,
     isOutput: false,
     isKnowledgeBase: false
@@ -63,6 +67,7 @@ export const SlackOutputConfigMetadata = {
     configType: ConfigType.SLACK_OUTPUT,
     name: "Slack",
     description: "Send messages to Slack channels, group DMs, or direct messages",
+    integrationType: IntegrationType.SLACK,
     isInput: false,
     isOutput: true,
     isKnowledgeBase: false
@@ -72,6 +77,7 @@ export const GmailOutputConfigMetadata = {
     configType: ConfigType.GMAIL_OUTPUT,
     name: "Gmail",
     description: "Send emails via Gmail",
+    integrationType: IntegrationType.GMAIL,
     isInput: false,
     isOutput: true,
     isKnowledgeBase: false
@@ -81,6 +87,7 @@ export const NotionConfigMetadata = {
     configType: ConfigType.NOTION,
     name: "Notion",
     description: "Update and monitor Notion pages and databases",
+    integrationType: IntegrationType.NOTION,
     isInput: false,
     isOutput: true,
     isKnowledgeBase: false
@@ -90,6 +97,7 @@ export const LinearInputConfigMetadata = {
     configType: ConfigType.LINEAR_INPUT,
     name: "Linear",
     description: "Monitor Linear issues",
+    integrationType: IntegrationType.LINEAR,
     isInput: true,
     isOutput: false,
     isKnowledgeBase: false
@@ -99,6 +107,7 @@ export const LinearOutputConfigMetadata = {
     configType: ConfigType.LINEAR_OUTPUT,
     name: "Linear",
     description: "Update Linear issues",
+    integrationType: IntegrationType.LINEAR,
     isInput: false,
     isOutput: true,
     isKnowledgeBase: false
@@ -108,6 +117,7 @@ export const GitHubConfigMetadata = {
     configType: ConfigType.GITHUB,
     name: "GitHub",
     description: "Monitor GitHub repository events",
+    integrationType: IntegrationType.GITHUB,
     isInput: true,
     isOutput: false,
     isKnowledgeBase: false
@@ -117,6 +127,7 @@ export const JiraConfigMetadata = {
     configType: ConfigType.JIRA,
     name: "Jira",
     description: "Monitor and update Jira issues",
+    integrationType: IntegrationType.ATLASSIAN,
     isInput: true,
     isOutput: true,
     isKnowledgeBase: false
@@ -126,6 +137,7 @@ export const ConfluenceConfigMetadata = {
     configType: ConfigType.CONFLUENCE,
     name: "Confluence",
     description: "Update Confluence pages",
+    integrationType: IntegrationType.ATLASSIAN,
     isInput: false,
     isOutput: true,
     isKnowledgeBase: false
@@ -135,6 +147,7 @@ export const PosthogConfigMetadata = {
     configType: ConfigType.POSTHOG,
     name: "Posthog",
     description: "Track user events",
+    integrationType: IntegrationType.POSTHOG,
     isInput: false,
     isOutput: false,
     isKnowledgeBase: true
@@ -144,6 +157,7 @@ export const DatadogConfigMetadata = {
     configType: ConfigType.DATADOG,
     name: "Datadog",
     description: "Search logs in Datadog",
+    integrationType: IntegrationType.DATADOG,
     isInput: false,
     isOutput: false,
     isKnowledgeBase: true
@@ -153,6 +167,7 @@ export const TimeTriggerConfigMetadata = {
     configType: ConfigType.TIME_TRIGGER,
     name: "Time Trigger",
     description: "Run on a schedule (daily, weekly, etc.)",
+    integrationType: IntegrationType.CRON_JOB,
     isInput: true,
     isOutput: false,
     isKnowledgeBase: false
@@ -162,6 +177,7 @@ export const GitHubKBConfigMetadata = {
     configType: ConfigType.GITHUB_KB,
     name: "GitHub Codebase",
     description: "Search and read code in repositories",
+    integrationType: IntegrationType.GITHUB,
     isInput: false,
     isOutput: false,
     isKnowledgeBase: true
@@ -171,6 +187,7 @@ export const LaunchDarklyConfigMetadata = {
     configType: ConfigType.LAUNCHDARKLY,
     name: "LaunchDarkly",
     description: "Query feature flags",
+    integrationType: IntegrationType.LAUNCHDARKLY,
     isInput: false,
     isOutput: false,
     isKnowledgeBase: true
@@ -180,6 +197,7 @@ export const LinearKBConfigMetadata = {
     configType: ConfigType.LINEAR_KB,
     name: "Linear",
     description: "Search and read Linear tickets",
+    integrationType: IntegrationType.LINEAR,
     isInput: false,
     isOutput: false,
     isKnowledgeBase: true
@@ -189,6 +207,7 @@ export const SlackKBConfigMetadata = {
     configType: ConfigType.SLACK_KB,
     name: "Slack",
     description: "Read Slack conversation history",
+    integrationType: IntegrationType.SLACK,
     isInput: false,
     isOutput: false,
     isKnowledgeBase: true

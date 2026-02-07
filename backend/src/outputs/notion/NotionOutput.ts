@@ -1,12 +1,26 @@
 import { Tool } from "@openai/agents"
 import { OutputConfigType } from "@prisma/client"
 
+import { convertOutputConfigTypeToConfigType } from "../../utility/typeConverters"
+import {
+    extractToolMetadata,
+    getConfigMetadata,
+    type CapabilityDescription
+} from "../../capabilityHelpers"
 import { NotionConfig } from "../../shared/Configs"
 import { IntegrationType } from "../../shared/Integrations"
 import { AgentOutputWithConfigs, PrismaTransaction } from "../../types/prisma"
 import { Output, ToolboxEntry } from "../abstract/Output"
 
-import { fetchRelatedEventsTool, notionGetSchemaTool, notionModifyBlocksTool, notionModifyPageTool, notionQueryDatabaseTool, notionQueryPageTool } from "./tools"
+import {
+    fetchRelatedEventsTool,
+    notionGetSchemaTool,
+    notionListUsersTool,
+    notionModifyBlocksTool,
+    notionModifyPageTool,
+    notionQueryDatabaseTool,
+    notionQueryPageTool
+} from "./tools"
 
 export class NotionOutput extends Output<NotionConfig> {
     constructor() {
@@ -16,9 +30,47 @@ export class NotionOutput extends Output<NotionConfig> {
             { tool: notionModifyPageTool as Tool, isReadOnly: false, integration: IntegrationType.NOTION, displayName: "Modify page (database row)" },
             { tool: notionQueryPageTool as Tool, isReadOnly: true, integration: IntegrationType.NOTION, displayName: "Query page" },
             { tool: notionModifyBlocksTool as Tool, isReadOnly: false, integration: IntegrationType.NOTION, displayName: "Modify blocks" },
-            { tool: fetchRelatedEventsTool as Tool, isReadOnly: true, integration: IntegrationType.NOTION, displayName: "Fetch related events" }
+            { tool: fetchRelatedEventsTool as Tool, isReadOnly: true, integration: IntegrationType.NOTION, displayName: "Fetch related events" },
+            { tool: notionListUsersTool as Tool, isReadOnly: true, integration: IntegrationType.NOTION, displayName: "List workspace users" }
         ]
         super(OutputConfigType.NOTION, toolbox)
+    }
+
+    getCapabilityDescription(): CapabilityDescription {
+        const configType = convertOutputConfigTypeToConfigType(OutputConfigType.NOTION)
+        const meta = getConfigMetadata(configType)
+        const tools = extractToolMetadata(this.toolbox)
+        const systemInstructions = this.getSystemInstructions(true)
+
+        return {
+            name: meta.name,
+            description: meta.description,
+            configType,
+            integrationType: meta.integrationType,
+            role: "output",
+            tools,
+            configFields: {
+                integrationId: "Notion integration connection",
+                databaseIds: "Allowed Notion database IDs",
+                databaseNames: "Display names for databases",
+                pageIds: "Allowed Notion page IDs",
+                pageNames: "Display names for pages"
+            },
+            systemInstructions
+        }
+    }
+
+    protected getDummyConfigForCapability(): AgentOutputWithConfigs {
+        return {
+            integration_id: "example",
+            config_type: OutputConfigType.NOTION,
+            notion_config: {
+                database_ids: ["example-db-id"],
+                database_names: ["Example DB"],
+                page_ids: ["example-page-id"],
+                page_names: ["Example Page"]
+            }
+        } as any
     }
 
     async validateConfig(output: NotionConfig, _userId: string): Promise<void> {
@@ -78,7 +130,7 @@ export class NotionOutput extends Output<NotionConfig> {
 When calling Notion tools, always use the \`integrationId\` and a \`databaseId\` or \`pageId\` from the allowed list above. Never target a database or page that is not in the list.`)
 
         sections.push(
-            "\n**Database tools** (use with databaseId): `notion_get_schema`, `notion_query_database`, `notion_modify_page`. **Page tools** (use with pageId): `notion_query_page`, `notion_modify_blocks`, `notion_fetch_related_events`. You can create a page in a database then add content to a page; use the right tool and target for each step."
+            "\n**Database tools** (use with databaseId): `notion_get_schema`, `notion_query_database`, `notion_modify_page`, `notion_list_users`. **Page tools** (use with pageId): `notion_query_page`, `notion_modify_blocks`, `notion_fetch_related_events`. You can create a page in a database then add content to a page; use the right tool and target for each step."
         )
 
         sections.push(`
@@ -86,6 +138,11 @@ NOTION DATABASE WORKFLOW (when using databaseId):
 - Use \`notion_get_schema\` first to understand property names and types.
 - Use \`notion_query_database\` to find existing records; prefer "contains"/"starts_with" over "equals".
 - Use \`notion_modify_page\` to create (page_id null) or update; do not create duplicates.
+
+PEOPLE & RELATION PROPERTIES:
+- Use \`notion_list_users\` to find user IDs for People properties (e.g., Assignee).
+- For Relation properties, use \`notion_get_schema\` to find the related database ID,
+  then \`notion_query_database\` on that database to find the target page ID.
 `)
 
         sections.push("\n" + NOTION_FOOTER_INSTRUCTIONS)

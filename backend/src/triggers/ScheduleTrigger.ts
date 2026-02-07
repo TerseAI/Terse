@@ -1,3 +1,4 @@
+import { CapabilityDescription, getConfigMetadata } from "../capabilityHelpers"
 import { ConfigType, TimeTriggerConfig } from "../shared/Configs"
 import { PrismaTransaction } from "../types/prisma"
 
@@ -7,6 +8,23 @@ export class ScheduleTrigger implements Trigger<TimeTriggerConfig> {
     configType: ConfigType = ConfigType.TIME_TRIGGER
 
     constructor() {}
+
+    getCapabilityDescription(): CapabilityDescription {
+        const meta = getConfigMetadata(ConfigType.TIME_TRIGGER)
+        return {
+            name: meta.name,
+            description: meta.description,
+            configType: ConfigType.TIME_TRIGGER,
+            integrationType: meta.integrationType,
+            role: "trigger",
+            tools: [],
+            configFields: {
+                integrationId: "<integrationId>",
+                cronExpression: "Cron expression for schedule (e.g. '0 9 * * 1-5' for weekdays at 9am UTC)"
+            },
+            systemInstructions: ""
+        }
+    }
 
     async validateConfig(trigger: TimeTriggerConfig, _userId: string): Promise<void> {
         if (!trigger.cronExpression) {

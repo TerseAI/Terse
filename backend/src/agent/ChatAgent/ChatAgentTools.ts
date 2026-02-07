@@ -23,6 +23,7 @@ import { requireHydratorType } from "../../types/rag"
 import { getUserForOrg } from "../../utility/workos"
 
 import ChatInterface from "./ChatInterfaces/ChatInterface"
+import { lookupPlatformCapabilitiesTool } from "./lookupPlatformCapabilities"
 
 export type ChatAgentContext = {
     chatInterface: ChatInterface
@@ -34,6 +35,7 @@ export type ChatAgentContext = {
 export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgentContext>[] {
     return [
         webSearchTool({ searchContextSize: "medium" }) as Tool<ChatAgentContext>,
+        lookupPlatformCapabilitiesTool,
         tool({
             name: "applyAgent",
             description:

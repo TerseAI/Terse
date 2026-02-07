@@ -1,3 +1,4 @@
+import { CapabilityDescription, getConfigMetadata } from "../capabilityHelpers"
 import { AtlassianClient } from "../integrations/AtlassianClient"
 import { ConfigType, JiraConfig } from "../shared/Configs"
 import { PrismaTransaction } from "../types/prisma"
@@ -10,6 +11,24 @@ export class JiraTrigger implements Trigger<JiraConfig> {
 
     constructor() {
         this.integrationManager = new AtlassianClient()
+    }
+
+    getCapabilityDescription(): CapabilityDescription {
+        const meta = getConfigMetadata(ConfigType.JIRA)
+        return {
+            name: meta.name,
+            description: meta.description,
+            configType: ConfigType.JIRA,
+            integrationType: meta.integrationType,
+            role: "trigger",
+            tools: [],
+            configFields: {
+                integrationId: "<integrationId>",
+                projectKey: "Jira project key (optional filter)",
+                projectId: "Jira project ID (optional filter)"
+            },
+            systemInstructions: ""
+        }
     }
 
     async validateConfig(_trigger: JiraConfig, _userId: string): Promise<void> {

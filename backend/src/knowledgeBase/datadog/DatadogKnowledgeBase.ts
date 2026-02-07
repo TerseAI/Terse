@@ -4,7 +4,12 @@ import { KnowledgeBaseConfigType } from "@prisma/client"
 import logger from "../../logger"
 import { ToolboxEntry } from "../../outputs/abstract/Output"
 import { db } from "../../prismaClient"
-import { DatadogConfig } from "../../shared/Configs"
+import {
+    extractToolMetadata,
+    getConfigMetadata,
+    type CapabilityDescription
+} from "../../capabilityHelpers"
+import { ConfigType, DatadogConfig } from "../../shared/Configs"
 import { IntegrationType } from "../../shared/Integrations"
 import { AgentKnowledgeBaseWithConfigs, PrismaTransaction, User } from "../../types/prisma"
 import { Session } from "../../types/session"
@@ -29,6 +34,39 @@ export class DatadogKnowledgeBase extends KnowledgeBase<DatadogConfig> {
         ]
 
         super(KnowledgeBaseConfigType.DATADOG, toolbox)
+    }
+
+    getCapabilityDescription(): CapabilityDescription {
+        const meta = getConfigMetadata(ConfigType.DATADOG)
+        const tools = extractToolMetadata(this.toolbox)
+        const systemInstructions = this.getSystemInstructions(true)
+
+        return {
+            name: meta.name,
+            description: meta.description,
+            configType: ConfigType.DATADOG,
+            integrationType: meta.integrationType,
+            role: "knowledgeBase",
+            tools,
+            configFields: {
+                integrationId: "Datadog integration connection",
+                defaultIndexes: 'Log indexes to search (e.g. ["main"])'
+            },
+            systemInstructions
+        }
+    }
+
+    protected getDummyConfigForCapability(): AgentKnowledgeBaseWithConfigs {
+        return {
+            integration_id: "example",
+            config_type: "DATADOG" as any,
+            id: "example",
+            automation_id: "example",
+            datadog_config: {
+                automation_knowledge_base_id: "example",
+                default_indexes: ["main"]
+            }
+        } as any
     }
 
     async addKnowledgeBaseToAgent(tx: PrismaTransaction, channelKnowledgeBaseId: string, knowledgeBase: DatadogConfig): Promise<void> {

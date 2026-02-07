@@ -397,6 +397,31 @@ export const convertConfigTypeToOutputConfigType = (configType: ConfigType): Out
 }
 
 /**
+ * Converts OutputConfigType to ConfigType (for outputs that have a ConfigType in CONFIG_DETAILS).
+ * TERSE has no ConfigType - throws for TERSE.
+ */
+export const convertOutputConfigTypeToConfigType = (outputConfigType: OutputConfigType): ConfigType => {
+    switch (outputConfigType) {
+        case OutputConfigType.NOTION:
+            return ConfigType.NOTION
+        case OutputConfigType.CONFLUENCE:
+            return ConfigType.CONFLUENCE
+        case OutputConfigType.LINEAR_TICKET:
+            return ConfigType.LINEAR_OUTPUT
+        case OutputConfigType.JIRA_TICKET:
+            return ConfigType.JIRA
+        case OutputConfigType.SLACK_CHANNEL:
+            return ConfigType.SLACK_OUTPUT
+        case OutputConfigType.GMAIL:
+            return ConfigType.GMAIL_OUTPUT
+        case OutputConfigType.TERSE:
+            throw new Error("TERSE output has no ConfigType in CONFIG_DETAILS")
+        default:
+            throw outputConfigType satisfies never
+    }
+}
+
+/**
  * Converts OutputConfigType to IntegrationType.
  * Maps output configuration types to their corresponding integration types.
  */

@@ -1,13 +1,15 @@
 import { Tool } from "@openai/agents"
 import { KnowledgeBaseConfigType } from "@prisma/client"
 
-import logger from "../../logger"
 import { ToolboxEntry } from "../../outputs/abstract/Output"
-import { db } from "../../prismaClient"
-import { ConfigInstance, PosthogConfig } from "../../shared/Configs"
+import {
+    extractToolMetadata,
+    getConfigMetadata,
+    type CapabilityDescription
+} from "../../capabilityHelpers"
+import { ConfigType, PosthogConfig } from "../../shared/Configs"
 import { IntegrationType } from "../../shared/Integrations"
-import { AgentKnowledgeBaseWithConfigs, PrismaTransaction, User } from "../../types/prisma"
-import { Session } from "../../types/session"
+import { AgentKnowledgeBaseWithConfigs, PrismaTransaction } from "../../types/prisma"
 import { KnowledgeBase } from "../abstract/KnowledgeBase"
 
 import { getSessionEventsTool } from "./tools/getSessionEvents"
@@ -29,6 +31,41 @@ export class PosthogKnowledgeBase extends KnowledgeBase<PosthogConfig> {
         ]
 
         super(KnowledgeBaseConfigType.POSTHOG, toolbox)
+    }
+
+    getCapabilityDescription(): CapabilityDescription {
+        const meta = getConfigMetadata(ConfigType.POSTHOG)
+        const tools = extractToolMetadata(this.toolbox)
+        const systemInstructions = this.getSystemInstructions(true)
+
+        return {
+            name: meta.name,
+            description: meta.description,
+            configType: ConfigType.POSTHOG,
+            integrationType: meta.integrationType,
+            role: "knowledgeBase",
+            tools,
+            configFields: {
+                integrationId: "PostHog integration connection",
+                projectId: "PostHog project ID (from fetchResourcesForIntegration)",
+                projectName: "Project display name"
+            },
+            systemInstructions
+        }
+    }
+
+    protected getDummyConfigForCapability(): AgentKnowledgeBaseWithConfigs {
+        return {
+            integration_id: "example",
+            config_type: "POSTHOG" as any,
+            id: "example",
+            automation_id: "example",
+            posthog_config: {
+                automation_knowledge_base_id: "example",
+                project_id: "example-project",
+                project_name: "Example Project"
+            }
+        } as any
     }
 
     async validateConfig(knowledgeBase: PosthogConfig, _userId: string): Promise<void> {

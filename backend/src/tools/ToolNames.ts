@@ -25,6 +25,7 @@ export const ToolName = {
     NOTION_QUERY_DATABASE: "notion_query_database",
     NOTION_GET_SCHEMA: "notion_get_schema",
     NOTION_FETCH_RELATED_EVENTS: "notion_fetch_related_events",
+    NOTION_LIST_USERS: "notion_list_users",
 
     // Gmail Tools
     GMAIL_SEND_EMAIL: "gmail_send_email",

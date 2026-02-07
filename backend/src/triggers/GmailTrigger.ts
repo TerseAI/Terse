@@ -1,3 +1,4 @@
+import { CapabilityDescription, getConfigMetadata } from "../capabilityHelpers"
 import { GmailIntegrationManager } from "../integrations/GmailIntegration"
 import { ConfigType, GmailConfig } from "../shared/Configs"
 import { PrismaTransaction } from "../types/prisma"
@@ -10,6 +11,22 @@ export class GmailTrigger implements Trigger<GmailConfig> {
 
     constructor() {
         this.integrationManager = new GmailIntegrationManager()
+    }
+
+    getCapabilityDescription(): CapabilityDescription {
+        const meta = getConfigMetadata(ConfigType.GMAIL)
+        return {
+            name: meta.name,
+            description: meta.description,
+            configType: ConfigType.GMAIL,
+            integrationType: meta.integrationType,
+            role: "trigger",
+            tools: [],
+            configFields: {
+                integrationId: "<integrationId>"
+            },
+            systemInstructions: ""
+        }
     }
 
     async validateConfig(_trigger: GmailConfig, _userId: string): Promise<void> {

@@ -1,3 +1,4 @@
+import { CapabilityDescription, getConfigMetadata } from "../capabilityHelpers"
 import { LinearIntegrationManager } from "../integrations/LinearIntegration"
 import { ConfigType, LinearInputConfig } from "../shared/Configs"
 import { PrismaTransaction } from "../types/prisma"
@@ -10,6 +11,24 @@ export class LinearTrigger implements Trigger<LinearInputConfig> {
 
     constructor() {
         this.integrationManager = new LinearIntegrationManager()
+    }
+
+    getCapabilityDescription(): CapabilityDescription {
+        const meta = getConfigMetadata(ConfigType.LINEAR_INPUT)
+        return {
+            name: meta.name,
+            description: meta.description,
+            configType: ConfigType.LINEAR_INPUT,
+            integrationType: meta.integrationType,
+            role: "trigger",
+            tools: [],
+            configFields: {
+                integrationId: "<integrationId>",
+                projectId: "Linear project ID to monitor (optional)",
+                projectName: "Project display name"
+            },
+            systemInstructions: ""
+        }
     }
 
     async validateConfig(_trigger: LinearInputConfig, _userId: string): Promise<void> {

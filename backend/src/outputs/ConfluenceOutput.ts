@@ -5,6 +5,12 @@ import { z } from "zod"
 
 import { SessionWithTracking } from "../agent/AgentRunner/AgentRunner"
 import { AtlassianClient } from "../integrations/AtlassianClient"
+import {
+    extractToolMetadata,
+    getConfigMetadata,
+    type CapabilityDescription
+} from "../capabilityHelpers"
+import { convertOutputConfigTypeToConfigType } from "../utility/typeConverters"
 import logger from "../logger"
 import { db } from "../prismaClient"
 import { ConfluenceConfig } from "../shared/Configs"
@@ -35,6 +41,43 @@ export class ConfluenceOutput extends Output<ConfluenceConfig> {
             }
         ]
         super(OutputConfigType.CONFLUENCE, toolbox)
+    }
+
+    getCapabilityDescription(): CapabilityDescription {
+        const configType = convertOutputConfigTypeToConfigType(OutputConfigType.CONFLUENCE)
+        const meta = getConfigMetadata(configType)
+        const tools = extractToolMetadata(this.toolbox)
+        const systemInstructions = this.getSystemInstructions(true)
+
+        return {
+            name: meta.name,
+            description: meta.description,
+            configType,
+            integrationType: meta.integrationType,
+            role: "output",
+            tools,
+            configFields: {
+                integrationId: "Atlassian/Confluence integration connection",
+                spaceName: "Confluence space name",
+                spaceId: "Confluence space ID",
+                pageId: "Confluence page ID to update",
+                pageName: "Page display name"
+            },
+            systemInstructions
+        }
+    }
+
+    protected getDummyConfigForCapability(): AgentOutputWithConfigs {
+        return {
+            integration_id: "example",
+            config_type: OutputConfigType.CONFLUENCE,
+            confluence_config: {
+                space_name: "Example Space",
+                space_id: "123",
+                page_id: "456",
+                page_name: "Example Page"
+            }
+        } as any
     }
 
     async validateConfig(output: ConfluenceConfig, _userId: string): Promise<void> {

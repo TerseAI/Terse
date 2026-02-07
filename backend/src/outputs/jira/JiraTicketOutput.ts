@@ -1,7 +1,13 @@
 import { Tool } from "@openai/agents"
 import { OutputConfigType } from "@prisma/client"
 
+import {
+    extractToolMetadata,
+    getConfigMetadata,
+    type CapabilityDescription
+} from "../../capabilityHelpers"
 import { JiraConfig } from "../../shared/Configs"
+import { convertOutputConfigTypeToConfigType } from "../../utility/typeConverters"
 import { IntegrationType } from "../../shared/Integrations"
 import { AgentOutputWithConfigs, PrismaTransaction } from "../../types/prisma"
 import { Output, ToolboxEntry } from "../abstract/Output"
@@ -18,6 +24,39 @@ export class JiraTicketOutput extends Output<JiraConfig> {
             { tool: jiraUpdateTicketTool as Tool, isReadOnly: false, integration: IntegrationType.ATLASSIAN, displayName: "Update ticket" }
         ]
         super(OutputConfigType.JIRA_TICKET, toolbox)
+    }
+
+    getCapabilityDescription(): CapabilityDescription {
+        const configType = convertOutputConfigTypeToConfigType(OutputConfigType.JIRA_TICKET)
+        const meta = getConfigMetadata(configType)
+        const tools = extractToolMetadata(this.toolbox)
+        const systemInstructions = this.getSystemInstructions(true)
+
+        return {
+            name: meta.name,
+            description: meta.description,
+            configType,
+            integrationType: meta.integrationType,
+            role: "output",
+            tools,
+            configFields: {
+                integrationId: "Atlassian/Jira integration connection",
+                projectKey: "Jira project key (optional)",
+                projectId: "Jira project ID (optional)"
+            },
+            systemInstructions
+        }
+    }
+
+    protected getDummyConfigForCapability(): AgentOutputWithConfigs {
+        return {
+            integration_id: "example",
+            config_type: OutputConfigType.JIRA_TICKET,
+            jira_config: {
+                project_key: "PROJ",
+                project_id: "12345"
+            }
+        } as any
     }
 
     async validateConfig(_output: JiraConfig, _userId: string): Promise<void> {
