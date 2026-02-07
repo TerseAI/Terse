@@ -9,7 +9,7 @@ import { IntegrationType, NotionIntegration as NotionIntegrationType } from "@/s
 
 import { IconForConfigType } from "../../pages/Agents/components/Integration"
 import { ConfigType, NotionConfig } from "../../shared/Configs"
-import { NotionResourceSelector } from "../NotionResourceSelector"
+import { NotionScopePicker, type NotionScopeItem } from "../NotionScopePickerDialog"
 import DropdownSelect from "../ui/DropdownSelect"
 import { Button } from "../ui/button"
 
@@ -29,29 +29,16 @@ export function NotionIntegration({ input, variant, setConfig }: InputConfigSele
 
     const id = selectedIntegrationId || currentConfig?.integrationId || ""
 
-    const addDatabase = (resourceId: string, resourceName: string) => {
-        const dbIds = [...(currentConfig?.databaseIds ?? []), resourceId]
-        const dbNames = [...(currentConfig?.databaseNames ?? []), resourceName]
-        setConfig(new NotionConfig(id, dbIds, dbNames, currentConfig?.pageIds ?? [], currentConfig?.pageNames ?? []))
-    }
-    const removeDatabase = (resourceId: string) => {
-        const idx = (currentConfig?.databaseIds ?? []).indexOf(resourceId)
-        if (idx === -1) return
-        const dbIds = (currentConfig?.databaseIds ?? []).filter((_, i) => i !== idx)
-        const dbNames = (currentConfig?.databaseNames ?? []).filter((_, i) => i !== idx)
-        setConfig(new NotionConfig(id, dbIds, dbNames, currentConfig?.pageIds ?? [], currentConfig?.pageNames ?? []))
-    }
-    const addPage = (resourceId: string, resourceName: string) => {
-        const pageIds = [...(currentConfig?.pageIds ?? []), resourceId]
-        const pageNames = [...(currentConfig?.pageNames ?? []), resourceName]
-        setConfig(new NotionConfig(id, currentConfig?.databaseIds ?? [], currentConfig?.databaseNames ?? [], pageIds, pageNames))
-    }
-    const removePage = (resourceId: string) => {
-        const idx = (currentConfig?.pageIds ?? []).indexOf(resourceId)
-        if (idx === -1) return
-        const pageIds = (currentConfig?.pageIds ?? []).filter((_, i) => i !== idx)
-        const pageNames = (currentConfig?.pageNames ?? []).filter((_, i) => i !== idx)
-        setConfig(new NotionConfig(id, currentConfig?.databaseIds ?? [], currentConfig?.databaseNames ?? [], pageIds, pageNames))
+    const handleScopeConfirm = (databases: NotionScopeItem[], pages: NotionScopeItem[]) => {
+        setConfig(
+            new NotionConfig(
+                id,
+                databases.map(d => d.id),
+                databases.map(d => d.name),
+                pages.map(p => p.id),
+                pages.map(p => p.name)
+            )
+        )
     }
 
     if (isLoading) {
@@ -150,30 +137,16 @@ export function NotionIntegration({ input, variant, setConfig }: InputConfigSele
             </div>
 
             {selectedIntegrationId && (
-                <div className="mt-3 pt-3 border-t border-border min-w-0 overflow-hidden space-y-4">
+                <div className="mt-3 pt-3 border-t border-border min-w-0 overflow-hidden space-y-2">
                     <p className="text-sm text-muted-foreground">Select at least one: database and/or page</p>
-                    <div>
-                        <p className="text-xs font-medium text-muted-foreground mb-1">Databases (optional)</p>
-                        <NotionResourceSelector
-                            integrationId={selectedIntegrationId}
-                            resourceType="database"
-                            selectedResourceIds={currentConfig?.databaseIds ?? []}
-                            selectedResourceNames={currentConfig?.databaseNames ?? []}
-                            onAdd={addDatabase}
-                            onRemove={removeDatabase}
-                        />
-                    </div>
-                    <div>
-                        <p className="text-xs font-medium text-muted-foreground mb-1">Pages (optional)</p>
-                        <NotionResourceSelector
-                            integrationId={selectedIntegrationId}
-                            resourceType="page"
-                            selectedResourceIds={currentConfig?.pageIds ?? []}
-                            selectedResourceNames={currentConfig?.pageNames ?? []}
-                            onAdd={addPage}
-                            onRemove={removePage}
-                        />
-                    </div>
+                    <NotionScopePicker
+                        integrationId={selectedIntegrationId}
+                        selectedDatabaseIds={currentConfig?.databaseIds ?? []}
+                        selectedDatabaseNames={currentConfig?.databaseNames ?? []}
+                        selectedPageIds={currentConfig?.pageIds ?? []}
+                        selectedPageNames={currentConfig?.pageNames ?? []}
+                        onConfirm={handleScopeConfirm}
+                    />
                 </div>
             )}
         </div>
