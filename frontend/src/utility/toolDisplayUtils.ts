@@ -93,6 +93,39 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
             return `Fetched ${integration} resources`
         }
     },
+    getSampleEvents: {
+        preparing: "Looking up sample events",
+        executing: params => {
+            const integration = getIntegrationName(params?.integrationType as string | undefined)
+            return `Fetching sample events from ${integration}`
+        },
+        complete: (params, result) => {
+            const parsed = safeParseResult(result)
+            const events = parsed?.events as unknown[] | undefined
+            const count = events?.length
+            const integration = getIntegrationName(params?.integrationType as string | undefined)
+            if (count !== undefined && integration) return `Fetched ${count} sample event${count !== 1 ? "s" : ""} from ${integration}`
+            if (count !== undefined) return `Fetched ${count} sample event${count !== 1 ? "s" : ""}`
+            return `Fetched sample events from ${integration}`
+        }
+    },
+    triggerAgentRun: {
+        preparing: "Preparing test run",
+        executing: () => "Running agent on event",
+        complete: (_params, result) => {
+            const parsed = safeParseResult(result)
+            const results = parsed?.results as Array<Record<string, unknown>> | undefined
+            if (results && results.length > 0) {
+                const first = results[0]
+                const name = first?.agentName as string | undefined
+                const success = first?.success as boolean | undefined
+                if (name && success) return `Ran "${truncate(name)}" successfully`
+                if (name && success === false) return `Ran "${truncate(name)}" — failed`
+                if (name) return `Triggered "${truncate(name)}"`
+            }
+            return parsed?.processed ? "Agent run complete" : "Agent triggered"
+        }
+    },
 
     // ===================
     // Linear Tools
