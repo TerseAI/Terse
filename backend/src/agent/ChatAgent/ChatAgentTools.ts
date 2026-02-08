@@ -112,15 +112,22 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
         tool({
             name: "askSurveyQuestion",
             description:
-                "Ask the user a single multiple-choice setup question. Call this once per turn; wait for the user's answer before continuing. The user can choose one of the options or write in their own answer. Returns the selected value or their written text. IMPORTANT: Only provide concrete choice options (e.g. specific channel names, project names). Do NOT add an option that is redundant with the write-in, such as 'Other', 'A different X (tell me the name)', or 'Something else'—the UI already has 'Or write your own answer' for that. CRITICAL: After calling this tool, do NOT send any follow-up message. Output nothing—no confirmation, no explanation. The question is already displayed in the chat; the user will answer there. Your response must be complete silence until the user answers.",
+                "Ask the user a single multiple-choice setup question. Call this once per turn; wait for the user's answer before continuing. The user can choose one of the options or write in their own answer. Returns the selected value(s) or their written text. IMPORTANT: Only provide concrete choice options (e.g. specific channel names, project names). Do NOT add an option that is redundant with the write-in, such as 'Other', 'A different X (tell me the name)', or 'Something else'—the UI already has 'Or write your own answer' for that. CRITICAL: After calling this tool, do NOT send any follow-up message. Output nothing—no confirmation, no explanation. The question is already displayed in the chat; the user will answer there. Your response must be complete silence until the user answers.",
             parameters: z.object({
                 question: z.string().describe("The question text to show the user"),
                 options: z
                     .array(z.object({ label: z.string(), value: z.string() }))
-                    .describe("Concrete multiple-choice options only (e.g. specific names/ids). Do not include an 'other' or 'different X' option—the write-in field covers that.")
+                    .describe("Concrete multiple-choice options only (e.g. specific names/ids). Do not include an 'other' or 'different X' option—the write-in field covers that."),
+                allowMultiple: z
+                    .boolean()
+                    .default(false)
+                    .describe("Set to true when the user should be able to select more than one option (e.g. 'which channels should receive notifications?'). Defaults to false (single-select).")
             }),
-            execute: async ({ question, options }: { question: string; options: { label: string; value: string }[] }, _runContext?: RunContext<ChatAgentContext>): Promise<string> => {
-                return await chatInterface.askSurveyQuestion({ question, options })
+            execute: async (
+                { question, options, allowMultiple }: { question: string; options: { label: string; value: string }[]; allowMultiple?: boolean },
+                _runContext?: RunContext<ChatAgentContext>
+            ): Promise<string> => {
+                return await chatInterface.askSurveyQuestion({ question, options, allowMultiple })
             }
         }),
         tool({
