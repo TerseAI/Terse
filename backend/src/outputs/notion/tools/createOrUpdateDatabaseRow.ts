@@ -19,12 +19,7 @@ Use notion_get_schema first to understand property names and types. Use notion_q
     parameters: z.object({
         integrationId: z.string().describe("The integration ID of the Notion workspace to use."),
         databaseId: z.string().describe("The Notion database ID (data source ID)."),
-        page_id: z
-            .string()
-            .nullable()
-            .describe(
-                "The ID of the row to update (from notion_query_database). MUST be null to create a new row. Provide a valid page ID to update an existing row."
-            ),
+        page_id: z.string().nullable().describe("The ID of the row to update (from notion_query_database). MUST be null to create a new row. Provide a valid page ID to update an existing row."),
         properties_json: z
             .string()
             .describe(

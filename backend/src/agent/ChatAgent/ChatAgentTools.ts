@@ -400,7 +400,11 @@ const NotionConfigSchema = BaseConfigSchema.extend({
     integrationType: z.literal(IntegrationType.NOTION),
     databaseIds: z.array(z.string()).optional().default([]).describe("Allowed Notion database IDs. From fetchResourcesForIntegration, use databases' id from resources[]."),
     databaseNames: z.array(z.string()).optional().default([]).describe("Display names for databases, parallel to databaseIds."),
-    pageIds: z.array(z.string()).optional().default([]).describe("Allowed Notion page IDs. From fetchResourcesForIntegration, use pages' id from resources[]. At least one of databaseIds or pageIds required."),
+    pageIds: z
+        .array(z.string())
+        .optional()
+        .default([])
+        .describe("Allowed Notion page IDs. From fetchResourcesForIntegration, use pages' id from resources[]. At least one of databaseIds or pageIds required."),
     pageNames: z.array(z.string()).optional().default([]).describe("Display names for pages, parallel to pageIds.")
 })
 

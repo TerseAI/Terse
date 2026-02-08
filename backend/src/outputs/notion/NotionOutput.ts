@@ -8,7 +8,16 @@ import { AgentOutputWithConfigs, PrismaTransaction } from "../../types/prisma"
 import { convertOutputConfigTypeToConfigType } from "../../utility/typeConverters"
 import { Output, ToolboxEntry } from "../abstract/Output"
 
-import { fetchRelatedEventsTool, notionCreateOrUpdateDatabaseRowTool, notionCreateOrUpdatePageTool, notionGetSchemaTool, notionListUsersTool, notionModifyBlocksTool, notionQueryDatabaseTool, notionQueryPageTool } from "./tools"
+import {
+    fetchRelatedEventsTool,
+    notionCreateOrUpdateDatabaseRowTool,
+    notionCreateOrUpdatePageTool,
+    notionGetSchemaTool,
+    notionListUsersTool,
+    notionModifyBlocksTool,
+    notionQueryDatabaseTool,
+    notionQueryPageTool
+} from "./tools"
 
 export class NotionOutput extends Output<NotionConfig> {
     constructor() {

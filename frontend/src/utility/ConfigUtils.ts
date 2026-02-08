@@ -18,6 +18,7 @@ import {
     SlackConfig,
     SlackKBConfig,
     SlackOutputConfig,
+    TerseConfig,
     TimeTriggerConfig
 } from "@/shared/Configs"
 
@@ -109,6 +110,8 @@ export function deserializeConfig(jsonConfig: any): ConfigInstance {
                 slackKBConfig.userIds ?? [],
                 slackKBConfig.userNames ?? []
             )
+        case ConfigType.TERSE:
+            return new TerseConfig()
 
         default:
             const _exhaustive: never = configType

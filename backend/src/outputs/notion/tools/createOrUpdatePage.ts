@@ -21,15 +21,10 @@ export const notionCreateOrUpdatePageTool = tool({
             .string()
             .optional()
             .nullable()
-            .describe(
-                "Optional JSON array of block objects for initial content (Notion block format). Omit to create empty page and use notion_modify_blocks after."
-            )
+            .describe("Optional JSON array of block objects for initial content (Notion block format). Omit to create empty page and use notion_modify_blocks after.")
     }),
     needsApproval: createNeedsApprovalFunction(ToolName.NOTION_CREATE_OR_UPDATE_PAGE),
-    execute: async (
-        { integrationId, parentPageId, title, children },
-        runContext?: RunContext<SessionWithTracking<Session>>
-    ) => {
+    execute: async ({ integrationId, parentPageId, title, children }, runContext?: RunContext<SessionWithTracking<Session>>) => {
         if (!runContext?.context) {
             throw new Error("No context provided")
         }
