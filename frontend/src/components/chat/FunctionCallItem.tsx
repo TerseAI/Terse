@@ -8,7 +8,6 @@ import { ChangedItem } from "../../shared/ModelEvents"
 import { getToolDisplayFromCall } from "../../utility/toolDisplayUtils"
 import RunHistoryActionItem from "../RunHistory/RunHistoryActionItem"
 import ToolCallParameters from "../ToolCallParameters"
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "../ui/accordion"
 import { Button } from "../ui/button"
 
 import { FunctionCallEvent } from "./Turn"
@@ -141,94 +140,74 @@ function ToolResultInput({ toolName, parameters, onSubmit }: { toolName: string;
     )
 }
 
-export default function FunctionCallItem({ call, isTurnFailure = false, index, onApprove, onReject }: FunctionCallItemProps) {
+export default function FunctionCallItem({ call, isTurnFailure = false, onApprove, onReject }: FunctionCallItemProps) {
     const [isExpanded, setIsExpanded] = useState(false)
-    const callKey = `function-call-${call.id}-${index}`
 
     // Get display name based on current state
     const phase = call.isRunning ? "executing" : "complete"
     const displayName = getToolDisplayFromCall(call.name, phase, call.parameters, call.result)
 
     const handleApprove = () => {
-        if (!onApprove) {
-            console.error("No onApprove handler available")
-            return
-        }
+        if (!onApprove) return
         onApprove(call.id)
     }
 
     const handleReject = () => {
-        if (!onReject) {
-            console.error("No onReject handler available")
-            return
-        }
+        if (!onReject) return
         onReject(call.id)
     }
 
+    const hasExpandableContent = !!(call.parameters || call.result || call.errorContext || (call.changed_items && call.changed_items.length > 0))
+
+    const statusIcon = call.isWaitingForApproval ? (
+        <ClockIcon className="w-3.5 h-3.5 text-yellow-500 flex-shrink-0" />
+    ) : call.isRejected ? (
+        <NoSymbolIcon className="w-3.5 h-3.5 text-orange-500 flex-shrink-0" />
+    ) : call.isFailure ? (
+        <XMarkIcon className="w-3.5 h-3.5 text-red-500 flex-shrink-0" />
+    ) : call.isApproved ? (
+        <CheckCircleIcon className="w-3.5 h-3.5 text-primary flex-shrink-0" />
+    ) : call.isWaitingForUserInput ? (
+        <ClockIcon className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />
+    ) : (
+        <CheckIcon className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+    )
+
     return (
-        <div className="space-y-2 w-full max-w-lg">
-            <Accordion type="single" collapsible value={isExpanded ? callKey : ""} onValueChange={value => setIsExpanded(value === callKey)}>
-                <div className="rounded-lg border border-border">
-                    <AccordionItem value={callKey} className="border-b-0 w-full">
-                        <AccordionTrigger className="py-2 px-2 hover:no-underline w-full">
-                            <div className="flex items-center gap-2 w-full mr-2">
-                                {call.isWaitingForApproval ? (
-                                    <ClockIcon className="w-4 h-4 text-primary flex-shrink-0" />
-                                ) : call.isRejected ? (
-                                    <NoSymbolIcon className="w-4 h-4 text-orange-500 flex-shrink-0" />
-                                ) : call.isFailure ? (
-                                    <XMarkIcon className="w-4 h-4 text-red-500 flex-shrink-0" />
-                                ) : call.isApproved ? (
-                                    <CheckCircleIcon className="w-4 h-4 text-primary flex-shrink-0" />
-                                ) : call.isWaitingForUserInput ? (
-                                    <svg className="w-4 h-4 text-blue-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            strokeWidth={2}
-                                            d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-                                        />
-                                    </svg>
-                                ) : (
-                                    <svg className="w-4 h-4 text-primary flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                    </svg>
-                                )}
-                                <div className="text-sm flex-1 text-left min-w-0 overflow-hidden">
-                                    <span className="truncate block">
-                                        {displayName}
-                                        {call.isWaitingForApproval && <span className="text-yellow-500 ml-1">(waiting for approval)</span>}
-                                        {call.isApproved && <span className="text-primary ml-1">(approved)</span>}
-                                        {call.isRejected && <span className="text-orange-500 ml-1">(rejected)</span>}
-                                        {call.isWaitingForUserInput && <span className="text-blue-500 ml-1">(waiting for your input)</span>}
-                                    </span>
-                                </div>
-                            </div>
-                        </AccordionTrigger>
-                        <AccordionContent>
-                            <div className="pt-2 pl-4 pr-4 space-y-2 w-full">
-                                {call.parameters && (
-                                    <div>
-                                        <ToolCallParameters parameters={call.parameters} />
-                                    </div>
-                                )}
-                                {call.errorContext && (
-                                    <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3">
-                                        <div className="text-sm font-semibold text-red-500 mb-1">Error:</div>
-                                        <div className="text-sm text-red-400 font-mono whitespace-pre-wrap select-text">{String(call.errorContext.error)}</div>
-                                    </div>
-                                )}
-                                <ToolActionsDisplay changedItems={call.changed_items} isTurnFailure={isTurnFailure} />
-                            </div>
-                        </AccordionContent>
-                    </AccordionItem>
+        <div>
+            <button
+                onClick={() => hasExpandableContent && setIsExpanded(!isExpanded)}
+                className={`flex items-center gap-2 py-0.5 text-sm text-muted-foreground transition-colors ${hasExpandableContent ? "hover:text-foreground cursor-pointer" : "cursor-default"}`}
+            >
+                {statusIcon}
+                <span className="text-left">
+                    {displayName}
+                    {call.isWaitingForApproval && !call.isRejected && <span className="text-yellow-500 ml-1">(approval needed)</span>}
+                    {call.isApproved && <span className="text-primary ml-1">(approved)</span>}
+                    {call.isRejected && <span className="text-orange-500 ml-1">(rejected)</span>}
+                    {call.isWaitingForUserInput && <span className="text-blue-500 ml-1">(needs input)</span>}
+                </span>
+            </button>
+
+            {isExpanded && (
+                <div className="ml-6 mt-1 space-y-3 border-l border-border pl-3">
+                    {call.parameters && <ToolCallParameters parameters={call.parameters} label="Input" />}
+                    {call.result && <ToolCallParameters parameters={call.result} label="Output" />}
+                    {call.errorContext && (
+                        <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3">
+                            <div className="text-sm font-semibold text-red-500 mb-1">Error:</div>
+                            <div className="text-sm text-red-400 font-mono whitespace-pre-wrap select-text">{String(call.errorContext.error)}</div>
+                        </div>
+                    )}
+                    <ToolActionsDisplay changedItems={call.changed_items} isTurnFailure={isTurnFailure} />
                 </div>
-            </Accordion>
+            )}
+
             {call.isWaitingForUserInput && <ToolResultInput toolName={displayName} parameters={call.parameters} onSubmit={() => {}} />}
+
             {call.isWaitingForApproval && !call.isRejected && (
-                <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3 mt-2">
-                    <div className="text-sm font-semibold text-yellow-500 mb-2">Approval Required</div>
-                    <div className="text-sm text-muted-foreground mb-3">
+                <div className="ml-6 mt-1.5 bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3">
+                    <div className="text-sm text-muted-foreground mb-2">
                         The bot wants to execute: <span className="font-medium text-foreground">{displayName}</span>
                     </div>
                     <div className="flex gap-2">
@@ -241,20 +220,18 @@ export default function FunctionCallItem({ call, isTurnFailure = false, index, o
                     </div>
                 </div>
             )}
+
             {call.isApproved && !call.isRunning && (
-                <div className="bg-primary/10 border border-primary/20 rounded-lg p-3 mt-2">
-                    <div className="flex items-center gap-2 text-sm text-primary">
-                        <CheckCircleIcon className="w-4 h-4" />
-                        <span>Approved</span>
-                    </div>
+                <div className="ml-6 mt-1 flex items-center gap-2 text-sm text-primary">
+                    <CheckCircleIcon className="w-3.5 h-3.5" />
+                    <span>Approved</span>
                 </div>
             )}
+
             {call.isRejected && (
-                <div className="bg-orange-500/10 border border-orange-500/20 rounded-lg p-3 mt-2">
-                    <div className="flex items-center gap-2 text-sm text-orange-500">
-                        <NoSymbolIcon className="w-4 h-4" />
-                        <span>Rejected</span>
-                    </div>
+                <div className="ml-6 mt-1 flex items-center gap-2 text-sm text-orange-500">
+                    <NoSymbolIcon className="w-3.5 h-3.5" />
+                    <span>Rejected</span>
                 </div>
             )}
         </div>
