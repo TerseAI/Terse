@@ -72,7 +72,7 @@ Use this tool:
 - To see exact format examples for constructing properties in the Notion API format
 - To determine how to write to the Notion database by understanding its structure
 
-The schema information returned by this tool should be used to properly format properties when calling notion_modify_page to create or update pages in the database.`,
+The schema information returned by this tool should be used to properly format properties when calling notion_create_or_update_database_row to create or update rows in the database.`,
     parameters: z.object({
         integrationId: z.string().describe("The integration ID of the Notion workspace to use."),
         databaseId: z.string().describe("The Notion database ID (data source ID) to get the schema for.")

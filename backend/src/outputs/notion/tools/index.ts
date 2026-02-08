@@ -1,6 +1,7 @@
 export { notionGetSchemaTool } from "./getDatasourceSchema"
 export { notionQueryDatabaseTool } from "./queryDatabase"
-export { notionModifyPageTool } from "./modifyPage"
+export { notionCreateOrUpdateDatabaseRowTool } from "./createOrUpdateDatabaseRow"
+export { notionCreateOrUpdatePageTool } from "./createOrUpdatePage"
 export { notionQueryPageTool } from "./queryPage"
 export { notionModifyBlocksTool } from "./modifyBlocks"
 export { fetchRelatedEventsTool } from "./fetchRelatedEvents"

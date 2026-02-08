@@ -88,7 +88,7 @@ export function NotionIntegration({ input, variant, setConfig }: InputConfigSele
                 return (
                     <div className="flex items-center gap-1 text-xs text-muted-foreground">
                         <AlertTriangleIcon className="size-3 text-yellow-500" />
-                        Select database and/or page
+                        Select at least one database or page
                     </div>
                 )
             }
@@ -138,7 +138,7 @@ export function NotionIntegration({ input, variant, setConfig }: InputConfigSele
 
             {selectedIntegrationId && (
                 <div className="mt-3 pt-3 border-t border-border min-w-0 overflow-hidden space-y-2">
-                    <p className="text-sm text-muted-foreground">Select at least one: database and/or page</p>
+                    <p className="text-sm text-muted-foreground">Select at least one database or page (required)</p>
                     <NotionScopePicker
                         integrationId={selectedIntegrationId}
                         selectedDatabaseIds={currentConfig?.databaseIds ?? []}

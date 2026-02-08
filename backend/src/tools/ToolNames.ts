@@ -19,7 +19,8 @@ export const ToolName = {
     JIRA_SEARCH_TICKET: "jira_search_ticket",
 
     // Notion Tools
-    NOTION_MODIFY_PAGE: "notion_modify_page",
+    NOTION_CREATE_OR_UPDATE_PAGE: "notion_create_or_update_page",
+    NOTION_CREATE_OR_UPDATE_DATABASE_ROW: "notion_create_or_update_database_row",
     NOTION_MODIFY_BLOCKS: "notion_modify_blocks",
     NOTION_QUERY_PAGE: "notion_query_page",
     NOTION_QUERY_DATABASE: "notion_query_database",

@@ -597,10 +597,10 @@ model automation_notion_configs {
   automation_input_id  String? @unique // FK to automation_inputs (mutually exclusive with output_id)
   automation_output_id String? @unique // FK to automation_outputs (unique constraint)
 
-  database_ids   String[] @default([]) // Allowed database IDs (at least one of database_ids or page_ids required for output)
-  database_names String[] @default([]) // Display names, parallel to database_ids
-  page_ids       String[] @default([]) // Allowed page IDs
-  page_names     String[] @default([]) // Display names, parallel to page_ids
+  database_ids     String[]  @default([]) // Allowed database IDs (at least one of database_ids or page_ids required for output)
+  database_names   String[]  @default([]) // Display names, parallel to database_ids
+  page_ids         String[]  @default([]) // Allowed page IDs
+  page_names       String[]  @default([]) // Display names, parallel to page_ids
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt

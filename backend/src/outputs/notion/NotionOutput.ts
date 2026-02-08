@@ -8,14 +8,15 @@ import { AgentOutputWithConfigs, PrismaTransaction } from "../../types/prisma"
 import { convertOutputConfigTypeToConfigType } from "../../utility/typeConverters"
 import { Output, ToolboxEntry } from "../abstract/Output"
 
-import { fetchRelatedEventsTool, notionGetSchemaTool, notionListUsersTool, notionModifyBlocksTool, notionModifyPageTool, notionQueryDatabaseTool, notionQueryPageTool } from "./tools"
+import { fetchRelatedEventsTool, notionCreateOrUpdateDatabaseRowTool, notionCreateOrUpdatePageTool, notionGetSchemaTool, notionListUsersTool, notionModifyBlocksTool, notionQueryDatabaseTool, notionQueryPageTool } from "./tools"
 
 export class NotionOutput extends Output<NotionConfig> {
     constructor() {
         const toolbox: ToolboxEntry[] = [
             { tool: notionGetSchemaTool as Tool, isReadOnly: true, integration: IntegrationType.NOTION, displayName: "Get datasource schema" },
             { tool: notionQueryDatabaseTool as Tool, isReadOnly: true, integration: IntegrationType.NOTION, displayName: "Query database" },
-            { tool: notionModifyPageTool as Tool, isReadOnly: false, integration: IntegrationType.NOTION, displayName: "Modify page (database row)" },
+            { tool: notionCreateOrUpdateDatabaseRowTool as Tool, isReadOnly: false, integration: IntegrationType.NOTION, displayName: "Create or update database row" },
+            { tool: notionCreateOrUpdatePageTool as Tool, isReadOnly: false, integration: IntegrationType.NOTION, displayName: "Create or update page (standalone)" },
             { tool: notionQueryPageTool as Tool, isReadOnly: true, integration: IntegrationType.NOTION, displayName: "Query page" },
             { tool: notionModifyBlocksTool as Tool, isReadOnly: false, integration: IntegrationType.NOTION, displayName: "Modify blocks" },
             { tool: fetchRelatedEventsTool as Tool, isReadOnly: true, integration: IntegrationType.NOTION, displayName: "Fetch related events" },
@@ -39,9 +40,9 @@ export class NotionOutput extends Output<NotionConfig> {
             tools,
             configFields: {
                 integrationId: "Notion integration connection",
-                databaseIds: "Allowed Notion database IDs",
+                databaseIds: "Allowed Notion database IDs (at least one database or page required)",
                 databaseNames: "Display names for databases",
-                pageIds: "Allowed Notion page IDs",
+                pageIds: "Allowed Notion page IDs (at least one database or page required)",
                 pageNames: "Display names for pages"
             },
             systemInstructions
@@ -65,7 +66,7 @@ export class NotionOutput extends Output<NotionConfig> {
         const hasDb = (output.databaseIds?.length ?? 0) > 0
         const hasPage = (output.pageIds?.length ?? 0) > 0
         if (!hasDb && !hasPage) {
-            throw new Error("Invalid Notion output config: at least one of databaseIds or pageIds must be non-empty")
+            throw new Error("Invalid Notion output config: you must supply at least one database or one page. Root-only (no page/database) is not supported.")
         }
     }
 
@@ -110,22 +111,29 @@ export class NotionOutput extends Output<NotionConfig> {
         }
         sections.push("Available configurations:")
         sections.push(configList.join("\n"))
-        sections.push(`
-**RESTRICTION — You may only edit within this scope:**
-- **Databases:** Use only the database IDs listed above. You may query and modify those databases and any **database entries** (rows/pages) that belong to them. Do not use any other database ID.
-- **Pages:** Use only the page IDs listed above. You may query and modify those pages and **all of their subpages** (children, nested pages). Do not use any other page ID as a target.
 
-When calling Notion tools, always use the \`integrationId\` and a \`databaseId\` or \`pageId\` from the allowed list above. Never target a database or page that is not in the list.`)
+        sections.push(`
+**REQUIREMENT — You must have a root page or database:** Notion output requires at least one **allowed database** or one **allowed page** in the config above. There is no "workspace root only" mode — you must supply a page (to create subpages under and to modify) and/or a database (to query and add rows to).
+
+**RESTRICTION — You may only edit within this scope:**
+- **Databases:** Use only the database IDs listed above (must be Notion API UUID format). You may query and modify those databases and any **database entries** (rows/pages) that belong to them. Do not use any other database ID. Do not use a non-UUID or page ID as databaseId — the Notion API expects a UUID for database/data_source_id.
+- **Pages:** Use only the page IDs listed above. You may query and modify those pages and **all of their subpages** (children, nested pages). Use \`parentPageId\` from this list when creating standalone subpages with \`notion_create_or_update_page\`. Never use \`integrationId\` as page_id or parentPageId — it is the connection identifier, not a Notion page.
+
+When calling Notion tools, use \`integrationId\` only to identify the connection. Use a \`databaseId\` or \`pageId\` from the allowed list for database/page tools. Never use integrationId as databaseId, page_id, or parentPageId.`)
 
         sections.push(
-            "\n**Database tools** (use with databaseId): `notion_get_schema`, `notion_query_database`, `notion_modify_page`, `notion_list_users`. **Page tools** (use with pageId): `notion_query_page`, `notion_modify_blocks`, `notion_fetch_related_events`. You can create a page in a database then add content to a page; use the right tool and target for each step."
+            "\n**Database tools** (use with databaseId — must be UUID): `notion_get_schema`, `notion_query_database`, `notion_create_or_update_database_row`, `notion_list_users`. **Page tools:** `notion_create_or_update_page` (standalone subpages under an allowed parentPageId), `notion_query_page`, `notion_modify_blocks`, `notion_fetch_related_events`."
         )
 
         sections.push(`
-NOTION DATABASE WORKFLOW (when using databaseId):
+CREATE OR UPDATE DATABASE ROW (\`notion_create_or_update_database_row\`): Use with \`databaseId\` (UUID only), \`page_id\` (null to create), \`properties_json\`. Use \`notion_get_schema\` first; do not create duplicates.
+
+CREATE OR UPDATE PAGE (\`notion_create_or_update_page\`): For **standalone subpages** under an allowed page. Provide \`parentPageId\` (an allowed page ID from the list), \`title\`, and optionally \`children\`. After creating, use \`notion_modify_blocks\` on the returned \`page_id\` to add content.
+
+NOTION DATABASE WORKFLOW:
 - Use \`notion_get_schema\` first to understand property names and types.
 - Use \`notion_query_database\` to find existing records; prefer "contains"/"starts_with" over "equals".
-- Use \`notion_modify_page\` to create (page_id null) or update; do not create duplicates.
+- Use \`notion_create_or_update_database_row\` to create (page_id null) or update; do not create duplicates.
 
 PEOPLE & RELATION PROPERTIES:
 - Use \`notion_list_users\` to find user IDs for People properties (e.g., Assignee).
