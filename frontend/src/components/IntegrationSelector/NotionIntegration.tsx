@@ -78,28 +78,16 @@ export function NotionIntegration({ input, variant, setConfig }: InputConfigSele
 
     const dbCount = currentConfig?.databaseIds?.length ?? 0
     const pageCount = currentConfig?.pageIds?.length ?? 0
-    const hasDatabase = dbCount > 0
-    const hasPage = pageCount > 0
     const isComplete = currentConfig?.isComplete()
 
     if (variant === "card") {
         if (!isComplete) {
-            if (!hasDatabase && !hasPage) {
-                return (
-                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <AlertTriangleIcon className="size-3 text-yellow-500" />
-                        Select at least one database or page
-                    </div>
-                )
-            }
-            if (!selectedIntegrationId) {
-                return (
-                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <AlertTriangleIcon className="size-3 text-yellow-500" />
-                        Select workspace
-                    </div>
-                )
-            }
+            return (
+                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <AlertTriangleIcon className="size-3 text-yellow-500" />
+                    Select at least one database or page
+                </div>
+            )
         }
         const summary =
             dbCount > 0 && pageCount > 0

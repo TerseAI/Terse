@@ -59,6 +59,7 @@ Each operation: operation ("append"|"update"|"delete"); for append: blocks (arra
 Append with after_block_id inserts after that block; omit for end of page/parent.`)
     }),
     needsApproval: createNeedsApprovalFunction(ToolName.NOTION_MODIFY_BLOCKS),
+    errorFunction: formatError,
     execute: async ({ integrationId, pageId, operation_json }, runContext?: RunContext<SessionWithTracking<Session>>) => {
         type Op = {
             operation: "append" | "update" | "delete"
@@ -94,11 +95,18 @@ Append with after_block_id inserts after that block; omit for end of page/parent
             auth: accessToken
         })
 
-        const pageInfo = await notion.pages.retrieve({
-            page_id: pageId
-        })
-        const pageName = extractPageTitle(pageInfo)
-        const pageUrl = "url" in pageInfo ? pageInfo.url : undefined
+        let pageName: string
+        let pageUrl: string | undefined
+        try {
+            const pageInfo = await notion.pages.retrieve({
+                page_id: pageId
+            })
+            pageName = extractPageTitle(pageInfo)
+            pageUrl = "url" in pageInfo ? pageInfo.url : undefined
+        } catch (error) {
+            const msg = error instanceof Error ? error.message : String(error)
+            throw new Error(`Failed to retrieve Notion page (invalid page ID, access denied, or network error): ${msg}`)
+        }
 
         const results: any[] = []
         const allActions: any[] = []

@@ -22,15 +22,9 @@ import { IntegrationType } from "../../shared/Integrations"
 import { requireHydratorType } from "../../types/rag"
 import { getUserForOrg } from "../../utility/workos"
 
+import type { ChatAgentContext } from "./ChatAgentContext"
 import ChatInterface from "./ChatInterfaces/ChatInterface"
 import { lookupPlatformCapabilitiesTool } from "./lookupPlatformCapabilities"
-
-export type ChatAgentContext = {
-    chatInterface: ChatInterface
-    userId: string
-    organizationId: string
-    sessionId: string
-}
 
 export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgentContext>[] {
     return [

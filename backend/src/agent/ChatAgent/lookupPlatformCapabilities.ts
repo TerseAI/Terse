@@ -1,6 +1,5 @@
 import { RunContext, tool } from "@openai/agents"
 import { Tool } from "@openai/agents-core"
-import { OutputConfigType } from "@prisma/client"
 import { z } from "zod"
 
 import type { CapabilityDescription } from "../../capabilityHelpers"
@@ -9,14 +8,7 @@ import { OutputFactory } from "../../outputs/abstract/OutputFactory"
 import { IntegrationType } from "../../shared/Integrations"
 import { TRIGGER_REGISTRY } from "../../triggers/TriggerRegistry"
 
-import type ChatInterface from "./ChatInterfaces/ChatInterface"
-
-export type ChatAgentContext = {
-    chatInterface: ChatInterface
-    userId: string
-    organizationId: string
-    sessionId: string
-}
+import type { ChatAgentContext } from "./ChatAgentContext"
 
 function gatherTriggerCapabilities(filter?: IntegrationType): CapabilityDescription[] {
     return TRIGGER_REGISTRY.map(t => t.getCapabilityDescription()).filter(c => !filter || c.integrationType === filter)
