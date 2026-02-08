@@ -33,6 +33,7 @@
     "@radix-ui/react-tooltip": "^1.2.8",
     "@radix-ui/themes": "^3.2.1",
     "@tanstack/react-table": "^8.21.3",
+    "@uiw/react-json-view": "^2.0.0-alpha.41",
     "@vpfaiz/cron-builder-ui": "^1.0.1",
     "@workos-inc/widgets": "^1.8.0",
     "axios": "^1.10.0",
