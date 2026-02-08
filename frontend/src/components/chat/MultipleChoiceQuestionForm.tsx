@@ -71,8 +71,8 @@ export function MultipleChoiceQuestionForm({ questionId, question, options, sele
             <CardContent className="space-y-3 px-4 pb-4 pt-0">
                 <div className="flex min-w-0 flex-wrap gap-2">
                     {options.map(opt => (
-                        <Button key={opt.value} type="button" variant="outline" size="sm" className="max-w-full truncate" title={opt.label} onClick={() => handleOptionClick(opt.value)}>
-                            {opt.label}
+                        <Button key={opt.value} type="button" variant="outline" size="sm" className="h-auto max-w-full justify-start whitespace-normal py-1.5 text-left" title={opt.label} onClick={() => handleOptionClick(opt.value)}>
+                            <span className="line-clamp-2">{opt.label}</span>
                         </Button>
                     ))}
                 </div>
