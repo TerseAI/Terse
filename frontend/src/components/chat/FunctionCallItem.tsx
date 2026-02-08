@@ -157,7 +157,7 @@ export default function FunctionCallItem({ call, isTurnFailure = false, onApprov
         onReject(call.id)
     }
 
-    const hasExpandableContent = !!(call.parameters || call.errorContext || (call.changed_items && call.changed_items.length > 0))
+    const hasExpandableContent = !!(call.parameters || call.result || call.errorContext || (call.changed_items && call.changed_items.length > 0))
 
     const statusIcon = call.isWaitingForApproval ? (
         <ClockIcon className="w-3.5 h-3.5 text-yellow-500 flex-shrink-0" />
@@ -190,8 +190,9 @@ export default function FunctionCallItem({ call, isTurnFailure = false, onApprov
             </button>
 
             {isExpanded && (
-                <div className="ml-6 mt-1 space-y-2 border-l border-border pl-3">
-                    {call.parameters && <ToolCallParameters parameters={call.parameters} />}
+                <div className="ml-6 mt-1 space-y-3 border-l border-border pl-3">
+                    {call.parameters && <ToolCallParameters parameters={call.parameters} label="Input" />}
+                    {call.result && <ToolCallParameters parameters={call.result} label="Output" />}
                     {call.errorContext && (
                         <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3">
                             <div className="text-sm font-semibold text-red-500 mb-1">Error:</div>
