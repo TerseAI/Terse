@@ -33,7 +33,7 @@ function gatherKBCapabilities(filter?: IntegrationType): CapabilityDescription[]
 
 function gatherOutputCapabilities(filter?: IntegrationType): CapabilityDescription[] {
     const results: CapabilityDescription[] = []
-    for (const [type, factory] of OutputFactory.OUTPUT_REGISTRY) {
+    for (const [, factory] of OutputFactory.OUTPUT_REGISTRY) {
         const output = factory()
         const cap = output.getCapabilityDescription()
         if (!filter || cap.integrationType === filter) results.push(cap)
@@ -49,10 +49,7 @@ export const lookupPlatformCapabilitiesTool = tool({
         category: z.nativeEnum(CapabilityLookupCategory),
         integration: z.nativeEnum(IntegrationType).nullable()
     }),
-    execute: async (
-        { category, integration }: { category: CapabilityLookupCategory; integration: IntegrationType | null },
-        _runContext?: RunContext<ChatAgentContext>
-    ): Promise<string> => {
+    execute: async ({ category, integration }: { category: CapabilityLookupCategory; integration: IntegrationType | null }, _runContext?: RunContext<ChatAgentContext>): Promise<string> => {
         const filter = integration ?? undefined
 
         if (category === CapabilityLookupCategory.ALL) {
