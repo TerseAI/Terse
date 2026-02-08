@@ -1,7 +1,7 @@
 import { Tool } from "@openai/agents"
 import { KnowledgeBaseConfigType } from "@prisma/client"
 
-import { type CapabilityDescription, extractToolMetadata, getConfigMetadata } from "../../capabilityHelpers"
+import { type CapabilityDescription, CapabilityRole, extractToolMetadata, getConfigMetadata } from "../../capabilityHelpers"
 import { ToolboxEntry } from "../../outputs/abstract/Output"
 import { ConfigType, LaunchDarklyConfig } from "../../shared/Configs"
 import { IntegrationType } from "../../shared/Integrations"
@@ -35,7 +35,7 @@ export class LaunchDarklyKnowledgeBase extends KnowledgeBase<LaunchDarklyConfig>
             description: meta.description,
             configType: ConfigType.LAUNCHDARKLY,
             integrationType: meta.integrationType,
-            role: "knowledgeBase",
+            role: CapabilityRole.KNOWLEDGE_BASE,
             tools,
             configFields: {
                 integrationId: "LaunchDarkly integration connection",

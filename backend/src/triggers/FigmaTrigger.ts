@@ -1,6 +1,6 @@
 import chalk from "chalk"
 
-import { CapabilityDescription, getConfigMetadata } from "../capabilityHelpers"
+import { CapabilityDescription, CapabilityRole, getConfigMetadata } from "../capabilityHelpers"
 import { FigmaIntegrationManager } from "../integrations/FigmaIntegration"
 import { SlackIntegrationManager } from "../integrations/SlackIntegration"
 import { ConfigType, FigmaConfig } from "../shared/Configs"
@@ -23,7 +23,7 @@ export class FigmaTrigger implements Trigger<FigmaConfig> {
             description: meta.description,
             configType: ConfigType.FIGMA,
             integrationType: meta.integrationType,
-            role: "trigger",
+            role: CapabilityRole.TRIGGER,
             tools: [],
             configFields: {
                 integrationId: "<integrationId>",

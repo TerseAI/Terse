@@ -1,7 +1,7 @@
 import { Tool } from "@openai/agents"
 import { OutputConfigType } from "@prisma/client"
 
-import { type CapabilityDescription, extractToolMetadata, getConfigMetadata } from "../../capabilityHelpers"
+import { type CapabilityDescription, CapabilityRole, extractToolMetadata, getConfigMetadata } from "../../capabilityHelpers"
 import { slackListUsersTool } from "../../knowledgeBase/slack/tools/listUsers"
 import { SlackOutputConfig } from "../../shared/Configs"
 import { IntegrationType } from "../../shared/Integrations"
@@ -31,7 +31,7 @@ export class SlackOutput extends Output<SlackOutputConfig> {
             description: meta.description,
             configType,
             integrationType: meta.integrationType,
-            role: "output",
+            role: CapabilityRole.OUTPUT,
             tools,
             configFields: {
                 integrationId: "Slack integration connection",

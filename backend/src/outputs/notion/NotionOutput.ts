@@ -1,7 +1,7 @@
 import { Tool } from "@openai/agents"
 import { OutputConfigType } from "@prisma/client"
 
-import { type CapabilityDescription, extractToolMetadata, getConfigMetadata } from "../../capabilityHelpers"
+import { type CapabilityDescription, CapabilityRole, extractToolMetadata, getConfigMetadata } from "../../capabilityHelpers"
 import { NotionConfig } from "../../shared/Configs"
 import { IntegrationType } from "../../shared/Integrations"
 import { AgentOutputWithConfigs, PrismaTransaction } from "../../types/prisma"
@@ -45,7 +45,7 @@ export class NotionOutput extends Output<NotionConfig> {
             description: meta.description,
             configType,
             integrationType: meta.integrationType,
-            role: "output",
+            role: CapabilityRole.OUTPUT,
             tools,
             configFields: {
                 integrationId: "Notion integration connection",

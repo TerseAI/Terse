@@ -1,4 +1,4 @@
-import { CapabilityDescription, getConfigMetadata } from "../capabilityHelpers"
+import { CapabilityDescription, CapabilityRole, getConfigMetadata } from "../capabilityHelpers"
 import { ConfigType, TimeTriggerConfig } from "../shared/Configs"
 import { PrismaTransaction } from "../types/prisma"
 
@@ -16,7 +16,7 @@ export class ScheduleTrigger implements Trigger<TimeTriggerConfig> {
             description: meta.description,
             configType: ConfigType.TIME_TRIGGER,
             integrationType: meta.integrationType,
-            role: "trigger",
+            role: CapabilityRole.TRIGGER,
             tools: [],
             configFields: {
                 integrationId: "<integrationId>",

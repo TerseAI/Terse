@@ -1,4 +1,4 @@
-import { CapabilityDescription, getConfigMetadata } from "../capabilityHelpers"
+import { CapabilityDescription, CapabilityRole, getConfigMetadata } from "../capabilityHelpers"
 import { GmailIntegrationManager } from "../integrations/GmailIntegration"
 import { ConfigType, GmailConfig } from "../shared/Configs"
 import { PrismaTransaction } from "../types/prisma"
@@ -20,7 +20,7 @@ export class GmailTrigger implements Trigger<GmailConfig> {
             description: meta.description,
             configType: ConfigType.GMAIL,
             integrationType: meta.integrationType,
-            role: "trigger",
+            role: CapabilityRole.TRIGGER,
             tools: [],
             configFields: {
                 integrationId: "<integrationId>"

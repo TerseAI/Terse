@@ -1,4 +1,4 @@
-import { CapabilityDescription, getConfigMetadata } from "../capabilityHelpers"
+import { CapabilityDescription, CapabilityRole, getConfigMetadata } from "../capabilityHelpers"
 import { LinearIntegrationManager } from "../integrations/LinearIntegration"
 import { ConfigType, LinearInputConfig } from "../shared/Configs"
 import { PrismaTransaction } from "../types/prisma"
@@ -20,7 +20,7 @@ export class LinearTrigger implements Trigger<LinearInputConfig> {
             description: meta.description,
             configType: ConfigType.LINEAR_INPUT,
             integrationType: meta.integrationType,
-            role: "trigger",
+            role: CapabilityRole.TRIGGER,
             tools: [],
             configFields: {
                 integrationId: "<integrationId>",

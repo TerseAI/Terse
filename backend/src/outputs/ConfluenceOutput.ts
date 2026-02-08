@@ -4,7 +4,7 @@ import chalk from "chalk"
 import { z } from "zod"
 
 import { SessionWithTracking } from "../agent/AgentRunner/AgentRunner"
-import { type CapabilityDescription, extractToolMetadata, getConfigMetadata } from "../capabilityHelpers"
+import { type CapabilityDescription, CapabilityRole, extractToolMetadata, getConfigMetadata } from "../capabilityHelpers"
 import { AtlassianClient } from "../integrations/AtlassianClient"
 import logger from "../logger"
 import { db } from "../prismaClient"
@@ -50,7 +50,7 @@ export class ConfluenceOutput extends Output<ConfluenceConfig> {
             description: meta.description,
             configType,
             integrationType: meta.integrationType,
-            role: "output",
+            role: CapabilityRole.OUTPUT,
             tools,
             configFields: {
                 integrationId: "Atlassian/Confluence integration connection",

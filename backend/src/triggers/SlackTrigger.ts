@@ -1,4 +1,4 @@
-import { CapabilityDescription, getConfigMetadata } from "../capabilityHelpers"
+import { CapabilityDescription, CapabilityRole, getConfigMetadata } from "../capabilityHelpers"
 import { SlackIntegrationManager } from "../integrations/SlackIntegration"
 import { ConfigType, SlackConfig } from "../shared/Configs"
 import { PrismaTransaction } from "../types/prisma"
@@ -20,7 +20,7 @@ export class SlackTrigger implements Trigger<SlackConfig> {
             description: meta.description,
             configType: ConfigType.SLACK,
             integrationType: meta.integrationType,
-            role: "trigger",
+            role: CapabilityRole.TRIGGER,
             tools: [],
             configFields: {
                 integrationId: "<integrationId>",

@@ -10,6 +10,13 @@ import { TRIGGER_REGISTRY } from "../../triggers/TriggerRegistry"
 
 import type { ChatAgentContext } from "./ChatAgentContext"
 
+export enum CapabilityLookupCategory {
+    TRIGGERS = "triggers",
+    KNOWLEDGE_BASES = "knowledgeBases",
+    OUTPUTS = "outputs",
+    ALL = "all"
+}
+
 function gatherTriggerCapabilities(filter?: IntegrationType): CapabilityDescription[] {
     return TRIGGER_REGISTRY.map(t => t.getCapabilityDescription()).filter(c => !filter || c.integrationType === filter)
 }
@@ -39,32 +46,32 @@ export const lookupPlatformCapabilitiesTool = tool({
     description:
         "Look up what triggers, knowledge bases, or outputs the platform supports. Use when: a user asks whether agents can do something -- always check this tool instead of guessing; a user asks what an agent can do with a specific integration; you need to know what tools a knowledge base or output provides; you need to verify what configuration fields a trigger requires; a user asks about platform capabilities in general.",
     parameters: z.object({
-        category: z.enum(["triggers", "knowledgeBases", "outputs", "all"]),
+        category: z.nativeEnum(CapabilityLookupCategory),
         integration: z.nativeEnum(IntegrationType).nullable()
     }),
     execute: async (
-        { category, integration }: { category: "triggers" | "knowledgeBases" | "outputs" | "all"; integration: IntegrationType | null },
+        { category, integration }: { category: CapabilityLookupCategory; integration: IntegrationType | null },
         _runContext?: RunContext<ChatAgentContext>
     ): Promise<string> => {
         const filter = integration ?? undefined
 
-        if (category === "all") {
+        if (category === CapabilityLookupCategory.ALL) {
             const triggers = gatherTriggerCapabilities(filter)
             const knowledgeBases = gatherKBCapabilities(filter)
             const outputs = gatherOutputCapabilities(filter)
             return JSON.stringify({
-                triggers,
-                knowledgeBases,
-                outputs
+                [CapabilityLookupCategory.TRIGGERS]: triggers,
+                [CapabilityLookupCategory.KNOWLEDGE_BASES]: knowledgeBases,
+                [CapabilityLookupCategory.OUTPUTS]: outputs
             })
         }
 
-        if (category === "triggers") {
+        if (category === CapabilityLookupCategory.TRIGGERS) {
             const caps = gatherTriggerCapabilities(filter)
             return JSON.stringify(caps)
         }
 
-        if (category === "knowledgeBases") {
+        if (category === CapabilityLookupCategory.KNOWLEDGE_BASES) {
             const caps = gatherKBCapabilities(filter)
             return JSON.stringify(caps)
         }

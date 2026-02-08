@@ -1,7 +1,7 @@
 import { Tool } from "@openai/agents"
 import { KnowledgeBaseConfigType } from "@prisma/client"
 
-import { type CapabilityDescription, extractToolMetadata, getConfigMetadata } from "../../capabilityHelpers"
+import { type CapabilityDescription, CapabilityRole, extractToolMetadata, getConfigMetadata } from "../../capabilityHelpers"
 import { ToolboxEntry } from "../../outputs/abstract/Output"
 import { linearSearchTicketTool } from "../../outputs/linear/tools/searchTicket"
 import { ConfigType, LinearKBConfig } from "../../shared/Configs"
@@ -45,7 +45,7 @@ export class LinearKnowledgeBase extends KnowledgeBase<LinearKBConfig> {
             description: meta.description,
             configType: ConfigType.LINEAR_KB,
             integrationType: meta.integrationType,
-            role: "knowledgeBase",
+            role: CapabilityRole.KNOWLEDGE_BASE,
             tools,
             configFields: {
                 integrationId: "Linear integration connection",

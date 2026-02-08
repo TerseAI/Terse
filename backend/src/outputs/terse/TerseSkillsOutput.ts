@@ -2,7 +2,7 @@ import { Tool } from "@openai/agents"
 import { webSearchTool } from "@openai/agents"
 import { OutputConfigType } from "@prisma/client"
 
-import { type CapabilityDescription, extractToolMetadata, getConfigMetadata } from "../../capabilityHelpers"
+import { type CapabilityDescription, CapabilityRole, extractToolMetadata, getConfigMetadata } from "../../capabilityHelpers"
 import { ConfigInstance } from "../../shared/Configs"
 import { IntegrationType } from "../../shared/Integrations"
 import { AgentOutputWithConfigs, PrismaTransaction } from "../../types/prisma"
@@ -33,7 +33,7 @@ export class TerseSkillsOutput extends Output<ConfigInstance> {
             description: meta.description,
             configType,
             integrationType: meta.integrationType,
-            role: "output",
+            role: CapabilityRole.OUTPUT,
             tools,
             configFields: {},
             systemInstructions: ""

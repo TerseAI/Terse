@@ -1,4 +1,4 @@
-import { CapabilityDescription, getConfigMetadata } from "../capabilityHelpers"
+import { CapabilityDescription, CapabilityRole, getConfigMetadata, getContextLabel } from "../capabilityHelpers"
 import { SlackIntegrationManager } from "../integrations/SlackIntegration"
 import { validateGithubRepositoryIds } from "../integrations/githubValidation"
 import { ConfigType, GitHubConfig } from "../shared/Configs"
@@ -21,7 +21,7 @@ export class GithubTrigger implements Trigger<GitHubConfig> {
             description: meta.description,
             configType: ConfigType.GITHUB,
             integrationType: meta.integrationType,
-            role: "trigger",
+            role: CapabilityRole.TRIGGER,
             tools: [],
             configFields: {
                 integrationId: "<integrationId>",
@@ -37,7 +37,7 @@ export class GithubTrigger implements Trigger<GitHubConfig> {
             integrationId: trigger.integrationId,
             repositoryIds: trigger.repositoryIds,
             configTypeLabel: "github",
-            contextLabel: "trigger"
+            contextLabel: getContextLabel(CapabilityRole.TRIGGER)
         })
     }
 

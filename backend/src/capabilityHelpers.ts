@@ -4,6 +4,28 @@ import { IntegrationType } from "./shared/Integrations"
 
 // MARK: - Types
 
+export enum CapabilityRole {
+    TRIGGER = "trigger",
+    KNOWLEDGE_BASE = "knowledgeBase",
+    OUTPUT = "output"
+}
+
+/**
+ * Returns a human-readable label for error messages (e.g. "trigger", "knowledge base", "output").
+ */
+export function getContextLabel(role: CapabilityRole): string {
+    switch (role) {
+        case CapabilityRole.TRIGGER:
+            return "trigger"
+        case CapabilityRole.KNOWLEDGE_BASE:
+            return "knowledge base"
+        case CapabilityRole.OUTPUT:
+            return "output"
+        default:
+            return role satisfies never
+    }
+}
+
 export interface ToolInfo {
     name: string
     displayName: string
@@ -26,7 +48,7 @@ export interface CapabilityDescription {
     description: string
     configType: ConfigType
     integrationType: IntegrationType
-    role: "trigger" | "knowledgeBase" | "output"
+    role: CapabilityRole
     tools: ToolInfo[]
     configFields: Record<string, string>
     systemInstructions: string

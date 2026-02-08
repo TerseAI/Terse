@@ -1,7 +1,7 @@
 import { Tool } from "@openai/agents"
 import { KnowledgeBaseConfigType } from "@prisma/client"
 
-import { type CapabilityDescription, extractToolMetadata, getConfigMetadata } from "../../capabilityHelpers"
+import { type CapabilityDescription, CapabilityRole, extractToolMetadata, getConfigMetadata, getContextLabel } from "../../capabilityHelpers"
 import { validateGithubRepositoryIds } from "../../integrations/githubValidation"
 import logger from "../../logger"
 import { ToolboxEntry } from "../../outputs/abstract/Output"
@@ -48,7 +48,7 @@ export class GitHubKnowledgeBase extends KnowledgeBase<GitHubKBConfig> {
             description: meta.description,
             configType: ConfigType.GITHUB_KB,
             integrationType: meta.integrationType,
-            role: "knowledgeBase",
+            role: CapabilityRole.KNOWLEDGE_BASE,
             tools,
             configFields: {
                 integrationId: "GitHub integration connection",
@@ -65,7 +65,7 @@ export class GitHubKnowledgeBase extends KnowledgeBase<GitHubKBConfig> {
             integrationId: knowledgeBase.integrationId,
             repositoryIds: knowledgeBase.repositoryIds,
             configTypeLabel: "github_kb",
-            contextLabel: "knowledge base"
+            contextLabel: getContextLabel(CapabilityRole.KNOWLEDGE_BASE)
         })
     }
 

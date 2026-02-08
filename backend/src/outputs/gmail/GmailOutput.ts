@@ -1,7 +1,7 @@
 import { Tool } from "@openai/agents"
 import { OutputConfigType } from "@prisma/client"
 
-import { type CapabilityDescription, extractToolMetadata, getConfigMetadata } from "../../capabilityHelpers"
+import { type CapabilityDescription, CapabilityRole, extractToolMetadata, getConfigMetadata } from "../../capabilityHelpers"
 import { GmailOutputConfig } from "../../shared/Configs"
 import { IntegrationType } from "../../shared/Integrations"
 import { AgentOutputWithConfigs, PrismaTransaction } from "../../types/prisma"
@@ -27,7 +27,7 @@ export class GmailOutput extends Output<GmailOutputConfig> {
             description: meta.description,
             configType,
             integrationType: meta.integrationType,
-            role: "output",
+            role: CapabilityRole.OUTPUT,
             tools,
             configFields: {
                 integrationId: "Gmail integration connection"

@@ -1,7 +1,7 @@
 import { Tool } from "@openai/agents"
 import { KnowledgeBaseConfigType } from "@prisma/client"
 
-import { type CapabilityDescription, extractToolMetadata, getConfigMetadata } from "../../capabilityHelpers"
+import { type CapabilityDescription, CapabilityRole, extractToolMetadata, getConfigMetadata } from "../../capabilityHelpers"
 import { ToolboxEntry } from "../../outputs/abstract/Output"
 import { ConfigType, SlackKBConfig } from "../../shared/Configs"
 import { IntegrationType } from "../../shared/Integrations"
@@ -52,7 +52,7 @@ export class SlackKnowledgeBase extends KnowledgeBase<SlackKBConfig> {
             description: meta.description,
             configType: ConfigType.SLACK_KB,
             integrationType: meta.integrationType,
-            role: "knowledgeBase",
+            role: CapabilityRole.KNOWLEDGE_BASE,
             tools,
             configFields: {
                 integrationId: "Slack integration connection",

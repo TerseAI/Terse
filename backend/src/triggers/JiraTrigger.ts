@@ -1,4 +1,4 @@
-import { CapabilityDescription, getConfigMetadata } from "../capabilityHelpers"
+import { CapabilityDescription, CapabilityRole, getConfigMetadata } from "../capabilityHelpers"
 import { AtlassianClient } from "../integrations/AtlassianClient"
 import { ConfigType, JiraConfig } from "../shared/Configs"
 import { PrismaTransaction } from "../types/prisma"
@@ -20,7 +20,7 @@ export class JiraTrigger implements Trigger<JiraConfig> {
             description: meta.description,
             configType: ConfigType.JIRA,
             integrationType: meta.integrationType,
-            role: "trigger",
+            role: CapabilityRole.TRIGGER,
             tools: [],
             configFields: {
                 integrationId: "<integrationId>",

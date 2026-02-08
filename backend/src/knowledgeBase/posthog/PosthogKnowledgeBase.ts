@@ -1,7 +1,7 @@
 import { Tool } from "@openai/agents"
 import { KnowledgeBaseConfigType } from "@prisma/client"
 
-import { type CapabilityDescription, extractToolMetadata, getConfigMetadata } from "../../capabilityHelpers"
+import { type CapabilityDescription, CapabilityRole, extractToolMetadata, getConfigMetadata } from "../../capabilityHelpers"
 import { ToolboxEntry } from "../../outputs/abstract/Output"
 import { ConfigType, PosthogConfig } from "../../shared/Configs"
 import { IntegrationType } from "../../shared/Integrations"
@@ -39,7 +39,7 @@ export class PosthogKnowledgeBase extends KnowledgeBase<PosthogConfig> {
             description: meta.description,
             configType: ConfigType.POSTHOG,
             integrationType: meta.integrationType,
-            role: "knowledgeBase",
+            role: CapabilityRole.KNOWLEDGE_BASE,
             tools,
             configFields: {
                 integrationId: "PostHog integration connection",

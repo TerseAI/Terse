@@ -1,7 +1,7 @@
 import { Tool } from "@openai/agents"
 import { KnowledgeBaseConfigType } from "@prisma/client"
 
-import { type CapabilityDescription, extractToolMetadata, getConfigMetadata } from "../../capabilityHelpers"
+import { type CapabilityDescription, CapabilityRole, extractToolMetadata, getConfigMetadata } from "../../capabilityHelpers"
 import logger from "../../logger"
 import { ToolboxEntry } from "../../outputs/abstract/Output"
 import { db } from "../../prismaClient"
@@ -42,7 +42,7 @@ export class DatadogKnowledgeBase extends KnowledgeBase<DatadogConfig> {
             description: meta.description,
             configType: ConfigType.DATADOG,
             integrationType: meta.integrationType,
-            role: "knowledgeBase",
+            role: CapabilityRole.KNOWLEDGE_BASE,
             tools,
             configFields: {
                 integrationId: "Datadog integration connection",
