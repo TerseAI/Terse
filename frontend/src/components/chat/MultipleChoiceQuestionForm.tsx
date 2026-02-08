@@ -29,14 +29,7 @@ function joinMultiValue(values: string[]): string {
     return values.join(MULTI_VALUE_SEPARATOR)
 }
 
-export function MultipleChoiceQuestionForm({
-    questionId,
-    question,
-    options,
-    allowMultiple = false,
-    selectedValue: selectedValueFromProps,
-    onSubmit
-}: MultipleChoiceQuestionFormProps) {
+export function MultipleChoiceQuestionForm({ questionId, question, options, allowMultiple = false, selectedValue: selectedValueFromProps, onSubmit }: MultipleChoiceQuestionFormProps) {
     const [localSubmittedValue, setLocalSubmittedValue] = useState<string | null>(null)
     const [writeInValue, setWriteInValue] = useState("")
     const [pendingSelections, setPendingSelections] = useState<Set<string>>(new Set())
@@ -128,9 +121,7 @@ export function MultipleChoiceQuestionForm({
                 <CardTitle className="line-clamp-3 text-sm font-semibold leading-tight" title={question}>
                     {question}
                 </CardTitle>
-                {allowMultiple && (
-                    <p className="text-muted-foreground text-xs italic">Select all that apply</p>
-                )}
+                {allowMultiple && <p className="text-muted-foreground text-xs italic">Select all that apply</p>}
             </CardHeader>
             <CardContent className="space-y-3 px-4 pb-4 pt-0">
                 <div className="flex min-w-0 flex-col gap-1.5">
@@ -143,9 +134,7 @@ export function MultipleChoiceQuestionForm({
                                     type="button"
                                     className={cn(
                                         "flex items-center gap-2.5 rounded-md border px-3 py-2 text-left text-sm transition-colors",
-                                        isSelected
-                                            ? "border-primary bg-primary/10 text-foreground"
-                                            : "border-border bg-background text-foreground hover:bg-muted"
+                                        isSelected ? "border-primary bg-primary/10 text-foreground" : "border-border bg-background text-foreground hover:bg-muted"
                                     )}
                                     title={opt.label}
                                     onClick={() => handleToggleOption(opt.value)}
