@@ -112,7 +112,6 @@ export function deserializeConfig(jsonConfig: any): ConfigInstance {
             )
         case ConfigType.TERSE:
             return new TerseConfig()
-
         default:
             const _exhaustive: never = configType
             throw new Error(`Unknown config type: ${_exhaustive}`)
