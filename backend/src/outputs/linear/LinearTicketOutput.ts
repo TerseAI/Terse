@@ -2,6 +2,7 @@ import { Tool } from "@openai/agents"
 import { OutputConfigType } from "@prisma/client"
 
 import { type CapabilityDescription, CapabilityRole, extractToolMetadata, getConfigMetadata } from "../../capabilityHelpers"
+import { buildDummyOutputConfig } from "../../buildDummyConfigForCapability"
 import { db } from "../../prismaClient"
 import { LinearOutputConfig } from "../../shared/Configs"
 import { IntegrationType } from "../../shared/Integrations"
@@ -46,14 +47,13 @@ export class LinearTicketOutput extends Output<LinearOutputConfig> {
     }
 
     protected getDummyConfigForCapability(): AgentOutputWithConfigs {
-        return {
-            integration_id: "example",
+        return buildDummyOutputConfig("example", {
             config_type: OutputConfigType.LINEAR_TICKET,
             linear_config: {
                 team_id: "team-123",
                 team_name: "Example Team"
             }
-        } as any
+        })
     }
 
     async validateConfig(output: LinearOutputConfig, _userId: string): Promise<void> {

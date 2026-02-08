@@ -16,6 +16,7 @@ import { AgentOutputWithConfigs, PrismaTransaction } from "../types/prisma"
 import { Session } from "../types/session"
 import { convertOutputConfigTypeToConfigType } from "../utility/typeConverters"
 
+import { buildDummyOutputConfig } from "../buildDummyConfigForCapability"
 import { Output, ToolboxEntry } from "./abstract/Output"
 
 // MARK: - Exports
@@ -64,8 +65,7 @@ export class ConfluenceOutput extends Output<ConfluenceConfig> {
     }
 
     protected getDummyConfigForCapability(): AgentOutputWithConfigs {
-        return {
-            integration_id: "example",
+        return buildDummyOutputConfig("example", {
             config_type: OutputConfigType.CONFLUENCE,
             confluence_config: {
                 space_name: "Example Space",
@@ -73,7 +73,7 @@ export class ConfluenceOutput extends Output<ConfluenceConfig> {
                 page_id: "456",
                 page_name: "Example Page"
             }
-        } as any
+        })
     }
 
     async validateConfig(output: ConfluenceConfig, _userId: string): Promise<void> {

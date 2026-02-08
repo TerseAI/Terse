@@ -1,6 +1,7 @@
 import { Tool } from "@openai/agents"
 import { KnowledgeBaseConfigType } from "@prisma/client"
 
+import { buildDummyKnowledgeBaseConfig } from "../../buildDummyConfigForCapability"
 import { type CapabilityDescription, CapabilityRole, extractToolMetadata, getConfigMetadata } from "../../capabilityHelpers"
 import { ToolboxEntry } from "../../outputs/abstract/Output"
 import { ConfigType, PosthogConfig } from "../../shared/Configs"
@@ -51,17 +52,13 @@ export class PosthogKnowledgeBase extends KnowledgeBase<PosthogConfig> {
     }
 
     protected getDummyConfigForCapability(): AgentKnowledgeBaseWithConfigs {
-        return {
-            integration_id: "example",
-            config_type: "POSTHOG" as any,
-            id: "example",
-            automation_id: "example",
+        return buildDummyKnowledgeBaseConfig("example", {
+            config_type: KnowledgeBaseConfigType.POSTHOG,
             posthog_config: {
-                automation_knowledge_base_id: "example",
                 project_id: "example-project",
                 project_name: "Example Project"
             }
-        } as any
+        })
     }
 
     async validateConfig(knowledgeBase: PosthogConfig, _userId: string): Promise<void> {

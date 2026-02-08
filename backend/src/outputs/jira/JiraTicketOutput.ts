@@ -2,6 +2,7 @@ import { Tool } from "@openai/agents"
 import { OutputConfigType } from "@prisma/client"
 
 import { type CapabilityDescription, CapabilityRole, extractToolMetadata, getConfigMetadata } from "../../capabilityHelpers"
+import { buildDummyOutputConfig } from "../../buildDummyConfigForCapability"
 import { JiraConfig } from "../../shared/Configs"
 import { IntegrationType } from "../../shared/Integrations"
 import { AgentOutputWithConfigs, PrismaTransaction } from "../../types/prisma"
@@ -45,14 +46,13 @@ export class JiraTicketOutput extends Output<JiraConfig> {
     }
 
     protected getDummyConfigForCapability(): AgentOutputWithConfigs {
-        return {
-            integration_id: "example",
+        return buildDummyOutputConfig("example", {
             config_type: OutputConfigType.JIRA_TICKET,
             jira_config: {
                 project_key: "PROJ",
                 project_id: "12345"
             }
-        } as any
+        })
     }
 
     async validateConfig(_output: JiraConfig, _userId: string): Promise<void> {

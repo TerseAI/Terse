@@ -1,6 +1,7 @@
 import { Tool } from "@openai/agents"
 import { KnowledgeBaseConfigType } from "@prisma/client"
 
+import { buildDummyKnowledgeBaseConfig } from "../../buildDummyConfigForCapability"
 import { type CapabilityDescription, CapabilityRole, extractToolMetadata, getConfigMetadata } from "../../capabilityHelpers"
 import { ToolboxEntry } from "../../outputs/abstract/Output"
 import { ConfigType, SlackKBConfig } from "../../shared/Configs"
@@ -65,18 +66,14 @@ export class SlackKnowledgeBase extends KnowledgeBase<SlackKBConfig> {
     }
 
     protected getDummyConfigForCapability(): AgentKnowledgeBaseWithConfigs {
-        return {
-            integration_id: "example",
-            config_type: "SLACK" as any,
-            id: "example",
-            automation_id: "example",
+        return buildDummyKnowledgeBaseConfig("example", {
+            config_type: KnowledgeBaseConfigType.SLACK,
             slack_kb_config: {
-                automation_knowledge_base_id: "example",
                 channel_ids: ["C123"],
                 allow_dms: false,
                 user_ids: []
             }
-        } as any
+        })
     }
 
     async validateConfig(_knowledgeBase: SlackKBConfig, _userId: string): Promise<void> {

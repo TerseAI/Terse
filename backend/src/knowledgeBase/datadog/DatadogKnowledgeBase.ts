@@ -1,6 +1,7 @@
 import { Tool } from "@openai/agents"
 import { KnowledgeBaseConfigType } from "@prisma/client"
 
+import { buildDummyKnowledgeBaseConfig } from "../../buildDummyConfigForCapability"
 import { type CapabilityDescription, CapabilityRole, extractToolMetadata, getConfigMetadata } from "../../capabilityHelpers"
 import logger from "../../logger"
 import { ToolboxEntry } from "../../outputs/abstract/Output"
@@ -53,16 +54,12 @@ export class DatadogKnowledgeBase extends KnowledgeBase<DatadogConfig> {
     }
 
     protected getDummyConfigForCapability(): AgentKnowledgeBaseWithConfigs {
-        return {
-            integration_id: "example",
-            config_type: "DATADOG" as any,
-            id: "example",
-            automation_id: "example",
+        return buildDummyKnowledgeBaseConfig("example", {
+            config_type: KnowledgeBaseConfigType.DATADOG,
             datadog_config: {
-                automation_knowledge_base_id: "example",
                 default_indexes: ["main"]
             }
-        } as any
+        })
     }
 
     async addKnowledgeBaseToAgent(tx: PrismaTransaction, channelKnowledgeBaseId: string, knowledgeBase: DatadogConfig): Promise<void> {

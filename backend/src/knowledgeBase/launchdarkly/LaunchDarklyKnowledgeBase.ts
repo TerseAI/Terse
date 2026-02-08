@@ -1,6 +1,7 @@
 import { Tool } from "@openai/agents"
 import { KnowledgeBaseConfigType } from "@prisma/client"
 
+import { buildDummyKnowledgeBaseConfig } from "../../buildDummyConfigForCapability"
 import { type CapabilityDescription, CapabilityRole, extractToolMetadata, getConfigMetadata } from "../../capabilityHelpers"
 import { ToolboxEntry } from "../../outputs/abstract/Output"
 import { ConfigType, LaunchDarklyConfig } from "../../shared/Configs"
@@ -47,17 +48,13 @@ export class LaunchDarklyKnowledgeBase extends KnowledgeBase<LaunchDarklyConfig>
     }
 
     protected getDummyConfigForCapability(): AgentKnowledgeBaseWithConfigs {
-        return {
-            integration_id: "example",
-            config_type: "LAUNCHDARKLY" as any,
-            id: "example",
-            automation_id: "example",
+        return buildDummyKnowledgeBaseConfig("example", {
+            config_type: KnowledgeBaseConfigType.LAUNCHDARKLY,
             launchdarkly_config: {
-                automation_knowledge_base_id: "example",
                 project_key: "example-project",
                 environment_keys: ["production"]
             }
-        } as any
+        })
     }
 
     async validateConfig(knowledgeBase: LaunchDarklyConfig, _userId: string): Promise<void> {

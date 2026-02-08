@@ -1,6 +1,7 @@
 import { Tool } from "@openai/agents"
 import { KnowledgeBaseConfigType } from "@prisma/client"
 
+import { buildDummyKnowledgeBaseConfig } from "../../buildDummyConfigForCapability"
 import { type CapabilityDescription, CapabilityRole, extractToolMetadata, getConfigMetadata } from "../../capabilityHelpers"
 import { ToolboxEntry } from "../../outputs/abstract/Output"
 import { linearSearchTicketTool } from "../../outputs/linear/tools/searchTicket"
@@ -59,19 +60,15 @@ export class LinearKnowledgeBase extends KnowledgeBase<LinearKBConfig> {
     }
 
     protected getDummyConfigForCapability(): AgentKnowledgeBaseWithConfigs {
-        return {
-            integration_id: "example",
-            config_type: "LINEAR" as any,
-            id: "example",
-            automation_id: "example",
+        return buildDummyKnowledgeBaseConfig("example", {
+            config_type: KnowledgeBaseConfigType.LINEAR,
             linear_kb_config: {
-                automation_knowledge_base_id: "example",
-                team_id: null,
-                team_name: null,
-                project_id: null,
-                project_name: null
+                team_id: "team-123",
+                team_name: "Example Team",
+                project_id: "proj-123",
+                project_name: "Example Project"
             }
-        } as any
+        })
     }
 
     async validateConfig(_knowledgeBase: LinearKBConfig, _userId: string): Promise<void> {

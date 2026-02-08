@@ -2,6 +2,7 @@ import { Tool } from "@openai/agents"
 import { OutputConfigType } from "@prisma/client"
 
 import { type CapabilityDescription, CapabilityRole, extractToolMetadata, getConfigMetadata } from "../../capabilityHelpers"
+import { buildDummyOutputConfig } from "../../buildDummyConfigForCapability"
 import { NotionConfig } from "../../shared/Configs"
 import { IntegrationType } from "../../shared/Integrations"
 import { AgentOutputWithConfigs, PrismaTransaction } from "../../types/prisma"
@@ -59,8 +60,7 @@ export class NotionOutput extends Output<NotionConfig> {
     }
 
     protected getDummyConfigForCapability(): AgentOutputWithConfigs {
-        return {
-            integration_id: "example",
+        return buildDummyOutputConfig("example", {
             config_type: OutputConfigType.NOTION,
             notion_config: {
                 database_ids: ["example-db-id"],
@@ -68,7 +68,7 @@ export class NotionOutput extends Output<NotionConfig> {
                 page_ids: ["example-page-id"],
                 page_names: ["Example Page"]
             }
-        } as any
+        })
     }
 
     async validateConfig(output: NotionConfig, _userId: string): Promise<void> {

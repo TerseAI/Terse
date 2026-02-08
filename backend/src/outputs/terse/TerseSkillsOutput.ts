@@ -5,6 +5,7 @@ import { OutputConfigType } from "@prisma/client"
 import { type CapabilityDescription, CapabilityRole, extractToolMetadata, getConfigMetadata } from "../../capabilityHelpers"
 import { ConfigInstance } from "../../shared/Configs"
 import { IntegrationType } from "../../shared/Integrations"
+import { buildDummyOutputConfig } from "../../buildDummyConfigForCapability"
 import { AgentOutputWithConfigs, PrismaTransaction } from "../../types/prisma"
 import { convertOutputConfigTypeToConfigType } from "../../utility/typeConverters"
 import { Output, ToolboxEntry } from "../abstract/Output"
@@ -49,7 +50,7 @@ export class TerseSkillsOutput extends Output<ConfigInstance> {
     }
 
     protected getDummyConfigForCapability(): AgentOutputWithConfigs {
-        return {} as any
+        return buildDummyOutputConfig("example", { config_type: OutputConfigType.TERSE })
     }
 
     protected getSystemInstructionsForConfigs(_configs: AgentOutputWithConfigs[]): string {

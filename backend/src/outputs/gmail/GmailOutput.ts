@@ -2,6 +2,7 @@ import { Tool } from "@openai/agents"
 import { OutputConfigType } from "@prisma/client"
 
 import { type CapabilityDescription, CapabilityRole, extractToolMetadata, getConfigMetadata } from "../../capabilityHelpers"
+import { buildDummyOutputConfig } from "../../buildDummyConfigForCapability"
 import { GmailOutputConfig } from "../../shared/Configs"
 import { IntegrationType } from "../../shared/Integrations"
 import { AgentOutputWithConfigs, PrismaTransaction } from "../../types/prisma"
@@ -37,11 +38,7 @@ export class GmailOutput extends Output<GmailOutputConfig> {
     }
 
     protected getDummyConfigForCapability(): AgentOutputWithConfigs {
-        return {
-            integration_id: "example",
-            config_type: OutputConfigType.GMAIL,
-            gmail_config: {}
-        } as any
+        return buildDummyOutputConfig("example", { config_type: OutputConfigType.GMAIL, gmail_config: {} })
     }
 
     async validateConfig(output: GmailOutputConfig, _userId: string): Promise<void> {

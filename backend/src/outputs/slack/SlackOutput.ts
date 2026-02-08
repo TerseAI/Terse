@@ -5,6 +5,7 @@ import { type CapabilityDescription, CapabilityRole, extractToolMetadata, getCon
 import { slackListUsersTool } from "../../knowledgeBase/slack/tools/listUsers"
 import { SlackOutputConfig } from "../../shared/Configs"
 import { IntegrationType } from "../../shared/Integrations"
+import { buildDummyOutputConfig } from "../../buildDummyConfigForCapability"
 import { AgentOutputWithConfigs, PrismaTransaction } from "../../types/prisma"
 import { convertOutputConfigTypeToConfigType } from "../../utility/typeConverters"
 import { Output, ToolboxEntry } from "../abstract/Output"
@@ -44,15 +45,14 @@ export class SlackOutput extends Output<SlackOutputConfig> {
     }
 
     protected getDummyConfigForCapability(): AgentOutputWithConfigs {
-        return {
-            integration_id: "example",
+        return buildDummyOutputConfig("example", {
             config_type: OutputConfigType.SLACK_CHANNEL,
             slack_config: {
                 channel_id: "C123",
                 channel_name: "Example Channel",
                 user_ids: []
             }
-        } as any
+        })
     }
 
     async validateConfig(output: SlackOutputConfig, _userId: string): Promise<void> {
