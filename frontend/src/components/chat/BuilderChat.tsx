@@ -6,7 +6,7 @@ import { v4 as uuidv4 } from "uuid"
 import { convertRunHistoryEventsToTurns } from "@/components/RunHistory/RunHistoryChatDrawer/RunHistoryChatAdapter"
 import { useBuilderChatHistory } from "@/hooks/api/useBuilderChatHistory"
 import { ModelRequest, SendModelRequest } from "@/shared/ModelEvents"
-import { sendBuilderMessage, subscribeToBuilderChat } from "@/socket"
+import { sendBuilderMessage, sendBuilderMultipleChoiceAnswer, subscribeToBuilderChat } from "@/socket"
 
 import { Chat } from "./Chat"
 import { ChatEventPayload } from "./hooks/useCompletionSocket"
@@ -67,6 +67,13 @@ export function BuilderChat({ getStateJSON, agentId }: BuilderChatProps) {
         [sessionId, getStateJSON]
     )
 
+    const handleMultipleChoiceAnswer = useCallback(
+        (questionId: string, value: string) => {
+            sendBuilderMultipleChoiceAnswer(sessionId, questionId, value)
+        },
+        [sessionId]
+    )
+
     // Show loading state while fetching history for existing sessions
     if (agentId && isHistoryLoading) {
         return (
@@ -85,6 +92,7 @@ export function BuilderChat({ getStateJSON, agentId }: BuilderChatProps) {
                 addUserTurnsLocally={true}
                 initialTurns={initialTurns}
                 EmptyContentPlaceholder={<BuilderChatEmptyState />}
+                onMultipleChoiceAnswer={handleMultipleChoiceAnswer}
             />
         </div>
     )

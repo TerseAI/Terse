@@ -1,7 +1,3 @@
-import { useState } from "react"
-
-import { ChevronRightIcon } from "@heroicons/react/24/outline"
-
 import { getToolDisplayFromCall } from "../../utility/toolDisplayUtils"
 import ShinyText from "../ShinyText"
 
@@ -16,57 +12,39 @@ interface ToolCallsSummaryProps {
 }
 
 export default function ToolCallsSummary({ calls, isTurnFailure = false, onApprove, onReject }: ToolCallsSummaryProps) {
-    const [isExpanded, setIsExpanded] = useState(false)
-
     if (calls.length === 0) return null
 
     const generatingCalls = calls.filter(c => c.isGeneratingParams)
     const runningCalls = calls.filter(c => c.isRunning && !c.isGeneratingParams)
     const completedCalls = calls.filter(c => !c.isRunning && !c.isGeneratingParams)
-    const hasAnyWaitingForApproval = calls.some(c => c.isWaitingForApproval && !c.isRejected)
-
-    // Auto-expand if any call is waiting for approval
-    const shouldShowExpanded = isExpanded || hasAnyWaitingForApproval
 
     // Format in-progress calls into single lines using display names
     const generatingText = formatToolCallsWithDisplay(generatingCalls, "preparing")
     const runningText = formatToolCallsWithDisplay(runningCalls, "executing")
 
     return (
-        <div className="w-fit space-y-2">
+        <div className="w-fit space-y-0.5">
             {/* Show shiny text for generating params */}
             {generatingText && (
-                <div className="py-1">
+                <div className="py-0.5">
                     <ShinyText text={generatingText} speed={1.5} className="text-sm" />
                 </div>
             )}
 
             {/* Show shiny text for running calls */}
             {runningText && (
-                <div className="py-1">
+                <div className="py-0.5">
                     <ShinyText text={runningText} speed={1.5} className="text-sm" />
                 </div>
             )}
 
-            {/* Show expandable summary for completed calls */}
+            {/* Flat list of completed calls */}
             {completedCalls.length > 0 && (
-                <>
-                    <button onClick={() => setIsExpanded(!isExpanded)} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors py-1">
-                        <ChevronRightIcon className={`w-3 h-3 transition-transform duration-200 ${shouldShowExpanded ? "rotate-90" : ""}`} />
-                        <span>
-                            {completedCalls.length} tool call{completedCalls.length !== 1 ? "s" : ""}
-                            {hasAnyWaitingForApproval && <span className="text-yellow-500 ml-1">(approval needed)</span>}
-                        </span>
-                    </button>
-
-                    {shouldShowExpanded && (
-                        <div className="ml-4 mt-2 space-y-2">
-                            {completedCalls.map((call, index) => (
-                                <FunctionCallItem key={`${call.id}-${index}`} call={call} index={index} isTurnFailure={isTurnFailure} onApprove={onApprove} onReject={onReject} />
-                            ))}
-                        </div>
-                    )}
-                </>
+                <div className="space-y-0.5">
+                    {completedCalls.map((call, index) => (
+                        <FunctionCallItem key={`${call.id}-${index}`} call={call} index={index} isTurnFailure={isTurnFailure} onApprove={onApprove} onReject={onReject} />
+                    ))}
+                </div>
             )}
         </div>
     )
