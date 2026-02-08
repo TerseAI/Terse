@@ -341,6 +341,8 @@ export const convertConfigTypeToInputConfigType = (configType: ConfigType): Inpu
             throw new Error("LINEAR_KB is a knowledge base type, not an input type")
         case ConfigType.SLACK_KB:
             throw new Error("SLACK_KB is a knowledge base type, not an input type")
+        case ConfigType.TERSE:
+            throw new Error("TERSE is an output type, not an input type")
         default:
             throw configType satisfies never
     }
@@ -415,7 +417,7 @@ export const convertOutputConfigTypeToConfigType = (outputConfigType: OutputConf
         case OutputConfigType.GMAIL:
             return ConfigType.GMAIL_OUTPUT
         case OutputConfigType.TERSE:
-            throw new Error("TERSE output has no ConfigType in CONFIG_DETAILS")
+            return ConfigType.TERSE
         default:
             throw outputConfigType satisfies never
     }

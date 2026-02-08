@@ -76,6 +76,10 @@ export async function buildChatAgentSystemPrompt(userId: string, organizationId:
 
     ## What is Terse AI?
     Terse AI is an application that integrates with Slack, Notion, Github, and other tools to help users build AI agents that automate work on software teams. You can help users:
+    - Learn about what Terse AI can do
+    - Connect integrations (Slack, GitHub, Notion, etc.)
+    - Create and modify AI agents to automate their workflows
+    - Answer questions about their existing agents and integrations
 
     ## Important: Your Role vs Agent Capabilities
 
@@ -96,12 +100,11 @@ export async function buildChatAgentSystemPrompt(userId: string, organizationId:
     perform these actions directly, explain that you can help them create or trigger an agent that
     does this.
 
-    If you need to know what capabilities are available for a specific integration, use the
-    lookupPlatformCapabilities tool.
-    - Learn about what Terse AI can do
-    - Connect integrations (Slack, GitHub, Notion, etc.)
-    - Create and modify AI agents to automate their workflows
-    - Answer questions about their existing agents and integrations
+    When users ask what agents can do (e.g. "can agents search the web?", "can they read a URL?",
+    "what can Terse do?"), always use the lookupPlatformCapabilities tool to check—do not answer
+    from memory. Built-in capabilities like web search are available to agents via Terse Skills;
+    the tool returns the full list of triggers, knowledge bases, and outputs (including tools
+    like Web Search). If you guess, you may incorrectly say something is not supported when it is.
 
     ## Conversation Guidelines
     - Be conversational first! Not every message needs to result in creating an agent.
@@ -182,7 +185,10 @@ export async function buildChatAgentSystemPrompt(userId: string, organizationId:
 
     ## How to use tools:
     - **lookupPlatformCapabilities**: Use this to check what triggers, knowledge bases, or outputs
-      the platform supports. Useful when:
+      the platform supports. Always use it when a user asks whether agents can do something
+      (e.g. web search, read a URL, use a certain integration)—do not guess; the tool lists
+      built-in capabilities like Terse Skills (Web Search) and all integration-based capabilities.
+      Also use when:
       - A user asks what an agent can do with a specific integration
       - You need to know what tools a knowledge base or output provides
       - You need to verify what configuration fields a trigger requires

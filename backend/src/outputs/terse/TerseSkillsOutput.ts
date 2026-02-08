@@ -2,10 +2,11 @@ import { Tool } from "@openai/agents"
 import { webSearchTool } from "@openai/agents"
 import { OutputConfigType } from "@prisma/client"
 
-import { type CapabilityDescription, extractToolMetadata } from "../../capabilityHelpers"
-import { ConfigInstance, ConfigType } from "../../shared/Configs"
+import { type CapabilityDescription, extractToolMetadata, getConfigMetadata } from "../../capabilityHelpers"
+import { ConfigInstance } from "../../shared/Configs"
 import { IntegrationType } from "../../shared/Integrations"
 import { AgentOutputWithConfigs, PrismaTransaction } from "../../types/prisma"
+import { convertOutputConfigTypeToConfigType } from "../../utility/typeConverters"
 import { Output, ToolboxEntry } from "../abstract/Output"
 
 export class TerseSkillsOutput extends Output<ConfigInstance> {
@@ -24,12 +25,14 @@ export class TerseSkillsOutput extends Output<ConfigInstance> {
     }
 
     getCapabilityDescription(): CapabilityDescription {
+        const configType = convertOutputConfigTypeToConfigType(OutputConfigType.TERSE)
+        const meta = getConfigMetadata(configType)
         const tools = extractToolMetadata(this.toolbox)
         return {
-            name: "Terse Skills",
-            description: "Built-in web search and Terse skills (always available to agents)",
-            configType: ConfigType.GMAIL_OUTPUT,
-            integrationType: IntegrationType.TERSE,
+            name: meta.name,
+            description: meta.description,
+            configType,
+            integrationType: meta.integrationType,
             role: "output",
             tools,
             configFields: {},

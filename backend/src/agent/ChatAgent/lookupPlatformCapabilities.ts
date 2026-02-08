@@ -35,7 +35,6 @@ function gatherKBCapabilities(filter?: IntegrationType): CapabilityDescription[]
 function gatherOutputCapabilities(filter?: IntegrationType): CapabilityDescription[] {
     const results: CapabilityDescription[] = []
     for (const [type, factory] of OutputFactory.OUTPUT_REGISTRY) {
-        if (type === OutputConfigType.TERSE) continue
         const output = factory()
         const cap = output.getCapabilityDescription()
         if (!filter || cap.integrationType === filter) results.push(cap)
@@ -46,7 +45,7 @@ function gatherOutputCapabilities(filter?: IntegrationType): CapabilityDescripti
 export const lookupPlatformCapabilitiesTool = tool({
     name: "lookupPlatformCapabilities",
     description:
-        "Look up what triggers, knowledge bases, or outputs the platform supports. Use when: a user asks what an agent can do with a specific integration; you need to know what tools a knowledge base or output provides; you need to verify what configuration fields a trigger requires; a user asks about platform capabilities in general.",
+        "Look up what triggers, knowledge bases, or outputs the platform supports. Use when: a user asks whether agents can do something -- always check this tool instead of guessing; a user asks what an agent can do with a specific integration; you need to know what tools a knowledge base or output provides; you need to verify what configuration fields a trigger requires; a user asks about platform capabilities in general.",
     parameters: z.object({
         category: z.enum(["triggers", "knowledgeBases", "outputs", "all"]),
         integration: z.nativeEnum(IntegrationType).nullable()
