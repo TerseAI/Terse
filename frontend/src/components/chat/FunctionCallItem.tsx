@@ -140,7 +140,7 @@ function ToolResultInput({ toolName, parameters, onSubmit }: { toolName: string;
     )
 }
 
-export default function FunctionCallItem({ call, isTurnFailure = false, index, onApprove, onReject }: FunctionCallItemProps) {
+export default function FunctionCallItem({ call, isTurnFailure = false, onApprove, onReject }: FunctionCallItemProps) {
     const [isExpanded, setIsExpanded] = useState(false)
 
     // Get display name based on current state
