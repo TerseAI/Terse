@@ -1,5 +1,11 @@
 # Terse - The best Agent Builder For Software Teams
 
+# Introduction
+
+Terse is an Agent Builder build for the modern Software team. With the power of AI, writing code is no longer the bottleneck, it's all of the stuff around it. Code reviews, release notes, project statuses, tracking feedback etc...
+
+Terse is a flexible platform that deeply integrates (can analyze video photo and text) with Linear Github Slack Notion PostHog Datadog etc... In minutes, you can build an background agent perfectly tailored to your workflow to help relieve these bottlenecks as they come up in your team.
+
 ## Package Manager
 
 This project uses **pnpm** (not npm or yarn). Install it if you haven't:
