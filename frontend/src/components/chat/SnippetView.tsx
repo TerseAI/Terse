@@ -64,6 +64,7 @@ export function SnippetView({ snippet, onMultipleChoiceAnswer }: { snippet: Chat
                 questionId={snippet.questionId}
                 question={snippet.question}
                 options={snippet.options}
+                allowMultiple={snippet.allowMultiple}
                 selectedValue={snippet.selectedValue}
                 onSubmit={value => onMultipleChoiceAnswer?.(snippet.questionId, value)}
             />

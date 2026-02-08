@@ -110,7 +110,8 @@ class WebChatInterface extends ChatInterface {
                 type: "multiple_choice",
                 questionId,
                 question: multipleChoiceQuestion.question,
-                options: multipleChoiceQuestion.options
+                options: multipleChoiceQuestion.options,
+                ...(multipleChoiceQuestion.allowMultiple ? { allowMultiple: true } : {})
             }
         })
         return "(Survey question sent; the user's answer will continue the conversation.)"
