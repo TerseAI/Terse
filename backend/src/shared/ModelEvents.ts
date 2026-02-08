@@ -65,10 +65,10 @@ export type ChatSnippet =
     | { type: "button"; label: string; url: string; id: string }
     | { type: "integration_prompt"; integration: string; message: string; id: string; stateToken?: string }
     | { type: "navigate"; path: string; id: string }
-    | { type: "multiple_choice"; questionId: string; question: string; options: MultipleChoiceOption[]; id: string; selectedValue?: string }
+    | { type: "multiple_choice"; questionId: string; question: string; options: MultipleChoiceOption[]; id: string; allowMultiple?: boolean; selectedValue?: string }
 
 export type ChatSnippetPayload =
     | { type: "button"; label: string; url: string }
     | { type: "integration_prompt"; integration: string; message: string; stateToken?: string }
     | { type: "navigate"; path: string }
-    | { type: "multiple_choice"; questionId: string; question: string; options: MultipleChoiceOption[] }
+    | { type: "multiple_choice"; questionId: string; question: string; options: MultipleChoiceOption[]; allowMultiple?: boolean }
