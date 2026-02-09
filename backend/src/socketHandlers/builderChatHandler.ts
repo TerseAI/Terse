@@ -1,9 +1,9 @@
 import { Socket } from "socket.io"
 
-import { SurveyAnswerTask } from "../agent/ChatAgent/SurveyAnswerTask"
-import { surveyAnswerTaskQueue } from "../agent/ChatAgent/SurveyAnswerTaskQueue"
 import ChatAgent from "../agent/ChatAgent/ChatAgent"
 import WebChatInterface from "../agent/ChatAgent/ChatInterfaces/WebChatInterface"
+import { SurveyAnswerTask } from "../agent/ChatAgent/SurveyAnswerTask"
+import { surveyAnswerTaskQueue } from "../agent/ChatAgent/SurveyAnswerTaskQueue"
 import logger from "../logger"
 import { SendModelRequest } from "../shared/ModelEvents"
 import { SocketEvents } from "../shared/SocketEvents"
