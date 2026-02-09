@@ -83,7 +83,8 @@ class SlackChatInterface extends ChatInterface {
         })
     }
 
-    private async handleFormIntegrationInstallation(integration: IntegrationType): Promise<string> {
+    /** [message, success] — on failure, return the error message and false so caller can return immediately. */
+    private async handleFormIntegrationInstallation(integration: IntegrationType): Promise<[string, boolean]> {
         try {
             // Create state payload with chat metadata
             const additionalStatePayload: Record<string, string> | undefined =
@@ -118,18 +119,19 @@ class SlackChatInterface extends ChatInterface {
 
             await this.say(messagePayload)
 
-            return `I've sent you a button to connect ${integration}. Click it to fill out the integration form.`
+            return [`I've sent you a button to connect ${integration}. Click it to fill out the integration form.`, true]
         } catch (error) {
             logger.error("Error preparing form integration", {
                 error,
                 integration,
                 userId: this.userId
             })
-            return `Failed to prepare integration form for ${integration}. Please try again.`
+            return [`Failed to prepare integration form for ${integration}. Please try again.`, false]
         }
     }
 
-    private async handleOAuthIntegrationWithConfig(integration: IntegrationType): Promise<string> {
+    /** [message, success] */
+    private async handleOAuthIntegrationWithConfig(integration: IntegrationType): Promise<[string, boolean]> {
         try {
             // Configuration required - send button to open configuration modal
             const additionalStatePayload: Record<string, string> | undefined =
@@ -171,18 +173,19 @@ class SlackChatInterface extends ChatInterface {
                 response += `\n\nIMPORTANT: After connecting Slack as a bot, you'll need to invite the Terse bot to each channel you want it to access. In the channel, type /invite @Terse. Only channels where the bot has been invited will be available for automations.`
             }
 
-            return response
+            return [response, true]
         } catch (error) {
             logger.error("Error preparing OAuth integration with config", {
                 error,
                 integration,
                 userId: this.userId
             })
-            return `Failed to prepare configuration for ${integration}. Please try again.`
+            return [`Failed to prepare configuration for ${integration}. Please try again.`, false]
         }
     }
 
-    private async handleOAuthIntegrationWithoutConfig(integration: IntegrationType, integrationManager: OAuthIntegrationInstallation<IntegrationType>): Promise<string> {
+    /** [message, success] */
+    private async handleOAuthIntegrationWithoutConfig(integration: IntegrationType, integrationManager: OAuthIntegrationInstallation<IntegrationType>): Promise<[string, boolean]> {
         try {
             if (!this.userId) {
                 throw new Error("User ID is required for OAuth installation")
@@ -256,14 +259,14 @@ class SlackChatInterface extends ChatInterface {
                 await this.say(messagePayload)
             }
 
-            return `I've sent you a button to connect ${integration}. Click it to start the authorization process.`
+            return [`I've sent you a button to connect ${integration}. Click it to start the authorization process.`, true]
         } catch (error) {
             logger.error("Error getting installation URL", {
                 error,
                 integration,
                 userId: this.userId
             })
-            return `Failed to get authorization URL for ${integration}. Please try again.`
+            return [`Failed to get authorization URL for ${integration}. Please try again.`, false]
         }
     }
 
@@ -289,17 +292,23 @@ class SlackChatInterface extends ChatInterface {
             return `Integration ${integration} not found.`
         }
 
+        let handlerResult: [string, boolean]
         if (isFormIntegrationInstallation(integrationManager)) {
-            await this.handleFormIntegrationInstallation(integration)
+            handlerResult = await this.handleFormIntegrationInstallation(integration)
         } else if (isOAuthIntegrationInstallation(integrationManager)) {
             const configFields = integrationManager.getConfigurationFields()
             if (configFields.length > 0) {
-                await this.handleOAuthIntegrationWithConfig(integration)
+                handlerResult = await this.handleOAuthIntegrationWithConfig(integration)
             } else {
-                await this.handleOAuthIntegrationWithoutConfig(integration, integrationManager)
+                handlerResult = await this.handleOAuthIntegrationWithoutConfig(integration, integrationManager)
             }
         } else {
             return `Integration ${integration} does not support installation.`
+        }
+
+        const [message, ok] = handlerResult
+        if (!ok) {
+            return message
         }
 
         try {
