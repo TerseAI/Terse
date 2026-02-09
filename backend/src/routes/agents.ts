@@ -1,5 +1,6 @@
 import { Request, Response } from "express"
 import { version as uuidVersion, validate as validateUuid } from "uuid"
+import { z } from "zod"
 
 import { INTEGRATION_REGISTRY, isSystemIntegration } from "../integrations/abstract/IntegrationRegistry"
 import { KnowledgeBaseFactory } from "../knowledgeBase/abstract/KnowledgeBaseFactory"
@@ -11,7 +12,7 @@ import { ConfigInstance } from "../shared/Configs"
 import { IntegrationType } from "../shared/Integrations"
 import { agentDetailKey } from "../shared/InvalidationKeys"
 import { Agent, AgentNotificationSettings, AgentTrigger, AgentUpdate, AgentsResponse } from "../shared/types"
-import { isValidToolName } from "../tools/ToolNames"
+import { ToolNameSchema, isValidToolName } from "../tools/ToolNames"
 import { TRIGGER_REGISTRY } from "../triggers/TriggerRegistry"
 import { AgentWithNotificationSettingsRelations, AgentWithRelations, AgentWithTriggerRelations, PrismaTransaction } from "../types/prisma"
 import { trackAgentCreated } from "../utility/analytics"
@@ -94,6 +95,8 @@ async function upsertNotificationSettings(tx: PrismaTransaction, automationId: s
         }
     })
 }
+
+const ToolApprovalsRequestSchema = z.array(ToolNameSchema).optional().nullable()
 
 function validateAndDeduplicateToolApprovals(toolApprovals: string[]): string[] {
     // Deduplicate tool approvals to prevent unique constraint violations

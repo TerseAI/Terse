@@ -1,3 +1,5 @@
+import { z } from "zod"
+
 /**
  * Centralized definition of all tool names used in the system.
  *
@@ -79,6 +81,11 @@ export type ToolName = (typeof ToolName)[keyof typeof ToolName]
  * Array of all valid tool names for runtime validation
  */
 export const ALL_TOOL_NAMES: readonly string[] = Object.values(ToolName)
+
+/**
+ * Zod schema for a single tool name. Use for validating toolApprovals and API request bodies.
+ */
+export const ToolNameSchema = z.enum(ALL_TOOL_NAMES as [string, ...string[]])
 
 /**
  * Set of all valid tool names for O(1) lookup
