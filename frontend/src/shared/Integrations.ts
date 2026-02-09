@@ -49,16 +49,17 @@ export const LinearIntegrationMetadata = {
     description: "Update tasks in Linear",
     isInput: false,
     isOutput: true,
-    isKnowledgeBase: false
+    isKnowledgeBase: true
 } as const satisfies IntegrationDetails
 
 export const SlackIntegrationMetadata = {
     type: IntegrationType.SLACK,
     name: "Slack",
-    description: "Send and receive messages in Slack",
+    description:
+        "Send and receive messages in Slack (channels, group DMs, and DMs). Triggers and knowledge base can use user token to read your DMs; output can send to channels or users with either token.",
     isInput: true,
     isOutput: false,
-    isKnowledgeBase: false
+    isKnowledgeBase: true
 } as const satisfies IntegrationDetails
 
 export const FigmaIntegrationMetadata = {
@@ -85,7 +86,7 @@ export const GithubIntegrationMetadata = {
     description: "Update repositories in Github",
     isInput: true,
     isOutput: false,
-    isKnowledgeBase: false
+    isKnowledgeBase: true
 } as const satisfies IntegrationDetails
 
 export const TerseIntegrationMetadata = {

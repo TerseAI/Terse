@@ -19,7 +19,7 @@ import type { ConfigInstance } from "../../shared/Configs"
 import { ConfigType } from "../../shared/Configs"
 import { FrontendRoutes } from "../../shared/FrontendRoutes"
 import { IntegrationType } from "../../shared/Integrations"
-import { requireHydratorType } from "../../types/rag"
+import { HydratorType, requireHydratorType } from "../../types/rag"
 import { getUserForOrg } from "../../utility/workos"
 
 import ChatInterface from "./ChatInterfaces/ChatInterface"
@@ -67,7 +67,7 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
         tool({
             name: "promptForIntegration",
             description:
-                "IMPORTANT: Only call this once per turn! The UX is very bad if this called multiple times in a single turn. Call it once, wait for the reply then call it again if another integration is needed. Prompt for an integration. You can also call this if the user needs to re-configure an integration. Ex: Add repos to github or more pages to Notion.",
+                "Prompt for an integration. This tool shows a prompt (OAuth button or form) and blocks until the user completes the integration or the request times out (about 2 minutes). You can call it again in the same turn if you need multiple integrations; each call will wait for its own completion. You can also call this if the user needs to re-configure an integration. Ex: Add repos to github or more pages to Notion.",
             parameters: z.object({
                 integration: z.nativeEnum(IntegrationType).describe("The integration to prompt for")
             }),
@@ -112,15 +112,22 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
         tool({
             name: "askSurveyQuestion",
             description:
-                "Ask the user a single multiple-choice setup question. Call this once per turn; wait for the user's answer before continuing. The user can choose one of the options or write in their own answer. Returns the selected value or their written text. IMPORTANT: Only provide concrete choice options (e.g. specific channel names, project names). Do NOT add an option that is redundant with the write-in, such as 'Other', 'A different X (tell me the name)', or 'Something else'—the UI already has 'Or write your own answer' for that. CRITICAL: After calling this tool, do NOT send any follow-up message. Output nothing—no confirmation, no explanation. The question is already displayed in the chat; the user will answer there. Your response must be complete silence until the user answers.",
+                "Ask the user a single multiple-choice setup question. This tool blocks until the user answers or times out (~2 minutes). The user can choose one of the options or write in their own answer. Returns the selected value(s) or their written text directly. Call once per turn; the tool will not return until the user responds. IMPORTANT: Only provide concrete choice options (e.g. specific channel names, project names). Do NOT add an option that is redundant with the write-in, such as 'Other', 'A different X (tell me the name)', or 'Something else'—the UI already has 'Or write your own answer' for that.",
             parameters: z.object({
                 question: z.string().describe("The question text to show the user"),
                 options: z
                     .array(z.object({ label: z.string(), value: z.string() }))
-                    .describe("Concrete multiple-choice options only (e.g. specific names/ids). Do not include an 'other' or 'different X' option—the write-in field covers that.")
+                    .describe("Concrete multiple-choice options only (e.g. specific names/ids). Do not include an 'other' or 'different X' option—the write-in field covers that."),
+                allowMultiple: z
+                    .boolean()
+                    .default(false)
+                    .describe("Set to true when the user should be able to select more than one option (e.g. 'which channels should receive notifications?'). Defaults to false (single-select).")
             }),
-            execute: async ({ question, options }: { question: string; options: { label: string; value: string }[] }, _runContext?: RunContext<ChatAgentContext>): Promise<string> => {
-                return await chatInterface.askSurveyQuestion({ question, options })
+            execute: async (
+                { question, options, allowMultiple }: { question: string; options: { label: string; value: string }[]; allowMultiple?: boolean },
+                _runContext?: RunContext<ChatAgentContext>
+            ): Promise<string> => {
+                return await chatInterface.askSurveyQuestion({ question, options, allowMultiple })
             }
         }),
         tool({
@@ -240,7 +247,7 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
             description:
                 "For cron/time trigger agents: call with only agentId (omit or pass null for entityType and entityId) to trigger the agent immediately. For event-based triggers, use entityType and entityId from getSampleEvents.",
             parameters: z.object({
-                entityType: z.string().nullable().describe("The entity type from getSampleEvents. Not needed for cron/time trigger agents."),
+                entityType: z.nativeEnum(HydratorType).nullable().describe("The entity type from getSampleEvents. Not needed for cron/time trigger agents."),
                 entityId: z.string().nullable().describe("The entity ID from getSampleEvents. Not needed for cron/time trigger agents."),
                 agentId: z.string().describe("The agent ID to test the sample event against")
             }),
@@ -373,14 +380,24 @@ const SlackConfigSchema = BaseConfigSchema.extend({
     ),
     channelName: NonEmptyString.nullable().describe('The channel display name (e.g., "general"). From fetchResourcesForIntegration, use "resources[].name".'),
     listenToUserDms: z.boolean().nullable().describe("Set to true to listen to direct messages. If true, channelId is not required."),
-    userIds: z.array(NonEmptyString).nullable()
+    userIds: z
+        .array(NonEmptyString)
+        .nullable()
+        .describe("Slack user IDs when using listenToUserDms. Get IDs via fetchResourcesForIntegration with integrationType=SLACK and options.slack.objectType='users'.")
 })
 
 const SlackOutputConfigSchema = BaseConfigSchema.extend({
     configType: z.literal(ConfigType.SLACK_OUTPUT),
     integrationType: z.literal(IntegrationType.SLACK),
-    channelId: NonEmptyString.nullable().describe('The Slack channel ID (starts with "C" like "C12345"). From fetchResourcesForIntegration, use "resources[].id".'),
-    channelName: NonEmptyString.nullable().describe('The channel display name (e.g., "general"). From fetchResourcesForIntegration, use "resources[].name".')
+    channelId: NonEmptyString.nullable().describe("Slack channel or DM channel ID. Required if userIds is empty; otherwise optional (DM channel IDs are resolved from userIds)."),
+    channelName: NonEmptyString.nullable().describe("The channel display name. From fetchResourcesForIntegration, use resources[].name."),
+    userIds: z
+        .array(NonEmptyString)
+        .nullable()
+        .optional()
+        .describe(
+            "Slack user IDs to send DMs to; used when destination is direct messages. Get IDs via fetchResourcesForIntegration with integrationType=SLACK and options.slack.objectType='users'. At least one of channelId or userIds required."
+        )
 })
 
 const NotionDatabaseConfigSchema = BaseConfigSchema.extend({
@@ -477,10 +494,14 @@ const SlackKnowledgeBaseConfigSchema = BaseConfigSchema.extend({
         .nullable()
         .optional()
         .describe("Slack channel IDs to read. From fetchResourcesForIntegration with integrationType=SLACK (channels), use resources[].id. If omitted, reads from all accessible channels."),
-    channelNames: z.array(z.string()).nullable().optional().describe("Display names for the channels, matching channelIds order."),
     allowDms: z.boolean().optional().default(false).describe("Whether to allow reading DMs. Only applicable for Slack user integrations (not workspace bot integrations)."),
-    userIds: z.array(z.string()).nullable().optional().describe("Specific Slack user IDs to filter DM conversations. If omitted, reads from all accessible DMs."),
-    userNames: z.array(z.string()).nullable().optional().describe("Display names for the users, matching userIds order.")
+    userIds: z
+        .array(z.string())
+        .nullable()
+        .optional()
+        .describe(
+            "Specific Slack user IDs to filter DM conversations. Get IDs via fetchResourcesForIntegration with integrationType=SLACK and options.slack.objectType='users'. If omitted, reads from all accessible DMs."
+        )
 })
 
 const TimeTriggerConfigSchema = BaseConfigSchema.extend({

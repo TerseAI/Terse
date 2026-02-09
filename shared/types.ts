@@ -1,6 +1,6 @@
 import { ConfigInstance, ConfigType } from "./Configs"
 import { IntegrationType } from "./Integrations"
-import { RunHistoryActionType } from "./RunHistoryTypes"
+import { RunHistoryActionType, RunHistoryStatus } from "./RunHistoryTypes"
 import { Project, Ticket } from "./TicketSystem"
 
 export type Role = "admin" | "user"
@@ -523,6 +523,38 @@ export interface RecentAction {
     type: RunHistoryActionType
 }
 
+export interface RecentRun {
+    id: string
+    agentId: string
+    agentName: string
+    timestamp: string // ISO date string
+    trigger: {
+        event: string
+        integration: IntegrationType
+        source: string
+        title?: string
+        subheader?: string
+        url?: string
+    }
+    status: RunHistoryStatus
+    actions: {
+        action: string
+        integration: IntegrationType
+        type: RunHistoryActionType
+    }[]
+}
+
+export interface AgentActivityItem {
+    agentId: string
+    agentName: string
+    runCount: number
+}
+
+export interface CountByString {
+    label: string
+    count: number
+}
+
 export interface StatsResponse {
     totalEventsProcessed: number
     totalEventsProcessedChange: string // Percentage change from previous period
@@ -532,5 +564,12 @@ export interface StatsResponse {
     numberOfAgentsChange: string // Absolute change (e.g., "+2")
     dailyEvents: DailyEventCount[] // Events per day for the last 7 days
     recentActions: RecentAction[] // Recent actions (last 10)
+    recentRuns: RecentRun[] // Recent non-filtered run history records (last 20)
     timezone: string // Timezone used for daily events grouping (e.g., "America/New_York" or "UTC")
+    // Insight data
+    agentActivity: AgentActivityItem[] // Top 10 agents by run count (current period)
+    statusBreakdown: CountByString[] // Run counts grouped by status (current period)
+    triggerIntegrations: CountByString[] // Run counts grouped by trigger integration (current period)
+    actionIntegrations: CountByString[] // Action counts grouped by integration (current period, write-only)
+    actionTypes: CountByString[] // Action counts grouped by type (current period, write-only)
 }

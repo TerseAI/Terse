@@ -41,6 +41,7 @@ export const FrontendRoutes = {
     },
     INTEGRATIONS: "/app/integrations",
     ACTIVITY: "/app/activity",
+    STATS: "/app/stats",
     NOTIFICATIONS: "/app/notifications",
     PROFILE: "/app/profile",
     USER_MANAGEMENT: "/app/profile?tab=users",

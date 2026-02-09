@@ -10,6 +10,7 @@ import { ThemeProvider } from "./components/theme-provider"
 import { SidebarProvider } from "./components/ui/sidebar"
 import { Toaster } from "./components/ui/sonner"
 import { POST_LOGIN_REDIRECT_KEY, isSafeRedirectPath } from "./constants/storageKeys"
+import ActivityPage from "./pages/Activity"
 import AgentDetail from "./pages/Agents/AgentDetail"
 import AgentSetup from "./pages/Agents/AgentSetup"
 import AgentsList from "./pages/Agents/AgentsList"
@@ -20,6 +21,7 @@ import OAuthError from "./pages/OAuthError"
 import OAuthSuccess from "./pages/OAuthSuccess"
 import OrganizationCreationPage from "./pages/OrganizationCreationPage"
 import ProfilePage from "./pages/ProfilePage"
+import StatsPage from "./pages/Stats"
 import { ModelContextProvider } from "./services/ModelContextProvider"
 import { AuthProvider, useAuth } from "./services/auth"
 import { FrontendRoutes } from "./shared/FrontendRoutes"
@@ -40,6 +42,8 @@ function App() {
                             <Route path="agents/new" element={<AgentDetail />} />
                             <Route path={FrontendRoutes.AGENTS.NEW_WITH_TEMPLATE.pattern} element={<AgentDetail />} />
                             <Route path={FrontendRoutes.AGENTS.BY_ID.pattern} element={<AgentDetail />} />
+                            <Route path="activity" element={<ActivityPage />} />
+                            <Route path="stats" element={<StatsPage />} />
                             <Route path="integrations" element={<IntegrationPage />} />
                             <Route path="notifications" element={<NotificationsPage />} />
                             <Route path="profile" element={<ProfilePage />} />

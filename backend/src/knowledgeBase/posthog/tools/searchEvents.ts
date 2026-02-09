@@ -53,9 +53,13 @@ export const searchEventsTool = tool({
         dateFrom: z
             .union([z.string(), z.null()])
             .describe(
-                'Start date for filtering (ISO format or relative like "-7d"). If not provided and last7Days is true, defaults to 7 days ago. If not provided and last7Days is false, no date restriction is applied.'
+                'Start date for filtering. MUST be formatted as "YYYY-MM-DD HH:mm:ss" in UTC (e.g. "2026-02-06 14:00:00"). Do NOT use ISO format with T/Z (e.g. 2026-02-07T22:52:34Z) and do NOT use relative strings like "-7d". If not provided and last7Days is true, defaults to 7 days ago. If not provided and last7Days is false, no date restriction is applied.'
             ),
-        dateTo: z.union([z.string(), z.null()]).describe('End date for filtering (ISO format or relative like "now"). If not provided, defaults to now.')
+        dateTo: z
+            .union([z.string(), z.null()])
+            .describe(
+                'End date for filtering. MUST be formatted as "YYYY-MM-DD HH:mm:ss" in UTC (e.g. "2026-02-07 14:00:00"). Do NOT use ISO format with T/Z and do NOT use relative strings like "now". If not provided, defaults to now.'
+            )
     }),
     execute: async (
         { integrationId, projectId, countByEventNameOnly = true, customEventsOnly = true, userEmail, eventName, propertyFilters, limit = 50, offset = 0, last7Days = false, dateFrom, dateTo },
@@ -79,12 +83,14 @@ export const searchEventsTool = tool({
 
         try {
             // Calculate date filters
+            // All timestamps must be in "YYYY-MM-DD HH:mm:ss" UTC format for PostHog compatibility
             let dateFromValue: string | null = dateFrom ?? null
             let dateToValue: string | null = dateTo ?? null
 
             // Default to last 7 days if last7Days is true and dateFrom is not provided
             if (last7Days && !dateFromValue) {
-                dateFromValue = "-7d"
+                const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+                dateFromValue = formatPosthogTimestamp(sevenDaysAgo)
             }
 
             logger.info("Querying PostHog events", {
@@ -103,11 +109,7 @@ export const searchEventsTool = tool({
                 const eventsLink = `${posthogHost}/project/${projectId}/events`
                 const whereParts: string[] = []
                 if (dateFromValue) {
-                    if (dateFromValue === "-7d") {
-                        whereParts.push("timestamp >= now() - INTERVAL 7 DAY")
-                    } else {
-                        whereParts.push(`timestamp >= '${dateFromValue}'`)
-                    }
+                    whereParts.push(`timestamp >= '${dateFromValue}'`)
                 }
                 if (dateToValue) {
                     whereParts.push(`timestamp <= '${dateToValue}'`)
@@ -367,3 +369,11 @@ export const searchEventsTool = tool({
         }
     }
 })
+
+/**
+ * Format a Date as "YYYY-MM-DD HH:mm:ss" in UTC — the only timestamp format PostHog reliably accepts.
+ */
+function formatPosthogTimestamp(d: Date): string {
+    const pad = (n: number) => String(n).padStart(2, "0")
+    return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())}`
+}

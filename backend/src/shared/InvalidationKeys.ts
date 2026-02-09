@@ -106,6 +106,21 @@ export const slackIntegrationsKey = (): readonly [string] => {
     return ["slackIntegrations"] as const
 }
 
+export const allRunHistoryKey = (params?: GetRunHistoryParams): readonly [string, string] | readonly [string] => {
+    if (!params || Object.keys(params).length === 0) {
+        return ["allRunHistory"] as const
+    }
+    const sortedKeys = Object.keys(params).sort()
+    const sortedParams: Record<string, any> = {}
+    for (const key of sortedKeys) {
+        const value = params[key as keyof GetRunHistoryParams]
+        if (value !== undefined) {
+            sortedParams[key] = value
+        }
+    }
+    return ["allRunHistory", JSON.stringify(sortedParams)] as const
+}
+
 export const runHistoryKey = (agentId: string, params?: GetRunHistoryParams): readonly [string, string, string] | readonly [string, string] => {
     if (!params || Object.keys(params).length === 0) {
         return ["runHistory", agentId] as const

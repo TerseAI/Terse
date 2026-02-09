@@ -1,6 +1,7 @@
 import { InputConfigType } from "@prisma/client"
 import { KnownBlock } from "@slack/types"
 import { LogLevel, WebClient } from "@slack/web-api"
+import { Member as SlackUserMember } from "@slack/web-api/dist/types/response/UsersListResponse"
 import axios from "axios"
 import crypto from "crypto"
 import { Request, Response } from "express"
@@ -16,7 +17,7 @@ import { ConfigInstance, ConfigType, SlackConfig as SlackConfigClass } from "../
 import { FrontendRoutes } from "../shared/FrontendRoutes"
 import { AdditionalStateParams, InstallationOptionsFor, IntegrationType, SlackIntegration, SlackIntegrationMetadata } from "../shared/Integrations"
 import { RunHistoryTrigger } from "../shared/RunHistoryTypes"
-import { OAuthInstallationDetails, SlackChannel as SlackChannelShared, SlackChannelType, SlackChannelsResponse } from "../shared/types"
+import { OAuthInstallationDetails, SlackChannel as SlackChannelShared, SlackChannelType, SlackChannelsResponse, SlackUserResponse, SlackUsersResponse } from "../shared/types"
 import { SlackAttachment, SlackFile, SlackMessageImage, extractImagesFromMessage, extractTextFromAttachments, extractTextFromBlocks, pickSlackFileUrl } from "../slack/blockKitHelpers"
 import { AgentTriggerWithConfigs, UserSlackIntegration, UserSlackIntegrationWithUser } from "../types/prisma"
 import { HydratorType } from "../types/rag"
@@ -32,7 +33,7 @@ import { InputEvent } from "./abstract/InputEvent"
 import { ConfigurationFieldDefinition, Integration, IntegrationWithResources, OAuthIntegrationInstallation } from "./abstract/Integration"
 
 export class SlackIntegrationManager
-    implements Integration<SlackIntegration, SlackMessageEvent, typeof SlackIntegrationMetadata, SlackChannelShared>, OAuthIntegrationInstallation<IntegrationType.SLACK>
+    implements Integration<SlackIntegration, SlackMessageEvent, typeof SlackIntegrationMetadata, SlackChannelShared | SlackUserResponse>, OAuthIntegrationInstallation<IntegrationType.SLACK>
 {
     constructor() {}
     integrationType: IntegrationType = IntegrationType.SLACK
@@ -54,7 +55,11 @@ export class SlackIntegrationManager
         }))
     }
 
-    async fetchResourcesForOrganization(organizationId: string, query?: string, _options?: FetchResourcesOptions): Promise<IntegrationWithResources<SlackIntegration, SlackChannelShared>[]> {
+    async fetchResourcesForOrganization(
+        organizationId: string,
+        query?: string,
+        options?: FetchResourcesOptions
+    ): Promise<IntegrationWithResources<SlackIntegration, SlackChannelShared | SlackUserResponse>[]> {
         const integrations = await this.getInstancesForOrganization(organizationId)
         const normalizedQuery = query?.trim().toLowerCase()
         const matchesQuery = (value: string | undefined | null): boolean => {
@@ -62,6 +67,7 @@ export class SlackIntegrationManager
             if (!value) return false
             return value.toLowerCase().includes(normalizedQuery)
         }
+        const fetchUsers = options?.slack?.objectType === "users"
         return Promise.all(
             integrations.map(async integration => {
                 const usi = await db().user_slack_integrations.findFirst({
@@ -75,6 +81,11 @@ export class SlackIntegrationManager
                     return { integration, resources: [] }
                 }
                 try {
+                    if (fetchUsers) {
+                        const response = await fetchSlackUsersForIntegration(usi.user_id, organizationId, integration.id)
+                        const users = normalizedQuery ? response.users.filter(u => matchesQuery(u.name)) : response.users
+                        return { integration, resources: users }
+                    }
                     const response = await fetchSlackChannelsForIntegration(usi.user_id, organizationId, integration.id)
                     const channels = normalizedQuery ? response.channels.filter(channel => matchesQuery(channel.name)) : response.channels
                     return { integration, resources: channels }
@@ -275,7 +286,6 @@ export class SlackIntegrationManager
             res.redirect(`${frontendUrl}${FrontendRoutes.OAUTH.ERROR}`)
             return
         }
-        const isBotUser = decoded.isBotUser ?? true
         const organizationId = decoded.organizationId
 
         if (!organizationId || typeof organizationId !== "string") {
@@ -521,19 +531,15 @@ export class SlackIntegrationManager
 
         const userSlackIntegration = await prisma.user_slack_integrations.findUnique({
             where: { id: integrationId, organization_id: organizationId },
-            include: { slack_integration: true }
+            include: { slack_integration: true, user: true }
         })
 
         if (!userSlackIntegration?.slack_integration) {
             throw new Error(`Slack integration ${integrationId} not found`)
         }
 
-        // TODO: Token should not be picked. we should have
-        // a hard fail if we are using the bot token to listen
-        // to user DMs. but token really should be chosen based on
-        // if user chose bot or user in UI. Might be able to tell
-        // based on the tokens that are set, need to verify.
-        const token = slackConfig.listenToUserDms ? userSlackIntegration.authed_user_access_token : userSlackIntegration.slack_integration.access_token
+        // Use user token for DMs when available (user's DMs), otherwise bot token (bot's DMs). Same for channels: bot token.
+        const token = getSlackToken(userSlackIntegration)
         if (!token) {
             throw new Error(`Slack access token not found for integration ${integrationId}. Please reconnect your Slack workspace.`)
         }
@@ -554,9 +560,6 @@ export class SlackIntegrationManager
         }> = []
 
         if (slackConfig.listenToUserDms) {
-            if (!userSlackIntegration.authed_user_id) {
-                throw new Error("Slack user ID not found. User token may not be properly configured.")
-            }
             const imList = await client.conversations.list({
                 types: "im",
                 limit: 20,
@@ -819,6 +822,57 @@ export const fetchSlackChannelsForIntegration = async (userId: string, organizat
 
         throw createSlackRouteError("Failed to fetch channels", 500, error.message)
     }
+}
+
+/**
+ * Fetches Slack workspace users for an integration.
+ * Used by the route and by fetchResourcesForOrganization when options.slack.objectType === "users".
+ */
+export const fetchSlackUsersForIntegration = async (userId: string, organizationId: string, integrationId: string): Promise<SlackUsersResponse> => {
+    if (!integrationId) {
+        throw createSlackRouteError("integrationId is required", 400)
+    }
+    if (!organizationId) {
+        throw createSlackRouteError("Organization context is required", 400)
+    }
+
+    const userSlackIntegration = await db().user_slack_integrations.findFirst({
+        where: {
+            id: integrationId,
+            organization_id: organizationId
+        },
+        include: {
+            slack_integration: true,
+            user: true
+        }
+    })
+
+    if (!userSlackIntegration || !userSlackIntegration.slack_integration) {
+        throw createSlackRouteError("Slack integration not found", 404)
+    }
+
+    const token = getSlackToken(userSlackIntegration)
+    const client = new WebClient(token, {
+        logLevel: LogLevel.ERROR
+    })
+
+    const SLACK_USERS_LIST_TIMEOUT_MS = 15_000
+    const usersResponse = await Promise.race([client.users.list({}), new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Slack users.list timed out")), SLACK_USERS_LIST_TIMEOUT_MS))])
+    if (!usersResponse.ok) {
+        throw createSlackRouteError("Failed to fetch users", 500)
+    }
+    if (!usersResponse.members || usersResponse.members.length === 0) {
+        return { users: [] }
+    }
+
+    const users: SlackUserResponse[] = usersResponse.members
+        .filter((member): member is SlackUserMember & { id: string; name: string } => Boolean(member.id && member.name) && !member.is_bot)
+        .map(member => ({
+            id: member.id,
+            name: member.name
+        }))
+
+    return { users }
 }
 
 // MARK: - SLACK Event

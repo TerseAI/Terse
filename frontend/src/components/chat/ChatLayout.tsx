@@ -83,11 +83,14 @@ export const ChatLayout = forwardRef<ChatLayoutHandle, ChatLayoutProps>(function
     // Watch content height changes - this handles token streaming animation
     useEffect(() => {
         const content = contentRef.current
-        if (!content) return
+        const container = scrollContainerRef.current
+        if (!content || !container) return
 
         const resizeObserver = new ResizeObserver(() => {
             if (isNearBottomRef.current) {
-                messagesEndRef.current?.scrollIntoView({ behavior: "auto" })
+                // Scroll within the chat container only — avoid scrollIntoView
+                // which bubbles up and scrolls ancestor elements (e.g. the page)
+                container.scrollTop = container.scrollHeight
             }
             checkScrollPosition()
         })
