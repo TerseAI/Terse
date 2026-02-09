@@ -86,14 +86,16 @@ class WebChatInterface extends ChatInterface {
             }
         })
 
-        let response = `I've provided a way to connect ${integration}. Use the form or button below to complete the integration.`
-
-        // Add Slack-specific guidance about channel access
-        if (integration === IntegrationType.SLACK) {
-            response += `\n\nIMPORTANT: After connecting Slack as a bot, you'll need to invite the Terse bot to each channel you want it to access. In Slack, go to the channel and type /invite @Terse. Only channels where the bot has been invited will be available for automations.`
+        try {
+            const { integrationId } = await this.waitForIntegrationCompletion(integration)
+            let response = `Integration ${integration} connected successfully. Integration ID: ${integrationId}. You can now use it in the agent.`
+            if (integration === IntegrationType.SLACK) {
+                response += `\n\nIMPORTANT: After connecting Slack as a bot, you'll need to invite the Terse bot to each channel you want it to access. In Slack, go to the channel and type /invite @Terse. Only channels where the bot has been invited will be available for automations.`
+            }
+            return response
+        } catch {
+            return "The user did not complete the integration in time. You can prompt again or suggest they complete it later."
         }
-
-        return response
     }
 
     async promptForConfig(config: ConfigType): Promise<string> {
@@ -114,7 +116,12 @@ class WebChatInterface extends ChatInterface {
                 ...(multipleChoiceQuestion.allowMultiple ? { allowMultiple: true } : {})
             }
         })
-        return "(Survey question sent; the user's answer will continue the conversation.)"
+        try {
+            const answer = await this.waitForSurveyAnswer(questionId)
+            return `The user answered: ${answer}`
+        } catch {
+            return "The user did not answer in time. You can ask the question again."
+        }
     }
 
     processStreamEvent(sessionId: string, event: RunStreamEvent): void {

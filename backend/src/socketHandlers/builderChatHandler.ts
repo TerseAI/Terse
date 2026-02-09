@@ -2,6 +2,8 @@ import { Socket } from "socket.io"
 
 import ChatAgent from "../agent/ChatAgent/ChatAgent"
 import WebChatInterface from "../agent/ChatAgent/ChatInterfaces/WebChatInterface"
+import { SurveyAnswerTask } from "../agent/ChatAgent/SurveyAnswerTask"
+import { surveyAnswerTaskQueue } from "../agent/ChatAgent/SurveyAnswerTaskQueue"
 import logger from "../logger"
 import { SendModelRequest } from "../shared/ModelEvents"
 import { SocketEvents } from "../shared/SocketEvents"
@@ -9,19 +11,12 @@ import { SocketEvents } from "../shared/SocketEvents"
 export function registerBuilderChatHandler(socket: Socket, userId: string, organizationId: string): void {
     socket.on(SocketEvents.BUILDER_CHAT_MULTIPLE_CHOICE_ANSWER, async (payload: { sessionId: string; questionId: string; value: string }) => {
         const { sessionId, questionId, value } = payload
-        if (!sessionId || questionId === undefined) return
+        if (!sessionId || !questionId) return
 
         const answerText = typeof value === "string" ? value : String(value ?? "")
         if (!answerText.trim()) return
 
-        try {
-            const syntheticMessage = `The user answered: ${answerText}`
-            const webChatInterface = new WebChatInterface(sessionId, userId, socket, organizationId)
-            const chatAgent = new ChatAgent(webChatInterface, sessionId, userId, organizationId)
-            await chatAgent.run(syntheticMessage)
-        } catch (error) {
-            logger.error("Error resuming ChatAgent after survey answer", { error, sessionId, questionId, userId })
-        }
+        surveyAnswerTaskQueue.emit(new SurveyAnswerTask(questionId, answerText, userId, sessionId))
     })
 
     socket.on(SocketEvents.BUILDER_CHAT_MESSAGE, async (payload: { sessionId: string; message: SendModelRequest }) => {

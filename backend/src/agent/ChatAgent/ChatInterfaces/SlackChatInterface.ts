@@ -1,5 +1,6 @@
 import { RunStreamEvent } from "@openai/agents"
 import { Block, ChatPostMessageArguments, ChatUpdateArguments, KnownBlock, WebClient } from "@slack/web-api"
+import { uuidv4 } from "zod/v4"
 
 import { OAuthIntegrationInstallation, isFormIntegrationInstallation, isOAuthIntegrationInstallation } from "../../../integrations/abstract/Integration"
 import { INTEGRATION_REGISTRY } from "../../../integrations/abstract/IntegrationRegistry"
@@ -82,7 +83,8 @@ class SlackChatInterface extends ChatInterface {
         })
     }
 
-    private async handleFormIntegrationInstallation(integration: IntegrationType): Promise<string> {
+    /** [message, success] — on failure, return the error message and false so caller can return immediately. */
+    private async handleFormIntegrationInstallation(integration: IntegrationType): Promise<[string, boolean]> {
         try {
             // Create state payload with chat metadata
             const additionalStatePayload: Record<string, string> | undefined =
@@ -117,18 +119,19 @@ class SlackChatInterface extends ChatInterface {
 
             await this.say(messagePayload)
 
-            return `I've sent you a button to connect ${integration}. Click it to fill out the integration form.`
+            return [`I've sent you a button to connect ${integration}. Click it to fill out the integration form.`, true]
         } catch (error) {
             logger.error("Error preparing form integration", {
                 error,
                 integration,
                 userId: this.userId
             })
-            return `Failed to prepare integration form for ${integration}. Please try again.`
+            return [`Failed to prepare integration form for ${integration}. Please try again.`, false]
         }
     }
 
-    private async handleOAuthIntegrationWithConfig(integration: IntegrationType): Promise<string> {
+    /** [message, success] */
+    private async handleOAuthIntegrationWithConfig(integration: IntegrationType): Promise<[string, boolean]> {
         try {
             // Configuration required - send button to open configuration modal
             const additionalStatePayload: Record<string, string> | undefined =
@@ -170,18 +173,19 @@ class SlackChatInterface extends ChatInterface {
                 response += `\n\nIMPORTANT: After connecting Slack as a bot, you'll need to invite the Terse bot to each channel you want it to access. In the channel, type /invite @Terse. Only channels where the bot has been invited will be available for automations.`
             }
 
-            return response
+            return [response, true]
         } catch (error) {
             logger.error("Error preparing OAuth integration with config", {
                 error,
                 integration,
                 userId: this.userId
             })
-            return `Failed to prepare configuration for ${integration}. Please try again.`
+            return [`Failed to prepare configuration for ${integration}. Please try again.`, false]
         }
     }
 
-    private async handleOAuthIntegrationWithoutConfig(integration: IntegrationType, integrationManager: OAuthIntegrationInstallation<IntegrationType>): Promise<string> {
+    /** [message, success] */
+    private async handleOAuthIntegrationWithoutConfig(integration: IntegrationType, integrationManager: OAuthIntegrationInstallation<IntegrationType>): Promise<[string, boolean]> {
         try {
             if (!this.userId) {
                 throw new Error("User ID is required for OAuth installation")
@@ -255,14 +259,14 @@ class SlackChatInterface extends ChatInterface {
                 await this.say(messagePayload)
             }
 
-            return `I've sent you a button to connect ${integration}. Click it to start the authorization process.`
+            return [`I've sent you a button to connect ${integration}. Click it to start the authorization process.`, true]
         } catch (error) {
             logger.error("Error getting installation URL", {
                 error,
                 integration,
                 userId: this.userId
             })
-            return `Failed to get authorization URL for ${integration}. Please try again.`
+            return [`Failed to get authorization URL for ${integration}. Please try again.`, false]
         }
     }
 
@@ -288,23 +292,35 @@ class SlackChatInterface extends ChatInterface {
             return `Integration ${integration} not found.`
         }
 
+        let handlerResult: [string, boolean]
         if (isFormIntegrationInstallation(integrationManager)) {
-            return await this.handleFormIntegrationInstallation(integration)
-        }
-
-        if (isOAuthIntegrationInstallation(integrationManager)) {
-            // Check if this OAuth integration requires configuration
+            handlerResult = await this.handleFormIntegrationInstallation(integration)
+        } else if (isOAuthIntegrationInstallation(integrationManager)) {
             const configFields = integrationManager.getConfigurationFields()
-
             if (configFields.length > 0) {
-                return await this.handleOAuthIntegrationWithConfig(integration)
+                handlerResult = await this.handleOAuthIntegrationWithConfig(integration)
+            } else {
+                handlerResult = await this.handleOAuthIntegrationWithoutConfig(integration, integrationManager)
             }
-
-            // No configuration needed - proceed with existing OAuth flow
-            return await this.handleOAuthIntegrationWithoutConfig(integration, integrationManager)
+        } else {
+            return `Integration ${integration} does not support installation.`
         }
 
-        return `Integration ${integration} does not support installation.`
+        const [message, ok] = handlerResult
+        if (!ok) {
+            return message
+        }
+
+        try {
+            const { integrationId } = await this.waitForIntegrationCompletion(integration)
+            let response = `Integration ${integration} connected successfully. Integration ID: ${integrationId}. You can now use it in the agent.`
+            if (integration === IntegrationType.SLACK) {
+                response += `\n\nIMPORTANT: After connecting Slack as a bot, you'll need to invite the Terse bot to each channel you want it to access. In the channel, type /invite @Terse. Only channels where the bot has been invited will be available for automations.`
+            }
+            return response
+        } catch {
+            return "The user did not complete the integration in time. You can prompt again or suggest they complete it later."
+        }
     }
 
     async promptForConfig(config: ConfigType): Promise<string> {
@@ -314,14 +330,20 @@ class SlackChatInterface extends ChatInterface {
 
     async askSurveyQuestion(multipleChoiceQuestion: MultipleChoiceQuestion): Promise<string> {
         logger.info("Slack chat interface askSurveyQuestion", { question: multipleChoiceQuestion.question })
-        const blockId = `survey_${this.sessionId}__${this.channel}`
+        const questionId = uuidv4().toString()
+        const blockId = `survey_${questionId}__${this.sessionId}__${this.channel}`
         const blocks = createSurveyQuestionBlocks(multipleChoiceQuestion.question, multipleChoiceQuestion.options, blockId)
         await this.say({
             text: multipleChoiceQuestion.question,
             blocks,
             thread_ts: this.sessionId
         })
-        return "(Survey question sent; the user's answer will continue the conversation.)"
+        try {
+            const answer = await this.waitForSurveyAnswer(questionId)
+            return `The user answered: ${answer}`
+        } catch {
+            return "The user did not answer in time. You can ask the question again."
+        }
     }
 
     processStreamEvent(sessionId: string, event: RunStreamEvent): void {
