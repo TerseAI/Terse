@@ -13,12 +13,7 @@ import { Session } from "../../../types/session"
 const VALID_PAGE_ID_MIN_LENGTH = 30
 
 function isValidPageId(pageId: string | null | undefined): pageId is string {
-    return !!(
-        pageId &&
-        pageId.length >= VALID_PAGE_ID_MIN_LENGTH &&
-        !pageId.includes("/") &&
-        pageId !== "."
-    )
+    return !!(pageId && pageId.length >= VALID_PAGE_ID_MIN_LENGTH && !pageId.includes("/") && pageId !== ".")
 }
 
 export const notionCreateOrUpdatePageTool = tool({
@@ -29,11 +24,7 @@ export const notionCreateOrUpdatePageTool = tool({
 **Update**: Pass page_id of an existing page to update its title. parentPageId and children are ignored when updating. Use notion_modify_blocks to change page content.`,
     parameters: z.object({
         integrationId: z.string().describe("The integration ID of the Notion workspace to use."),
-        page_id: z
-            .string()
-            .nullable()
-            .optional()
-            .describe("ID of an existing page to update. Omit or null to create a new subpage under parentPageId."),
+        page_id: z.string().nullable().optional().describe("ID of an existing page to update. Omit or null to create a new subpage under parentPageId."),
         parentPageId: z
             .string()
             .optional()
