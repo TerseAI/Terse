@@ -8,6 +8,8 @@ import { buildChatAgentSystemPrompt } from "./ChatAgentSystemPrompt"
 import { buildChatAgentTools } from "./ChatAgentTools"
 import ChatInterface from "./ChatInterfaces/ChatInterface"
 
+const CHAT_AGENT_MAX_TURNS = 50
+
 class ChatAgent {
     private memorySession: ChatMemorySession | null = null
 
@@ -64,7 +66,8 @@ class ChatAgent {
                     sessionId: this.sessionId
                 },
                 session: memorySession,
-                sessionInputCallback: recentHistoryCallback
+                sessionInputCallback: recentHistoryCallback,
+                maxTurns: CHAT_AGENT_MAX_TURNS
             }
         )
 

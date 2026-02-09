@@ -20,8 +20,8 @@ export const notionCreateOrUpdatePageTool = tool({
     name: ToolName.NOTION_CREATE_OR_UPDATE_PAGE,
     description: `Create or update a **standalone page**. Not for database entries — use notion_create_or_update_database_row for those.
 
-**Create**: Omit page_id (or pass null). Supply parentPageId (allowed page ID from config), title; optionally children (JSON array of blocks). Creates a new subpage under the parent.
-**Update**: Pass page_id of an existing page to update its title. parentPageId and children are ignored when updating. Use notion_modify_blocks to change page content.`,
+**Create**: Omit page_id (or pass null). Supply parentPageId (allowed page ID from config), title. Creates a new empty subpage under the parent. Use notion_modify_blocks on the returned page_id to add content.
+**Update**: Pass page_id of an existing page to update its title. parentPageId is ignored when updating. Use notion_modify_blocks to change page content.`,
     parameters: z.object({
         integrationId: z.string().describe("The integration ID of the Notion workspace to use."),
         page_id: z.string().nullable().optional().describe("ID of an existing page to update. Omit or null to create a new subpage under parentPageId."),
@@ -30,15 +30,10 @@ export const notionCreateOrUpdatePageTool = tool({
             .optional()
             .nullable()
             .describe("Required for create: the allowed page ID under which to create the new subpage (from the Notion config list). Ignored when page_id is provided for update."),
-        title: z.string().describe("The page title (used for both create and update)."),
-        children: z
-            .string()
-            .optional()
-            .nullable()
-            .describe("Optional JSON array of block objects for initial content (Notion block format). Only used when creating; omit to create empty page and use notion_modify_blocks after.")
+        title: z.string().describe("The page title (used for both create and update).")
     }),
     needsApproval: createNeedsApprovalFunction(ToolName.NOTION_CREATE_OR_UPDATE_PAGE),
-    execute: async ({ integrationId, page_id, parentPageId, title, children }, runContext?: RunContext<SessionWithTracking<Session>>) => {
+    execute: async ({ integrationId, page_id, parentPageId, title }, runContext?: RunContext<SessionWithTracking<Session>>) => {
         if (!runContext?.context) {
             throw new Error("No context provided")
         }
@@ -102,25 +97,8 @@ export const notionCreateOrUpdatePageTool = tool({
             }
         }
 
-        type CreateParams = {
-            parent: typeof parent
-            properties: typeof properties
-            children?: any[]
-        }
-        const createParams: CreateParams = { parent, properties }
-        if (children != null && children !== "") {
-            try {
-                const parsed = JSON.parse(children)
-                if (Array.isArray(parsed) && parsed.length > 0) {
-                    createParams.children = parsed
-                }
-            } catch {
-                logger.warn("Invalid children JSON for standalone page; creating page without initial blocks")
-            }
-        }
-
         try {
-            const response = await notion.pages.create(createParams as any)
+            const response = await notion.pages.create({ parent, properties } as any)
             const pageUrl = "url" in response ? response.url : undefined
             logger.info("Notion standalone subpage created", { parentPageId, pageId: response.id })
             return {

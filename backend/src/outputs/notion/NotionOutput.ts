@@ -137,7 +137,7 @@ When calling Notion tools, use \`integrationId\` only to identify the connection
         sections.push(`
 CREATE OR UPDATE DATABASE ROW (\`notion_create_or_update_database_row\`): Use with \`databaseId\` (UUID only), \`page_id\` (null to create), \`properties_json\`. Use \`notion_get_schema\` first; do not create duplicates.
 
-CREATE OR UPDATE PAGE (\`notion_create_or_update_page\`): For **standalone subpages** under an allowed page. Provide \`parentPageId\` (an allowed page ID from the list), \`title\`, and optionally \`children\`. After creating, use \`notion_modify_blocks\` on the returned \`page_id\` to add content.
+CREATE OR UPDATE PAGE (\`notion_create_or_update_page\`): For **standalone subpages** under an allowed page. Provide \`parentPageId\` (an allowed page ID from the list), \`title\`. Creates an empty page; always use \`notion_modify_blocks\` on the returned \`page_id\` to add content.
 
 NOTION DATABASE WORKFLOW:
 - Use \`notion_get_schema\` first to understand property names and types.
