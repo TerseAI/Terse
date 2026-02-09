@@ -115,14 +115,7 @@ export function createSurveyQuestionBlocks(question: string, options: { label: s
             }
         ]
     }
-    const writeInHint: KnownBlock = {
-        type: "section",
-        text: {
-            type: "mrkdwn",
-            text: "_Or reply in the thread with your own answer._"
-        }
-    }
-    return [sectionBlock, actionsBlock, writeInHint]
+    return [sectionBlock, actionsBlock]
 }
 
 /**
