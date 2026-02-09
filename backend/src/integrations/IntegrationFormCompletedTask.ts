@@ -2,7 +2,7 @@ import { IntegrationType } from "../shared/Integrations"
 import { Task } from "../tasks/abstract/tasks"
 import { OAuthStatePayload } from "../utility/oauth"
 
-const INTEGRATION_FORM_COMPLETED_TASK_NAME = "INTEGRATION_FORM_COMPLETED_TASK" as const
+export const INTEGRATION_FORM_COMPLETED_TASK_NAME = "INTEGRATION_FORM_COMPLETED_TASK" as const
 
 export class IntegrationFormCompletedTask implements Task {
     readonly taskName = INTEGRATION_FORM_COMPLETED_TASK_NAME

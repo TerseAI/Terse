@@ -16,10 +16,15 @@ export interface TaskEmitter<T extends Task> {
     emit(task: T): void
 }
 
+export interface WaitForOptions {
+    timeoutMs?: number
+}
+
 /** Cleanup function returned by addListener - call to unsubscribe */
 export type Unsubscribe = () => void
 
 export interface TaskQueue<T extends Task> extends TaskEmitter<T> {
     addListener(listener: TaskListener<T>): Unsubscribe
     removeListener(listener: TaskListener<T>): void
+    waitFor(taskName: string, predicate: (task: T) => boolean, options?: WaitForOptions): Promise<T>
 }
