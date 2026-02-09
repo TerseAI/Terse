@@ -19,7 +19,7 @@ import type { ConfigInstance } from "../../shared/Configs"
 import { ConfigType } from "../../shared/Configs"
 import { FrontendRoutes } from "../../shared/FrontendRoutes"
 import { IntegrationType } from "../../shared/Integrations"
-import { requireHydratorType } from "../../types/rag"
+import { HydratorType, requireHydratorType } from "../../types/rag"
 import { getUserForOrg } from "../../utility/workos"
 
 import ChatInterface from "./ChatInterfaces/ChatInterface"
@@ -247,7 +247,7 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
             description:
                 "For cron/time trigger agents: call with only agentId (omit or pass null for entityType and entityId) to trigger the agent immediately. For event-based triggers, use entityType and entityId from getSampleEvents.",
             parameters: z.object({
-                entityType: z.string().nullable().describe("The entity type from getSampleEvents. Not needed for cron/time trigger agents."),
+                entityType: z.nativeEnum(HydratorType).nullable().describe("The entity type from getSampleEvents. Not needed for cron/time trigger agents."),
                 entityId: z.string().nullable().describe("The entity ID from getSampleEvents. Not needed for cron/time trigger agents."),
                 agentId: z.string().describe("The agent ID to test the sample event against")
             }),
