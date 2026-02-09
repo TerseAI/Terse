@@ -19,10 +19,10 @@ import type { ConfigInstance } from "../../shared/Configs"
 import { ConfigType } from "../../shared/Configs"
 import { FrontendRoutes } from "../../shared/FrontendRoutes"
 import { IntegrationType } from "../../shared/Integrations"
+import { ToolNameSchema } from "../../tools/ToolNames"
+import { getToolsThatRequireApprovals } from "../../tools/availableTools"
 import { requireHydratorType } from "../../types/rag"
 import { getUserForOrg } from "../../utility/workos"
-import { getToolsThatRequireApprovals } from "../../tools/availableTools"
-import { ToolNameSchema } from "../../tools/ToolNames"
 
 import type { ChatAgentContext } from "./ChatAgentContext"
 import ChatInterface from "./ChatInterfaces/ChatInterface"
@@ -46,10 +46,7 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
                     .default([])
                     .describe("Knowledge base config types (e.g. github_kb, POSTHOG, launchdarkly, linear_kb, slack_kb). Omit or empty if the agent has no knowledge bases.")
             }),
-            execute: async (
-                { skills, knowledgeBases }: { skills: ConfigType[]; knowledgeBases?: ConfigType[] },
-                _runContext?: RunContext<ChatAgentContext>
-            ): Promise<string> => {
+            execute: async ({ skills, knowledgeBases }: { skills: ConfigType[]; knowledgeBases?: ConfigType[] }, _runContext?: RunContext<ChatAgentContext>): Promise<string> => {
                 const tools = getToolsThatRequireApprovals(skills, knowledgeBases ?? [])
                 return JSON.stringify({ tools })
             }
