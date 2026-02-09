@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useEffect, useState } from "react"
 
 import { DatabaseIcon, FileIcon, LayoutGrid, Loader2, Search, X } from "lucide-react"
 
@@ -60,49 +60,37 @@ export function NotionScopePicker({ integrationId, selectedDatabaseIds, selected
     const typeFilter = TAB_TYPE_MAP[tab]
     const { resources, isLoading, isError, error, isValidating } = useNotionResources(integrationId, debouncedSearch, typeFilter)
 
-    const selectedIds = useMemo(() => new Set([...localDatabases.map(d => d.id), ...localPages.map(p => p.id)]), [localDatabases, localPages])
+    const selectedIds = new Set([...localDatabases.map(d => d.id), ...localPages.map(p => p.id)])
 
-    const isSelected = useCallback((resource: NotionResource) => selectedIds.has(resource.id), [selectedIds])
+    const isSelected = (resource: NotionResource) => selectedIds.has(resource.id)
 
-    const applySelection = useCallback(
-        (databases: NotionScopeItem[], pages: NotionScopeItem[]) => {
-            onConfirm(databases, pages)
-        },
-        [onConfirm]
-    )
+    const applySelection = (databases: NotionScopeItem[], pages: NotionScopeItem[]) => {
+        onConfirm(databases, pages)
+    }
 
-    const toggleResource = useCallback(
-        (resource: NotionResource) => {
-            if (resource.type === "database") {
-                const next = localDatabases.some(d => d.id === resource.id) ? localDatabases.filter(d => d.id !== resource.id) : [...localDatabases, { id: resource.id, name: resource.title }]
-                setLocalDatabases(next)
-                applySelection(next, localPages)
-            } else {
-                const next = localPages.some(p => p.id === resource.id) ? localPages.filter(p => p.id !== resource.id) : [...localPages, { id: resource.id, name: resource.title }]
-                setLocalPages(next)
-                applySelection(localDatabases, next)
-            }
-        },
-        [localDatabases, localPages, applySelection]
-    )
-
-    const removeDatabase = useCallback(
-        (id: string) => {
-            const next = localDatabases.filter(d => d.id !== id)
+    const toggleResource = (resource: NotionResource) => {
+        if (resource.type === "database") {
+            const next = localDatabases.some(d => d.id === resource.id) ? localDatabases.filter(d => d.id !== resource.id) : [...localDatabases, { id: resource.id, name: resource.title }]
             setLocalDatabases(next)
             applySelection(next, localPages)
-        },
-        [localDatabases, localPages, applySelection]
-    )
-
-    const removePage = useCallback(
-        (id: string) => {
-            const next = localPages.filter(p => p.id !== id)
+        } else {
+            const next = localPages.some(p => p.id === resource.id) ? localPages.filter(p => p.id !== resource.id) : [...localPages, { id: resource.id, name: resource.title }]
             setLocalPages(next)
             applySelection(localDatabases, next)
-        },
-        [localDatabases, localPages, applySelection]
-    )
+        }
+    }
+
+    const removeDatabase = (id: string) => {
+        const next = localDatabases.filter(d => d.id !== id)
+        setLocalDatabases(next)
+        applySelection(next, localPages)
+    }
+
+    const removePage = (id: string) => {
+        const next = localPages.filter(p => p.id !== id)
+        setLocalPages(next)
+        applySelection(localDatabases, next)
+    }
 
     const selectedCount = localDatabases.length + localPages.length
     const isSearching = searchInput !== debouncedSearch || isValidating
