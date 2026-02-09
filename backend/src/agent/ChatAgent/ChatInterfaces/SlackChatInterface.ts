@@ -7,6 +7,7 @@ import logger from "../../../logger"
 import { ConfigType } from "../../../shared/Configs"
 import { IntegrationType } from "../../../shared/Integrations"
 import type { MultipleChoiceQuestion } from "../../../shared/Survey"
+import { uuidv4 } from "zod/v4"
 import { createActionBlock, createButton, createIntegrationConnectionMessage, createSurveyQuestionBlocks } from "../../../slack/blockKitHelpers"
 import { createOAuthStateToken } from "../../../utility/oauth"
 
@@ -289,22 +290,28 @@ class SlackChatInterface extends ChatInterface {
         }
 
         if (isFormIntegrationInstallation(integrationManager)) {
-            return await this.handleFormIntegrationInstallation(integration)
-        }
-
-        if (isOAuthIntegrationInstallation(integrationManager)) {
-            // Check if this OAuth integration requires configuration
+            await this.handleFormIntegrationInstallation(integration)
+        } else if (isOAuthIntegrationInstallation(integrationManager)) {
             const configFields = integrationManager.getConfigurationFields()
-
             if (configFields.length > 0) {
-                return await this.handleOAuthIntegrationWithConfig(integration)
+                await this.handleOAuthIntegrationWithConfig(integration)
+            } else {
+                await this.handleOAuthIntegrationWithoutConfig(integration, integrationManager)
             }
-
-            // No configuration needed - proceed with existing OAuth flow
-            return await this.handleOAuthIntegrationWithoutConfig(integration, integrationManager)
+        } else {
+            return `Integration ${integration} does not support installation.`
         }
 
-        return `Integration ${integration} does not support installation.`
+        try {
+            const { integrationId } = await this.waitForIntegrationCompletion(integration)
+            let response = `Integration ${integration} connected successfully. Integration ID: ${integrationId}. You can now use it in the agent.`
+            if (integration === IntegrationType.SLACK) {
+                response += `\n\nIMPORTANT: After connecting Slack as a bot, you'll need to invite the Terse bot to each channel you want it to access. In the channel, type /invite @Terse. Only channels where the bot has been invited will be available for automations.`
+            }
+            return response
+        } catch {
+            return "The user did not complete the integration in time. You can prompt again or suggest they complete it later."
+        }
     }
 
     async promptForConfig(config: ConfigType): Promise<string> {
@@ -314,14 +321,20 @@ class SlackChatInterface extends ChatInterface {
 
     async askSurveyQuestion(multipleChoiceQuestion: MultipleChoiceQuestion): Promise<string> {
         logger.info("Slack chat interface askSurveyQuestion", { question: multipleChoiceQuestion.question })
-        const blockId = `survey_${this.sessionId}__${this.channel}`
+        const questionId = uuidv4().toString()
+        const blockId = `survey_${questionId}__${this.sessionId}__${this.channel}`
         const blocks = createSurveyQuestionBlocks(multipleChoiceQuestion.question, multipleChoiceQuestion.options, blockId)
         await this.say({
             text: multipleChoiceQuestion.question,
             blocks,
             thread_ts: this.sessionId
         })
-        return "(Survey question sent; the user's answer will continue the conversation.)"
+        try {
+            const answer = await this.waitForSurveyAnswer(questionId)
+            return `The user answered: ${answer}`
+        } catch {
+            return "The user did not answer in time. You can ask the question again."
+        }
     }
 
     processStreamEvent(sessionId: string, event: RunStreamEvent): void {

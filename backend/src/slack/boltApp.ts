@@ -7,6 +7,8 @@ import jwt from "jsonwebtoken"
 
 import ChatAgent from "../agent/ChatAgent/ChatAgent"
 import SlackChatInterface from "../agent/ChatAgent/ChatInterfaces/SlackChatInterface"
+import { SurveyAnswerTask } from "../agent/ChatAgent/SurveyAnswerTask"
+import { surveyAnswerTaskQueue } from "../agent/ChatAgent/SurveyAnswerTaskQueue"
 import { jwt as jwtConfig, settings } from "../config/settings"
 import { IntegrationFormCompletedTask } from "../integrations/IntegrationFormCompletedTask"
 import { integrationFormTaskQueue } from "../integrations/IntegrationTaskQueues"
@@ -243,8 +245,8 @@ export async function setupSlackBolt() {
         }
     })
 
-    // Handle survey multiple-choice selection - resume ChatAgent with answer
-    slack.action("survey_select", async ({ ack, body, action, respond, client }) => {
+    // Handle survey multiple-choice selection - emit SurveyAnswerTask for blocking waitFor in ChatInterface
+    slack.action("survey_select", async ({ ack, body, action, respond }) => {
         await ack()
 
         try {
@@ -266,11 +268,15 @@ export async function setupSlackBolt() {
                 })
                 return
             }
+            // blockId format: survey_{questionId}__{sessionId}__{channel}
             const payload = blockId.replace(/^survey_/, "").split("__")
-            const sessionId = payload[0]
-            const channel = payload[1]
-            if (!sessionId || !channel) {
-                logger.error("[Slack Survey] Could not parse sessionId or channel from block_id", { blockId })
+            const questionId = payload[0]
+            const sessionId = payload[1]
+            const channel = payload[2]
+            if (!questionId || !sessionId || !channel) {
+                logger.error("[Slack Survey] Could not parse questionId, sessionId or channel from block_id", {
+                    blockId
+                })
                 await respond({
                     text: "Error: Invalid survey request.",
                     response_type: "ephemeral"
@@ -296,11 +302,9 @@ export async function setupSlackBolt() {
                 })
                 return
             }
-            const slackChatInterface = new SlackChatInterface(channel, client, user.id, user.organizationId, bodyUser, sessionId)
-            const chatAgent = new ChatAgent(slackChatInterface, sessionId, user.id, user.organizationId)
-            await chatAgent.run(`The user answered: ${selectedValue}`)
+            surveyAnswerTaskQueue.emit(new SurveyAnswerTask(questionId, selectedValue, user.id, sessionId))
         } catch (error) {
-            logger.error("[Slack Survey] Error resuming ChatAgent after survey answer", { error })
+            logger.error("[Slack Survey] Error emitting SurveyAnswerTask", { error })
             await respond({
                 text: "An error occurred while processing your answer. Please try again.",
                 response_type: "ephemeral"

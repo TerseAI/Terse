@@ -67,7 +67,7 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
         tool({
             name: "promptForIntegration",
             description:
-                "IMPORTANT: Only call this once per turn! The UX is very bad if this called multiple times in a single turn. Call it once, wait for the reply then call it again if another integration is needed. Prompt for an integration. You can also call this if the user needs to re-configure an integration. Ex: Add repos to github or more pages to Notion.",
+                "Prompt for an integration. This tool shows a prompt (OAuth button or form) and blocks until the user completes the integration or the request times out (about 2 minutes). You can call it again in the same turn if you need multiple integrations; each call will wait for its own completion. You can also call this if the user needs to re-configure an integration. Ex: Add repos to github or more pages to Notion.",
             parameters: z.object({
                 integration: z.nativeEnum(IntegrationType).describe("The integration to prompt for")
             }),
@@ -112,7 +112,7 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
         tool({
             name: "askSurveyQuestion",
             description:
-                "Ask the user a single multiple-choice setup question. Call this once per turn; wait for the user's answer before continuing. The user can choose one of the options or write in their own answer. Returns the selected value(s) or their written text. IMPORTANT: Only provide concrete choice options (e.g. specific channel names, project names). Do NOT add an option that is redundant with the write-in, such as 'Other', 'A different X (tell me the name)', or 'Something else'—the UI already has 'Or write your own answer' for that. CRITICAL: After calling this tool, do NOT send any follow-up message. Output nothing—no confirmation, no explanation. The question is already displayed in the chat; the user will answer there. Your response must be complete silence until the user answers.",
+                "Ask the user a single multiple-choice setup question. This tool blocks until the user answers or times out (~2 minutes). The user can choose one of the options or write in their own answer. Returns the selected value(s) or their written text directly. Call once per turn; the tool will not return until the user responds. IMPORTANT: Only provide concrete choice options (e.g. specific channel names, project names). Do NOT add an option that is redundant with the write-in, such as 'Other', 'A different X (tell me the name)', or 'Something else'—the UI already has 'Or write your own answer' for that.",
             parameters: z.object({
                 question: z.string().describe("The question text to show the user"),
                 options: z
