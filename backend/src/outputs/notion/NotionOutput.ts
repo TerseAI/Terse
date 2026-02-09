@@ -1,8 +1,8 @@
 import { Tool } from "@openai/agents"
 import { OutputConfigType } from "@prisma/client"
 
-import { type CapabilityDescription, CapabilityRole, extractToolMetadata, getConfigMetadata } from "../../capabilityHelpers"
 import { buildDummyOutputConfig } from "../../buildDummyConfigForCapability"
+import { type CapabilityDescription, CapabilityRole, extractToolMetadata, getConfigMetadata } from "../../capabilityHelpers"
 import { NotionConfig } from "../../shared/Configs"
 import { IntegrationType } from "../../shared/Integrations"
 import { AgentOutputWithConfigs, PrismaTransaction } from "../../types/prisma"

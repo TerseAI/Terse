@@ -4,6 +4,7 @@ import chalk from "chalk"
 import { z } from "zod"
 
 import { SessionWithTracking } from "../agent/AgentRunner/AgentRunner"
+import { buildDummyOutputConfig } from "../buildDummyConfigForCapability"
 import { type CapabilityDescription, CapabilityRole, extractToolMetadata, getConfigMetadata } from "../capabilityHelpers"
 import { AtlassianClient } from "../integrations/AtlassianClient"
 import logger from "../logger"
@@ -16,7 +17,6 @@ import { AgentOutputWithConfigs, PrismaTransaction } from "../types/prisma"
 import { Session } from "../types/session"
 import { convertOutputConfigTypeToConfigType } from "../utility/typeConverters"
 
-import { buildDummyOutputConfig } from "../buildDummyConfigForCapability"
 import { Output, ToolboxEntry } from "./abstract/Output"
 
 // MARK: - Exports
