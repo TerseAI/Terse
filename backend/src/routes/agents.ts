@@ -12,7 +12,7 @@ import { ConfigInstance } from "../shared/Configs"
 import { IntegrationType } from "../shared/Integrations"
 import { agentDetailKey } from "../shared/InvalidationKeys"
 import { Agent, AgentNotificationSettings, AgentTrigger, AgentUpdate, AgentsResponse } from "../shared/types"
-import { ToolNameSchema, isValidToolName } from "../tools/ToolNames"
+import { isValidToolName } from "../tools/ToolNames"
 import { TRIGGER_REGISTRY } from "../triggers/TriggerRegistry"
 import { AgentWithNotificationSettingsRelations, AgentWithRelations, AgentWithTriggerRelations, PrismaTransaction } from "../types/prisma"
 import { trackAgentCreated } from "../utility/analytics"
@@ -95,8 +95,6 @@ async function upsertNotificationSettings(tx: PrismaTransaction, automationId: s
         }
     })
 }
-
-const ToolApprovalsRequestSchema = z.array(ToolNameSchema).optional().nullable()
 
 function validateAndDeduplicateToolApprovals(toolApprovals: string[]): string[] {
     // Deduplicate tool approvals to prevent unique constraint violations

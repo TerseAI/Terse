@@ -393,14 +393,15 @@ export const convertConfigTypeToOutputConfigType = (configType: ConfigType): Out
             return OutputConfigType.SLACK_CHANNEL
         case ConfigType.GMAIL_OUTPUT:
             return OutputConfigType.GMAIL
+        case ConfigType.TERSE:
+            return OutputConfigType.TERSE
         default:
-            throw new Error(`ConfigType ${configType} is not a valid output config type. Supported: NOTION, CONFLUENCE, LINEAR, JIRA, SLACK_OUTPUT, GMAIL_OUTPUT.`)
+            throw new Error(`ConfigType ${configType} is not a valid output config type. Supported: NOTION, CONFLUENCE, LINEAR, JIRA, SLACK_OUTPUT, GMAIL_OUTPUT, TERSE.`)
     }
 }
 
 /**
  * Converts OutputConfigType to ConfigType (for outputs that have a ConfigType in CONFIG_DETAILS).
- * TERSE has no ConfigType - throws for TERSE.
  */
 export const convertOutputConfigTypeToConfigType = (outputConfigType: OutputConfigType): ConfigType => {
     switch (outputConfigType) {
