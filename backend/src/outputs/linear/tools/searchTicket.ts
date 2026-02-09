@@ -1,5 +1,5 @@
 import { LinearClient } from "@linear/sdk"
-import type { IssueFilter, PaginationOrderBy as PaginationOrderByType, SearchIssuesQueryVariables } from "@linear/sdk/dist/_generated_documents"
+import type { IssueFilter, IssuesQueryVariables, PaginationOrderBy as PaginationOrderByType, SearchIssuesQueryVariables } from "@linear/sdk/dist/_generated_documents"
 import { RunContext, tool } from "@openai/agents"
 import { RunHistoryActionType } from "@prisma/client"
 import { z } from "zod"
@@ -17,12 +17,19 @@ const linearStateNameValues = Object.values(LinearStateName)
 
 export const linearSearchTicketTool = tool({
     name: ToolName.LINEAR_SEARCH_TICKET,
-    description: `Search for Linear issues/tickets by description or query. Returns all matching issues by default.
+    description: `Search for Linear issues/tickets by description or query, or list issues by filters. Returns all matching issues by default.
 
-Use this tool to find existing Linear issues before creating new ones or to look up ticket information.`,
+Use this tool to find existing Linear issues before creating new ones or to look up ticket information.
+You can provide an empty issueDescription to list all issues matching the given filters (e.g. stateNames).`,
     parameters: z.object({
         integrationId: z.string().describe("The integration ID of the Linear integration to use."),
-        issueDescription: z.string().describe("The search query or description to search for in Linear issues. This will search in issue titles, descriptions, and other fields."),
+        issueDescription: z
+            .string()
+            .optional()
+            .default("")
+            .describe(
+                "The search query or description to search for in Linear issues. This will search in issue titles, descriptions, and other fields. Can be empty to list all issues matching the provided filters."
+            ),
         stateNames: z
             .array(z.enum(linearStateNameValues as [string, ...string[]]))
             .nullable()
@@ -60,17 +67,29 @@ Use this tool to find existing Linear issues before creating new ones or to look
                       }
                     : undefined
 
-            // Search for issues using searchIssues method with pagination
-            // Using first parameter to limit results and orderBy updatedAt for most recent
-            // If after cursor is provided, use it for pagination
-            const searchOptions: Omit<SearchIssuesQueryVariables, "term"> = {
-                filter,
-                first: limit,
-                orderBy: "updatedAt" as PaginationOrderByType, // Order by most recently updated
-                ...(after && { after })
-            }
+            const hasSearchTerm = issueDescription && issueDescription.trim().length > 0
 
-            const issues = await client.searchIssues(issueDescription, searchOptions)
+            let issues
+            if (hasSearchTerm) {
+                // Use searchIssues when a search term is provided
+                const searchOptions: Omit<SearchIssuesQueryVariables, "term"> = {
+                    filter,
+                    first: limit,
+                    orderBy: "updatedAt" as PaginationOrderByType,
+                    ...(after && { after })
+                }
+                issues = await client.searchIssues(issueDescription, searchOptions)
+            } else {
+                // Use issues listing endpoint when no search term — avoids Linear's
+                // "term must be longer than or equal to 1 characters" validation error
+                const listOptions: IssuesQueryVariables = {
+                    filter,
+                    first: limit,
+                    orderBy: "updatedAt" as PaginationOrderByType,
+                    ...(after && { after })
+                }
+                issues = await client.issues(listOptions)
+            }
 
             // Extract issue data from nodes (simpler pagination syntax)
             // Note: state and assignee are LinearFetch objects that need to be awaited
@@ -106,11 +125,12 @@ Use this tool to find existing Linear issues before creating new ones or to look
             const endCursor = pageInfo.endCursor || null
 
             // Return action as part of the result
+            const queryLabel = hasSearchTerm ? `matching "${issueDescription}"` : "with applied filters"
             const action = {
                 action: "Searched tickets",
                 integration: IntegrationType.LINEAR,
                 target: "Linear workspace",
-                details: `Found ${results.length} issue(s) matching "${issueDescription}"${hasNextPage ? " (more available)" : ""}`,
+                details: `Found ${results.length} issue(s) ${queryLabel}${hasNextPage ? " (more available)" : ""}`,
                 type: RunHistoryActionType.read
             }
 
@@ -119,7 +139,7 @@ Use this tool to find existing Linear issues before creating new ones or to look
                 issues: results,
                 actions: [action],
                 count: results.length,
-                query: issueDescription,
+                query: issueDescription || "",
                 pagination: {
                     hasNextPage,
                     endCursor,
