@@ -196,9 +196,7 @@ export function SlackConfigurationSelector({
                 </div>
             )}
             {isIncomplete && needsUsersForDms && <p className="text-xs text-muted-foreground">Select at least one user to send DMs to.</p>}
-            {isKnowledgeBase && !listenToUserDms && !selectedChannelId && (
-                <p className="text-xs text-amber-600 dark:text-amber-500">Select a channel, or choose Direct messages above.</p>
-            )}
+            {isKnowledgeBase && !listenToUserDms && !selectedChannelId && <p className="text-xs text-amber-600 dark:text-amber-500">Select a channel, or choose Direct messages above.</p>}
 
             {/* User selector - for triggers: optional filter "DMs from these users only"; for output: required when "Send to DMs" selected */}
             {showUserFilter && (selectedChannelId || listenToUserDms) && (

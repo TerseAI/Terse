@@ -77,7 +77,7 @@ export class SlackKnowledgeBase extends KnowledgeBase<SlackKBConfig> {
     }
 
     async validateConfig(knowledgeBase: SlackKBConfig, _userId: string): Promise<void> {
-        const hasChannel = !!(knowledgeBase.channelId?.trim())
+        const hasChannel = !!knowledgeBase.channelId?.trim()
         const isDmsMode = knowledgeBase.allowDms === true
         if (!hasChannel && !isDmsMode) {
             throw new Error("Slack knowledge base requires selecting a channel or DMs. If Channel, select one channel. If DMs, that alone is valid (all DMs); you may optionally select users.")

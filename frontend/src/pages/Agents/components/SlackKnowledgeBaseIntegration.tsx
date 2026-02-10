@@ -60,7 +60,9 @@ export function SlackKnowledgeBaseIntegration({ knowledgeBase, variant, setConfi
                 ? `DMs: ${userCount} user${userCount !== 1 ? "s" : ""}`
                 : "All DMs"
             : slackConfig.channelId
-              ? (slackConfig.channelName ? `#${slackConfig.channelName}` : "1 channel")
+              ? slackConfig.channelName
+                  ? `#${slackConfig.channelName}`
+                  : "1 channel"
               : "Select channel or DMs"
         return <div className="text-xs text-center">{displayText}</div>
     }
@@ -121,16 +123,7 @@ export function SlackKnowledgeBaseIntegration({ knowledgeBase, variant, setConfi
                                 isBotToken={selectedIntegration?.isBotUser ?? true}
                                 mode="knowledgeBase"
                                 onSelectChannel={(channelId, channelName) => {
-                                    setConfig(
-                                        new SlackKBConfig(
-                                            slackConfig.integrationId,
-                                            channelId || undefined,
-                                            channelName,
-                                            false,
-                                            [],
-                                            []
-                                        )
-                                    )
+                                    setConfig(new SlackKBConfig(slackConfig.integrationId, channelId || undefined, channelName, false, [], []))
                                 }}
                                 onListenToUserDmsChange={allowDms => {
                                     setConfig(

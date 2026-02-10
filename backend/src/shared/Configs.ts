@@ -707,7 +707,7 @@ export class SlackKBConfig implements ConfigInstance {
     ) {}
 
     isComplete(): boolean {
-        const hasChannel = !!(this.channelId?.trim())
+        const hasChannel = !!this.channelId?.trim()
         return !!this.integrationId && (hasChannel || this.allowDms)
     }
 

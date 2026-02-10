@@ -506,14 +506,7 @@ export const convertPrismaKnowledgeBaseConfigToConfigInstance = (channelKnowledg
 
     if (channelKnowledgeBase.slack_kb_config) {
         const c = channelKnowledgeBase.slack_kb_config
-        return new SlackKBConfig(
-            integrationId,
-            c.channel_ids?.[0],
-            c.channel_names?.[0],
-            c.allow_dms ?? false,
-            c.user_ids ?? [],
-            c.user_names ?? []
-        )
+        return new SlackKBConfig(integrationId, c.channel_ids?.[0], c.channel_names?.[0], c.allow_dms ?? false, c.user_ids ?? [], c.user_names ?? [])
     }
 
     throw new Error(`Unsupported knowledge base config type: ${channelKnowledgeBase.config_type}`)
