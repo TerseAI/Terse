@@ -7,7 +7,7 @@ import logger from "../../logger"
 import { Output } from "../../outputs/abstract/Output"
 import { OutputFactory } from "../../outputs/abstract/OutputFactory"
 import { db } from "../../prismaClient"
-import { emitCacheInvalidationWithKey, emitCacheInvalidationWithWildcard } from "../../realtimeSocket"
+import { emitCacheInvalidationWithKey, emitCacheInvalidationWithWildcard, getRealtimeSocket, markRunFailedAndInvalidate } from "../../realtimeSocket"
 import { ConfigInstance } from "../../shared/Configs"
 import { RunHistoryAction } from "../../shared/RunHistoryTypes"
 import { User } from "../../shared/types"
@@ -15,10 +15,12 @@ import { AgentWithRelations, Agent as PrismaAgent } from "../../types/prisma"
 import { Session } from "../../types/session"
 import { trackActionTaken, trackAgentTriggered } from "../../utility/analytics"
 import { getInputConfigInclude, getKnowledgeBaseConfigInclude, getOutputConfigInclude } from "../../utility/prismaIncludes"
+import { classifyAgentError } from "../agentErrorUtils"
 
 import { AgentRunner, ApprovalResult, SessionWithTracking } from "./AgentRunner"
 import { filterEvent } from "./EventFilter"
 import { RunContext } from "./SystemPromptBuilder"
+import { reportRunErrorToRun } from "./runErrorReporter"
 import { appendRunAction, createRunRecord, finalizeRunStatus, markRunFailed, markRunProcessed, markRunSkipped } from "./runHistory"
 
 // The job of this class is to take an Input Event, and check if it's a match for an Agent.
@@ -283,27 +285,21 @@ export class EventProcessor {
                 organizationId: this.user.organizationId
             })
         } catch (error) {
-            // Log the error and update run history
-            const errorMessage = error instanceof Error ? error.message : "Unknown error"
+            const classified = classifyAgentError(error)
             logger.error(`Error running agent "${agent.name}"`, {
                 error,
                 agentId: agent.id,
                 agentName: agent.name,
                 runId
             })
-
-            try {
-                await markRunFailed(runId, errorMessage, "agent")
-                emitCacheInvalidationWithWildcard(this.user.organizationId, "runHistory", agent.id)
-            } catch (e) {
-                logger.error("Failed to mark run as failed", {
-                    error,
-                    runId,
-                    agentId: agent.id
-                })
-            }
-
-            // Re-throw to be caught by outer try-catch
+            await markRunFailedAndInvalidate(runId, classified.message, this.user.organizationId, agent.id)
+            await reportRunErrorToRun({
+                runId,
+                agentId: agent.id,
+                organizationId: this.user.organizationId,
+                classified,
+                io: getRealtimeSocket()
+            })
             throw error
         }
 

@@ -380,12 +380,12 @@ export class GithubIntegrationManager
 
         const events: InputEvent[] = []
         for (const repo of repos) {
-            const commits = await fetchRecentCommitsForSample(accessToken, repo.owner, repo.name, 2)
+            const commits = await fetchRecentCommitsForSample(accessToken, repo.owner, repo.name, 5)
             for (const commit of commits) {
                 const eventData = await createPushEventData(commit, repo, installationIdNum, accessToken)
                 if (eventData) events.push(new GithubEvent(eventData, []))
             }
-            const pullRequests = await fetchRecentPullRequestsForSample(accessToken, repo.owner, repo.name, 2)
+            const pullRequests = await fetchRecentPullRequestsForSample(accessToken, repo.owner, repo.name, 5)
             for (const pr of pullRequests) {
                 const eventData = await createPullRequestEventData(pr, repo, installationIdNum, accessToken)
                 if (eventData) events.push(new GithubEvent(eventData, []))

@@ -6,6 +6,7 @@ import {
     FilterResult,
     type ModelEvent,
     type ModelRequest,
+    type RunError,
     type TextDelta,
     type ToolApprovalRequest,
     ToolApprovalResponse,
@@ -34,6 +35,7 @@ export type UseCompletionSocketOptions = {
     onToolApprovalRequest?: (request: ToolApprovalRequest) => void
     onToolApprovalResponse?: (response: ToolApprovalResponse) => void
     onSnippet?: (snippet: ChatSnippetPayload) => void
+    onRunError?: (event: RunError) => void
 }
 
 export function useCompletionSocket(options: UseCompletionSocketOptions) {
@@ -50,7 +52,8 @@ export function useCompletionSocket(options: UseCompletionSocketOptions) {
         onThinking,
         onToolApprovalRequest,
         onToolApprovalResponse,
-        onSnippet
+        onSnippet,
+        onRunError
     } = options
 
     const onDeltaRef = useRef(onDelta)
@@ -64,6 +67,7 @@ export function useCompletionSocket(options: UseCompletionSocketOptions) {
     const onToolApprovalRequestRef = useRef(onToolApprovalRequest)
     const onToolApprovalResponseRef = useRef(onToolApprovalResponse)
     const onSnippetRef = useRef(onSnippet)
+    const onRunErrorRef = useRef(onRunError)
     // For now we assume connected, or we could expose socket connection state globally
     const [isConnected] = useState(true)
 
@@ -80,7 +84,8 @@ export function useCompletionSocket(options: UseCompletionSocketOptions) {
         onToolApprovalRequestRef.current = onToolApprovalRequest
         onToolApprovalResponseRef.current = onToolApprovalResponse
         onSnippetRef.current = onSnippet
-    }, [onDelta, onToolCallGenerating, onToolCall, onToolCallComplete, onFailure, onNaturalStop, onFilterResult, onThinking, onToolApprovalRequest, onSnippet])
+        onRunErrorRef.current = onRunError
+    }, [onDelta, onToolCallGenerating, onToolCall, onToolCallComplete, onFailure, onNaturalStop, onFilterResult, onThinking, onToolApprovalRequest, onSnippet, onRunError])
 
     // Subscribe to events
     useEffect(() => {
@@ -128,6 +133,9 @@ export function useCompletionSocket(options: UseCompletionSocketOptions) {
                 case "Snippet":
                     console.log("Snippet event received", message.snippet)
                     onSnippetRef.current?.(message.snippet)
+                    break
+                case "RunError":
+                    onRunErrorRef.current?.({ error: message.error, ...(message.code && { code: message.code }) })
                     break
                 default:
                     console.warn("[useCompletionSocket] Unknown event type:", message.type)
