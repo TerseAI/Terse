@@ -84,7 +84,7 @@ export class CronJobIntegrationManager
             return
         }
 
-        if (!channel.is_active) {
+        if (!channel.is_active && !isManualTrigger) {
             logger.info("ℹ️  Schedule triggered but channel is inactive", {
                 inputId,
                 channelId: channel.id,
