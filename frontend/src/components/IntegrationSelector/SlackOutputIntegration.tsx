@@ -147,7 +147,7 @@ export function SlackOutputIntegration({ input, variant, setConfig }: InputConfi
         )
     }
 
-    const sendToDms = (currentConfig?.userIds?.length ?? 0) > 0 && !currentConfig?.channelId
+    const sendToDms = !currentConfig?.channelId && currentConfig?.userIds !== undefined
     const selectedIntegration = integrations.find((i: SlackIntegrationType) => i.id === selectedIntegrationId)
 
     // Dialog variant: full view

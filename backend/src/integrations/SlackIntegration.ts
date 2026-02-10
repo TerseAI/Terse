@@ -835,7 +835,6 @@ export const fetchSlackUsersForIntegration = async (userId: string, organization
     if (!organizationId) {
         throw createSlackRouteError("Organization context is required", 400)
     }
-
     const userSlackIntegration = await db().user_slack_integrations.findFirst({
         where: {
             id: integrationId,
@@ -846,7 +845,6 @@ export const fetchSlackUsersForIntegration = async (userId: string, organization
             user: true
         }
     })
-
     if (!userSlackIntegration || !userSlackIntegration.slack_integration) {
         throw createSlackRouteError("Slack integration not found", 404)
     }
@@ -856,21 +854,25 @@ export const fetchSlackUsersForIntegration = async (userId: string, organization
         logLevel: LogLevel.ERROR
     })
 
-    const SLACK_USERS_LIST_TIMEOUT_MS = 15_000
-    const usersResponse = await Promise.race([client.users.list({}), new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Slack users.list timed out")), SLACK_USERS_LIST_TIMEOUT_MS))])
-    if (!usersResponse.ok) {
-        throw createSlackRouteError("Failed to fetch users", 500)
-    }
-    if (!usersResponse.members || usersResponse.members.length === 0) {
-        return { users: [] }
-    }
-
-    const users: SlackUserResponse[] = usersResponse.members
-        .filter((member): member is SlackUserMember & { id: string; name: string } => Boolean(member.id && member.name) && !member.is_bot)
-        .map(member => ({
-            id: member.id,
-            name: member.name
-        }))
+    let cursor: string | undefined
+    const users: SlackUserResponse[] = []
+    do {
+        const res = await client.users.list({ limit: 200, cursor })
+        if (!res.ok) {
+            throw createSlackRouteError("Failed to fetch users", 500)
+        }
+        if (!res.members || res.members.length === 0) {
+            break
+        }
+        const userSegment = res.members
+            .filter((member): member is SlackUserMember & { id: string; name: string } => Boolean(member.id && member.name) && !member.is_bot)
+            .map(member => ({
+                id: member.id,
+                name: member.name
+            }))
+        users.push(...userSegment)
+        cursor = res.response_metadata?.next_cursor
+    } while (cursor)
 
     return { users }
 }
