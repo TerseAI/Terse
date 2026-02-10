@@ -87,37 +87,37 @@ export async function getStats(req: Request, res: Response) {
         actionIntegrationData,
         actionTypeData
     ] = await Promise.all([
-        // 1. Current period total events (active agents only, exclude filtered/skipped)
+        // 1. Current period total events (exclude filtered/skipped)
         prisma.run_history_records.count({
             where: {
-                automation: { organization_id: organizationId, is_active: true },
+                automation: { organization_id: organizationId },
                 status: { not: "skipped" },
                 timestamp: { gte: currentPeriodStart }
             }
         }),
-        // 2. Previous period total events (active agents only, exclude filtered/skipped)
+        // 2. Previous period total events (exclude filtered/skipped)
         prisma.run_history_records.count({
             where: {
-                automation: { organization_id: organizationId, is_active: true },
+                automation: { organization_id: organizationId },
                 status: { not: "skipped" },
                 timestamp: { gte: previousPeriodStart, lte: previousPeriodEnd }
             }
         }),
-        // 3. Current period actions count (write operations only, active agents only)
+        // 3. Current period actions count (write operations only)
         prisma.run_history_actions.count({
             where: {
                 run_history_record: {
-                    automation: { organization_id: organizationId, is_active: true },
+                    automation: { organization_id: organizationId },
                     timestamp: { gte: currentPeriodStart }
                 },
                 is_read_only: false
             }
         }),
-        // 4. Previous period actions count (write operations only, active agents only)
+        // 4. Previous period actions count (write operations only)
         prisma.run_history_actions.count({
             where: {
                 run_history_record: {
-                    automation: { organization_id: organizationId, is_active: true },
+                    automation: { organization_id: organizationId },
                     timestamp: { gte: previousPeriodStart, lte: previousPeriodEnd }
                 },
                 is_read_only: false
@@ -131,14 +131,14 @@ export async function getStats(req: Request, res: Response) {
         prisma.automations.count({
             where: { organization_id: organizationId, is_active: true, created_at: { lte: previousPeriodEnd } }
         }),
-        // 7. Daily events aggregation using raw SQL for performance (active agents only, exclude filtered/skipped)
+        // 7. Daily events aggregation using raw SQL for performance (exclude filtered/skipped)
         // Use AT TIME ZONE to group events by the user's local date
         // GROUP BY 1 refers to the first SELECT column (event_date) to avoid parameter duplication issues
         prisma.$queryRaw<DailyEventRow[]>`
             SELECT DATE(rhr.timestamp AT TIME ZONE 'UTC' AT TIME ZONE ${timezone}) as event_date, COUNT(*) as count
             FROM run_history_records rhr
             INNER JOIN automations a ON rhr.automation_id = a.id
-            WHERE a.organization_id = ${organizationId} AND a.is_active = true AND rhr.status != 'skipped' AND rhr.timestamp >= ${chartStartDate}
+            WHERE a.organization_id = ${organizationId} AND rhr.status != 'skipped' AND rhr.timestamp >= ${chartStartDate}
             GROUP BY 1
             ORDER BY 1
         `,
@@ -146,7 +146,7 @@ export async function getStats(req: Request, res: Response) {
         prisma.run_history_actions.findMany({
             where: {
                 run_history_record: {
-                    automation: { organization_id: organizationId, is_active: true }
+                    automation: { organization_id: organizationId }
                 },
                 is_read_only: false
             },
@@ -163,7 +163,7 @@ export async function getStats(req: Request, res: Response) {
         // 9. Recent non-filtered runs (last 20) across all active agents
         prisma.run_history_records.findMany({
             where: {
-                automation: { organization_id: organizationId, is_active: true },
+                automation: { organization_id: organizationId },
                 status: { not: "skipped" }
             },
             include: {
@@ -179,11 +179,11 @@ export async function getStats(req: Request, res: Response) {
             orderBy: { timestamp: "desc" },
             take: 20
         }),
-        // 10. Top 10 most active agents by triggered run count (current period, active only, exclude skipped)
+        // 10. Top 10 most active agents by triggered run count (current period, exclude skipped)
         prisma.run_history_records.groupBy({
             by: ["automation_id"],
             where: {
-                automation: { organization_id: organizationId, is_active: true },
+                automation: { organization_id: organizationId },
                 status: { not: "skipped" },
                 timestamp: { gte: currentPeriodStart }
             },
@@ -191,34 +191,34 @@ export async function getStats(req: Request, res: Response) {
             orderBy: { _count: { id: "desc" } },
             take: 10
         }),
-        // 11. Status breakdown (current period, active agents only, exclude skipped)
+        // 11. Status breakdown (current period, exclude skipped)
         prisma.run_history_records.groupBy({
             by: ["status"],
             where: {
-                automation: { organization_id: organizationId, is_active: true },
+                automation: { organization_id: organizationId },
                 status: { not: "skipped" },
                 timestamp: { gte: currentPeriodStart }
             },
             _count: { id: true },
             orderBy: { _count: { id: "desc" } }
         }),
-        // 12. Trigger integrations breakdown (current period, active agents only, exclude skipped)
+        // 12. Trigger integrations breakdown (current period, exclude skipped)
         prisma.run_history_records.groupBy({
             by: ["trigger_integration"],
             where: {
-                automation: { organization_id: organizationId, is_active: true },
+                automation: { organization_id: organizationId },
                 status: { not: "skipped" },
                 timestamp: { gte: currentPeriodStart }
             },
             _count: { id: true },
             orderBy: { _count: { id: "desc" } }
         }),
-        // 13. Action integrations breakdown (current period, write-only, active agents only)
+        // 13. Action integrations breakdown (current period, write-only)
         prisma.run_history_actions.groupBy({
             by: ["integration"],
             where: {
                 run_history_record: {
-                    automation: { organization_id: organizationId, is_active: true },
+                    automation: { organization_id: organizationId },
                     timestamp: { gte: currentPeriodStart }
                 },
                 is_read_only: false
@@ -226,12 +226,12 @@ export async function getStats(req: Request, res: Response) {
             _count: { id: true },
             orderBy: { _count: { id: "desc" } }
         }),
-        // 14. Action types breakdown (current period, write-only, active agents only)
+        // 14. Action types breakdown (current period, write-only)
         prisma.run_history_actions.groupBy({
             by: ["type"],
             where: {
                 run_history_record: {
-                    automation: { organization_id: organizationId, is_active: true },
+                    automation: { organization_id: organizationId },
                     timestamp: { gte: currentPeriodStart }
                 },
                 is_read_only: false

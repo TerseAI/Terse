@@ -19,21 +19,38 @@ import type { ConfigInstance } from "../../shared/Configs"
 import { ConfigType } from "../../shared/Configs"
 import { FrontendRoutes } from "../../shared/FrontendRoutes"
 import { IntegrationType } from "../../shared/Integrations"
+import { ToolNameSchema } from "../../tools/ToolNames"
+import { getToolsThatRequireApprovals } from "../../tools/availableTools"
 import { HydratorType, requireHydratorType } from "../../types/rag"
 import { getUserForOrg } from "../../utility/workos"
 
+import type { ChatAgentContext } from "./ChatAgentContext"
 import ChatInterface from "./ChatInterfaces/ChatInterface"
-
-export type ChatAgentContext = {
-    chatInterface: ChatInterface
-    userId: string
-    organizationId: string
-    sessionId: string
-}
+import { lookupPlatformCapabilitiesTool } from "./lookupPlatformCapabilities"
 
 export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgentContext>[] {
     return [
         webSearchTool({ searchContextSize: "medium" }) as Tool<ChatAgentContext>,
+        lookupPlatformCapabilitiesTool,
+        tool({
+            name: "getToolApprovalOptions",
+            description:
+                "Returns the tools that can require approval for the given outputs (skills) and knowledge bases. Use this when building an agent to discover which tool names are valid for the toolApprovals field. The returned name values are the only valid choices for toolApprovals when calling applyAgent for an agent with those outputs and knowledge bases. skills must be output config types (e.g. slack_output, notion, linear_output); knowledgeBases must be knowledge base config types (e.g. github_kb, POSTHOG, slack_kb).",
+            parameters: z.object({
+                skills: z
+                    .array(z.nativeEnum(ConfigType))
+                    .describe("Output config types for the agent's skills. Only config types with isOutput true (e.g. slack_output, notion, gmail_output, linear_output, jira, confluence)."),
+                knowledgeBases: z
+                    .array(z.nativeEnum(ConfigType))
+                    .optional()
+                    .default([])
+                    .describe("Knowledge base config types (e.g. github_kb, POSTHOG, launchdarkly, linear_kb, slack_kb). Omit or empty if the agent has no knowledge bases.")
+            }),
+            execute: async ({ skills, knowledgeBases }: { skills: ConfigType[]; knowledgeBases?: ConfigType[] }, _runContext?: RunContext<ChatAgentContext>): Promise<string> => {
+                const tools = getToolsThatRequireApprovals(skills, knowledgeBases ?? [])
+                return JSON.stringify({ tools })
+            }
+        }),
         tool({
             name: "applyAgent",
             description:
@@ -400,18 +417,17 @@ const SlackOutputConfigSchema = BaseConfigSchema.extend({
         )
 })
 
-const NotionDatabaseConfigSchema = BaseConfigSchema.extend({
-    configType: z.literal(ConfigType.NOTION_DATABASE),
+const NotionConfigSchema = BaseConfigSchema.extend({
+    configType: z.literal(ConfigType.NOTION),
     integrationType: z.literal(IntegrationType.NOTION),
-    databaseId: NonEmptyString.nullable().describe("The Notion database ID. From fetchResourcesForIntegration, use the database's id from resources[]."),
-    databaseName: z.string().nullable().describe("The database display name. From fetchResourcesForIntegration, use the database's name from resources[].")
-})
-
-const NotionPageConfigSchema = BaseConfigSchema.extend({
-    configType: z.literal(ConfigType.NOTION_PAGE),
-    integrationType: z.literal(IntegrationType.NOTION),
-    pageId: NonEmptyString.nullable().describe("The Notion page ID. From fetchResourcesForIntegration, use the page's id from resources[]."),
-    pageName: z.string().nullable().describe("The page display name. From fetchResourcesForIntegration, use the page's name from resources[].")
+    databaseIds: z.array(z.string()).optional().default([]).describe("Allowed Notion database IDs. From fetchResourcesForIntegration, use databases' id from resources[]."),
+    databaseNames: z.array(z.string()).optional().default([]).describe("Display names for databases, parallel to databaseIds."),
+    pageIds: z
+        .array(z.string())
+        .optional()
+        .default([])
+        .describe("Allowed Notion page IDs. From fetchResourcesForIntegration, use pages' id from resources[]. At least one of databaseIds or pageIds required."),
+    pageNames: z.array(z.string()).optional().default([]).describe("Display names for pages, parallel to pageIds.")
 })
 
 const LinearInputConfigSchema = BaseConfigSchema.extend({
@@ -539,15 +555,7 @@ const InputConfigSchema = z
     })
 
 const OutputConfigSchema = z
-    .discriminatedUnion("configType", [
-        SlackOutputConfigSchema,
-        NotionDatabaseConfigSchema,
-        NotionPageConfigSchema,
-        LinearOutputConfigSchema,
-        JiraConfigSchema,
-        ConfluenceConfigSchema,
-        GmailOutputConfigSchema
-    ])
+    .discriminatedUnion("configType", [SlackOutputConfigSchema, NotionConfigSchema, LinearOutputConfigSchema, JiraConfigSchema, ConfluenceConfigSchema, GmailOutputConfigSchema])
     .superRefine((value, ctx) => {
         enforceNonSystemIntegrationId(value, ctx)
     })
@@ -609,7 +617,7 @@ export const AgentSchema = z
         outputs: z.array(AgentOutputSchema).min(1),
         knowledgeBases: z.array(AgentKnowledgeBaseSchema).nullable(),
         notificationSettings: AgentNotificationSettingsSchema.nullable(),
-        toolApprovals: z.array(z.string()).nullable(),
+        toolApprovals: z.array(ToolNameSchema).nullable(),
         updatedAt: z.string().nullable()
     })
     .strict()

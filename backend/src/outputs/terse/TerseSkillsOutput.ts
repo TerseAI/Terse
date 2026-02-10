@@ -2,9 +2,12 @@ import { Tool } from "@openai/agents"
 import { webSearchTool } from "@openai/agents"
 import { OutputConfigType } from "@prisma/client"
 
+import { buildDummyOutputConfig } from "../../buildDummyConfigForCapability"
+import { type CapabilityDescription, CapabilityRole, extractToolMetadata, getConfigMetadata } from "../../capabilityHelpers"
 import { ConfigInstance } from "../../shared/Configs"
 import { IntegrationType } from "../../shared/Integrations"
 import { AgentOutputWithConfigs, PrismaTransaction } from "../../types/prisma"
+import { convertOutputConfigTypeToConfigType } from "../../utility/typeConverters"
 import { Output, ToolboxEntry } from "../abstract/Output"
 
 export class TerseSkillsOutput extends Output<ConfigInstance> {
@@ -22,6 +25,22 @@ export class TerseSkillsOutput extends Output<ConfigInstance> {
         super(OutputConfigType.TERSE, toolbox)
     }
 
+    getCapabilityDescription(): CapabilityDescription {
+        const configType = convertOutputConfigTypeToConfigType(OutputConfigType.TERSE)
+        const meta = getConfigMetadata(configType)
+        const tools = extractToolMetadata(this.toolbox)
+        return {
+            name: meta.name,
+            description: meta.description,
+            configType,
+            integrationType: meta.integrationType,
+            role: CapabilityRole.OUTPUT,
+            tools,
+            configFields: {},
+            systemInstructions: ""
+        }
+    }
+
     async validateConfig(_output: ConfigInstance, _userId: string): Promise<void> {
         // No validation needed - this output has no config
     }
@@ -30,8 +49,11 @@ export class TerseSkillsOutput extends Output<ConfigInstance> {
         // No database records needed - this is always available
     }
 
+    protected getDummyConfigForCapability(): AgentOutputWithConfigs {
+        return buildDummyOutputConfig("example", { config_type: OutputConfigType.TERSE })
+    }
+
     protected getSystemInstructionsForConfigs(_configs: AgentOutputWithConfigs[]): string {
-        // No system instructions needed - these are always available skills
         return ""
     }
 }

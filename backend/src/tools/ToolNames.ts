@@ -1,3 +1,5 @@
+import { z } from "zod"
+
 /**
  * Centralized definition of all tool names used in the system.
  *
@@ -19,12 +21,14 @@ export const ToolName = {
     JIRA_SEARCH_TICKET: "jira_search_ticket",
 
     // Notion Tools
-    NOTION_MODIFY_PAGE: "notion_modify_page",
+    NOTION_CREATE_OR_UPDATE_PAGE: "notion_create_or_update_page",
+    NOTION_CREATE_OR_UPDATE_DATABASE_ROW: "notion_create_or_update_database_row",
     NOTION_MODIFY_BLOCKS: "notion_modify_blocks",
     NOTION_QUERY_PAGE: "notion_query_page",
     NOTION_QUERY_DATABASE: "notion_query_database",
     NOTION_GET_SCHEMA: "notion_get_schema",
     NOTION_FETCH_RELATED_EVENTS: "notion_fetch_related_events",
+    NOTION_LIST_USERS: "notion_list_users",
 
     // Gmail Tools
     GMAIL_SEND_EMAIL: "gmail_send_email",
@@ -77,6 +81,11 @@ export type ToolName = (typeof ToolName)[keyof typeof ToolName]
  * Array of all valid tool names for runtime validation
  */
 export const ALL_TOOL_NAMES: readonly string[] = Object.values(ToolName)
+
+/**
+ * Zod schema for a single tool name. Use for validating toolApprovals and API request bodies.
+ */
+export const ToolNameSchema = z.enum(ALL_TOOL_NAMES as [string, ...string[]])
 
 /**
  * Set of all valid tool names for O(1) lookup

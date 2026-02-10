@@ -1,6 +1,7 @@
 import { Tool } from "@openai/agents"
 import { OutputConfigType } from "@prisma/client"
 
+import { CapabilityDescription } from "../../capabilityHelpers"
 import { ConfigInstance } from "../../shared/Configs"
 import { IntegrationType } from "../../shared/Integrations"
 import { AgentOutputWithConfigs, PrismaTransaction, User } from "../../types/prisma"
@@ -22,21 +23,26 @@ export abstract class Output<TConfig extends ConfigInstance> {
         this.toolbox = toolbox
     }
 
+    abstract getCapabilityDescription(): CapabilityDescription
+
     abstract validateConfig(output: TConfig, userId: string): Promise<void>
 
     abstract addOutputToAgent(tx: PrismaTransaction, agentOutputId: string, output: TConfig): Promise<void>
 
     /**
-     * Returns system instructions for this output.
-     * Uses the configs property that should be set when the instance is created.
+     * Returns system instructions. When useDummyConfig is true, uses a minimal dummy config
+     * instead of this.configs—useful for capability lookup where no real configs exist.
      */
-    getSystemInstructions(): string {
-        return this.getSystemInstructionsForConfigs(this.configs)
+    getSystemInstructions(useDummyConfig = false): string {
+        const configs = useDummyConfig ? [this.getDummyConfigForCapability()] : this.configs
+        return this.getSystemInstructionsForConfigs(configs)
     }
+
+    /** Minimal dummy config for generating system instructions when no real configs exist. */
+    protected abstract getDummyConfigForCapability(): AgentOutputWithConfigs
 
     /**
      * Protected method that subclasses implement to generate system instructions.
-     * This maintains the existing signature for subclasses.
      */
     protected abstract getSystemInstructionsForConfigs(configs: AgentOutputWithConfigs[]): string
 }

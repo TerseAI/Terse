@@ -1,9 +1,11 @@
 import { Tool } from "@openai/agents"
 import { KnowledgeBaseConfigType } from "@prisma/client"
 
+import { buildDummyKnowledgeBaseConfig } from "../../buildDummyConfigForCapability"
+import { type CapabilityDescription, CapabilityRole, extractToolMetadata, getConfigMetadata } from "../../capabilityHelpers"
 import { ToolboxEntry } from "../../outputs/abstract/Output"
 import { linearSearchTicketTool } from "../../outputs/linear/tools/searchTicket"
-import { LinearKBConfig } from "../../shared/Configs"
+import { ConfigType, LinearKBConfig } from "../../shared/Configs"
 import { IntegrationType } from "../../shared/Integrations"
 import { AgentKnowledgeBaseWithConfigs, PrismaTransaction } from "../../types/prisma"
 import { KnowledgeBase } from "../abstract/KnowledgeBase"
@@ -32,6 +34,41 @@ export class LinearKnowledgeBase extends KnowledgeBase<LinearKBConfig> {
         ]
 
         super(KnowledgeBaseConfigType.LINEAR, toolbox)
+    }
+
+    getCapabilityDescription(): CapabilityDescription {
+        const meta = getConfigMetadata(ConfigType.LINEAR_KB)
+        const tools = extractToolMetadata(this.toolbox)
+        const systemInstructions = this.getSystemInstructions(true)
+
+        return {
+            name: meta.name,
+            description: meta.description,
+            configType: ConfigType.LINEAR_KB,
+            integrationType: meta.integrationType,
+            role: CapabilityRole.KNOWLEDGE_BASE,
+            tools,
+            configFields: {
+                integrationId: "Linear integration connection",
+                teamId: "Linear team ID (optional filter)",
+                teamName: "Team display name",
+                projectId: "Linear project ID (optional filter)",
+                projectName: "Project display name"
+            },
+            systemInstructions
+        }
+    }
+
+    protected getDummyConfigForCapability(): AgentKnowledgeBaseWithConfigs {
+        return buildDummyKnowledgeBaseConfig("example", {
+            config_type: KnowledgeBaseConfigType.LINEAR,
+            linear_kb_config: {
+                team_id: "team-123",
+                team_name: "Example Team",
+                project_id: "proj-123",
+                project_name: "Example Project"
+            }
+        })
     }
 
     async validateConfig(_knowledgeBase: LinearKBConfig, _userId: string): Promise<void> {

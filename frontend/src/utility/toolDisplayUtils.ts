@@ -228,13 +228,15 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
     // ===================
     // Notion Tools
     // ===================
-    notion_modify_page: {
+    notion_create_or_update_database_row: {
+        preparing: "Planning database row change",
+        executing: () => "Creating or updating database row",
+        complete: () => "Database row created or updated"
+    },
+    notion_create_or_update_page: {
         preparing: "Planning page changes",
-        executing: () => "Modifying page",
-        complete: params => {
-            const pageId = params?.page_id as string | undefined
-            return pageId ? "Updated Notion page" : "Created Notion page"
-        }
+        executing: () => "Creating or updating page",
+        complete: () => "Page created or updated"
     },
     notion_modify_blocks: {
         preparing: "Planning block changes",

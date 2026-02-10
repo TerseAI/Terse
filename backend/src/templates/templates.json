@@ -25,7 +25,7 @@
         "outputs": [
             {
                 "config": {
-                    "configType": "notion_database",
+                    "configType": "notion",
                     "integrationType": "notion"
                 }
             }
@@ -89,7 +89,7 @@
         "outputs": [
             {
                 "config": {
-                    "configType": "notion_page",
+                    "configType": "notion",
                     "integrationType": "notion"
                 }
             }
@@ -254,7 +254,7 @@
         "outputs": [
             {
                 "config": {
-                    "configType": "notion_page",
+                    "configType": "notion",
                     "integrationType": "notion"
                 }
             }
@@ -282,7 +282,7 @@
         "outputs": [
             {
                 "config": {
-                    "configType": "notion_database",
+                    "configType": "notion",
                     "integrationType": "notion"
                 }
             }
@@ -459,7 +459,7 @@
         "outputs": [
             {
                 "config": {
-                    "configType": "notion_page",
+                    "configType": "notion",
                     "integrationType": "notion"
                 }
             }
@@ -495,7 +495,7 @@
         "outputs": [
             {
                 "config": {
-                    "configType": "notion_database",
+                    "configType": "notion",
                     "integrationType": "notion"
                 }
             }
@@ -544,7 +544,7 @@
         "outputs": [
             {
                 "config": {
-                    "configType": "notion_page",
+                    "configType": "notion",
                     "integrationType": "notion"
                 }
             }
@@ -794,7 +794,7 @@
         "outputs": [
             {
                 "config": {
-                    "configType": "notion_page",
+                    "configType": "notion",
                     "integrationType": "notion"
                 }
             }

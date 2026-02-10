@@ -1,10 +1,13 @@
 import { Tool } from "@openai/agents"
 import { OutputConfigType } from "@prisma/client"
 
+import { buildDummyOutputConfig } from "../../buildDummyConfigForCapability"
+import { type CapabilityDescription, CapabilityRole, extractToolMetadata, getConfigMetadata } from "../../capabilityHelpers"
 import { slackListUsersTool } from "../../knowledgeBase/slack/tools/listUsers"
 import { SlackOutputConfig } from "../../shared/Configs"
 import { IntegrationType } from "../../shared/Integrations"
-import { AgentOutputWithConfigs, PrismaTransaction, User } from "../../types/prisma"
+import { AgentOutputWithConfigs, PrismaTransaction } from "../../types/prisma"
+import { convertOutputConfigTypeToConfigType } from "../../utility/typeConverters"
 import { Output, ToolboxEntry } from "../abstract/Output"
 
 import { slackSendMessageTool } from "./tools/sendMessage"
@@ -16,6 +19,40 @@ export class SlackOutput extends Output<SlackOutputConfig> {
             { tool: slackListUsersTool as Tool, isReadOnly: true, integration: IntegrationType.SLACK, displayName: "List users" }
         ]
         super(OutputConfigType.SLACK_CHANNEL, toolbox)
+    }
+
+    getCapabilityDescription(): CapabilityDescription {
+        const configType = convertOutputConfigTypeToConfigType(OutputConfigType.SLACK_CHANNEL)
+        const meta = getConfigMetadata(configType)
+        const tools = extractToolMetadata(this.toolbox)
+        const systemInstructions = this.getSystemInstructions(true)
+
+        return {
+            name: meta.name,
+            description: meta.description,
+            configType,
+            integrationType: meta.integrationType,
+            role: CapabilityRole.OUTPUT,
+            tools,
+            configFields: {
+                integrationId: "Slack integration connection",
+                channelId: "Slack channel or DM channel ID",
+                channelName: "Channel display name",
+                userIds: "Slack user IDs for DMs (when sending to DMs instead of channel)"
+            },
+            systemInstructions
+        }
+    }
+
+    protected getDummyConfigForCapability(): AgentOutputWithConfigs {
+        return buildDummyOutputConfig("example", {
+            config_type: OutputConfigType.SLACK_CHANNEL,
+            slack_config: {
+                channel_id: "C123",
+                channel_name: "Example Channel",
+                user_ids: []
+            }
+        })
     }
 
     async validateConfig(output: SlackOutputConfig, _userId: string): Promise<void> {

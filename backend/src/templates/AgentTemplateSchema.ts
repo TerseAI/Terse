@@ -53,20 +53,14 @@ const SlackOutputConfigSchema = BaseConfigSchema.extend({
     userNames: z.array(z.string()).optional()
 })
 
-// Notion Database config schema
-const NotionDatabaseConfigSchema = BaseConfigSchema.extend({
-    configType: z.literal(ConfigType.NOTION_DATABASE),
+// Notion config schema (unified: list of allowed databases and/or pages)
+const NotionConfigSchema = BaseConfigSchema.extend({
+    configType: z.literal(ConfigType.NOTION),
     integrationType: z.literal(IntegrationType.NOTION),
-    databaseId: z.string().optional(),
-    databaseName: z.string().optional()
-})
-
-// Notion Page config schema
-const NotionPageConfigSchema = BaseConfigSchema.extend({
-    configType: z.literal(ConfigType.NOTION_PAGE),
-    integrationType: z.literal(IntegrationType.NOTION),
-    pageId: z.string().optional(),
-    pageName: z.string().optional()
+    databaseIds: z.array(z.string()).optional().default([]),
+    databaseNames: z.array(z.string()).optional().default([]),
+    pageIds: z.array(z.string()).optional().default([]),
+    pageNames: z.array(z.string()).optional().default([])
 })
 
 // Linear Trigger config schema
@@ -169,8 +163,7 @@ export const ConfigTemplateSchema = z.discriminatedUnion("configType", [
     FigmaConfigSchema,
     SlackConfigSchema,
     SlackOutputConfigSchema,
-    NotionDatabaseConfigSchema,
-    NotionPageConfigSchema,
+    NotionConfigSchema,
     LinearTriggerConfigSchema,
     LinearOutputConfigSchema,
     GitHubConfigSchema,
