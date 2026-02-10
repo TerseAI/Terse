@@ -117,7 +117,7 @@ export class EventProcessor {
 
     /**
      * Process the event against a single agent by ID, skipping matching logic.
-     * Used for sample event execution (triggerAgentRun) to test a specific agent.
+     * Used for triggering manual agent runs.
      */
     async processSingleAgent(agentId: string): Promise<ProcessorResult[]> {
         logger.info(`Processing single agent ${agentId} for event: ${this.inputEvent.debugLog()}`)
