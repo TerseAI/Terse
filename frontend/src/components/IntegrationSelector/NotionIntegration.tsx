@@ -6,11 +6,10 @@ import { useNotionIntegrations } from "@/hooks/api/useNotionIntegrations"
 import { useIntegrationId } from "@/hooks/useIntegrationId"
 import { useOAuthConnection } from "@/hooks/useOAuthConnection"
 import { IntegrationType, NotionIntegration as NotionIntegrationType } from "@/shared/Integrations"
-import { NotionResourceType } from "@/shared/types"
 
 import { IconForConfigType } from "../../pages/Agents/components/Integration"
-import { ConfigType, NotionConfig, NotionPageConfig } from "../../shared/Configs"
-import { NotionResourceSelector } from "../NotionResourceSelector"
+import { ConfigType, NotionConfig } from "../../shared/Configs"
+import { type NotionScopeItem, NotionScopePicker } from "../NotionScopePickerDialog"
 import DropdownSelect from "../ui/DropdownSelect"
 import { Button } from "../ui/button"
 
@@ -19,15 +18,28 @@ import { InputConfigSelectorProps } from "./types"
 export function NotionIntegration({ input, variant, setConfig }: InputConfigSelectorProps) {
     const { integrations, isLoading } = useNotionIntegrations()
     const { connect: connectOAuth, isConnecting: isOAuthConnecting } = useOAuthConnection<IntegrationType.NOTION>(IntegrationType.NOTION, {})
-    const isPageConfig = input.configType === ConfigType.NOTION_PAGE
-    const currentConfig = input.config as NotionConfig | NotionPageConfig | undefined
-    const [selectedIntegrationId, setSelectedIntegrationId] = useIntegrationId(currentConfig, [ConfigType.NOTION_DATABASE, ConfigType.NOTION_PAGE])
+    const currentConfig = input.config as NotionConfig | undefined
+    const [selectedIntegrationId, setSelectedIntegrationId] = useIntegrationId(currentConfig, [ConfigType.NOTION])
 
     useEffect(() => {
         if (integrations.length > 0 && !selectedIntegrationId) {
             setSelectedIntegrationId(integrations[0].id)
         }
-    }, [integrations, selectedIntegrationId])
+    }, [integrations, selectedIntegrationId, setSelectedIntegrationId])
+
+    const id = selectedIntegrationId || currentConfig?.integrationId || ""
+
+    const handleScopeConfirm = (databases: NotionScopeItem[], pages: NotionScopeItem[]) => {
+        setConfig(
+            new NotionConfig(
+                id,
+                databases.map(d => d.id),
+                databases.map(d => d.name),
+                pages.map(p => p.id),
+                pages.map(p => p.name)
+            )
+        )
+    }
 
     if (isLoading) {
         return (
@@ -64,47 +76,40 @@ export function NotionIntegration({ input, variant, setConfig }: InputConfigSele
     }))
     const selectedIntegration = connectionSelections.find(c => c.value === selectedIntegrationId) ?? null
 
-    // Card variant: compact view
+    const dbCount = currentConfig?.databaseIds?.length ?? 0
+    const pageCount = currentConfig?.pageIds?.length ?? 0
+    const isComplete = currentConfig?.isComplete()
+
     if (variant === "card") {
-        const isComplete = currentConfig?.isComplete()
         if (!isComplete) {
-            const needsDatabase = !isPageConfig && !(currentConfig as NotionConfig)?.databaseId
-            const needsPage = isPageConfig && !(currentConfig as NotionPageConfig)?.pageId
-            if (needsDatabase) {
-                return (
-                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <AlertTriangleIcon className="size-3 text-yellow-500" />
-                        Select database
-                    </div>
-                )
-            }
-            if (needsPage) {
-                return (
-                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <AlertTriangleIcon className="size-3 text-yellow-500" />
-                        Select page
-                    </div>
-                )
-            }
             return (
                 <div className="flex items-center gap-1 text-xs text-muted-foreground">
                     <AlertTriangleIcon className="size-3 text-yellow-500" />
-                    Select workspace
+                    Select at least one database or page
                 </div>
             )
         }
-        return <div className="text-sm">{selectedIntegration ? selectedIntegration.label : "No connection selected"}</div>
+        const summary =
+            dbCount > 0 && pageCount > 0
+                ? `${dbCount} database${dbCount !== 1 ? "s" : ""}, ${pageCount} page${pageCount !== 1 ? "s" : ""}`
+                : dbCount > 0
+                  ? `${dbCount} database${dbCount !== 1 ? "s" : ""}`
+                  : pageCount > 0
+                    ? `${pageCount} page${pageCount !== 1 ? "s" : ""}`
+                    : null
+        return (
+            <div className="text-sm">
+                {selectedIntegration ? selectedIntegration.label : "No connection selected"}
+                {summary && <span className="text-muted-foreground ml-1">({summary})</span>}
+            </div>
+        )
     }
 
-    const selectedResourceId = isPageConfig ? (currentConfig as NotionPageConfig)?.pageId : (currentConfig as NotionConfig)?.databaseId
-    const selectedResourceName = isPageConfig ? (currentConfig as NotionPageConfig)?.pageName : (currentConfig as NotionConfig)?.databaseName
-
-    // Dialog variant: full view
     return (
         <div className="flex flex-col gap-3 min-w-0 overflow-hidden">
             <div className="flex flex-row gap-2 items-center">
                 <div className="w-8 h-8 flex items-center justify-center shrink-0">
-                    <IconForConfigType type={ConfigType.NOTION_DATABASE} />
+                    <IconForConfigType type={ConfigType.NOTION} />
                 </div>
                 <div className="flex-1 min-w-0">
                     <DropdownSelect
@@ -119,24 +124,16 @@ export function NotionIntegration({ input, variant, setConfig }: InputConfigSele
                 </div>
             </div>
 
-            {/* Notion-specific resource selector */}
             {selectedIntegrationId && (
-                <div className="mt-3 pt-3 border-t border-border min-w-0 overflow-hidden">
-                    {!selectedResourceId && <p className="text-sm text-muted-foreground mb-3">Select a {isPageConfig ? "page" : "database"} to continue</p>}
-                    <NotionResourceSelector
-                        integrationId={selectedIntegrationId || ""}
-                        resourceType={isPageConfig ? "page" : "database"}
-                        selectedResourceId={selectedResourceId}
-                        selectedResourceName={selectedResourceName}
-                        onSelect={(resourceId: string, resourceName: string, resourceType: NotionResourceType) => {
-                            if (resourceType === "database") {
-                                const updatedConfig = new NotionConfig(selectedIntegrationId || "", resourceId, resourceName)
-                                setConfig(updatedConfig)
-                            } else if (resourceType === "page") {
-                                const updatedConfig = new NotionPageConfig(selectedIntegrationId || "", resourceId, resourceName)
-                                setConfig(updatedConfig)
-                            }
-                        }}
+                <div className="mt-3 pt-3 border-t border-border min-w-0 overflow-hidden space-y-2">
+                    <p className="text-sm text-muted-foreground">Select at least one database or page (required)</p>
+                    <NotionScopePicker
+                        integrationId={selectedIntegrationId}
+                        selectedDatabaseIds={currentConfig?.databaseIds ?? []}
+                        selectedDatabaseNames={currentConfig?.databaseNames ?? []}
+                        selectedPageIds={currentConfig?.pageIds ?? []}
+                        selectedPageNames={currentConfig?.pageNames ?? []}
+                        onConfirm={handleScopeConfirm}
                     />
                 </div>
             )}

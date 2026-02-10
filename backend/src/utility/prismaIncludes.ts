@@ -6,7 +6,6 @@ export function getInputConfigInclude() {
     return {
         slack_config: true,
         notion_config: true,
-        notion_page_config: true,
         linear_config: true,
         jira_config: true,
         confluence_config: true,
@@ -25,7 +24,6 @@ export function getOutputConfigInclude() {
     return {
         slack_config: true,
         notion_config: true,
-        notion_page_config: true,
         linear_config: true,
         jira_config: true,
         confluence_config: true,

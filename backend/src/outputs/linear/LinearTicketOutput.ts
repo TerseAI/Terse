@@ -1,10 +1,13 @@
 import { Tool } from "@openai/agents"
 import { OutputConfigType } from "@prisma/client"
 
+import { buildDummyOutputConfig } from "../../buildDummyConfigForCapability"
+import { type CapabilityDescription, CapabilityRole, extractToolMetadata, getConfigMetadata } from "../../capabilityHelpers"
 import { db } from "../../prismaClient"
 import { LinearOutputConfig } from "../../shared/Configs"
 import { IntegrationType } from "../../shared/Integrations"
-import { AgentOutputWithConfigs, PrismaTransaction, User } from "../../types/prisma"
+import { AgentOutputWithConfigs, PrismaTransaction } from "../../types/prisma"
+import { convertOutputConfigTypeToConfigType } from "../../utility/typeConverters"
 import { Output, ToolboxEntry } from "../abstract/Output"
 
 import { linearCreateTicketTool } from "./tools/createTicket"
@@ -19,6 +22,38 @@ export class LinearTicketOutput extends Output<LinearOutputConfig> {
             { tool: linearUpdateTicketTool as Tool, isReadOnly: false, integration: IntegrationType.LINEAR, displayName: "Update ticket" }
         ]
         super(OutputConfigType.LINEAR_TICKET, toolbox)
+    }
+
+    getCapabilityDescription(): CapabilityDescription {
+        const configType = convertOutputConfigTypeToConfigType(OutputConfigType.LINEAR_TICKET)
+        const meta = getConfigMetadata(configType)
+        const tools = extractToolMetadata(this.toolbox)
+        const systemInstructions = this.getSystemInstructions(true)
+
+        return {
+            name: meta.name,
+            description: meta.description,
+            configType,
+            integrationType: meta.integrationType,
+            role: CapabilityRole.OUTPUT,
+            tools,
+            configFields: {
+                integrationId: "Linear integration connection",
+                teamId: "Linear team ID",
+                teamName: "Team display name"
+            },
+            systemInstructions
+        }
+    }
+
+    protected getDummyConfigForCapability(): AgentOutputWithConfigs {
+        return buildDummyOutputConfig("example", {
+            config_type: OutputConfigType.LINEAR_TICKET,
+            linear_config: {
+                team_id: "team-123",
+                team_name: "Example Team"
+            }
+        })
     }
 
     async validateConfig(output: LinearOutputConfig, _userId: string): Promise<void> {

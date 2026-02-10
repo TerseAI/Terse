@@ -16,7 +16,6 @@ import {
     LinearKBConfig,
     LinearOutputConfig,
     NotionConfig,
-    NotionPageConfig,
     PosthogConfig,
     SlackConfig,
     SlackKBConfig,
@@ -185,12 +184,9 @@ export const convertPrismaConfigToConfigInstance = (channelInput: AgentTriggerWi
         )
     }
 
-    if (channelInput.notion_page_config) {
-        return new NotionPageConfig(integrationId, channelInput.notion_page_config.page_id || undefined, channelInput.notion_page_config.page_name || undefined)
-    }
-
     if (channelInput.notion_config) {
-        return new NotionConfig(integrationId, channelInput.notion_config.database_id || undefined, channelInput.notion_config.database_name || undefined)
+        const nc = channelInput.notion_config
+        return new NotionConfig(integrationId, nc.database_ids ?? [], nc.database_names ?? [], nc.page_ids ?? [], nc.page_names ?? [])
     }
 
     if (channelInput.linear_config) {
@@ -248,13 +244,9 @@ export const convertPrismaOutputConfigToConfigInstance = (channelOutput: AgentOu
     const integrationId = channelOutput.integration_id
 
     // Determine which config is present and create the appropriate ConfigInstance
-    // Note: Outputs only support NOTION_PAGE, NOTION_DATABASE, and CONFLUENCE
-    if (channelOutput.notion_page_config) {
-        return new NotionPageConfig(integrationId, channelOutput.notion_page_config.page_id || undefined, channelOutput.notion_page_config.page_name || undefined)
-    }
-
     if (channelOutput.notion_config) {
-        return new NotionConfig(integrationId, channelOutput.notion_config.database_id || undefined, channelOutput.notion_config.database_name || undefined)
+        const nc = channelOutput.notion_config
+        return new NotionConfig(integrationId, nc.database_ids ?? [], nc.database_names ?? [], nc.page_ids ?? [], nc.page_names ?? [])
     }
 
     if (channelOutput.confluence_config) {
@@ -291,8 +283,7 @@ export const convertPrismaOutputConfigToConfigInstance = (channelOutput: AgentOu
 
     // Type guard to ensure we implement conversion here
     switch (channelOutput.config_type) {
-        case OutputConfigType.NOTION_PAGE:
-        case OutputConfigType.NOTION_DATABASE:
+        case OutputConfigType.NOTION:
         case OutputConfigType.CONFLUENCE:
         case OutputConfigType.LINEAR_TICKET:
         case OutputConfigType.JIRA_TICKET:
@@ -317,9 +308,7 @@ export const convertConfigTypeToInputConfigType = (configType: ConfigType): Inpu
             return InputConfigType.FIGMA
         case ConfigType.SLACK:
             return InputConfigType.SLACK
-        case ConfigType.NOTION_PAGE:
-            return InputConfigType.NOTION_PAGE
-        case ConfigType.NOTION_DATABASE:
+        case ConfigType.NOTION:
             return InputConfigType.NOTION_DATABASE
         case ConfigType.LINEAR_INPUT:
         case ConfigType.LINEAR_OUTPUT:
@@ -352,6 +341,8 @@ export const convertConfigTypeToInputConfigType = (configType: ConfigType): Inpu
             throw new Error("LINEAR_KB is a knowledge base type, not an input type")
         case ConfigType.SLACK_KB:
             throw new Error("SLACK_KB is a knowledge base type, not an input type")
+        case ConfigType.TERSE:
+            throw new Error("TERSE is an output type, not an input type")
         default:
             throw configType satisfies never
     }
@@ -366,9 +357,8 @@ export const convertInputConfigTypeToConfigType = (inputConfigType: InputConfigT
         case InputConfigType.SLACK:
             return ConfigType.SLACK
         case InputConfigType.NOTION_PAGE:
-            return ConfigType.NOTION_PAGE
         case InputConfigType.NOTION_DATABASE:
-            return ConfigType.NOTION_DATABASE
+            return ConfigType.NOTION
         case InputConfigType.LINEAR:
             return ConfigType.LINEAR_INPUT
         case InputConfigType.GITHUB:
@@ -388,14 +378,11 @@ export const convertInputConfigTypeToConfigType = (inputConfigType: InputConfigT
 
 /**
  * Converts ConfigType to OutputConfigType.
- * Only NOTION_PAGE, NOTION_DATABASE, and CONFLUENCE are valid output config types.
  */
 export const convertConfigTypeToOutputConfigType = (configType: ConfigType): OutputConfigType => {
     switch (configType) {
-        case ConfigType.NOTION_PAGE:
-            return OutputConfigType.NOTION_PAGE
-        case ConfigType.NOTION_DATABASE:
-            return OutputConfigType.NOTION_DATABASE
+        case ConfigType.NOTION:
+            return OutputConfigType.NOTION
         case ConfigType.CONFLUENCE:
             return OutputConfigType.CONFLUENCE
         case ConfigType.LINEAR_OUTPUT:
@@ -406,10 +393,34 @@ export const convertConfigTypeToOutputConfigType = (configType: ConfigType): Out
             return OutputConfigType.SLACK_CHANNEL
         case ConfigType.GMAIL_OUTPUT:
             return OutputConfigType.GMAIL
+        case ConfigType.TERSE:
+            return OutputConfigType.TERSE
         default:
-            throw new Error(
-                `ConfigType ${configType} is not a valid output config type. Supported output config types are: NOTION_PAGE, NOTION_DATABASE, CONFLUENCE, LINEAR, JIRA, SLACK_OUTPUT, GMAIL_OUTPUT.`
-            )
+            throw new Error(`ConfigType ${configType} is not a valid output config type. Supported: NOTION, CONFLUENCE, LINEAR, JIRA, SLACK_OUTPUT, GMAIL_OUTPUT, TERSE.`)
+    }
+}
+
+/**
+ * Converts OutputConfigType to ConfigType (for outputs that have a ConfigType in CONFIG_DETAILS).
+ */
+export const convertOutputConfigTypeToConfigType = (outputConfigType: OutputConfigType): ConfigType => {
+    switch (outputConfigType) {
+        case OutputConfigType.NOTION:
+            return ConfigType.NOTION
+        case OutputConfigType.CONFLUENCE:
+            return ConfigType.CONFLUENCE
+        case OutputConfigType.LINEAR_TICKET:
+            return ConfigType.LINEAR_OUTPUT
+        case OutputConfigType.JIRA_TICKET:
+            return ConfigType.JIRA
+        case OutputConfigType.SLACK_CHANNEL:
+            return ConfigType.SLACK_OUTPUT
+        case OutputConfigType.GMAIL:
+            return ConfigType.GMAIL_OUTPUT
+        case OutputConfigType.TERSE:
+            return ConfigType.TERSE
+        default:
+            throw outputConfigType satisfies never
     }
 }
 
@@ -419,8 +430,7 @@ export const convertConfigTypeToOutputConfigType = (configType: ConfigType): Out
  */
 export const convertOutputConfigTypeToIntegrationType = (outputConfigType: OutputConfigType): IntegrationType => {
     switch (outputConfigType) {
-        case OutputConfigType.NOTION_PAGE:
-        case OutputConfigType.NOTION_DATABASE:
+        case OutputConfigType.NOTION:
             return IntegrationType.NOTION
         case OutputConfigType.CONFLUENCE:
             return IntegrationType.ATLASSIAN

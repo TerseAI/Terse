@@ -1,8 +1,10 @@
 import { Tool } from "@openai/agents"
 import { KnowledgeBaseConfigType } from "@prisma/client"
 
+import { buildDummyKnowledgeBaseConfig } from "../../buildDummyConfigForCapability"
+import { type CapabilityDescription, CapabilityRole, extractToolMetadata, getConfigMetadata } from "../../capabilityHelpers"
 import { ToolboxEntry } from "../../outputs/abstract/Output"
-import { SlackKBConfig } from "../../shared/Configs"
+import { ConfigType, SlackKBConfig } from "../../shared/Configs"
 import { IntegrationType } from "../../shared/Integrations"
 import { AgentKnowledgeBaseWithConfigs, PrismaTransaction } from "../../types/prisma"
 import { KnowledgeBase } from "../abstract/KnowledgeBase"
@@ -39,6 +41,39 @@ export class SlackKnowledgeBase extends KnowledgeBase<SlackKBConfig> {
         ]
 
         super(KnowledgeBaseConfigType.SLACK, toolbox)
+    }
+
+    getCapabilityDescription(): CapabilityDescription {
+        const meta = getConfigMetadata(ConfigType.SLACK_KB)
+        const tools = extractToolMetadata(this.toolbox)
+        const systemInstructions = this.getSystemInstructions(true)
+
+        return {
+            name: meta.name,
+            description: meta.description,
+            configType: ConfigType.SLACK_KB,
+            integrationType: meta.integrationType,
+            role: CapabilityRole.KNOWLEDGE_BASE,
+            tools,
+            configFields: {
+                integrationId: "Slack integration connection",
+                channelIds: "Slack channel IDs to read (optional; omit for all accessible channels)",
+                allowDms: "Whether to allow reading DMs",
+                userIds: "Specific Slack user IDs to filter DM conversations (optional)"
+            },
+            systemInstructions
+        }
+    }
+
+    protected getDummyConfigForCapability(): AgentKnowledgeBaseWithConfigs {
+        return buildDummyKnowledgeBaseConfig("example", {
+            config_type: KnowledgeBaseConfigType.SLACK,
+            slack_kb_config: {
+                channel_ids: ["C123"],
+                allow_dms: false,
+                user_ids: []
+            }
+        })
     }
 
     async validateConfig(_knowledgeBase: SlackKBConfig, _userId: string): Promise<void> {

@@ -1,5 +1,6 @@
 import { Request, Response } from "express"
 import { version as uuidVersion, validate as validateUuid } from "uuid"
+import { z } from "zod"
 
 import { INTEGRATION_REGISTRY, isSystemIntegration } from "../integrations/abstract/IntegrationRegistry"
 import { KnowledgeBaseFactory } from "../knowledgeBase/abstract/KnowledgeBaseFactory"

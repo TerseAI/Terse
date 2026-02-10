@@ -1,5 +1,6 @@
 import chalk from "chalk"
 
+import { CapabilityDescription, CapabilityRole, getConfigMetadata } from "../capabilityHelpers"
 import { FigmaIntegrationManager } from "../integrations/FigmaIntegration"
 import { SlackIntegrationManager } from "../integrations/SlackIntegration"
 import { ConfigType, FigmaConfig } from "../shared/Configs"
@@ -13,6 +14,25 @@ export class FigmaTrigger implements Trigger<FigmaConfig> {
 
     constructor() {
         this.integrationManager = new FigmaIntegrationManager()
+    }
+
+    getCapabilityDescription(): CapabilityDescription {
+        const meta = getConfigMetadata(ConfigType.FIGMA)
+        return {
+            name: meta.name,
+            description: meta.description,
+            configType: ConfigType.FIGMA,
+            integrationType: meta.integrationType,
+            role: CapabilityRole.TRIGGER,
+            tools: [],
+            configFields: {
+                integrationId: "<integrationId>",
+                fileKey: "Figma file key (from fetchResourcesForIntegration)",
+                fileName: "Figma file display name",
+                teamId: "Figma team ID (required for webhook creation)"
+            },
+            systemInstructions: ""
+        }
     }
 
     async validateConfig(trigger: FigmaConfig, _userId: string): Promise<void> {

@@ -4,6 +4,8 @@ import chalk from "chalk"
 import { z } from "zod"
 
 import { SessionWithTracking } from "../agent/AgentRunner/AgentRunner"
+import { buildDummyOutputConfig } from "../buildDummyConfigForCapability"
+import { type CapabilityDescription, CapabilityRole, extractToolMetadata, getConfigMetadata } from "../capabilityHelpers"
 import { AtlassianClient } from "../integrations/AtlassianClient"
 import logger from "../logger"
 import { db } from "../prismaClient"
@@ -13,6 +15,7 @@ import { ToolName } from "../tools/ToolNames"
 import { createNeedsApprovalFunction, formatError } from "../tools/toolUtils"
 import { AgentOutputWithConfigs, PrismaTransaction } from "../types/prisma"
 import { Session } from "../types/session"
+import { convertOutputConfigTypeToConfigType } from "../utility/typeConverters"
 
 import { Output, ToolboxEntry } from "./abstract/Output"
 
@@ -35,6 +38,42 @@ export class ConfluenceOutput extends Output<ConfluenceConfig> {
             }
         ]
         super(OutputConfigType.CONFLUENCE, toolbox)
+    }
+
+    getCapabilityDescription(): CapabilityDescription {
+        const configType = convertOutputConfigTypeToConfigType(OutputConfigType.CONFLUENCE)
+        const meta = getConfigMetadata(configType)
+        const tools = extractToolMetadata(this.toolbox)
+        const systemInstructions = this.getSystemInstructions(true)
+
+        return {
+            name: meta.name,
+            description: meta.description,
+            configType,
+            integrationType: meta.integrationType,
+            role: CapabilityRole.OUTPUT,
+            tools,
+            configFields: {
+                integrationId: "Atlassian/Confluence integration connection",
+                spaceName: "Confluence space name",
+                spaceId: "Confluence space ID",
+                pageId: "Confluence page ID to update",
+                pageName: "Page display name"
+            },
+            systemInstructions
+        }
+    }
+
+    protected getDummyConfigForCapability(): AgentOutputWithConfigs {
+        return buildDummyOutputConfig("example", {
+            config_type: OutputConfigType.CONFLUENCE,
+            confluence_config: {
+                space_name: "Example Space",
+                space_id: "123",
+                page_id: "456",
+                page_name: "Example Page"
+            }
+        })
     }
 
     async validateConfig(output: ConfluenceConfig, _userId: string): Promise<void> {

@@ -1,10 +1,12 @@
 import { Tool } from "@openai/agents"
 import { KnowledgeBaseConfigType } from "@prisma/client"
 
+import { buildDummyKnowledgeBaseConfig } from "../../buildDummyConfigForCapability"
+import { type CapabilityDescription, CapabilityRole, extractToolMetadata, getConfigMetadata } from "../../capabilityHelpers"
 import logger from "../../logger"
 import { ToolboxEntry } from "../../outputs/abstract/Output"
 import { db } from "../../prismaClient"
-import { DatadogConfig } from "../../shared/Configs"
+import { ConfigType, DatadogConfig } from "../../shared/Configs"
 import { IntegrationType } from "../../shared/Integrations"
 import { AgentKnowledgeBaseWithConfigs, PrismaTransaction, User } from "../../types/prisma"
 import { Session } from "../../types/session"
@@ -29,6 +31,35 @@ export class DatadogKnowledgeBase extends KnowledgeBase<DatadogConfig> {
         ]
 
         super(KnowledgeBaseConfigType.DATADOG, toolbox)
+    }
+
+    getCapabilityDescription(): CapabilityDescription {
+        const meta = getConfigMetadata(ConfigType.DATADOG)
+        const tools = extractToolMetadata(this.toolbox)
+        const systemInstructions = this.getSystemInstructions(true)
+
+        return {
+            name: meta.name,
+            description: meta.description,
+            configType: ConfigType.DATADOG,
+            integrationType: meta.integrationType,
+            role: CapabilityRole.KNOWLEDGE_BASE,
+            tools,
+            configFields: {
+                integrationId: "Datadog integration connection",
+                defaultIndexes: 'Log indexes to search (e.g. ["main"])'
+            },
+            systemInstructions
+        }
+    }
+
+    protected getDummyConfigForCapability(): AgentKnowledgeBaseWithConfigs {
+        return buildDummyKnowledgeBaseConfig("example", {
+            config_type: KnowledgeBaseConfigType.DATADOG,
+            datadog_config: {
+                default_indexes: ["main"]
+            }
+        })
     }
 
     async addKnowledgeBaseToAgent(tx: PrismaTransaction, channelKnowledgeBaseId: string, knowledgeBase: DatadogConfig): Promise<void> {

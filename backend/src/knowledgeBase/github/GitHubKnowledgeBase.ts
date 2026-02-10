@@ -1,10 +1,12 @@
 import { Tool } from "@openai/agents"
 import { KnowledgeBaseConfigType } from "@prisma/client"
 
+import { buildDummyKnowledgeBaseConfig } from "../../buildDummyConfigForCapability"
+import { type CapabilityDescription, CapabilityRole, extractToolMetadata, getConfigMetadata, getContextLabel } from "../../capabilityHelpers"
 import { validateGithubRepositoryIds } from "../../integrations/githubValidation"
 import logger from "../../logger"
 import { ToolboxEntry } from "../../outputs/abstract/Output"
-import { GitHubKBConfig } from "../../shared/Configs"
+import { ConfigType, GitHubKBConfig } from "../../shared/Configs"
 import { IntegrationType } from "../../shared/Integrations"
 import { AgentKnowledgeBaseWithConfigs, PrismaTransaction, User } from "../../types/prisma"
 import { Session } from "../../types/session"
@@ -37,13 +39,44 @@ export class GitHubKnowledgeBase extends KnowledgeBase<GitHubKBConfig> {
         super(KnowledgeBaseConfigType.GITHUB, toolbox)
     }
 
+    getCapabilityDescription(): CapabilityDescription {
+        const meta = getConfigMetadata(ConfigType.GITHUB_KB)
+        const tools = extractToolMetadata(this.toolbox)
+        const systemInstructions = this.getSystemInstructions(true)
+
+        return {
+            name: meta.name,
+            description: meta.description,
+            configType: ConfigType.GITHUB_KB,
+            integrationType: meta.integrationType,
+            role: CapabilityRole.KNOWLEDGE_BASE,
+            tools,
+            configFields: {
+                integrationId: "GitHub integration connection",
+                repositoryIds: "Array of GitHub repository IDs to include",
+                repositoryNames: "Array of repository names (owner/repo format)"
+            },
+            systemInstructions
+        }
+    }
+
     async validateConfig(knowledgeBase: GitHubKBConfig, userId: string): Promise<void> {
         await validateGithubRepositoryIds({
             userId,
             integrationId: knowledgeBase.integrationId,
             repositoryIds: knowledgeBase.repositoryIds,
             configTypeLabel: "github_kb",
-            contextLabel: "knowledge base"
+            contextLabel: getContextLabel(CapabilityRole.KNOWLEDGE_BASE)
+        })
+    }
+
+    protected getDummyConfigForCapability(): AgentKnowledgeBaseWithConfigs {
+        return buildDummyKnowledgeBaseConfig("example", {
+            config_type: KnowledgeBaseConfigType.GITHUB,
+            github_kb_config: {
+                repository_names: ["owner/example-repo"],
+                repository_ids: [0]
+            }
         })
     }
 

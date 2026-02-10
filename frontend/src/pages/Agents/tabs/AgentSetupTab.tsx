@@ -669,7 +669,7 @@ function InputCard({
                     if (!open) handleCancel()
                 }}
             >
-                <DialogContent>
+                <DialogContent className="sm:max-w-xl">
                     <DialogHeader>
                         <DialogTitle>{needsConfiguration ? "Configure Trigger" : "Trigger Details"}</DialogTitle>
                     </DialogHeader>
@@ -809,7 +809,7 @@ function SkillCard({
                     if (!open) handleCancel()
                 }}
             >
-                <DialogContent>
+                <DialogContent className="sm:max-w-xl">
                     <DialogHeader>
                         <DialogTitle>{needsConfiguration ? "Configure Skill" : "Skill Details"}</DialogTitle>
                     </DialogHeader>

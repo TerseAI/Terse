@@ -14,11 +14,11 @@ import {
     LinearKBConfig,
     LinearOutputConfig,
     NotionConfig,
-    NotionPageConfig,
     PosthogConfig,
     SlackConfig,
     SlackKBConfig,
     SlackOutputConfig,
+    TerseConfig,
     TimeTriggerConfig
 } from "@/shared/Configs"
 
@@ -56,13 +56,9 @@ export function deserializeConfig(jsonConfig: any): ConfigInstance {
             const slackConfig = jsonConfig as SlackConfig
             return new SlackConfig(integrationId, slackConfig.channelId, slackConfig.channelName, slackConfig.listenToUserDms, slackConfig.userIds)
 
-        case ConfigType.NOTION_DATABASE:
+        case ConfigType.NOTION:
             const notionConfig = jsonConfig as NotionConfig
-            return new NotionConfig(integrationId, notionConfig.databaseId, notionConfig.databaseName)
-
-        case ConfigType.NOTION_PAGE:
-            const notionPageConfig = jsonConfig as NotionPageConfig
-            return new NotionPageConfig(integrationId, notionPageConfig.pageId, notionPageConfig.pageName)
+            return new NotionConfig(integrationId, notionConfig.databaseIds ?? [], notionConfig.databaseNames ?? [], notionConfig.pageIds ?? [], notionConfig.pageNames ?? [])
 
         case ConfigType.LINEAR_INPUT:
             const linearInputConfig = jsonConfig as LinearInputConfig
@@ -114,7 +110,8 @@ export function deserializeConfig(jsonConfig: any): ConfigInstance {
                 slackKBConfig.userIds ?? [],
                 slackKBConfig.userNames ?? []
             )
-
+        case ConfigType.TERSE:
+            return new TerseConfig()
         default:
             const _exhaustive: never = configType
             throw new Error(`Unknown config type: ${_exhaustive}`)

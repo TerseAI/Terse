@@ -11,7 +11,8 @@ import {
     LinearIcon,
     NotionIcon,
     PosthogIcon,
-    SlackIcon
+    SlackIcon,
+    TerseIcon
 } from "@/components/icons/IntegrationIcons"
 import { ConfigType } from "@/shared/Configs"
 import { IntegrationType } from "@/shared/Integrations"
@@ -32,8 +33,7 @@ export function IconForConfigType({ type }: { type: ConfigType }) {
         case ConfigType.GMAIL:
         case ConfigType.GMAIL_OUTPUT:
             return <GmailIcon />
-        case ConfigType.NOTION_DATABASE:
-        case ConfigType.NOTION_PAGE:
+        case ConfigType.NOTION:
             return <NotionIcon />
         case ConfigType.FIGMA:
             return <FigmaIcon />
@@ -49,6 +49,8 @@ export function IconForConfigType({ type }: { type: ConfigType }) {
             return <CalendarClockIcon />
         case ConfigType.DATADOG:
             return <DatadogIcon />
+        case ConfigType.TERSE:
+            return <TerseIcon />
         default:
             // Exhaustive check: TypeScript will error if any IntegrationType case is missing
             throw type satisfies never

@@ -6,8 +6,7 @@ export enum ConfigType {
     FIGMA = "figma",
     SLACK = "slack",
     SLACK_OUTPUT = "slack_output",
-    NOTION_PAGE = "notion_page",
-    NOTION_DATABASE = "notion_database",
+    NOTION = "notion",
     LINEAR_INPUT = "linear_input",
     LINEAR_OUTPUT = "linear_output",
     GITHUB = "github",
@@ -19,7 +18,8 @@ export enum ConfigType {
     TIME_TRIGGER = "time_trigger",
     LAUNCHDARKLY = "launchdarkly",
     LINEAR_KB = "linear_kb",
-    SLACK_KB = "slack_kb"
+    SLACK_KB = "slack_kb",
+    TERSE = "terse"
 }
 
 // MARK: Config Metadata
@@ -27,6 +27,7 @@ export interface ConfigDetails {
     configType: ConfigType
     name: string
     description: string
+    integrationType: IntegrationType
     isInput: boolean
     isOutput: boolean
     isKnowledgeBase: boolean
@@ -37,6 +38,7 @@ export const GmailConfigMetadata = {
     configType: ConfigType.GMAIL,
     name: "Gmail",
     description: "Monitor incoming emails",
+    integrationType: IntegrationType.GMAIL,
     isInput: true,
     isOutput: false,
     isKnowledgeBase: false
@@ -46,6 +48,7 @@ export const FigmaConfigMetadata = {
     configType: ConfigType.FIGMA,
     name: "Figma",
     description: "Monitor design changes in Figma files",
+    integrationType: IntegrationType.FIGMA,
     isInput: true,
     isOutput: false,
     isKnowledgeBase: false
@@ -55,6 +58,7 @@ export const SlackConfigMetadata = {
     configType: ConfigType.SLACK,
     name: "Slack",
     description: "Monitor messages in Slack channels or DMs",
+    integrationType: IntegrationType.SLACK,
     isInput: true,
     isOutput: false,
     isKnowledgeBase: false
@@ -64,6 +68,7 @@ export const SlackOutputConfigMetadata = {
     configType: ConfigType.SLACK_OUTPUT,
     name: "Slack",
     description: "Send messages to Slack channels, group DMs, or direct messages",
+    integrationType: IntegrationType.SLACK,
     isInput: false,
     isOutput: true,
     isKnowledgeBase: false
@@ -73,24 +78,17 @@ export const GmailOutputConfigMetadata = {
     configType: ConfigType.GMAIL_OUTPUT,
     name: "Gmail",
     description: "Send emails via Gmail",
+    integrationType: IntegrationType.GMAIL,
     isInput: false,
     isOutput: true,
     isKnowledgeBase: false
 } as const satisfies ConfigDetails
 
-export const NotionDatabaseConfigMetadata = {
-    configType: ConfigType.NOTION_DATABASE,
-    name: "Notion Database",
-    description: "Update and monitor Notion databases",
-    isInput: false,
-    isOutput: true,
-    isKnowledgeBase: false
-} as const satisfies ConfigDetails
-
-export const NotionPageConfigMetadata = {
-    configType: ConfigType.NOTION_PAGE,
-    name: "Notion Page",
-    description: "Update and monitor Notion pages",
+export const NotionConfigMetadata = {
+    configType: ConfigType.NOTION,
+    name: "Notion",
+    description: "Update and monitor Notion pages and databases",
+    integrationType: IntegrationType.NOTION,
     isInput: false,
     isOutput: true,
     isKnowledgeBase: false
@@ -100,6 +98,7 @@ export const LinearInputConfigMetadata = {
     configType: ConfigType.LINEAR_INPUT,
     name: "Linear",
     description: "Monitor Linear issues",
+    integrationType: IntegrationType.LINEAR,
     isInput: true,
     isOutput: false,
     isKnowledgeBase: false
@@ -109,6 +108,7 @@ export const LinearOutputConfigMetadata = {
     configType: ConfigType.LINEAR_OUTPUT,
     name: "Linear",
     description: "Update Linear issues",
+    integrationType: IntegrationType.LINEAR,
     isInput: false,
     isOutput: true,
     isKnowledgeBase: false
@@ -118,6 +118,7 @@ export const GitHubConfigMetadata = {
     configType: ConfigType.GITHUB,
     name: "GitHub",
     description: "Monitor GitHub repository events",
+    integrationType: IntegrationType.GITHUB,
     isInput: true,
     isOutput: false,
     isKnowledgeBase: false
@@ -127,6 +128,7 @@ export const JiraConfigMetadata = {
     configType: ConfigType.JIRA,
     name: "Jira",
     description: "Monitor and update Jira issues",
+    integrationType: IntegrationType.ATLASSIAN,
     isInput: true,
     isOutput: true,
     isKnowledgeBase: false
@@ -136,6 +138,7 @@ export const ConfluenceConfigMetadata = {
     configType: ConfigType.CONFLUENCE,
     name: "Confluence",
     description: "Update Confluence pages",
+    integrationType: IntegrationType.ATLASSIAN,
     isInput: false,
     isOutput: true,
     isKnowledgeBase: false
@@ -145,6 +148,7 @@ export const PosthogConfigMetadata = {
     configType: ConfigType.POSTHOG,
     name: "Posthog",
     description: "Track user events",
+    integrationType: IntegrationType.POSTHOG,
     isInput: false,
     isOutput: false,
     isKnowledgeBase: true
@@ -154,6 +158,7 @@ export const DatadogConfigMetadata = {
     configType: ConfigType.DATADOG,
     name: "Datadog",
     description: "Search logs in Datadog",
+    integrationType: IntegrationType.DATADOG,
     isInput: false,
     isOutput: false,
     isKnowledgeBase: true
@@ -163,6 +168,7 @@ export const TimeTriggerConfigMetadata = {
     configType: ConfigType.TIME_TRIGGER,
     name: "Time Trigger",
     description: "Run on a schedule (daily, weekly, etc.)",
+    integrationType: IntegrationType.CRON_JOB,
     isInput: true,
     isOutput: false,
     isKnowledgeBase: false
@@ -172,6 +178,7 @@ export const GitHubKBConfigMetadata = {
     configType: ConfigType.GITHUB_KB,
     name: "GitHub Codebase",
     description: "Search and read code in repositories",
+    integrationType: IntegrationType.GITHUB,
     isInput: false,
     isOutput: false,
     isKnowledgeBase: true
@@ -181,6 +188,7 @@ export const LaunchDarklyConfigMetadata = {
     configType: ConfigType.LAUNCHDARKLY,
     name: "LaunchDarkly",
     description: "Query feature flags",
+    integrationType: IntegrationType.LAUNCHDARKLY,
     isInput: false,
     isOutput: false,
     isKnowledgeBase: true
@@ -190,6 +198,7 @@ export const LinearKBConfigMetadata = {
     configType: ConfigType.LINEAR_KB,
     name: "Linear",
     description: "Search and read Linear tickets",
+    integrationType: IntegrationType.LINEAR,
     isInput: false,
     isOutput: false,
     isKnowledgeBase: true
@@ -199,9 +208,20 @@ export const SlackKBConfigMetadata = {
     configType: ConfigType.SLACK_KB,
     name: "Slack",
     description: "Read Slack conversation history",
+    integrationType: IntegrationType.SLACK,
     isInput: false,
     isOutput: false,
     isKnowledgeBase: true
+} as const satisfies ConfigDetails
+
+export const TerseConfigMetadata = {
+    configType: ConfigType.TERSE,
+    name: "Terse Skills",
+    description: "Built-in capabilities like web search (always available to agents)",
+    integrationType: IntegrationType.TERSE,
+    isInput: false,
+    isOutput: true,
+    isKnowledgeBase: false
 } as const satisfies ConfigDetails
 
 export type ConfigDetailsMap = Record<ConfigType, ConfigDetails>
@@ -212,8 +232,7 @@ export const CONFIG_DETAILS: ConfigDetailsMap = {
     [ConfigType.FIGMA]: FigmaConfigMetadata,
     [ConfigType.SLACK]: SlackConfigMetadata,
     [ConfigType.SLACK_OUTPUT]: SlackOutputConfigMetadata,
-    [ConfigType.NOTION_DATABASE]: NotionDatabaseConfigMetadata,
-    [ConfigType.NOTION_PAGE]: NotionPageConfigMetadata,
+    [ConfigType.NOTION]: NotionConfigMetadata,
     [ConfigType.LINEAR_INPUT]: LinearInputConfigMetadata,
     [ConfigType.LINEAR_OUTPUT]: LinearOutputConfigMetadata,
     [ConfigType.GITHUB]: GitHubConfigMetadata,
@@ -225,7 +244,8 @@ export const CONFIG_DETAILS: ConfigDetailsMap = {
     [ConfigType.TIME_TRIGGER]: TimeTriggerConfigMetadata,
     [ConfigType.LAUNCHDARKLY]: LaunchDarklyConfigMetadata,
     [ConfigType.LINEAR_KB]: LinearKBConfigMetadata,
-    [ConfigType.SLACK_KB]: SlackKBConfigMetadata
+    [ConfigType.SLACK_KB]: SlackKBConfigMetadata,
+    [ConfigType.TERSE]: TerseConfigMetadata
 } as const satisfies ConfigDetailsMap
 
 export interface ConfigInstance {
@@ -363,51 +383,31 @@ export class GmailOutputConfig implements ConfigInstance {
 
 export class NotionConfig implements ConfigInstance {
     integrationType: IntegrationType = IntegrationType.NOTION
-    configType: ConfigType = ConfigType.NOTION_DATABASE
+    configType: ConfigType = ConfigType.NOTION
 
     constructor(
         public integrationId: string,
-        public databaseId?: string,
-        public databaseName?: string
+        public databaseIds: string[] = [],
+        public databaseNames: string[] = [],
+        public pageIds: string[] = [],
+        public pageNames: string[] = []
     ) {}
 
     isComplete(): boolean {
-        // Notion requires databaseId
-        return !!this.databaseId
+        return (this.databaseIds?.length ?? 0) > 0 || (this.pageIds?.length ?? 0) > 0
     }
 
     formatForAgent(): string {
-        const parts = [`Type: Notion Database`, `Integration ID: ${this.integrationId}`]
-        if (this.databaseName) {
-            parts.push(`Database: ${this.databaseName}`)
-        } else if (this.databaseId) {
-            parts.push(`Database ID: ${this.databaseId}`)
+        const parts = [`Type: Notion`, `Integration ID: ${this.integrationId}`]
+        const dbIds = this.databaseIds ?? []
+        const dbNames = this.databaseNames ?? []
+        if (dbIds.length > 0) {
+            parts.push(`Databases: ${dbIds.map((id, i) => dbNames[i] || id).join(", ")}`)
         }
-        return parts.join("\n")
-    }
-}
-
-export class NotionPageConfig implements ConfigInstance {
-    integrationType: IntegrationType = IntegrationType.NOTION
-    configType: ConfigType = ConfigType.NOTION_PAGE
-
-    constructor(
-        public integrationId: string,
-        public pageId?: string,
-        public pageName?: string
-    ) {}
-
-    isComplete(): boolean {
-        // Notion Page requires pageId
-        return !!this.pageId
-    }
-
-    formatForAgent(): string {
-        const parts = [`Type: Notion Page`, `Integration ID: ${this.integrationId}`]
-        if (this.pageName) {
-            parts.push(`Page: ${this.pageName}`)
-        } else if (this.pageId) {
-            parts.push(`Page ID: ${this.pageId}`)
+        const pageIds = this.pageIds ?? []
+        const pageNames = this.pageNames ?? []
+        if (pageIds.length > 0) {
+            parts.push(`Pages: ${pageIds.map((id, i) => pageNames[i] || id).join(", ")}`)
         }
         return parts.join("\n")
     }
@@ -732,6 +732,22 @@ export class SlackKBConfig implements ConfigInstance {
     }
 }
 
+export class TerseConfig implements ConfigInstance {
+    integrationType: IntegrationType = IntegrationType.TERSE
+    configType: ConfigType = ConfigType.TERSE
+    integrationId: string = "system"
+
+    constructor() {}
+
+    isComplete(): boolean {
+        return true
+    }
+
+    formatForAgent(): string {
+        return "Type: Terse Skills"
+    }
+}
+
 // To be studied Later!!
 type EnsureExhaustiveMetadata<T extends Record<ConfigType, new (...args: any[]) => ConfigInstance>> = T
 
@@ -741,8 +757,7 @@ export type ConfigMetadataMap = EnsureExhaustiveMetadata<{
     [ConfigType.SLACK]: typeof SlackConfig
     [ConfigType.SLACK_OUTPUT]: typeof SlackOutputConfig
     [ConfigType.GMAIL_OUTPUT]: typeof GmailOutputConfig
-    [ConfigType.NOTION_PAGE]: typeof NotionPageConfig
-    [ConfigType.NOTION_DATABASE]: typeof NotionConfig
+    [ConfigType.NOTION]: typeof NotionConfig
     [ConfigType.LINEAR_INPUT]: typeof LinearInputConfig
     [ConfigType.LINEAR_OUTPUT]: typeof LinearOutputConfig
     [ConfigType.GITHUB]: typeof GitHubConfig
@@ -755,6 +770,7 @@ export type ConfigMetadataMap = EnsureExhaustiveMetadata<{
     [ConfigType.LAUNCHDARKLY]: typeof LaunchDarklyConfig
     [ConfigType.LINEAR_KB]: typeof LinearKBConfig
     [ConfigType.SLACK_KB]: typeof SlackKBConfig
+    [ConfigType.TERSE]: typeof TerseConfig
 }>
 
 export const CONFIG_METADATA: ConfigMetadataMap = {
@@ -763,8 +779,7 @@ export const CONFIG_METADATA: ConfigMetadataMap = {
     [ConfigType.FIGMA]: FigmaConfig,
     [ConfigType.SLACK]: SlackConfig,
     [ConfigType.SLACK_OUTPUT]: SlackOutputConfig,
-    [ConfigType.NOTION_PAGE]: NotionPageConfig,
-    [ConfigType.NOTION_DATABASE]: NotionConfig,
+    [ConfigType.NOTION]: NotionConfig,
     [ConfigType.LINEAR_INPUT]: LinearInputConfig,
     [ConfigType.LINEAR_OUTPUT]: LinearOutputConfig,
     [ConfigType.GITHUB]: GitHubConfig,
@@ -776,5 +791,6 @@ export const CONFIG_METADATA: ConfigMetadataMap = {
     [ConfigType.TIME_TRIGGER]: TimeTriggerConfig,
     [ConfigType.LAUNCHDARKLY]: LaunchDarklyConfig,
     [ConfigType.LINEAR_KB]: LinearKBConfig,
-    [ConfigType.SLACK_KB]: SlackKBConfig
+    [ConfigType.SLACK_KB]: SlackKBConfig,
+    [ConfigType.TERSE]: TerseConfig
 } as const satisfies ConfigMetadataMap

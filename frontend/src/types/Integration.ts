@@ -12,8 +12,6 @@ export enum Integration {
     // Note-taking systems
     NOTION = "notion",
 
-    NOTION_PAGE = "notion_page",
-
     // Mail
     GMAIL = "gmail",
 
