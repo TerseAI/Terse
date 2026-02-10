@@ -609,7 +609,7 @@ ${inputEvent.formatForAgentRunner()}
                         const runHistoryModelEvent: RunHistoryModelEvent = {
                             ...approvalRequest,
                             id: eventId,
-                            timestamp: new Date().toISOString()
+                            timestamp: Date.now()
                         }
                         const payload: RunHistoryModelSocketEvent = {
                             runId: streamingParams.runId!,
