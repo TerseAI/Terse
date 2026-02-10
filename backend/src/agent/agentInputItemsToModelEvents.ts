@@ -9,8 +9,8 @@ export type TimestampedAgentInputItem = {
     createdAt: Date | null
 }
 
-export function convertAgentInputItemsToModelEvents(items: (AgentInputItem | TimestampedAgentInputItem)[], toolToIntegrationMap?: Map<string, string>): (ModelEvent & { timestamp?: string })[] {
-    const events: (ModelEvent & { timestamp?: string })[] = []
+export function convertAgentInputItemsToModelEvents(items: (AgentInputItem | TimestampedAgentInputItem)[], toolToIntegrationMap?: Map<string, string>): ModelEvent[] {
+    const events: ModelEvent[] = []
     let lastTimestamp: Date | null | undefined
 
     for (const entry of items) {
@@ -22,7 +22,7 @@ export function convertAgentInputItemsToModelEvents(items: (AgentInputItem | Tim
         const converted = convertSingleItem(item, toolToIntegrationMap)
         if (converted) {
             for (const event of converted) {
-                events.push(ts ? { ...event, timestamp: ts.toISOString() } : event)
+                events.push(ts ? { ...event, timestamp: ts.getTime() } : event)
             }
         }
     }
@@ -34,7 +34,7 @@ export function convertAgentInputItemsToModelEvents(items: (AgentInputItem | Tim
             events.push({
                 type: "NaturalStop",
                 step_id: "historical-stop",
-                ...(lastTimestamp ? { timestamp: lastTimestamp.toISOString() } : {})
+                ...(lastTimestamp ? { timestamp: lastTimestamp.getTime() } : {})
             })
         }
     }

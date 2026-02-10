@@ -1,7 +1,7 @@
 import { AgentInputItem } from "@openai/agents-core"
 import { Request, Response } from "express"
 
-import { convertAgentInputItemsToModelEvents, type TimestampedAgentInputItem } from "../agent/agentInputItemsToModelEvents"
+import { type TimestampedAgentInputItem, convertAgentInputItemsToModelEvents } from "../agent/agentInputItemsToModelEvents"
 import logger from "../logger"
 import { PrismaClient, db } from "../prismaClient"
 
@@ -53,12 +53,12 @@ export async function getBuilderChatHistory(req: Request, res: Response) {
         // Convert to ModelEvents for the UI, stamping each with its source timestamp
         const modelEvents = convertAgentInputItemsToModelEvents(timestampedItems)
 
-        // Add per-event id and ensure timestamp is present (matching RunHistoryModelEvent shape)
+        // Add per-event id and convert epoch ms → ISO string (matching RunHistoryModelEvent shape)
         const firstTimestamp = rawEvents[0]?.created_at?.toISOString()
         const events = modelEvents.map((event, i) => ({
             ...event,
             id: `builder-hist-${i}`,
-            timestamp: event.timestamp ?? firstTimestamp
+            timestamp: event.timestamp ? new Date(event.timestamp).toISOString() : firstTimestamp
         }))
 
         // Get timestamps

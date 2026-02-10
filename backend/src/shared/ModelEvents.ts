@@ -20,7 +20,7 @@ export type RunError = { error: string; code?: string }
 
 export type FunctionCall = { function_name: string; result: string; step_id: string }
 
-export type ModelEvent =
+export type ModelEvent = { timestamp?: number } & (
     | ({ type: "ToolApprovalResponse" } & ToolApprovalResponse)
     | ({ type: "ToolApprovalRequest" } & ToolApprovalRequest)
     | ({ type: "ToolCallGenerating" } & ToolCallGenerating)
@@ -34,6 +34,7 @@ export type ModelEvent =
     | ({ type: "UserMessage" } & UserMessage)
     | { type: "Thinking"; step_id: string }
     | ({ type: "Snippet" } & { snippet: ChatSnippetPayload })
+)
 
 export type ModelRequest = ({ type: "SendModelRequest" } & SendModelRequest) | ({ type: "ToolApprovalResponse" } & ToolApprovalResponse)
 

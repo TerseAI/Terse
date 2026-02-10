@@ -116,14 +116,7 @@ function TurnView({
                         </div>
                     </div>
                 )}
-                <TurnTimeline
-                    functionCalls={function_calls}
-                    snippets={snippets}
-                    isTurnFailure={isFailure}
-                    onApprove={onApprove}
-                    onReject={onReject}
-                    onMultipleChoiceAnswer={onMultipleChoiceAnswer}
-                />
+                <TurnTimeline functionCalls={function_calls} snippets={snippets} isTurnFailure={isFailure} onApprove={onApprove} onReject={onReject} onMultipleChoiceAnswer={onMultipleChoiceAnswer} />
 
                 {isAssistantFinishedGenerating && (
                     <div className="flex gap-2">
@@ -211,9 +204,7 @@ function FeedbackButtons({}: {}) {
 // keeping in-progress calls (generating / running) at the bottom.
 // ---------------------------------------------------------------------------
 
-type TimelineItem =
-    | { kind: "function_call"; call: FunctionCallEvent; ts: number }
-    | { kind: "snippet"; snippet: ChatSnippet; ts: number }
+type TimelineItem = { kind: "function_call"; call: FunctionCallEvent; ts: number } | { kind: "snippet"; snippet: ChatSnippet; ts: number }
 
 function TurnTimeline({
     functionCalls,
@@ -262,16 +253,7 @@ function TurnTimeline({
                 <div className="space-y-0.5">
                     {timeline.map((item, index) => {
                         if (item.kind === "function_call") {
-                            return (
-                                <FunctionCallItem
-                                    key={`fc-${item.call.id}`}
-                                    call={item.call}
-                                    index={index}
-                                    isTurnFailure={isTurnFailure}
-                                    onApprove={onApprove}
-                                    onReject={onReject}
-                                />
-                            )
+                            return <FunctionCallItem key={`fc-${item.call.id}`} call={item.call} index={index} isTurnFailure={isTurnFailure} onApprove={onApprove} onReject={onReject} />
                         }
                         return (
                             <div key={`sn-${item.snippet.id}`} className="py-1">
@@ -283,9 +265,7 @@ function TurnTimeline({
             )}
 
             {/* In-progress tool calls (generating / running) — always at the bottom */}
-            {hasInProgress && (
-                <ToolCallsSummary calls={inProgressCalls} isTurnFailure={isTurnFailure} onApprove={onApprove} onReject={onReject} />
-            )}
+            {hasInProgress && <ToolCallsSummary calls={inProgressCalls} isTurnFailure={isTurnFailure} onApprove={onApprove} onReject={onReject} />}
         </>
     )
 }

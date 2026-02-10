@@ -7,6 +7,7 @@ import {
     type ChatSnippetPayload,
     type Failure,
     FilterResult,
+    type ModelEvent,
     type RunError,
     type TextDelta,
     type ToolCall,
@@ -104,7 +105,7 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
         })
     }
 
-    const handleToolCallGenerating = ({ tool_name, step_id, timestamp }: ToolCallGenerating) => {
+    const handleToolCallGenerating = ({ tool_name, step_id, timestamp }: ToolCallGenerating & Pick<ModelEvent, "timestamp">) => {
         // Track current step_id
         currentStepIdRef.current = step_id
 
@@ -157,7 +158,7 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
         })
     }
 
-    const handleToolCall = ({ summary, step_id, parameters, timestamp }: ToolCall) => {
+    const handleToolCall = ({ summary, step_id, parameters, timestamp }: ToolCall & Pick<ModelEvent, "timestamp">) => {
         // Track current step_id
         currentStepIdRef.current = step_id
 
