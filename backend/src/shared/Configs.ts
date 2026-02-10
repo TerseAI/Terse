@@ -699,34 +699,28 @@ export class SlackKBConfig implements ConfigInstance {
 
     constructor(
         public integrationId: string,
-        public channelIds?: string[],
-        public channelNames?: string[],
+        public channelId?: string,
+        public channelName?: string,
         public allowDms: boolean = false,
         public userIds?: string[],
         public userNames?: string[]
     ) {}
 
     isComplete(): boolean {
-        // Only requires an integration to be selected - channels/users/DMs are optional filters
-        return !!this.integrationId
+        const hasChannel = !!(this.channelId?.trim())
+        return !!this.integrationId && (hasChannel || this.allowDms)
     }
 
     formatForAgent(): string {
         const parts = [`Type: Slack Knowledge Base`, `Integration ID: ${this.integrationId}`]
-        const hasChannels = (this.channelIds?.length ?? 0) > 0
-        const hasUsers = (this.userIds?.length ?? 0) > 0
-
-        if (this.channelIds?.length) {
-            parts.push(`Channel IDs: ${this.channelIds.join(", ")}`)
+        if (this.channelId) {
+            parts.push(`Channel ID: ${this.channelId}`)
         }
         if (this.allowDms) {
             parts.push("Allow DMs: Yes")
         }
         if (this.userIds?.length) {
             parts.push(`Filter to user IDs: ${this.userIds.join(", ")}`)
-        }
-        if (!hasChannels && !this.allowDms && !hasUsers) {
-            parts.push("Access: All channels and conversations the integration can access")
         }
         return parts.join("\n")
     }
