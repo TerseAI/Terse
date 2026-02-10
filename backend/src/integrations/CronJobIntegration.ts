@@ -113,7 +113,7 @@ export class CronJobIntegrationManager
         await runWithUserContext(user, async () => {
             const cronJobEvent = new CronJobEvent(event)
             const eventProcessor = new EventProcessor(cronJobEvent, user)
-            await eventProcessor.process()
+            await eventProcessor.processSingleAgent(agentTrigger.automation.id)
         })
     }
 
