@@ -45,9 +45,9 @@ export type ToolApprovalRequest = { step_id: string; name: string; arguments: st
 
 export type TextDelta = { delta: string; step_id: string }
 
-export type ToolCallGenerating = { tool_name: string; step_id: string }
+export type ToolCallGenerating = { tool_name: string; step_id: string; timestamp?: number }
 
-export type ToolCall = { summary: string; step_id: string; parameters: string; integration: string }
+export type ToolCall = { summary: string; step_id: string; parameters: string; integration: string; timestamp?: number }
 
 export type ToolCallComplete = {
     tool_name: string
@@ -66,13 +66,13 @@ export type UserMessage = { message: string }
 
 // Chat snippet types for displaying interactive elements in chat
 export type ChatSnippet =
-    | { type: "button"; label: string; url: string; id: string }
-    | { type: "integration_prompt"; integration: string; message: string; id: string; stateToken?: string }
-    | { type: "navigate"; path: string; id: string }
-    | { type: "multiple_choice"; questionId: string; question: string; options: MultipleChoiceOption[]; id: string; allowMultiple?: boolean; selectedValue?: string }
+    | { type: "button"; label: string; url: string; id: string; timestamp?: number }
+    | { type: "integration_prompt"; integration: string; message: string; id: string; stateToken?: string; timestamp?: number }
+    | { type: "navigate"; path: string; id: string; timestamp?: number }
+    | { type: "multiple_choice"; questionId: string; question: string; options: MultipleChoiceOption[]; id: string; allowMultiple?: boolean; selectedValue?: string; timestamp?: number }
 
 export type ChatSnippetPayload =
-    | { type: "button"; label: string; url: string }
-    | { type: "integration_prompt"; integration: string; message: string; stateToken?: string }
-    | { type: "navigate"; path: string }
-    | { type: "multiple_choice"; questionId: string; question: string; options: MultipleChoiceOption[]; allowMultiple?: boolean }
+    | { type: "button"; label: string; url: string; timestamp?: number }
+    | { type: "integration_prompt"; integration: string; message: string; stateToken?: string; timestamp?: number }
+    | { type: "navigate"; path: string; timestamp?: number }
+    | { type: "multiple_choice"; questionId: string; question: string; options: MultipleChoiceOption[]; allowMultiple?: boolean; timestamp?: number }

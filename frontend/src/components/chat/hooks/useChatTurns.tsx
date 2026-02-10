@@ -104,7 +104,7 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
         })
     }
 
-    const handleToolCallGenerating = ({ tool_name, step_id }: ToolCallGenerating) => {
+    const handleToolCallGenerating = ({ tool_name, step_id, timestamp }: ToolCallGenerating) => {
         // Track current step_id
         currentStepIdRef.current = step_id
 
@@ -122,6 +122,7 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
                     last.function_calls.push({
                         id: step_id,
                         name: tool_name,
+                        timestamp,
                         isGeneratingParams: true,
                         isRunning: false,
                         isWaitingForApproval: false,
@@ -142,6 +143,7 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
                         {
                             id: step_id,
                             name: tool_name,
+                            timestamp,
                             isGeneratingParams: true,
                             isRunning: false,
                             isWaitingForApproval: false,
@@ -155,7 +157,7 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
         })
     }
 
-    const handleToolCall = ({ summary, step_id, parameters }: ToolCall) => {
+    const handleToolCall = ({ summary, step_id, parameters, timestamp }: ToolCall) => {
         // Track current step_id
         currentStepIdRef.current = step_id
 
@@ -169,7 +171,7 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
                 const existingCallIndex = last.function_calls.findIndex(call => call.id === step_id)
 
                 if (existingCallIndex !== -1) {
-                    // Update existing tool call - transition from generating to running
+                    // Update existing tool call - transition from generating to running (preserves original timestamp via spread)
                     last.function_calls[existingCallIndex] = {
                         ...last.function_calls[existingCallIndex],
                         isGeneratingParams: false,
@@ -181,6 +183,7 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
                     last.function_calls.push({
                         id: step_id,
                         name: summary,
+                        timestamp,
                         isGeneratingParams: false,
                         isRunning: true,
                         isWaitingForApproval: false,
@@ -202,6 +205,7 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
                         {
                             id: step_id,
                             name: summary,
+                            timestamp,
                             isGeneratingParams: false,
                             isRunning: true,
                             isWaitingForApproval: false,
