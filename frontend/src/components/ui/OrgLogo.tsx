@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useRef, useState } from "react"
 
 import { useOrgLogo } from "@/hooks/api/useOrgLogo"
 import { cn } from "@/lib/utils"
@@ -18,22 +18,30 @@ const sizeClasses = {
     lg: "size-10"
 }
 
+// Track successfully loaded image URLs at the module level so remounted
+// components (e.g. inside a dropdown portal) don't flash from opacity-0.
+const loadedSrcs = new Set<string>()
+
 export function OrgLogo({ organizationId, alt, size = "md", className }: OrgLogoProps) {
     const { logoUrl, isLoading } = useOrgLogo(organizationId)
-    const [imageLoaded, setImageLoaded] = useState(false)
-    const [imageError, setImageError] = useState(false)
 
     const sizeClass = sizeClasses[size]
     const fallbackSrc = "/terse.png"
     const imageSrc = logoUrl || fallbackSrc
 
-    // Reset loading states when logoUrl changes
-    useEffect(() => {
-        setImageLoaded(false)
+    const [imageLoaded, setImageLoaded] = useState(() => loadedSrcs.has(imageSrc))
+    const [imageError, setImageError] = useState(false)
+    const lastSrcRef = useRef(imageSrc)
+
+    // Reset loading states only when the URL actually changes
+    if (lastSrcRef.current !== imageSrc) {
+        lastSrcRef.current = imageSrc
+        setImageLoaded(loadedSrcs.has(imageSrc))
         setImageError(false)
-    }, [logoUrl])
+    }
 
     const handleLoad = () => {
+        loadedSrcs.add(imageSrc)
         setImageLoaded(true)
     }
 
