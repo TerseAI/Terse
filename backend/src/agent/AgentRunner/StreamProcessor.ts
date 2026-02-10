@@ -1,7 +1,6 @@
 import { Server } from "socket.io"
 
 import logger from "../../logger"
-import { emitCacheInvalidationWithWildcard } from "../../services/CacheInvalidationService"
 import { ModelEvent } from "../../shared/ModelEvents"
 import type { RunHistoryModelEvent, RunHistoryModelSocketEvent, RunHistoryStreamingParams } from "../../shared/RunHistoryTypes"
 import { SocketEvents, SocketRooms } from "../../shared/SocketEvents"
@@ -130,11 +129,9 @@ export class StreamEventEmitter {
 }
 
 export async function processModelEventStream(eventStream: AsyncGenerator<ModelEvent, void, unknown>, options: StreamProcessorOptions): Promise<void> {
-    const { runId } = options
-
-    const aggregator = new TextDeltaAggregator(runId)
+    const aggregator = new TextDeltaAggregator(options.runId)
     const emitter = new StreamEventEmitter(options.io, {
-        runId,
+        runId: options.runId,
         userId: options.userId,
         agentId: options.agentId,
         organizationId: options.organizationId
@@ -154,6 +151,7 @@ export async function processModelEventStream(eventStream: AsyncGenerator<ModelE
         await aggregator.commitLastTextDeltaStep()
     } catch (error) {
         logger.error("Error processing model event stream", { error, runId: options.runId, userId: options.userId, agentId: options.agentId })
+        throw error
     }
 }
 

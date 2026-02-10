@@ -5,7 +5,7 @@ import { Turn } from "@/components/chat/Turn"
 import { type ChatEventSubscription } from "@/components/chat/hooks/useCompletionSocket"
 import { filterOutThinkingOnlyTurns } from "@/components/chat/utils/turnUtils"
 import { useChatHistory } from "@/hooks/api/useChatHistory"
-import { Failure, FilterResult, ModelEvent, ModelRequest, TextDelta, ToolApprovalResponse, ToolCall, ToolCallComplete, UserMessage } from "@/shared/ModelEvents"
+import { Failure, FilterResult, ModelEvent, ModelRequest, RunError, TextDelta, ToolApprovalResponse, ToolCall, ToolCallComplete, UserMessage } from "@/shared/ModelEvents"
 import { RunHistoryStatus } from "@/shared/RunHistoryTypes"
 import type { RunHistoryModelSocketEvent } from "@/shared/RunHistoryTypes"
 import { sendChatMessage, sendToolApprovalResponse, subscribeToChatEvents } from "@/socket"
@@ -266,6 +266,24 @@ export function convertRunHistoryEventsToTurns(events: ModelEvent[]): Turn[] {
                         disableAnimation: true
                     })
                 }
+                break
+            }
+            case "RunError": {
+                const e = event as RunError
+                const lastTurn = turns[turns.length - 1]
+                if (lastTurn) {
+                    lastTurn.isGenerating = false
+                }
+                turns.push({
+                    role: "assistant",
+                    text: e.error,
+                    function_calls: [],
+                    step_id: "run-error",
+                    isFailure: true,
+                    isGenerating: false,
+                    disableAnimation: true,
+                    ...(e.code && { errorCode: e.code })
+                })
                 break
             }
             case "NaturalStop": {
