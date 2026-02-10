@@ -66,14 +66,16 @@ export type FilterResult = { isRelevant: boolean; reason: string; confidence: nu
 export type UserMessage = { message: string }
 
 // Chat snippet types for displaying interactive elements in chat
-export type ChatSnippet =
-    | { type: "button"; label: string; url: string; id: string; timestamp?: number }
-    | { type: "integration_prompt"; integration: string; message: string; id: string; stateToken?: string; timestamp?: number }
-    | { type: "navigate"; path: string; id: string; timestamp?: number }
-    | { type: "multiple_choice"; questionId: string; question: string; options: MultipleChoiceOption[]; id: string; allowMultiple?: boolean; selectedValue?: string; timestamp?: number }
+export type ChatSnippet = { timestamp?: number } & (
+    | { type: "button"; label: string; url: string; id: string }
+    | { type: "integration_prompt"; integration: string; message: string; id: string; stateToken?: string }
+    | { type: "navigate"; path: string; id: string }
+    | { type: "multiple_choice"; questionId: string; question: string; options: MultipleChoiceOption[]; id: string; allowMultiple?: boolean; selectedValue?: string }
+)
 
-export type ChatSnippetPayload =
-    | { type: "button"; label: string; url: string; timestamp?: number }
-    | { type: "integration_prompt"; integration: string; message: string; stateToken?: string; timestamp?: number }
-    | { type: "navigate"; path: string; timestamp?: number }
-    | { type: "multiple_choice"; questionId: string; question: string; options: MultipleChoiceOption[]; allowMultiple?: boolean; timestamp?: number }
+export type ChatSnippetPayload = { timestamp?: number } & (
+    | { type: "button"; label: string; url: string }
+    | { type: "integration_prompt"; integration: string; message: string; stateToken?: string }
+    | { type: "navigate"; path: string }
+    | { type: "multiple_choice"; questionId: string; question: string; options: MultipleChoiceOption[]; allowMultiple?: boolean }
+)
