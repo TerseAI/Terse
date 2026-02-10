@@ -142,8 +142,8 @@ const LinearKBConfigSchema = BaseConfigSchema.extend({
 const SlackKBConfigSchema = BaseConfigSchema.extend({
     configType: z.literal(ConfigType.SLACK_KB),
     integrationType: z.literal(IntegrationType.SLACK),
-    channelIds: z.array(z.string()).optional(),
-    channelNames: z.array(z.string()).optional(),
+    channelId: z.string().optional(),
+    channelName: z.string().optional(),
     allowDms: z.boolean().optional(),
     userIds: z.array(z.string()).optional(),
     userNames: z.array(z.string()).optional()

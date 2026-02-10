@@ -506,7 +506,7 @@ export const convertPrismaKnowledgeBaseConfigToConfigInstance = (channelKnowledg
 
     if (channelKnowledgeBase.slack_kb_config) {
         const c = channelKnowledgeBase.slack_kb_config
-        return new SlackKBConfig(integrationId, c.channel_ids ?? [], c.channel_names ?? [], c.allow_dms ?? false, c.user_ids ?? [], c.user_names ?? [])
+        return new SlackKBConfig(integrationId, c.channel_ids?.[0], c.channel_names?.[0], c.allow_dms ?? false, c.user_ids ?? [], c.user_names ?? [])
     }
 
     throw new Error(`Unsupported knowledge base config type: ${channelKnowledgeBase.config_type}`)
@@ -536,7 +536,14 @@ export const convertPlainObjectToKnowledgeBaseConfigInstance = (config: any): Co
         case ConfigType.LINEAR_KB:
             return new LinearKBConfig(config.integrationId, config.teamId, config.teamName, config.projectId, config.projectName)
         case ConfigType.SLACK_KB:
-            return new SlackKBConfig(config.integrationId, config.channelIds ?? [], config.channelNames ?? [], config.allowDms ?? false, config.userIds ?? [], config.userNames ?? [])
+            return new SlackKBConfig(
+                config.integrationId,
+                config.channelId ?? (config as any).channelIds?.[0],
+                config.channelName ?? (config as any).channelNames?.[0],
+                config.allowDms ?? false,
+                config.userIds ?? [],
+                config.userNames ?? []
+            )
         default:
             throw new Error(`Unsupported knowledge base config type: ${config.configType}`)
     }
