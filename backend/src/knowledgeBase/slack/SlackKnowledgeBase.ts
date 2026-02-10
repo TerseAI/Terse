@@ -57,9 +57,9 @@ export class SlackKnowledgeBase extends KnowledgeBase<SlackKBConfig> {
             tools,
             configFields: {
                 integrationId: "Slack integration connection",
-                channelIds: "Slack channel IDs to read (optional; omit for all accessible channels)",
-                allowDms: "Whether to allow reading DMs",
-                userIds: "Specific Slack user IDs to filter DM conversations (optional)"
+                channelId: "Selected channel ID when mode is Channels. User selects one channel or DMs; if Channels, one channel required.",
+                allowDms: "True when mode is Direct messages. If DMs, user can optionally select users (empty = all DMs).",
+                userIds: "When allowDms is true: optional user IDs to restrict to those DMs; leave empty to read all DMs."
             },
             systemInstructions
         }
@@ -76,16 +76,23 @@ export class SlackKnowledgeBase extends KnowledgeBase<SlackKBConfig> {
         })
     }
 
-    async validateConfig(_knowledgeBase: SlackKBConfig, _userId: string): Promise<void> {
-        // Bot and user tokens both support channels, DMs, and user filters; token type only affects scope (what is visible).
+    async validateConfig(knowledgeBase: SlackKBConfig, _userId: string): Promise<void> {
+        const hasChannel = !!knowledgeBase.channelId?.trim()
+        const isDmsMode = knowledgeBase.allowDms === true
+        if (!hasChannel && !isDmsMode) {
+            throw new Error("Slack knowledge base requires selecting a channel or DMs. If Channel, select one channel. If DMs, that alone is valid (all DMs); you may optionally select users.")
+        }
+        if (hasChannel && isDmsMode) {
+            throw new Error("Slack knowledge base must be either Channel or DMs, not both. Clear channel when using DMs, or switch to Channel and select one channel.")
+        }
     }
 
     async addKnowledgeBaseToAgent(tx: PrismaTransaction, agentKnowledgeBaseId: string, knowledgeBase: SlackKBConfig): Promise<void> {
         await tx.automation_slack_kb_configs.create({
             data: {
                 automation_knowledge_base_id: agentKnowledgeBaseId,
-                channel_ids: knowledgeBase.channelIds ?? [],
-                channel_names: [], // IDs only; hydrate via UI or slack_list_users tool
+                channel_ids: knowledgeBase.channelId ? [knowledgeBase.channelId] : [],
+                channel_names: knowledgeBase.channelName ? [knowledgeBase.channelName] : [],
                 allow_dms: knowledgeBase.allowDms ?? false,
                 user_ids: knowledgeBase.userIds ?? [],
                 user_names: [] // IDs only; hydrate via UI or slack_list_users tool
@@ -108,14 +115,12 @@ export class SlackKnowledgeBase extends KnowledgeBase<SlackKBConfig> {
             }
             const c = config.slack_kb_config
             const parts = [`Integration ID: ${config.integration_id}`]
-            if (c.channel_ids?.length) {
-                parts.push(`Channel IDs: ${c.channel_ids.join(", ")}`)
+            const channelId = c.channel_ids?.[0]
+            if (channelId) {
+                parts.push(`Channel ID: ${channelId}`)
             }
             if (c.allow_dms) {
-                parts.push("DMs: allowed")
-            }
-            if (c.user_ids?.length) {
-                parts.push(`Filter to user IDs: ${c.user_ids.join(", ")}`)
+                parts.push(c.user_ids?.length ? `DMs: filter to user IDs ${c.user_ids.join(", ")}` : "DMs: all")
             }
             configList.push(`  • ${parts.join(" - ")}`)
         }

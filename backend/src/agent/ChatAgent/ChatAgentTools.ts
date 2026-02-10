@@ -503,21 +503,19 @@ const LinearKnowledgeBaseConfigSchema = BaseConfigSchema.extend({
 })
 
 const SlackKnowledgeBaseConfigSchema = BaseConfigSchema.extend({
-    configType: z.literal(ConfigType.SLACK_KB).describe("Use for Slack conversation history knowledge bases. Read channel and DM history."),
+    configType: z.literal(ConfigType.SLACK_KB).describe("Use for Slack conversation history."),
     integrationType: z.literal(IntegrationType.SLACK),
-    channelIds: z
-        .array(z.string())
+    channelId: z
+        .string()
         .nullable()
         .optional()
-        .describe("Slack channel IDs to read. From fetchResourcesForIntegration with integrationType=SLACK (channels), use resources[].id. If omitted, reads from all accessible channels."),
-    allowDms: z.boolean().optional().default(false).describe("Whether to allow reading DMs. Only applicable for Slack user integrations (not workspace bot integrations)."),
+        .describe("When not in DMs mode: selected channel ID to read. Obtain from fetchResourcesForIntegration with integrationType=SLACK (channels). Required when allowDms is false."),
+    allowDms: z.boolean().optional().default(false).describe("True = Direct messages mode. When true, channelId must be empty; userIds optional (empty = all DMs)."),
     userIds: z
         .array(z.string())
         .nullable()
         .optional()
-        .describe(
-            "Specific Slack user IDs to filter DM conversations. Get IDs via fetchResourcesForIntegration with integrationType=SLACK and options.slack.objectType='users'. If omitted, reads from all accessible DMs."
-        )
+        .describe("When allowDms is true: optional user IDs to restrict which DMs to read. Obtain from fetchResourcesForIntegration with options.slack.objectType='users'. Leave empty for all DMs.")
 })
 
 const TimeTriggerConfigSchema = BaseConfigSchema.extend({
