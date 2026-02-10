@@ -20,11 +20,9 @@ Supports pagination: if the response includes nextCursor and hasMore, pass nextC
         integrationId: z.string().describe("The integration ID of the Slack workspace (user_slack_integrations id)."),
         channelId: z.string().describe("The Slack channel ID to read (from slack_list_channels)."),
         limit: z.number().min(1).max(200).nullable().optional().default(50).describe("Maximum number of messages to return."),
-        oldest: z.string().nullable().optional().describe("Start of time range (Unix timestamp as string). Only messages after this time."),
-        latest: z.string().nullable().optional().describe("End of time range (Unix timestamp as string). Only messages before this time."),
         cursor: z.string().nullable().optional().describe("Pagination cursor from a previous response (nextCursor). Omit on first call.")
     }),
-    execute: async ({ integrationId, channelId, limit = 50, oldest, latest, cursor }, runContext?: RunContext<SessionWithTracking<Session>>) => {
+    execute: async ({ integrationId, channelId, limit = 50, cursor }, runContext?: RunContext<SessionWithTracking<Session>>) => {
         logger.debug("🛠️ Executing slack_read_conversation tool", { integrationId, channelId, limit })
 
         if (!runContext?.context) {
@@ -57,14 +55,13 @@ Supports pagination: if the response includes nextCursor and hasMore, pass nextC
             }
 
             const client = initializeSlackWebClient(userSlackIntegration)
-
-            const result = await client.conversations.history({
+            const params = {
                 channel: channelId,
                 limit: limit ?? undefined,
-                ...(oldest && { oldest }),
-                ...(latest && { latest }),
                 ...(cursor && { cursor })
-            })
+            }
+
+            const result = await client.conversations.history(params)
 
             const rawMessages = result.messages ?? []
 
