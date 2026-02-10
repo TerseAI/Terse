@@ -99,15 +99,20 @@ export function useCompletionSocket(options: UseCompletionSocketOptions) {
             const message = payload.runHistoryModelEvent
             console.log("[useCompletionSocket] Event received:", message.type)
 
+            // Parse server-provided timestamp (ISO string) to epoch ms.
+            // Falls back to client time only if the server didn't provide one.
+            const serverTs = (message as { timestamp?: string }).timestamp
+            const ts = typeof serverTs === "string" ? new Date(serverTs).getTime() : Date.now()
+
             switch (message.type) {
                 case "TextDelta":
                     onDeltaRef.current(message)
                     break
                 case "ToolCallGenerating":
-                    onToolCallGeneratingRef.current(message)
+                    onToolCallGeneratingRef.current({ ...message, timestamp: ts })
                     break
                 case "ToolCall":
-                    onToolCallRef.current(message)
+                    onToolCallRef.current({ ...message, timestamp: ts })
                     break
                 case "ToolCallComplete":
                     onToolCallCompleteRef.current(message)
@@ -132,7 +137,7 @@ export function useCompletionSocket(options: UseCompletionSocketOptions) {
                     break
                 case "Snippet":
                     console.log("Snippet event received", message.snippet)
-                    onSnippetRef.current?.(message.snippet)
+                    onSnippetRef.current?.({ ...message.snippet, timestamp: ts })
                     break
                 case "RunError":
                     onRunErrorRef.current?.({ error: message.error, ...(message.code && { code: message.code }) })

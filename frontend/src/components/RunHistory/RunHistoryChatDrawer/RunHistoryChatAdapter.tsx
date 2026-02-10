@@ -31,7 +31,12 @@ export default function RunHistoryChatAdapter({ runId, status, children }: RunHi
     // Fetch History (API)
     const { events, isLoading, startTimestamp, endTimestamp } = useChatHistory(runId)
 
-    const historicalEvents = events.map(event => ({ ...event, isHistorical: true }))
+    // Parse server ISO timestamps to epoch ms for chronological ordering
+    const historicalEvents = events.map(event => ({
+        ...event,
+        timestamp: event.timestamp ? new Date(event.timestamp).getTime() : undefined,
+        isHistorical: true
+    }))
 
     // Use API status if available, otherwise fall back to prop status
     const currentStatus = status
@@ -80,9 +85,11 @@ export default function RunHistoryChatAdapter({ runId, status, children }: RunHi
     )
 }
 
-export function convertRunHistoryEventsToTurns(events: ModelEvent[]): Turn[] {
+export function convertRunHistoryEventsToTurns(events: (ModelEvent & { timestamp?: number })[]): Turn[] {
     const turns: Turn[] = []
     const stepBuffers = new Map<string, string>()
+    /** Fallback counter when events lack a timestamp (shouldn't happen with server-provided data). */
+    let eventOrder = 0
 
     // Helper to find or create the appropriate turn
     const getOrCreateTurn = (role: "assistant" | "user", step_id: string): Turn => {
@@ -164,6 +171,7 @@ export function convertRunHistoryEventsToTurns(events: ModelEvent[]): Turn[] {
                     turn.function_calls.push({
                         id: step_id,
                         name: e.summary,
+                        timestamp: event.timestamp ?? eventOrder++,
                         // For historical events, start with isRunning: false
                         // since we'll see ToolCallComplete soon
                         isRunning: false,
@@ -209,6 +217,7 @@ export function convertRunHistoryEventsToTurns(events: ModelEvent[]): Turn[] {
                     turn.function_calls.push({
                         id: step_id,
                         name: e.tool_name,
+                        timestamp: event.timestamp ?? eventOrder++,
                         isRunning: false,
                         result: e.result,
                         changed_items: e.changed_items,
