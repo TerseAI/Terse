@@ -24,13 +24,12 @@ export function BuilderChat({ getStateJSON, agentId }: BuilderChatProps) {
     // Fetch history only when we have an agentId (existing session)
     const { events: historyEvents, isLoading: isHistoryLoading } = useBuilderChatHistory(agentId)
 
-    // Convert history events to turns — parse server ISO timestamps to epoch ms for chronological ordering
+    // Convert history events to turns (timestamps are already epoch ms)
     const initialTurns =
         agentId && historyEvents.length > 0
             ? convertRunHistoryEventsToTurns(
                   historyEvents.map(event => ({
                       ...event,
-                      timestamp: event.timestamp ? new Date(event.timestamp).getTime() : undefined,
                       isHistorical: true
                   }))
               )

@@ -17,7 +17,7 @@ export class TextDeltaAggregator {
         this.runId = runId
     }
 
-    accumulate(event: TextDeltaEvent, timestamp: string): AccumulatedDelta {
+    accumulate(event: TextDeltaEvent, timestamp: number): AccumulatedDelta {
         const { step_id, delta } = event
 
         if (!this.accumulatedDeltas.has(step_id)) {
@@ -88,7 +88,7 @@ export class StreamEventEmitter {
         this.agentId = params.agentId!
     }
 
-    emitTextDelta(event: TextDeltaEvent, timestamp: string, eventId: string = ""): void {
+    emitTextDelta(event: TextDeltaEvent, timestamp: number, eventId: string = ""): void {
         if (!this.io) return
 
         const runHistoryModelEvent: RunHistoryModelEvent = {
@@ -106,7 +106,7 @@ export class StreamEventEmitter {
         this.io.to(this.room).emit(SocketEvents.AGENT_CHAT_EVENT, payload)
     }
 
-    async storeAndEmit(event: ModelEvent, timestamp: string): Promise<string> {
+    async storeAndEmit(event: ModelEvent, timestamp: number): Promise<string> {
         const eventId = await storeChatEvent(this.runId, event)
 
         if (this.io) {
@@ -139,7 +139,7 @@ export async function processModelEventStream(eventStream: AsyncGenerator<ModelE
 
     try {
         for await (const event of eventStream) {
-            const timestamp = new Date().toISOString()
+            const timestamp = Date.now()
 
             if (event.type === "TextDelta") {
                 await handleTextDeltaEvent(event, timestamp, aggregator, emitter)
@@ -155,14 +155,14 @@ export async function processModelEventStream(eventStream: AsyncGenerator<ModelE
     }
 }
 
-async function handleTextDeltaEvent(event: TextDeltaEvent, timestamp: string, aggregator: TextDeltaAggregator, emitter: StreamEventEmitter): Promise<void> {
+async function handleTextDeltaEvent(event: TextDeltaEvent, timestamp: number, aggregator: TextDeltaAggregator, emitter: StreamEventEmitter): Promise<void> {
     await aggregator.handleStepTransition(event.step_id)
     aggregator.accumulate(event, timestamp)
     const eventId = aggregator.getEventId(event.step_id) || randomString(15)
     emitter.emitTextDelta(event, timestamp, eventId)
 }
 
-async function handleNonTextDeltaEvent(event: ModelEvent, timestamp: string, aggregator: TextDeltaAggregator, emitter: StreamEventEmitter): Promise<void> {
+async function handleNonTextDeltaEvent(event: ModelEvent, timestamp: number, aggregator: TextDeltaAggregator, emitter: StreamEventEmitter): Promise<void> {
     await aggregator.commitLastTextDeltaStep()
     await emitter.storeAndEmit(event, timestamp)
 }
@@ -171,7 +171,7 @@ type TextDeltaEvent = Extract<ModelEvent, { type: "TextDelta" }>
 
 type AccumulatedDelta = {
     text: string
-    firstTimestamp: string
+    firstTimestamp: number
     eventId?: string
 }
 
