@@ -263,7 +263,7 @@ export class GithubIntegrationManager
             integrationTaskQueue.emit(
                 new IntegrationCompletedTask(
                     IntegrationType.GITHUB,
-                    githubInstallation.id, // Use user_github_installation.id as integrationId
+                    githubInstallation.installation_id.toString(), // Use GitHub installation_id (not DB CUID) to match getInstancesForOrganization()
                     user_id,
                     stateData,
                     new Date()
