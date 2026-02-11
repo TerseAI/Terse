@@ -749,7 +749,8 @@ export async function validateConfluencePageExists(integrationId: string, pageId
     if (!accessToken) {
         throw new Error(`Atlassian integration ${integrationId} not found or missing access token`)
     }
-    const response = await fetch(`https://api.atlassian.com/ex/confluence/${integration.cloud_id}/wiki/rest/api/content/${pageId}`, {
+    const cloudId = integration.cloud_id
+    const response = await fetch(`https://api.atlassian.com/ex/confluence/${cloudId}/wiki/api/v2/pages/${pageId}`, {
         method: "GET",
         headers: {
             Authorization: `Bearer ${accessToken}`,

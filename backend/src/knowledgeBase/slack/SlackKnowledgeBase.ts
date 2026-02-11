@@ -100,10 +100,10 @@ export class SlackKnowledgeBase extends KnowledgeBase<SlackKBConfig> {
             data: {
                 automation_knowledge_base_id: agentKnowledgeBaseId,
                 channel_ids: knowledgeBase.channelId ? [knowledgeBase.channelId] : [],
-                channel_names: knowledgeBase.channelName ? [knowledgeBase.channelName] : [],
+                channel_names: [], // Display names not persisted; UI sends channelName for display only.
                 allow_dms: knowledgeBase.allowDms ?? false,
                 user_ids: knowledgeBase.userIds ?? [],
-                user_names: [] // IDs only; hydrate via UI or slack_list_users tool
+                user_names: [] // Display names not persisted; UI sends userNames for display only.
             }
         })
     }

@@ -43,7 +43,7 @@ export class LaunchDarklyIntegrationManager
         >[]
     > {
         const integrations = await this.getInstancesForOrganization(organizationId)
-        return Promise.all(
+        return await Promise.all(
             integrations.map(async integration => {
                 try {
                     const projectsResponse = await fetchLaunchDarklyProjects(organizationId, integration.id, query ?? "")

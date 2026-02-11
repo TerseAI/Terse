@@ -300,7 +300,7 @@ export async function validateNotionDatabasesExist(accessToken: string, database
     const results = await Promise.all(
         databaseIds.map(async databaseId => {
             try {
-                await notion.databases.retrieve({ database_id: databaseId })
+                await notion.dataSources.retrieve({ data_source_id: databaseId })
                 return { databaseId, ok: true }
             } catch {
                 return { databaseId, ok: false }

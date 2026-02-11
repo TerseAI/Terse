@@ -62,8 +62,8 @@ export const SlackConfigSchema = BaseConfigSchema.extend({
 export const SlackOutputConfigSchema = BaseConfigSchema.extend({
     configType: z.literal(ConfigType.SLACK_OUTPUT),
     integrationType: z.literal(IntegrationType.SLACK),
-    channelId: NonEmptyString.nullable().describe("Slack channel or DM channel ID. Required if userIds is empty; otherwise optional (DM channel IDs are resolved from userIds)."),
-    channelName: NonEmptyString.nullable().describe("The channel display name. From fetchResourcesForIntegration, use resources[].name."),
+    channelId: NonEmptyString.nullable().optional().describe("Slack channel or DM channel ID. Required if userIds is empty; otherwise optional (DM channel IDs are resolved from userIds)."),
+    channelName: NonEmptyString.nullable().optional().describe("The channel display name. From fetchResourcesForIntegration, use resources[].name."),
     userIds: z
         .array(NonEmptyString)
         .nullable()
@@ -174,7 +174,9 @@ export const SlackKnowledgeBaseConfigSchema = BaseConfigSchema.extend({
         .array(z.string())
         .nullable()
         .optional()
-        .describe("When allowDms is true: optional user IDs to restrict which DMs to read. Obtain from fetchResourcesForIntegration with options.slack.objectType='users'. Leave empty for all DMs.")
+        .describe("When allowDms is true: optional user IDs to restrict which DMs to read. Obtain from fetchResourcesForIntegration with options.slack.objectType='users'. Leave empty for all DMs."),
+    channelName: z.string().nullable().optional().describe("Display name for the channel (UI only, not persisted)."),
+    userNames: z.array(z.string()).nullable().optional().describe("Display names for users (UI only, not persisted).")
 })
 
 export const TimeTriggerConfigSchema = BaseConfigSchema.extend({
