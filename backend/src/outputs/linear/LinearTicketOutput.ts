@@ -11,6 +11,11 @@ import { convertOutputConfigTypeToConfigType } from "../../utility/typeConverter
 import { Output, ToolboxEntry } from "../abstract/Output"
 
 import { linearCreateTicketTool } from "./tools/createTicket"
+import { linearGetLabelsTool } from "./tools/getLabels"
+import { linearGetProjectsTool } from "./tools/getProjects"
+import { linearGetStatesTool } from "./tools/getStates"
+import { linearGetTeamsTool } from "./tools/getTeams"
+import { linearGetUsersTool } from "./tools/getUsers"
 import { linearSearchTicketTool } from "./tools/searchTicket"
 import { linearUpdateTicketTool } from "./tools/updateTicket"
 
@@ -18,6 +23,11 @@ export class LinearTicketOutput extends Output<LinearOutputConfig> {
     constructor() {
         const toolbox: ToolboxEntry[] = [
             { tool: linearSearchTicketTool as Tool, isReadOnly: true, integration: IntegrationType.LINEAR, displayName: "Search tickets" },
+            { tool: linearGetTeamsTool as Tool, isReadOnly: true, integration: IntegrationType.LINEAR, displayName: "Get teams" },
+            { tool: linearGetStatesTool as Tool, isReadOnly: true, integration: IntegrationType.LINEAR, displayName: "Get states" },
+            { tool: linearGetLabelsTool as Tool, isReadOnly: true, integration: IntegrationType.LINEAR, displayName: "Get labels" },
+            { tool: linearGetProjectsTool as Tool, isReadOnly: true, integration: IntegrationType.LINEAR, displayName: "Get projects" },
+            { tool: linearGetUsersTool as Tool, isReadOnly: true, integration: IntegrationType.LINEAR, displayName: "Get users" },
             { tool: linearCreateTicketTool as Tool, isReadOnly: false, integration: IntegrationType.LINEAR, displayName: "Create ticket" },
             { tool: linearUpdateTicketTool as Tool, isReadOnly: false, integration: IntegrationType.LINEAR, displayName: "Update ticket" }
         ]

@@ -210,7 +210,7 @@ export class LinearIntegrationManager
         authUrl.searchParams.append("client_id", clientId)
         authUrl.searchParams.append("redirect_uri", redirectUri)
         authUrl.searchParams.append("response_type", "code")
-        authUrl.searchParams.append("scope", "read,write")
+        authUrl.searchParams.append("scope", "read,write,issues:create")
         authUrl.searchParams.append("state", state)
         authUrl.searchParams.append("actor", "user")
         authUrl.searchParams.append("prompt", "consent")
