@@ -1,4 +1,5 @@
 import { LinearClient } from "@linear/sdk"
+import { IssueCreateInput } from "@linear/sdk/dist/_generated_documents"
 import { RunContext, tool } from "@openai/agents"
 import { RunHistoryActionType } from "@prisma/client"
 import { z } from "zod"
@@ -16,10 +17,10 @@ const createTicketInputSchema = z.object({
     teamId: z.string().describe("The ID of the team to create the ticket in. Use linear_get_teams to find available teams."),
     description: z.string().nullable().optional().describe("The description of the ticket."),
     stateId: z.string().nullable().optional().describe("The ID of the state to create the ticket in. Use linear_get_states to find available states."),
-    assigneeId: z.string().nullable().optional().describe("The ID of the user to assign the ticket to. Use linear_get_users to find available users and their IDs."),
     priority: z.number().nullable().optional().describe("The priority of the ticket. 0 = No priority, 1 = Urgent, 2 = High, 3 = Normal, 4 = Low."),
     projectId: z.string().nullable().optional().describe("The ID of the project to create the ticket in. Use linear_get_projects to find available projects."),
-    labelIds: z.array(z.string()).nullable().optional().describe("The IDs of labels to add to the ticket. Use linear_get_labels to find available labels.")
+    labelIds: z.array(z.string()).nullable().optional().describe("The IDs of labels to add to the ticket. Use linear_get_labels to find available labels."),
+    assigneeId: z.string().nullable().optional().describe("The ID of the user to assign the ticket to. Use linear_get_users to find available users and their IDs.")
 })
 
 export const linearCreateTicketTool = tool({
@@ -46,16 +47,30 @@ export const linearCreateTicketTool = tool({
         const client = new LinearClient({ accessToken })
 
         try {
-            const payload = await client.createIssue({
+            const createTicketInput: IssueCreateInput = {
                 title: ticket.title,
-                description: ticket.description,
-                teamId: ticket.teamId,
-                stateId: ticket.stateId,
-                assigneeId: ticket.assigneeId,
-                projectId: ticket.projectId,
-                labelIds: ticket.labelIds,
-                priority: ticket.priority
-            })
+                teamId: ticket.teamId
+            }
+            if (ticket.description) {
+                createTicketInput.description = ticket.description
+            }
+            if (ticket.stateId) {
+                createTicketInput.stateId = ticket.stateId
+            }
+            if (ticket.projectId) {
+                createTicketInput.projectId = ticket.projectId
+            }
+            if (ticket.labelIds) {
+                createTicketInput.labelIds = ticket.labelIds
+            }
+            if (ticket.priority) {
+                createTicketInput.priority = ticket.priority
+            }
+            if (ticket.assigneeId) {
+                createTicketInput.assigneeId = ticket.assigneeId
+            }
+
+            const payload = await client.createIssue(createTicketInput)
 
             const createdIssue = await payload.issue
             if (!createdIssue?.id) {

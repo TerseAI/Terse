@@ -6,9 +6,9 @@ import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
 import { LinearIntegrationManager } from "../../../integrations/LinearIntegration"
 import logger from "../../../logger"
 import { IntegrationType } from "../../../shared/Integrations"
+import { LinearAdapter } from "../../../ticketing/linear"
 import { ToolName } from "../../../tools/ToolNames"
 import { formatError } from "../../../tools/toolUtils"
-import { LinearAdapter } from "../../../ticketing/linear"
 import { Session } from "../../../types/session"
 
 export const linearGetLabelsTool = tool({
@@ -16,11 +16,7 @@ export const linearGetLabelsTool = tool({
     description: `List issue labels for the Linear workspace or a specific team. Use to pick labelIds for linear_create_ticket or linear_update_ticket.`,
     parameters: z.object({
         integrationId: z.string().describe("The integration ID of the Linear integration to use."),
-        teamId: z
-            .string()
-            .nullable()
-            .optional()
-            .describe("Optional team ID to limit results to that team's labels.")
+        teamId: z.string().nullable().optional().describe("Optional team ID to limit results to that team's labels.")
     }),
     execute: async ({ integrationId, teamId }, runContext?: RunContext<SessionWithTracking<Session>>) => {
         logger.debug("🛠️ Executing linear_get_labels tool", { integrationId, teamId })

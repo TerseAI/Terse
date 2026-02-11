@@ -18,7 +18,8 @@ const updateTicketInputSchema = z.object({
     stateId: z.string().nullable().optional().describe("The ID of the state to set. Use linear_get_states to find available states."),
     priority: z.number().nullable().optional().describe("The priority of the ticket. 0 = No priority, 1 = Urgent, 2 = High, 3 = Normal, 4 = Low."),
     projectId: z.string().nullable().optional().describe("The ID of the project to associate with the ticket. Use linear_get_projects to find available projects."),
-    labelIds: z.array(z.string()).nullable().optional().describe("The IDs of labels to add to the ticket. Use linear_get_labels to find available labels.")
+    labelIds: z.array(z.string()).nullable().optional().describe("The IDs of labels to add to the ticket. Use linear_get_labels to find available labels."),
+    assigneeId: z.string().nullable().optional().describe("The ID of the user to assign the ticket to. Use linear_get_users to find available users and their IDs.")
 })
 
 export const linearUpdateTicketTool = tool({
@@ -64,6 +65,9 @@ export const linearUpdateTicketTool = tool({
         }
         if (updates.labelIds) {
             issueUpdates.labelIds = updates.labelIds
+        }
+        if (updates.assigneeId) {
+            issueUpdates.assigneeId = updates.assigneeId
         }
 
         try {

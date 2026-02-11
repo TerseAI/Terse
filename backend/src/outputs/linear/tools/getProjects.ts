@@ -6,9 +6,9 @@ import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
 import { LinearIntegrationManager } from "../../../integrations/LinearIntegration"
 import logger from "../../../logger"
 import { IntegrationType } from "../../../shared/Integrations"
+import { LinearAdapter } from "../../../ticketing/linear"
 import { ToolName } from "../../../tools/ToolNames"
 import { formatError } from "../../../tools/toolUtils"
-import { LinearAdapter } from "../../../ticketing/linear"
 import { Session } from "../../../types/session"
 
 export const linearGetProjectsTool = tool({
@@ -16,11 +16,7 @@ export const linearGetProjectsTool = tool({
     description: `List projects for the Linear workspace or a specific team. Use to pick projectId when creating or updating issues.`,
     parameters: z.object({
         integrationId: z.string().describe("The integration ID of the Linear integration to use."),
-        teamId: z
-            .string()
-            .nullable()
-            .optional()
-            .describe("Optional team ID to limit results to that team's projects.")
+        teamId: z.string().nullable().optional().describe("Optional team ID to limit results to that team's projects.")
     }),
     execute: async ({ integrationId, teamId }, runContext?: RunContext<SessionWithTracking<Session>>) => {
         logger.debug("🛠️ Executing linear_get_projects tool", { integrationId, teamId })

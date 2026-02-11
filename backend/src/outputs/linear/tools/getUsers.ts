@@ -6,9 +6,9 @@ import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
 import { LinearIntegrationManager } from "../../../integrations/LinearIntegration"
 import logger from "../../../logger"
 import { IntegrationType } from "../../../shared/Integrations"
+import { LinearAdapter } from "../../../ticketing/linear"
 import { ToolName } from "../../../tools/ToolNames"
 import { formatError } from "../../../tools/toolUtils"
-import { LinearAdapter } from "../../../ticketing/linear"
 import { Session } from "../../../types/session"
 
 export const linearGetUsersTool = tool({

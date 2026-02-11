@@ -6,9 +6,9 @@ import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
 import { LinearIntegrationManager } from "../../../integrations/LinearIntegration"
 import logger from "../../../logger"
 import { IntegrationType } from "../../../shared/Integrations"
+import { LinearAdapter } from "../../../ticketing/linear"
 import { ToolName } from "../../../tools/ToolNames"
 import { formatError } from "../../../tools/toolUtils"
-import { LinearAdapter } from "../../../ticketing/linear"
 import { Session } from "../../../types/session"
 
 export const linearGetStatesTool = tool({
@@ -16,11 +16,7 @@ export const linearGetStatesTool = tool({
     description: `List workflow states for the Linear workspace or a specific team. Use when creating or updating issues to pick a valid stateId (e.g. "Todo", "In Progress", "Done").`,
     parameters: z.object({
         integrationId: z.string().describe("The integration ID of the Linear integration to use."),
-        teamId: z
-            .string()
-            .nullable()
-            .optional()
-            .describe("Optional team ID to limit results to that team's states.")
+        teamId: z.string().nullable().optional().describe("Optional team ID to limit results to that team's states.")
     }),
     execute: async ({ integrationId, teamId }, runContext?: RunContext<SessionWithTracking<Session>>) => {
         logger.debug("🛠️ Executing linear_get_states tool", { integrationId, teamId })
