@@ -1,6 +1,7 @@
 import { CapabilityDescription, CapabilityRole, getConfigMetadata } from "../capabilityHelpers"
 import { ConfigType, TimeTriggerConfig } from "../shared/Configs"
 import { PrismaTransaction } from "../types/prisma"
+import { stripConfigForValidation, TimeTriggerConfigSchema } from "../utility/configSchemas"
 
 import { Trigger } from "./Trigger"
 
@@ -27,9 +28,7 @@ export class ScheduleTrigger implements Trigger<TimeTriggerConfig> {
     }
 
     async validateConfig(trigger: TimeTriggerConfig, _userId: string): Promise<void> {
-        if (!trigger.cronExpression) {
-            throw new Error("Invalid trigger config for time_trigger: missing cronExpression")
-        }
+        TimeTriggerConfigSchema.parse(stripConfigForValidation(trigger))
     }
 
     async addTriggerToAgent(tx: PrismaTransaction, agentTriggerId: string, trigger: TimeTriggerConfig): Promise<void> {

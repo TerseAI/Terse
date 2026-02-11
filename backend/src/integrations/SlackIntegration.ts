@@ -1457,6 +1457,55 @@ export function isValidSlackSig(req: Request) {
     return isValid
 }
 
+/**
+ * Returns the Slack access token for the given integration. Use this once then pass the token
+ * to validateSlackChannelsExist and validateSlackUserIds to avoid fetching the token twice.
+ */
+export async function getSlackAccessTokenOrThrow(integrationId: string): Promise<string> {
+    const manager = new SlackIntegrationManager()
+    const token = await manager.getAccessToken(integrationId)
+    if (!token) {
+        throw new Error(`Slack integration ${integrationId} not found or missing access token`)
+    }
+    return token
+}
+
+/**
+ * Verifies that the given Slack channels exist and are accessible with the provided token (bulk, parallel).
+ */
+export async function validateSlackChannelsExist(accessToken: string, channelIds: string[]): Promise<void> {
+    if (!channelIds.length) return
+    const client = new WebClient(accessToken, { logLevel: LogLevel.ERROR })
+    const results = await Promise.all(
+        channelIds.map(async channelId => {
+            const result = await client.conversations.info({ channel: channelId })
+            return { channelId, ok: result.ok && !!result.channel }
+        })
+    )
+    const missing = results.filter(r => !r.ok).map(r => r.channelId)
+    if (missing.length > 0) {
+        throw new Error(`Slack channel(s) not found or not accessible: ${missing.join(", ")}`)
+    }
+}
+
+/**
+ * Verifies that the given Slack user IDs exist and are accessible with the provided token (bulk, parallel).
+ */
+export async function validateSlackUserIds(accessToken: string, userIds: string[]): Promise<void> {
+    if (!userIds.length) return
+    const client = new WebClient(accessToken, { logLevel: LogLevel.ERROR })
+    const results = await Promise.all(
+        userIds.map(async userId => {
+            const result = await client.users.info({ user: userId })
+            return { userId, ok: result.ok && !!result.user }
+        })
+    )
+    const missing = results.filter(r => !r.ok).map(r => r.userId)
+    if (missing.length > 0) {
+        throw new Error(`Slack user(s) not found or not accessible: ${missing.join(", ")}`)
+    }
+}
+
 // Re-export from SlackClient for backwards compatibility
 export { initializeSlackWebClient } from "./SlackClient"
 

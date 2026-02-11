@@ -259,3 +259,68 @@ export class LaunchDarklyIntegrationManager
         }
     }
 }
+
+/**
+ * Returns the LaunchDarkly API key for the given integration. Use once then pass to validateLaunchDarklyProjectExists / validateLaunchDarklyEnvironmentsExist.
+ */
+export async function getLaunchDarklyAccessTokenOrThrow(integrationId: string): Promise<string> {
+    const integration = await db().launchdarkly_integrations.findUnique({
+        where: { id: integrationId },
+        select: { api_key: true }
+    })
+    if (!integration?.api_key) {
+        throw new Error(`LaunchDarkly integration ${integrationId} not found or missing API key`)
+    }
+    return integration.api_key
+}
+
+/**
+ * Verifies that the given LaunchDarkly project exists and is accessible with the provided API key.
+ */
+export async function validateLaunchDarklyProjectExists(apiKey: string, projectKey: string): Promise<void> {
+    const response = await fetch(`https://app.launchdarkly.com/api/v2/projects/${projectKey}`, {
+        method: "GET",
+        headers: {
+            Authorization: apiKey,
+            "Content-Type": "application/json"
+        }
+    })
+    if (!response.ok) {
+        const errorText = await response.text()
+        logger.error(`LaunchDarkly project ${projectKey} not accessible`, { status: response.status, errorText })
+        throw new Error(`LaunchDarkly project ${projectKey} not found or not accessible`)
+    }
+}
+
+/**
+ * Verifies that the given LaunchDarkly environments exist for the project.
+ */
+export async function validateLaunchDarklyEnvironmentsExist(
+    apiKey: string,
+    projectKey: string,
+    environmentKeys: string[]
+): Promise<void> {
+    if (!environmentKeys.length) return
+    const response = await fetch(`https://app.launchdarkly.com/api/v2/projects/${projectKey}/environments`, {
+        method: "GET",
+        headers: {
+            Authorization: apiKey,
+            "Content-Type": "application/json"
+        }
+    })
+    if (!response.ok) {
+        const errorText = await response.text()
+        logger.error(`LaunchDarkly environments for project ${projectKey} not accessible`, {
+            status: response.status,
+            errorText
+        })
+        throw new Error(`LaunchDarkly project ${projectKey} or environments not accessible`)
+    }
+    const data = await response.json()
+    const environments = Array.isArray(data) ? data : data.items || data.environments || []
+    const validKeys = new Set(environments.map((e: { key?: string; _id?: string }) => e.key || e._id))
+    const missing = environmentKeys.filter(k => !validKeys.has(k))
+    if (missing.length > 0) {
+        throw new Error(`LaunchDarkly environment(s) not found: ${missing.join(", ")}`)
+    }
+}

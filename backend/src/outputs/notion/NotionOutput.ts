@@ -3,10 +3,16 @@ import { OutputConfigType } from "@prisma/client"
 
 import { buildDummyOutputConfig } from "../../buildDummyConfigForCapability"
 import { type CapabilityDescription, CapabilityRole, extractToolMetadata, getConfigMetadata } from "../../capabilityHelpers"
+import {
+    getNotionAccessTokenOrThrow,
+    validateNotionDatabasesExist,
+    validateNotionPagesExist
+} from "../../integrations/NotionIntegration"
 import { NotionConfig } from "../../shared/Configs"
 import { IntegrationType } from "../../shared/Integrations"
 import { AgentOutputWithConfigs, PrismaTransaction } from "../../types/prisma"
 import { convertOutputConfigTypeToConfigType } from "../../utility/typeConverters"
+import { NotionConfigSchema, stripConfigForValidation } from "../../utility/configSchemas"
 import { Output, ToolboxEntry } from "../abstract/Output"
 
 import {
@@ -72,11 +78,15 @@ export class NotionOutput extends Output<NotionConfig> {
     }
 
     async validateConfig(output: NotionConfig, _userId: string): Promise<void> {
+        NotionConfigSchema.parse(stripConfigForValidation(output))
         const hasDb = (output.databaseIds?.length ?? 0) > 0
         const hasPage = (output.pageIds?.length ?? 0) > 0
         if (!hasDb && !hasPage) {
             throw new Error("Invalid Notion output config: you must supply at least one database or one page. Root-only (no page/database) is not supported.")
         }
+        const token = await getNotionAccessTokenOrThrow(output.integrationId)
+        await validateNotionDatabasesExist(token, output.databaseIds ?? [])
+        await validateNotionPagesExist(token, output.pageIds ?? [])
     }
 
     async addOutputToAgent(tx: PrismaTransaction, channelOutputId: string, output: NotionConfig): Promise<void> {

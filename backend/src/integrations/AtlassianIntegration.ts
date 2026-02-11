@@ -703,6 +703,72 @@ export class AtlassianIntegrationManager
     }
 }
 
+/**
+ * Verifies that the given Jira project exists and is accessible with the integration's token.
+ */
+export async function validateJiraProjectExists(integrationId: string, projectKey: string): Promise<void> {
+    const integration = await db().atlassian_integrations.findUnique({
+        where: { id: integrationId },
+        select: { cloud_id: true }
+    })
+    if (!integration?.cloud_id) {
+        throw new Error(`Atlassian integration ${integrationId} not found or missing cloud_id`)
+    }
+    const client = new AtlassianClient()
+    const accessToken = await client.getAccessToken(integrationId)
+    if (!accessToken) {
+        throw new Error(`Atlassian integration ${integrationId} not found or missing access token`)
+    }
+    const response = await fetch(
+        `https://api.atlassian.com/ex/jira/${integration.cloud_id}/rest/api/3/project/${projectKey}`,
+        {
+            method: "GET",
+            headers: {
+                Authorization: `Bearer ${accessToken}`,
+                Accept: "application/json"
+            }
+        }
+    )
+    if (!response.ok) {
+        const errorText = await response.text()
+        logger.error(`Jira project ${projectKey} not accessible`, { status: response.status, errorText })
+        throw new Error(`Jira project ${projectKey} not found or not accessible`)
+    }
+}
+
+/**
+ * Verifies that the given Confluence page exists and is accessible with the integration's token.
+ */
+export async function validateConfluencePageExists(integrationId: string, pageId: string): Promise<void> {
+    const integration = await db().atlassian_integrations.findUnique({
+        where: { id: integrationId },
+        select: { cloud_id: true }
+    })
+    if (!integration?.cloud_id) {
+        throw new Error(`Atlassian integration ${integrationId} not found or missing cloud_id`)
+    }
+    const client = new AtlassianClient()
+    const accessToken = await client.getAccessToken(integrationId)
+    if (!accessToken) {
+        throw new Error(`Atlassian integration ${integrationId} not found or missing access token`)
+    }
+    const response = await fetch(
+        `https://api.atlassian.com/ex/confluence/${integration.cloud_id}/wiki/rest/api/content/${pageId}`,
+        {
+            method: "GET",
+            headers: {
+                Authorization: `Bearer ${accessToken}`,
+                Accept: "application/json"
+            }
+        }
+    )
+    if (!response.ok) {
+        const errorText = await response.text()
+        logger.error(`Confluence page ${pageId} not accessible`, { status: response.status, errorText })
+        throw new Error(`Confluence page ${pageId} not found or not accessible`)
+    }
+}
+
 // MARK: - Event Definition
 
 function createDefaultJiraUser(): JiraWebhookPayload["user"] {

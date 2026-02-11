@@ -588,6 +588,38 @@ export class LinearIntegrationManager
     }
 }
 
+/**
+ * Verifies that the given Linear team exists and is accessible with the integration's token.
+ */
+export async function validateLinearTeamExists(integrationId: string, teamId: string): Promise<void> {
+    const manager = new LinearIntegrationManager()
+    const accessToken = await manager.getAccessToken(integrationId)
+    if (!accessToken) {
+        throw new Error(`Linear integration ${integrationId} not found or missing access token`)
+    }
+    const client = new LinearClient({ apiKey: accessToken })
+    const team = await client.team(teamId)
+    if (!team) {
+        throw new Error(`Linear team ${teamId} not found or not accessible`)
+    }
+}
+
+/**
+ * Verifies that the given Linear project exists and is accessible with the integration's token.
+ */
+export async function validateLinearProjectExists(integrationId: string, projectId: string): Promise<void> {
+    const manager = new LinearIntegrationManager()
+    const accessToken = await manager.getAccessToken(integrationId)
+    if (!accessToken) {
+        throw new Error(`Linear integration ${integrationId} not found or missing access token`)
+    }
+    const client = new LinearClient({ apiKey: accessToken })
+    const project = await client.project(projectId)
+    if (!project) {
+        throw new Error(`Linear project ${projectId} not found or not accessible`)
+    }
+}
+
 export class LinearEvent extends InputEvent implements Identifiable {
     readonly integrationType: IntegrationType = IntegrationType.LINEAR
     entityType = HydratorType.LINEAR_EVENT

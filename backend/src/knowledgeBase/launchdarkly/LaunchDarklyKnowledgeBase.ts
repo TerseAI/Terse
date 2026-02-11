@@ -3,10 +3,16 @@ import { KnowledgeBaseConfigType } from "@prisma/client"
 
 import { buildDummyKnowledgeBaseConfig } from "../../buildDummyConfigForCapability"
 import { type CapabilityDescription, CapabilityRole, extractToolMetadata, getConfigMetadata } from "../../capabilityHelpers"
+import {
+    getLaunchDarklyAccessTokenOrThrow,
+    validateLaunchDarklyEnvironmentsExist,
+    validateLaunchDarklyProjectExists
+} from "../../integrations/LaunchDarklyIntegration"
 import { ToolboxEntry } from "../../outputs/abstract/Output"
 import { ConfigType, LaunchDarklyConfig } from "../../shared/Configs"
 import { IntegrationType } from "../../shared/Integrations"
 import { AgentKnowledgeBaseWithConfigs, PrismaTransaction } from "../../types/prisma"
+import { LaunchDarklyConfigSchema, stripConfigForValidation } from "../../utility/configSchemas"
 import { KnowledgeBase } from "../abstract/KnowledgeBase"
 
 import { getLaunchDarklyFlagDetailsTool } from "./tools/getFeatureFlagDetails"
@@ -58,12 +64,10 @@ export class LaunchDarklyKnowledgeBase extends KnowledgeBase<LaunchDarklyConfig>
     }
 
     async validateConfig(knowledgeBase: LaunchDarklyConfig, _userId: string): Promise<void> {
-        if (!knowledgeBase.projectKey) {
-            throw new Error("Invalid knowledge base config for launchdarkly: missing projectKey")
-        }
-        if (!knowledgeBase.environmentKeys || knowledgeBase.environmentKeys.length === 0) {
-            throw new Error("Invalid knowledge base config for launchdarkly: requires at least one environment key")
-        }
+        LaunchDarklyConfigSchema.parse(stripConfigForValidation(knowledgeBase))
+        const apiKey = await getLaunchDarklyAccessTokenOrThrow(knowledgeBase.integrationId)
+        await validateLaunchDarklyProjectExists(apiKey, knowledgeBase.projectKey)
+        await validateLaunchDarklyEnvironmentsExist(apiKey, knowledgeBase.projectKey, knowledgeBase.environmentKeys)
     }
 
     async addKnowledgeBaseToAgent(tx: PrismaTransaction, channelKnowledgeBaseId: string, knowledgeBase: LaunchDarklyConfig): Promise<void> {

@@ -3,10 +3,12 @@ import { OutputConfigType } from "@prisma/client"
 
 import { buildDummyOutputConfig } from "../../buildDummyConfigForCapability"
 import { type CapabilityDescription, CapabilityRole, extractToolMetadata, getConfigMetadata } from "../../capabilityHelpers"
+import { validateJiraProjectExists } from "../../integrations/AtlassianIntegration"
 import { JiraConfig } from "../../shared/Configs"
 import { IntegrationType } from "../../shared/Integrations"
 import { AgentOutputWithConfigs, PrismaTransaction } from "../../types/prisma"
 import { convertOutputConfigTypeToConfigType } from "../../utility/typeConverters"
+import { JiraConfigSchema, stripConfigForValidation } from "../../utility/configSchemas"
 import { Output, ToolboxEntry } from "../abstract/Output"
 
 import { jiraCreateTicketTool } from "./tools/createTicket"
@@ -55,8 +57,11 @@ export class JiraTicketOutput extends Output<JiraConfig> {
         })
     }
 
-    async validateConfig(_output: JiraConfig, _userId: string): Promise<void> {
-        // No additional config validation beyond integration ownership.
+    async validateConfig(output: JiraConfig, _userId: string): Promise<void> {
+        JiraConfigSchema.parse(stripConfigForValidation(output))
+        if (output.projectKey) {
+            await validateJiraProjectExists(output.integrationId, output.projectKey)
+        }
     }
 
     async addOutputToAgent(tx: PrismaTransaction, channelOutputId: string, output: JiraConfig): Promise<void> {

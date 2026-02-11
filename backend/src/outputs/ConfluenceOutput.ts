@@ -7,6 +7,7 @@ import { SessionWithTracking } from "../agent/AgentRunner/AgentRunner"
 import { buildDummyOutputConfig } from "../buildDummyConfigForCapability"
 import { type CapabilityDescription, CapabilityRole, extractToolMetadata, getConfigMetadata } from "../capabilityHelpers"
 import { AtlassianClient } from "../integrations/AtlassianClient"
+import { validateConfluencePageExists } from "../integrations/AtlassianIntegration"
 import logger from "../logger"
 import { db } from "../prismaClient"
 import { ConfluenceConfig } from "../shared/Configs"
@@ -16,6 +17,7 @@ import { createNeedsApprovalFunction, formatError } from "../tools/toolUtils"
 import { AgentOutputWithConfigs, PrismaTransaction } from "../types/prisma"
 import { Session } from "../types/session"
 import { convertOutputConfigTypeToConfigType } from "../utility/typeConverters"
+import { ConfluenceConfigSchema, stripConfigForValidation } from "../utility/configSchemas"
 
 import { Output, ToolboxEntry } from "./abstract/Output"
 
@@ -77,9 +79,8 @@ export class ConfluenceOutput extends Output<ConfluenceConfig> {
     }
 
     async validateConfig(output: ConfluenceConfig, _userId: string): Promise<void> {
-        if (!output.pageId) {
-            throw new Error("Invalid output config for confluence: missing pageId")
-        }
+        ConfluenceConfigSchema.parse(stripConfigForValidation(output))
+        await validateConfluencePageExists(output.integrationId, output.pageId)
     }
 
     async addOutputToAgent(tx: PrismaTransaction, agentOutputId: string, output: ConfluenceConfig): Promise<void> {
