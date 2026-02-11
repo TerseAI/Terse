@@ -30,7 +30,7 @@ export async function reportRunErrorToRun(params: ReportRunErrorToRunParams): Pr
                 runHistoryModelEvent: {
                     ...event,
                     id: eventId,
-                    timestamp: new Date().toISOString()
+                    timestamp: Date.now()
                 }
             }
             io.to(SocketRooms.organization(organizationId)).emit(SocketEvents.AGENT_CHAT_EVENT, payload)

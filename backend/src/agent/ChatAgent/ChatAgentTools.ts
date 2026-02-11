@@ -454,7 +454,10 @@ const GitHubKnowledgeBaseConfigSchema = BaseConfigSchema.extend({
     configType: z.literal(ConfigType.GITHUB_KB).describe("Use ONLY for GitHub repository knowledge bases. Do NOT use for PostHog, LaunchDarkly, or Datadog."),
     integrationType: z.literal(IntegrationType.GITHUB),
     repositoryIds: z.array(z.number()).min(1).describe("Array of GitHub repository IDs (numeric). From fetchResourcesForIntegration, use the repo's id from resources[]."),
-    repositoryNames: z.array(NonEmptyString).min(1).describe("Array of repository names matching the repositoryIds. From fetchResourcesForIntegration, use the repo's name from resources[].")
+    repositoryNames: z
+        .array(NonEmptyString)
+        .min(1)
+        .describe("Array of repository names matching the repositoryIds. From fetchResourcesForIntegration, use the repo's name from resources[]. IMPORTANT: Must be owner/repo format.")
 })
 
 const JiraConfigSchema = BaseConfigSchema.extend({

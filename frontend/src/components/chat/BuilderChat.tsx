@@ -24,8 +24,16 @@ export function BuilderChat({ getStateJSON, agentId }: BuilderChatProps) {
     // Fetch history only when we have an agentId (existing session)
     const { events: historyEvents, isLoading: isHistoryLoading } = useBuilderChatHistory(agentId)
 
-    // Convert history events to turns (mark as historical to disable animation)
-    const initialTurns = agentId && historyEvents.length > 0 ? convertRunHistoryEventsToTurns(historyEvents.map(event => ({ ...event, isHistorical: true }))) : undefined
+    // Convert history events to turns (timestamps are already epoch ms)
+    const initialTurns =
+        agentId && historyEvents.length > 0
+            ? convertRunHistoryEventsToTurns(
+                  historyEvents.map(event => ({
+                      ...event,
+                      isHistorical: true
+                  }))
+              )
+            : undefined
 
     useEffect(() => {
         // Only reset if agentId actually changed (not on initial mount)
