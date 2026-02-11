@@ -135,6 +135,9 @@ export async function filterEvent(event: InputEvent, agentPrompt: AgentPrompt, i
         }
     }
 
+    logger.info(`#WTF filtering event ${event.integrationType}`, { event })
+    logger.info(`#WTF formatted event`, { formattedEvent: event.formatForAgentRunner() })
+
     const agent = buildFilterAgent()
     const history = buildFilterHistory(agentPrompt, event)
     const runner = runnerFactory({

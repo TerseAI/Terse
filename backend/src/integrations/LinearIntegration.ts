@@ -153,6 +153,7 @@ export class LinearIntegrationManager
                             if (event.type === "Issue" && event.data?.id) {
                                 try {
                                     const issue = await adapter.findTicket(event.data.id)
+                                    console.log("#WTF issue", issue)
                                     // Enrich the event with additional context from the API
                                     // The event already has most data, but we can add any missing fields
                                     logger.debug(`📊 [LINEAR INTEGRATION MANAGER] Enriched issue context for ${event.data.id}`, { issueId: event.data.id, integrationId: integration.id })
@@ -171,6 +172,7 @@ export class LinearIntegrationManager
                         // Continue with original event if enrichment fails
                     }
 
+                    console.log("#WTF enrichedEvent", enrichedEvent)
                     // Create LinearEvent and process it
                     const linearEvent = new LinearEvent(enrichedEvent, integration.id)
                     const eventProcessor = new EventProcessor(linearEvent, user)
