@@ -1,5 +1,5 @@
-import { useState } from "react"
-import { useNavigate } from "react-router-dom"
+import { useEffect, useState } from "react"
+import { useNavigate, useSearchParams } from "react-router-dom"
 
 import { Bell, Check, ChevronRight, Copy, Database, FileText, MoreVertical, Pause, Play, PlusIcon, Trash2, Wrench, XIcon, Zap } from "lucide-react"
 import { toast } from "sonner"
@@ -10,6 +10,8 @@ import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { useAgentCount } from "@/hooks/api/useAgentCount"
 import { useAgentMutations } from "@/hooks/api/useAgents"
+import { useBuilderSession } from "@/hooks/useBuilderSession"
+import { FROM_SETUP_CHAT_PARAM } from "@/shared/FrontendRoutes"
 import { FrontendRoutes } from "@/shared/FrontendRoutes"
 import { AgentKnowledgeBase, AgentNotificationSettings as AgentNotificationSettingsType, AgentUpdate, TransientAgentOutput, TransientAgentTrigger } from "@/shared/types"
 import { Agent, AgentOutput, AgentPrompt, AgentTrigger, TransientKnowledgeBase } from "@/shared/types"
@@ -345,7 +347,18 @@ export default function AgentSetupTab({
     mutate
 }: AgentSetupTabProps) {
     const { totalCount } = useAgentCount()
+    const { clearSessionId } = useBuilderSession()
+    const [searchParams, setSearchParams] = useSearchParams()
     const defaultName = getDefaultAgentName(totalCount)
+
+    // Clear setup session when landing on agent page
+    useEffect(() => {
+        if (searchParams.has(FROM_SETUP_CHAT_PARAM)) {
+            searchParams.delete(FROM_SETUP_CHAT_PARAM)
+            setSearchParams(searchParams, { replace: true })
+            clearSessionId()
+        }
+    }, [searchParams, setSearchParams, clearSessionId])
     const { getStateJSON, donate } = useModelContext()
 
     const agentInputs = inputs.map(toAgentTrigger).filter((i): i is AgentTrigger => i != null)

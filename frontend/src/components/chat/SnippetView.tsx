@@ -3,8 +3,6 @@ import { useNavigate } from "react-router-dom"
 
 import { LinkIcon } from "@heroicons/react/24/outline"
 
-import { SETUP_SESSION_KEY } from "../../hooks/useBuilderSession"
-import { safeStorageRemove } from "../../lib/storage"
 import { IntegrationType } from "../../shared/Integrations"
 import { ChatSnippet } from "../../shared/ModelEvents"
 import IntegrationCard from "../Integrations/IntegrationCard"
@@ -16,7 +14,6 @@ export function SnippetView({ snippet, onMultipleChoiceAnswer }: { snippet: Chat
 
     useEffect(() => {
         if (snippet.type === "navigate") {
-            safeStorageRemove(SETUP_SESSION_KEY)
             navigate(snippet.path)
         }
     }, [snippet, navigate])

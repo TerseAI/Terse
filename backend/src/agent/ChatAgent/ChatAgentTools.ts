@@ -17,7 +17,7 @@ import type { AgentDraft } from "../../routes/agents"
 import { applyAgentForUser, isUuidV4, updateAgentForUser } from "../../routes/agents"
 import type { ConfigInstance } from "../../shared/Configs"
 import { ConfigType } from "../../shared/Configs"
-import { FrontendRoutes } from "../../shared/FrontendRoutes"
+import { FrontendRoutes, FROM_SETUP_CHAT_PARAM } from "../../shared/FrontendRoutes"
 import { IntegrationType } from "../../shared/Integrations"
 import { ToolNameSchema } from "../../tools/ToolNames"
 import { getToolsThatRequireApprovals } from "../../tools/availableTools"
@@ -73,7 +73,8 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
                     const createWithId = !id && chatInterface.name === "Web" && sessionId && isUuidV4(sessionId) ? { createWithId: sessionId } : undefined
                     const result = id ? await updateAgentForUser(userId, organizationId, id, draft) : await applyAgentForUser(userId, organizationId, draft, createWithId)
 
-                    await chatInterface.navigate(FrontendRoutes.AGENTS.DETAIL(result.id))
+                    const path = FrontendRoutes.AGENTS.DETAIL(result.id)
+                    await chatInterface.navigate(`${path}?${FROM_SETUP_CHAT_PARAM}=1`)
                     return `Agent applied successfully (${result.id})`
                 } catch (error) {
                     logger.error("applyAgent failed", { error, userId, agent })
