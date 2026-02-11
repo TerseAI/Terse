@@ -181,7 +181,6 @@ export function AgentBuilderLayout({ header }: AgentBuilderLayoutProps) {
         }
     }
 
-
     return (
         <div className="flex flex-col h-full w-full">
             {/* Header - wrapper collapses immediately, content fades out */}

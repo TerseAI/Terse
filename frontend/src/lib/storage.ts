@@ -2,18 +2,20 @@
  * Set of helper functions for safely working with browser storage.
  */
 
-export function safeStorageGet(key: string, storage: Storage = sessionStorage): string | null {
+export function safeStorageGet(key: string, storage?: Storage): string | null {
     try {
-        return storage.getItem(key)
+        const s = storage ?? sessionStorage
+        return s.getItem(key)
     } catch (error) {
         console.error("Error getting item from storage", error)
         return null
     }
 }
 
-export function safeStorageSet(key: string, value: string, storage: Storage = sessionStorage): boolean {
+export function safeStorageSet(key: string, value: string, storage?: Storage): boolean {
     try {
-        storage.setItem(key, value)
+        const s = storage ?? sessionStorage
+        s.setItem(key, value)
         return true
     } catch (error) {
         console.error("Error setting item in storage", error)
@@ -21,9 +23,10 @@ export function safeStorageSet(key: string, value: string, storage: Storage = se
     }
 }
 
-export function safeStorageRemove(key: string, storage: Storage = sessionStorage): boolean {
+export function safeStorageRemove(key: string, storage?: Storage): boolean {
     try {
-        storage.removeItem(key)
+        const s = storage ?? sessionStorage
+        s.removeItem(key)
         return true
     } catch (error) {
         console.error("Error removing item from storage", error)
