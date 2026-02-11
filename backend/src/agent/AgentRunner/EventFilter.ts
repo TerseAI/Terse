@@ -168,7 +168,7 @@ export async function filterEvent(event: InputEvent, agentPrompt: AgentPrompt, i
                         const runHistoryModelEvent: RunHistoryModelEvent = {
                             ...modelEvent,
                             id: eventId,
-                            timestamp: new Date().toISOString()
+                            timestamp: Date.now()
                         }
                         const payload: RunHistoryModelSocketEvent = {
                             runId: trackingParams.runId,
@@ -204,7 +204,7 @@ export async function filterEvent(event: InputEvent, agentPrompt: AgentPrompt, i
                 const runHistoryModelEvent: RunHistoryModelEvent = {
                     ...filterResultEvent,
                     id: filterEventId,
-                    timestamp: new Date().toISOString()
+                    timestamp: Date.now()
                 }
                 const payload: RunHistoryModelSocketEvent = {
                     runId: trackingParams.runId,

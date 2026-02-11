@@ -3,13 +3,27 @@ import type { AgentInputItem, AssistantMessageItem, FunctionCallItem, FunctionCa
 import { IntegrationType } from "../shared/Integrations"
 import { ModelEvent } from "../shared/ModelEvents"
 
-export function convertAgentInputItemsToModelEvents(items: AgentInputItem[], toolToIntegrationMap?: Map<string, string>): ModelEvent[] {
-    const events: ModelEvent[] = []
+/** An AgentInputItem paired with the DB timestamp it was created at. */
+export type TimestampedAgentInputItem = {
+    item: AgentInputItem
+    createdAt: Date | null
+}
 
-    for (const item of items) {
+export function convertAgentInputItemsToModelEvents(items: (AgentInputItem | TimestampedAgentInputItem)[], toolToIntegrationMap?: Map<string, string>): ModelEvent[] {
+    const events: ModelEvent[] = []
+    let lastTimestamp: Date | null | undefined
+
+    for (const entry of items) {
+        const isTimestamped = typeof entry === "object" && entry !== null && "item" in entry && "createdAt" in entry
+        const item: AgentInputItem = isTimestamped ? (entry as TimestampedAgentInputItem).item : (entry as AgentInputItem)
+        const ts = isTimestamped ? (entry as TimestampedAgentInputItem).createdAt : undefined
+        if (ts) lastTimestamp = ts
+
         const converted = convertSingleItem(item, toolToIntegrationMap)
         if (converted) {
-            events.push(...converted)
+            for (const event of converted) {
+                events.push(ts ? { ...event, timestamp: ts.getTime() } : event)
+            }
         }
     }
 
@@ -17,7 +31,11 @@ export function convertAgentInputItemsToModelEvents(items: AgentInputItem[], too
     if (events.length > 0) {
         const lastEvent = events[events.length - 1]
         if (lastEvent.type !== "NaturalStop" && lastEvent.type !== "Failure") {
-            events.push({ type: "NaturalStop", step_id: "historical-stop" })
+            events.push({
+                type: "NaturalStop",
+                step_id: "historical-stop",
+                ...(lastTimestamp ? { timestamp: lastTimestamp.getTime() } : {})
+            })
         }
     }
 

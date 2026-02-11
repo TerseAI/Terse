@@ -97,7 +97,7 @@ export type GetAllRunHistoryResponse = {
     total: number
 }
 
-export type RunHistoryModelEvent = ModelEvent & { id: string; timestamp?: string }
+export type RunHistoryModelEvent = ModelEvent & { id: string }
 
 export type RunHistoryModelSocketEvent = {
     runId: string

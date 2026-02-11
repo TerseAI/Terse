@@ -5,6 +5,7 @@ import { HandThumbDownIcon as HandThumbDownFilledIcon, HandThumbUpIcon as HandTh
 
 import { ChangedItem, ChatSnippet, SharedErrorContext } from "../../shared/ModelEvents"
 
+import FunctionCallItem from "./FunctionCallItem"
 import { RunErrorView } from "./RunErrorView"
 import { SnippetView } from "./SnippetView"
 import TokenStream from "./TokenStream"
@@ -35,6 +36,8 @@ interface Turn {
 interface FunctionCallEvent {
     id: string
     name: string
+    /** Epoch ms — stamped when the event arrives, used to interleave with snippets chronologically */
+    timestamp?: number
     isGeneratingParams?: boolean
     isRunning: boolean
     isWaitingForApproval?: boolean
@@ -113,15 +116,7 @@ function TurnView({
                         </div>
                     </div>
                 )}
-                <ToolCallsSummary calls={function_calls} isTurnFailure={isFailure} onApprove={onApprove} onReject={onReject} />
-
-                {snippets.length > 0 && (
-                    <div className="space-y-2 mt-2">
-                        {snippets.map(snippet => (
-                            <SnippetView key={snippet.id} snippet={snippet} onMultipleChoiceAnswer={onMultipleChoiceAnswer} />
-                        ))}
-                    </div>
-                )}
+                <TurnTimeline functionCalls={function_calls} snippets={snippets} isTurnFailure={isFailure} onApprove={onApprove} onReject={onReject} onMultipleChoiceAnswer={onMultipleChoiceAnswer} />
 
                 {isAssistantFinishedGenerating && (
                     <div className="flex gap-2">
@@ -201,6 +196,77 @@ function FeedbackButtons({}: {}) {
                 <HandThumbDownFilledIcon className="h-4 w-4" />
             </button>
         </div>
+    )
+}
+
+// ---------------------------------------------------------------------------
+// TurnTimeline – interleaves completed function calls and snippets by timestamp,
+// keeping in-progress calls (generating / running) at the bottom.
+// ---------------------------------------------------------------------------
+
+type TimelineItem = { kind: "function_call"; call: FunctionCallEvent; ts: number } | { kind: "snippet"; snippet: ChatSnippet; ts: number }
+
+function TurnTimeline({
+    functionCalls,
+    snippets,
+    isTurnFailure,
+    onApprove,
+    onReject,
+    onMultipleChoiceAnswer
+}: {
+    functionCalls: FunctionCallEvent[]
+    snippets: ChatSnippet[]
+    isTurnFailure: boolean
+    onApprove?: (stepId: string) => void
+    onReject?: (stepId: string) => void
+    onMultipleChoiceAnswer?: (questionId: string, value: string) => void
+}) {
+    // Separate in-progress calls (still generating or running) from completed ones
+    const inProgressCalls = functionCalls.filter(c => c.isRunning || c.isGeneratingParams)
+    const completedCalls = functionCalls.filter(c => !c.isRunning && !c.isGeneratingParams)
+
+    // Build a merged timeline sorted by timestamp.
+    // Fallback when timestamps are missing: completed calls keep their index-based order
+    // with snippets appended after (matches legacy behaviour).
+    const timeline: TimelineItem[] = [
+        ...completedCalls.map((call, i) => ({
+            kind: "function_call" as const,
+            call,
+            ts: call.timestamp ?? i
+        })),
+        ...snippets.map((snippet, i) => ({
+            kind: "snippet" as const,
+            snippet,
+            ts: snippet.timestamp ?? completedCalls.length + i
+        }))
+    ].sort((a, b) => a.ts - b.ts)
+
+    const hasTimeline = timeline.length > 0
+    const hasInProgress = inProgressCalls.length > 0
+
+    if (!hasTimeline && !hasInProgress) return null
+
+    return (
+        <>
+            {/* Chronological timeline of completed calls & snippets */}
+            {hasTimeline && (
+                <div className="space-y-0.5">
+                    {timeline.map((item, index) => {
+                        if (item.kind === "function_call") {
+                            return <FunctionCallItem key={`fc-${item.call.id}`} call={item.call} index={index} isTurnFailure={isTurnFailure} onApprove={onApprove} onReject={onReject} />
+                        }
+                        return (
+                            <div key={`sn-${item.snippet.id}`} className="py-1">
+                                <SnippetView snippet={item.snippet} onMultipleChoiceAnswer={onMultipleChoiceAnswer} />
+                            </div>
+                        )
+                    })}
+                </div>
+            )}
+
+            {/* In-progress tool calls (generating / running) — always at the bottom */}
+            {hasInProgress && <ToolCallsSummary calls={inProgressCalls} isTurnFailure={isTurnFailure} onApprove={onApprove} onReject={onReject} />}
+        </>
     )
 }
 
