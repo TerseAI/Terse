@@ -162,6 +162,19 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
             return identifier ? `Updated ${identifier}` : "Ticket updated"
         }
     },
+    linear_add_comment: {
+        preparing: "Composing comment",
+        executing: params => {
+            const issueId = params?.issueId as string | undefined
+            return issueId ? `Adding comment to ${issueId}` : "Adding comment"
+        },
+        complete: (_params, result) => {
+            const parsed = safeParseResult(result)
+            const actions = parsed?.actions as Array<{ target?: string }> | undefined
+            const target = actions?.[0]?.target
+            return target ? `Comment added to ${target}` : "Comment added"
+        }
+    },
     linear_search_ticket: {
         preparing: "Building search query",
         executing: params => {
