@@ -1,5 +1,4 @@
 import { LinearClient } from "@linear/sdk"
-import type { IssueUpdateInput } from "@linear/sdk/dist/_generated_documents"
 import { RunContext, tool } from "@openai/agents"
 import { RunHistoryActionType } from "@prisma/client"
 import { z } from "zod"
@@ -12,94 +11,27 @@ import { ToolName } from "../../../tools/ToolNames"
 import { createNeedsApprovalFunction, formatError } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
 
+const updateTicketInputSchema = z.object({
+    title: z.string().nullable().optional().describe("The updated title of the ticket."),
+    teamId: z.string().nullable().optional().describe("The ID of the team to move the ticket to. Use linear_get_teams to find available teams."),
+    description: z.string().nullable().optional().describe("The updated description of the ticket."),
+    stateId: z.string().nullable().optional().describe("The ID of the state to set. Use linear_get_states to find available states."),
+    assigneeId: z.string().nullable().optional().describe("The ID of the user to assign the ticket to. Use linear_get_users to find available users and their IDs."),
+    priority: z.number().nullable().optional().describe("The priority of the ticket. 0 = No priority, 1 = Urgent, 2 = High, 3 = Normal, 4 = Low."),
+    projectId: z.string().nullable().optional().describe("The ID of the project to associate with the ticket. Use linear_get_projects to find available projects.")
+})
+
 export const linearUpdateTicketTool = tool({
     name: ToolName.LINEAR_UPDATE_TICKET,
-    description: `Update an existing Linear issue/ticket. Use this tool to modify issue properties such as title, description, state, assignee, priority, labels, due date, and more.
-
-BEFORE USING THIS TOOL:
-- Use linear_search_ticket to find the issue ID you want to update
-- Ensure you have the correct issue ID (not the identifier, but the actual ID)
-
-COMMON UPDATE OPERATIONS:
-- Change state: Set stateId to move issue through workflow (e.g., "In Progress", "Done")
-- Assign issue: Set assigneeId to assign to a user
-- Update priority: Set priority (0 = No priority, 1 = Urgent, 2 = High, 3 = Normal, 4 = Low)
-- Add labels: Use addedLabelIds to add labels to the issue
-- Remove labels: Use removedLabelIds to remove labels from the issue
-- Set due date: Use dueDate in format "YYYY-MM-DD" (TimelessDate format)
-- Update description: Set description (supports markdown format)`,
+    description: `Update an existing Linear issue/ticket. Use linear_search_ticket to find the issue ID, and linear_get_states, linear_get_users, linear_get_projects, linear_get_teams to find valid IDs for each field.`,
     parameters: z.object({
-        integrationId: z.string().describe("The integration ID of the Linear integration to use."),
-        issueId: z.string().describe("The ID of the Linear issue to update. Use linear_search_ticket or linear_get_ticket to find the issue ID."),
-        title: z.string().nullable().optional().describe("The issue title."),
-        description: z.string().nullable().optional().describe("The issue description in markdown format."),
-        stateId: z.string().nullable().optional().describe('The ID of the team state to set (e.g., "In Progress", "Done"). Use linear_get_ticket to find available state IDs.'),
-        assigneeId: z.string().nullable().optional().describe("The ID of the user to assign the issue to."),
-        priority: z.number().nullable().optional().describe("The priority of the issue. 0 = No priority, 1 = Urgent, 2 = High, 3 = Normal, 4 = Low."),
-        dueDate: z.string().nullable().optional().describe('The date at which the issue is due, in format "YYYY-MM-DD" (TimelessDate format).'),
-        labelIds: z.array(z.string()).nullable().optional().describe("The identifiers of the issue labels to associate with this ticket (replaces existing labels)."),
-        addedLabelIds: z.array(z.string()).nullable().optional().describe("The identifiers of the issue labels to be added to this issue."),
-        removedLabelIds: z.array(z.string()).nullable().optional().describe("The identifiers of the issue labels to be removed from this issue."),
-        projectId: z.string().nullable().optional().describe("The ID of the project to associate with the issue."),
-        projectMilestoneId: z.string().nullable().optional().describe("The ID of the project milestone to associate with the issue."),
-        teamId: z.string().nullable().optional().describe("The ID of the team to associate with the issue."),
-        parentId: z.string().nullable().optional().describe("The ID of the parent issue (to make this a sub-issue)."),
-        estimate: z
-            .number()
-            .nullable()
-            .optional()
-            .describe(
-                "The estimated complexity/story points of the issue. IMPORTANT: Do NOT set estimate to 0 - many Linear teams disallow 0 estimates. Valid values are positive numbers (1, 2, 3, 5, 8, etc.) or null/omit to leave unchanged. Only set an estimate if you have a meaningful value."
-            ),
-        subscriberIds: z.array(z.string()).nullable().optional().describe("The IDs of users subscribing to this ticket."),
-        trashed: z.boolean().nullable().optional().describe("Whether the issue has been trashed.")
+        integrationId: z.string().describe("The integration ID of the Linear workspace to use."),
+        issueId: z.string().describe("The ID of the Linear issue to update. Use linear_search_ticket to find the issue ID."),
+        updates: updateTicketInputSchema
     }),
     needsApproval: createNeedsApprovalFunction(ToolName.LINEAR_UPDATE_TICKET),
-    execute: async (
-        {
-            integrationId,
-            issueId,
-            title,
-            description,
-            stateId,
-            assigneeId,
-            priority,
-            dueDate,
-            labelIds,
-            addedLabelIds,
-            removedLabelIds,
-            projectId,
-            projectMilestoneId,
-            teamId,
-            parentId,
-            estimate,
-            subscriberIds,
-            trashed
-        },
-        runContext?: RunContext<SessionWithTracking<Session>>
-    ) => {
-        logger.debug("🛠️ Executing linear_update_ticket tool", {
-            integrationId,
-            issueId,
-            updates: {
-                title,
-                description,
-                stateId,
-                assigneeId,
-                priority,
-                dueDate,
-                labelIds,
-                addedLabelIds,
-                removedLabelIds,
-                projectId,
-                projectMilestoneId,
-                teamId,
-                parentId,
-                estimate,
-                subscriberIds,
-                trashed
-            }
-        })
+    execute: async ({ integrationId, issueId, updates }, runContext?: RunContext<SessionWithTracking<Session>>) => {
+        logger.debug("🛠️ Executing linear_update_ticket tool", { integrationId, issueId })
 
         if (!runContext?.context) {
             throw new Error("No context provided")
@@ -111,107 +43,46 @@ COMMON UPDATE OPERATIONS:
             throw new Error(`Linear integration not found or access denied for integrationId: ${integrationId}`)
         }
 
-        // Initialize Linear client with OAuth token
-        const client = new LinearClient({
-            accessToken
-        })
+        const client = new LinearClient({ accessToken })
 
         try {
-            // Build the update input object, only including provided fields with actual values
-            // Filter out empty strings, null values for fields that don't accept null, and undefined
-            const updateInput: Partial<IssueUpdateInput> = {}
+            const payload = await client.updateIssue(issueId, {
+                title: updates.title,
+                description: updates.description,
+                teamId: updates.teamId,
+                stateId: updates.stateId,
+                assigneeId: updates.assigneeId,
+                priority: updates.priority,
+                projectId: updates.projectId
+            })
 
-            // Helper to check if a value should be included (not undefined, not empty string)
-            const hasValue = (value: any): boolean => {
-                return value !== undefined && value !== null && value !== ""
+            const updatedIssue = await payload.issue
+            if (!updatedIssue?.id) {
+                throw new Error("Failed to update ticket")
             }
 
-            if (hasValue(title)) updateInput.title = title as string
-            if (hasValue(description)) updateInput.description = description as string
-            if (hasValue(stateId)) updateInput.stateId = stateId as string
-            if (hasValue(assigneeId)) updateInput.assigneeId = assigneeId as string
-            if (priority !== undefined && priority !== null) updateInput.priority = priority
-            if (hasValue(dueDate)) updateInput.dueDate = dueDate as string
-            if (labelIds !== undefined && labelIds !== null && labelIds.length > 0) updateInput.labelIds = labelIds
-            if (addedLabelIds !== undefined && addedLabelIds !== null && addedLabelIds.length > 0) updateInput.addedLabelIds = addedLabelIds
-            if (removedLabelIds !== undefined && removedLabelIds !== null && removedLabelIds.length > 0) updateInput.removedLabelIds = removedLabelIds
-            if (hasValue(projectId)) updateInput.projectId = projectId as string
-            if (hasValue(projectMilestoneId)) updateInput.projectMilestoneId = projectMilestoneId as string
-            if (hasValue(teamId)) updateInput.teamId = teamId as string
-            if (hasValue(parentId)) updateInput.parentId = parentId as string
-            // Only include estimate if it's a positive number - 0 is often invalid in Linear teams
-            if (estimate !== undefined && estimate !== null && estimate > 0) updateInput.estimate = estimate
-            if (subscriberIds !== undefined && subscriberIds !== null && subscriberIds.length > 0) updateInput.subscriberIds = subscriberIds
-            // Only send trashed if it's explicitly true (to trash an issue)
-            // Don't send trashed: false as Linear may not handle it well
-            if (trashed === true) updateInput.trashed = true
+            const ticketData = await client.issue(updatedIssue.id)
 
-            // Check if any fields were provided
-            if (Object.keys(updateInput).length === 0) {
-                return {
-                    success: false,
-                    error: "No update fields provided",
-                    hint: "Provide at least one field to update (e.g., title, description, stateId, etc.)"
-                }
-            }
-
-            // Update the issue using updateIssue method
-            const issuePayload = await client.updateIssue(issueId, updateInput)
-
-            // Get the updated issue
-            const updatedIssue = await issuePayload.issue
-            if (!updatedIssue) {
-                throw new Error("Failed to update issue - no issue returned")
-            }
-
-            // Await LinearFetch objects for state and assignee
-            const state = await updatedIssue.state
-            const assignee = updatedIssue.assignee ? await updatedIssue.assignee : null
-
-            // Extract issue data
-            const issueData = {
-                id: updatedIssue.id,
-                identifier: updatedIssue.identifier,
-                title: updatedIssue.title,
-                description: updatedIssue.description,
-                state: state?.name || "Unknown",
-                priority: updatedIssue.priority,
-                assignee: assignee
-                    ? {
-                          id: assignee.id,
-                          name: assignee.name,
-                          email: assignee.email || undefined
-                      }
-                    : null,
-                url: updatedIssue.url,
-                createdAt: updatedIssue.createdAt,
-                updatedAt: updatedIssue.updatedAt
-            }
-
-            // Return action as part of the result
-            const updateSummary = Object.keys(updateInput).join(", ")
             const action = {
                 action: "Updated ticket",
                 integration: IntegrationType.LINEAR,
-                target: updatedIssue.identifier || issueId,
-                details: `Updated fields: ${updateSummary}`,
-                url: updatedIssue.url,
-                type: RunHistoryActionType.update
+                target: ticketData.identifier,
+                details: `Updated ticket: ${ticketData.identifier}`,
+                type: RunHistoryActionType.update,
+                url: ticketData.url
             }
-
             return {
                 success: true,
-                actions: [action],
-                issue: issueData,
-                updatedFields: Object.keys(updateInput)
+                ticket: ticketData,
+                actions: [action]
             }
         } catch (error: unknown) {
-            const errorMessage = await formatError(runContext!, error)
-            logger.error("❌ Error updating Linear issue", { error: errorMessage, issueId })
+            const errorMessage = await formatError(runContext, error)
+            logger.error("❌ Error updating Linear ticket", { error: errorMessage, issueId })
             return {
                 success: false,
                 error: errorMessage,
-                hint: "Check that the issue ID is valid, the access token has the necessary permissions, and all provided IDs (stateId, assigneeId, etc.) are valid"
+                hint: "Please check all inputs and try again."
             }
         }
     },

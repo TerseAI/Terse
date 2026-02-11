@@ -14,6 +14,10 @@ export const ToolName = {
     LINEAR_UPDATE_TICKET: "linear_update_ticket",
     LINEAR_SEARCH_TICKET: "linear_search_ticket",
     LINEAR_READ_TICKET: "linear_read_ticket",
+    LINEAR_GET_STATES: "linear_get_states",
+    LINEAR_GET_LABELS: "linear_get_labels",
+    LINEAR_GET_PROJECTS: "linear_get_projects",
+    LINEAR_GET_USERS: "linear_get_users",
 
     // Jira Tools
     JIRA_CREATE_TICKET: "jira_create_ticket",

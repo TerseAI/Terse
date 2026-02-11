@@ -176,6 +176,50 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
             return "Search complete"
         }
     },
+    linear_get_states: {
+        preparing: "Loading workflow states",
+        executing: () => "Fetching workflow states",
+        complete: (_params, result) => {
+            const parsed = safeParseResult(result)
+            const states = parsed?.states as unknown[] | undefined
+            const n = Array.isArray(states) ? states.length : undefined
+            if (n !== undefined) return `Loaded ${n} state${n !== 1 ? "s" : ""}`
+            return "States loaded"
+        }
+    },
+    linear_get_labels: {
+        preparing: "Loading labels",
+        executing: () => "Fetching labels",
+        complete: (_params, result) => {
+            const parsed = safeParseResult(result)
+            const labels = parsed?.labels as unknown[] | undefined
+            const n = Array.isArray(labels) ? labels.length : undefined
+            if (n !== undefined) return `Loaded ${n} label${n !== 1 ? "s" : ""}`
+            return "Labels loaded"
+        }
+    },
+    linear_get_projects: {
+        preparing: "Loading projects",
+        executing: () => "Fetching projects",
+        complete: (_params, result) => {
+            const parsed = safeParseResult(result)
+            const projects = parsed?.projects as unknown[] | undefined
+            const n = Array.isArray(projects) ? projects.length : undefined
+            if (n !== undefined) return `Loaded ${n} project${n !== 1 ? "s" : ""}`
+            return "Projects loaded"
+        }
+    },
+    linear_get_users: {
+        preparing: "Loading users",
+        executing: () => "Fetching users",
+        complete: (_params, result) => {
+            const parsed = safeParseResult(result)
+            const users = parsed?.users as unknown[] | undefined
+            const n = Array.isArray(users) ? users.length : undefined
+            if (n !== undefined) return `Loaded ${n} user${n !== 1 ? "s" : ""}`
+            return "Users loaded"
+        }
+    },
 
     // ===================
     // Jira Tools
