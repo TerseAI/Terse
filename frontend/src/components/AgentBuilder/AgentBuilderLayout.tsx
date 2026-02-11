@@ -108,6 +108,7 @@ export function AgentBuilderLayout({ header }: AgentBuilderLayoutProps) {
 
     // Apply deep link params: templateId (pre-populate from template + set category) and/or prompt (arbitrary user input)
     useEffect(() => {
+        if (isHistoryLoading) return
         const templateIdParam = searchParams.get("templateId")
         const promptParam = searchParams.get("prompt")
 
@@ -138,7 +139,7 @@ export function AgentBuilderLayout({ header }: AgentBuilderLayoutProps) {
                 setSelectedCategory(matched.category)
             }
         }
-    }, [searchParams, templates])
+    }, [searchParams, templates, isHistoryLoading])
 
     const subscribeToEvents = useCallback(
         (callback: (payload: ChatEventPayload) => void) => {
