@@ -99,15 +99,13 @@ export class LinearIntegrationManager
     }
 
     async processWebhookEvent(event: LinearWebhookPayload): Promise<void> {
-        logger.debug("📥 [LINEAR INTEGRATION MANAGER] Received webhook event", {
+        logger.info("📥 [LINEAR INTEGRATION MANAGER] Received webhook event", {
             type: event.type,
             action: event.action,
             organizationId: event.organizationId
         })
 
-        // Find all integrations that match this event based on workspace_id
-        // We match by team name from the webhook payload, which should correspond to workspace_id
-        const workspaceIdentifier = event.data?.team?.name || event.organizationId
+        const workspaceIdentifier = event.organizationId
 
         if (!workspaceIdentifier) {
             logger.warn("⚠️  [LINEAR INTEGRATION MANAGER] No workspace identifier found in webhook payload", { eventType: event.type, action: event.action })
@@ -292,10 +290,10 @@ export class LinearIntegrationManager
             const adapter = new LinearAdapter(access_token)
             const userContext = await adapter.getUserContext()
             const linearUser = userContext.userInfo
-            const organization = userContext.organization
+            const linearOrganization = userContext.organization
 
             logger.info("🏢 Workspace", {
-                workspaceName: organization.name,
+                workspaceName: linearOrganization.name,
                 userId: decoded.userId
             })
 
@@ -303,7 +301,7 @@ export class LinearIntegrationManager
             const existing = await db().linear_integrations.findFirst({
                 where: {
                     organization_id: decoded.organizationId,
-                    workspace_id: organization.name
+                    workspace_id: linearOrganization.id
                 }
             })
 
@@ -314,8 +312,8 @@ export class LinearIntegrationManager
                         user_id: decoded.userId,
                         organization_id: decoded.organizationId,
                         linear_user_id: linearUser.id,
-                        workspace_id: organization.name,
-                        workspace_name: organization.name,
+                        workspace_id: linearOrganization.id,
+                        workspace_name: linearOrganization.name,
                         access_token: access_token,
                         refresh_token: refresh_token,
                         token_expiry: tokenExpiry
@@ -323,7 +321,7 @@ export class LinearIntegrationManager
                 })
                 integrationId = newIntegration.id
                 logger.info("✅ Created Linear OAuth connection", {
-                    workspaceName: organization.name,
+                    workspaceName: linearOrganization.name,
                     userId: decoded.userId
                 })
             } else {
@@ -338,7 +336,7 @@ export class LinearIntegrationManager
                 })
                 integrationId = existing.id
                 logger.info("✅ Updated Linear OAuth connection token", {
-                    workspaceName: organization.name,
+                    workspaceName: linearOrganization.name,
                     integrationId: existing.id,
                     userId: decoded.userId
                 })
@@ -346,7 +344,7 @@ export class LinearIntegrationManager
 
             logger.info("✅ Linear OAuth completed for user", {
                 userId: decoded.userId,
-                workspaceName: organization.name
+                workspaceName: linearOrganization.name
             })
 
             // Emit integration completed task (includes full state payload for chat metadata detection)
@@ -589,8 +587,6 @@ export class LinearIntegrationManager
         return events
     }
 }
-
-// MARK: - LinearEvent
 
 export class LinearEvent extends InputEvent implements Identifiable {
     readonly integrationType: IntegrationType = IntegrationType.LINEAR

@@ -96,6 +96,7 @@ export class JiraAdapter {
         }))
 
         const org: Organization = {
+            id: "",
             name: "",
             createdAt: "",
             createdIssueCount: 0,

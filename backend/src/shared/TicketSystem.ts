@@ -78,6 +78,7 @@ export interface Milestone {
 }
 
 export interface Organization {
+    id: string
     name: string
     createdAt: string
     createdIssueCount: number
