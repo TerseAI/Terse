@@ -714,13 +714,7 @@ export type ValidateGithubRepositoryIdsOptions = {
 /**
  * Verifies that the given GitHub repository IDs exist and are accessible for the integration (installation).
  */
-export async function validateGithubRepositoryIds({
-    userId,
-    integrationId,
-    repositoryIds,
-    configTypeLabel,
-    contextLabel
-}: ValidateGithubRepositoryIdsOptions): Promise<void> {
+export async function validateGithubRepositoryIds({ userId, integrationId, repositoryIds, configTypeLabel, contextLabel }: ValidateGithubRepositoryIdsOptions): Promise<void> {
     if (!Array.isArray(repositoryIds) || repositoryIds.length === 0) {
         throw new Error(`Invalid ${contextLabel} config for ${configTypeLabel}: requires at least one repository`)
     }
@@ -740,9 +734,7 @@ export async function validateGithubRepositoryIds({
 
     const installations = await getAppInstallationsForUser(accessToken.access_token)
     const integrationInstallationId = Number(integrationId)
-    const targetInstallation = installations.installations.find(installation =>
-        !Number.isNaN(integrationInstallationId) ? installation.id === integrationInstallationId : false
-    )
+    const targetInstallation = installations.installations.find(installation => (!Number.isNaN(integrationInstallationId) ? installation.id === integrationInstallationId : false))
 
     if (!targetInstallation) {
         throw new Error(`Invalid ${contextLabel} config for ${configTypeLabel}: installation not found`)

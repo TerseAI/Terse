@@ -1,7 +1,7 @@
 import { CapabilityDescription, CapabilityRole, getConfigMetadata } from "../capabilityHelpers"
 import { ConfigType, TimeTriggerConfig } from "../shared/Configs"
 import { PrismaTransaction } from "../types/prisma"
-import { stripConfigForValidation, TimeTriggerConfigSchema } from "../utility/configSchemas"
+import { TimeTriggerConfigSchema, stripConfigForValidation } from "../utility/configSchemas"
 
 import { Trigger } from "./Trigger"
 

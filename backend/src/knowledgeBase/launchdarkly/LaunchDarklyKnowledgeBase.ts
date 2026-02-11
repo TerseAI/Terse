@@ -3,11 +3,7 @@ import { KnowledgeBaseConfigType } from "@prisma/client"
 
 import { buildDummyKnowledgeBaseConfig } from "../../buildDummyConfigForCapability"
 import { type CapabilityDescription, CapabilityRole, extractToolMetadata, getConfigMetadata } from "../../capabilityHelpers"
-import {
-    getLaunchDarklyAccessTokenOrThrow,
-    validateLaunchDarklyEnvironmentsExist,
-    validateLaunchDarklyProjectExists
-} from "../../integrations/LaunchDarklyIntegration"
+import { getLaunchDarklyAccessTokenOrThrow, validateLaunchDarklyEnvironmentsExist, validateLaunchDarklyProjectExists } from "../../integrations/LaunchDarklyIntegration"
 import { ToolboxEntry } from "../../outputs/abstract/Output"
 import { ConfigType, LaunchDarklyConfig } from "../../shared/Configs"
 import { IntegrationType } from "../../shared/Integrations"

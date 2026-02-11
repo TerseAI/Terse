@@ -3,17 +3,13 @@ import { OutputConfigType } from "@prisma/client"
 
 import { buildDummyOutputConfig } from "../../buildDummyConfigForCapability"
 import { type CapabilityDescription, CapabilityRole, extractToolMetadata, getConfigMetadata } from "../../capabilityHelpers"
-import {
-    getSlackAccessTokenOrThrow,
-    validateSlackChannelsExist,
-    validateSlackUserIds
-} from "../../integrations/SlackIntegration"
+import { getSlackAccessTokenOrThrow, validateSlackChannelsExist, validateSlackUserIds } from "../../integrations/SlackIntegration"
 import { slackListUsersTool } from "../../knowledgeBase/slack/tools/listUsers"
 import { SlackOutputConfig } from "../../shared/Configs"
 import { IntegrationType } from "../../shared/Integrations"
 import { AgentOutputWithConfigs, PrismaTransaction } from "../../types/prisma"
+import { SlackOutputConfigSchema, stripConfigForValidation } from "../../utility/configSchemas"
 import { convertOutputConfigTypeToConfigType } from "../../utility/typeConverters"
-import { stripConfigForValidation, SlackOutputConfigSchema } from "../../utility/configSchemas"
 import { Output, ToolboxEntry } from "../abstract/Output"
 
 import { slackSendMessageTool } from "./tools/sendMessage"

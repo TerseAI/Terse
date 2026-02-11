@@ -3,16 +3,12 @@ import { OutputConfigType } from "@prisma/client"
 
 import { buildDummyOutputConfig } from "../../buildDummyConfigForCapability"
 import { type CapabilityDescription, CapabilityRole, extractToolMetadata, getConfigMetadata } from "../../capabilityHelpers"
-import {
-    getNotionAccessTokenOrThrow,
-    validateNotionDatabasesExist,
-    validateNotionPagesExist
-} from "../../integrations/NotionIntegration"
+import { getNotionAccessTokenOrThrow, validateNotionDatabasesExist, validateNotionPagesExist } from "../../integrations/NotionIntegration"
 import { NotionConfig } from "../../shared/Configs"
 import { IntegrationType } from "../../shared/Integrations"
 import { AgentOutputWithConfigs, PrismaTransaction } from "../../types/prisma"
-import { convertOutputConfigTypeToConfigType } from "../../utility/typeConverters"
 import { NotionConfigSchema, stripConfigForValidation } from "../../utility/configSchemas"
+import { convertOutputConfigTypeToConfigType } from "../../utility/typeConverters"
 import { Output, ToolboxEntry } from "../abstract/Output"
 
 import {

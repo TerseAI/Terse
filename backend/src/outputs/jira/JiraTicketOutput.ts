@@ -7,8 +7,8 @@ import { validateJiraProjectExists } from "../../integrations/AtlassianIntegrati
 import { JiraConfig } from "../../shared/Configs"
 import { IntegrationType } from "../../shared/Integrations"
 import { AgentOutputWithConfigs, PrismaTransaction } from "../../types/prisma"
-import { convertOutputConfigTypeToConfigType } from "../../utility/typeConverters"
 import { JiraConfigSchema, stripConfigForValidation } from "../../utility/configSchemas"
+import { convertOutputConfigTypeToConfigType } from "../../utility/typeConverters"
 import { Output, ToolboxEntry } from "../abstract/Output"
 
 import { jiraCreateTicketTool } from "./tools/createTicket"

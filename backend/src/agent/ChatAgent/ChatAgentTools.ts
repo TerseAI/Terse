@@ -22,6 +22,29 @@ import { IntegrationType } from "../../shared/Integrations"
 import { ToolNameSchema } from "../../tools/ToolNames"
 import { getToolsThatRequireApprovals } from "../../tools/availableTools"
 import { HydratorType, requireHydratorType } from "../../types/rag"
+import {
+    BaseConfigSchema,
+    ConfluenceConfigSchema,
+    DatadogConfigSchema,
+    FigmaConfigSchema,
+    GitHubConfigSchema,
+    GitHubKnowledgeBaseConfigSchema,
+    GmailConfigSchema,
+    GmailOutputConfigSchema,
+    JiraConfigSchema,
+    LaunchDarklyConfigSchema,
+    LinearInputConfigSchema,
+    LinearKnowledgeBaseConfigSchema,
+    LinearOutputConfigSchema,
+    NonEmptyString,
+    NotionConfigSchema,
+    PosthogConfigSchema,
+    SlackConfigSchema,
+    SlackKnowledgeBaseConfigSchema,
+    SlackOutputConfigSchema,
+    TimeTriggerConfigSchema,
+    enforceNonSystemIntegrationId
+} from "../../utility/configSchemas"
 import { getUserForOrg } from "../../utility/workos"
 
 import type { ChatAgentContext } from "./ChatAgentContext"
@@ -358,30 +381,6 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
         })
     ]
 }
-
-import {
-    BaseConfigSchema,
-    ConfluenceConfigSchema,
-    DatadogConfigSchema,
-    enforceNonSystemIntegrationId,
-    FigmaConfigSchema,
-    GmailConfigSchema,
-    GmailOutputConfigSchema,
-    GitHubConfigSchema,
-    GitHubKnowledgeBaseConfigSchema,
-    JiraConfigSchema,
-    LinearInputConfigSchema,
-    LinearKnowledgeBaseConfigSchema,
-    LinearOutputConfigSchema,
-    LaunchDarklyConfigSchema,
-    NotionConfigSchema,
-    NonEmptyString,
-    PosthogConfigSchema,
-    SlackConfigSchema,
-    SlackKnowledgeBaseConfigSchema,
-    SlackOutputConfigSchema,
-    TimeTriggerConfigSchema
-} from "../../utility/configSchemas"
 
 const InputConfigSchema = z
     .discriminatedUnion("configType", [GmailConfigSchema, FigmaConfigSchema, SlackConfigSchema, LinearInputConfigSchema, GitHubConfigSchema, JiraConfigSchema, TimeTriggerConfigSchema])

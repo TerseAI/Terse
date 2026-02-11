@@ -16,8 +16,8 @@ import { ToolName } from "../tools/ToolNames"
 import { createNeedsApprovalFunction, formatError } from "../tools/toolUtils"
 import { AgentOutputWithConfigs, PrismaTransaction } from "../types/prisma"
 import { Session } from "../types/session"
-import { convertOutputConfigTypeToConfigType } from "../utility/typeConverters"
 import { ConfluenceConfigSchema, stripConfigForValidation } from "../utility/configSchemas"
+import { convertOutputConfigTypeToConfigType } from "../utility/typeConverters"
 
 import { Output, ToolboxEntry } from "./abstract/Output"
 

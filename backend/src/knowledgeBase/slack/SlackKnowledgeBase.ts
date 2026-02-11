@@ -3,11 +3,7 @@ import { KnowledgeBaseConfigType } from "@prisma/client"
 
 import { buildDummyKnowledgeBaseConfig } from "../../buildDummyConfigForCapability"
 import { type CapabilityDescription, CapabilityRole, extractToolMetadata, getConfigMetadata } from "../../capabilityHelpers"
-import {
-    getSlackAccessTokenOrThrow,
-    validateSlackChannelsExist,
-    validateSlackUserIds
-} from "../../integrations/SlackIntegration"
+import { getSlackAccessTokenOrThrow, validateSlackChannelsExist, validateSlackUserIds } from "../../integrations/SlackIntegration"
 import { ToolboxEntry } from "../../outputs/abstract/Output"
 import { ConfigType, SlackKBConfig } from "../../shared/Configs"
 import { IntegrationType } from "../../shared/Integrations"

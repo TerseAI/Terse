@@ -1,5 +1,5 @@
-import logger from "../logger"
 import { getDatadogCredentialsByIntegrationId } from "../knowledgeBase/datadog/datadogApiClient"
+import logger from "../logger"
 import { db } from "../prismaClient"
 import { DatadogIntegration, DatadogIntegrationMetadata, IntegrationType } from "../shared/Integrations"
 import { AgentTriggerWithConfigs } from "../types/prisma"

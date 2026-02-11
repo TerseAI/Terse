@@ -6,8 +6,8 @@ import { type CapabilityDescription, CapabilityRole, extractToolMetadata, getCon
 import { GmailOutputConfig } from "../../shared/Configs"
 import { IntegrationType } from "../../shared/Integrations"
 import { AgentOutputWithConfigs, PrismaTransaction } from "../../types/prisma"
-import { convertOutputConfigTypeToConfigType } from "../../utility/typeConverters"
 import { GmailOutputConfigSchema, stripConfigForValidation } from "../../utility/configSchemas"
+import { convertOutputConfigTypeToConfigType } from "../../utility/typeConverters"
 import { Output, ToolboxEntry } from "../abstract/Output"
 
 import { gmailSendEmailTool } from "./tools/sendEmail"

@@ -1,13 +1,8 @@
 import { CapabilityDescription, CapabilityRole, getConfigMetadata } from "../capabilityHelpers"
-import {
-    getSlackAccessTokenOrThrow,
-    SlackIntegrationManager,
-    validateSlackChannelsExist,
-    validateSlackUserIds
-} from "../integrations/SlackIntegration"
+import { SlackIntegrationManager, getSlackAccessTokenOrThrow, validateSlackChannelsExist, validateSlackUserIds } from "../integrations/SlackIntegration"
 import { ConfigType, SlackConfig } from "../shared/Configs"
 import { PrismaTransaction } from "../types/prisma"
-import { stripConfigForValidation, SlackConfigSchema } from "../utility/configSchemas"
+import { SlackConfigSchema, stripConfigForValidation } from "../utility/configSchemas"
 
 import { Trigger } from "./Trigger"
 

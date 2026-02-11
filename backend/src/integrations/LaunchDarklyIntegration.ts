@@ -295,11 +295,7 @@ export async function validateLaunchDarklyProjectExists(apiKey: string, projectK
 /**
  * Verifies that the given LaunchDarkly environments exist for the project.
  */
-export async function validateLaunchDarklyEnvironmentsExist(
-    apiKey: string,
-    projectKey: string,
-    environmentKeys: string[]
-): Promise<void> {
+export async function validateLaunchDarklyEnvironmentsExist(apiKey: string, projectKey: string, environmentKeys: string[]): Promise<void> {
     if (!environmentKeys.length) return
     const response = await fetch(`https://app.launchdarkly.com/api/v2/projects/${projectKey}/environments`, {
         method: "GET",

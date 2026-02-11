@@ -719,16 +719,13 @@ export async function validateJiraProjectExists(integrationId: string, projectKe
     if (!accessToken) {
         throw new Error(`Atlassian integration ${integrationId} not found or missing access token`)
     }
-    const response = await fetch(
-        `https://api.atlassian.com/ex/jira/${integration.cloud_id}/rest/api/3/project/${projectKey}`,
-        {
-            method: "GET",
-            headers: {
-                Authorization: `Bearer ${accessToken}`,
-                Accept: "application/json"
-            }
+    const response = await fetch(`https://api.atlassian.com/ex/jira/${integration.cloud_id}/rest/api/3/project/${projectKey}`, {
+        method: "GET",
+        headers: {
+            Authorization: `Bearer ${accessToken}`,
+            Accept: "application/json"
         }
-    )
+    })
     if (!response.ok) {
         const errorText = await response.text()
         logger.error(`Jira project ${projectKey} not accessible`, { status: response.status, errorText })
@@ -752,16 +749,13 @@ export async function validateConfluencePageExists(integrationId: string, pageId
     if (!accessToken) {
         throw new Error(`Atlassian integration ${integrationId} not found or missing access token`)
     }
-    const response = await fetch(
-        `https://api.atlassian.com/ex/confluence/${integration.cloud_id}/wiki/rest/api/content/${pageId}`,
-        {
-            method: "GET",
-            headers: {
-                Authorization: `Bearer ${accessToken}`,
-                Accept: "application/json"
-            }
+    const response = await fetch(`https://api.atlassian.com/ex/confluence/${integration.cloud_id}/wiki/rest/api/content/${pageId}`, {
+        method: "GET",
+        headers: {
+            Authorization: `Bearer ${accessToken}`,
+            Accept: "application/json"
         }
-    )
+    })
     if (!response.ok) {
         const errorText = await response.text()
         logger.error(`Confluence page ${pageId} not accessible`, { status: response.status, errorText })
