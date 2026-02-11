@@ -1,6 +1,7 @@
 import { RunContext, tool } from "@openai/agents"
 import { RunHistoryActionType } from "@prisma/client"
 import { google } from "googleapis"
+import * as rfc2047 from "rfc2047"
 import { z } from "zod"
 
 import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
@@ -11,61 +12,6 @@ import { IntegrationType } from "../../../shared/Integrations"
 import { ToolName } from "../../../tools/ToolNames"
 import { createNeedsApprovalFunction, formatError } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
-
-/**
- * Encodes a header value per RFC 2047 if it contains non-ASCII characters.
- * Uses base64 encoding with UTF-8 charset to properly handle special characters
- * like em-dashes, curly quotes, and other Unicode characters that would otherwise
- * cause mojibake in email clients.
- *
- * RFC 2047 limits encoded-words to 75 characters total. With the =?UTF-8?B?...?=
- * wrapper (12 chars overhead), we can encode ~47 bytes per chunk. To be safe with
- * multi-byte UTF-8 characters, we split on smaller chunks and join with folding
- * whitespace (CRLF + space).
- *
- * @param value - The header value to encode (e.g., email subject)
- * @returns The original value if ASCII-only, or RFC 2047 encoded string if non-ASCII
- */
-function encodeRfc2047(value: string): string {
-    // Check if the value contains any non-ASCII characters (outside printable ASCII range 0x20-0x7E)
-    if (!/[^\x20-\x7E]/.test(value)) {
-        return value
-    }
-
-    // RFC 2047 limits encoded-words to 75 chars. With "=?UTF-8?B?" (10 chars) and "?=" (2 chars),
-    // we have 63 chars for base64. Since base64 expands by 4/3, we can encode ~47 bytes per chunk.
-    // Use 45 bytes to stay safely within limits and align with base64 (45 bytes = 60 base64 chars).
-    const MAX_CHUNK_BYTES = 45
-    const utf8Bytes = Buffer.from(value, "utf-8")
-
-    // If the entire value fits in one chunk, encode it directly
-    if (utf8Bytes.length <= MAX_CHUNK_BYTES) {
-        const encoded = utf8Bytes.toString("base64")
-        return `=?UTF-8?B?${encoded}?=`
-    }
-
-    // Split into chunks, being careful not to split in the middle of a multi-byte UTF-8 character
-    const chunks: string[] = []
-    let offset = 0
-
-    while (offset < utf8Bytes.length) {
-        let chunkEnd = Math.min(offset + MAX_CHUNK_BYTES, utf8Bytes.length)
-
-        // Ensure we don't split a multi-byte UTF-8 character
-        // UTF-8 continuation bytes start with 10xxxxxx (0x80-0xBF)
-        while (chunkEnd > offset && utf8Bytes[chunkEnd] >= 0x80 && utf8Bytes[chunkEnd] <= 0xbf) {
-            chunkEnd--
-        }
-
-        const chunk = utf8Bytes.subarray(offset, chunkEnd)
-        const encoded = chunk.toString("base64")
-        chunks.push(`=?UTF-8?B?${encoded}?=`)
-        offset = chunkEnd
-    }
-
-    // Join chunks with folding whitespace (RFC 2047 allows multiple encoded-words separated by whitespace)
-    return chunks.join("\r\n ")
-}
 
 /**
  * Tool for sending emails or replying to email threads via Gmail.
@@ -122,7 +68,7 @@ export const gmailSendEmailTool = tool({
 
             // Build email headers
             // Subject is encoded per RFC 2047 to handle non-ASCII characters (e.g., em-dashes)
-            const headers: string[] = [`To: ${to}`, `Subject: ${encodeRfc2047(subject)}`]
+            const headers: string[] = [`To: ${to}`, `Subject: ${rfc2047.encode(subject)}`]
 
             if (cc) {
                 headers.push(`Cc: ${cc}`)
