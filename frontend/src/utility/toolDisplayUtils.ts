@@ -133,14 +133,16 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
     linear_create_ticket: {
         preparing: "Drafting ticket",
         executing: params => {
-            const title = params?.title as string | undefined
+            const ticket = params?.ticket as Record<string, unknown> | undefined
+            const title = ticket?.title as string | undefined
             return title ? `Creating ticket: "${truncate(title)}"` : "Creating ticket"
         },
         complete: (params, result) => {
             const parsed = safeParseResult(result)
             const issue = parsed?.issue as Record<string, unknown> | undefined
             const identifier = issue?.identifier as string | undefined
-            const title = (params?.title as string) || (issue?.title as string)
+            const ticketParams = params?.ticket as Record<string, unknown> | undefined
+            const title = (ticketParams?.title as string) || (issue?.title as string)
             if (identifier && title) return `Created ${identifier}: "${truncate(title, 30)}"`
             if (identifier) return `Created ${identifier}`
             if (title) return `Created "${truncate(title)}"`
@@ -150,8 +152,8 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
     linear_update_ticket: {
         preparing: "Planning ticket update",
         executing: params => {
-            const ticketId = params?.ticketId as string | undefined
-            return ticketId ? `Updating ticket ${ticketId}` : "Updating ticket"
+            const issueId = params?.issueId as string | undefined
+            return issueId ? `Updating ticket ${issueId}` : "Updating ticket"
         },
         complete: (_params, result) => {
             const parsed = safeParseResult(result)
@@ -196,6 +198,17 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
             const n = Array.isArray(labels) ? labels.length : undefined
             if (n !== undefined) return `Loaded ${n} label${n !== 1 ? "s" : ""}`
             return "Labels loaded"
+        }
+    },
+    linear_get_teams: {
+        preparing: "Loading teams",
+        executing: () => "Fetching teams",
+        complete: (_params, result) => {
+            const parsed = safeParseResult(result)
+            const teams = parsed?.teams as unknown[] | undefined
+            const n = Array.isArray(teams) ? teams.length : undefined
+            if (n !== undefined) return `Loaded ${n} team${n !== 1 ? "s" : ""}`
+            return "Teams loaded"
         }
     },
     linear_get_projects: {

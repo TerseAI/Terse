@@ -90,7 +90,7 @@ export const linearUpdateTicketTool = tool({
             }
             return {
                 success: true,
-                ticket: ticketData,
+                issue: ticketData,
                 actions: [action]
             }
         } catch (error: unknown) {
