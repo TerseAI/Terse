@@ -13,6 +13,28 @@ import { createNeedsApprovalFunction, formatError } from "../../../tools/toolUti
 import { Session } from "../../../types/session"
 
 /**
+ * Encodes a header value per RFC 2047 if it contains non-ASCII characters.
+ * Uses base64 encoding with UTF-8 charset to properly handle special characters
+ * like em-dashes, curly quotes, and other Unicode characters that would otherwise
+ * cause mojibake in email clients.
+ *
+ * @param value - The header value to encode (e.g., email subject)
+ * @returns The original value if ASCII-only, or RFC 2047 encoded string if non-ASCII
+ */
+function encodeRfc2047(value: string): string {
+    // Check if the value contains any non-ASCII characters (outside printable ASCII range 0x20-0x7E)
+    // Also encode if it contains characters that are special in RFC 2047 (=, ?, _)
+    if (!/[^\x20-\x7E]/.test(value)) {
+        return value
+    }
+
+    // Encode using RFC 2047 MIME encoded-word syntax: =?charset?encoding?encoded_text?=
+    // Using 'B' for base64 encoding which is more robust than 'Q' (quoted-printable)
+    const encoded = Buffer.from(value, "utf-8").toString("base64")
+    return `=?UTF-8?B?${encoded}?=`
+}
+
+/**
  * Tool for sending emails or replying to email threads via Gmail.
  * Supports both sending new emails and replying to existing threads.
  */
@@ -66,7 +88,8 @@ export const gmailSendEmailTool = tool({
             const gmail = google.gmail({ version: "v1", auth: oauth2Client })
 
             // Build email headers
-            const headers: string[] = [`To: ${to}`, `Subject: ${subject}`]
+            // Subject is encoded per RFC 2047 to handle non-ASCII characters (e.g., em-dashes)
+            const headers: string[] = [`To: ${to}`, `Subject: ${encodeRfc2047(subject)}`]
 
             if (cc) {
                 headers.push(`Cc: ${cc}`)
