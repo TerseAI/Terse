@@ -3,8 +3,7 @@ import { useNavigate } from "react-router-dom"
 
 import { LinkIcon } from "@heroicons/react/24/outline"
 
-import { clearSetupSessionId } from "@/components/AgentBuilder/AgentBuilderLayout"
-
+import { useBuilderSession } from "../../hooks/useBuilderSession"
 import { IntegrationType } from "../../shared/Integrations"
 import { ChatSnippet } from "../../shared/ModelEvents"
 import IntegrationCard from "../Integrations/IntegrationCard"
@@ -13,11 +12,11 @@ import { MultipleChoiceQuestionForm } from "./MultipleChoiceQuestionForm"
 
 export function SnippetView({ snippet, onMultipleChoiceAnswer }: { snippet: ChatSnippet; onMultipleChoiceAnswer?: (questionId: string, value: string) => void }) {
     const navigate = useNavigate()
+    const { clearSessionId } = useBuilderSession()
 
     useEffect(() => {
         if (snippet.type === "navigate") {
-            // Clear setup session so the setup page starts fresh next time
-            clearSetupSessionId()
+            clearSessionId()
             navigate(snippet.path)
         }
     }, [snippet, navigate])

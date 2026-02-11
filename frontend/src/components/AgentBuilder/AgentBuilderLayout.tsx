@@ -1,10 +1,9 @@
-import { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { ReactNode, useCallback, useEffect, useRef, useState } from "react"
 import { useSearchParams } from "react-router-dom"
 
 import { AnimatePresence, Easing, motion } from "framer-motion"
 import type { LucideIcon } from "lucide-react"
 import { FileText, Loader2, MessageCircle, Rocket, RotateCcw, Users } from "lucide-react"
-import { v4 as uuidv4 } from "uuid"
 
 import { TemplateCard } from "@/components/Agents/TemplateCard"
 import { convertRunHistoryEventsToTurns } from "@/components/RunHistory/RunHistoryChatDrawer/RunHistoryChatAdapter"
@@ -14,11 +13,10 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useBuilderChatHistory } from "@/hooks/api/useBuilderChatHistory"
 import { useTemplates } from "@/hooks/api/useTemplates"
+import { useBuilderSession } from "@/hooks/useBuilderSession"
 import { ModelRequest, SendModelRequest } from "@/shared/ModelEvents"
 import { AgentTemplate, TemplateCategory } from "@/shared/types"
 import { sendBuilderMessage, sendBuilderMultipleChoiceAnswer, subscribeToBuilderChat } from "@/socket"
-
-const SETUP_SESSION_KEY = "terse:agent-setup-session-id"
 
 const TEMPLATE_CATEGORIES: { id: TemplateCategory; label: string; icon: LucideIcon }[] = [
     { id: "users", label: "Understand Users", icon: Users },
@@ -51,40 +49,18 @@ type AgentBuilderLayoutProps = {
     header: ReactNode
 }
 
-/**
- * Get or create a persistent session ID for the agent setup flow.
- * Stored in localStorage so progress survives navigation and tab closes.
- */
-function getOrCreateSetupSessionId(): string {
-    const existing = localStorage.getItem(SETUP_SESSION_KEY)
-    if (existing) return existing
-    const id = uuidv4()
-    localStorage.setItem(SETUP_SESSION_KEY, id)
-    return id
-}
-
-/** Clear the persisted setup session ID (e.g. after agent creation or manual reset). */
-export function clearSetupSessionId() {
-    localStorage.removeItem(SETUP_SESSION_KEY)
-}
-
 export function AgentBuilderLayout({ header }: AgentBuilderLayoutProps) {
     const { templates, isLoading } = useTemplates()
+    const { sessionId, setSessionId, clearSessionId, resetSessionId } = useBuilderSession()
     const [hasStartedChat, setHasStartedChat] = useState(false)
     const [selectedCategory, setSelectedCategory] = useState<TemplateCategory>("users")
     const chatRef = useRef<ChatHandle>(null)
     const appliedDeepLinkKey = useRef<string | null>(null)
     const [searchParams] = useSearchParams()
 
-    // Persist session ID in localStorage so progress survives navigation / tab close
-    const [sessionId, setSessionId] = useState(() => getOrCreateSetupSessionId())
-
     // Load chat history for the persisted session
     const { events: historyEvents, isLoading: isHistoryLoading } = useBuilderChatHistory(sessionId)
-    const initialTurns = useMemo(() => {
-        if (historyEvents.length === 0) return undefined
-        return convertRunHistoryEventsToTurns(historyEvents.map(event => ({ ...event, isHistorical: true })))
-    }, [historyEvents])
+    const initialTurns = convertRunHistoryEventsToTurns(historyEvents.map(event => ({ ...event, isHistorical: true })))
 
     // If we have history, the chat has been started before
     useEffect(() => {
@@ -94,10 +70,8 @@ export function AgentBuilderLayout({ header }: AgentBuilderLayoutProps) {
     }, [initialTurns, hasStartedChat])
 
     const handleClearChat = () => {
-        clearSetupSessionId()
-        const newId = uuidv4()
-        localStorage.setItem(SETUP_SESSION_KEY, newId)
-        setSessionId(newId)
+        clearSessionId()
+        setSessionId(resetSessionId())
         setHasStartedChat(false)
     }
 

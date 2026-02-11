@@ -1,9 +1,8 @@
-import { useCallback, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { useNavigate } from "react-router-dom"
 
 import { AnimatePresence, motion } from "framer-motion"
-import { ArrowRight, ArrowUpRight, ExternalLink, MessageSquare, Zap } from "lucide-react"
-import { v4 as uuidv4 } from "uuid"
+import { ArrowRight, ArrowUpRight, ExternalLink, MessageSquare, RotateCcw, Zap } from "lucide-react"
 
 import RunHistoryChatDrawer from "@/components/RunHistory/RunHistoryChatDrawer"
 import RunHistoryStatusBadge from "@/components/RunHistory/RunHistoryStatusBadge"
@@ -21,6 +20,10 @@ import { RecentRun } from "@/shared/types"
 import { sendBuilderMessage, subscribeToBuilderChat } from "@/socket"
 import { formatTimestamp } from "@/utility/timeUtils"
 
+import { convertRunHistoryEventsToTurns } from "../../components/RunHistory/RunHistoryChatDrawer/RunHistoryChatAdapter"
+import { useBuilderChatHistory } from "../../hooks/api/useBuilderChatHistory"
+import { useBuilderSession } from "../../hooks/useBuilderSession"
+
 import { HomeEmptyState } from "./components/HomeEmptyState"
 
 function Home() {
@@ -29,9 +32,17 @@ function Home() {
     const navigate = useNavigate()
 
     // Builder chat state
+    const { sessionId, clearSessionId, resetSessionId, setSessionId } = useBuilderSession()
     const [hasStartedChat, setHasStartedChat] = useState(false)
     const chatRef = useRef<ChatHandle>(null)
-    const sessionId = useMemo(() => uuidv4(), [])
+    const { events: historyEvents } = useBuilderChatHistory(sessionId)
+    const initialTurns = convertRunHistoryEventsToTurns(historyEvents.map(event => ({ ...event, isHistorical: true })))
+
+    useEffect(() => {
+        if (initialTurns && initialTurns.length > 0 && !hasStartedChat) {
+            setHasStartedChat(true)
+        }
+    }, [initialTurns, hasStartedChat])
 
     // Run history chat drawer state
     const [selectedRun, setSelectedRun] = useState<RecentRun | null>(null)
@@ -78,6 +89,12 @@ function Home() {
         setIsDrawerOpen(open)
         if (!open) setSelectedRun(null)
     }, [])
+
+    const handleClearChat = () => {
+        clearSessionId()
+        setSessionId(resetSessionId())
+        setHasStartedChat(false)
+    }
 
     // Show empty state if user has no agents
     const hasNoAgents = !isLoadingAllAgents && allAgents.length === 0
@@ -147,10 +164,19 @@ function Home() {
                 animate={hasStartedChat ? { flexGrow: 1, minHeight: 0 } : {}}
                 transition={{ duration: ANIMATION_DURATION, ease: ANIMATION_EASE }}
             >
+                {hasStartedChat && (
+                    <div className="flex justify-end px-2 py-1">
+                        <button onClick={handleClearChat} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
+                            <RotateCcw className="h-3 w-3" />
+                            Reset chat
+                        </button>
+                    </div>
+                )}
                 <div className="flex-1 min-h-0 w-full">
                     <Chat
                         ref={chatRef}
                         key={sessionId}
+                        initialTurns={initialTurns}
                         subscribeToEvents={subscribeToEvents}
                         sendMessage={sendMessage}
                         onUserMessage={handleUserMessage}
