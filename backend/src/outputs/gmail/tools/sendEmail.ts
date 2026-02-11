@@ -1,6 +1,7 @@
 import { RunContext, tool } from "@openai/agents"
 import { RunHistoryActionType } from "@prisma/client"
 import { google } from "googleapis"
+import * as rfc2047 from "rfc2047"
 import { z } from "zod"
 
 import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
@@ -66,7 +67,8 @@ export const gmailSendEmailTool = tool({
             const gmail = google.gmail({ version: "v1", auth: oauth2Client })
 
             // Build email headers
-            const headers: string[] = [`To: ${to}`, `Subject: ${subject}`]
+            // Subject is encoded per RFC 2047 to handle non-ASCII characters (e.g., em-dashes)
+            const headers: string[] = [`To: ${to}`, `Subject: ${rfc2047.encode(subject)}`]
 
             if (cc) {
                 headers.push(`Cc: ${cc}`)
