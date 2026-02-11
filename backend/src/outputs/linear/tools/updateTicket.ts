@@ -57,7 +57,7 @@ export const linearUpdateTicketTool = tool({
         if (updates.stateId) {
             issueUpdates.stateId = updates.stateId
         }
-        if (updates.priority) {
+        if (updates.priority !== undefined && updates.priority !== null) {
             issueUpdates.priority = updates.priority
         }
         if (updates.projectId) {

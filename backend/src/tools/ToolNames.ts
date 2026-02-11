@@ -17,6 +17,7 @@ export const ToolName = {
     LINEAR_GET_STATES: "linear_get_states",
     LINEAR_GET_LABELS: "linear_get_labels",
     LINEAR_GET_PROJECTS: "linear_get_projects",
+    LINEAR_GET_TEAMS: "linear_get_teams",
     LINEAR_GET_USERS: "linear_get_users",
 
     // Jira Tools

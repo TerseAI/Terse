@@ -63,7 +63,7 @@ export const linearCreateTicketTool = tool({
             if (ticket.labelIds) {
                 createTicketInput.labelIds = ticket.labelIds
             }
-            if (ticket.priority) {
+            if (ticket.priority !== undefined && ticket.priority !== null) {
                 createTicketInput.priority = ticket.priority
             }
             if (ticket.assigneeId) {
