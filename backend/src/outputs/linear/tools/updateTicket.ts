@@ -19,12 +19,13 @@ const updateTicketInputSchema = z.object({
     priority: z.number().nullable().optional().describe("The priority of the ticket. 0 = No priority, 1 = Urgent, 2 = High, 3 = Normal, 4 = Low."),
     projectId: z.string().nullable().optional().describe("The ID of the project to associate with the ticket. Use linear_get_projects to find available projects."),
     labelIds: z.array(z.string()).nullable().optional().describe("The IDs of labels to add to the ticket. Use linear_get_labels to find available labels."),
-    assigneeId: z.string().nullable().optional().describe("The ID of the user to assign the ticket to. Use linear_get_users to find available users and their IDs.")
+    assigneeId: z.string().nullable().optional().describe("The ID of the user to assign the ticket to. Use linear_get_users to find available users and their IDs."),
+    comment: z.string().nullable().optional().describe("A comment to add to the ticket. This will be added as a new comment, not replace any existing comments.")
 })
 
 export const linearUpdateTicketTool = tool({
     name: ToolName.LINEAR_UPDATE_TICKET,
-    description: `Update an existing Linear issue/ticket. Use linear_search_ticket to find the issue ID, and linear_get_states, linear_get_users, linear_get_projects, linear_get_teams to find valid IDs for each field.`,
+    description: `Update an existing Linear issue/ticket, or add a comment to it. Use linear_search_ticket to find the issue ID, and linear_get_states, linear_get_users, linear_get_projects, linear_get_teams to find valid IDs for each field. You can also add a comment to the ticket using the comment field.`,
     parameters: z.object({
         integrationId: z.string().describe("The integration ID of the Linear workspace to use."),
         issueId: z.string().describe("The ID of the Linear issue to update. Use linear_search_ticket to find the issue ID."),
@@ -71,27 +72,56 @@ export const linearUpdateTicketTool = tool({
         }
 
         try {
-            const payload = await client.updateIssue(issueId, issueUpdates)
+            // Only call updateIssue if there are actual issue updates (not just a comment)
+            const hasIssueUpdates = Object.keys(issueUpdates).length > 0
+            let updatedIssue
 
-            const updatedIssue = await payload.issue
-            if (!updatedIssue?.id) {
-                throw new Error("Failed to update ticket")
+            if (hasIssueUpdates) {
+                const payload = await client.updateIssue(issueId, issueUpdates)
+                updatedIssue = await payload.issue
+                if (!updatedIssue?.id) {
+                    throw new Error("Failed to update ticket")
+                }
             }
 
-            const ticketData = await client.issue(updatedIssue.id)
-
-            const action = {
-                action: "Updated ticket",
-                integration: IntegrationType.LINEAR,
-                target: ticketData.identifier,
-                details: `Updated ticket: ${ticketData.identifier}`,
-                type: RunHistoryActionType.update,
-                url: ticketData.url
+            // Add comment if provided
+            if (updates.comment) {
+                await client.createComment({
+                    body: updates.comment,
+                    issueId: issueId
+                })
             }
+
+            const ticketData = await client.issue(updatedIssue?.id ?? issueId)
+
+            const actions = []
+
+            if (hasIssueUpdates) {
+                actions.push({
+                    action: "Updated ticket",
+                    integration: IntegrationType.LINEAR,
+                    target: ticketData.identifier,
+                    details: `Updated ticket: ${ticketData.identifier}`,
+                    type: RunHistoryActionType.update,
+                    url: ticketData.url
+                })
+            }
+
+            if (updates.comment) {
+                actions.push({
+                    action: "Added comment",
+                    integration: IntegrationType.LINEAR,
+                    target: ticketData.identifier,
+                    details: `Added comment to ticket: ${ticketData.identifier}`,
+                    type: RunHistoryActionType.update,
+                    url: ticketData.url
+                })
+            }
+
             return {
                 success: true,
                 issue: ticketData,
-                actions: [action]
+                actions
             }
         } catch (error: unknown) {
             const errorMessage = await formatError(runContext, error)
