@@ -172,7 +172,7 @@ export class LinearIntegrationManager
                         // Continue with original event if enrichment fails
                     }
 
-                    console.log("#WTF enrichedEvent", enrichedEvent)
+                    logger.info("#WTF enrichedEvent", { enrichedEvent })
                     // Create LinearEvent and process it
                     const linearEvent = new LinearEvent(enrichedEvent, integration.id)
                     const eventProcessor = new EventProcessor(linearEvent, user)
