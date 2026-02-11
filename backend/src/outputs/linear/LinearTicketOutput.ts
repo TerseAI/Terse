@@ -10,6 +10,7 @@ import { AgentOutputWithConfigs, PrismaTransaction } from "../../types/prisma"
 import { convertOutputConfigTypeToConfigType } from "../../utility/typeConverters"
 import { Output, ToolboxEntry } from "../abstract/Output"
 
+import { linearAddCommentTool } from "./tools/addComment"
 import { linearCreateTicketTool } from "./tools/createTicket"
 import { linearGetLabelsTool } from "./tools/getLabels"
 import { linearGetProjectsTool } from "./tools/getProjects"
@@ -29,7 +30,8 @@ export class LinearTicketOutput extends Output<LinearOutputConfig> {
             { tool: linearGetProjectsTool as Tool, isReadOnly: true, integration: IntegrationType.LINEAR, displayName: "Get projects" },
             { tool: linearGetUsersTool as Tool, isReadOnly: true, integration: IntegrationType.LINEAR, displayName: "Get users" },
             { tool: linearCreateTicketTool as Tool, isReadOnly: false, integration: IntegrationType.LINEAR, displayName: "Create ticket" },
-            { tool: linearUpdateTicketTool as Tool, isReadOnly: false, integration: IntegrationType.LINEAR, displayName: "Update ticket" }
+            { tool: linearUpdateTicketTool as Tool, isReadOnly: false, integration: IntegrationType.LINEAR, displayName: "Update ticket" },
+            { tool: linearAddCommentTool as Tool, isReadOnly: false, integration: IntegrationType.LINEAR, displayName: "Add comment" }
         ]
         super(OutputConfigType.LINEAR_TICKET, toolbox)
     }
