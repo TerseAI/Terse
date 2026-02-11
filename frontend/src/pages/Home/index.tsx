@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { useNavigate } from "react-router-dom"
 
 import { AnimatePresence, motion } from "framer-motion"
-import { ArrowRight, ArrowUpRight, ExternalLink, MessageSquare, RotateCcw, Zap } from "lucide-react"
+import { ArrowRight, ArrowUpRight, ExternalLink, Loader2, MessageSquare, RotateCcw, Zap } from "lucide-react"
 
 import RunHistoryChatDrawer from "@/components/RunHistory/RunHistoryChatDrawer"
 import RunHistoryStatusBadge from "@/components/RunHistory/RunHistoryStatusBadge"
@@ -32,17 +32,19 @@ function Home() {
     const navigate = useNavigate()
 
     // Builder chat state
-    const { sessionId, clearSessionId, resetSessionId, setSessionId } = useBuilderSession()
+    const { sessionId, resetSessionId } = useBuilderSession()
     const [hasStartedChat, setHasStartedChat] = useState(false)
     const chatRef = useRef<ChatHandle>(null)
-    const { events: historyEvents } = useBuilderChatHistory(sessionId)
-    const initialTurns = convertRunHistoryEventsToTurns(historyEvents.map(event => ({ ...event, isHistorical: true })))
+    const { events: historyEvents, isLoading: isHistoryLoading } = useBuilderChatHistory(sessionId)
+    const [initialTurns, setInitialTurns] = useState<ReturnType<typeof convertRunHistoryEventsToTurns>>([])
 
     useEffect(() => {
-        if (initialTurns && initialTurns.length > 0 && !hasStartedChat) {
+        const turns = convertRunHistoryEventsToTurns(historyEvents.map(event => ({ ...event, isHistorical: true })))
+        setInitialTurns(turns)
+        if (turns.length > 0) {
             setHasStartedChat(true)
         }
-    }, [initialTurns, hasStartedChat])
+    }, [historyEvents])
 
     // Run history chat drawer state
     const [selectedRun, setSelectedRun] = useState<RecentRun | null>(null)
@@ -91,8 +93,7 @@ function Home() {
     }, [])
 
     const handleClearChat = () => {
-        clearSessionId()
-        setSessionId(resetSessionId())
+        resetSessionId()
         setHasStartedChat(false)
     }
 
@@ -165,7 +166,7 @@ function Home() {
                 transition={{ duration: ANIMATION_DURATION, ease: ANIMATION_EASE }}
             >
                 {hasStartedChat && (
-                    <div className="flex justify-end px-2 py-1">
+                    <div className="flex justify-end px-2 pt-2 pb-3">
                         <button onClick={handleClearChat} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
                             <RotateCcw className="h-3 w-3" />
                             Reset chat
@@ -173,17 +174,23 @@ function Home() {
                     </div>
                 )}
                 <div className="flex-1 min-h-0 w-full">
-                    <Chat
-                        ref={chatRef}
-                        key={sessionId}
-                        initialTurns={initialTurns}
-                        subscribeToEvents={subscribeToEvents}
-                        sendMessage={sendMessage}
-                        onUserMessage={handleUserMessage}
-                        addUserTurnsLocally={true}
-                        inputSize={hasStartedChat ? "small" : "large"}
-                        placeholders={hasStartedChat ? [] : HOME_PLACEHOLDERS}
-                    />
+                    {isHistoryLoading ? (
+                        <div className="h-full flex items-center justify-center">
+                            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                        </div>
+                    ) : (
+                        <Chat
+                            ref={chatRef}
+                            key={sessionId}
+                            initialTurns={initialTurns}
+                            subscribeToEvents={subscribeToEvents}
+                            sendMessage={sendMessage}
+                            onUserMessage={handleUserMessage}
+                            addUserTurnsLocally={true}
+                            inputSize={hasStartedChat ? "small" : "large"}
+                            placeholders={hasStartedChat ? [] : HOME_PLACEHOLDERS}
+                        />
+                    )}
                 </div>
             </motion.div>
 

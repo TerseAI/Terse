@@ -4,7 +4,7 @@ import { v4 as uuidv4 } from "uuid"
 
 import { safeStorageGet, safeStorageRemove, safeStorageSet } from "../lib/storage"
 
-const SETUP_SESSION_KEY = "terse:agent-setup-session-id"
+export const SETUP_SESSION_KEY = "terse:agent-setup-session-id"
 
 function getOrCreateSetupSessionId(): string {
     const existing = safeStorageGet(SETUP_SESSION_KEY)

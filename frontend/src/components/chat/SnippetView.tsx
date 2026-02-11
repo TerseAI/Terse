@@ -3,7 +3,8 @@ import { useNavigate } from "react-router-dom"
 
 import { LinkIcon } from "@heroicons/react/24/outline"
 
-import { useBuilderSession } from "../../hooks/useBuilderSession"
+import { SETUP_SESSION_KEY } from "../../hooks/useBuilderSession"
+import { safeStorageRemove } from "../../lib/storage"
 import { IntegrationType } from "../../shared/Integrations"
 import { ChatSnippet } from "../../shared/ModelEvents"
 import IntegrationCard from "../Integrations/IntegrationCard"
@@ -12,11 +13,10 @@ import { MultipleChoiceQuestionForm } from "./MultipleChoiceQuestionForm"
 
 export function SnippetView({ snippet, onMultipleChoiceAnswer }: { snippet: ChatSnippet; onMultipleChoiceAnswer?: (questionId: string, value: string) => void }) {
     const navigate = useNavigate()
-    const { clearSessionId } = useBuilderSession()
 
     useEffect(() => {
         if (snippet.type === "navigate") {
-            clearSessionId()
+            safeStorageRemove(SETUP_SESSION_KEY)
             navigate(snippet.path)
         }
     }, [snippet, navigate])

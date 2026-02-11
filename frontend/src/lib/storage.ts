@@ -25,7 +25,8 @@ export function safeStorageRemove(key: string, storage: Storage = sessionStorage
     try {
         storage.removeItem(key)
         return true
-    } catch {
+    } catch (error) {
+        console.error("Error removing item from storage", error)
         return false
     }
 }
