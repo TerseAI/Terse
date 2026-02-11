@@ -18,9 +18,9 @@ const sizeClasses = {
     lg: "size-10"
 }
 
-// Track successfully loaded image URLs at the module level so remounted
-// components (e.g. inside a dropdown portal) don't flash from opacity-0.
-const loadedSrcs = new Set<string>()
+// Track orgs whose logos have been successfully loaded. Keyed by
+// organizationId so the cache survives presigned-URL changes.
+const loadedOrgIds = new Set<string>()
 
 export function OrgLogo({ organizationId, alt, size = "md", className }: OrgLogoProps) {
     const { logoUrl, isLoading } = useOrgLogo(organizationId)
@@ -29,19 +29,20 @@ export function OrgLogo({ organizationId, alt, size = "md", className }: OrgLogo
     const fallbackSrc = "/terse.png"
     const imageSrc = logoUrl || fallbackSrc
 
-    const [imageLoaded, setImageLoaded] = useState(() => loadedSrcs.has(imageSrc))
+    const isKnownLoaded = organizationId ? loadedOrgIds.has(organizationId) : false
+    const [imageLoaded, setImageLoaded] = useState(isKnownLoaded)
     const [imageError, setImageError] = useState(false)
     const lastSrcRef = useRef(imageSrc)
 
     // Reset loading states only when the URL actually changes
     if (lastSrcRef.current !== imageSrc) {
         lastSrcRef.current = imageSrc
-        setImageLoaded(loadedSrcs.has(imageSrc))
+        setImageLoaded(isKnownLoaded)
         setImageError(false)
     }
 
     const handleLoad = () => {
-        loadedSrcs.add(imageSrc)
+        if (organizationId) loadedOrgIds.add(organizationId)
         setImageLoaded(true)
     }
 
@@ -50,10 +51,13 @@ export function OrgLogo({ organizationId, alt, size = "md", className }: OrgLogo
         setImageLoaded(true)
     }
 
+    // Skip the loading skeleton entirely when we already loaded this org's logo
+    const showSkeleton = isLoading && !isKnownLoaded
+
     return (
         <div className={cn("relative shrink-0", sizeClass, className)}>
-            {isLoading && <Skeleton className={cn("absolute inset-0 rounded-md", sizeClass)} />}
-            {!isLoading && (
+            {showSkeleton && <Skeleton className={cn("absolute inset-0 rounded-md", sizeClass)} />}
+            {!showSkeleton && (
                 <img
                     src={imageError ? fallbackSrc : imageSrc}
                     alt={alt}
