@@ -1,4 +1,5 @@
 import { LinearClient } from "@linear/sdk"
+import { IssueUpdateInput } from "@linear/sdk/dist/_generated_documents"
 import { RunContext, tool } from "@openai/agents"
 import { RunHistoryActionType } from "@prisma/client"
 import { z } from "zod"
@@ -13,12 +14,11 @@ import { Session } from "../../../types/session"
 
 const updateTicketInputSchema = z.object({
     title: z.string().nullable().optional().describe("The updated title of the ticket."),
-    teamId: z.string().nullable().optional().describe("The ID of the team to move the ticket to. Use linear_get_teams to find available teams."),
     description: z.string().nullable().optional().describe("The updated description of the ticket."),
     stateId: z.string().nullable().optional().describe("The ID of the state to set. Use linear_get_states to find available states."),
-    assigneeId: z.string().nullable().optional().describe("The ID of the user to assign the ticket to. Use linear_get_users to find available users and their IDs."),
     priority: z.number().nullable().optional().describe("The priority of the ticket. 0 = No priority, 1 = Urgent, 2 = High, 3 = Normal, 4 = Low."),
-    projectId: z.string().nullable().optional().describe("The ID of the project to associate with the ticket. Use linear_get_projects to find available projects.")
+    projectId: z.string().nullable().optional().describe("The ID of the project to associate with the ticket. Use linear_get_projects to find available projects."),
+    labelIds: z.array(z.string()).nullable().optional().describe("The IDs of labels to add to the ticket. Use linear_get_labels to find available labels.")
 })
 
 export const linearUpdateTicketTool = tool({
@@ -45,16 +45,29 @@ export const linearUpdateTicketTool = tool({
 
         const client = new LinearClient({ accessToken })
 
+        const issueUpdates: IssueUpdateInput = {}
+
+        if (updates.title) {
+            issueUpdates.title = updates.title
+        }
+        if (updates.description) {
+            issueUpdates.description = updates.description
+        }
+        if (updates.stateId) {
+            issueUpdates.stateId = updates.stateId
+        }
+        if (updates.priority) {
+            issueUpdates.priority = updates.priority
+        }
+        if (updates.projectId) {
+            issueUpdates.projectId = updates.projectId
+        }
+        if (updates.labelIds) {
+            issueUpdates.labelIds = updates.labelIds
+        }
+
         try {
-            const payload = await client.updateIssue(issueId, {
-                title: updates.title,
-                description: updates.description,
-                teamId: updates.teamId,
-                stateId: updates.stateId,
-                assigneeId: updates.assigneeId,
-                priority: updates.priority,
-                projectId: updates.projectId
-            })
+            const payload = await client.updateIssue(issueId, issueUpdates)
 
             const updatedIssue = await payload.issue
             if (!updatedIssue?.id) {
