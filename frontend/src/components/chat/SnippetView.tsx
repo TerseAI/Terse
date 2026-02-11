@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom"
 import { LinkIcon } from "@heroicons/react/24/outline"
 
 import { clearSetupSessionId } from "@/components/AgentBuilder/AgentBuilderLayout"
+
 import { IntegrationType } from "../../shared/Integrations"
 import { ChatSnippet } from "../../shared/ModelEvents"
 import IntegrationCard from "../Integrations/IntegrationCard"
