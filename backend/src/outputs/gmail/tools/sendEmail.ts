@@ -18,20 +18,53 @@ import { Session } from "../../../types/session"
  * like em-dashes, curly quotes, and other Unicode characters that would otherwise
  * cause mojibake in email clients.
  *
+ * RFC 2047 limits encoded-words to 75 characters total. With the =?UTF-8?B?...?=
+ * wrapper (12 chars overhead), we can encode ~47 bytes per chunk. To be safe with
+ * multi-byte UTF-8 characters, we split on smaller chunks and join with folding
+ * whitespace (CRLF + space).
+ *
  * @param value - The header value to encode (e.g., email subject)
  * @returns The original value if ASCII-only, or RFC 2047 encoded string if non-ASCII
  */
 function encodeRfc2047(value: string): string {
     // Check if the value contains any non-ASCII characters (outside printable ASCII range 0x20-0x7E)
-    // Also encode if it contains characters that are special in RFC 2047 (=, ?, _)
     if (!/[^\x20-\x7E]/.test(value)) {
         return value
     }
 
-    // Encode using RFC 2047 MIME encoded-word syntax: =?charset?encoding?encoded_text?=
-    // Using 'B' for base64 encoding which is more robust than 'Q' (quoted-printable)
-    const encoded = Buffer.from(value, "utf-8").toString("base64")
-    return `=?UTF-8?B?${encoded}?=`
+    // RFC 2047 limits encoded-words to 75 chars. With "=?UTF-8?B?" (10 chars) and "?=" (2 chars),
+    // we have 63 chars for base64. Since base64 expands by 4/3, we can encode ~47 bytes per chunk.
+    // Use 45 bytes to stay safely within limits and align with base64 (45 bytes = 60 base64 chars).
+    const MAX_CHUNK_BYTES = 45
+    const utf8Bytes = Buffer.from(value, "utf-8")
+
+    // If the entire value fits in one chunk, encode it directly
+    if (utf8Bytes.length <= MAX_CHUNK_BYTES) {
+        const encoded = utf8Bytes.toString("base64")
+        return `=?UTF-8?B?${encoded}?=`
+    }
+
+    // Split into chunks, being careful not to split in the middle of a multi-byte UTF-8 character
+    const chunks: string[] = []
+    let offset = 0
+
+    while (offset < utf8Bytes.length) {
+        let chunkEnd = Math.min(offset + MAX_CHUNK_BYTES, utf8Bytes.length)
+
+        // Ensure we don't split a multi-byte UTF-8 character
+        // UTF-8 continuation bytes start with 10xxxxxx (0x80-0xBF)
+        while (chunkEnd > offset && utf8Bytes[chunkEnd] >= 0x80 && utf8Bytes[chunkEnd] <= 0xbf) {
+            chunkEnd--
+        }
+
+        const chunk = utf8Bytes.subarray(offset, chunkEnd)
+        const encoded = chunk.toString("base64")
+        chunks.push(`=?UTF-8?B?${encoded}?=`)
+        offset = chunkEnd
+    }
+
+    // Join chunks with folding whitespace (RFC 2047 allows multiple encoded-words separated by whitespace)
+    return chunks.join("\r\n ")
 }
 
 /**
