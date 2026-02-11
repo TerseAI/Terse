@@ -12,6 +12,7 @@ export const ToolName = {
     // Linear Tools
     LINEAR_CREATE_TICKET: "linear_create_ticket",
     LINEAR_UPDATE_TICKET: "linear_update_ticket",
+    LINEAR_ADD_COMMENT: "linear_add_comment",
     LINEAR_SEARCH_TICKET: "linear_search_ticket",
     LINEAR_READ_TICKET: "linear_read_ticket",
     LINEAR_GET_STATES: "linear_get_states",
