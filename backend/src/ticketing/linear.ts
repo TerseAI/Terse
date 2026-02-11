@@ -39,6 +39,7 @@ export class LinearAdapter {
         const projects = await this.client.projects()
 
         const org: Organization = {
+            id: organization.id,
             name: organization.name,
             createdAt: organization.createdAt.toISOString(),
             createdIssueCount: organization.createdIssueCount,
