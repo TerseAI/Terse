@@ -3,18 +3,22 @@ import { useSearchParams } from "react-router-dom"
 
 import { AnimatePresence, Easing, motion } from "framer-motion"
 import type { LucideIcon } from "lucide-react"
-import { FileText, Loader2, MessageCircle, Rocket, Users } from "lucide-react"
+import { FileText, Loader2, MessageCircle, Rocket, RotateCcw, Users } from "lucide-react"
 import { v4 as uuidv4 } from "uuid"
 
 import { TemplateCard } from "@/components/Agents/TemplateCard"
+import { convertRunHistoryEventsToTurns } from "@/components/RunHistory/RunHistoryChatDrawer/RunHistoryChatAdapter"
 import { Chat, ChatHandle } from "@/components/chat/Chat"
 import { ChatEventPayload } from "@/components/chat/hooks/useCompletionSocket"
 import { Card, CardContent } from "@/components/ui/card"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useBuilderChatHistory } from "@/hooks/api/useBuilderChatHistory"
 import { useTemplates } from "@/hooks/api/useTemplates"
 import { ModelRequest, SendModelRequest } from "@/shared/ModelEvents"
 import { AgentTemplate, TemplateCategory } from "@/shared/types"
 import { sendBuilderMessage, sendBuilderMultipleChoiceAnswer, subscribeToBuilderChat } from "@/socket"
+
+const SETUP_SESSION_KEY = "terse:agent-setup-session-id"
 
 const TEMPLATE_CATEGORIES: { id: TemplateCategory; label: string; icon: LucideIcon }[] = [
     { id: "users", label: "Understand Users", icon: Users },
@@ -47,6 +51,23 @@ type AgentBuilderLayoutProps = {
     header: ReactNode
 }
 
+/**
+ * Get or create a persistent session ID for the agent setup flow.
+ * Stored in localStorage so progress survives navigation and tab closes.
+ */
+function getOrCreateSetupSessionId(): string {
+    const existing = localStorage.getItem(SETUP_SESSION_KEY)
+    if (existing) return existing
+    const id = uuidv4()
+    localStorage.setItem(SETUP_SESSION_KEY, id)
+    return id
+}
+
+/** Clear the persisted setup session ID (e.g. after agent creation or manual reset). */
+export function clearSetupSessionId() {
+    localStorage.removeItem(SETUP_SESSION_KEY)
+}
+
 export function AgentBuilderLayout({ header }: AgentBuilderLayoutProps) {
     const { templates, isLoading } = useTemplates()
     const [hasStartedChat, setHasStartedChat] = useState(false)
@@ -55,8 +76,30 @@ export function AgentBuilderLayout({ header }: AgentBuilderLayoutProps) {
     const appliedDeepLinkKey = useRef<string | null>(null)
     const [searchParams] = useSearchParams()
 
-    // Generate a session ID for this setup flow
-    const sessionId = useMemo(() => uuidv4(), [])
+    // Persist session ID in localStorage so progress survives navigation / tab close
+    const [sessionId, setSessionId] = useState(() => getOrCreateSetupSessionId())
+
+    // Load chat history for the persisted session
+    const { events: historyEvents, isLoading: isHistoryLoading } = useBuilderChatHistory(sessionId)
+    const initialTurns = useMemo(() => {
+        if (historyEvents.length === 0) return undefined
+        return convertRunHistoryEventsToTurns(historyEvents.map(event => ({ ...event, isHistorical: true })))
+    }, [historyEvents])
+
+    // If we have history, the chat has been started before
+    useEffect(() => {
+        if (initialTurns && initialTurns.length > 0 && !hasStartedChat) {
+            setHasStartedChat(true)
+        }
+    }, [initialTurns, hasStartedChat])
+
+    const handleClearChat = () => {
+        clearSetupSessionId()
+        const newId = uuidv4()
+        localStorage.setItem(SETUP_SESSION_KEY, newId)
+        setSessionId(newId)
+        setHasStartedChat(false)
+    }
 
     const handleTemplateSelect = useCallback((template: AgentTemplate) => {
         chatRef.current?.setInput(template.chatPrompt)
@@ -215,18 +258,33 @@ export function AgentBuilderLayout({ header }: AgentBuilderLayoutProps) {
                     ease: ANIMATION_EASE
                 }}
             >
+                {hasStartedChat && (
+                    <div className="flex justify-end px-2 py-1">
+                        <button onClick={handleClearChat} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
+                            <RotateCcw className="h-3 w-3" />
+                            Reset chat
+                        </button>
+                    </div>
+                )}
                 <div className="flex-1 min-h-0 w-full">
-                    <Chat
-                        ref={chatRef}
-                        key={sessionId}
-                        subscribeToEvents={subscribeToEvents}
-                        sendMessage={sendMessage}
-                        onUserMessage={handleUserMessage}
-                        onMultipleChoiceAnswer={handleMultipleChoiceAnswer}
-                        addUserTurnsLocally={true}
-                        inputSize={hasStartedChat ? "small" : "large"}
-                        placeholders={hasStartedChat ? [] : AGENT_SETUP_PLACEHOLDERS}
-                    />
+                    {isHistoryLoading ? (
+                        <div className="h-full flex items-center justify-center">
+                            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                        </div>
+                    ) : (
+                        <Chat
+                            ref={chatRef}
+                            key={sessionId}
+                            subscribeToEvents={subscribeToEvents}
+                            sendMessage={sendMessage}
+                            onUserMessage={handleUserMessage}
+                            onMultipleChoiceAnswer={handleMultipleChoiceAnswer}
+                            addUserTurnsLocally={true}
+                            initialTurns={initialTurns}
+                            inputSize={hasStartedChat ? "small" : "large"}
+                            placeholders={hasStartedChat ? [] : AGENT_SETUP_PLACEHOLDERS}
+                        />
+                    )}
                 </div>
             </motion.div>
 

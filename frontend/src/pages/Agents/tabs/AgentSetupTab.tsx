@@ -6,6 +6,7 @@ import { toast } from "sonner"
 import { type KeyedMutator } from "swr"
 import { v4 as uuidv4 } from "uuid"
 
+import { clearSetupSessionId } from "@/components/AgentBuilder/AgentBuilderLayout"
 import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { useAgentCount } from "@/hooks/api/useAgentCount"
@@ -294,6 +295,7 @@ function SaveAgentButton({
                 const creation = await createAgent(agentData)
 
                 if (creation?.id) {
+                    clearSetupSessionId()
                     navigate(FrontendRoutes.AGENTS.DETAIL(creation.id), { replace: true })
                 }
             }

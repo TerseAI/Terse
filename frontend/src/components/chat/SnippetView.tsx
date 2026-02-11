@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom"
 
 import { LinkIcon } from "@heroicons/react/24/outline"
 
+import { clearSetupSessionId } from "@/components/AgentBuilder/AgentBuilderLayout"
 import { IntegrationType } from "../../shared/Integrations"
 import { ChatSnippet } from "../../shared/ModelEvents"
 import IntegrationCard from "../Integrations/IntegrationCard"
@@ -14,7 +15,8 @@ export function SnippetView({ snippet, onMultipleChoiceAnswer }: { snippet: Chat
 
     useEffect(() => {
         if (snippet.type === "navigate") {
-            // Navigate to the path when this snippet is rendered
+            // Clear setup session so the setup page starts fresh next time
+            clearSetupSessionId()
             navigate(snippet.path)
         }
     }, [snippet, navigate])
