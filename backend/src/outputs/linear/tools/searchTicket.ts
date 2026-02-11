@@ -17,29 +17,29 @@ const linearStateNameValues = Object.values(LinearStateName)
 
 export const linearSearchTicketTool = tool({
     name: ToolName.LINEAR_SEARCH_TICKET,
-    description: `Search for Linear issues/tickets by description or query, or list issues by filters. Returns all matching issues by default.
-
-Use this tool to find existing Linear issues before creating new ones or to look up ticket information.
-You can provide an empty issueDescription to list all issues matching the given filters (e.g. stateNames).`,
+    description: `Searches Linear issues by keyword and/or state filter. Use this before reading individual tickets. Results are ordered by most recently updated first. Use 'after' cursor to paginate.`,
     parameters: z.object({
         integrationId: z.string().describe("The integration ID of the Linear integration to use."),
-        issueDescription: z
+        searchTerm: z
             .string()
             .optional()
             .default("")
             .describe(
-                "The search query or description to search for in Linear issues. This will search in issue titles, descriptions, and other fields. Can be empty to list all issues matching the provided filters."
+                `Plain-text keyword search (matched against titles, descriptions, etc.).
+                Do NOT include operators or field filters. Use dedicated parameters instead.
+                ✓ "block kit"
+                ✗ "team:TER state:Done updated:>2026-02-04 block kit"`
             ),
         stateNames: z
-            .array(z.enum(linearStateNameValues as [string, ...string[]]))
+            .array(z.nativeEnum(LinearStateName))
             .nullable()
             .optional()
-            .describe(`Filter to only include issues with these state names. Available states: ${linearStateNameValues.join(", ")}. When not provided, returns issues in all states.`),
+            .describe(`Filter to only include issues with these state names. Available states: ${linearStateNameValues.join(", ")}.`),
         limit: z.number().nullable().optional().describe("Maximum number of issues to return. Defaults to 10 if not provided."),
         after: z.string().nullable().optional().describe("Cursor for pagination. Use the endCursor from the previous response to fetch the next page of results.")
     }),
-    execute: async ({ integrationId, issueDescription, stateNames, limit = 10, after }, runContext?: RunContext<SessionWithTracking<Session>>) => {
-        logger.debug("🛠️ Executing linear_search_ticket tool", { integrationId, issueDescription, stateNames, limit, after })
+    execute: async ({ integrationId, searchTerm, stateNames, limit = 10, after }, runContext?: RunContext<SessionWithTracking<Session>>) => {
+        logger.debug("🛠️ Executing linear_search_ticket tool", { integrationId, searchTerm, stateNames, limit, after })
 
         if (!runContext?.context) {
             throw new Error("No context provided")
@@ -67,7 +67,7 @@ You can provide an empty issueDescription to list all issues matching the given 
                       }
                     : undefined
 
-            const hasSearchTerm = issueDescription && issueDescription.trim().length > 0
+            const hasSearchTerm = searchTerm && searchTerm.trim().length > 0
 
             let issues
             if (hasSearchTerm) {
@@ -78,7 +78,7 @@ You can provide an empty issueDescription to list all issues matching the given 
                     orderBy: "updatedAt" as PaginationOrderByType,
                     ...(after && { after })
                 }
-                issues = await client.searchIssues(issueDescription, searchOptions)
+                issues = await client.searchIssues(searchTerm, searchOptions)
             } else {
                 // Use issues listing endpoint when no search term — avoids Linear's
                 // "term must be longer than or equal to 1 characters" validation error
@@ -125,7 +125,7 @@ You can provide an empty issueDescription to list all issues matching the given 
             const endCursor = pageInfo.endCursor || null
 
             // Return action as part of the result
-            const queryLabel = hasSearchTerm ? `matching "${issueDescription}"` : "with applied filters"
+            const queryLabel = hasSearchTerm ? `matching "${searchTerm}"` : "with applied filters"
             const action = {
                 action: "Searched tickets",
                 integration: IntegrationType.LINEAR,
@@ -139,7 +139,7 @@ You can provide an empty issueDescription to list all issues matching the given 
                 issues: results,
                 actions: [action],
                 count: results.length,
-                query: issueDescription || "",
+                query: searchTerm || "",
                 pagination: {
                     hasNextPage,
                     endCursor,
@@ -148,7 +148,7 @@ You can provide an empty issueDescription to list all issues matching the given 
             }
         } catch (error: unknown) {
             const errorMessage = await formatError(runContext!, error)
-            logger.error("❌ Error searching Linear issues", { error: errorMessage, issueDescription })
+            logger.error("❌ Error searching Linear issues", { error: errorMessage, searchTerm })
             return {
                 success: false,
                 error: errorMessage,

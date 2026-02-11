@@ -163,13 +163,13 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
     linear_search_ticket: {
         preparing: "Building search query",
         executing: params => {
-            const query = params?.issueDescription as string | undefined
+            const query = params?.searchTerm as string | undefined
             return query ? `Searching issues for "${truncate(query)}"` : "Searching issues"
         },
         complete: (params, result) => {
             const parsed = safeParseResult(result)
             const count = parsed?.count as number | undefined
-            const query = params?.issueDescription as string | undefined
+            const query = params?.searchTerm as string | undefined
             if (count !== undefined && query) return `Found ${count} issue${count !== 1 ? "s" : ""} for "${truncate(query, 25)}"`
             if (count !== undefined) return `Found ${count} issue${count !== 1 ? "s" : ""}`
             if (query) return `Searched issues for "${truncate(query)}"`
