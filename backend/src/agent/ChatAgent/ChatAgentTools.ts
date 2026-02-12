@@ -551,7 +551,16 @@ function enforceNonSystemIntegrationId(config: { configType: ConfigType; integra
 }
 
 const InputConfigSchema = z
-    .discriminatedUnion("configType", [GmailConfigSchema, FigmaConfigSchema, SlackConfigSchema, LinearInputConfigSchema, GitHubConfigSchema, JiraConfigSchema, TimeTriggerConfigSchema, WorkOSInputConfigSchema])
+    .discriminatedUnion("configType", [
+        GmailConfigSchema,
+        FigmaConfigSchema,
+        SlackConfigSchema,
+        LinearInputConfigSchema,
+        GitHubConfigSchema,
+        JiraConfigSchema,
+        TimeTriggerConfigSchema,
+        WorkOSInputConfigSchema
+    ])
     .superRefine((value, ctx) => {
         enforceNonSystemIntegrationId(value, ctx)
         if (value.configType === ConfigType.SLACK) {
