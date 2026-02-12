@@ -2,11 +2,14 @@ import { useEffect, useState } from "react"
 import { useParams, useSearchParams } from "react-router-dom"
 
 import { Tab, TabGroup, TabList, TabPanel, TabPanels } from "@headlessui/react"
-import { Clock, Settings } from "lucide-react"
+import { Clock, PanelRightIcon, Settings } from "lucide-react"
 
+import { BuilderChat } from "../../components/chat/BuilderChat"
+import { Button } from "../../components/ui/button"
 import { useAgent } from "../../hooks/api/useAgents"
 import { useTemplates } from "../../hooks/api/useTemplates"
 import { useTemplateHydration } from "../../hooks/useTemplateHydration"
+import { cn } from "../../lib/utils"
 import { useModelContext } from "../../services/ModelContextProvider"
 import { AgentNotificationSettings, AgentPrompt, TransientAgentOutput, TransientAgentTrigger, TransientKnowledgeBase } from "../../shared/types"
 import { AgentInputsDonatedState, AgentKnowledgeBasesDonatedState, AgentNameDonatedState, AgentOutputsDonatedState, AgentPromptDonatedState } from "../../utility/AgentModelDonation"
@@ -15,10 +18,28 @@ import { toTransientAgentOutput, toTransientAgentTrigger, toTransientKnowledgeBa
 import AgentRunHistoryTab from "./tabs/AgentRunHistoryTab"
 import AgentSetupTab, { AgentSetupTabProps } from "./tabs/AgentSetupTab"
 
+function ChatSidebarTrigger({ className, onClick, ...props }: React.ComponentProps<typeof Button>) {
+    return (
+        <Button
+            variant="ghost"
+            size="icon"
+            className={cn("h-7 w-7", className)}
+            onClick={event => {
+                onClick?.(event)
+            }}
+            {...props}
+        >
+            <PanelRightIcon className="h-4 w-4" />
+            <span className="sr-only">Toggle Sidebar</span>
+        </Button>
+    )
+}
+
 function AgentDetail() {
     const { id, templateId } = useParams<{ id: string; templateId: string }>()
     const [searchParams, setSearchParams] = useSearchParams()
-    const { donate } = useModelContext()
+    const { getStateJSON, donate } = useModelContext()
+    const [open, setOpen] = useState(true)
 
     // Only pass agentId if it's not "new"
     const agentId: string | null = id && id !== "new" ? id : null
@@ -149,9 +170,15 @@ function AgentDetail() {
     donate("Agent Prompt", new AgentPromptDonatedState(prompt ?? { text: "" }))
 
     return (
-        <div className="grid grid-cols-20 h-full pt-2 pl-2">
-            <div className="h-full min-h-0 col-span-20">
-                <div className="mx-auto h-full min-h-0 flex flex-col h-full">
+        <div
+            className="grid h-full pt-2 pl-2"
+            style={{
+                gridTemplateColumns: open ? "14fr 6fr" : "19fr 1fr",
+                transition: "grid-template-columns 200ms ease-in-out"
+            }}
+        >
+            <div className="h-full min-h-0 col-span-1">
+                <div className="mx-auto h-full min-h-0 flex flex-col">
                     <TabGroup
                         selectedIndex={selectedIndex}
                         className="h-full flex flex-col"
@@ -191,6 +218,16 @@ function AgentDetail() {
                         </TabPanels>
                     </TabGroup>
                 </div>
+            </div>
+            <div className={cn("border-l border-border h-full min-h-0 col-span-1 flex flex-col overflow-hidden", open && "pl-4")}>
+                <div className={cn("shrink-0 flex pt-1 pr-1", open ? "flex-start" : "justify-center")}>
+                    <ChatSidebarTrigger onClick={() => setOpen(!open)} />
+                </div>
+                {open && (
+                    <div className="flex-1 min-w-0 min-h-0 w-full">
+                        <BuilderChat getStateJSON={() => getStateJSON()} agentId={agentId} />
+                    </div>
+                )}
             </div>
         </div>
     )

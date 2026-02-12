@@ -359,7 +359,7 @@ export default function AgentSetupTab({
             clearSessionId()
         }
     }, [searchParams, setSearchParams, clearSessionId])
-    const { getStateJSON, donate } = useModelContext()
+    const { donate } = useModelContext()
 
     const agentInputs = inputs.map(toAgentTrigger).filter((i): i is AgentTrigger => i != null)
     const agentOutputs = outputs.map(toAgentOutput).filter((o): o is AgentOutput => o != null)
@@ -401,7 +401,7 @@ export default function AgentSetupTab({
 
     return (
         <div className="grid grid-cols-20 h-full">
-            <div className="flex flex-col h-full min-h-0 col-span-14">
+            <div className="flex flex-col h-full min-h-0 col-span-20">
                 {/* Header */}
                 <div className="border-b border-border px-6 py-4">
                     <div className="flex items-center justify-between gap-4">
@@ -555,11 +555,6 @@ export default function AgentSetupTab({
                         </div>
                     </div>
                 </div>
-            </div>
-
-            {/* Builder Chat */}
-            <div className="border-l border-border col-span-6 h-full min-h-0">
-                <BuilderChat getStateJSON={() => getStateJSON()} agentId={agentId} />
             </div>
         </div>
     )
