@@ -35,20 +35,23 @@ export function runnerFactory(config: RunnerConfig): Runner {
             runId: config.runId,
             userId: config.user.id,
             env: config.env
-        },
-        modelSettings: {
-            providerData: {
-                posthogDistinctId: config.user.email,
-                posthogProperties: {
-                    organizationId: config.user.organizationId,
-                    organizationName: config.user.organizationName,
-                    agentId: config.agentId,
-                    runId: config.runId,
-                    userName: config.user.displayName,
-                    environment: config.env
-                },
-                ...(config.user.organizationId ? { posthogGroups: { company: config.user.organizationId } } : {})
-            }
         }
     })
+}
+
+export const builderProviderDataModelSettings = (config: RunnerConfig) => {
+    return {
+        providerData: {
+            posthogDistinctId: config.user.email,
+            posthogProperties: {
+                organizationId: config.user.organizationId,
+                organizationName: config.user.organizationName,
+                agentId: config.agentId,
+                runId: config.runId,
+                userName: config.user.displayName,
+                environment: config.env
+            },
+            ...(config.user.organizationId ? { posthogGroups: { company: config.user.organizationId } } : {})
+        }
+    }
 }

@@ -4,7 +4,7 @@ import { settings } from "../../config/settings"
 import logger from "../../logger"
 import { User } from "../../shared/types"
 import { ChatMemorySession, recentHistoryCallback } from "../CustomMemorySession"
-import { AgentType, runnerFactory } from "../runner"
+import { AgentType, builderProviderDataModelSettings, runnerFactory } from "../runner"
 
 import type { ChatAgentContext } from "./ChatAgentContext"
 import { buildChatAgentSystemPrompt } from "./ChatAgentSystemPrompt"
@@ -42,36 +42,26 @@ class ChatAgent {
             interface: this.chatInterface.name
         })
         const userTimezone = await this.chatInterface.getUserTimezone()
-        const agent = new Agent<ChatAgentContext, AgentOutputType>({
-            name: "Terse Automation Assistant",
-            instructions: await buildChatAgentSystemPrompt(this.user.id, this.user.organizationId, userTimezone, this.uiState),
-            model: "gpt-5.2",
-            tools: buildChatAgentTools(this.chatInterface),
-            modelSettings: {
-                providerData: {
-                    posthogDistinctId: this.user.email ?? this.user.id,
-                    posthogProperties: {
-                        organizationId: this.user.organizationId,
-                        organizationName: this.user.organizationName,
-                        agentId: "chat-agent",
-                        runId: this.sessionId,
-                        userName: this.user.displayName,
-                        environment: settings.nodeEnv
-                    },
-                    ...(this.user.organizationId ? { posthogGroups: { company: this.user.organizationId } } : {})
-                }
-            }
-        })
 
-        const memorySession = await this.getMemorySession()
-
-        const runner = runnerFactory({
+        const runConfig = {
             agentId: "chat-agent",
             agentType: AgentType.CHAT,
             runId: this.sessionId,
             user: this.user,
             env: settings.nodeEnv
+        }
+
+        const agent = new Agent<ChatAgentContext, AgentOutputType>({
+            name: "Terse Automation Assistant",
+            instructions: await buildChatAgentSystemPrompt(this.user.id, this.user.organizationId, userTimezone, this.uiState),
+            model: "gpt-5.2",
+            tools: buildChatAgentTools(this.chatInterface),
+            modelSettings: builderProviderDataModelSettings(runConfig)
         })
+
+        const memorySession = await this.getMemorySession()
+
+        const runner = runnerFactory(runConfig)
 
         const result = await runner.run(
             agent,

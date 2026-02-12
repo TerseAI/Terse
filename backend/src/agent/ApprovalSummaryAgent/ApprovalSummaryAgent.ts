@@ -7,41 +7,13 @@ import { db } from "../../prismaClient"
 import { ModelEvent, ToolCall } from "../../shared/ModelEvents"
 import { User } from "../../shared/types"
 import { RunHistoryChatMemorySession, identityHistoryCallback } from "../CustomMemorySession"
-import { AgentType, runnerFactory } from "../runner"
+import { AgentType, builderProviderDataModelSettings, runnerFactory } from "../runner"
 
 const ApprovalSummaryClassification = z.object({
     approvalSummary: z.string()
 })
 
 type ApprovalSummaryClassificationType = z.infer<typeof ApprovalSummaryClassification>
-
-// --- Agent ---
-
-const approvalSummaryAgent = new Agent({
-    name: "Approval Summary Agent",
-    instructions: `You write the short "Action" line shown in a Slack approval notification.
-
-CRITICAL OUTPUT REQUIREMENTS:
-- Output exactly ONE sentence.
-- Start the sentence with: "I'm going to ..."
-- Describe ONLY the action that will be taken (create/update/etc.) and the target (page/ticket/task/title) so the human understands what they're approving.
-- Do NOT mention the triggering event, source channel, workspace, or that you "reviewed" anything.
-- Do NOT narrate process (no "I reviewed...", "After reviewing...", "There was a message_received...").
-- Do NOT include low-signal field dumps (due date, status, priority, ids, etc.) unless absolutely necessary to identify the target.
-- Keep it tight: aim for <= 25 words when possible.
-
-Examples:
-- Good: "I'm going to update the Notion My To-Do List with a task titled \"Read product requirements doc for data accuracy service\"."
-- Good: "I'm going to update the Confluence \"Data Accuracy\" page with the latest API rate-limit details."
-- Bad: "There was a message_received event from Slack in all-terse-inc... I reviewed..."
-
-IMPORTANT: Return ONLY a valid JSON object with this exact format:
-{"approvalSummary": "your single-sentence summary here"}
-
-Do not include any markdown formatting, code blocks, or explanations. Only return the JSON object.`,
-    model: "gpt-5-nano",
-    outputType: ApprovalSummaryClassification
-})
 
 export async function generateApprovalSummary(runId: string, user: User, agentId: string, stepId: string): Promise<ApprovalSummaryClassificationType> {
     const prisma = db()
@@ -143,12 +115,40 @@ Return the single-sentence "I'm going to ..." approvalSummary.`
         filterIncompleteToolCalls: true
     })
 
-    const runner = runnerFactory({
-        runId: runId,
+    const runConfig = {
         agentId: agentId,
         agentType: AgentType.APPROVAL_SUMMARY,
+        runId: runId,
         user: user,
         env: settings.nodeEnv
+    }
+
+    const runner = runnerFactory(runConfig)
+    const approvalSummaryAgent = new Agent({
+        name: "Approval Summary Agent",
+        instructions: `You write the short "Action" line shown in a Slack approval notification.
+    
+    CRITICAL OUTPUT REQUIREMENTS:
+    - Output exactly ONE sentence.
+    - Start the sentence with: "I'm going to ..."
+    - Describe ONLY the action that will be taken (create/update/etc.) and the target (page/ticket/task/title) so the human understands what they're approving.
+    - Do NOT mention the triggering event, source channel, workspace, or that you "reviewed" anything.
+    - Do NOT narrate process (no "I reviewed...", "After reviewing...", "There was a message_received...").
+    - Do NOT include low-signal field dumps (due date, status, priority, ids, etc.) unless absolutely necessary to identify the target.
+    - Keep it tight: aim for <= 25 words when possible.
+    
+    Examples:
+    - Good: "I'm going to update the Notion My To-Do List with a task titled \"Read product requirements doc for data accuracy service\"."
+    - Good: "I'm going to update the Confluence \"Data Accuracy\" page with the latest API rate-limit details."
+    - Bad: "There was a message_received event from Slack in all-terse-inc... I reviewed..."
+    
+    IMPORTANT: Return ONLY a valid JSON object with this exact format:
+    {"approvalSummary": "your single-sentence summary here"}
+    
+    Do not include any markdown formatting, code blocks, or explanations. Only return the JSON object.`,
+        model: "gpt-5-nano",
+        outputType: ApprovalSummaryClassification,
+        modelSettings: builderProviderDataModelSettings(runConfig)
     })
     const result = await runner.run(approvalSummaryAgent, [{ role: "user", content: userPrompt }], {
         session,

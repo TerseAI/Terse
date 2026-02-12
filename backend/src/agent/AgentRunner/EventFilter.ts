@@ -11,7 +11,7 @@ import { SocketEvents, SocketRooms } from "../../shared/SocketEvents"
 import { AgentPrompt } from "../../types/prisma"
 import { Session } from "../../types/session"
 import { randomString } from "../../utility/strings"
-import { AgentType, runnerFactory } from "../runner"
+import { AgentType, builderProviderDataModelSettings, runnerFactory } from "../runner"
 import { transformAgentStreamToModelEvents } from "../streaming"
 
 import { storeChatEvent } from "./runHistory"
@@ -88,19 +88,28 @@ You may provide additional context and analysis in your text response, but you M
 `
 }
 
-function buildFilterAgent(): Agent<Session, typeof filterOutputSchema> {
+function buildFilterAgent(trackingParams: TrackingParams): Agent<Session, typeof filterOutputSchema> {
     const currentTimeUtc = new Date().toISOString()
     const systemPrompt = buildFilterSystemPrompt(currentTimeUtc)
+
+    const trackingModelSettings = builderProviderDataModelSettings({
+        agentId: trackingParams.agentId,
+        agentType: AgentType.FILTER,
+        runId: trackingParams.runId,
+        user: trackingParams.user,
+        env: settings.nodeEnv
+    })
     return new Agent<Session, typeof filterOutputSchema>({
         name: "Agent Event Filter",
         instructions: systemPrompt,
         model: "gpt-4o-mini",
+        tools: [], // No tools - filter should not make tool calls
+        outputType: filterOutputSchema,
         modelSettings: {
+            ...trackingModelSettings,
             temperature: 0.3,
             maxTokens: 200
-        },
-        tools: [], // No tools - filter should not make tool calls
-        outputType: filterOutputSchema
+        }
     })
 }
 
@@ -138,7 +147,7 @@ export async function filterEvent(event: InputEvent, agentPrompt: AgentPrompt, i
     logger.info(`#WTF filtering event ${event.integrationType}`, { event })
     logger.info(`#WTF formatted event`, { formattedEvent: event.formatForAgentRunner() })
 
-    const agent = buildFilterAgent()
+    const agent = buildFilterAgent(trackingParams)
     const history = buildFilterHistory(agentPrompt, event)
     const runner = runnerFactory({
         agentId: trackingParams.agentId,

@@ -19,7 +19,7 @@ import { AgentWithRelations } from "../../types/prisma"
 import { Session } from "../../types/session"
 import { UserFormatter } from "../../utility/UserFormatter"
 import { RunHistoryChatMemorySession, recentHistoryCallback } from "../CustomMemorySession"
-import { AgentType, runnerFactory } from "../runner"
+import { AgentType, builderProviderDataModelSettings, runnerFactory } from "../runner"
 import { transformAgentStreamToModelEvents } from "../streaming"
 
 import { persistRunAction } from "./EventProcessor"
@@ -390,20 +390,13 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance, KBCo
             instructions: fullSystemPrompt,
             model: this.chooseModel(),
             tools: this.tools,
-            modelSettings: {
-                providerData: {
-                    posthogDistinctId: this.session.user.email,
-                    posthogProperties: {
-                        organizationId: this.session.user.organizationId,
-                        organizationName: this.session.user.organizationName,
-                        agentId: this.agentConfig.id,
-                        runId: this.runContext.runId,
-                        userName: this.session.user.displayName,
-                        environment: settings.nodeEnv
-                    },
-                    posthogGroups: { company: this.session.user.organizationId }
-                }
-            }
+            modelSettings: builderProviderDataModelSettings({
+                agentId: this.agentConfig.id,
+                agentType: AgentType.AGENT_RUNNER,
+                runId: this.runContext.runId,
+                user: this.session.user,
+                env: settings.nodeEnv
+            })
         })
     }
 
