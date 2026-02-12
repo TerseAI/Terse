@@ -11,7 +11,8 @@ export enum IntegrationType {
     POSTHOG = "posthog",
     DATADOG = "datadog",
     CRON_JOB = "cron_job",
-    LAUNCHDARKLY = "launchdarkly"
+    LAUNCHDARKLY = "launchdarkly",
+    WORKOS = "workos"
 }
 
 // MARK: Integration Metadata
@@ -134,6 +135,15 @@ export const LaunchDarklyIntegrationMetadata = {
     isKnowledgeBase: true
 } as const satisfies IntegrationDetails
 
+export const WorkOSIntegrationMetadata = {
+    type: IntegrationType.WORKOS,
+    name: "WorkOS",
+    description: "Trigger on user lifecycle events from your WorkOS account",
+    isInput: true,
+    isOutput: false,
+    isKnowledgeBase: false
+} as const satisfies IntegrationDetails
+
 export type IntegrationMetadataMap = Record<IntegrationType, IntegrationDetails> // Allow indexing with any IntegrationType
 
 export const INTEGRATION_METADATA: IntegrationMetadataMap = {
@@ -148,7 +158,8 @@ export const INTEGRATION_METADATA: IntegrationMetadataMap = {
     [IntegrationType.POSTHOG]: PosthogIntegrationMetadata,
     [IntegrationType.DATADOG]: DatadogIntegrationMetadata,
     [IntegrationType.CRON_JOB]: CronJobIntegrationMetadata,
-    [IntegrationType.LAUNCHDARKLY]: LaunchDarklyIntegrationMetadata
+    [IntegrationType.LAUNCHDARKLY]: LaunchDarklyIntegrationMetadata,
+    [IntegrationType.WORKOS]: WorkOSIntegrationMetadata
 } as const satisfies IntegrationMetadataMap
 
 // MARK: Integration Details
@@ -179,6 +190,7 @@ export type IntegrationInstallationOptions = EnsureExhaustiveInstallationOptions
     [IntegrationType.DATADOG]: NoInstallationOptions
     [IntegrationType.CRON_JOB]: NoInstallationOptions
     [IntegrationType.LAUNCHDARKLY]: NoInstallationOptions
+    [IntegrationType.WORKOS]: NoInstallationOptions
 }>
 
 export type InstallationOptionsFor<T extends IntegrationType> = IntegrationInstallationOptions[T]
@@ -244,6 +256,12 @@ export interface LaunchDarklyIntegration extends IntegrationInstance {
 export interface DatadogIntegration extends IntegrationInstance {
     id: string
     region: string
+}
+
+export interface WorkOSIntegration extends IntegrationInstance {
+    id: string
+    webhookUrl: string
+    environment: "live" | "test" | null
 }
 
 export interface IntegrationWithStatus {

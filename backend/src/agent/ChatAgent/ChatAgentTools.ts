@@ -7,6 +7,7 @@ import { filterEvent } from "../../agent/AgentRunner/EventFilter"
 import { EventProcessor } from "../../agent/AgentRunner/EventProcessor"
 import { generateEventSummary } from "../../agent/EventSummaryAgent/EventSummaryAgent"
 import { CronJobEvent } from "../../integrations/CronJobIntegration"
+import { WORKOS_SUPPORTED_EVENT_NAMES } from "../../integrations/WorkOSIntegration"
 import { FetchResourcesOptions, FetchResourcesOptionsSchema } from "../../integrations/abstract/FetchResourcesOptions"
 import { InputEvent } from "../../integrations/abstract/InputEvent"
 import { INTEGRATION_REGISTRY } from "../../integrations/abstract/IntegrationRegistry"
@@ -529,6 +530,12 @@ const TimeTriggerConfigSchema = BaseConfigSchema.extend({
         .describe('ALL TIMES ARE IN UTC. The cron expression to schedule the automation. Must be a valid cron expression. Use this format: "minute hour day-of-month month day-of-week"')
 })
 
+const WorkOSInputConfigSchema = BaseConfigSchema.extend({
+    configType: z.literal(ConfigType.WORKOS_INPUT),
+    integrationType: z.literal(IntegrationType.WORKOS),
+    eventTypes: z.array(z.enum(WORKOS_SUPPORTED_EVENT_NAMES)).min(1).describe("WorkOS event types to trigger on.")
+})
+
 function enforceNonSystemIntegrationId(config: { configType: ConfigType; integrationId?: string }, ctx: z.RefinementCtx): void {
     if (config.configType !== ConfigType.TIME_TRIGGER && config.integrationId === "system") {
         ctx.addIssue({
@@ -539,7 +546,16 @@ function enforceNonSystemIntegrationId(config: { configType: ConfigType; integra
 }
 
 const InputConfigSchema = z
-    .discriminatedUnion("configType", [GmailConfigSchema, FigmaConfigSchema, SlackConfigSchema, LinearInputConfigSchema, GitHubConfigSchema, JiraConfigSchema, TimeTriggerConfigSchema])
+    .discriminatedUnion("configType", [
+        GmailConfigSchema,
+        FigmaConfigSchema,
+        SlackConfigSchema,
+        LinearInputConfigSchema,
+        GitHubConfigSchema,
+        JiraConfigSchema,
+        TimeTriggerConfigSchema,
+        WorkOSInputConfigSchema
+    ])
     .superRefine((value, ctx) => {
         enforceNonSystemIntegrationId(value, ctx)
         if (value.configType === ConfigType.SLACK) {
