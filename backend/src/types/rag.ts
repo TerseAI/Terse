@@ -4,6 +4,7 @@ import type { GithubEvent } from "../integrations/GithubIntegration"
 import type { GmailEvent } from "../integrations/GmailIntegration"
 import type { LinearEvent } from "../integrations/LinearIntegration"
 import type { SlackEvent } from "../integrations/SlackIntegration"
+import type { WorkOSEvent } from "../integrations/WorkOSIntegration"
 import logger from "../logger"
 import type { IdentifiableRunHistoryRawEvent } from "../rag/runHistoryRag/hydrator"
 
@@ -14,7 +15,8 @@ export enum HydratorType {
     LINEAR_EVENT = "linear_event",
     GMAIL_EVENT = "gmail_event",
     FIGMA_COMMENT_EVENT = "figma_comment_event",
-    JIRA_EVENT = "jira_event"
+    JIRA_EVENT = "jira_event",
+    WORKOS_EVENT = "workos_event"
 }
 
 const HYDRATOR_TYPE_VALUES = new Set(Object.values(HydratorType))
@@ -43,6 +45,7 @@ export type HydratorTypeMap = {
     [HydratorType.GMAIL_EVENT]: GmailEvent
     [HydratorType.FIGMA_COMMENT_EVENT]: FigmaCommentEvent
     [HydratorType.JIRA_EVENT]: JiraEvent
+    [HydratorType.WORKOS_EVENT]: WorkOSEvent
 }
 
 export enum RAGNamespace {

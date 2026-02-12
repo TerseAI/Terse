@@ -4,10 +4,12 @@ import { EventProcessor } from "../agent/AgentRunner/EventProcessor"
 import { urls } from "../config/settings"
 import logger from "../logger"
 import { db } from "../prismaClient"
+import { Identifiable } from "../rag/Hydrator"
 import { ConfigInstance, ConfigType, WorkOSInputConfig } from "../shared/Configs"
 import { IntegrationType, WorkOSIntegration, WorkOSIntegrationMetadata } from "../shared/Integrations"
 import { RunHistoryTrigger } from "../shared/RunHistoryTypes"
 import { AgentTriggerWithConfigs } from "../types/prisma"
+import { HydratorType } from "../types/rag"
 import { getUserForOrg } from "../utility/workos"
 
 import { InputEvent } from "./abstract/InputEvent"
@@ -249,16 +251,13 @@ async function fetchWorkOSEvents(apiKey: string, eventTypes: string[], limit: nu
         params.append("events", eventType)
     }
 
-    console.log("#WTF api_Key", apiKey)
-    const requestUrl = `https://api.workos.com/events?${params.toString()}`
-    const request = new Request(requestUrl, {
+    const response = await fetch(`https://api.workos.com/events?${params.toString()}`, {
         method: "GET",
         headers: {
-            Authorization: `Bearer ${apiKey}`
+            Authorization: `Bearer ${apiKey}`,
+            "Content-Type": "application/json"
         }
     })
-
-    const response = await fetch(request)
 
     if (!response.ok) {
         const errorText = await response.text()
@@ -267,8 +266,6 @@ async function fetchWorkOSEvents(apiKey: string, eventTypes: string[], limit: nu
     }
 
     const json = (await response.json()) as WorkOSEventsResponse
-
-    console.log("#WTF json", JSON.stringify(json.data))
     return json.data
 }
 
@@ -286,19 +283,24 @@ export interface WorkOSWebhookRequest {
     payload: WorkOSWebhookPayload
 }
 
-export class WorkOSEvent extends InputEvent {
+export class WorkOSEvent extends InputEvent implements Identifiable {
     readonly integrationType: IntegrationType = IntegrationType.WORKOS
+    entityType = HydratorType.WORKOS_EVENT
+    entityId: string
+    data: WorkOSWebhookPayload
 
     constructor(
-        private payload: WorkOSWebhookPayload,
+        payload: WorkOSWebhookPayload,
         private integrationId: string
     ) {
         super()
+        this.data = payload
+        this.entityId = `${integrationId}:${payload.id}`
     }
 
     formatForAgentRunner(): string {
-        const eventType = this.payload.event
-        const data = this.payload.data
+        const eventType = this.data.event
+        const data = this.data.data
         const parts = [`WorkOS Event: ${eventType}`]
 
         if (data.email) {
@@ -316,7 +318,7 @@ export class WorkOSEvent extends InputEvent {
     }
 
     debugLog(): string {
-        return `WorkOS ${this.payload.event} (integration: ${this.integrationId})`
+        return `WorkOS ${this.data.event} (integration: ${this.integrationId})`
     }
 
     matchesAgentTrigger(agentTrigger: AgentTriggerWithConfigs): boolean {
@@ -330,12 +332,12 @@ export class WorkOSEvent extends InputEvent {
         if (!config || !config.event_types || config.event_types.length === 0) {
             return false
         }
-        return config.event_types.includes(this.payload.event)
+        return config.event_types.includes(this.data.event)
     }
 
     createTriggerMetadata(): RunHistoryTrigger {
-        const eventType = this.payload.event
-        const data = this.payload.data
+        const eventType = this.data.event
+        const data = this.data.data
         const userEmail = data.email || data.user?.email
         const userName = [data.first_name, data.last_name].filter(Boolean).join(" ") || userEmail || "Unknown"
 
