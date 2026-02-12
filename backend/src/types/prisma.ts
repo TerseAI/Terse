@@ -85,6 +85,7 @@ export type AutomationInputWithConfigs = Prisma.automation_inputsGetPayload<{
         gmail_config: true
         figma_config: true
         time_trigger_config: true
+        workos_config: true
     }
 }>
 export type AgentTriggerWithConfigs = AutomationInputWithConfigs // Alias for rebranding (formerly ChannelInputWithConfigs)
@@ -147,6 +148,7 @@ export type AutomationWithInputRelations = Prisma.automationsGetPayload<{
                 gmail_config: true
                 figma_config: true
                 time_trigger_config: true
+                workos_config: true
             }
         }
     }
