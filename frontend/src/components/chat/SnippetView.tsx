@@ -14,7 +14,6 @@ export function SnippetView({ snippet, onMultipleChoiceAnswer }: { snippet: Chat
 
     useEffect(() => {
         if (snippet.type === "navigate") {
-            // Navigate to the path when this snippet is rendered
             navigate(snippet.path)
         }
     }, [snippet, navigate])
