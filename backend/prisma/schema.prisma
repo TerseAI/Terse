@@ -384,13 +384,13 @@ model datadog_integrations {
 
 // WorkOS Integration (customer's own WorkOS account for user lifecycle triggers)
 model workos_integrations {
-  id                String   @id @default(cuid())
-  user_id           String
-  organization_id   String
-  api_key           String
-  webhook_secret    String?
-  created_at        DateTime @default(now())
-  updated_at        DateTime @updatedAt
+  id              String   @id @default(cuid())
+  user_id         String
+  organization_id String
+  api_key         String
+  webhook_secret  String?
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
 
   user users @relation(fields: [user_id], references: [id], onDelete: Cascade)
 

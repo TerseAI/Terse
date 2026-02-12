@@ -332,7 +332,12 @@ function WorkOSCardContent({ integrations, isLoading }: { integrations: Array<Wo
     return (
         <div className="space-y-2">
             {integrations.map(integration => (
-                <IntegrationItem key={integration.id} icon={<Shield className="w-4 h-4" />} title="WorkOS" description={integration.environment === "test" ? "Test environment" : integration.environment === "live" ? "Production environment" : "WorkOS user lifecycle events"} />
+                <IntegrationItem
+                    key={integration.id}
+                    icon={<Shield className="w-4 h-4" />}
+                    title="WorkOS"
+                    description={integration.environment === "test" ? "Test environment" : integration.environment === "live" ? "Production environment" : "WorkOS user lifecycle events"}
+                />
             ))}
         </div>
     )
