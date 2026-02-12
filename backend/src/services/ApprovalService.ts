@@ -202,18 +202,19 @@ export class ApprovalService {
         // Keep minimal state outside the try so the catch can update Slack if we already flipped it to "processing".
         let channelIdForSlack: string | null = null
         let slackMarkedProcessing = false
-
-        // Validate organization access and load channel
-        const { runRecord, channel } = await this.validateUserAccess(runId, organizationId)
-        channelIdForSlack = channel.id
-
-        // Create base session for AgentRunner (runtime User type)
-        const user = await getUserForOrg(userId, channel.organization_id)
-        if (!user) {
-            throw new Error(`User not found: ${userId}`)
-        }
+        let user: User | null = null
 
         try {
+            // Validate organization access and load channel (inside try so failures are caught and run is marked failed)
+            const { runRecord, channel } = await this.validateUserAccess(runId, organizationId)
+            channelIdForSlack = channel.id
+
+            // Create base session for AgentRunner (runtime User type)
+            user = await getUserForOrg(userId, channel.organization_id)
+            if (!user) {
+                throw new Error(`User not found: ${userId}`)
+            }
+
             // Store rejection reason in database if provided (for request changes flow)
             if (!approved && rejectionReason) {
                 const prisma = db()
@@ -329,7 +330,7 @@ export class ApprovalService {
             logger.error(`[ApprovalService] Error processing approval: ${errorMessage}`, { error })
 
             // If we've already told Slack we're "processing", make sure we also tell Slack we failed.
-            if (slackMarkedProcessing && channelIdForSlack) {
+            if (slackMarkedProcessing && channelIdForSlack && user) {
                 await this.updateSlackNotification(runId, stepId, "failed", user, channelIdForSlack)
             }
 
