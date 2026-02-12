@@ -109,7 +109,9 @@ function WorkOSIntegrationCard({ className, isActive = true, stateToken, compact
         <Dialog open={showForm} onOpenChange={open => !open && handleCancel()}>
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle>{isConnected ? "Manage" : "Connect"} {INTEGRATION_METADATA[IntegrationType.WORKOS].name}</DialogTitle>
+                    <DialogTitle>
+                        {isConnected ? "Manage" : "Connect"} {INTEGRATION_METADATA[IntegrationType.WORKOS].name}
+                    </DialogTitle>
                     <DialogDescription>
                         {formStep === "api-key" ? (
                             <>
@@ -175,7 +177,12 @@ function WorkOSIntegrationCard({ className, isActive = true, stateToken, compact
                         <ol className="text-sm text-muted-foreground list-decimal list-inside space-y-1.5">
                             <li>
                                 Go to{" "}
-                                <a href="https://dashboard.workos.com/webhooks" target="_blank" rel="noopener noreferrer" className="underline text-foreground hover:text-primary inline-flex items-center gap-0.5">
+                                <a
+                                    href="https://dashboard.workos.com/webhooks"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="underline text-foreground hover:text-primary inline-flex items-center gap-0.5"
+                                >
                                     Webhooks <ExternalLinkIcon className="size-3" />
                                 </a>{" "}
                                 in your WorkOS Dashboard
@@ -187,9 +194,7 @@ function WorkOSIntegrationCard({ className, isActive = true, stateToken, compact
                         <div className="space-y-2">
                             <Label>Webhook URL</Label>
                             <div className="flex items-center gap-2">
-                                <code className="flex-1 p-2 bg-muted rounded text-xs break-all">
-                                    {webhookUrl}
-                                </code>
+                                <code className="flex-1 p-2 bg-muted rounded text-xs break-all">{webhookUrl}</code>
                                 <Button
                                     type="button"
                                     variant="outline"
@@ -201,7 +206,15 @@ function WorkOSIntegrationCard({ className, isActive = true, stateToken, compact
                                         setTimeout(() => setCopied(false), 2000)
                                     }}
                                 >
-                                    {copied ? <><CheckIcon className="size-3.5 text-green-500" /> Copied</> : <><CopyIcon className="size-3.5" /> Copy</>}
+                                    {copied ? (
+                                        <>
+                                            <CheckIcon className="size-3.5 text-green-500" /> Copied
+                                        </>
+                                    ) : (
+                                        <>
+                                            <CopyIcon className="size-3.5" /> Copy
+                                        </>
+                                    )}
                                 </Button>
                             </div>
                         </div>
@@ -229,9 +242,7 @@ function WorkOSIntegrationCard({ className, isActive = true, stateToken, compact
                                         {showWebhookSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                                     </button>
                                 </div>
-                                <p className="text-xs text-muted-foreground">
-                                    WorkOS shows the signing secret after you create the webhook endpoint. This verifies incoming webhooks are from WorkOS.
-                                </p>
+                                <p className="text-xs text-muted-foreground">WorkOS shows the signing secret after you create the webhook endpoint. This verifies incoming webhooks are from WorkOS.</p>
                             </div>
 
                             {error && <p className="text-sm text-destructive">{error}</p>}
@@ -267,7 +278,14 @@ function WorkOSIntegrationCard({ className, isActive = true, stateToken, compact
     if (compact) {
         return (
             <>
-                <CompactIntegrationRow integration={IntegrationType.WORKOS} isConnected={isConnected} summary={summary} connect={isConnected ? handleUpdate : handleConnect} isConnecting={isSubmitting} className={className} />
+                <CompactIntegrationRow
+                    integration={IntegrationType.WORKOS}
+                    isConnected={isConnected}
+                    summary={summary}
+                    connect={isConnected ? handleUpdate : handleConnect}
+                    isConnecting={isSubmitting}
+                    className={className}
+                />
                 {formDialog}
             </>
         )

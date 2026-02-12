@@ -1,4 +1,3 @@
-import crypto from "crypto"
 import { Request, Response } from "express"
 
 import { WorkOSIntegrationManager } from "../integrations/WorkOSIntegration"
@@ -7,6 +6,7 @@ import { emitIntegrationFormCompletedTaskIfNeeded } from "../integrations/helper
 import logger from "../logger"
 import { db } from "../prismaClient"
 import { IntegrationType } from "../shared/Integrations"
+import { workos } from "../utility/workos"
 
 export async function getWorkOSIntegrations(req: Request, res: Response) {
     if (!req.session?.user) {
@@ -91,26 +91,6 @@ export async function updateWorkOSWebhookSecret(req: Request, res: Response) {
     }
 }
 
-function verifyWorkOSWebhookSignature(payload: string, signature: string, secret: string): boolean {
-    const [timestamp, signatureHash] = signature.split(",").reduce(
-        (acc, part) => {
-            const [key, value] = part.split("=")
-            if (key === "t") acc[0] = value
-            if (key === "v1") acc[1] = value
-            return acc
-        },
-        ["", ""] as [string, string]
-    )
-
-    if (!timestamp || !signatureHash) {
-        return false
-    }
-
-    const signedPayload = `${timestamp}.${payload}`
-    const expectedSignature = crypto.createHmac("sha256", secret).update(signedPayload).digest("hex")
-    return crypto.timingSafeEqual(Buffer.from(signatureHash), Buffer.from(expectedSignature))
-}
-
 export async function handleWorkOSTriggerWebhook(req: Request, res: Response) {
     const { integrationId } = req.params
 
@@ -139,21 +119,21 @@ export async function handleWorkOSTriggerWebhook(req: Request, res: Response) {
             return
         }
 
-        // Verify webhook signature if a signing secret is configured
-        const signature = req.get("workos-signature") ?? req.get("WorkOS-Signature") ?? ""
+        const payload = JSON.parse(rawBody.toString("utf8")) as Record<string, unknown>
+        const sigHeader = req.get("workos-signature") ?? req.get("WorkOS-Signature") ?? ""
 
+        // Verify webhook signature using the WorkOS SDK
         if (integration.webhook_secret) {
-            if (!signature) {
+            if (!sigHeader) {
                 logger.warn("WorkOS trigger webhook missing signature header", { integrationId })
                 res.status(401).json({ error: "Missing signature" })
                 return
             }
-            const isValid = verifyWorkOSWebhookSignature(rawBody.toString("utf8"), signature, integration.webhook_secret)
-            if (!isValid) {
-                logger.warn("WorkOS trigger webhook signature verification failed", { integrationId })
-                res.status(401).json({ error: "Invalid signature" })
-                return
-            }
+            await workos.webhooks.constructEvent({
+                payload,
+                sigHeader,
+                secret: integration.webhook_secret
+            })
         } else {
             logger.warn("WorkOS trigger webhook received without signing secret configured — skipping signature verification", { integrationId })
         }
@@ -162,15 +142,14 @@ export async function handleWorkOSTriggerWebhook(req: Request, res: Response) {
         res.status(200).json({ received: true })
 
         // Process asynchronously
-        const payload = JSON.parse(rawBody.toString("utf8"))
         const manager = new WorkOSIntegrationManager()
-        manager.processWebhookEvent({ integrationId, payload }).catch(error => {
+        manager.processWebhookEvent({ integrationId, payload: payload as any }).catch(error => {
             logger.error("Error processing WorkOS trigger webhook", { error, integrationId })
         })
     } catch (error) {
-        logger.error("Error handling WorkOS trigger webhook", { error, integrationId })
+        logger.error("WorkOS trigger webhook verification failed", { error, integrationId })
         if (!res.headersSent) {
-            res.status(500).json({ error: "Internal server error" })
+            res.status(401).json({ error: "Invalid signature" })
         }
     }
 }
