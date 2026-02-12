@@ -103,7 +103,7 @@ function WorkOSIntegrationCard({ className, isActive = true, stateToken, compact
         setWebhookUrl(null)
     }
 
-    const summary = integrations[0]?.organizationName ?? undefined
+    const summary = integrations[0]?.environment ?? undefined
 
     const formDialog = (
         <Dialog open={showForm} onOpenChange={open => !open && handleCancel()}>
@@ -332,7 +332,7 @@ function WorkOSCardContent({ integrations, isLoading }: { integrations: Array<Wo
     return (
         <div className="space-y-2">
             {integrations.map(integration => (
-                <IntegrationItem key={integration.id} icon={<Shield className="w-4 h-4" />} title={integration.organizationName || "WorkOS"} description="WorkOS user lifecycle events" />
+                <IntegrationItem key={integration.id} icon={<Shield className="w-4 h-4" />} title="WorkOS" description={integration.environment === "test" ? "Test environment" : integration.environment === "live" ? "Production environment" : "WorkOS user lifecycle events"} />
             ))}
         </div>
     )

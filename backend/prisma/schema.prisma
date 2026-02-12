@@ -389,7 +389,6 @@ model workos_integrations {
   organization_id   String
   api_key           String
   webhook_secret    String?
-  organization_name String?
   created_at        DateTime @default(now())
   updated_at        DateTime @updatedAt
 

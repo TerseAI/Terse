@@ -260,8 +260,8 @@ export interface DatadogIntegration extends IntegrationInstance {
 
 export interface WorkOSIntegration extends IntegrationInstance {
     id: string
-    organizationName: string | null
     webhookUrl: string
+    environment: "live" | "test" | null
 }
 
 export interface IntegrationWithStatus {
