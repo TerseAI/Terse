@@ -8,6 +8,9 @@
  * to ensure consistency across navigation calls and route definitions.
  */
 
+/** Query param added when redirecting from Home/AgentBuilderLayout chat to agent page; AgentSetupTab clears session when present */
+export const FROM_SETUP_CHAT_PARAM = "fromSetupChat"
+
 export const FrontendRoutes = {
     // Base routes
     APP: "/app",
