@@ -7,6 +7,7 @@ import { filterEvent } from "../../agent/AgentRunner/EventFilter"
 import { EventProcessor } from "../../agent/AgentRunner/EventProcessor"
 import { generateEventSummary } from "../../agent/EventSummaryAgent/EventSummaryAgent"
 import { CronJobEvent } from "../../integrations/CronJobIntegration"
+import { WORKOS_SUPPORTED_EVENT_NAMES } from "../../integrations/WorkOSIntegration"
 import { FetchResourcesOptions, FetchResourcesOptionsSchema } from "../../integrations/abstract/FetchResourcesOptions"
 import { InputEvent } from "../../integrations/abstract/InputEvent"
 import { INTEGRATION_REGISTRY } from "../../integrations/abstract/IntegrationRegistry"
@@ -534,11 +535,9 @@ const WorkOSInputConfigSchema = BaseConfigSchema.extend({
     configType: z.literal(ConfigType.WORKOS_INPUT),
     integrationType: z.literal(IntegrationType.WORKOS),
     eventTypes: z
-        .array(NonEmptyString)
+        .array(z.enum(WORKOS_SUPPORTED_EVENT_NAMES))
         .min(1)
-        .describe(
-            'WorkOS event types to trigger on. Valid values: "user.created", "user.updated", "user.deleted", "organization_membership.created", "organization_membership.updated", "organization_membership.deleted".'
-        )
+        .describe("WorkOS event types to trigger on.")
 })
 
 function enforceNonSystemIntegrationId(config: { configType: ConfigType; integrationId?: string }, ctx: z.RefinementCtx): void {
