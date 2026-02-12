@@ -23,37 +23,33 @@ export class WorkOSIntegrationManager implements Integration<WorkOSIntegration, 
             where: { organization_id: organizationId },
             select: {
                 id: true,
-                organization_name: true
+                api_key: true
             }
         })
-        return integrations.map(i => ({
-            id: i.id,
-            organizationName: i.organization_name || null,
-            webhookUrl: `${urls.backend}/webhooks/workos-trigger/${i.id}`
-        }))
+        return integrations.map(i => this.enrichInstance(i.id, i.api_key))
     }
 
     formatIntegrationInstanceForAgent(instance: WorkOSIntegration): string {
-        const details: string[] = []
-        if (instance.organizationName) {
-            details.push(`org "${instance.organizationName}"`)
-        }
-        const detailText = details.length ? ` (${details.join(", ")})` : ""
-        return `WorkOS${detailText} [id: ${instance.id}]`
+        const env = instance.environment ? ` (${instance.environment})` : ""
+        return `WorkOS${env} [id: ${instance.id}]`
     }
 
     async getAllActiveInstances(): Promise<WorkOSIntegration[]> {
         const integrations = await db().workos_integrations.findMany({
             select: {
                 id: true,
-                organization_name: true
+                api_key: true
             }
         })
-        return integrations.map(i => ({
-            id: i.id,
-            organizationName: i.organization_name || null,
-            webhookUrl: `${urls.backend}/webhooks/workos-trigger/${i.id}`
-        }))
+        return integrations.map(i => this.enrichInstance(i.id, i.api_key))
+    }
+
+    private enrichInstance(id: string, apiKey: string): WorkOSIntegration {
+        return {
+            id,
+            webhookUrl: `${urls.backend}/webhooks/workos-trigger/${id}`,
+            environment: parseWorkOSEnvironment(apiKey)
+        }
     }
 
     async processWebhookEvent(request: WorkOSWebhookRequest): Promise<void> {
@@ -233,6 +229,14 @@ export class WorkOSIntegrationManager implements Integration<WorkOSIntegration, 
 
         return events.map(evt => new WorkOSEvent(evt, integrationId))
     }
+}
+
+// MARK: - WorkOS Helpers
+
+function parseWorkOSEnvironment(apiKey: string): "live" | "test" | null {
+    if (apiKey.startsWith("sk_live_")) return "live"
+    if (apiKey.startsWith("sk_test_")) return "test"
+    return null
 }
 
 // MARK: - WorkOS Events API
