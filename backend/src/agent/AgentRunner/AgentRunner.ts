@@ -1,4 +1,4 @@
-import { Agent, AgentInputItem, AgentOutputType, RunResult, RunState, RunStreamEvent, RunToolApprovalItem, Runner, StreamedRunResult, Tool, protocol, run, user } from "@openai/agents"
+import { Agent, AgentInputItem, AgentOutputType, RunResult, RunState, RunToolApprovalItem, StreamedRunResult, Tool, protocol, user } from "@openai/agents"
 import { RunHistoryActionType } from "@prisma/client"
 
 import { settings } from "../../config/settings"
@@ -13,7 +13,7 @@ import { ConfigInstance } from "../../shared/Configs"
 import { EntityType } from "../../shared/Entities"
 import { IntegrationType } from "../../shared/Integrations"
 import { ChangeEventType, ChangedItem, ModelEvent } from "../../shared/ModelEvents"
-import type { RunHistoryAction, RunHistoryModelEvent, RunHistoryModelSocketEvent, RunHistoryStreamingParams } from "../../shared/RunHistoryTypes"
+import type { RunHistoryAction, RunHistoryModelEvent, RunHistoryModelSocketEvent, TrackingParams } from "../../shared/RunHistoryTypes"
 import { SocketEvents, SocketRooms } from "../../shared/SocketEvents"
 import { AgentWithRelations } from "../../types/prisma"
 import { Session } from "../../types/session"
@@ -83,7 +83,7 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance, KBCo
         this.notificationManager = new NotificationManager(session.user, agent)
     }
 
-    async run(streamingParams?: RunHistoryStreamingParams): Promise<ApprovalResult<SessionWithTracking<T>, Agent<SessionWithTracking<T>, AgentOutputType>>> {
+    async run(streamingParams?: TrackingParams): Promise<ApprovalResult<SessionWithTracking<T>, Agent<SessionWithTracking<T>, AgentOutputType>>> {
         if (!this.inputEvent) {
             throw new Error("No input event set. Call setInputEvent() before run()")
         }
@@ -101,7 +101,7 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance, KBCo
         const runner = runnerFactory({
             agentId: this.agentConfig.id,
             runId: this.runContext.runId,
-            userId: this.session.user.id,
+            user: this.session.user,
             env: settings.nodeEnv
         })
 
@@ -120,11 +120,7 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance, KBCo
         return await this.buildResult(result, streamingParams)
     }
 
-    async userMessageRun(
-        userMessage: string,
-        files?: StoredFile[],
-        streamingParams?: RunHistoryStreamingParams
-    ): Promise<ApprovalResult<SessionWithTracking<T>, Agent<SessionWithTracking<T>, AgentOutputType>>> {
+    async userMessageRun(userMessage: string, files?: StoredFile[], streamingParams?: TrackingParams): Promise<ApprovalResult<SessionWithTracking<T>, Agent<SessionWithTracking<T>, AgentOutputType>>> {
         await this.initializeAgent()
 
         if (!this.agent) {
@@ -133,11 +129,10 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance, KBCo
 
         const content = this.buildUserContent(userMessage, files)
         const userHistory = this.buildUserHistory(content)
-
         const runner = runnerFactory({
             agentId: this.agentConfig.id,
             runId: this.runContext.runId,
-            userId: this.session.user.id,
+            user: this.session.user,
             env: settings.nodeEnv
         })
         const result = await runner.run(this.agent, userHistory, {
@@ -160,7 +155,7 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance, KBCo
     async resumeFromPendingApproval(
         decision: Decision,
         stepId: string,
-        streamingParams?: RunHistoryStreamingParams,
+        streamingParams?: TrackingParams,
         rejectionReason?: string,
         hardReject?: boolean
     ): Promise<ApprovalResult<SessionWithTracking<T>, Agent<SessionWithTracking<T>, AgentOutputType>>> {
@@ -275,7 +270,7 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance, KBCo
         const runner = runnerFactory({
             agentId: this.agentConfig.id,
             runId: this.runContext.runId,
-            userId: this.session.user.id,
+            user: this.session.user,
             env: settings.nodeEnv
         })
         const toolContext = this.getToolContext()
@@ -391,7 +386,21 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance, KBCo
             name: "Automation Agent",
             instructions: fullSystemPrompt,
             model: this.chooseModel(),
-            tools: this.tools
+            tools: this.tools,
+            modelSettings: {
+                providerData: {
+                    posthogDistinctId: this.session.user.email,
+                    posthogProperties: {
+                        organizationId: this.session.user.organizationId,
+                        organizationName: this.session.user.organizationName,
+                        agentId: this.agentConfig.id,
+                        runId: this.runContext.runId,
+                        userName: this.session.user.displayName,
+                        environment: settings.nodeEnv
+                    },
+                    posthogGroups: { company: this.session.user.organizationId }
+                }
+            }
         })
     }
 
@@ -499,9 +508,9 @@ ${inputEvent.formatForAgentRunner()}
 
     private async processStream<TSession extends Session = Session, TAgent extends Agent<any, any> = Agent<Session, any>>(
         result: StreamedRunResult<TSession, TAgent>,
-        streamingParams?: RunHistoryStreamingParams
+        streamingParams?: TrackingParams
     ): Promise<void> {
-        const shouldStream = this.shouldEnableStreaming(streamingParams)
+        const shouldStream = !!streamingParams
 
         if (shouldStream) {
             await this.processWithStreaming(result, streamingParams!)
@@ -510,13 +519,9 @@ ${inputEvent.formatForAgentRunner()}
         }
     }
 
-    private shouldEnableStreaming(params?: RunHistoryStreamingParams): boolean {
-        return !!(params?.runId && params?.userId && params?.agentId && params?.organizationId)
-    }
-
     private async processWithStreaming<TSession extends Session = Session, TAgent extends Agent<any, any> = Agent<Session, any>>(
         result: StreamedRunResult<TSession, TAgent>,
-        streamingParams: RunHistoryStreamingParams
+        streamingParams: TrackingParams
     ): Promise<void> {
         const io = getSocketIO()
 
@@ -529,9 +534,8 @@ ${inputEvent.formatForAgentRunner()}
 
         await processModelEventStream(eventStream, {
             runId: streamingParams.runId!,
-            userId: streamingParams.userId!,
             agentId: streamingParams.agentId!,
-            organizationId: streamingParams.organizationId!,
+            user: streamingParams.user,
             io
         })
     }
@@ -560,7 +564,7 @@ ${inputEvent.formatForAgentRunner()}
         }
     }
 
-    private async buildResult(result: any, streamingParams?: RunHistoryStreamingParams): Promise<ApprovalResult<SessionWithTracking<T>, Agent<SessionWithTracking<T>, AgentOutputType>>> {
+    private async buildResult(result: any, streamingParams?: TrackingParams): Promise<ApprovalResult<SessionWithTracking<T>, Agent<SessionWithTracking<T>, AgentOutputType>>> {
         const hasInterruptions = result.interruptions && result.interruptions.length > 0
 
         if (hasInterruptions) {
@@ -581,7 +585,7 @@ ${inputEvent.formatForAgentRunner()}
             await storePendingApprovalState(this.runContext.runId, serializedState, interruptionsToStore)
 
             // Emit ToolApprovalRequest events for each interruption
-            if (streamingParams && this.shouldEnableStreaming(streamingParams)) {
+            if (streamingParams) {
                 const io = getSocketIO()
                 for (const interruption of result.interruptions) {
                     // Safely extract callId from interruption rawItem
@@ -605,7 +609,7 @@ ${inputEvent.formatForAgentRunner()}
                     // Store and emit the approval request
                     const eventId = await storeChatEvent(this.runContext.runId, approvalRequest)
 
-                    if (io && streamingParams.organizationId) {
+                    if (io && streamingParams.user.organizationId) {
                         const runHistoryModelEvent: RunHistoryModelEvent = {
                             ...approvalRequest,
                             id: eventId,
@@ -616,7 +620,7 @@ ${inputEvent.formatForAgentRunner()}
                             agentId: streamingParams.agentId!,
                             runHistoryModelEvent
                         }
-                        io.to(SocketRooms.organization(streamingParams.organizationId)).emit(SocketEvents.AGENT_CHAT_EVENT, payload)
+                        io.to(SocketRooms.organization(streamingParams.user.organizationId)).emit(SocketEvents.AGENT_CHAT_EVENT, payload)
                     }
 
                     // Send notification for approval request

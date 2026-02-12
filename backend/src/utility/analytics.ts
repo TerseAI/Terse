@@ -102,6 +102,10 @@ class AnalyticsService {
         }
     }
 
+    public getPostHogClient(): PostHog | null {
+        return this.initializeClient()
+    }
+
     /**
      * Capture an analytics event for a specific user.
      *

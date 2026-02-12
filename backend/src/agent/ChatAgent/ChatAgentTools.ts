@@ -19,9 +19,11 @@ import type { ConfigInstance } from "../../shared/Configs"
 import { ConfigType } from "../../shared/Configs"
 import { FROM_SETUP_CHAT_PARAM, FrontendRoutes } from "../../shared/FrontendRoutes"
 import { IntegrationType } from "../../shared/Integrations"
+import { TrackingParams } from "../../shared/RunHistoryTypes"
 import { ToolNameSchema } from "../../tools/ToolNames"
 import { getToolsThatRequireApprovals } from "../../tools/availableTools"
 import { HydratorType, requireHydratorType } from "../../types/rag"
+import { randomString } from "../../utility/strings"
 import { getUserForOrg } from "../../utility/workos"
 
 import type { ChatAgentContext } from "./ChatAgentContext"
@@ -195,7 +197,7 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
                 if (agentId) {
                     const agent = await db().automations.findUnique({
                         where: { id: agentId },
-                        include: { prompt: true }
+                        include: { prompt: true, user: true }
                     })
                     agentPrompt = agent?.prompt
                     logger.info("[getSampleEvents] Filter preview", { agentId, hasPrompt: !!agentPrompt })
@@ -210,13 +212,24 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
                     })
                 }
 
+                const user = await getUserForOrg(userId, organizationId)
+                if (!user) {
+                    throw new Error("User not found")
+                }
+
+                const trackingParams: TrackingParams = {
+                    runId: randomString(15),
+                    agentId: agentId ?? "",
+                    user: user
+                }
+
                 const results = await Promise.all(
                     identifiableEvents.map(async event => {
                         const identifiable = event.getIdentifiableInfo()!
                         const eventData = (event as unknown as { data: unknown }).data
 
                         const [summaryResult, filterResult] = await Promise.all([
-                            generateEventSummary(integrationType, eventData).catch(err => {
+                            generateEventSummary(integrationType, eventData, user).catch(err => {
                                 logger.warn("[getSampleEvents] Summary generation failed for event", {
                                     entityId: identifiable.entityId,
                                     error: err instanceof Error ? err.message : String(err)
@@ -224,7 +237,7 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
                                 return { summary: `${integrationType} event` }
                             }),
                             agentPrompt
-                                ? filterEvent(event, agentPrompt, false).catch(err => {
+                                ? filterEvent(event, agentPrompt, false, trackingParams).catch(err => {
                                       logger.warn("[getSampleEvents] Filter preview failed for event", {
                                           entityId: identifiable.entityId,
                                           error: err instanceof Error ? err.message : String(err)

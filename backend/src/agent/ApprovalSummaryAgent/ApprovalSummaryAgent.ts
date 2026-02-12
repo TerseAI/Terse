@@ -5,6 +5,7 @@ import { settings } from "../../config/settings"
 import logger from "../../logger"
 import { db } from "../../prismaClient"
 import { ModelEvent, ToolCall } from "../../shared/ModelEvents"
+import { User } from "../../shared/types"
 import { RunHistoryChatMemorySession, identityHistoryCallback } from "../CustomMemorySession"
 import { runnerFactory } from "../runner"
 
@@ -42,7 +43,7 @@ Do not include any markdown formatting, code blocks, or explanations. Only retur
     outputType: ApprovalSummaryClassification
 })
 
-export async function generateApprovalSummary(runId: string, userId: string, agentId: string, stepId: string): Promise<ApprovalSummaryClassificationType> {
+export async function generateApprovalSummary(runId: string, user: User, agentId: string, stepId: string): Promise<ApprovalSummaryClassificationType> {
     const prisma = db()
 
     // Fetch run history record to get trigger information
@@ -144,8 +145,8 @@ Return the single-sentence "I'm going to ..." approvalSummary.`
 
     const runner = runnerFactory({
         runId: runId,
-        userId: userId,
         agentId: agentId,
+        user: user,
         env: settings.nodeEnv
     })
     const result = await runner.run(approvalSummaryAgent, [{ role: "user", content: userPrompt }], {

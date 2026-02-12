@@ -4,6 +4,7 @@ import { z } from "zod"
 import { settings } from "../../config/settings"
 import logger from "../../logger"
 import { db } from "../../prismaClient"
+import { User } from "../../shared/types"
 import { EventEmitterTaskQueue } from "../../tasks/abstract/eventEmitterTasks"
 import { Task } from "../../tasks/abstract/tasks"
 import { RunHistoryChatMemorySession, identityHistoryCallback } from "../CustomMemorySession"
@@ -17,7 +18,7 @@ export class DirectiveTask implements Task {
         public automationId: string,
         public runHistoryId: string,
         public runHistoryChatEventId: string,
-        public userId: string,
+        public user: User,
         public message: string
     ) {}
 }
@@ -105,7 +106,7 @@ async function classifyDirective(task: DirectiveTask): Promise<DirectiveClassifi
 
     const runner = runnerFactory({
         runId: task.runHistoryId,
-        userId: task.userId,
+        user: task.user,
         agentId: task.automationId,
         env: settings.nodeEnv
     })

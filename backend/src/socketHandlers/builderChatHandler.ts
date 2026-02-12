@@ -8,8 +8,15 @@ import { buildRunErrorEvent, classifyAgentError } from "../agent/agentErrorUtils
 import logger from "../logger"
 import { SendModelRequest } from "../shared/ModelEvents"
 import { SocketEvents } from "../shared/SocketEvents"
+import { getUserForOrg } from "../utility/workos"
 
-export function registerBuilderChatHandler(socket: Socket, userId: string, organizationId: string): void {
+export async function registerBuilderChatHandler(socket: Socket, userId: string, organizationId: string): Promise<void> {
+    const user = await getUserForOrg(userId, organizationId)
+    if (!user) {
+        logger.error("[builder:chat:registerBuilderChatHandler] User not found", { userId, organizationId })
+        return
+    }
+
     socket.on(SocketEvents.BUILDER_CHAT_MULTIPLE_CHOICE_ANSWER, async (payload: { sessionId: string; questionId: string; value: string }) => {
         const { sessionId, questionId, value } = payload
         if (!sessionId || !questionId) return
@@ -35,7 +42,7 @@ export function registerBuilderChatHandler(socket: Socket, userId: string, organ
         logger.info(`[builder:chat:message] Processing message`, { sessionId, userId, userMessage, hasUiState: !!uiState, timezone })
 
         const webChatInterface = new WebChatInterface(sessionId, userId, socket, organizationId, timezone)
-        const chatAgent = new ChatAgent(webChatInterface, sessionId, userId, organizationId, uiState)
+        const chatAgent = new ChatAgent(webChatInterface, sessionId, user, uiState)
         try {
             await chatAgent.run(userMessage)
         } catch (error) {

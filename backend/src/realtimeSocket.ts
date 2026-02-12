@@ -276,9 +276,8 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
             try {
                 result = await agentRunner.userMessageRun(userMessage, undefined, {
                     runId,
-                    userId,
-                    agentId: agent.id,
-                    ...(organizationId && { organizationId })
+                    user: user,
+                    agentId: agent.id
                 })
             } catch (error) {
                 const classified = classifyAgentError(error)
@@ -301,7 +300,7 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
                 }
             }
 
-            directiveTaskQueue.emit(new DirectiveTask(agent.id, runId, userMessageEventId, userId, userMessage))
+            directiveTaskQueue.emit(new DirectiveTask(agent.id, runId, userMessageEventId, user, userMessage))
         })
 
         // Use centralized approval service - it handles Slack notifications internally

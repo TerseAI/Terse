@@ -200,9 +200,8 @@ export class EventProcessor {
         try {
             const filterResponse = await filterEvent(this.inputEvent, agent.prompt, true, {
                 runId,
-                userId: this.user.id,
-                agentId: agent.id,
-                organizationId: this.user.organizationId
+                user: this.user,
+                agentId: agent.id
             })
 
             filterResult = filterResponse.result
@@ -280,9 +279,8 @@ export class EventProcessor {
         try {
             result = await agentRunner.run({
                 runId,
-                userId: this.user.id,
                 agentId: agent.id,
-                organizationId: this.user.organizationId
+                user: this.user
             })
         } catch (error) {
             const classified = classifyAgentError(error)

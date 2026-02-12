@@ -1,6 +1,7 @@
 import { ConfigType } from "./Configs"
 import { IntegrationType } from "./Integrations"
 import type { ModelEvent } from "./ModelEvents"
+import type { User } from "./types"
 
 export type RunHistoryStatus = "success" | "failed" | "skipped" | "in_progress" | "awaiting_approval"
 export type RunHistoryDecisionAction = "processed" | "skipped"
@@ -105,13 +106,12 @@ export type RunHistoryModelSocketEvent = {
     runHistoryModelEvent: RunHistoryModelEvent
 }
 
-export type RunHistoryStreamingParams = {
-    runId?: string
-    userId?: string
-    agentId?: string
-    organizationId?: string
+export type TrackingParams = {
+    runId: string
+    agentId: string
+    user: User
 }
 
-export type RunHistoryStreamingParamsWithCallback = RunHistoryStreamingParams & {
+export type TrackingParamsWithCallback = TrackingParams & {
     onEvent?: (event: ModelEvent) => Promise<void>
 }

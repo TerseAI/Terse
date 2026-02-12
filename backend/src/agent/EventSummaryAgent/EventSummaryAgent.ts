@@ -3,6 +3,7 @@ import { z } from "zod"
 
 import { settings } from "../../config/settings"
 import { IntegrationType } from "../../shared/Integrations"
+import { User } from "../../shared/types"
 import { runnerFactory } from "../runner"
 
 const EventSummarySchema = z.object({
@@ -25,13 +26,13 @@ IMPORTANT: Return ONLY a valid JSON object: {"summary": "..."}`,
     outputType: EventSummarySchema
 })
 
-export async function generateEventSummary(integrationType: IntegrationType, eventData: unknown): Promise<{ summary: string }> {
+export async function generateEventSummary(integrationType: IntegrationType, eventData: unknown, user: User): Promise<{ summary: string }> {
     const formattedEventData = JSON.stringify(eventData, null, 2)
     const userPrompt = `Summarize this ${integrationType} event:\n\n${formattedEventData}`
 
     const runner = runnerFactory({
         runId: "event-summary",
-        userId: "system",
+        user: user,
         agentId: "event-summary-agent",
         env: settings.nodeEnv
     })

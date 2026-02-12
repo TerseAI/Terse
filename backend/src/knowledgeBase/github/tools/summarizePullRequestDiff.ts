@@ -120,7 +120,7 @@ You can optionally provide high-level context about what you're looking for in t
             // Get run context for the sub-agent
             // Extract available context from the tool context (which is the merged session)
             const toolContext = runContext?.context as any
-            const userId = toolContext?.user?.id || toolContext?.userId || ""
+            const terseUser = toolContext.user
             const agentId = toolContext?.agent?.id || toolContext?.agentId || ""
             // Generate a unique runId for the sub-agent
             const subAgentRunId = `pr-summary-${Date.now()}-${pullNumber}`
@@ -129,7 +129,7 @@ You can optionally provide high-level context about what you're looking for in t
             const runner = runnerFactory({
                 agentId: agentId,
                 runId: subAgentRunId,
-                userId: userId,
+                user: terseUser,
                 env: settings.nodeEnv
             })
 
