@@ -4,7 +4,7 @@ import { RunHistoryActionType } from "@prisma/client"
 import { z } from "zod"
 
 import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
-import { runnerFactory } from "../../../agent/runner"
+import { AgentType, builderProviderDataModelSettings, runnerFactory } from "../../../agent/runner"
 import { settings } from "../../../config/settings"
 import logger from "../../../logger"
 import { IntegrationType } from "../../../shared/Integrations"
@@ -102,36 +102,39 @@ You can optionally provide high-level context about what you're looking for in t
             // Build the user prompt with the PR diff
             const userPrompt = buildSummarizerUserPrompt(prDiff, context ?? undefined)
 
+            // Get run context for the sub-agent
+            // Extract available context from the tool context (which is the merged session)
+            const toolContext = runContext?.context as any
+            const terseUser = toolContext.user
+            const agentId = toolContext?.agent?.id || toolContext?.agentId || ""
+            // Generate a unique runId for the sub-agent
+            const subAgentRunId = `pr-summary-${Date.now()}-${pullNumber}`
+            const runConfig = {
+                agentId: agentId,
+                agentType: AgentType.GITHUB_SUMMARIZER,
+                runId: subAgentRunId,
+                user: terseUser,
+                env: settings.nodeEnv
+            }
+
             // Create the sub-agent with compact model
             const summarizerAgent = new Agent<Session, AgentOutputType>({
                 name: "PR Diff Summarizer",
                 instructions: systemPrompt,
                 model: "gpt-4o-mini",
+                tools: [], // No tools needed - just summarize
                 modelSettings: {
+                    ...builderProviderDataModelSettings(runConfig),
                     temperature: 0.3,
-                    maxTokens: 2000 // Allow enough tokens for a comprehensive summary
-                },
-                tools: [] // No tools needed - just summarize
+                    maxTokens: 2000
+                }
             })
 
             // Prepare the history for the sub-agent
             const history: AgentInputItem[] = [user(userPrompt)]
 
-            // Get run context for the sub-agent
-            // Extract available context from the tool context (which is the merged session)
-            const toolContext = runContext?.context as any
-            const userId = toolContext?.user?.id || toolContext?.userId || ""
-            const agentId = toolContext?.agent?.id || toolContext?.agentId || ""
-            // Generate a unique runId for the sub-agent
-            const subAgentRunId = `pr-summary-${Date.now()}-${pullNumber}`
-
             // Create runner for the sub-agent
-            const runner = runnerFactory({
-                agentId: agentId,
-                runId: subAgentRunId,
-                userId: userId,
-                env: settings.nodeEnv
-            })
+            const runner = runnerFactory(runConfig)
 
             // Run the sub-agent
             logger.info("[GitHub KB] summarizeGitHubPullRequestDiff - Launching sub-agent", {

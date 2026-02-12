@@ -9,6 +9,7 @@ import { OutputFactory } from "../outputs/abstract/OutputFactory"
 import { db } from "../prismaClient"
 import { ConfigInstance } from "../shared/Configs"
 import { ModelEvent } from "../shared/ModelEvents"
+import { User } from "../shared/types"
 import { AgentWithRelations } from "../types/prisma"
 import { Session } from "../types/session"
 import { getInputConfigInclude, getKnowledgeBaseConfigInclude, getOutputConfigInclude } from "../utility/prismaIncludes"
@@ -100,7 +101,7 @@ export class ApprovalService {
         runId: string,
         stepId: string,
         status: "processing" | "approved" | "rejected" | "changes_requested" | "failed",
-        userId: string,
+        user: User,
         channelId: string
     ): Promise<void> {
         const prisma = db()
@@ -128,7 +129,7 @@ export class ApprovalService {
                 // Fallback: generate summary if not cached (for existing records)
                 logger.debug(`[ApprovalService] Summary not cached, generating for runId: ${runId}, stepId: ${stepId}`)
 
-                const result = await generateApprovalSummary(runId, userId, channelId, stepId)
+                const result = await generateApprovalSummary(runId, user, channelId, stepId)
                 approvalSummary = result.approvalSummary
 
                 // Store the generated summary for future use
@@ -201,10 +202,18 @@ export class ApprovalService {
         // Keep minimal state outside the try so the catch can update Slack if we already flipped it to "processing".
         let channelIdForSlack: string | null = null
         let slackMarkedProcessing = false
+        let user: User | null = null
+
         try {
-            // Validate organization access and load channel
+            // Validate organization access and load channel (inside try so failures are caught and run is marked failed)
             const { runRecord, channel } = await this.validateUserAccess(runId, organizationId)
             channelIdForSlack = channel.id
+
+            // Create base session for AgentRunner (runtime User type)
+            user = await getUserForOrg(userId, channel.organization_id)
+            if (!user) {
+                throw new Error(`User not found: ${userId}`)
+            }
 
             // Store rejection reason in database if provided (for request changes flow)
             if (!approved && rejectionReason) {
@@ -224,12 +233,6 @@ export class ApprovalService {
             // Create outputs
             const outputs = this.createOutputs(channel)
 
-            // Create base session for AgentRunner (runtime User type)
-            const user = await getUserForOrg(userId, channel.organization_id)
-            if (!user) {
-                throw new Error(`User not found: ${userId}`)
-            }
-
             const session: Session = {
                 user,
                 isUserInitiated: true
@@ -244,7 +247,7 @@ export class ApprovalService {
             }
 
             // Update Slack notification to processing state
-            await this.updateSlackNotification(runId, stepId, "processing", userId, channel.id)
+            await this.updateSlackNotification(runId, stepId, "processing", user, channel.id)
             slackMarkedProcessing = true
 
             // Store the approval response event
@@ -268,9 +271,8 @@ export class ApprovalService {
                 stepId,
                 {
                     runId,
-                    userId: userId,
-                    agentId: channel.id,
-                    organizationId: channel.organization_id
+                    user: user,
+                    agentId: channel.id
                 },
                 rejectionReason,
                 hardReject
@@ -290,7 +292,7 @@ export class ApprovalService {
                 }
 
                 // Update Slack notification to final approved/rejected state
-                await this.updateSlackNotification(runId, stepId, finalSlackStatus, userId, channel.id)
+                await this.updateSlackNotification(runId, stepId, finalSlackStatus, user, channel.id)
 
                 logger.info(`[ApprovalService] Successfully processed approval for runId: ${runId}, stepId: ${stepId}`)
                 return {
@@ -300,7 +302,7 @@ export class ApprovalService {
             }
 
             if (result.status === "awaiting_approval") {
-                await this.updateSlackNotification(runId, stepId, finalSlackStatus, userId, channel.id)
+                await this.updateSlackNotification(runId, stepId, finalSlackStatus, user, channel.id)
 
                 emitCacheInvalidationWithWildcard(channel.organization_id, "runHistory", channel.id)
                 emitCacheInvalidationWithWildcard(channel.organization_id, "chatHistory", runId)
@@ -318,7 +320,7 @@ export class ApprovalService {
                 stepId,
                 status: (result as any)?.status
             })
-            await this.updateSlackNotification(runId, stepId, finalSlackStatus, userId, channel.id)
+            await this.updateSlackNotification(runId, stepId, finalSlackStatus, user, channel.id)
             return {
                 status: "failed" as const,
                 error: `Unexpected agent status after resuming: ${(result as any)?.status ?? "unknown"}`
@@ -328,8 +330,8 @@ export class ApprovalService {
             logger.error(`[ApprovalService] Error processing approval: ${errorMessage}`, { error })
 
             // If we've already told Slack we're "processing", make sure we also tell Slack we failed.
-            if (slackMarkedProcessing && channelIdForSlack) {
-                await this.updateSlackNotification(runId, stepId, "failed", userId, channelIdForSlack)
+            if (slackMarkedProcessing && channelIdForSlack && user) {
+                await this.updateSlackNotification(runId, stepId, "failed", user, channelIdForSlack)
             }
 
             try {
