@@ -18,7 +18,7 @@ export class WorkOSTrigger implements Trigger<WorkOSInputConfig> {
             tools: [],
             configFields: {
                 integrationId: "<integrationId>",
-                eventTypes: "Array of WorkOS event types to listen for (e.g., user.created, user.deleted, organization_membership.created)"
+                eventTypes: "Array of WorkOS event types to listen for (e.g., user.created, user.deleted, organization_membership.created, invitation.accepted)"
             },
             systemInstructions: ""
         }
