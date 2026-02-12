@@ -112,19 +112,24 @@ function WorkOSIntegrationCard({ className, isActive = true, stateToken, compact
                     <DialogTitle>
                         {isConnected ? "Manage" : "Connect"} {INTEGRATION_METADATA[IntegrationType.WORKOS].name}
                     </DialogTitle>
-                    <DialogDescription>
-                        {step === 1 ? "Step 1: Connect your WorkOS account with an API key." : "Step 2: Configure a webhook to start receiving events."}
-                    </DialogDescription>
+                    <DialogDescription>{step === 1 ? "Step 1: Connect your WorkOS account with an API key." : "Step 2: Configure a webhook to start receiving events."}</DialogDescription>
                 </DialogHeader>
 
                 {/* Step indicator */}
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <div className={cn("flex items-center justify-center size-5 rounded-full text-[10px] font-medium", step === 1 ? "bg-primary text-primary-foreground" : "bg-primary/20 text-primary")}>
+                    <div
+                        className={cn("flex items-center justify-center size-5 rounded-full text-[10px] font-medium", step === 1 ? "bg-primary text-primary-foreground" : "bg-primary/20 text-primary")}
+                    >
                         {step > 1 ? <CheckIcon className="size-3" /> : "1"}
                     </div>
                     <span className={cn(step === 1 ? "text-foreground font-medium" : "text-muted-foreground")}>API Key</span>
                     <div className="flex-1 h-px bg-border" />
-                    <div className={cn("flex items-center justify-center size-5 rounded-full text-[10px] font-medium", step === 2 ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}>
+                    <div
+                        className={cn(
+                            "flex items-center justify-center size-5 rounded-full text-[10px] font-medium",
+                            step === 2 ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+                        )}
+                    >
                         2
                     </div>
                     <span className={cn(step === 2 ? "text-foreground font-medium" : "text-muted-foreground")}>Webhook</span>

@@ -534,10 +534,7 @@ const TimeTriggerConfigSchema = BaseConfigSchema.extend({
 const WorkOSInputConfigSchema = BaseConfigSchema.extend({
     configType: z.literal(ConfigType.WORKOS_INPUT),
     integrationType: z.literal(IntegrationType.WORKOS),
-    eventTypes: z
-        .array(z.enum(WORKOS_SUPPORTED_EVENT_NAMES))
-        .min(1)
-        .describe("WorkOS event types to trigger on.")
+    eventTypes: z.array(z.enum(WORKOS_SUPPORTED_EVENT_NAMES)).min(1).describe("WorkOS event types to trigger on.")
 })
 
 function enforceNonSystemIntegrationId(config: { configType: ConfigType; integrationId?: string }, ctx: z.RefinementCtx): void {
