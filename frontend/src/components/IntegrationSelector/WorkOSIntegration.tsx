@@ -15,7 +15,8 @@ const WORKOS_EVENT_TYPES = [
     { value: "user.deleted", label: "User Deleted", description: "A user is removed" },
     { value: "organization_membership.created", label: "Membership Created", description: "A user joins an organization" },
     { value: "organization_membership.updated", label: "Membership Updated", description: "A user's role or membership changes" },
-    { value: "organization_membership.deleted", label: "Membership Deleted", description: "A user leaves an organization" }
+    { value: "organization_membership.deleted", label: "Membership Deleted", description: "A user leaves an organization" },
+    { value: "invitation.accepted", label: "Invitation Accepted", description: "A user accepts an invitation to join" }
 ]
 
 export function WorkOSIntegration({ input, variant, setConfig }: InputConfigSelectorProps) {
