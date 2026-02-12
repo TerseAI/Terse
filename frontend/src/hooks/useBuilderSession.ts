@@ -6,9 +6,6 @@ import { safeStorageGet, safeStorageRemove, safeStorageSet } from "../lib/storag
 
 export const SETUP_SESSION_KEY = "terse:agent-setup-session-id"
 
-/** Query param added when redirecting from chat ot agent page. **/
-export const FROM_SETUP_CHAT_PARAM = "fromSetupChat"
-
 function getOrCreateSetupSessionId(): string {
     const existing = safeStorageGet(SETUP_SESSION_KEY)
     if (existing) return existing
