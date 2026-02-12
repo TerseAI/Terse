@@ -19,9 +19,11 @@ import type { ConfigInstance } from "../../shared/Configs"
 import { ConfigType } from "../../shared/Configs"
 import { FROM_SETUP_CHAT_PARAM, FrontendRoutes } from "../../shared/FrontendRoutes"
 import { IntegrationType } from "../../shared/Integrations"
+import { TrackingParams } from "../../shared/RunHistoryTypes"
 import { ToolNameSchema } from "../../tools/ToolNames"
 import { getToolsThatRequireApprovals } from "../../tools/availableTools"
 import { HydratorType, requireHydratorType } from "../../types/rag"
+import { randomString } from "../../utility/strings"
 import { getUserForOrg } from "../../utility/workos"
 
 import type { ChatAgentContext } from "./ChatAgentContext"
@@ -61,23 +63,22 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
             }),
             execute: async ({ agent, id }, runContext?: RunContext<ChatAgentContext>): Promise<string> => {
                 logger.info("Slack chat interface applyAgent", { agent, id })
-                const userId = runContext?.context?.userId
-                const organizationId = runContext?.context?.organizationId
-                if (!userId || !organizationId) {
-                    throw new Error("User ID and organization ID are required to apply agent")
+                const user = runContext?.context.user
+                if (!user) {
+                    throw new Error("User is required to apply agent")
                 }
 
                 try {
                     const draft = toAgentDraft(agent)
                     const sessionId = runContext?.context?.sessionId
                     const createWithId = !id && chatInterface.name === "Web" && sessionId && isUuidV4(sessionId) ? { createWithId: sessionId } : undefined
-                    const result = id ? await updateAgentForUser(userId, organizationId, id, draft) : await applyAgentForUser(userId, organizationId, draft, createWithId)
+                    const result = id ? await updateAgentForUser(user.id, user.organizationId, id, draft) : await applyAgentForUser(user.id, user.organizationId, draft, createWithId)
 
                     const path = FrontendRoutes.AGENTS.DETAIL(result.id)
                     await chatInterface.navigate(`${path}?${FROM_SETUP_CHAT_PARAM}=1`)
                     return `Agent applied successfully (${result.id})`
                 } catch (error) {
-                    logger.error("applyAgent failed", { error, userId, agent })
+                    logger.error("applyAgent failed", { error, user, agent })
                     throw error
                 }
             }
@@ -119,12 +120,11 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
                     query,
                     options
                 })
-                const userId = runContext?.context?.userId
-                const organizationId = runContext?.context?.organizationId
-                if (!userId || !organizationId) {
-                    throw new Error("User ID and organization ID are required to fetch resources")
+                const user = runContext?.context.user
+                if (!user) {
+                    throw new Error("User is required to fetch resources")
                 }
-                return await fetchResourcesForIntegrationType(integrationType, organizationId, query ?? undefined, options)
+                return await fetchResourcesForIntegrationType(integrationType, user.organizationId, query ?? undefined, options)
             }
         }),
         tool({
@@ -164,12 +164,6 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
                     .nullable()
             }),
             execute: async ({ integrationId, integrationType, triggerConfig, agentId, options }, runContext?: RunContext<ChatAgentContext>): Promise<string> => {
-                const userId = runContext?.context?.userId
-                const organizationId = runContext?.context?.organizationId
-                if (!userId || !organizationId) {
-                    throw new Error("User ID and organization ID are required")
-                }
-
                 const limit = options?.limit ?? 5
                 logger.info("[getSampleEvents] Starting", {
                     integrationId,
@@ -184,8 +178,13 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
                     throw new Error(`Integration ${integrationType} does not support sample events`)
                 }
 
+                const user = runContext?.context.user
+                if (!user) {
+                    throw new Error("User is required to fetch sample events")
+                }
+
                 const configInstance = toConfigInstance(normalizeConfig(triggerConfig.config))
-                const inputEvents = await manager.getSampleEvents(integrationId, organizationId, configInstance, { limit })
+                const inputEvents = await manager.getSampleEvents(integrationId, user.organizationId, configInstance, { limit })
                 logger.info("[getSampleEvents] Fetched raw events from integration", {
                     integrationType,
                     count: inputEvents.length
@@ -195,7 +194,7 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
                 if (agentId) {
                     const agent = await db().automations.findUnique({
                         where: { id: agentId },
-                        include: { prompt: true }
+                        include: { prompt: true, user: true }
                     })
                     agentPrompt = agent?.prompt
                     logger.info("[getSampleEvents] Filter preview", { agentId, hasPrompt: !!agentPrompt })
@@ -210,13 +209,19 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
                     })
                 }
 
+                const trackingParams: TrackingParams = {
+                    runId: randomString(15),
+                    agentId: agentId ?? "",
+                    user: user
+                }
+
                 const results = await Promise.all(
                     identifiableEvents.map(async event => {
                         const identifiable = event.getIdentifiableInfo()!
                         const eventData = (event as unknown as { data: unknown }).data
 
                         const [summaryResult, filterResult] = await Promise.all([
-                            generateEventSummary(integrationType, eventData).catch(err => {
+                            generateEventSummary(integrationType, eventData, user).catch(err => {
                                 logger.warn("[getSampleEvents] Summary generation failed for event", {
                                     entityId: identifiable.entityId,
                                     error: err instanceof Error ? err.message : String(err)
@@ -224,7 +229,7 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
                                 return { summary: `${integrationType} event` }
                             }),
                             agentPrompt
-                                ? filterEvent(event, agentPrompt, false).catch(err => {
+                                ? filterEvent(event, agentPrompt, false, trackingParams).catch(err => {
                                       logger.warn("[getSampleEvents] Filter preview failed for event", {
                                           entityId: identifiable.entityId,
                                           error: err instanceof Error ? err.message : String(err)
@@ -270,16 +275,9 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
                 agentId: z.string().describe("The agent ID to test the sample event against")
             }),
             execute: async ({ entityType, entityId, agentId }, runContext?: RunContext<ChatAgentContext>): Promise<string> => {
-                const userId = runContext?.context?.userId
-                const organizationId = runContext?.context?.organizationId
-                if (!userId || !organizationId) {
-                    throw new Error("User ID and organization ID are required")
-                }
-
-                const user = await getUserForOrg(userId, organizationId)
+                const user = runContext?.context.user
                 if (!user) {
-                    logger.error("[triggerAgentRun] User not found", { userId, organizationId })
-                    throw new Error("User not found")
+                    throw new Error("User is required to trigger agent run")
                 }
 
                 let inputEvent: InputEvent
@@ -292,7 +290,7 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
                 if (isEventBasedTrigger) {
                     logger.info("[triggerAgentRun] Starting", { entityType, entityId })
                     const hydratorType = requireHydratorType(userEntityType)
-                    const hydrator = requireHydrator(hydratorType, { userId, organizationId })
+                    const hydrator = requireHydrator(hydratorType, { userId: user.id, organizationId: user.organizationId })
                     const hydrated = await hydrator.hydrate({
                         entityType: hydratorType,
                         entityId: userEntityId
@@ -308,7 +306,7 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
                 } else {
                     logger.info("[triggerAgentRun] Cron trigger path", { agentId })
                     const agent = await db().automations.findUnique({
-                        where: { id: agentId, organization_id: organizationId },
+                        where: { id: agentId, organization_id: user.organizationId },
                         include: { inputs: { include: { time_trigger_config: true } } }
                     })
                     if (!agent) throw new Error("Agent not found")

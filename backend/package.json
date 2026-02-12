@@ -43,6 +43,7 @@
     "@opentelemetry/resources": "^2.2.0",
     "@opentelemetry/sdk-logs": "^0.208.0",
     "@opentelemetry/sdk-node": "^0.208.0",
+    "@posthog/ai": "^7.8.11",
     "@prisma/client": "6.19.0",
     "@slack/bolt": "^4.6.0",
     "@slack/types": "^2.19.0",

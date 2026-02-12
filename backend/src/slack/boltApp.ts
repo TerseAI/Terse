@@ -147,7 +147,7 @@ export async function setupSlackBolt() {
                             return
                         }
                         const slackChatInterface = new SlackChatInterface(messageEvent.channel, client, user.id, user.organizationId, messageEvent.user, threadTs)
-                        const chatAgent = new ChatAgent(slackChatInterface, threadTs, user.id, user.organizationId)
+                        const chatAgent = new ChatAgent(slackChatInterface, threadTs, user)
                         await chatAgent.run(messageEvent.text)
                     } catch (error) {
                         logger.error("Error processing Slack thread reply:", { error })
@@ -229,7 +229,7 @@ export async function setupSlackBolt() {
                 return
             }
             const slackChatInterface = new SlackChatInterface(event.channel, client, user.id, user.organizationId, event.user, chatId)
-            const chatAgent = new ChatAgent(slackChatInterface, chatId, user.id, user.organizationId)
+            const chatAgent = new ChatAgent(slackChatInterface, chatId, user)
 
             const messageWithContext = await buildSlackChannelContextMessage(client, message, event.channel)
 

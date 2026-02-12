@@ -80,7 +80,7 @@ export class NotificationManager {
 
         switch (notificationDestinations.destination_type) {
             case NotificationDestinationType.SLACK:
-                await notifyApprovalRequest(notificationDestinations, runId, runAction, this.agent, this.user.id)
+                await notifyApprovalRequest(notificationDestinations, runId, runAction, this.agent, this.user)
                 break
             case NotificationDestinationType.EMAIL:
                 // TODO: Implement email approval notifications
@@ -106,7 +106,7 @@ async function notifySlack(notificationDestination: UserNotificationDestination,
     await sendSlackMessage(notificationDestination.slack_integration_id, notificationDestination.slack_channel_id, message)
 }
 
-async function notifyApprovalRequest(notificationDestination: UserNotificationDestination, runId: string, runAction: RunHistoryAction, agent: Agent, userId: string) {
+async function notifyApprovalRequest(notificationDestination: UserNotificationDestination, runId: string, runAction: RunHistoryAction, agent: Agent, user: User) {
     if (!notificationDestination.slack_integration_id) {
         logger.debug(`[notifyApprovalRequest] No Slack integration ID found. Skipping.`)
         return
@@ -122,7 +122,7 @@ async function notifyApprovalRequest(notificationDestination: UserNotificationDe
         return
     }
 
-    const { approvalSummary } = await generateApprovalSummary(runId, userId, agent.id, runAction.step_id)
+    const { approvalSummary } = await generateApprovalSummary(runId, user, agent.id, runAction.step_id)
 
     await sendSlackApprovalMessage(notificationDestination.slack_integration_id, notificationDestination.slack_channel_id, runId, runAction.step_id, approvalSummary, agent.name, agent.id)
 }

@@ -5,6 +5,7 @@ import "dotenv/config"
 import express, { NextFunction, Request, Response } from "express"
 import { createServer } from "http"
 
+import { setupLLMAnalytics } from "./agent/openaiInstance"
 // Import settings early to validate environment variables at startup
 import { requestSessionSocketToken } from "./agent/socket"
 import "./config/settings"
@@ -42,6 +43,7 @@ import { ApiRoutes } from "./shared/ApiRoutes"
 import { User } from "./shared/types"
 import { setupSlackBolt } from "./slack/boltApp"
 import { runStartupValidations } from "./tools/validateToolNames"
+import { analytics } from "./utility/analytics"
 
 export type Session = {
     user: User
@@ -63,6 +65,9 @@ try {
 
 // Initialize Slack Bolt app
 const slackReceiver: Awaited<ReturnType<typeof setupSlackBolt>> | null = await setupSlackBolt()
+
+// Initialize LLM analytics
+setupLLMAnalytics()
 
 app.use(
     cors({
@@ -574,6 +579,7 @@ server.listen(3001, () => {
 })
 
 // Graceful shutdown
-process.on("SIGTERM", () => {
+process.on("SIGTERM", async () => {
+    await analytics.shutdown()
     server.close()
 })

@@ -1,8 +1,9 @@
+import { User } from "../../shared/types"
+
 import type ChatInterface from "./ChatInterfaces/ChatInterface"
 
 export type ChatAgentContext = {
     chatInterface: ChatInterface
-    userId: string
-    organizationId: string
+    user: User
     sessionId: string
 }
