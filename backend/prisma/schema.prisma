@@ -36,6 +36,7 @@ model users {
   posthog_integrations      posthog_integrations[]
   launchdarkly_integrations launchdarkly_integrations[]
   datadog_integrations      datadog_integrations[]
+  workos_integrations       workos_integrations[]
 
   @@index([workos_id])
 }
@@ -381,6 +382,23 @@ model datadog_integrations {
   @@index([organization_id])
 }
 
+// WorkOS Integration (customer's own WorkOS account for user lifecycle triggers)
+model workos_integrations {
+  id                String   @id @default(cuid())
+  user_id           String
+  organization_id   String
+  api_key           String
+  webhook_secret    String?
+  organization_name String?
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
+
+  user users @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([organization_id])
+}
+
 // Automation tables
 model automations {
   id               String   @id @default(cuid())
@@ -440,6 +458,7 @@ model automation_inputs {
   gmail_config        automation_gmail_configs?
   figma_config        automation_figma_configs?
   time_trigger_config automation_time_trigger_configs?
+  workos_config       automation_workos_configs?
 
   @@index([automation_id])
   @@index([config_type, integration_id])
@@ -738,6 +757,17 @@ model automation_time_trigger_configs {
   automation_input automation_inputs @relation(fields: [automation_input_id], references: [id], onDelete: Cascade)
 }
 
+// WorkOS Trigger Configuration
+model automation_workos_configs {
+  id                  String   @id @default(cuid())
+  automation_input_id String   @unique
+  event_types         String[]
+  created_at          DateTime @default(now())
+  updated_at          DateTime @updatedAt
+
+  automation_input automation_inputs @relation(fields: [automation_input_id], references: [id], onDelete: Cascade)
+}
+
 // GitHub Event Types
 enum GitHubEventType {
   PUSH
@@ -763,6 +793,7 @@ enum IntegrationType {
   CRON_JOB
   LAUNCHDARKLY
   DATADOG
+  WORKOS
 }
 
 enum InputConfigType {
@@ -777,6 +808,7 @@ enum InputConfigType {
   CONFLUENCE
   POSTHOG
   TIME_TRIGGER
+  WORKOS_INPUT
 }
 
 enum OutputConfigType {

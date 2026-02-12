@@ -106,6 +106,10 @@ export const slackIntegrationsKey = (): readonly [string] => {
     return ["slackIntegrations"] as const
 }
 
+export const workosIntegrationsKey = (): readonly [string] => {
+    return ["workosIntegrations"] as const
+}
+
 export const allRunHistoryKey = (params?: GetRunHistoryParams): readonly [string, string] | readonly [string] => {
     if (!params || Object.keys(params).length === 0) {
         return ["allRunHistory"] as const

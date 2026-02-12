@@ -12,6 +12,7 @@ import { NotionIntegration } from "./NotionIntegration"
 import { SlackIntegration } from "./SlackIntegration"
 import { SlackOutputIntegration } from "./SlackOutputIntegration"
 import { TimeTriggerIntegration } from "./TimeTriggerIntegration"
+import { WorkOSIntegration } from "./WorkOSIntegration"
 import { InputConfigSelectorProps } from "./types"
 
 export function IntegrationSelector(props: InputConfigSelectorProps) {
@@ -50,6 +51,9 @@ export function IntegrationSelector(props: InputConfigSelectorProps) {
 
         case ConfigType.TIME_TRIGGER:
             return <TimeTriggerIntegration input={props.input} variant={props.variant} setConfig={props.setConfig} />
+
+        case ConfigType.WORKOS_INPUT:
+            return <WorkOSIntegration input={props.input} variant={props.variant} setConfig={props.setConfig} />
 
         default:
             throw new Error(`Unsupported config type: ${props.input.configType}`)

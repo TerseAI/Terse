@@ -115,3 +115,11 @@ export function CalendarClockIcon() {
 export function LaunchDarklyIcon() {
     return <img src="/launchdarkly.jpeg" alt="LaunchDarkly" className="w-full h-full object-contain" />
 }
+
+export function WorkOSIcon() {
+    return (
+        <svg className="w-full h-full" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 2L3 7v10l9 5 9-5V7l-9-5zm0 2.18L18.36 7.5 12 10.82 5.64 7.5 12 4.18zM5 9.09l6 3.33v6.49l-6-3.33V9.09zm8 9.82v-6.49l6-3.33v6.49l-6 3.33z" fill="currentColor" />
+        </svg>
+    )
+}

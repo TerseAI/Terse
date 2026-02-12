@@ -530,6 +530,17 @@ const TimeTriggerConfigSchema = BaseConfigSchema.extend({
         .describe('ALL TIMES ARE IN UTC. The cron expression to schedule the automation. Must be a valid cron expression. Use this format: "minute hour day-of-month month day-of-week"')
 })
 
+const WorkOSInputConfigSchema = BaseConfigSchema.extend({
+    configType: z.literal(ConfigType.WORKOS_INPUT),
+    integrationType: z.literal(IntegrationType.WORKOS),
+    eventTypes: z
+        .array(NonEmptyString)
+        .min(1)
+        .describe(
+            'WorkOS event types to trigger on. Valid values: "user.created", "user.updated", "user.deleted", "organization_membership.created", "organization_membership.updated", "organization_membership.deleted".'
+        )
+})
+
 function enforceNonSystemIntegrationId(config: { configType: ConfigType; integrationId?: string }, ctx: z.RefinementCtx): void {
     if (config.configType !== ConfigType.TIME_TRIGGER && config.integrationId === "system") {
         ctx.addIssue({
@@ -540,7 +551,7 @@ function enforceNonSystemIntegrationId(config: { configType: ConfigType; integra
 }
 
 const InputConfigSchema = z
-    .discriminatedUnion("configType", [GmailConfigSchema, FigmaConfigSchema, SlackConfigSchema, LinearInputConfigSchema, GitHubConfigSchema, JiraConfigSchema, TimeTriggerConfigSchema])
+    .discriminatedUnion("configType", [GmailConfigSchema, FigmaConfigSchema, SlackConfigSchema, LinearInputConfigSchema, GitHubConfigSchema, JiraConfigSchema, TimeTriggerConfigSchema, WorkOSInputConfigSchema])
     .superRefine((value, ctx) => {
         enforceNonSystemIntegrationId(value, ctx)
         if (value.configType === ConfigType.SLACK) {
