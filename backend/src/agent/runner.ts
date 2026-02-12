@@ -15,7 +15,7 @@ export enum AgentType {
 type RunnerConfig = {
     agentId: string
     agentType: AgentType
-    runId: string
+    runId?: string
     user: User
     env: string
 }
@@ -32,7 +32,7 @@ export function runnerFactory(config: RunnerConfig): Runner {
     return new Runner({
         traceMetadata: {
             agentId: config.agentId,
-            runId: config.runId,
+            runId: config?.runId ?? "",
             userId: config.user.id,
             env: config.env
         }
@@ -47,7 +47,8 @@ export const builderProviderDataModelSettings = (config: RunnerConfig) => {
                 organizationId: config.user.organizationId,
                 organizationName: config.user.organizationName,
                 agentId: config.agentId,
-                runId: config.runId,
+                agentType: config.agentType,
+                runId: config?.runId ?? "",
                 userName: config.user.displayName,
                 environment: config.env
             },

@@ -17,7 +17,6 @@ export async function generateEventSummary(integrationType: IntegrationType, eve
     const runConfig = {
         agentId: AgentType.EVENT_SUMMARY,
         agentType: AgentType.EVENT_SUMMARY,
-        runId: "event-summary",
         user: user,
         env: settings.nodeEnv
     }
