@@ -1,4 +1,5 @@
 import { InputConfigType } from "@prisma/client"
+import type { EventName } from "@workos-inc/node"
 
 import { EventProcessor } from "../agent/AgentRunner/EventProcessor"
 import { urls } from "../config/settings"
@@ -14,6 +15,21 @@ import { getUserForOrg } from "../utility/workos"
 
 import { InputEvent } from "./abstract/InputEvent"
 import { FormFieldDefinition, FormIntegrationInstallation, FormSubmissionInput, FormSubmissionResult, Integration } from "./abstract/Integration"
+
+/**
+ * Supported WorkOS event names, typed against the SDK's EventName union
+ * for compile-time safety. Add more from the SDK as needed.
+ */
+export const WORKOS_SUPPORTED_EVENT_NAMES = [
+    "user.created",
+    "user.updated",
+    "user.deleted",
+    "organization_membership.created",
+    "organization_membership.updated",
+    "organization_membership.deleted"
+] as const satisfies readonly EventName[]
+
+export type WorkOSEventName = (typeof WORKOS_SUPPORTED_EVENT_NAMES)[number]
 
 export class WorkOSIntegrationManager implements Integration<WorkOSIntegration, WorkOSWebhookRequest, typeof WorkOSIntegrationMetadata, never>, FormIntegrationInstallation<IntegrationType.WORKOS> {
     integrationType: IntegrationType = IntegrationType.WORKOS

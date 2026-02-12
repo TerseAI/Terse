@@ -43,12 +43,6 @@ export async function createOrUpdateWorkOSIntegration(req: Request, res: Respons
             return
         }
 
-        const organizationId = req.session?.user?.organizationId
-        if (organizationId) {
-            const stateToken = (req.query.state as string) || req.body?.state
-            await emitIntegrationFormCompletedTaskIfNeeded(stateToken, manager, input.userId, organizationId, IntegrationType.WORKOS)
-        }
-
         res.status(result.statusCode || 200).json(result.data || { success: true })
     } catch (error) {
         logger.error("Error creating/updating WorkOS integration:", { error })
@@ -62,7 +56,7 @@ export async function updateWorkOSWebhookSecret(req: Request, res: Response) {
         return
     }
 
-    const { webhookSecret } = req.body
+    const { webhookSecret, state: stateToken } = req.body
     if (!webhookSecret || typeof webhookSecret !== "string") {
         res.status(400).json({ error: "Webhook secret is required" })
         return
@@ -84,6 +78,10 @@ export async function updateWorkOSWebhookSecret(req: Request, res: Response) {
         })
 
         logger.info("Updated WorkOS webhook secret", { integrationId: integration.id })
+
+        const manager = new WorkOSIntegrationManager()
+        await emitIntegrationFormCompletedTaskIfNeeded(stateToken as string | undefined, manager, req.session.user.id, req.session.user.organizationId, IntegrationType.WORKOS)
+
         res.status(200).json({ success: true })
     } catch (error) {
         logger.error("Error updating WorkOS webhook secret:", { error })

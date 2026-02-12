@@ -18,8 +18,6 @@ import { CompactIntegrationRow } from "./CompactIntegrationRow"
 import { IntegrationCardHeader } from "./helpers/IntegrationCardHeader"
 import { IntegrationItem } from "./helpers/IntegrationItem"
 
-type FormStep = "api-key" | "webhook-setup"
-
 const backendUrl = import.meta.env.VITE_BACKEND_REDIRECT_URL || window.location.origin + "/api"
 
 function buildWebhookUrl(integrationId: string): string {
@@ -29,7 +27,7 @@ function buildWebhookUrl(integrationId: string): string {
 function WorkOSIntegrationCard({ className, isActive = true, stateToken, compact = false }: { className?: string; isActive?: boolean; stateToken?: string; compact?: boolean }) {
     const { integrations, isLoading, mutate } = useWorkOSIntegrations()
     const [showForm, setShowForm] = useState(false)
-    const [formStep, setFormStep] = useState<FormStep>("api-key")
+    const [step, setStep] = useState<1 | 2>(1)
     const [apiKey, setApiKey] = useState("")
     const [webhookSecret, setWebhookSecret] = useState("")
     const [showApiKey, setShowApiKey] = useState(false)
@@ -43,19 +41,19 @@ function WorkOSIntegrationCard({ className, isActive = true, stateToken, compact
 
     const handleConnect = () => {
         setShowForm(true)
-        setFormStep("api-key")
+        setStep(1)
         setError(null)
         setWebhookUrl(null)
     }
 
-    const handleUpdate = () => {
+    const handleManage = () => {
         setShowForm(true)
         setError(null)
         if (integrations[0]) {
-            setFormStep("webhook-setup")
+            setStep(2)
             setWebhookUrl(integrations[0].webhookUrl || buildWebhookUrl(integrations[0].id))
         } else {
-            setFormStep("api-key")
+            setStep(1)
             setWebhookUrl(null)
         }
     }
@@ -68,7 +66,7 @@ function WorkOSIntegrationCard({ className, isActive = true, stateToken, compact
         try {
             const result = await BackendProvider.createOrUpdateWorkOSIntegration(apiKey, undefined, stateToken)
             setWebhookUrl(result.webhookUrl)
-            setFormStep("webhook-setup")
+            setStep(2)
             mutate()
         } catch (err: any) {
             setError(err.response?.data?.error || err.message || "Failed to connect WorkOS integration")
@@ -83,10 +81,10 @@ function WorkOSIntegrationCard({ className, isActive = true, stateToken, compact
         setIsSubmitting(true)
 
         try {
-            await BackendProvider.updateWorkOSWebhookSecret(webhookSecret)
+            await BackendProvider.updateWorkOSWebhookSecret(webhookSecret, stateToken)
             setWebhookSecret("")
             mutate()
-            handleCancel()
+            handleClose()
         } catch (err: any) {
             setError(err.response?.data?.error || err.message || "Failed to save webhook secret")
         } finally {
@@ -94,11 +92,13 @@ function WorkOSIntegrationCard({ className, isActive = true, stateToken, compact
         }
     }
 
-    const handleCancel = () => {
+    const handleClose = () => {
         setShowForm(false)
-        setFormStep("api-key")
+        setStep(1)
         setApiKey("")
         setWebhookSecret("")
+        setShowApiKey(false)
+        setShowWebhookSecret(false)
         setError(null)
         setWebhookUrl(null)
     }
@@ -106,27 +106,31 @@ function WorkOSIntegrationCard({ className, isActive = true, stateToken, compact
     const summary = integrations[0]?.environment ?? undefined
 
     const formDialog = (
-        <Dialog open={showForm} onOpenChange={open => !open && handleCancel()}>
+        <Dialog open={showForm} onOpenChange={open => !open && handleClose()}>
             <DialogContent>
                 <DialogHeader>
                     <DialogTitle>
                         {isConnected ? "Manage" : "Connect"} {INTEGRATION_METADATA[IntegrationType.WORKOS].name}
                     </DialogTitle>
                     <DialogDescription>
-                        {formStep === "api-key" ? (
-                            <>
-                                Enter your WorkOS API key to connect your account. You can find it in your{" "}
-                                <a href="https://dashboard.workos.com/api-keys" target="_blank" rel="noopener noreferrer" className="underline text-foreground hover:text-primary">
-                                    WorkOS Dashboard
-                                </a>
-                                .
-                            </>
-                        ) : (
-                            "Set up a webhook in your WorkOS dashboard to start receiving events."
-                        )}
+                        {step === 1 ? "Step 1: Connect your WorkOS account with an API key." : "Step 2: Configure a webhook to start receiving events."}
                     </DialogDescription>
                 </DialogHeader>
-                {formStep === "api-key" ? (
+
+                {/* Step indicator */}
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <div className={cn("flex items-center justify-center size-5 rounded-full text-[10px] font-medium", step === 1 ? "bg-primary text-primary-foreground" : "bg-primary/20 text-primary")}>
+                        {step > 1 ? <CheckIcon className="size-3" /> : "1"}
+                    </div>
+                    <span className={cn(step === 1 ? "text-foreground font-medium" : "text-muted-foreground")}>API Key</span>
+                    <div className="flex-1 h-px bg-border" />
+                    <div className={cn("flex items-center justify-center size-5 rounded-full text-[10px] font-medium", step === 2 ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}>
+                        2
+                    </div>
+                    <span className={cn(step === 2 ? "text-foreground font-medium" : "text-muted-foreground")}>Webhook</span>
+                </div>
+
+                {step === 1 ? (
                     <form onSubmit={handleSubmitApiKey} className="space-y-4">
                         <div className="space-y-2">
                             <Label htmlFor="apiKey">API Key</Label>
@@ -164,16 +168,15 @@ function WorkOSIntegrationCard({ className, isActive = true, stateToken, compact
 
                         <div className="flex gap-2">
                             <Button type="submit" disabled={isSubmitting || !apiKey}>
-                                {isSubmitting ? "Connecting..." : "Connect"}
+                                {isSubmitting ? "Connecting..." : "Continue"}
                             </Button>
-                            <Button type="button" variant="outline" onClick={handleCancel} disabled={isSubmitting}>
+                            <Button type="button" variant="outline" onClick={handleClose} disabled={isSubmitting}>
                                 Cancel
                             </Button>
                         </div>
                     </form>
                 ) : (
                     <div className="space-y-4">
-                        <p className="text-sm text-muted-foreground">To receive events, configure a webhook in your WorkOS dashboard:</p>
                         <ol className="text-sm text-muted-foreground list-decimal list-inside space-y-1.5">
                             <li>
                                 Go to{" "}
@@ -187,10 +190,11 @@ function WorkOSIntegrationCard({ className, isActive = true, stateToken, compact
                                 </a>{" "}
                                 in your WorkOS Dashboard
                             </li>
-                            <li>Create a new webhook endpoint with the URL below</li>
-                            <li>Select the events you want to receive (e.g. user.created, organization_membership.created)</li>
-                            <li>Copy the signing secret from WorkOS and paste it below</li>
+                            <li>Create a new endpoint with the URL below</li>
+                            <li>Select the events you want to receive</li>
+                            <li>Copy the signing secret and paste it below</li>
                         </ol>
+
                         <div className="space-y-2">
                             <Label>Webhook URL</Label>
                             <div className="flex items-center gap-2">
@@ -242,7 +246,7 @@ function WorkOSIntegrationCard({ className, isActive = true, stateToken, compact
                                         {showWebhookSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                                     </button>
                                 </div>
-                                <p className="text-xs text-muted-foreground">WorkOS shows the signing secret after you create the webhook endpoint. This verifies incoming webhooks are from WorkOS.</p>
+                                <p className="text-xs text-muted-foreground">WorkOS shows the signing secret after creating the webhook endpoint.</p>
                             </div>
 
                             {error && <p className="text-sm text-destructive">{error}</p>}
@@ -251,24 +255,17 @@ function WorkOSIntegrationCard({ className, isActive = true, stateToken, compact
                                 <Button type="submit" disabled={isSubmitting || !webhookSecret}>
                                     {isSubmitting ? "Saving..." : "Save Secret"}
                                 </Button>
-                                <Button type="button" variant="outline" onClick={handleCancel}>
+                                <Button type="button" variant="outline" onClick={handleClose}>
                                     {isConnected ? "Done" : "Skip for Now"}
                                 </Button>
                             </div>
                         </form>
 
                         {isConnected && (
-                            <button type="button" onClick={() => setFormStep("api-key")} className="text-xs text-muted-foreground underline hover:text-primary">
+                            <button type="button" onClick={() => setStep(1)} className="text-xs text-muted-foreground underline hover:text-primary">
                                 Update API Key
                             </button>
                         )}
-
-                        <p className="text-xs text-muted-foreground">
-                            Need help?{" "}
-                            <a href="https://workos.com/docs/webhooks" target="_blank" rel="noopener noreferrer" className="underline hover:text-primary inline-flex items-center gap-0.5">
-                                View WorkOS webhook documentation <ExternalLinkIcon className="size-3" />
-                            </a>
-                        </p>
                     </div>
                 )}
             </DialogContent>
@@ -282,7 +279,7 @@ function WorkOSIntegrationCard({ className, isActive = true, stateToken, compact
                     integration={IntegrationType.WORKOS}
                     isConnected={isConnected}
                     summary={summary}
-                    connect={isConnected ? handleUpdate : handleConnect}
+                    connect={isConnected ? handleManage : handleConnect}
                     isConnecting={isSubmitting}
                     className={className}
                 />
@@ -299,7 +296,7 @@ function WorkOSIntegrationCard({ className, isActive = true, stateToken, compact
                     <WorkOSCardContent integrations={integrations} isLoading={isLoading} />
                 </CardContent>
                 <CardFooter>
-                    <Button variant="outline" onClick={isConnected ? handleUpdate : handleConnect}>
+                    <Button variant="outline" onClick={isConnected ? handleManage : handleConnect}>
                         {isConnected ? "Manage" : "Connect"}
                     </Button>
                 </CardFooter>

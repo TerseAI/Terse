@@ -252,7 +252,7 @@ interface BackendService {
     /**
      * Updates the webhook signing secret for an existing WorkOS integration
      */
-    updateWorkOSWebhookSecret(webhookSecret: string): Promise<{ success: boolean }>
+    updateWorkOSWebhookSecret(webhookSecret: string, stateToken?: string): Promise<{ success: boolean }>
 
     /**
      * Gets all Datadog integrations for the current user
@@ -765,9 +765,13 @@ export const BackendProvider: BackendService = {
             })
     },
 
-    updateWorkOSWebhookSecret: (webhookSecret: string) => {
+    updateWorkOSWebhookSecret: (webhookSecret: string, stateToken?: string) => {
+        const body: Record<string, string> = { webhookSecret }
+        if (stateToken) {
+            body.state = stateToken
+        }
         return axios
-            .patch<{ success: boolean }>(`${backendBaseUrl}${ApiRoutes.WORKOS_INTEGRATION.WEBHOOK_SECRET}`, { webhookSecret }, { withCredentials: true })
+            .patch<{ success: boolean }>(`${backendBaseUrl}${ApiRoutes.WORKOS_INTEGRATION.WEBHOOK_SECRET}`, body, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
                 console.error("Error updating WorkOS webhook secret:", error)

@@ -1,4 +1,4 @@
-import { WorkOSEvent, WorkOSWebhookPayload } from "../../integrations/WorkOSIntegration"
+import { WORKOS_SUPPORTED_EVENT_NAMES, WorkOSEvent, WorkOSWebhookPayload } from "../../integrations/WorkOSIntegration"
 import logger from "../../logger"
 import { db } from "../../prismaClient"
 import { HydratorType } from "../../types/rag"
@@ -59,14 +59,13 @@ export class WorkOSEventHydrator extends Hydrator<WorkOSEvent> {
             // WorkOS doesn't have a single-event GET endpoint, so we use the
             // list endpoint and scan for the matching event ID.
             // The `events` parameter is required by the WorkOS API.
-            const SUPPORTED_EVENT_TYPES = ["user.created", "user.updated", "user.deleted", "organization_membership.created", "organization_membership.updated", "organization_membership.deleted"]
             const MAX_PAGES = 3
             const PAGE_SIZE = 50
             let after: string | undefined
 
             for (let page = 0; page < MAX_PAGES; page++) {
                 const params = new URLSearchParams({ limit: String(PAGE_SIZE) })
-                for (const eventType of SUPPORTED_EVENT_TYPES) {
+                for (const eventType of WORKOS_SUPPORTED_EVENT_NAMES) {
                     params.append("events", eventType)
                 }
                 if (after) {
