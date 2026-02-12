@@ -41,10 +41,10 @@ function AgentDetail() {
     const { getStateJSON, donate } = useModelContext()
     const [builderChatOpen, setBuilderChatOpen] = useState(true)
 
-    // Cmd+Shift+i (Ctrl+Shift+i on Windows) toggles the builder chat panel
+    // Cmd++i (Ctrl+i on Windows) toggles the builder chat panel
     useEffect(() => {
         const handleKeyDown = (event: KeyboardEvent) => {
-            if (event.key === "i" && event.shiftKey && (event.metaKey || event.ctrlKey)) {
+            if (event.key === "i" && (event.metaKey || event.ctrlKey)) {
                 event.preventDefault()
                 setBuilderChatOpen(prev => !prev)
             }
@@ -183,13 +183,13 @@ function AgentDetail() {
 
     return (
         <div
-            className="grid h-full pt-2 pl-2"
+            className="grid h-[calc(100%+44px)] -mt-[44px] pl-2"
             style={{
                 gridTemplateColumns: builderChatOpen ? "14fr 6fr" : "19fr 1fr",
                 transition: "grid-template-columns 200ms ease-in-out"
             }}
         >
-            <div className="h-full min-h-0 col-span-1">
+            <div className="h-full min-h-0 col-span-1 pt-[46px]">
                 <div className="mx-auto h-full min-h-0 flex flex-col">
                     <TabGroup
                         selectedIndex={selectedIndex}
@@ -219,16 +219,6 @@ function AgentDetail() {
                                 <Clock className="h-4 w-4" />
                                 <span>Activity</span>
                             </Tab>
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                className="ml-auto h-7 w-7"
-                                onClick={() => setBuilderChatOpen(prev => !prev)}
-                                title={builderChatOpen ? "Close builder chat (⌘⇧C)" : "Open builder chat (⌘⇧C)"}
-                            >
-                                <MessageSquare className="h-4 w-4" />
-                                <span className="sr-only">Toggle builder chat (⌘⇧C)</span>
-                            </Button>
                         </TabList>
                         <TabPanels className="flex-1 min-h-0 flex">
                             <TabPanel className="flex-1 min-h-0 h-full flex flex-col">
@@ -241,8 +231,8 @@ function AgentDetail() {
                     </TabGroup>
                 </div>
             </div>
-            <div className={cn("border-l border-border h-full min-h-0 col-span-1 flex flex-col overflow-hidden", builderChatOpen && "pl-4")}>
-                <div className={cn("shrink-0 flex pt-1 pr-1", builderChatOpen ? "" : "justify-center")}>
+            <div className={cn("border-l border-border h-full min-h-0 col-span-1 flex flex-col overflow-hidden", builderChatOpen && "pl-2")}>
+                <div className={cn("shrink-0 flex pt-0.5 pr-1", builderChatOpen ? "" : "justify-center")}>
                     <ChatSidebarTrigger onClick={() => setBuilderChatOpen(prev => !prev)} title={builderChatOpen ? "Close builder chat (⌘⇧C)" : "Open builder chat (⌘⇧C)"} />
                 </div>
                 {builderChatOpen && (
