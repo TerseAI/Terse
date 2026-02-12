@@ -26,7 +26,8 @@ export const WORKOS_SUPPORTED_EVENT_NAMES = [
     "user.deleted",
     "organization_membership.created",
     "organization_membership.updated",
-    "organization_membership.deleted"
+    "organization_membership.deleted",
+    "invitation.accepted"
 ] as const satisfies readonly EventName[]
 
 export type WorkOSEventName = (typeof WORKOS_SUPPORTED_EVENT_NAMES)[number]
