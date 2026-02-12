@@ -7,7 +7,7 @@ import { db } from "../../prismaClient"
 import { ModelEvent, ToolCall } from "../../shared/ModelEvents"
 import { User } from "../../shared/types"
 import { RunHistoryChatMemorySession, identityHistoryCallback } from "../CustomMemorySession"
-import { runnerFactory } from "../runner"
+import { AgentType, runnerFactory } from "../runner"
 
 const ApprovalSummaryClassification = z.object({
     approvalSummary: z.string()
@@ -146,6 +146,7 @@ Return the single-sentence "I'm going to ..." approvalSummary.`
     const runner = runnerFactory({
         runId: runId,
         agentId: agentId,
+        agentType: AgentType.APPROVAL_SUMMARY,
         user: user,
         env: settings.nodeEnv
     })

@@ -4,7 +4,7 @@ import { z } from "zod"
 import { settings } from "../../config/settings"
 import { IntegrationType } from "../../shared/Integrations"
 import { User } from "../../shared/types"
-import { runnerFactory } from "../runner"
+import { AgentType, runnerFactory } from "../runner"
 
 const EventSummarySchema = z.object({
     summary: z.string()
@@ -32,8 +32,9 @@ export async function generateEventSummary(integrationType: IntegrationType, eve
 
     const runner = runnerFactory({
         runId: "event-summary",
+        agentType: AgentType.EVENT_SUMMARY,
+        agentId: AgentType.EVENT_SUMMARY,
         user: user,
-        agentId: "event-summary-agent",
         env: settings.nodeEnv
     })
 

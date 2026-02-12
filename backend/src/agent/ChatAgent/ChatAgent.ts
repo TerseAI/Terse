@@ -4,7 +4,7 @@ import { settings } from "../../config/settings"
 import logger from "../../logger"
 import { User } from "../../shared/types"
 import { ChatMemorySession, recentHistoryCallback } from "../CustomMemorySession"
-import { runnerFactory } from "../runner"
+import { AgentType, runnerFactory } from "../runner"
 
 import type { ChatAgentContext } from "./ChatAgentContext"
 import { buildChatAgentSystemPrompt } from "./ChatAgentSystemPrompt"
@@ -67,6 +67,7 @@ class ChatAgent {
 
         const runner = runnerFactory({
             agentId: "chat-agent",
+            agentType: AgentType.CHAT,
             runId: this.sessionId,
             user: this.user,
             env: settings.nodeEnv

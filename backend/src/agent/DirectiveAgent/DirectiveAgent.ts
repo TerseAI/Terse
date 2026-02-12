@@ -8,7 +8,7 @@ import { User } from "../../shared/types"
 import { EventEmitterTaskQueue } from "../../tasks/abstract/eventEmitterTasks"
 import { Task } from "../../tasks/abstract/tasks"
 import { RunHistoryChatMemorySession, identityHistoryCallback } from "../CustomMemorySession"
-import { runnerFactory } from "../runner"
+import { AgentType, runnerFactory } from "../runner"
 
 const DIRECTIVE_TASK_NAME = "DIRECTIVE_TASK" as const
 
@@ -106,8 +106,9 @@ async function classifyDirective(task: DirectiveTask): Promise<DirectiveClassifi
 
     const runner = runnerFactory({
         runId: task.runHistoryId,
-        user: task.user,
+        agentType: AgentType.DIRECTIVE,
         agentId: task.automationId,
+        user: task.user,
         env: settings.nodeEnv
     })
 

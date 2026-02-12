@@ -11,7 +11,7 @@ import { SocketEvents, SocketRooms } from "../../shared/SocketEvents"
 import { AgentPrompt } from "../../types/prisma"
 import { Session } from "../../types/session"
 import { randomString } from "../../utility/strings"
-import { runnerFactory } from "../runner"
+import { AgentType, runnerFactory } from "../runner"
 import { transformAgentStreamToModelEvents } from "../streaming"
 
 import { storeChatEvent } from "./runHistory"
@@ -141,8 +141,9 @@ export async function filterEvent(event: InputEvent, agentPrompt: AgentPrompt, i
     const agent = buildFilterAgent()
     const history = buildFilterHistory(agentPrompt, event)
     const runner = runnerFactory({
-        agentId: trackingParams?.agentId || "",
-        runId: trackingParams?.runId || "",
+        agentId: trackingParams.agentId,
+        agentType: AgentType.FILTER,
+        runId: trackingParams.runId,
         user: trackingParams.user,
         env: settings.nodeEnv
     })

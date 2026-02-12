@@ -19,7 +19,7 @@ import { AgentWithRelations } from "../../types/prisma"
 import { Session } from "../../types/session"
 import { UserFormatter } from "../../utility/UserFormatter"
 import { RunHistoryChatMemorySession, recentHistoryCallback } from "../CustomMemorySession"
-import { runnerFactory } from "../runner"
+import { AgentType, runnerFactory } from "../runner"
 import { transformAgentStreamToModelEvents } from "../streaming"
 
 import { persistRunAction } from "./EventProcessor"
@@ -100,6 +100,7 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance, KBCo
 
         const runner = runnerFactory({
             agentId: this.agentConfig.id,
+            agentType: AgentType.AGENT_RUNNER,
             runId: this.runContext.runId,
             user: this.session.user,
             env: settings.nodeEnv
@@ -131,6 +132,7 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance, KBCo
         const userHistory = this.buildUserHistory(content)
         const runner = runnerFactory({
             agentId: this.agentConfig.id,
+            agentType: AgentType.AGENT_RUNNER,
             runId: this.runContext.runId,
             user: this.session.user,
             env: settings.nodeEnv
@@ -269,6 +271,7 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance, KBCo
         // Resume execution
         const runner = runnerFactory({
             agentId: this.agentConfig.id,
+            agentType: AgentType.AGENT_RUNNER,
             runId: this.runContext.runId,
             user: this.session.user,
             env: settings.nodeEnv

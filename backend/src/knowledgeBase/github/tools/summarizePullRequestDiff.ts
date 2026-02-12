@@ -4,7 +4,7 @@ import { RunHistoryActionType } from "@prisma/client"
 import { z } from "zod"
 
 import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
-import { runnerFactory } from "../../../agent/runner"
+import { AgentType, runnerFactory } from "../../../agent/runner"
 import { settings } from "../../../config/settings"
 import logger from "../../../logger"
 import { IntegrationType } from "../../../shared/Integrations"
@@ -128,6 +128,7 @@ You can optionally provide high-level context about what you're looking for in t
             // Create runner for the sub-agent
             const runner = runnerFactory({
                 agentId: agentId,
+                agentType: AgentType.GITHUB_SUMMARIZER,
                 runId: subAgentRunId,
                 user: terseUser,
                 env: settings.nodeEnv
