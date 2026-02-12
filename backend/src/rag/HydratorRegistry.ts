@@ -8,6 +8,7 @@ import { JiraEventHydrator } from "./jiraRag/hydrator"
 import { LinearEventHydrator } from "./linearRag/hydrator"
 import { RunHistoryRawEventHydrator } from "./runHistoryRag/hydrator"
 import { SlackEventHydrator } from "./slackRag/hydrator"
+import { WorkOSEventHydrator } from "./workosRag/hydrator"
 
 // Type-safe hydrator factory map
 const HYDRATOR_FACTORIES: {
@@ -19,7 +20,8 @@ const HYDRATOR_FACTORIES: {
     [HydratorType.LINEAR_EVENT]: ctx => new LinearEventHydrator(ctx),
     [HydratorType.GMAIL_EVENT]: ctx => new GmailEventHydrator(ctx),
     [HydratorType.FIGMA_COMMENT_EVENT]: ctx => new FigmaCommentEventHydrator(ctx),
-    [HydratorType.JIRA_EVENT]: ctx => new JiraEventHydrator(ctx)
+    [HydratorType.JIRA_EVENT]: ctx => new JiraEventHydrator(ctx),
+    [HydratorType.WORKOS_EVENT]: ctx => new WorkOSEventHydrator(ctx)
 }
 
 // Create a composite hydrator for a namespace with context

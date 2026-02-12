@@ -13,6 +13,7 @@ import LinearIntegrationCard from "./LinearIntegrationCard"
 import NotionIntegrationCard from "./NotionIntegrationCard"
 import PosthogIntegrationCard from "./PosthogIntegrationCard"
 import SlackIntegrationCard from "./SlackIntegrationCard"
+import WorkOSIntegrationCard from "./WorkOSIntegrationCard"
 
 export interface IntegrationCardProps {
     className?: string
@@ -48,6 +49,8 @@ function IntegrationCard({ integration, isActive = true, stateToken, compact = f
             return <LaunchDarklyIntegrationCard className={cardClassName} isActive={isActive} stateToken={stateToken} compact={compact} />
         case IntegrationType.DATADOG:
             return <DatadogIntegrationCard className={cardClassName} isActive={isActive} stateToken={stateToken} compact={compact} />
+        case IntegrationType.WORKOS:
+            return <WorkOSIntegrationCard className={cardClassName} isActive={isActive} stateToken={stateToken} compact={compact} />
         default:
             // Exhaustive check: TypeScript will error if any IntegrationType case is missing
             throw integration satisfies never

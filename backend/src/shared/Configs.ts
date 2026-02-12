@@ -19,7 +19,8 @@ export enum ConfigType {
     LAUNCHDARKLY = "launchdarkly",
     LINEAR_KB = "linear_kb",
     SLACK_KB = "slack_kb",
-    TERSE = "terse"
+    TERSE = "terse",
+    WORKOS_INPUT = "workos_input"
 }
 
 // MARK: Config Metadata
@@ -224,6 +225,16 @@ export const TerseConfigMetadata = {
     isKnowledgeBase: false
 } as const satisfies ConfigDetails
 
+export const WorkOSInputConfigMetadata = {
+    configType: ConfigType.WORKOS_INPUT,
+    name: "WorkOS",
+    description: "Trigger on user signup, deletion, or membership changes in your app",
+    integrationType: IntegrationType.WORKOS,
+    isInput: true,
+    isOutput: false,
+    isKnowledgeBase: false
+} as const satisfies ConfigDetails
+
 export type ConfigDetailsMap = Record<ConfigType, ConfigDetails>
 
 export const CONFIG_DETAILS: ConfigDetailsMap = {
@@ -245,7 +256,8 @@ export const CONFIG_DETAILS: ConfigDetailsMap = {
     [ConfigType.LAUNCHDARKLY]: LaunchDarklyConfigMetadata,
     [ConfigType.LINEAR_KB]: LinearKBConfigMetadata,
     [ConfigType.SLACK_KB]: SlackKBConfigMetadata,
-    [ConfigType.TERSE]: TerseConfigMetadata
+    [ConfigType.TERSE]: TerseConfigMetadata,
+    [ConfigType.WORKOS_INPUT]: WorkOSInputConfigMetadata
 } as const satisfies ConfigDetailsMap
 
 export interface ConfigInstance {
@@ -742,6 +754,24 @@ export class TerseConfig implements ConfigInstance {
     }
 }
 
+export class WorkOSInputConfig implements ConfigInstance {
+    integrationType: IntegrationType = IntegrationType.WORKOS
+    configType: ConfigType = ConfigType.WORKOS_INPUT
+
+    constructor(
+        public integrationId: string,
+        public eventTypes: string[] = []
+    ) {}
+
+    isComplete(): boolean {
+        return this.eventTypes.length > 0
+    }
+
+    formatForAgent(): string {
+        return `Type: WorkOS Events\nListening for: ${this.eventTypes.join(", ")}`
+    }
+}
+
 // To be studied Later!!
 type EnsureExhaustiveMetadata<T extends Record<ConfigType, new (...args: any[]) => ConfigInstance>> = T
 
@@ -765,6 +795,7 @@ export type ConfigMetadataMap = EnsureExhaustiveMetadata<{
     [ConfigType.LINEAR_KB]: typeof LinearKBConfig
     [ConfigType.SLACK_KB]: typeof SlackKBConfig
     [ConfigType.TERSE]: typeof TerseConfig
+    [ConfigType.WORKOS_INPUT]: typeof WorkOSInputConfig
 }>
 
 export const CONFIG_METADATA: ConfigMetadataMap = {
@@ -786,5 +817,6 @@ export const CONFIG_METADATA: ConfigMetadataMap = {
     [ConfigType.LAUNCHDARKLY]: LaunchDarklyConfig,
     [ConfigType.LINEAR_KB]: LinearKBConfig,
     [ConfigType.SLACK_KB]: SlackKBConfig,
-    [ConfigType.TERSE]: TerseConfig
+    [ConfigType.TERSE]: TerseConfig,
+    [ConfigType.WORKOS_INPUT]: WorkOSInputConfig
 } as const satisfies ConfigMetadataMap
