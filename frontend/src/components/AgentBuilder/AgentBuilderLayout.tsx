@@ -3,7 +3,7 @@ import { useSearchParams } from "react-router-dom"
 
 import { AnimatePresence, Easing, motion } from "framer-motion"
 import type { LucideIcon } from "lucide-react"
-import { FileText, Loader2, MessageCircle, Rocket, RotateCcw, Users } from "lucide-react"
+import { FileText, MessageCircle, Rocket, RotateCcw, Users } from "lucide-react"
 
 import { TemplateCard } from "@/components/Agents/TemplateCard"
 import { convertRunHistoryEventsToTurns } from "@/components/RunHistory/RunHistoryChatDrawer/RunHistoryChatAdapter"
@@ -50,7 +50,7 @@ type AgentBuilderLayoutProps = {
 }
 
 export function AgentBuilderLayout({ header }: AgentBuilderLayoutProps) {
-    const { templates, isLoading } = useTemplates()
+    const { templates, isLoading: isLoadingTemplates } = useTemplates()
     const { sessionId, resetSessionId } = useBuilderSession()
     const [selectedCategory, setSelectedCategory] = useState<TemplateCategory>("users")
     const chatRef = useRef<ChatHandle>(null)
@@ -61,6 +61,10 @@ export function AgentBuilderLayout({ header }: AgentBuilderLayoutProps) {
     const { events: historyEvents, isLoading: isHistoryLoading } = useBuilderChatHistory(sessionId)
     const [initialTurns, setInitialTurns] = useState<ReturnType<typeof convertRunHistoryEventsToTurns>>([])
     const [hasStartedChat, setHasStartedChat] = useState(false)
+
+    // Unified loading: wait for both templates AND chat history before rendering.
+    // This prevents the chatbox from appearing before templates, making a jumpy experience.
+    const isInitialLoading = isHistoryLoading || isLoadingTemplates
 
     useEffect(() => {
         const turns = convertRunHistoryEventsToTurns(historyEvents.map(event => ({ ...event, isHistorical: true })))
@@ -82,7 +86,7 @@ export function AgentBuilderLayout({ header }: AgentBuilderLayoutProps) {
 
     // Apply deep link params: templateId (pre-populate from template + set category) and/or prompt (arbitrary user input)
     useEffect(() => {
-        if (isHistoryLoading) return
+        if (isInitialLoading) return
         const templateIdParam = searchParams.get("templateId")
         const promptParam = searchParams.get("prompt")
 
@@ -113,7 +117,7 @@ export function AgentBuilderLayout({ header }: AgentBuilderLayoutProps) {
                 setSelectedCategory(matched.category)
             }
         }
-    }, [searchParams, templates, isHistoryLoading])
+    }, [searchParams, templates, isInitialLoading])
 
     const subscribeToEvents = useCallback(
         (callback: (payload: ChatEventPayload) => void) => {
@@ -160,14 +164,9 @@ export function AgentBuilderLayout({ header }: AgentBuilderLayoutProps) {
         [sessionId]
     )
 
-    // While history is loading, show a spinner instead of the animated layout.
-    // This prevents the false→true hasStartedChat transition from triggering animations.
-    if (isHistoryLoading) {
-        return (
-            <div className="flex flex-col h-full w-full items-center justify-center">
-                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-            </div>
-        )
+    // While data is loading, show an empty container to prevent layout shifts.
+    if (isInitialLoading) {
+        return <div className="flex flex-col h-full w-full" />
     }
 
     // Animation variants for synchronized transitions
@@ -295,37 +294,31 @@ export function AgentBuilderLayout({ header }: AgentBuilderLayoutProps) {
                                                     transition={{ duration: 0.2, ease: ANIMATION_EASE }}
                                                     className="grid grid-cols-1 sm:grid-cols-3 gap-4"
                                                 >
-                                                    {isLoading ? (
-                                                        <div className="col-span-full flex items-center justify-center py-8">
-                                                            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                                                        </div>
-                                                    ) : (
-                                                        (() => {
-                                                            const categoryTemplates = templates.filter(t => t.category === selectedCategory)
-                                                            return categoryTemplates.length > 0 ? (
-                                                                categoryTemplates.map((template, index) => (
-                                                                    <motion.div
-                                                                        key={template.id}
-                                                                        initial={{ opacity: 0, y: 12, filter: "blur(8px)" }}
-                                                                        animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-                                                                        transition={{
-                                                                            duration: 0.3,
-                                                                            delay: index * 0.05,
-                                                                            ease: ANIMATION_EASE
-                                                                        }}
-                                                                    >
-                                                                        <TemplateCard template={template} onSelect={handleTemplateSelect} />
-                                                                    </motion.div>
-                                                                ))
-                                                            ) : (
-                                                                <Card className="col-span-full border-dashed">
-                                                                    <CardContent className="flex flex-col items-center justify-center py-6 text-center">
-                                                                        <p className="text-muted-foreground text-sm">No templates in this category yet</p>
-                                                                    </CardContent>
-                                                                </Card>
-                                                            )
-                                                        })()
-                                                    )}
+                                                    {(() => {
+                                                        const categoryTemplates = templates.filter(t => t.category === selectedCategory)
+                                                        return categoryTemplates.length > 0 ? (
+                                                            categoryTemplates.map((template, index) => (
+                                                                <motion.div
+                                                                    key={template.id}
+                                                                    initial={{ opacity: 0, y: 12, filter: "blur(8px)" }}
+                                                                    animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+                                                                    transition={{
+                                                                        duration: 0.3,
+                                                                        delay: index * 0.05,
+                                                                        ease: ANIMATION_EASE
+                                                                    }}
+                                                                >
+                                                                    <TemplateCard template={template} onSelect={handleTemplateSelect} />
+                                                                </motion.div>
+                                                            ))
+                                                        ) : (
+                                                            <Card className="col-span-full border-dashed">
+                                                                <CardContent className="flex flex-col items-center justify-center py-6 text-center">
+                                                                    <p className="text-muted-foreground text-sm">No templates in this category yet</p>
+                                                                </CardContent>
+                                                            </Card>
+                                                        )
+                                                    })()}
                                                 </motion.div>
                                             </AnimatePresence>
                                         </div>
