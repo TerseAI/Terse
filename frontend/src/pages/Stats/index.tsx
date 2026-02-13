@@ -111,9 +111,7 @@ function StatsIntervalSelector({ selectedInterval, onSelectInterval }: { selecte
                         onClick={() => onSelectInterval(interval.value)}
                         className={cn(
                             "h-9 px-3 rounded-md border text-sm transition-colors",
-                            isSelected
-                                ? "border-primary/40 bg-primary/10 text-foreground"
-                                : "border-border text-muted-foreground hover:text-foreground hover:bg-accent"
+                            isSelected ? "border-primary/40 bg-primary/10 text-foreground" : "border-border text-muted-foreground hover:text-foreground hover:bg-accent"
                         )}
                         aria-pressed={isSelected}
                         aria-label={interval.longLabel}

@@ -88,9 +88,7 @@ function resolveStatsTimeBoundaries(nowInTimezone: DateTime, interval?: StatsInt
     if (!interval) {
         const currentPeriodStart = nowInTimezone.startOf("month")
         const previousPeriodStart = currentPeriodStart.minus({ months: 1 })
-        const chartStartDate = nowInTimezone
-            .minus({ days: DEFAULT_CHART_TIME_WINDOW_DAYS - 1 })
-            .startOf("day")
+        const chartStartDate = nowInTimezone.minus({ days: DEFAULT_CHART_TIME_WINDOW_DAYS - 1 }).startOf("day")
 
         return {
             currentPeriodStart: currentPeriodStart.toJSDate(),
