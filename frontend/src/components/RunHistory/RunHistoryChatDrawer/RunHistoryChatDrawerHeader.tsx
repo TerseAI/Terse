@@ -10,6 +10,7 @@ import RunHistoryStatusBadge from "../RunHistoryStatusBadge"
 type Props = {
     trigger: RunHistoryTrigger
     runNumber?: number
+    totalEvents?: number
     status: RunHistoryStatus
     filtered: boolean
     runs?: RunHistoryRecord[]
@@ -19,7 +20,18 @@ type Props = {
     onFullscreenChange: (fullscreen: boolean) => void
 }
 
-export default function RunHistoryChatDrawerHeader({ trigger, runNumber, status, filtered, runs, currentRunIndex, onNavigate, isFullscreen, onFullscreenChange }: Props) {
+export default function RunHistoryChatDrawerHeader({
+    trigger,
+    runNumber,
+    totalEvents,
+    status,
+    filtered,
+    runs,
+    currentRunIndex,
+    onNavigate,
+    isFullscreen,
+    onFullscreenChange
+}: Props) {
     const canGoPrevious = runs && currentRunIndex !== undefined && currentRunIndex > 0
     const canGoNext = runs && currentRunIndex !== undefined && currentRunIndex < runs.length - 1
 
@@ -48,7 +60,6 @@ export default function RunHistoryChatDrawerHeader({ trigger, runNumber, status,
                     </div>
                     <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                            {runNumber !== undefined && <span className="flex-shrink-0 text-xs font-medium text-muted-foreground">{runNumber}</span>}
                             <span className="text-base font-semibold truncate" title={trigger.title || trigger.source}>
                                 {trigger.title || trigger.source}
                             </span>
@@ -63,6 +74,11 @@ export default function RunHistoryChatDrawerHeader({ trigger, runNumber, status,
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
                     <RunHistoryStatusBadge status={status} filtered={filtered} />
+                    {runNumber !== undefined && totalEvents !== undefined && totalEvents > 0 && (
+                        <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">
+                            {runNumber} of {totalEvents}
+                        </span>
+                    )}
                     {runs && currentRunIndex !== undefined && (
                         <div className="flex items-center gap-1">
                             <Button variant="ghost" size="sm" onClick={handlePrevious} disabled={!canGoPrevious} className="h-8 w-8 p-0" title="Previous run">

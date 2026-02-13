@@ -5,12 +5,11 @@ import type { RunHistoryRecord } from "../../../shared/RunHistoryTypes"
 
 type Props = {
     run: RunHistoryRecord
-    runNumber?: number
     formattedTimestamp: string
     onCopy: (text: string) => void
 }
 
-export default function RunHistoryItemHeader({ run, runNumber, formattedTimestamp, onCopy }: Props) {
+export default function RunHistoryItemHeader({ run, formattedTimestamp, onCopy }: Props) {
     const title = run.trigger.title || run.trigger.source
 
     return (
@@ -21,7 +20,6 @@ export default function RunHistoryItemHeader({ run, runNumber, formattedTimestam
                 </div>
                 <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                        {runNumber !== undefined && <span className="flex-shrink-0 text-xs font-medium text-muted-foreground">{runNumber}</span>}
                         <span className="text-foreground truncate no-underline hover:no-underline" title={title}>
                             {title}
                         </span>

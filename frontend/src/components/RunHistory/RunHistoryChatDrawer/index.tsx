@@ -13,6 +13,7 @@ type Props = {
     isOpen: boolean
     onOpenChange: (open: boolean) => void
     runNumber?: number
+    totalEvents?: number
     status: RunHistoryStatus
     trigger: RunHistoryTrigger
     filtered: boolean
@@ -29,6 +30,7 @@ export default function RunHistoryChatDrawer({
     isOpen,
     onOpenChange,
     runNumber,
+    totalEvents,
     status,
     trigger,
     filtered,
@@ -95,6 +97,7 @@ export default function RunHistoryChatDrawer({
                                     <RunHistoryChatDrawerHeader
                                         trigger={trigger}
                                         runNumber={runNumber}
+                                        totalEvents={totalEvents}
                                         status={currentStatus}
                                         filtered={isFiltered || filtered}
                                         runs={runs}

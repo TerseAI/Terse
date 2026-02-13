@@ -115,13 +115,6 @@ export default function RunHistory({ agentId }: RunHistoryProps) {
     const totalPages = Math.ceil(total / runsPerPage) || 1
     const startIndex = (currentPage - 1) * runsPerPage
     const paginatedRuns = filteredRuns // server provides paginated items already
-    const runNumberById = useMemo(() => {
-        const map = new Map<string, number>()
-        remoteRuns.forEach((run, index) => {
-            map.set(run.id, Math.max(total - (startIndex + index), 1))
-        })
-        return map
-    }, [remoteRuns, total, startIndex])
     const currentDrawerRun = useMemo(() => {
         if (!openDrawerRunId) {
             return null
@@ -135,7 +128,16 @@ export default function RunHistory({ agentId }: RunHistoryProps) {
         const index = paginatedRuns.findIndex(run => run.id === openDrawerRunId)
         return index >= 0 ? index : undefined
     }, [openDrawerRunId, paginatedRuns])
-    const currentDrawerRunNumber = currentDrawerRun ? runNumberById.get(currentDrawerRun.id) : undefined
+    const currentDrawerRunNumber = useMemo(() => {
+        if (!currentDrawerRun) {
+            return undefined
+        }
+        const indexOnCurrentPage = remoteRuns.findIndex(run => run.id === currentDrawerRun.id)
+        if (indexOnCurrentPage === -1) {
+            return undefined
+        }
+        return Math.max(total - (startIndex + indexOnCurrentPage), 1)
+    }, [currentDrawerRun, remoteRuns, total, startIndex])
 
     const toggleStatus = (status: RunHistoryStatus) => {
         const next = new Set(selectedStatuses)
@@ -196,7 +198,6 @@ export default function RunHistory({ agentId }: RunHistoryProps) {
                                 <RunHistoryItem
                                     key={run.id}
                                     run={run}
-                                    runNumber={runNumberById.get(run.id)}
                                     onViewChat={runId => {
                                         if (openDrawerRunId === runId) {
                                             return
@@ -218,6 +219,7 @@ export default function RunHistory({ agentId }: RunHistoryProps) {
                     <RunHistoryChatDrawer
                         runId={currentDrawerRun.id}
                         runNumber={currentDrawerRunNumber}
+                        totalEvents={total}
                         isOpen={openDrawerRunId !== null}
                         onOpenChange={open => {
                             if (open) {

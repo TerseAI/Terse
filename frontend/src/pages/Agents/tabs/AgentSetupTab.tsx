@@ -374,6 +374,7 @@ export default function AgentSetupTab({
         {
             id: "triggers" as const,
             label: "Triggers",
+            subheader: "What starts this agent",
             icon: Zap,
             isComplete: !triggersIncomplete,
             count: inputs.length
@@ -381,12 +382,14 @@ export default function AgentSetupTab({
         {
             id: "prompt" as const,
             label: "Instructions",
+            subheader: "What the agent does",
             icon: FileText,
             isComplete: !promptIncomplete
         },
         {
             id: "skills" as const,
             label: "Skills",
+            subheader: "What the agent can use",
             icon: Wrench,
             isComplete: !skillsIncomplete,
             count: outputs.length
@@ -472,9 +475,12 @@ export default function AgentSetupTab({
                                         >
                                             {step.isComplete ? <Check className="w-4 h-4" /> : <StepIcon className="w-4 h-4" />}
                                         </div>
-                                        <div className={cn("text-sm font-medium", isActive ? "text-foreground" : "text-muted-foreground")}>
-                                            {step.label}
-                                            {step.count !== undefined && step.count > 0 && <span className="ml-1.5 text-xs text-muted-foreground">({step.count})</span>}
+                                        <div className="min-w-0">
+                                            <div className={cn("text-sm font-medium", isActive ? "text-foreground" : "text-muted-foreground")}>
+                                                {step.label}
+                                                {step.count !== undefined && step.count > 0 && <span className="ml-1.5 text-xs text-muted-foreground">({step.count})</span>}
+                                            </div>
+                                            <div className="text-xs leading-snug text-muted-foreground whitespace-normal">{step.subheader}</div>
                                         </div>
                                     </button>
                                     {index < steps.length - 1 && <ChevronRight className="hidden @xl/agent-setup:block w-4 h-4 text-muted-foreground/50 mx-1" />}
