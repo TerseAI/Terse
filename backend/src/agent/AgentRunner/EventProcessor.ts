@@ -153,12 +153,13 @@ export class EventProcessor {
         }
 
         const runId = await this.createRunForAgent(agent)
-        void this.processAgent(agent, runId).catch(error => {
+        void this.processAgent(agent, runId).catch(async error => {
             logger.error(`Background processing failed for agent ${agent.id}`, {
                 error,
                 runId,
                 agentId: agent.id
             })
+            await this.failRunEarly(runId, agent.id, `Background processing failed: ${error instanceof Error ? error.message : "Unknown error"}`)
         })
 
         return {
