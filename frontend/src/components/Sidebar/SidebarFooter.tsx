@@ -16,9 +16,8 @@ export function AppSidebarFooter() {
     const navigate = useNavigate()
     const { setTheme, theme } = useTheme()
 
-    const handleLogout = async () => {
-        await logout()
-        navigate(FrontendRoutes.APP)
+    const handleLogout = () => {
+        logout()
     }
 
     const userName = user?.displayName || user?.email || "User"

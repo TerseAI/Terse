@@ -2,9 +2,15 @@ import { useState } from "react"
 
 import { v4 as uuidv4 } from "uuid"
 
+import { onAuthEvent } from "../lib/authEvents"
 import { safeStorageGet, safeStorageRemove, safeStorageSet } from "../lib/storage"
 
 export const SETUP_SESSION_KEY = "terse:agent-setup-session-id"
+
+// Clear builder session from sessionStorage on logout
+onAuthEvent("logout", () => {
+    safeStorageRemove(SETUP_SESSION_KEY)
+})
 
 function getOrCreateSetupSessionId(): string {
     const existing = safeStorageGet(SETUP_SESSION_KEY)
