@@ -128,6 +128,12 @@ function BreadCrumb() {
         return null
     }
 
+    // Agent detail pages manage their own header (SidebarTrigger + breadcrumb + tabs in one row)
+    const appSegments = pathSegments.filter(seg => seg !== "app")
+    if (appSegments[0] === "agents" && appSegments.length >= 2) {
+        return null
+    }
+
     // Don't show breadcrumb on home page
     if (pathSegments.length === 0 || (pathSegments.length === 1 && pathSegments[0] === "app")) {
         return (

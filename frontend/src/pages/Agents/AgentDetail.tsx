@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react"
-import { useParams, useSearchParams } from "react-router-dom"
+import { Link, useParams, useSearchParams } from "react-router-dom"
 
-import { Tab, TabGroup, TabList, TabPanel, TabPanels } from "@headlessui/react"
-import { Clock, MessageSquare, PanelRightIcon, Settings } from "lucide-react"
+import { Tab, TabGroup, TabList } from "@headlessui/react"
+import { Clock, MessageSquare, PanelRightIcon, Settings, X } from "lucide-react"
 
+import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "../../components/ui/breadcrumb"
 import { BuilderChat } from "../../components/chat/BuilderChat"
 import { Button } from "../../components/ui/button"
+import { SidebarTrigger } from "../../components/ui/sidebar"
 import { useAgent } from "../../hooks/api/useAgents"
 import { useTemplates } from "../../hooks/api/useTemplates"
 import { useTemplateHydration } from "../../hooks/useTemplateHydration"
@@ -18,18 +20,18 @@ import { toTransientAgentOutput, toTransientAgentTrigger, toTransientKnowledgeBa
 import AgentRunHistoryTab from "./tabs/AgentRunHistoryTab"
 import AgentSetupTab, { AgentSetupTabProps } from "./tabs/AgentSetupTab"
 
-function ChatSidebarTrigger({ className, onClick, ...props }: React.ComponentProps<typeof Button>) {
+function ChatSidebarTrigger({ className, onClick, icon: Icon = PanelRightIcon, ...props }: React.ComponentProps<typeof Button> & { icon?: React.ComponentType<{ className?: string }> }) {
     return (
         <Button
-            variant="ghost"
+            variant="outline"
             size="icon"
-            className={cn("h-7 w-7", className)}
+            className={cn("h-8 w-8 shrink-0 border-border shadow-sm", className)}
             onClick={event => {
                 onClick?.(event)
             }}
             {...props}
         >
-            <PanelRightIcon className="h-4 w-4" />
+            <Icon className="h-4 w-4" />
             <span className="sr-only">Toggle Sidebar</span>
         </Button>
     )
@@ -40,6 +42,8 @@ function AgentDetail() {
     const [searchParams, setSearchParams] = useSearchParams()
     const { getStateJSON, donate } = useModelContext()
     const [builderChatOpen, setBuilderChatOpen] = useState(true)
+
+    const CHAT_PANEL_TRANSITION_MS = 300
 
     // Cmd++i (Ctrl+i on Windows) toggles the builder chat panel
     useEffect(() => {
@@ -181,60 +185,86 @@ function AgentDetail() {
     donate("Agent Knowledge Bases", new AgentKnowledgeBasesDonatedState(knowledgeBases))
     donate("Agent Prompt", new AgentPromptDonatedState(prompt ?? { text: "" }))
 
+    const breadcrumbLabel = agentId ? (isFetching ? "Loading..." : agent?.name || agentId) : "New Agent"
+
     return (
         <div
-            className="grid h-[calc(100%+44px)] -mt-[44px] pl-2"
+            className="grid h-full gap-0"
             style={{
-                gridTemplateColumns: builderChatOpen ? "14fr 6fr" : "19fr 1fr",
-                transition: "grid-template-columns 200ms ease-in-out"
+                gridTemplateColumns: builderChatOpen ? "14fr 6fr" : "1fr 0fr",
+                transition: `grid-template-columns ${CHAT_PANEL_TRANSITION_MS}ms ease-in-out`
             }}
         >
-            <div className="h-full min-h-0 col-span-1 pt-[46px]">
-                <div className="mx-auto h-full min-h-0 flex flex-col">
-                    <TabGroup
-                        selectedIndex={selectedIndex}
-                        className="h-full flex flex-col"
-                        onChange={index => {
-                            setSelectedIndex(index)
-                            const next = tabs[index]
-                            const nextParams = new URLSearchParams(searchParams)
-                            nextParams.set("tab", next)
-                            setSearchParams(nextParams, { replace: true })
-                        }}
-                    >
-                        <TabList className="flex gap-2 border-b border-input items-center">
-                            <Tab
-                                className={({ selected }) =>
-                                    `px-3 py-2 text-sm font-medium rounded-t-md border-b-2 -mb-px inline-flex items-center gap-2 ${selected ? "text-foreground border-primary" : "text-muted-foreground border-transparent hover:text-foreground"}`
-                                }
-                            >
-                                <Settings className="h-4 w-4" />
-                                <span>Setup</span>
-                            </Tab>
-                            <Tab
-                                className={({ selected }) =>
-                                    `px-3 py-2 text-sm font-medium rounded-t-md border-b-2 -mb-px inline-flex items-center gap-2 ${selected ? "text-foreground border-primary" : "text-muted-foreground border-transparent hover:text-foreground"}`
-                                }
-                            >
-                                <Clock className="h-4 w-4" />
-                                <span>Activity</span>
-                            </Tab>
-                        </TabList>
-                        <TabPanels className="flex-1 min-h-0 flex">
-                            <TabPanel className="flex-1 min-h-0 h-full flex flex-col">
-                                <AgentSetupTab {...agentProps} />
-                            </TabPanel>
-                            <TabPanel className="flex-1 min-h-0 flex flex-col">
-                                <AgentRunHistoryTab agentId={agentId} />
-                            </TabPanel>
-                        </TabPanels>
-                    </TabGroup>
+            <div className="h-full min-h-0 col-span-1 flex flex-col">
+                {/* Header: SidebarTrigger + Breadcrumb + ChatToggle */}
+                <div className="flex items-center gap-4 px-2 py-3">
+                    <SidebarTrigger />
+                    <Breadcrumb>
+                        <BreadcrumbList>
+                            <BreadcrumbItem>
+                                <BreadcrumbLink asChild>
+                                    <Link to="/app">Home</Link>
+                                </BreadcrumbLink>
+                            </BreadcrumbItem>
+                            <BreadcrumbSeparator />
+                            <BreadcrumbItem>
+                                <BreadcrumbLink asChild>
+                                    <Link to="/app/agents">Agents</Link>
+                                </BreadcrumbLink>
+                            </BreadcrumbItem>
+                            <BreadcrumbSeparator />
+                            <BreadcrumbItem>
+                                <BreadcrumbPage>{breadcrumbLabel}</BreadcrumbPage>
+                            </BreadcrumbItem>
+                        </BreadcrumbList>
+                    </Breadcrumb>
+                    <div className="ml-auto">
+                        <ChatSidebarTrigger
+                            icon={builderChatOpen ? X : MessageSquare}
+                            onClick={() => setBuilderChatOpen(prev => !prev)}
+                            title={builderChatOpen ? "Close builder chat (⌘⇧C)" : "Open builder chat (⌘⇧C)"}
+                        />
+                    </div>
+                </div>
+                {/* Tabs + content */}
+                <TabGroup
+                    selectedIndex={selectedIndex}
+                    onChange={index => {
+                        setSelectedIndex(index)
+                        const next = tabs[index]
+                        const nextParams = new URLSearchParams(searchParams)
+                        nextParams.set("tab", next)
+                        setSearchParams(nextParams, { replace: true })
+                    }}
+                >
+                    <TabList className="flex gap-2 border-b border-input items-center">
+                        <Tab
+                            className={({ selected }) =>
+                                `px-3 py-2 text-sm font-medium rounded-t-md border-b-2 -mb-px inline-flex items-center gap-2 ${selected ? "text-foreground border-primary" : "text-muted-foreground border-transparent hover:text-foreground"}`
+                            }
+                        >
+                            <Settings className="h-4 w-4" />
+                            <span>Setup</span>
+                        </Tab>
+                        <Tab
+                            className={({ selected }) =>
+                                `px-3 py-2 text-sm font-medium rounded-t-md border-b-2 -mb-px inline-flex items-center gap-2 ${selected ? "text-foreground border-primary" : "text-muted-foreground border-transparent hover:text-foreground"}`
+                            }
+                        >
+                            <Clock className="h-4 w-4" />
+                            <span>Activity</span>
+                        </Tab>
+                    </TabList>
+                </TabGroup>
+                <div className="flex-1 min-h-0 flex flex-col">
+                    {selectedIndex === 0 ? (
+                        <AgentSetupTab {...agentProps} />
+                    ) : (
+                        <AgentRunHistoryTab agentId={agentId} />
+                    )}
                 </div>
             </div>
-            <div className={cn("border-l border-border h-full min-h-0 col-span-1 flex flex-col overflow-hidden", builderChatOpen && "pl-2")}>
-                <div className={cn("shrink-0 flex pt-0.5 pr-1", builderChatOpen ? "" : "justify-center")}>
-                    <ChatSidebarTrigger onClick={() => setBuilderChatOpen(prev => !prev)} title={builderChatOpen ? "Close builder chat (⌘⇧C)" : "Open builder chat (⌘⇧C)"} />
-                </div>
+            <div className={cn("h-full min-h-0 col-span-1 flex flex-col overflow-hidden min-w-0", builderChatOpen && "border-l border-border pl-2")}>
                 {builderChatOpen && (
                     <div className="flex-1 min-w-0 min-h-0 w-full">
                         <BuilderChat getStateJSON={() => getStateJSON()} agentId={agentId} />
