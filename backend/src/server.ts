@@ -27,6 +27,7 @@ import { atlassianOAuthCallback, getAtlassianIntegrations, getJiraResources, han
 import { createOrUpdateLaunchDarklyIntegration, getLaunchDarklyEnvironments, getLaunchDarklyIntegrations, getLaunchDarklyProjects } from "./routes/launchdarkly"
 import { getLinearIntegrations, getLinearTeams, handleLinearWebhook, linearOAuthCallback } from "./routes/linear"
 import { createNotificationDestination, deleteNotificationDestination, getNotificationDestinations, updateNotificationDestination } from "./routes/notificationDestinations"
+import { attioOAuthCallback, getAttioIntegrations } from "./routes/attio"
 import { getNotionIntegrations, getNotionResources, notionOAuthCallback } from "./routes/notion"
 import { createOrganization, getCurrentOrganization, getLogoUploadUrl, getLogoUrl, getUserOrganizations, switchOrganization, updateOrganization } from "./routes/organization"
 import { createOrUpdatePosthogIntegration, getPosthogIntegrations, getPosthogProjects } from "./routes/posthog"
@@ -339,6 +340,16 @@ app.get(ApiRoutes.NOTION.OAUTH_CALLBACK, async (req, res) => {
 
 app.get(ApiRoutes.NOTION.RESOURCES, authMiddleware, async (req, res) => {
     getNotionResources(req, res)
+})
+
+// MARK: ATTIO
+
+app.get(ApiRoutes.ATTIO.INTEGRATIONS, authMiddleware, async (req, res) => {
+    getAttioIntegrations(req, res)
+})
+
+app.get(ApiRoutes.ATTIO.OAUTH_CALLBACK, async (req, res) => {
+    attioOAuthCallback(req, res)
 })
 
 // MARK: FIGMA

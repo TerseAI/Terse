@@ -1,4 +1,5 @@
 import type {
+    automation_attio_configs,
     automation_confluence_configs,
     automation_datadog_configs,
     automation_github_kb_configs,
@@ -29,9 +30,10 @@ type OutputDummyPayload =
     | { config_type: typeof OutputConfigType.CONFLUENCE; confluence_config: Pick<automation_confluence_configs, "space_name" | "space_id" | "page_id" | "page_name"> }
     | { config_type: typeof OutputConfigType.GMAIL; gmail_config: Partial<Pick<automation_gmail_configs, never>> }
     | { config_type: typeof OutputConfigType.TERSE }
+    | { config_type: typeof OutputConfigType.ATTIO; attio_config: Pick<automation_attio_configs, "object_slug"> }
 
 export function buildDummyOutputConfig(integration_id: string, payload: OutputDummyPayload): AgentOutputWithConfigs {
-    const base: Omit<AgentOutputWithConfigs, "slack_config" | "notion_config" | "linear_config" | "jira_config" | "confluence_config" | "github_config" | "gmail_config" | "figma_config"> = {
+    const base: Omit<AgentOutputWithConfigs, "slack_config" | "notion_config" | "linear_config" | "jira_config" | "confluence_config" | "github_config" | "gmail_config" | "figma_config" | "attio_config"> = {
         id: DUMMY_ID,
         automation_id: DUMMY_ID,
         integration_id,
@@ -48,7 +50,8 @@ export function buildDummyOutputConfig(integration_id: string, payload: OutputDu
         confluence_config: null as AgentOutputWithConfigs["confluence_config"],
         github_config: null as AgentOutputWithConfigs["github_config"],
         gmail_config: null as AgentOutputWithConfigs["gmail_config"],
-        figma_config: null as AgentOutputWithConfigs["figma_config"]
+        figma_config: null as AgentOutputWithConfigs["figma_config"],
+        attio_config: null as AgentOutputWithConfigs["attio_config"]
     }
 
     switch (payload.config_type) {
@@ -134,6 +137,19 @@ export function buildDummyOutputConfig(integration_id: string, payload: OutputDu
             }
         case OutputConfigType.TERSE:
             return { ...base, ...nullConfigs }
+        case OutputConfigType.ATTIO:
+            return {
+                ...base,
+                ...nullConfigs,
+                attio_config: {
+                    id: DUMMY_ID,
+                    automation_input_id: null,
+                    automation_output_id: DUMMY_ID,
+                    created_at: DUMMY_DATE,
+                    updated_at: DUMMY_DATE,
+                    ...payload.attio_config
+                }
+            }
         default: {
             const _exhaustive: never = payload
             throw new Error("Unhandled output config_type")
