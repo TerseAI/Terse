@@ -401,7 +401,7 @@ export default function AgentSetupTab({
             <div className="flex flex-col col-span-20">
                 {/* Header */}
                 <div className="border-b border-border px-6 py-4">
-                    <div className="flex flex-col gap-3 @xl/agent-setup:flex-row @xl/agent-setup:items-center @xl/agent-setup:justify-between">
+                    <div className="flex w-full max-w-4xl flex-col gap-3 @xl/agent-setup:flex-row @xl/agent-setup:items-center @xl/agent-setup:justify-between">
                         <div className="flex flex-1 items-center gap-3 min-w-0">
                             <EditableTextField className="text-lg font-medium" value={name || ""} placeholder={defaultName} onSave={value => setName(value)} />
                             {agentId && !isActive && (
@@ -446,7 +446,7 @@ export default function AgentSetupTab({
 
                 {/* Builder Steps - Horizontal flow */}
                 <div className="border-b border-border px-6 py-4 bg-muted/30">
-                    <div className="flex flex-col gap-2 @xl/agent-setup:flex-row @xl/agent-setup:flex-wrap @xl/agent-setup:items-center @[50rem]/agent-setup:flex-nowrap">
+                    <div className="flex w-full max-w-4xl flex-col gap-2 @xl/agent-setup:flex-row @xl/agent-setup:flex-wrap @xl/agent-setup:items-center @[50rem]/agent-setup:flex-nowrap">
                         {steps.map((step, index) => {
                             const isActive = activeSection === step.id
                             const StepIcon = step.icon
