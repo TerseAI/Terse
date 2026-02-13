@@ -2,7 +2,7 @@ import { useCallback, useEffect, useId, useRef, useState } from "react"
 import { useParams, useSearchParams } from "react-router-dom"
 
 import { Tab, TabGroup, TabList } from "@headlessui/react"
-import { Clock, MessageSquare, PanelRightIcon, Settings, X } from "lucide-react"
+import { Clock, MessageSquare, Settings, X } from "lucide-react"
 
 import BreadCrumb from "../../components/BreadCrumb"
 import { BuilderChat } from "../../components/chat/BuilderChat"
@@ -25,9 +25,11 @@ import AgentSetupTab, { AgentSetupTabProps } from "./tabs/AgentSetupTab"
 const CHAT_PANEL_WIDTH_MIN = 0.2
 const CHAT_PANEL_WIDTH_MAX = 0.6
 const CHAT_PANEL_WIDTH_DEFAULT = CHAT_PANEL_WIDTH_MIN
+const CHAT_PANE_TRANSITION_MS = 200
+const CHAT_CONTENT_FADE_MS = 150
 const AGENT_DETAIL_TABS = ["setup", "history"] as const
 
-function ChatSidebarTrigger({ className, onClick, icon: Icon = PanelRightIcon, ...props }: React.ComponentProps<typeof Button> & { icon?: React.ComponentType<{ className?: string }> }) {
+function ChatSidebarTrigger({ className, onClick, isOpen, ...props }: React.ComponentProps<typeof Button> & { isOpen: boolean }) {
     return (
         <Button
             variant="outline"
@@ -35,10 +37,14 @@ function ChatSidebarTrigger({ className, onClick, icon: Icon = PanelRightIcon, .
             className={cn("h-7 w-7 shrink-0 border-border shadow-sm", className)}
             onClick={event => {
                 onClick?.(event)
+                event.currentTarget.blur()
             }}
             {...props}
         >
-            <Icon className="h-3 w-3" />
+            <span className="relative inline-flex h-4 w-4 items-center justify-center align-middle">
+                <MessageSquare className={cn("absolute inset-0 h-3 w-3 transition-all duration-200 ease-out", isOpen ? "opacity-0 scale-75 -rotate-90" : "opacity-100 scale-100 rotate-0")} />
+                <X className={cn("absolute inset-0 h-3 w-3 transition-all duration-200 ease-out", isOpen ? "opacity-100 scale-100 rotate-0" : "opacity-0 scale-75 rotate-90")} />
+            </span>
             <span className="sr-only">Toggle Sidebar</span>
         </Button>
     )
@@ -203,8 +209,11 @@ function AgentDetail() {
     const [searchParams, setSearchParams] = useSearchParams()
     const { getStateJSON, donate } = useModelContext()
     const [builderChatOpen, setBuilderChatOpen] = useState(true)
+    const [desktopChatPaneOpen, setDesktopChatPaneOpen] = useState(true)
     const [chatPanelWidthFraction, setChatPanelWidthFraction] = useState(CHAT_PANEL_WIDTH_DEFAULT)
     const [isChatPaneResizing, setIsChatPaneResizing] = useState(false)
+    const [renderBuilderChatContent, setRenderBuilderChatContent] = useState(false)
+    const [showBuilderChatContent, setShowBuilderChatContent] = useState(false)
     const layoutContainerRef = useRef<HTMLDivElement>(null)
     const chatPaneId = useId()
     const isMobile = useIsMobile()
@@ -222,10 +231,53 @@ function AgentDetail() {
     }, [])
 
     useEffect(() => {
-        if (!builderChatOpen) {
+        if (!desktopChatPaneOpen) {
             setIsChatPaneResizing(false)
         }
-    }, [builderChatOpen])
+    }, [desktopChatPaneOpen])
+
+    useEffect(() => {
+        let openTimeoutId: number | null = null
+        let closeTimeoutId: number | null = null
+        let frameId: number | null = null
+
+        if (isMobile) {
+            setDesktopChatPaneOpen(false)
+            setRenderBuilderChatContent(builderChatOpen)
+            setShowBuilderChatContent(builderChatOpen)
+            return () => {
+                if (openTimeoutId !== null) window.clearTimeout(openTimeoutId)
+                if (closeTimeoutId !== null) window.clearTimeout(closeTimeoutId)
+                if (frameId !== null) window.cancelAnimationFrame(frameId)
+            }
+        }
+
+        if (builderChatOpen) {
+            setDesktopChatPaneOpen(true)
+            // Keep content hidden during panel width transition to avoid text reflow jitter.
+            setRenderBuilderChatContent(false)
+            setShowBuilderChatContent(false)
+            openTimeoutId = window.setTimeout(() => {
+                setRenderBuilderChatContent(true)
+                frameId = window.requestAnimationFrame(() => {
+                    setShowBuilderChatContent(true)
+                })
+            }, CHAT_PANE_TRANSITION_MS)
+        } else {
+            // Fade content out before unmounting for symmetric in/out motion.
+            setShowBuilderChatContent(false)
+            closeTimeoutId = window.setTimeout(() => {
+                setRenderBuilderChatContent(false)
+                setDesktopChatPaneOpen(false)
+            }, CHAT_CONTENT_FADE_MS)
+        }
+
+        return () => {
+            if (openTimeoutId !== null) window.clearTimeout(openTimeoutId)
+            if (closeTimeoutId !== null) window.clearTimeout(closeTimeoutId)
+            if (frameId !== null) window.cancelAnimationFrame(frameId)
+        }
+    }, [builderChatOpen, isMobile])
 
     useEffect(() => {
         if (isMobile) {
@@ -368,8 +420,8 @@ function AgentDetail() {
                 style={{
                     flexGrow: 1,
                     flexShrink: 1,
-                    flexBasis: `${builderChatOpen && !isMobile ? (1 - chatPanelWidthFraction) * 100 : 100}%`,
-                    minWidth: builderChatOpen && !isMobile ? 320 : undefined
+                    flexBasis: `${desktopChatPaneOpen && !isMobile ? (1 - chatPanelWidthFraction) * 100 : 100}%`,
+                    minWidth: desktopChatPaneOpen && !isMobile ? 320 : undefined
                 }}
             >
                 <div className="flex items-center gap-4 px-2 py-2.5">
@@ -379,7 +431,7 @@ function AgentDetail() {
                     </div>
                     <div className="ml-auto">
                         <ChatSidebarTrigger
-                            icon={builderChatOpen ? X : MessageSquare}
+                            isOpen={builderChatOpen}
                             onClick={() => setBuilderChatOpen(prev => !prev)}
                             title={builderChatOpen ? "Close builder chat (⌘I / Ctrl+I)" : "Open builder chat (⌘I / Ctrl+I)"}
                         />
@@ -434,9 +486,9 @@ function AgentDetail() {
                     <div
                         className={cn("shrink-0 overflow-hidden", !isChatPaneResizing && "transition-all duration-200 ease-in-out")}
                         style={{
-                            width: builderChatOpen ? 4 : 0,
-                            opacity: builderChatOpen ? 1 : 0,
-                            pointerEvents: builderChatOpen ? "auto" : "none"
+                            width: desktopChatPaneOpen ? 4 : 0,
+                            opacity: desktopChatPaneOpen ? 1 : 0,
+                            pointerEvents: desktopChatPaneOpen ? "auto" : "none"
                         }}
                     >
                         <ResizeHandle
@@ -444,7 +496,7 @@ function AgentDetail() {
                             containerRef={layoutContainerRef}
                             onResize={setChatPanelWidthFraction}
                             controlsId={chatPaneId}
-                            disabled={!builderChatOpen}
+                            disabled={!desktopChatPaneOpen}
                             onResizeStart={() => setIsChatPaneResizing(true)}
                             onResizeEnd={() => setIsChatPaneResizing(false)}
                         />
@@ -452,20 +504,19 @@ function AgentDetail() {
                     <div
                         id={chatPaneId}
                         data-chat-pane
-                        className={cn("h-full min-h-0 flex flex-col overflow-hidden min-w-0", builderChatOpen ? "pl-2" : "pl-0", !isChatPaneResizing && "transition-all duration-200 ease-in-out")}
+                        className={cn("h-full min-h-0 flex flex-col overflow-hidden min-w-0", desktopChatPaneOpen ? "pl-2" : "pl-0", !isChatPaneResizing && "transition-all duration-200 ease-in-out")}
                         style={{
                             flexGrow: 0,
                             flexShrink: 0,
-                            flexBasis: `${builderChatOpen ? chatPanelWidthFraction * 100 : 0}%`,
-                            minWidth: builderChatOpen ? 280 : 0,
-                            opacity: builderChatOpen ? 1 : 0,
-                            transform: builderChatOpen ? "translateX(0)" : "translateX(8px)",
-                            pointerEvents: builderChatOpen ? "auto" : "none"
+                            flexBasis: `${desktopChatPaneOpen ? chatPanelWidthFraction * 100 : 0}%`,
+                            minWidth: desktopChatPaneOpen ? 280 : 0,
+                            opacity: desktopChatPaneOpen ? 1 : 0,
+                            pointerEvents: showBuilderChatContent ? "auto" : "none"
                         }}
                     >
-                        {builderChatOpen && (
-                            <div className="flex-1 min-w-0 min-h-0 w-full">
-                                <BuilderChat getStateJSON={() => getStateJSON()} agentId={agentId} />
+                        {(desktopChatPaneOpen || renderBuilderChatContent) && (
+                            <div className={cn("flex-1 min-w-0 min-h-0 w-full transition-opacity duration-150", showBuilderChatContent ? "opacity-100" : "opacity-0")}>
+                                {renderBuilderChatContent && <BuilderChat getStateJSON={() => getStateJSON()} agentId={agentId} />}
                             </div>
                         )}
                     </div>

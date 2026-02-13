@@ -20,18 +20,7 @@ type Props = {
     onFullscreenChange: (fullscreen: boolean) => void
 }
 
-export default function RunHistoryChatDrawerHeader({
-    trigger,
-    runNumber,
-    totalEvents,
-    status,
-    filtered,
-    runs,
-    currentRunIndex,
-    onNavigate,
-    isFullscreen,
-    onFullscreenChange
-}: Props) {
+export default function RunHistoryChatDrawerHeader({ trigger, runNumber, totalEvents, status, filtered, runs, currentRunIndex, onNavigate, isFullscreen, onFullscreenChange }: Props) {
     const canGoPrevious = runs && currentRunIndex !== undefined && currentRunIndex > 0
     const canGoNext = runs && currentRunIndex !== undefined && currentRunIndex < runs.length - 1
 

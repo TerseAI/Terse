@@ -79,7 +79,7 @@ export default function RunHistoryChatDrawer({
     }
 
     return (
-        <Drawer open={isOpen} onOpenChange={onOpenChange} direction="right" shouldScaleBackground={isInitialOpen}>
+        <Drawer open={isOpen} onOpenChange={onOpenChange} direction="right" shouldScaleBackground={isInitialOpen} handleOnly>
             <DrawerContent
                 className={cn(
                     "flex flex-col overflow-hidden",

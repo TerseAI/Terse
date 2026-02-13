@@ -27,16 +27,16 @@ export function SnippetView({ snippet, onMultipleChoiceAnswer }: { snippet: Chat
     if (snippet.type === "button") {
         const isInternalPath = snippet.url.startsWith("/")
         return (
-            <div className="bg-primary/10 border border-primary/20 rounded-lg p-3">
+            <div>
                 {isInternalPath ? (
-                    <Button asChild variant="secondary" size="sm" className="justify-start gap-2">
+                    <Button asChild variant="outline" size="sm" className="justify-start gap-2 bg-transparent shadow-none hover:bg-transparent">
                         <Link to={snippet.url}>
                             <LinkIcon className="w-4 h-4" />
                             <span>{snippet.label}</span>
                         </Link>
                     </Button>
                 ) : (
-                    <Button asChild variant="secondary" size="sm" className="justify-start gap-2">
+                    <Button asChild variant="outline" size="sm" className="justify-start gap-2 bg-transparent shadow-none hover:bg-transparent">
                         <a href={snippet.url} target="_blank" rel="noopener noreferrer">
                             <LinkIcon className="w-4 h-4" />
                             <span>{snippet.label}</span>
