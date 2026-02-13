@@ -2,7 +2,7 @@ import useSWR, { KeyedMutator } from "swr"
 
 import { BackendProvider } from "@/services/backend"
 import { statsKey } from "@/shared/InvalidationKeys"
-import { StatsResponse } from "@/shared/types"
+import { StatsInterval, StatsResponse } from "@/shared/types"
 
 export type UseStatsReturn = {
     stats: StatsResponse | null
@@ -20,10 +20,10 @@ function getUserTimezone(): string {
     }
 }
 
-export function useStats() {
+export function useStats(interval?: StatsInterval) {
     const timezone = getUserTimezone()
 
-    const { data, error, isLoading, mutate } = useSWR<StatsResponse>(statsKey(timezone), () => BackendProvider.getStats(timezone), {
+    const { data, error, isLoading, mutate } = useSWR<StatsResponse>(statsKey(timezone, interval), () => BackendProvider.getStats(timezone, interval), {
         revalidateOnFocus: false,
         revalidateOnReconnect: true
     })

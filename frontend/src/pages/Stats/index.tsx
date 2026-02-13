@@ -1,4 +1,4 @@
-import { useMemo } from "react"
+import { useMemo, useState } from "react"
 import { useNavigate } from "react-router-dom"
 
 import { BarChart3, Clock } from "lucide-react"
@@ -12,7 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { useStats } from "@/hooks/api/useStats"
 import { cn } from "@/lib/utils"
 import { FrontendRoutes } from "@/shared/FrontendRoutes"
-import type { AgentActivityItem, CountByString } from "@/shared/types"
+import type { AgentActivityItem, CountByString, StatsInterval } from "@/shared/types"
 
 // ---------------------------------------------------------------------------
 // Palette
@@ -29,6 +29,15 @@ const CHART_COLORS = [
     "hsl(30 80% 55%)",
     "hsl(160 50% 45%)",
     "hsl(350 60% 55%)"
+]
+
+const STATS_INTERVAL_OPTIONS: Array<{ value: StatsInterval; label: string; longLabel: string }> = [
+    { value: "1h", label: "1H", longLabel: "Last hour" },
+    { value: "24h", label: "24H", longLabel: "Last 24 hours" },
+    { value: "7d", label: "7D", longLabel: "Last 7 days" },
+    { value: "1mo", label: "1M", longLabel: "Last month" },
+    { value: "3mo", label: "3M", longLabel: "Last 3 months" },
+    { value: "1y", label: "1Y", longLabel: "Last year" }
 ]
 
 // ---------------------------------------------------------------------------
@@ -90,6 +99,34 @@ function StatCard({ label, value, change }: { label: string; value: string; chan
     )
 }
 
+function StatsIntervalSelector({ selectedInterval, onSelectInterval }: { selectedInterval: StatsInterval; onSelectInterval: (interval: StatsInterval) => void }) {
+    return (
+        <div className="flex flex-wrap items-center gap-1">
+            {STATS_INTERVAL_OPTIONS.map(interval => {
+                const isSelected = interval.value === selectedInterval
+                return (
+                    <button
+                        key={interval.value}
+                        type="button"
+                        onClick={() => onSelectInterval(interval.value)}
+                        className={cn(
+                            "h-9 px-3 rounded-md border text-sm transition-colors",
+                            isSelected
+                                ? "border-primary/40 bg-primary/10 text-foreground"
+                                : "border-border text-muted-foreground hover:text-foreground hover:bg-accent"
+                        )}
+                        aria-pressed={isSelected}
+                        aria-label={interval.longLabel}
+                        title={interval.longLabel}
+                    >
+                        {interval.label}
+                    </button>
+                )
+            })}
+        </div>
+    )
+}
+
 function DailyEventsSection({ eventsPerDay, timezone }: { eventsPerDay: { date: string; events: number }[]; timezone?: string }) {
     const chartConfig: ChartConfig = {
         events: { label: "Events", color: "var(--chart-1)" }
@@ -98,7 +135,7 @@ function DailyEventsSection({ eventsPerDay, timezone }: { eventsPerDay: { date: 
     return (
         <Card>
             <CardHeader>
-                <CardTitle>Daily Events</CardTitle>
+                <CardTitle>Event Volume Over Time</CardTitle>
                 {timezone && (
                     <CardDescription className="flex items-center gap-1.5 text-xs text-muted-foreground">
                         <Clock className="h-3 w-3" />
@@ -109,10 +146,31 @@ function DailyEventsSection({ eventsPerDay, timezone }: { eventsPerDay: { date: 
             <CardContent className="-ml-6">
                 {eventsPerDay.length > 0 ? (
                     <ChartContainer config={chartConfig} className="h-[300px] w-full [&>div]:!w-full">
-                        <AreaChart data={eventsPerDay} margin={{ left: 24, right: 24, top: 0, bottom: 0 }}>
+                        <AreaChart data={eventsPerDay} margin={{ left: 24, right: 24, top: 0, bottom: 24 }}>
                             <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="date" tickLine={false} axisLine={false} tickMargin={8} />
-                            <YAxis tickLine={false} axisLine={false} tickMargin={8} />
+                            <XAxis
+                                dataKey="date"
+                                tickLine={false}
+                                axisLine={false}
+                                tickMargin={8}
+                                label={{
+                                    value: "Time",
+                                    position: "insideBottom",
+                                    offset: -12,
+                                    style: { fill: "var(--muted-foreground)", fontSize: 12 }
+                                }}
+                            />
+                            <YAxis
+                                tickLine={false}
+                                axisLine={false}
+                                tickMargin={8}
+                                label={{
+                                    value: "Events",
+                                    angle: -90,
+                                    position: "insideLeft",
+                                    style: { fill: "var(--muted-foreground)", fontSize: 12, textAnchor: "middle" }
+                                }}
+                            />
                             <ChartTooltip cursor={false} content={<ChartTooltipContent indicator="dot" />} />
                             <Area type="monotone" dataKey="events" stroke="var(--color-events)" fill="var(--color-events)" fillOpacity={0.2} />
                         </AreaChart>
@@ -317,7 +375,8 @@ function StatsPageSkeleton() {
 // ---------------------------------------------------------------------------
 
 function StatsPage() {
-    const { stats, isLoading } = useStats()
+    const [selectedInterval, setSelectedInterval] = useState<StatsInterval>("7d")
+    const { stats, isLoading } = useStats(selectedInterval)
 
     const dailyEvents = useMemo(() => stats?.dailyEvents ?? [], [stats])
 
@@ -327,7 +386,11 @@ function StatsPage() {
                 {/* ── Header ──────────────────────────────────────────── */}
                 <div>
                     <h1 className="text-2xl font-semibold tracking-tight text-foreground">Stats</h1>
-                    <p className="text-sm text-muted-foreground mt-1">A deeper look at how your agents are performing this period.</p>
+                </div>
+
+                <div className="space-y-2">
+                    <p className="text-xs font-medium tracking-wide uppercase text-muted-foreground">Time Range</p>
+                    <StatsIntervalSelector selectedInterval={selectedInterval} onSelectInterval={setSelectedInterval} />
                 </div>
 
                 {isLoading || !stats ? (

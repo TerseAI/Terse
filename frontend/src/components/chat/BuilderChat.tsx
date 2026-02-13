@@ -98,11 +98,7 @@ export function BuilderChat({ getStateJSON, agentId }: BuilderChatProps) {
     }
 
     return (
-        <div
-            className={`h-full flex min-h-0 p-2 transition-[opacity,transform] duration-200 ease-out will-change-transform ${
-                isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-1"
-            }`}
-        >
+        <div className={`h-full flex min-h-0 p-2 transition-[opacity,transform] duration-200 ease-out will-change-transform ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-1"}`}>
             <Chat
                 key={sessionId}
                 subscribeToEvents={subscribeToEvents}
