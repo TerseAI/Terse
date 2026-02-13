@@ -5,7 +5,7 @@ import { Tab, TabGroup, TabList } from "@headlessui/react"
 import { Clock, MessageSquare, Settings, X } from "lucide-react"
 
 import BreadCrumb from "../../components/BreadCrumb"
-import { BuilderChat } from "../../components/chat/BuilderChat"
+import { BuilderChat, BuilderChatHandle } from "../../components/chat/BuilderChat"
 import { Button } from "../../components/ui/button"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "../../components/ui/sheet"
 import { SidebarTrigger } from "../../components/ui/sidebar"
@@ -215,6 +215,7 @@ function AgentDetail() {
     const [renderBuilderChatContent, setRenderBuilderChatContent] = useState(false)
     const [showBuilderChatContent, setShowBuilderChatContent] = useState(false)
     const layoutContainerRef = useRef<HTMLDivElement>(null)
+    const builderChatRef = useRef<BuilderChatHandle>(null)
     const chatPaneId = useId()
     const isMobile = useIsMobile()
 
@@ -406,6 +407,21 @@ function AgentDetail() {
         updatedAt: agent?.updatedAt
     }
 
+    const handleTriggerNow = () => {
+        // Open builder chat if not already open
+        if (!builderChatOpen) {
+            setBuilderChatOpen(true)
+        }
+        // Pre-fill the chat input so the user can just hit Enter
+        setTimeout(
+            () => {
+                builderChatRef.current?.setInput("I'd like to test this out right away")
+                builderChatRef.current?.focus()
+            },
+            builderChatOpen ? 0 : CHAT_PANE_TRANSITION_MS + 100
+        )
+    }
+
     // Let the chat know about what's on the screen
     donate("Agent Name", new AgentNameDonatedState(name ?? ""))
     donate("Agent Inputs", new AgentInputsDonatedState(inputs))
@@ -467,7 +483,7 @@ function AgentDetail() {
                         </Tab>
                     </TabList>
                 </TabGroup>
-                <div className="min-w-0">{selectedIndex === 0 ? <AgentSetupTab {...agentProps} /> : <AgentRunHistoryTab agentId={agentId} />}</div>
+                <div className="min-w-0">{selectedIndex === 0 ? <AgentSetupTab {...agentProps} /> : <AgentRunHistoryTab agentId={agentId} onTriggerNow={handleTriggerNow} />}</div>
             </div>
             {isMobile ? (
                 <Sheet open={builderChatOpen} onOpenChange={setBuilderChatOpen}>
@@ -477,7 +493,7 @@ function AgentDetail() {
                             <SheetDescription>Build and edit this agent with chat.</SheetDescription>
                         </SheetHeader>
                         <div className="h-full min-h-0 w-full">
-                            <BuilderChat getStateJSON={() => getStateJSON()} agentId={agentId} />
+                            <BuilderChat ref={builderChatRef} getStateJSON={() => getStateJSON()} agentId={agentId} />
                         </div>
                     </SheetContent>
                 </Sheet>
@@ -516,7 +532,7 @@ function AgentDetail() {
                     >
                         {(desktopChatPaneOpen || renderBuilderChatContent) && (
                             <div className={cn("flex-1 min-w-0 min-h-0 w-full transition-opacity duration-150", showBuilderChatContent ? "opacity-100" : "opacity-0")}>
-                                {renderBuilderChatContent && <BuilderChat getStateJSON={() => getStateJSON()} agentId={agentId} />}
+                                {renderBuilderChatContent && <BuilderChat ref={builderChatRef} getStateJSON={() => getStateJSON()} agentId={agentId} />}
                             </div>
                         )}
                     </div>

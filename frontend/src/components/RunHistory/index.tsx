@@ -14,9 +14,10 @@ import RunHistoryToolBar from "./RunHistoryToolBar"
 
 type RunHistoryProps = {
     agentId: string | null
+    onTriggerNow?: () => void
 }
 
-export default function RunHistory({ agentId }: RunHistoryProps) {
+export default function RunHistory({ agentId, onTriggerNow }: RunHistoryProps) {
     const [searchParams, setSearchParams] = useSearchParams()
     const [currentPage, setCurrentPage] = useState(1)
     const [runsPerPage, setRunsPerPage] = useState(10)
@@ -177,6 +178,7 @@ export default function RunHistory({ agentId }: RunHistoryProps) {
                     currentPage={currentPage}
                     totalPages={totalPages}
                     onPageChange={setCurrentPage}
+                    onTriggerNow={onTriggerNow}
                 />
 
                 {isLoading ? (

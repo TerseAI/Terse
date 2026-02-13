@@ -2,6 +2,7 @@ import { useEffect } from "react"
 import { Link, useNavigate } from "react-router-dom"
 
 import { LinkIcon } from "@heroicons/react/24/outline"
+import { ExternalLink, SquareArrowOutUpRight } from "lucide-react"
 
 import { IntegrationType } from "../../shared/Integrations"
 import { ChatSnippet } from "../../shared/ModelEvents"
@@ -31,14 +32,14 @@ export function SnippetView({ snippet, onMultipleChoiceAnswer }: { snippet: Chat
                 {isInternalPath ? (
                     <Button asChild variant="outline" size="sm" className="justify-start gap-2 bg-transparent shadow-none hover:bg-transparent">
                         <Link to={snippet.url}>
-                            <LinkIcon className="w-4 h-4" />
+                            <SquareArrowOutUpRight className="w-4 h-4" />
                             <span>{snippet.label}</span>
                         </Link>
                     </Button>
                 ) : (
                     <Button asChild variant="outline" size="sm" className="justify-start gap-2 bg-transparent shadow-none hover:bg-transparent">
                         <a href={snippet.url} target="_blank" rel="noopener noreferrer">
-                            <LinkIcon className="w-4 h-4" />
+                            <ExternalLink className="w-4 h-4" />
                             <span>{snippet.label}</span>
                         </a>
                     </Button>
