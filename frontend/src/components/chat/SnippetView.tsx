@@ -1,7 +1,6 @@
 import { useEffect } from "react"
 import { Link, useNavigate } from "react-router-dom"
 
-import { LinkIcon } from "@heroicons/react/24/outline"
 import { ExternalLink, SquareArrowOutUpRight } from "lucide-react"
 
 import { IntegrationType } from "../../shared/Integrations"
