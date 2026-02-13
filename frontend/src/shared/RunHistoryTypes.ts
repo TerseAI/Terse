@@ -65,7 +65,7 @@ export type RunHistoryRecord = {
     decision: RunHistoryDecision
     actions?: RunHistoryAction[]
     status: RunHistoryStatus
-    isManuallyTriggered?: boolean
+    isManuallyTriggered: boolean
 }
 
 export type GetRunHistoryParamsRequest = {

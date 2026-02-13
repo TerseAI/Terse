@@ -274,7 +274,13 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
                 entityType: z.nativeEnum(HydratorType).nullable().describe("The entity type from getSampleEvents. Not needed for cron/time trigger agents."),
                 entityId: z.string().nullable().describe("The entity ID from getSampleEvents. Not needed for cron/time trigger agents."),
                 agentId: z.string().describe("The agent ID to test the sample event against"),
-                manualContext: z.string().nullable().optional().describe("Optional context to pass to the agent run. For cron/time trigger agents, this provides the agent with additional context about why this run was triggered and what to focus on.")
+                manualContext: z
+                    .string()
+                    .nullable()
+                    .optional()
+                    .describe(
+                        "Optional context to pass to the agent run. For cron/time trigger agents, this provides the agent with additional context about why this run was triggered and what to focus on."
+                    )
             }),
             execute: async ({ entityType, entityId, agentId, manualContext }, runContext?: RunContext<ChatAgentContext>): Promise<string> => {
                 const user = runContext?.context.user
