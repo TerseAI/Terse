@@ -2,13 +2,10 @@ import { Socket, io } from "socket.io-client"
 import { mutate } from "swr"
 
 import { BackendProvider } from "./services/backend"
-import { ApiRoutes } from "./shared/ApiRoutes"
 import { currentUserKey, userOrganizationsKey, widgetTokenKey } from "./shared/InvalidationKeys"
 import { ModelEvent, ModelRequest } from "./shared/ModelEvents"
 import type { RunHistoryModelSocketEvent } from "./shared/RunHistoryTypes"
 import { SocketEvents } from "./shared/SocketEvents"
-
-const backendRedirectUrl = import.meta.env.VITE_BACKEND_REDIRECT_URL || "/api"
 
 let socket: Socket | null = null
 
@@ -165,7 +162,7 @@ export function initializeSocket() {
 
     // WorkOS webhook-driven events
     socket.on(SocketEvents.WORKOS_FORCE_LOGOUT, () => {
-        window.location.href = `${backendRedirectUrl}${ApiRoutes.AUTH.LOGIN}`
+        void BackendProvider.logoutRedirect()
     })
 
     socket.on(SocketEvents.WORKOS_USER_UPDATED, () => {

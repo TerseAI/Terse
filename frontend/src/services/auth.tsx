@@ -42,7 +42,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     function logout() {
         disconnectSocket()
-        BackendProvider.logoutRedirect()
+        void BackendProvider.logoutRedirect()
     }
 
     async function refreshUser() {
