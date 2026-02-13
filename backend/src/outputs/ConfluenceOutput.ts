@@ -137,21 +137,21 @@ This tool returns the current state of the Confluence page including all metadat
             throw new Error("No context provided")
         }
 
-        const manager = new AtlassianClient()
         const user = runContext.context.user
+        const manager = new AtlassianClient()
         const accessToken = await manager.getAccessToken(integrationId)
         if (!accessToken) {
             throw new Error(`Atlassian integration not found or access denied for integrationId: ${integrationId}`)
         }
 
-        // Get cloudId from integration
+        // Ensure the integration belongs to the user's organization
         const integration = await db().atlassian_integrations.findUnique({
-            where: { id: integrationId },
+            where: { id: integrationId, organization_id: user.organizationId },
             select: { cloud_id: true, base_url: true }
         })
 
         if (!integration || !integration.cloud_id) {
-            throw new Error(`Atlassian integration cloud ID not found for integrationId: ${integrationId}`)
+            throw new Error(`Atlassian integration not found, not in your organization, or missing cloud ID for integrationId: ${integrationId}`)
         }
 
         if (!integration.base_url) {
@@ -253,14 +253,14 @@ To find the correct position, first call confluence_query_page to see the page c
             throw new Error(`Atlassian integration not found or access denied for integrationId: ${integrationId}`)
         }
 
-        // Get cloudId from integration
+        // Ensure the integration belongs to the user's organization
         const integration = await db().atlassian_integrations.findUnique({
-            where: { id: integrationId },
+            where: { id: integrationId, organization_id: user.organizationId },
             select: { cloud_id: true, base_url: true }
         })
 
         if (!integration || !integration.cloud_id) {
-            throw new Error(`Atlassian integration cloud ID not found for integrationId: ${integrationId}`)
+            throw new Error(`Atlassian integration not found, not in your organization, or missing cloud ID for integrationId: ${integrationId}`)
         }
 
         const cloudId = integration.cloud_id
