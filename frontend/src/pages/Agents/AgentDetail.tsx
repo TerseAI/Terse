@@ -45,7 +45,7 @@ function AgentDetail() {
 
     const CHAT_PANEL_TRANSITION_MS = 300
 
-    // Cmd++i (Ctrl+i on Windows) toggles the builder chat panel
+    // Cmd+I (Ctrl+I on Windows) toggles the builder chat panel
     useEffect(() => {
         const handleKeyDown = (event: KeyboardEvent) => {
             if (event.key === "i" && (event.metaKey || event.ctrlKey)) {
@@ -202,7 +202,7 @@ function AgentDetail() {
                         <ChatSidebarTrigger
                             icon={builderChatOpen ? X : MessageSquare}
                             onClick={() => setBuilderChatOpen(prev => !prev)}
-                            title={builderChatOpen ? "Close builder chat (⌘⇧C)" : "Open builder chat (⌘⇧C)"}
+                            title={builderChatOpen ? "Close builder chat (⌘I / Ctrl+I)" : "Open builder chat (⌘I / Ctrl+I)"}
                         />
                     </div>
                 </div>
