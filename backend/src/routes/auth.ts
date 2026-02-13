@@ -18,9 +18,7 @@ const workosSessionCookieBaseOptions = {
     sameSite: "lax" as const
 }
 
-export const WORKOS_SESSION_COOKIE_OPTIONS = settings.optional.cookieDomain
-    ? { ...workosSessionCookieBaseOptions, domain: settings.optional.cookieDomain }
-    : workosSessionCookieBaseOptions
+export const WORKOS_SESSION_COOKIE_OPTIONS = settings.optional.cookieDomain ? { ...workosSessionCookieBaseOptions, domain: settings.optional.cookieDomain } : workosSessionCookieBaseOptions
 
 export async function login(req: Request, res: Response) {
     const authorizationUrl = workos.userManagement.getAuthorizationUrl({

@@ -3,8 +3,11 @@ import { createContext, useContext, useEffect } from "react"
 
 import { AxiosError } from "axios"
 import { posthog } from "posthog-js"
+import { mutate } from "swr"
 
+import { POST_LOGIN_REDIRECT_KEY } from "../constants/storageKeys"
 import { useCurrentUser } from "../hooks/api/useCurrentUser"
+import { emitAuthEvent, onAuthEvent } from "../lib/authEvents"
 import { disconnectSocket } from "../socket"
 import type { User } from "../types/User"
 
@@ -18,6 +21,25 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | null>(null)
+
+// ── Logout listeners (registered once at module load) ───────────────────────
+
+// Reset PostHog so the next user isn't associated with the old identity
+onAuthEvent("logout", () => {
+    posthog.reset()
+})
+
+// Clear the entire SWR in-memory cache (user data, agents, orgs, etc.)
+onAuthEvent("logout", () => {
+    void mutate(() => true, undefined, { revalidate: false })
+})
+
+// Remove stale post-login redirect key
+onAuthEvent("logout", () => {
+    localStorage.removeItem(POST_LOGIN_REDIRECT_KEY)
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const { user, isLoading, error, mutate } = useCurrentUser()
@@ -42,6 +64,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     function logout() {
         disconnectSocket()
+        emitAuthEvent("logout")
         void BackendProvider.logoutRedirect()
     }
 

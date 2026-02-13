@@ -1,6 +1,7 @@
 import { Socket, io } from "socket.io-client"
 import { mutate } from "swr"
 
+import { emitAuthEvent } from "./lib/authEvents"
 import { BackendProvider } from "./services/backend"
 import { currentUserKey, userOrganizationsKey, widgetTokenKey } from "./shared/InvalidationKeys"
 import { ModelEvent, ModelRequest } from "./shared/ModelEvents"
@@ -162,6 +163,7 @@ export function initializeSocket() {
 
     // WorkOS webhook-driven events
     socket.on(SocketEvents.WORKOS_FORCE_LOGOUT, () => {
+        emitAuthEvent("logout")
         void BackendProvider.logoutRedirect()
     })
 
