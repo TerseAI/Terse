@@ -18,7 +18,6 @@ import { Agent, AgentOutput, AgentPrompt, AgentTrigger, TransientKnowledgeBase }
 import { getDefaultAgentName, toAgentKnowledgeBase, toAgentOutput, toAgentTrigger } from "@/utility/AgentUtils"
 
 import { InputConfigSelectorProps, IntegrationSelector } from "../../../components/IntegrationSelector"
-import { BuilderChat } from "../../../components/chat/BuilderChat"
 import EditableTextField from "../../../components/ui/EditableTextField"
 import { Badge } from "../../../components/ui/badge"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../../../components/ui/dialog"
