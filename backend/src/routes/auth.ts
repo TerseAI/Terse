@@ -11,12 +11,14 @@ import { workos } from "../utility/workos"
 
 export const WORKOS_SESSION_COOKIE_NAME = "TERSE_WORKOS_SESSION"
 
-export const WORKOS_SESSION_COOKIE_OPTIONS = {
+const workosSessionCookieBaseOptions = {
     path: "/",
     httpOnly: true,
     secure: settings.nodeEnv === "production",
     sameSite: "lax" as const
 }
+
+export const WORKOS_SESSION_COOKIE_OPTIONS = settings.optional.cookieDomain ? { ...workosSessionCookieBaseOptions, domain: settings.optional.cookieDomain } : workosSessionCookieBaseOptions
 
 export async function login(req: Request, res: Response) {
     const authorizationUrl = workos.userManagement.getAuthorizationUrl({
@@ -26,14 +28,46 @@ export async function login(req: Request, res: Response) {
     res.redirect(authorizationUrl)
 }
 
-export async function logout(req: Request, res: Response) {
+async function getDirectWorkOSLogoutUrl(sealedSessionData: string | undefined): Promise<string | null> {
+    if (!sealedSessionData) {
+        return null
+    }
+
     const session = workos.userManagement.loadSealedSession({
-        sessionData: req.cookies[WORKOS_SESSION_COOKIE_NAME],
+        sessionData: sealedSessionData,
         cookiePassword: settings.workos.cookiePassword
     })
-    const url = await session.getLogoutUrl({ returnTo: settings.urls.backend })
+    return session.getLogoutUrl({ returnTo: settings.urls.frontend })
+}
+
+export async function logoutUrl(req: Request, res: Response) {
+    const sealedSessionData = req.cookies[WORKOS_SESSION_COOKIE_NAME]
     res.clearCookie(WORKOS_SESSION_COOKIE_NAME, WORKOS_SESSION_COOKIE_OPTIONS)
-    res.redirect(url)
+
+    try {
+        const workosLogoutUrl = await getDirectWorkOSLogoutUrl(sealedSessionData)
+        return res.json({ logoutUrl: workosLogoutUrl ?? settings.urls.frontend })
+    } catch (error) {
+        logger.warn("[/logout/url] Failed to build WorkOS logout URL, falling back to frontend redirect", { error })
+        return res.json({ logoutUrl: settings.urls.frontend })
+    }
+}
+
+export async function logout(req: Request, res: Response) {
+    const sealedSessionData = req.cookies[WORKOS_SESSION_COOKIE_NAME]
+    res.clearCookie(WORKOS_SESSION_COOKIE_NAME, WORKOS_SESSION_COOKIE_OPTIONS)
+
+    try {
+        const workosLogoutUrl = await getDirectWorkOSLogoutUrl(sealedSessionData)
+        if (!workosLogoutUrl) {
+            logger.info("[/logout] No session cookie found, redirecting to frontend")
+            return res.redirect(settings.urls.frontend)
+        }
+        return res.redirect(workosLogoutUrl)
+    } catch (error) {
+        logger.warn("[/logout] Failed to build WorkOS logout URL, falling back to frontend redirect", { error })
+        return res.redirect(settings.urls.frontend)
+    }
 }
 
 export async function me(req: Request, res: Response) {
@@ -138,7 +172,9 @@ function createAuthMiddleware(requireOrganization: boolean) {
             logger.info("Session expired, attempting refresh", {
                 reason: authFailedReason
             })
-            const refreshedSessionResult = await session.refresh()
+            const refreshedSessionResult = await session.refresh({
+                cookiePassword: settings.workos.cookiePassword
+            })
             if (!refreshedSessionResult.authenticated) {
                 logger.warn("Session refresh failed")
                 return sendUnauthorized(req, res)
@@ -168,7 +204,7 @@ function createAuthMiddleware(requireOrganization: boolean) {
             logger.error("Failed to authorize user", {
                 error
             })
-            res.clearCookie(WORKOS_SESSION_COOKIE_NAME)
+            res.clearCookie(WORKOS_SESSION_COOKIE_NAME, WORKOS_SESSION_COOKIE_OPTIONS)
             return sendUnauthorized(req, res)
         }
     }
@@ -289,12 +325,7 @@ export async function callback(req: Request, res: Response) {
             secure: settings.nodeEnv === "production",
             sealedSessionLength: authenticateResponse.sealedSession.length
         })
-        res.cookie(WORKOS_SESSION_COOKIE_NAME, authenticateResponse.sealedSession, {
-            path: "/",
-            httpOnly: true,
-            secure: settings.nodeEnv === "production",
-            sameSite: "lax"
-        })
+        res.cookie(WORKOS_SESSION_COOKIE_NAME, authenticateResponse.sealedSession, WORKOS_SESSION_COOKIE_OPTIONS)
 
         // Redirect the user to the homepage
         logger.info("[/callback] Authentication successful, redirecting to frontend", {
@@ -317,7 +348,7 @@ export async function callback(req: Request, res: Response) {
 
         // Don't redirect to /login here as it causes an infinite redirect loop
         // Clear any stale session cookie and show an error
-        res.clearCookie(WORKOS_SESSION_COOKIE_NAME)
+        res.clearCookie(WORKOS_SESSION_COOKIE_NAME, WORKOS_SESSION_COOKIE_OPTIONS)
         return res
             .status(500)
             .send(
@@ -404,4 +435,4 @@ export const authMiddleware = createAuthMiddleware(true)
 // Some routes have an exception to this rule
 export const authMiddlewareAllowNoOrg = createAuthMiddleware(false)
 
-export default { me, login, logout, getWorkOSWidgetToken, callback }
+export default { me, login, logout, logoutUrl, getWorkOSWidgetToken, callback }
