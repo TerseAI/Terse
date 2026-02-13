@@ -230,6 +230,7 @@ function AgentDetail() {
     useEffect(() => {
         if (isMobile) {
             setIsChatPaneResizing(false)
+            setBuilderChatOpen(false)
         }
     }, [isMobile])
 

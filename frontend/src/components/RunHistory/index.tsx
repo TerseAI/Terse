@@ -130,82 +130,84 @@ export default function RunHistory({ agentId }: RunHistoryProps) {
     }
 
     return (
-        <div className="w-full px-3 py-4 h-full">
-            <RunHistoryToolBar
-                filteredCount={total}
-                startIndex={startIndex}
-                runsPerPage={runsPerPage}
-                searchQuery={searchQuery}
-                onSearchChange={handleSearchChange}
-                dateRange={dateRange}
-                onDateRangeChange={next => {
-                    setDateRange(next)
-                    setCurrentPage(1)
-                }}
-                selectedStatuses={selectedStatuses}
-                onToggleStatus={toggleStatus}
-                runsPerPageValue={runsPerPage}
-                onRunsPerPageChange={handleRunsPerPageChange}
-                currentPage={currentPage}
-                totalPages={totalPages}
-                onPageChange={setCurrentPage}
-            />
-
-            {isLoading ? (
-                <RunHistoryLoadingState />
-            ) : filteredRuns.length === 0 ? (
-                <RunHistoryEmptyState
-                    hasActiveFilters={!!searchQuery || !!dateRange.from || !!dateRange.to || selectedStatuses.size < 5}
-                    onClearAll={() => {
-                        setSearchQuery("")
-                        setDateRange({ from: undefined, to: undefined })
-                        setSelectedStatuses(new Set(["success", "failed", "skipped", "in_progress", "awaiting_approval"]))
+        <div className="h-full w-full px-3 py-4">
+            <div className="w-full max-w-7xl">
+                <RunHistoryToolBar
+                    filteredCount={total}
+                    startIndex={startIndex}
+                    runsPerPage={runsPerPage}
+                    searchQuery={searchQuery}
+                    onSearchChange={handleSearchChange}
+                    dateRange={dateRange}
+                    onDateRangeChange={next => {
+                        setDateRange(next)
                         setCurrentPage(1)
                     }}
+                    selectedStatuses={selectedStatuses}
+                    onToggleStatus={toggleStatus}
+                    runsPerPageValue={runsPerPage}
+                    onRunsPerPageChange={handleRunsPerPageChange}
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={setCurrentPage}
                 />
-            ) : (
-                <div className="mb-6">
-                    <div className="flex flex-col gap-3 overflow-x-auto md:overflow-visible pb-3 md:pb-0 max-w-full md:max-w-4xl lg:max-w-5xl xl:max-w-6xl mx-auto">
-                        {paginatedRuns.map((run, index) => (
-                            <RunHistoryItem
-                                key={run.id}
-                                run={run}
-                                runs={paginatedRuns}
-                                currentRunIndex={index}
-                                isDrawerOpen={openDrawerRunId === run.id}
-                                onDrawerOpenChange={open => {
-                                    if (open) {
-                                        setIsInitialDrawerOpen(true)
-                                        setOpenDrawerRunId(run.id)
-                                        // Update URL to include runId for deep linking
+
+                {isLoading ? (
+                    <RunHistoryLoadingState />
+                ) : filteredRuns.length === 0 ? (
+                    <RunHistoryEmptyState
+                        hasActiveFilters={!!searchQuery || !!dateRange.from || !!dateRange.to || selectedStatuses.size < 5}
+                        onClearAll={() => {
+                            setSearchQuery("")
+                            setDateRange({ from: undefined, to: undefined })
+                            setSelectedStatuses(new Set(["success", "failed", "skipped", "in_progress", "awaiting_approval"]))
+                            setCurrentPage(1)
+                        }}
+                    />
+                ) : (
+                    <div className="mb-6">
+                        <div className="flex flex-col gap-3 overflow-x-auto pb-3 md:overflow-visible md:pb-0 max-w-full">
+                            {paginatedRuns.map((run, index) => (
+                                <RunHistoryItem
+                                    key={run.id}
+                                    run={run}
+                                    runs={paginatedRuns}
+                                    currentRunIndex={index}
+                                    isDrawerOpen={openDrawerRunId === run.id}
+                                    onDrawerOpenChange={open => {
+                                        if (open) {
+                                            setIsInitialDrawerOpen(true)
+                                            setOpenDrawerRunId(run.id)
+                                            // Update URL to include runId for deep linking
+                                            const nextParams = new URLSearchParams(searchParams)
+                                            nextParams.set("runId", run.id)
+                                            setSearchParams(nextParams, { replace: true })
+                                        } else {
+                                            setOpenDrawerRunId(null)
+                                            setIsDrawerFullscreen(false)
+                                            // Remove runId from URL when drawer closes
+                                            const nextParams = new URLSearchParams(searchParams)
+                                            nextParams.delete("runId")
+                                            setSearchParams(nextParams, { replace: true })
+                                        }
+                                    }}
+                                    onNavigateToRun={newRunId => {
+                                        setOpenDrawerRunId(newRunId)
+                                        setIsInitialDrawerOpen(false)
+                                        // Update URL when navigating to a different run
                                         const nextParams = new URLSearchParams(searchParams)
-                                        nextParams.set("runId", run.id)
+                                        nextParams.set("runId", newRunId)
                                         setSearchParams(nextParams, { replace: true })
-                                    } else {
-                                        setOpenDrawerRunId(null)
-                                        setIsDrawerFullscreen(false)
-                                        // Remove runId from URL when drawer closes
-                                        const nextParams = new URLSearchParams(searchParams)
-                                        nextParams.delete("runId")
-                                        setSearchParams(nextParams, { replace: true })
-                                    }
-                                }}
-                                onNavigateToRun={newRunId => {
-                                    setOpenDrawerRunId(newRunId)
-                                    setIsInitialDrawerOpen(false)
-                                    // Update URL when navigating to a different run
-                                    const nextParams = new URLSearchParams(searchParams)
-                                    nextParams.set("runId", newRunId)
-                                    setSearchParams(nextParams, { replace: true })
-                                }}
-                                isFullscreen={isDrawerFullscreen}
-                                onFullscreenChange={setIsDrawerFullscreen}
-                                isInitialOpen={isInitialDrawerOpen}
-                            />
-                        ))}
+                                    }}
+                                    isFullscreen={isDrawerFullscreen}
+                                    onFullscreenChange={setIsDrawerFullscreen}
+                                    isInitialOpen={isInitialDrawerOpen}
+                                />
+                            ))}
+                        </div>
                     </div>
-                </div>
-            )}
+                )}
+            </div>
         </div>
     )
 }
