@@ -5,6 +5,7 @@ import { useRunHistory } from "../../hooks/api/useRunHistory"
 import { RunHistoryRecord, RunHistoryStatus } from "../../shared/RunHistoryTypes"
 
 import RunHistoryEmptyState from "./RunHistoryEmptyState"
+import RunHistoryChatDrawer from "./RunHistoryChatDrawer"
 import RunHistoryItem from "./RunHistoryItem"
 import RunHistoryLoadingState from "./RunHistoryLoadingState"
 import RunHistoryToolBar from "./RunHistoryToolBar"
@@ -53,9 +54,12 @@ export default function RunHistory({ agentId }: RunHistoryProps) {
     useEffect(() => {
         const urlRunId = searchParams.get("runId")
         if (urlRunId && urlRunId !== openDrawerRunId) {
+            const wasClosed = openDrawerRunId === null
             setOpenDrawerRunId(urlRunId)
-            setIsInitialDrawerOpen(true)
-            setIsDrawerFullscreen(false) // Keep drawer partially open when opened via deep link (e.g., from Slack)
+            setIsInitialDrawerOpen(wasClosed)
+            if (wasClosed) {
+                setIsDrawerFullscreen(false) // Keep drawer partially open when opened via deep link (e.g., from Slack)
+            }
         } else if (!urlRunId && openDrawerRunId) {
             // If URL param is removed but drawer is still open, close it
             setOpenDrawerRunId(null)
@@ -111,6 +115,27 @@ export default function RunHistory({ agentId }: RunHistoryProps) {
     const totalPages = Math.ceil(total / runsPerPage) || 1
     const startIndex = (currentPage - 1) * runsPerPage
     const paginatedRuns = filteredRuns // server provides paginated items already
+    const runNumberById = useMemo(() => {
+        const map = new Map<string, number>()
+        remoteRuns.forEach((run, index) => {
+            map.set(run.id, Math.max(total - (startIndex + index), 1))
+        })
+        return map
+    }, [remoteRuns, total, startIndex])
+    const currentDrawerRun = useMemo(() => {
+        if (!openDrawerRunId) {
+            return null
+        }
+        return filteredRuns.find(run => run.id === openDrawerRunId) ?? pinnedRunRef.current
+    }, [filteredRuns, openDrawerRunId])
+    const currentDrawerRunIndex = useMemo(() => {
+        if (!openDrawerRunId) {
+            return undefined
+        }
+        const index = paginatedRuns.findIndex(run => run.id === openDrawerRunId)
+        return index >= 0 ? index : undefined
+    }, [openDrawerRunId, paginatedRuns])
+    const currentDrawerRunNumber = currentDrawerRun ? runNumberById.get(currentDrawerRun.id) : undefined
 
     const toggleStatus = (status: RunHistoryStatus) => {
         const next = new Set(selectedStatuses)
@@ -167,45 +192,62 @@ export default function RunHistory({ agentId }: RunHistoryProps) {
                 ) : (
                     <div className="mb-6">
                         <div className="flex flex-col gap-3 overflow-x-auto pb-3 md:overflow-visible md:pb-0 max-w-full">
-                            {paginatedRuns.map((run, index) => (
+                            {paginatedRuns.map(run => (
                                 <RunHistoryItem
                                     key={run.id}
                                     run={run}
-                                    runs={paginatedRuns}
-                                    currentRunIndex={index}
-                                    isDrawerOpen={openDrawerRunId === run.id}
-                                    onDrawerOpenChange={open => {
-                                        if (open) {
-                                            setIsInitialDrawerOpen(true)
-                                            setOpenDrawerRunId(run.id)
-                                            // Update URL to include runId for deep linking
-                                            const nextParams = new URLSearchParams(searchParams)
-                                            nextParams.set("runId", run.id)
-                                            setSearchParams(nextParams, { replace: true })
-                                        } else {
-                                            setOpenDrawerRunId(null)
-                                            setIsDrawerFullscreen(false)
-                                            // Remove runId from URL when drawer closes
-                                            const nextParams = new URLSearchParams(searchParams)
-                                            nextParams.delete("runId")
-                                            setSearchParams(nextParams, { replace: true })
+                                    runNumber={runNumberById.get(run.id)}
+                                    onViewChat={runId => {
+                                        if (openDrawerRunId === runId) {
+                                            return
                                         }
-                                    }}
-                                    onNavigateToRun={newRunId => {
-                                        setOpenDrawerRunId(newRunId)
-                                        setIsInitialDrawerOpen(false)
-                                        // Update URL when navigating to a different run
+                                        const isSwitchingRuns = openDrawerRunId !== null && openDrawerRunId !== runId
+                                        setIsInitialDrawerOpen(!isSwitchingRuns)
+                                        setOpenDrawerRunId(runId)
+                                        // Update URL to include runId for deep linking
                                         const nextParams = new URLSearchParams(searchParams)
-                                        nextParams.set("runId", newRunId)
+                                        nextParams.set("runId", runId)
                                         setSearchParams(nextParams, { replace: true })
                                     }}
-                                    isFullscreen={isDrawerFullscreen}
-                                    onFullscreenChange={setIsDrawerFullscreen}
-                                    isInitialOpen={isInitialDrawerOpen}
                                 />
                             ))}
                         </div>
                     </div>
+                )}
+                {currentDrawerRun && (
+                    <RunHistoryChatDrawer
+                        runId={currentDrawerRun.id}
+                        runNumber={currentDrawerRunNumber}
+                        isOpen={openDrawerRunId !== null}
+                        onOpenChange={open => {
+                            if (open) {
+                                return
+                            }
+                            setOpenDrawerRunId(null)
+                            setIsDrawerFullscreen(false)
+                            const nextParams = new URLSearchParams(searchParams)
+                            nextParams.delete("runId")
+                            setSearchParams(nextParams, { replace: true })
+                        }}
+                        status={currentDrawerRun.status}
+                        trigger={currentDrawerRun.trigger}
+                        filtered={currentDrawerRun.filtered}
+                        runs={paginatedRuns}
+                        currentRunIndex={currentDrawerRunIndex}
+                        onNavigate={newRunId => {
+                            if (openDrawerRunId === newRunId) {
+                                return
+                            }
+                            setOpenDrawerRunId(newRunId)
+                            setIsInitialDrawerOpen(false)
+                            const nextParams = new URLSearchParams(searchParams)
+                            nextParams.set("runId", newRunId)
+                            setSearchParams(nextParams, { replace: true })
+                        }}
+                        isFullscreen={isDrawerFullscreen}
+                        onFullscreenChange={setIsDrawerFullscreen}
+                        isInitialOpen={isInitialDrawerOpen}
+                    />
                 )}
             </div>
         </div>

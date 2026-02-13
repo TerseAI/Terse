@@ -5,11 +5,12 @@ import type { RunHistoryRecord } from "../../../shared/RunHistoryTypes"
 
 type Props = {
     run: RunHistoryRecord
+    runNumber?: number
     formattedTimestamp: string
     onCopy: (text: string) => void
 }
 
-export default function RunHistoryItemHeader({ run, formattedTimestamp, onCopy }: Props) {
+export default function RunHistoryItemHeader({ run, runNumber, formattedTimestamp, onCopy }: Props) {
     const title = run.trigger.title || run.trigger.source
 
     return (
@@ -20,6 +21,7 @@ export default function RunHistoryItemHeader({ run, formattedTimestamp, onCopy }
                 </div>
                 <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
+                        {runNumber !== undefined && <span className="flex-shrink-0 text-xs font-medium text-muted-foreground">{runNumber}</span>}
                         <span className="text-foreground truncate no-underline hover:no-underline" title={title}>
                             {title}
                         </span>
@@ -41,12 +43,9 @@ export default function RunHistoryItemHeader({ run, formattedTimestamp, onCopy }
                     </div>
                     <div className="flex items-center gap-2 text-muted-foreground no-underline hover:no-underline">
                         {run.trigger.subheader && (
-                            <>
-                                <span className="truncate no-underline hover:no-underline" title={run.trigger.subheader}>
-                                    {run.trigger.subheader}
-                                </span>
-                                <span className="no-underline hover:no-underline">•</span>
-                            </>
+                            <span className="truncate no-underline hover:no-underline" title={run.trigger.subheader}>
+                                {run.trigger.subheader}
+                            </span>
                         )}
                         <span className="flex-shrink-0 no-underline hover:no-underline">{formattedTimestamp}</span>
                     </div>

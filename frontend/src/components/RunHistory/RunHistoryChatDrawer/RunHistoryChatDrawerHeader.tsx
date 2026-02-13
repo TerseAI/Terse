@@ -9,6 +9,7 @@ import RunHistoryStatusBadge from "../RunHistoryStatusBadge"
 
 type Props = {
     trigger: RunHistoryTrigger
+    runNumber?: number
     status: RunHistoryStatus
     filtered: boolean
     runs?: RunHistoryRecord[]
@@ -18,7 +19,7 @@ type Props = {
     onFullscreenChange: (fullscreen: boolean) => void
 }
 
-export default function RunHistoryChatDrawerHeader({ trigger, status, filtered, runs, currentRunIndex, onNavigate, isFullscreen, onFullscreenChange }: Props) {
+export default function RunHistoryChatDrawerHeader({ trigger, runNumber, status, filtered, runs, currentRunIndex, onNavigate, isFullscreen, onFullscreenChange }: Props) {
     const canGoPrevious = runs && currentRunIndex !== undefined && currentRunIndex > 0
     const canGoNext = runs && currentRunIndex !== undefined && currentRunIndex < runs.length - 1
 
@@ -47,6 +48,7 @@ export default function RunHistoryChatDrawerHeader({ trigger, status, filtered, 
                     </div>
                     <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
+                            {runNumber !== undefined && <span className="flex-shrink-0 text-xs font-medium text-muted-foreground">{runNumber}</span>}
                             <span className="text-base font-semibold truncate" title={trigger.title || trigger.source}>
                                 {trigger.title || trigger.source}
                             </span>

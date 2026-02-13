@@ -4,44 +4,19 @@ import { Button } from "@/components/ui/button"
 import { formatTimestamp } from "@/utility/timeUtils"
 
 import { RunHistoryRecord } from "../../../shared/RunHistoryTypes"
-import RunHistoryChatDrawer from "../RunHistoryChatDrawer"
 import RunHistoryStatusBadge from "../RunHistoryStatusBadge"
 
 import RunHistoryItemHeader from "./RunHistoryItemHeader"
 
 type Props = {
     run: RunHistoryRecord
-    runs?: RunHistoryRecord[]
-    currentRunIndex?: number
-    isDrawerOpen?: boolean
-    onDrawerOpenChange?: (open: boolean) => void
-    onNavigateToRun?: (runId: string) => void
-    isFullscreen?: boolean
-    onFullscreenChange?: (fullscreen: boolean) => void
-    isInitialOpen?: boolean
+    runNumber?: number
+    onViewChat?: (runId: string) => void
 }
 
-export default function RunHistoryItem({
-    run,
-    runs,
-    currentRunIndex,
-    isDrawerOpen = false,
-    onDrawerOpenChange,
-    onNavigateToRun,
-    isFullscreen = false,
-    onFullscreenChange,
-    isInitialOpen = true
-}: Props) {
+export default function RunHistoryItem({ run, runNumber, onViewChat }: Props) {
     const handleDrawerOpen = () => {
-        if (onDrawerOpenChange) {
-            onDrawerOpenChange(true)
-        }
-    }
-
-    const handleDrawerClose = (open: boolean) => {
-        if (onDrawerOpenChange) {
-            onDrawerOpenChange(open)
-        }
+        onViewChat?.(run.id)
     }
 
     const copyToClipboard = (text: string) => {
@@ -54,7 +29,7 @@ export default function RunHistoryItem({
         <div className="overflow-hidden bg-card border border-border rounded-lg md:mb-3 min-w-[640px] md:min-w-0 shrink-0 md:shrink">
             <div className="flex flex-col gap-3 px-4 py-3 md:flex-row md:items-center md:gap-4">
                 <div className="min-w-0 flex-1">
-                    <RunHistoryItemHeader run={run} formattedTimestamp={formatTimestamp(run.timestamp)} onCopy={copyToClipboard} />
+                    <RunHistoryItemHeader run={run} runNumber={runNumber} formattedTimestamp={formatTimestamp(run.timestamp)} onCopy={copyToClipboard} />
                 </div>
                 <div className="flex items-center gap-3 md:ml-auto shrink-0">
                     <RunHistoryStatusBadge status={run.status} filtered={run.filtered} />
@@ -63,24 +38,6 @@ export default function RunHistoryItem({
                     </Button>
                 </div>
             </div>
-            <RunHistoryChatDrawer
-                runId={run.id}
-                isOpen={isDrawerOpen}
-                onOpenChange={handleDrawerClose}
-                status={run.status}
-                trigger={run.trigger}
-                filtered={run.filtered}
-                runs={runs}
-                currentRunIndex={currentRunIndex}
-                onNavigate={newRunId => {
-                    if (onNavigateToRun) {
-                        onNavigateToRun(newRunId)
-                    }
-                }}
-                isFullscreen={isFullscreen}
-                onFullscreenChange={onFullscreenChange}
-                isInitialOpen={isInitialOpen}
-            />
         </div>
     )
 }

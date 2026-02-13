@@ -12,6 +12,7 @@ type Props = {
     runId: string
     isOpen: boolean
     onOpenChange: (open: boolean) => void
+    runNumber?: number
     status: RunHistoryStatus
     trigger: RunHistoryTrigger
     filtered: boolean
@@ -27,6 +28,7 @@ export default function RunHistoryChatDrawer({
     runId,
     isOpen,
     onOpenChange,
+    runNumber,
     status,
     trigger,
     filtered,
@@ -38,24 +40,33 @@ export default function RunHistoryChatDrawer({
     isInitialOpen = true
 }: Props) {
     const [internalFullscreen, setInternalFullscreen] = useState(false)
-    const prevRunIdRef = useRef<string | null>(null)
     const chatRef = useRef<ChatHandle>(null)
+    const wasOpenRef = useRef(false)
+    const scrollTimeoutRef = useRef<number | null>(null)
 
     const isFullscreen = onFullscreenChange ? externalIsFullscreen : internalFullscreen
-    const isActuallyInitialOpen = isInitialOpen && (prevRunIdRef.current === null || prevRunIdRef.current !== runId)
 
     useEffect(() => {
-        if (isOpen) {
-            prevRunIdRef.current = runId
+        if (scrollTimeoutRef.current !== null) {
+            window.clearTimeout(scrollTimeoutRef.current)
+            scrollTimeoutRef.current = null
+        }
+
+        if (isOpen && !wasOpenRef.current) {
             // Scroll to bottom when drawer opens (with small delay for content to render)
-            const timeoutId = setTimeout(() => {
+            scrollTimeoutRef.current = window.setTimeout(() => {
                 chatRef.current?.scrollToBottom()
             }, 300)
-            return () => clearTimeout(timeoutId)
-        } else {
-            prevRunIdRef.current = null
         }
-    }, [runId, isOpen])
+        wasOpenRef.current = isOpen
+
+        return () => {
+            if (scrollTimeoutRef.current !== null) {
+                window.clearTimeout(scrollTimeoutRef.current)
+                scrollTimeoutRef.current = null
+            }
+        }
+    }, [isOpen])
 
     const handleFullscreenChange = (fullscreen: boolean) => {
         if (onFullscreenChange) {
@@ -66,12 +77,12 @@ export default function RunHistoryChatDrawer({
     }
 
     return (
-        <Drawer open={isOpen} onOpenChange={onOpenChange} direction="right" shouldScaleBackground={isActuallyInitialOpen}>
+        <Drawer open={isOpen} onOpenChange={onOpenChange} direction="right" shouldScaleBackground={isInitialOpen}>
             <DrawerContent
                 className={cn(
                     "flex flex-col overflow-hidden",
                     isFullscreen ? "!w-screen !h-screen !max-w-none !max-h-none !rounded-none !m-0" : "!w-full sm:!w-[600px] md:!w-[700px] lg:!w-[800px] !max-w-[100vw] h-full",
-                    !isActuallyInitialOpen && "[&[data-state=open]]:!animate-none [&[data-state=closed]]:!animate-none [&+*]:!animate-none"
+                    !isInitialOpen && "[&[data-state=open]]:!animate-none [&[data-state=closed]]:!animate-none [&+*]:!animate-none"
                 )}
             >
                 {isOpen && (
@@ -83,6 +94,7 @@ export default function RunHistoryChatDrawer({
                                 <>
                                     <RunHistoryChatDrawerHeader
                                         trigger={trigger}
+                                        runNumber={runNumber}
                                         status={currentStatus}
                                         filtered={isFiltered || filtered}
                                         runs={runs}
