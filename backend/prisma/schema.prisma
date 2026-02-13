@@ -873,6 +873,8 @@ model run_history_records {
   trigger_title       String?
   trigger_subheader   String?
   trigger_url         String?
+  // Whether this run was manually triggered (from builder chat or Trigger Now button)
+  is_manually_triggered Boolean                @default(false)
   // Whether this item was filtered out by rules before action
   filtered            Boolean                  @default(false)
   // Decision summary

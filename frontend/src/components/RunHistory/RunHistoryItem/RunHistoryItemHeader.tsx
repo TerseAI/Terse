@@ -46,6 +46,9 @@ export default function RunHistoryItemHeader({ run, formattedTimestamp, onCopy }
                             </span>
                         )}
                         <span className="flex-shrink-0 no-underline hover:no-underline">{formattedTimestamp}</span>
+                        {run.isManuallyTriggered && (
+                            <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground flex-shrink-0 text-yellow-500">Manual</span>
+                        )}
                     </div>
                 </div>
             </div>

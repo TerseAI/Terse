@@ -324,7 +324,7 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
                     resolvedEntityId = timeTriggerInput.id
                 }
 
-                const eventProcessor = new EventProcessor(inputEvent, user)
+                const eventProcessor = new EventProcessor(inputEvent, user, { isManuallyTriggered: true })
                 const triggeredRun = await eventProcessor.triggerSingleAgent(agentId)
                 const runHistoryPath = FrontendRoutes.AGENTS.RUN_HISTORY(triggeredRun.agentId, triggeredRun.runId)
 

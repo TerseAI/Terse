@@ -51,10 +51,12 @@ export class ProcessorResult<T extends Session = SessionWithTracking<Session>> {
 export class EventProcessor {
     private inputEvent: InputEvent
     private user: User
+    private isManuallyTriggered: boolean
 
-    constructor(inputEvent: InputEvent, user: User) {
+    constructor(inputEvent: InputEvent, user: User, options?: { isManuallyTriggered?: boolean }) {
         this.inputEvent = inputEvent
         this.user = user
+        this.isManuallyTriggered = options?.isManuallyTriggered ?? false
     }
 
     async process(): Promise<ProcessorResult[]> {
@@ -195,7 +197,8 @@ export class EventProcessor {
         const trigger = this.inputEvent.createTriggerMetadata()
         const runId = await createRunRecord({
             agentId: agent.id,
-            trigger
+            trigger,
+            isManuallyTriggered: this.isManuallyTriggered
         })
         emitCacheInvalidationWithWildcard(this.user.organizationId, "runHistory", agent.id)
         emitCacheInvalidationWithKey(this.user.organizationId, "recentAgents")
