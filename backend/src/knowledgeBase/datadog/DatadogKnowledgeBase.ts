@@ -87,11 +87,6 @@ export class DatadogKnowledgeBase extends KnowledgeBase<DatadogConfig> {
             throw new Error(`Datadog integration not found: ${knowledgeBase.integrationId}`)
         }
 
-        // Validate that the integration belongs to the user
-        if (integration.user_id !== userId) {
-            throw new Error(`Datadog integration does not belong to user: ${userId}`)
-        }
-
         // Validate that defaultIndexes is a valid array
         if (knowledgeBase.defaultIndexes && !Array.isArray(knowledgeBase.defaultIndexes)) {
             throw new Error("Datadog config defaultIndexes must be an array")
