@@ -40,8 +40,8 @@ export const searchSessionsTool = tool({
         if (!runContext?.context) {
             throw new Error("No context provided")
         }
-
-        const posthogApiKey = await getPosthogApiKeyByIntegrationId(integrationId, runContext.context.user.id)
+        const user = runContext.context.user
+        const posthogApiKey = await getPosthogApiKeyByIntegrationId(integrationId, user)
         if (!posthogApiKey) {
             throw new Error(`PostHog integration not found or access denied for integrationId: ${integrationId}`)
         }

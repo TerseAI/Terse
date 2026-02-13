@@ -138,8 +138,8 @@ This tool returns the current state of the Confluence page including all metadat
         }
 
         const manager = new AtlassianClient()
-        const userId = runContext.context.user.id
-        const accessToken = await manager.getAccessToken(integrationId, userId)
+        const user = runContext.context.user
+        const accessToken = await manager.getAccessToken(integrationId)
         if (!accessToken) {
             throw new Error(`Atlassian integration not found or access denied for integrationId: ${integrationId}`)
         }
@@ -247,8 +247,8 @@ To find the correct position, first call confluence_query_page to see the page c
         }
 
         const manager = new AtlassianClient()
-        const userId = runContext.context.user.id
-        const accessToken = await manager.getAccessToken(integrationId, userId)
+        const user = runContext.context.user
+        const accessToken = await manager.getAccessToken(integrationId)
         if (!accessToken) {
             throw new Error(`Atlassian integration not found or access denied for integrationId: ${integrationId}`)
         }

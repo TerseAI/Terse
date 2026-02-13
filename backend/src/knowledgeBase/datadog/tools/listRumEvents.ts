@@ -33,8 +33,8 @@ export const listRumEventsTool = tool({
         if (!runContext?.context) {
             throw new Error("No context provided")
         }
-
-        const credentials = await getDatadogCredentialsByIntegrationId(integrationId, runContext.context.user.id)
+        const user = runContext.context.user
+        const credentials = await getDatadogCredentialsByIntegrationId(integrationId, user)
         if (!credentials) {
             throw new Error(`Datadog integration not found or access denied for integrationId: ${integrationId}`)
         }

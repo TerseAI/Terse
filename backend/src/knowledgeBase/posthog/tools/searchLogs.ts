@@ -61,8 +61,8 @@ export const searchLogsTool = tool({
         if (!hasUserFilter && !hasSeverityFilter && !hasMessageFilter) {
             throw new Error("At least one filter must be provided: userEmail, severityLevels, or messageSearch.")
         }
-
-        const posthogApiKey = await getPosthogApiKeyByIntegrationId(integrationId, runContext.context.user.id)
+        const user = runContext.context.user
+        const posthogApiKey = await getPosthogApiKeyByIntegrationId(integrationId, user)
         if (!posthogApiKey) {
             throw new Error(`PostHog integration not found or access denied for integrationId: ${integrationId}`)
         }
