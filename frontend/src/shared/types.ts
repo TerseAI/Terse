@@ -5,6 +5,11 @@ import { Project, Ticket } from "./TicketSystem"
 
 export type Role = "admin" | "user"
 
+export type Impersonator = {
+    email: string
+    reason: string | null
+}
+
 export type User = {
     id: string
     workosId: string
@@ -16,6 +21,7 @@ export type User = {
     lastName: string | null
     displayPhotoUrl: string
     roles: Role[]
+    impersonator?: Impersonator
 }
 
 export type UserNoOrganization = Omit<User, "organizationId" | "organizationName" | "roles">

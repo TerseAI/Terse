@@ -80,7 +80,8 @@ export async function me(req: Request, res: Response) {
             displayName: workOSUser.firstName + " " + workOSUser.lastName,
             firstName: workOSUser.firstName || null,
             lastName: workOSUser.lastName || null,
-            displayPhotoUrl: workOSUser.profilePictureUrl || ""
+            displayPhotoUrl: workOSUser.profilePictureUrl || "",
+            impersonator: user.impersonator
         }
 
         logger.info("[/me] Returning refreshed user", {
@@ -387,7 +388,8 @@ export async function getOrCreateDbUserFromWorkOS(authResult: AuthenticateWithSe
         firstName: workosUser.firstName || null,
         lastName: workosUser.lastName || null,
         displayPhotoUrl: workosUser.profilePictureUrl || "",
-        roles: roles as Role[]
+        roles: roles as Role[],
+        impersonator: authResult.impersonator
     }
 }
 
