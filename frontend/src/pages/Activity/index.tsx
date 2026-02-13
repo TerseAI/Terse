@@ -137,7 +137,11 @@ export default function ActivityPage() {
 
     const toggleStatus = (status: RunHistoryStatus) => {
         const next = new Set(selectedStatuses)
-        next.has(status) ? next.delete(status) : next.add(status)
+        if (next.has(status)) {
+            next.delete(status)
+        } else {
+            next.add(status)
+        }
         setSelectedStatuses(next)
         setCurrentPage(1)
     }
@@ -182,13 +186,13 @@ export default function ActivityPage() {
             {/* ── Header ──────────────────────────────────────────── */}
             <div className="mb-8">
                 <h1 className="text-2xl font-semibold text-foreground tracking-tight">Activity</h1>
-                <p className="text-muted-foreground mt-1 text-sm">All events processed across your agents.</p>
+                <p className="text-muted-foreground mt-1 text-sm">A complete record of activity across your agents.</p>
             </div>
 
             {/* ── Toolbar ─────────────────────────────────────────── */}
             <div className="space-y-4 mb-6">
                 <div className="flex items-center justify-between gap-4">
-                    <SearchBar searchQuery={searchQuery} onSearchChange={handleSearchChange} placeholder="Search events, agents..." className="max-w-sm" />
+                    <SearchBar searchQuery={searchQuery} onSearchChange={handleSearchChange} placeholder="Search by event or agent name..." className="max-w-sm" />
 
                     <div className="flex items-center gap-3">
                         <DateRangePicker
