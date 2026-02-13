@@ -13,7 +13,7 @@ export default function RunHistoryItemHeader({ run, formattedTimestamp, onCopy }
     const title = run.trigger.title || run.trigger.source
 
     return (
-        <div className="group w-full no-underline hover:no-underline">
+        <div className="group min-w-0 no-underline hover:no-underline">
             <div className="flex items-start gap-3">
                 <div className="text-muted-foreground size-4 flex-shrink-0 mt-1">
                     <IconForIntegration integration={run.trigger.integration} />

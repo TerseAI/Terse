@@ -399,8 +399,8 @@ export default function AgentSetupTab({
     donate("Agent Set Up Page Context", new AgentSetUpPageContext(activeSection))
 
     return (
-        <div className="grid grid-cols-20 h-full">
-            <div className="flex flex-col h-full min-h-0 col-span-20">
+        <div className="grid grid-cols-20">
+            <div className="flex flex-col col-span-20">
                 {/* Header */}
                 <div className="border-b border-border px-6 py-4">
                     <div className="flex items-center justify-between gap-4">
@@ -448,13 +448,13 @@ export default function AgentSetupTab({
 
                 {/* Builder Steps - Horizontal flow */}
                 <div className="border-b border-border px-6 py-4 bg-muted/30">
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                         {steps.map((step, index) => {
                             const isActive = activeSection === step.id
                             const StepIcon = step.icon
 
                             return (
-                                <div key={step.id} className="flex items-center">
+                                <div key={step.id} className="flex items-center shrink-0">
                                     <button
                                         onClick={() => setActiveSection(step.id)}
                                         className={cn(
@@ -487,71 +487,71 @@ export default function AgentSetupTab({
                             )
                         })}
 
-                        {/* Separator */}
-                        <div className="w-px h-8 bg-border mx-2" />
+                        <div className="flex items-center gap-2 shrink-0">
+                            {/* Separator */}
+                            <div className="w-px h-8 bg-border mx-1" />
 
-                        {/* Optional sections */}
-                        <button
-                            onClick={() => setActiveSection("knowledgeBase")}
-                            className={cn(
-                                "flex items-center gap-2 px-3 py-2 rounded-lg text-sm border transition-colors",
-                                activeSection === "knowledgeBase"
-                                    ? "bg-background border-border shadow-sm text-foreground"
-                                    : "border-transparent text-muted-foreground hover:bg-background/50 hover:text-foreground"
-                            )}
-                        >
-                            <Database className="w-4 h-4" />
-                            <span>Knowledge</span>
-                            {knowledgeBases.length > 0 && (
-                                <Badge variant="secondary" className="ml-1 text-xs px-1.5 py-0">
-                                    {knowledgeBases.length}
-                                </Badge>
-                            )}
-                        </button>
-                        <button
-                            onClick={() => setActiveSection("alerts")}
-                            className={cn(
-                                "flex items-center gap-2 px-3 py-2 rounded-lg text-sm border transition-colors",
-                                activeSection === "alerts"
-                                    ? "bg-background border-border shadow-sm text-foreground"
-                                    : "border-transparent text-muted-foreground hover:bg-background/50 hover:text-foreground"
-                            )}
-                        >
-                            <Bell className="w-4 h-4" />
-                            <span>Alerts</span>
-                        </button>
+                            {/* Optional sections */}
+                            <button
+                                onClick={() => setActiveSection("knowledgeBase")}
+                                className={cn(
+                                    "flex items-center gap-2 px-3 py-2 rounded-lg text-sm border transition-colors",
+                                    activeSection === "knowledgeBase"
+                                        ? "bg-background border-border shadow-sm text-foreground"
+                                        : "border-transparent text-muted-foreground hover:bg-background/50 hover:text-foreground"
+                                )}
+                            >
+                                <Database className="w-4 h-4" />
+                                <span>Knowledge</span>
+                                {knowledgeBases.length > 0 && (
+                                    <Badge variant="secondary" className="ml-1 text-xs px-1.5 py-0">
+                                        {knowledgeBases.length}
+                                    </Badge>
+                                )}
+                            </button>
+                            <button
+                                onClick={() => setActiveSection("alerts")}
+                                className={cn(
+                                    "flex items-center gap-2 px-3 py-2 rounded-lg text-sm border transition-colors",
+                                    activeSection === "alerts"
+                                        ? "bg-background border-border shadow-sm text-foreground"
+                                        : "border-transparent text-muted-foreground hover:bg-background/50 hover:text-foreground"
+                                )}
+                            >
+                                <Bell className="w-4 h-4" />
+                                <span>Alerts</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
 
                 {/* Main Content */}
-                <div className="flex-1 min-h-0 overflow-y-auto">
-                    <div className="p-6 max-w-4xl">
-                        <div className={activeSection === "triggers" ? "block" : "hidden"}>
-                            <InputLayout inputs={inputs} setInputs={setInputs} isIncomplete={triggersIncomplete} />
-                        </div>
+                <div className="p-6 max-w-4xl">
+                    <div className={activeSection === "triggers" ? "block" : "hidden"}>
+                        <InputLayout inputs={inputs} setInputs={setInputs} isIncomplete={triggersIncomplete} />
+                    </div>
 
-                        <div className={activeSection === "knowledgeBase" ? "block" : "hidden"}>
-                            <KnowledgeBaseLayout knowledgeBases={knowledgeBases} setKnowledgeBases={setKnowledgeBases} />
-                        </div>
+                    <div className={activeSection === "knowledgeBase" ? "block" : "hidden"}>
+                        <KnowledgeBaseLayout knowledgeBases={knowledgeBases} setKnowledgeBases={setKnowledgeBases} />
+                    </div>
 
-                        <div className={activeSection === "prompt" ? "block" : "hidden"}>
-                            <div className="h-[calc(100vh-16rem)] min-h-[420px]">
-                                <InstructionsEditor prompt={prompt} setPrompt={setPrompt} />
-                            </div>
+                    <div className={activeSection === "prompt" ? "block" : "hidden"}>
+                        <div className="h-[calc(100vh-16rem)] min-h-[420px]">
+                            <InstructionsEditor prompt={prompt} setPrompt={setPrompt} />
                         </div>
+                    </div>
 
-                        <div className={activeSection === "skills" ? "block" : "hidden"}>
-                            <OutputLayout outputs={outputs} setOutputs={setOutputs} isIncomplete={skillsIncomplete} />
-                        </div>
+                    <div className={activeSection === "skills" ? "block" : "hidden"}>
+                        <OutputLayout outputs={outputs} setOutputs={setOutputs} isIncomplete={skillsIncomplete} />
+                    </div>
 
-                        <div className={cn(activeSection === "alerts" ? "block" : "hidden", "space-y-6")}>
-                            <div>
-                                <h2 className="text-lg font-medium mb-1">Alerts & Approval</h2>
-                                <p className="text-sm text-muted-foreground mb-4">Configure when you want to be notified and whether actions need your approval.</p>
-                            </div>
-                            <AgentApprovalSettings outputs={outputs} knowledgeBases={knowledgeBases} toolApprovals={toolApprovals} onToolApprovalsChange={setToolApprovals} />
-                            <AgentNotificationSettings settings={notificationSettings} onChange={setNotificationSettings} />
+                    <div className={cn(activeSection === "alerts" ? "block" : "hidden", "space-y-6")}>
+                        <div>
+                            <h2 className="text-lg font-medium mb-1">Alerts & Approval</h2>
+                            <p className="text-sm text-muted-foreground mb-4">Configure when you want to be notified and whether actions need your approval.</p>
                         </div>
+                        <AgentApprovalSettings outputs={outputs} knowledgeBases={knowledgeBases} toolApprovals={toolApprovals} onToolApprovalsChange={setToolApprovals} />
+                        <AgentNotificationSettings settings={notificationSettings} onChange={setNotificationSettings} />
                     </div>
                 </div>
             </div>
