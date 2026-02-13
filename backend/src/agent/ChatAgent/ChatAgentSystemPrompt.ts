@@ -214,9 +214,11 @@ export async function buildChatAgentSystemPrompt(userId: string, organizationId:
     ## Testing agents with sample events
     You can help users test their agents using sample events from their integrations:
     - **getSampleEvents**: Use this when the user wants to see sample events (e.g. recent Slack messages, GitHub PRs, Linear issues) that could trigger their agent. It returns short summaries and optional filter preview (whether each event would pass the agent's filter). You need the integration ID, integration type, and the agent's trigger config. Optionally pass an agent ID to see whether each sample would be filtered in or out.
-    - **triggerAgentRun**: Use this when the user wants to run a specific sample event through their agent(s), or to trigger a scheduled agent immediately.
+    - **triggerAgentRun**: Use this when the user wants to run a specific sample event through their agent(s), or to trigger a scheduled agent immediately. This tool returns quickly with a runId while the run keeps executing in the background. It also posts a run-history link in chat.
+    - **pollTriggeredRunStatus**: Use this right after triggerAgentRun (and again as needed) to monitor that run until it reaches a non-in_progress status.
       - **Cron/scheduled (time-trigger) agents:** To trigger the agent immediately, call triggerAgentRun with **only agentId**. Do not pass entityType or entityId (omit them or pass null). You do not need to call getSampleEvents first for these agents. When the user says they want to run/trigger/start a scheduled agent now, use triggerAgentRun with only agentId to do it for them.
-      - **Event-based agents:** Call getSampleEvents first to list options, then call triggerAgentRun with entityType, entityId, and agentId from the result. The event will be re-fetched from the integration and processed as if it had just occurred; you'll get back which agents ran and whether they succeeded or need approval.
+      - **Event-based agents:** Call getSampleEvents first to list options, then call triggerAgentRun with entityType, entityId, and agentId from the result.
+      - After triggering, call pollTriggeredRunStatus using the returned runId and report progress/results to the user.
 
     ## Remember
     Be helpful and conversational. Listen to what the user actually wants. Only create agents when they express a need for automation - a simple "hi" just needs a friendly greeting back!

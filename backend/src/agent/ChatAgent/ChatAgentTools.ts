@@ -269,7 +269,7 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
         tool({
             name: "triggerAgentRun",
             description:
-                "For cron/time trigger agents: call with only agentId (omit or pass null for entityType and entityId) to trigger the agent immediately. For event-based triggers, use entityType and entityId from getSampleEvents.",
+                "For cron/time trigger agents: call with only agentId (omit or pass null for entityType and entityId) to trigger the agent immediately. For event-based triggers, use entityType and entityId from getSampleEvents. This returns quickly with runId while the run continues in the background.",
             parameters: z.object({
                 entityType: z.nativeEnum(HydratorType).nullable().describe("The entity type from getSampleEvents. Not needed for cron/time trigger agents."),
                 entityId: z.string().nullable().describe("The entity ID from getSampleEvents. Not needed for cron/time trigger agents."),
@@ -323,26 +323,17 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
                 }
 
                 const eventProcessor = new EventProcessor(inputEvent, user)
-                const processResults = await eventProcessor.processSingleAgent(agentId)
-                logger.info("[triggerAgentRun] EventProcessor finished", {
+                const triggeredRun = await eventProcessor.triggerSingleAgent(agentId)
+                const runHistoryPath = FrontendRoutes.AGENTS.RUN_HISTORY(triggeredRun.agentId, triggeredRun.runId)
+
+                await chatInterface.buildButton("See progress", runHistoryPath)
+
+                logger.info("[triggerAgentRun] Triggered run", {
                     entityType: resolvedEntityType,
                     entityId: resolvedEntityId,
-                    resultCount: processResults.length,
-                    results: processResults.map(r => ({
-                        agentId: r.agentConfig?.id,
-                        agentName: r.agentConfig?.name,
-                        success: r.success,
-                        requiresApproval: r.approvalResult?.status === "awaiting_approval"
-                    }))
+                    runId: triggeredRun.runId,
+                    agentId: triggeredRun.agentId
                 })
-
-                const formattedResults = processResults.map(r => ({
-                    agentId: r.agentConfig?.id ?? null,
-                    agentName: r.agentConfig?.name ?? null,
-                    success: r.success,
-                    message: r.message,
-                    requiresApproval: r.approvalResult?.status === "awaiting_approval"
-                }))
 
                 logger.info("[triggerAgentRun] Completed", {
                     entityType: resolvedEntityType,
@@ -350,13 +341,90 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
                 })
                 return JSON.stringify({
                     processed: true,
+                    triggered: true,
                     entityType: resolvedEntityType,
                     entityId: resolvedEntityId,
-                    results: formattedResults
+                    runId: triggeredRun.runId,
+                    agentId: triggeredRun.agentId,
+                    agentName: triggeredRun.agentName,
+                    status: "in_progress",
+                    runHistoryPath
+                })
+            }
+        }),
+        tool({
+            name: "pollTriggeredRunStatus",
+            description: "Polls a previously triggered run until it leaves in_progress or until maxWaitMs is reached. Use this after triggerAgentRun to track completion in chat.",
+            parameters: z.object({
+                runId: z.string().describe("Run ID returned by triggerAgentRun."),
+                maxWaitMs: z.number().int().min(0).max(120000).optional().default(30000).describe("Maximum total time to poll before returning."),
+                pollIntervalMs: z.number().int().min(250).max(5000).optional().default(1000).describe("Delay between status checks while run is in progress.")
+            }),
+            execute: async ({ runId, maxWaitMs = 30000, pollIntervalMs = 1000 }, runContext?: RunContext<ChatAgentContext>): Promise<string> => {
+                const user = runContext?.context.user
+                if (!user) {
+                    throw new Error("User is required to poll run status")
+                }
+
+                const startTime = Date.now()
+                let runRecord = await db().run_history_records.findFirst({
+                    where: {
+                        id: runId,
+                        automation: { organization_id: user.organizationId }
+                    },
+                    include: {
+                        automation: {
+                            select: { name: true }
+                        }
+                    }
+                })
+
+                if (!runRecord) {
+                    throw new Error(`Run ${runId} not found`)
+                }
+
+                while (runRecord.status === "in_progress" && Date.now() - startTime < maxWaitMs) {
+                    await sleep(pollIntervalMs)
+                    const nextRecord = await db().run_history_records.findFirst({
+                        where: {
+                            id: runId,
+                            automation: { organization_id: user.organizationId }
+                        },
+                        include: {
+                            automation: {
+                                select: { name: true }
+                            }
+                        }
+                    })
+                    if (!nextRecord) {
+                        throw new Error(`Run ${runId} not found`)
+                    }
+                    runRecord = nextRecord
+                }
+
+                const isComplete = runRecord.status !== "in_progress"
+                const timedOut = !isComplete
+                const runHistoryPath = FrontendRoutes.AGENTS.RUN_HISTORY(runRecord.automation_id, runRecord.id)
+
+                return JSON.stringify({
+                    runId: runRecord.id,
+                    agentId: runRecord.automation_id,
+                    agentName: runRecord.automation.name,
+                    status: runRecord.status,
+                    filtered: runRecord.filtered,
+                    decisionReason: runRecord.decision_reason || null,
+                    updatedAt: runRecord.updated_at.toISOString(),
+                    isComplete,
+                    timedOut,
+                    runHistoryPath
                 })
             }
         })
     ]
+}
+
+function sleep(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms))
 }
 
 const NonEmptyString = z.string().min(1)

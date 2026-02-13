@@ -7,9 +7,11 @@ import { Clock, MessageSquare, PanelRightIcon, Settings, X } from "lucide-react"
 import BreadCrumb from "../../components/BreadCrumb"
 import { BuilderChat } from "../../components/chat/BuilderChat"
 import { Button } from "../../components/ui/button"
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "../../components/ui/sheet"
 import { SidebarTrigger } from "../../components/ui/sidebar"
 import { useAgent } from "../../hooks/api/useAgents"
 import { useTemplates } from "../../hooks/api/useTemplates"
+import { useIsMobile } from "../../hooks/use-mobile"
 import { useTemplateHydration } from "../../hooks/useTemplateHydration"
 import { cn } from "../../lib/utils"
 import { useModelContext } from "../../services/ModelContextProvider"
@@ -22,7 +24,8 @@ import AgentSetupTab, { AgentSetupTabProps } from "./tabs/AgentSetupTab"
 
 const CHAT_PANEL_WIDTH_MIN = 0.2
 const CHAT_PANEL_WIDTH_MAX = 0.6
-const CHAT_PANEL_WIDTH_DEFAULT = 0.3
+const CHAT_PANEL_WIDTH_DEFAULT = CHAT_PANEL_WIDTH_MIN
+const AGENT_DETAIL_TABS = ["setup", "history"] as const
 
 function ChatSidebarTrigger({ className, onClick, icon: Icon = PanelRightIcon, ...props }: React.ComponentProps<typeof Button> & { icon?: React.ComponentType<{ className?: string }> }) {
     return (
@@ -204,6 +207,7 @@ function AgentDetail() {
     const [isChatPaneResizing, setIsChatPaneResizing] = useState(false)
     const layoutContainerRef = useRef<HTMLDivElement>(null)
     const chatPaneId = useId()
+    const isMobile = useIsMobile()
 
     // Cmd+I (Ctrl+I on Windows) toggles the builder chat panel
     useEffect(() => {
@@ -222,6 +226,12 @@ function AgentDetail() {
             setIsChatPaneResizing(false)
         }
     }, [builderChatOpen])
+
+    useEffect(() => {
+        if (isMobile) {
+            setIsChatPaneResizing(false)
+        }
+    }, [isMobile])
 
     // Only pass agentId if it's not "new"
     const agentId: string | null = id && id !== "new" ? id : null
@@ -299,16 +309,15 @@ function AgentDetail() {
         }
     }, [agent, agentId, templateId, templateFound, templateHydratedState, templateHydrated])
 
-    const tabs = ["setup", "history"] as const
     const tabFromQuery = searchParams.get("tab")
     const [selectedIndex, setSelectedIndex] = useState(() => {
-        return Math.max(0, tabs.indexOf((tabFromQuery as (typeof tabs)[number]) || "setup"))
+        return Math.max(0, AGENT_DETAIL_TABS.indexOf((tabFromQuery as (typeof AGENT_DETAIL_TABS)[number]) || "setup"))
     })
 
     // Update selected index when URL changes
     useEffect(() => {
         const tabFromQuery = searchParams.get("tab")
-        const newIndex = Math.max(0, tabs.indexOf((tabFromQuery as (typeof tabs)[number]) || "setup"))
+        const newIndex = Math.max(0, AGENT_DETAIL_TABS.indexOf((tabFromQuery as (typeof AGENT_DETAIL_TABS)[number]) || "setup"))
         setSelectedIndex(newIndex)
     }, [searchParams])
 
@@ -354,17 +363,19 @@ function AgentDetail() {
     return (
         <div ref={layoutContainerRef} className="flex h-full min-w-0">
             <div
-                className={cn("h-full min-h-0 min-w-0 overflow-y-auto", !isChatPaneResizing && "transition-all duration-200 ease-in-out")}
+                className={cn("h-full min-h-0 min-w-0 overflow-y-auto @container/agent-detail-pane", !isChatPaneResizing && "transition-all duration-200 ease-in-out")}
                 style={{
                     flexGrow: 1,
                     flexShrink: 1,
-                    flexBasis: `${builderChatOpen ? (1 - chatPanelWidthFraction) * 100 : 100}%`,
-                    minWidth: builderChatOpen ? 320 : undefined
+                    flexBasis: `${builderChatOpen && !isMobile ? (1 - chatPanelWidthFraction) * 100 : 100}%`,
+                    minWidth: builderChatOpen && !isMobile ? 320 : undefined
                 }}
             >
                 <div className="flex items-center gap-4 px-2 py-2.5">
                     <SidebarTrigger />
-                    <BreadCrumb inline />
+                    <div className="hidden @2xl/agent-detail-pane:block">
+                        <BreadCrumb inline />
+                    </div>
                     <div className="ml-auto">
                         <ChatSidebarTrigger
                             icon={builderChatOpen ? X : MessageSquare}
@@ -377,7 +388,7 @@ function AgentDetail() {
                     selectedIndex={selectedIndex}
                     onChange={index => {
                         setSelectedIndex(index)
-                        const next = tabs[index]
+                        const next = AGENT_DETAIL_TABS[index]
                         const nextParams = new URLSearchParams(searchParams)
                         nextParams.set("tab", next)
                         setSearchParams(nextParams, { replace: true })
@@ -405,46 +416,60 @@ function AgentDetail() {
                 </TabGroup>
                 <div className="min-w-0">{selectedIndex === 0 ? <AgentSetupTab {...agentProps} /> : <AgentRunHistoryTab agentId={agentId} />}</div>
             </div>
-            <>
-                <div
-                    className={cn("shrink-0 overflow-hidden", !isChatPaneResizing && "transition-all duration-200 ease-in-out")}
-                    style={{
-                        width: builderChatOpen ? 4 : 0,
-                        opacity: builderChatOpen ? 1 : 0,
-                        pointerEvents: builderChatOpen ? "auto" : "none"
-                    }}
-                >
-                    <ResizeHandle
-                        currentFraction={chatPanelWidthFraction}
-                        containerRef={layoutContainerRef}
-                        onResize={setChatPanelWidthFraction}
-                        controlsId={chatPaneId}
-                        disabled={!builderChatOpen}
-                        onResizeStart={() => setIsChatPaneResizing(true)}
-                        onResizeEnd={() => setIsChatPaneResizing(false)}
-                    />
-                </div>
-                <div
-                    id={chatPaneId}
-                    data-chat-pane
-                    className={cn("h-full min-h-0 flex flex-col overflow-hidden min-w-0", builderChatOpen ? "pl-2" : "pl-0", !isChatPaneResizing && "transition-all duration-200 ease-in-out")}
-                    style={{
-                        flexGrow: 0,
-                        flexShrink: 0,
-                        flexBasis: `${builderChatOpen ? chatPanelWidthFraction * 100 : 0}%`,
-                        minWidth: builderChatOpen ? 280 : 0,
-                        opacity: builderChatOpen ? 1 : 0,
-                        transform: builderChatOpen ? "translateX(0)" : "translateX(8px)",
-                        pointerEvents: builderChatOpen ? "auto" : "none"
-                    }}
-                >
-                    {builderChatOpen && (
-                        <div className="flex-1 min-w-0 min-h-0 w-full">
+            {isMobile ? (
+                <Sheet open={builderChatOpen} onOpenChange={setBuilderChatOpen}>
+                    <SheetContent side="right" className="w-[90vw] max-w-md p-0">
+                        <SheetHeader className="sr-only">
+                            <SheetTitle>Builder Chat</SheetTitle>
+                            <SheetDescription>Build and edit this agent with chat.</SheetDescription>
+                        </SheetHeader>
+                        <div className="h-full min-h-0 w-full">
                             <BuilderChat getStateJSON={() => getStateJSON()} agentId={agentId} />
                         </div>
-                    )}
-                </div>
-            </>
+                    </SheetContent>
+                </Sheet>
+            ) : (
+                <>
+                    <div
+                        className={cn("shrink-0 overflow-hidden", !isChatPaneResizing && "transition-all duration-200 ease-in-out")}
+                        style={{
+                            width: builderChatOpen ? 4 : 0,
+                            opacity: builderChatOpen ? 1 : 0,
+                            pointerEvents: builderChatOpen ? "auto" : "none"
+                        }}
+                    >
+                        <ResizeHandle
+                            currentFraction={chatPanelWidthFraction}
+                            containerRef={layoutContainerRef}
+                            onResize={setChatPanelWidthFraction}
+                            controlsId={chatPaneId}
+                            disabled={!builderChatOpen}
+                            onResizeStart={() => setIsChatPaneResizing(true)}
+                            onResizeEnd={() => setIsChatPaneResizing(false)}
+                        />
+                    </div>
+                    <div
+                        id={chatPaneId}
+                        data-chat-pane
+                        className={cn("h-full min-h-0 flex flex-col overflow-hidden min-w-0", builderChatOpen ? "pl-2" : "pl-0", !isChatPaneResizing && "transition-all duration-200 ease-in-out")}
+                        style={{
+                            flexGrow: 0,
+                            flexShrink: 0,
+                            flexBasis: `${builderChatOpen ? chatPanelWidthFraction * 100 : 0}%`,
+                            minWidth: builderChatOpen ? 280 : 0,
+                            opacity: builderChatOpen ? 1 : 0,
+                            transform: builderChatOpen ? "translateX(0)" : "translateX(8px)",
+                            pointerEvents: builderChatOpen ? "auto" : "none"
+                        }}
+                    >
+                        {builderChatOpen && (
+                            <div className="flex-1 min-w-0 min-h-0 w-full">
+                                <BuilderChat getStateJSON={() => getStateJSON()} agentId={agentId} />
+                            </div>
+                        )}
+                    </div>
+                </>
+            )}
         </div>
     )
 }

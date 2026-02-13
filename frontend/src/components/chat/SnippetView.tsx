@@ -1,11 +1,12 @@
 import { useEffect } from "react"
-import { useNavigate } from "react-router-dom"
+import { Link, useNavigate } from "react-router-dom"
 
 import { LinkIcon } from "@heroicons/react/24/outline"
 
 import { IntegrationType } from "../../shared/Integrations"
 import { ChatSnippet } from "../../shared/ModelEvents"
 import IntegrationCard from "../Integrations/IntegrationCard"
+import { Button } from "../ui/button"
 
 import { MultipleChoiceQuestionForm } from "./MultipleChoiceQuestionForm"
 
@@ -24,12 +25,24 @@ export function SnippetView({ snippet, onMultipleChoiceAnswer }: { snippet: Chat
     }
 
     if (snippet.type === "button") {
+        const isInternalPath = snippet.url.startsWith("/")
         return (
             <div className="bg-primary/10 border border-primary/20 rounded-lg p-3">
-                <a href={snippet.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-primary hover:text-primary/80 transition-colors">
-                    <LinkIcon className="w-4 h-4" />
-                    <span className="font-medium">{snippet.label}</span>
-                </a>
+                {isInternalPath ? (
+                    <Button asChild variant="secondary" size="sm" className="justify-start gap-2">
+                        <Link to={snippet.url}>
+                            <LinkIcon className="w-4 h-4" />
+                            <span>{snippet.label}</span>
+                        </Link>
+                    </Button>
+                ) : (
+                    <Button asChild variant="secondary" size="sm" className="justify-start gap-2">
+                        <a href={snippet.url} target="_blank" rel="noopener noreferrer">
+                            <LinkIcon className="w-4 h-4" />
+                            <span>{snippet.label}</span>
+                        </a>
+                    </Button>
+                )}
             </div>
         )
     }

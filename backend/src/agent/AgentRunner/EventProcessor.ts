@@ -31,17 +31,20 @@ export class ProcessorResult<T extends Session = SessionWithTracking<Session>> {
     message: string
     agentConfig: PrismaAgent | null
     approvalResult?: ApprovalResult<SessionWithTracking<T>, OpenAIAgent<SessionWithTracking<T>, AgentOutputType>> | null
+    runId: string | null
 
     constructor(
         success: boolean,
         message: string,
         agentConfig: PrismaAgent | null,
-        approvalResult?: ApprovalResult<SessionWithTracking<T>, OpenAIAgent<SessionWithTracking<T>, AgentOutputType>> | null
+        approvalResult?: ApprovalResult<SessionWithTracking<T>, OpenAIAgent<SessionWithTracking<T>, AgentOutputType>> | null,
+        runId: string | null = null
     ) {
         this.success = success
         this.message = message
         this.agentConfig = agentConfig
         this.approvalResult = approvalResult
+        this.runId = runId
     }
 }
 
@@ -122,7 +125,51 @@ export class EventProcessor {
     async processSingleAgent(agentId: string): Promise<ProcessorResult[]> {
         logger.info(`Processing single agent ${agentId} for event: ${this.inputEvent.debugLog()}`)
 
-        const agent = await db().automations.findUnique({
+        const agent = await this.loadAgent(agentId)
+
+        if (!agent) {
+            return [new ProcessorResult(false, `Agent ${agentId} not found`, null)]
+        }
+
+        try {
+            const result = await this.processAgent(agent)
+            return [result]
+        } catch (error) {
+            logger.error(`Error processing agent ${agentId}`, { error, agentId })
+            return [new ProcessorResult(false, `Error processing agent: ${error instanceof Error ? error.message : "Unknown error"}`, agent)]
+        }
+    }
+
+    /**
+     * Trigger a run and return immediately with the run ID.
+     * The run continues processing asynchronously in the background.
+     */
+    async triggerSingleAgent(agentId: string): Promise<{ runId: string; agentId: string; agentName: string }> {
+        logger.info(`Triggering single agent ${agentId} for event: ${this.inputEvent.debugLog()}`)
+
+        const agent = await this.loadAgent(agentId)
+        if (!agent) {
+            throw new Error(`Agent ${agentId} not found`)
+        }
+
+        const runId = await this.createRunForAgent(agent)
+        void this.processAgent(agent, runId).catch(error => {
+            logger.error(`Background processing failed for agent ${agent.id}`, {
+                error,
+                runId,
+                agentId: agent.id
+            })
+        })
+
+        return {
+            runId,
+            agentId: agent.id,
+            agentName: agent.name
+        }
+    }
+
+    private async loadAgent(agentId: string): Promise<AgentWithRelations | null> {
+        return db().automations.findUnique({
             where: {
                 id: agentId,
                 organization_id: this.user.organizationId
@@ -141,32 +188,9 @@ export class EventProcessor {
                 tool_approvals: true
             }
         })
-
-        if (!agent) {
-            return [new ProcessorResult(false, `Agent ${agentId} not found`, null)]
-        }
-
-        try {
-            const result = await this.processAgent(agent)
-            return [result]
-        } catch (error) {
-            logger.error(`Error processing agent ${agentId}`, { error, agentId })
-            return [new ProcessorResult(false, `Error processing agent: ${error instanceof Error ? error.message : "Unknown error"}`, agent)]
-        }
     }
 
-    private createKnowledgeBases(agentKnowledgeBases: AgentWithRelations["knowledge_bases"]): KnowledgeBase<ConfigInstance>[] {
-        return KnowledgeBaseFactory.createKnowledgeBasesFromAgent(agentKnowledgeBases)
-    }
-
-    private async processAgent(agent: AgentWithRelations): Promise<ProcessorResult> {
-        logger.info(`Processing agent: ${agent.name} (${agent.id})`)
-
-        if (!agent.prompt) {
-            return new ProcessorResult(false, "No prompt found for this agent", agent)
-        }
-
-        // Initialize run history record with trigger details
+    private async createRunForAgent(agent: AgentWithRelations): Promise<string> {
         const trigger = this.inputEvent.createTriggerMetadata()
         const runId = await createRunRecord({
             agentId: agent.id,
@@ -174,10 +198,43 @@ export class EventProcessor {
         })
         emitCacheInvalidationWithWildcard(this.user.organizationId, "runHistory", agent.id)
         emitCacheInvalidationWithKey(this.user.organizationId, "recentAgents")
+        return runId
+    }
+
+    private async failRunEarly(runId: string, agentId: string, message: string): Promise<void> {
+        try {
+            await markRunFailed(runId, message, "agent")
+            emitCacheInvalidationWithWildcard(this.user.organizationId, "runHistory", agentId)
+        } catch (error) {
+            logger.error("Failed to mark run as failed during early validation", {
+                error,
+                runId,
+                agentId
+            })
+        }
+    }
+
+    private createKnowledgeBases(agentKnowledgeBases: AgentWithRelations["knowledge_bases"]): KnowledgeBase<ConfigInstance>[] {
+        return KnowledgeBaseFactory.createKnowledgeBasesFromAgent(agentKnowledgeBases)
+    }
+
+    private async processAgent(agent: AgentWithRelations, existingRunId?: string): Promise<ProcessorResult> {
+        logger.info(`Processing agent: ${agent.name} (${agent.id})`)
+
+        if (!agent.prompt) {
+            if (existingRunId) {
+                await this.failRunEarly(existingRunId, agent.id, "No prompt found for this agent")
+            }
+            return new ProcessorResult(false, "No prompt found for this agent", agent, undefined, existingRunId ?? null)
+        }
+
+        const runId = existingRunId ?? (await this.createRunForAgent(agent))
+        const trigger = this.inputEvent.createTriggerMetadata()
 
         // Get the outputs from agent relations (already fetched with config)
         if (!agent.outputs || agent.outputs.length === 0) {
-            return new ProcessorResult(false, "No output integrations found for this agent", agent)
+            await this.failRunEarly(runId, agent.id, "No output integrations found for this agent")
+            return new ProcessorResult(false, "No output integrations found for this agent", agent, undefined, runId)
         }
 
         // Create outputs from agent configuration
@@ -186,7 +243,8 @@ export class EventProcessor {
             outputs = OutputFactory.createOutputsFromAgent(agent)
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : "Unknown error"
-            return new ProcessorResult(false, `Failed to create outputs: ${errorMessage}`, agent)
+            await this.failRunEarly(runId, agent.id, `Failed to create outputs: ${errorMessage}`)
+            return new ProcessorResult(false, `Failed to create outputs: ${errorMessage}`, agent, undefined, runId)
         }
 
         // Create base session for AgentRunner
@@ -226,7 +284,7 @@ export class EventProcessor {
                 })
             }
 
-            return new ProcessorResult(false, `Error during filtering: ${errorMessage}`, agent)
+            return new ProcessorResult(false, `Error during filtering: ${errorMessage}`, agent, undefined, runId)
         }
 
         if (!filterResult.isRelevant) {
@@ -242,7 +300,7 @@ export class EventProcessor {
                     agentId: agent.id
                 })
             }
-            return new ProcessorResult(false, `Not relevant: ${filterResult.reason}`, agent)
+            return new ProcessorResult(false, `Not relevant: ${filterResult.reason}`, agent, undefined, runId)
         }
 
         try {
@@ -308,7 +366,7 @@ export class EventProcessor {
             return persistRunResult(runId, result.result, session, agent, result)
         } else {
             logger.info(`Agent "${agent.name}" awaiting approval:`)
-            return new ProcessorResult<SessionWithTracking<Session>>(false, "Agent awaiting approval", agent, result)
+            return new ProcessorResult<SessionWithTracking<Session>>(false, "Agent awaiting approval", agent, result, runId)
         }
     }
 }
@@ -335,7 +393,7 @@ async function persistRunResult<T extends Session>(
     }
 
     const finalOutput = typeof result.finalOutput === "string" ? result.finalOutput : ""
-    return new ProcessorResult<SessionWithTracking<T>>(hasFinalOutput, finalOutput, agent, approvalResult)
+    return new ProcessorResult<SessionWithTracking<T>>(hasFinalOutput, finalOutput, agent, approvalResult, runId)
 }
 
 export async function persistRunAction<T extends Session>(runId: string, agent: PrismaAgent, session: T, action: RunHistoryAction): Promise<string | undefined> {
