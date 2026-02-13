@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react"
-import { Link, useParams, useSearchParams } from "react-router-dom"
+import { useParams, useSearchParams } from "react-router-dom"
 
 import { Tab, TabGroup, TabList } from "@headlessui/react"
 import { Clock, MessageSquare, PanelRightIcon, Settings, X } from "lucide-react"
 
-import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "../../components/ui/breadcrumb"
+import BreadCrumb from "../../components/BreadCrumb"
 import { BuilderChat } from "../../components/chat/BuilderChat"
 import { Button } from "../../components/ui/button"
 import { SidebarTrigger } from "../../components/ui/sidebar"
@@ -25,13 +25,13 @@ function ChatSidebarTrigger({ className, onClick, icon: Icon = PanelRightIcon, .
         <Button
             variant="outline"
             size="icon"
-            className={cn("h-8 w-8 shrink-0 border-border shadow-sm", className)}
+            className={cn("h-7 w-7 shrink-0 border-border shadow-sm", className)}
             onClick={event => {
                 onClick?.(event)
             }}
             {...props}
         >
-            <Icon className="h-4 w-4" />
+            <Icon className="h-3 w-3" />
             <span className="sr-only">Toggle Sidebar</span>
         </Button>
     )
@@ -185,8 +185,6 @@ function AgentDetail() {
     donate("Agent Knowledge Bases", new AgentKnowledgeBasesDonatedState(knowledgeBases))
     donate("Agent Prompt", new AgentPromptDonatedState(prompt ?? { text: "" }))
 
-    const breadcrumbLabel = agentId ? (isFetching ? "Loading..." : agent?.name || agentId) : "New Agent"
-
     return (
         <div
             className="grid h-full gap-0"
@@ -196,28 +194,10 @@ function AgentDetail() {
             }}
         >
             <div className="h-full min-h-0 col-span-1 flex flex-col">
-                {/* Header: SidebarTrigger + Breadcrumb + ChatToggle */}
-                <div className="flex items-center gap-4 px-2 py-3">
+                {/* Header: Sidebar trigger + breadcrumb on the left, chat toggle on the right */}
+                <div className="flex items-center gap-4 px-2 py-2.5">
                     <SidebarTrigger />
-                    <Breadcrumb>
-                        <BreadcrumbList>
-                            <BreadcrumbItem>
-                                <BreadcrumbLink asChild>
-                                    <Link to="/app">Home</Link>
-                                </BreadcrumbLink>
-                            </BreadcrumbItem>
-                            <BreadcrumbSeparator />
-                            <BreadcrumbItem>
-                                <BreadcrumbLink asChild>
-                                    <Link to="/app/agents">Agents</Link>
-                                </BreadcrumbLink>
-                            </BreadcrumbItem>
-                            <BreadcrumbSeparator />
-                            <BreadcrumbItem>
-                                <BreadcrumbPage>{breadcrumbLabel}</BreadcrumbPage>
-                            </BreadcrumbItem>
-                        </BreadcrumbList>
-                    </Breadcrumb>
+                    <BreadCrumb inline />
                     <div className="ml-auto">
                         <ChatSidebarTrigger
                             icon={builderChatOpen ? X : MessageSquare}
@@ -236,8 +216,9 @@ function AgentDetail() {
                         nextParams.set("tab", next)
                         setSearchParams(nextParams, { replace: true })
                     }}
+                    className="pl-2"
                 >
-                    <TabList className="flex gap-2 border-b border-input items-center">
+                    <TabList className="flex gap-2 border-b border-input items-center pt-2">
                         <Tab
                             className={({ selected }) =>
                                 `px-3 py-2 text-sm font-medium rounded-t-md border-b-2 -mb-px inline-flex items-center gap-2 ${selected ? "text-foreground border-primary" : "text-muted-foreground border-transparent hover:text-foreground"}`
@@ -256,13 +237,7 @@ function AgentDetail() {
                         </Tab>
                     </TabList>
                 </TabGroup>
-                <div className="flex-1 min-h-0 flex flex-col">
-                    {selectedIndex === 0 ? (
-                        <AgentSetupTab {...agentProps} />
-                    ) : (
-                        <AgentRunHistoryTab agentId={agentId} />
-                    )}
-                </div>
+                <div className="flex-1 min-h-0 flex flex-col">{selectedIndex === 0 ? <AgentSetupTab {...agentProps} /> : <AgentRunHistoryTab agentId={agentId} />}</div>
             </div>
             <div className={cn("h-full min-h-0 col-span-1 flex flex-col overflow-hidden min-w-0", builderChatOpen && "border-l border-border pl-2")}>
                 {builderChatOpen && (
