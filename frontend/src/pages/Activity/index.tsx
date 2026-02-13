@@ -72,7 +72,7 @@ function ActivityRow({ run, onOpenChat }: { run: RunHistoryRecordWithAgent; onOp
             {writeActions.length > 0 && (
                 <div className="hidden md:flex items-center gap-1 text-xs text-muted-foreground">
                     {run.isManuallyTriggered && (
-                        <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground flex-shrink-0 text-yellow-500">Manual</span>
+                        <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-accent-tertiary flex-shrink-0">Manual</span>
                     )}
                     <Zap className="w-3 h-3" />
                     <span>
