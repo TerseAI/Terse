@@ -362,7 +362,6 @@ function AgentDetail() {
                     minWidth: builderChatOpen ? 320 : undefined
                 }}
             >
-                {/* Header: Sidebar trigger + breadcrumb on the left, chat toggle on the right */}
                 <div className="flex items-center gap-4 px-2 py-2.5">
                     <SidebarTrigger />
                     <BreadCrumb inline />
@@ -374,7 +373,6 @@ function AgentDetail() {
                         />
                     </div>
                 </div>
-                {/* Tabs + content */}
                 <TabGroup
                     selectedIndex={selectedIndex}
                     onChange={index => {
@@ -429,11 +427,7 @@ function AgentDetail() {
                 <div
                     id={chatPaneId}
                     data-chat-pane
-                    className={cn(
-                        "h-full min-h-0 flex flex-col overflow-hidden min-w-0",
-                        builderChatOpen ? "pl-2" : "pl-0",
-                        !isChatPaneResizing && "transition-all duration-200 ease-in-out"
-                    )}
+                    className={cn("h-full min-h-0 flex flex-col overflow-hidden min-w-0", builderChatOpen ? "pl-2" : "pl-0", !isChatPaneResizing && "transition-all duration-200 ease-in-out")}
                     style={{
                         flexGrow: 0,
                         flexShrink: 0,

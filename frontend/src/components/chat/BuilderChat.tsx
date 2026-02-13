@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 import { Bot, MessageSquare, Plug, Settings } from "lucide-react"
 import { v4 as uuidv4 } from "uuid"
@@ -20,6 +20,7 @@ export function BuilderChat({ getStateJSON, agentId }: BuilderChatProps) {
     const generatedId = useMemo(() => uuidv4(), [])
     const sessionId = agentId ?? generatedId
     const previousAgentIdRef = useRef<string | null | undefined>(agentId)
+    const [isVisible, setIsVisible] = useState(false)
 
     // Fetch history only when we have an agentId (existing session)
     const { events: historyEvents, isLoading: isHistoryLoading } = useBuilderChatHistory(agentId)
@@ -47,6 +48,11 @@ export function BuilderChat({ getStateJSON, agentId }: BuilderChatProps) {
         }
         previousAgentIdRef.current = agentId
     }, [agentId, sessionId])
+
+    useEffect(() => {
+        const frameId = requestAnimationFrame(() => setIsVisible(true))
+        return () => cancelAnimationFrame(frameId)
+    }, [])
 
     const subscribeToEvents = (callback: (payload: ChatEventPayload) => void) => {
         console.log("[BuilderChat] subscribeToEvents called", { sessionId })
@@ -92,7 +98,7 @@ export function BuilderChat({ getStateJSON, agentId }: BuilderChatProps) {
     }
 
     return (
-        <div className="h-full flex min-h-0 p-2">
+        <div className={`h-full flex min-h-0 p-2 transition-all duration-300 ease-in-out ${isVisible ? "opacity-100 blur-0" : "opacity-0 blur-sm"}`}>
             <Chat
                 key={sessionId}
                 subscribeToEvents={subscribeToEvents}
