@@ -12,6 +12,14 @@ interface ToolDisplayConfig {
     complete: (params?: Record<string, unknown>, result?: string) => string
 }
 
+enum PolledRunStatus {
+    SUCCESS = "success",
+    FAILED = "failed",
+    SKIPPED = "skipped",
+    AWAITING_APPROVAL = "awaiting_approval",
+    IN_PROGRESS = "in_progress"
+}
+
 /**
  * Helper to get a friendly integration name from params
  */
@@ -37,6 +45,23 @@ function safeParseResult(result?: string): Record<string, unknown> | undefined {
     }
 }
 
+function toPolledRunStatus(status: unknown): PolledRunStatus | null {
+    switch (status) {
+        case PolledRunStatus.SUCCESS:
+            return PolledRunStatus.SUCCESS
+        case PolledRunStatus.FAILED:
+            return PolledRunStatus.FAILED
+        case PolledRunStatus.SKIPPED:
+            return PolledRunStatus.SKIPPED
+        case PolledRunStatus.AWAITING_APPROVAL:
+            return PolledRunStatus.AWAITING_APPROVAL
+        case PolledRunStatus.IN_PROGRESS:
+            return PolledRunStatus.IN_PROGRESS
+        default:
+            return null
+    }
+}
+
 /**
  * Display configurations for all tools.
  * Each tool defines how it should be displayed in preparing, executing, and complete phases.
@@ -51,79 +76,101 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
     // ChatAgent Tools
     // ===================
     applyAgent: {
-        preparing: "Planning automation",
+        preparing: "Getting your workflow ready",
         executing: params => {
             const agent = params?.agent as Record<string, unknown> | undefined
             const name = agent?.name as string | undefined
-            return name ? `Creating "${truncate(name)}"` : "Creating automation"
+            return name ? `Setting up "${truncate(name)}"` : "Setting up your workflow"
         },
         complete: params => {
             const agent = params?.agent as Record<string, unknown> | undefined
             const name = agent?.name as string | undefined
-            return name ? `Created "${truncate(name)}"` : "Automation created"
+            return name ? `You're all set: "${truncate(name)}"` : "Your workflow is ready"
         }
     },
     promptForIntegration: {
-        preparing: "Setting up integration",
+        preparing: "Getting connection ready",
         executing: params => {
             const integration = getIntegrationName(params?.integration as string | undefined)
-            return `Configuring ${integration}`
+            return `Connecting ${integration}`
         },
         complete: params => {
             const integration = getIntegrationName(params?.integration as string | undefined)
-            return `Integrated ${integration}`
+            return `${integration} is connected`
         }
     },
     askSurveyQuestion: {
-        preparing: "Asking a question",
+        preparing: "Quick question",
         executing: params => {
-            const question = (params?.question as string) || "Setup question"
+            const question = (params?.question as string) || "A quick question"
             return question.length > 40 ? `${question.slice(0, 40)}…` : question
         },
-        complete: () => "Answer received"
+        complete: () => "Thanks for your answer"
     },
     fetchResourcesForIntegration: {
-        preparing: "Looking up resources",
+        preparing: "Looking things up",
         executing: params => {
             const integration = getIntegrationName(params?.integrationType as string | undefined)
-            return `Fetching resources from ${integration}`
+            return `Checking what's available in ${integration}`
         },
         complete: params => {
             const integration = getIntegrationName(params?.integrationType as string | undefined)
-            return `Fetched ${integration} resources`
+            return `Found available options in ${integration}`
         }
     },
     getSampleEvents: {
-        preparing: "Looking up sample events",
+        preparing: "Finding recent examples",
         executing: params => {
             const integration = getIntegrationName(params?.integrationType as string | undefined)
-            return `Fetching sample events from ${integration}`
+            return `Getting recent examples from ${integration}`
         },
         complete: (params, result) => {
             const parsed = safeParseResult(result)
             const events = parsed?.events as unknown[] | undefined
             const count = events?.length
             const integration = getIntegrationName(params?.integrationType as string | undefined)
-            if (count !== undefined && integration) return `Fetched ${count} sample event${count !== 1 ? "s" : ""} from ${integration}`
-            if (count !== undefined) return `Fetched ${count} sample event${count !== 1 ? "s" : ""}`
-            return `Fetched sample events from ${integration}`
+            if (count !== undefined && integration) return `Found ${count} recent example${count !== 1 ? "s" : ""} from ${integration}`
+            if (count !== undefined) return `Found ${count} recent example${count !== 1 ? "s" : ""}`
+            return `Found recent examples from ${integration}`
         }
     },
     triggerAgentRun: {
-        preparing: "Preparing test run",
-        executing: () => "Running agent on event",
+        preparing: "Starting a run",
+        executing: () => "Starting a run",
         complete: (_params, result) => {
             const parsed = safeParseResult(result)
-            const results = parsed?.results as Array<Record<string, unknown>> | undefined
-            if (results && results.length > 0) {
-                const first = results[0]
-                const name = first?.agentName as string | undefined
-                const success = first?.success as boolean | undefined
-                if (name && success) return `Ran "${truncate(name)}" successfully`
-                if (name && success === false) return `Ran "${truncate(name)}" — failed`
-                if (name) return `Triggered "${truncate(name)}"`
+            const name = parsed?.agentName as string | undefined
+            if (name) return `Started "${truncate(name)}"`
+            return "Run started"
+        }
+    },
+    pollTriggeredRunStatus: {
+        preparing: "Getting the latest progress",
+        executing: () => "Checking progress",
+        complete: (_params, result) => {
+            const parsed = safeParseResult(result)
+            const status = toPolledRunStatus(parsed?.status)
+            const timedOut = parsed?.timedOut as boolean | undefined
+            const name = parsed?.agentName as string | undefined
+
+            if (timedOut) {
+                return name ? `"${truncate(name)}" is still running` : "Still running"
             }
-            return parsed?.processed ? "Agent run complete" : "Agent triggered"
+
+            switch (status) {
+                case PolledRunStatus.SUCCESS:
+                    return name ? `"${truncate(name)}" finished` : "Finished"
+                case PolledRunStatus.FAILED:
+                    return name ? `"${truncate(name)}" could not finish` : "Could not finish"
+                case PolledRunStatus.SKIPPED:
+                    return name ? `"${truncate(name)}" was skipped` : "Skipped"
+                case PolledRunStatus.AWAITING_APPROVAL:
+                    return name ? `"${truncate(name)}" needs approval` : "Needs approval"
+                case PolledRunStatus.IN_PROGRESS:
+                    return name ? `"${truncate(name)}" is still running` : "Still running"
+                default:
+                    return "Checked progress"
+            }
         }
     },
 
@@ -131,11 +178,11 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
     // Linear Tools
     // ===================
     linear_create_ticket: {
-        preparing: "Drafting ticket",
+        preparing: "Getting a task ready",
         executing: params => {
             const ticket = params?.ticket as Record<string, unknown> | undefined
             const title = ticket?.title as string | undefined
-            return title ? `Creating ticket: "${truncate(title)}"` : "Creating ticket"
+            return title ? `Creating task: "${truncate(title)}"` : "Creating task"
         },
         complete: (params, result) => {
             const parsed = safeParseResult(result)
@@ -143,107 +190,107 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
             const identifier = issue?.identifier as string | undefined
             const ticketParams = params?.ticket as Record<string, unknown> | undefined
             const title = (ticketParams?.title as string) || (issue?.title as string)
-            if (identifier && title) return `Created ${identifier}: "${truncate(title, 30)}"`
-            if (identifier) return `Created ${identifier}`
-            if (title) return `Created "${truncate(title)}"`
-            return "Ticket created"
+            if (identifier && title) return `Created task ${identifier}: "${truncate(title, 30)}"`
+            if (identifier) return `Created task ${identifier}`
+            if (title) return `Created task "${truncate(title)}"`
+            return "Task created"
         }
     },
     linear_update_ticket: {
-        preparing: "Planning ticket update",
+        preparing: "Getting your updates ready",
         executing: params => {
             const issueId = params?.issueId as string | undefined
-            return issueId ? `Updating ticket ${issueId}` : "Updating ticket"
+            return issueId ? `Updating task ${issueId}` : "Updating task"
         },
         complete: (_params, result) => {
             const parsed = safeParseResult(result)
             const issue = parsed?.issue as Record<string, unknown> | undefined
             const identifier = issue?.identifier as string | undefined
-            return identifier ? `Updated ${identifier}` : "Ticket updated"
+            return identifier ? `Updated task ${identifier}` : "Task updated"
         }
     },
     linear_add_comment: {
-        preparing: "Composing comment",
+        preparing: "Getting your note ready",
         executing: params => {
             const issueId = params?.issueId as string | undefined
-            return issueId ? `Adding comment to ${issueId}` : "Adding comment"
+            return issueId ? `Adding a note to ${issueId}` : "Adding a note"
         },
         complete: (_params, result) => {
             const parsed = safeParseResult(result)
             const actions = parsed?.actions as Array<{ target?: string }> | undefined
             const target = actions?.[0]?.target
-            return target ? `Comment added to ${target}` : "Comment added"
+            return target ? `Added a note to ${target}` : "Note added"
         }
     },
     linear_search_ticket: {
-        preparing: "Building search query",
+        preparing: "Looking for tasks",
         executing: params => {
             const query = params?.searchTerm as string | undefined
-            return query ? `Searching issues for "${truncate(query)}"` : "Searching issues"
+            return query ? `Looking for tasks about "${truncate(query)}"` : "Looking for tasks"
         },
         complete: (params, result) => {
             const parsed = safeParseResult(result)
             const count = parsed?.count as number | undefined
             const query = params?.searchTerm as string | undefined
-            if (count !== undefined && query) return `Found ${count} issue${count !== 1 ? "s" : ""} for "${truncate(query, 25)}"`
-            if (count !== undefined) return `Found ${count} issue${count !== 1 ? "s" : ""}`
-            if (query) return `Searched issues for "${truncate(query)}"`
+            if (count !== undefined && query) return `Found ${count} task${count !== 1 ? "s" : ""} about "${truncate(query, 25)}"`
+            if (count !== undefined) return `Found ${count} task${count !== 1 ? "s" : ""}`
+            if (query) return `Looked for "${truncate(query)}"`
             return "Search complete"
         }
     },
     linear_get_states: {
-        preparing: "Loading workflow states",
-        executing: () => "Fetching workflow states",
+        preparing: "Loading status options",
+        executing: () => "Loading status options",
         complete: (_params, result) => {
             const parsed = safeParseResult(result)
             const states = parsed?.states as unknown[] | undefined
             const n = Array.isArray(states) ? states.length : undefined
-            if (n !== undefined) return `Loaded ${n} state${n !== 1 ? "s" : ""}`
-            return "States loaded"
+            if (n !== undefined) return `Found ${n} status option${n !== 1 ? "s" : ""}`
+            return "Status options loaded"
         }
     },
     linear_get_labels: {
-        preparing: "Loading labels",
-        executing: () => "Fetching labels",
+        preparing: "Loading tags",
+        executing: () => "Loading tags",
         complete: (_params, result) => {
             const parsed = safeParseResult(result)
             const labels = parsed?.labels as unknown[] | undefined
             const n = Array.isArray(labels) ? labels.length : undefined
-            if (n !== undefined) return `Loaded ${n} label${n !== 1 ? "s" : ""}`
-            return "Labels loaded"
+            if (n !== undefined) return `Found ${n} tag${n !== 1 ? "s" : ""}`
+            return "Tags loaded"
         }
     },
     linear_get_teams: {
         preparing: "Loading teams",
-        executing: () => "Fetching teams",
+        executing: () => "Loading teams",
         complete: (_params, result) => {
             const parsed = safeParseResult(result)
             const teams = parsed?.teams as unknown[] | undefined
             const n = Array.isArray(teams) ? teams.length : undefined
-            if (n !== undefined) return `Loaded ${n} team${n !== 1 ? "s" : ""}`
+            if (n !== undefined) return `Found ${n} team${n !== 1 ? "s" : ""}`
             return "Teams loaded"
         }
     },
     linear_get_projects: {
         preparing: "Loading projects",
-        executing: () => "Fetching projects",
+        executing: () => "Loading projects",
         complete: (_params, result) => {
             const parsed = safeParseResult(result)
             const projects = parsed?.projects as unknown[] | undefined
             const n = Array.isArray(projects) ? projects.length : undefined
-            if (n !== undefined) return `Loaded ${n} project${n !== 1 ? "s" : ""}`
+            if (n !== undefined) return `Found ${n} project${n !== 1 ? "s" : ""}`
             return "Projects loaded"
         }
     },
     linear_get_users: {
-        preparing: "Loading users",
-        executing: () => "Fetching users",
+        preparing: "Loading people",
+        executing: () => "Loading people",
         complete: (_params, result) => {
             const parsed = safeParseResult(result)
             const users = parsed?.users as unknown[] | undefined
             const n = Array.isArray(users) ? users.length : undefined
-            if (n !== undefined) return `Loaded ${n} user${n !== 1 ? "s" : ""}`
-            return "Users loaded"
+            if (n !== undefined) return `Found ${n} person${n !== 1 ? "s" : ""}`
+            return "People loaded"
         }
     },
 
@@ -251,46 +298,46 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
     // Jira Tools
     // ===================
     jira_create_ticket: {
-        preparing: "Drafting ticket",
+        preparing: "Getting a task ready",
         executing: params => {
             const title = params?.title as string | undefined
-            return title ? `Creating ticket: "${truncate(title)}"` : "Creating ticket"
+            return title ? `Creating task: "${truncate(title)}"` : "Creating task"
         },
         complete: (params, result) => {
             const parsed = safeParseResult(result)
             const issue = parsed?.issue as Record<string, unknown> | undefined
             const key = issue?.key as string | undefined
             const title = (params?.title as string) || (issue?.title as string)
-            if (key && title) return `Created ${key}: "${truncate(title, 30)}"`
-            if (key) return `Created ${key}`
-            if (title) return `Created "${truncate(title)}"`
-            return "Ticket created"
+            if (key && title) return `Created task ${key}: "${truncate(title, 30)}"`
+            if (key) return `Created task ${key}`
+            if (title) return `Created task "${truncate(title)}"`
+            return "Task created"
         }
     },
     jira_update_ticket: {
-        preparing: "Planning ticket update",
+        preparing: "Getting your updates ready",
         executing: params => {
             const issueKey = params?.issueKey as string | undefined
-            return issueKey ? `Updating ${issueKey}` : "Updating ticket"
+            return issueKey ? `Updating task ${issueKey}` : "Updating task"
         },
         complete: params => {
             const issueKey = params?.issueKey as string | undefined
-            return issueKey ? `Updated ${issueKey}` : "Ticket updated"
+            return issueKey ? `Updated task ${issueKey}` : "Task updated"
         }
     },
     jira_search_ticket: {
-        preparing: "Building search query",
+        preparing: "Looking for tasks",
         executing: params => {
             const text = params?.text as string | undefined
-            return text ? `Searching issues for "${truncate(text)}"` : "Searching issues"
+            return text ? `Looking for tasks about "${truncate(text)}"` : "Looking for tasks"
         },
         complete: (params, result) => {
             const parsed = safeParseResult(result)
             const count = parsed?.count as number | undefined
             const text = params?.text as string | undefined
-            if (count !== undefined && text) return `Found ${count} issue${count !== 1 ? "s" : ""} for "${truncate(text, 25)}"`
-            if (count !== undefined) return `Found ${count} issue${count !== 1 ? "s" : ""}`
-            if (text) return `Searched issues for "${truncate(text)}"`
+            if (count !== undefined && text) return `Found ${count} task${count !== 1 ? "s" : ""} about "${truncate(text, 25)}"`
+            if (count !== undefined) return `Found ${count} task${count !== 1 ? "s" : ""}`
+            if (text) return `Looked for "${truncate(text)}"`
             return "Search complete"
         }
     },
@@ -299,57 +346,57 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
     // Notion Tools
     // ===================
     notion_create_or_update_database_row: {
-        preparing: "Planning database row change",
-        executing: () => "Creating or updating database row",
-        complete: () => "Database row created or updated"
+        preparing: "Getting your update ready",
+        executing: () => "Saving your update",
+        complete: () => "Your update was saved"
     },
     notion_create_or_update_page: {
-        preparing: "Planning page changes",
-        executing: () => "Creating or updating page",
-        complete: () => "Page created or updated"
+        preparing: "Getting page changes ready",
+        executing: () => "Saving page changes",
+        complete: () => "Page updated"
     },
     notion_modify_blocks: {
-        preparing: "Planning block changes",
-        executing: () => "Modifying blocks",
+        preparing: "Getting changes ready",
+        executing: () => "Updating page content",
         complete: (_params, result) => {
             const parsed = safeParseResult(result)
             const operation = parsed?.operation as string | undefined
-            if (operation === "append") return "Added blocks to page"
-            if (operation === "update") return "Updated page block"
-            if (operation === "delete") return "Deleted page block"
-            return "Blocks modified"
+            if (operation === "append") return "Added to page"
+            if (operation === "update") return "Updated page"
+            if (operation === "delete") return "Removed from page"
+            return "Page updated"
         }
     },
     notion_query_page: {
-        preparing: "Building page query",
-        executing: () => "Reading Notion page",
-        complete: () => "Read Notion page"
+        preparing: "Finding page",
+        executing: () => "Loading page",
+        complete: () => "Page loaded"
     },
     notion_query_database: {
-        preparing: "Building database query",
-        executing: () => "Querying database",
+        preparing: "Searching your workspace",
+        executing: () => "Looking through your workspace",
         complete: (_params, result) => {
             const parsed = safeParseResult(result)
             const total = parsed?.total_returned as number | undefined
-            return total !== undefined ? `Queried database — ${total} result${total !== 1 ? "s" : ""}` : "Queried database"
+            return total !== undefined ? `Found ${total} match${total !== 1 ? "es" : ""}` : "Search complete"
         }
     },
     notion_get_schema: {
-        preparing: "Looking up schema",
-        executing: () => "Fetching schema",
+        preparing: "Checking how this is organized",
+        executing: () => "Loading layout details",
         complete: (_params, result) => {
             const parsed = safeParseResult(result)
             const name = parsed?.database_name as string | undefined
-            return name ? `Fetched schema for "${truncate(name)}"` : "Fetched database schema"
+            return name ? `Loaded layout for "${truncate(name)}"` : "Layout loaded"
         }
     },
     notion_fetch_related_events: {
-        preparing: "Looking up related events",
-        executing: () => "Fetching related events",
+        preparing: "Looking for related activity",
+        executing: () => "Loading related activity",
         complete: (_params, result) => {
             const parsed = safeParseResult(result)
             const count = parsed?.events_count as number | undefined
-            return count !== undefined ? `Found ${count} related event${count !== 1 ? "s" : ""}` : "Fetched related events"
+            return count !== undefined ? `Found ${count} related update${count !== 1 ? "s" : ""}` : "Related activity loaded"
         }
     },
 
@@ -357,7 +404,7 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
     // Gmail Tools
     // ===================
     gmail_send_email: {
-        preparing: "Composing email",
+        preparing: "Getting your email ready",
         executing: params => {
             const to = params?.to as string | undefined
             return to ? `Sending email to ${truncate(to, 30)}` : "Sending email"
@@ -375,8 +422,8 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
     // Slack Tools
     // ===================
     slack_send_message: {
-        preparing: "Composing message",
-        executing: () => "Sending Slack message",
+        preparing: "Getting your message ready",
+        executing: () => "Sending your message",
         complete: (_params, result) => {
             const parsed = safeParseResult(result)
             const channel = parsed?.channel as string | undefined
@@ -388,123 +435,123 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
     // Confluence Tools
     // ===================
     confluence_query_page: {
-        preparing: "Building page query",
-        executing: () => "Reading Confluence page",
+        preparing: "Finding page",
+        executing: () => "Loading page",
         complete: (_params, result) => {
             const parsed = safeParseResult(result)
             const title = parsed?.title as string | undefined
-            return title ? `Read "${truncate(title)}"` : "Read Confluence page"
+            return title ? `Opened "${truncate(title)}"` : "Page loaded"
         }
     },
     confluence_add_comment: {
-        preparing: "Composing comment",
-        executing: () => "Adding comment",
-        complete: () => "Added comment to page"
+        preparing: "Getting your note ready",
+        executing: () => "Adding your note",
+        complete: () => "Note added"
     },
 
     // ===================
     // GitHub Tools
     // ===================
     searchGitHubCode: {
-        preparing: "Building code search",
+        preparing: "Looking through code",
         executing: params => {
             const query = params?.query as string | undefined
-            return query ? `Searching code for "${truncate(query)}"` : "Searching code"
+            return query ? `Looking for "${truncate(query)}" in code` : "Looking through code"
         },
         complete: (params, result) => {
             const parsed = safeParseResult(result)
             const total = parsed?.totalCount as number | undefined
             const query = params?.query as string | undefined
-            if (total !== undefined && query) return `Found ${total} result${total !== 1 ? "s" : ""} for "${truncate(query, 25)}"`
-            if (query) return `Searched code for "${truncate(query)}"`
-            return "Code search complete"
+            if (total !== undefined && query) return `Found ${total} match${total !== 1 ? "es" : ""} for "${truncate(query, 25)}"`
+            if (query) return `Looked for "${truncate(query)}"`
+            return "Search complete"
         }
     },
     readGitHubFile: {
-        preparing: "Locating file",
+        preparing: "Finding file",
         executing: params => {
             const path = params?.path as string | undefined
-            return path ? `Reading ${truncate(path, 40)}` : "Reading file"
+            return path ? `Opening ${truncate(path, 40)}` : "Opening file"
         },
         complete: params => {
             const path = params?.path as string | undefined
-            return path ? `Read ${truncate(path, 40)}` : "File read"
+            return path ? `Opened ${truncate(path, 40)}` : "Done"
         }
     },
     listGitHubPullRequests: {
-        preparing: "Looking up pull requests",
+        preparing: "Loading change requests",
         executing: params => {
             const repo = params?.repository as string | undefined
-            return repo ? `Listing PRs in ${repo}` : "Listing pull requests"
+            return repo ? `Loading change requests from ${repo}` : "Loading change requests"
         },
         complete: (params, result) => {
             const parsed = safeParseResult(result)
             const summary = parsed?.summary as Record<string, unknown> | undefined
             const total = summary?.total as number | undefined
             const repo = params?.repository as string | undefined
-            if (total !== undefined && repo) return `Found ${total} PR${total !== 1 ? "s" : ""} in ${repo}`
-            if (total !== undefined) return `Found ${total} PR${total !== 1 ? "s" : ""}`
-            if (repo) return `Listed PRs in ${repo}`
-            return "Pull requests listed"
+            if (total !== undefined && repo) return `Found ${total} change request${total !== 1 ? "s" : ""} in ${repo}`
+            if (total !== undefined) return `Found ${total} change request${total !== 1 ? "s" : ""}`
+            if (repo) return `Loaded change requests from ${repo}`
+            return "Change requests loaded"
         }
     },
     listGitHubDirectory: {
-        preparing: "Locating directory",
+        preparing: "Finding folder",
         executing: params => {
             const path = params?.path as string | undefined
-            return path ? `Listing ${truncate(path, 40)}` : "Listing directory"
+            return path ? `Opening ${truncate(path, 40)}` : "Opening folder"
         },
         complete: params => {
             const path = params?.path as string | undefined
-            return path ? `Listed ${truncate(path, 40)}` : "Directory listed"
+            return path ? `Opened ${truncate(path, 40)}` : "Done"
         }
     },
     listGitHubCommits: {
-        preparing: "Looking up commits",
+        preparing: "Loading recent updates",
         executing: params => {
             const repo = params?.repository as string | undefined
-            return repo ? `Listing commits in ${repo}` : "Listing commits"
+            return repo ? `Loading recent updates from ${repo}` : "Loading recent updates"
         },
         complete: (params, result) => {
             const parsed = safeParseResult(result)
             const summary = parsed?.summary as Record<string, unknown> | undefined
             const total = summary?.total as number | undefined
             const repo = params?.repository as string | undefined
-            if (total !== undefined && repo) return `Found ${total} commit${total !== 1 ? "s" : ""} in ${repo}`
-            if (total !== undefined) return `Found ${total} commit${total !== 1 ? "s" : ""}`
-            if (repo) return `Listed commits in ${repo}`
-            return "Commits listed"
+            if (total !== undefined && repo) return `Found ${total} update${total !== 1 ? "s" : ""} in ${repo}`
+            if (total !== undefined) return `Found ${total} update${total !== 1 ? "s" : ""}`
+            if (repo) return `Loaded recent updates from ${repo}`
+            return "Recent updates loaded"
         }
     },
     grepGitHubCode: {
-        preparing: "Building search pattern",
+        preparing: "Looking through code",
         executing: params => {
             const pattern = params?.pattern as string | undefined
-            return pattern ? `Searching for "${truncate(pattern)}"` : "Searching code"
+            return pattern ? `Looking for "${truncate(pattern)}"` : "Looking through code"
         },
         complete: (params, result) => {
             const parsed = safeParseResult(result)
             const total = parsed?.totalCount as number | undefined
             const pattern = params?.pattern as string | undefined
             if (total !== undefined && pattern) return `Found ${total} match${total !== 1 ? "es" : ""} for "${truncate(pattern, 25)}"`
-            if (pattern) return `Searched for "${truncate(pattern)}"`
+            if (pattern) return `Looked for "${truncate(pattern)}"`
             return "Search complete"
         }
     },
     summarizeGitHubPullRequestDiff: {
-        preparing: "Analyzing PR",
+        preparing: "Reviewing changes",
         executing: params => {
             const prNumber = params?.pullNumber as number | undefined
-            return prNumber ? `Summarizing PR #${prNumber}` : "Summarizing PR diff"
+            return prNumber ? `Summarizing change request #${prNumber}` : "Summarizing changes"
         },
         complete: (params, result) => {
             const parsed = safeParseResult(result)
             const pr = parsed?.pullRequest as Record<string, unknown> | undefined
             const title = pr?.title as string | undefined
             const prNumber = (params?.pullNumber as number) || (pr?.number as number)
-            if (prNumber && title) return `Summarized PR #${prNumber}: "${truncate(title, 30)}"`
-            if (prNumber) return `Summarized PR #${prNumber}`
-            return "PR summarized"
+            if (prNumber && title) return `Summarized change request #${prNumber}: "${truncate(title, 30)}"`
+            if (prNumber) return `Summarized change request #${prNumber}`
+            return "Summary ready"
         }
     },
 
@@ -512,26 +559,26 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
     // PostHog Tools
     // ===================
     searchPosthogSessions: {
-        preparing: "Building session query",
+        preparing: "Looking through visits",
         executing: params => {
             const email = params?.userEmail as string | undefined
-            return email ? `Searching sessions for ${email}` : "Searching sessions"
+            return email ? `Looking for visits from ${email}` : "Looking through visits"
         },
         complete: (params, result) => {
             const parsed = safeParseResult(result)
             const total = parsed?.totalSessions as number | undefined
             const email = params?.userEmail as string | undefined
-            if (total !== undefined && email) return `Found ${total} session${total !== 1 ? "s" : ""} for ${truncate(email, 25)}`
-            if (total !== undefined) return `Found ${total} session${total !== 1 ? "s" : ""}`
-            if (email) return `Searched sessions for ${truncate(email, 25)}`
-            return "Sessions found"
+            if (total !== undefined && email) return `Found ${total} visit${total !== 1 ? "s" : ""} for ${truncate(email, 25)}`
+            if (total !== undefined) return `Found ${total} visit${total !== 1 ? "s" : ""}`
+            if (email) return `Looked up visits for ${truncate(email, 25)}`
+            return "Visits found"
         }
     },
     searchPosthogLogs: {
-        preparing: "Building log query",
+        preparing: "Looking through activity logs",
         executing: params => {
             const search = params?.messageSearch as string | undefined
-            return search ? `Searching logs for "${truncate(search)}"` : "Searching logs"
+            return search ? `Looking through logs for "${truncate(search)}"` : "Looking through activity logs"
         },
         complete: (params, result) => {
             const parsed = safeParseResult(result)
@@ -539,18 +586,18 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
             const search = params?.messageSearch as string | undefined
             if (total !== undefined && search) return `Found ${total} log${total !== 1 ? "s" : ""} for "${truncate(search, 25)}"`
             if (total !== undefined) return `Found ${total} log${total !== 1 ? "s" : ""}`
-            if (search) return `Searched logs for "${truncate(search)}"`
-            return "Logs searched"
+            if (search) return `Looked through logs for "${truncate(search)}"`
+            return "Log search complete"
         }
     },
     getPosthogSessionEvents: {
-        preparing: "Looking up session events",
-        executing: () => "Fetching session events",
+        preparing: "Loading visit details",
+        executing: () => "Loading visit details",
         complete: (_params, result) => {
             const parsed = safeParseResult(result)
             const summary = parsed?.summary as Record<string, unknown> | undefined
             const total = summary?.meaningfulEventsReturned as number | undefined
-            return total !== undefined ? `Fetched ${total} session event${total !== 1 ? "s" : ""}` : "Fetched session events"
+            return total !== undefined ? `Loaded ${total} visit update${total !== 1 ? "s" : ""}` : "Visit details loaded"
         }
     },
 
@@ -558,30 +605,30 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
     // LaunchDarkly Tools
     // ===================
     listLaunchDarklyFlags: {
-        preparing: "Looking up feature flags",
+        preparing: "Loading feature settings",
         executing: params => {
             const project = params?.projectKey as string | undefined
-            return project ? `Listing flags in ${project}` : "Listing feature flags"
+            return project ? `Loading feature settings from ${project}` : "Loading feature settings"
         },
         complete: (params, result) => {
             const parsed = safeParseResult(result)
             const total = parsed?.totalFlags as number | undefined
             const project = params?.projectKey as string | undefined
-            if (total !== undefined && project) return `Found ${total} flag${total !== 1 ? "s" : ""} in ${project}`
-            if (total !== undefined) return `Found ${total} flag${total !== 1 ? "s" : ""}`
-            if (project) return `Listed flags in ${project}`
-            return "Flags listed"
+            if (total !== undefined && project) return `Found ${total} feature setting${total !== 1 ? "s" : ""} in ${project}`
+            if (total !== undefined) return `Found ${total} feature setting${total !== 1 ? "s" : ""}`
+            if (project) return `Loaded feature settings from ${project}`
+            return "Feature settings loaded"
         }
     },
     getLaunchDarklyFlagDetails: {
-        preparing: "Looking up flag details",
+        preparing: "Loading setting details",
         executing: params => {
             const flagKey = params?.flagKey as string | undefined
-            return flagKey ? `Fetching flag "${flagKey}"` : "Fetching flag details"
+            return flagKey ? `Loading "${flagKey}"` : "Loading setting details"
         },
         complete: params => {
             const flagKey = params?.flagKey as string | undefined
-            return flagKey ? `Fetched flag "${flagKey}"` : "Flag details fetched"
+            return flagKey ? `Loaded "${flagKey}"` : "Loaded details"
         }
     },
 
@@ -589,10 +636,10 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
     // Datadog Tools
     // ===================
     searchDatadogLogs: {
-        preparing: "Building log query",
+        preparing: "Looking through logs",
         executing: params => {
             const query = params?.query as string | undefined
-            return query ? `Searching logs for "${truncate(query)}"` : "Searching logs"
+            return query ? `Looking through logs for "${truncate(query)}"` : "Looking through logs"
         },
         complete: (params, result) => {
             const parsed = safeParseResult(result)
@@ -600,41 +647,41 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
             const query = params?.query as string | undefined
             if (total !== undefined && query) return `Found ${total} log${total !== 1 ? "s" : ""} for "${truncate(query, 25)}"`
             if (total !== undefined) return `Found ${total} log${total !== 1 ? "s" : ""}`
-            if (query) return `Searched logs for "${truncate(query)}"`
-            return "Logs searched"
+            if (query) return `Looked through logs for "${truncate(query)}"`
+            return "Log search complete"
         }
     },
     searchRumEvents: {
-        preparing: "Building RUM query",
+        preparing: "Looking at app activity",
         executing: params => {
             const query = params?.query as string | undefined
-            return query ? `Searching RUM for "${truncate(query)}"` : "Searching RUM events"
+            return query ? `Looking for "${truncate(query)}"` : "Loading app activity"
         },
         complete: (params, result) => {
             const parsed = safeParseResult(result)
             const total = parsed?.totalEvents as number | undefined
             const query = params?.query as string | undefined
-            if (total !== undefined && query) return `Found ${total} RUM event${total !== 1 ? "s" : ""} for "${truncate(query, 25)}"`
-            if (total !== undefined) return `Found ${total} RUM event${total !== 1 ? "s" : ""}`
-            return "RUM events searched"
+            if (total !== undefined && query) return `Found ${total} result${total !== 1 ? "s" : ""} for "${truncate(query, 25)}"`
+            if (total !== undefined) return `Found ${total} result${total !== 1 ? "s" : ""}`
+            return "Search complete"
         }
     },
     listRumEvents: {
-        preparing: "Looking up RUM events",
-        executing: () => "Listing RUM events",
+        preparing: "Loading app activity",
+        executing: () => "Loading app activity",
         complete: (_params, result) => {
             const parsed = safeParseResult(result)
             const total = parsed?.totalEvents as number | undefined
-            return total !== undefined ? `Listed ${total} RUM event${total !== 1 ? "s" : ""}` : "RUM events listed"
+            return total !== undefined ? `Loaded ${total} activity item${total !== 1 ? "s" : ""}` : "Loaded activity"
         }
     },
     aggregateRumEvents: {
-        preparing: "Building RUM aggregation",
-        executing: () => "Aggregating RUM events",
+        preparing: "Summarizing app activity",
+        executing: () => "Summarizing app activity",
         complete: (_params, result) => {
             const parsed = safeParseResult(result)
             const total = parsed?.totalBuckets as number | undefined
-            return total !== undefined ? `Aggregated ${total} bucket${total !== 1 ? "s" : ""}` : "RUM events aggregated"
+            return total !== undefined ? `Summarized ${total} group${total !== 1 ? "s" : ""}` : "Summary ready"
         }
     },
 
@@ -642,14 +689,14 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
     // Terse Tools
     // ===================
     web_search: {
-        preparing: "Building search query",
+        preparing: "Looking on the web",
         executing: params => {
             const query = params?.query as string | undefined
-            return query ? `Searching web for "${truncate(query)}"` : "Searching the web"
+            return query ? `Looking on the web for "${truncate(query)}"` : "Looking on the web"
         },
         complete: params => {
             const query = params?.query as string | undefined
-            return query ? `Searched web for "${truncate(query)}"` : "Web search complete"
+            return query ? `Found web results for "${truncate(query)}"` : "Web search complete"
         }
     }
 }
@@ -699,12 +746,11 @@ export function getToolDisplayForPhase(
 
         switch (phase) {
             case "preparing":
-                // Use action-oriented language that indicates planning/thinking phase
-                return `Planning ${readableName}`
+                return `Getting ready: ${readableName}`
             case "executing":
-                return readableName.charAt(0).toUpperCase() + readableName.slice(1)
+                return `Working on ${readableName}`
             case "complete":
-                return "Complete"
+                return "Done"
         }
     }
 

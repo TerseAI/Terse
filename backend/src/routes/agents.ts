@@ -68,7 +68,7 @@ async function createKnowledgeBaseConfig(tx: PrismaTransaction, knowledgeBaseId:
     await knowledgeBase().addKnowledgeBaseToAgent(tx, knowledgeBaseId, configInstance)
 }
 
-async function validateUserOwnsIntegration(organizationId: string, integrationType: IntegrationType, integrationId: string): Promise<boolean> {
+export async function validateUserOwnsIntegration(organizationId: string, integrationType: IntegrationType, integrationId: string): Promise<boolean> {
     // System integrations are not owned by a user
     if (isSystemIntegration(integrationType)) {
         return true

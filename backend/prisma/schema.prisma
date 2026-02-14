@@ -897,26 +897,28 @@ enum RunHistoryChatEventType {
 
 // Run History tables
 model run_history_records {
-  id                  String                   @id @default(cuid())
-  automation_id       String
+  id                    String                   @id @default(cuid())
+  automation_id         String
   // Timestamp of the run (when the trigger was processed)
-  timestamp           DateTime                 @default(now())
+  timestamp             DateTime                 @default(now())
   // Trigger details (denormalized onto the record for fast reads)
-  event               String
-  trigger_integration IntegrationType
-  trigger_source      String
-  trigger_title       String?
-  trigger_subheader   String?
-  trigger_url         String?
+  event                 String
+  trigger_integration   IntegrationType
+  trigger_source        String
+  trigger_title         String?
+  trigger_subheader     String?
+  trigger_url           String?
+  // Whether this run was manually triggered (from builder chat or Trigger Now button)
+  is_manually_triggered Boolean                  @default(false)
   // Whether this item was filtered out by rules before action
-  filtered            Boolean                  @default(false)
+  filtered              Boolean                  @default(false)
   // Decision summary
-  decision_action     RunHistoryDecisionAction
-  decision_reason     String
+  decision_action       RunHistoryDecisionAction
+  decision_reason       String
   // Run status
-  status              RunHistoryStatus
-  created_at          DateTime                 @default(now())
-  updated_at          DateTime                 @updatedAt
+  status                RunHistoryStatus
+  created_at            DateTime                 @default(now())
+  updated_at            DateTime                 @updatedAt
 
   automation       automations               @relation(fields: [automation_id], references: [id], onDelete: Cascade)
   actions          run_history_actions[]

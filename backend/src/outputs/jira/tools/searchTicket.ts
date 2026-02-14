@@ -59,8 +59,8 @@ JQL EXAMPLES:
         const integrationManager = new AtlassianClient()
 
         // Get valid access token with user ownership validation
-        const userId = runContext.context.user.id
-        const accessToken = await integrationManager.getAccessToken(integrationId, userId)
+        const user = runContext.context.user
+        const accessToken = await integrationManager.getAccessToken(integrationId)
         if (!accessToken) {
             throw new Error(`Atlassian integration not found or access denied for integrationId: ${integrationId}`)
         }

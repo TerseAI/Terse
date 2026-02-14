@@ -1,4 +1,5 @@
 import { GetRunHistoryParams } from "./RunHistoryTypes"
+import type { StatsInterval } from "./types"
 
 export const currentUserKey = (): readonly [string] => ["currentUser"]
 
@@ -155,8 +156,11 @@ export const recentAgentsKey = (limit?: number): readonly [string, number] | rea
     return ["recentAgents"] as const
 }
 
-export const statsKey = (timezone: string): readonly [string, string] => {
-    return ["stats", timezone] as const
+export const statsKey = (timezone: string, interval?: StatsInterval): readonly [string, string] | readonly [string, string, StatsInterval] => {
+    if (!interval) {
+        return ["stats", timezone] as const
+    }
+    return ["stats", timezone, interval] as const
 }
 
 export type AgentListArgs = {

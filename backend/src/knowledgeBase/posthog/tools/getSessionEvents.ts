@@ -32,7 +32,7 @@ export const getSessionEventsTool = tool({
             throw new Error("No context provided")
         }
 
-        const posthogApiKey = await getPosthogApiKeyByIntegrationId(integrationId, runContext.context.user.id)
+        const posthogApiKey = await getPosthogApiKeyByIntegrationId(integrationId, runContext.context.user)
         if (!posthogApiKey) {
             throw new Error(`PostHog integration not found or access denied for integrationId: ${integrationId}`)
         }
