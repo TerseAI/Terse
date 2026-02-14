@@ -3,10 +3,12 @@ import { KnowledgeBaseConfigType } from "@prisma/client"
 
 import { buildDummyKnowledgeBaseConfig } from "../../buildDummyConfigForCapability"
 import { type CapabilityDescription, CapabilityRole, extractToolMetadata, getConfigMetadata } from "../../capabilityHelpers"
+import { validatePosthogProjectExists } from "../../integrations/PosthogIntegration"
 import { ToolboxEntry } from "../../outputs/abstract/Output"
 import { ConfigType, PosthogConfig } from "../../shared/Configs"
 import { IntegrationType } from "../../shared/Integrations"
 import { AgentKnowledgeBaseWithConfigs, PrismaTransaction } from "../../types/prisma"
+import { PosthogConfigSchema, stripConfigForValidation } from "../../utility/configSchemas"
 import { KnowledgeBase } from "../abstract/KnowledgeBase"
 
 import { getSessionEventsTool } from "./tools/getSessionEvents"
@@ -62,9 +64,8 @@ export class PosthogKnowledgeBase extends KnowledgeBase<PosthogConfig> {
     }
 
     async validateConfig(knowledgeBase: PosthogConfig, _userId: string): Promise<void> {
-        if (!knowledgeBase.projectId) {
-            throw new Error("Invalid knowledge base config for posthog: missing projectId")
-        }
+        PosthogConfigSchema.parse(stripConfigForValidation(knowledgeBase))
+        await validatePosthogProjectExists(knowledgeBase.integrationId, knowledgeBase.projectId)
     }
 
     async addKnowledgeBaseToAgent(tx: PrismaTransaction, channelKnowledgeBaseId: string, knowledgeBase: PosthogConfig): Promise<void> {
