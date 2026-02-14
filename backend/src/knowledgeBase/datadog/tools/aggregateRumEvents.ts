@@ -1,10 +1,11 @@
 import { client, v2 } from "@datadog/datadog-api-client"
-import { RunContext, tool } from "@openai/agents"
+import { RunContext, tool, user } from "@openai/agents"
 import { RunHistoryActionType } from "@prisma/client"
 import { z } from "zod"
 
 import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
 import logger from "../../../logger"
+import { db } from "../../../prismaClient"
 import { IntegrationType } from "../../../shared/Integrations"
 import { ToolName } from "../../../tools/ToolNames"
 import { Session } from "../../../types/session"
@@ -68,7 +69,15 @@ export const aggregateRumEventsTool = tool({
             })
             throw new Error("At least one compute metric is required")
         }
-        const credentials = await getDatadogCredentialsByIntegrationId(integrationId)
+        const organizationId = runContext.context.user.organizationId
+        const datadogIntegration = await db().datadog_integrations.findUnique({
+            where: { id: integrationId, organization_id: organizationId }
+        })
+        if (!datadogIntegration) {
+            throw new Error(`Datadog integration not found for integrationId: ${integrationId}`)
+        }
+
+        const credentials = await getDatadogCredentialsByIntegrationId(datadogIntegration.id)
         if (!credentials) {
             throw new Error(`Datadog integration not found or access denied for integrationId: ${integrationId}`)
         }

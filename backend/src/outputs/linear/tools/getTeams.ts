@@ -23,9 +23,16 @@ export const linearGetTeamsTool = tool({
         if (!runContext?.context) {
             throw new Error("No context provided")
         }
+        const organizationId = runContext.context.user.organizationId
+        const linearIntegration = await db().linear_integrations.findUnique({
+            where: { id: integrationId, organization_id: organizationId }
+        })
+        if (!linearIntegration) {
+            throw new Error(`Linear integration not found for integrationId: ${integrationId}`)
+        }
 
         const manager = new LinearIntegrationManager()
-        const accessToken = await manager.getAccessToken(integrationId)
+        const accessToken = await manager.getAccessToken(linearIntegration.id)
         if (!accessToken) {
             throw new Error(`Linear integration not found or access denied for integrationId: ${integrationId}`)
         }

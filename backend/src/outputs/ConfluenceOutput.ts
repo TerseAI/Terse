@@ -250,7 +250,13 @@ To find the correct position, first call confluence_query_page to see the page c
 
         const manager = new AtlassianClient()
         const user = runContext.context.user
-        const accessToken = await manager.getAccessToken(integrationId)
+        const atlassianIntegration = await db().atlassian_integrations.findUnique({
+            where: { id: integrationId, organization_id: user.organizationId }
+        })
+        if (!atlassianIntegration) {
+            throw new Error(`Atlassian integration not found for integrationId: ${integrationId}`)
+        }
+        const accessToken = await manager.getAccessToken(atlassianIntegration.id)
         if (!accessToken) {
             throw new Error(`Atlassian integration not found or access denied for integrationId: ${integrationId}`)
         }

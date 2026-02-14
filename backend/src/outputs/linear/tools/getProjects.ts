@@ -5,6 +5,7 @@ import { z } from "zod"
 import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
 import { LinearIntegrationManager } from "../../../integrations/LinearIntegration"
 import logger from "../../../logger"
+import { db } from "../../../prismaClient"
 import { IntegrationType } from "../../../shared/Integrations"
 import { LinearAdapter } from "../../../ticketing/linear"
 import { ToolName } from "../../../tools/ToolNames"
@@ -25,8 +26,16 @@ export const linearGetProjectsTool = tool({
             throw new Error("No context provided")
         }
 
+        const organizationId = runContext.context.user.organizationId
+        const linearIntegration = await db().linear_integrations.findUnique({
+            where: { id: integrationId, organization_id: organizationId }
+        })
+        if (!linearIntegration) {
+            throw new Error(`Linear integration not found for integrationId: ${integrationId}`)
+        }
+
         const manager = new LinearIntegrationManager()
-        const accessToken = await manager.getAccessToken(integrationId)
+        const accessToken = await manager.getAccessToken(linearIntegration.id)
         if (!accessToken) {
             throw new Error(`Linear integration not found or access denied for integrationId: ${integrationId}`)
         }

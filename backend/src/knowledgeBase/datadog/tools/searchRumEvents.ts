@@ -33,7 +33,15 @@ export const searchRumEventsTool = tool({
         if (!runContext?.context) {
             throw new Error("No context provided")
         }
-        const credentials = await getDatadogCredentialsByIntegrationId(integrationId)
+        const organizationId = runContext.context.user.organizationId
+        const datadogIntegration = await db().datadog_integrations.findUnique({
+            where: { id: integrationId, organization_id: organizationId }
+        })
+        if (!datadogIntegration) {
+            throw new Error(`Datadog integration not found for integrationId: ${integrationId}`)
+        }
+
+        const credentials = await getDatadogCredentialsByIntegrationId(datadogIntegration.id)
         if (!credentials) {
             throw new Error(`Datadog integration not found or access denied for integrationId: ${integrationId}`)
         }

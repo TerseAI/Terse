@@ -167,10 +167,18 @@ COMMON UPDATE OPERATIONS:
             throw new Error("No context provided")
         }
 
+        const organizationId = runContext.context.user.organizationId
+        const atlassianIntegration = await db().atlassian_integrations.findUnique({
+            where: { id: integrationId, organization_id: organizationId }
+        })
+        if (!atlassianIntegration) {
+            throw new Error(`Atlassian integration not found for integrationId: ${integrationId}`)
+        }
+
         const integrationManager = new AtlassianClient()
 
         // Get valid access token with user ownership validation
-        const accessToken = await integrationManager.getAccessToken(integrationId)
+        const accessToken = await integrationManager.getAccessToken(atlassianIntegration.id)
         if (!accessToken) {
             throw new Error(`Atlassian integration not found or access denied for integrationId: ${integrationId}`)
         }

@@ -7,6 +7,7 @@ import { z } from "zod"
 import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
 import { LinearIntegrationManager } from "../../../integrations/LinearIntegration"
 import logger from "../../../logger"
+import { db } from "../../../prismaClient"
 import { IntegrationType } from "../../../shared/Integrations"
 import { ToolName } from "../../../tools/ToolNames"
 import { formatError } from "../../../tools/toolUtils"
@@ -28,8 +29,16 @@ Use the issue ID (UUID) or the issue identifier (e.g. "TEAM-123"). Use this afte
             throw new Error("No context provided")
         }
 
+        const organizationId = runContext.context.user.organizationId
+        const linearIntegration = await db().linear_integrations.findUnique({
+            where: { id: integrationId, organization_id: organizationId }
+        })
+        if (!linearIntegration) {
+            throw new Error(`Linear integration not found for integrationId: ${integrationId}`)
+        }
+
         const manager = new LinearIntegrationManager()
-        const accessToken = await manager.getAccessToken(integrationId)
+        const accessToken = await manager.getAccessToken(linearIntegration.id)
         if (!accessToken) {
             throw new Error(`Linear integration not found or access denied for integrationId: ${integrationId}`)
         }
