@@ -6,7 +6,7 @@ import { z } from "zod"
 import { SessionWithTracking } from "../agent/AgentRunner/AgentRunner"
 import { buildDummyOutputConfig } from "../buildDummyConfigForCapability"
 import { type CapabilityDescription, CapabilityRole, extractToolMetadata, getConfigMetadata } from "../capabilityHelpers"
-import { AtlassianClient } from "../integrations/AtlassianClient"
+import { getAtlassianIntegrationContextForOrganization } from "../integrations/AtlassianClient"
 import { validateConfluencePageExists } from "../integrations/AtlassianIntegration"
 import logger from "../logger"
 import { db } from "../prismaClient"
@@ -139,18 +139,7 @@ This tool returns the current state of the Confluence page including all metadat
             throw new Error("No context provided")
         }
 
-        const user = runContext.context.user
-        const manager = new AtlassianClient()
-        const accessToken = await manager.getAccessToken(integrationId)
-        if (!accessToken) {
-            throw new Error(`Atlassian integration not found or access denied for integrationId: ${integrationId}`)
-        }
-
-        // Ensure the integration belongs to the user's organization
-        const integration = await db().atlassian_integrations.findUnique({
-            where: { id: integrationId, organization_id: user.organizationId },
-            select: { cloud_id: true, base_url: true }
-        })
+        const { accessToken, integration } = await getAtlassianIntegrationContextForOrganization(integrationId, runContext.context.user.organizationId)
 
         if (!integration || !integration.cloud_id) {
             throw new Error(`Atlassian integration not found, not in your organization, or missing cloud ID for integrationId: ${integrationId}`)
@@ -248,24 +237,7 @@ To find the correct position, first call confluence_query_page to see the page c
             throw new Error(chalk.red.bold("No context provided"))
         }
 
-        const manager = new AtlassianClient()
-        const user = runContext.context.user
-        const atlassianIntegration = await db().atlassian_integrations.findUnique({
-            where: { id: integrationId, organization_id: user.organizationId }
-        })
-        if (!atlassianIntegration) {
-            throw new Error(`Atlassian integration not found for integrationId: ${integrationId}`)
-        }
-        const accessToken = await manager.getAccessToken(atlassianIntegration.id)
-        if (!accessToken) {
-            throw new Error(`Atlassian integration not found or access denied for integrationId: ${integrationId}`)
-        }
-
-        // Ensure the integration belongs to the user's organization
-        const integration = await db().atlassian_integrations.findUnique({
-            where: { id: integrationId, organization_id: user.organizationId },
-            select: { cloud_id: true, base_url: true }
-        })
+        const { accessToken, integration } = await getAtlassianIntegrationContextForOrganization(integrationId, runContext.context.user.organizationId)
 
         if (!integration || !integration.cloud_id) {
             throw new Error(`Atlassian integration not found, not in your organization, or missing cloud ID for integrationId: ${integrationId}`)

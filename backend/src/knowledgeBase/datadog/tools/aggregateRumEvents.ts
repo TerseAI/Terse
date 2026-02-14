@@ -5,12 +5,11 @@ import { z } from "zod"
 
 import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
 import logger from "../../../logger"
-import { db } from "../../../prismaClient"
 import { IntegrationType } from "../../../shared/Integrations"
 import { ToolName } from "../../../tools/ToolNames"
 import { Session } from "../../../types/session"
 import { getDatadogRumDeepLink, getDatadogSite } from "../../../utility/datadog"
-import { getDatadogCredentialsByIntegrationId } from "../datadogApiClient"
+import { getDatadogCredentialsForOrganization } from "../../../integrations/DatadogIntegration"
 
 /**
  * Tool for aggregating Datadog RUM events into computed metrics and timeseries.
@@ -69,18 +68,7 @@ export const aggregateRumEventsTool = tool({
             })
             throw new Error("At least one compute metric is required")
         }
-        const organizationId = runContext.context.user.organizationId
-        const datadogIntegration = await db().datadog_integrations.findUnique({
-            where: { id: integrationId, organization_id: organizationId }
-        })
-        if (!datadogIntegration) {
-            throw new Error(`Datadog integration not found for integrationId: ${integrationId}`)
-        }
-
-        const credentials = await getDatadogCredentialsByIntegrationId(datadogIntegration.id)
-        if (!credentials) {
-            throw new Error(`Datadog integration not found or access denied for integrationId: ${integrationId}`)
-        }
+        const credentials = await getDatadogCredentialsForOrganization(integrationId, runContext.context.user.organizationId)
 
         const { apiKey, appKey, region } = credentials
         const site = getDatadogSite(region)

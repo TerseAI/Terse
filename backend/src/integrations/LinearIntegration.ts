@@ -552,6 +552,23 @@ export class LinearIntegrationManager
     }
 }
 
+export async function getLinearAccessTokenForOrganization(integrationId: string, organizationId: string): Promise<string> {
+    const linearIntegration = await db().linear_integrations.findUnique({
+        where: { id: integrationId, organization_id: organizationId }
+    })
+    if (!linearIntegration) {
+        throw new Error(`Linear integration not found for integrationId: ${integrationId}`)
+    }
+
+    const manager = new LinearIntegrationManager()
+    const accessToken = await manager.getAccessToken(linearIntegration.id)
+    if (!accessToken) {
+        throw new Error(`Linear integration not found or access denied for integrationId: ${integrationId}`)
+    }
+
+    return accessToken
+}
+
 /**
  * Verifies that the given Linear team exists and is accessible with the integration's token.
  */

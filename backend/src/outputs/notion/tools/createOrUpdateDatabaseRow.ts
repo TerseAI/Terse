@@ -4,9 +4,8 @@ import { RunContext, tool } from "@openai/agents"
 import { z } from "zod"
 
 import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
-import { NotionIntegrationManager } from "../../../integrations/NotionIntegration"
+import { getNotionAccessTokenForOrganization } from "../../../integrations/NotionIntegration"
 import logger from "../../../logger"
-import { db } from "../../../prismaClient"
 import { IntegrationType } from "../../../shared/Integrations"
 import { ToolName } from "../../../tools/ToolNames"
 import { createNeedsApprovalFunction, formatError } from "../../../tools/toolUtils"
@@ -41,20 +40,7 @@ Use notion_get_schema first to understand property names and types. Use notion_q
         if (!runContext?.context) {
             throw new Error("No context provided")
         }
-
-        const organizationId = runContext.context.user.organizationId
-        const notionIntegration = await db().notion_integrations.findUnique({
-            where: { id: integrationId, organization_id: organizationId }
-        })
-        if (!notionIntegration) {
-            throw new Error(`Notion integration not found for integrationId: ${integrationId}`)
-        }
-
-        const manager = new NotionIntegrationManager()
-        const accessToken = await manager.getAccessToken(notionIntegration.id)
-        if (!accessToken) {
-            throw new Error(`Notion integration not found or access denied for integrationId: ${integrationId}`)
-        }
+        const accessToken = await getNotionAccessTokenForOrganization(integrationId, runContext.context.user.organizationId)
 
         const notion = new Client({ auth: accessToken })
 
