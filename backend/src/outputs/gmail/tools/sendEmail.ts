@@ -41,8 +41,9 @@ export const gmailSendEmailTool = tool({
 
         try {
             // Get Gmail integration to access refresh token
+            const organizationId = runContext.context.user.organizationId
             const gmailIntegration = await db().gmail_integrations.findUnique({
-                where: { id: integrationId }
+                where: { id: integrationId, organization_id: organizationId }
             })
 
             if (!gmailIntegration || !gmailIntegration.is_active) {

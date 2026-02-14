@@ -217,6 +217,22 @@ export class DatadogIntegrationManager implements Integration<DatadogIntegration
     }
 }
 
+export async function getDatadogCredentialsForOrganization(integrationId: string, organizationId: string): Promise<{ apiKey: string; appKey: string; region: string }> {
+    const datadogIntegration = await db().datadog_integrations.findUnique({
+        where: { id: integrationId, organization_id: organizationId }
+    })
+    if (!datadogIntegration) {
+        throw new Error(`Datadog integration not found for integrationId: ${integrationId}`)
+    }
+
+    const credentials = await getDatadogCredentialsByIntegrationId(datadogIntegration.id)
+    if (!credentials) {
+        throw new Error(`Datadog integration not found or access denied for integrationId: ${integrationId}`)
+    }
+
+    return credentials
+}
+
 /**
  * Verifies that the given Datadog log indexes exist and are accessible with the integration's credentials.
  */

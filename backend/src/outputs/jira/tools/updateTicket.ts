@@ -3,9 +3,8 @@ import { RunHistoryActionType } from "@prisma/client"
 import { z } from "zod"
 
 import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
-import { AtlassianClient } from "../../../integrations/AtlassianClient"
+import { getAtlassianIntegrationContextForOrganization } from "../../../integrations/AtlassianClient"
 import logger from "../../../logger"
-import { db } from "../../../prismaClient"
 import { IntegrationType } from "../../../shared/Integrations"
 import { ToolName } from "../../../tools/ToolNames"
 import { createNeedsApprovalFunction, formatError } from "../../../tools/toolUtils"
@@ -167,19 +166,7 @@ COMMON UPDATE OPERATIONS:
             throw new Error("No context provided")
         }
 
-        const integrationManager = new AtlassianClient()
-
-        // Get valid access token with user ownership validation
-        const accessToken = await integrationManager.getAccessToken(integrationId)
-        if (!accessToken) {
-            throw new Error(`Atlassian integration not found or access denied for integrationId: ${integrationId}`)
-        }
-
-        // Get cloud_id and base_url from the integration
-        const integration = await db().atlassian_integrations.findUnique({
-            where: { id: integrationId },
-            select: { cloud_id: true, base_url: true, jira_user_email: true }
-        })
+        const { accessToken, integration } = await getAtlassianIntegrationContextForOrganization(integrationId, runContext.context.user.organizationId)
 
         if (!integration || !integration.cloud_id) {
             throw new Error(`Atlassian integration details not found for integrationId: ${integrationId}`)
