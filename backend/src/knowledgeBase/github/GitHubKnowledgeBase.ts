@@ -3,13 +3,14 @@ import { KnowledgeBaseConfigType } from "@prisma/client"
 
 import { buildDummyKnowledgeBaseConfig } from "../../buildDummyConfigForCapability"
 import { type CapabilityDescription, CapabilityRole, extractToolMetadata, getConfigMetadata, getContextLabel } from "../../capabilityHelpers"
-import { validateGithubRepositoryIds } from "../../integrations/githubValidation"
+import { validateGithubRepositoryIds } from "../../integrations/GithubIntegration"
 import logger from "../../logger"
 import { ToolboxEntry } from "../../outputs/abstract/Output"
 import { ConfigType, GitHubKBConfig } from "../../shared/Configs"
 import { IntegrationType } from "../../shared/Integrations"
 import { AgentKnowledgeBaseWithConfigs, PrismaTransaction, User } from "../../types/prisma"
 import { Session } from "../../types/session"
+import { GitHubKnowledgeBaseConfigSchema, stripConfigForValidation } from "../../utility/configSchemas"
 import { KnowledgeBase } from "../abstract/KnowledgeBase"
 
 import { grepGitHubCodeTool } from "./tools/grepCode"
@@ -61,6 +62,7 @@ export class GitHubKnowledgeBase extends KnowledgeBase<GitHubKBConfig> {
     }
 
     async validateConfig(knowledgeBase: GitHubKBConfig, userId: string): Promise<void> {
+        GitHubKnowledgeBaseConfigSchema.parse(stripConfigForValidation(knowledgeBase))
         await validateGithubRepositoryIds({
             userId,
             integrationId: knowledgeBase.integrationId,

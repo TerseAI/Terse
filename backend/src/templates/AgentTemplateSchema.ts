@@ -1,180 +1,65 @@
 import { z } from "zod"
 
-import { ConfigType } from "../shared/Configs"
-import { IntegrationType } from "../shared/Integrations"
+import {
+    ConfluenceConfigSchema,
+    DatadogConfigSchema,
+    FigmaConfigSchema,
+    GitHubConfigSchema,
+    GitHubKnowledgeBaseConfigSchema,
+    GmailConfigSchema,
+    GmailOutputConfigSchema,
+    JiraConfigSchema,
+    LaunchDarklyConfigSchema,
+    LinearInputConfigSchema,
+    LinearKnowledgeBaseConfigSchema,
+    LinearOutputConfigSchema,
+    NotionConfigSchema,
+    PosthogConfigSchema,
+    SlackConfigSchema,
+    SlackKnowledgeBaseConfigSchema,
+    SlackOutputConfigSchema,
+    TimeTriggerConfigSchema,
+    WorkOSInputConfigSchema
+} from "../utility/configSchemas"
 
-// Base config schema - all configs have integrationId and configType
-const BaseConfigSchema = z
-    .object({
-        integrationId: z.string().optional(), // Optional in templates, will be filled when creating agent
-        configType: z.nativeEnum(ConfigType),
-        integrationType: z.nativeEnum(IntegrationType)
-    })
-    .strict()
+function asTemplateConfigSchema<T extends z.AnyZodObject>(schema: T): z.ZodDiscriminatedUnionOption<"configType"> {
+    const shape = schema.shape as Record<string, z.ZodTypeAny>
+    const configTypeSchema = shape.configType
+    const integrationTypeSchema = shape.integrationType
 
-// Gmail config schema
-const GmailConfigSchema = BaseConfigSchema.extend({
-    configType: z.literal(ConfigType.GMAIL),
-    integrationType: z.literal(IntegrationType.GMAIL)
-})
+    if (!configTypeSchema || !integrationTypeSchema) {
+        throw new Error("Template config schemas must define configType and integrationType.")
+    }
 
-// Gmail Output config schema
-const GmailOutputConfigSchema = BaseConfigSchema.extend({
-    configType: z.literal(ConfigType.GMAIL_OUTPUT),
-    integrationType: z.literal(IntegrationType.GMAIL)
-})
-
-// Figma config schema
-const FigmaConfigSchema = BaseConfigSchema.extend({
-    configType: z.literal(ConfigType.FIGMA),
-    integrationType: z.literal(IntegrationType.FIGMA),
-    fileKey: z.string().optional(),
-    fileName: z.string().optional(),
-    teamId: z.string().optional()
-})
-
-// Slack config schema
-const SlackConfigSchema = BaseConfigSchema.extend({
-    configType: z.literal(ConfigType.SLACK),
-    integrationType: z.literal(IntegrationType.SLACK),
-    channelId: z.string().optional(),
-    channelName: z.string().optional(),
-    listenToUserDms: z.boolean().optional(),
-    userIds: z.array(z.string()).optional()
-})
-
-// Slack Output config schema
-const SlackOutputConfigSchema = BaseConfigSchema.extend({
-    configType: z.literal(ConfigType.SLACK_OUTPUT),
-    integrationType: z.literal(IntegrationType.SLACK),
-    channelId: z.string().optional(),
-    channelName: z.string().optional(),
-    userIds: z.array(z.string()).optional(),
-    userNames: z.array(z.string()).optional()
-})
-
-// Notion config schema (unified: list of allowed databases and/or pages)
-const NotionConfigSchema = BaseConfigSchema.extend({
-    configType: z.literal(ConfigType.NOTION),
-    integrationType: z.literal(IntegrationType.NOTION),
-    databaseIds: z.array(z.string()).optional().default([]),
-    databaseNames: z.array(z.string()).optional().default([]),
-    pageIds: z.array(z.string()).optional().default([]),
-    pageNames: z.array(z.string()).optional().default([])
-})
-
-// Linear Trigger config schema
-const LinearTriggerConfigSchema = BaseConfigSchema.extend({
-    configType: z.literal(ConfigType.LINEAR_INPUT),
-    integrationType: z.literal(IntegrationType.LINEAR),
-    projectId: z.string().optional(),
-    projectName: z.string().optional()
-})
-
-// Linear Output config schema
-const LinearOutputConfigSchema = BaseConfigSchema.extend({
-    configType: z.literal(ConfigType.LINEAR_OUTPUT),
-    integrationType: z.literal(IntegrationType.LINEAR),
-    teamId: z.string().optional(),
-    teamName: z.string().optional()
-})
-
-// GitHub config schema
-const GitHubConfigSchema = BaseConfigSchema.extend({
-    configType: z.literal(ConfigType.GITHUB),
-    integrationType: z.literal(IntegrationType.GITHUB),
-    repositoryIds: z.array(z.number()).optional()
-})
-
-// GitHub Knowledge Base config schema
-const GitHubKBConfigSchema = BaseConfigSchema.extend({
-    configType: z.literal(ConfigType.GITHUB_KB),
-    integrationType: z.literal(IntegrationType.GITHUB),
-    repositoryIds: z.array(z.number()).optional(),
-    repositoryNames: z.array(z.string()).optional()
-})
-
-// Jira config schema
-const JiraConfigSchema = BaseConfigSchema.extend({
-    configType: z.literal(ConfigType.JIRA),
-    integrationType: z.literal(IntegrationType.ATLASSIAN),
-    projectKey: z.string().optional(),
-    projectId: z.string().optional()
-})
-
-// Confluence config schema
-const ConfluenceConfigSchema = BaseConfigSchema.extend({
-    configType: z.literal(ConfigType.CONFLUENCE),
-    integrationType: z.literal(IntegrationType.ATLASSIAN),
-    spaceName: z.string().optional(),
-    spaceId: z.string().optional(),
-    pageId: z.string().optional(),
-    pageName: z.string().optional()
-})
-
-// Posthog config schema
-const PosthogConfigSchema = BaseConfigSchema.extend({
-    configType: z.literal(ConfigType.POSTHOG),
-    integrationType: z.literal(IntegrationType.POSTHOG),
-    projectId: z.string().optional(),
-    projectName: z.string().optional()
-})
-
-// LaunchDarkly Knowledge Base config schema
-const LaunchDarklyKBConfigSchema = BaseConfigSchema.extend({
-    configType: z.literal(ConfigType.LAUNCHDARKLY),
-    integrationType: z.literal(IntegrationType.LAUNCHDARKLY),
-    projectKey: z.string().optional(),
-    environmentKeys: z.array(z.string()).optional()
-})
-
-// Linear Knowledge Base config schema
-const LinearKBConfigSchema = BaseConfigSchema.extend({
-    configType: z.literal(ConfigType.LINEAR_KB),
-    integrationType: z.literal(IntegrationType.LINEAR),
-    teamId: z.string().optional(),
-    teamName: z.string().optional(),
-    projectId: z.string().optional(),
-    projectName: z.string().optional()
-})
-
-// Slack Knowledge Base config schema
-const SlackKBConfigSchema = BaseConfigSchema.extend({
-    configType: z.literal(ConfigType.SLACK_KB),
-    integrationType: z.literal(IntegrationType.SLACK),
-    channelId: z.string().optional(),
-    channelName: z.string().optional(),
-    allowDms: z.boolean().optional(),
-    userIds: z.array(z.string()).optional(),
-    userNames: z.array(z.string()).optional()
-})
-
-// Time Trigger config schema
-const TimeTriggerConfigSchema = BaseConfigSchema.extend({
-    configType: z.literal(ConfigType.TIME_TRIGGER),
-    integrationType: z.literal(IntegrationType.CRON_JOB),
-    cronExpression: z.string()
-})
+    return schema.partial().extend({
+        // Preserve discriminants while still allowing templates to omit unresolved values.
+        configType: configTypeSchema,
+        integrationType: integrationTypeSchema,
+        integrationId: z.string().optional()
+    }) as z.ZodDiscriminatedUnionOption<"configType">
+}
 
 // Union of all config schemas
 export const ConfigTemplateSchema = z.discriminatedUnion("configType", [
-    GmailConfigSchema,
-    GmailOutputConfigSchema,
-    FigmaConfigSchema,
-    SlackConfigSchema,
-    SlackOutputConfigSchema,
-    NotionConfigSchema,
-    LinearTriggerConfigSchema,
-    LinearOutputConfigSchema,
-    GitHubConfigSchema,
-    GitHubKBConfigSchema,
-    JiraConfigSchema,
-    ConfluenceConfigSchema,
-    PosthogConfigSchema,
-    LaunchDarklyKBConfigSchema,
-    LinearKBConfigSchema,
-    SlackKBConfigSchema,
-    TimeTriggerConfigSchema
+    asTemplateConfigSchema(GmailConfigSchema),
+    asTemplateConfigSchema(GmailOutputConfigSchema),
+    asTemplateConfigSchema(FigmaConfigSchema),
+    asTemplateConfigSchema(SlackConfigSchema),
+    asTemplateConfigSchema(SlackOutputConfigSchema),
+    asTemplateConfigSchema(NotionConfigSchema),
+    asTemplateConfigSchema(LinearInputConfigSchema),
+    asTemplateConfigSchema(LinearOutputConfigSchema),
+    asTemplateConfigSchema(GitHubConfigSchema),
+    asTemplateConfigSchema(GitHubKnowledgeBaseConfigSchema),
+    asTemplateConfigSchema(JiraConfigSchema),
+    asTemplateConfigSchema(ConfluenceConfigSchema),
+    asTemplateConfigSchema(PosthogConfigSchema),
+    asTemplateConfigSchema(LaunchDarklyConfigSchema),
+    asTemplateConfigSchema(DatadogConfigSchema),
+    asTemplateConfigSchema(LinearKnowledgeBaseConfigSchema),
+    asTemplateConfigSchema(SlackKnowledgeBaseConfigSchema),
+    asTemplateConfigSchema(WorkOSInputConfigSchema),
+    asTemplateConfigSchema(TimeTriggerConfigSchema)
 ])
 
 // Agent prompt schema

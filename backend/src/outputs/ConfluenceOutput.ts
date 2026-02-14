@@ -6,7 +6,8 @@ import { z } from "zod"
 import { SessionWithTracking } from "../agent/AgentRunner/AgentRunner"
 import { buildDummyOutputConfig } from "../buildDummyConfigForCapability"
 import { type CapabilityDescription, CapabilityRole, extractToolMetadata, getConfigMetadata } from "../capabilityHelpers"
-import { AtlassianClient } from "../integrations/AtlassianClient"
+import { getAtlassianIntegrationContextForOrganization } from "../integrations/AtlassianClient"
+import { validateConfluencePageExists } from "../integrations/AtlassianIntegration"
 import logger from "../logger"
 import { db } from "../prismaClient"
 import { ConfluenceConfig } from "../shared/Configs"
@@ -15,6 +16,7 @@ import { ToolName } from "../tools/ToolNames"
 import { createNeedsApprovalFunction, formatError } from "../tools/toolUtils"
 import { AgentOutputWithConfigs, PrismaTransaction } from "../types/prisma"
 import { Session } from "../types/session"
+import { ConfluenceConfigSchema, stripConfigForValidation } from "../utility/configSchemas"
 import { convertOutputConfigTypeToConfigType } from "../utility/typeConverters"
 
 import { Output, ToolboxEntry } from "./abstract/Output"
@@ -77,17 +79,17 @@ export class ConfluenceOutput extends Output<ConfluenceConfig> {
     }
 
     async validateConfig(output: ConfluenceConfig, _userId: string): Promise<void> {
-        if (!output.pageId) {
-            throw new Error("Invalid output config for confluence: missing pageId")
-        }
+        // Not doing schema validation here because
+        // it errors out. TODO: fix this.
+        await validateConfluencePageExists(output.integrationId, output.pageId)
     }
 
     async addOutputToAgent(tx: PrismaTransaction, agentOutputId: string, output: ConfluenceConfig): Promise<void> {
         await tx.automation_confluence_configs.create({
             data: {
                 automation_output_id: agentOutputId,
-                space_name: output.spaceName,
-                space_id: output.spaceId,
+                space_name: output.spaceName ?? "",
+                space_id: output.spaceId ?? "",
                 page_id: output.pageId,
                 page_name: output.pageName
             }
@@ -137,18 +139,7 @@ This tool returns the current state of the Confluence page including all metadat
             throw new Error("No context provided")
         }
 
-        const user = runContext.context.user
-        const manager = new AtlassianClient()
-        const accessToken = await manager.getAccessToken(integrationId)
-        if (!accessToken) {
-            throw new Error(`Atlassian integration not found or access denied for integrationId: ${integrationId}`)
-        }
-
-        // Ensure the integration belongs to the user's organization
-        const integration = await db().atlassian_integrations.findUnique({
-            where: { id: integrationId, organization_id: user.organizationId },
-            select: { cloud_id: true, base_url: true }
-        })
+        const { accessToken, integration } = await getAtlassianIntegrationContextForOrganization(integrationId, runContext.context.user.organizationId)
 
         if (!integration || !integration.cloud_id) {
             throw new Error(`Atlassian integration not found, not in your organization, or missing cloud ID for integrationId: ${integrationId}`)
@@ -246,18 +237,7 @@ To find the correct position, first call confluence_query_page to see the page c
             throw new Error(chalk.red.bold("No context provided"))
         }
 
-        const manager = new AtlassianClient()
-        const user = runContext.context.user
-        const accessToken = await manager.getAccessToken(integrationId)
-        if (!accessToken) {
-            throw new Error(`Atlassian integration not found or access denied for integrationId: ${integrationId}`)
-        }
-
-        // Ensure the integration belongs to the user's organization
-        const integration = await db().atlassian_integrations.findUnique({
-            where: { id: integrationId, organization_id: user.organizationId },
-            select: { cloud_id: true, base_url: true }
-        })
+        const { accessToken, integration } = await getAtlassianIntegrationContextForOrganization(integrationId, runContext.context.user.organizationId)
 
         if (!integration || !integration.cloud_id) {
             throw new Error(`Atlassian integration not found, not in your organization, or missing cloud ID for integrationId: ${integrationId}`)

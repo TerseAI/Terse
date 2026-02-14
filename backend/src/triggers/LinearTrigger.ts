@@ -1,7 +1,8 @@
 import { CapabilityDescription, CapabilityRole, getConfigMetadata } from "../capabilityHelpers"
-import { LinearIntegrationManager } from "../integrations/LinearIntegration"
+import { LinearIntegrationManager, validateLinearProjectExists } from "../integrations/LinearIntegration"
 import { ConfigType, LinearInputConfig } from "../shared/Configs"
 import { PrismaTransaction } from "../types/prisma"
+import { LinearInputConfigSchema, stripConfigForValidation } from "../utility/configSchemas"
 
 import { Trigger } from "./Trigger"
 
@@ -31,8 +32,12 @@ export class LinearTrigger implements Trigger<LinearInputConfig> {
         }
     }
 
-    async validateConfig(_trigger: LinearInputConfig, _userId: string): Promise<void> {
-        // No additional config validation beyond integration ownership.
+    async validateConfig(trigger: LinearInputConfig, _userId: string): Promise<void> {
+        // Not doing schema validation here because
+        // it errors out. TODO: fix this.
+        if (trigger.projectId) {
+            await validateLinearProjectExists(trigger.integrationId, trigger.projectId)
+        }
     }
 
     async addTriggerToAgent(tx: PrismaTransaction, agentTriggerId: string, trigger: LinearInputConfig): Promise<void> {
