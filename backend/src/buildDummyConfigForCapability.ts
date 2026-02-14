@@ -33,7 +33,10 @@ type OutputDummyPayload =
     | { config_type: typeof OutputConfigType.ATTIO; attio_config: Pick<automation_attio_configs, "object_slug"> }
 
 export function buildDummyOutputConfig(integration_id: string, payload: OutputDummyPayload): AgentOutputWithConfigs {
-    const base: Omit<AgentOutputWithConfigs, "slack_config" | "notion_config" | "linear_config" | "jira_config" | "confluence_config" | "github_config" | "gmail_config" | "figma_config" | "attio_config"> = {
+    const base: Omit<
+        AgentOutputWithConfigs,
+        "slack_config" | "notion_config" | "linear_config" | "jira_config" | "confluence_config" | "github_config" | "gmail_config" | "figma_config" | "attio_config"
+    > = {
         id: DUMMY_ID,
         automation_id: DUMMY_ID,
         integration_id,

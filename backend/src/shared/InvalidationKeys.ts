@@ -110,6 +110,10 @@ export const workosIntegrationsKey = (): readonly [string] => {
     return ["workosIntegrations"] as const
 }
 
+export const attioIntegrationsKey = (): readonly [string] => {
+    return ["attioIntegrations"] as const
+}
+
 export const allRunHistoryKey = (params?: GetRunHistoryParams): readonly [string, string] | readonly [string] => {
     if (!params || Object.keys(params).length === 0) {
         return ["allRunHistory"] as const

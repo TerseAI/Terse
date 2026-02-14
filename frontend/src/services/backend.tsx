@@ -4,6 +4,7 @@ import { POST_LOGIN_REDIRECT_KEY, isSafeRedirectPath } from "../constants/storag
 import { ApiRoutes } from "../shared/ApiRoutes"
 import {
     AtlassianIntegration,
+    AttioIntegration,
     DatadogIntegration,
     FigmaIntegration,
     GithubIntegration,
@@ -16,8 +17,7 @@ import {
     NotionIntegration,
     PosthogIntegration,
     SlackIntegration,
-    WorkOSIntegration,
-    AttioIntegration
+    WorkOSIntegration
 } from "../shared/Integrations"
 import { CreateNotificationDestinationRequest, NotificationDestination } from "../shared/Notifications"
 import type { RunHistoryActionWithId, RunHistoryModelEvent } from "../shared/RunHistoryTypes"

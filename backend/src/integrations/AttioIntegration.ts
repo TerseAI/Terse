@@ -1,7 +1,7 @@
 import { Request, Response } from "express"
 import jwt from "jsonwebtoken"
 
-import { jwt as jwtSettings, attio as attioConfig, urls } from "../config/settings"
+import { attio as attioConfig, jwt as jwtSettings, urls } from "../config/settings"
 import logger from "../logger"
 import { db } from "../prismaClient"
 import { FrontendRoutes } from "../shared/FrontendRoutes"
