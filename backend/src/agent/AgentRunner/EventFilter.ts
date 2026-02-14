@@ -1,4 +1,4 @@
-import { Agent, AgentInputItem } from "@openai/agents"
+import { Agent, AgentInputItem, user } from "@openai/agents"
 import { z } from "zod"
 
 import { settings } from "../../config/settings"
@@ -11,6 +11,7 @@ import { SocketEvents, SocketRooms } from "../../shared/SocketEvents"
 import { AgentPrompt } from "../../types/prisma"
 import { Session } from "../../types/session"
 import { randomString } from "../../utility/strings"
+import { RunHistoryChatMemorySession } from "../CustomMemorySession"
 import { AgentType, builderProviderDataModelSettings, runnerFactory } from "../runner"
 import { transformAgentStreamToModelEvents } from "../streaming"
 
@@ -127,6 +128,54 @@ function buildFilterHistory(agentPrompt: AgentPrompt, event: InputEvent): AgentI
     ]
 }
 
+function getAgentInputItemText(item: AgentInputItem): string {
+    const itemAny = item as any
+    const content = itemAny?.content
+
+    if (typeof content === "string") {
+        return content
+    }
+
+    if (!Array.isArray(content)) {
+        return ""
+    }
+
+    return content
+        .map((part: any) => {
+            if (!part || typeof part !== "object") return ""
+            if (typeof part.text === "string") return part.text
+            if (typeof part.input_text === "string") return part.input_text
+            return ""
+        })
+        .join("\n")
+}
+
+function hasEventContext(item: AgentInputItem): boolean {
+    const text = getAgentInputItemText(item)
+    return (text.includes("<EVENT>") && text.includes("</EVENT>")) || (text.includes("<RUN_TRIGGER_CONTEXT>") && text.includes("</RUN_TRIGGER_CONTEXT>"))
+}
+
+async function seedEventContextForFilteredRunIfNeeded(runId: string, event: InputEvent, isRelevant: boolean): Promise<void> {
+    if (isRelevant) {
+        return
+    }
+
+    try {
+        const memorySession = new RunHistoryChatMemorySession({ sessionId: runId })
+        const existing = await memorySession.getItems(5)
+
+        if (existing.some(item => hasEventContext(item))) {
+            return
+        }
+
+        const eventContextText = ["<EVENT>", event.formatForAgentRunner(), "</EVENT>"].join("\n")
+        const eventContextItem = user(eventContextText) as AgentInputItem
+        await memorySession.addItems([eventContextItem])
+    } catch (error) {
+        logger.warn("Failed to seed event context for filtered run in EventFilter", { runId, error })
+    }
+}
+
 /**
  * Filters a single event to determine if it's relevant to the agent based on user instructions
  * Returns both the filter result and an async generator for streaming events
@@ -204,6 +253,7 @@ export async function filterEvent(event: InputEvent, agentPrompt: AgentPrompt, i
                 throw new Error("No final output from filter agent")
             }
             parsed.confidence = Math.max(0, Math.min(1, parsed.confidence))
+            await seedEventContextForFilteredRunIfNeeded(trackingParams.runId, event, parsed.isRelevant)
 
             const filterResultEvent = {
                 type: "FilterResult" as const,
@@ -240,6 +290,7 @@ export async function filterEvent(event: InputEvent, agentPrompt: AgentPrompt, i
             throw new Error("No final output from filter agent")
         }
         parsed.confidence = Math.max(0, Math.min(1, parsed.confidence))
+        await seedEventContextForFilteredRunIfNeeded(trackingParams.runId, event, parsed.isRelevant)
         logger.info(`Event filter result for ${event.integrationType}:`, { parsed })
         return { result: parsed }
     }
