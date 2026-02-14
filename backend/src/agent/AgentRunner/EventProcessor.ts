@@ -1,4 +1,4 @@
-import { AgentOutputType, Agent as OpenAIAgent, RunResult } from "@openai/agents"
+import { AgentInputItem, AgentOutputType, Agent as OpenAIAgent, RunResult, user } from "@openai/agents"
 
 import { InputEvent } from "../../integrations/abstract/InputEvent"
 import { KnowledgeBase } from "../../knowledgeBase/abstract/KnowledgeBase"
@@ -16,6 +16,7 @@ import { Session } from "../../types/session"
 import { trackActionTaken, trackAgentTriggered } from "../../utility/analytics"
 import { getInputConfigInclude, getKnowledgeBaseConfigInclude, getOutputConfigInclude } from "../../utility/prismaIncludes"
 import { classifyAgentError } from "../agentErrorUtils"
+import { RunHistoryChatMemorySession } from "../CustomMemorySession"
 
 import { AgentRunner, ApprovalResult, SessionWithTracking } from "./AgentRunner"
 import { filterEvent } from "./EventFilter"
@@ -118,6 +119,50 @@ export class EventProcessor {
         }
 
         return results
+    }
+
+    private getAgentInputItemText(item: AgentInputItem): string {
+        const itemAny = item as any
+        const content = itemAny?.content
+
+        if (typeof content === "string") {
+            return content
+        }
+
+        if (!Array.isArray(content)) {
+            return ""
+        }
+
+        return content
+            .map((part: any) => {
+                if (!part || typeof part !== "object") return ""
+                if (typeof part.text === "string") return part.text
+                if (typeof part.input_text === "string") return part.input_text
+                return ""
+            })
+            .join("\n")
+    }
+
+    private hasEventContext(item: AgentInputItem): boolean {
+        const text = this.getAgentInputItemText(item)
+        return (text.includes("<EVENT>") && text.includes("</EVENT>")) || (text.includes("<RUN_TRIGGER_CONTEXT>") && text.includes("</RUN_TRIGGER_CONTEXT>"))
+    }
+
+    private async seedEventContextForFilteredRun(runId: string): Promise<void> {
+        try {
+            const memorySession = new RunHistoryChatMemorySession({ sessionId: runId })
+            const existing = await memorySession.getItems(5)
+
+            if (existing.some(item => this.hasEventContext(item))) {
+                return
+            }
+
+            const eventContextText = ["<EVENT>", this.inputEvent.formatForAgentRunner(), "</EVENT>"].join("\n")
+            const eventContextItem = user(eventContextText) as AgentInputItem
+            await memorySession.addItems([eventContextItem])
+        } catch (error) {
+            logger.warn("Failed to seed event context for filtered run", { runId, error })
+        }
     }
 
     /**
@@ -295,6 +340,7 @@ export class EventProcessor {
             logger.info(`Event is not relevant to agent "${agent.name}": ${filterResult.reason}`)
             try {
                 await markRunSkipped(runId, filterResult.reason)
+                await this.seedEventContextForFilteredRun(runId)
                 // Emit cache invalidation to update UI
                 emitCacheInvalidationWithWildcard(this.user.organizationId, "runHistory", agent.id)
             } catch (e) {
