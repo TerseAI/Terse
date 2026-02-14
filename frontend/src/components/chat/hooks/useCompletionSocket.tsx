@@ -99,8 +99,13 @@ export function useCompletionSocket(options: UseCompletionSocketOptions) {
             const message = payload.runHistoryModelEvent
             console.log("[useCompletionSocket] Event received:", message.type)
 
-            // Ensure epoch-ms timestamp is present, falling back to client time.
-            message.timestamp = message.timestamp ?? Date.now()
+            // Normalize timestamps to epoch-ms for stable ordering in the chat timeline.
+            if (typeof message.timestamp === "string") {
+                const parsed = Date.parse(message.timestamp)
+                message.timestamp = Number.isNaN(parsed) ? Date.now() : parsed
+            } else {
+                message.timestamp = message.timestamp ?? Date.now()
+            }
 
             switch (message.type) {
                 case "TextDelta":

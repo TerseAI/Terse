@@ -26,7 +26,7 @@ export function CompactIntegrationRow({ integration, isConnected = false, summar
             <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                     <span className="text-sm font-medium text-foreground">{INTEGRATION_METADATA[integration].name}</span>
-                    {isConnected && <BadgeCheckIcon className="w-3.5 h-3.5 text-primary flex-shrink-0" />}
+                    {isConnected && <BadgeCheckIcon className="w-3.5 h-3.5 text-green-500 flex-shrink-0" />}
                 </div>
                 {isConnected && summary && <p className="text-xs text-muted-foreground truncate">{summary}</p>}
             </div>
