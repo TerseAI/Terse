@@ -44,6 +44,47 @@ function mergeSnippetIntoList(existingSnippets: ChatSnippet[], newSnippet: ChatS
     return existingSnippets.map((s, i) => (i === existingIndex ? newSnippet : s))
 }
 
+function mergeFunctionCallsForHydration(initialCalls: Turn["function_calls"], existingCalls: Turn["function_calls"]): Turn["function_calls"] {
+    if (initialCalls.length === 0) return existingCalls
+    if (existingCalls.length === 0) return initialCalls
+
+    const existingCallsById = new Map(existingCalls.map(call => [call.id, call]))
+    const mergedCalls = initialCalls.map(call => {
+        const existingCall = existingCallsById.get(call.id)
+        return existingCall ? { ...call, ...existingCall } : call
+    })
+
+    existingCalls.forEach(call => {
+        if (!mergedCalls.some(existing => existing.id === call.id)) {
+            mergedCalls.push(call)
+        }
+    })
+
+    return mergedCalls
+}
+
+function mergeSnippetsForHydration(initialSnippets?: ChatSnippet[], existingSnippets?: ChatSnippet[]): ChatSnippet[] | undefined {
+    if (!initialSnippets?.length && !existingSnippets?.length) return undefined
+    if (!initialSnippets?.length) return existingSnippets
+    if (!existingSnippets?.length) return initialSnippets
+
+    const seen = new Set(initialSnippets.map(snippet => snippet.id))
+    return [...initialSnippets, ...existingSnippets.filter(snippet => !seen.has(snippet.id))]
+}
+
+function mergeAssistantTurnForHydration(initialTurn: Turn, existingTurn: Turn): Turn {
+    const initialText = initialTurn.text ?? ""
+    const existingText = existingTurn.text ?? ""
+
+    return {
+        ...initialTurn,
+        ...existingTurn,
+        text: existingText.length >= initialText.length ? existingText : initialText,
+        function_calls: mergeFunctionCallsForHydration(initialTurn.function_calls, existingTurn.function_calls),
+        snippets: mergeSnippetsForHydration(initialTurn.snippets, existingTurn.snippets)
+    }
+}
+
 interface UseChatTurnsOptions {
     initialTurns?: Turn[] | undefined
 }
@@ -58,16 +99,22 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
     useEffect(() => {
         if (initialTurns && initialTurns.length > 0) {
             setTurns(prev => {
-                // Create a map of initialTurns by step_id for quick lookup
-                const initialTurnsMap = new Map<string, Turn>()
-                initialTurns.forEach(turn => {
-                    initialTurnsMap.set(turn.step_id, turn)
+                if (prev.length === 0) {
+                    return initialTurns
+                }
+
+                const previousAssistantTurnsByStepId = new Map(prev.filter(turn => turn.role === "assistant").map(turn => [turn.step_id, turn]))
+                const initialAssistantStepIds = new Set(initialTurns.filter(turn => turn.role === "assistant").map(turn => turn.step_id))
+
+                const mergedInitialTurns = initialTurns.map(turn => {
+                    if (turn.role !== "assistant") return turn
+                    const existingTurn = previousAssistantTurnsByStepId.get(turn.step_id)
+                    return existingTurn ? mergeAssistantTurnForHydration(turn, existingTurn) : turn
                 })
 
-                // Collect turns from existing that don't exist in initialTurns
-                const uniqueExistingTurns = prev.filter(turn => !initialTurnsMap.has(turn.step_id))
+                const additionalAssistantTurns = prev.filter(turn => turn.role === "assistant" && !initialAssistantStepIds.has(turn.step_id))
 
-                return [...initialTurns, ...uniqueExistingTurns]
+                return additionalAssistantTurns.length > 0 ? [...mergedInitialTurns, ...additionalAssistantTurns] : mergedInitialTurns
             })
         }
     }, [initialTurns])
@@ -288,7 +335,7 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
         }
     }
 
-    const handleToolCallComplete = ({ step_id, result, changed_items, errorContext }: ToolCallComplete) => {
+    const handleToolCallComplete = ({ step_id, tool_name, result, changed_items, errorContext, timestamp }: ToolCallComplete & Pick<ModelEvent, "timestamp">) => {
         // Track current step_id
         currentStepIdRef.current = step_id
 
@@ -297,27 +344,70 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
 
         setTurns(prev => {
             const updated = [...prev]
+            let foundExistingCall = false
+
             // Search through all turns to find the tool call
-            for (const turn of updated) {
-                const toolCall = turn.function_calls.find(call => call.id === step_id)
-                if (toolCall) {
-                    toolCall.isRunning = false
-                    toolCall.isWaitingForApproval = false
-                    toolCall.isWaitingForUserInput = false
-                    if (result) {
-                        toolCall.result = result
-                    }
-                    if (errorContext) {
-                        toolCall.isFailure = true
-                        toolCall.errorContext = errorContext
-                    }
-                    if (changed_items) {
-                        toolCall.changed_items = changed_items
-                    }
-                    break
+            for (let i = 0; i < updated.length; i++) {
+                const turn = updated[i]
+                const toolCallIndex = turn.function_calls.findIndex(call => call.id === step_id)
+                if (toolCallIndex === -1) continue
+
+                const existingCall = turn.function_calls[toolCallIndex]
+                const nextCall = {
+                    ...existingCall,
+                    isRunning: false,
+                    isWaitingForApproval: false,
+                    isWaitingForUserInput: false,
+                    ...(result ? { result } : {}),
+                    ...(errorContext ? { isFailure: true, errorContext } : {}),
+                    ...(changed_items ? { changed_items } : {})
                 }
+
+                const nextCalls = [...turn.function_calls]
+                nextCalls[toolCallIndex] = nextCall
+                updated[i] = { ...turn, function_calls: nextCalls }
+                foundExistingCall = true
+                break
             }
-            return updated
+
+            if (foundExistingCall) {
+                return updated
+            }
+
+            const fallbackCall = {
+                id: step_id,
+                name: tool_name,
+                timestamp,
+                isRunning: false,
+                isWaitingForApproval: false,
+                isWaitingForUserInput: false,
+                ...(result ? { result } : {}),
+                ...(changed_items ? { changed_items } : {}),
+                ...(errorContext ? { isFailure: true, errorContext } : {})
+            }
+
+            for (let i = updated.length - 1; i >= 0; i--) {
+                const turn = updated[i]
+                if (turn.role !== "assistant") continue
+
+                updated[i] = {
+                    ...turn,
+                    isGenerating: false,
+                    function_calls: [...turn.function_calls, fallbackCall]
+                }
+                return updated
+            }
+
+            return [
+                ...updated,
+                {
+                    role: "assistant",
+                    text: "",
+                    function_calls: [fallbackCall],
+                    step_id,
+                    isGenerating: false
+                }
+            ]
         })
     }
 

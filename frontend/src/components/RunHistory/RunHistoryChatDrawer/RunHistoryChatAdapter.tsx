@@ -32,18 +32,22 @@ export default function RunHistoryChatAdapter({ runId, status, children }: RunHi
     const { events, isLoading, startTimestamp, endTimestamp } = useChatHistory(runId)
 
     // Parse server ISO timestamps to epoch ms for chronological ordering
-    const historicalEvents = events.map(event => ({
-        ...event,
-        timestamp: event.timestamp ? new Date(event.timestamp).getTime() : undefined,
-        isHistorical: true
-    }))
+    const historicalEvents = useMemo(
+        () =>
+            events.map(event => ({
+                ...event,
+                timestamp: event.timestamp ? new Date(event.timestamp).getTime() : undefined,
+                isHistorical: true
+            })),
+        [events]
+    )
 
     // Use API status if available, otherwise fall back to prop status
     const currentStatus = status
     const isActiveRun = currentStatus === "in_progress"
 
     // Convert to Turns
-    const turns = convertRunHistoryEventsToTurns(historicalEvents)
+    const turns = useMemo(() => convertRunHistoryEventsToTurns(historicalEvents), [historicalEvents])
 
     // Create subscription function for run history
     const subscribeToEvents: ChatEventSubscription | null = useMemo(() => {

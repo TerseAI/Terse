@@ -1,7 +1,6 @@
 import { RunContext, tool } from "@openai/agents"
 import { RunHistoryActionType } from "@prisma/client"
 import { google } from "googleapis"
-import * as rfc2047 from "rfc2047"
 import { z } from "zod"
 
 import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
@@ -12,6 +11,14 @@ import { IntegrationType } from "../../../shared/Integrations"
 import { ToolName } from "../../../tools/ToolNames"
 import { createNeedsApprovalFunction, formatError } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
+
+function encodeSubjectHeader(subject: string): string {
+    // Keep ASCII subjects unchanged; encode non-ASCII as RFC 2047 UTF-8 Base64 encoded-word.
+    if (/^[\x00-\x7F]*$/.test(subject)) {
+        return subject
+    }
+    return `=?UTF-8?B?${Buffer.from(subject, "utf8").toString("base64")}?=`
+}
 
 /**
  * Tool for sending emails or replying to email threads via Gmail.
@@ -68,7 +75,7 @@ export const gmailSendEmailTool = tool({
 
             // Build email headers
             // Subject is encoded per RFC 2047 to handle non-ASCII characters (e.g., em-dashes)
-            const headers: string[] = [`To: ${to}`, `Subject: ${rfc2047.encode(subject)}`]
+            const headers: string[] = [`To: ${to}`, `Subject: ${encodeSubjectHeader(subject)}`]
 
             if (cc) {
                 headers.push(`Cc: ${cc}`)

@@ -168,9 +168,23 @@ export async function buildChatAgentSystemPrompt(userId: string, organizationId:
 
     You currently have the following integrations connected:${existingIntegrationsList}
 
-    You can also modify these integrations with the user's permissions. Just call promptForIntegration tool to prompt the user to configure the integration.
+    You can also modify these integrations with the user's permissions.
 
-    If the user does not have an integration but it's need to build the agent they want, you can call the promptForIntegration tool to prompt the user to connect the integration.
+    ## Integration Connection Policy (CRITICAL)
+    - Default to using existing connected integrations from the list above.
+    - Treat "already connected" as enough to proceed. Do not ask the user to reconnect just to confirm account selection, scopes, or token freshness.
+    - NEVER call promptForIntegration as a verification step.
+    - Only call promptForIntegration when at least one of these is true:
+      - The required integration type is not connected.
+      - The user explicitly asks to connect/reconnect/change the integration.
+      - A concrete auth/permission failure occurs while trying to proceed (for example: revoked token, expired auth, missing required authorization scope).
+    - If multiple instances of the same integration are connected:
+      - If the user gives a clear hint (email/domain/workspace/resource), use that matching account.
+      - If the user gives no hint, ask one targeted selection question before choosing.
+      - Do not ask the user to reconnect in order to choose an account.
+    - If access scope is uncertain, first continue with existing connections (for example by fetching available resources). On the first concrete auth/scope error, immediately call promptForIntegration to reconnect; do not ask for extra confirmation first.
+    - If the user says "connect {integration}" but that integration is already connected, acknowledge it's already connected and continue with it. Only treat this as reconnect intent if they explicitly ask to reconnect/re-authorize, switch accounts, or add another account.
+    - If the user says something is already connected, acknowledge it and continue with the existing connection unless there is a concrete error that blocks progress.
 
     ## Current UI State - This is what the user looking at in the UI right now. You should prioritize this context.
 
@@ -197,7 +211,8 @@ export async function buildChatAgentSystemPrompt(userId: string, organizationId:
       - You need to know what tools a knowledge base or output provides
       - You need to verify what configuration fields a trigger requires
       - A user asks about platform capabilities in general
-    - When the user tells you which integration they want to connect, you should use the promptForIntegration tool, which will prompt the user to configure the integration. Try your best to guesstimate which integration the user is referring to based on context, even if they don't explicitly name it. For example, if they mention "Slack messages" or "chat", they likely mean Slack. If they mention "code repositories" or "pull requests", they likely mean GitHub.
+    - CRITICAL: Before calling promptForIntegration, check the "User's Existing Integrations" list in this prompt. If the requested integration is already connected, proceed using the existing connection and do not prompt to reconnect.
+    - When the user tells you which integration they want to connect, use the promptForIntegration tool only when a new connection or reconfiguration is actually needed. Try your best to guesstimate which integration the user is referring to based on context, even if they don't explicitly name it. For example, if they mention "Slack messages" or "chat", they likely mean Slack. If they mention "code repositories" or "pull requests", they likely mean GitHub.
     - promptForIntegration blocks until the user completes the integration or the request times out (~2 minutes); it returns the result (e.g. integration ID and success message, or a timeout message) directly. Use the returned value to continue—acknowledge the connection and proceed with the flow. You can call it again in the same turn if you need multiple integrations; each call will wait for its own completion.
     - CRITICAL: Only include integrations that the user explicitly asked for. Do not add extra triggers, outputs, or knowledge bases "just because they are available". If multiple triggers are possible, ask the user to choose instead of adding more than one.
     - CRITICAL: Never include an input config unless all required fields are known. If any required fields are missing (e.g., Slack channel or DM preference), ask a clarifying question instead of guessing.
