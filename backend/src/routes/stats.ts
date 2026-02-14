@@ -2,24 +2,115 @@ import { Request, Response } from "express"
 import { DateTime } from "luxon"
 
 import { db } from "../prismaClient"
-import { AgentActivityItem, CountByString, DayOfWeek, RecentAction, RecentRun, StatsResponse } from "../shared/types"
+import { AgentActivityItem, CountByString, RecentAction, RecentRun, StatsInterval, StatsResponse } from "../shared/types"
 import { convertPrismaIntegrationTypeToIntegrationTypeFromRunHistory } from "../utility/typeConverters"
 
 // Stats configuration constants
-const CHART_TIME_WINDOW_DAYS = 7 // Number of days for the daily events chart
-const METRICS_USE_MONTHLY = true // If true, metrics use monthly periods; if false, use METRICS_TIME_WINDOW_DAYS
-const METRICS_TIME_WINDOW_DAYS = 30 // Number of days for metrics when METRICS_USE_MONTHLY is false
+const DEFAULT_CHART_TIME_WINDOW_DAYS = 7 // Fallback chart period when no custom interval is requested
 const DEFAULT_TIMEZONE = "UTC"
+type ChartBucketUnit = "minute" | "hour" | "day"
+const STATS_INTERVAL_CONFIG: Record<StatsInterval, { amount: number; unit: ChartBucketUnit }> = {
+    "1h": { amount: 60, unit: "minute" },
+    "24h": { amount: 24, unit: "hour" },
+    "7d": { amount: 7, unit: "day" },
+    "1mo": { amount: 30, unit: "day" },
+    "3mo": { amount: 90, unit: "day" },
+    "1y": { amount: 365, unit: "day" }
+}
 
-// Type for raw SQL daily events aggregation result
-interface DailyEventRow {
-    event_date: Date
+// Type for raw SQL chart aggregation result
+interface ChartBucketRow {
+    bucket_key: string
     count: bigint
+}
+
+interface StatsTimeBoundaries {
+    currentPeriodStart: Date
+    previousPeriodStart: Date
+    chartStartDate: Date
+    chartBucketUnit: ChartBucketUnit
+    chartPointCount: number
 }
 
 // Validate timezone string is a valid IANA timezone
 function isValidTimezone(tz: string): boolean {
     return DateTime.now().setZone(tz).isValid
+}
+
+function isValidStatsInterval(value: string): value is StatsInterval {
+    return value in STATS_INTERVAL_CONFIG
+}
+
+function subtractByChartUnit(dt: DateTime, unit: ChartBucketUnit, amount: number): DateTime {
+    if (unit === "minute") {
+        return dt.minus({ minutes: amount })
+    }
+    if (unit === "hour") {
+        return dt.minus({ hours: amount })
+    }
+    return dt.minus({ days: amount })
+}
+
+function addByChartUnit(dt: DateTime, unit: ChartBucketUnit, amount: number): DateTime {
+    if (unit === "minute") {
+        return dt.plus({ minutes: amount })
+    }
+    if (unit === "hour") {
+        return dt.plus({ hours: amount })
+    }
+    return dt.plus({ days: amount })
+}
+
+function getBucketStorageKey(dt: DateTime, unit: ChartBucketUnit): string {
+    if (unit === "minute") {
+        return dt.toFormat("yyyy-MM-dd HH:mm")
+    }
+    if (unit === "hour") {
+        return dt.toFormat("yyyy-MM-dd HH:00")
+    }
+    return dt.toFormat("yyyy-MM-dd")
+}
+
+function getBucketDisplayLabel(dt: DateTime, unit: ChartBucketUnit, pointCount: number): string {
+    if (unit === "minute") {
+        return dt.toFormat("HH:mm")
+    }
+    if (unit === "hour") {
+        return dt.toFormat("LLL d HH:mm")
+    }
+    if (pointCount <= 7) {
+        return dt.toFormat("ccc")
+    }
+    return dt.toFormat("LLL d")
+}
+
+function resolveStatsTimeBoundaries(nowInTimezone: DateTime, interval?: StatsInterval): StatsTimeBoundaries {
+    if (!interval) {
+        const currentPeriodStart = nowInTimezone.startOf("month")
+        const previousPeriodStart = currentPeriodStart.minus({ months: 1 })
+        const chartStartDate = nowInTimezone.minus({ days: DEFAULT_CHART_TIME_WINDOW_DAYS - 1 }).startOf("day")
+
+        return {
+            currentPeriodStart: currentPeriodStart.toJSDate(),
+            previousPeriodStart: previousPeriodStart.toJSDate(),
+            chartStartDate: chartStartDate.toJSDate(),
+            chartBucketUnit: "day",
+            chartPointCount: DEFAULT_CHART_TIME_WINDOW_DAYS
+        }
+    }
+
+    const config = STATS_INTERVAL_CONFIG[interval]
+    const chartEnd = nowInTimezone.startOf(config.unit)
+    const currentPeriodStart = subtractByChartUnit(chartEnd, config.unit, config.amount - 1)
+    const previousPeriodStart = subtractByChartUnit(currentPeriodStart, config.unit, config.amount)
+
+    return {
+        currentPeriodStart: currentPeriodStart.toJSDate(),
+        previousPeriodStart: previousPeriodStart.toJSDate(),
+        chartStartDate: currentPeriodStart.toJSDate(),
+        chartBucketUnit: config.unit,
+        chartPointCount: config.amount
+    }
 }
 
 export async function getStats(req: Request, res: Response) {
@@ -37,38 +128,38 @@ export async function getStats(req: Request, res: Response) {
     // Get user's timezone from query param, validate it, or fall back to UTC
     const requestedTimezone = req.query.tz as string | undefined
     const timezone = requestedTimezone && isValidTimezone(requestedTimezone) ? requestedTimezone : DEFAULT_TIMEZONE
+    const requestedInterval = req.query.interval as string | undefined
+    const interval = requestedInterval && isValidStatsInterval(requestedInterval) ? requestedInterval : undefined
 
-    // Calculate date ranges for comparison
-    const now = new Date()
-    let currentPeriodStart: Date
-    let previousPeriodStart: Date
-    let previousPeriodEnd: Date
-
-    if (METRICS_USE_MONTHLY) {
-        currentPeriodStart = new Date(now.getFullYear(), now.getMonth(), 1) // Start of current month
-        previousPeriodStart = new Date(now.getFullYear(), now.getMonth() - 1, 1) // Start of previous month
-        previousPeriodEnd = new Date(now.getFullYear(), now.getMonth(), 0) // End of previous month
-    } else {
-        currentPeriodStart = new Date(now)
-        currentPeriodStart.setDate(currentPeriodStart.getDate() - METRICS_TIME_WINDOW_DAYS)
-        currentPeriodStart.setHours(0, 0, 0, 0)
-
-        previousPeriodEnd = new Date(currentPeriodStart)
-        previousPeriodEnd.setMilliseconds(previousPeriodEnd.getMilliseconds() - 1)
-
-        previousPeriodStart = new Date(previousPeriodEnd)
-        previousPeriodStart.setDate(previousPeriodStart.getDate() - METRICS_TIME_WINDOW_DAYS)
-        previousPeriodStart.setHours(0, 0, 0, 0)
-    }
-
-    // Calculate chart start date for daily events in the user's timezone
-    // Use Luxon to correctly calculate midnight N days ago in the user's timezone
-    // We use CHART_TIME_WINDOW_DAYS - 1 because the display shows today + (N-1) previous days
-    const chartStartDate = DateTime.now()
-        .setZone(timezone)
-        .minus({ days: CHART_TIME_WINDOW_DAYS - 1 })
-        .startOf("day")
-        .toJSDate()
+    const nowInTimezone = DateTime.now().setZone(timezone)
+    const { currentPeriodStart, previousPeriodStart, chartStartDate, chartBucketUnit, chartPointCount } = resolveStatsTimeBoundaries(nowInTimezone, interval)
+    const chartAggregationQuery =
+        chartBucketUnit === "minute"
+            ? prisma.$queryRaw<ChartBucketRow[]>`
+                  SELECT TO_CHAR(DATE_TRUNC('minute', rhr.timestamp AT TIME ZONE 'UTC' AT TIME ZONE ${timezone}), 'YYYY-MM-DD HH24:MI') as bucket_key, COUNT(*) as count
+                  FROM run_history_records rhr
+                  INNER JOIN automations a ON rhr.automation_id = a.id
+                  WHERE a.organization_id = ${organizationId} AND rhr.status != 'skipped' AND rhr.timestamp >= ${chartStartDate}
+                  GROUP BY 1
+                  ORDER BY 1
+              `
+            : chartBucketUnit === "hour"
+              ? prisma.$queryRaw<ChartBucketRow[]>`
+                    SELECT TO_CHAR(DATE_TRUNC('hour', rhr.timestamp AT TIME ZONE 'UTC' AT TIME ZONE ${timezone}), 'YYYY-MM-DD HH24:00') as bucket_key, COUNT(*) as count
+                    FROM run_history_records rhr
+                    INNER JOIN automations a ON rhr.automation_id = a.id
+                    WHERE a.organization_id = ${organizationId} AND rhr.status != 'skipped' AND rhr.timestamp >= ${chartStartDate}
+                    GROUP BY 1
+                    ORDER BY 1
+                `
+              : prisma.$queryRaw<ChartBucketRow[]>`
+                    SELECT TO_CHAR(DATE_TRUNC('day', rhr.timestamp AT TIME ZONE 'UTC' AT TIME ZONE ${timezone}), 'YYYY-MM-DD') as bucket_key, COUNT(*) as count
+                    FROM run_history_records rhr
+                    INNER JOIN automations a ON rhr.automation_id = a.id
+                    WHERE a.organization_id = ${organizationId} AND rhr.status != 'skipped' AND rhr.timestamp >= ${chartStartDate}
+                    GROUP BY 1
+                    ORDER BY 1
+                `
 
     // Run ALL queries in parallel for maximum performance
     const [
@@ -78,7 +169,7 @@ export async function getStats(req: Request, res: Response) {
         previousActionsCount,
         currentChannelsCount,
         previousChannelsCount,
-        dailyEventsData,
+        chartBucketData,
         recentActionsData,
         recentRunsData,
         agentActivityData,
@@ -100,7 +191,7 @@ export async function getStats(req: Request, res: Response) {
             where: {
                 automation: { organization_id: organizationId },
                 status: { not: "skipped" },
-                timestamp: { gte: previousPeriodStart, lte: previousPeriodEnd }
+                timestamp: { gte: previousPeriodStart, lt: currentPeriodStart }
             }
         }),
         // 3. Current period actions count (write operations only)
@@ -118,7 +209,7 @@ export async function getStats(req: Request, res: Response) {
             where: {
                 run_history_record: {
                     automation: { organization_id: organizationId },
-                    timestamp: { gte: previousPeriodStart, lte: previousPeriodEnd }
+                    timestamp: { gte: previousPeriodStart, lt: currentPeriodStart }
                 },
                 is_read_only: false
             }
@@ -129,19 +220,10 @@ export async function getStats(req: Request, res: Response) {
         }),
         // 6. Previous period active agents count
         prisma.automations.count({
-            where: { organization_id: organizationId, is_active: true, created_at: { lte: previousPeriodEnd } }
+            where: { organization_id: organizationId, is_active: true, created_at: { lt: currentPeriodStart } }
         }),
-        // 7. Daily events aggregation using raw SQL for performance (exclude filtered/skipped)
-        // Use AT TIME ZONE to group events by the user's local date
-        // GROUP BY 1 refers to the first SELECT column (event_date) to avoid parameter duplication issues
-        prisma.$queryRaw<DailyEventRow[]>`
-            SELECT DATE(rhr.timestamp AT TIME ZONE 'UTC' AT TIME ZONE ${timezone}) as event_date, COUNT(*) as count
-            FROM run_history_records rhr
-            INNER JOIN automations a ON rhr.automation_id = a.id
-            WHERE a.organization_id = ${organizationId} AND rhr.status != 'skipped' AND rhr.timestamp >= ${chartStartDate}
-            GROUP BY 1
-            ORDER BY 1
-        `,
+        // 7. Chart events aggregation for the selected interval
+        chartAggregationQuery,
         // 8. Recent actions (last 10, active agents only)
         prisma.run_history_actions.findMany({
             where: {
@@ -247,39 +329,23 @@ export async function getStats(req: Request, res: Response) {
     const channelsChange = currentChannelsCount - previousChannelsCount
     const channelsChangeString = channelsChange >= 0 ? `+${channelsChange}` : `${channelsChange}`
 
-    // Convert daily events SQL result to the expected format
-    const dayNames: DayOfWeek[] = [DayOfWeek.Sun, DayOfWeek.Mon, DayOfWeek.Tue, DayOfWeek.Wed, DayOfWeek.Thu, DayOfWeek.Fri, DayOfWeek.Sat]
-
-    // Create a map from date string to count for quick lookup
-    // The event_date from SQL is already in the user's timezone
-    const eventsByDateStr = new Map<string, number>()
-    for (const row of dailyEventsData) {
-        // PostgreSQL DATE type comes as a Date object at midnight UTC
-        // Extract just the YYYY-MM-DD part
-        const dateStr = row.event_date.toISOString().split("T")[0]
-        eventsByDateStr.set(dateStr, Number(row.count))
+    // Create a map from bucket key to count for quick lookup
+    const eventsByBucketKey = new Map<string, number>()
+    for (const row of chartBucketData) {
+        eventsByBucketKey.set(row.bucket_key, Number(row.count))
     }
 
-    // Build daily events array with all days in the chart window using Luxon
-    const dailyEvents: Array<{ date: DayOfWeek; events: number }> = []
+    // Build chart events array with all buckets in the selected window
+    const dailyEvents: Array<{ date: string; events: number }> = []
+    let cursor = DateTime.fromJSDate(chartStartDate).setZone(timezone).startOf(chartBucketUnit)
 
-    for (let i = 0; i < CHART_TIME_WINDOW_DAYS; i++) {
-        const dt = DateTime.now()
-            .setZone(timezone)
-            .minus({ days: CHART_TIME_WINDOW_DAYS - 1 - i })
-            .startOf("day")
-
-        // Get YYYY-MM-DD format for lookup
-        const dateStr = dt.toFormat("yyyy-MM-dd")
-
-        // Get day of week (1=Monday, 7=Sunday in Luxon, but we need 0=Sunday index)
-        const dayIndex = dt.weekday === 7 ? 0 : dt.weekday // Convert Luxon weekday to JS weekday
-        const dayName = dayNames[dayIndex]
-
+    for (let i = 0; i < chartPointCount; i++) {
+        const bucketKey = getBucketStorageKey(cursor, chartBucketUnit)
         dailyEvents.push({
-            date: dayName,
-            events: eventsByDateStr.get(dateStr) || 0
+            date: getBucketDisplayLabel(cursor, chartBucketUnit, chartPointCount),
+            events: eventsByBucketKey.get(bucketKey) || 0
         })
+        cursor = addByChartUnit(cursor, chartBucketUnit, 1)
     }
 
     // Transform recent actions data

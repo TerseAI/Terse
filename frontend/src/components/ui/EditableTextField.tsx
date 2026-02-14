@@ -3,6 +3,8 @@ import TextareaAutosize from "react-textarea-autosize"
 
 import { Pencil } from "lucide-react"
 
+import { cn } from "@/lib/utils"
+
 type EditableTextProps = {
     value: string
     onSave: (newValue: string) => void
@@ -53,7 +55,7 @@ function EditableText({ value, onSave, onChange, className = "", placeholder = "
     }
 
     return (
-        <div className={`w-full ${className}`}>
+        <div className={cn("min-w-0 max-w-full", className)}>
             {isEditing ? (
                 <TextareaAutosize
                     ref={textAreaRef}
@@ -65,15 +67,16 @@ function EditableText({ value, onSave, onChange, className = "", placeholder = "
                     }}
                     onBlur={handleBlur}
                     onKeyDown={handleKeyDown}
-                    className="min-w-96 box-border p-2 text-foreground border border-border rounded focus:outline-none focus:ring-2 focus:ring-accent"
+                    className="w-full min-w-0 box-border p-2 text-foreground border border-border rounded focus:outline-none focus:ring-2 focus:ring-accent"
                     placeholder={placeholder}
                 />
             ) : (
                 <div
                     onClick={handleClick}
-                    className="text-3xl w-full box-border text-foreground border border-transparent hover:border-accent hover:cursor-pointer rounded cursor-text min-h-[40px] flex items-center gap-2"
+                    className="inline-flex max-w-full box-border text-foreground border border-transparent hover:border-accent hover:cursor-pointer rounded cursor-text min-h-[40px] items-center gap-2 px-1"
+                    title={value || placeholder}
                 >
-                    <span className="leading-tight">{value || <span className="text-muted-foreground">{placeholder}</span>}</span>
+                    <span className={cn("leading-tight truncate", !value && "text-muted-foreground")}>{value || placeholder}</span>
                     <Pencil className="w-5 h-5 text-muted-foreground flex-shrink-0 self-center" />
                 </div>
             )}
