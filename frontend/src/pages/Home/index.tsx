@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { useNavigate } from "react-router-dom"
 
 import { AnimatePresence, motion } from "framer-motion"
-import { ArrowRight, ArrowUpRight, ExternalLink, Loader2, MessageSquare, RotateCcw, Zap } from "lucide-react"
+import { ArrowRight, ArrowUpRight, ExternalLink, MessageSquare, RotateCcw, Zap } from "lucide-react"
 
 import RunHistoryChatDrawer from "@/components/RunHistory/RunHistoryChatDrawer"
 import RunHistoryStatusBadge from "@/components/RunHistory/RunHistoryStatusBadge"
@@ -37,7 +37,6 @@ function Home() {
     const chatRef = useRef<ChatHandle>(null)
     const { events: historyEvents, isLoading: isHistoryLoading } = useBuilderChatHistory(sessionId)
     const [initialTurns, setInitialTurns] = useState<ReturnType<typeof convertRunHistoryEventsToTurns>>([])
-
     useEffect(() => {
         const turns = convertRunHistoryEventsToTurns(historyEvents.map(event => ({ ...event, isHistorical: true })))
         setInitialTurns(turns)
@@ -49,6 +48,11 @@ function Home() {
     // Run history chat drawer state
     const [selectedRun, setSelectedRun] = useState<RecentRun | null>(null)
     const [isDrawerOpen, setIsDrawerOpen] = useState(false)
+
+    // Unified loading: wait for agents + chat history before deciding what to show.
+    // This prevents the flicker where the "has agents" view briefly shows before
+    // switching to the empty state (or vice versa).
+    const isInitialLoading = isLoadingAllAgents || isHistoryLoading
 
     // Builder chat callbacks (must be before any early returns — Rules of Hooks)
     const subscribeToEvents = useCallback(
@@ -97,8 +101,13 @@ function Home() {
         setHasStartedChat(false)
     }
 
+    // Show nothing (empty container) while initial data is loading
+    if (isInitialLoading) {
+        return <div className="flex flex-col h-full w-full" />
+    }
+
     // Show empty state if user has no agents
-    const hasNoAgents = !isLoadingAllAgents && allAgents.length === 0
+    const hasNoAgents = allAgents.length === 0
     if (hasNoAgents) {
         return <HomeEmptyState />
     }
@@ -174,23 +183,17 @@ function Home() {
                     </div>
                 )}
                 <div className="flex-1 min-h-0 w-full">
-                    {isHistoryLoading ? (
-                        <div className="h-full flex items-center justify-center">
-                            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                        </div>
-                    ) : (
-                        <Chat
-                            ref={chatRef}
-                            key={sessionId}
-                            initialTurns={initialTurns}
-                            subscribeToEvents={subscribeToEvents}
-                            sendMessage={sendMessage}
-                            onUserMessage={handleUserMessage}
-                            addUserTurnsLocally={true}
-                            inputSize={hasStartedChat ? "small" : "large"}
-                            placeholders={hasStartedChat ? [] : HOME_PLACEHOLDERS}
-                        />
-                    )}
+                    <Chat
+                        ref={chatRef}
+                        key={sessionId}
+                        initialTurns={initialTurns}
+                        subscribeToEvents={subscribeToEvents}
+                        sendMessage={sendMessage}
+                        onUserMessage={handleUserMessage}
+                        addUserTurnsLocally={true}
+                        inputSize={hasStartedChat ? "small" : "large"}
+                        placeholders={hasStartedChat ? [] : HOME_PLACEHOLDERS}
+                    />
                 </div>
             </motion.div>
 

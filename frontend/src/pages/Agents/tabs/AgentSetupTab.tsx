@@ -18,7 +18,6 @@ import { Agent, AgentOutput, AgentPrompt, AgentTrigger, TransientKnowledgeBase }
 import { getDefaultAgentName, toAgentKnowledgeBase, toAgentOutput, toAgentTrigger } from "@/utility/AgentUtils"
 
 import { InputConfigSelectorProps, IntegrationSelector } from "../../../components/IntegrationSelector"
-import { BuilderChat } from "../../../components/chat/BuilderChat"
 import EditableTextField from "../../../components/ui/EditableTextField"
 import { Badge } from "../../../components/ui/badge"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../../../components/ui/dialog"
@@ -350,6 +349,7 @@ export default function AgentSetupTab({
     const { clearSessionId } = useBuilderSession()
     const [searchParams, setSearchParams] = useSearchParams()
     const defaultName = getDefaultAgentName(totalCount)
+    void _setRequireApproval
 
     // Clear setup session when landing on agent page
     useEffect(() => {
@@ -359,7 +359,7 @@ export default function AgentSetupTab({
             clearSessionId()
         }
     }, [searchParams, setSearchParams, clearSessionId])
-    const { getStateJSON, donate } = useModelContext()
+    const { donate } = useModelContext()
 
     const agentInputs = inputs.map(toAgentTrigger).filter((i): i is AgentTrigger => i != null)
     const agentOutputs = outputs.map(toAgentOutput).filter((o): o is AgentOutput => o != null)
@@ -374,7 +374,7 @@ export default function AgentSetupTab({
         {
             id: "triggers" as const,
             label: "Triggers",
-            description: "What starts this agent",
+            subheader: "What starts this agent",
             icon: Zap,
             isComplete: !triggersIncomplete,
             count: inputs.length
@@ -382,14 +382,14 @@ export default function AgentSetupTab({
         {
             id: "prompt" as const,
             label: "Instructions",
-            description: "What the agent does",
+            subheader: "What the agent does",
             icon: FileText,
             isComplete: !promptIncomplete
         },
         {
             id: "skills" as const,
             label: "Skills",
-            description: "What the agent can use",
+            subheader: "What the agent can use",
             icon: Wrench,
             isComplete: !skillsIncomplete,
             count: outputs.length
@@ -400,12 +400,12 @@ export default function AgentSetupTab({
     donate("Agent Set Up Page Context", new AgentSetUpPageContext(activeSection))
 
     return (
-        <div className="grid grid-cols-20 h-full">
-            <div className="flex flex-col h-full min-h-0 col-span-14">
+        <div className="grid grid-cols-20 @container/agent-setup">
+            <div className="flex flex-col col-span-20">
                 {/* Header */}
                 <div className="border-b border-border px-6 py-4">
-                    <div className="flex items-center justify-between gap-4">
-                        <div className="flex items-center gap-3 min-w-0">
+                    <div className="flex w-full max-w-7xl flex-col gap-3 @xl/agent-setup:flex-row @xl/agent-setup:items-center @xl/agent-setup:justify-between">
+                        <div className="flex flex-1 items-center gap-3 min-w-0">
                             <EditableTextField className="text-lg font-medium" value={name || ""} placeholder={defaultName} onSave={value => setName(value)} />
                             {agentId && !isActive && (
                                 <Badge variant="outline" className="text-muted-foreground">
@@ -449,17 +449,17 @@ export default function AgentSetupTab({
 
                 {/* Builder Steps - Horizontal flow */}
                 <div className="border-b border-border px-6 py-4 bg-muted/30">
-                    <div className="flex items-center gap-2">
+                    <div className="flex w-full max-w-7xl flex-col gap-2 @xl/agent-setup:flex-row @xl/agent-setup:flex-wrap @xl/agent-setup:items-center @[50rem]/agent-setup:flex-nowrap">
                         {steps.map((step, index) => {
                             const isActive = activeSection === step.id
                             const StepIcon = step.icon
 
                             return (
-                                <div key={step.id} className="flex items-center">
+                                <div key={step.id} className="flex items-center w-full @xl/agent-setup:flex-1 @xl/agent-setup:min-w-0">
                                     <button
                                         onClick={() => setActiveSection(step.id)}
                                         className={cn(
-                                            "flex items-center gap-3 px-4 py-2.5 rounded-lg border transition-colors",
+                                            "flex w-full items-center justify-start gap-3 rounded-lg border px-4 py-2.5 text-left transition-colors",
                                             isActive ? "bg-background border-border shadow-sm" : "border-transparent hover:bg-background/50"
                                         )}
                                     >
@@ -475,91 +475,92 @@ export default function AgentSetupTab({
                                         >
                                             {step.isComplete ? <Check className="w-4 h-4" /> : <StepIcon className="w-4 h-4" />}
                                         </div>
-                                        <div className="text-left">
+                                        <div className="min-w-0">
                                             <div className={cn("text-sm font-medium", isActive ? "text-foreground" : "text-muted-foreground")}>
                                                 {step.label}
                                                 {step.count !== undefined && step.count > 0 && <span className="ml-1.5 text-xs text-muted-foreground">({step.count})</span>}
                                             </div>
-                                            <div className="text-xs text-muted-foreground">{step.description}</div>
+                                            <div className="text-xs leading-snug text-muted-foreground whitespace-normal">{step.subheader}</div>
                                         </div>
                                     </button>
-                                    {index < steps.length - 1 && <ChevronRight className="w-4 h-4 text-muted-foreground/50 mx-1" />}
+                                    {index < steps.length - 1 && <ChevronRight className="hidden @xl/agent-setup:block w-4 h-4 text-muted-foreground/50 mx-1" />}
                                 </div>
                             )
                         })}
 
-                        {/* Separator */}
-                        <div className="w-px h-8 bg-border mx-2" />
+                        <div className="flex w-auto items-center gap-2 self-start @xl/agent-setup:shrink-0 @xl/agent-setup:basis-full @[50rem]/agent-setup:basis-auto @[50rem]/agent-setup:self-center">
+                            {/* Separator */}
+                            <div className="hidden @[50rem]/agent-setup:block w-px h-8 bg-border mx-1" />
 
-                        {/* Optional sections */}
-                        <button
-                            onClick={() => setActiveSection("knowledgeBase")}
-                            className={cn(
-                                "flex items-center gap-2 px-3 py-2 rounded-lg text-sm border transition-colors",
-                                activeSection === "knowledgeBase"
-                                    ? "bg-background border-border shadow-sm text-foreground"
-                                    : "border-transparent text-muted-foreground hover:bg-background/50 hover:text-foreground"
-                            )}
-                        >
-                            <Database className="w-4 h-4" />
-                            <span>Knowledge</span>
-                            {knowledgeBases.length > 0 && (
-                                <Badge variant="secondary" className="ml-1 text-xs px-1.5 py-0">
-                                    {knowledgeBases.length}
-                                </Badge>
-                            )}
-                        </button>
-                        <button
-                            onClick={() => setActiveSection("alerts")}
-                            className={cn(
-                                "flex items-center gap-2 px-3 py-2 rounded-lg text-sm border transition-colors",
-                                activeSection === "alerts"
-                                    ? "bg-background border-border shadow-sm text-foreground"
-                                    : "border-transparent text-muted-foreground hover:bg-background/50 hover:text-foreground"
-                            )}
-                        >
-                            <Bell className="w-4 h-4" />
-                            <span>Alerts</span>
-                        </button>
+                            {/* Optional sections */}
+                            <button
+                                onClick={() => setActiveSection("knowledgeBase")}
+                                className={cn(
+                                    "flex w-auto items-center justify-start text-left gap-2 rounded-lg border px-3 py-2 text-sm transition-colors",
+                                    activeSection === "knowledgeBase"
+                                        ? "bg-background border-border shadow-sm text-foreground"
+                                        : "border-transparent text-muted-foreground hover:bg-background/50 hover:text-foreground"
+                                )}
+                            >
+                                <Database className="w-4 h-4" />
+                                <span className="whitespace-nowrap">Knowledge</span>
+                                {knowledgeBases.length > 0 && (
+                                    <Badge variant="secondary" className="ml-1 text-xs px-1.5 py-0">
+                                        {knowledgeBases.length}
+                                    </Badge>
+                                )}
+                            </button>
+                            <button
+                                onClick={() => setActiveSection("alerts")}
+                                className={cn(
+                                    "flex w-auto items-center justify-start text-left gap-2 rounded-lg border px-3 py-2 text-sm transition-colors",
+                                    activeSection === "alerts"
+                                        ? "bg-background border-border shadow-sm text-foreground"
+                                        : "border-transparent text-muted-foreground hover:bg-background/50 hover:text-foreground"
+                                )}
+                            >
+                                <Bell className="w-4 h-4" />
+                                <span className="whitespace-nowrap">Alerts</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
 
                 {/* Main Content */}
-                <div className="flex-1 min-h-0 overflow-y-auto">
-                    <div className="p-6 max-w-4xl">
-                        <div className={activeSection === "triggers" ? "block" : "hidden"}>
-                            <InputLayout inputs={inputs} setInputs={setInputs} isIncomplete={triggersIncomplete} />
-                        </div>
+                <div className="p-6 max-w-7xl">
+                    <div className={activeSection === "triggers" ? "block" : "hidden"}>
+                        <InputLayout inputs={inputs} setInputs={setInputs} isIncomplete={triggersIncomplete} />
+                    </div>
 
-                        <div className={activeSection === "knowledgeBase" ? "block" : "hidden"}>
-                            <KnowledgeBaseLayout knowledgeBases={knowledgeBases} setKnowledgeBases={setKnowledgeBases} />
-                        </div>
+                    <div className={activeSection === "knowledgeBase" ? "block" : "hidden"}>
+                        <KnowledgeBaseLayout knowledgeBases={knowledgeBases} setKnowledgeBases={setKnowledgeBases} />
+                    </div>
 
-                        <div className={activeSection === "prompt" ? "block" : "hidden"}>
-                            <div className="h-[calc(100vh-16rem)] min-h-[420px]">
+                    <div className={activeSection === "prompt" ? "block" : "hidden"}>
+                        <div className="space-y-4">
+                            <div>
+                                <h2 className="text-lg font-medium mb-1">Instructions</h2>
+                                <p className="text-sm text-muted-foreground">Tell the agent what to do and how to respond. Include goals, guardrails, and the style of the output.</p>
+                            </div>
+                            <div className="h-[calc(100vh-19rem)] min-h-[360px] md:h-[calc(100vh-16rem)] md:min-h-[420px]">
                                 <InstructionsEditor prompt={prompt} setPrompt={setPrompt} />
                             </div>
                         </div>
+                    </div>
 
-                        <div className={activeSection === "skills" ? "block" : "hidden"}>
-                            <OutputLayout outputs={outputs} setOutputs={setOutputs} isIncomplete={skillsIncomplete} />
-                        </div>
+                    <div className={activeSection === "skills" ? "block" : "hidden"}>
+                        <OutputLayout outputs={outputs} setOutputs={setOutputs} isIncomplete={skillsIncomplete} />
+                    </div>
 
-                        <div className={cn(activeSection === "alerts" ? "block" : "hidden", "space-y-6")}>
-                            <div>
-                                <h2 className="text-lg font-medium mb-1">Alerts & Approval</h2>
-                                <p className="text-sm text-muted-foreground mb-4">Configure when you want to be notified and whether actions need your approval.</p>
-                            </div>
-                            <AgentApprovalSettings outputs={outputs} knowledgeBases={knowledgeBases} toolApprovals={toolApprovals} onToolApprovalsChange={setToolApprovals} />
-                            <AgentNotificationSettings settings={notificationSettings} onChange={setNotificationSettings} />
+                    <div className={cn(activeSection === "alerts" ? "block" : "hidden", "space-y-6")}>
+                        <div>
+                            <h2 className="text-lg font-medium mb-1">Alerts & Approval</h2>
+                            <p className="text-sm text-muted-foreground mb-4">Configure when you want to be notified and whether actions need your approval.</p>
                         </div>
+                        <AgentApprovalSettings outputs={outputs} knowledgeBases={knowledgeBases} toolApprovals={toolApprovals} onToolApprovalsChange={setToolApprovals} />
+                        <AgentNotificationSettings settings={notificationSettings} onChange={setNotificationSettings} />
                     </div>
                 </div>
-            </div>
-
-            {/* Builder Chat */}
-            <div className="border-l border-border col-span-6 h-full min-h-0">
-                <BuilderChat getStateJSON={() => getStateJSON()} agentId={agentId} />
             </div>
         </div>
     )
@@ -584,7 +585,7 @@ function InputLayout({ inputs, setInputs }: { inputs: TransientAgentTrigger[]; s
         <div className="space-y-4">
             <div>
                 <h2 className="text-lg font-medium mb-1">Triggers</h2>
-                <p className="text-sm text-muted-foreground">Events that will activate this agent. Add integrations like Slack, GitHub, or Gmail to listen for activity.</p>
+                <p className="text-sm text-muted-foreground">Choose what starts this agent. Connect tools like Slack, GitHub, or Gmail so it can respond to new activity.</p>
             </div>
 
             <div className="space-y-2">
@@ -861,14 +862,21 @@ function KnowledgeBaseLayout({ knowledgeBases, setKnowledgeBases }: { knowledgeB
     }
 
     return (
-        <div className="flex flex-col gap-3">
-            {knowledgeBases.map(kb => (
-                <KnowledgeBaseCard key={kb.id} knowledgeBase={kb} knowledgeBases={knowledgeBases} setKnowledgeBases={setKnowledgeBases} handleRemove={handleRemove} />
-            ))}
-            <Button variant="outline" onClick={() => setShowAddModal(true)} className="w-full justify-center border-dashed py-3">
-                <PlusIcon className="w-4 h-4 mr-2" />
-                Add knowledge base
-            </Button>
+        <div className="space-y-4">
+            <div>
+                <h2 className="text-lg font-medium mb-1">Knowledge Base</h2>
+                <p className="text-sm text-muted-foreground">Sources the agent can reference for context. Add connected apps like Slack, GitHub, or Linear.</p>
+            </div>
+
+            <div className="flex flex-col gap-3">
+                {knowledgeBases.map(kb => (
+                    <KnowledgeBaseCard key={kb.id} knowledgeBase={kb} knowledgeBases={knowledgeBases} setKnowledgeBases={setKnowledgeBases} handleRemove={handleRemove} />
+                ))}
+                <Button variant="outline" onClick={() => setShowAddModal(true)} className="w-full justify-center border-dashed py-3">
+                    <PlusIcon className="w-4 h-4 mr-2" />
+                    Add knowledge base
+                </Button>
+            </div>
             <AddKnowledgeBaseModal isOpen={showAddModal} onClose={() => setShowAddModal(false)} onSelectKnowledgeBase={handleSelectKnowledgeBase} />
         </div>
     )

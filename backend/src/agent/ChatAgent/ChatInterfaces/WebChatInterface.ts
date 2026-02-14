@@ -40,7 +40,7 @@ class WebChatInterface extends ChatInterface {
     private emitEvent(event: ModelEvent): void {
         this.socket.emit(SocketEvents.BUILDER_CHAT_EVENT, {
             sessionId: this.sessionId,
-            event: { ...event, timestamp: new Date().toISOString() }
+            event: { ...event, timestamp: Date.now() }
         })
     }
 

@@ -15,7 +15,7 @@ import logger from "./logger"
 import { getRealtimeSocket, initializeRealtimeSocket } from "./realtimeSocket"
 import { createAgent, deleteAgent, getRecentAgents, getUserAgent, getUserAgents, updateAgent } from "./routes/agents"
 import { attioOAuthCallback, getAttioIntegrations } from "./routes/attio"
-import { authMiddleware, authMiddlewareAllowNoOrg, callback, getWorkOSWidgetToken, login, logout, me } from "./routes/auth"
+import { authMiddleware, authMiddlewareAllowNoOrg, callback, getWorkOSWidgetToken, login, logout, logoutUrl, me } from "./routes/auth"
 import { githubAppCallbackIntegrate } from "./routes/auth/githubAuth"
 import { getBuilderChatHistory } from "./routes/builderChat"
 import { getConfluenceIntegrations, getConfluenceResources } from "./routes/confluence"
@@ -201,7 +201,11 @@ app.get(ApiRoutes.AUTH.LOGIN, async (req, res) => {
 })
 
 app.get(ApiRoutes.AUTH.LOGOUT, async (req, res) => {
-    logout(req, res)
+    await logout(req, res)
+})
+
+app.get(ApiRoutes.AUTH.LOGOUT_URL, async (req, res) => {
+    await logoutUrl(req, res)
 })
 
 app.get(ApiRoutes.AUTH.WORKOS_CALLBACK, (req, res) => {

@@ -42,6 +42,7 @@ import {
     RecentAgent,
     SlackChannelsResponse,
     SlackUsersResponse,
+    StatsInterval,
     StatsResponse
 } from "../shared/types"
 import { User } from "../types/User"
@@ -88,8 +89,9 @@ interface BackendService {
     /**
      * Gets statistics for the homepage dashboard
      * @param timezone - Optional IANA timezone string (e.g., "America/New_York")
+     * @param interval - Optional stats interval window (e.g., "1mo")
      */
-    getStats(timezone?: string): Promise<StatsResponse>
+    getStats(timezone?: string, interval?: StatsInterval): Promise<StatsResponse>
 
     /**
      * Returns the installation details for a given integration type
@@ -395,7 +397,7 @@ interface BackendService {
     /**
      * Redirects to the logout endpoint
      */
-    logoutRedirect(): void
+    logoutRedirect(): Promise<void>
 
     /**
      * Creates a new organization
@@ -488,8 +490,11 @@ export const BackendProvider: BackendService = {
             })
     },
 
-    getStats: (timezone?: string) => {
-        const params = timezone ? { tz: timezone } : {}
+    getStats: (timezone?: string, interval?: StatsInterval) => {
+        const params = {
+            ...(timezone ? { tz: timezone } : {}),
+            ...(interval ? { interval } : {})
+        }
         return axios
             .get(`${backendBaseUrl}${ApiRoutes.STATS}`, { withCredentials: true, params })
             .then(response => response.data)
@@ -1203,8 +1208,14 @@ export const BackendProvider: BackendService = {
         window.location.href = `${backendRedirectUrl}${ApiRoutes.AUTH.LOGIN}`
     },
 
-    logoutRedirect: () => {
-        window.location.href = `${backendRedirectUrl}${ApiRoutes.AUTH.LOGOUT}`
+    logoutRedirect: async () => {
+        try {
+            const response = await axios.get<{ logoutUrl: string }>(`${backendBaseUrl}${ApiRoutes.AUTH.LOGOUT_URL}`, { withCredentials: true })
+            window.location.href = response.data.logoutUrl
+        } catch (error) {
+            console.error("Error getting WorkOS logout URL, falling back to backend logout endpoint:", error)
+            window.location.href = `${backendRedirectUrl}${ApiRoutes.AUTH.LOGOUT}`
+        }
     },
 
     createOrganization: (name: string, firstName?: string, lastName?: string) => {
