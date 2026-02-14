@@ -39,8 +39,7 @@ export const searchDatadogLogsTool = tool({
         if (!runContext?.context) {
             throw new Error("No context provided")
         }
-        const user = runContext.context.user
-        const credentials = await getDatadogCredentialsByIntegrationId(integrationId, user)
+        const credentials = await getDatadogCredentialsByIntegrationId(integrationId)
         if (!credentials) {
             throw new Error(`Datadog integration not found or access denied for integrationId: ${integrationId}`)
         }

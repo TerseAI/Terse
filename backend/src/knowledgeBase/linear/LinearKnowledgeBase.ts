@@ -3,11 +3,13 @@ import { KnowledgeBaseConfigType } from "@prisma/client"
 
 import { buildDummyKnowledgeBaseConfig } from "../../buildDummyConfigForCapability"
 import { type CapabilityDescription, CapabilityRole, extractToolMetadata, getConfigMetadata } from "../../capabilityHelpers"
+import { validateLinearProjectExists, validateLinearTeamExists } from "../../integrations/LinearIntegration"
 import { ToolboxEntry } from "../../outputs/abstract/Output"
 import { linearSearchTicketTool } from "../../outputs/linear/tools/searchTicket"
 import { ConfigType, LinearKBConfig } from "../../shared/Configs"
 import { IntegrationType } from "../../shared/Integrations"
 import { AgentKnowledgeBaseWithConfigs, PrismaTransaction } from "../../types/prisma"
+import { LinearKnowledgeBaseConfigSchema, stripConfigForValidation } from "../../utility/configSchemas"
 import { KnowledgeBase } from "../abstract/KnowledgeBase"
 
 import { linearReadTicketTool } from "./tools/readTicket"
@@ -71,8 +73,14 @@ export class LinearKnowledgeBase extends KnowledgeBase<LinearKBConfig> {
         })
     }
 
-    async validateConfig(_knowledgeBase: LinearKBConfig, _userId: string): Promise<void> {
-        // Linear KB only requires integrationId; no extra validation needed
+    async validateConfig(knowledgeBase: LinearKBConfig, _userId: string): Promise<void> {
+        LinearKnowledgeBaseConfigSchema.parse(stripConfigForValidation(knowledgeBase))
+        if (knowledgeBase.teamId) {
+            await validateLinearTeamExists(knowledgeBase.integrationId, knowledgeBase.teamId)
+        }
+        if (knowledgeBase.projectId) {
+            await validateLinearProjectExists(knowledgeBase.integrationId, knowledgeBase.projectId)
+        }
     }
 
     async addKnowledgeBaseToAgent(tx: PrismaTransaction, agentKnowledgeBaseId: string, knowledgeBase: LinearKBConfig): Promise<void> {

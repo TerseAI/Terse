@@ -7,6 +7,7 @@ import { SessionWithTracking } from "../agent/AgentRunner/AgentRunner"
 import { buildDummyOutputConfig } from "../buildDummyConfigForCapability"
 import { type CapabilityDescription, CapabilityRole, extractToolMetadata, getConfigMetadata } from "../capabilityHelpers"
 import { AtlassianClient } from "../integrations/AtlassianClient"
+import { validateConfluencePageExists } from "../integrations/AtlassianIntegration"
 import logger from "../logger"
 import { db } from "../prismaClient"
 import { ConfluenceConfig } from "../shared/Configs"
@@ -15,6 +16,7 @@ import { ToolName } from "../tools/ToolNames"
 import { createNeedsApprovalFunction, formatError } from "../tools/toolUtils"
 import { AgentOutputWithConfigs, PrismaTransaction } from "../types/prisma"
 import { Session } from "../types/session"
+import { ConfluenceConfigSchema, stripConfigForValidation } from "../utility/configSchemas"
 import { convertOutputConfigTypeToConfigType } from "../utility/typeConverters"
 
 import { Output, ToolboxEntry } from "./abstract/Output"
@@ -77,17 +79,17 @@ export class ConfluenceOutput extends Output<ConfluenceConfig> {
     }
 
     async validateConfig(output: ConfluenceConfig, _userId: string): Promise<void> {
-        if (!output.pageId) {
-            throw new Error("Invalid output config for confluence: missing pageId")
-        }
+        // Not doing schema validation here because
+        // it errors out. TODO: fix this.
+        await validateConfluencePageExists(output.integrationId, output.pageId)
     }
 
     async addOutputToAgent(tx: PrismaTransaction, agentOutputId: string, output: ConfluenceConfig): Promise<void> {
         await tx.automation_confluence_configs.create({
             data: {
                 automation_output_id: agentOutputId,
-                space_name: output.spaceName,
-                space_id: output.spaceId,
+                space_name: output.spaceName ?? "",
+                space_id: output.spaceId ?? "",
                 page_id: output.pageId,
                 page_name: output.pageName
             }

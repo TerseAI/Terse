@@ -6,6 +6,7 @@ import { type CapabilityDescription, CapabilityRole, extractToolMetadata, getCon
 import { GmailOutputConfig } from "../../shared/Configs"
 import { IntegrationType } from "../../shared/Integrations"
 import { AgentOutputWithConfigs, PrismaTransaction } from "../../types/prisma"
+import { GmailOutputConfigSchema, stripConfigForValidation } from "../../utility/configSchemas"
 import { convertOutputConfigTypeToConfigType } from "../../utility/typeConverters"
 import { Output, ToolboxEntry } from "../abstract/Output"
 
@@ -42,9 +43,7 @@ export class GmailOutput extends Output<GmailOutputConfig> {
     }
 
     async validateConfig(output: GmailOutputConfig, _userId: string): Promise<void> {
-        if (!output.integrationId) {
-            throw new Error("Invalid output config for gmail_output: missing integrationId")
-        }
+        GmailOutputConfigSchema.parse(stripConfigForValidation(output))
     }
 
     async addOutputToAgent(tx: PrismaTransaction, channelOutputId: string, _output: GmailOutputConfig): Promise<void> {

@@ -68,8 +68,7 @@ export const aggregateRumEventsTool = tool({
             })
             throw new Error("At least one compute metric is required")
         }
-        const user = runContext.context.user
-        const credentials = await getDatadogCredentialsByIntegrationId(integrationId, user)
+        const credentials = await getDatadogCredentialsByIntegrationId(integrationId)
         if (!credentials) {
             throw new Error(`Datadog integration not found or access denied for integrationId: ${integrationId}`)
         }

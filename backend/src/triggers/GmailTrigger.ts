@@ -2,6 +2,7 @@ import { CapabilityDescription, CapabilityRole, getConfigMetadata } from "../cap
 import { GmailIntegrationManager } from "../integrations/GmailIntegration"
 import { ConfigType, GmailConfig } from "../shared/Configs"
 import { PrismaTransaction } from "../types/prisma"
+import { GmailConfigSchema, stripConfigForValidation } from "../utility/configSchemas"
 
 import { Trigger } from "./Trigger"
 
@@ -29,8 +30,8 @@ export class GmailTrigger implements Trigger<GmailConfig> {
         }
     }
 
-    async validateConfig(_trigger: GmailConfig, _userId: string): Promise<void> {
-        // No additional config validation beyond integration ownership.
+    async validateConfig(trigger: GmailConfig, _userId: string): Promise<void> {
+        GmailConfigSchema.parse(stripConfigForValidation(trigger))
     }
 
     async addTriggerToAgent(tx: PrismaTransaction, agentTriggerId: string, trigger: GmailConfig): Promise<void> {

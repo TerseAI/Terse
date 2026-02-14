@@ -3,10 +3,12 @@ import { KnowledgeBaseConfigType } from "@prisma/client"
 
 import { buildDummyKnowledgeBaseConfig } from "../../buildDummyConfigForCapability"
 import { type CapabilityDescription, CapabilityRole, extractToolMetadata, getConfigMetadata } from "../../capabilityHelpers"
+import { getSlackAccessTokenOrThrow, validateSlackChannelsExist, validateSlackUserIds } from "../../integrations/SlackIntegration"
 import { ToolboxEntry } from "../../outputs/abstract/Output"
 import { ConfigType, SlackKBConfig } from "../../shared/Configs"
 import { IntegrationType } from "../../shared/Integrations"
 import { AgentKnowledgeBaseWithConfigs, PrismaTransaction } from "../../types/prisma"
+import { SlackKnowledgeBaseConfigSchema, stripConfigForValidation } from "../../utility/configSchemas"
 import { KnowledgeBase } from "../abstract/KnowledgeBase"
 
 import { slackListChannelsTool } from "./tools/listChannels"
@@ -77,6 +79,7 @@ export class SlackKnowledgeBase extends KnowledgeBase<SlackKBConfig> {
     }
 
     async validateConfig(knowledgeBase: SlackKBConfig, _userId: string): Promise<void> {
+        SlackKnowledgeBaseConfigSchema.parse(stripConfigForValidation(knowledgeBase))
         const hasChannel = !!knowledgeBase.channelId?.trim()
         const isDmsMode = knowledgeBase.allowDms === true
         if (!hasChannel && !isDmsMode) {
@@ -85,6 +88,11 @@ export class SlackKnowledgeBase extends KnowledgeBase<SlackKBConfig> {
         if (hasChannel && isDmsMode) {
             throw new Error("Slack knowledge base must be either Channel or DMs, not both. Clear channel when using DMs, or switch to Channel and select one channel.")
         }
+        if (hasChannel || (isDmsMode && (knowledgeBase.userIds?.length ?? 0) > 0)) {
+            const token = await getSlackAccessTokenOrThrow(knowledgeBase.integrationId)
+            await validateSlackChannelsExist(token, hasChannel ? [knowledgeBase.channelId!] : [])
+            await validateSlackUserIds(token, knowledgeBase.userIds ?? [])
+        }
     }
 
     async addKnowledgeBaseToAgent(tx: PrismaTransaction, agentKnowledgeBaseId: string, knowledgeBase: SlackKBConfig): Promise<void> {
@@ -92,10 +100,10 @@ export class SlackKnowledgeBase extends KnowledgeBase<SlackKBConfig> {
             data: {
                 automation_knowledge_base_id: agentKnowledgeBaseId,
                 channel_ids: knowledgeBase.channelId ? [knowledgeBase.channelId] : [],
-                channel_names: knowledgeBase.channelName ? [knowledgeBase.channelName] : [],
+                channel_names: [], // Display names not persisted; UI sends channelName for display only.
                 allow_dms: knowledgeBase.allowDms ?? false,
                 user_ids: knowledgeBase.userIds ?? [],
-                user_names: [] // IDs only; hydrate via UI or slack_list_users tool
+                user_names: [] // Display names not persisted; UI sends userNames for display only.
             }
         })
     }
