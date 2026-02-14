@@ -16,7 +16,8 @@ import {
     NotionIntegration,
     PosthogIntegration,
     SlackIntegration,
-    WorkOSIntegration
+    WorkOSIntegration,
+    AttioIntegration
 } from "../shared/Integrations"
 import { CreateNotificationDestinationRequest, NotificationDestination } from "../shared/Notifications"
 import type { RunHistoryActionWithId, RunHistoryModelEvent } from "../shared/RunHistoryTypes"
@@ -242,6 +243,8 @@ interface BackendService {
     /**
      * Gets all WorkOS integrations for the current user
      */
+    getAttioIntegrations(): Promise<AttioIntegration[]>
+
     getWorkOSIntegrations(): Promise<WorkOSIntegration[]>
 
     /**
@@ -734,6 +737,16 @@ export const BackendProvider: BackendService = {
             .then(response => response.data)
             .catch(error => {
                 console.error("Error getting LaunchDarkly integrations:", error)
+                throw error
+            })
+    },
+
+    getAttioIntegrations: () => {
+        return axios
+            .get<AttioIntegration[]>(`${backendBaseUrl}${ApiRoutes.ATTIO.INTEGRATIONS}`, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error("Error getting Attio integrations:", error)
                 throw error
             })
     },
