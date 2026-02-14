@@ -232,7 +232,8 @@ export function tryExtractToolCallCompleteData(event: RunStreamEvent): ToolCallC
                 callId: rawItem.callId || "unknown",
                 status: status || "unknown",
                 errorContext: errorContext,
-                actions: actions
+                actions: actions,
+                result: outputString ?? undefined
             }
         }
 
@@ -243,7 +244,8 @@ export function tryExtractToolCallCompleteData(event: RunStreamEvent): ToolCallC
                 callId: rawItem.id || rawItem.callId || "unknown",
                 status: status || "unknown",
                 errorContext: errorContext,
-                actions: actions
+                actions: actions,
+                result: outputString ?? undefined
             }
         }
     }
@@ -260,6 +262,7 @@ export function createToolCallCompleteEvent(data: ToolCallCompleteData, changedI
         step_id: data.callId,
         changed_items: changedItems,
         integration,
+        ...(data.result ? { result: data.result } : {}),
         // Only include errorContext if it exists (don't set to undefined)
         ...(data.errorContext ? { errorContext: { error: data.errorContext.error } } : {})
     }
@@ -349,6 +352,7 @@ export type ToolCallCompleteData = {
     name: string
     callId: string
     status: string
+    result?: string
     errorContext?: ErrorContext
     actions?: RunHistoryAction[]
 }

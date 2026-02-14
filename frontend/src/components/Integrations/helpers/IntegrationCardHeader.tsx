@@ -21,7 +21,7 @@ export function IntegrationCardHeader({ integration, isActive = true, compact = 
                     <IntegrationTitle integration={integration} iconSize={compact ? "sm" : "lg"} />
                     {isActive && (
                         <Badge variant="secondary" className={cn("text-foreground", compact && "text-xs py-0.5 px-1.5")}>
-                            <BadgeCheckIcon className={cn("text-primary", compact ? "size-2.5" : "size-3")} />
+                            <BadgeCheckIcon className={cn("text-green-500", compact ? "size-2.5" : "size-3")} />
                             Connected
                         </Badge>
                     )}

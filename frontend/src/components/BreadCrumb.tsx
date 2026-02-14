@@ -20,7 +20,11 @@ const routeLabels: Record<string, string> = {
     notifications: "Notifications"
 }
 
-function BreadCrumb() {
+type BreadCrumbProps = {
+    inline?: boolean
+}
+
+function BreadCrumb({ inline = false }: BreadCrumbProps) {
     const location = useLocation()
     const params = useParams()
 
@@ -128,12 +132,30 @@ function BreadCrumb() {
         return null
     }
 
+    // Agent detail pages manage their own header unless explicitly rendered inline there.
+    const appSegments = pathSegments.filter(seg => seg !== "app")
+    if (!inline && appSegments[0] === "agents" && appSegments.length >= 2) {
+        return null
+    }
+
     // Don't show breadcrumb on home page
     if (pathSegments.length === 0 || (pathSegments.length === 1 && pathSegments[0] === "app")) {
+        if (inline) {
+            return null
+        }
+
         return (
             <div className="flex items-center gap-4 px-2 py-3">
                 <SidebarTrigger />
             </div>
+        )
+    }
+
+    if (inline) {
+        return (
+            <Breadcrumb>
+                <BreadcrumbList>{buildBreadcrumbItems()}</BreadcrumbList>
+            </Breadcrumb>
         )
     }
 
