@@ -116,6 +116,16 @@ export function LaunchDarklyIcon() {
     return <img src="/launchdarkly.jpeg" alt="LaunchDarkly" className="w-full h-full object-contain" />
 }
 
+export function AttioIcon() {
+    return (
+        <svg className="w-full h-full" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="256" height="256" rx="48" fill="#000000" />
+            <path d="M128 56L188 180H68L128 56Z" fill="white" />
+            <rect x="108" y="160" width="40" height="40" rx="4" fill="white" />
+        </svg>
+    )
+}
+
 export function WorkOSIcon() {
     return (
         <svg className="w-full h-full" viewBox="0 0 256 222" fill="none" xmlns="http://www.w3.org/2000/svg">
