@@ -1,4 +1,5 @@
 import {
+    AttioOutputConfig,
     ConfigInstance,
     ConfigType,
     ConfluenceConfig,
@@ -116,6 +117,9 @@ export function deserializeConfig(jsonConfig: any): ConfigInstance {
         case ConfigType.WORKOS_INPUT:
             const workosConfig = jsonConfig as WorkOSInputConfig
             return new WorkOSInputConfig(integrationId, workosConfig.eventTypes || [])
+        case ConfigType.ATTIO_OUTPUT:
+            const attioOutputConfig = jsonConfig as AttioOutputConfig
+            return new AttioOutputConfig(integrationId, attioOutputConfig.objectSlug)
         default:
             const _exhaustive: never = configType
             throw new Error(`Unknown config type: ${_exhaustive}`)
