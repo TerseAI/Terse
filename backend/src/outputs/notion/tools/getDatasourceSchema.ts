@@ -71,8 +71,11 @@ Use this tool:
 - To get valid option values for select, multi_select, and status properties
 - To see exact format examples for constructing properties in the Notion API format
 - To determine how to write to the Notion database by understanding its structure
+- To see available system fields (created_time, last_edited_time, created_by, last_edited_by) and how to filter by them
 
-The schema information returned by this tool should be used to properly format properties when calling notion_create_or_update_database_row to create or update rows in the database.`,
+The schema information returned by this tool should be used to properly format properties when calling notion_create_or_update_database_row to create or update rows in the database.
+
+SYSTEM FIELDS: The response includes system_fields which describe built-in Notion page fields like created_time and last_edited_time. These can be used for filtering (using special timestamp filter format without 'property' field) but cannot be edited.`,
     parameters: z.object({
         integrationId: z.string().describe("The integration ID of the Notion workspace to use."),
         databaseId: z.string().describe("The Notion database ID (data source ID) to get the schema for.")
@@ -105,6 +108,35 @@ The schema information returned by this tool should be used to properly format p
             schema[propertyName] = buildPropertySchema(propertyName, propertyConfig)
         }
 
+        // Add system fields that exist on all Notion pages (not part of dataSourceInfo.properties)
+        // These can be used for filtering but not for writing
+        const systemFields = {
+            created_time: {
+                type: "system",
+                description: "When the page was created (read-only, filterable)",
+                filter_format: `For filtering, use timestamp filter: {"timestamp": "created_time", "created_time": {"on_or_after": "2024-01-01"}}`,
+                filter_conditions: ["after", "before", "equals", "on_or_after", "on_or_before", "is_empty", "is_not_empty", "past_week", "past_month", "past_year", "next_week", "next_month", "next_year", "this_week"],
+                note: "Do NOT include 'property' field when filtering by timestamp - use the special timestamp filter format instead"
+            },
+            last_edited_time: {
+                type: "system",
+                description: "When the page was last edited (read-only, filterable)",
+                filter_format: `For filtering, use timestamp filter: {"timestamp": "last_edited_time", "last_edited_time": {"on_or_after": "2024-01-01"}}`,
+                filter_conditions: ["after", "before", "equals", "on_or_after", "on_or_before", "is_empty", "is_not_empty", "past_week", "past_month", "past_year", "next_week", "next_month", "next_year", "this_week"],
+                note: "Do NOT include 'property' field when filtering by timestamp - use the special timestamp filter format instead"
+            },
+            created_by: {
+                type: "system",
+                description: "User who created the page (read-only, filterable using people filter with 'property' field)",
+                filter_format: `{"property": "created_by", "people": {"contains": "user-id"}}`
+            },
+            last_edited_by: {
+                type: "system",
+                description: "User who last edited the page (read-only, filterable using people filter with 'property' field)",
+                filter_format: `{"property": "last_edited_by", "people": {"contains": "user-id"}}`
+            }
+        }
+
         // Push run action to track the API call
         const databaseName = "title" in dataSourceInfo ? dataSourceInfo.title?.[0]?.plain_text || "Unknown Database" : "Unknown Database"
         const dataSourceUrl = "url" in dataSourceInfo ? dataSourceInfo.url : undefined
@@ -122,7 +154,9 @@ The schema information returned by this tool should be used to properly format p
             data_source_id: databaseId,
             database_name: databaseName,
             schema: schema,
-            property_count: Object.keys(schema).length
+            property_count: Object.keys(schema).length,
+            system_fields: systemFields,
+            system_fields_note: "System fields (created_time, last_edited_time, created_by, last_edited_by) are available for filtering but not editable. For timestamp filters (created_time, last_edited_time), use the special format WITHOUT a 'property' field."
         }
     },
     errorFunction: formatError
