@@ -344,10 +344,10 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
 
                 const eventProcessor = new EventProcessor(inputEvent, user, { isManuallyTriggered: true })
                 const triggeredRun = await eventProcessor.triggerSingleAgent(agentId)
-                
+
                 const runHistoryPath = FrontendRoutes.AGENTS.RUN_HISTORY(triggeredRun.agentId, triggeredRun.runId)
                 await chatInterface.buildButton("See progress", runHistoryPath)
-               
+
                 logger.info("[triggerAgentRun] Triggered run", {
                     entityType: resolvedEntityType,
                     entityId: resolvedEntityId,
