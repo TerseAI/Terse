@@ -2,6 +2,7 @@ import { getDatadogCredentialsByIntegrationId } from "../knowledgeBase/datadog/d
 import logger from "../logger"
 import { db } from "../prismaClient"
 import { DatadogIntegration, DatadogIntegrationMetadata, IntegrationType } from "../shared/Integrations"
+import { User } from "../shared/types"
 import { AgentTriggerWithConfigs } from "../types/prisma"
 import { getDatadogApiUrl } from "../utility/datadog"
 
@@ -219,9 +220,9 @@ export class DatadogIntegrationManager implements Integration<DatadogIntegration
 /**
  * Verifies that the given Datadog log indexes exist and are accessible with the integration's credentials.
  */
-export async function validateDatadogIndexesExist(integrationId: string, userId: string, indexes: string[]): Promise<void> {
+export async function validateDatadogIndexesExist(integrationId: string, indexes: string[]): Promise<void> {
     if (!indexes.length) return
-    const credentials = await getDatadogCredentialsByIntegrationId(integrationId, userId)
+    const credentials = await getDatadogCredentialsByIntegrationId(integrationId)
     if (!credentials) {
         throw new Error(`Datadog integration ${integrationId} not found or access denied`)
     }

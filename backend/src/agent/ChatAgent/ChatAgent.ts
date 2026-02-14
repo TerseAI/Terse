@@ -1,7 +1,10 @@
-import { Agent, AgentOutputType, RunStreamEvent, run } from "@openai/agents"
+import { Agent, AgentOutputType, RunStreamEvent } from "@openai/agents"
 
+import { settings } from "../../config/settings"
 import logger from "../../logger"
+import { User } from "../../shared/types"
 import { ChatMemorySession, recentHistoryCallback } from "../CustomMemorySession"
+import { AgentType, builderProviderDataModelSettings, runnerFactory } from "../runner"
 
 import type { ChatAgentContext } from "./ChatAgentContext"
 import { buildChatAgentSystemPrompt } from "./ChatAgentSystemPrompt"
@@ -16,8 +19,7 @@ class ChatAgent {
     constructor(
         private readonly chatInterface: ChatInterface,
         private readonly sessionId: string, // This is the external_id (e.g., Slack thread timestamp)
-        private readonly userId: string, // Required userId for interfaces
-        private readonly organizationId: string, // Required organizationId for interfaces
+        private readonly user: User,
         private readonly uiState?: string | null // UI context from the web interface
     ) {}
 
@@ -40,16 +42,28 @@ class ChatAgent {
             interface: this.chatInterface.name
         })
         const userTimezone = await this.chatInterface.getUserTimezone()
+
+        const runConfig = {
+            agentId: "chat-agent",
+            agentType: AgentType.CHAT,
+            runId: this.sessionId,
+            user: this.user,
+            env: settings.nodeEnv
+        }
+
         const agent = new Agent<ChatAgentContext, AgentOutputType>({
             name: "Terse Automation Assistant",
-            instructions: await buildChatAgentSystemPrompt(this.userId, this.organizationId, userTimezone, this.uiState),
+            instructions: await buildChatAgentSystemPrompt(this.user.id, this.user.organizationId, userTimezone, this.uiState),
             model: "gpt-5.2",
-            tools: buildChatAgentTools(this.chatInterface)
+            tools: buildChatAgentTools(this.chatInterface),
+            modelSettings: builderProviderDataModelSettings(runConfig)
         })
 
         const memorySession = await this.getMemorySession()
 
-        const result = await run(
+        const runner = runnerFactory(runConfig)
+
+        const result = await runner.run(
             agent,
             [
                 {
@@ -61,8 +75,7 @@ class ChatAgent {
                 stream: true,
                 context: {
                     chatInterface: this.chatInterface,
-                    userId: this.userId,
-                    organizationId: this.organizationId,
+                    user: this.user,
                     sessionId: this.sessionId
                 },
                 session: memorySession,

@@ -12,7 +12,8 @@ import {
     NotionIcon,
     PosthogIcon,
     SlackIcon,
-    TerseIcon
+    TerseIcon,
+    WorkOSIcon
 } from "@/components/icons/IntegrationIcons"
 import { ConfigType } from "@/shared/Configs"
 import { IntegrationType } from "@/shared/Integrations"
@@ -51,6 +52,8 @@ export function IconForConfigType({ type }: { type: ConfigType }) {
             return <DatadogIcon />
         case ConfigType.TERSE:
             return <TerseIcon />
+        case ConfigType.WORKOS_INPUT:
+            return <WorkOSIcon />
         default:
             // Exhaustive check: TypeScript will error if any IntegrationType case is missing
             throw type satisfies never
@@ -82,6 +85,8 @@ export function IconForIntegration({ integration }: { integration: IntegrationTy
             return <LaunchDarklyIcon />
         case IntegrationType.DATADOG:
             return <DatadogIcon />
+        case IntegrationType.WORKOS:
+            return <WorkOSIcon />
         default:
             throw integration satisfies never
     }

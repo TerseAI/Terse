@@ -1,9 +1,8 @@
-import { useCallback, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { useNavigate } from "react-router-dom"
 
 import { AnimatePresence, motion } from "framer-motion"
-import { ArrowRight, ArrowUpRight, ExternalLink, MessageSquare, Zap } from "lucide-react"
-import { v4 as uuidv4 } from "uuid"
+import { ArrowRight, ArrowUpRight, ExternalLink, MessageSquare, RotateCcw, Zap } from "lucide-react"
 
 import RunHistoryChatDrawer from "@/components/RunHistory/RunHistoryChatDrawer"
 import RunHistoryStatusBadge from "@/components/RunHistory/RunHistoryStatusBadge"
@@ -21,6 +20,10 @@ import { RecentRun } from "@/shared/types"
 import { sendBuilderMessage, subscribeToBuilderChat } from "@/socket"
 import { formatTimestamp } from "@/utility/timeUtils"
 
+import { convertRunHistoryEventsToTurns } from "../../components/RunHistory/RunHistoryChatDrawer/RunHistoryChatAdapter"
+import { useBuilderChatHistory } from "../../hooks/api/useBuilderChatHistory"
+import { useBuilderSession } from "../../hooks/useBuilderSession"
+
 import { HomeEmptyState } from "./components/HomeEmptyState"
 
 function Home() {
@@ -29,13 +32,27 @@ function Home() {
     const navigate = useNavigate()
 
     // Builder chat state
+    const { sessionId, resetSessionId } = useBuilderSession()
     const [hasStartedChat, setHasStartedChat] = useState(false)
     const chatRef = useRef<ChatHandle>(null)
-    const sessionId = useMemo(() => uuidv4(), [])
+    const { events: historyEvents, isLoading: isHistoryLoading } = useBuilderChatHistory(sessionId)
+    const [initialTurns, setInitialTurns] = useState<ReturnType<typeof convertRunHistoryEventsToTurns>>([])
+    useEffect(() => {
+        const turns = convertRunHistoryEventsToTurns(historyEvents.map(event => ({ ...event, isHistorical: true })))
+        setInitialTurns(turns)
+        if (turns.length > 0) {
+            setHasStartedChat(true)
+        }
+    }, [historyEvents])
 
     // Run history chat drawer state
     const [selectedRun, setSelectedRun] = useState<RecentRun | null>(null)
     const [isDrawerOpen, setIsDrawerOpen] = useState(false)
+
+    // Unified loading: wait for agents + chat history before deciding what to show.
+    // This prevents the flicker where the "has agents" view briefly shows before
+    // switching to the empty state (or vice versa).
+    const isInitialLoading = isLoadingAllAgents || isHistoryLoading
 
     // Builder chat callbacks (must be before any early returns — Rules of Hooks)
     const subscribeToEvents = useCallback(
@@ -79,8 +96,18 @@ function Home() {
         if (!open) setSelectedRun(null)
     }, [])
 
+    const handleClearChat = () => {
+        resetSessionId()
+        setHasStartedChat(false)
+    }
+
+    // Show nothing (empty container) while initial data is loading
+    if (isInitialLoading) {
+        return <div className="flex flex-col h-full w-full" />
+    }
+
     // Show empty state if user has no agents
-    const hasNoAgents = !isLoadingAllAgents && allAgents.length === 0
+    const hasNoAgents = allAgents.length === 0
     if (hasNoAgents) {
         return <HomeEmptyState />
     }
@@ -147,10 +174,19 @@ function Home() {
                 animate={hasStartedChat ? { flexGrow: 1, minHeight: 0 } : {}}
                 transition={{ duration: ANIMATION_DURATION, ease: ANIMATION_EASE }}
             >
+                {hasStartedChat && (
+                    <div className="flex justify-end px-2 pt-2 pb-3">
+                        <button onClick={handleClearChat} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
+                            <RotateCcw className="h-3 w-3" />
+                            Reset chat
+                        </button>
+                    </div>
+                )}
                 <div className="flex-1 min-h-0 w-full">
                     <Chat
                         ref={chatRef}
                         key={sessionId}
+                        initialTurns={initialTurns}
                         subscribeToEvents={subscribeToEvents}
                         sendMessage={sendMessage}
                         onUserMessage={handleUserMessage}

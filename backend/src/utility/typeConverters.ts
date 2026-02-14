@@ -20,7 +20,8 @@ import {
     SlackConfig,
     SlackKBConfig,
     SlackOutputConfig,
-    TimeTriggerConfig
+    TimeTriggerConfig,
+    WorkOSInputConfig
 } from "../shared/Configs"
 import { IntegrationType } from "../shared/Integrations"
 import { AgentKnowledgeBaseWithConfigs, AgentOutputWithConfigs, AgentTriggerWithConfigs } from "../types/prisma"
@@ -51,6 +52,8 @@ export const convertIntegrationTypeToPrismaIntegrationType = (integrationType: I
             return PrismaIntegrationType.LAUNCHDARKLY
         case IntegrationType.DATADOG:
             return PrismaIntegrationType.DATADOG
+        case IntegrationType.WORKOS:
+            return PrismaIntegrationType.WORKOS
         default:
             throw integrationType satisfies never
     }
@@ -86,6 +89,8 @@ export const convertPrismaIntegrationTypeToIntegrationType = (prismaIntegrationT
             return IntegrationType.LAUNCHDARKLY
         case PrismaIntegrationType.DATADOG:
             return IntegrationType.DATADOG
+        case PrismaIntegrationType.WORKOS:
+            return IntegrationType.WORKOS
         default:
             throw prismaIntegrationType satisfies never
     }
@@ -121,6 +126,8 @@ export const convertIntegrationTypeToPrismaIntegrationTypeForRunHistory = (integ
             return PrismaIntegrationType.LAUNCHDARKLY
         case IntegrationType.DATADOG:
             return PrismaIntegrationType.DATADOG
+        case IntegrationType.WORKOS:
+            return PrismaIntegrationType.WORKOS
         default:
             throw integrationType satisfies never
     }
@@ -157,6 +164,8 @@ export const convertPrismaIntegrationTypeToIntegrationTypeFromRunHistory = (pris
             return IntegrationType.LAUNCHDARKLY
         case PrismaIntegrationType.DATADOG:
             return IntegrationType.DATADOG
+        case PrismaIntegrationType.WORKOS:
+            return IntegrationType.WORKOS
         default:
             throw prismaIntegrationType satisfies never
     }
@@ -215,6 +224,10 @@ export const convertPrismaConfigToConfigInstance = (channelInput: AgentTriggerWi
         return new TimeTriggerConfig(channelInput.time_trigger_config.cron_expression || "")
     }
 
+    if (channelInput.workos_config) {
+        return new WorkOSInputConfig(integrationId, channelInput.workos_config.event_types || [])
+    }
+
     // Type guard to ensure we implement conversion here
     switch (channelInput.config_type) {
         case InputConfigType.GMAIL:
@@ -228,6 +241,7 @@ export const convertPrismaConfigToConfigInstance = (channelInput: AgentTriggerWi
         case InputConfigType.CONFLUENCE:
         case InputConfigType.POSTHOG:
         case InputConfigType.TIME_TRIGGER:
+        case InputConfigType.WORKOS_INPUT:
             break
         default:
             throw channelInput.config_type satisfies never
@@ -323,6 +337,8 @@ export const convertConfigTypeToInputConfigType = (configType: ConfigType): Inpu
             return InputConfigType.POSTHOG
         case ConfigType.TIME_TRIGGER:
             return InputConfigType.TIME_TRIGGER
+        case ConfigType.WORKOS_INPUT:
+            return InputConfigType.WORKOS_INPUT
         case ConfigType.GITHUB_KB:
             // GitHub KB is a knowledge base config type, not an input config type
             throw new Error("GITHUB_KB is a knowledge base type, not an input type")
@@ -371,6 +387,8 @@ export const convertInputConfigTypeToConfigType = (inputConfigType: InputConfigT
             return ConfigType.POSTHOG
         case InputConfigType.TIME_TRIGGER:
             return ConfigType.TIME_TRIGGER
+        case InputConfigType.WORKOS_INPUT:
+            return ConfigType.WORKOS_INPUT
         default:
             throw inputConfigType satisfies never
     }
@@ -573,6 +591,8 @@ export const convertPlainObjectToInputConfigInstance = (config: any): ConfigInst
             return new JiraConfig(config.integrationId, config.projectKey, config.projectId)
         case ConfigType.TIME_TRIGGER:
             return new TimeTriggerConfig(config.cronExpression || "")
+        case ConfigType.WORKOS_INPUT:
+            return new WorkOSInputConfig(config.integrationId, config.eventTypes || [])
         default:
             throw new Error(`Unsupported input config type: ${config.configType}`)
     }

@@ -15,7 +15,8 @@ import {
     LinearIntegration,
     NotionIntegration,
     PosthogIntegration,
-    SlackIntegration
+    SlackIntegration,
+    WorkOSIntegration
 } from "../shared/Integrations"
 import { CreateNotificationDestinationRequest, NotificationDestination } from "../shared/Notifications"
 import type { RunHistoryActionWithId, RunHistoryModelEvent } from "../shared/RunHistoryTypes"
@@ -40,6 +41,7 @@ import {
     RecentAgent,
     SlackChannelsResponse,
     SlackUsersResponse,
+    StatsInterval,
     StatsResponse
 } from "../shared/types"
 import { User } from "../types/User"
@@ -86,8 +88,9 @@ interface BackendService {
     /**
      * Gets statistics for the homepage dashboard
      * @param timezone - Optional IANA timezone string (e.g., "America/New_York")
+     * @param interval - Optional stats interval window (e.g., "1mo")
      */
-    getStats(timezone?: string): Promise<StatsResponse>
+    getStats(timezone?: string, interval?: StatsInterval): Promise<StatsResponse>
 
     /**
      * Returns the installation details for a given integration type
@@ -239,6 +242,21 @@ interface BackendService {
     getLaunchDarklyEnvironments(integrationId: string, projectKey: string): Promise<LaunchDarklyEnvironmentsResponse>
 
     /**
+     * Gets all WorkOS integrations for the current user
+     */
+    getWorkOSIntegrations(): Promise<WorkOSIntegration[]>
+
+    /**
+     * Creates or updates a WorkOS integration with API key and optional webhook secret
+     */
+    createOrUpdateWorkOSIntegration(apiKey: string, webhookSecret?: string, stateToken?: string): Promise<{ integrationId: string; webhookUrl: string }>
+
+    /**
+     * Updates the webhook signing secret for an existing WorkOS integration
+     */
+    updateWorkOSWebhookSecret(webhookSecret: string, stateToken?: string): Promise<{ success: boolean }>
+
+    /**
      * Gets all Datadog integrations for the current user
      */
     getDatadogIntegrations(): Promise<DatadogIntegration[]>
@@ -376,7 +394,7 @@ interface BackendService {
     /**
      * Redirects to the logout endpoint
      */
-    logoutRedirect(): void
+    logoutRedirect(): Promise<void>
 
     /**
      * Creates a new organization
@@ -469,8 +487,11 @@ export const BackendProvider: BackendService = {
             })
     },
 
-    getStats: (timezone?: string) => {
-        const params = timezone ? { tz: timezone } : {}
+    getStats: (timezone?: string, interval?: StatsInterval) => {
+        const params = {
+            ...(timezone ? { tz: timezone } : {}),
+            ...(interval ? { interval } : {})
+        }
         return axios
             .get(`${backendBaseUrl}${ApiRoutes.STATS}`, { withCredentials: true, params })
             .then(response => response.data)
@@ -718,6 +739,47 @@ export const BackendProvider: BackendService = {
             .then(response => response.data)
             .catch(error => {
                 console.error("Error getting LaunchDarkly integrations:", error)
+                throw error
+            })
+    },
+
+    getWorkOSIntegrations: () => {
+        return axios
+            .get<WorkOSIntegration[]>(`${backendBaseUrl}${ApiRoutes.WORKOS_INTEGRATION.INTEGRATIONS}`, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error("Error getting WorkOS integrations:", error)
+                throw error
+            })
+    },
+
+    createOrUpdateWorkOSIntegration: (apiKey: string, webhookSecret?: string, stateToken?: string) => {
+        const body: any = { apiKey }
+        if (webhookSecret) {
+            body.webhookSecret = webhookSecret
+        }
+        if (stateToken) {
+            body.state = stateToken
+        }
+        return axios
+            .post<{ integrationId: string; webhookUrl: string }>(`${backendBaseUrl}${ApiRoutes.WORKOS_INTEGRATION.INTEGRATIONS}`, body, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error("Error creating/updating WorkOS integration:", error)
+                throw error
+            })
+    },
+
+    updateWorkOSWebhookSecret: (webhookSecret: string, stateToken?: string) => {
+        const body: Record<string, string> = { webhookSecret }
+        if (stateToken) {
+            body.state = stateToken
+        }
+        return axios
+            .patch<{ success: boolean }>(`${backendBaseUrl}${ApiRoutes.WORKOS_INTEGRATION.WEBHOOK_SECRET}`, body, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error("Error updating WorkOS webhook secret:", error)
                 throw error
             })
     },
@@ -1133,8 +1195,14 @@ export const BackendProvider: BackendService = {
         window.location.href = `${backendRedirectUrl}${ApiRoutes.AUTH.LOGIN}`
     },
 
-    logoutRedirect: () => {
-        window.location.href = `${backendRedirectUrl}${ApiRoutes.AUTH.LOGOUT}`
+    logoutRedirect: async () => {
+        try {
+            const response = await axios.get<{ logoutUrl: string }>(`${backendBaseUrl}${ApiRoutes.AUTH.LOGOUT_URL}`, { withCredentials: true })
+            window.location.href = response.data.logoutUrl
+        } catch (error) {
+            console.error("Error getting WorkOS logout URL, falling back to backend logout endpoint:", error)
+            window.location.href = `${backendRedirectUrl}${ApiRoutes.AUTH.LOGOUT}`
+        }
     },
 
     createOrganization: (name: string, firstName?: string, lastName?: string) => {

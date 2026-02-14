@@ -77,7 +77,7 @@ export class DatadogKnowledgeBase extends KnowledgeBase<DatadogConfig> {
     async validateConfig(knowledgeBase: DatadogConfig, userId: string): Promise<void> {
         DatadogConfigSchema.parse(stripConfigForValidation(knowledgeBase))
         const indexes = knowledgeBase.defaultIndexes?.length ? knowledgeBase.defaultIndexes : ["main"]
-        await validateDatadogIndexesExist(knowledgeBase.integrationId, userId, indexes)
+        await validateDatadogIndexesExist(knowledgeBase.integrationId, indexes)
     }
 
     /**

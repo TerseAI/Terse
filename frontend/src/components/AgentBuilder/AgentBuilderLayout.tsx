@@ -1,17 +1,19 @@
-import { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { ReactNode, useCallback, useEffect, useRef, useState } from "react"
 import { useSearchParams } from "react-router-dom"
 
 import { AnimatePresence, Easing, motion } from "framer-motion"
 import type { LucideIcon } from "lucide-react"
-import { FileText, Loader2, MessageCircle, Rocket, Users } from "lucide-react"
-import { v4 as uuidv4 } from "uuid"
+import { FileText, MessageCircle, Rocket, RotateCcw, Users } from "lucide-react"
 
 import { TemplateCard } from "@/components/Agents/TemplateCard"
+import { convertRunHistoryEventsToTurns } from "@/components/RunHistory/RunHistoryChatDrawer/RunHistoryChatAdapter"
 import { Chat, ChatHandle } from "@/components/chat/Chat"
 import { ChatEventPayload } from "@/components/chat/hooks/useCompletionSocket"
 import { Card, CardContent } from "@/components/ui/card"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useBuilderChatHistory } from "@/hooks/api/useBuilderChatHistory"
 import { useTemplates } from "@/hooks/api/useTemplates"
+import { useBuilderSession } from "@/hooks/useBuilderSession"
 import { ModelRequest, SendModelRequest } from "@/shared/ModelEvents"
 import { AgentTemplate, TemplateCategory } from "@/shared/types"
 import { sendBuilderMessage, sendBuilderMultipleChoiceAnswer, subscribeToBuilderChat } from "@/socket"
@@ -48,15 +50,34 @@ type AgentBuilderLayoutProps = {
 }
 
 export function AgentBuilderLayout({ header }: AgentBuilderLayoutProps) {
-    const { templates, isLoading } = useTemplates()
-    const [hasStartedChat, setHasStartedChat] = useState(false)
+    const { templates, isLoading: isLoadingTemplates } = useTemplates()
+    const { sessionId, resetSessionId } = useBuilderSession()
     const [selectedCategory, setSelectedCategory] = useState<TemplateCategory>("users")
     const chatRef = useRef<ChatHandle>(null)
     const appliedDeepLinkKey = useRef<string | null>(null)
     const [searchParams] = useSearchParams()
 
-    // Generate a session ID for this setup flow
-    const sessionId = useMemo(() => uuidv4(), [])
+    // Load chat history for the persisted session
+    const { events: historyEvents, isLoading: isHistoryLoading } = useBuilderChatHistory(sessionId)
+    const [initialTurns, setInitialTurns] = useState<ReturnType<typeof convertRunHistoryEventsToTurns>>([])
+    const [hasStartedChat, setHasStartedChat] = useState(false)
+
+    // Unified loading: wait for both templates AND chat history before rendering.
+    // This prevents the chatbox from appearing before templates, making a jumpy experience.
+    const isInitialLoading = isHistoryLoading || isLoadingTemplates
+
+    useEffect(() => {
+        const turns = convertRunHistoryEventsToTurns(historyEvents.map(event => ({ ...event, isHistorical: true })))
+        setInitialTurns(turns)
+        if (turns.length > 0) {
+            setHasStartedChat(true)
+        }
+    }, [historyEvents])
+
+    const handleClearChat = () => {
+        resetSessionId()
+        setHasStartedChat(false)
+    }
 
     const handleTemplateSelect = useCallback((template: AgentTemplate) => {
         chatRef.current?.setInput(template.chatPrompt)
@@ -65,6 +86,7 @@ export function AgentBuilderLayout({ header }: AgentBuilderLayoutProps) {
 
     // Apply deep link params: templateId (pre-populate from template + set category) and/or prompt (arbitrary user input)
     useEffect(() => {
+        if (isInitialLoading) return
         const templateIdParam = searchParams.get("templateId")
         const promptParam = searchParams.get("prompt")
 
@@ -95,7 +117,7 @@ export function AgentBuilderLayout({ header }: AgentBuilderLayoutProps) {
                 setSelectedCategory(matched.category)
             }
         }
-    }, [searchParams, templates])
+    }, [searchParams, templates, isInitialLoading])
 
     const subscribeToEvents = useCallback(
         (callback: (payload: ChatEventPayload) => void) => {
@@ -142,6 +164,11 @@ export function AgentBuilderLayout({ header }: AgentBuilderLayoutProps) {
         [sessionId]
     )
 
+    // While data is loading, show an empty container to prevent layout shifts.
+    if (isInitialLoading) {
+        return <div className="flex flex-col h-full w-full" />
+    }
+
     // Animation variants for synchronized transitions
     const headerVariants = {
         visible: {
@@ -150,27 +177,6 @@ export function AgentBuilderLayout({ header }: AgentBuilderLayoutProps) {
         hidden: {
             opacity: 0,
             filter: "blur(8px)"
-        }
-    }
-
-    const chatSectionVariants = {
-        initial: {},
-        expanded: {
-            flexGrow: 1,
-            minHeight: 0
-        }
-    }
-
-    const templatesVariants = {
-        visible: {
-            opacity: 1,
-            filter: "blur(0px)",
-            y: 0
-        },
-        hidden: {
-            opacity: 0,
-            filter: "blur(8px)",
-            y: 300
         }
     }
 
@@ -207,14 +213,21 @@ export function AgentBuilderLayout({ header }: AgentBuilderLayoutProps) {
             {/* Chat Section - expands when chat starts */}
             <motion.div
                 className="flex flex-col mx-auto max-w-5xl w-full pb-3"
-                variants={chatSectionVariants}
-                initial="initial"
-                animate={hasStartedChat ? "expanded" : "initial"}
+                initial={{}}
+                animate={hasStartedChat ? { flexGrow: 1, minHeight: 0 } : {}}
                 transition={{
                     duration: ANIMATION_DURATION,
                     ease: ANIMATION_EASE
                 }}
             >
+                {hasStartedChat && (
+                    <div className="flex justify-end px-2 pt-2 pb-3">
+                        <button onClick={handleClearChat} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
+                            <RotateCcw className="h-3 w-3" />
+                            Reset chat
+                        </button>
+                    </div>
+                )}
                 <div className="flex-1 min-h-0 w-full">
                     <Chat
                         ref={chatRef}
@@ -224,6 +237,7 @@ export function AgentBuilderLayout({ header }: AgentBuilderLayoutProps) {
                         onUserMessage={handleUserMessage}
                         onMultipleChoiceAnswer={handleMultipleChoiceAnswer}
                         addUserTurnsLocally={true}
+                        initialTurns={initialTurns}
                         inputSize={hasStartedChat ? "small" : "large"}
                         placeholders={hasStartedChat ? [] : AGENT_SETUP_PLACEHOLDERS}
                     />
@@ -235,7 +249,7 @@ export function AgentBuilderLayout({ header }: AgentBuilderLayoutProps) {
                 className="relative"
                 style={{
                     height: hasStartedChat ? 0 : "auto",
-                    overflow: "visible",
+                    overflow: hasStartedChat ? "hidden" : "visible",
                     transition: "none"
                 }}
             >
@@ -243,10 +257,8 @@ export function AgentBuilderLayout({ header }: AgentBuilderLayoutProps) {
                     {!hasStartedChat && (
                         <motion.div
                             className="w-full"
-                            variants={templatesVariants}
-                            initial="visible"
-                            animate="visible"
-                            exit="hidden"
+                            initial={{ opacity: 1 }}
+                            exit={{ opacity: 0, filter: "blur(8px)", y: 40 }}
                             transition={{
                                 duration: ANIMATION_DURATION,
                                 ease: ANIMATION_EASE
@@ -282,37 +294,31 @@ export function AgentBuilderLayout({ header }: AgentBuilderLayoutProps) {
                                                     transition={{ duration: 0.2, ease: ANIMATION_EASE }}
                                                     className="grid grid-cols-1 sm:grid-cols-3 gap-4"
                                                 >
-                                                    {isLoading ? (
-                                                        <div className="col-span-full flex items-center justify-center py-8">
-                                                            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                                                        </div>
-                                                    ) : (
-                                                        (() => {
-                                                            const categoryTemplates = templates.filter(t => t.category === selectedCategory)
-                                                            return categoryTemplates.length > 0 ? (
-                                                                categoryTemplates.map((template, index) => (
-                                                                    <motion.div
-                                                                        key={template.id}
-                                                                        initial={{ opacity: 0, y: 12, filter: "blur(8px)" }}
-                                                                        animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-                                                                        transition={{
-                                                                            duration: 0.3,
-                                                                            delay: index * 0.05,
-                                                                            ease: ANIMATION_EASE
-                                                                        }}
-                                                                    >
-                                                                        <TemplateCard template={template} onSelect={handleTemplateSelect} />
-                                                                    </motion.div>
-                                                                ))
-                                                            ) : (
-                                                                <Card className="col-span-full border-dashed">
-                                                                    <CardContent className="flex flex-col items-center justify-center py-6 text-center">
-                                                                        <p className="text-muted-foreground text-sm">No templates in this category yet</p>
-                                                                    </CardContent>
-                                                                </Card>
-                                                            )
-                                                        })()
-                                                    )}
+                                                    {(() => {
+                                                        const categoryTemplates = templates.filter(t => t.category === selectedCategory)
+                                                        return categoryTemplates.length > 0 ? (
+                                                            categoryTemplates.map((template, index) => (
+                                                                <motion.div
+                                                                    key={template.id}
+                                                                    initial={{ opacity: 0, y: 12, filter: "blur(8px)" }}
+                                                                    animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+                                                                    transition={{
+                                                                        duration: 0.3,
+                                                                        delay: index * 0.05,
+                                                                        ease: ANIMATION_EASE
+                                                                    }}
+                                                                >
+                                                                    <TemplateCard template={template} onSelect={handleTemplateSelect} />
+                                                                </motion.div>
+                                                            ))
+                                                        ) : (
+                                                            <Card className="col-span-full border-dashed">
+                                                                <CardContent className="flex flex-col items-center justify-center py-6 text-center">
+                                                                    <p className="text-muted-foreground text-sm">No templates in this category yet</p>
+                                                                </CardContent>
+                                                            </Card>
+                                                        )
+                                                    })()}
                                                 </motion.div>
                                             </AnimatePresence>
                                         </div>

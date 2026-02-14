@@ -1,5 +1,6 @@
 import { z } from "zod"
 
+import { WORKOS_SUPPORTED_EVENT_NAMES } from "../integrations/WorkOSIntegration"
 import { ConfigType } from "../shared/Configs"
 import { IntegrationType } from "../shared/Integrations"
 
@@ -177,6 +178,12 @@ export const SlackKnowledgeBaseConfigSchema = BaseConfigSchema.extend({
         .describe("When allowDms is true: optional user IDs to restrict which DMs to read. Obtain from fetchResourcesForIntegration with options.slack.objectType='users'. Leave empty for all DMs."),
     channelName: z.string().nullable().optional().describe("Display name for the channel (UI only, not persisted)."),
     userNames: z.array(z.string()).nullable().optional().describe("Display names for users (UI only, not persisted).")
+})
+
+export const WorkOSInputConfigSchema = BaseConfigSchema.extend({
+    configType: z.literal(ConfigType.WORKOS_INPUT),
+    integrationType: z.literal(IntegrationType.WORKOS),
+    eventTypes: z.array(z.enum(WORKOS_SUPPORTED_EVENT_NAMES)).min(1).describe("WorkOS event types to trigger on.")
 })
 
 export const TimeTriggerConfigSchema = BaseConfigSchema.extend({

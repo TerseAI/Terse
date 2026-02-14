@@ -2,8 +2,9 @@ import { Server } from "socket.io"
 
 import logger from "../../logger"
 import { ModelEvent } from "../../shared/ModelEvents"
-import type { RunHistoryModelEvent, RunHistoryModelSocketEvent, RunHistoryStreamingParams } from "../../shared/RunHistoryTypes"
+import type { RunHistoryModelEvent, RunHistoryModelSocketEvent, TrackingParams } from "../../shared/RunHistoryTypes"
 import { SocketEvents, SocketRooms } from "../../shared/SocketEvents"
+import { User } from "../../shared/types"
 import { randomString } from "../../utility/strings"
 
 import { storeChatEvent } from "./runHistory"
@@ -78,12 +79,12 @@ export class StreamEventEmitter {
     private runId: string
     private agentId: string
 
-    constructor(io: Server | null, params: RunHistoryStreamingParams) {
+    constructor(io: Server | null, params: TrackingParams) {
         this.io = io
-        if (!params.organizationId) {
+        if (!params.user.organizationId) {
             throw new Error("organizationId is required for StreamEventEmitter")
         }
-        this.room = SocketRooms.organization(params.organizationId)
+        this.room = SocketRooms.organization(params.user.organizationId)
         this.runId = params.runId!
         this.agentId = params.agentId!
     }
@@ -132,9 +133,8 @@ export async function processModelEventStream(eventStream: AsyncGenerator<ModelE
     const aggregator = new TextDeltaAggregator(options.runId)
     const emitter = new StreamEventEmitter(options.io, {
         runId: options.runId,
-        userId: options.userId,
         agentId: options.agentId,
-        organizationId: options.organizationId
+        user: options.user
     })
 
     try {
@@ -150,7 +150,7 @@ export async function processModelEventStream(eventStream: AsyncGenerator<ModelE
         // Finalize any remaining steps at the end of the stream
         await aggregator.commitLastTextDeltaStep()
     } catch (error) {
-        logger.error("Error processing model event stream", { error, runId: options.runId, userId: options.userId, agentId: options.agentId })
+        logger.error("Error processing model event stream", { error, runId: options.runId, userId: options.user.id, agentId: options.agentId })
         throw error
     }
 }
@@ -177,8 +177,7 @@ type AccumulatedDelta = {
 
 export interface StreamProcessorOptions {
     runId: string
-    userId: string
     agentId: string
-    organizationId: string
+    user: User
     io: Server | null
 }

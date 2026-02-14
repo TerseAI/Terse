@@ -19,7 +19,8 @@ import {
     SlackKBConfig,
     SlackOutputConfig,
     TerseConfig,
-    TimeTriggerConfig
+    TimeTriggerConfig,
+    WorkOSInputConfig
 } from "@/shared/Configs"
 
 /**
@@ -112,6 +113,9 @@ export function deserializeConfig(jsonConfig: any): ConfigInstance {
             )
         case ConfigType.TERSE:
             return new TerseConfig()
+        case ConfigType.WORKOS_INPUT:
+            const workosConfig = jsonConfig as WorkOSInputConfig
+            return new WorkOSInputConfig(integrationId, workosConfig.eventTypes || [])
         default:
             const _exhaustive: never = configType
             throw new Error(`Unknown config type: ${_exhaustive}`)

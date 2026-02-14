@@ -128,7 +128,6 @@ async function processWorkOSEvent(event: WorkOSWebhookEvent): Promise<void> {
             }
             break
         }
-
         default:
             logger.debug("Unhandled WorkOS webhook event", { eventType })
     }

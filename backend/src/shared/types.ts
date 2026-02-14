@@ -497,18 +497,10 @@ export type OAuthInstallationDetails = {
     oauthUrl: string
 }
 
-export enum DayOfWeek {
-    Sun = "Sun",
-    Mon = "Mon",
-    Tue = "Tue",
-    Wed = "Wed",
-    Thu = "Thu",
-    Fri = "Fri",
-    Sat = "Sat"
-}
+export type StatsInterval = "1h" | "24h" | "7d" | "1mo" | "3mo" | "1y"
 
 export interface DailyEventCount {
-    date: DayOfWeek
+    date: string
     events: number
 }
 
@@ -562,7 +554,7 @@ export interface StatsResponse {
     actionsTakenChange: string // Percentage change from previous period
     numberOfAgents: number
     numberOfAgentsChange: string // Absolute change (e.g., "+2")
-    dailyEvents: DailyEventCount[] // Events per day for the last 7 days
+    dailyEvents: DailyEventCount[] // Events per day for the selected period
     recentActions: RecentAction[] // Recent actions (last 10)
     recentRuns: RecentRun[] // Recent non-filtered run history records (last 20)
     timezone: string // Timezone used for daily events grouping (e.g., "America/New_York" or "UTC")

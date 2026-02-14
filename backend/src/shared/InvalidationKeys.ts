@@ -1,4 +1,5 @@
 import { GetRunHistoryParams } from "./RunHistoryTypes"
+import type { StatsInterval } from "./types"
 
 export const currentUserKey = (): readonly [string] => ["currentUser"]
 
@@ -106,6 +107,10 @@ export const slackIntegrationsKey = (): readonly [string] => {
     return ["slackIntegrations"] as const
 }
 
+export const workosIntegrationsKey = (): readonly [string] => {
+    return ["workosIntegrations"] as const
+}
+
 export const allRunHistoryKey = (params?: GetRunHistoryParams): readonly [string, string] | readonly [string] => {
     if (!params || Object.keys(params).length === 0) {
         return ["allRunHistory"] as const
@@ -147,8 +152,11 @@ export const recentAgentsKey = (limit?: number): readonly [string, number] | rea
     return ["recentAgents"] as const
 }
 
-export const statsKey = (timezone: string): readonly [string, string] => {
-    return ["stats", timezone] as const
+export const statsKey = (timezone: string, interval?: StatsInterval): readonly [string, string] | readonly [string, string, StatsInterval] => {
+    if (!interval) {
+        return ["stats", timezone] as const
+    }
+    return ["stats", timezone, interval] as const
 }
 
 export type AgentListArgs = {

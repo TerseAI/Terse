@@ -16,6 +16,7 @@ export const ApiRoutes = {
         ME: "/me",
         LOGIN: "/login",
         LOGOUT: "/logout",
+        LOGOUT_URL: "/logout/url",
         GITHUB_APP_CALLBACK: "/auth/github-app/callback",
         WORKOS_CALLBACK: "/auth/workos/callback"
     },
@@ -158,6 +159,12 @@ export const ApiRoutes = {
         INDEXES: "/datadog/indexes"
     },
 
+    // WorkOS Integration routes (customer's own WorkOS account)
+    WORKOS_INTEGRATION: {
+        INTEGRATIONS: "/workos-integration/integrations",
+        WEBHOOK_SECRET: "/workos-integration/webhook-secret"
+    },
+
     // Agents routes
     AGENTS: {
         LIST: "/agents",
@@ -220,6 +227,11 @@ export const ApiRoutes = {
             pattern: "/webhooks/schedule/:inputId",
             build: (inputId: string) => `/webhooks/schedule/${encodeURIComponent(inputId)}`,
             params: { inputId: "string" } as const
+        },
+        WORKOS_TRIGGER_BY_INTEGRATION_ID: {
+            pattern: "/webhooks/workos-trigger/:integrationId",
+            build: (integrationId: string) => `/webhooks/workos-trigger/${encodeURIComponent(integrationId)}`,
+            params: { integrationId: "string" } as const
         }
     },
 

@@ -12,6 +12,7 @@ import { ConfigInstance, ConfigType, JiraConfig as JiraConfigClass } from "../sh
 import { FrontendRoutes } from "../shared/FrontendRoutes"
 import { AdditionalStateParams, AtlassianIntegration, AtlassianIntegrationMetadata, InstallationOptionsFor, IntegrationType } from "../shared/Integrations"
 import { RunHistoryTrigger } from "../shared/RunHistoryTypes"
+import { User } from "../shared/types"
 import { OAuthInstallationDetails } from "../shared/types"
 import { AgentTriggerWithConfigs } from "../types/prisma"
 import { HydratorType } from "../types/rag"

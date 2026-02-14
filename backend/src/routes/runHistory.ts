@@ -108,7 +108,8 @@ export async function getAllRunHistory(req: Request, res: Response) {
                     reasoning: runRecord.decision_reason
                 },
                 actions,
-                status: runRecord.status
+                status: runRecord.status,
+                isManuallyTriggered: runRecord.is_manually_triggered
             }
         })
 
@@ -221,7 +222,8 @@ export async function getRunHistory(req: Request, res: Response) {
                     reasoning: runRecord.decision_reason
                 },
                 actions,
-                status: runRecord.status
+                status: runRecord.status,
+                isManuallyTriggered: runRecord.is_manually_triggered
             }
         })
 

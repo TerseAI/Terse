@@ -144,7 +144,7 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
     })
 
     // Connection handler
-    io.on(SocketEvents.CONNECT, (socket: Socket) => {
+    io.on(SocketEvents.CONNECT, async (socket: Socket) => {
         const authenticatedSocket = socket as AuthenticatedSocket
         const userId = authenticatedSocket.userId
         const organizationId = authenticatedSocket.organizationId
@@ -276,9 +276,8 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
             try {
                 result = await agentRunner.userMessageRun(userMessage, undefined, {
                     runId,
-                    userId,
-                    agentId: agent.id,
-                    ...(organizationId && { organizationId })
+                    user: user,
+                    agentId: agent.id
                 })
             } catch (error) {
                 const classified = classifyAgentError(error)
@@ -301,7 +300,7 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
                 }
             }
 
-            directiveTaskQueue.emit(new DirectiveTask(agent.id, runId, userMessageEventId, userId, userMessage))
+            directiveTaskQueue.emit(new DirectiveTask(agent.id, runId, userMessageEventId, user, userMessage))
         })
 
         // Use centralized approval service - it handles Slack notifications internally
@@ -334,7 +333,11 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
         })
 
         // Listen for builder chat messages (in-app agent builder, organization-scoped)
-        registerBuilderChatHandler(socket, userId, organizationId ?? "")
+        try {
+            await registerBuilderChatHandler(socket, userId, organizationId ?? "")
+        } catch (err) {
+            logger.error("[builder:chat] Failed to register builder chat handler", { err, userId, organizationId })
+        }
 
         // presence: mark online (60s TTL), refresh every 25s (only if Redis is available)
         if (pub) {

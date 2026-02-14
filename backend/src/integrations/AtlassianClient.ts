@@ -3,7 +3,7 @@ import logger from "../logger"
 import { db } from "../prismaClient"
 import { ApiRoutes } from "../shared/ApiRoutes"
 import { AtlassianIntegration, IntegrationType } from "../shared/Integrations"
-import type { ConfluencePage } from "../shared/types"
+import type { ConfluencePage, User } from "../shared/types"
 import { generateWebhookSecret } from "../utility/webhookSecrets"
 
 import { FetchResourcesOptions } from "./abstract/FetchResourcesOptions"
@@ -31,7 +31,7 @@ const OAUTH_TOKEN_REFRESH_THRESHOLD_MS = 1000 * 60 * 30 // 30 minutes (expires a
 export class AtlassianClient {
     integrationType: IntegrationType = IntegrationType.ATLASSIAN
 
-    async getAccessToken(integrationId: string, userId?: string): Promise<string | null> {
+    async getAccessToken(integrationId: string): Promise<string | null> {
         try {
             const integration = await db().atlassian_integrations.findUnique({
                 where: { id: integrationId }
@@ -40,16 +40,6 @@ export class AtlassianClient {
             if (!integration) {
                 logger.error(`Atlassian integration ${integrationId} not found`, {
                     integrationId
-                })
-                return null
-            }
-
-            // Validate that the integration belongs to the user if userId is provided
-            if (userId && integration.user_id !== userId) {
-                logger.warn("Atlassian integration does not belong to user", {
-                    integrationId,
-                    userId,
-                    tokenUserId: integration.user_id
                 })
                 return null
             }

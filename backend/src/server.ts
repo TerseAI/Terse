@@ -5,6 +5,7 @@ import "dotenv/config"
 import express, { NextFunction, Request, Response } from "express"
 import { createServer } from "http"
 
+import { setupLLMAnalytics } from "./agent/openaiInstance"
 // Import settings early to validate environment variables at startup
 import { requestSessionSocketToken } from "./agent/socket"
 import "./config/settings"
@@ -13,7 +14,7 @@ import "./integrations/IntegrationTaskHandler"
 import logger from "./logger"
 import { getRealtimeSocket, initializeRealtimeSocket } from "./realtimeSocket"
 import { createAgent, deleteAgent, getRecentAgents, getUserAgent, getUserAgents, updateAgent } from "./routes/agents"
-import { authMiddleware, authMiddlewareAllowNoOrg, callback, getWorkOSWidgetToken, login, logout, me } from "./routes/auth"
+import { authMiddleware, authMiddlewareAllowNoOrg, callback, getWorkOSWidgetToken, login, logout, logoutUrl, me } from "./routes/auth"
 import { githubAppCallbackIntegrate } from "./routes/auth/githubAuth"
 import { getBuilderChatHistory } from "./routes/builderChat"
 import { getConfluenceIntegrations, getConfluenceResources } from "./routes/confluence"
@@ -37,11 +38,13 @@ import { getStats } from "./routes/stats"
 import { getPublicTemplates, getTemplates } from "./routes/templates"
 import { toolsThatRequireApprovalsRoute } from "./routes/tools"
 import { handleWorkOSWebhook } from "./routes/workos"
+import { createOrUpdateWorkOSIntegration, getWorkOSIntegrations, handleWorkOSTriggerWebhook, updateWorkOSWebhookSecret } from "./routes/workosIntegration"
 import { registerSocketGetter } from "./services/CacheInvalidationService"
 import { ApiRoutes } from "./shared/ApiRoutes"
 import { User } from "./shared/types"
 import { setupSlackBolt } from "./slack/boltApp"
 import { runStartupValidations } from "./tools/validateToolNames"
+import { analytics } from "./utility/analytics"
 
 export type Session = {
     user: User
@@ -63,6 +66,9 @@ try {
 
 // Initialize Slack Bolt app
 const slackReceiver: Awaited<ReturnType<typeof setupSlackBolt>> | null = await setupSlackBolt()
+
+// Initialize LLM analytics
+setupLLMAnalytics()
 
 app.use(
     cors({
@@ -133,7 +139,7 @@ const DEFAULT_BODY_LIMIT = "1mb"
 
 // Parse JSON for all routes except Slack events, Linear webhook, and WorkOS webhook (which need raw body for signature verification)
 app.use((req, res, next) => {
-    if (req.path === "/slack/events" || req.path === "/linear/webhook" || req.path === ApiRoutes.WEBHOOKS.WORKOS) {
+    if (req.path === "/slack/events" || req.path === "/linear/webhook" || req.path === ApiRoutes.WEBHOOKS.WORKOS || req.path.startsWith("/webhooks/workos-trigger/")) {
         next()
     } else {
         // Use larger limit for webhook routes that may receive large payloads (e.g., GitHub PR events with large bodies)
@@ -194,7 +200,11 @@ app.get(ApiRoutes.AUTH.LOGIN, async (req, res) => {
 })
 
 app.get(ApiRoutes.AUTH.LOGOUT, async (req, res) => {
-    logout(req, res)
+    await logout(req, res)
+})
+
+app.get(ApiRoutes.AUTH.LOGOUT_URL, async (req, res) => {
+    await logoutUrl(req, res)
 })
 
 app.get(ApiRoutes.AUTH.WORKOS_CALLBACK, (req, res) => {
@@ -369,6 +379,13 @@ app.post(ApiRoutes.WEBHOOKS.WORKOS, async (req, res) => {
     handleWorkOSWebhook(req, res)
 })
 
+// WorkOS Trigger webhook needs raw body for signature verification
+app.use(ApiRoutes.WEBHOOKS.WORKOS_TRIGGER_BY_INTEGRATION_ID.pattern, express.raw({ type: "application/json" }))
+
+app.post(ApiRoutes.WEBHOOKS.WORKOS_TRIGGER_BY_INTEGRATION_ID.pattern, async (req, res) => {
+    handleWorkOSTriggerWebhook(req, res)
+})
+
 app.get(ApiRoutes.LINEAR.INTEGRATIONS, authMiddleware, async (req, res) => {
     getLinearIntegrations(req, res)
 })
@@ -458,6 +475,20 @@ app.post(ApiRoutes.DATADOG.INTEGRATIONS, authMiddleware, async (req, res) => {
 
 app.get(ApiRoutes.DATADOG.INDEXES, authMiddleware, async (req, res) => {
     getDatadogIndexes(req, res)
+})
+
+// MARK: WORKOS INTEGRATION (customer's own WorkOS account)
+
+app.get(ApiRoutes.WORKOS_INTEGRATION.INTEGRATIONS, authMiddleware, async (req, res) => {
+    getWorkOSIntegrations(req, res)
+})
+
+app.post(ApiRoutes.WORKOS_INTEGRATION.INTEGRATIONS, authMiddleware, async (req, res) => {
+    createOrUpdateWorkOSIntegration(req, res)
+})
+
+app.patch(ApiRoutes.WORKOS_INTEGRATION.WEBHOOK_SECRET, authMiddleware, async (req, res) => {
+    updateWorkOSWebhookSecret(req, res)
 })
 
 // MARK: AGENTS
@@ -574,6 +605,7 @@ server.listen(3001, () => {
 })
 
 // Graceful shutdown
-process.on("SIGTERM", () => {
+process.on("SIGTERM", async () => {
+    await analytics.shutdown()
     server.close()
 })
