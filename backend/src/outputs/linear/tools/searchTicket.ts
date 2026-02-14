@@ -15,6 +15,8 @@ import { Session } from "../../../types/session"
 
 const linearStateNameValues = Object.values(LinearStateName)
 
+const DateFilterField = z.enum(["updatedAt", "createdAt"])
+
 export const linearSearchTicketTool = tool({
     name: ToolName.LINEAR_SEARCH_TICKET,
     description: `Searches Linear issues by keyword, state filter, and/or date range filters. Use this before reading individual tickets. Results are ordered by most recently updated first. Use 'after' cursor to paginate.`,
@@ -35,22 +37,30 @@ export const linearSearchTicketTool = tool({
             .nullable()
             .optional()
             .describe(`Filter to only include issues with these state names. Available states: ${linearStateNameValues.join(", ")}.`),
-        updatedAfter: z.string().nullable().optional().describe("Filter to only include issues updated on or after this date. ISO 8601 format (e.g., '2026-01-01' or '2026-01-01T00:00:00Z')."),
-        updatedBefore: z.string().nullable().optional().describe("Filter to only include issues updated on or before this date. ISO 8601 format (e.g., '2026-02-01' or '2026-02-01T23:59:59Z')."),
-        createdAfter: z.string().nullable().optional().describe("Filter to only include issues created on or after this date. ISO 8601 format (e.g., '2026-01-01' or '2026-01-01T00:00:00Z')."),
-        createdBefore: z.string().nullable().optional().describe("Filter to only include issues created on or before this date. ISO 8601 format (e.g., '2026-02-01' or '2026-02-01T23:59:59Z')."),
+        dateFilterField: DateFilterField.nullable()
+            .optional()
+            .describe("Which date field to filter on. Required if using dateAfter or dateBefore. Options: 'updatedAt' (when issue was last modified) or 'createdAt' (when issue was created)."),
+        dateAfter: z
+            .string()
+            .nullable()
+            .optional()
+            .describe("Filter to only include issues where the dateFilterField is on or after this date. ISO 8601 format (e.g., '2026-01-01' or '2026-01-01T00:00:00Z')."),
+        dateBefore: z
+            .string()
+            .nullable()
+            .optional()
+            .describe("Filter to only include issues where the dateFilterField is on or before this date. ISO 8601 format (e.g., '2026-02-01' or '2026-02-01T23:59:59Z')."),
         limit: z.number().nullable().optional().describe("Maximum number of issues to return. Defaults to 10 if not provided."),
         after: z.string().nullable().optional().describe("Cursor for pagination. Use the endCursor from the previous response to fetch the next page of results.")
     }),
-    execute: async ({ integrationId, searchTerm, stateNames, updatedAfter, updatedBefore, createdAfter, createdBefore, limit = 10, after }, runContext?: RunContext<SessionWithTracking<Session>>) => {
+    execute: async ({ integrationId, searchTerm, stateNames, dateFilterField, dateAfter, dateBefore, limit = 10, after }, runContext?: RunContext<SessionWithTracking<Session>>) => {
         logger.debug("🛠️ Executing linear_search_ticket tool", {
             integrationId,
             searchTerm,
             stateNames,
-            updatedAfter,
-            updatedBefore,
-            createdAfter,
-            createdBefore,
+            dateFilterField,
+            dateAfter,
+            dateBefore,
             limit,
             after
         })
@@ -71,6 +81,15 @@ export const linearSearchTicketTool = tool({
         })
 
         try {
+            // Validate date filter parameters
+            if ((dateAfter || dateBefore) && !dateFilterField) {
+                return {
+                    success: false,
+                    error: "dateFilterField is required when using dateAfter or dateBefore",
+                    hint: "Set dateFilterField to 'updatedAt' or 'createdAt' to specify which date field to filter on"
+                }
+            }
+
             // Build filter options - combine state and date filters
             const buildFilter = (): IssueFilter | undefined => {
                 const filterParts: IssueFilter = {}
@@ -80,26 +99,16 @@ export const linearSearchTicketTool = tool({
                     filterParts.state = { name: { in: stateNames } }
                 }
 
-                // Add updatedAt date range filter
-                if (updatedAfter || updatedBefore) {
-                    filterParts.updatedAt = {}
-                    if (updatedAfter) {
-                        filterParts.updatedAt.gte = new Date(updatedAfter)
+                // Add date range filter based on dateFilterField
+                if (dateFilterField && (dateAfter || dateBefore)) {
+                    const dateFilter: { gte?: Date; lte?: Date } = {}
+                    if (dateAfter) {
+                        dateFilter.gte = new Date(dateAfter)
                     }
-                    if (updatedBefore) {
-                        filterParts.updatedAt.lte = new Date(updatedBefore)
+                    if (dateBefore) {
+                        dateFilter.lte = new Date(dateBefore)
                     }
-                }
-
-                // Add createdAt date range filter
-                if (createdAfter || createdBefore) {
-                    filterParts.createdAt = {}
-                    if (createdAfter) {
-                        filterParts.createdAt.gte = new Date(createdAfter)
-                    }
-                    if (createdBefore) {
-                        filterParts.createdAt.lte = new Date(createdBefore)
-                    }
+                    filterParts[dateFilterField] = dateFilter
                 }
 
                 // Return undefined if no filters were added
