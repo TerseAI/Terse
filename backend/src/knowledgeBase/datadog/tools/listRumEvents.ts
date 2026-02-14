@@ -4,12 +4,12 @@ import { RunHistoryActionType } from "@prisma/client"
 import { z } from "zod"
 
 import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
+import { getDatadogCredentialsForOrganization } from "../../../integrations/DatadogIntegration"
 import logger from "../../../logger"
 import { IntegrationType } from "../../../shared/Integrations"
 import { ToolName } from "../../../tools/ToolNames"
 import { Session } from "../../../types/session"
 import { getDatadogRumDeepLink, getDatadogSite, parseDatadogTimeString } from "../../../utility/datadog"
-import { getDatadogCredentialsForOrganization } from "../../../integrations/DatadogIntegration"
 
 /**
  * Tool for listing Datadog RUM events using the simple GET endpoint.
