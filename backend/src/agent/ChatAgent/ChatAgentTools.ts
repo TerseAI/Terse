@@ -15,7 +15,7 @@ import logger from "../../logger"
 import { db } from "../../prismaClient"
 import { requireHydrator } from "../../rag/HydratorRegistry"
 import type { AgentDraft } from "../../routes/agents"
-import { applyAgentForUser, isUuidV4, updateAgentForUser } from "../../routes/agents"
+import { applyAgentForUser, isUuidV4, updateAgentForUser, validateUserOwnsIntegration } from "../../routes/agents"
 import type { ConfigInstance } from "../../shared/Configs"
 import { ConfigType } from "../../shared/Configs"
 import { FROM_SETUP_CHAT_PARAM, FrontendRoutes } from "../../shared/FrontendRoutes"
@@ -184,6 +184,11 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
                     throw new Error("User is required to fetch sample events")
                 }
 
+                const ownsIntegration = await validateUserOwnsIntegration(user.organizationId, integrationType, integrationId)
+                if (!ownsIntegration) {
+                    throw new Error(`Integration ${integrationType} not found or not in your organization`)
+                }
+
                 const configInstance = toConfigInstance(normalizeConfig(triggerConfig.config))
                 const inputEvents = await manager.getSampleEvents(integrationId, user.organizationId, configInstance, { limit })
                 logger.info("[getSampleEvents] Fetched raw events from integration", {
@@ -329,23 +334,25 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
                     resolvedEntityType = "cron_trigger"
                     resolvedEntityId = timeTriggerInput.id
                 }
+                const agentInOrg = await db().automations.findUnique({
+                    where: { id: agentId, organization_id: user.organizationId },
+                    select: { id: true }
+                })
+                if (!agentInOrg) {
+                    throw new Error("Agent not found or not in your organization")
+                }
 
                 const eventProcessor = new EventProcessor(inputEvent, user, { isManuallyTriggered: true })
                 const triggeredRun = await eventProcessor.triggerSingleAgent(agentId)
+                
                 const runHistoryPath = FrontendRoutes.AGENTS.RUN_HISTORY(triggeredRun.agentId, triggeredRun.runId)
-
                 await chatInterface.buildButton("See progress", runHistoryPath)
-
+               
                 logger.info("[triggerAgentRun] Triggered run", {
                     entityType: resolvedEntityType,
                     entityId: resolvedEntityId,
                     runId: triggeredRun.runId,
                     agentId: triggeredRun.agentId
-                })
-
-                logger.info("[triggerAgentRun] Completed", {
-                    entityType: resolvedEntityType,
-                    entityId: resolvedEntityId
                 })
                 return JSON.stringify({
                     processed: true,

@@ -394,7 +394,7 @@ interface BackendService {
     /**
      * Redirects to the logout endpoint
      */
-    logoutRedirect(): void
+    logoutRedirect(): Promise<void>
 
     /**
      * Creates a new organization
@@ -1195,8 +1195,14 @@ export const BackendProvider: BackendService = {
         window.location.href = `${backendRedirectUrl}${ApiRoutes.AUTH.LOGIN}`
     },
 
-    logoutRedirect: () => {
-        window.location.href = `${backendRedirectUrl}${ApiRoutes.AUTH.LOGOUT}`
+    logoutRedirect: async () => {
+        try {
+            const response = await axios.get<{ logoutUrl: string }>(`${backendBaseUrl}${ApiRoutes.AUTH.LOGOUT_URL}`, { withCredentials: true })
+            window.location.href = response.data.logoutUrl
+        } catch (error) {
+            console.error("Error getting WorkOS logout URL, falling back to backend logout endpoint:", error)
+            window.location.href = `${backendRedirectUrl}${ApiRoutes.AUTH.LOGOUT}`
+        }
     },
 
     createOrganization: (name: string, firstName?: string, lastName?: string) => {

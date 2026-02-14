@@ -73,8 +73,8 @@ export const searchEventsTool = tool({
         const normalizedUserEmail = userEmail ?? undefined
         const normalizedEventName = eventName ?? undefined
         const normalizedPropertyFilters = propertyFilters ?? undefined
-
-        const posthogApiKey = await getPosthogApiKeyByIntegrationId(integrationId, runContext.context.user.id)
+        const user = runContext.context.user
+        const posthogApiKey = await getPosthogApiKeyByIntegrationId(integrationId, user)
         if (!posthogApiKey) {
             throw new Error(`PostHog integration not found or access denied for integrationId: ${integrationId}`)
         }

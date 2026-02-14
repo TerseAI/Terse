@@ -47,8 +47,8 @@ export const getLaunchDarklyFlagDetailsTool = tool({
             logger.error("[LaunchDarkly] getFeatureFlagDetails - No context provided")
             throw new Error("No context provided")
         }
-
-        const apiKey = await getLaunchDarklyApiKeyByIntegrationId(integrationId, runContext.context.user.id)
+        const user = runContext.context.user
+        const apiKey = await getLaunchDarklyApiKeyByIntegrationId(integrationId, user)
         if (!apiKey) {
             throw new Error(`LaunchDarkly integration not found or access denied for integrationId: ${integrationId}`)
         }
