@@ -39,7 +39,7 @@ export default function RunHistoryItemHeader({ run, formattedTimestamp, onCopy }
                             <Copy className="w-3 h-3" />
                         </button>
                     </div>
-                    <div className="flex items-center gap-2 text-muted-foreground no-underline hover:no-underline">
+                    <div className="flex items-center gap-2 truncate text-muted-foreground no-underline hover:no-underline">
                         {run.trigger.subheader && (
                             <span className="truncate no-underline hover:no-underline" title={run.trigger.subheader}>
                                 {run.trigger.subheader}
