@@ -290,7 +290,8 @@ export async function filterEvent(event: InputEvent, agentPrompt: AgentPrompt, i
             throw new Error("No final output from filter agent")
         }
         parsed.confidence = Math.max(0, Math.min(1, parsed.confidence))
-        await seedEventContextForFilteredRunIfNeeded(trackingParams.runId, event, parsed.isRelevant)
+        // Non-streaming filter runs are currently used for preview flows (synthetic run IDs).
+        // Avoid seeding run-history memory for previews to prevent noisy DB write warnings.
         logger.info(`Event filter result for ${event.integrationType}:`, { parsed })
         return { result: parsed }
     }

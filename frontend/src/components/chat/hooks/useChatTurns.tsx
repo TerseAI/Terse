@@ -51,7 +51,8 @@ function mergeFunctionCallsForHydration(initialCalls: Turn["function_calls"], ex
     const existingCallsById = new Map(existingCalls.map(call => [call.id, call]))
     const mergedCalls = initialCalls.map(call => {
         const existingCall = existingCallsById.get(call.id)
-        return existingCall ? { ...call, ...existingCall } : call
+        // Server data is source-of-truth on re-hydration; keep local-only fields only when missing from server payload.
+        return existingCall ? { ...existingCall, ...call } : call
     })
 
     existingCalls.forEach(call => {
@@ -77,8 +78,8 @@ function mergeAssistantTurnForHydration(initialTurn: Turn, existingTurn: Turn): 
     const existingText = existingTurn.text ?? ""
 
     return {
-        ...initialTurn,
         ...existingTurn,
+        ...initialTurn,
         text: existingText.length >= initialText.length ? existingText : initialText,
         function_calls: mergeFunctionCallsForHydration(initialTurn.function_calls, existingTurn.function_calls),
         snippets: mergeSnippetsForHydration(initialTurn.snippets, existingTurn.snippets)
@@ -95,8 +96,21 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
     const pendingApprovalsRef = useRef<Set<string>>(new Set())
     const queuedToolCallsRef = useRef<Array<{ summary: string; step_id: string; parameters: string }>>([])
     const currentStepIdRef = useRef<string | null>(null)
+    const pendingLocalUserTurnIdsRef = useRef<string[]>([])
+    const lastInitialUserTurnCountRef = useRef<number>((initialTurns || []).filter(turn => turn.role === "user").length)
 
     useEffect(() => {
+        if (!initialTurns) {
+            return
+        }
+
+        const initialUserTurnCount = initialTurns.filter(turn => turn.role === "user").length
+        const newlyPersistedLocalUserTurns = Math.max(0, initialUserTurnCount - lastInitialUserTurnCountRef.current)
+        if (newlyPersistedLocalUserTurns > 0 && pendingLocalUserTurnIdsRef.current.length > 0) {
+            pendingLocalUserTurnIdsRef.current = pendingLocalUserTurnIdsRef.current.slice(newlyPersistedLocalUserTurns)
+        }
+        lastInitialUserTurnCountRef.current = initialUserTurnCount
+
         if (initialTurns && initialTurns.length > 0) {
             setTurns(prev => {
                 if (prev.length === 0) {
@@ -112,9 +126,18 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
                     return existingTurn ? mergeAssistantTurnForHydration(turn, existingTurn) : turn
                 })
 
-                const additionalAssistantTurns = prev.filter(turn => turn.role === "assistant" && !initialAssistantStepIds.has(turn.step_id))
+                const pendingLocalUserTurnIds = new Set(pendingLocalUserTurnIdsRef.current)
+                const additionalLocalTurns = prev.filter(turn => {
+                    if (turn.role === "assistant") {
+                        return !initialAssistantStepIds.has(turn.step_id)
+                    }
+                    if (turn.role === "user" && turn.localTurnId) {
+                        return pendingLocalUserTurnIds.has(turn.localTurnId)
+                    }
+                    return false
+                })
 
-                return additionalAssistantTurns.length > 0 ? [...mergedInitialTurns, ...additionalAssistantTurns] : mergedInitialTurns
+                return additionalLocalTurns.length > 0 ? [...mergedInitialTurns, ...additionalLocalTurns] : mergedInitialTurns
             })
         }
     }, [initialTurns])
@@ -335,7 +358,7 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
         }
     }
 
-    const handleToolCallComplete = ({ step_id, tool_name, result, changed_items, errorContext, timestamp }: ToolCallComplete & Pick<ModelEvent, "timestamp">) => {
+    const handleToolCallComplete = ({ step_id, result, changed_items, errorContext }: ToolCallComplete & Pick<ModelEvent, "timestamp">) => {
         // Track current step_id
         currentStepIdRef.current = step_id
 
@@ -373,41 +396,7 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
             if (foundExistingCall) {
                 return updated
             }
-
-            const fallbackCall = {
-                id: step_id,
-                name: tool_name,
-                timestamp,
-                isRunning: false,
-                isWaitingForApproval: false,
-                isWaitingForUserInput: false,
-                ...(result ? { result } : {}),
-                ...(changed_items ? { changed_items } : {}),
-                ...(errorContext ? { isFailure: true, errorContext } : {})
-            }
-
-            for (let i = updated.length - 1; i >= 0; i--) {
-                const turn = updated[i]
-                if (turn.role !== "assistant") continue
-
-                updated[i] = {
-                    ...turn,
-                    isGenerating: false,
-                    function_calls: [...turn.function_calls, fallbackCall]
-                }
-                return updated
-            }
-
-            return [
-                ...updated,
-                {
-                    role: "assistant",
-                    text: "",
-                    function_calls: [fallbackCall],
-                    step_id,
-                    isGenerating: false
-                }
-            ]
+            return updated
         })
     }
 
@@ -512,11 +501,14 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
     }
 
     const addUserTurn = (message: string) => {
+        const localTurnId = `local-user-${uuidv4()}`
+        pendingLocalUserTurnIdsRef.current.push(localTurnId)
         const userTurn: Turn = {
             role: "user",
             text: message,
             function_calls: [],
-            step_id: "user_turn"
+            step_id: "user_turn",
+            localTurnId
         }
         setTurns(prev => {
             return [...prev, userTurn]
@@ -572,6 +564,8 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
         stepBuffersRef.current.clear()
         pendingApprovalsRef.current.clear()
         queuedToolCallsRef.current = []
+        pendingLocalUserTurnIdsRef.current = []
+        lastInitialUserTurnCountRef.current = 0
     }
 
     return {
