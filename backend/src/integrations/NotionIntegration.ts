@@ -279,6 +279,23 @@ export class NotionIntegrationManager implements Integration<NotionIntegration, 
     }
 }
 
+export async function getNotionAccessTokenForOrganization(integrationId: string, organizationId: string): Promise<string> {
+    const notionIntegration = await db().notion_integrations.findUnique({
+        where: { id: integrationId, organization_id: organizationId }
+    })
+    if (!notionIntegration) {
+        throw new Error(`Notion integration not found for integrationId: ${integrationId}`)
+    }
+
+    const manager = new NotionIntegrationManager()
+    const accessToken = await manager.getAccessToken(notionIntegration.id)
+    if (!accessToken) {
+        throw new Error(`Notion integration not found or access denied for integrationId: ${integrationId}`)
+    }
+
+    return accessToken
+}
+
 /**
  * Returns the Notion access token for the given integration. Use once then pass to validateNotionDatabasesExist / validateNotionPagesExist.
  */

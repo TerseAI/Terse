@@ -415,6 +415,41 @@ export class AtlassianClient {
     }
 }
 
+export type AtlassianToolIntegration = {
+    id: string
+    cloud_id: string | null
+    base_url: string | null
+    jira_user_email: string | null
+}
+
+export async function getAtlassianIntegrationContextForOrganization(
+    integrationId: string,
+    organizationId: string,
+    accessTokenErrorMessage?: string
+): Promise<{ accessToken: string; integration: AtlassianToolIntegration }> {
+    const integration = await db().atlassian_integrations.findUnique({
+        where: { id: integrationId, organization_id: organizationId },
+        select: {
+            id: true,
+            cloud_id: true,
+            base_url: true,
+            jira_user_email: true
+        }
+    })
+
+    if (!integration) {
+        throw new Error(`Atlassian integration not found for integrationId: ${integrationId}`)
+    }
+
+    const manager = new AtlassianClient()
+    const accessToken = await manager.getAccessToken(integration.id)
+    if (!accessToken) {
+        throw new Error(accessTokenErrorMessage ?? `Atlassian integration not found or access denied for integrationId: ${integrationId}`)
+    }
+
+    return { accessToken, integration }
+}
+
 // MARK: - Resource Fetching Functions
 
 /**
