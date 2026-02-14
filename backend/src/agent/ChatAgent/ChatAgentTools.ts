@@ -7,7 +7,6 @@ import { filterEvent } from "../../agent/AgentRunner/EventFilter"
 import { EventProcessor } from "../../agent/AgentRunner/EventProcessor"
 import { generateEventSummary } from "../../agent/EventSummaryAgent/EventSummaryAgent"
 import { CronJobEvent } from "../../integrations/CronJobIntegration"
-import { WORKOS_SUPPORTED_EVENT_NAMES } from "../../integrations/WorkOSIntegration"
 import { FetchResourcesOptions, FetchResourcesOptionsSchema } from "../../integrations/abstract/FetchResourcesOptions"
 import { InputEvent } from "../../integrations/abstract/InputEvent"
 import { INTEGRATION_REGISTRY } from "../../integrations/abstract/IntegrationRegistry"
@@ -24,6 +23,30 @@ import { TrackingParams } from "../../shared/RunHistoryTypes"
 import { ToolNameSchema } from "../../tools/ToolNames"
 import { getToolsThatRequireApprovals } from "../../tools/availableTools"
 import { HydratorType, requireHydratorType } from "../../types/rag"
+import {
+    BaseConfigSchema,
+    ConfluenceConfigSchema,
+    DatadogConfigSchema,
+    FigmaConfigSchema,
+    GitHubConfigSchema,
+    GitHubKnowledgeBaseConfigSchema,
+    GmailConfigSchema,
+    GmailOutputConfigSchema,
+    JiraConfigSchema,
+    LaunchDarklyConfigSchema,
+    LinearInputConfigSchema,
+    LinearKnowledgeBaseConfigSchema,
+    LinearOutputConfigSchema,
+    NonEmptyString,
+    NotionConfigSchema,
+    PosthogConfigSchema,
+    SlackConfigSchema,
+    SlackKnowledgeBaseConfigSchema,
+    SlackOutputConfigSchema,
+    TimeTriggerConfigSchema,
+    WorkOSInputConfigSchema,
+    enforceNonSystemIntegrationId
+} from "../../utility/configSchemas"
 import { randomString } from "../../utility/strings"
 import { getUserForOrg } from "../../utility/workos"
 
@@ -274,13 +297,20 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
         tool({
             name: "triggerAgentRun",
             description:
-                "For cron/time trigger agents: call with only agentId (omit or pass null for entityType and entityId) to trigger the agent immediately. For event-based triggers, use entityType and entityId from getSampleEvents.",
+                "For cron/time trigger agents: call with only agentId (omit or pass null for entityType and entityId) to trigger the agent immediately. For event-based triggers, use entityType and entityId from getSampleEvents. This returns quickly with runId while the run continues in the background.",
             parameters: z.object({
                 entityType: z.nativeEnum(HydratorType).nullable().describe("The entity type from getSampleEvents. Not needed for cron/time trigger agents."),
                 entityId: z.string().nullable().describe("The entity ID from getSampleEvents. Not needed for cron/time trigger agents."),
-                agentId: z.string().describe("The agent ID to test the sample event against")
+                agentId: z.string().describe("The agent ID to test the sample event against"),
+                manualContext: z
+                    .string()
+                    .nullable()
+                    .optional()
+                    .describe(
+                        "Optional context to pass to the agent run. For cron/time trigger agents, this provides the agent with additional context about why this run was triggered and what to focus on."
+                    )
             }),
-            execute: async ({ entityType, entityId, agentId }, runContext?: RunContext<ChatAgentContext>): Promise<string> => {
+            execute: async ({ entityType, entityId, agentId, manualContext }, runContext?: RunContext<ChatAgentContext>): Promise<string> => {
                 const user = runContext?.context.user
                 if (!user) {
                     throw new Error("User is required to trigger agent run")
@@ -320,13 +350,13 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
                     if (!timeTriggerInput) throw new Error("Agent does not have a time trigger input")
                     const cronJobEvent = new CronJobEvent({
                         inputId: timeTriggerInput.id,
-                        isManualTrigger: true
+                        isManualTrigger: true,
+                        manualContext: manualContext ?? undefined
                     })
                     inputEvent = cronJobEvent
                     resolvedEntityType = "cron_trigger"
                     resolvedEntityId = timeTriggerInput.id
                 }
-
                 const agentInOrg = await db().automations.findUnique({
                     where: { id: agentId, organization_id: user.organizationId },
                     select: { id: true }
@@ -335,227 +365,104 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
                     throw new Error("Agent not found or not in your organization")
                 }
 
-                const eventProcessor = new EventProcessor(inputEvent, user)
-                const processResults = await eventProcessor.processSingleAgent(agentId)
-                logger.info("[triggerAgentRun] EventProcessor finished", {
+                const eventProcessor = new EventProcessor(inputEvent, user, { isManuallyTriggered: true })
+                const triggeredRun = await eventProcessor.triggerSingleAgent(agentId)
+
+                const runHistoryPath = FrontendRoutes.AGENTS.RUN_HISTORY(triggeredRun.agentId, triggeredRun.runId)
+                await chatInterface.buildButton("See progress", runHistoryPath)
+
+                logger.info("[triggerAgentRun] Triggered run", {
                     entityType: resolvedEntityType,
                     entityId: resolvedEntityId,
-                    resultCount: processResults.length,
-                    results: processResults.map(r => ({
-                        agentId: r.agentConfig?.id,
-                        agentName: r.agentConfig?.name,
-                        success: r.success,
-                        requiresApproval: r.approvalResult?.status === "awaiting_approval"
-                    }))
-                })
-
-                const formattedResults = processResults.map(r => ({
-                    agentId: r.agentConfig?.id ?? null,
-                    agentName: r.agentConfig?.name ?? null,
-                    success: r.success,
-                    message: r.message,
-                    requiresApproval: r.approvalResult?.status === "awaiting_approval"
-                }))
-
-                logger.info("[triggerAgentRun] Completed", {
-                    entityType: resolvedEntityType,
-                    entityId: resolvedEntityId
+                    runId: triggeredRun.runId,
+                    agentId: triggeredRun.agentId
                 })
                 return JSON.stringify({
                     processed: true,
+                    triggered: true,
                     entityType: resolvedEntityType,
                     entityId: resolvedEntityId,
-                    results: formattedResults
+                    runId: triggeredRun.runId,
+                    agentId: triggeredRun.agentId,
+                    agentName: triggeredRun.agentName,
+                    status: "in_progress",
+                    runHistoryPath
+                })
+            }
+        }),
+        tool({
+            name: "pollTriggeredRunStatus",
+            description: "Polls a previously triggered run until it leaves in_progress or until maxWaitMs is reached. Use this after triggerAgentRun to track completion in chat.",
+            parameters: z.object({
+                runId: z.string().describe("Run ID returned by triggerAgentRun."),
+                maxWaitMs: z.number().int().min(0).max(120000).optional().default(30000).describe("Maximum total time to poll before returning."),
+                pollIntervalMs: z.number().int().min(250).max(5000).optional().default(1000).describe("Delay between status checks while run is in progress.")
+            }),
+            execute: async ({ runId, maxWaitMs = 30000, pollIntervalMs = 1000 }, runContext?: RunContext<ChatAgentContext>): Promise<string> => {
+                const user = runContext?.context.user
+                if (!user) {
+                    throw new Error("User is required to poll run status")
+                }
+
+                const startTime = Date.now()
+                let runRecord = await db().run_history_records.findFirst({
+                    where: {
+                        id: runId,
+                        automation: { organization_id: user.organizationId }
+                    },
+                    include: {
+                        automation: {
+                            select: { name: true }
+                        }
+                    }
+                })
+
+                if (!runRecord) {
+                    throw new Error(`Run ${runId} not found`)
+                }
+
+                while (runRecord.status === "in_progress" && Date.now() - startTime < maxWaitMs) {
+                    await sleep(pollIntervalMs)
+                    const nextRecord = await db().run_history_records.findFirst({
+                        where: {
+                            id: runId,
+                            automation: { organization_id: user.organizationId }
+                        },
+                        include: {
+                            automation: {
+                                select: { name: true }
+                            }
+                        }
+                    })
+                    if (!nextRecord) {
+                        throw new Error(`Run ${runId} not found`)
+                    }
+                    runRecord = nextRecord
+                }
+
+                const isComplete = runRecord.status !== "in_progress"
+                const timedOut = !isComplete
+                const runHistoryPath = FrontendRoutes.AGENTS.RUN_HISTORY(runRecord.automation_id, runRecord.id)
+
+                return JSON.stringify({
+                    runId: runRecord.id,
+                    agentId: runRecord.automation_id,
+                    agentName: runRecord.automation.name,
+                    status: runRecord.status,
+                    filtered: runRecord.filtered,
+                    decisionReason: runRecord.decision_reason || null,
+                    updatedAt: runRecord.updated_at.toISOString(),
+                    isComplete,
+                    timedOut,
+                    runHistoryPath
                 })
             }
         })
     ]
 }
 
-const NonEmptyString = z.string().min(1)
-
-const BaseConfigSchema = z
-    .object({
-        integrationId: NonEmptyString.describe(
-            'The integration instance ID (CUID format like "cm..."). When using fetchResourcesForIntegration, this is the "integration.id" field - NOT teamId, channelId, workspaceId, or any resource ID. Use "system" only for TIME_TRIGGER configs.'
-        ),
-        configType: z.nativeEnum(ConfigType).describe("The config type for this input/output/knowledge base."),
-        integrationType: z.nativeEnum(IntegrationType).describe("The integration provider type (must match configType).")
-    })
-    .strict()
-
-const GmailConfigSchema = BaseConfigSchema.extend({
-    configType: z.literal(ConfigType.GMAIL),
-    integrationType: z.literal(IntegrationType.GMAIL)
-})
-
-const GmailOutputConfigSchema = BaseConfigSchema.extend({
-    configType: z.literal(ConfigType.GMAIL_OUTPUT),
-    integrationType: z.literal(IntegrationType.GMAIL)
-})
-
-const FigmaConfigSchema = BaseConfigSchema.extend({
-    configType: z.literal(ConfigType.FIGMA),
-    integrationType: z.literal(IntegrationType.FIGMA),
-    fileKey: NonEmptyString.describe("The Figma file key. From fetchResourcesForIntegration, use the file's key from resources[]."),
-    fileName: z.string().nullable().describe("The Figma file display name. From fetchResourcesForIntegration, use the file's name from resources[]."),
-    teamId: NonEmptyString.describe("The Figma team ID. From fetchResourcesForIntegration, use the file's teamId from resources[].")
-})
-
-const SlackConfigSchema = BaseConfigSchema.extend({
-    configType: z.literal(ConfigType.SLACK),
-    integrationType: z.literal(IntegrationType.SLACK),
-    channelId: NonEmptyString.nullable().describe(
-        'The Slack channel ID (starts with "C" like "C12345"). From fetchResourcesForIntegration, use "resources[].id". Required unless listenToUserDms is true.'
-    ),
-    channelName: NonEmptyString.nullable().describe('The channel display name (e.g., "general"). From fetchResourcesForIntegration, use "resources[].name".'),
-    listenToUserDms: z.boolean().nullable().describe("Set to true to listen to direct messages. If true, channelId is not required."),
-    userIds: z
-        .array(NonEmptyString)
-        .nullable()
-        .describe("Slack user IDs when using listenToUserDms. Get IDs via fetchResourcesForIntegration with integrationType=SLACK and options.slack.objectType='users'.")
-})
-
-const SlackOutputConfigSchema = BaseConfigSchema.extend({
-    configType: z.literal(ConfigType.SLACK_OUTPUT),
-    integrationType: z.literal(IntegrationType.SLACK),
-    channelId: NonEmptyString.nullable().describe("Slack channel or DM channel ID. Required if userIds is empty; otherwise optional (DM channel IDs are resolved from userIds)."),
-    channelName: NonEmptyString.nullable().describe("The channel display name. From fetchResourcesForIntegration, use resources[].name."),
-    userIds: z
-        .array(NonEmptyString)
-        .nullable()
-        .optional()
-        .describe(
-            "Slack user IDs to send DMs to; used when destination is direct messages. Get IDs via fetchResourcesForIntegration with integrationType=SLACK and options.slack.objectType='users'. At least one of channelId or userIds required."
-        )
-})
-
-const NotionConfigSchema = BaseConfigSchema.extend({
-    configType: z.literal(ConfigType.NOTION),
-    integrationType: z.literal(IntegrationType.NOTION),
-    databaseIds: z.array(z.string()).optional().default([]).describe("Allowed Notion database IDs. From fetchResourcesForIntegration, use databases' id from resources[]."),
-    databaseNames: z.array(z.string()).optional().default([]).describe("Display names for databases, parallel to databaseIds."),
-    pageIds: z
-        .array(z.string())
-        .optional()
-        .default([])
-        .describe("Allowed Notion page IDs. From fetchResourcesForIntegration, use pages' id from resources[]. At least one of databaseIds or pageIds required."),
-    pageNames: z.array(z.string()).optional().default([]).describe("Display names for pages, parallel to pageIds.")
-})
-
-const LinearInputConfigSchema = BaseConfigSchema.extend({
-    configType: z.literal(ConfigType.LINEAR_INPUT),
-    integrationType: z.literal(IntegrationType.LINEAR),
-    projectId: NonEmptyString.nullable().describe("The Linear project ID. From fetchResourcesForIntegration, use the project's id from resources[]."),
-    projectName: z.string().nullable().describe("The project display name. From fetchResourcesForIntegration, use the project's name from resources[].")
-})
-
-const LinearOutputConfigSchema = BaseConfigSchema.extend({
-    configType: z.literal(ConfigType.LINEAR_OUTPUT),
-    integrationType: z.literal(IntegrationType.LINEAR),
-    teamId: NonEmptyString.nullable().describe("The Linear team ID. From fetchResourcesForIntegration, use the team's id from resources[]."),
-    teamName: z.string().nullable().describe("The team display name. From fetchResourcesForIntegration, use the team's name from resources[].")
-})
-
-const GitHubConfigSchema = BaseConfigSchema.extend({
-    configType: z.literal(ConfigType.GITHUB),
-    integrationType: z.literal(IntegrationType.GITHUB),
-    repositoryIds: z.array(z.number()).min(1).describe("Array of GitHub repository IDs (numeric). From fetchResourcesForIntegration, use the repo's id from resources[].")
-})
-
-const GitHubKnowledgeBaseConfigSchema = BaseConfigSchema.extend({
-    configType: z.literal(ConfigType.GITHUB_KB).describe("Use ONLY for GitHub repository knowledge bases. Do NOT use for PostHog, LaunchDarkly, or Datadog."),
-    integrationType: z.literal(IntegrationType.GITHUB),
-    repositoryIds: z.array(z.number()).min(1).describe("Array of GitHub repository IDs (numeric). From fetchResourcesForIntegration, use the repo's id from resources[]."),
-    repositoryNames: z
-        .array(NonEmptyString)
-        .min(1)
-        .describe("Array of repository names matching the repositoryIds. From fetchResourcesForIntegration, use the repo's name from resources[]. IMPORTANT: Must be owner/repo format.")
-})
-
-const JiraConfigSchema = BaseConfigSchema.extend({
-    configType: z.literal(ConfigType.JIRA),
-    integrationType: z.literal(IntegrationType.ATLASSIAN),
-    projectKey: NonEmptyString.nullable(),
-    projectId: NonEmptyString.nullable()
-})
-
-const ConfluenceConfigSchema = BaseConfigSchema.extend({
-    configType: z.literal(ConfigType.CONFLUENCE),
-    integrationType: z.literal(IntegrationType.ATLASSIAN),
-    spaceName: NonEmptyString,
-    spaceId: NonEmptyString,
-    pageId: NonEmptyString,
-    pageName: NonEmptyString
-})
-
-const PosthogConfigSchema = BaseConfigSchema.extend({
-    configType: z.literal(ConfigType.POSTHOG).describe("Use for PostHog analytics knowledge bases. Requires projectId."),
-    integrationType: z.literal(IntegrationType.POSTHOG),
-    projectId: NonEmptyString.describe("The PostHog project ID. From fetchResourcesForIntegration with integrationType=POSTHOG, use resources[].id."),
-    projectName: z.string().nullable().describe("The PostHog project name. From fetchResourcesForIntegration, use resources[].name.")
-})
-
-const LaunchDarklyConfigSchema = BaseConfigSchema.extend({
-    configType: z.literal(ConfigType.LAUNCHDARKLY).describe("Use for LaunchDarkly feature flag knowledge bases. Requires projectKey and environmentKeys."),
-    integrationType: z.literal(IntegrationType.LAUNCHDARKLY),
-    projectKey: NonEmptyString.describe("The LaunchDarkly project key. From fetchResourcesForIntegration with integrationType=LAUNCHDARKLY."),
-    environmentKeys: z.array(NonEmptyString).min(1).describe("Array of LaunchDarkly environment keys to include.")
-})
-
-const DatadogConfigSchema = BaseConfigSchema.extend({
-    configType: z.literal(ConfigType.DATADOG).describe("Use for Datadog log knowledge bases."),
-    integrationType: z.literal(IntegrationType.DATADOG),
-    defaultIndexes: z.array(NonEmptyString).default(["main"]).describe('Log indexes to search (e.g. ["main"]). From fetchResourcesForIntegration or use ["main"].')
-})
-
-const LinearKnowledgeBaseConfigSchema = BaseConfigSchema.extend({
-    configType: z.literal(ConfigType.LINEAR_KB).describe("Use for Linear ticket knowledge bases. Search and read Linear issues."),
-    integrationType: z.literal(IntegrationType.LINEAR),
-    teamId: z.string().nullable().optional(),
-    teamName: z.string().nullable().optional(),
-    projectId: z.string().nullable().optional(),
-    projectName: z.string().nullable().optional()
-})
-
-const SlackKnowledgeBaseConfigSchema = BaseConfigSchema.extend({
-    configType: z.literal(ConfigType.SLACK_KB).describe("Use for Slack conversation history."),
-    integrationType: z.literal(IntegrationType.SLACK),
-    channelId: z
-        .string()
-        .nullable()
-        .optional()
-        .describe("When not in DMs mode: selected channel ID to read. Obtain from fetchResourcesForIntegration with integrationType=SLACK (channels). Required when allowDms is false."),
-    allowDms: z.boolean().optional().default(false).describe("True = Direct messages mode. When true, channelId must be empty; userIds optional (empty = all DMs)."),
-    userIds: z
-        .array(z.string())
-        .nullable()
-        .optional()
-        .describe("When allowDms is true: optional user IDs to restrict which DMs to read. Obtain from fetchResourcesForIntegration with options.slack.objectType='users'. Leave empty for all DMs.")
-})
-
-const TimeTriggerConfigSchema = BaseConfigSchema.extend({
-    configType: z.literal(ConfigType.TIME_TRIGGER),
-    integrationType: z.literal(IntegrationType.CRON_JOB),
-    integrationId: z.literal("system"),
-    cronExpression: z
-        .string()
-        .describe('ALL TIMES ARE IN UTC. The cron expression to schedule the automation. Must be a valid cron expression. Use this format: "minute hour day-of-month month day-of-week"')
-})
-
-const WorkOSInputConfigSchema = BaseConfigSchema.extend({
-    configType: z.literal(ConfigType.WORKOS_INPUT),
-    integrationType: z.literal(IntegrationType.WORKOS),
-    eventTypes: z.array(z.enum(WORKOS_SUPPORTED_EVENT_NAMES)).min(1).describe("WorkOS event types to trigger on.")
-})
-
-function enforceNonSystemIntegrationId(config: { configType: ConfigType; integrationId?: string }, ctx: z.RefinementCtx): void {
-    if (config.configType !== ConfigType.TIME_TRIGGER && config.integrationId === "system") {
-        ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: 'integrationId must not be "system" unless configType is TIME_TRIGGER.'
-        })
-    }
+function sleep(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms))
 }
 
 const InputConfigSchema = z

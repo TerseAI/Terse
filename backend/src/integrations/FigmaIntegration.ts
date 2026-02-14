@@ -994,6 +994,26 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
     }
 }
 
+/**
+ * Verifies that the given Figma file exists and is accessible with the integration's token.
+ */
+export async function validateFigmaFileExists(integrationId: string, fileKey: string): Promise<void> {
+    const manager = new FigmaIntegrationManager()
+    const accessToken = await manager.getAccessToken(integrationId)
+    if (!accessToken) {
+        throw new Error(`Figma integration ${integrationId} not found or missing access token`)
+    }
+    const response = await fetch(`https://api.figma.com/v1/files/${fileKey}/meta`, {
+        method: "GET",
+        headers: { Authorization: `Bearer ${accessToken}` }
+    })
+    if (!response.ok) {
+        const errorText = await response.text()
+        logger.error(`Figma file ${fileKey} not accessible`, { status: response.status, errorText })
+        throw new Error(`Figma file ${fileKey} not found or not accessible`)
+    }
+}
+
 // MARK: - FigmaCommentEvent
 
 export class FigmaCommentEvent extends InputEvent implements Identifiable {

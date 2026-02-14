@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef } from "react"
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react"
 
 import { Bot, MessageSquare, Plug, Settings } from "lucide-react"
 import { v4 as uuidv4 } from "uuid"
@@ -8,7 +8,7 @@ import { useBuilderChatHistory } from "@/hooks/api/useBuilderChatHistory"
 import { ModelRequest, SendModelRequest } from "@/shared/ModelEvents"
 import { sendBuilderMessage, sendBuilderMultipleChoiceAnswer, subscribeToBuilderChat } from "@/socket"
 
-import { Chat } from "./Chat"
+import { Chat, ChatHandle } from "./Chat"
 import { ChatEventPayload } from "./hooks/useCompletionSocket"
 
 type BuilderChatProps = {
@@ -16,10 +16,22 @@ type BuilderChatProps = {
     agentId?: string | null
 }
 
-export function BuilderChat({ getStateJSON, agentId }: BuilderChatProps) {
+export type BuilderChatHandle = {
+    setInput: (value: string) => void
+    focus: () => void
+}
+
+export const BuilderChat = forwardRef<BuilderChatHandle, BuilderChatProps>(function BuilderChat({ getStateJSON, agentId }, ref) {
     const generatedId = useMemo(() => uuidv4(), [])
     const sessionId = agentId ?? generatedId
     const previousAgentIdRef = useRef<string | null | undefined>(agentId)
+    const [isVisible, setIsVisible] = useState(false)
+    const chatRef = useRef<ChatHandle>(null)
+
+    useImperativeHandle(ref, () => ({
+        setInput: (value: string) => chatRef.current?.setInput(value),
+        focus: () => chatRef.current?.focus()
+    }))
 
     // Fetch history only when we have an agentId (existing session)
     const { events: historyEvents, isLoading: isHistoryLoading } = useBuilderChatHistory(agentId)
@@ -47,6 +59,11 @@ export function BuilderChat({ getStateJSON, agentId }: BuilderChatProps) {
         }
         previousAgentIdRef.current = agentId
     }, [agentId, sessionId])
+
+    useEffect(() => {
+        const frameId = requestAnimationFrame(() => setIsVisible(true))
+        return () => cancelAnimationFrame(frameId)
+    }, [])
 
     const subscribeToEvents = (callback: (payload: ChatEventPayload) => void) => {
         console.log("[BuilderChat] subscribeToEvents called", { sessionId })
@@ -92,8 +109,9 @@ export function BuilderChat({ getStateJSON, agentId }: BuilderChatProps) {
     }
 
     return (
-        <div className="h-full flex min-h-0 p-2">
+        <div className={`h-full flex min-h-0 p-2 transition-[opacity,transform] duration-200 ease-out will-change-transform ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-1"}`}>
             <Chat
+                ref={chatRef}
                 key={sessionId}
                 subscribeToEvents={subscribeToEvents}
                 sendMessage={sendMessage}
@@ -104,7 +122,7 @@ export function BuilderChat({ getStateJSON, agentId }: BuilderChatProps) {
             />
         </div>
     )
-}
+})
 
 function BuilderChatEmptyState() {
     return (

@@ -9,8 +9,8 @@ import { convertIntegrationTypeToPrismaIntegrationTypeForRunHistory } from "../.
 
 export type RunTrigger = RunHistoryTrigger
 
-export async function createRunRecord(params: { agentId: string; trigger: RunTrigger }): Promise<string> {
-    const { agentId, trigger } = params
+export async function createRunRecord(params: { agentId: string; trigger: RunTrigger; isManuallyTriggered?: boolean }): Promise<string> {
+    const { agentId, trigger, isManuallyTriggered } = params
     const prisma = db()
     const record = await prisma.run_history_records.create({
         data: {
@@ -21,6 +21,7 @@ export async function createRunRecord(params: { agentId: string; trigger: RunTri
             trigger_title: trigger.title ?? null,
             trigger_subheader: trigger.subheader ?? null,
             trigger_url: trigger.url ?? null,
+            is_manually_triggered: isManuallyTriggered ?? false,
             filtered: false,
             decision_action: "processed", // placeholder until we decide after filtering
             decision_reason: "",

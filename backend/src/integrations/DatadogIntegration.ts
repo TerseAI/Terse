@@ -1,6 +1,8 @@
+import { getDatadogCredentialsByIntegrationId } from "../knowledgeBase/datadog/datadogApiClient"
 import logger from "../logger"
 import { db } from "../prismaClient"
 import { DatadogIntegration, DatadogIntegrationMetadata, IntegrationType } from "../shared/Integrations"
+import { User } from "../shared/types"
 import { AgentTriggerWithConfigs } from "../types/prisma"
 import { getDatadogApiUrl } from "../utility/datadog"
 
@@ -212,5 +214,53 @@ export class DatadogIntegrationManager implements Integration<DatadogIntegration
                 statusCode: 500
             }
         }
+    }
+}
+
+export async function getDatadogCredentialsForOrganization(integrationId: string, organizationId: string): Promise<{ apiKey: string; appKey: string; region: string }> {
+    const datadogIntegration = await db().datadog_integrations.findUnique({
+        where: { id: integrationId, organization_id: organizationId }
+    })
+    if (!datadogIntegration) {
+        throw new Error(`Datadog integration not found for integrationId: ${integrationId}`)
+    }
+
+    const credentials = await getDatadogCredentialsByIntegrationId(datadogIntegration.id)
+    if (!credentials) {
+        throw new Error(`Datadog integration not found or access denied for integrationId: ${integrationId}`)
+    }
+
+    return credentials
+}
+
+/**
+ * Verifies that the given Datadog log indexes exist and are accessible with the integration's credentials.
+ */
+export async function validateDatadogIndexesExist(integrationId: string, indexes: string[]): Promise<void> {
+    if (!indexes.length) return
+    const credentials = await getDatadogCredentialsByIntegrationId(integrationId)
+    if (!credentials) {
+        throw new Error(`Datadog integration ${integrationId} not found or access denied`)
+    }
+    const apiUrl = getDatadogApiUrl(credentials.region)
+    const response = await fetch(`${apiUrl}/api/v1/logs/config/indexes`, {
+        method: "GET",
+        headers: {
+            "DD-API-KEY": credentials.apiKey,
+            "DD-APPLICATION-KEY": credentials.appKey,
+            "Content-Type": "application/json"
+        }
+    })
+    if (!response.ok) {
+        const errorText = await response.text()
+        logger.error(`Datadog indexes not accessible`, { status: response.status, errorText })
+        throw new Error(`Datadog indexes not accessible`)
+    }
+    const data = await response.json()
+    const indexList = Array.isArray(data) ? data : data.indexes || data.data || []
+    const validNames = new Set(indexList.map((idx: { name?: string; id?: string }) => idx.name || idx.id))
+    const missing = indexes.filter(name => !validNames.has(name))
+    if (missing.length > 0) {
+        throw new Error(`Datadog log index(es) not found: ${missing.join(", ")}`)
     }
 }

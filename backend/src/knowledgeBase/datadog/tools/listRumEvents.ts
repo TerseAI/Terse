@@ -4,12 +4,12 @@ import { RunHistoryActionType } from "@prisma/client"
 import { z } from "zod"
 
 import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
+import { getDatadogCredentialsForOrganization } from "../../../integrations/DatadogIntegration"
 import logger from "../../../logger"
 import { IntegrationType } from "../../../shared/Integrations"
 import { ToolName } from "../../../tools/ToolNames"
 import { Session } from "../../../types/session"
 import { getDatadogRumDeepLink, getDatadogSite, parseDatadogTimeString } from "../../../utility/datadog"
-import { getDatadogCredentialsByIntegrationId } from "../datadogApiClient"
 
 /**
  * Tool for listing Datadog RUM events using the simple GET endpoint.
@@ -33,11 +33,7 @@ export const listRumEventsTool = tool({
         if (!runContext?.context) {
             throw new Error("No context provided")
         }
-        const user = runContext.context.user
-        const credentials = await getDatadogCredentialsByIntegrationId(integrationId, user)
-        if (!credentials) {
-            throw new Error(`Datadog integration not found or access denied for integrationId: ${integrationId}`)
-        }
+        const credentials = await getDatadogCredentialsForOrganization(integrationId, runContext.context.user.organizationId)
 
         const { apiKey, appKey, region } = credentials
         const site = getDatadogSite(region)

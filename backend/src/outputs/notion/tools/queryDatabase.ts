@@ -4,7 +4,7 @@ import { RunContext, tool } from "@openai/agents"
 import { z } from "zod"
 
 import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
-import { NotionIntegrationManager } from "../../../integrations/NotionIntegration"
+import { getNotionAccessTokenForOrganization } from "../../../integrations/NotionIntegration"
 import logger from "../../../logger"
 import { IntegrationType } from "../../../shared/Integrations"
 import { ToolName } from "../../../tools/ToolNames"
@@ -236,12 +236,7 @@ EXAMPLES:
         if (!runContext?.context) {
             throw new Error("No context provided")
         }
-
-        const manager = new NotionIntegrationManager()
-        const accessToken = await manager.getAccessToken(integrationId)
-        if (!accessToken) {
-            throw new Error(`Notion integration not found or access denied for integrationId: ${integrationId}`)
-        }
+        const accessToken = await getNotionAccessTokenForOrganization(integrationId, runContext.context.user.organizationId)
 
         const notion = new Client({
             auth: accessToken

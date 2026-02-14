@@ -112,7 +112,7 @@ export class CronJobIntegrationManager
         // Process with user context for logging
         await runWithUserContext(user, async () => {
             const cronJobEvent = new CronJobEvent(event)
-            const eventProcessor = new EventProcessor(cronJobEvent, user)
+            const eventProcessor = new EventProcessor(cronJobEvent, user, { isManuallyTriggered: !!isManualTrigger })
             await eventProcessor.processSingleAgent(agentTrigger.automation.id)
         })
     }

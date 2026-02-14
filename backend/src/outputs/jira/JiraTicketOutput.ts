@@ -3,9 +3,11 @@ import { OutputConfigType } from "@prisma/client"
 
 import { buildDummyOutputConfig } from "../../buildDummyConfigForCapability"
 import { type CapabilityDescription, CapabilityRole, extractToolMetadata, getConfigMetadata } from "../../capabilityHelpers"
+import { validateJiraProjectExists } from "../../integrations/AtlassianIntegration"
 import { JiraConfig } from "../../shared/Configs"
 import { IntegrationType } from "../../shared/Integrations"
 import { AgentOutputWithConfigs, PrismaTransaction } from "../../types/prisma"
+import { JiraConfigSchema, stripConfigForValidation } from "../../utility/configSchemas"
 import { convertOutputConfigTypeToConfigType } from "../../utility/typeConverters"
 import { Output, ToolboxEntry } from "../abstract/Output"
 
@@ -55,8 +57,12 @@ export class JiraTicketOutput extends Output<JiraConfig> {
         })
     }
 
-    async validateConfig(_output: JiraConfig, _userId: string): Promise<void> {
-        // No additional config validation beyond integration ownership.
+    async validateConfig(output: JiraConfig, _userId: string): Promise<void> {
+        // Not doing schema validation here because
+        // it errors out. TODO: fix this.
+        if (output.projectKey) {
+            await validateJiraProjectExists(output.integrationId, output.projectKey)
+        }
     }
 
     async addOutputToAgent(tx: PrismaTransaction, channelOutputId: string, output: JiraConfig): Promise<void> {
