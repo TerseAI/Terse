@@ -115,14 +115,44 @@ SYSTEM FIELDS: The response includes system_fields which describe built-in Notio
                 type: "system",
                 description: "When the page was created (read-only, filterable)",
                 filter_format: `For filtering, use timestamp filter: {"timestamp": "created_time", "created_time": {"on_or_after": "2024-01-01"}}`,
-                filter_conditions: ["after", "before", "equals", "on_or_after", "on_or_before", "is_empty", "is_not_empty", "past_week", "past_month", "past_year", "next_week", "next_month", "next_year", "this_week"],
+                filter_conditions: [
+                    "after",
+                    "before",
+                    "equals",
+                    "on_or_after",
+                    "on_or_before",
+                    "is_empty",
+                    "is_not_empty",
+                    "past_week",
+                    "past_month",
+                    "past_year",
+                    "next_week",
+                    "next_month",
+                    "next_year",
+                    "this_week"
+                ],
                 note: "Do NOT include 'property' field when filtering by timestamp - use the special timestamp filter format instead"
             },
             last_edited_time: {
                 type: "system",
                 description: "When the page was last edited (read-only, filterable)",
                 filter_format: `For filtering, use timestamp filter: {"timestamp": "last_edited_time", "last_edited_time": {"on_or_after": "2024-01-01"}}`,
-                filter_conditions: ["after", "before", "equals", "on_or_after", "on_or_before", "is_empty", "is_not_empty", "past_week", "past_month", "past_year", "next_week", "next_month", "next_year", "this_week"],
+                filter_conditions: [
+                    "after",
+                    "before",
+                    "equals",
+                    "on_or_after",
+                    "on_or_before",
+                    "is_empty",
+                    "is_not_empty",
+                    "past_week",
+                    "past_month",
+                    "past_year",
+                    "next_week",
+                    "next_month",
+                    "next_year",
+                    "this_week"
+                ],
                 note: "Do NOT include 'property' field when filtering by timestamp - use the special timestamp filter format instead"
             },
             created_by: {
@@ -156,7 +186,8 @@ SYSTEM FIELDS: The response includes system_fields which describe built-in Notio
             schema: schema,
             property_count: Object.keys(schema).length,
             system_fields: systemFields,
-            system_fields_note: "System fields (created_time, last_edited_time, created_by, last_edited_by) are available for filtering but not editable. For timestamp filters (created_time, last_edited_time), use the special format WITHOUT a 'property' field."
+            system_fields_note:
+                "System fields (created_time, last_edited_time, created_by, last_edited_by) are available for filtering but not editable. For timestamp filters (created_time, last_edited_time), use the special format WITHOUT a 'property' field."
         }
     },
     errorFunction: formatError
