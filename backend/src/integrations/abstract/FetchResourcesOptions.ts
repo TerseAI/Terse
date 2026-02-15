@@ -15,7 +15,7 @@ const NotionFetchOptionsSchema = z.object({
 
 // Slack-specific fetch options
 const SlackFetchOptionsSchema = z.object({
-    objectType: z.enum(["channels", "users"]).nullable().describe("'channels' for channel list (default). 'users' for workspace users and their Slack user IDs (use when configuring DMs).")
+    objectType: z.enum(["channels", "users"]).nullable().describe("'channels' for channel list (default). 'users' to get user ID and names (use when configuring DMs).")
 })
 
 // Combined fetch options schema for all integrations.
