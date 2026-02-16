@@ -1,9 +1,10 @@
 import { Request, Response } from "express"
 import { DateTime } from "luxon"
+import { RunHistoryStatus as PrismaRunHistoryStatus } from "@prisma/client"
 
 import { db } from "../prismaClient"
 import { AgentActivityItem, CountByString, RecentAction, RecentRun, StatsInterval, StatsResponse } from "../shared/types"
-import { convertPrismaIntegrationTypeToIntegrationTypeFromRunHistory } from "../utility/typeConverters"
+import { convertPrismaIntegrationTypeToIntegrationTypeFromRunHistory, convertPrismaRunHistoryStatusToShared } from "../utility/typeConverters"
 
 // Stats configuration constants
 const DEFAULT_CHART_TIME_WINDOW_DAYS = 7 // Fallback chart period when no custom interval is requested
@@ -136,19 +137,19 @@ export async function getStats(req: Request, res: Response) {
     const chartAggregationQuery =
         chartBucketUnit === "minute"
             ? prisma.$queryRaw<ChartBucketRow[]>`
-                  SELECT TO_CHAR(DATE_TRUNC('minute', rhr.timestamp AT TIME ZONE 'UTC' AT TIME ZONE ${timezone}), 'YYYY-MM-DD HH24:MI') as bucket_key, COUNT(*) as count
-                  FROM run_history_records rhr
-                  INNER JOIN automations a ON rhr.automation_id = a.id
-                  WHERE a.organization_id = ${organizationId} AND rhr.status != 'skipped' AND rhr.timestamp >= ${chartStartDate}
-                  GROUP BY 1
-                  ORDER BY 1
-              `
+                    SELECT TO_CHAR(DATE_TRUNC('minute', rhr.timestamp AT TIME ZONE 'UTC' AT TIME ZONE ${timezone}), 'YYYY-MM-DD HH24:MI') as bucket_key, COUNT(*) as count
+                    FROM run_history_records rhr
+                    INNER JOIN automations a ON rhr.automation_id = a.id
+                    WHERE a.organization_id = ${organizationId} AND rhr.status != ${PrismaRunHistoryStatus.skipped} AND rhr.timestamp >= ${chartStartDate}
+                    GROUP BY 1
+                    ORDER BY 1
+                `
             : chartBucketUnit === "hour"
               ? prisma.$queryRaw<ChartBucketRow[]>`
                     SELECT TO_CHAR(DATE_TRUNC('hour', rhr.timestamp AT TIME ZONE 'UTC' AT TIME ZONE ${timezone}), 'YYYY-MM-DD HH24:00') as bucket_key, COUNT(*) as count
                     FROM run_history_records rhr
                     INNER JOIN automations a ON rhr.automation_id = a.id
-                    WHERE a.organization_id = ${organizationId} AND rhr.status != 'skipped' AND rhr.timestamp >= ${chartStartDate}
+                    WHERE a.organization_id = ${organizationId} AND rhr.status != ${PrismaRunHistoryStatus.skipped} AND rhr.timestamp >= ${chartStartDate}
                     GROUP BY 1
                     ORDER BY 1
                 `
@@ -156,7 +157,7 @@ export async function getStats(req: Request, res: Response) {
                     SELECT TO_CHAR(DATE_TRUNC('day', rhr.timestamp AT TIME ZONE 'UTC' AT TIME ZONE ${timezone}), 'YYYY-MM-DD') as bucket_key, COUNT(*) as count
                     FROM run_history_records rhr
                     INNER JOIN automations a ON rhr.automation_id = a.id
-                    WHERE a.organization_id = ${organizationId} AND rhr.status != 'skipped' AND rhr.timestamp >= ${chartStartDate}
+                    WHERE a.organization_id = ${organizationId} AND rhr.status != ${PrismaRunHistoryStatus.skipped} AND rhr.timestamp >= ${chartStartDate}
                     GROUP BY 1
                     ORDER BY 1
                 `
@@ -182,7 +183,7 @@ export async function getStats(req: Request, res: Response) {
         prisma.run_history_records.count({
             where: {
                 automation: { organization_id: organizationId },
-                status: { not: "skipped" },
+                status: { not: PrismaRunHistoryStatus.skipped },
                 timestamp: { gte: currentPeriodStart }
             }
         }),
@@ -190,7 +191,7 @@ export async function getStats(req: Request, res: Response) {
         prisma.run_history_records.count({
             where: {
                 automation: { organization_id: organizationId },
-                status: { not: "skipped" },
+                status: { not: PrismaRunHistoryStatus.skipped },
                 timestamp: { gte: previousPeriodStart, lt: currentPeriodStart }
             }
         }),
@@ -246,7 +247,7 @@ export async function getStats(req: Request, res: Response) {
         prisma.run_history_records.findMany({
             where: {
                 automation: { organization_id: organizationId },
-                status: { not: "skipped" }
+                status: { not: PrismaRunHistoryStatus.skipped }
             },
             include: {
                 automation: { select: { name: true } },
@@ -266,7 +267,7 @@ export async function getStats(req: Request, res: Response) {
             by: ["automation_id"],
             where: {
                 automation: { organization_id: organizationId },
-                status: { not: "skipped" },
+                status: { not: PrismaRunHistoryStatus.skipped },
                 timestamp: { gte: currentPeriodStart }
             },
             _count: { id: true },
@@ -278,7 +279,7 @@ export async function getStats(req: Request, res: Response) {
             by: ["status"],
             where: {
                 automation: { organization_id: organizationId },
-                status: { not: "skipped" },
+                status: { not: PrismaRunHistoryStatus.skipped },
                 timestamp: { gte: currentPeriodStart }
             },
             _count: { id: true },
@@ -289,7 +290,7 @@ export async function getStats(req: Request, res: Response) {
             by: ["trigger_integration"],
             where: {
                 automation: { organization_id: organizationId },
-                status: { not: "skipped" },
+                status: { not: PrismaRunHistoryStatus.skipped },
                 timestamp: { gte: currentPeriodStart }
             },
             _count: { id: true },
@@ -412,7 +413,7 @@ export async function getStats(req: Request, res: Response) {
             subheader: run.trigger_subheader ?? undefined,
             url: run.trigger_url ?? undefined
         },
-        status: run.status,
+        status: convertPrismaRunHistoryStatusToShared(run.status),
         actions: run.actions.map(a => ({
             action: a.action,
             integration: convertPrismaIntegrationTypeToIntegrationTypeFromRunHistory(a.integration),

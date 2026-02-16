@@ -2,6 +2,7 @@ import type { AgentInputItem, AssistantMessageItem, FunctionCallItem, FunctionCa
 
 import { IntegrationType } from "../shared/Integrations"
 import { ModelEvent } from "../shared/ModelEvents"
+import { parseToolExecutionResult } from "./toolExecution"
 
 /** An AgentInputItem paired with the DB timestamp it was created at. */
 export type TimestampedAgentInputItem = {
@@ -96,26 +97,18 @@ function convertSingleItem(item: AgentInputItem, toolToIntegrationMap?: Map<stri
     // Function call result - convert to ToolCallComplete
     if (isFunctionCallResultItem(item)) {
         const integration = toolToIntegrationMap?.get(item.name || "") || IntegrationType.TERSE
-        const actualOutput = normalizeFunctionResultOutput(item.output)
-        const output = stringifyFunctionResultOutput(actualOutput)
-        const structuredFailure = extractStructuredFailure(actualOutput)
-        const hasStatusError = item.status === "incomplete"
-        const hasSerializedError = typeof output === "string" && isSerializedToolError(output)
-        const hasError = hasStatusError || hasSerializedError || Boolean(structuredFailure)
-        const errorMessage =
-            structuredFailure?.error ??
-            (hasSerializedError && output ? parseSerializedToolError(output) : output || `Tool failed with status: ${item.status}`)
+        const parsed = parseToolExecutionResult(item.output, item.status)
 
         return [
             {
                 type: "ToolCallComplete",
                 tool_name: item.name || "unknown",
-                status: item.status || "completed",
+                status: parsed.status,
                 step_id: item.callId || item.id || "unknown",
                 changed_items: [], // Historical events don't have changed_items tracked
                 integration,
-                result: output || undefined,
-                ...(hasError ? { errorContext: { error: errorMessage } } : {})
+                result: parsed.outputString || undefined,
+                ...(parsed.errorContext ? { errorContext: { error: parsed.errorContext.error } } : {})
             }
         ]
     }
@@ -167,87 +160,4 @@ function extractTextFromMessageContent(content: UserMessageItem["content"] | Ass
     }
 
     return ""
-}
-
-function normalizeFunctionResultOutput(output: FunctionCallResultItem["output"]): unknown {
-    if (typeof output === "string") {
-        try {
-            return JSON.parse(output)
-        } catch {
-            return output
-        }
-    }
-
-    if (typeof output === "object" && output !== null) {
-        if ("type" in output && output.type === "text" && "text" in output && typeof output.text === "string") {
-            try {
-                return JSON.parse(output.text)
-            } catch {
-                return output.text
-            }
-        }
-        return output
-    }
-
-    return output
-}
-
-function stringifyFunctionResultOutput(output: unknown): string | null {
-    if (typeof output === "string") {
-        return output
-    }
-
-    if (output === null || output === undefined) {
-        return null
-    }
-
-    try {
-        return JSON.stringify(output)
-    } catch {
-        return null
-    }
-}
-
-type StructuredFailure = { error: string | unknown }
-
-function extractStructuredFailure(output: unknown): StructuredFailure | undefined {
-    if (!output || typeof output !== "object") {
-        return undefined
-    }
-
-    const candidate = output as Record<string, unknown>
-    const explicitlyFailed = candidate.success === false || candidate.ok === false
-    if (!explicitlyFailed) {
-        return undefined
-    }
-
-    const rawError = candidate.error ?? candidate.message ?? "Tool returned success=false"
-    if (typeof rawError === "string" && isSerializedToolError(rawError)) {
-        return { error: parseSerializedToolError(rawError) }
-    }
-
-    return { error: rawError }
-}
-
-const TERSE_ERROR_PREFIX = "[TERSE ERROR]:"
-
-function isSerializedToolError(value: string): boolean {
-    return value.startsWith(TERSE_ERROR_PREFIX)
-}
-
-function parseSerializedToolError(value: string): string | unknown {
-    if (!isSerializedToolError(value)) {
-        return value
-    }
-
-    try {
-        const parsed = JSON.parse(value.slice(TERSE_ERROR_PREFIX.length))
-        if (parsed && typeof parsed === "object" && "error" in parsed) {
-            return (parsed as { error: string | unknown }).error
-        }
-    } catch {
-        return value
-    }
-
-    return value
 }

@@ -22,7 +22,9 @@ export default function RunHistory({ agentId, onTriggerNow }: RunHistoryProps) {
     const [currentPage, setCurrentPage] = useState(1)
     const [runsPerPage, setRunsPerPage] = useState(10)
 
-    const [selectedStatuses, setSelectedStatuses] = useState<Set<RunHistoryStatus>>(new Set(["success", "failed", "in_progress", "awaiting_approval"]))
+    const [selectedStatuses, setSelectedStatuses] = useState<Set<RunHistoryStatus>>(
+        new Set([RunHistoryStatus.SUCCESS, RunHistoryStatus.FAILED, RunHistoryStatus.IN_PROGRESS, RunHistoryStatus.AWAITING_APPROVAL])
+    )
     const [searchQuery, setSearchQuery] = useState("")
     const [dateRange, setDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({
         from: undefined,
@@ -185,11 +187,19 @@ export default function RunHistory({ agentId, onTriggerNow }: RunHistoryProps) {
                     <RunHistoryLoadingState />
                 ) : filteredRuns.length === 0 ? (
                     <RunHistoryEmptyState
-                        hasActiveFilters={!!searchQuery || !!dateRange.from || !!dateRange.to || selectedStatuses.size < 5}
+                        hasActiveFilters={!!searchQuery || !!dateRange.from || !!dateRange.to || selectedStatuses.size < Object.values(RunHistoryStatus).length}
                         onClearAll={() => {
                             setSearchQuery("")
                             setDateRange({ from: undefined, to: undefined })
-                            setSelectedStatuses(new Set(["success", "failed", "skipped", "in_progress", "awaiting_approval"]))
+                            setSelectedStatuses(
+                                new Set([
+                                    RunHistoryStatus.SUCCESS,
+                                    RunHistoryStatus.FAILED,
+                                    RunHistoryStatus.SKIPPED,
+                                    RunHistoryStatus.IN_PROGRESS,
+                                    RunHistoryStatus.AWAITING_APPROVAL
+                                ])
+                            )
                             setCurrentPage(1)
                         }}
                     />

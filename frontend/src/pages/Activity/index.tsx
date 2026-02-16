@@ -16,7 +16,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { useAllRunHistory } from "@/hooks/api/useAllRunHistory"
 import { IconForIntegration } from "@/pages/Agents/components/Integration"
 import { FrontendRoutes } from "@/shared/FrontendRoutes"
-import type { RunHistoryRecordWithAgent, RunHistoryStatus, RunHistoryTrigger } from "@/shared/RunHistoryTypes"
+import { RunHistoryStatus, type RunHistoryRecordWithAgent, type RunHistoryTrigger } from "@/shared/RunHistoryTypes"
 import { formatTimestamp } from "@/utility/timeUtils"
 
 // ---------------------------------------------------------------------------
@@ -118,7 +118,9 @@ function LoadingSkeleton() {
 export default function ActivityPage() {
     const [currentPage, setCurrentPage] = useState(1)
     const [runsPerPage, setRunsPerPage] = useState(20)
-    const [selectedStatuses, setSelectedStatuses] = useState<Set<RunHistoryStatus>>(new Set(["success", "failed", "in_progress", "awaiting_approval"]))
+    const [selectedStatuses, setSelectedStatuses] = useState<Set<RunHistoryStatus>>(
+        new Set([RunHistoryStatus.SUCCESS, RunHistoryStatus.FAILED, RunHistoryStatus.IN_PROGRESS, RunHistoryStatus.AWAITING_APPROVAL])
+    )
     const [searchQuery, setSearchQuery] = useState("")
     const [dateRange, setDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({ from: undefined, to: undefined })
 
@@ -167,7 +169,7 @@ export default function ActivityPage() {
         if (!open) setSelectedRun(null)
     }, [])
 
-    const hasActiveFilters = !!searchQuery || !!dateRange.from || !!dateRange.to || selectedStatuses.size < 5
+    const hasActiveFilters = !!searchQuery || !!dateRange.from || !!dateRange.to || selectedStatuses.size < Object.values(RunHistoryStatus).length
 
     const drawerTrigger: RunHistoryTrigger | undefined = selectedRun
         ? {
@@ -240,7 +242,15 @@ export default function ActivityPage() {
                             onClearAll={() => {
                                 setSearchQuery("")
                                 setDateRange({ from: undefined, to: undefined })
-                                setSelectedStatuses(new Set(["success", "failed", "skipped", "in_progress", "awaiting_approval"]))
+                                setSelectedStatuses(
+                                    new Set([
+                                        RunHistoryStatus.SUCCESS,
+                                        RunHistoryStatus.FAILED,
+                                        RunHistoryStatus.SKIPPED,
+                                        RunHistoryStatus.IN_PROGRESS,
+                                        RunHistoryStatus.AWAITING_APPROVAL
+                                    ])
+                                )
                                 setCurrentPage(1)
                             }}
                         />
@@ -267,7 +277,7 @@ export default function ActivityPage() {
                     runId={selectedRun.id}
                     isOpen={isDrawerOpen}
                     onOpenChange={handleDrawerClose}
-                    status={selectedRun.status as RunHistoryStatus}
+                    status={selectedRun.status}
                     trigger={drawerTrigger}
                     filtered={selectedRun.filtered}
                 />

@@ -109,9 +109,7 @@ Supports pagination: if the response includes nextCursor and hasMore, pass nextC
         } catch (error: unknown) {
             const errorMessage = error instanceof Error ? error.message : String(error)
             logger.error("❌ Error listing Slack channels", { error: errorMessage, integrationId })
-            throw new Error(
-                `${errorMessage}. Check that the Slack integration is connected and has the required scopes (channels:read, groups:read, im:read, mpim:read).`
-            )
+            throw new Error(`${errorMessage}. Check that the Slack integration is connected and has the required scopes (channels:read, groups:read, im:read, mpim:read).`)
         }
     },
     errorFunction: formatError

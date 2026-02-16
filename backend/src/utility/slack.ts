@@ -6,6 +6,7 @@ import logger from "../logger"
 import { db } from "../prismaClient"
 import { FrontendRoutes } from "../shared/FrontendRoutes"
 import { RunHistoryAction } from "../shared/RunHistoryTypes"
+import { SlackApprovalMessageStatus } from "../slack/ApprovalStatus"
 import { createApprovalMessage, createNotificationMessage, createRunFailureNotificationMessage, createUpdatedApprovalMessage } from "../slack/blockKitHelpers"
 
 export interface SlackMessage {
@@ -23,6 +24,7 @@ export interface RunFailureNotificationContext {
     runId: string
     errorMessage: string
 }
+
 export async function sendSlackMessage(userSlackIntegrationId: string, channelId: string, message: SlackMessage): Promise<boolean> {
     const userSlackIntegration = await db().user_slack_integrations.findFirst({
         where: {
@@ -244,7 +246,7 @@ export async function updateSlackApprovalMessage(
     userSlackIntegrationId: string,
     channelId: string,
     messageTs: string,
-    status: "approved" | "rejected" | "changes_requested" | "processing" | "failed",
+    status: SlackApprovalMessageStatus,
     summary: string, // Human-readable summary instead of toolName
     channelName: string,
     automationId?: string,
@@ -271,16 +273,16 @@ export async function updateSlackApprovalMessage(
     let statusEmoji: string
     let statusText: string
 
-    if (status === "processing") {
+    if (status === SlackApprovalMessageStatus.PROCESSING) {
         statusEmoji = "⏳"
         statusText = "Processing"
-    } else if (status === "failed") {
+    } else if (status === SlackApprovalMessageStatus.FAILED) {
         statusEmoji = "⚠️"
         statusText = "Failed"
-    } else if (status === "approved") {
+    } else if (status === SlackApprovalMessageStatus.APPROVED) {
         statusEmoji = "✅"
         statusText = "Approved"
-    } else if (status === "changes_requested") {
+    } else if (status === SlackApprovalMessageStatus.CHANGES_REQUESTED) {
         statusEmoji = "🔄"
         statusText = "Changes Requested"
     } else {
@@ -290,7 +292,7 @@ export async function updateSlackApprovalMessage(
 
     // Fetch rejection reason from database if status is rejected/changes_requested and runId/stepId are available
     let rejectionReason: string | null = null
-    if ((status === "rejected" || status === "changes_requested") && runId && stepId) {
+    if ((status === SlackApprovalMessageStatus.REJECTED || status === SlackApprovalMessageStatus.CHANGES_REQUESTED) && runId && stepId) {
         const approvalMessage = await db().approval_slack_messages.findFirst({
             where: {
                 run_id: runId,

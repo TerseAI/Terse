@@ -4,12 +4,18 @@ import { Request, Response } from "express"
 import logger from "../logger"
 import { PrismaClient, db } from "../prismaClient"
 import { ModelEvent } from "../shared/ModelEvents"
-import type { GetRunHistoryParams, GetRunHistoryParamsRequest, GetRunHistoryResponse, RunHistoryRecord, RunHistoryStatus } from "../shared/RunHistoryTypes"
+import { RunHistoryStatus, type GetRunHistoryParams, type GetRunHistoryParamsRequest, type GetRunHistoryResponse, type RunHistoryRecord } from "../shared/RunHistoryTypes"
 import { parsePageParams } from "../utility/pagination"
-import { convertPrismaIntegrationTypeToIntegrationTypeFromRunHistory } from "../utility/typeConverters"
+import { convertPrismaIntegrationTypeToIntegrationTypeFromRunHistory, convertPrismaRunHistoryStatusToShared } from "../utility/typeConverters"
 
 // Valid status values for validation
-const VALID_STATUSES: RunHistoryStatus[] = ["success", "failed", "skipped", "in_progress", "awaiting_approval"]
+const VALID_STATUSES: RunHistoryStatus[] = [
+    RunHistoryStatus.SUCCESS,
+    RunHistoryStatus.FAILED,
+    RunHistoryStatus.SKIPPED,
+    RunHistoryStatus.IN_PROGRESS,
+    RunHistoryStatus.AWAITING_APPROVAL
+]
 
 /**
  * Get run history across ALL agents in the organization
@@ -108,7 +114,7 @@ export async function getAllRunHistory(req: Request, res: Response) {
                     reasoning: runRecord.decision_reason
                 },
                 actions,
-                status: runRecord.status,
+                status: convertPrismaRunHistoryStatusToShared(runRecord.status),
                 isManuallyTriggered: runRecord.is_manually_triggered
             }
         })
@@ -222,7 +228,7 @@ export async function getRunHistory(req: Request, res: Response) {
                     reasoning: runRecord.decision_reason
                 },
                 actions,
-                status: runRecord.status,
+                status: convertPrismaRunHistoryStatusToShared(runRecord.status),
                 isManuallyTriggered: runRecord.is_manually_triggered
             }
         })

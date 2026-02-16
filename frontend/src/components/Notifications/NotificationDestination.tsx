@@ -33,7 +33,9 @@ export function NotificationDestinationItem({ destination }: { destination: Noti
                     <ItemTitle>
                         <NotificationDestinationName destination={destination} />
                     </ItemTitle>
-                    <ItemDescription>{destination.type === NotificationDestinationType.EMAIL ? "Email notifications" : getSlackDestinationDescription(destination as SlackNotificationDestination)}</ItemDescription>
+                    <ItemDescription>
+                        {destination.type === NotificationDestinationType.EMAIL ? "Email notifications" : getSlackDestinationDescription(destination as SlackNotificationDestination)}
+                    </ItemDescription>
                 </ItemContent>
                 <ItemActions>
                     <Button variant="ghost" size="icon" onClick={() => setIsEditDialogOpen(true)} className="h-8 w-8 text-muted-foreground hover:text-foreground">

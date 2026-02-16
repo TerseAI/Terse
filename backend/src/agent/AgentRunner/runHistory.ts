@@ -4,10 +4,12 @@ import { Prisma } from "@prisma/client"
 
 import { db } from "../../prismaClient"
 import { ModelEvent } from "../../shared/ModelEvents"
-import type { RunHistoryAction, RunHistoryStatus, RunHistoryTrigger } from "../../shared/RunHistoryTypes"
+import { RunHistoryStatus, type RunHistoryAction, type RunHistoryTrigger } from "../../shared/RunHistoryTypes"
 import { convertIntegrationTypeToPrismaIntegrationTypeForRunHistory } from "../../utility/typeConverters"
 
 export type RunTrigger = RunHistoryTrigger
+
+export type CompletedRunStatus = RunHistoryStatus.SUCCESS | RunHistoryStatus.FAILED
 
 export async function createRunRecord(params: { agentId: string; trigger: RunTrigger; isManuallyTriggered?: boolean }): Promise<string> {
     const { agentId, trigger, isManuallyTriggered } = params
@@ -25,7 +27,7 @@ export async function createRunRecord(params: { agentId: string; trigger: RunTri
             filtered: false,
             decision_action: "processed", // placeholder until we decide after filtering
             decision_reason: "",
-            status: "in_progress"
+            status: RunHistoryStatus.IN_PROGRESS
         },
         select: { id: true }
     })
@@ -41,7 +43,7 @@ export async function markRunSkipped(runId: string, reason: string): Promise<voi
             filtered: true,
             decision_action: "skipped",
             decision_reason: reason,
-            status: "skipped"
+            status: RunHistoryStatus.SKIPPED
         }
     })
 }
@@ -76,7 +78,7 @@ export async function markRunProcessed(runId: string, reason?: string): Promise<
     })
 }
 
-export async function finalizeRunStatus(runId: string, status: Extract<RunHistoryStatus, "success" | "failed">): Promise<void> {
+export async function finalizeRunStatus(runId: string, status: CompletedRunStatus): Promise<void> {
     const prisma = db()
     await prisma.run_history_records.update({
         where: { id: runId },
@@ -84,21 +86,39 @@ export async function finalizeRunStatus(runId: string, status: Extract<RunHistor
     })
 }
 
-/**
- * Final run status requires both:
- * - A non-empty final output from the model
- * - No terminal tool-call failure at the end of execution
- */
-export function resolveFinalRunStatus(finalOutput: unknown, endedWithToolFailure: boolean): Extract<RunHistoryStatus, "success" | "failed"> {
+export type CompletedRunEvaluation =
+    | { status: RunHistoryStatus.SUCCESS; isSuccessful: true }
+    | { status: RunHistoryStatus.FAILED; isSuccessful: false; failureReason: string }
+
+export function evaluateCompletedRun(finalOutput: unknown, endedWithToolFailure: boolean): CompletedRunEvaluation {
     const hasFinalOutput = Boolean(finalOutput)
-    return hasFinalOutput && !endedWithToolFailure ? "success" : "failed"
+    if (endedWithToolFailure) {
+        return {
+            status: RunHistoryStatus.FAILED,
+            isSuccessful: false,
+            failureReason: "The run ended after a failed tool call."
+        }
+    }
+
+    if (!hasFinalOutput) {
+        return {
+            status: RunHistoryStatus.FAILED,
+            isSuccessful: false,
+            failureReason: "The run completed without a final output."
+        }
+    }
+
+    return {
+        status: RunHistoryStatus.SUCCESS,
+        isSuccessful: true
+    }
 }
 
 export async function markRunInProgress(runId: string): Promise<void> {
     const prisma = db()
     await prisma.run_history_records.update({
         where: { id: runId },
-        data: { status: "in_progress" }
+        data: { status: RunHistoryStatus.IN_PROGRESS }
     })
 }
 
@@ -113,7 +133,7 @@ export async function markRunFailed(runId: string, errorMessage: string, stage?:
     await prisma.run_history_records.update({
         where: { id: runId },
         data: {
-            status: "failed",
+            status: RunHistoryStatus.FAILED,
             decision_action: "processed",
             decision_reason: prefixedMessage
         }
@@ -179,7 +199,7 @@ export async function storePendingApprovalState(runId: string, serializedState: 
     await prisma.run_history_records.update({
         where: { id: runId },
         data: {
-            status: "awaiting_approval"
+            status: RunHistoryStatus.AWAITING_APPROVAL
         }
     })
 }

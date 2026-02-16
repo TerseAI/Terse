@@ -650,7 +650,7 @@ export class SlackIntegrationManager
             let attachments = msg.attachments as SlackAttachment[] | undefined
             let files = msg.files as SlackFile[] | undefined
             let text = msg.text || ""
-            if (fullMessageResult.status === "fulfilled" && fullMessageResult.value.ok && fullMessageResult.value.messages?.[0]) {
+            if (fullMessageResult.status === PromiseSettledStatus.FULFILLED && fullMessageResult.value.ok && fullMessageResult.value.messages?.[0]) {
                 const full = fullMessageResult.value.messages[0]
                 if (!blocks && full.blocks) blocks = full.blocks as KnownBlock[]
                 if (!attachments && full.attachments) attachments = full.attachments as SlackAttachment[]
@@ -1029,18 +1029,23 @@ async function deactivateToken(token: string) {
  * Helper function to process Promise.allSettled results from Slack API calls
  * Handles fulfilled+ok, rejected, and fulfilled but not ok states
  */
+enum PromiseSettledStatus {
+    FULFILLED = "fulfilled",
+    REJECTED = "rejected"
+}
+
 function processSlackApiResult<T>(result: SlackApiSettledResult<T>, successLabel: string, errorPrefix: string): { success: boolean; data?: T; error?: string } {
-    if (result.status === "fulfilled" && result.value.ok) {
+    if (result.status === PromiseSettledStatus.FULFILLED && result.value.ok) {
         // Successfully fulfilled and ok
         const { ok, error, ...data } = result.value
         return { success: true, data: data as T }
-    } else if (result.status === "rejected") {
+    } else if (result.status === PromiseSettledStatus.REJECTED) {
         // Promise was rejected
         logger.warn(`⚠ ${errorPrefix}: ${result.reason}`, {
             reason: String(result.reason)
         })
         return { success: false, error: String(result.reason) }
-    } else if (result.status === "fulfilled" && !result.value.ok) {
+    } else if (result.status === PromiseSettledStatus.FULFILLED && !result.value.ok) {
         // Fulfilled but API returned error
         const errorMsg = result.value.error || "Unknown error"
         logger.warn(`⚠ ${errorPrefix}: ${errorMsg}`, { error: errorMsg })

@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils"
 
 import { capitalize } from "../../lib/utils"
 import { IconForIntegration } from "../../pages/Agents/components/Integration"
-import type { RunHistoryAction, RunHistoryStatus } from "../../shared/RunHistoryTypes"
+import { RunHistoryStatus, type RunHistoryAction } from "../../shared/RunHistoryTypes"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "../ui/accordion"
 
 type Props = {
@@ -50,7 +50,7 @@ export default function RunHistoryActionItem({ runId, index, action, runStatus, 
                         </div>
                     </AccordionTrigger>
                     <AccordionContent>
-                        <div className={cn("p-2", runStatus === "failed" ? "text-destructive" : "text-muted-foreground")}>{action.details}</div>
+                        <div className={cn("p-2", runStatus === RunHistoryStatus.FAILED ? "text-destructive" : "text-muted-foreground")}>{action.details}</div>
                     </AccordionContent>
                 </AccordionItem>
             </div>

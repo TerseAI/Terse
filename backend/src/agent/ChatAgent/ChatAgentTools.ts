@@ -19,7 +19,7 @@ import type { ConfigInstance } from "../../shared/Configs"
 import { ConfigType } from "../../shared/Configs"
 import { FROM_SETUP_CHAT_PARAM, FrontendRoutes } from "../../shared/FrontendRoutes"
 import { IntegrationType } from "../../shared/Integrations"
-import { TrackingParams } from "../../shared/RunHistoryTypes"
+import { RunHistoryStatus, TrackingParams } from "../../shared/RunHistoryTypes"
 import { ToolNameSchema } from "../../tools/ToolNames"
 import { getToolsThatRequireApprovals } from "../../tools/availableTools"
 import { HydratorType, requireHydratorType } from "../../types/rag"
@@ -385,7 +385,7 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
                     runId: triggeredRun.runId,
                     agentId: triggeredRun.agentId,
                     agentName: triggeredRun.agentName,
-                    status: "in_progress",
+                    status: RunHistoryStatus.IN_PROGRESS,
                     runHistoryPath
                 })
             }
@@ -421,7 +421,7 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
                     throw new Error(`Run ${runId} not found`)
                 }
 
-                while (runRecord.status === "in_progress" && Date.now() - startTime < maxWaitMs) {
+                while (runRecord.status === RunHistoryStatus.IN_PROGRESS && Date.now() - startTime < maxWaitMs) {
                     await sleep(pollIntervalMs)
                     const nextRecord = await db().run_history_records.findFirst({
                         where: {
@@ -440,7 +440,7 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
                     runRecord = nextRecord
                 }
 
-                const isComplete = runRecord.status !== "in_progress"
+                const isComplete = runRecord.status !== RunHistoryStatus.IN_PROGRESS
                 const timedOut = !isComplete
                 const runHistoryPath = FrontendRoutes.AGENTS.RUN_HISTORY(runRecord.automation_id, runRecord.id)
 

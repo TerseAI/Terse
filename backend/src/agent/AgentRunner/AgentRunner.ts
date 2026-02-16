@@ -21,6 +21,7 @@ import { UserFormatter } from "../../utility/UserFormatter"
 import { RunHistoryChatMemorySession, recentHistoryCallback } from "../CustomMemorySession"
 import { AgentType, builderProviderDataModelSettings, runnerFactory } from "../runner"
 import { transformAgentStreamToModelEvents } from "../streaming"
+import { isFailedToolExecutionStatus } from "../toolExecution"
 
 import { persistRunAction } from "./EventProcessor"
 import { processModelEventStream } from "./StreamProcessor"
@@ -513,7 +514,7 @@ ${inputEvent.formatForAgentRunner()}
     private observeModelEvent(event: ModelEvent): void {
         if (event.type !== "ToolCallComplete") return
 
-        const toolFailed = event.status === "incomplete" || event.status === "failed" || Boolean(event.errorContext)
+        const toolFailed = isFailedToolExecutionStatus(event.status) || Boolean(event.errorContext)
         // We only care whether execution ended on a failed tool call.
         // A subsequent successful tool completion clears this.
         this.endedWithToolFailure = toolFailed
@@ -668,7 +669,7 @@ ${inputEvent.formatForAgentRunner()}
             }
 
             return {
-                status: "awaiting_approval",
+                status: AgentRunResultStatus.AWAITING_APPROVAL,
                 state: result.state,
                 interruptions: result.interruptions
             }
@@ -678,7 +679,7 @@ ${inputEvent.formatForAgentRunner()}
         await clearPendingApprovalState(this.runContext.runId)
 
         return {
-            status: "completed",
+            status: AgentRunResultStatus.COMPLETED,
             result,
             endedWithToolFailure: this.endedWithToolFailure
         }
@@ -692,9 +693,14 @@ export type SessionWithTracking<T extends Session> = T & {
     }
 }
 
+export enum AgentRunResultStatus {
+    COMPLETED = "completed",
+    AWAITING_APPROVAL = "awaiting_approval"
+}
+
 export type ApprovalResult<T extends Session, AgentType extends Agent<T, AgentOutputType>> =
-    | { status: "completed"; result: RunResult<T, AgentType>; endedWithToolFailure: boolean }
-    | { status: "awaiting_approval"; state: RunState<T, AgentType>; interruptions: RunToolApprovalItem[] }
+    | { status: AgentRunResultStatus.COMPLETED; result: RunResult<T, AgentType>; endedWithToolFailure: boolean }
+    | { status: AgentRunResultStatus.AWAITING_APPROVAL; state: RunState<T, AgentType>; interruptions: RunToolApprovalItem[] }
 
 export type Decision = "approve" | "reject"
 

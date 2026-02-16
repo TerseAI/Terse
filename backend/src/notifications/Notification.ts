@@ -139,11 +139,7 @@ async function notifySlack(notificationDestination: UserNotificationDestination,
         return
     }
 
-    const targetChannelId = await resolveSlackChannelIdForDestination(
-        notificationDestination.slack_integration_id,
-        notificationDestination.slack_channel_id,
-        notificationDestination.slack_user_id
-    )
+    const targetChannelId = await resolveSlackChannelIdForDestination(notificationDestination.slack_integration_id, notificationDestination.slack_channel_id, notificationDestination.slack_user_id)
 
     if (!targetChannelId) {
         logger.debug(`[notifySlack] No Slack channel ID configured. Skipping.`)
@@ -161,11 +157,7 @@ async function notifyApprovalRequest(notificationDestination: UserNotificationDe
         return
     }
 
-    const targetChannelId = await resolveSlackChannelIdForDestination(
-        notificationDestination.slack_integration_id,
-        notificationDestination.slack_channel_id,
-        notificationDestination.slack_user_id
-    )
+    const targetChannelId = await resolveSlackChannelIdForDestination(notificationDestination.slack_integration_id, notificationDestination.slack_channel_id, notificationDestination.slack_user_id)
 
     if (!targetChannelId) {
         logger.debug(`[notifyApprovalRequest] No Slack channel ID configured. Skipping.`)
@@ -188,11 +180,7 @@ async function notifySlackRunFailure(notificationDestination: UserNotificationDe
         return
     }
 
-    const targetChannelId = await resolveSlackChannelIdForDestination(
-        notificationDestination.slack_integration_id,
-        notificationDestination.slack_channel_id,
-        notificationDestination.slack_user_id
-    )
+    const targetChannelId = await resolveSlackChannelIdForDestination(notificationDestination.slack_integration_id, notificationDestination.slack_channel_id, notificationDestination.slack_user_id)
 
     if (!targetChannelId) {
         logger.debug(`[notifySlackRunFailure] No Slack channel ID configured. Skipping.`)

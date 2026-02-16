@@ -1,5 +1,7 @@
-import { AgentRunner } from "../agent/AgentRunner/AgentRunner"
-import { finalizeRunStatus, markRunFailed, markRunInProgress, resolveFinalRunStatus, storeChatEvent } from "../agent/AgentRunner/runHistory"
+import { RunHistoryStatus as PrismaRunHistoryStatus } from "@prisma/client"
+
+import { AgentRunResultStatus, AgentRunner } from "../agent/AgentRunner/AgentRunner"
+import { evaluateCompletedRun, finalizeRunStatus, markRunFailed, markRunInProgress, storeChatEvent } from "../agent/AgentRunner/runHistory"
 import { generateApprovalSummary } from "../agent/ApprovalSummaryAgent/ApprovalSummaryAgent"
 import { KnowledgeBase } from "../knowledgeBase/abstract/KnowledgeBase"
 import { KnowledgeBaseFactory } from "../knowledgeBase/abstract/KnowledgeBaseFactory"
@@ -10,6 +12,8 @@ import { OutputFactory } from "../outputs/abstract/OutputFactory"
 import { db } from "../prismaClient"
 import { ConfigInstance } from "../shared/Configs"
 import { ModelEvent } from "../shared/ModelEvents"
+import { RunHistoryStatus } from "../shared/RunHistoryTypes"
+import { SlackApprovalMessageStatus } from "../slack/ApprovalStatus"
 import { User } from "../shared/types"
 import { AgentWithRelations } from "../types/prisma"
 import { Session } from "../types/session"
@@ -33,11 +37,17 @@ export type ApprovalRequest = {
 export type ApprovalResult = {
     // 'completed' means the run finished after applying this approval decision.
     // 'awaiting_approval' means this approval decision was processed successfully, but the agent requested another approval (chained approvals).
-    status: "completed" | "awaiting_approval" | "failed"
+    status: ApprovalProcessingStatus
     result?: {
         finalOutput?: unknown
     }
     error?: string
+}
+
+export enum ApprovalProcessingStatus {
+    COMPLETED = "completed",
+    AWAITING_APPROVAL = "awaiting_approval",
+    FAILED = "failed"
 }
 
 export class ApprovalService {
@@ -45,7 +55,7 @@ export class ApprovalService {
         runId: string,
         organizationId: string
     ): Promise<{
-        runRecord: { id: string; status: string; automation: { id: string; user_id: string; organization_id: string | null } }
+        runRecord: { id: string; status: PrismaRunHistoryStatus; automation: { id: string; user_id: string; organization_id: string | null } }
         channel: AgentWithRelations
     }> {
         const prisma = db()
@@ -101,7 +111,7 @@ export class ApprovalService {
     private static async updateSlackNotification(
         runId: string,
         stepId: string,
-        status: "processing" | "approved" | "rejected" | "changes_requested" | "failed",
+        status: SlackApprovalMessageStatus,
         user: User,
         channelId: string
     ): Promise<void> {
@@ -245,12 +255,12 @@ export class ApprovalService {
             const knowledgeBases = this.createKnowledgeBases(channel.knowledge_bases || [])
 
             // Ensure run status is 'in_progress' for streaming
-            if (runRecord.status !== "in_progress") {
+            if (runRecord.status !== RunHistoryStatus.IN_PROGRESS) {
                 await markRunInProgress(runId)
             }
 
             // Update Slack notification to processing state
-            await this.updateSlackNotification(runId, stepId, "processing", user, channel.id)
+            await this.updateSlackNotification(runId, stepId, SlackApprovalMessageStatus.PROCESSING, user, channel.id)
             slackMarkedProcessing = true
 
             // Store the approval response event
@@ -282,18 +292,23 @@ export class ApprovalService {
             )
 
             // Use 'changes_requested' for request changes flow (rejected with feedback), 'rejected' for hard reject
-            const finalSlackStatus = approved ? "approved" : hardReject ? "rejected" : rejectionReason ? "changes_requested" : "rejected"
+            const finalSlackStatus = approved
+                ? SlackApprovalMessageStatus.APPROVED
+                : hardReject
+                  ? SlackApprovalMessageStatus.REJECTED
+                  : rejectionReason
+                    ? SlackApprovalMessageStatus.CHANGES_REQUESTED
+                    : SlackApprovalMessageStatus.REJECTED
 
             // Finalize run status based on result
-            if (result.status === "completed") {
-                const finalStatus = resolveFinalRunStatus(result.result?.finalOutput, result.endedWithToolFailure)
-                const failureReason = result.endedWithToolFailure ? "The run ended after a failed tool call." : "The run completed without a final output."
+            if (result.status === AgentRunResultStatus.COMPLETED) {
+                const completion = evaluateCompletedRun(result.result?.finalOutput, result.endedWithToolFailure)
                 try {
-                    await finalizeRunStatus(runId, finalStatus)
+                    await finalizeRunStatus(runId, completion.status)
                     emitCacheInvalidationWithWildcard(channel.organization_id, "runHistory", channel.id)
-                    if (finalStatus === "failed") {
+                    if (!completion.isSuccessful) {
                         try {
-                            await new NotificationManager(user, channel).notifyRunFailure(runId, failureReason)
+                            await new NotificationManager(user, channel).notifyRunFailure(runId, completion.failureReason)
                         } catch (notificationError) {
                             logger.error("[ApprovalService] Failed to send run failure notification", {
                                 error: notificationError,
@@ -312,12 +327,12 @@ export class ApprovalService {
 
                 logger.info(`[ApprovalService] Successfully processed approval for runId: ${runId}, stepId: ${stepId}`)
                 return {
-                    status: "completed" as const,
+                    status: ApprovalProcessingStatus.COMPLETED,
                     result: result.result
                 }
             }
 
-            if (result.status === "awaiting_approval") {
+            if (result.status === AgentRunResultStatus.AWAITING_APPROVAL) {
                 await this.updateSlackNotification(runId, stepId, finalSlackStatus, user, channel.id)
 
                 emitCacheInvalidationWithWildcard(channel.organization_id, "runHistory", channel.id)
@@ -326,7 +341,7 @@ export class ApprovalService {
                 logger.info(`[ApprovalService] Processed approval decision; run is now awaiting another approval`, { runId, stepId, approved })
 
                 return {
-                    status: "awaiting_approval" as const
+                    status: ApprovalProcessingStatus.AWAITING_APPROVAL
                 }
             }
 
@@ -338,7 +353,7 @@ export class ApprovalService {
             })
             await this.updateSlackNotification(runId, stepId, finalSlackStatus, user, channel.id)
             return {
-                status: "failed" as const,
+                status: ApprovalProcessingStatus.FAILED,
                 error: `Unexpected agent status after resuming: ${(result as any)?.status ?? "unknown"}`
             }
         } catch (error) {
@@ -347,7 +362,7 @@ export class ApprovalService {
 
             // If we've already told Slack we're "processing", make sure we also tell Slack we failed.
             if (slackMarkedProcessing && channelIdForSlack && user) {
-                await this.updateSlackNotification(runId, stepId, "failed", user, channelIdForSlack)
+                await this.updateSlackNotification(runId, stepId, SlackApprovalMessageStatus.FAILED, user, channelIdForSlack)
             }
 
             try {
@@ -382,7 +397,7 @@ export class ApprovalService {
             }
 
             return {
-                status: "failed",
+                status: ApprovalProcessingStatus.FAILED,
                 error: errorMessage
             }
         }

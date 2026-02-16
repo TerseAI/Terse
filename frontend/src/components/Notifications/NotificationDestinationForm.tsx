@@ -92,15 +92,15 @@ export function NotificationDestinationForm({ existingDestination, onSuccess, on
         try {
             if (isEditMode) {
                 // Update existing destination
-                    await BackendProvider.updateNotificationDestination({
-                        id: existingDestination.id,
-                        type: NotificationDestinationType.SLACK,
-                        integrationId: selectedIntegrationId,
-                        slackChannelId: selectedChannelId,
-                        slackChannelName: selectedChannelName,
-                        slackUserId: selectedUserId,
-                        slackUserName: selectedUserName
-                    } as SlackNotificationDestination)
+                await BackendProvider.updateNotificationDestination({
+                    id: existingDestination.id,
+                    type: NotificationDestinationType.SLACK,
+                    integrationId: selectedIntegrationId,
+                    slackChannelId: selectedChannelId,
+                    slackChannelName: selectedChannelName,
+                    slackUserId: selectedUserId,
+                    slackUserName: selectedUserName
+                } as SlackNotificationDestination)
                 toast.success("Notification destination updated successfully")
             } else {
                 // Create new destination

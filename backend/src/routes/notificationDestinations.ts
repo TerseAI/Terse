@@ -212,8 +212,7 @@ export async function updateNotificationDestination(req: Request, res: Response)
             const normalizedSlackUserId = hasExplicitTargetSelection ? normalizeOptionalString(slackUserId) : normalizeOptionalString(existingDestination.slack_user_id)
             const normalizedSlackChannelName =
                 hasSlackChannelNameInput || hasExplicitTargetSelection ? normalizeOptionalString(slackChannelName) : normalizeOptionalString(existingDestination.slack_channel_name)
-            const normalizedSlackUserName =
-                hasSlackUserNameInput || hasExplicitTargetSelection ? normalizeOptionalString(slackUserName) : normalizeOptionalString(existingDestination.slack_user_name)
+            const normalizedSlackUserName = hasSlackUserNameInput || hasExplicitTargetSelection ? normalizeOptionalString(slackUserName) : normalizeOptionalString(existingDestination.slack_user_name)
 
             const hasChannelTarget = Boolean(normalizedSlackChannelId)
             const hasUserTarget = Boolean(normalizedSlackUserId)

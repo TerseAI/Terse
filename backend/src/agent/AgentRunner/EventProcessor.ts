@@ -18,11 +18,11 @@ import { trackActionTaken, trackAgentTriggered } from "../../utility/analytics"
 import { getInputConfigInclude, getKnowledgeBaseConfigInclude, getOutputConfigInclude } from "../../utility/prismaIncludes"
 import { classifyAgentError } from "../agentErrorUtils"
 
-import { AgentRunner, ApprovalResult, SessionWithTracking } from "./AgentRunner"
+import { AgentRunResultStatus, AgentRunner, ApprovalResult, SessionWithTracking } from "./AgentRunner"
 import { filterEvent } from "./EventFilter"
 import { RunContext } from "./SystemPromptBuilder"
 import { reportRunErrorToRun } from "./runErrorReporter"
-import { appendRunAction, createRunRecord, finalizeRunStatus, markRunFailed, markRunProcessed, markRunSkipped, resolveFinalRunStatus } from "./runHistory"
+import { appendRunAction, createRunRecord, evaluateCompletedRun, finalizeRunStatus, markRunFailed, markRunProcessed, markRunSkipped } from "./runHistory"
 
 // The job of this class is to take an Input Event, and check if it's a match for an Agent.
 // It will then create a Session, and summon the Agent Runner with the create user data.
@@ -381,7 +381,7 @@ export class EventProcessor {
             throw error
         }
 
-        if (result.status === "completed") {
+        if (result.status === AgentRunResultStatus.COMPLETED) {
             logger.info(`Agent "${agent.name}" completed:`, {
                 finalOutput: result.result.finalOutput,
                 endedWithToolFailure: result.endedWithToolFailure
@@ -403,17 +403,14 @@ async function persistRunResult<T extends Session>(
     approvalResult?: ApprovalResult<SessionWithTracking<T>, OpenAIAgent<SessionWithTracking<T>, AgentOutputType>> | null
 ): Promise<ProcessorResult<SessionWithTracking<T>>> {
     // Finalize run status
-    const hasFinalOutput = Boolean(result.finalOutput)
-    const finalStatus = resolveFinalRunStatus(result.finalOutput, endedWithToolFailure)
-    const wasSuccessful = finalStatus === "success"
-    const failureReason = endedWithToolFailure ? "The run ended after a failed tool call." : "The run completed without a final output."
+    const completion = evaluateCompletedRun(result.finalOutput, endedWithToolFailure)
     try {
-        await finalizeRunStatus(runId, finalStatus)
+        await finalizeRunStatus(runId, completion.status)
         // Invalidate all run history queries for this agent when status changes
         emitCacheInvalidationWithWildcard(session.user.organizationId, "runHistory", agent.id)
-        if (finalStatus === "failed") {
+        if (!completion.isSuccessful) {
             try {
-                await new NotificationManager(session.user, agent).notifyRunFailure(runId, failureReason)
+                await new NotificationManager(session.user, agent).notifyRunFailure(runId, completion.failureReason)
             } catch (notificationError) {
                 logger.error("Failed to send run failure notification", {
                     error: notificationError,
@@ -431,7 +428,7 @@ async function persistRunResult<T extends Session>(
     }
 
     const finalOutput = typeof result.finalOutput === "string" ? result.finalOutput : ""
-    return new ProcessorResult<SessionWithTracking<T>>(hasFinalOutput && wasSuccessful, finalOutput, agent, approvalResult, runId)
+    return new ProcessorResult<SessionWithTracking<T>>(completion.isSuccessful, finalOutput, agent, approvalResult, runId)
 }
 
 export async function persistRunAction<T extends Session>(runId: string, agent: PrismaAgent, session: T, action: RunHistoryAction): Promise<string | undefined> {
