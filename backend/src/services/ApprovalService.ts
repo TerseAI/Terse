@@ -1,9 +1,10 @@
 import { AgentRunner } from "../agent/AgentRunner/AgentRunner"
-import { finalizeRunStatus, markRunFailed, markRunInProgress, storeChatEvent } from "../agent/AgentRunner/runHistory"
+import { finalizeRunStatus, markRunFailed, markRunInProgress, resolveFinalRunStatus, storeChatEvent } from "../agent/AgentRunner/runHistory"
 import { generateApprovalSummary } from "../agent/ApprovalSummaryAgent/ApprovalSummaryAgent"
 import { KnowledgeBase } from "../knowledgeBase/abstract/KnowledgeBase"
 import { KnowledgeBaseFactory } from "../knowledgeBase/abstract/KnowledgeBaseFactory"
 import logger from "../logger"
+import { NotificationManager } from "../notifications/Notification"
 import { Output } from "../outputs/abstract/Output"
 import { OutputFactory } from "../outputs/abstract/OutputFactory"
 import { db } from "../prismaClient"
@@ -203,11 +204,13 @@ export class ApprovalService {
         let channelIdForSlack: string | null = null
         let slackMarkedProcessing = false
         let user: User | null = null
+        let channelForNotifications: AgentWithRelations | null = null
 
         try {
             // Validate organization access and load channel (inside try so failures are caught and run is marked failed)
             const { runRecord, channel } = await this.validateUserAccess(runId, organizationId)
             channelIdForSlack = channel.id
+            channelForNotifications = channel
 
             // Create base session for AgentRunner (runtime User type)
             user = await getUserForOrg(userId, channel.organization_id)
@@ -283,10 +286,23 @@ export class ApprovalService {
 
             // Finalize run status based on result
             if (result.status === "completed") {
-                const hasFinalOutput = Boolean(result.result?.finalOutput)
+                const finalStatus = resolveFinalRunStatus(result.result?.finalOutput, result.endedWithToolFailure)
+                const failureReason = result.endedWithToolFailure ? "The run ended after a failed tool call." : "The run completed without a final output."
                 try {
-                    await finalizeRunStatus(runId, hasFinalOutput ? "success" : "failed")
+                    await finalizeRunStatus(runId, finalStatus)
                     emitCacheInvalidationWithWildcard(channel.organization_id, "runHistory", channel.id)
+                    if (finalStatus === "failed") {
+                        try {
+                            await new NotificationManager(user, channel).notifyRunFailure(runId, failureReason)
+                        } catch (notificationError) {
+                            logger.error("[ApprovalService] Failed to send run failure notification", {
+                                error: notificationError,
+                                runId,
+                                stepId,
+                                channelId: channel.id
+                            })
+                        }
+                    }
                 } catch (e) {
                     logger.error("Failed to finalize run status", { error: e })
                 }
@@ -336,6 +352,18 @@ export class ApprovalService {
 
             try {
                 await markRunFailed(runId, errorMessage, "agent")
+                if (user && channelForNotifications) {
+                    try {
+                        await new NotificationManager(user, channelForNotifications).notifyRunFailure(runId, errorMessage)
+                    } catch (notificationError) {
+                        logger.error("[ApprovalService] Failed to send run failure notification", {
+                            error: notificationError,
+                            runId,
+                            stepId,
+                            channelId: channelForNotifications.id
+                        })
+                    }
+                }
                 // runHistory cache keys are scoped by channelId (not runId). chatHistory is scoped by runId.
                 if (channelIdForSlack) {
                     const automation = await db().automations.findUnique({ where: { id: channelIdForSlack }, select: { organization_id: true } })

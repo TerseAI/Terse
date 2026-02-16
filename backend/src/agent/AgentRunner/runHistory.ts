@@ -84,6 +84,16 @@ export async function finalizeRunStatus(runId: string, status: Extract<RunHistor
     })
 }
 
+/**
+ * Final run status requires both:
+ * - A non-empty final output from the model
+ * - No terminal tool-call failure at the end of execution
+ */
+export function resolveFinalRunStatus(finalOutput: unknown, endedWithToolFailure: boolean): Extract<RunHistoryStatus, "success" | "failed"> {
+    const hasFinalOutput = Boolean(finalOutput)
+    return hasFinalOutput && !endedWithToolFailure ? "success" : "failed"
+}
+
 export async function markRunInProgress(runId: string): Promise<void> {
     const prisma = db()
     await prisma.run_history_records.update({

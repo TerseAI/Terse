@@ -7,13 +7,14 @@ import { Server, Socket } from "socket.io"
 import { AgentRunner } from "./agent/AgentRunner/AgentRunner"
 import { RunContext } from "./agent/AgentRunner/SystemPromptBuilder"
 import { reportRunErrorToRun } from "./agent/AgentRunner/runErrorReporter"
-import { finalizeRunStatus, markRunFailed, storeChatEvent } from "./agent/AgentRunner/runHistory"
+import { finalizeRunStatus, markRunFailed, resolveFinalRunStatus, storeChatEvent } from "./agent/AgentRunner/runHistory"
 import { DirectiveTask, directiveTaskQueue } from "./agent/DirectiveAgent/DirectiveAgent"
 import { classifyAgentError } from "./agent/agentErrorUtils"
 import { nodeEnv, optional, urls } from "./config/settings"
 import { KnowledgeBase } from "./knowledgeBase/abstract/KnowledgeBase"
 import { KnowledgeBaseFactory } from "./knowledgeBase/abstract/KnowledgeBaseFactory"
 import logger from "./logger"
+import { NotificationManager } from "./notifications/Notification"
 import { Output } from "./outputs/abstract/Output"
 import { OutputFactory } from "./outputs/abstract/OutputFactory"
 import { db } from "./prismaClient"
@@ -283,17 +284,40 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
                 const classified = classifyAgentError(error)
                 logger.error(`[agent:chat:message] Error running agent: ${classified.message}`, { error, runId, agentId: agent.id, userId })
                 await markRunFailedAndInvalidate(runId, classified.message, organizationId ?? undefined, agent.id)
+                try {
+                    await new NotificationManager(user, agent).notifyRunFailure(runId, classified.message)
+                } catch (notificationError) {
+                    logger.error("[agent:chat:message] Failed to send run failure notification", {
+                        error: notificationError,
+                        runId,
+                        agentId: agent.id,
+                        userId
+                    })
+                }
                 await reportRunErrorToRun({ runId, agentId: agent.id, organizationId: organizationId ?? "", classified, io })
                 return
             }
 
             // Finalize run status based on result, just like in EventProcessor
             if (result.status === "completed") {
-                const hasFinalOutput = Boolean(result.result?.finalOutput)
+                const finalStatus = resolveFinalRunStatus(result.result?.finalOutput, result.endedWithToolFailure)
+                const failureReason = result.endedWithToolFailure ? "The run ended after a failed tool call." : "The run completed without a final output."
                 try {
-                    await finalizeRunStatus(runId, hasFinalOutput ? "success" : "failed")
+                    await finalizeRunStatus(runId, finalStatus)
                     if (organizationId) {
                         emitCacheInvalidationWithWildcard(organizationId, "runHistory", agent.id)
+                    }
+                    if (finalStatus === "failed") {
+                        try {
+                            await new NotificationManager(user, agent).notifyRunFailure(runId, failureReason)
+                        } catch (notificationError) {
+                            logger.error("[agent:chat:message] Failed to send run failure notification", {
+                                error: notificationError,
+                                runId,
+                                agentId: agent.id,
+                                userId
+                            })
+                        }
                     }
                 } catch (e) {
                     logger.error("Failed to finalize run status", { error: e, runId })

@@ -329,6 +329,44 @@ export function createNotificationMessage(options: { action: string; target: str
 }
 
 /**
+ * Creates a run failure notification message.
+ */
+export function createRunFailureNotificationMessage(options: {
+    agentName: string
+    runId: string
+    errorSummary: string
+    runHistoryLink?: string
+}): KnownBlock[] {
+    const blocks: KnownBlock[] = []
+
+    const headerText = options.runHistoryLink
+        ? `:x: *Run failed* in *<${options.runHistoryLink}|${options.agentName}>*`
+        : `:x: *Run failed* in *${options.agentName}*`
+    blocks.push(createSectionBlock(headerText))
+
+    blocks.push(
+        createSectionBlock("", [
+            { label: "Agent", value: options.agentName },
+            { label: "Status", value: ":x: Failed" },
+            { label: "Run ID", value: `\`${options.runId}\`` },
+            { label: "Error", value: options.errorSummary }
+        ])
+    )
+
+    if (options.runHistoryLink) {
+        blocks.push(
+            createActionBlock([
+                createButton("Open Run History", "view_run_history", {
+                    url: options.runHistoryLink
+                })
+            ])
+        )
+    }
+
+    return blocks
+}
+
+/**
  * Creates a feedback modal view
  */
 export function createFeedbackModal(options: { title: string; submitText: string; cancelText: string; privateMetadata: string; blockId?: string; actionId?: string; placeholder?: string }): ModalView {

@@ -539,7 +539,8 @@ const RunHistoryActionTypeSchema = z.enum(["create", "update", "delete", "read"]
 const AgentNotificationSettingsSchema = z
     .object({
         enabled: z.boolean(),
-        actionTypes: z.array(RunHistoryActionTypeSchema)
+        actionTypes: z.array(RunHistoryActionTypeSchema),
+        notifyOnRunFailure: z.boolean().default(false)
     })
     .strict()
 

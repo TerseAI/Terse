@@ -4,6 +4,7 @@ import { InputEvent } from "../../integrations/abstract/InputEvent"
 import { KnowledgeBase } from "../../knowledgeBase/abstract/KnowledgeBase"
 import { KnowledgeBaseFactory } from "../../knowledgeBase/abstract/KnowledgeBaseFactory"
 import logger from "../../logger"
+import { NotificationManager } from "../../notifications/Notification"
 import { Output } from "../../outputs/abstract/Output"
 import { OutputFactory } from "../../outputs/abstract/OutputFactory"
 import { db } from "../../prismaClient"
@@ -21,7 +22,7 @@ import { AgentRunner, ApprovalResult, SessionWithTracking } from "./AgentRunner"
 import { filterEvent } from "./EventFilter"
 import { RunContext } from "./SystemPromptBuilder"
 import { reportRunErrorToRun } from "./runErrorReporter"
-import { appendRunAction, createRunRecord, finalizeRunStatus, markRunFailed, markRunProcessed, markRunSkipped } from "./runHistory"
+import { appendRunAction, createRunRecord, finalizeRunStatus, markRunFailed, markRunProcessed, markRunSkipped, resolveFinalRunStatus } from "./runHistory"
 
 // The job of this class is to take an Input Event, and check if it's a match for an Agent.
 // It will then create a Session, and summon the Agent Runner with the create user data.
@@ -218,6 +219,18 @@ export class EventProcessor {
         }
     }
 
+    private async notifyRunFailure(agent: PrismaAgent, runId: string, errorMessage: string): Promise<void> {
+        try {
+            await new NotificationManager(this.user, agent).notifyRunFailure(runId, errorMessage)
+        } catch (error) {
+            logger.error("Failed to send run failure notification", {
+                error,
+                runId,
+                agentId: agent.id
+            })
+        }
+    }
+
     private createKnowledgeBases(agentKnowledgeBases: AgentWithRelations["knowledge_bases"]): KnowledgeBase<ConfigInstance>[] {
         return KnowledgeBaseFactory.createKnowledgeBasesFromAgent(agentKnowledgeBases)
     }
@@ -228,6 +241,7 @@ export class EventProcessor {
         if (!agent.prompt) {
             if (existingRunId) {
                 await this.failRunEarly(existingRunId, agent.id, "No prompt found for this agent")
+                await this.notifyRunFailure(agent, existingRunId, "No prompt found for this agent")
             }
             return new ProcessorResult(false, "No prompt found for this agent", agent, undefined, existingRunId ?? null)
         }
@@ -238,6 +252,7 @@ export class EventProcessor {
         // Get the outputs from agent relations (already fetched with config)
         if (!agent.outputs || agent.outputs.length === 0) {
             await this.failRunEarly(runId, agent.id, "No output integrations found for this agent")
+            await this.notifyRunFailure(agent, runId, "No output integrations found for this agent")
             return new ProcessorResult(false, "No output integrations found for this agent", agent, undefined, runId)
         }
 
@@ -248,6 +263,7 @@ export class EventProcessor {
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : "Unknown error"
             await this.failRunEarly(runId, agent.id, `Failed to create outputs: ${errorMessage}`)
+            await this.notifyRunFailure(agent, runId, `Failed to create outputs: ${errorMessage}`)
             return new ProcessorResult(false, `Failed to create outputs: ${errorMessage}`, agent, undefined, runId)
         }
 
@@ -287,6 +303,7 @@ export class EventProcessor {
                     agentId: agent.id
                 })
             }
+            await this.notifyRunFailure(agent, runId, errorMessage)
 
             return new ProcessorResult(false, `Error during filtering: ${errorMessage}`, agent, undefined, runId)
         }
@@ -353,6 +370,7 @@ export class EventProcessor {
                 runId
             })
             await markRunFailedAndInvalidate(runId, classified.message, this.user.organizationId, agent.id)
+            await this.notifyRunFailure(agent, runId, classified.message)
             await reportRunErrorToRun({
                 runId,
                 agentId: agent.id,
@@ -365,9 +383,10 @@ export class EventProcessor {
 
         if (result.status === "completed") {
             logger.info(`Agent "${agent.name}" completed:`, {
-                finalOutput: result.result.finalOutput
+                finalOutput: result.result.finalOutput,
+                endedWithToolFailure: result.endedWithToolFailure
             })
-            return persistRunResult(runId, result.result, session, agent, result)
+            return persistRunResult(runId, result.result, session, agent, result.endedWithToolFailure, result)
         } else {
             logger.info(`Agent "${agent.name}" awaiting approval:`)
             return new ProcessorResult<SessionWithTracking<Session>>(false, "Agent awaiting approval", agent, result, runId)
@@ -380,14 +399,29 @@ async function persistRunResult<T extends Session>(
     result: RunResult<SessionWithTracking<T>, OpenAIAgent<SessionWithTracking<T>, AgentOutputType>>,
     session: T,
     agent: PrismaAgent,
+    endedWithToolFailure: boolean,
     approvalResult?: ApprovalResult<SessionWithTracking<T>, OpenAIAgent<SessionWithTracking<T>, AgentOutputType>> | null
 ): Promise<ProcessorResult<SessionWithTracking<T>>> {
     // Finalize run status
     const hasFinalOutput = Boolean(result.finalOutput)
+    const finalStatus = resolveFinalRunStatus(result.finalOutput, endedWithToolFailure)
+    const wasSuccessful = finalStatus === "success"
+    const failureReason = endedWithToolFailure ? "The run ended after a failed tool call." : "The run completed without a final output."
     try {
-        await finalizeRunStatus(runId, hasFinalOutput ? "success" : "failed")
+        await finalizeRunStatus(runId, finalStatus)
         // Invalidate all run history queries for this agent when status changes
         emitCacheInvalidationWithWildcard(session.user.organizationId, "runHistory", agent.id)
+        if (finalStatus === "failed") {
+            try {
+                await new NotificationManager(session.user, agent).notifyRunFailure(runId, failureReason)
+            } catch (notificationError) {
+                logger.error("Failed to send run failure notification", {
+                    error: notificationError,
+                    runId,
+                    agentId: agent.id
+                })
+            }
+        }
     } catch (e) {
         logger.error("Failed to finalize run status", {
             error: e,
@@ -397,7 +431,7 @@ async function persistRunResult<T extends Session>(
     }
 
     const finalOutput = typeof result.finalOutput === "string" ? result.finalOutput : ""
-    return new ProcessorResult<SessionWithTracking<T>>(hasFinalOutput, finalOutput, agent, approvalResult, runId)
+    return new ProcessorResult<SessionWithTracking<T>>(hasFinalOutput && wasSuccessful, finalOutput, agent, approvalResult, runId)
 }
 
 export async function persistRunAction<T extends Session>(runId: string, agent: PrismaAgent, session: T, action: RunHistoryAction): Promise<string | undefined> {

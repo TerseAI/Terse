@@ -3,6 +3,7 @@ import { AlertTriangle, Eye, Pencil, Plus, Trash2 } from "lucide-react"
 import { MultiSelect } from "../../components/MultiSelect"
 import { AddNotificationDestination } from "../../components/Notifications/AddNotificationDestination"
 import { Button } from "../../components/ui/button"
+import { Checkbox } from "../../components/ui/checkbox"
 import { Label } from "../../components/ui/label"
 import { Switch } from "../../components/ui/switch"
 import { useNotificationDestinations } from "../../hooks/api/useNotificationDestinations"
@@ -26,6 +27,10 @@ function AgentNotificationSettings({ settings, onChange }: AgentNotificationSett
         onChange({ ...settings, actionTypes })
     }
 
+    const handleToggleRunFailureNotifications = (checked: boolean) => {
+        onChange({ ...settings, notifyOnRunFailure: checked })
+    }
+
     const showNoDestinationsWarning = settings.enabled && hasNoDestinations
 
     return (
@@ -38,7 +43,7 @@ function AgentNotificationSettings({ settings, onChange }: AgentNotificationSett
                         </Label>
                         {showNoDestinationsWarning && <AlertTriangle className="size-4 text-yellow-500" />}
                     </div>
-                    <p className="text-sm text-muted-foreground">Get notified when this channel takes actions</p>
+                    <p className="text-sm text-muted-foreground">Get notified when this agent takes actions or a run fails</p>
                 </div>
                 <Switch id="notifications-toggle" checked={settings.enabled} onCheckedChange={handleToggleEnabled} />
             </div>
@@ -60,6 +65,19 @@ function AgentNotificationSettings({ settings, onChange }: AgentNotificationSett
             )}
             {settings.enabled && (
                 <div className="flex flex-col gap-2">
+                    <div className="flex items-start gap-3 rounded-md border p-3">
+                        <Checkbox
+                            id="run-failure-notifications-toggle"
+                            checked={settings.notifyOnRunFailure}
+                            onCheckedChange={value => handleToggleRunFailureNotifications(value === true)}
+                        />
+                        <div className="space-y-1">
+                            <Label htmlFor="run-failure-notifications-toggle" className="text-sm font-medium">
+                                Notify when a run fails
+                            </Label>
+                            <p className="text-sm text-muted-foreground">Send a notification when this agent finishes with a failed run status.</p>
+                        </div>
+                    </div>
                     <Label className="text-sm font-medium">Notify for these action types</Label>
                     <MultiSelect
                         options={EVENT_TYPE_OPTIONS.map(option => ({

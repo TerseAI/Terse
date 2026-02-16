@@ -6,7 +6,7 @@ import logger from "../logger"
 import { db } from "../prismaClient"
 import { FrontendRoutes } from "../shared/FrontendRoutes"
 import { RunHistoryAction } from "../shared/RunHistoryTypes"
-import { createApprovalMessage, createNotificationMessage, createUpdatedApprovalMessage } from "../slack/blockKitHelpers"
+import { createApprovalMessage, createNotificationMessage, createRunFailureNotificationMessage, createUpdatedApprovalMessage } from "../slack/blockKitHelpers"
 
 export interface SlackMessage {
     text: string
@@ -15,6 +15,13 @@ export interface SlackMessage {
 
 export interface NotificationContext {
     channelName: string
+}
+
+export interface RunFailureNotificationContext {
+    agentId: string
+    agentName: string
+    runId: string
+    errorMessage: string
 }
 export async function sendSlackMessage(userSlackIntegrationId: string, channelId: string, message: SlackMessage): Promise<boolean> {
     const userSlackIntegration = await db().user_slack_integrations.findFirst({
@@ -88,6 +95,21 @@ export function formatNotificationMessage(runAction: RunHistoryAction, context: 
         emoji: actionEmoji,
         details: runAction.details,
         url: runAction.url
+    })
+
+    return { text, blocks }
+}
+
+export function formatRunFailureNotificationMessage(context: RunFailureNotificationContext): SlackMessage {
+    const runHistoryLink = settings.urls.frontend ? `${settings.urls.frontend}${FrontendRoutes.AGENTS.RUN_HISTORY(context.agentId, context.runId)}` : undefined
+    const errorSummary = context.errorMessage.length > 300 ? `${context.errorMessage.slice(0, 297)}...` : context.errorMessage
+    const text = `Run failed in ${context.agentName}: ${errorSummary}`
+
+    const blocks = createRunFailureNotificationMessage({
+        agentName: context.agentName,
+        runId: context.runId,
+        errorSummary,
+        runHistoryLink
     })
 
     return { text, blocks }

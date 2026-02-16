@@ -46,6 +46,7 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance, KBCo
     private tools: Tool<SessionWithTracking<T>>[] = []
     private runContext: RunContext
     private toolMetadataMap: Map<string, ToolMetadata> = new Map()
+    private endedWithToolFailure = false
     private memorySession: RunHistoryChatMemorySession
     private maxTurns: number
     private notificationManager: NotificationManager
@@ -88,6 +89,7 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance, KBCo
             throw new Error("No input event set. Call setInputEvent() before run()")
         }
 
+        this.resetRunOutcomeTracking()
         await this.initializeAgent()
 
         if (!this.agent) {
@@ -122,6 +124,7 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance, KBCo
     }
 
     async userMessageRun(userMessage: string, files?: StoredFile[], streamingParams?: TrackingParams): Promise<ApprovalResult<SessionWithTracking<T>, Agent<SessionWithTracking<T>, AgentOutputType>>> {
+        this.resetRunOutcomeTracking()
         await this.initializeAgent()
 
         if (!this.agent) {
@@ -161,6 +164,7 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance, KBCo
         rejectionReason?: string,
         hardReject?: boolean
     ): Promise<ApprovalResult<SessionWithTracking<T>, Agent<SessionWithTracking<T>, AgentOutputType>>> {
+        this.resetRunOutcomeTracking()
         await this.initializeAgent()
 
         if (!this.agent) {
@@ -502,6 +506,26 @@ ${inputEvent.formatForAgentRunner()}
         `.trim()
     }
 
+    private resetRunOutcomeTracking(): void {
+        this.endedWithToolFailure = false
+    }
+
+    private observeModelEvent(event: ModelEvent): void {
+        if (event.type !== "ToolCallComplete") return
+
+        const toolFailed = event.status === "incomplete" || event.status === "failed" || Boolean(event.errorContext)
+        // We only care whether execution ended on a failed tool call.
+        // A subsequent successful tool completion clears this.
+        this.endedWithToolFailure = toolFailed
+    }
+
+    private async *trackEventStream(eventStream: AsyncGenerator<ModelEvent, void, unknown>): AsyncGenerator<ModelEvent, void, unknown> {
+        for await (const event of eventStream) {
+            this.observeModelEvent(event)
+            yield event
+        }
+    }
+
     private async processStream<TSession extends Session = Session, TAgent extends Agent<any, any> = Agent<Session, any>>(
         result: StreamedRunResult<TSession, TAgent>,
         streamingParams?: TrackingParams
@@ -528,7 +552,9 @@ ${inputEvent.formatForAgentRunner()}
             }
         })
 
-        await processModelEventStream(eventStream, {
+        const trackedEventStream = this.trackEventStream(eventStream)
+
+        await processModelEventStream(trackedEventStream, {
             runId: streamingParams.runId!,
             agentId: streamingParams.agentId!,
             user: streamingParams.user,
@@ -653,7 +679,8 @@ ${inputEvent.formatForAgentRunner()}
 
         return {
             status: "completed",
-            result
+            result,
+            endedWithToolFailure: this.endedWithToolFailure
         }
     }
 }
@@ -666,7 +693,7 @@ export type SessionWithTracking<T extends Session> = T & {
 }
 
 export type ApprovalResult<T extends Session, AgentType extends Agent<T, AgentOutputType>> =
-    | { status: "completed"; result: RunResult<T, AgentType> }
+    | { status: "completed"; result: RunResult<T, AgentType>; endedWithToolFailure: boolean }
     | { status: "awaiting_approval"; state: RunState<T, AgentType>; interruptions: RunToolApprovalItem[] }
 
 export type Decision = "approve" | "reject"

@@ -125,7 +125,7 @@ export async function buildChatAgentSystemPrompt(userId: string, organizationId:
 
     **Approvals vs notifications (important):**
     - **Tool approvals (toolApprovals)** control which tool *executions* require a human to approve before they run. When the agent tries to use one of these tools, it pauses and asks for approval; the user can approve or reject. Use getToolApprovalOptions with the agent's output and knowledge-base config types to get the list of valid tool names; set toolApprovals to the subset the user wants to require approval for.
-    - **Notifications (notificationSettings)** control when the user is *alerted* about agent activity (e.g. when a run fails, or when an approval is requested). They do not gate execution—they only determine when the user gets notified. Only turn on notifications (set notificationSettings.enabled to true or set actionTypes) when the user explicitly asks to be notified (e.g. "notify me when it fails", "alert me when approval is needed"); otherwise leave notifications off.
+    - **Notifications (notificationSettings)** control when the user is *alerted* about agent activity (e.g. when a run fails, or when an approval is requested). They do not gate execution—they only determine when the user gets notified. Only turn on notifications when the user explicitly asks to be notified (e.g. "notify me when it fails", "alert me when approval is needed"); otherwise leave notifications off.
 
     Different integrations can be used for different purposes. The following is a list of integrations and in
     what contexts they can be used:
@@ -208,7 +208,7 @@ export async function buildChatAgentSystemPrompt(userId: string, organizationId:
 
     ## How to use the applyAgent tool:
     - The applyAgent tool will persist and apply the agent.
-    - CRITICAL: Only enable notifications (notificationSettings with enabled: true and non-empty actionTypes) if the user explicitly asked for them in the conversation (e.g. "notify me when it fails", "alert me when approval is requested"). Do not enable notifications by default or "just in case".
+    - CRITICAL: Only enable notifications (notificationSettings.enabled true, plus actionTypes and/or notifyOnRunFailure as requested) if the user explicitly asked for them in the conversation (e.g. "notify me when it fails", "alert me when approval is requested"). Do not enable notifications by default or "just in case".
     - Once the agent is persisted and applied, thank the user and let them know you're here if they need anything else.
 
     ## Testing agents with sample events

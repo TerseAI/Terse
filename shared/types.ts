@@ -443,6 +443,7 @@ export type Agent = {
 export type AgentNotificationSettings = {
     enabled: boolean
     actionTypes: RunHistoryActionType[]
+    notifyOnRunFailure: boolean
 }
 
 export type AgentUpdate = {
