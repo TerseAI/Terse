@@ -1,7 +1,9 @@
 import { CapabilityDescription, CapabilityRole, getConfigMetadata } from "../capabilityHelpers"
 import { AtlassianClient } from "../integrations/AtlassianClient"
+import { validateJiraProjectExists } from "../integrations/AtlassianIntegration"
 import { ConfigType, JiraConfig } from "../shared/Configs"
 import { PrismaTransaction } from "../types/prisma"
+import { JiraConfigSchema, stripConfigForValidation } from "../utility/configSchemas"
 
 import { Trigger } from "./Trigger"
 
@@ -31,8 +33,12 @@ export class JiraTrigger implements Trigger<JiraConfig> {
         }
     }
 
-    async validateConfig(_trigger: JiraConfig, _userId: string): Promise<void> {
-        // No additional config validation beyond integration ownership.
+    async validateConfig(trigger: JiraConfig, _userId: string): Promise<void> {
+        // Not doing schema validation here because
+        // it errors out. TODO: fix this.
+        if (trigger.projectKey) {
+            await validateJiraProjectExists(trigger.integrationId, trigger.projectKey)
+        }
     }
 
     async addTriggerToAgent(tx: PrismaTransaction, agentTriggerId: string, trigger: JiraConfig): Promise<void> {

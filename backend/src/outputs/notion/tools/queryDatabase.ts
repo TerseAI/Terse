@@ -4,7 +4,7 @@ import { RunContext, tool } from "@openai/agents"
 import { z } from "zod"
 
 import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
-import { NotionIntegrationManager } from "../../../integrations/NotionIntegration"
+import { getNotionAccessTokenForOrganization } from "../../../integrations/NotionIntegration"
 import logger from "../../../logger"
 import { IntegrationType } from "../../../shared/Integrations"
 import { ToolName } from "../../../tools/ToolNames"
@@ -66,9 +66,19 @@ WHAT THIS TOOL DOES:
 
 FILTERING:
 - Property filters: Filter by any database property (title, number, date, select, status, checkbox, etc.)
-- Timestamp filters: Filter by created_time or last_edited_time
+- Timestamp filters: Filter by created_time or last_edited_time (these are SYSTEM FIELDS, not database properties)
 - Compound filters: Combine filters with AND/OR logic
 - All filtering happens server-side at Notion for efficiency
+
+SYSTEM FIELDS (available on ALL pages, not shown in schema):
+- created_time: When the page was created. Use timestamp filter format (NO "property" field).
+- last_edited_time: When the page was last edited. Use timestamp filter format (NO "property" field).
+- created_by: User who created the page. Use people filter WITH "property" field.
+- last_edited_by: User who last edited the page. Use people filter WITH "property" field.
+
+IMPORTANT: Timestamp filters (created_time, last_edited_time) use a DIFFERENT format than property filters:
+- CORRECT: {"timestamp": "created_time", "created_time": {"on_or_after": "2024-01-01"}}
+- WRONG: {"property": "created_time", "date": {"on_or_after": "2024-01-01"}}
 
 PAGINATION:
 - Use page_size to control how many results per page (default: all results)
@@ -226,12 +236,7 @@ EXAMPLES:
         if (!runContext?.context) {
             throw new Error("No context provided")
         }
-
-        const manager = new NotionIntegrationManager()
-        const accessToken = await manager.getAccessToken(integrationId)
-        if (!accessToken) {
-            throw new Error(`Notion integration not found or access denied for integrationId: ${integrationId}`)
-        }
+        const accessToken = await getNotionAccessTokenForOrganization(integrationId, runContext.context.user.organizationId)
 
         const notion = new Client({
             auth: accessToken
