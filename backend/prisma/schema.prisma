@@ -1000,13 +1000,13 @@ model chat_raw_events {
 // MARK: - Notifications
 
 model automation_notification_settings {
-  id            String                 @id @default(cuid())
-  automation_id String                 @unique
-  enabled       Boolean                @default(true)
-  action_types  RunHistoryActionType[]
-  notify_on_run_failure Boolean        @default(false)
-  created_at    DateTime               @default(now())
-  updated_at    DateTime               @updatedAt
+  id                    String                 @id @default(cuid())
+  automation_id         String                 @unique
+  enabled               Boolean                @default(true)
+  action_types          RunHistoryActionType[]
+  notify_on_run_failure Boolean                @default(false)
+  created_at            DateTime               @default(now())
+  updated_at            DateTime               @updatedAt
 
   automation automations @relation(fields: [automation_id], references: [id], onDelete: Cascade)
 }

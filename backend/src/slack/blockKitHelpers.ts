@@ -331,17 +331,10 @@ export function createNotificationMessage(options: { action: string; target: str
 /**
  * Creates a run failure notification message.
  */
-export function createRunFailureNotificationMessage(options: {
-    agentName: string
-    runId: string
-    errorSummary: string
-    runHistoryLink?: string
-}): KnownBlock[] {
+export function createRunFailureNotificationMessage(options: { agentName: string; runId: string; errorSummary: string; runHistoryLink?: string }): KnownBlock[] {
     const blocks: KnownBlock[] = []
 
-    const headerText = options.runHistoryLink
-        ? `:x: *Run failed* in *<${options.runHistoryLink}|${options.agentName}>*`
-        : `:x: *Run failed* in *${options.agentName}*`
+    const headerText = options.runHistoryLink ? `:x: *Run failed* in *<${options.runHistoryLink}|${options.agentName}>*` : `:x: *Run failed* in *${options.agentName}*`
     blocks.push(createSectionBlock(headerText))
 
     blocks.push(

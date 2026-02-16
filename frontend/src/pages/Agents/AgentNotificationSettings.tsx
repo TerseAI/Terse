@@ -66,11 +66,7 @@ function AgentNotificationSettings({ settings, onChange }: AgentNotificationSett
             {settings.enabled && (
                 <div className="flex flex-col gap-2">
                     <div className="flex items-start gap-3 rounded-md border p-3">
-                        <Checkbox
-                            id="run-failure-notifications-toggle"
-                            checked={settings.notifyOnRunFailure}
-                            onCheckedChange={value => handleToggleRunFailureNotifications(value === true)}
-                        />
+                        <Checkbox id="run-failure-notifications-toggle" checked={settings.notifyOnRunFailure} onCheckedChange={value => handleToggleRunFailureNotifications(value === true)} />
                         <div className="space-y-1">
                             <Label htmlFor="run-failure-notifications-toggle" className="text-sm font-medium">
                                 Notify when a run fails
