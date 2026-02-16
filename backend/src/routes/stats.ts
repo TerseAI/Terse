@@ -1,6 +1,6 @@
+import { RunHistoryStatus as PrismaRunHistoryStatus } from "@prisma/client"
 import { Request, Response } from "express"
 import { DateTime } from "luxon"
-import { RunHistoryStatus as PrismaRunHistoryStatus } from "@prisma/client"
 
 import { db } from "../prismaClient"
 import { AgentActivityItem, CountByString, RecentAction, RecentRun, StatsInterval, StatsResponse } from "../shared/types"

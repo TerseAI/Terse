@@ -13,8 +13,8 @@ import { db } from "../prismaClient"
 import { ConfigInstance } from "../shared/Configs"
 import { ModelEvent } from "../shared/ModelEvents"
 import { RunHistoryStatus } from "../shared/RunHistoryTypes"
-import { SlackApprovalMessageStatus } from "../slack/ApprovalStatus"
 import { User } from "../shared/types"
+import { SlackApprovalMessageStatus } from "../slack/ApprovalStatus"
 import { AgentWithRelations } from "../types/prisma"
 import { Session } from "../types/session"
 import { getInputConfigInclude, getKnowledgeBaseConfigInclude, getOutputConfigInclude } from "../utility/prismaIncludes"
@@ -108,13 +108,7 @@ export class ApprovalService {
      * Updates Slack notification for an approval request.
      * Handles fetching approval message, cached summary, channel info, and updating both Slack message and database.
      */
-    private static async updateSlackNotification(
-        runId: string,
-        stepId: string,
-        status: SlackApprovalMessageStatus,
-        user: User,
-        channelId: string
-    ): Promise<void> {
+    private static async updateSlackNotification(runId: string, stepId: string, status: SlackApprovalMessageStatus, user: User, channelId: string): Promise<void> {
         const prisma = db()
 
         try {

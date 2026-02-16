@@ -45,10 +45,7 @@ function StatusFilter({ selectedStatuses, onToggleStatus, open, onOpenChange }: 
                         <span className="text-sm">Filtered</span>
                     </div>
                     <div className="flex items-center gap-3 cursor-pointer" onClick={() => onToggleStatus(RunHistoryStatus.AWAITING_APPROVAL)}>
-                        <Checkbox
-                            checked={selectedStatuses.has(RunHistoryStatus.AWAITING_APPROVAL)}
-                            onCheckedChange={() => onToggleStatus(RunHistoryStatus.AWAITING_APPROVAL)}
-                        />
+                        <Checkbox checked={selectedStatuses.has(RunHistoryStatus.AWAITING_APPROVAL)} onCheckedChange={() => onToggleStatus(RunHistoryStatus.AWAITING_APPROVAL)} />
                         <Clock className="w-4 h-4 text-yellow-600 dark:text-yellow-400" />
                         <span className="text-sm">Awaiting Approval</span>
                     </div>

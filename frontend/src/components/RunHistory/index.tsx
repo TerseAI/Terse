@@ -192,13 +192,7 @@ export default function RunHistory({ agentId, onTriggerNow }: RunHistoryProps) {
                             setSearchQuery("")
                             setDateRange({ from: undefined, to: undefined })
                             setSelectedStatuses(
-                                new Set([
-                                    RunHistoryStatus.SUCCESS,
-                                    RunHistoryStatus.FAILED,
-                                    RunHistoryStatus.SKIPPED,
-                                    RunHistoryStatus.IN_PROGRESS,
-                                    RunHistoryStatus.AWAITING_APPROVAL
-                                ])
+                                new Set([RunHistoryStatus.SUCCESS, RunHistoryStatus.FAILED, RunHistoryStatus.SKIPPED, RunHistoryStatus.IN_PROGRESS, RunHistoryStatus.AWAITING_APPROVAL])
                             )
                             setCurrentPage(1)
                         }}

@@ -3,6 +3,7 @@ import { WebClient } from "@slack/web-api"
 
 import { ConfigurationFieldDefinition, FormFieldDefinition } from "../integrations/abstract/Integration"
 import logger from "../logger"
+
 import { SlackApprovalMessageStatus } from "./ApprovalStatus"
 
 /**

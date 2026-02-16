@@ -16,7 +16,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { useAllRunHistory } from "@/hooks/api/useAllRunHistory"
 import { IconForIntegration } from "@/pages/Agents/components/Integration"
 import { FrontendRoutes } from "@/shared/FrontendRoutes"
-import { RunHistoryStatus, type RunHistoryRecordWithAgent, type RunHistoryTrigger } from "@/shared/RunHistoryTypes"
+import { type RunHistoryRecordWithAgent, RunHistoryStatus, type RunHistoryTrigger } from "@/shared/RunHistoryTypes"
 import { formatTimestamp } from "@/utility/timeUtils"
 
 // ---------------------------------------------------------------------------
@@ -243,13 +243,7 @@ export default function ActivityPage() {
                                 setSearchQuery("")
                                 setDateRange({ from: undefined, to: undefined })
                                 setSelectedStatuses(
-                                    new Set([
-                                        RunHistoryStatus.SUCCESS,
-                                        RunHistoryStatus.FAILED,
-                                        RunHistoryStatus.SKIPPED,
-                                        RunHistoryStatus.IN_PROGRESS,
-                                        RunHistoryStatus.AWAITING_APPROVAL
-                                    ])
+                                    new Set([RunHistoryStatus.SUCCESS, RunHistoryStatus.FAILED, RunHistoryStatus.SKIPPED, RunHistoryStatus.IN_PROGRESS, RunHistoryStatus.AWAITING_APPROVAL])
                                 )
                                 setCurrentPage(1)
                             }}

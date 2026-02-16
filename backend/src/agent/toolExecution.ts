@@ -13,11 +13,7 @@ type ToolExecutionParseResult = {
 const FALLBACK_FAILURE_MESSAGE = "Tool returned success=false"
 
 export function normalizeToolExecutionStatus(status: unknown): ToolCallExecutionStatus {
-    if (
-        status === ToolCallExecutionStatus.COMPLETED ||
-        status === ToolCallExecutionStatus.INCOMPLETE ||
-        status === ToolCallExecutionStatus.FAILED
-    ) {
+    if (status === ToolCallExecutionStatus.COMPLETED || status === ToolCallExecutionStatus.INCOMPLETE || status === ToolCallExecutionStatus.FAILED) {
         return status
     }
     return ToolCallExecutionStatus.UNKNOWN

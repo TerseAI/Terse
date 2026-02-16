@@ -4,18 +4,12 @@ import { Request, Response } from "express"
 import logger from "../logger"
 import { PrismaClient, db } from "../prismaClient"
 import { ModelEvent } from "../shared/ModelEvents"
-import { RunHistoryStatus, type GetRunHistoryParams, type GetRunHistoryParamsRequest, type GetRunHistoryResponse, type RunHistoryRecord } from "../shared/RunHistoryTypes"
+import { type GetRunHistoryParams, type GetRunHistoryParamsRequest, type GetRunHistoryResponse, type RunHistoryRecord, RunHistoryStatus } from "../shared/RunHistoryTypes"
 import { parsePageParams } from "../utility/pagination"
 import { convertPrismaIntegrationTypeToIntegrationTypeFromRunHistory, convertPrismaRunHistoryStatusToShared } from "../utility/typeConverters"
 
 // Valid status values for validation
-const VALID_STATUSES: RunHistoryStatus[] = [
-    RunHistoryStatus.SUCCESS,
-    RunHistoryStatus.FAILED,
-    RunHistoryStatus.SKIPPED,
-    RunHistoryStatus.IN_PROGRESS,
-    RunHistoryStatus.AWAITING_APPROVAL
-]
+const VALID_STATUSES: RunHistoryStatus[] = [RunHistoryStatus.SUCCESS, RunHistoryStatus.FAILED, RunHistoryStatus.SKIPPED, RunHistoryStatus.IN_PROGRESS, RunHistoryStatus.AWAITING_APPROVAL]
 
 /**
  * Get run history across ALL agents in the organization

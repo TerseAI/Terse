@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils"
 
 import { capitalize } from "../../lib/utils"
 import { IconForIntegration } from "../../pages/Agents/components/Integration"
-import { RunHistoryStatus, type RunHistoryAction } from "../../shared/RunHistoryTypes"
+import { type RunHistoryAction, RunHistoryStatus } from "../../shared/RunHistoryTypes"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "../ui/accordion"
 
 type Props = {

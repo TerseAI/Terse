@@ -4,7 +4,7 @@ import { Prisma } from "@prisma/client"
 
 import { db } from "../../prismaClient"
 import { ModelEvent } from "../../shared/ModelEvents"
-import { RunHistoryStatus, type RunHistoryAction, type RunHistoryTrigger } from "../../shared/RunHistoryTypes"
+import { type RunHistoryAction, RunHistoryStatus, type RunHistoryTrigger } from "../../shared/RunHistoryTypes"
 import { convertIntegrationTypeToPrismaIntegrationTypeForRunHistory } from "../../utility/typeConverters"
 
 export type RunTrigger = RunHistoryTrigger
@@ -86,9 +86,7 @@ export async function finalizeRunStatus(runId: string, status: CompletedRunStatu
     })
 }
 
-export type CompletedRunEvaluation =
-    | { status: RunHistoryStatus.SUCCESS; isSuccessful: true }
-    | { status: RunHistoryStatus.FAILED; isSuccessful: false; failureReason: string }
+export type CompletedRunEvaluation = { status: RunHistoryStatus.SUCCESS; isSuccessful: true } | { status: RunHistoryStatus.FAILED; isSuccessful: false; failureReason: string }
 
 export function evaluateCompletedRun(finalOutput: unknown, endedWithToolFailure: boolean): CompletedRunEvaluation {
     const hasFinalOutput = Boolean(finalOutput)

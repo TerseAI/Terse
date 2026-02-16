@@ -6,6 +6,7 @@ import { RunHistoryAction } from "../shared/RunHistoryTypes"
 import { ErrorContext } from "../tools/toolUtils"
 import { Session } from "../types/session"
 import { randomString } from "../utility/strings"
+
 import { parseToolExecutionResult } from "./toolExecution"
 
 export async function* transformAgentStreamToModelEvents<T extends Session>(
