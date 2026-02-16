@@ -15,7 +15,7 @@ export function EditNotificationDestinationDialog({ destination, open, onOpenCha
             <DialogContent>
                 <DialogHeader>
                     <DialogTitle>Edit Notification Destination</DialogTitle>
-                    <DialogDescription>Update where you receive notifications when a background agent makes a change.</DialogDescription>
+                    <DialogDescription>Update your Slack notification destination (one channel or one individual DM).</DialogDescription>
                 </DialogHeader>
                 <NotificationDestinationForm existingDestination={destination} onSuccess={() => onOpenChange(false)} onCancel={() => onOpenChange(false)} />
             </DialogContent>

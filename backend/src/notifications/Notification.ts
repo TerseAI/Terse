@@ -6,7 +6,7 @@ import { db } from "../prismaClient"
 import { RunHistoryAction } from "../shared/RunHistoryTypes"
 import { User } from "../shared/types"
 import { Agent, AutomationNotificationSettings, UserNotificationDestination } from "../types/prisma"
-import { formatNotificationMessage, formatRunFailureNotificationMessage, sendSlackApprovalMessage, sendSlackMessage } from "../utility/slack"
+import { formatNotificationMessage, formatRunFailureNotificationMessage, resolveSlackChannelIdForDestination, sendSlackApprovalMessage, sendSlackMessage } from "../utility/slack"
 
 export class NotificationManager {
     private user: User
@@ -139,14 +139,20 @@ async function notifySlack(notificationDestination: UserNotificationDestination,
         return
     }
 
-    if (!notificationDestination.slack_channel_id) {
+    const targetChannelId = await resolveSlackChannelIdForDestination(
+        notificationDestination.slack_integration_id,
+        notificationDestination.slack_channel_id,
+        notificationDestination.slack_user_id
+    )
+
+    if (!targetChannelId) {
         logger.debug(`[notifySlack] No Slack channel ID configured. Skipping.`)
         return
     }
 
     const message = formatNotificationMessage(runAction, { channelName: agent.name })
 
-    await sendSlackMessage(notificationDestination.slack_integration_id, notificationDestination.slack_channel_id, message)
+    await sendSlackMessage(notificationDestination.slack_integration_id, targetChannelId, message)
 }
 
 async function notifyApprovalRequest(notificationDestination: UserNotificationDestination, runId: string, runAction: RunHistoryAction, agent: Agent, user: User) {
@@ -155,7 +161,13 @@ async function notifyApprovalRequest(notificationDestination: UserNotificationDe
         return
     }
 
-    if (!notificationDestination.slack_channel_id) {
+    const targetChannelId = await resolveSlackChannelIdForDestination(
+        notificationDestination.slack_integration_id,
+        notificationDestination.slack_channel_id,
+        notificationDestination.slack_user_id
+    )
+
+    if (!targetChannelId) {
         logger.debug(`[notifyApprovalRequest] No Slack channel ID configured. Skipping.`)
         return
     }
@@ -167,7 +179,7 @@ async function notifyApprovalRequest(notificationDestination: UserNotificationDe
 
     const { approvalSummary } = await generateApprovalSummary(runId, user, agent.id, runAction.step_id)
 
-    await sendSlackApprovalMessage(notificationDestination.slack_integration_id, notificationDestination.slack_channel_id, runId, runAction.step_id, approvalSummary, agent.name, agent.id)
+    await sendSlackApprovalMessage(notificationDestination.slack_integration_id, targetChannelId, runId, runAction.step_id, approvalSummary, agent.name, agent.id)
 }
 
 async function notifySlackRunFailure(notificationDestination: UserNotificationDestination, agent: Agent, runId: string, errorMessage: string) {
@@ -176,7 +188,13 @@ async function notifySlackRunFailure(notificationDestination: UserNotificationDe
         return
     }
 
-    if (!notificationDestination.slack_channel_id) {
+    const targetChannelId = await resolveSlackChannelIdForDestination(
+        notificationDestination.slack_integration_id,
+        notificationDestination.slack_channel_id,
+        notificationDestination.slack_user_id
+    )
+
+    if (!targetChannelId) {
         logger.debug(`[notifySlackRunFailure] No Slack channel ID configured. Skipping.`)
         return
     }
@@ -188,7 +206,7 @@ async function notifySlackRunFailure(notificationDestination: UserNotificationDe
         errorMessage
     })
 
-    await sendSlackMessage(notificationDestination.slack_integration_id, notificationDestination.slack_channel_id, message)
+    await sendSlackMessage(notificationDestination.slack_integration_id, targetChannelId, message)
 }
 
 // Not supported yet, just wanted to make sure this was built with mulitple notification destinations in mind

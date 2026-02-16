@@ -57,6 +57,56 @@ export async function sendSlackMessage(userSlackIntegrationId: string, channelId
     }
 }
 
+export async function resolveSlackChannelIdForDestination(userSlackIntegrationId: string, slackChannelId?: string | null, slackUserId?: string | null): Promise<string | null> {
+    if (slackChannelId) {
+        return slackChannelId
+    }
+
+    if (!slackUserId) {
+        return null
+    }
+
+    const userSlackIntegration = await db().user_slack_integrations.findFirst({
+        where: {
+            id: userSlackIntegrationId
+        },
+        include: {
+            slack_integration: true,
+            user: true
+        }
+    })
+
+    if (!userSlackIntegration?.slack_integration) {
+        logger.error(`[resolveSlackChannelIdForDestination] No Slack integration found for ID: ${userSlackIntegrationId}`)
+        return null
+    }
+
+    try {
+        const client = initializeSlackWebClient(userSlackIntegration)
+        const result = await client.conversations.open({
+            users: slackUserId
+        })
+
+        const dmChannelId = result.channel?.id
+        if (!dmChannelId) {
+            logger.error(`[resolveSlackChannelIdForDestination] Failed to open DM for user ${slackUserId}`, {
+                userSlackIntegrationId,
+                slackUserId
+            })
+            return null
+        }
+
+        return dmChannelId
+    } catch (error) {
+        logger.error(`[resolveSlackChannelIdForDestination] Error opening DM`, {
+            error,
+            userSlackIntegrationId,
+            slackUserId
+        })
+        return null
+    }
+}
+
 export async function getSlackClient(userSlackIntegrationId: string): Promise<WebClient | null> {
     const userSlackIntegration = await db().user_slack_integrations.findFirst({
         where: {

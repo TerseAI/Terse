@@ -1020,6 +1020,8 @@ model user_notification_destinations {
   slack_integration_id String?
   slack_channel_id     String?
   slack_channel_name   String?
+  slack_user_id        String?
+  slack_user_name      String?
 
   // Email-specific fields
   email_address String?
@@ -1033,6 +1035,7 @@ model user_notification_destinations {
 
   @@index([user_id])
   @@index([destination_type])
+  @@index([slack_user_id])
 }
 
 enum NotificationDestinationType {

@@ -27,7 +27,7 @@ export function AddNotificationDestination({ trigger }: AddNotificationDestinati
             <DialogContent>
                 <DialogHeader>
                     <DialogTitle>Add Notification Destination</DialogTitle>
-                    <DialogDescription>Add a notification channel to be notified when a background agent makes a change.</DialogDescription>
+                    <DialogDescription>Add a Slack channel or one individual DM destination for background agent notifications.</DialogDescription>
                 </DialogHeader>
                 <NotificationDestinationForm onSuccess={() => setOpen(false)} />
             </DialogContent>
