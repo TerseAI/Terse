@@ -204,3 +204,28 @@ export class PosthogIntegrationManager implements Integration<PosthogIntegration
         }
     }
 }
+
+/**
+ * Verifies that the given PostHog project exists and is accessible with the integration's API key.
+ */
+export async function validatePosthogProjectExists(integrationId: string, projectId: string): Promise<void> {
+    const integration = await db().posthog_integrations.findUnique({
+        where: { id: integrationId },
+        select: { api_key: true }
+    })
+    if (!integration?.api_key) {
+        throw new Error(`Posthog integration ${integrationId} not found or missing API key`)
+    }
+    const response = await fetch(`https://us.posthog.com/api/projects/${projectId}/`, {
+        method: "GET",
+        headers: {
+            Authorization: `Bearer ${integration.api_key}`,
+            "Content-Type": "application/json"
+        }
+    })
+    if (!response.ok) {
+        const errorText = await response.text()
+        logger.error(`Posthog project ${projectId} not accessible`, { status: response.status, errorText })
+        throw new Error(`Posthog project ${projectId} not found or not accessible`)
+    }
+}

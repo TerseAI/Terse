@@ -1,10 +1,11 @@
 import chalk from "chalk"
 
 import { CapabilityDescription, CapabilityRole, getConfigMetadata } from "../capabilityHelpers"
-import { FigmaIntegrationManager } from "../integrations/FigmaIntegration"
+import { FigmaIntegrationManager, validateFigmaFileExists } from "../integrations/FigmaIntegration"
 import { SlackIntegrationManager } from "../integrations/SlackIntegration"
 import { ConfigType, FigmaConfig } from "../shared/Configs"
 import { PrismaTransaction } from "../types/prisma"
+import { FigmaConfigSchema, stripConfigForValidation } from "../utility/configSchemas"
 
 import { Trigger } from "./Trigger"
 
@@ -36,12 +37,8 @@ export class FigmaTrigger implements Trigger<FigmaConfig> {
     }
 
     async validateConfig(trigger: FigmaConfig, _userId: string): Promise<void> {
-        const missing: string[] = []
-        if (!trigger.fileKey) missing.push("fileKey")
-        if (!trigger.teamId) missing.push("teamId")
-        if (missing.length > 0) {
-            throw new Error(`Invalid trigger config for figma: missing ${missing.join(" and ")}`)
-        }
+        FigmaConfigSchema.parse(stripConfigForValidation(trigger))
+        await validateFigmaFileExists(trigger.integrationId, trigger.fileKey)
     }
 
     async addTriggerToAgent(tx: PrismaTransaction, agentTriggerId: string, trigger: FigmaConfig): Promise<void> {

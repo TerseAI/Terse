@@ -3,6 +3,7 @@ import { KnowledgeBaseConfigType } from "@prisma/client"
 
 import { buildDummyKnowledgeBaseConfig } from "../../buildDummyConfigForCapability"
 import { type CapabilityDescription, CapabilityRole, extractToolMetadata, getConfigMetadata } from "../../capabilityHelpers"
+import { validateDatadogIndexesExist } from "../../integrations/DatadogIntegration"
 import logger from "../../logger"
 import { ToolboxEntry } from "../../outputs/abstract/Output"
 import { db } from "../../prismaClient"
@@ -10,6 +11,7 @@ import { ConfigType, DatadogConfig } from "../../shared/Configs"
 import { IntegrationType } from "../../shared/Integrations"
 import { AgentKnowledgeBaseWithConfigs, PrismaTransaction, User } from "../../types/prisma"
 import { Session } from "../../types/session"
+import { DatadogConfigSchema, stripConfigForValidation } from "../../utility/configSchemas"
 import { KnowledgeBase } from "../abstract/KnowledgeBase"
 
 import { aggregateRumEventsTool } from "./tools/aggregateRumEvents"
@@ -73,24 +75,9 @@ export class DatadogKnowledgeBase extends KnowledgeBase<DatadogConfig> {
     }
 
     async validateConfig(knowledgeBase: DatadogConfig, userId: string): Promise<void> {
-        // Check that the config is complete
-        if (!knowledgeBase.isComplete()) {
-            throw new Error("Datadog config is incomplete: integrationId is required")
-        }
-
-        // Check that the integration exists
-        const integration = await db().datadog_integrations.findUnique({
-            where: { id: knowledgeBase.integrationId }
-        })
-
-        if (!integration) {
-            throw new Error(`Datadog integration not found: ${knowledgeBase.integrationId}`)
-        }
-
-        // Validate that defaultIndexes is a valid array
-        if (knowledgeBase.defaultIndexes && !Array.isArray(knowledgeBase.defaultIndexes)) {
-            throw new Error("Datadog config defaultIndexes must be an array")
-        }
+        DatadogConfigSchema.parse(stripConfigForValidation(knowledgeBase))
+        const indexes = knowledgeBase.defaultIndexes?.length ? knowledgeBase.defaultIndexes : ["main"]
+        await validateDatadogIndexesExist(knowledgeBase.integrationId, indexes)
     }
 
     /**

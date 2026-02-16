@@ -1,3 +1,4 @@
+import { Client } from "@notionhq/client"
 import { Request, Response } from "express"
 import jwt from "jsonwebtoken"
 
@@ -275,5 +276,80 @@ export class NotionIntegrationManager implements Integration<NotionIntegration, 
             logger.error(`Error getting Notion access token for integration ${integrationId}`, { error, integrationId })
             return null
         }
+    }
+}
+
+export async function getNotionAccessTokenForOrganization(integrationId: string, organizationId: string): Promise<string> {
+    const notionIntegration = await db().notion_integrations.findUnique({
+        where: { id: integrationId, organization_id: organizationId }
+    })
+    if (!notionIntegration) {
+        throw new Error(`Notion integration not found for integrationId: ${integrationId}`)
+    }
+
+    const manager = new NotionIntegrationManager()
+    const accessToken = await manager.getAccessToken(notionIntegration.id)
+    if (!accessToken) {
+        throw new Error(`Notion integration not found or access denied for integrationId: ${integrationId}`)
+    }
+
+    return accessToken
+}
+
+/**
+ * Returns the Notion access token for the given integration. Use once then pass to validateNotionDatabasesExist / validateNotionPagesExist.
+ */
+export async function getNotionAccessTokenOrThrow(integrationId: string): Promise<string> {
+    const manager = new NotionIntegrationManager()
+    const accessToken = await manager.getAccessToken(integrationId)
+    if (!accessToken) {
+        throw new Error(`Notion integration ${integrationId} not found or missing access token`)
+    }
+    return accessToken
+}
+
+/**
+ * Verifies that the given Notion databases exist and are accessible (bulk, parallel).
+ */
+export async function validateNotionDatabasesExist(accessToken: string, databaseIds: string[]): Promise<void> {
+    if (!databaseIds.length) return
+    const notion = new Client({ auth: accessToken })
+    const results = await Promise.all(
+        databaseIds.map(async databaseId => {
+            try {
+                await notion.dataSources.retrieve({ data_source_id: databaseId })
+                return { databaseId, ok: true }
+            } catch {
+                return { databaseId, ok: false }
+            }
+        })
+    )
+    const missing = results.filter(r => !r.ok).map(r => r.databaseId)
+    if (missing.length > 0) {
+        logger.error(`Notion database(s) not accessible`, { databaseIds: missing })
+        throw new Error(`Notion database(s) not found or not accessible: ${missing.join(", ")}`)
+    }
+}
+
+/**
+ * Verifies that the given Notion pages exist and are accessible (bulk, parallel).
+ */
+export async function validateNotionPagesExist(accessToken: string, pageIds: string[]): Promise<void> {
+    if (!pageIds.length) return
+    const notion = new Client({ auth: accessToken })
+    const results = await Promise.all(
+        pageIds.map(async pageId => {
+            try {
+                await notion.pages.retrieve({ page_id: pageId })
+                return { pageId, ok: true }
+            } catch {
+                return { pageId, ok: false }
+            }
+        })
+    )
+    const missing = results.filter(r => !r.ok).map(r => r.pageId)
+    if (missing.length > 0) {
+        logger.error(`Notion page(s) not accessible`, { pageIds: missing })
+        throw new Error(`Notion page(s) not found or not accessible: ${missing.join(", ")}`)
     }
 }
