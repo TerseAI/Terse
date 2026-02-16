@@ -404,7 +404,6 @@ model attio_integrations {
   user_id         String
   organization_id String
   access_token    String
-  workspace_name  String?
   created_at      DateTime @default(now())
   updated_at      DateTime @updatedAt
 

@@ -27,13 +27,13 @@ export class AttioIntegrationManager implements Integration<AttioIntegration, ne
             where: { organization_id: organizationId },
             select: {
                 id: true,
-                workspace_name: true
+                access_token: true
             }
         })
-        return integrations.map(i => ({
+        return Promise.all(integrations.map(async i => ({
             id: i.id,
-            workspaceName: i.workspace_name || undefined
-        }))
+            workspaceName: await this.fetchWorkspaceName(i.access_token)
+        })))
     }
 
     formatIntegrationInstanceForAgent(instance: AttioIntegration): string {
@@ -49,13 +49,13 @@ export class AttioIntegrationManager implements Integration<AttioIntegration, ne
         const integrations = await db().attio_integrations.findMany({
             select: {
                 id: true,
-                workspace_name: true
+                access_token: true
             }
         })
-        return integrations.map(i => ({
+        return Promise.all(integrations.map(async i => ({
             id: i.id,
-            workspaceName: i.workspace_name || undefined
-        }))
+            workspaceName: await this.fetchWorkspaceName(i.access_token)
+        })))
     }
 
     async processWebhookEvent(event: never): Promise<void> {
@@ -142,25 +142,8 @@ export class AttioIntegrationManager implements Integration<AttioIntegration, ne
             const tokenData = await tokenResponse.json()
             const { access_token } = tokenData
 
-            // Fetch workspace info to get workspace name
-            let workspaceName: string | null = null
-            try {
-                const workspaceResponse = await fetch("https://api.attio.com/v2/self", {
-                    headers: {
-                        Authorization: `Bearer ${access_token}`
-                    }
-                })
-                if (workspaceResponse.ok) {
-                    const workspaceData = await workspaceResponse.json()
-                    workspaceName = workspaceData?.data?.workspace?.name || null
-                }
-            } catch (wsError) {
-                logger.warn("Failed to fetch Attio workspace info", { error: wsError })
-            }
-
             logger.info("Received Attio access token for user", {
-                userId: decoded.userId,
-                workspaceName: workspaceName || "Unknown"
+                userId: decoded.userId
             })
 
             // Check if a connection for this organization already exists
@@ -176,8 +159,7 @@ export class AttioIntegrationManager implements Integration<AttioIntegration, ne
                     data: {
                         user_id: decoded.userId,
                         organization_id: decoded.organizationId,
-                        access_token: access_token,
-                        workspace_name: workspaceName
+                        access_token: access_token
                     }
                 })
                 integrationId = newIntegration.id
@@ -186,21 +168,18 @@ export class AttioIntegrationManager implements Integration<AttioIntegration, ne
                     where: { id: existing.id },
                     data: {
                         access_token: access_token,
-                        workspace_name: workspaceName,
                         organization_id: decoded.organizationId
                     }
                 })
                 integrationId = existing.id
                 logger.info("Updated Attio connection token", {
-                    workspaceName: workspaceName || "Workspace",
                     integrationId: existing.id,
                     userId: decoded.userId
                 })
             }
 
             logger.info("Attio OAuth completed for user", {
-                userId: decoded.userId,
-                workspaceName: workspaceName || "Unknown"
+                userId: decoded.userId
             })
 
             integrationTaskQueue.emit(new IntegrationCompletedTask(IntegrationType.ATTIO, integrationId, decoded.userId, decoded, new Date()))
@@ -227,6 +206,21 @@ export class AttioIntegrationManager implements Integration<AttioIntegration, ne
     async refreshToken(integrationId: string): Promise<boolean> {
         // Attio OAuth doesn't use refresh tokens
         return false
+    }
+
+    private async fetchWorkspaceName(accessToken: string): Promise<string | undefined> {
+        try {
+            const response = await fetch("https://api.attio.com/v2/self", {
+                headers: { Authorization: `Bearer ${accessToken}` }
+            })
+            if (response.ok) {
+                const data = await response.json()
+                return data?.data?.workspace?.name || undefined
+            }
+        } catch (error) {
+            logger.warn("Failed to fetch Attio workspace info", { error })
+        }
+        return undefined
     }
 
     async getAccessToken(integrationId: string): Promise<string | null> {
