@@ -91,11 +91,7 @@ The tool returns the source events (e.g., Slack messages, emails) that led to th
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : "Unknown error"
             logger.error("Error fetching related events", { block_id, userId: runContext?.context?.user.displayName, error })
-            return {
-                success: false,
-                error: errorMessage,
-                hint: "Failed to fetch related events. The block may still be modified, but without historical context."
-            }
+            throw new Error(`${errorMessage}. Failed to fetch related events. The block may still be modified, but without historical context.`)
         }
     }
 })

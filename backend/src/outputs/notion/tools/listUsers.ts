@@ -76,13 +76,9 @@ Use the returned user IDs in people property format:
                 actions: [action]
             }
         } catch (error: unknown) {
-            const errorMessage = await formatError(runContext!, error)
+            const errorMessage = error instanceof Error ? error.message : String(error)
             logger.error("Error listing Notion users", { error: errorMessage, integrationId })
-            return {
-                success: false,
-                error: errorMessage,
-                hint: "Check that the Notion integration is connected and has access to the workspace."
-            }
+            throw new Error(`${errorMessage}. Check that the Notion integration is connected and has access to the workspace.`)
         }
     },
     errorFunction: formatError

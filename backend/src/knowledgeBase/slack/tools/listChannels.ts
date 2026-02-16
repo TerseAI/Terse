@@ -51,11 +51,7 @@ Supports pagination: if the response includes nextCursor and hasMore, pass nextC
             })
 
             if (!userSlackIntegration) {
-                return {
-                    success: false,
-                    error: `Slack integration not found or access denied: ${integrationId}`,
-                    hint: "Ensure the integration ID is correct and belongs to your account."
-                }
+                throw new Error(`Slack integration not found or access denied: ${integrationId}. Ensure the integration ID is correct and belongs to your account.`)
             }
 
             const client = initializeSlackWebClient(userSlackIntegration)
@@ -111,13 +107,11 @@ Supports pagination: if the response includes nextCursor and hasMore, pass nextC
                 actions: [action]
             }
         } catch (error: unknown) {
-            const errorMessage = await formatError(runContext!, error)
+            const errorMessage = error instanceof Error ? error.message : String(error)
             logger.error("❌ Error listing Slack channels", { error: errorMessage, integrationId })
-            return {
-                success: false,
-                error: errorMessage,
-                hint: "Check that the Slack integration is connected and has the required scopes (channels:read, groups:read, im:read, mpim:read)."
-            }
+            throw new Error(
+                `${errorMessage}. Check that the Slack integration is connected and has the required scopes (channels:read, groups:read, im:read, mpim:read).`
+            )
         }
     },
     errorFunction: formatError

@@ -44,13 +44,9 @@ export const linearGetTeamsTool = tool({
                 actions: [action]
             }
         } catch (error: unknown) {
-            const errorMessage = await formatError(runContext!, error)
+            const errorMessage = error instanceof Error ? error.message : String(error)
             logger.error("❌ Error listing Linear teams", { error: errorMessage, integrationId })
-            return {
-                success: false,
-                error: errorMessage,
-                hint: "Check that the access token is valid and has the necessary permissions"
-            }
+            throw new Error(`${errorMessage}. Check that the access token is valid and has the necessary permissions.`)
         }
     },
     errorFunction: formatError

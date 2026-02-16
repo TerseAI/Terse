@@ -55,13 +55,9 @@ Returns non-bot members. Optionally filter by name with the query parameter.`,
                 actions: [action]
             }
         } catch (error: unknown) {
-            const errorMessage = await formatError(runContext!, error)
+            const errorMessage = error instanceof Error ? error.message : String(error)
             logger.error("❌ Error listing Slack users", { error: errorMessage, integrationId })
-            return {
-                success: false,
-                error: errorMessage,
-                hint: "Check that the Slack integration is connected and has the required scopes (users:read)."
-            }
+            throw new Error(`${errorMessage}. Check that the Slack integration is connected and has the required scopes (users:read).`)
         }
     },
     errorFunction: formatError

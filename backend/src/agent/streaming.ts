@@ -129,24 +129,74 @@ export function tryExtractToolCall(event: RunStreamEvent, toolToIntegrationMap?:
 }
 
 /**
- * Extracts the output string from a tool output item, handling various formats.
+ * Normalizes tool output across SDK variants.
+ * - If output is a JSON string, parse it into an object
+ * - If output is OpenAI text wrapper ({ type: "text", text: "..." }), unwrap it
  */
-function extractOutputString(rawItem: any, item: RunToolCallOutputItem): string | null {
+function extractActualOutput(rawItem: any, item: RunToolCallOutputItem): unknown {
     const topLevelOutput = (item as any).output
     let actualOutput = rawItem.output ?? topLevelOutput
 
-    // Handle OpenAI Agents SDK output format: {type: "text", text: "..."}
+    // Handle OpenAI Agents SDK output format: { type: "text", text: "..." }
     if (actualOutput && typeof actualOutput === "object" && "text" in actualOutput && typeof actualOutput.text === "string") {
         actualOutput = actualOutput.text
     }
 
-    return typeof actualOutput === "string" ? actualOutput : null
+    if (typeof actualOutput === "string") {
+        try {
+            return JSON.parse(actualOutput)
+        } catch {
+            return actualOutput
+        }
+    }
+
+    return actualOutput
 }
 
 /**
- * Extracts error context from tool output, checking for serialized errors and status-based failures.
+ * Extracts a string representation of tool output for chat display.
  */
-function extractErrorContext(outputString: string | null, status: string | undefined): ErrorContext | undefined {
+function extractOutputString(actualOutput: unknown): string | null {
+    if (typeof actualOutput === "string") return actualOutput
+    if (actualOutput === null || actualOutput === undefined) return null
+    try {
+        return JSON.stringify(actualOutput)
+    } catch {
+        return null
+    }
+}
+
+function extractStructuredFailure(actualOutput: unknown): ErrorContext | undefined {
+    if (!actualOutput || typeof actualOutput !== "object") return undefined
+
+    const output = actualOutput as Record<string, unknown>
+    const explicitlyFailed = output.success === false || output.ok === false
+    if (!explicitlyFailed) return undefined
+
+    const rawError = output.error ?? output.message ?? "Tool returned success=false"
+    if (typeof rawError === "string" && detectSerializedError(rawError)) {
+        return parseSerializedError(rawError)
+    }
+
+    return {
+        context: {} as any,
+        error: rawError
+    }
+}
+
+/**
+ * Extracts error context from tool output, checking for:
+ * - explicit structured failures ({ success: false, error: ... })
+ * - serialized errors ([TERSE ERROR]:...)
+ * - status-based failures (incomplete/failed)
+ */
+function extractErrorContext(actualOutput: unknown, outputString: string | null, status: string | undefined): ErrorContext | undefined {
+    // Structured outputs can indicate failure while status is still "completed".
+    const structuredFailure = extractStructuredFailure(actualOutput)
+    if (structuredFailure) {
+        return structuredFailure
+    }
+
     if (!outputString) {
         // Check if status indicates failure even without output
         if (status === "incomplete" || status === "failed") {
@@ -179,37 +229,14 @@ function extractErrorContext(outputString: string | null, status: string | undef
  * Tools can return { result, actions: [...] } and we extract the actions array.
  * The SDK may stringify the output, so we need to handle both object and string formats.
  */
-function extractActionsFromOutput(rawItem: any, item: RunToolCallOutputItem): RunHistoryAction[] | undefined {
-    // Try to get the raw output object (before stringification)
-    const topLevelOutput = (item as any).output
-    let actualOutput = rawItem.output ?? topLevelOutput
-
-    // If output is a string, try to parse it as JSON first
-    if (typeof actualOutput === "string") {
-        try {
-            actualOutput = JSON.parse(actualOutput)
-        } catch {
-            // Not JSON, return undefined
-            return undefined
-        }
+function extractActionsFromOutput(actualOutput: unknown): RunHistoryAction[] | undefined {
+    if (!actualOutput || typeof actualOutput !== "object") {
+        return undefined
     }
 
-    // Handle OpenAI Agents SDK output format: {type: "text", text: "..."}
-    if (actualOutput && typeof actualOutput === "object" && "text" in actualOutput && typeof actualOutput.text === "string") {
-        // Try to parse the text as JSON in case it contains the actions
-        try {
-            const parsed = JSON.parse(actualOutput.text)
-            if (parsed && typeof parsed === "object" && Array.isArray(parsed.actions)) {
-                return parsed.actions
-            }
-        } catch {
-            // Not JSON, continue
-        }
-    }
-
-    // Check if output is an object with actions property
-    if (actualOutput && typeof actualOutput === "object" && Array.isArray(actualOutput.actions)) {
-        return actualOutput.actions
+    const output = actualOutput as { actions?: unknown }
+    if (Array.isArray(output.actions)) {
+        return output.actions as RunHistoryAction[]
     }
 
     return undefined
@@ -220,10 +247,11 @@ export function tryExtractToolCallCompleteData(event: RunStreamEvent): ToolCallC
         const item = event.item as RunToolCallOutputItem
         const rawItem = item.rawItem as FunctionCallResultItem
 
-        const outputString = extractOutputString(rawItem, item)
+        const actualOutput = extractActualOutput(rawItem, item)
+        const outputString = extractOutputString(actualOutput)
         const status = rawItem.status as string | undefined
-        const errorContext = extractErrorContext(outputString, status)
-        const actions = extractActionsFromOutput(rawItem, item)
+        const errorContext = extractErrorContext(actualOutput, outputString, status)
+        const actions = extractActionsFromOutput(actualOutput)
 
         // Handle function call results (including hosted tool calls)
         if (rawItem.type === "function_call_result") {
