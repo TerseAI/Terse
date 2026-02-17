@@ -77,6 +77,7 @@ export default function RunHistoryChatAdapter({ runId, status, children }: RunHi
             initialTurns={turns}
             subscribeToEvents={subscribeToEvents}
             sendMessage={sendMessage}
+            addUserTurnsLocally={true}
             onHandleApprove={handleApprove}
             onHandleReject={handleReject}
             EmptyContentPlaceholder={

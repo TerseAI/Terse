@@ -22,7 +22,6 @@ import { Session } from "./server"
 import { ApprovalProcessingStatus, ApprovalService } from "./services/ApprovalService"
 import { ConfigInstance } from "./shared/Configs"
 import { SendModelRequest, ToolApprovalResponse } from "./shared/ModelEvents"
-import { ModelEvent } from "./shared/ModelEvents"
 import { type RunHistoryModelEvent, type RunHistoryModelSocketEvent, RunHistoryStatus } from "./shared/RunHistoryTypes"
 import { SocketEvents, SocketRooms } from "./shared/SocketEvents"
 import { registerBuilderChatHandler } from "./socketHandlers/builderChatHandler"
@@ -257,25 +256,6 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
                     where: { id: runId },
                     data: { status: RunHistoryStatus.IN_PROGRESS }
                 })
-            }
-            const userMessageEvent: ModelEvent = {
-                type: "UserMessage",
-                message: userMessage
-            }
-            const userMessageTimestamp = new Date()
-
-            if (io && organizationId) {
-                const runHistoryModelEvent: RunHistoryModelEvent = {
-                    ...userMessageEvent,
-                    id: `user-message-${Date.now()}`, // TODO: is there a better ID to use?
-                    timestamp: userMessageTimestamp.getTime()
-                }
-                const payload: RunHistoryModelSocketEvent = {
-                    runId,
-                    agentId: agent.id,
-                    runHistoryModelEvent
-                }
-                io.to(SocketRooms.organization(organizationId)).emit(SocketEvents.AGENT_CHAT_EVENT, payload)
             }
             if (organizationId) {
                 emitCacheInvalidationWithWildcard(organizationId, "runHistory", agent.id)

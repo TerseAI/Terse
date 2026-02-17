@@ -88,6 +88,7 @@ export default function RunHistoryChatDrawer({
                                                     initialTurns={initialTurns}
                                                     subscribeToEvents={subscribeToEvents}
                                                     sendMessage={sendMessage}
+                                                    addUserTurnsLocally={true}
                                                     onHandleApprove={handleApprove}
                                                     onHandleReject={handleReject}
                                                     EmptyContentPlaceholder={

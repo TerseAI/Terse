@@ -1070,8 +1070,8 @@ model directive_records {
   is_active                 Boolean  @default(true)
   created_at                DateTime @default(now())
 
-  automation             automations             @relation(fields: [automation_id], references: [id], onDelete: Cascade)
-  run_history_record     run_history_records     @relation(fields: [run_history_record_id], references: [id], onDelete: Cascade)
+  automation             automations              @relation(fields: [automation_id], references: [id], onDelete: Cascade)
+  run_history_record     run_history_records      @relation(fields: [run_history_record_id], references: [id], onDelete: Cascade)
   run_history_chat_event run_history_chat_events? @relation(fields: [run_history_chat_event_id], references: [id], onDelete: SetNull)
 
   @@index([automation_id])

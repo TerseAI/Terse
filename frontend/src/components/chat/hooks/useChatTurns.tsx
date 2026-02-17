@@ -174,22 +174,30 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
         })
     }
 
+    const findAssistantTurnIndexByStepId = (turns: Turn[], stepId: string): number => {
+        for (let i = turns.length - 1; i >= 0; i--) {
+            if (turns[i].role === "assistant" && turns[i].step_id === stepId) {
+                return i
+            }
+        }
+        return -1
+    }
+
     const handleToolCallGenerating = ({ tool_name, step_id, timestamp }: ToolCallGenerating & Pick<ModelEvent, "timestamp">) => {
         // Track current step_id
         currentStepIdRef.current = step_id
 
         setTurns(prev => {
             const updated = [...prev]
-            const last = updated[updated.length - 1]
+            const targetTurnIndex = findAssistantTurnIndexByStepId(updated, step_id)
 
-            // If last turn is an assistant turn, add generating tool call to it
-            if (last && last.role === "assistant") {
-                // Check if this tool call already exists
-                const existingCallIndex = last.function_calls.findIndex(call => call.id === step_id)
+            if (targetTurnIndex !== -1) {
+                const targetTurn = updated[targetTurnIndex]
+                const existingCallIndex = targetTurn.function_calls.findIndex(call => call.id === step_id)
+                const nextCalls = [...targetTurn.function_calls]
 
                 if (existingCallIndex === -1) {
-                    // Add new tool call in generating state
-                    last.function_calls.push({
+                    nextCalls.push({
                         id: step_id,
                         name: tool_name,
                         timestamp,
@@ -199,11 +207,15 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
                         isWaitingForUserInput: false
                     })
                 }
-                last.isGenerating = true
+
+                updated[targetTurnIndex] = {
+                    ...targetTurn,
+                    function_calls: nextCalls,
+                    isGenerating: true
+                }
                 return updated
             }
 
-            // Otherwise create new assistant turn
             return [
                 ...updated,
                 {
@@ -233,24 +245,22 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
 
         setTurns(prev => {
             const updated = [...prev]
-            const last = updated[updated.length - 1]
+            const targetTurnIndex = findAssistantTurnIndexByStepId(updated, step_id)
 
-            // If last turn is an assistant turn, add tool call to it
-            if (last && last.role === "assistant") {
-                // Check if this tool call already exists (by step_id which is the unique call ID)
-                const existingCallIndex = last.function_calls.findIndex(call => call.id === step_id)
+            if (targetTurnIndex !== -1) {
+                const targetTurn = updated[targetTurnIndex]
+                const existingCallIndex = targetTurn.function_calls.findIndex(call => call.id === step_id)
+                const nextCalls = [...targetTurn.function_calls]
 
                 if (existingCallIndex !== -1) {
-                    // Update existing tool call - transition from generating to running (preserves original timestamp via spread)
-                    last.function_calls[existingCallIndex] = {
-                        ...last.function_calls[existingCallIndex],
+                    nextCalls[existingCallIndex] = {
+                        ...nextCalls[existingCallIndex],
                         isGeneratingParams: false,
                         isRunning: true,
                         parameters
                     }
                 } else {
-                    // Add new tool call (in case we missed the generating event)
-                    last.function_calls.push({
+                    nextCalls.push({
                         id: step_id,
                         name: summary,
                         timestamp,
@@ -261,11 +271,15 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
                         parameters
                     })
                 }
-                last.isGenerating = true
+
+                updated[targetTurnIndex] = {
+                    ...targetTurn,
+                    function_calls: nextCalls,
+                    isGenerating: true
+                }
                 return updated
             }
 
-            // Otherwise create new assistant turn
             return [
                 ...updated,
                 {
@@ -296,13 +310,11 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
 
         setTurns(prev => {
             const updated = [...prev]
-            // Find the tool call that needs approval
             for (const turn of updated) {
                 const toolCall = turn.function_calls.find(call => call.id === step_id)
                 if (toolCall) {
                     toolCall.isRunning = false
                     toolCall.isWaitingForApproval = true
-                    break
                 }
             }
             return updated
@@ -323,7 +335,7 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
                         toolCall.isRunning = true
                         toolCall.isWaitingForApproval = false
                         toolCall.isApproved = true
-                        break
+                        toolCall.isRejected = false
                     }
                 }
                 return updated
@@ -338,7 +350,7 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
                         toolCall.isRunning = false
                         toolCall.isWaitingForApproval = false
                         toolCall.isRejected = true
-                        break
+                        toolCall.isApproved = false
                     }
                 }
                 return updated
@@ -368,28 +380,28 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
             const updated = [...prev]
             let foundExistingCall = false
 
-            // Search through all turns to find the tool call
+            // Search through all turns and update any matching tool call IDs.
             for (let i = 0; i < updated.length; i++) {
                 const turn = updated[i]
-                const toolCallIndex = turn.function_calls.findIndex(call => call.id === step_id)
-                if (toolCallIndex === -1) continue
+                let didUpdateTurn = false
+                const nextCalls = turn.function_calls.map(call => {
+                    if (call.id !== step_id) return call
+                    didUpdateTurn = true
+                    foundExistingCall = true
+                    return {
+                        ...call,
+                        isRunning: false,
+                        isWaitingForApproval: false,
+                        isWaitingForUserInput: false,
+                        ...(result ? { result } : {}),
+                        ...(errorContext ? { isFailure: true, errorContext } : {}),
+                        ...(changed_items ? { changed_items } : {})
+                    }
+                })
 
-                const existingCall = turn.function_calls[toolCallIndex]
-                const nextCall = {
-                    ...existingCall,
-                    isRunning: false,
-                    isWaitingForApproval: false,
-                    isWaitingForUserInput: false,
-                    ...(result ? { result } : {}),
-                    ...(errorContext ? { isFailure: true, errorContext } : {}),
-                    ...(changed_items ? { changed_items } : {})
+                if (didUpdateTurn) {
+                    updated[i] = { ...turn, function_calls: nextCalls }
                 }
-
-                const nextCalls = [...turn.function_calls]
-                nextCalls[toolCallIndex] = nextCall
-                updated[i] = { ...turn, function_calls: nextCalls }
-                foundExistingCall = true
-                break
             }
 
             if (foundExistingCall) {

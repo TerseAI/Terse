@@ -1,5 +1,5 @@
-import { AgentInputItem } from "@openai/agents-core"
 import { Agent } from "@openai/agents"
+import { AgentInputItem } from "@openai/agents-core"
 import { z } from "zod"
 
 import { settings } from "../../config/settings"
@@ -8,8 +8,8 @@ import { db } from "../../prismaClient"
 import { IntegrationType } from "../../shared/Integrations"
 import { ToolCall } from "../../shared/ModelEvents"
 import { User } from "../../shared/types"
-import { convertAgentInputItemsToModelEvents } from "../agentInputItemsToModelEvents"
 import { RunHistoryChatMemorySession, identityHistoryCallback } from "../CustomMemorySession"
+import { convertAgentInputItemsToModelEvents } from "../agentInputItemsToModelEvents"
 import { AgentType, builderProviderDataModelSettings, runnerFactory } from "../runner"
 
 const ApprovalSummaryClassification = z.object({
@@ -177,7 +177,7 @@ function findToolCallFromRawFunctionCallItems(items: AgentInputItem[], stepId: s
         const maybeCallId = getCallId(item)
         if (!maybeCallId || maybeCallId !== stepId) continue
 
-        const summary = typeof (item as { name?: unknown }).name === "string" ? ((item as { name: string }).name || "unknown") : "unknown"
+        const summary = typeof (item as { name?: unknown }).name === "string" ? (item as { name: string }).name || "unknown" : "unknown"
         const argumentsValue = (item as { arguments?: unknown }).arguments
         const parameters = typeof argumentsValue === "string" ? argumentsValue : "{}"
 
