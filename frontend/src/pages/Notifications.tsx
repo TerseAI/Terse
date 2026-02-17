@@ -40,7 +40,7 @@ function NotificationChannelList({ notificationDestinations }: { notificationDes
                             <Bell className="text-primary" />
                         </EmptyMedia>
                         <EmptyTitle>No notification destinations found</EmptyTitle>
-                        <EmptyDescription>Add a notification destination to be notified when a background agent makes a change.</EmptyDescription>
+                        <EmptyDescription>Add a Slack channel or one individual DM destination to be notified when a background agent makes a change.</EmptyDescription>
                         <AddNotificationDestination />
                     </EmptyHeader>
                 </Empty>

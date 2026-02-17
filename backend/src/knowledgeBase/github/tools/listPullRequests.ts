@@ -168,17 +168,13 @@ Dates are specified in YYYY-MM-DD format (e.g., "2024-01-15"). The since date is
                 actions: [action]
             }
         } catch (error: any) {
+            const errorMessage = error instanceof Error ? error.message : String(error)
             logger.error("[GitHub KB] listGitHubPullRequests - Failed", {
                 repository,
-                error: error.message,
-                stack: error.stack
+                error: errorMessage,
+                stack: error instanceof Error ? error.stack : undefined
             })
-            return {
-                success: false,
-                error: error.message,
-                repository,
-                tip: "If you're getting rate limit errors, try reducing perPage or narrowing the time window."
-            }
+            throw new Error(`${errorMessage}. If you're getting rate limit errors, try reducing perPage or narrowing the time window.`)
         }
     }
 })

@@ -215,21 +215,17 @@ Start with the root directory (empty path) to see the top-level structure, then 
                 }
             }
         } catch (error: any) {
+            const errorMessage = error instanceof Error ? error.message : String(error)
             logger.error("[GitHub KB] listGitHubDirectory - Failed", {
                 repository,
                 path: path || "(root)",
-                error: error.message,
-                stack: error.stack
+                error: errorMessage,
+                stack: error instanceof Error ? error.stack : undefined
             })
-            return {
-                success: false,
-                error: error.message,
-                repository,
-                path: path || "(root)",
-                tip: error.message.includes("not a directory")
-                    ? "This path is a file. Use readGitHubFile to read its contents."
-                    : "Check that the path exists. Use an empty path to list the root directory."
-            }
+            const tip = errorMessage.includes("not a directory")
+                ? "This path is a file. Use readGitHubFile to read its contents."
+                : "Check that the path exists. Use an empty path to list the root directory."
+            throw new Error(`${errorMessage}. ${tip}`)
         }
     }
 })

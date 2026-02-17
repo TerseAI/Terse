@@ -174,17 +174,13 @@ Tips:
                 actions: [action]
             }
         } catch (error: any) {
+            const errorMessage = error instanceof Error ? error.message : String(error)
             logger.error("[GitHub KB] searchGitHubCode - Failed", {
                 query: enhancedQuery,
-                error: error.message,
-                stack: error.stack
+                error: errorMessage,
+                stack: error instanceof Error ? error.stack : undefined
             })
-            return {
-                success: false,
-                error: error.message,
-                query: enhancedQuery,
-                tip: "If the search query is too complex, try simplifying it. Use specific function names or class names."
-            }
+            throw new Error(`${errorMessage}. If the search query is too complex, try simplifying it. Use specific function names or class names.`)
         }
     }
 })

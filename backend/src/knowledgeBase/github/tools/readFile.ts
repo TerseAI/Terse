@@ -146,21 +146,17 @@ Note: This reads from the default branch (main/master). Large files may be trunc
                 actions: [action]
             }
         } catch (error: any) {
+            const errorMessage = error instanceof Error ? error.message : String(error)
             logger.error("[GitHub KB] readGitHubFile - Failed", {
                 repository,
                 path,
-                error: error.message,
-                stack: error.stack
+                error: errorMessage,
+                stack: error instanceof Error ? error.stack : undefined
             })
-            return {
-                success: false,
-                error: error.message,
-                repository,
-                path,
-                tip: error.message.includes("not a file")
-                    ? "This path is a directory. Use listGitHubDirectory to see its contents."
-                    : "Check that the file path is correct. Use searchGitHubCode to find files."
-            }
+            const tip = errorMessage.includes("not a file")
+                ? "This path is a directory. Use listGitHubDirectory to see its contents."
+                : "Check that the file path is correct. Use searchGitHubCode to find files."
+            throw new Error(`${errorMessage}. ${tip}`)
         }
     }
 })

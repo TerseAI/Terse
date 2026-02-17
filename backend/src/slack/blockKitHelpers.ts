@@ -4,6 +4,8 @@ import { WebClient } from "@slack/web-api"
 import { ConfigurationFieldDefinition, FormFieldDefinition } from "../integrations/abstract/Integration"
 import logger from "../logger"
 
+import { SlackApprovalMessageStatus } from "./ApprovalStatus"
+
 /**
  * Creates a section block with markdown text
  */
@@ -233,7 +235,7 @@ export function createApprovalMessage(options: { channelName: string; summary: s
 export function createUpdatedApprovalMessage(options: {
     channelName: string
     summary: string
-    status: "approved" | "rejected" | "changes_requested" | "processing" | "failed"
+    status: SlackApprovalMessageStatus
     statusEmoji: string
     statusText: string
     runHistoryLink?: string
@@ -243,13 +245,13 @@ export function createUpdatedApprovalMessage(options: {
 
     // Determine status message
     let statusMessage: string
-    if (options.status === "approved") {
+    if (options.status === SlackApprovalMessageStatus.APPROVED) {
         statusMessage = "approved"
-    } else if (options.status === "rejected") {
+    } else if (options.status === SlackApprovalMessageStatus.REJECTED) {
         statusMessage = "rejected"
-    } else if (options.status === "changes_requested") {
+    } else if (options.status === SlackApprovalMessageStatus.CHANGES_REQUESTED) {
         statusMessage = "has changes requested"
-    } else if (options.status === "failed") {
+    } else if (options.status === SlackApprovalMessageStatus.FAILED) {
         statusMessage = "failed"
     } else {
         statusMessage = "is being processed"
@@ -281,8 +283,8 @@ export function createUpdatedApprovalMessage(options: {
     )
 
     // Add rejection reason / feedback section if available
-    if ((options.status === "rejected" || options.status === "changes_requested") && options.rejectionReason) {
-        const feedbackLabel = options.status === "changes_requested" ? "Feedback" : "Rejection Reason"
+    if ((options.status === SlackApprovalMessageStatus.REJECTED || options.status === SlackApprovalMessageStatus.CHANGES_REQUESTED) && options.rejectionReason) {
+        const feedbackLabel = options.status === SlackApprovalMessageStatus.CHANGES_REQUESTED ? "Feedback" : "Rejection Reason"
         blocks.push(createSectionBlock(`*${feedbackLabel}:*\n${options.rejectionReason}`))
     }
 
@@ -320,6 +322,37 @@ export function createNotificationMessage(options: { action: string; target: str
             createActionBlock([
                 createButton("View", "view_action", {
                     url: options.url
+                })
+            ])
+        )
+    }
+
+    return blocks
+}
+
+/**
+ * Creates a run failure notification message.
+ */
+export function createRunFailureNotificationMessage(options: { agentName: string; runId: string; errorSummary: string; runHistoryLink?: string }): KnownBlock[] {
+    const blocks: KnownBlock[] = []
+
+    const headerText = options.runHistoryLink ? `:x: *Run failed* in *<${options.runHistoryLink}|${options.agentName}>*` : `:x: *Run failed* in *${options.agentName}*`
+    blocks.push(createSectionBlock(headerText))
+
+    blocks.push(
+        createSectionBlock("", [
+            { label: "Agent", value: options.agentName },
+            { label: "Status", value: ":x: Failed" },
+            { label: "Run ID", value: `\`${options.runId}\`` },
+            { label: "Error", value: options.errorSummary }
+        ])
+    )
+
+    if (options.runHistoryLink) {
+        blocks.push(
+            createActionBlock([
+                createButton("Open Run History", "view_run_history", {
+                    url: options.runHistoryLink
                 })
             ])
         )

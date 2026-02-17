@@ -273,21 +273,17 @@ You can optionally provide high-level context about what you're looking for in t
                 actions: [action]
             }
         } catch (error: any) {
+            const errorMessage = error instanceof Error ? error.message : String(error)
             logger.error("[GitHub KB] summarizeGitHubPullRequestDiff - Failed", {
                 repository,
                 pullNumber,
-                error: error.message,
-                stack: error.stack
+                error: errorMessage,
+                stack: error instanceof Error ? error.stack : undefined
             })
-            return {
-                success: false,
-                error: error.message,
-                repository,
-                pullNumber,
-                tip: error.message.includes("not found")
-                    ? "Check that the PR number is correct. Use listGitHubPullRequests to find available PRs."
-                    : "Verify the repository name and PR number are correct."
-            }
+            const tip = errorMessage.includes("not found")
+                ? "Check that the PR number is correct. Use listGitHubPullRequests to find available PRs."
+                : "Verify the repository name and PR number are correct."
+            throw new Error(`${errorMessage}. ${tip}`)
         }
     }
 })

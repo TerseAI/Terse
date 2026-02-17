@@ -173,18 +173,14 @@ This is more precise than semantic search - use it when you know exactly what te
                 actions: [action]
             }
         } catch (error: any) {
+            const errorMessage = error instanceof Error ? error.message : String(error)
             logger.error("[GitHub KB] grepGitHubCode - Failed", {
                 pattern,
                 query,
-                error: error.message,
-                stack: error.stack
+                error: errorMessage,
+                stack: error instanceof Error ? error.stack : undefined
             })
-            return {
-                success: false,
-                error: error.message,
-                pattern,
-                tip: "If searching for special characters, they may need to be escaped. Try simplifying the pattern."
-            }
+            throw new Error(`${errorMessage}. If searching for special characters, they may need to be escaped. Try simplifying the pattern.`)
         }
     }
 })

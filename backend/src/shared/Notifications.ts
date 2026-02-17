@@ -19,6 +19,8 @@ export interface SlackNotificationDestination extends NotificationDestination {
     integrationId: string
     slackChannelId?: string
     slackChannelName?: string
+    slackUserId?: string
+    slackUserName?: string
 }
 
 export interface CreateNotificationDestinationRequest {
@@ -27,5 +29,7 @@ export interface CreateNotificationDestinationRequest {
     integrationId?: string
     slackChannelId?: string
     slackChannelName?: string
+    slackUserId?: string
+    slackUserName?: string
     isActive?: boolean
 }

@@ -4,24 +4,26 @@ import { jwtVerify } from "jose"
 import { createClient } from "redis"
 import { Server, Socket } from "socket.io"
 
-import { AgentRunner } from "./agent/AgentRunner/AgentRunner"
+import { AgentRunResultStatus, AgentRunner } from "./agent/AgentRunner/AgentRunner"
 import { RunContext } from "./agent/AgentRunner/SystemPromptBuilder"
 import { reportRunErrorToRun } from "./agent/AgentRunner/runErrorReporter"
-import { finalizeRunStatus, markRunFailed, storeChatEvent } from "./agent/AgentRunner/runHistory"
+import { evaluateCompletedRun, finalizeRunStatus, markRunFailed, storeChatEvent } from "./agent/AgentRunner/runHistory"
 import { DirectiveTask, directiveTaskQueue } from "./agent/DirectiveAgent/DirectiveAgent"
 import { classifyAgentError } from "./agent/agentErrorUtils"
 import { nodeEnv, optional, urls } from "./config/settings"
 import { KnowledgeBase } from "./knowledgeBase/abstract/KnowledgeBase"
 import { KnowledgeBaseFactory } from "./knowledgeBase/abstract/KnowledgeBaseFactory"
 import logger from "./logger"
+import { NotificationManager } from "./notifications/Notification"
 import { Output } from "./outputs/abstract/Output"
 import { OutputFactory } from "./outputs/abstract/OutputFactory"
 import { db } from "./prismaClient"
 import { Session } from "./server"
-import { ApprovalService } from "./services/ApprovalService"
+import { ApprovalProcessingStatus, ApprovalService } from "./services/ApprovalService"
 import { ConfigInstance } from "./shared/Configs"
 import { SendModelRequest, ToolApprovalResponse } from "./shared/ModelEvents"
 import { ModelEvent } from "./shared/ModelEvents"
+import { RunHistoryStatus } from "./shared/RunHistoryTypes"
 import { SocketEvents, SocketRooms } from "./shared/SocketEvents"
 import { registerBuilderChatHandler } from "./socketHandlers/builderChatHandler"
 import { AgentWithRelations } from "./types/prisma"
@@ -249,10 +251,10 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
             const userMessage = message.user_message
 
             // Ensure run status is 'in_progress' so streaming works
-            if (runRecord.status !== "in_progress") {
+            if (runRecord.status !== RunHistoryStatus.IN_PROGRESS) {
                 await db().run_history_records.update({
                     where: { id: runId },
-                    data: { status: "in_progress" }
+                    data: { status: RunHistoryStatus.IN_PROGRESS }
                 })
             }
             const userMessageEvent: ModelEvent = {
@@ -283,17 +285,39 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
                 const classified = classifyAgentError(error)
                 logger.error(`[agent:chat:message] Error running agent: ${classified.message}`, { error, runId, agentId: agent.id, userId })
                 await markRunFailedAndInvalidate(runId, classified.message, organizationId ?? undefined, agent.id)
+                try {
+                    await new NotificationManager(user, agent).notifyRunFailure(runId, classified.message)
+                } catch (notificationError) {
+                    logger.error("[agent:chat:message] Failed to send run failure notification", {
+                        error: notificationError,
+                        runId,
+                        agentId: agent.id,
+                        userId
+                    })
+                }
                 await reportRunErrorToRun({ runId, agentId: agent.id, organizationId: organizationId ?? "", classified, io })
                 return
             }
 
             // Finalize run status based on result, just like in EventProcessor
-            if (result.status === "completed") {
-                const hasFinalOutput = Boolean(result.result?.finalOutput)
+            if (result.status === AgentRunResultStatus.COMPLETED) {
+                const completion = evaluateCompletedRun(result.result?.finalOutput, result.endedWithToolFailure)
                 try {
-                    await finalizeRunStatus(runId, hasFinalOutput ? "success" : "failed")
+                    await finalizeRunStatus(runId, completion.status)
                     if (organizationId) {
                         emitCacheInvalidationWithWildcard(organizationId, "runHistory", agent.id)
+                    }
+                    if (!completion.isSuccessful) {
+                        try {
+                            await new NotificationManager(user, agent).notifyRunFailure(runId, completion.failureReason)
+                        } catch (notificationError) {
+                            logger.error("[agent:chat:message] Failed to send run failure notification", {
+                                error: notificationError,
+                                runId,
+                                agentId: agent.id,
+                                userId
+                            })
+                        }
                     }
                 } catch (e) {
                     logger.error("Failed to finalize run status", { error: e, runId })
@@ -325,7 +349,7 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
                 organizationId: organizationId ?? ""
             })
 
-            if (result.status === "failed" && result.error) {
+            if (result.status === ApprovalProcessingStatus.FAILED && result.error) {
                 logger.error(`[agent:chat:approval] Approval processing failed: ${result.error}`)
             } else {
                 logger.info(`[agent:chat:approval] Successfully processed approval for runId: ${runId}`)

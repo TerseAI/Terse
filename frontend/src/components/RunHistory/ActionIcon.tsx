@@ -1,6 +1,6 @@
 import { Calendar as CalendarIcon, Database, FileText, MessageSquare, XCircle } from "lucide-react"
 
-import type { RunHistoryStatus } from "../../shared/RunHistoryTypes"
+import { RunHistoryStatus } from "../../shared/RunHistoryTypes"
 
 type Props = {
     actionType: string
@@ -8,7 +8,7 @@ type Props = {
 }
 
 export default function ActionIcon({ actionType, status }: Props) {
-    if (status === "failed") return <XCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
+    if (status === RunHistoryStatus.FAILED) return <XCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
 
     const type = actionType.toLowerCase()
     if (type.includes("database")) return <Database className="w-4 h-4 text-purple-400 flex-shrink-0" />

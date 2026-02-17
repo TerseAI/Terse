@@ -344,9 +344,32 @@ cd frontend && pnpm run build
 - **Tool descriptions should be concise** - Single-line descriptions for agent tools
 - **Avoid repetition between tools and system prompts** - Tool descriptions are already available to the LLM, so system instructions should focus on workflow/strategy, not re-describe tools
 - **Always return actions** - Every successful tool execution must return actions in the `actions` array of the return value
+- **Tool failures should throw** - For normal failures, throw `Error` with a clear message (do not return `{ success: false }`)
 - **Create session-specific types** - Knowledge bases need custom session interfaces (e.g., `LaunchDarklyKnowledgeBaseSession`)
 - **Icons can be images** - Use JPEG/PNG in `public/` if SVG isn't available
 - **Type safety is critical** - TypeScript exhaustive checks will catch missing cases
+
+## Tool Error Handling Contract
+
+When designing or updating tools, follow this error handling contract:
+
+1. **Use exception-first failures**
+   - For normal failures (validation errors, auth errors, not found, API errors), throw `Error` with a clear, actionable message.
+   - Do not return `{ success: false, ... }` for these cases.
+
+2. **Keep successful returns explicit**
+   - Successful tool responses can return structured payloads and must include `actions` when an action occurred.
+   - Typical shape: `{ success: true, ..., actions: [...] }`.
+
+3. **Allow structured failure only for partial-result workflows**
+   - The only allowed exception is when partial progress must be returned in-band (for example, batch/multi-op tools like `notion_modify_blocks`).
+   - In those cases, returning `{ success: false, ... }` is acceptable only if partial progress data is included (for example: `failed_at_index`, `operations`, and accumulated `actions`).
+
+4. **Use `errorFunction` consistently**
+   - If a tool defines `errorFunction: formatError`, keep it.
+   - Prefer throwing errors in `catch` blocks rather than swallowing failures and returning failure payloads.
+
+This contract keeps run status reporting consistent and avoids false-success states when a terminal tool call fails.
 
 ## Tool Name and Write Approval Validation
 

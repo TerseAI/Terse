@@ -3,6 +3,8 @@ import type { AgentInputItem, AssistantMessageItem, FunctionCallItem, FunctionCa
 import { IntegrationType } from "../shared/Integrations"
 import { ModelEvent } from "../shared/ModelEvents"
 
+import { parseToolExecutionResult } from "./toolExecution"
+
 /** An AgentInputItem paired with the DB timestamp it was created at. */
 export type TimestampedAgentInputItem = {
     item: AgentInputItem
@@ -96,19 +98,18 @@ function convertSingleItem(item: AgentInputItem, toolToIntegrationMap?: Map<stri
     // Function call result - convert to ToolCallComplete
     if (isFunctionCallResultItem(item)) {
         const integration = toolToIntegrationMap?.get(item.name || "") || IntegrationType.TERSE
-        const output = extractTextFromFunctionResultOutput(item.output)
-        const hasError = item.status === "incomplete"
+        const parsed = parseToolExecutionResult(item.output, item.status)
 
         return [
             {
                 type: "ToolCallComplete",
                 tool_name: item.name || "unknown",
-                status: item.status || "completed",
+                status: parsed.status,
                 step_id: item.callId || item.id || "unknown",
                 changed_items: [], // Historical events don't have changed_items tracked
                 integration,
-                result: output || undefined,
-                ...(hasError ? { errorContext: { error: output || `Tool failed with status: ${item.status}` } } : {})
+                result: parsed.outputString || undefined,
+                ...(parsed.errorContext ? { errorContext: { error: parsed.errorContext.error } } : {})
             }
         ]
     }
@@ -160,24 +161,4 @@ function extractTextFromMessageContent(content: UserMessageItem["content"] | Ass
     }
 
     return ""
-}
-
-function extractTextFromFunctionResultOutput(output: FunctionCallResultItem["output"]): string | null {
-    if (typeof output === "string") {
-        return output
-    }
-
-    if (typeof output === "object" && output !== null) {
-        if ("type" in output && output.type === "text" && "text" in output) {
-            return output.text
-        }
-        // For other object types, try to stringify (may be helpful for debugging)
-        try {
-            return JSON.stringify(output)
-        } catch {
-            return null
-        }
-    }
-
-    return null
 }

@@ -17,7 +17,7 @@ import { FormSubmissionInput, isFormIntegrationInstallation, isOAuthIntegrationI
 import { INTEGRATION_REGISTRY } from "../integrations/abstract/IntegrationRegistry"
 import logger from "../logger"
 import { db } from "../prismaClient"
-import { ApprovalService } from "../services/ApprovalService"
+import { ApprovalProcessingStatus, ApprovalService } from "../services/ApprovalService"
 import { IntegrationType } from "../shared/Integrations"
 import { User } from "../shared/types"
 import { OAuthStatePayload, createOAuthStateToken } from "../utility/oauth"
@@ -419,7 +419,7 @@ export async function setupSlackBolt() {
                 organizationId
             })
 
-            if (result.status === "failed" && result.error) {
+            if (result.status === ApprovalProcessingStatus.FAILED && result.error) {
                 logger.error(`[Slack Approval] Approval processing failed: ${result.error}`)
             } else {
                 logger.info(`[Slack Approval] Successfully processed approve for runId: ${runId}, stepId: ${stepId}`)
@@ -650,7 +650,7 @@ export async function setupSlackBolt() {
                 hardReject: true
             })
 
-            if (result.status === "failed" && result.error) {
+            if (result.status === ApprovalProcessingStatus.FAILED && result.error) {
                 logger.error(`[Slack Approval] Hard reject processing failed: ${result.error}`)
             } else {
                 logger.info(`[Slack Approval] Successfully processed hard reject for runId: ${runId}, stepId: ${stepId}`)
@@ -798,7 +798,7 @@ export async function setupSlackBolt() {
                     rejectionReason: feedback.trim()
                 })
 
-                if (result.status === "failed" && result.error) {
+                if (result.status === ApprovalProcessingStatus.FAILED && result.error) {
                     logger.error(`[Slack Approval] Request changes processing failed: ${result.error}`)
                     await notifySubmitter(`Error processing request changes: ${result.error}`, approvalMessage.slack_channel_id)
                 } else {

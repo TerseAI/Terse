@@ -78,11 +78,7 @@ export const linearSearchTicketTool = tool({
         try {
             // Validate date filter parameters
             if ((dateAfter || dateBefore) && !dateFilterField) {
-                return {
-                    success: false,
-                    error: "dateFilterField is required when using dateAfter or dateBefore",
-                    hint: "Set dateFilterField to 'updatedAt' or 'createdAt' to specify which date field to filter on"
-                }
+                throw new Error("dateFilterField is required when using dateAfter or dateBefore. Set dateFilterField to 'updatedAt' or 'createdAt' to specify which date field to filter on.")
             }
 
             // Build filter options - combine state and date filters
@@ -192,13 +188,9 @@ export const linearSearchTicketTool = tool({
                 }
             }
         } catch (error: unknown) {
-            const errorMessage = await formatError(runContext!, error)
+            const errorMessage = error instanceof Error ? error.message : String(error)
             logger.error("❌ Error searching Linear issues", { error: errorMessage, searchTerm })
-            return {
-                success: false,
-                error: errorMessage,
-                hint: "Check that the access token is valid and has the necessary permissions"
-            }
+            throw new Error(`${errorMessage}. Check that the access token is valid and has the necessary permissions.`)
         }
     },
     errorFunction: formatError

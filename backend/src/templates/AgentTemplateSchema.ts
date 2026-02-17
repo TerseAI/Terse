@@ -73,7 +73,8 @@ const AgentPromptSchema = z
 const AgentNotificationSettingsSchema = z
     .object({
         enabled: z.boolean(),
-        actionTypes: z.array(z.enum(["create", "update", "delete", "read"] as const))
+        actionTypes: z.array(z.enum(["create", "update", "delete", "read"] as const)),
+        notifyOnRunFailure: z.boolean().optional().default(false)
     })
     .optional()
 

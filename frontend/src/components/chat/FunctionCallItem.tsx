@@ -5,6 +5,7 @@ import { CheckCircleIcon, CheckIcon, ClockIcon, NoSymbolIcon, PaperAirplaneIcon,
 import { useRunHistoryActions } from "../../hooks/useRunHistoryActions"
 import { EntityType } from "../../shared/Entities"
 import { ChangedItem } from "../../shared/ModelEvents"
+import { RunHistoryStatus } from "../../shared/RunHistoryTypes"
 import { getToolDisplayFromCall } from "../../utility/toolDisplayUtils"
 import RunHistoryActionItem from "../RunHistory/RunHistoryActionItem"
 import ToolCallParameters from "../ToolCallParameters"
@@ -54,7 +55,7 @@ function ToolActionsList({ actionIds, isTurnFailure }: { actionIds: string[]; is
                     runId={action.id}
                     index={index}
                     action={action}
-                    runStatus={isTurnFailure ? "failed" : "success"}
+                    runStatus={isTurnFailure ? RunHistoryStatus.FAILED : RunHistoryStatus.SUCCESS}
                     isExpanded={expandedActions.has(`${action.id}-action-${index}`)}
                     onToggle={toggleAction}
                 />

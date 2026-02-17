@@ -3,7 +3,14 @@ import { IntegrationType } from "./Integrations"
 import type { ModelEvent } from "./ModelEvents"
 import type { User } from "./types"
 
-export type RunHistoryStatus = "success" | "failed" | "skipped" | "in_progress" | "awaiting_approval"
+export enum RunHistoryStatus {
+    SUCCESS = "success",
+    FAILED = "failed",
+    SKIPPED = "skipped",
+    IN_PROGRESS = "in_progress",
+    AWAITING_APPROVAL = "awaiting_approval"
+}
+
 export type RunHistoryDecisionAction = "processed" | "skipped"
 export type RunHistoryActionType = "create" | "update" | "delete" | "read"
 

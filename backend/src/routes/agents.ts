@@ -86,12 +86,14 @@ async function upsertNotificationSettings(tx: PrismaTransaction, automationId: s
         where: { automation_id: automationId },
         update: {
             enabled: settings.enabled,
-            action_types: settings.actionTypes
+            action_types: settings.actionTypes,
+            notify_on_run_failure: settings.notifyOnRunFailure ?? false
         },
         create: {
             automation_id: automationId,
             enabled: settings.enabled,
-            action_types: settings.actionTypes
+            action_types: settings.actionTypes,
+            notify_on_run_failure: settings.notifyOnRunFailure ?? false
         }
     })
 }
@@ -885,7 +887,8 @@ function transformAgentToFrontendFormat(agent: AgentWithRelations & Partial<Agen
         notificationSettings: agent.notification_settings
             ? {
                   enabled: agent.notification_settings.enabled,
-                  actionTypes: agent.notification_settings.action_types
+                  actionTypes: agent.notification_settings.action_types,
+                  notifyOnRunFailure: agent.notification_settings.notify_on_run_failure
               }
             : undefined,
         toolApprovals: agent.tool_approvals.map((ta: any) => ta.tool_name),

@@ -145,17 +145,13 @@ The tool returns commit details including message, author, date, and SHA.`,
                 actions: [action]
             }
         } catch (error: any) {
+            const errorMessage = error instanceof Error ? error.message : String(error)
             logger.error("[GitHub KB] listGitHubCommits - Failed", {
                 repository,
-                error: error.message,
-                stack: error.stack
+                error: errorMessage,
+                stack: error instanceof Error ? error.stack : undefined
             })
-            return {
-                success: false,
-                error: error.message,
-                repository,
-                tip: "If you're getting rate limit errors, try reducing perPage or narrowing the time window."
-            }
+            throw new Error(`${errorMessage}. If you're getting rate limit errors, try reducing perPage or narrowing the time window.`)
         }
     }
 })
