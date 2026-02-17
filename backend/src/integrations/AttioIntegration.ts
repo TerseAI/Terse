@@ -30,10 +30,12 @@ export class AttioIntegrationManager implements Integration<AttioIntegration, ne
                 access_token: true
             }
         })
-        return Promise.all(integrations.map(async i => ({
-            id: i.id,
-            workspaceName: await this.fetchWorkspaceName(i.access_token)
-        })))
+        return Promise.all(
+            integrations.map(async i => ({
+                id: i.id,
+                workspaceName: await this.fetchWorkspaceName(i.access_token)
+            }))
+        )
     }
 
     formatIntegrationInstanceForAgent(instance: AttioIntegration): string {
@@ -52,10 +54,12 @@ export class AttioIntegrationManager implements Integration<AttioIntegration, ne
                 access_token: true
             }
         })
-        return Promise.all(integrations.map(async i => ({
-            id: i.id,
-            workspaceName: await this.fetchWorkspaceName(i.access_token)
-        })))
+        return Promise.all(
+            integrations.map(async i => ({
+                id: i.id,
+                workspaceName: await this.fetchWorkspaceName(i.access_token)
+            }))
+        )
     }
 
     async processWebhookEvent(event: never): Promise<void> {
@@ -215,7 +219,7 @@ export class AttioIntegrationManager implements Integration<AttioIntegration, ne
             })
             if (response.ok) {
                 const data = await response.json()
-                return data?.data?.workspace?.name || undefined
+                return data?.workspace_name || undefined
             }
         } catch (error) {
             logger.warn("Failed to fetch Attio workspace info", { error })
