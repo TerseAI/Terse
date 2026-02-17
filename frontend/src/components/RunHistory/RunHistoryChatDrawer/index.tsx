@@ -65,7 +65,7 @@ export default function RunHistoryChatDrawer({
                 {isOpen && (
                     <RunHistoryChatAdapter key={runId} runId={runId} status={status}>
                         {({ initialTurns, isLoading, subscribeToEvents, sendMessage, handleApprove, handleReject, currentStatus }) => {
-                            const isFiltered = currentStatus === "skipped"
+                            const isFiltered = currentStatus === RunHistoryStatus.SKIPPED
 
                             return (
                                 <>

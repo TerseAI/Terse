@@ -57,13 +57,9 @@ export const linearAddCommentTool = tool({
                 actions: [action]
             }
         } catch (error: unknown) {
-            const errorMessage = await formatError(runContext, error)
+            const errorMessage = error instanceof Error ? error.message : String(error)
             logger.error("❌ Error adding Linear comment", { error: errorMessage, issueId })
-            return {
-                success: false,
-                error: errorMessage,
-                hint: "Please check all inputs and try again."
-            }
+            throw new Error(`${errorMessage}. Please check all inputs and try again.`)
         }
     },
     errorFunction: formatError

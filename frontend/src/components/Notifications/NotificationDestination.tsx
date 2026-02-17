@@ -33,7 +33,9 @@ export function NotificationDestinationItem({ destination }: { destination: Noti
                     <ItemTitle>
                         <NotificationDestinationName destination={destination} />
                     </ItemTitle>
-                    <ItemDescription>{destination.type === NotificationDestinationType.EMAIL ? "Email notifications" : "Slack notifications"}</ItemDescription>
+                    <ItemDescription>
+                        {destination.type === NotificationDestinationType.EMAIL ? "Email notifications" : getSlackDestinationDescription(destination as SlackNotificationDestination)}
+                    </ItemDescription>
                 </ItemContent>
                 <ItemActions>
                     <Button variant="ghost" size="icon" onClick={() => setIsEditDialogOpen(true)} className="h-8 w-8 text-muted-foreground hover:text-foreground">
@@ -66,8 +68,25 @@ function NotificationDestinationName({ destination }: { destination: Notificatio
     if (emailDestination.email) {
         return <>{emailDestination.email}</>
     }
+    if (slackDestination.slackUserName) {
+        return <>DM: {slackDestination.slackUserName}</>
+    }
+    if (slackDestination.slackUserId) {
+        return <>DM: {slackDestination.slackUserId}</>
+    }
     if (slackDestination.slackChannelName) {
+        if (slackDestination.slackChannelId?.startsWith("D")) {
+            return <>DM: {slackDestination.slackChannelName}</>
+        }
         return <>#{formatMPIMChannelName(slackDestination.slackChannelName)}</>
     }
     return <>Unknown destination</>
+}
+
+function getSlackDestinationDescription(destination: SlackNotificationDestination): string {
+    if (destination.slackUserId || destination.slackChannelId?.startsWith("D")) {
+        return "Slack direct message notifications"
+    }
+
+    return "Slack channel notifications"
 }

@@ -1,4 +1,4 @@
-import { InputConfigType, KnowledgeBaseConfigType, OutputConfigType, IntegrationType as PrismaIntegrationType } from "@prisma/client"
+import { InputConfigType, KnowledgeBaseConfigType, OutputConfigType, IntegrationType as PrismaIntegrationType, RunHistoryStatus as PrismaRunHistoryStatus } from "@prisma/client"
 
 import {
     ConfigInstance,
@@ -24,6 +24,7 @@ import {
     WorkOSInputConfig
 } from "../shared/Configs"
 import { IntegrationType } from "../shared/Integrations"
+import { RunHistoryStatus as SharedRunHistoryStatus } from "../shared/RunHistoryTypes"
 import { AgentKnowledgeBaseWithConfigs, AgentOutputWithConfigs, AgentTriggerWithConfigs } from "../types/prisma"
 
 export const convertIntegrationTypeToPrismaIntegrationType = (integrationType: IntegrationType): PrismaIntegrationType => {
@@ -168,6 +169,23 @@ export const convertPrismaIntegrationTypeToIntegrationTypeFromRunHistory = (pris
             return IntegrationType.WORKOS
         default:
             throw prismaIntegrationType satisfies never
+    }
+}
+
+export const convertPrismaRunHistoryStatusToShared = (status: PrismaRunHistoryStatus): SharedRunHistoryStatus => {
+    switch (status) {
+        case PrismaRunHistoryStatus.success:
+            return SharedRunHistoryStatus.SUCCESS
+        case PrismaRunHistoryStatus.failed:
+            return SharedRunHistoryStatus.FAILED
+        case PrismaRunHistoryStatus.skipped:
+            return SharedRunHistoryStatus.SKIPPED
+        case PrismaRunHistoryStatus.in_progress:
+            return SharedRunHistoryStatus.IN_PROGRESS
+        case PrismaRunHistoryStatus.awaiting_approval:
+            return SharedRunHistoryStatus.AWAITING_APPROVAL
+        default:
+            throw status satisfies never
     }
 }
 

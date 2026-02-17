@@ -61,7 +61,7 @@ export function useTemplateHydration(templateId: string | undefined, templates: 
             : []
 
     // Handle notification settings from template
-    const notificationSettings: AgentNotificationSettings = { enabled: false, actionTypes: [] }
+    const notificationSettings: AgentNotificationSettings = { enabled: false, actionTypes: [], notifyOnRunFailure: false }
 
     return {
         hydratedState: {

@@ -1,11 +1,13 @@
 import { Agent, FunctionCallResultItem, RunStreamEvent, RunToolCallOutputItem, StreamedRunResult } from "@openai/agents"
 
 import { IntegrationType } from "../shared/Integrations"
-import { ChangedItem, ModelEvent } from "../shared/ModelEvents"
+import { ChangedItem, ModelEvent, ToolCallExecutionStatus } from "../shared/ModelEvents"
 import { RunHistoryAction } from "../shared/RunHistoryTypes"
-import { ErrorContext, detectSerializedError, parseSerializedError } from "../tools/toolUtils"
+import { ErrorContext } from "../tools/toolUtils"
 import { Session } from "../types/session"
 import { randomString } from "../utility/strings"
+
+import { parseToolExecutionResult } from "./toolExecution"
 
 export async function* transformAgentStreamToModelEvents<T extends Session>(
     result: StreamedRunResult<T, Agent<T, any>>,
@@ -128,112 +130,23 @@ export function tryExtractToolCall(event: RunStreamEvent, toolToIntegrationMap?:
     return null
 }
 
-/**
- * Extracts the output string from a tool output item, handling various formats.
- */
-function extractOutputString(rawItem: any, item: RunToolCallOutputItem): string | null {
-    const topLevelOutput = (item as any).output
-    let actualOutput = rawItem.output ?? topLevelOutput
-
-    // Handle OpenAI Agents SDK output format: {type: "text", text: "..."}
-    if (actualOutput && typeof actualOutput === "object" && "text" in actualOutput && typeof actualOutput.text === "string") {
-        actualOutput = actualOutput.text
-    }
-
-    return typeof actualOutput === "string" ? actualOutput : null
-}
-
-/**
- * Extracts error context from tool output, checking for serialized errors and status-based failures.
- */
-function extractErrorContext(outputString: string | null, status: string | undefined): ErrorContext | undefined {
-    if (!outputString) {
-        // Check if status indicates failure even without output
-        if (status === "incomplete" || status === "failed") {
-            return {
-                context: {} as any,
-                error: `Tool failed with status: ${status}`
-            }
-        }
-        return undefined
-    }
-
-    // Check for serialized error format
-    if (detectSerializedError(outputString)) {
-        return parseSerializedError(outputString)
-    }
-
-    // Check if status indicates failure but output is not in serialized format
-    if (status === "incomplete" || status === "failed") {
-        return {
-            context: {} as any,
-            error: outputString
-        }
-    }
-
-    return undefined
-}
-
-/**
- * Extracts actions from tool output if present.
- * Tools can return { result, actions: [...] } and we extract the actions array.
- * The SDK may stringify the output, so we need to handle both object and string formats.
- */
-function extractActionsFromOutput(rawItem: any, item: RunToolCallOutputItem): RunHistoryAction[] | undefined {
-    // Try to get the raw output object (before stringification)
-    const topLevelOutput = (item as any).output
-    let actualOutput = rawItem.output ?? topLevelOutput
-
-    // If output is a string, try to parse it as JSON first
-    if (typeof actualOutput === "string") {
-        try {
-            actualOutput = JSON.parse(actualOutput)
-        } catch {
-            // Not JSON, return undefined
-            return undefined
-        }
-    }
-
-    // Handle OpenAI Agents SDK output format: {type: "text", text: "..."}
-    if (actualOutput && typeof actualOutput === "object" && "text" in actualOutput && typeof actualOutput.text === "string") {
-        // Try to parse the text as JSON in case it contains the actions
-        try {
-            const parsed = JSON.parse(actualOutput.text)
-            if (parsed && typeof parsed === "object" && Array.isArray(parsed.actions)) {
-                return parsed.actions
-            }
-        } catch {
-            // Not JSON, continue
-        }
-    }
-
-    // Check if output is an object with actions property
-    if (actualOutput && typeof actualOutput === "object" && Array.isArray(actualOutput.actions)) {
-        return actualOutput.actions
-    }
-
-    return undefined
-}
-
 export function tryExtractToolCallCompleteData(event: RunStreamEvent): ToolCallCompleteData | null {
     if (event.type === "run_item_stream_event" && event.name === "tool_output") {
         const item = event.item as RunToolCallOutputItem
         const rawItem = item.rawItem as FunctionCallResultItem
 
-        const outputString = extractOutputString(rawItem, item)
-        const status = rawItem.status as string | undefined
-        const errorContext = extractErrorContext(outputString, status)
-        const actions = extractActionsFromOutput(rawItem, item)
+        const rawOutput = (rawItem as any).output ?? (item as any).output
+        const parsed = parseToolExecutionResult(rawOutput, rawItem.status)
 
         // Handle function call results (including hosted tool calls)
         if (rawItem.type === "function_call_result") {
             return {
                 name: rawItem.name || "unknown",
                 callId: rawItem.callId || "unknown",
-                status: status || "unknown",
-                errorContext: errorContext,
-                actions: actions,
-                result: outputString ?? undefined
+                status: parsed.status,
+                errorContext: parsed.errorContext,
+                actions: parsed.actions,
+                result: parsed.outputString ?? undefined
             }
         }
 
@@ -242,10 +155,10 @@ export function tryExtractToolCallCompleteData(event: RunStreamEvent): ToolCallC
             return {
                 name: rawItem.name || "unknown",
                 callId: rawItem.id || rawItem.callId || "unknown",
-                status: status || "unknown",
-                errorContext: errorContext,
-                actions: actions,
-                result: outputString ?? undefined
+                status: parsed.status,
+                errorContext: parsed.errorContext,
+                actions: parsed.actions,
+                result: parsed.outputString ?? undefined
             }
         }
     }
@@ -278,6 +191,12 @@ export function createNaturalStopEvent(): ModelEvent {
 export enum RawModelStreamEventType {
     OutputTextDelta = "output_text_delta",
     Model = "model"
+}
+
+export enum ToolCallRuntimeStatus {
+    IN_PROGRESS = "in_progress",
+    COMPLETED = "completed",
+    INCOMPLETE = "incomplete"
 }
 
 export type RawModelStreamEvent = {
@@ -319,7 +238,7 @@ export type ToolCalledEvent = {
             type: "function_call" | "hosted_tool_call"
             callId?: string
             name: string
-            status?: "in_progress" | "completed" | "incomplete"
+            status?: ToolCallRuntimeStatus
             arguments?: string
         }
         agent: any
@@ -336,7 +255,7 @@ export type ToolCallCompleteEvent = {
             name: string
             callId?: string
             id?: string
-            status: "in_progress" | "completed" | "incomplete"
+            status: ToolCallRuntimeStatus
             output?: any
         }
         agent: any
@@ -351,7 +270,7 @@ export type ToolCallCompleteHandler = (callId: string, toolName: string, actions
 export type ToolCallCompleteData = {
     name: string
     callId: string
-    status: string
+    status: ToolCallExecutionStatus
     result?: string
     errorContext?: ErrorContext
     actions?: RunHistoryAction[]

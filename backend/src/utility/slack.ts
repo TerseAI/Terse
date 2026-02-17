@@ -6,7 +6,8 @@ import logger from "../logger"
 import { db } from "../prismaClient"
 import { FrontendRoutes } from "../shared/FrontendRoutes"
 import { RunHistoryAction } from "../shared/RunHistoryTypes"
-import { createApprovalMessage, createNotificationMessage, createUpdatedApprovalMessage } from "../slack/blockKitHelpers"
+import { SlackApprovalMessageStatus } from "../slack/ApprovalStatus"
+import { createApprovalMessage, createNotificationMessage, createRunFailureNotificationMessage, createUpdatedApprovalMessage } from "../slack/blockKitHelpers"
 
 export interface SlackMessage {
     text: string
@@ -16,6 +17,14 @@ export interface SlackMessage {
 export interface NotificationContext {
     channelName: string
 }
+
+export interface RunFailureNotificationContext {
+    agentId: string
+    agentName: string
+    runId: string
+    errorMessage: string
+}
+
 export async function sendSlackMessage(userSlackIntegrationId: string, channelId: string, message: SlackMessage): Promise<boolean> {
     const userSlackIntegration = await db().user_slack_integrations.findFirst({
         where: {
@@ -47,6 +56,56 @@ export async function sendSlackMessage(userSlackIntegrationId: string, channelId
     } catch (error) {
         logger.error(`[sendSlackMessage] Failed to send message`, { error, channelId, userSlackIntegrationId })
         return false
+    }
+}
+
+export async function resolveSlackChannelIdForDestination(userSlackIntegrationId: string, slackChannelId?: string | null, slackUserId?: string | null): Promise<string | null> {
+    if (slackChannelId) {
+        return slackChannelId
+    }
+
+    if (!slackUserId) {
+        return null
+    }
+
+    const userSlackIntegration = await db().user_slack_integrations.findFirst({
+        where: {
+            id: userSlackIntegrationId
+        },
+        include: {
+            slack_integration: true,
+            user: true
+        }
+    })
+
+    if (!userSlackIntegration?.slack_integration) {
+        logger.error(`[resolveSlackChannelIdForDestination] No Slack integration found for ID: ${userSlackIntegrationId}`)
+        return null
+    }
+
+    try {
+        const client = initializeSlackWebClient(userSlackIntegration)
+        const result = await client.conversations.open({
+            users: slackUserId
+        })
+
+        const dmChannelId = result.channel?.id
+        if (!dmChannelId) {
+            logger.error(`[resolveSlackChannelIdForDestination] Failed to open DM for user ${slackUserId}`, {
+                userSlackIntegrationId,
+                slackUserId
+            })
+            return null
+        }
+
+        return dmChannelId
+    } catch (error) {
+        logger.error(`[resolveSlackChannelIdForDestination] Error opening DM`, {
+            error,
+            userSlackIntegrationId,
+            slackUserId
+        })
+        return null
     }
 }
 
@@ -88,6 +147,21 @@ export function formatNotificationMessage(runAction: RunHistoryAction, context: 
         emoji: actionEmoji,
         details: runAction.details,
         url: runAction.url
+    })
+
+    return { text, blocks }
+}
+
+export function formatRunFailureNotificationMessage(context: RunFailureNotificationContext): SlackMessage {
+    const runHistoryLink = settings.urls.frontend ? `${settings.urls.frontend}${FrontendRoutes.AGENTS.RUN_HISTORY(context.agentId, context.runId)}` : undefined
+    const errorSummary = context.errorMessage.length > 300 ? `${context.errorMessage.slice(0, 297)}...` : context.errorMessage
+    const text = `Run failed in ${context.agentName}: ${errorSummary}`
+
+    const blocks = createRunFailureNotificationMessage({
+        agentName: context.agentName,
+        runId: context.runId,
+        errorSummary,
+        runHistoryLink
     })
 
     return { text, blocks }
@@ -172,7 +246,7 @@ export async function updateSlackApprovalMessage(
     userSlackIntegrationId: string,
     channelId: string,
     messageTs: string,
-    status: "approved" | "rejected" | "changes_requested" | "processing" | "failed",
+    status: SlackApprovalMessageStatus,
     summary: string, // Human-readable summary instead of toolName
     channelName: string,
     automationId?: string,
@@ -199,16 +273,16 @@ export async function updateSlackApprovalMessage(
     let statusEmoji: string
     let statusText: string
 
-    if (status === "processing") {
+    if (status === SlackApprovalMessageStatus.PROCESSING) {
         statusEmoji = "⏳"
         statusText = "Processing"
-    } else if (status === "failed") {
+    } else if (status === SlackApprovalMessageStatus.FAILED) {
         statusEmoji = "⚠️"
         statusText = "Failed"
-    } else if (status === "approved") {
+    } else if (status === SlackApprovalMessageStatus.APPROVED) {
         statusEmoji = "✅"
         statusText = "Approved"
-    } else if (status === "changes_requested") {
+    } else if (status === SlackApprovalMessageStatus.CHANGES_REQUESTED) {
         statusEmoji = "🔄"
         statusText = "Changes Requested"
     } else {
@@ -218,7 +292,7 @@ export async function updateSlackApprovalMessage(
 
     // Fetch rejection reason from database if status is rejected/changes_requested and runId/stepId are available
     let rejectionReason: string | null = null
-    if ((status === "rejected" || status === "changes_requested") && runId && stepId) {
+    if ((status === SlackApprovalMessageStatus.REJECTED || status === SlackApprovalMessageStatus.CHANGES_REQUESTED) && runId && stepId) {
         const approvalMessage = await db().approval_slack_messages.findFirst({
             where: {
                 run_id: runId,

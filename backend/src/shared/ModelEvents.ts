@@ -50,9 +50,16 @@ export type ToolCallGenerating = { tool_name: string; step_id: string }
 
 export type ToolCall = { summary: string; step_id: string; parameters: string; integration: string }
 
+export enum ToolCallExecutionStatus {
+    COMPLETED = "completed",
+    INCOMPLETE = "incomplete",
+    FAILED = "failed",
+    UNKNOWN = "unknown"
+}
+
 export type ToolCallComplete = {
     tool_name: string
-    status: string
+    status: ToolCallExecutionStatus
     step_id: string
     changed_items: ChangedItem[]
     integration: string

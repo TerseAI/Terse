@@ -44,7 +44,7 @@ export default function RunHistoryChatAdapter({ runId, status, children }: RunHi
 
     // Use API status if available, otherwise fall back to prop status
     const currentStatus = status
-    const isActiveRun = currentStatus === "in_progress"
+    const isActiveRun = currentStatus === RunHistoryStatus.IN_PROGRESS
 
     // Convert to Turns
     const turns = useMemo(() => convertRunHistoryEventsToTurns(historicalEvents), [historicalEvents])

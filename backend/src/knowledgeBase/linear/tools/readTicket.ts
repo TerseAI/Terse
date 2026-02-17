@@ -43,21 +43,13 @@ Use the issue ID (UUID) or the issue identifier (e.g. "TEAM-123"). Use this afte
             }
 
             if (!issue) {
-                return {
-                    success: false,
-                    error: `Issue not found: ${issueId}`,
-                    hint: "Check the issue ID or identifier (e.g. TEAM-123) is correct."
-                }
+                throw new Error(`Issue not found: ${issueId}. Check the issue ID or identifier (e.g. TEAM-123) is correct.`)
             }
 
             // Fetch full issue by id so we have consistent Issue type (with comments())
             const fullIssue = await client.issue(issue.id)
             if (!fullIssue) {
-                return {
-                    success: false,
-                    error: `Issue not found: ${issueId}`,
-                    hint: "Check the issue ID or identifier (e.g. TEAM-123) is correct."
-                }
+                throw new Error(`Issue not found: ${issueId}. Check the issue ID or identifier (e.g. TEAM-123) is correct.`)
             }
 
             const state = fullIssue.state ? await fullIssue.state : null
@@ -113,13 +105,9 @@ Use the issue ID (UUID) or the issue identifier (e.g. "TEAM-123"). Use this afte
                 actions: [action]
             }
         } catch (error: unknown) {
-            const errorMessage = await formatError(runContext!, error)
+            const errorMessage = error instanceof Error ? error.message : String(error)
             logger.error("❌ Error reading Linear issue", { error: errorMessage, issueId })
-            return {
-                success: false,
-                error: errorMessage,
-                hint: "Check that the access token is valid and the issue ID or identifier is correct."
-            }
+            throw new Error(`${errorMessage}. Check that the access token is valid and the issue ID or identifier is correct.`)
         }
     },
     errorFunction: formatError
