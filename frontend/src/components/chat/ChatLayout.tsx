@@ -49,7 +49,6 @@ export const ChatLayout = forwardRef<ChatLayoutHandle, ChatLayoutProps>(function
 ) {
     const [showScrollIndicator, setShowScrollIndicator] = useState(false)
     const scrollContainerRef = useRef<HTMLDivElement>(null)
-    const messagesEndRef = useRef<HTMLDivElement>(null)
     const contentRef = useRef<HTMLDivElement>(null)
     const isNearBottomRef = useRef(true)
     const chatInputRef = useRef<ChatInputHandle>(null)
@@ -80,26 +79,6 @@ export const ChatLayout = forwardRef<ChatLayoutHandle, ChatLayoutProps>(function
 
         return () => {
             container.removeEventListener("scroll", checkScrollPosition)
-        }
-    }, [])
-
-    // Watch content height changes - this handles token streaming animation
-    useEffect(() => {
-        const content = contentRef.current
-        const container = scrollContainerRef.current
-        if (!content || !container) return
-
-        const resizeObserver = new ResizeObserver(() => {
-            if (isNearBottomRef.current) {
-                container.scrollTop = 0
-            }
-            checkScrollPosition()
-        })
-
-        resizeObserver.observe(content)
-
-        return () => {
-            resizeObserver.disconnect()
         }
     }, [])
 
@@ -136,9 +115,6 @@ export const ChatLayout = forwardRef<ChatLayoutHandle, ChatLayoutProps>(function
                     {isPendingAssistantResponse && <AwaitingResponseAnimation />}
 
                     {turns.length === 0 && EmptyContentPlaceholder}
-
-                    {/* Scroll anchor element */}
-                    <div ref={messagesEndRef} className="h-1" />
                 </div>
             </div>
 
