@@ -5,7 +5,7 @@ import { Turn } from "@/components/chat/Turn"
 import { type ChatEventSubscription } from "@/components/chat/hooks/useCompletionSocket"
 import { filterOutThinkingOnlyTurns } from "@/components/chat/utils/turnUtils"
 import { useChatHistory } from "@/hooks/api/useChatHistory"
-import { Failure, FilterResult, ModelEvent, ModelRequest, RunError, TextDelta, ToolApprovalResponse, ToolCall, ToolCallComplete, UserMessage } from "@/shared/ModelEvents"
+import { FilterResult, ModelEvent, ModelRequest, RunError, TextDelta, ToolApprovalResponse, ToolCall, ToolCallComplete, UserMessage } from "@/shared/ModelEvents"
 import { RunHistoryStatus } from "@/shared/RunHistoryTypes"
 import type { RunHistoryModelSocketEvent } from "@/shared/RunHistoryTypes"
 import { sendChatMessage, sendToolApprovalResponse, subscribeToChatEvents } from "@/socket"
@@ -258,26 +258,6 @@ export function convertRunHistoryEventsToTurns(events: (ModelEvent & { timestamp
                             fc.isRejected = true
                         }
                     }
-                }
-                break
-            }
-            case "Failure": {
-                const e = event as Failure
-                const lastTurn = turns[turns.length - 1]
-                if (lastTurn && lastTurn.role === "assistant") {
-                    lastTurn.isFailure = true
-                    lastTurn.text += `\n\nError: ${e.error}`
-                    lastTurn.isGenerating = false
-                } else {
-                    turns.push({
-                        role: "assistant",
-                        text: `Error: ${e.error}`,
-                        function_calls: [],
-                        step_id: "failure",
-                        isFailure: true,
-                        isGenerating: false,
-                        disableAnimation: true
-                    })
                 }
                 break
             }

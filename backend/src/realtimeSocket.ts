@@ -6,10 +6,9 @@ import { Server, Socket } from "socket.io"
 
 import { AgentRunResultStatus, AgentRunner } from "./agent/AgentRunner/AgentRunner"
 import { RunContext } from "./agent/AgentRunner/SystemPromptBuilder"
-import { reportRunErrorToRun } from "./agent/AgentRunner/runErrorReporter"
 import { evaluateCompletedRun, finalizeRunStatus, markRunFailed, storeChatEvent } from "./agent/AgentRunner/runHistory"
 import { DirectiveTask, directiveTaskQueue } from "./agent/DirectiveAgent/DirectiveAgent"
-import { classifyAgentError } from "./agent/agentErrorUtils"
+import { type ClassifiedError, buildRunErrorEvent, classifyAgentError } from "./agent/agentErrorUtils"
 import { nodeEnv, optional, urls } from "./config/settings"
 import { KnowledgeBase } from "./knowledgeBase/abstract/KnowledgeBase"
 import { KnowledgeBaseFactory } from "./knowledgeBase/abstract/KnowledgeBaseFactory"
@@ -284,7 +283,7 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
             } catch (error) {
                 const classified = classifyAgentError(error)
                 logger.error(`[agent:chat:message] Error running agent: ${classified.message}`, { error, runId, agentId: agent.id, userId })
-                await markRunFailedAndInvalidate(runId, classified.message, organizationId ?? undefined, agent.id)
+                await markRunFailedAndInvalidate(runId, classified, organizationId ?? undefined, agent.id)
                 try {
                     await new NotificationManager(user, agent).notifyRunFailure(runId, classified.message)
                 } catch (notificationError) {
@@ -295,7 +294,6 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
                         userId
                     })
                 }
-                await reportRunErrorToRun({ runId, agentId: agent.id, organizationId: organizationId ?? "", classified, io })
                 return
             }
 
@@ -404,16 +402,19 @@ export function emitCacheInvalidationWithWildcard(organizationId: string, key: s
 }
 
 /**
- * Mark run as failed and invalidate run history cache. Logs on failure; does not rethrow.
+ * Mark run as failed, store a RunError chat event, and invalidate related caches.
+ * Logs on failure; does not rethrow.
  */
-export async function markRunFailedAndInvalidate(runId: string, errorMessage: string, organizationId: string | undefined, agentId: string): Promise<void> {
+export async function markRunFailedAndInvalidate(runId: string, classified: ClassifiedError, organizationId: string | undefined, agentId: string): Promise<void> {
     try {
-        await markRunFailed(runId, errorMessage, "agent")
+        await markRunFailed(runId, classified.message, "agent")
+        await storeChatEvent(runId, buildRunErrorEvent(classified))
         if (organizationId) {
             emitCacheInvalidationWithWildcard(organizationId, "runHistory", agentId)
+            emitCacheInvalidationWithWildcard(organizationId, "chatHistory", runId)
         }
     } catch (e) {
-        logger.error("Failed to mark run as failed", { error: e, runId })
+        logger.error("Failed to mark run as failed and invalidate cache", { error: e, runId })
     }
 }
 

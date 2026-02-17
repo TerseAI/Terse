@@ -32,7 +32,7 @@ export function convertAgentInputItemsToModelEvents(items: (AgentInputItem | Tim
     // Add a NaturalStop if there are any events and no ending marker
     if (events.length > 0) {
         const lastEvent = events[events.length - 1]
-        if (lastEvent.type !== "NaturalStop" && lastEvent.type !== "Failure") {
+        if (lastEvent.type !== "NaturalStop") {
             events.push({
                 type: "NaturalStop",
                 step_id: "historical-stop",

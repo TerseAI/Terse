@@ -851,7 +851,6 @@ enum RunHistoryChatEventType {
   ToolCallComplete
   ToolApprovalRequest
   NaturalStop
-  Failure
   FilterResult
   UserMessage
   Thinking
