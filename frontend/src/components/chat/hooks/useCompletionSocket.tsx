@@ -85,7 +85,7 @@ export function useCompletionSocket(options: UseCompletionSocketOptions) {
         onToolApprovalResponseRef.current = onToolApprovalResponse
         onSnippetRef.current = onSnippet
         onRunErrorRef.current = onRunError
-    }, [onDelta, onToolCallGenerating, onToolCall, onToolCallComplete, onFailure, onNaturalStop, onFilterResult, onThinking, onToolApprovalRequest, onSnippet, onRunError])
+    }, [onDelta, onToolCallGenerating, onToolCall, onToolCallComplete, onFailure, onNaturalStop, onFilterResult, onThinking, onToolApprovalRequest, onToolApprovalResponse, onSnippet, onRunError])
 
     // Subscribe to events
     useEffect(() => {
