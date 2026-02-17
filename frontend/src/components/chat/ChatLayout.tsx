@@ -127,6 +127,7 @@ export const ChatLayout = forwardRef<ChatLayoutHandle, ChatLayoutProps>(function
     return (
         <div className={`h-full w-full backdrop-blur-sm shadow-lg transition-opacity duration-300 opacity-100 rounded-lg flex flex-col relative`}>
             <div ref={scrollContainerRef} className="flex-1 flex flex-col-reverse overflow-y-auto p-4 select-text">
+                <div className="flex-grow" />
                 <div ref={contentRef} className="space-y-4">
                     {turns.map((turn, index) => (
                         <TurnView key={index} {...turn} onApprove={onApprove} onReject={onReject} onMultipleChoiceAnswer={onMultipleChoiceAnswer} />
