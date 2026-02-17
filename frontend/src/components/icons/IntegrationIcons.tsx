@@ -117,13 +117,7 @@ export function LaunchDarklyIcon() {
 }
 
 export function AttioIcon() {
-    return (
-        <svg className="w-full h-full" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect width="256" height="256" rx="48" fill="#000000" />
-            <path d="M128 56L188 180H68L128 56Z" fill="white" />
-            <rect x="108" y="160" width="40" height="40" rx="4" fill="white" />
-        </svg>
-    )
+    return <img src="/Attio.svg" alt="Attio" className="w-full h-full object-contain dark:invert" />
 }
 
 export function WorkOSIcon() {
