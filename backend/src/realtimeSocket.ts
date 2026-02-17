@@ -6,7 +6,7 @@ import { Server, Socket } from "socket.io"
 
 import { AgentRunResultStatus, AgentRunner } from "./agent/AgentRunner/AgentRunner"
 import { RunContext } from "./agent/AgentRunner/SystemPromptBuilder"
-import { evaluateCompletedRun, finalizeRunStatus, markRunFailed, storeChatEvent } from "./agent/AgentRunner/runHistory"
+import { evaluateCompletedRun, finalizeRunStatus, markRunFailed } from "./agent/AgentRunner/runHistory"
 import { DirectiveTask, directiveTaskQueue } from "./agent/DirectiveAgent/DirectiveAgent"
 import { type ClassifiedError, buildRunErrorEvent, classifyAgentError } from "./agent/agentErrorUtils"
 import { appendRunHistoryErrorMarker } from "./agent/runErrorMarkers"
@@ -263,12 +263,11 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
                 message: userMessage
             }
             const userMessageTimestamp = new Date()
-            const userMessageEventId = await storeChatEvent(runId, userMessageEvent, userMessageTimestamp)
 
             if (io && organizationId) {
                 const runHistoryModelEvent: RunHistoryModelEvent = {
                     ...userMessageEvent,
-                    id: userMessageEventId,
+                    id: `user-message-${Date.now()}`, // TODO: is there a better ID to use?
                     timestamp: userMessageTimestamp.getTime()
                 }
                 const payload: RunHistoryModelSocketEvent = {
@@ -338,7 +337,7 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
                 }
             }
 
-            directiveTaskQueue.emit(new DirectiveTask(agent.id, runId, userMessageEventId, user, userMessage))
+            directiveTaskQueue.emit(new DirectiveTask(agent.id, runId, user, userMessage))
         })
 
         // Use centralized approval service - it handles Slack notifications internally
