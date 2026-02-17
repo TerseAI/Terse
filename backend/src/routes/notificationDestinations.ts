@@ -14,6 +14,25 @@ import {
 } from "../shared/Notifications"
 import { UserNotificationDestination, UserSlackIntegrationWithUser } from "../types/prisma"
 
+const EXACTLY_ONE_SLACK_TARGET_ERROR = "Exactly one Slack destination must be selected: either a channel or a user."
+const NOTIFICATION_DESTINATIONS_INVALIDATION_KEY = notificationDestinationsKey()[0]
+
+type UpdateNotificationDestinationRequest = Partial<CreateNotificationDestinationRequest> & {
+    isActive?: boolean
+}
+
+type SlackTargetSelection =
+    | {
+          targetType: "channel"
+          slackChannelId: string
+          slackChannelName?: string
+      }
+    | {
+          targetType: "user"
+          slackUserId: string
+          slackUserName?: string
+      }
+
 // GET /notification-destinations - List all notification destinations for the user
 export async function getNotificationDestinations(req: Request, res: Response) {
     if (!req.session?.user) {
@@ -31,9 +50,7 @@ export async function getNotificationDestinations(req: Request, res: Response) {
             orderBy: { created_at: "desc" }
         })
 
-        // Transform to frontend format
         const response = destinations.map(dest => transformDestinationToFrontendFormat(dest))
-
         res.status(200).json(response)
     } catch (error) {
         logger.error("Error fetching notification destinations", { error, userId })
@@ -51,7 +68,6 @@ export async function createNotificationDestination(req: Request, res: Response)
     const userId = req.session.user.id
     const { type, email, integrationId, slackChannelId, slackChannelName, slackUserId, slackUserName }: CreateNotificationDestinationRequest = req.body
 
-    // Validate request
     if (!type) {
         res.status(400).json({ error: "Invalid request: type is required" })
         return
@@ -60,18 +76,17 @@ export async function createNotificationDestination(req: Request, res: Response)
     try {
         const prisma = db()
 
-        // Validate based on type
         if (type === "email" && !email) {
             res.status(400).json({ error: "Invalid request: email is required for email destinations" })
             return
         }
 
-        if (type === "slack" && !integrationId) {
+        const normalizedIntegrationId = normalizeOptionalString(integrationId)
+        if (type === "slack" && !normalizedIntegrationId) {
             res.status(400).json({ error: "Invalid request: integrationId is required for Slack destinations" })
             return
         }
 
-        // For Slack, validate that integration belongs to user's organization
         let resolvedSlackDestination: ResolvedSlackDestination | null = null
         if (type === "slack") {
             const organizationId = req.session.user.organizationId
@@ -79,40 +94,23 @@ export async function createNotificationDestination(req: Request, res: Response)
                 res.status(400).json({ error: "Organization context is required" })
                 return
             }
-            const slackIntegration = await prisma.user_slack_integrations.findFirst({
-                where: {
-                    id: integrationId,
-                    organization_id: organizationId
-                },
-                include: {
-                    user: true,
-                    slack_integration: true
-                }
-            })
 
+            const slackIntegration = await findSlackIntegrationForOrganization(prisma, normalizedIntegrationId!, organizationId)
             if (!slackIntegration) {
                 res.status(403).json({ error: "Slack integration not found or not owned by user" })
                 return
             }
 
-            const normalizedSlackChannelId = normalizeOptionalString(slackChannelId)
-            const normalizedSlackUserId = normalizeOptionalString(slackUserId)
-
-            const hasChannelTarget = Boolean(normalizedSlackChannelId)
-            const hasUserTarget = Boolean(normalizedSlackUserId)
-
-            if (hasChannelTarget === hasUserTarget) {
-                res.status(400).json({ error: "Exactly one Slack destination must be selected: either a channel or a user." })
-                return
-            }
-
             try {
+                const slackTargetSelection = parseSlackTargetSelection({
+                    slackChannelId: normalizeOptionalString(slackChannelId),
+                    slackChannelName: normalizeOptionalString(slackChannelName),
+                    slackUserId: normalizeOptionalString(slackUserId),
+                    slackUserName: normalizeOptionalString(slackUserName)
+                })
                 resolvedSlackDestination = await resolveSlackDestinationTarget({
                     slackIntegration,
-                    slackChannelId: normalizedSlackChannelId,
-                    slackChannelName: normalizeOptionalString(slackChannelName),
-                    slackUserId: normalizedSlackUserId,
-                    slackUserName: normalizeOptionalString(slackUserName)
+                    targetSelection: slackTargetSelection
                 })
             } catch (error) {
                 const errorMessage = error instanceof Error ? error.message : "Failed to resolve Slack destination"
@@ -126,7 +124,7 @@ export async function createNotificationDestination(req: Request, res: Response)
                 user_id: userId,
                 destination_type: type === "email" ? NotificationDestinationType.EMAIL : NotificationDestinationType.SLACK,
                 email_address: type === "email" ? email : null,
-                slack_integration_id: type === "slack" ? integrationId : null,
+                slack_integration_id: type === "slack" ? (normalizedIntegrationId ?? null) : null,
                 slack_channel_id: type === "slack" ? resolvedSlackDestination?.slackChannelId : null,
                 slack_channel_name: type === "slack" ? resolvedSlackDestination?.slackChannelName : null,
                 slack_user_id: type === "slack" ? resolvedSlackDestination?.slackUserId : null,
@@ -134,6 +132,7 @@ export async function createNotificationDestination(req: Request, res: Response)
             }
         })
 
+        invalidateNotificationDestinations(req.session.user.organizationId)
         res.status(201).json(transformDestinationToFrontendFormat(destination))
     } catch (error) {
         logger.error("Error creating notification destination", { error, userId, type })
@@ -150,13 +149,12 @@ export async function updateNotificationDestination(req: Request, res: Response)
 
     const userId = req.session.user.id
     const destinationId = req.params.id
-    const { type, email, integrationId, slackChannelId, slackChannelName, slackUserId, slackUserName, isActive } = req.body
-    const requestBody = req.body as Record<string, unknown>
+    const requestBody = req.body as UpdateNotificationDestinationRequest & Record<string, unknown>
+    const { type, email, integrationId, slackChannelId, slackChannelName, slackUserId, slackUserName, isActive } = requestBody
 
     try {
         const prisma = db()
 
-        // Check if destination exists and belongs to user
         const existingDestination = await prisma.user_notification_destinations.findFirst({
             where: {
                 id: destinationId,
@@ -170,9 +168,9 @@ export async function updateNotificationDestination(req: Request, res: Response)
         }
 
         const destinationType = type ?? (existingDestination.destination_type === NotificationDestinationType.SLACK ? "slack" : "email")
-
-        const updateData: any = {
-            ...(isActive !== undefined && { is_active: isActive })
+        const updateData: any = {}
+        if (isActive !== undefined) {
+            updateData.is_active = isActive
         }
 
         if (destinationType === "email") {
@@ -190,13 +188,7 @@ export async function updateNotificationDestination(req: Request, res: Response)
             updateData.slack_user_id = null
             updateData.slack_user_name = null
         } else {
-            const organizationId = req.session.user.organizationId
-            if (!organizationId) {
-                res.status(400).json({ error: "Organization context is required" })
-                return
-            }
-
-            const integrationIdToUse = integrationId ?? existingDestination.slack_integration_id
+            const integrationIdToUse = normalizeOptionalString(integrationId) ?? normalizeOptionalString(existingDestination.slack_integration_id)
             if (!integrationIdToUse) {
                 res.status(400).json({ error: "Invalid request: integrationId is required for Slack destinations" })
                 return
@@ -207,49 +199,58 @@ export async function updateNotificationDestination(req: Request, res: Response)
             const hasSlackChannelNameInput = hasOwn(requestBody, "slackChannelName")
             const hasSlackUserNameInput = hasOwn(requestBody, "slackUserName")
             const hasExplicitTargetSelection = hasSlackChannelIdInput || hasSlackUserIdInput
-
-            const normalizedSlackChannelId = hasExplicitTargetSelection ? normalizeOptionalString(slackChannelId) : normalizeOptionalString(existingDestination.slack_channel_id)
-            const normalizedSlackUserId = hasExplicitTargetSelection ? normalizeOptionalString(slackUserId) : normalizeOptionalString(existingDestination.slack_user_id)
-            const normalizedSlackChannelName =
-                hasSlackChannelNameInput || hasExplicitTargetSelection ? normalizeOptionalString(slackChannelName) : normalizeOptionalString(existingDestination.slack_channel_name)
-            const normalizedSlackUserName = hasSlackUserNameInput || hasExplicitTargetSelection ? normalizeOptionalString(slackUserName) : normalizeOptionalString(existingDestination.slack_user_name)
-
-            const hasChannelTarget = Boolean(normalizedSlackChannelId)
-            const hasUserTarget = Boolean(normalizedSlackUserId)
-            if (hasChannelTarget === hasUserTarget) {
-                res.status(400).json({ error: "Exactly one Slack destination must be selected: either a channel or a user." })
-                return
-            }
-
-            const slackIntegration = await prisma.user_slack_integrations.findFirst({
-                where: {
-                    id: integrationIdToUse,
-                    organization_id: organizationId
-                },
-                include: {
-                    user: true,
-                    slack_integration: true
-                }
-            })
-
-            if (!slackIntegration) {
-                res.status(403).json({ error: "Slack integration not found or not owned by user" })
-                return
-            }
+            const isExistingSlackDestination = existingDestination.destination_type === NotificationDestinationType.SLACK
+            const integrationChanged = integrationIdToUse !== existingDestination.slack_integration_id
+            const shouldResolveSlackTarget = !isExistingSlackDestination || hasExplicitTargetSelection || integrationChanged || hasSlackChannelNameInput || hasSlackUserNameInput
 
             let resolvedSlackDestination: ResolvedSlackDestination
-            try {
-                resolvedSlackDestination = await resolveSlackDestinationTarget({
-                    slackIntegration,
-                    slackChannelId: normalizedSlackChannelId,
-                    slackChannelName: normalizedSlackChannelName,
-                    slackUserId: normalizedSlackUserId,
-                    slackUserName: normalizedSlackUserName
-                })
-            } catch (error) {
-                const errorMessage = error instanceof Error ? error.message : "Failed to resolve Slack destination"
-                res.status(400).json({ error: errorMessage })
-                return
+            if (shouldResolveSlackTarget) {
+                const organizationId = req.session.user.organizationId
+                if (!organizationId) {
+                    res.status(400).json({ error: "Organization context is required" })
+                    return
+                }
+
+                const slackIntegration = await findSlackIntegrationForOrganization(prisma, integrationIdToUse, organizationId)
+                if (!slackIntegration) {
+                    res.status(403).json({ error: "Slack integration not found or not owned by user" })
+                    return
+                }
+
+                let slackTargetSelection: SlackTargetSelection
+                try {
+                    slackTargetSelection = hasExplicitTargetSelection
+                        ? parseSlackTargetSelection({
+                              slackChannelId: hasSlackChannelIdInput ? normalizeOptionalString(slackChannelId) : undefined,
+                              slackChannelName: hasSlackChannelNameInput ? normalizeOptionalString(slackChannelName) : undefined,
+                              slackUserId: hasSlackUserIdInput ? normalizeOptionalString(slackUserId) : undefined,
+                              slackUserName: hasSlackUserNameInput ? normalizeOptionalString(slackUserName) : undefined
+                          })
+                        : getSlackTargetSelectionFromStoredDestination(existingDestination)
+                } catch (error) {
+                    const errorMessage = error instanceof Error ? error.message : "Failed to resolve Slack destination"
+                    res.status(400).json({ error: errorMessage })
+                    return
+                }
+
+                try {
+                    resolvedSlackDestination = await resolveSlackDestinationTarget({
+                        slackIntegration,
+                        targetSelection: slackTargetSelection
+                    })
+                } catch (error) {
+                    const errorMessage = error instanceof Error ? error.message : "Failed to resolve Slack destination"
+                    res.status(400).json({ error: errorMessage })
+                    return
+                }
+            } else {
+                try {
+                    resolvedSlackDestination = getResolvedSlackDestinationFromStoredDestination(existingDestination)
+                } catch (error) {
+                    const errorMessage = error instanceof Error ? error.message : "Failed to resolve Slack destination"
+                    res.status(400).json({ error: errorMessage })
+                    return
+                }
             }
 
             updateData.destination_type = NotificationDestinationType.SLACK
@@ -266,6 +267,7 @@ export async function updateNotificationDestination(req: Request, res: Response)
             data: updateData
         })
 
+        invalidateNotificationDestinations(req.session.user.organizationId)
         res.status(200).json(transformDestinationToFrontendFormat(updatedDestination))
     } catch (error) {
         logger.error("Error updating notification destination", { error, userId, destinationId })
@@ -286,7 +288,6 @@ export async function deleteNotificationDestination(req: Request, res: Response)
     try {
         const prisma = db()
 
-        // Check if destination exists and belongs to user
         const existingDestination = await prisma.user_notification_destinations.findFirst({
             where: {
                 id: destinationId,
@@ -303,6 +304,7 @@ export async function deleteNotificationDestination(req: Request, res: Response)
             where: { id: destinationId }
         })
 
+        invalidateNotificationDestinations(req.session.user.organizationId)
         res.status(204).send()
     } catch (error) {
         logger.error("Error deleting notification destination", { error, userId, destinationId })
@@ -310,7 +312,6 @@ export async function deleteNotificationDestination(req: Request, res: Response)
     }
 }
 
-// Helper function to transform database model to frontend format
 function transformDestinationToFrontendFormat(destination: UserNotificationDestination): EmailNotificationDestination | SlackNotificationDestination {
     if (destination.destination_type === NotificationDestinationType.EMAIL) {
         return {
@@ -319,17 +320,17 @@ function transformDestinationToFrontendFormat(destination: UserNotificationDesti
             isActive: destination.is_active,
             email: destination.email_address ?? ""
         }
-    } else {
-        return {
-            id: destination.id,
-            type: SharedNotificationDestinationType.SLACK,
-            isActive: destination.is_active,
-            integrationId: destination.slack_integration_id ?? "",
-            slackChannelId: destination.slack_channel_id ?? undefined,
-            slackChannelName: destination.slack_channel_name ?? undefined,
-            slackUserId: destination.slack_user_id ?? undefined,
-            slackUserName: destination.slack_user_name ?? undefined
-        }
+    }
+
+    return {
+        id: destination.id,
+        type: SharedNotificationDestinationType.SLACK,
+        isActive: destination.is_active,
+        integrationId: destination.slack_integration_id ?? "",
+        slackChannelId: destination.slack_channel_id ?? undefined,
+        slackChannelName: destination.slack_channel_name ?? undefined,
+        slackUserId: destination.slack_user_id ?? undefined,
+        slackUserName: destination.slack_user_name ?? undefined
     }
 }
 
@@ -350,30 +351,94 @@ function hasOwn(record: Record<string, unknown>, key: string): boolean {
     return Object.prototype.hasOwnProperty.call(record, key)
 }
 
-async function resolveSlackDestinationTarget(params: {
-    slackIntegration: UserSlackIntegrationWithUser
-    slackChannelId?: string
-    slackChannelName?: string
-    slackUserId?: string
-    slackUserName?: string
-}): Promise<ResolvedSlackDestination> {
+function parseSlackTargetSelection(params: { slackChannelId?: string; slackChannelName?: string; slackUserId?: string; slackUserName?: string }): SlackTargetSelection {
     const hasChannelTarget = Boolean(params.slackChannelId)
     const hasUserTarget = Boolean(params.slackUserId)
 
     if (hasChannelTarget === hasUserTarget) {
-        throw new Error("Exactly one Slack destination must be selected: either a channel or a user.")
+        throw new Error(EXACTLY_ONE_SLACK_TARGET_ERROR)
     }
 
     if (params.slackChannelId) {
         return {
+            targetType: "channel",
             slackChannelId: params.slackChannelId,
-            slackChannelName: params.slackChannelName ?? null,
+            slackChannelName: params.slackChannelName
+        }
+    }
+
+    return {
+        targetType: "user",
+        slackUserId: params.slackUserId!,
+        slackUserName: params.slackUserName
+    }
+}
+
+function getSlackTargetSelectionFromStoredDestination(destination: UserNotificationDestination): SlackTargetSelection {
+    const storedSlackUserId = normalizeOptionalString(destination.slack_user_id)
+    if (storedSlackUserId) {
+        return {
+            targetType: "user",
+            slackUserId: storedSlackUserId,
+            slackUserName: normalizeOptionalString(destination.slack_user_name)
+        }
+    }
+
+    const storedSlackChannelId = normalizeOptionalString(destination.slack_channel_id)
+    if (storedSlackChannelId) {
+        return {
+            targetType: "channel",
+            slackChannelId: storedSlackChannelId,
+            slackChannelName: normalizeOptionalString(destination.slack_channel_name)
+        }
+    }
+
+    throw new Error(EXACTLY_ONE_SLACK_TARGET_ERROR)
+}
+
+function getResolvedSlackDestinationFromStoredDestination(destination: UserNotificationDestination): ResolvedSlackDestination {
+    const slackChannelId = normalizeOptionalString(destination.slack_channel_id)
+    if (!slackChannelId) {
+        throw new Error(EXACTLY_ONE_SLACK_TARGET_ERROR)
+    }
+
+    return {
+        slackChannelId,
+        slackChannelName: normalizeOptionalString(destination.slack_channel_name) ?? null,
+        slackUserId: normalizeOptionalString(destination.slack_user_id) ?? null,
+        slackUserName: normalizeOptionalString(destination.slack_user_name) ?? null
+    }
+}
+
+async function findSlackIntegrationForOrganization(prisma: ReturnType<typeof db>, integrationId: string, organizationId: string): Promise<UserSlackIntegrationWithUser | null> {
+    return prisma.user_slack_integrations.findFirst({
+        where: {
+            id: integrationId,
+            organization_id: organizationId
+        },
+        include: {
+            user: true,
+            slack_integration: true
+        }
+    })
+}
+
+function invalidateNotificationDestinations(organizationId: string | null | undefined): void {
+    if (!organizationId) return
+    emitCacheInvalidationWithKey(organizationId, NOTIFICATION_DESTINATIONS_INVALIDATION_KEY)
+}
+
+async function resolveSlackDestinationTarget(params: { slackIntegration: UserSlackIntegrationWithUser; targetSelection: SlackTargetSelection }): Promise<ResolvedSlackDestination> {
+    if (params.targetSelection.targetType === "channel") {
+        return {
+            slackChannelId: params.targetSelection.slackChannelId,
+            slackChannelName: params.targetSelection.slackChannelName ?? null,
             slackUserId: null,
             slackUserName: null
         }
     }
 
-    const userId = params.slackUserId!
+    const userId = params.targetSelection.slackUserId
     const client = initializeSlackWebClient(params.slackIntegration)
     const result = await client.conversations.open({
         users: userId
@@ -386,8 +451,8 @@ async function resolveSlackDestinationTarget(params: {
 
     return {
         slackChannelId: dmChannelId,
-        slackChannelName: params.slackUserName ?? userId,
+        slackChannelName: params.targetSelection.slackUserName ?? userId,
         slackUserId: userId,
-        slackUserName: params.slackUserName ?? null
+        slackUserName: params.targetSelection.slackUserName ?? null
     }
 }
