@@ -1,10 +1,10 @@
+import { AgentInputItem } from "@openai/agents-core"
 import { Prisma } from "@prisma/client"
 import { Request, Response } from "express"
 
-import { parseRunErrorMarkerItem } from "../agent/runErrorMarkers"
+import { type TimestampedAgentInputItem, convertAgentInputItemsToModelEvents } from "../agent/agentInputItemsToModelEvents"
 import logger from "../logger"
 import { PrismaClient, db } from "../prismaClient"
-import { ModelEvent } from "../shared/ModelEvents"
 import { type GetRunHistoryParams, type GetRunHistoryParamsRequest, type GetRunHistoryResponse, type RunHistoryRecord, RunHistoryStatus } from "../shared/RunHistoryTypes"
 import { parsePageParams } from "../utility/pagination"
 import { convertPrismaIntegrationTypeToIntegrationTypeFromRunHistory, convertPrismaRunHistoryStatusToShared } from "../utility/typeConverters"
@@ -336,66 +336,39 @@ export async function getChatHistory(req: Request, res: Response) {
             return res.status(404).json({ error: "Run not found" })
         }
 
-        const [chatEvents, rawEvents] = await prisma.$transaction([
-            // Ignore persisted RunError rows entirely; RunError is now raw-marker derived.
-            prisma.run_history_chat_events.findMany({
-                where: {
-                    run_history_record_id: runId,
-                    event_type: { not: "RunError" }
-                },
-                orderBy: [
-                    { timestamp: "asc" },
-                    { id: "asc" } // Secondary sort by id for deterministic ordering when timestamps are equal
-                ]
-            }),
-            prisma.run_history_raw_events.findMany({
-                where: {
-                    run_history_record_id: runId
-                },
-                orderBy: [{ sequence_order: "asc" }, { created_at: "asc" }],
-                select: {
-                    id: true,
-                    raw_event_json: true,
-                    created_at: true
-                }
-            })
-        ])
+        const rawEvents = await prisma.run_history_raw_events.findMany({
+            where: {
+                run_history_record_id: runId
+            },
+            orderBy: [{ sequence_order: "asc" }, { created_at: "asc" }],
+            select: {
+                raw_event_json: true,
+                created_at: true
+            }
+        })
 
-        const persistedEvents = chatEvents.map(event => {
-            const modelEvent = event.event_json as ModelEvent
+        type ChatHistoryEvent = {
+            type: string
+            id: string
+            timestamp: string
+            [key: string]: unknown
+        }
+
+        const timestampedItems: TimestampedAgentInputItem[] = rawEvents.map(rawEvent => ({
+            item: rawEvent.raw_event_json as AgentInputItem,
+            createdAt: rawEvent.created_at
+        }))
+
+        const modelEvents = convertAgentInputItemsToModelEvents(timestampedItems)
+        const fallbackTimestamp = rawEvents[0]?.created_at ?? runRecord.timestamp
+
+        const events: ChatHistoryEvent[] = modelEvents.map((event, index) => {
+            const eventTimestamp = typeof event.timestamp === "number" ? event.timestamp : fallbackTimestamp.getTime()
             return {
-                ...modelEvent,
-                id: event.id,
-                timestamp: event.timestamp.toISOString()
+                ...event,
+                id: `run-history-raw-${index}`,
+                timestamp: new Date(eventTimestamp).toISOString()
             }
-        })
-
-        const rawRunErrorEvents = rawEvents.flatMap(rawEvent => {
-            const parsed = parseRunErrorMarkerItem(rawEvent.raw_event_json)
-            if (!parsed) return []
-
-            return [
-                {
-                    type: "RunError" as const,
-                    error: parsed.error,
-                    ...(parsed.code ? { code: parsed.code } : {}),
-                    id: `raw-run-error-${rawEvent.id}`,
-                    timestamp: rawEvent.created_at.toISOString()
-                }
-            ]
-        })
-
-        const events = [...persistedEvents, ...rawRunErrorEvents].sort((a, b) => {
-            const timeA = Date.parse(String(a.timestamp))
-            const timeB = Date.parse(String(b.timestamp))
-
-            if (timeA !== timeB) {
-                if (Number.isNaN(timeA)) return 1
-                if (Number.isNaN(timeB)) return -1
-                return timeA - timeB
-            }
-
-            return a.id.localeCompare(b.id)
         })
 
         res.json({

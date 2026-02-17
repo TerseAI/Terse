@@ -1,8 +1,9 @@
 import { RunHistoryStatus as PrismaRunHistoryStatus } from "@prisma/client"
 
 import { AgentRunResultStatus, AgentRunner } from "../agent/AgentRunner/AgentRunner"
-import { evaluateCompletedRun, finalizeRunStatus, markRunFailed, markRunInProgress, storeChatEvent } from "../agent/AgentRunner/runHistory"
+import { evaluateCompletedRun, finalizeRunStatus, markRunFailed, markRunInProgress } from "../agent/AgentRunner/runHistory"
 import { generateApprovalSummary } from "../agent/ApprovalSummaryAgent/ApprovalSummaryAgent"
+import { appendToolApprovalResponseMarker } from "../agent/approvalMarkers"
 import { KnowledgeBase } from "../knowledgeBase/abstract/KnowledgeBase"
 import { KnowledgeBaseFactory } from "../knowledgeBase/abstract/KnowledgeBaseFactory"
 import logger from "../logger"
@@ -12,16 +13,18 @@ import { OutputFactory } from "../outputs/abstract/OutputFactory"
 import { db } from "../prismaClient"
 import { ConfigInstance } from "../shared/Configs"
 import { ModelEvent } from "../shared/ModelEvents"
-import { RunHistoryStatus } from "../shared/RunHistoryTypes"
+import { type RunHistoryModelEvent, type RunHistoryModelSocketEvent, RunHistoryStatus } from "../shared/RunHistoryTypes"
+import { SocketEvents, SocketRooms } from "../shared/SocketEvents"
 import { User } from "../shared/types"
 import { SlackApprovalMessageStatus } from "../slack/ApprovalStatus"
 import { AgentWithRelations } from "../types/prisma"
 import { Session } from "../types/session"
 import { getInputConfigInclude, getKnowledgeBaseConfigInclude, getOutputConfigInclude } from "../utility/prismaIncludes"
 import { updateSlackApprovalMessage } from "../utility/slack"
+import { randomString } from "../utility/strings"
 import { getUserForOrg } from "../utility/workos"
 
-import { emitCacheInvalidationWithWildcard } from "./CacheInvalidationService"
+import { emitCacheInvalidationWithWildcard, getSocketIO } from "./CacheInvalidationService"
 
 export type ApprovalRequest = {
     runId: string
@@ -263,7 +266,31 @@ export class ApprovalService {
                 step_id: stepId,
                 approved: approved
             }
-            await storeChatEvent(runId, toolApprovalResponseEvent)
+
+            try {
+                await appendToolApprovalResponseMarker(runId, {
+                    step_id: stepId,
+                    approved
+                })
+            } catch (error) {
+                logger.warn("[ApprovalService] Failed to append tool approval response marker to raw history", { runId, stepId, error })
+            }
+
+            const io = getSocketIO()
+            if (io && channel.organization_id) {
+                const runHistoryModelEvent: RunHistoryModelEvent = {
+                    ...toolApprovalResponseEvent,
+                    id: `approval-response-live-${randomString(15)}`,
+                    timestamp: Date.now()
+                }
+                const payload: RunHistoryModelSocketEvent = {
+                    runId,
+                    agentId: channel.id,
+                    runHistoryModelEvent
+                }
+                io.to(SocketRooms.organization(channel.organization_id)).emit(SocketEvents.AGENT_CHAT_EVENT, payload)
+            }
+
             emitCacheInvalidationWithWildcard(channel.organization_id, "runHistory", channel.id)
             emitCacheInvalidationWithWildcard(channel.organization_id, "chatHistory", runId)
 

@@ -1,11 +1,14 @@
+import { AgentInputItem } from "@openai/agents-core"
 import { Agent } from "@openai/agents"
 import { z } from "zod"
 
 import { settings } from "../../config/settings"
 import logger from "../../logger"
 import { db } from "../../prismaClient"
-import { ModelEvent, ToolCall } from "../../shared/ModelEvents"
+import { IntegrationType } from "../../shared/Integrations"
+import { ToolCall } from "../../shared/ModelEvents"
 import { User } from "../../shared/types"
+import { convertAgentInputItemsToModelEvents } from "../agentInputItemsToModelEvents"
 import { RunHistoryChatMemorySession, identityHistoryCallback } from "../CustomMemorySession"
 import { AgentType, builderProviderDataModelSettings, runnerFactory } from "../runner"
 
@@ -36,22 +39,30 @@ export async function generateApprovalSummary(runId: string, user: User, agentId
         return { approvalSummary: "Unable to generate summary: run record not found" }
     }
 
-    // Fetch all chat events for the run to find the ToolCall event
-    const chatEvents = await prisma.run_history_chat_events.findMany({
+    // Build ToolCall context from raw events so summaries do not depend on run_history_chat_events.
+    const rawEvents = await prisma.run_history_raw_events.findMany({
         where: {
             run_history_record_id: runId
         },
-        orderBy: [{ timestamp: "asc" }, { id: "asc" }]
+        orderBy: [{ sequence_order: "asc" }, { created_at: "asc" }],
+        select: {
+            raw_event_json: true
+        }
     })
 
-    // Find the ToolCall event matching the stepId
+    const rawItems = rawEvents.map(event => event.raw_event_json as AgentInputItem)
+    const modelEvents = convertAgentInputItemsToModelEvents(rawItems)
+
     let toolCallEvent: ToolCall | null = null
-    for (const chatEvent of chatEvents) {
-        const modelEvent = chatEvent.event_json as ModelEvent
+    for (const modelEvent of modelEvents) {
         if (modelEvent.type === "ToolCall" && modelEvent.step_id === stepId) {
             toolCallEvent = modelEvent
             break
         }
+    }
+
+    if (!toolCallEvent) {
+        toolCallEvent = findToolCallFromRawFunctionCallItems(rawItems, stepId)
     }
 
     // Build trigger description
@@ -156,6 +167,43 @@ Return the single-sentence "I'm going to ..." approvalSummary.`
     })
 
     return result.finalOutput ?? { approvalSummary: "" }
+}
+
+function findToolCallFromRawFunctionCallItems(items: AgentInputItem[], stepId: string): ToolCall | null {
+    for (const item of items) {
+        if (!item || typeof item !== "object") continue
+        if (!("type" in item) || item.type !== "function_call") continue
+
+        const maybeCallId = getCallId(item)
+        if (!maybeCallId || maybeCallId !== stepId) continue
+
+        const summary = typeof (item as { name?: unknown }).name === "string" ? ((item as { name: string }).name || "unknown") : "unknown"
+        const argumentsValue = (item as { arguments?: unknown }).arguments
+        const parameters = typeof argumentsValue === "string" ? argumentsValue : "{}"
+
+        return {
+            summary,
+            step_id: maybeCallId,
+            parameters,
+            integration: IntegrationType.TERSE
+        }
+    }
+
+    return null
+}
+
+function getCallId(item: AgentInputItem): string | null {
+    const direct = (item as { callId?: unknown }).callId
+    if (typeof direct === "string" && direct.trim().length > 0) {
+        return direct
+    }
+
+    const snakeCase = (item as { call_id?: unknown }).call_id
+    if (typeof snakeCase === "string" && snakeCase.trim().length > 0) {
+        return snakeCase
+    }
+
+    return null
 }
 
 function buildTriggerDescription(runRecord: {

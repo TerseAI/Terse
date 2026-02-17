@@ -3,6 +3,8 @@ import type { AgentInputItem, AssistantMessageItem, FunctionCallItem, FunctionCa
 import { IntegrationType } from "../shared/Integrations"
 import { ModelEvent } from "../shared/ModelEvents"
 
+import { parseToolApprovalMarkerItem } from "./approvalMarkers"
+import { parseFilterOutcomeMarkerItem } from "./filterOutcomeMarkers"
 import { parseRunErrorMarkerItem } from "./runErrorMarkers"
 import { parseToolExecutionResult } from "./toolExecution"
 
@@ -53,6 +55,41 @@ function convertSingleItem(item: AgentInputItem, toolToIntegrationMap?: Map<stri
                 type: "RunError",
                 error: runErrorMarker.error,
                 ...(runErrorMarker.code ? { code: runErrorMarker.code } : {})
+            }
+        ]
+    }
+
+    const filterOutcomeMarker = parseFilterOutcomeMarkerItem(item)
+    if (filterOutcomeMarker) {
+        return [
+            {
+                type: "FilterResult",
+                isRelevant: filterOutcomeMarker.isRelevant,
+                reason: filterOutcomeMarker.reason,
+                confidence: filterOutcomeMarker.confidence,
+                step_id: "filter-marker"
+            }
+        ]
+    }
+
+    const toolApprovalMarker = parseToolApprovalMarkerItem(item)
+    if (toolApprovalMarker) {
+        if (toolApprovalMarker.type === "ToolApprovalRequest") {
+            return [
+                {
+                    type: "ToolApprovalRequest",
+                    step_id: toolApprovalMarker.step_id,
+                    name: toolApprovalMarker.name,
+                    arguments: toolApprovalMarker.arguments
+                }
+            ]
+        }
+
+        return [
+            {
+                type: "ToolApprovalResponse",
+                step_id: toolApprovalMarker.step_id,
+                approved: toolApprovalMarker.approved
             }
         ]
     }

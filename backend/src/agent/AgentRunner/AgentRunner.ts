@@ -18,7 +18,9 @@ import { SocketEvents, SocketRooms } from "../../shared/SocketEvents"
 import { AgentWithRelations } from "../../types/prisma"
 import { Session } from "../../types/session"
 import { UserFormatter } from "../../utility/UserFormatter"
+import { randomString } from "../../utility/strings"
 import { RunHistoryChatMemorySession, recentHistoryCallback } from "../CustomMemorySession"
+import { appendToolApprovalRequestMarker } from "../approvalMarkers"
 import { AgentType, builderProviderDataModelSettings, runnerFactory } from "../runner"
 import { transformAgentStreamToModelEvents } from "../streaming"
 import { isFailedToolExecutionStatus } from "../toolExecution"
@@ -28,7 +30,7 @@ import { processModelEventStream } from "./StreamProcessor"
 import { RunContext, SystemPromptBuilder, SystemPromptBuilderDependencies } from "./SystemPromptBuilder"
 import { formatAgentTriggersForAgent } from "./formatContext"
 import { persistOutputAttributions, removeOutputAttributions } from "./persistOutputAttributions"
-import { clearPendingApprovalState, getPendingApprovalState, markRunInProgress, storeChatEvent, storePendingApprovalState } from "./runHistory"
+import { clearPendingApprovalState, getPendingApprovalState, markRunInProgress, storePendingApprovalState } from "./runHistory"
 
 // Types from @openai/agents SDK for content items
 type AgentInputText = protocol.InputText
@@ -629,13 +631,20 @@ ${inputEvent.formatForAgentRunner()}
                         arguments: interruption.arguments
                     }
 
-                    // Store and emit the approval request
-                    const eventId = await storeChatEvent(this.runContext.runId, approvalRequest)
+                    try {
+                        await appendToolApprovalRequestMarker(this.runContext.runId, {
+                            step_id: approvalRequest.step_id,
+                            name: approvalRequest.name,
+                            arguments: approvalRequest.arguments
+                        })
+                    } catch (error) {
+                        logger.warn("Failed to append tool approval request marker to raw history", { runId: this.runContext.runId, stepId: approvalRequest.step_id, error })
+                    }
 
                     if (io && streamingParams.user.organizationId) {
                         const runHistoryModelEvent: RunHistoryModelEvent = {
                             ...approvalRequest,
-                            id: eventId,
+                            id: `approval-request-live-${randomString(15)}`,
                             timestamp: Date.now()
                         }
                         const payload: RunHistoryModelSocketEvent = {

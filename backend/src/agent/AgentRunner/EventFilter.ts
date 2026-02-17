@@ -12,10 +12,9 @@ import { AgentPrompt } from "../../types/prisma"
 import { Session } from "../../types/session"
 import { randomString } from "../../utility/strings"
 import { RunHistoryChatMemorySession } from "../CustomMemorySession"
+import { appendFilterOutcomeMarker } from "../filterOutcomeMarkers"
 import { AgentType, builderProviderDataModelSettings, runnerFactory } from "../runner"
 import { transformAgentStreamToModelEvents } from "../streaming"
-
-import { storeChatEvent } from "./runHistory"
 
 export interface EventFilterResult {
     isRelevant: boolean
@@ -225,11 +224,10 @@ export async function filterEvent(event: InputEvent, agentPrompt: AgentPrompt, i
                     if (modelEvent.type === "TextDelta") {
                         continue
                     }
-                    const eventId = await storeChatEvent(trackingParams.runId, modelEvent)
                     if (io) {
                         const runHistoryModelEvent: RunHistoryModelEvent = {
                             ...modelEvent,
-                            id: eventId,
+                            id: `filter-stream-live-${randomString(15)}`,
                             timestamp: Date.now()
                         }
                         const payload: RunHistoryModelSocketEvent = {
@@ -253,6 +251,17 @@ export async function filterEvent(event: InputEvent, agentPrompt: AgentPrompt, i
                 throw new Error("No final output from filter agent")
             }
             parsed.confidence = Math.max(0, Math.min(1, parsed.confidence))
+
+            try {
+                await appendFilterOutcomeMarker(trackingParams.runId, {
+                    isRelevant: parsed.isRelevant,
+                    reason: parsed.reason,
+                    confidence: parsed.confidence
+                })
+            } catch (error) {
+                logger.warn("Failed to append filter outcome marker to raw history", { runId: trackingParams.runId, error })
+            }
+
             await seedEventContextForFilteredRunIfNeeded(trackingParams.runId, event, parsed.isRelevant)
 
             const filterResultEvent = {
@@ -262,11 +271,10 @@ export async function filterEvent(event: InputEvent, agentPrompt: AgentPrompt, i
                 confidence: parsed.confidence,
                 step_id: randomString(15)
             }
-            const filterEventId = await storeChatEvent(trackingParams.runId, filterResultEvent)
             if (io) {
                 const runHistoryModelEvent: RunHistoryModelEvent = {
                     ...filterResultEvent,
-                    id: filterEventId,
+                    id: `filter-result-live-${randomString(15)}`,
                     timestamp: Date.now()
                 }
                 const payload: RunHistoryModelSocketEvent = {
