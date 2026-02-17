@@ -16,6 +16,7 @@ interface Turn {
     text: string
     function_calls: FunctionCallEvent[]
     step_id: string
+    localTurnId?: string
     isFailure?: boolean
     isGenerating?: boolean
     isThinking?: boolean
