@@ -1,5 +1,7 @@
 import { ChevronDown } from "lucide-react"
 
+import { cn } from "@/lib/utils"
+
 import { Button } from "./button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuTrigger } from "./dropdown-menu"
 
@@ -18,18 +20,20 @@ type DropdownSelectProps = {
     }
     placeholder?: string
     modal?: boolean
+    triggerClassName?: string
+    contentClassName?: string
 }
 
-const DropdownSelect = ({ statusOptions, selectedOption, setSelected, additionalAction, placeholder = "Select an option", modal = true }: DropdownSelectProps) => {
+const DropdownSelect = ({ statusOptions, selectedOption, setSelected, additionalAction, placeholder = "Select an option", modal = true, triggerClassName, contentClassName }: DropdownSelectProps) => {
     return (
         <DropdownMenu modal={modal}>
             <DropdownMenuTrigger asChild>
-                <Button variant="outline">
+                <Button variant="outline" className={triggerClassName}>
                     <span className="block truncate">{selectedOption?.label ?? placeholder}</span>
                     <ChevronDown className="h-4 w-4 ml-2 text-muted-foreground shrink-0" />
                 </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent className="max-h-60" align="start">
+            <DropdownMenuContent className={cn("max-h-60", contentClassName)} align="start">
                 <DropdownMenuRadioGroup value={selectedOption?.value ?? ""} onValueChange={setSelected}>
                     {statusOptions.map((option, idx) => (
                         <DropdownMenuRadioItem key={idx} value={option.value}>

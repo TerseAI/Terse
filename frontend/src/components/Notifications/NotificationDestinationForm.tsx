@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react"
+import { ReactNode, useEffect, useState } from "react"
 
+import { Hash, UserRound } from "lucide-react"
 import { toast } from "sonner"
 import { mutate } from "swr"
 
@@ -7,6 +8,7 @@ import { useSlackChannels } from "../../hooks/api/useSlackChannels"
 import { useSlackIntegrations } from "../../hooks/api/useSlackIntegrations"
 import { useSlackUsers } from "../../hooks/api/useSlackUsers"
 import { useOAuthSuccessListener } from "../../hooks/useOAuthSuccessListener"
+import { cn } from "../../lib/utils"
 import { BackendProvider } from "../../services/backend"
 import { IntegrationType, SlackIntegration } from "../../shared/Integrations"
 import { notificationDestinationsKey } from "../../shared/InvalidationKeys"
@@ -29,12 +31,12 @@ export interface NotificationDestinationFormProps {
 export function NotificationDestinationForm({ existingDestination, onSuccess, onCancel }: NotificationDestinationFormProps) {
     const { integrations, isLoading } = useSlackIntegrations()
 
-    // For edit mode with Slack, use the existing integration ID
     const slackDestination = existingDestination?.type === NotificationDestinationType.SLACK ? (existingDestination as SlackNotificationDestination) : undefined
+    const isDmDestination = Boolean(slackDestination?.slackUserId)
 
     const [selectedIntegrationId, setSelectedIntegrationId] = useState<string | undefined>(slackDestination?.integrationId)
-    const [selectedChannelId, setSelectedChannelId] = useState<string | undefined>(slackDestination?.slackChannelId)
-    const [selectedChannelName, setSelectedChannelName] = useState<string | undefined>(slackDestination?.slackChannelName)
+    const [selectedChannelId, setSelectedChannelId] = useState<string | undefined>(isDmDestination ? undefined : slackDestination?.slackChannelId)
+    const [selectedChannelName, setSelectedChannelName] = useState<string | undefined>(isDmDestination ? undefined : slackDestination?.slackChannelName)
     const [selectedUserId, setSelectedUserId] = useState<string | undefined>(slackDestination?.slackUserId)
     const [selectedUserName, setSelectedUserName] = useState<string | undefined>(slackDestination?.slackUserName)
     const [isConnecting, setIsConnecting] = useState(false)
@@ -44,12 +46,10 @@ export function NotificationDestinationForm({ existingDestination, onSuccess, on
     const [isBotUser, setIsBotUser] = useState(true)
 
     const selectedSlackIntegration = integrations.find(integration => integration.id === selectedIntegrationId)
-
     const isEditMode = !!existingDestination
 
-    // Initialize integration selection when integrations load (for new destinations)
     useEffect(() => {
-        if (!isEditMode && !selectedIntegrationId && integrations.length === 1) {
+        if (!isEditMode && !selectedIntegrationId && integrations.length > 0) {
             setSelectedIntegrationId(integrations[0].id)
         }
     }, [integrations, isEditMode, selectedIntegrationId])
@@ -76,7 +76,7 @@ export function NotificationDestinationForm({ existingDestination, onSuccess, on
         setValidationError(null)
 
         if (!selectedIntegrationId) {
-            setValidationError("Please select a Slack workspace")
+            setValidationError("Please select a Slack workspace.")
             return
         }
 
@@ -84,14 +84,13 @@ export function NotificationDestinationForm({ existingDestination, onSuccess, on
         const hasUserTarget = Boolean(selectedUserId)
 
         if (hasChannelTarget === hasUserTarget) {
-            setValidationError("Select exactly one Slack destination: either one channel or one individual.")
+            setValidationError("Select exactly one Slack destination: one channel or one individual.")
             return
         }
 
         setIsSaving(true)
         try {
             if (isEditMode) {
-                // Update existing destination
                 await BackendProvider.updateNotificationDestination({
                     id: existingDestination.id,
                     type: NotificationDestinationType.SLACK,
@@ -103,7 +102,6 @@ export function NotificationDestinationForm({ existingDestination, onSuccess, on
                 } as SlackNotificationDestination)
                 toast.success("Notification destination updated successfully")
             } else {
-                // Create new destination
                 const payload: CreateNotificationDestinationRequest = {
                     type: NotificationDestinationType.SLACK,
                     integrationId: selectedIntegrationId,
@@ -131,8 +129,12 @@ export function NotificationDestinationForm({ existingDestination, onSuccess, on
 
     if (isLoading || isConnecting) {
         return (
-            <div className="flex flex-col gap-2">
-                <Skeleton className="h-10 w-full" />
+            <div className="space-y-3 px-6 pb-6 pt-5">
+                <Skeleton className="h-24 w-full rounded-xl" />
+                <Skeleton className="h-44 w-full rounded-xl" />
+                <div className="flex justify-end">
+                    <Skeleton className="h-10 w-24 rounded-md" />
+                </div>
             </div>
         )
     }
@@ -143,11 +145,13 @@ export function NotificationDestinationForm({ existingDestination, onSuccess, on
 
     if (integrations.length === 0) {
         return (
-            <div>
-                No Slack integrations found.{" "}
-                <Button variant="link" onClick={() => setShowConnectionOptions(true)}>
-                    Connect a Slack integration
-                </Button>
+            <div className="px-6 pb-6 pt-5">
+                <div className="rounded-xl border border-dashed bg-muted/20 p-6 text-center">
+                    <p className="text-sm text-muted-foreground">No Slack integrations found. Connect a workspace to continue.</p>
+                    <Button className="mt-4" onClick={() => setShowConnectionOptions(true)}>
+                        Connect Slack Workspace
+                    </Button>
+                </div>
             </div>
         )
     }
@@ -157,32 +161,41 @@ export function NotificationDestinationForm({ existingDestination, onSuccess, on
         value: integration.id
     }))
 
-    const selectedOption = options.find(option => option.value === selectedIntegrationId) || options[0]
+    const selectedOption = options.find(option => option.value === selectedIntegrationId) ?? null
 
     return (
-        <div className="flex flex-col gap-4">
-            <div className="flex flex-row gap-2 items-center">
-                <p>Send notifications to:</p>
-                <DropdownSelect
-                    statusOptions={options}
-                    selectedOption={selectedOption}
-                    setSelected={id => {
-                        setSelectedIntegrationId(id)
-                        // Reset destination selection when workspace changes
-                        if (id !== selectedIntegrationId) {
-                            setSelectedChannelId(undefined)
-                            setSelectedChannelName(undefined)
-                            setSelectedUserId(undefined)
-                            setSelectedUserName(undefined)
-                        }
-                    }}
-                    additionalAction={{
-                        label: "Connect Another Slack Workspace",
-                        onClick: () => setShowConnectionOptions(true)
-                    }}
-                    modal={false}
-                />
+        <div className="space-y-5 px-6 pb-6 pt-5">
+            <div className="space-y-3 rounded-xl border bg-card/50 p-4 sm:p-5">
+                <div className="space-y-1">
+                    <Label className="text-sm font-medium">Slack Workspace</Label>
+                    <p className="text-xs text-muted-foreground">Choose which workspace should receive notifications.</p>
+                </div>
+
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                    <div className="min-w-0 flex-1">
+                        <DropdownSelect
+                            statusOptions={options}
+                            selectedOption={selectedOption}
+                            setSelected={id => {
+                                setSelectedIntegrationId(id)
+                                if (id !== selectedIntegrationId) {
+                                    setSelectedChannelId(undefined)
+                                    setSelectedChannelName(undefined)
+                                    setSelectedUserId(undefined)
+                                    setSelectedUserName(undefined)
+                                }
+                            }}
+                            modal={false}
+                            triggerClassName="h-11 w-full justify-between rounded-lg border-border/80 bg-background px-3 text-left"
+                            contentClassName="w-[var(--radix-dropdown-menu-trigger-width)]"
+                        />
+                    </div>
+                    <Button variant="outline" className="h-11 shrink-0" onClick={() => setShowConnectionOptions(true)}>
+                        Connect Another Workspace
+                    </Button>
+                </div>
             </div>
+
             {selectedIntegrationId && (
                 <SelectSlackDestinationForm
                     integrationId={selectedIntegrationId}
@@ -210,15 +223,15 @@ export function NotificationDestinationForm({ existingDestination, onSuccess, on
                 />
             )}
 
-            {validationError && <p className="text-sm text-destructive">{validationError}</p>}
+            {validationError && <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">{validationError}</div>}
 
-            <div className="flex flex-row gap-2 justify-end">
+            <div className="flex flex-col-reverse gap-2 border-t pt-4 sm:flex-row sm:justify-end">
                 {onCancel && (
                     <Button variant="outline" onClick={onCancel}>
                         Cancel
                     </Button>
                 )}
-                <Button onClick={saveDestination} disabled={isSaving}>
+                <Button onClick={saveDestination} disabled={isSaving} className="min-w-24">
                     {isSaving ? "Saving..." : isEditMode ? "Update" : "Save"}
                 </Button>
             </div>
@@ -251,25 +264,25 @@ function SelectSlackDestinationForm({
     const { users, isLoading: usersLoading } = useSlackUsers(integrationId)
 
     if (isLoading || usersLoading) {
-        return (
-            <div className="flex flex-col gap-2">
-                <Skeleton className="h-10 w-full" />
-            </div>
-        )
+        return <Skeleton className="h-44 w-full rounded-xl" />
     }
 
     const noneOptionValue = "__none__"
     const showNoChannelsNotice = Boolean(isBotUser && channels.length === 0)
+    const effectiveChannelId = selectedUserId ? undefined : selectedChannelId
+    const effectiveChannelName = selectedUserId ? undefined : selectedChannelName
 
     return (
-        <div className="flex flex-col gap-3 rounded-md border p-3">
-            <p className="text-sm text-muted-foreground">Choose one destination. Selecting a channel will clear any user selection, and selecting a user will clear any channel selection.</p>
+        <div className="space-y-3 rounded-xl border bg-card/40 p-4 sm:p-5">
+            <div className="space-y-1">
+                <p className="text-sm font-medium">Destination</p>
+                <p className="text-xs text-muted-foreground">Choose exactly one destination. Selecting one option clears the other automatically.</p>
+            </div>
 
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                <div className="space-y-2">
-                    <Label htmlFor="notification-destination-channel">Slack Channel</Label>
+                <DestinationTargetCard title="Slack Channel" description="Post in a channel the bot can access." icon={<Hash className="size-4" />} isActive={Boolean(selectedChannelId)}>
                     <Select
-                        value={selectedChannelId ?? noneOptionValue}
+                        value={effectiveChannelId ?? noneOptionValue}
                         onValueChange={value => {
                             if (value === noneOptionValue) {
                                 onSelectChannel(undefined, undefined)
@@ -279,29 +292,29 @@ function SelectSlackDestinationForm({
                             onSelectChannel(value, selectedChannel?.name ?? undefined)
                         }}
                     >
-                        <SelectTrigger id="notification-destination-channel">
+                        <SelectTrigger id="notification-destination-channel" className="h-11 w-full rounded-lg border-border/80 bg-background">
                             <SelectValue placeholder="Select a channel" />
                         </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value={noneOptionValue}>None</SelectItem>
-                            {selectedChannelId && !channels.some(ch => ch.id === selectedChannelId) && (
-                                <SelectItem value={selectedChannelId}>{selectedChannelName ? formatMPIMChannelName(selectedChannelName) : selectedChannelId}</SelectItem>
+                        <SelectContent align="start">
+                            <SelectItem value={noneOptionValue}>No channel selected</SelectItem>
+                            {effectiveChannelId && !channels.some(ch => ch.id === effectiveChannelId) && (
+                                <SelectItem value={effectiveChannelId}>{effectiveChannelName ? formatMPIMChannelName(effectiveChannelName) : effectiveChannelId}</SelectItem>
                             )}
                             <ChannelOptions channels={channels} />
                         </SelectContent>
                     </Select>
+
                     {showNoChannelsNotice && (
-                        <div className="rounded-md border border-border bg-muted/50 p-2">
-                            <p className="text-xs font-medium text-foreground">No channels available yet</p>
-                            <p className="text-xs text-muted-foreground">
-                                Invite the Terse bot with <code className="rounded bg-muted px-1 py-0.5 text-foreground">/invite @Terse</code>, or use Individual (DM) instead.
+                        <div className="mt-2 rounded-md border border-amber-500/30 bg-amber-500/10 p-2">
+                            <p className="text-xs font-medium text-amber-700 dark:text-amber-300">No channels available yet</p>
+                            <p className="text-xs text-amber-700/90 dark:text-amber-200/80">
+                                Invite the Terse bot with <code className="rounded bg-amber-500/20 px-1 py-0.5">/invite @Terse</code>, or use Individual (DM) instead.
                             </p>
                         </div>
                     )}
-                </div>
+                </DestinationTargetCard>
 
-                <div className="space-y-2">
-                    <Label htmlFor="notification-destination-user">Individual (DM)</Label>
+                <DestinationTargetCard title="Individual (DM)" description="Send direct messages to one teammate." icon={<UserRound className="size-4" />} isActive={Boolean(selectedUserId)}>
                     <Select
                         value={selectedUserId ?? noneOptionValue}
                         onValueChange={value => {
@@ -313,11 +326,11 @@ function SelectSlackDestinationForm({
                             onSelectUser(value, selectedUser?.name ?? undefined)
                         }}
                     >
-                        <SelectTrigger id="notification-destination-user">
+                        <SelectTrigger id="notification-destination-user" className="h-11 w-full rounded-lg border-border/80 bg-background">
                             <SelectValue placeholder="Select one user" />
                         </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value={noneOptionValue}>None</SelectItem>
+                        <SelectContent align="start">
+                            <SelectItem value={noneOptionValue}>No individual selected</SelectItem>
                             {selectedUserId && !users.some(user => user.id === selectedUserId) && <SelectItem value={selectedUserId}>{selectedUserName ?? selectedUserId}</SelectItem>}
                             <SelectGroup>
                                 <SelectLabel>Users</SelectLabel>
@@ -329,8 +342,30 @@ function SelectSlackDestinationForm({
                             </SelectGroup>
                         </SelectContent>
                     </Select>
+                </DestinationTargetCard>
+            </div>
+        </div>
+    )
+}
+
+function DestinationTargetCard({ title, description, icon, isActive, children }: { title: string; description: string; icon: ReactNode; isActive: boolean; children: ReactNode }) {
+    return (
+        <div className={cn("rounded-lg border p-4 transition-colors", isActive ? "border-primary/40 bg-primary/5 shadow-sm" : "border-border/80 bg-background/60")}>
+            <div className="mb-3 flex items-start gap-3">
+                <div
+                    className={cn(
+                        "mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-md border",
+                        isActive ? "border-primary/40 bg-primary/10 text-primary" : "border-border/80 bg-muted/60 text-muted-foreground"
+                    )}
+                >
+                    {icon}
+                </div>
+                <div className="space-y-0.5">
+                    <p className="text-sm font-medium leading-none">{title}</p>
+                    <p className="text-xs text-muted-foreground">{description}</p>
                 </div>
             </div>
+            {children}
         </div>
     )
 }
@@ -341,22 +376,26 @@ function ChannelOptions({ channels }: { channels: SlackChannel[] }) {
 
     return (
         <>
-            <SelectGroup>
-                <SelectLabel>Public Channels</SelectLabel>
-                {publicChannels.map(channel => (
-                    <SelectItem key={channel.id} value={channel.id}>
-                        #{channel.name}
-                    </SelectItem>
-                ))}
-            </SelectGroup>
-            <SelectGroup>
-                <SelectLabel>Private Channels</SelectLabel>
-                {privateChannels.map(channel => (
-                    <SelectItem key={channel.id} value={channel.id}>
-                        🔒 {channel.isMPIM ? formatMPIMChannelName(channel.name) : `#${channel.name}`}
-                    </SelectItem>
-                ))}
-            </SelectGroup>
+            {publicChannels.length > 0 && (
+                <SelectGroup>
+                    <SelectLabel>Public Channels</SelectLabel>
+                    {publicChannels.map(channel => (
+                        <SelectItem key={channel.id} value={channel.id}>
+                            #{channel.name}
+                        </SelectItem>
+                    ))}
+                </SelectGroup>
+            )}
+            {privateChannels.length > 0 && (
+                <SelectGroup>
+                    <SelectLabel>Private Channels</SelectLabel>
+                    {privateChannels.map(channel => (
+                        <SelectItem key={channel.id} value={channel.id}>
+                            {channel.isMPIM ? formatMPIMChannelName(channel.name) : `#${channel.name}`}
+                        </SelectItem>
+                    ))}
+                </SelectGroup>
+            )}
         </>
     )
 }
