@@ -54,13 +54,16 @@ export const ChatLayout = forwardRef<ChatLayoutHandle, ChatLayoutProps>(function
     const isNearBottomRef = useRef(true)
     const chatInputRef = useRef<ChatInputHandle>(null)
 
-    // Check if user is near the bottom and update state accordingly
+    // Check if user is near the bottom and update state accordingly.
+    // With flex-col-reverse, scrollTop = 0 is the bottom (newest content).
+    // Scrolling up moves scrollTop away from 0 (negative in some browsers,
+    // positive in others), so we use Math.abs to handle both conventions.
     const checkScrollPosition = () => {
         const container = scrollContainerRef.current
         if (!container) return
 
         const threshold = 100
-        const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight
+        const distanceFromBottom = Math.abs(container.scrollTop)
         const isNearBottom = distanceFromBottom <= threshold
 
         isNearBottomRef.current = isNearBottom
@@ -88,7 +91,7 @@ export const ChatLayout = forwardRef<ChatLayoutHandle, ChatLayoutProps>(function
 
         const resizeObserver = new ResizeObserver(() => {
             if (isNearBottomRef.current) {
-                container.scrollTop = container.scrollHeight
+                container.scrollTop = 0
             }
             checkScrollPosition()
         })
@@ -105,7 +108,7 @@ export const ChatLayout = forwardRef<ChatLayoutHandle, ChatLayoutProps>(function
         scrollToBottom: () => {
             const container = scrollContainerRef.current
             if (container) {
-                container.scrollTo({ top: container.scrollHeight, behavior: "smooth" })
+                container.scrollTo({ top: 0, behavior: "smooth" })
             }
         },
         focus: () => {
@@ -117,7 +120,7 @@ export const ChatLayout = forwardRef<ChatLayoutHandle, ChatLayoutProps>(function
     const handleScrollButtonClick = () => {
         const container = scrollContainerRef.current
         if (container) {
-            container.scrollTo({ top: container.scrollHeight, behavior: "smooth" })
+            container.scrollTo({ top: 0, behavior: "smooth" })
         }
     }
 
