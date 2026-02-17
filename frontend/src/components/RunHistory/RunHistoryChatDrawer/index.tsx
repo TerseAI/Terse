@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react"
+import { useRef, useState } from "react"
 
 import { Chat, type ChatHandle } from "@/components/chat/Chat"
 import { Drawer, DrawerContent } from "@/components/ui/drawer"
@@ -43,32 +43,8 @@ export default function RunHistoryChatDrawer({
 }: Props) {
     const [internalFullscreen, setInternalFullscreen] = useState(false)
     const chatRef = useRef<ChatHandle>(null)
-    const wasOpenRef = useRef(false)
-    const scrollTimeoutRef = useRef<number | null>(null)
 
     const isFullscreen = onFullscreenChange ? externalIsFullscreen : internalFullscreen
-
-    useEffect(() => {
-        if (scrollTimeoutRef.current !== null) {
-            window.clearTimeout(scrollTimeoutRef.current)
-            scrollTimeoutRef.current = null
-        }
-
-        if (isOpen && !wasOpenRef.current) {
-            // Scroll to bottom when drawer opens (with small delay for content to render)
-            scrollTimeoutRef.current = window.setTimeout(() => {
-                chatRef.current?.scrollToBottom()
-            }, 300)
-        }
-        wasOpenRef.current = isOpen
-
-        return () => {
-            if (scrollTimeoutRef.current !== null) {
-                window.clearTimeout(scrollTimeoutRef.current)
-                scrollTimeoutRef.current = null
-            }
-        }
-    }, [isOpen])
 
     const handleFullscreenChange = (fullscreen: boolean) => {
         if (onFullscreenChange) {
