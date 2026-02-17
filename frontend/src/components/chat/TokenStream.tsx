@@ -15,17 +15,6 @@ function TokenStream({ text, disableAnimation = false }: { text: string; disable
     const completionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
     const bufferRef = useRef<string[]>([])
 
-    // If animation is disabled, immediately show formatted text
-    useEffect(() => {
-        if (disableAnimation && text) {
-            setFinalText(text)
-            setShowFormatted(true)
-            setTokens([])
-            setBuffer([])
-            bufferRef.current = []
-        }
-    }, [text, disableAnimation])
-
     // Track when text changes to detect streaming completion
     useEffect(() => {
         lastTextChangeRef.current = Date.now()
@@ -33,7 +22,7 @@ function TokenStream({ text, disableAnimation = false }: { text: string; disable
         if (showFormatted && text !== finalText && !disableAnimation) {
             setShowFormatted(false)
         }
-    }, [text])
+    }, [disableAnimation, finalText, showFormatted, text])
 
     // Process markdown
     const processMarkdown = (text: string): JSX.Element => {
@@ -106,7 +95,7 @@ function TokenStream({ text, disableAnimation = false }: { text: string; disable
         }, 20)
 
         return () => clearInterval(interval)
-    }, [buffer])
+    }, [buffer, disableAnimation])
 
     // Handle when streaming finishes - use debounce approach for reliability
     useEffect(() => {
@@ -141,6 +130,10 @@ function TokenStream({ text, disableAnimation = false }: { text: string; disable
             }
         }
     }, [tokens, text, buffer.length, disableAnimation])
+
+    if (disableAnimation) {
+        return <div className="text-foreground text-md leading-relaxed whitespace-pre-wrap text-wrap-pretty select-text">{processMarkdown(text)}</div>
+    }
 
     // Show formatted version (only if finalText matches current text to avoid stale content)
     if (showFormatted && finalText === text) {
