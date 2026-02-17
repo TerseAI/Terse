@@ -2,9 +2,11 @@ import { RunToolApprovalItem } from "@openai/agents"
 import type { RunHistoryChatEventType } from "@prisma/client"
 import { Prisma } from "@prisma/client"
 
+import logger from "../../logger"
 import { db } from "../../prismaClient"
 import { ModelEvent } from "../../shared/ModelEvents"
 import { type RunHistoryAction, RunHistoryStatus, type RunHistoryTrigger } from "../../shared/RunHistoryTypes"
+import { randomString } from "../../utility/strings"
 import { convertIntegrationTypeToPrismaIntegrationTypeForRunHistory } from "../../utility/typeConverters"
 
 export type RunTrigger = RunHistoryTrigger
@@ -139,6 +141,11 @@ export async function markRunFailed(runId: string, errorMessage: string, stage?:
 }
 
 export async function storeChatEvent(runId: string, event: ModelEvent, timestamp?: Date | string): Promise<string> {
+    if (event.type === "RunError") {
+        logger.warn("RunError events are no longer persisted in run_history_chat_events; ignoring write.", { runId })
+        return `ignored-runerror-${randomString(15)}`
+    }
+
     const prisma = db()
 
     // Use provided timestamp or current time

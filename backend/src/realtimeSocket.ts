@@ -9,6 +9,7 @@ import { RunContext } from "./agent/AgentRunner/SystemPromptBuilder"
 import { evaluateCompletedRun, finalizeRunStatus, markRunFailed, storeChatEvent } from "./agent/AgentRunner/runHistory"
 import { DirectiveTask, directiveTaskQueue } from "./agent/DirectiveAgent/DirectiveAgent"
 import { type ClassifiedError, buildRunErrorEvent, classifyAgentError } from "./agent/agentErrorUtils"
+import { appendRunHistoryErrorMarker } from "./agent/runErrorMarkers"
 import { nodeEnv, optional, urls } from "./config/settings"
 import { KnowledgeBase } from "./knowledgeBase/abstract/KnowledgeBase"
 import { KnowledgeBaseFactory } from "./knowledgeBase/abstract/KnowledgeBaseFactory"
@@ -22,11 +23,12 @@ import { ApprovalProcessingStatus, ApprovalService } from "./services/ApprovalSe
 import { ConfigInstance } from "./shared/Configs"
 import { SendModelRequest, ToolApprovalResponse } from "./shared/ModelEvents"
 import { ModelEvent } from "./shared/ModelEvents"
-import { RunHistoryStatus } from "./shared/RunHistoryTypes"
+import { type RunHistoryModelEvent, type RunHistoryModelSocketEvent, RunHistoryStatus } from "./shared/RunHistoryTypes"
 import { SocketEvents, SocketRooms } from "./shared/SocketEvents"
 import { registerBuilderChatHandler } from "./socketHandlers/builderChatHandler"
 import { AgentWithRelations } from "./types/prisma"
 import { getInputConfigInclude, getKnowledgeBaseConfigInclude, getOutputConfigInclude } from "./utility/prismaIncludes"
+import { randomString } from "./utility/strings"
 import { getUserForOrg, workos } from "./utility/workos"
 
 // Extended Socket type with userId, organizationId, and WorkOS session ID
@@ -260,10 +262,24 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
                 type: "UserMessage",
                 message: userMessage
             }
-            const userMessageEventId = await storeChatEvent(runId, userMessageEvent)
+            const userMessageTimestamp = new Date()
+            const userMessageEventId = await storeChatEvent(runId, userMessageEvent, userMessageTimestamp)
+
+            if (io && organizationId) {
+                const runHistoryModelEvent: RunHistoryModelEvent = {
+                    ...userMessageEvent,
+                    id: userMessageEventId,
+                    timestamp: userMessageTimestamp.getTime()
+                }
+                const payload: RunHistoryModelSocketEvent = {
+                    runId,
+                    agentId: agent.id,
+                    runHistoryModelEvent
+                }
+                io.to(SocketRooms.organization(organizationId)).emit(SocketEvents.AGENT_CHAT_EVENT, payload)
+            }
             if (organizationId) {
                 emitCacheInvalidationWithWildcard(organizationId, "runHistory", agent.id)
-                emitCacheInvalidationWithWildcard(organizationId, "chatHistory", runId)
             }
 
             // Create knowledge bases from agent configuration
@@ -402,13 +418,29 @@ export function emitCacheInvalidationWithWildcard(organizationId: string, key: s
 }
 
 /**
- * Mark run as failed, store a RunError chat event, and invalidate related caches.
+ * Mark run as failed, append a raw error marker for model memory, emit a live RunError, and invalidate related caches.
  * Logs on failure; does not rethrow.
  */
 export async function markRunFailedAndInvalidate(runId: string, classified: ClassifiedError, organizationId: string | undefined, agentId: string): Promise<void> {
     try {
         await markRunFailed(runId, classified.message, "agent")
-        await storeChatEvent(runId, buildRunErrorEvent(classified))
+        await appendRunHistoryErrorMarker(runId, classified)
+
+        if (io && organizationId) {
+            const runErrorEvent = buildRunErrorEvent(classified)
+            const runHistoryModelEvent: RunHistoryModelEvent = {
+                ...runErrorEvent,
+                id: `run-error-live-${randomString(15)}`,
+                timestamp: Date.now()
+            }
+            const payload: RunHistoryModelSocketEvent = {
+                runId,
+                agentId,
+                runHistoryModelEvent
+            }
+            io.to(SocketRooms.organization(organizationId)).emit(SocketEvents.AGENT_CHAT_EVENT, payload)
+        }
+
         if (organizationId) {
             emitCacheInvalidationWithWildcard(organizationId, "runHistory", agentId)
             emitCacheInvalidationWithWildcard(organizationId, "chatHistory", runId)

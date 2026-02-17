@@ -3,6 +3,7 @@ import type { AgentInputItem, AssistantMessageItem, FunctionCallItem, FunctionCa
 import { IntegrationType } from "../shared/Integrations"
 import { ModelEvent } from "../shared/ModelEvents"
 
+import { parseRunErrorMarkerItem } from "./runErrorMarkers"
 import { parseToolExecutionResult } from "./toolExecution"
 
 /** An AgentInputItem paired with the DB timestamp it was created at. */
@@ -45,6 +46,17 @@ export function convertAgentInputItemsToModelEvents(items: (AgentInputItem | Tim
 }
 
 function convertSingleItem(item: AgentInputItem, toolToIntegrationMap?: Map<string, string>): ModelEvent[] | null {
+    const runErrorMarker = parseRunErrorMarkerItem(item)
+    if (runErrorMarker) {
+        return [
+            {
+                type: "RunError",
+                error: runErrorMarker.error,
+                ...(runErrorMarker.code ? { code: runErrorMarker.code } : {})
+            }
+        ]
+    }
+
     // User message
     if (isUserMessageItem(item)) {
         const text = extractTextFromMessageContent(item.content)
