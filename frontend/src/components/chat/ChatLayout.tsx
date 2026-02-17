@@ -1,4 +1,4 @@
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react"
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react"
 
 import { AnimatePresence, motion } from "framer-motion"
 import { ChevronDown } from "lucide-react"
@@ -49,83 +49,23 @@ export const ChatLayout = forwardRef<ChatLayoutHandle, ChatLayoutProps>(function
 ) {
     const [showScrollIndicator, setShowScrollIndicator] = useState(false)
     const scrollContainerRef = useRef<HTMLDivElement>(null)
+    const messagesEndRef = useRef<HTMLDivElement>(null)
     const contentRef = useRef<HTMLDivElement>(null)
     const isNearBottomRef = useRef(true)
-    const hasCompletedInitialScrollRef = useRef(false)
-    const scrollRafIdRef = useRef<number | null>(null)
     const chatInputRef = useRef<ChatInputHandle>(null)
 
-    const cancelPendingScrollRaf = useCallback(() => {
-        if (scrollRafIdRef.current !== null) {
-            window.cancelAnimationFrame(scrollRafIdRef.current)
-            scrollRafIdRef.current = null
-        }
-    }, [])
-
-    const getDistanceFromBottom = useCallback((container: HTMLDivElement) => {
-        return container.scrollHeight - container.scrollTop - container.clientHeight
-    }, [])
-
-    // Check if user is near the bottom and update state accordingly.
-    const checkScrollPosition = useCallback(() => {
+    // Check if user is near the bottom and update state accordingly
+    const checkScrollPosition = () => {
         const container = scrollContainerRef.current
-        if (!container) return false
+        if (!container) return
 
         const threshold = 100
-        const distanceFromBottom = getDistanceFromBottom(container)
+        const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight
         const isNearBottom = distanceFromBottom <= threshold
 
         isNearBottomRef.current = isNearBottom
-        setShowScrollIndicator(prev => (prev === !isNearBottom ? prev : !isNearBottom))
-
-        return distanceFromBottom <= 1
-    }, [getDistanceFromBottom])
-
-    // Keep trying for a few frames so delayed layout/measurement still lands exactly at bottom.
-    const ensureScrollToBottom = useCallback(
-        (maxFrames = 45, restart = false) => {
-            const container = scrollContainerRef.current
-            if (!container) return
-
-            if (restart) {
-                cancelPendingScrollRaf()
-            } else if (scrollRafIdRef.current !== null) {
-                return
-            }
-
-            let frame = 0
-            const tick = () => {
-                const activeContainer = scrollContainerRef.current
-                if (!activeContainer) {
-                    scrollRafIdRef.current = null
-                    return
-                }
-
-                activeContainer.scrollTop = activeContainer.scrollHeight
-                frame += 1
-
-                const distanceFromBottom = getDistanceFromBottom(activeContainer)
-                if (distanceFromBottom <= 1) {
-                    hasCompletedInitialScrollRef.current = true
-                    isNearBottomRef.current = true
-                    setShowScrollIndicator(false)
-                    scrollRafIdRef.current = null
-                    return
-                }
-
-                if (frame >= maxFrames) {
-                    scrollRafIdRef.current = null
-                    checkScrollPosition()
-                    return
-                }
-
-                scrollRafIdRef.current = window.requestAnimationFrame(tick)
-            }
-
-            scrollRafIdRef.current = window.requestAnimationFrame(tick)
-        },
-        [cancelPendingScrollRaf, checkScrollPosition, getDistanceFromBottom]
-    )
+        setShowScrollIndicator(!isNearBottom)
+    }
 
     // Set up scroll listener
     useEffect(() => {
@@ -133,108 +73,49 @@ export const ChatLayout = forwardRef<ChatLayoutHandle, ChatLayoutProps>(function
         if (!container) return
 
         checkScrollPosition()
-        container.addEventListener("scroll", checkScrollPosition, { passive: true })
+        container.addEventListener("scroll", checkScrollPosition)
 
         return () => {
             container.removeEventListener("scroll", checkScrollPosition)
         }
-    }, [checkScrollPosition])
+    }, [])
 
-    // Watch content and container size changes (streaming text, drawer/layout resize).
+    // Watch content height changes - this handles token streaming animation
     useEffect(() => {
         const content = contentRef.current
         const container = scrollContainerRef.current
         if (!content || !container) return
 
         const resizeObserver = new ResizeObserver(() => {
-            if (!hasCompletedInitialScrollRef.current) {
-                ensureScrollToBottom()
-                return
-            }
-
             if (isNearBottomRef.current) {
+                // Scroll within the chat container only — avoid scrollIntoView
+                // which bubbles up and scrolls ancestor elements (e.g. the page)
                 container.scrollTop = container.scrollHeight
-                setShowScrollIndicator(false)
-                return
             }
-
             checkScrollPosition()
         })
 
         resizeObserver.observe(content)
-        resizeObserver.observe(container)
 
         return () => {
             resizeObserver.disconnect()
         }
-    }, [checkScrollPosition, ensureScrollToBottom])
-
-    // Trigger initial anchoring and keep following new turns while user is pinned.
-    useEffect(() => {
-        if (turns.length === 0) {
-            hasCompletedInitialScrollRef.current = false
-            isNearBottomRef.current = true
-            setShowScrollIndicator(false)
-            cancelPendingScrollRaf()
-            return
-        }
-
-        if (!hasCompletedInitialScrollRef.current) {
-            ensureScrollToBottom()
-            return
-        }
-
-        if (isNearBottomRef.current) {
-            const container = scrollContainerRef.current
-            if (!container) return
-            container.scrollTop = container.scrollHeight
-            setShowScrollIndicator(false)
-        }
-    }, [cancelPendingScrollRaf, ensureScrollToBottom, turns])
-
-    useEffect(() => {
-        return () => {
-            cancelPendingScrollRaf()
-        }
-    }, [cancelPendingScrollRaf])
+    }, [])
 
     // Expose scrollToBottom and focus to parent via ref
-    useImperativeHandle(
-        ref,
-        () => ({
-            scrollToBottom: () => {
-                isNearBottomRef.current = true
-                setShowScrollIndicator(false)
-                ensureScrollToBottom(45, true)
-            },
-            focus: () => {
-                chatInputRef.current?.focus()
-            }
-        }),
-        [ensureScrollToBottom]
-    )
+    useImperativeHandle(ref, () => ({
+        scrollToBottom: () => {
+            messagesEndRef.current?.scrollIntoView({ behavior: "auto" })
+        },
+        focus: () => {
+            chatInputRef.current?.focus()
+        }
+    }))
 
     // Smooth scroll for button click
     const handleScrollButtonClick = () => {
-        const container = scrollContainerRef.current
-        if (!container) return
-
-        hasCompletedInitialScrollRef.current = true
-        isNearBottomRef.current = true
-        setShowScrollIndicator(false)
-        container.scrollTo({ top: container.scrollHeight, behavior: "smooth" })
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
     }
-
-    const handleSendMessage = useCallback(
-        (message: string) => {
-            hasCompletedInitialScrollRef.current = true
-            isNearBottomRef.current = true
-            setShowScrollIndicator(false)
-            ensureScrollToBottom(45, true)
-            onSendMessage(message)
-        },
-        [ensureScrollToBottom, onSendMessage]
-    )
 
     return (
         <div className={`h-full w-full backdrop-blur-sm shadow-lg transition-opacity duration-300 opacity-100 rounded-lg flex flex-col relative`}>
@@ -249,7 +130,7 @@ export const ChatLayout = forwardRef<ChatLayoutHandle, ChatLayoutProps>(function
                     {turns.length === 0 && EmptyContentPlaceholder}
 
                     {/* Scroll anchor element */}
-                    <div className="h-1" />
+                    <div ref={messagesEndRef} className="h-1" />
                 </div>
             </div>
 
@@ -282,7 +163,7 @@ export const ChatLayout = forwardRef<ChatLayoutHandle, ChatLayoutProps>(function
             <div className="flex-shrink-0">
                 <ChatInput
                     ref={chatInputRef}
-                    sendMessage={handleSendMessage}
+                    sendMessage={onSendMessage}
                     input={input}
                     setInput={setInput}
                     placeholders={placeholders}
