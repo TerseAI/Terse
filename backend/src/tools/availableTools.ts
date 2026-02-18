@@ -12,7 +12,7 @@ type CollectedEntry = {
 
 /**
  * Returns the write-only tools (those that require approval) for the given
- * skills (output config types) and knowledge base config types. Dedupes by
+ * skills (output config types). Dedupes by
  * tool name; first occurrence wins. Only tools with isReadOnly === false are
  * included.
  */
@@ -27,10 +27,9 @@ export function getToolsThatRequireApprovals(skills: ConfigType[]): TerseTool[] 
     const map = new Map<string, CollectedEntry>()
 
     skills.forEach(configType => {
-        const outputConfigType = convertConfigTypeToOutputConfigType(configType)
-        const output = OutputFactory.createOutput(outputConfigType)
+        const output = OutputFactory.createOutput(convertConfigTypeToOutputConfigType(configType))
         if (!output) {
-            throw new Error(`Output type ${outputConfigType} is not supported.`)
+            throw new Error(`Output for config type ${configType} is not supported.`)
         }
         output.toolbox.forEach(entry => {
             const name = entry.tool.name

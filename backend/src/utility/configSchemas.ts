@@ -23,7 +23,7 @@ export const BaseConfigSchema = z
         integrationId: NonEmptyString.describe(
             'The integration instance ID (CUID format like "cm..."). When using fetchResourcesForIntegration, this is the "integration.id" field - NOT teamId, channelId, workspaceId, or any resource ID. Use "system" only for TIME_TRIGGER configs.'
         ),
-        configType: z.nativeEnum(ConfigType).describe("The config type for this input/output/knowledge base."),
+        configType: z.nativeEnum(ConfigType).describe("The config type for this trigger or skill."),
         integrationType: z.nativeEnum(IntegrationType).describe("The integration provider type (must match configType).")
     })
     .strict()
@@ -124,21 +124,21 @@ export const ConfluenceConfigSchema = BaseConfigSchema.extend({
 })
 
 export const PosthogConfigSchema = BaseConfigSchema.extend({
-    configType: z.literal(ConfigType.POSTHOG).describe("Use for PostHog analytics knowledge bases. Requires projectId."),
+    configType: z.literal(ConfigType.POSTHOG).describe("Use for PostHog analytics skills. Requires projectId."),
     integrationType: z.literal(IntegrationType.POSTHOG),
     projectId: NonEmptyString.describe("The PostHog project ID. From fetchResourcesForIntegration with integrationType=POSTHOG, use resources[].id."),
     projectName: z.string().nullable().describe("The PostHog project name. From fetchResourcesForIntegration, use resources[].name.")
 })
 
 export const LaunchDarklyConfigSchema = BaseConfigSchema.extend({
-    configType: z.literal(ConfigType.LAUNCHDARKLY).describe("Use for LaunchDarkly feature flag knowledge bases. Requires projectKey and environmentKeys."),
+    configType: z.literal(ConfigType.LAUNCHDARKLY).describe("Use for LaunchDarkly feature-flag skills. Requires projectKey and environmentKeys."),
     integrationType: z.literal(IntegrationType.LAUNCHDARKLY),
     projectKey: NonEmptyString.describe("The LaunchDarkly project key. From fetchResourcesForIntegration with integrationType=LAUNCHDARKLY."),
     environmentKeys: z.array(NonEmptyString).min(1).describe("Array of LaunchDarkly environment keys to include.")
 })
 
 export const DatadogConfigSchema = BaseConfigSchema.extend({
-    configType: z.literal(ConfigType.DATADOG).describe("Use for Datadog log knowledge bases."),
+    configType: z.literal(ConfigType.DATADOG).describe("Use for Datadog log skills."),
     integrationType: z.literal(IntegrationType.DATADOG),
     defaultIndexes: z.array(NonEmptyString).default(["main"]).describe('Log indexes to search (e.g. ["main"]). From fetchResourcesForIntegration or use ["main"].')
 })

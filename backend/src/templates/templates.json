@@ -27,6 +27,14 @@
                 "config": {
                     "configType": "notion",
                     "integrationType": "notion"
+                },
+                "readOnly": false
+            },
+            {
+                "readOnly": true,
+                "config": {
+                    "configType": "github",
+                    "integrationType": "github"
                 }
             }
         ],
@@ -55,11 +63,18 @@
                 "config": {
                     "configType": "linear_output",
                     "integrationType": "linear"
-                }
-            }
-        ],
-        "knowledgeBases": [
+                },
+                "readOnly": false
+            },
             {
+                "readOnly": true,
+                "config": {
+                    "configType": "github",
+                    "integrationType": "github"
+                }
+            },
+            {
+                "readOnly": true,
                 "config": {
                     "configType": "POSTHOG",
                     "integrationType": "posthog"
@@ -91,7 +106,8 @@
                 "config": {
                     "configType": "notion",
                     "integrationType": "notion"
-                }
+                },
+                "readOnly": false
             }
         ],
         "requireApproval": false,
@@ -119,7 +135,8 @@
                 "config": {
                     "configType": "confluence",
                     "integrationType": "atlassian"
-                }
+                },
+                "readOnly": false
             }
         ],
         "requireApproval": false,
@@ -143,19 +160,19 @@
                 }
             }
         ],
-        "knowledgeBases": [
-            {
-                "config": {
-                    "configType": "github_kb",
-                    "integrationType": "github"
-                }
-            }
-        ],
         "outputs": [
             {
                 "config": {
                     "configType": "slack_output",
                     "integrationType": "slack"
+                },
+                "readOnly": false
+            },
+            {
+                "readOnly": true,
+                "config": {
+                    "configType": "github",
+                    "integrationType": "github"
                 }
             }
         ],
@@ -179,19 +196,19 @@
                 }
             }
         ],
-        "knowledgeBases": [
-            {
-                "config": {
-                    "configType": "github_kb",
-                    "integrationType": "github"
-                }
-            }
-        ],
         "outputs": [
             {
                 "config": {
                     "configType": "slack_output",
                     "integrationType": "slack"
+                },
+                "readOnly": false
+            },
+            {
+                "readOnly": true,
+                "config": {
+                    "configType": "github",
+                    "integrationType": "github"
                 }
             }
         ],
@@ -215,19 +232,19 @@
                 }
             }
         ],
-        "knowledgeBases": [
-            {
-                "config": {
-                    "configType": "github_kb",
-                    "integrationType": "github"
-                }
-            }
-        ],
         "outputs": [
             {
                 "config": {
                     "configType": "slack_output",
                     "integrationType": "slack"
+                },
+                "readOnly": false
+            },
+            {
+                "readOnly": true,
+                "config": {
+                    "configType": "github",
+                    "integrationType": "github"
                 }
             }
         ],
@@ -256,7 +273,8 @@
                 "config": {
                     "configType": "notion",
                     "integrationType": "notion"
-                }
+                },
+                "readOnly": false
             }
         ],
         "requireApproval": false,
@@ -284,7 +302,8 @@
                 "config": {
                     "configType": "notion",
                     "integrationType": "notion"
-                }
+                },
+                "readOnly": false
             }
         ],
         "requireApproval": false,
@@ -308,19 +327,19 @@
                 }
             }
         ],
-        "knowledgeBases": [
-            {
-                "config": {
-                    "configType": "github_kb",
-                    "integrationType": "github"
-                }
-            }
-        ],
         "outputs": [
             {
                 "config": {
                     "configType": "gmail_output",
                     "integrationType": "gmail"
+                },
+                "readOnly": false
+            },
+            {
+                "readOnly": true,
+                "config": {
+                    "configType": "github",
+                    "integrationType": "github"
                 }
             }
         ],
@@ -350,6 +369,14 @@
                 "config": {
                     "configType": "slack_output",
                     "integrationType": "slack"
+                },
+                "readOnly": false
+            },
+            {
+                "readOnly": true,
+                "config": {
+                    "configType": "POSTHOG",
+                    "integrationType": "posthog"
                 }
             }
         ],
@@ -374,19 +401,26 @@
                 }
             }
         ],
-        "knowledgeBases": [
-            {
-                "config": {
-                    "configType": "github_kb",
-                    "integrationType": "github"
-                }
-            }
-        ],
         "outputs": [
             {
                 "config": {
                     "configType": "slack_output",
                     "integrationType": "slack"
+                },
+                "readOnly": false
+            },
+            {
+                "readOnly": true,
+                "config": {
+                    "configType": "launchdarkly",
+                    "integrationType": "launchdarkly"
+                }
+            },
+            {
+                "readOnly": true,
+                "config": {
+                    "configType": "github",
+                    "integrationType": "github"
                 }
             }
         ],
@@ -411,19 +445,19 @@
                 }
             }
         ],
-        "knowledgeBases": [
-            {
-                "config": {
-                    "configType": "POSTHOG",
-                    "integrationType": "posthog"
-                }
-            }
-        ],
         "outputs": [
             {
                 "config": {
                     "configType": "slack_output",
                     "integrationType": "slack"
+                },
+                "readOnly": false
+            },
+            {
+                "readOnly": true,
+                "config": {
+                    "configType": "POSTHOG",
+                    "integrationType": "posthog"
                 }
             }
         ],
@@ -448,19 +482,19 @@
                 }
             }
         ],
-        "knowledgeBases": [
-            {
-                "config": {
-                    "configType": "slack_kb",
-                    "integrationType": "slack"
-                }
-            }
-        ],
         "outputs": [
             {
                 "config": {
                     "configType": "notion",
                     "integrationType": "notion"
+                },
+                "readOnly": false
+            },
+            {
+                "readOnly": true,
+                "config": {
+                    "configType": "slack_output",
+                    "integrationType": "slack"
                 }
             }
         ],
@@ -484,19 +518,19 @@
                 }
             }
         ],
-        "knowledgeBases": [
-            {
-                "config": {
-                    "configType": "github_kb",
-                    "integrationType": "github"
-                }
-            }
-        ],
         "outputs": [
             {
                 "config": {
                     "configType": "notion",
                     "integrationType": "notion"
+                },
+                "readOnly": false
+            },
+            {
+                "readOnly": true,
+                "config": {
+                    "configType": "github",
+                    "integrationType": "github"
                 }
             }
         ],
@@ -521,31 +555,33 @@
                 }
             }
         ],
-        "knowledgeBases": [
-            {
-                "config": {
-                    "configType": "linear_kb",
-                    "integrationType": "linear"
-                }
-            },
-            {
-                "config": {
-                    "configType": "github_kb",
-                    "integrationType": "github"
-                }
-            },
-            {
-                "config": {
-                    "configType": "slack_kb",
-                    "integrationType": "slack"
-                }
-            }
-        ],
         "outputs": [
             {
                 "config": {
                     "configType": "notion",
                     "integrationType": "notion"
+                },
+                "readOnly": false
+            },
+            {
+                "readOnly": true,
+                "config": {
+                    "configType": "linear_output",
+                    "integrationType": "linear"
+                }
+            },
+            {
+                "readOnly": true,
+                "config": {
+                    "configType": "github",
+                    "integrationType": "github"
+                }
+            },
+            {
+                "readOnly": true,
+                "config": {
+                    "configType": "slack_output",
+                    "integrationType": "slack"
                 }
             }
         ],
@@ -570,25 +606,26 @@
                 }
             }
         ],
-        "knowledgeBases": [
-            {
-                "config": {
-                    "configType": "slack_kb",
-                    "integrationType": "slack"
-                }
-            },
-            {
-                "config": {
-                    "configType": "linear_kb",
-                    "integrationType": "linear"
-                }
-            }
-        ],
         "outputs": [
             {
                 "config": {
                     "configType": "slack_output",
                     "integrationType": "slack"
+                },
+                "readOnly": false
+            },
+            {
+                "readOnly": true,
+                "config": {
+                    "configType": "slack_output",
+                    "integrationType": "slack"
+                }
+            },
+            {
+                "readOnly": true,
+                "config": {
+                    "configType": "linear_output",
+                    "integrationType": "linear"
                 }
             }
         ],
@@ -617,7 +654,8 @@
                 "config": {
                     "configType": "linear_output",
                     "integrationType": "linear"
-                }
+                },
+                "readOnly": false
             }
         ],
         "requireApproval": false,
@@ -640,19 +678,19 @@
                 }
             }
         ],
-        "knowledgeBases": [
-            {
-                "config": {
-                    "configType": "github_kb",
-                    "integrationType": "github"
-                }
-            }
-        ],
         "outputs": [
             {
                 "config": {
                     "configType": "slack_output",
                     "integrationType": "slack"
+                },
+                "readOnly": false
+            },
+            {
+                "readOnly": true,
+                "config": {
+                    "configType": "github",
+                    "integrationType": "github"
                 }
             }
         ],
@@ -676,19 +714,19 @@
                 }
             }
         ],
-        "knowledgeBases": [
-            {
-                "config": {
-                    "configType": "github_kb",
-                    "integrationType": "github"
-                }
-            }
-        ],
         "outputs": [
             {
                 "config": {
                     "configType": "slack_output",
                     "integrationType": "slack"
+                },
+                "readOnly": false
+            },
+            {
+                "readOnly": true,
+                "config": {
+                    "configType": "github",
+                    "integrationType": "github"
                 }
             }
         ],
@@ -712,19 +750,19 @@
                 }
             }
         ],
-        "knowledgeBases": [
-            {
-                "config": {
-                    "configType": "github_kb",
-                    "integrationType": "github"
-                }
-            }
-        ],
         "outputs": [
             {
                 "config": {
                     "configType": "slack_output",
                     "integrationType": "slack"
+                },
+                "readOnly": false
+            },
+            {
+                "readOnly": true,
+                "config": {
+                    "configType": "github",
+                    "integrationType": "github"
                 }
             }
         ],
@@ -749,25 +787,19 @@
                 }
             }
         ],
-        "knowledgeBases": [
-            {
-                "config": {
-                    "configType": "github_kb",
-                    "integrationType": "github"
-                }
-            },
-            {
-                "config": {
-                    "configType": "launchdarkly",
-                    "integrationType": "launchdarkly"
-                }
-            }
-        ],
         "outputs": [
             {
                 "config": {
                     "configType": "slack_output",
                     "integrationType": "slack"
+                },
+                "readOnly": false
+            },
+            {
+                "readOnly": true,
+                "config": {
+                    "configType": "github",
+                    "integrationType": "github"
                 }
             }
         ],
@@ -796,7 +828,8 @@
                 "config": {
                     "configType": "notion",
                     "integrationType": "notion"
-                }
+                },
+                "readOnly": false
             }
         ],
         "requireApproval": false,
@@ -820,20 +853,13 @@
                 }
             }
         ],
-        "knowledgeBases": [
-            {
-                "config": {
-                    "configType": "POSTHOG",
-                    "integrationType": "posthog"
-                }
-            }
-        ],
         "outputs": [
             {
                 "config": {
                     "configType": "slack_output",
                     "integrationType": "slack"
-                }
+                },
+                "readOnly": false
             }
         ],
         "requireApproval": false,

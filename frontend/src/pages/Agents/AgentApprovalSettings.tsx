@@ -41,7 +41,7 @@ function AgentApprovalSettings({ outputs, toolApprovals, onToolApprovalsChange }
 
     const renderBody = () => {
         if (outputConfigTypes.length === 0) {
-            return <p className="text-sm text-muted-foreground">Configure skills and knowledge bases to select which tools require approval.</p>
+            return <p className="text-sm text-muted-foreground">Configure skills to select which tools require approval.</p>
         }
 
         if (isLoading) {
@@ -58,7 +58,7 @@ function AgentApprovalSettings({ outputs, toolApprovals, onToolApprovalsChange }
         }
 
         if (toolsThatRequireApprovals.length === 0) {
-            return <p className="text-sm text-muted-foreground">No write-only tools for the configured skills and knowledge bases.</p>
+            return <p className="text-sm text-muted-foreground">No write-only tools for the configured skills.</p>
         }
 
         const toolMap = new Map(toolsThatRequireApprovals.map(t => [t.name, t]))

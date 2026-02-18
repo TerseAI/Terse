@@ -10,15 +10,12 @@ export enum ConfigType {
     LINEAR_INPUT = "linear_input",
     LINEAR_OUTPUT = "linear_output",
     GITHUB = "github",
-    GITHUB_KB = "github_kb",
     JIRA = "jira",
     CONFLUENCE = "confluence",
     POSTHOG = "POSTHOG",
     DATADOG = "DATADOG",
     TIME_TRIGGER = "time_trigger",
     LAUNCHDARKLY = "launchdarkly",
-    LINEAR_KB = "linear_kb",
-    SLACK_KB = "slack_kb",
     TERSE = "terse",
     WORKOS_INPUT = "workos_input",
     ATTIO_OUTPUT = "attio_output"
@@ -584,28 +581,6 @@ export class TimeTriggerConfig implements ConfigInstance {
     }
 }
 
-export class GitHubKBConfig implements ConfigInstance {
-    integrationType: IntegrationType = IntegrationType.GITHUB
-    configType: ConfigType = ConfigType.GITHUB_KB
-
-    constructor(
-        public integrationId: string,
-        public repositoryIds: number[],
-        public repositoryNames: string[] // Full names like "owner/repo"
-    ) {}
-
-    isComplete(): boolean {
-        return this.repositoryIds.length > 0
-    }
-
-    formatForAgent(): string {
-        const parts = [`Type: GitHub Codebase`, `Integration ID: ${this.integrationId}`]
-        if (this.repositoryNames.length > 0) {
-            parts.push(`Repositories: ${this.repositoryNames.join(", ")}`)
-        }
-        return parts.join("\n")
-    }
-}
 
 export class LaunchDarklyConfig implements ConfigInstance {
     integrationType: IntegrationType = IntegrationType.LAUNCHDARKLY
@@ -628,71 +603,6 @@ export class LaunchDarklyConfig implements ConfigInstance {
         }
         if (this.environmentKeys.length > 0) {
             parts.push(`Environments: ${this.environmentKeys.join(", ")}`)
-        }
-        return parts.join("\n")
-    }
-}
-
-export class LinearKBConfig implements ConfigInstance {
-    integrationType: IntegrationType = IntegrationType.LINEAR
-    configType: ConfigType = ConfigType.LINEAR_KB
-
-    constructor(
-        public integrationId: string,
-        public teamId?: string,
-        public teamName?: string,
-        public projectId?: string,
-        public projectName?: string
-    ) {}
-
-    isComplete(): boolean {
-        return !!this.integrationId
-    }
-
-    formatForAgent(): string {
-        const parts = [`Type: Linear Knowledge Base`, `Integration ID: ${this.integrationId}`]
-        if (this.teamName) {
-            parts.push(`Team: ${this.teamName}`)
-        } else if (this.teamId) {
-            parts.push(`Team ID: ${this.teamId}`)
-        }
-        if (this.projectName) {
-            parts.push(`Project: ${this.projectName}`)
-        } else if (this.projectId) {
-            parts.push(`Project ID: ${this.projectId}`)
-        }
-        return parts.join("\n")
-    }
-}
-
-export class SlackKBConfig implements ConfigInstance {
-    integrationType: IntegrationType = IntegrationType.SLACK
-    configType: ConfigType = ConfigType.SLACK_KB
-
-    constructor(
-        public integrationId: string,
-        public channelId?: string,
-        public channelName?: string,
-        public allowDms: boolean = false,
-        public userIds?: string[],
-        public userNames?: string[]
-    ) {}
-
-    isComplete(): boolean {
-        const hasChannel = !!this.channelId?.trim()
-        return !!this.integrationId && (hasChannel || this.allowDms)
-    }
-
-    formatForAgent(): string {
-        const parts = [`Type: Slack Knowledge Base`, `Integration ID: ${this.integrationId}`]
-        if (this.channelId) {
-            parts.push(`Channel ID: ${this.channelId}`)
-        }
-        if (this.allowDms) {
-            parts.push("Allow DMs: Yes")
-        }
-        if (this.userIds?.length) {
-            parts.push(`Filter to user IDs: ${this.userIds.join(", ")}`)
         }
         return parts.join("\n")
     }
@@ -767,15 +677,12 @@ export type ConfigMetadataMap = EnsureExhaustiveMetadata<{
     [ConfigType.LINEAR_INPUT]: typeof LinearInputConfig
     [ConfigType.LINEAR_OUTPUT]: typeof LinearOutputConfig
     [ConfigType.GITHUB]: typeof GitHubConfig
-    [ConfigType.GITHUB_KB]: typeof GitHubKBConfig
     [ConfigType.JIRA]: typeof JiraConfig
     [ConfigType.CONFLUENCE]: typeof ConfluenceConfig
     [ConfigType.POSTHOG]: typeof PosthogConfig
     [ConfigType.DATADOG]: typeof DatadogConfig
     [ConfigType.TIME_TRIGGER]: typeof TimeTriggerConfig
     [ConfigType.LAUNCHDARKLY]: typeof LaunchDarklyConfig
-    [ConfigType.LINEAR_KB]: typeof LinearKBConfig
-    [ConfigType.SLACK_KB]: typeof SlackKBConfig
     [ConfigType.TERSE]: typeof TerseConfig
     [ConfigType.WORKOS_INPUT]: typeof WorkOSInputConfig
     [ConfigType.ATTIO_OUTPUT]: typeof AttioOutputConfig
@@ -791,15 +698,12 @@ export const CONFIG_METADATA: ConfigMetadataMap = {
     [ConfigType.LINEAR_INPUT]: LinearInputConfig,
     [ConfigType.LINEAR_OUTPUT]: LinearOutputConfig,
     [ConfigType.GITHUB]: GitHubConfig,
-    [ConfigType.GITHUB_KB]: GitHubKBConfig,
     [ConfigType.JIRA]: JiraConfig,
     [ConfigType.CONFLUENCE]: ConfluenceConfig,
     [ConfigType.POSTHOG]: PosthogConfig,
     [ConfigType.DATADOG]: DatadogConfig,
     [ConfigType.TIME_TRIGGER]: TimeTriggerConfig,
     [ConfigType.LAUNCHDARKLY]: LaunchDarklyConfig,
-    [ConfigType.LINEAR_KB]: LinearKBConfig,
-    [ConfigType.SLACK_KB]: SlackKBConfig,
     [ConfigType.TERSE]: TerseConfig,
     [ConfigType.WORKOS_INPUT]: WorkOSInputConfig,
     [ConfigType.ATTIO_OUTPUT]: AttioOutputConfig

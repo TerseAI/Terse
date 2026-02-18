@@ -144,7 +144,7 @@ function BuilderChatEmptyState() {
                         Manage Agents
                     </h4>
                     <p className="text-sm text-muted-foreground">
-                        Tell me about a problem you want to automate, and I'll help you manage your agent with triggers, outputs, prompts, and knowledge bases.
+                        Tell me about a problem you want to automate, and I'll help you manage your agent with triggers, skills, and prompts.
                     </p>
                 </div>
 

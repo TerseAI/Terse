@@ -499,6 +499,9 @@ model automation_outputs {
   confluence_config automation_confluence_configs?
   github_config     automation_github_configs?
   gmail_config      automation_gmail_configs?
+  posthog_config    automation_posthog_configs?
+  datadog_config    automation_datadog_configs?
+  launchdarkly_config automation_launchdarkly_configs?
   figma_config      automation_figma_configs?
   attio_config      automation_attio_configs?
 
@@ -541,11 +544,13 @@ model automation_tool_approvals {
 
 model automation_posthog_configs {
   id                           String  @id @default(cuid())
-  automation_knowledge_base_id String  @unique // FK to automation_knowledge_bases
+  automation_knowledge_base_id String? @unique // FK to automation_knowledge_bases (legacy)
+  automation_output_id         String? @unique // FK to automation_outputs
   project_id                   String // Posthog project ID (required)
   project_name                 String? // Posthog project display name (for UI, optional)
 
-  automation_knowledge_base automation_knowledge_bases @relation(fields: [automation_knowledge_base_id], references: [id], onDelete: Cascade)
+  automation_knowledge_base automation_knowledge_bases? @relation(fields: [automation_knowledge_base_id], references: [id], onDelete: Cascade)
+  automation_output         automation_outputs?         @relation(fields: [automation_output_id], references: [id], onDelete: Cascade)
 
   @@index([project_id])
 }
@@ -562,21 +567,25 @@ model automation_github_kb_configs {
 
 model automation_launchdarkly_configs {
   id                           String   @id @default(cuid())
-  automation_knowledge_base_id String   @unique
+  automation_knowledge_base_id String?  @unique // FK to automation_knowledge_bases (legacy)
+  automation_output_id         String?  @unique // FK to automation_outputs
   project_key                  String // LaunchDarkly project key (required)
   environment_keys             String[] // Array of environment keys to monitor (e.g., ["production", "staging"])
 
-  automation_knowledge_base automation_knowledge_bases @relation(fields: [automation_knowledge_base_id], references: [id], onDelete: Cascade)
+  automation_knowledge_base automation_knowledge_bases? @relation(fields: [automation_knowledge_base_id], references: [id], onDelete: Cascade)
+  automation_output         automation_outputs?         @relation(fields: [automation_output_id], references: [id], onDelete: Cascade)
 
   @@index([project_key])
 }
 
 model automation_datadog_configs {
   id                           String   @id @default(cuid())
-  automation_knowledge_base_id String   @unique // FK to automation_knowledge_bases
+  automation_knowledge_base_id String?  @unique // FK to automation_knowledge_bases (legacy)
+  automation_output_id         String?  @unique // FK to automation_outputs
   default_indexes              String[] @default(["main"]) // Default log indexes to search, stored as JSON array
 
-  automation_knowledge_base automation_knowledge_bases @relation(fields: [automation_knowledge_base_id], references: [id], onDelete: Cascade)
+  automation_knowledge_base automation_knowledge_bases? @relation(fields: [automation_knowledge_base_id], references: [id], onDelete: Cascade)
+  automation_output         automation_outputs?         @relation(fields: [automation_output_id], references: [id], onDelete: Cascade)
 
   @@index([default_indexes])
 }
@@ -853,6 +862,10 @@ enum OutputConfigType {
   GMAIL
   TERSE
   ATTIO
+  GITHUB
+  POSTHOG
+  LAUNCHDARKLY
+  DATADOG
 }
 
 enum KnowledgeBaseConfigType {

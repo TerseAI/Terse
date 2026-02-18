@@ -19,7 +19,7 @@ type ToolOccurrence = {
 }
 
 /**
- * Validates that all tool names are unique across all outputs and knowledge bases,
+ * Validates that all tool names are unique across all outputs,
  * and that all tool names are defined in the ToolName enum.
  * Throws an error if duplicates are found or if any tool name is not in the enum,
  * preventing the app from starting.
@@ -67,7 +67,7 @@ export function validateAllToolNames(): void {
     }
 
     // Check for duplicates: only error when the same tool name is used by different tool implementations.
-    // Intentional reuse (e.g. linear_search_ticket in both Output and Knowledge Base) is allowed when it's the same tool reference.
+    // Intentional reuse is allowed when it's the same tool reference.
     const duplicateEntries = Array.from(toolOccurrences.entries()).filter(([, occurrences]) => occurrences.length > 1)
 
     for (const [toolName, occurrences] of duplicateEntries) {

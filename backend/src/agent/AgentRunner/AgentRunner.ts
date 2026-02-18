@@ -38,7 +38,7 @@ type AgentInputFile = protocol.InputFile
 
 type UserMessageContent = AgentInputText | AgentInputImage | AgentInputFile
 
-export class AgentRunner<T extends Session, TConfig extends ConfigInstance, KBConfig extends ConfigInstance> {
+export class AgentRunner<T extends Session, TConfig extends ConfigInstance> {
     private session: T
     private inputEvent: InputEvent | null = null
     private agentConfig: AgentWithRelations
@@ -349,13 +349,13 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance, KBCo
     }
 
     async initializeAgent(): Promise<void> {
-        const deps: SystemPromptBuilderDependencies<T, TConfig, KBConfig> = {
+        const deps: SystemPromptBuilderDependencies<T, TConfig> = {
             session: this.session,
             agent: this.agentConfig,
             outputs: this.outputs
         }
 
-        const builder = new SystemPromptBuilder<T, TConfig, KBConfig>(deps, this.runContext).withStandardSections()
+        const builder = new SystemPromptBuilder<T, TConfig>(deps, this.runContext).withStandardSections()
 
         const fullSystemPrompt = await builder.build()
 

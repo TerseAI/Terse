@@ -6,19 +6,16 @@ import { IntegrationType } from "./shared/Integrations"
 
 export enum CapabilityRole {
     TRIGGER = "trigger",
-    KNOWLEDGE_BASE = "knowledgeBase",
     OUTPUT = "output"
 }
 
 /**
- * Returns a human-readable label for error messages (e.g. "trigger", "knowledge base", "output").
+ * Returns a human-readable label for error messages (e.g. "trigger", "output").
  */
 export function getContextLabel(role: CapabilityRole): string {
     switch (role) {
         case CapabilityRole.TRIGGER:
             return "trigger"
-        case CapabilityRole.KNOWLEDGE_BASE:
-            return "knowledge base"
         case CapabilityRole.OUTPUT:
             return "output"
         default:
@@ -40,7 +37,6 @@ export interface ConfigMeta {
     integrationType: IntegrationType
     isInput: boolean
     isOutput: boolean
-    isKnowledgeBase: boolean
 }
 
 export interface CapabilityDescription {
@@ -80,7 +76,6 @@ export function getConfigMetadata(configType: ConfigType): ConfigMeta {
         description: details.description,
         integrationType: details.integrationType,
         isInput: details.isInput,
-        isOutput: details.isOutput,
-        isKnowledgeBase: details.isKnowledgeBase
+        isOutput: details.isOutput
     }
 }

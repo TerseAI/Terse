@@ -2,14 +2,17 @@ import { ConfigType } from "@/shared/Configs"
 
 import { AttioOutputIntegration } from "./AttioOutputIntegration"
 import { ConfluenceIntegration } from "./ConfluenceIntegration"
+import { DatadogIntegration } from "./DatadogIntegration"
 import { FigmaIntegration } from "./FigmaIntegration"
 import { GitHubIntegration } from "./GitHubIntegration"
 import { GmailIntegration } from "./GmailIntegration"
 import { GmailOutputIntegration } from "./GmailOutputIntegration"
 import { JiraIntegration } from "./JiraIntegration"
+import { LaunchDarklyIntegration } from "./LaunchDarklyIntegration"
 import { LinearInputIntegration } from "./LinearInputIntegration"
 import { LinearOutputIntegration } from "./LinearOutputIntegration"
 import { NotionIntegration } from "./NotionIntegration"
+import { PosthogIntegration } from "./PosthogIntegration"
 import { SlackIntegration } from "./SlackIntegration"
 import { SlackOutputIntegration } from "./SlackOutputIntegration"
 import { TimeTriggerIntegration } from "./TimeTriggerIntegration"
@@ -49,6 +52,15 @@ export function IntegrationSelector(props: InputConfigSelectorProps) {
 
         case ConfigType.CONFLUENCE:
             return <ConfluenceIntegration input={props.input} variant={props.variant} setConfig={props.setConfig} />
+
+        case ConfigType.POSTHOG:
+            return <PosthogIntegration input={props.input} variant={props.variant} setConfig={props.setConfig} />
+
+        case ConfigType.DATADOG:
+            return <DatadogIntegration input={props.input} variant={props.variant} setConfig={props.setConfig} />
+
+        case ConfigType.LAUNCHDARKLY:
+            return <LaunchDarklyIntegration input={props.input} variant={props.variant} setConfig={props.setConfig} />
 
         case ConfigType.TIME_TRIGGER:
             return <TimeTriggerIntegration input={props.input} variant={props.variant} setConfig={props.setConfig} />

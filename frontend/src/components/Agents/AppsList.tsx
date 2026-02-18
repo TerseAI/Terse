@@ -46,10 +46,10 @@ export function AppsList({ agent }: AppsListProps) {
                 </div>
             ))}
 
-            {/* Arrow between triggers and knowledge bases/outputs */}
+            {/* Arrow between triggers and skills */}
             {hasTriggers && hasOutput && <ChevronRight className="w-3 h-3 text-muted-foreground mx-0.5" />}
 
-            {/* Arrow between knowledge bases and outputs */}
+            {/* Arrow between read-only and write skills */}
             {hasOutput && <ChevronRight className="w-3 h-3 text-muted-foreground mx-0.5" />}
 
             {/* Outputs */}

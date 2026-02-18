@@ -8,18 +8,15 @@ import {
     DatadogConfig,
     FigmaConfig,
     GitHubConfig,
-    GitHubKBConfig,
     GmailConfig,
     GmailOutputConfig,
     JiraConfig,
     LaunchDarklyConfig,
     LinearInputConfig,
-    LinearKBConfig,
     LinearOutputConfig,
     NotionConfig,
     PosthogConfig,
     SlackConfig,
-    SlackKBConfig,
     SlackOutputConfig,
     TimeTriggerConfig,
     WorkOSInputConfig
@@ -326,6 +323,26 @@ export const convertPrismaOutputConfigToConfigInstance = (channelOutput: AgentOu
         return new AttioOutputConfig(integrationId, channelOutput.attio_config.object_slug)
     }
 
+    if (channelOutput.github_config) {
+        return new GitHubConfig(integrationId, channelOutput.github_config.repository_ids || [])
+    }
+
+    if (channelOutput.posthog_config) {
+        return new PosthogConfig(integrationId, channelOutput.posthog_config.project_id, channelOutput.posthog_config.project_name || undefined)
+    }
+
+    if (channelOutput.datadog_config) {
+        return new DatadogConfig(integrationId, channelOutput.datadog_config.default_indexes || ["main"])
+    }
+
+    if (channelOutput.launchdarkly_config) {
+        return new LaunchDarklyConfig(
+            integrationId,
+            channelOutput.launchdarkly_config.project_key,
+            channelOutput.launchdarkly_config.environment_keys || []
+        )
+    }
+
     // Type guard to ensure we implement conversion here
     switch (channelOutput.config_type) {
         case OutputConfigType.NOTION:
@@ -334,6 +351,10 @@ export const convertPrismaOutputConfigToConfigInstance = (channelOutput: AgentOu
         case OutputConfigType.JIRA_TICKET:
         case OutputConfigType.SLACK_CHANNEL:
         case OutputConfigType.GMAIL:
+        case OutputConfigType.GITHUB:
+        case OutputConfigType.POSTHOG:
+        case OutputConfigType.DATADOG:
+        case OutputConfigType.LAUNCHDARKLY:
         case OutputConfigType.TERSE:
         case OutputConfigType.ATTIO:
             break
@@ -371,12 +392,6 @@ export const convertConfigTypeToInputConfigType = (configType: ConfigType): Inpu
             return InputConfigType.TIME_TRIGGER
         case ConfigType.WORKOS_INPUT:
             return InputConfigType.WORKOS_INPUT
-        case ConfigType.GITHUB_KB:
-            // GitHub KB is a knowledge base config type, not an input config type
-            throw new Error("GITHUB_KB is a knowledge base type, not an input type")
-        case ConfigType.LAUNCHDARKLY:
-            // LaunchDarkly is a knowledge base config type, not an input config type
-            throw new Error("LAUNCHDARKLY is a knowledge base type, not an input type")
         case ConfigType.SLACK_OUTPUT:
             // SLACK_OUTPUT is an output config type, not an input config type
             throw new Error("SLACK_OUTPUT is an output type, not an input type")
@@ -385,10 +400,8 @@ export const convertConfigTypeToInputConfigType = (configType: ConfigType): Inpu
             throw new Error("GMAIL_OUTPUT is an output type, not an input type")
         case ConfigType.DATADOG:
             throw new Error("DATADOG is not an input config type")
-        case ConfigType.LINEAR_KB:
-            throw new Error("LINEAR_KB is a knowledge base type, not an input type")
-        case ConfigType.SLACK_KB:
-            throw new Error("SLACK_KB is a knowledge base type, not an input type")
+        case ConfigType.LAUNCHDARKLY:
+            throw new Error("LAUNCHDARKLY is not an input config type")
         case ConfigType.TERSE:
             throw new Error("TERSE is an output type, not an input type")
         case ConfigType.ATTIO_OUTPUT:
@@ -433,6 +446,14 @@ export const convertInputConfigTypeToConfigType = (inputConfigType: InputConfigT
  */
 export const convertConfigTypeToOutputConfigType = (configType: ConfigType): OutputConfigType => {
     switch (configType) {
+        case ConfigType.GITHUB:
+            return OutputConfigType.GITHUB
+        case ConfigType.POSTHOG:
+            return OutputConfigType.POSTHOG
+        case ConfigType.DATADOG:
+            return OutputConfigType.DATADOG
+        case ConfigType.LAUNCHDARKLY:
+            return OutputConfigType.LAUNCHDARKLY
         case ConfigType.NOTION:
             return OutputConfigType.NOTION
         case ConfigType.CONFLUENCE:
@@ -450,7 +471,7 @@ export const convertConfigTypeToOutputConfigType = (configType: ConfigType): Out
         case ConfigType.ATTIO_OUTPUT:
             return OutputConfigType.ATTIO
         default:
-            throw new Error(`ConfigType ${configType} is not a valid output config type. Supported: NOTION, CONFLUENCE, LINEAR, JIRA, SLACK_OUTPUT, GMAIL_OUTPUT, TERSE, ATTIO.`)
+            throw new Error(`ConfigType ${configType} is not a valid output config type.`)
     }
 }
 
@@ -471,6 +492,14 @@ export const convertOutputConfigTypeToConfigType = (outputConfigType: OutputConf
             return ConfigType.SLACK_OUTPUT
         case OutputConfigType.GMAIL:
             return ConfigType.GMAIL_OUTPUT
+        case OutputConfigType.GITHUB:
+            return ConfigType.GITHUB
+        case OutputConfigType.POSTHOG:
+            return ConfigType.POSTHOG
+        case OutputConfigType.DATADOG:
+            return ConfigType.DATADOG
+        case OutputConfigType.LAUNCHDARKLY:
+            return ConfigType.LAUNCHDARKLY
         case OutputConfigType.TERSE:
             return ConfigType.TERSE
         case OutputConfigType.ATTIO:
@@ -498,6 +527,14 @@ export const convertOutputConfigTypeToIntegrationType = (outputConfigType: Outpu
             return IntegrationType.SLACK
         case OutputConfigType.GMAIL:
             return IntegrationType.GMAIL
+        case OutputConfigType.GITHUB:
+            return IntegrationType.GITHUB
+        case OutputConfigType.POSTHOG:
+            return IntegrationType.POSTHOG
+        case OutputConfigType.DATADOG:
+            return IntegrationType.DATADOG
+        case OutputConfigType.LAUNCHDARKLY:
+            return IntegrationType.LAUNCHDARKLY
         case OutputConfigType.TERSE:
             return IntegrationType.TERSE
         case OutputConfigType.ATTIO:

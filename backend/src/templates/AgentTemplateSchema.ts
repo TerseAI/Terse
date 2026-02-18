@@ -84,6 +84,7 @@ const AgentTriggerTemplateSchema = z
 const AgentOutputTemplateSchema = z
     .object({
         id: z.string().optional(), // Optional in templates
+        readOnly: z.boolean().optional().default(false),
         config: ConfigTemplateSchema
     })
     .strict()
@@ -123,7 +124,7 @@ export type AgentTemplates = z.infer<typeof AgentTemplatesSchema>
  * @param templates - The templates to validate
  * @throws {Error} If validation fails, with detailed error messages
  */
-export function validateTemplates(templates: unknown): asserts templates is AgentTemplates {
+export function parseTemplates(templates: unknown): AgentTemplates {
     const result = AgentTemplatesSchema.safeParse(templates)
 
     if (!result.success) {
@@ -145,4 +146,10 @@ export function validateTemplates(templates: unknown): asserts templates is Agen
             `Template validation failed! The templates.json file contains invalid data.\n\n` + `Errors:\n${errorMessages}\n\n` + `Please fix these issues before the application can start.`
         )
     }
+
+    return result.data
+}
+
+export function validateTemplates(templates: unknown): asserts templates is AgentTemplates {
+    parseTemplates(templates)
 }

@@ -28,7 +28,7 @@ export interface HydratedAgent {
 
 /**
  * Fetches and hydrates an agent by ID with all required relations.
- * Returns the agent along with validated outputs and knowledge bases.
+ * Returns the agent along with validated outputs.
  * Authorization is scoped by organizationId (not userId) so any user in the org can access.
  */
 export async function hydrateAgentById(agentId: string, userId: string, organizationId: string): Promise<HydrationResult> {
@@ -53,7 +53,7 @@ export async function hydrateAgentById(agentId: string, userId: string, organiza
 }
 
 /**
- * Hydrates an already-fetched agent record with outputs, knowledge bases, and session.
+ * Hydrates an already-fetched agent record with outputs and session.
  * Use this when you already have the agent data (e.g., from a batch query).
  */
 export async function hydrateAgentFromRecord(agent: AgentWithRelations, userId: string): Promise<HydrationResult> {
@@ -115,7 +115,7 @@ export async function hydrateAgentFromRecord(agent: AgentWithRelations, userId: 
 /**
  * Creates a fully configured AgentRunner from hydrated agent data.
  */
-export function createAgentRunner(hydrated: HydratedAgent, runContext: RunContext): AgentRunner<Session, ConfigInstance, ConfigInstance> {
+export function createAgentRunner(hydrated: HydratedAgent, runContext: RunContext): AgentRunner<Session, ConfigInstance> {
     return new AgentRunner(hydrated.session, hydrated.outputs, hydrated.agent, runContext)
 }
 
@@ -127,7 +127,7 @@ export async function hydrateAndCreateRunner(
     userId: string,
     organizationId: string,
     runContext: RunContext
-): Promise<{ success: true; runner: AgentRunner<Session, ConfigInstance, ConfigInstance>; hydrated: HydratedAgent } | { success: false; error: HydrationError }> {
+): Promise<{ success: true; runner: AgentRunner<Session, ConfigInstance>; hydrated: HydratedAgent } | { success: false; error: HydrationError }> {
     const result = await hydrateAgentById(agentId, userId, organizationId)
 
     if (!result.success) {

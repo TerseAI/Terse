@@ -4,10 +4,14 @@ import { ConfigInstance } from "../../shared/Configs"
 import { AgentOutputWithConfigs, AgentWithRelations } from "../../types/prisma"
 import { ConfluenceOutput } from "../ConfluenceOutput"
 import { AttioOutput } from "../attio/AttioOutput"
+import { DatadogSkillOutput } from "../datadog/DatadogSkillOutput"
 import { GmailOutput } from "../gmail/GmailOutput"
+import { GithubSkillOutput } from "../github/GithubSkillOutput"
 import { JiraTicketOutput } from "../jira/JiraTicketOutput"
+import { LaunchDarklySkillOutput } from "../launchdarkly/LaunchDarklySkillOutput"
 import { LinearTicketOutput } from "../linear/LinearTicketOutput"
 import { NotionOutput } from "../notion/NotionOutput"
+import { PosthogSkillOutput } from "../posthog/PosthogSkillOutput"
 import { SlackOutput } from "../slack/SlackOutput"
 import { TerseSkillsOutput } from "../terse/TerseSkillsOutput"
 
@@ -27,7 +31,11 @@ export class OutputFactory {
         [OutputConfigType.SLACK_CHANNEL, (readOnly = false) => new SlackOutput(readOnly)],
         [OutputConfigType.GMAIL, (readOnly = false) => new GmailOutput(readOnly)],
         [OutputConfigType.TERSE, (readOnly = false) => new TerseSkillsOutput(readOnly)],
-        [OutputConfigType.ATTIO, (readOnly = false) => new AttioOutput(readOnly)]
+        [OutputConfigType.ATTIO, (readOnly = false) => new AttioOutput(readOnly)],
+        [OutputConfigType.GITHUB, (readOnly = false) => new GithubSkillOutput(readOnly)],
+        [OutputConfigType.POSTHOG, (readOnly = false) => new PosthogSkillOutput(readOnly)],
+        [OutputConfigType.DATADOG, (readOnly = false) => new DatadogSkillOutput(readOnly)],
+        [OutputConfigType.LAUNCHDARKLY, (readOnly = false) => new LaunchDarklySkillOutput(readOnly)]
     ])
 
     static createOutput(integrationType: OutputConfigType, readOnly = false): Output<ConfigInstance> | null {

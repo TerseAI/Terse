@@ -15,7 +15,7 @@ import { BackendProvider } from "@/services/backend"
 import { DatadogConfig } from "@/shared/Configs"
 import type { DatadogIndex } from "@/shared/types"
 
-import { KnowledgeBaseSelectorProps } from "./KnowledgeBaseSelector"
+import { InputConfigSelectorProps } from "./types"
 
 const DATADOG_REGIONS = [
     { value: "us", label: "US (datadoghq.com)" },
@@ -25,15 +25,12 @@ const DATADOG_REGIONS = [
     { value: "ap1", label: "AP1 (ap1.datadoghq.com)" }
 ]
 
-export function DatadogKnowledgeBaseIntegration({ knowledgeBase, variant, setConfig }: KnowledgeBaseSelectorProps) {
+export function DatadogIntegration({ input, variant, setConfig }: InputConfigSelectorProps) {
     const { integrations, isLoading, mutate } = useDatadogIntegrations()
-    const datadogConfig = (knowledgeBase.config as DatadogConfig) || new DatadogConfig("", ["main"])
+    const datadogConfig = (input.config as DatadogConfig) || new DatadogConfig("", ["main"])
     const selectedIntegrationId = datadogConfig.integrationId || null
-
-    // Fetch indexes for the selected integration
     const { indexes, isLoading: isLoadingIndexes } = useDatadogIndexes(selectedIntegrationId)
 
-    // Form state for connecting new integration
     const [showConnectForm, setShowConnectForm] = useState(false)
     const [apiKey, setApiKey] = useState("")
     const [appKey, setAppKey] = useState("")
@@ -59,7 +56,7 @@ export function DatadogKnowledgeBaseIntegration({ knowledgeBase, variant, setCon
             setApiKey("")
             setAppKey("")
             setRegion("us")
-            mutate() // Refresh integrations list
+            await mutate()
         } catch (err: any) {
             setError(err.response?.data?.error || err.message || "Failed to connect Datadog integration")
         } finally {
@@ -79,7 +76,6 @@ export function DatadogKnowledgeBaseIntegration({ knowledgeBase, variant, setCon
         return <Skeleton className="h-20 w-full" />
     }
 
-    // Card variant handling
     if (variant === "card") {
         if (integrations.length === 0) {
             return (
@@ -95,7 +91,6 @@ export function DatadogKnowledgeBaseIntegration({ knowledgeBase, variant, setCon
         return <div className="text-xs text-center">{displayText}</div>
     }
 
-    // Dialog variant - no integrations and not showing form
     if (integrations.length === 0 && !showConnectForm) {
         return (
             <div className="flex flex-col gap-3 p-4 rounded-lg border border-dashed border-input bg-card">
@@ -108,7 +103,6 @@ export function DatadogKnowledgeBaseIntegration({ knowledgeBase, variant, setCon
         )
     }
 
-    // Show connect form
     if (showConnectForm) {
         return (
             <div className="space-y-4 p-4 rounded-lg border border-input bg-card">
@@ -168,7 +162,7 @@ export function DatadogKnowledgeBaseIntegration({ knowledgeBase, variant, setCon
                                 id="apiKey"
                                 type={showApiKey ? "text" : "password"}
                                 value={apiKey}
-                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setApiKey(e.target.value)}
+                                onChange={e => setApiKey(e.target.value)}
                                 placeholder="Enter your Datadog API key"
                                 disabled={isSubmitting}
                                 required
@@ -210,7 +204,7 @@ export function DatadogKnowledgeBaseIntegration({ knowledgeBase, variant, setCon
                                 id="appKey"
                                 type={showAppKey ? "text" : "password"}
                                 value={appKey}
-                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAppKey(e.target.value)}
+                                onChange={e => setAppKey(e.target.value)}
                                 placeholder="Enter your Datadog Application key"
                                 disabled={isSubmitting}
                                 required
@@ -244,9 +238,7 @@ export function DatadogKnowledgeBaseIntegration({ knowledgeBase, variant, setCon
     }
 
     const updateIntegrationId = (integrationId: string) => {
-        // When changing integration, reset to default "main" index
-        const newDatadogConfig = new DatadogConfig(integrationId, ["main"])
-        setConfig(newDatadogConfig)
+        setConfig(new DatadogConfig(integrationId, ["main"]))
     }
 
     const toggleIndex = (indexId: string) => {
@@ -255,19 +247,15 @@ export function DatadogKnowledgeBaseIntegration({ knowledgeBase, variant, setCon
 
         let newIndexes: string[]
         if (isSelected) {
-            // Remove the index
             newIndexes = currentIndexes.filter(id => id !== indexId)
-            // Ensure at least one index is selected (default to "main" if empty)
             if (newIndexes.length === 0) {
                 newIndexes = ["main"]
             }
         } else {
-            // Add the index
             newIndexes = [...currentIndexes, indexId]
         }
 
-        const newDatadogConfig = new DatadogConfig(datadogConfig.integrationId, newIndexes)
-        setConfig(newDatadogConfig)
+        setConfig(new DatadogConfig(datadogConfig.integrationId, newIndexes))
     }
 
     return (
@@ -296,7 +284,6 @@ export function DatadogKnowledgeBaseIntegration({ knowledgeBase, variant, setCon
                 Connect Another Datadog
             </Button>
 
-            {/* Default indexes configuration */}
             {selectedIntegrationId && (
                 <div className="space-y-2">
                     <div className="flex items-center gap-2">
@@ -341,3 +328,4 @@ export function DatadogKnowledgeBaseIntegration({ knowledgeBase, variant, setCon
         </div>
     )
 }
+

@@ -14,14 +14,13 @@ import { BackendProvider } from "@/services/backend"
 import { LaunchDarklyConfig } from "@/shared/Configs"
 import { LaunchDarklyEnvironment, LaunchDarklyProject } from "@/shared/types"
 
-import { KnowledgeBaseSelectorProps } from "./KnowledgeBaseSelector"
+import { InputConfigSelectorProps } from "./types"
 
-export function LaunchDarklyKnowledgeBaseIntegration({ knowledgeBase, variant, setConfig }: KnowledgeBaseSelectorProps) {
+export function LaunchDarklyIntegration({ input, variant, setConfig }: InputConfigSelectorProps) {
     const { integrations, isLoading, mutate } = useLaunchdarklyIntegrations()
-    const launchdarklyConfig = (knowledgeBase.config as LaunchDarklyConfig) || new LaunchDarklyConfig("", "", [])
+    const launchdarklyConfig = (input.config as LaunchDarklyConfig) || new LaunchDarklyConfig("", "", [])
     const selectedIntegrationId = launchdarklyConfig.integrationId || null
 
-    // Form state for connecting new integration
     const [showConnectForm, setShowConnectForm] = useState(false)
     const [apiKey, setApiKey] = useState("")
     const [showApiKey, setShowApiKey] = useState(false)
@@ -31,12 +30,10 @@ export function LaunchDarklyKnowledgeBaseIntegration({ knowledgeBase, variant, s
     const projectKey = launchdarklyConfig.projectKey || ""
     const environmentKeys = launchdarklyConfig.environmentKeys || []
 
-    // Fetch projects when integration is selected
     const { data: projectsData, isLoading: isLoadingProjects } = useSWR(selectedIntegrationId ? ["launchdarkly-projects", selectedIntegrationId] : null, () =>
         BackendProvider.getLaunchDarklyProjects(selectedIntegrationId!)
     )
 
-    // Fetch environments when project is selected
     const { data: environmentsData, isLoading: isLoadingEnvironments } = useSWR(selectedIntegrationId && projectKey ? ["launchdarkly-environments", selectedIntegrationId, projectKey] : null, () =>
         BackendProvider.getLaunchDarklyEnvironments(selectedIntegrationId!, projectKey)
     )
@@ -55,7 +52,7 @@ export function LaunchDarklyKnowledgeBaseIntegration({ knowledgeBase, variant, s
             await BackendProvider.createOrUpdateLaunchDarklyIntegration(apiKey)
             setShowConnectForm(false)
             setApiKey("")
-            mutate() // Refresh integrations list
+            await mutate()
         } catch (err: any) {
             setError(err.response?.data?.error || err.message || "Failed to connect LaunchDarkly integration")
         } finally {
@@ -69,24 +66,18 @@ export function LaunchDarklyKnowledgeBaseIntegration({ knowledgeBase, variant, s
         setError(null)
     }
 
-    // Handle project key change
     const handleProjectKeyChange = (value: string) => {
-        // Clear environments when project changes
-        const newConfig = new LaunchDarklyConfig(selectedIntegrationId || "", value, [])
-        setConfig(newConfig)
+        setConfig(new LaunchDarklyConfig(selectedIntegrationId || "", value, []))
     }
 
-    // Handle environment key selection (multi-select)
     const handleEnvironmentKeysChange = (selectedKeys: string[]) => {
-        const newConfig = new LaunchDarklyConfig(selectedIntegrationId || "", projectKey, selectedKeys)
-        setConfig(newConfig)
+        setConfig(new LaunchDarklyConfig(selectedIntegrationId || "", projectKey, selectedKeys))
     }
 
     if (isLoading) {
         return <Skeleton className="h-20 w-full" />
     }
 
-    // Card variant handling
     if (variant === "card") {
         if (integrations.length === 0) {
             return (
@@ -105,7 +96,6 @@ export function LaunchDarklyKnowledgeBaseIntegration({ knowledgeBase, variant, s
         return <div className="text-xs text-center">{displayText}</div>
     }
 
-    // Dialog variant - no integrations and not showing form
     if (integrations.length === 0 && !showConnectForm) {
         return (
             <div className="flex flex-col gap-3 p-4 rounded-lg border border-dashed border-input bg-card">
@@ -118,7 +108,6 @@ export function LaunchDarklyKnowledgeBaseIntegration({ knowledgeBase, variant, s
         )
     }
 
-    // Show connect form
     if (showConnectForm) {
         return (
             <div className="space-y-4 p-4 rounded-lg border border-input bg-card">
@@ -179,13 +168,7 @@ export function LaunchDarklyKnowledgeBaseIntegration({ knowledgeBase, variant, s
     }
 
     const updateIntegrationId = (integrationId: string) => {
-        // When changing integration, clear config
-        const newConfig = new LaunchDarklyConfig(
-            integrationId,
-            "", // Clear project when integration changes
-            [] // Clear environments when integration changes
-        )
-        setConfig(newConfig)
+        setConfig(new LaunchDarklyConfig(integrationId, "", []))
     }
 
     return (
@@ -211,7 +194,6 @@ export function LaunchDarklyKnowledgeBaseIntegration({ knowledgeBase, variant, s
                 Connect Another LaunchDarkly
             </Button>
 
-            {/* Configuration fields - required */}
             {selectedIntegrationId && (
                 <>
                     <div className="space-y-2">
@@ -279,3 +261,4 @@ export function LaunchDarklyKnowledgeBaseIntegration({ knowledgeBase, variant, s
         </div>
     )
 }
+

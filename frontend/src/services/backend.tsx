@@ -391,7 +391,7 @@ interface BackendService {
     triggerManually(triggerId: string, context?: string): Promise<{ received: boolean; message: string }>
 
     /**
-     * Gets write-only tools that require approval for the given skills and knowledge bases
+     * Gets write-only tools that require approval for the given skills
      */
     getToolsThatRequireApprovals(request: GetToolsThatRequireApprovalsRequest): Promise<GetToolsThatRequireApprovalsResponse>
 

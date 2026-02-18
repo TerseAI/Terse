@@ -103,6 +103,9 @@ export type AutomationOutputWithConfigs = Prisma.automation_outputsGetPayload<{
         confluence_config: true
         github_config: true
         gmail_config: true
+        posthog_config: true
+        datadog_config: true
+        launchdarkly_config: true
         figma_config: true
         attio_config: true
     }
@@ -153,6 +156,9 @@ export type AutomationWithOutputRelations = Prisma.automationsGetPayload<{
                 confluence_config: true
                 github_config: true
                 gmail_config: true
+                posthog_config: true
+                datadog_config: true
+                launchdarkly_config: true
                 figma_config: true
                 attio_config: true
             }

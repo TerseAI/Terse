@@ -13,14 +13,13 @@ import { usePosthogIntegrations } from "@/hooks/api/usePosthogIntegrations"
 import { BackendProvider } from "@/services/backend"
 import { PosthogConfig } from "@/shared/Configs"
 
-import { KnowledgeBaseSelectorProps } from "./KnowledgeBaseSelector"
+import { InputConfigSelectorProps } from "./types"
 
-export function PostHogKnowledgeBaseIntegration({ knowledgeBase, variant, setConfig }: KnowledgeBaseSelectorProps) {
+export function PosthogIntegration({ input, variant, setConfig }: InputConfigSelectorProps) {
     const { integrations, isLoading, mutate } = usePosthogIntegrations()
-    const posthogConfig = (knowledgeBase.config as PosthogConfig) || new PosthogConfig("", "")
+    const posthogConfig = (input.config as PosthogConfig) || new PosthogConfig("", "")
     const selectedIntegrationId = posthogConfig.integrationId || null
 
-    // Form state for connecting new integration
     const [showConnectForm, setShowConnectForm] = useState(false)
     const [apiKey, setApiKey] = useState("")
     const [showApiKey, setShowApiKey] = useState(false)
@@ -41,7 +40,7 @@ export function PostHogKnowledgeBaseIntegration({ knowledgeBase, variant, setCon
             await BackendProvider.createOrUpdatePosthogIntegration(apiKey)
             setShowConnectForm(false)
             setApiKey("")
-            mutate() // Refresh integrations list
+            await mutate()
         } catch (err: any) {
             setError(err.response?.data?.error || err.message || "Failed to connect PostHog integration")
         } finally {
@@ -59,7 +58,6 @@ export function PostHogKnowledgeBaseIntegration({ knowledgeBase, variant, setCon
         return <Skeleton className="h-20 w-full" />
     }
 
-    // Card variant handling
     if (variant === "card") {
         if (integrations.length === 0) {
             return (
@@ -75,7 +73,6 @@ export function PostHogKnowledgeBaseIntegration({ knowledgeBase, variant, setCon
         return <div className="text-xs text-center">{displayText}</div>
     }
 
-    // Dialog variant - no integrations and not showing form
     if (integrations.length === 0 && !showConnectForm) {
         return (
             <div className="flex flex-col gap-3 p-4 rounded-lg border border-dashed border-input bg-card">
@@ -88,7 +85,6 @@ export function PostHogKnowledgeBaseIntegration({ knowledgeBase, variant, setCon
         )
     }
 
-    // Show connect form
     if (showConnectForm) {
         return (
             <div className="space-y-4 p-4 rounded-lg border border-input bg-card">
@@ -149,18 +145,13 @@ export function PostHogKnowledgeBaseIntegration({ knowledgeBase, variant, setCon
     }
 
     const updateIntegrationId = (integrationId: string) => {
-        // When changing integration, clear project selection
-        const newPosthogConfig = new PosthogConfig(
-            integrationId,
-            "" // Clear project when integration changes
-        )
-        setConfig(newPosthogConfig)
+        setConfig(new PosthogConfig(integrationId, ""))
     }
 
     const updateProject = (projectId: string, projectName: string) => {
-        const newPosthogConfig = new PosthogConfig(posthogConfig.integrationId, projectId, projectName)
-        setConfig(newPosthogConfig)
+        setConfig(new PosthogConfig(posthogConfig.integrationId, projectId, projectName))
     }
+
     return (
         <div className="space-y-4">
             <div className="space-y-2">
@@ -184,7 +175,6 @@ export function PostHogKnowledgeBaseIntegration({ knowledgeBase, variant, setCon
                 Connect Another PostHog
             </Button>
 
-            {/* Project selector - required */}
             {selectedIntegrationId && (
                 <div className="space-y-2">
                     <Label>
@@ -202,3 +192,4 @@ export function PostHogKnowledgeBaseIntegration({ knowledgeBase, variant, setCon
         </div>
     )
 }
+
