@@ -195,6 +195,12 @@ export const TimeTriggerConfigSchema = BaseConfigSchema.extend({
         .describe('ALL TIMES ARE IN UTC. The cron expression to schedule the automation. Must be a valid cron expression. Use this format: "minute hour day-of-month month day-of-week"')
 })
 
+export const AttioOutputConfigSchema = BaseConfigSchema.extend({
+    configType: z.literal(ConfigType.ATTIO_OUTPUT),
+    integrationType: z.literal(IntegrationType.ATTIO),
+    objectSlug: z.string().optional().describe("The Attio object type slug (e.g. 'people', 'companies').")
+})
+
 export function enforceNonSystemIntegrationId(config: { configType: ConfigType; integrationId?: string }, ctx: z.RefinementCtx): void {
     if (config.configType !== ConfigType.TIME_TRIGGER && config.integrationId === "system") {
         ctx.addIssue({

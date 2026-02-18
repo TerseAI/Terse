@@ -1,0 +1,73 @@
+import { RunContext, tool } from "@openai/agents"
+import { RunHistoryActionType } from "@prisma/client"
+import { z } from "zod"
+
+import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
+import { AttioIntegrationManager } from "../../../integrations/AttioIntegration"
+import logger from "../../../logger"
+import { IntegrationType } from "../../../shared/Integrations"
+import { ToolName } from "../../../tools/ToolNames"
+import { createNeedsApprovalFunction, formatError } from "../../../tools/toolUtils"
+import { Session } from "../../../types/session"
+
+export const attioAssertRecordTool = tool({
+    name: ToolName.ATTIO_ASSERT_RECORD,
+    description: `Create or update (upsert) a record in Attio. Uses a matching attribute to find existing records — if a match is found the record is updated, otherwise a new one is created. Use attio_get_object_schema first to discover available attributes for the object.`,
+    parameters: z.object({
+        integrationId: z.string().describe("The integration ID of the Attio workspace to use."),
+        objectSlug: z.string().describe("The Attio object type slug (e.g. 'people', 'companies')."),
+        matchingAttribute: z.string().describe("The attribute slug to match on for upsert (e.g. 'email_addresses' for people, 'domains' for companies)."),
+        values: z.record(z.unknown()).describe("A JSON object mapping attribute slugs to their values. For multi-value attributes like email_addresses, pass an array of strings.")
+    }),
+    needsApproval: createNeedsApprovalFunction(ToolName.ATTIO_ASSERT_RECORD),
+    execute: async ({ integrationId, objectSlug, matchingAttribute, values }, runContext?: RunContext<SessionWithTracking<Session>>) => {
+        logger.debug("Executing attio_assert_record tool", { integrationId, objectSlug, matchingAttribute })
+
+        if (!runContext?.context) {
+            throw new Error("No context provided")
+        }
+
+        const manager = new AttioIntegrationManager()
+        const accessToken = await manager.getAccessToken(integrationId)
+        if (!accessToken) {
+            return { success: false, error: "Failed to get Attio access token. The integration may not be connected." }
+        }
+
+        try {
+            const response = await fetch(`https://api.attio.com/v2/objects/${encodeURIComponent(objectSlug)}/records?matching_attribute=${encodeURIComponent(matchingAttribute)}`, {
+                method: "PUT",
+                headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ data: { values } })
+            })
+
+            if (!response.ok) {
+                const errorText = await response.text()
+                logger.error("Attio assert record failed", { status: response.status, error: errorText })
+                return { success: false, error: `Attio API error (${response.status}): ${errorText}` }
+            }
+
+            const data = await response.json()
+            const record = data?.data
+            const recordId = record?.id?.record_id
+
+            const action = {
+                action: "Asserted record",
+                integration: IntegrationType.ATTIO,
+                target: `${objectSlug}/${recordId || "unknown"}`,
+                details: `Upserted ${objectSlug} record via matching attribute "${matchingAttribute}"`,
+                type: RunHistoryActionType.create,
+                url: recordId ? `https://app.attio.com/objects/${objectSlug}/${recordId}` : undefined
+            }
+
+            return { success: true, record, actions: [action] }
+        } catch (error: unknown) {
+            const errorMessage = await formatError(runContext, error)
+            logger.error("Error asserting Attio record", { error: errorMessage, integrationId })
+            return { success: false, error: errorMessage }
+        }
+    },
+    errorFunction: formatError
+})
