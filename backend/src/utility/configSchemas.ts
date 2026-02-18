@@ -198,7 +198,7 @@ export const TimeTriggerConfigSchema = BaseConfigSchema.extend({
 export const AttioOutputConfigSchema = BaseConfigSchema.extend({
     configType: z.literal(ConfigType.ATTIO_OUTPUT),
     integrationType: z.literal(IntegrationType.ATTIO),
-    objectSlug: z.string().optional().describe("The Attio object type slug (e.g. 'people', 'companies').")
+    objectSlug: z.string().nullable().describe("The Attio object type slug (e.g. 'people', 'companies').")
 })
 
 export function enforceNonSystemIntegrationId(config: { configType: ConfigType; integrationId?: string }, ctx: z.RefinementCtx): void {

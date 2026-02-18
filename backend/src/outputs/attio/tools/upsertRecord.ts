@@ -17,7 +17,7 @@ export const attioUpsertRecordTool = tool({
         integrationId: z.string().describe("The integration ID of the Attio workspace to use."),
         objectSlug: z.string().describe("The Attio object type slug (e.g. 'people', 'companies')."),
         matchingAttribute: z.string().describe("The attribute slug to match on for upsert (e.g. 'email_addresses' for people, 'domains' for companies)."),
-        values: z.record(z.unknown()).describe("A JSON object mapping attribute slugs to their values. For multi-value attributes like email_addresses, pass an array of strings.")
+        values: z.string().describe("A JSON string mapping attribute slugs to their values. For multi-value attributes like email_addresses, pass an array of strings. Example: '{\"email_addresses\":[\"test@example.com\"],\"name\":\"John\"}'.")
     }),
     needsApproval: createNeedsApprovalFunction(ToolName.ATTIO_UPSERT_RECORD),
     execute: async ({ integrationId, objectSlug, matchingAttribute, values }, runContext?: RunContext<SessionWithTracking<Session>>) => {
@@ -34,13 +34,14 @@ export const attioUpsertRecordTool = tool({
         }
 
         try {
+            const parsedValues = JSON.parse(values)
             const response = await fetch(`https://api.attio.com/v2/objects/${encodeURIComponent(objectSlug)}/records?matching_attribute=${encodeURIComponent(matchingAttribute)}`, {
                 method: "PUT",
                 headers: {
                     Authorization: `Bearer ${accessToken}`,
                     "Content-Type": "application/json"
                 },
-                body: JSON.stringify({ data: { values } })
+                body: JSON.stringify({ data: { values: parsedValues } })
             })
 
             if (!response.ok) {

@@ -6,15 +6,16 @@ import logger from "../logger"
 import { db } from "../prismaClient"
 import { FrontendRoutes } from "../shared/FrontendRoutes"
 import { AdditionalStateParams, AttioIntegration, AttioIntegrationMetadata, InstallationOptionsFor, IntegrationType } from "../shared/Integrations"
-import { OAuthInstallationDetails } from "../shared/types"
+import { AttioObject, OAuthInstallationDetails } from "../shared/types"
 import { AgentTriggerWithConfigs } from "../types/prisma"
 import { createOAuthStateToken } from "../utility/oauth"
 
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask"
 import { integrationTaskQueue } from "./IntegrationTaskQueues"
-import { ConfigurationFieldDefinition, Integration, OAuthIntegrationInstallation } from "./abstract/Integration"
+import { FetchResourcesOptions } from "./abstract/FetchResourcesOptions"
+import { ConfigurationFieldDefinition, Integration, IntegrationWithResources, OAuthIntegrationInstallation } from "./abstract/Integration"
 
-export class AttioIntegrationManager implements Integration<AttioIntegration, never, typeof AttioIntegrationMetadata, never>, OAuthIntegrationInstallation<IntegrationType.ATTIO> {
+export class AttioIntegrationManager implements Integration<AttioIntegration, never, typeof AttioIntegrationMetadata, AttioObject>, OAuthIntegrationInstallation<IntegrationType.ATTIO> {
     constructor() {}
     integrationType: IntegrationType = IntegrationType.ATTIO
 
@@ -35,6 +36,49 @@ export class AttioIntegrationManager implements Integration<AttioIntegration, ne
                 id: i.id,
                 workspaceName: await this.fetchWorkspaceName(i.access_token)
             }))
+        )
+    }
+
+    async fetchResourcesForOrganization(organizationId: string, query?: string, _options?: FetchResourcesOptions): Promise<IntegrationWithResources<AttioIntegration, AttioObject>[]> {
+        const integrations = await this.getInstancesForOrganization(organizationId)
+        const normalizedQuery = query?.trim().toLowerCase()
+        const matchesQuery = (value: string | undefined | null): boolean => {
+            if (!normalizedQuery) return true
+            if (!value) return false
+            return value.toLowerCase().includes(normalizedQuery)
+        }
+        return Promise.all(
+            integrations.map(async integration => {
+                try {
+                    const accessToken = await this.getAccessToken(integration.id)
+                    if (!accessToken) {
+                        logger.warn(`No access token for Attio integration ${integration.id}`, { integrationId: integration.id })
+                        return { integration, resources: [] }
+                    }
+
+                    const response = await fetch("https://api.attio.com/v2/objects", {
+                        headers: { Authorization: `Bearer ${accessToken}` }
+                    })
+                    if (!response.ok) {
+                        logger.warn(`Failed to fetch Attio objects for integration ${integration.id}`, { status: response.status })
+                        return { integration, resources: [] }
+                    }
+
+                    const data = await response.json()
+                    const allObjects: AttioObject[] = (data?.data || []).map((obj: any) => ({
+                        api_slug: obj.api_slug,
+                        singular_noun: obj.singular_noun,
+                        plural_noun: obj.plural_noun
+                    }))
+
+                    const objects = normalizedQuery ? allObjects.filter(obj => matchesQuery(obj.api_slug) || matchesQuery(obj.singular_noun) || matchesQuery(obj.plural_noun)) : allObjects
+
+                    return { integration, resources: objects }
+                } catch (error) {
+                    logger.warn(`Failed to fetch resources for Attio integration ${integration.id}`, { error, integrationId: integration.id })
+                    return { integration, resources: [] }
+                }
+            })
         )
     }
 

@@ -16,7 +16,7 @@ export const attioQueryRecordsTool = tool({
     parameters: z.object({
         integrationId: z.string().describe("The integration ID of the Attio workspace to use."),
         objectSlug: z.string().describe("The Attio object type slug (e.g. 'people', 'companies')."),
-        filter: z.record(z.unknown()).nullable().describe("Optional Attio filter object. Pass null for no filtering. See Attio API docs for filter syntax."),
+        filter: z.string().nullable().describe("Optional Attio filter as a JSON string. Pass null for no filtering. See Attio API docs for filter syntax."),
         limit: z.number().nullable().describe("Maximum number of records to return. Pass null to use the default of 20.")
     }),
     execute: async ({ integrationId, objectSlug, filter, limit }, runContext?: RunContext<SessionWithTracking<Session>>) => {
@@ -34,8 +34,11 @@ export const attioQueryRecordsTool = tool({
 
         try {
             const body: Record<string, unknown> = { limit: limit ?? 20 }
-            if (filter && Object.keys(filter).length > 0) {
-                body.filter = filter
+            if (filter) {
+                const parsedFilter = JSON.parse(filter)
+                if (parsedFilter && typeof parsedFilter === "object" && Object.keys(parsedFilter).length > 0) {
+                    body.filter = parsedFilter
+                }
             }
 
             const response = await fetch(`https://api.attio.com/v2/objects/${encodeURIComponent(objectSlug)}/records/query`, {
