@@ -1,8 +1,8 @@
 import { system } from "@openai/agents"
 import type { AgentInputItem } from "@openai/agents-core"
 
-const CONTEXT_EVENT_PROVIDER_KEY = "terse_context_event"
 const CONTEXT_EVENT_SCHEMA = "terse.context_event.v1"
+const CONTEXT_EVENT_BLOCK_LABEL = "terse-context-event"
 
 type ContextEventEnvelope = {
     schema: string
@@ -11,8 +11,8 @@ type ContextEventEnvelope = {
 }
 
 type ContextEventItemCandidate = {
+    content?: unknown
     role?: unknown
-    providerData?: unknown
 }
 
 export abstract class BaseContextEvent<TPayload, TDecoded = TPayload> {
@@ -29,13 +29,11 @@ export abstract class BaseContextEvent<TPayload, TDecoded = TPayload> {
             payload
         }
 
-        return system(humanReadableText, {
-            [CONTEXT_EVENT_PROVIDER_KEY]: envelope
-        }) as AgentInputItem
+        return system(this.encodeContent(humanReadableText, envelope)) as AgentInputItem
     }
 
     parseItem(item: unknown): TDecoded | null {
-        const envelope = this.extractEnvelope(item)
+        const envelope = this.extractEnvelopeFromContent(item)
         if (!envelope) return null
         if (envelope.schema !== CONTEXT_EVENT_SCHEMA) return null
         if (envelope.eventType !== this.eventType) return null
@@ -76,25 +74,79 @@ export abstract class BaseContextEvent<TPayload, TDecoded = TPayload> {
         return value
     }
 
-    private extractEnvelope(item: unknown): ContextEventEnvelope | null {
+    private encodeContent(humanReadableText: string, envelope: ContextEventEnvelope): string {
+        const renderedText = humanReadableText.trim()
+        const serialized = JSON.stringify(envelope)
+        return `${renderedText}\n\n\`\`\`${CONTEXT_EVENT_BLOCK_LABEL}\n${serialized}\n\`\`\``
+    }
+
+    private extractEnvelopeFromContent(item: unknown): ContextEventEnvelope | null {
         const candidate = this.asRecord(item) as ContextEventItemCandidate | null
         if (!candidate) return null
         if (candidate.role !== "system") return null
 
-        const providerData = this.asRecord(candidate.providerData)
-        if (!providerData) return null
+        const content = this.extractContentText(candidate.content)
+        if (!content) return null
 
-        const envelope = this.asRecord(providerData[CONTEXT_EVENT_PROVIDER_KEY])
-        if (!envelope) return null
+        const serialized = this.extractSerializedEnvelope(content)
+        if (!serialized) return null
 
-        const schema = this.getRequiredString(envelope, "schema")
-        const eventType = this.getRequiredString(envelope, "eventType")
-        if (schema === null || eventType === null) return null
+        try {
+            const parsed = JSON.parse(serialized)
+            const envelope = this.asRecord(parsed)
+            if (!envelope) return null
 
-        return {
-            schema,
-            eventType,
-            payload: envelope.payload
+            const schema = this.getRequiredString(envelope, "schema")
+            const eventType = this.getRequiredString(envelope, "eventType")
+            if (schema === null || eventType === null) return null
+
+            return {
+                schema,
+                eventType,
+                payload: envelope.payload
+            }
+        } catch {
+            return null
         }
+    }
+
+    private extractContentText(content: unknown): string {
+        if (typeof content === "string") {
+            return content
+        }
+
+        if (!Array.isArray(content)) {
+            return ""
+        }
+
+        return content
+            .map(part => {
+                const parsedPart = this.asRecord(part)
+                if (!parsedPart) return ""
+
+                const text = parsedPart.text
+                if (typeof text === "string") return text
+
+                const inputText = parsedPart.input_text
+                if (typeof inputText === "string") return inputText
+
+                return ""
+            })
+            .filter(Boolean)
+            .join("\n")
+    }
+
+    private extractSerializedEnvelope(content: string): string | null {
+        const startToken = `\`\`\`${CONTEXT_EVENT_BLOCK_LABEL}`
+        const startIndex = content.lastIndexOf(startToken)
+        if (startIndex === -1) return null
+
+        const startAfterLabel = content.indexOf("\n", startIndex)
+        if (startAfterLabel === -1) return null
+
+        const endIndex = content.indexOf("\n```", startAfterLabel + 1)
+        if (endIndex === -1) return null
+
+        return content.slice(startAfterLabel + 1, endIndex).trim()
     }
 }

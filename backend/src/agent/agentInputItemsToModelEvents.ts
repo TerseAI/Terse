@@ -14,7 +14,23 @@ export type TimestampedAgentInputItem = {
     createdAt: Date | null
 }
 
-export function convertAgentInputItemsToModelEvents(items: (AgentInputItem | TimestampedAgentInputItem)[], toolToIntegrationMap?: Map<string, string>): ModelEvent[] {
+export type ConvertAgentInputItemsToModelEventsOptions = {
+    includeScaffoldedUserMessages?: boolean
+}
+
+const DEFAULT_CONVERT_OPTIONS: Required<ConvertAgentInputItemsToModelEventsOptions> = {
+    includeScaffoldedUserMessages: true
+}
+
+export function convertAgentInputItemsToModelEvents(
+    items: (AgentInputItem | TimestampedAgentInputItem)[],
+    toolToIntegrationMap?: Map<string, string>,
+    options?: ConvertAgentInputItemsToModelEventsOptions
+): ModelEvent[] {
+    const resolvedOptions: Required<ConvertAgentInputItemsToModelEventsOptions> = {
+        ...DEFAULT_CONVERT_OPTIONS,
+        ...options
+    }
     const events: ModelEvent[] = []
     let lastTimestamp: Date | null | undefined
 
@@ -24,7 +40,7 @@ export function convertAgentInputItemsToModelEvents(items: (AgentInputItem | Tim
         const ts = isTimestamped ? (entry as TimestampedAgentInputItem).createdAt : undefined
         if (ts) lastTimestamp = ts
 
-        const converted = convertSingleItem(item, toolToIntegrationMap)
+        const converted = convertSingleItem(item, toolToIntegrationMap, resolvedOptions)
         if (converted) {
             for (const event of converted) {
                 events.push(ts ? { ...event, timestamp: ts.getTime() } : event)
@@ -47,7 +63,11 @@ export function convertAgentInputItemsToModelEvents(items: (AgentInputItem | Tim
     return events
 }
 
-function convertSingleItem(item: AgentInputItem, toolToIntegrationMap?: Map<string, string>): ModelEvent[] | null {
+function convertSingleItem(
+    item: AgentInputItem,
+    toolToIntegrationMap?: Map<string, string>,
+    options: Required<ConvertAgentInputItemsToModelEventsOptions> = DEFAULT_CONVERT_OPTIONS
+): ModelEvent[] | null {
     const runErrorContextEvent = parseRunErrorContextEventItem(item)
     if (runErrorContextEvent) {
         return [
@@ -98,6 +118,9 @@ function convertSingleItem(item: AgentInputItem, toolToIntegrationMap?: Map<stri
     if (isUserMessageItem(item)) {
         const text = extractTextFromMessageContent(item.content)
         if (text) {
+            if (!options.includeScaffoldedUserMessages && isScaffoldedRunContextUserMessage(text)) {
+                return null
+            }
             return [{ type: "UserMessage", message: text }]
         }
         return null
@@ -210,4 +233,17 @@ function extractTextFromMessageContent(content: UserMessageItem["content"] | Ass
     }
 
     return ""
+}
+
+function isScaffoldedRunContextUserMessage(text: string): boolean {
+    const normalized = text.trim()
+    if (!normalized) return false
+
+    const hasUserContext = normalized.includes("<USER_CONTEXT>") && normalized.includes("</USER_CONTEXT>")
+    const hasUserInstructions = normalized.includes("<USER_INSTRUCTIONS>") && normalized.includes("</USER_INSTRUCTIONS>")
+    const hasAgentTriggers = normalized.includes("<AGENT_TRIGGERS>") && normalized.includes("</AGENT_TRIGGERS>")
+    const hasEvent = normalized.includes("<EVENT>") && normalized.includes("</EVENT>")
+    const hasRunTriggerContext = normalized.includes("<RUN_TRIGGER_CONTEXT>") && normalized.includes("</RUN_TRIGGER_CONTEXT>")
+
+    return (hasUserContext && hasUserInstructions && hasAgentTriggers && hasEvent) || (hasRunTriggerContext && hasEvent)
 }
