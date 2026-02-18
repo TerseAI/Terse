@@ -21,11 +21,10 @@ type ContextValue = {
 const RunHistoryChatDrawerContext = createContext<ContextValue | null>(null)
 
 export function RunHistoryChatDrawerProvider({ children }: { children: React.ReactNode }) {
-    const [searchParams, setSearchParams] = useSearchParams()
+    const [_, setSearchParams] = useSearchParams()
     const [runs, setRuns] = useState<RunHistoryRecord[]>([])
     const [currentRunIndex, setCurrentRunIndex] = useState(0)
     const [isOpen, setIsOpen] = useState(false)
-    const [isFullscreen, setIsFullscreen] = useState(false)
     const [isInitialOpen, setIsInitialOpen] = useState(true)
 
     const openRunId = isOpen ? (runs[currentRunIndex]?.id ?? null) : null
@@ -51,7 +50,6 @@ export function RunHistoryChatDrawerProvider({ children }: { children: React.Rea
 
     const closeDrawer = () => {
         setIsOpen(false)
-        setIsFullscreen(false)
         setSearchParams(
             prev => {
                 const next = new URLSearchParams(prev)
@@ -80,7 +78,7 @@ export function RunHistoryChatDrawerProvider({ children }: { children: React.Rea
                 { replace: true }
             )
         },
-        [runs, setSearchParams]
+        [runs]
     )
 
     return (
