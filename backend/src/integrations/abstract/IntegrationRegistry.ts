@@ -1,5 +1,6 @@
 import { IntegrationDetails, IntegrationInstance, IntegrationType } from "../../shared/Integrations"
 import { AtlassianIntegrationManager } from "../AtlassianIntegration"
+import { AttioIntegrationManager } from "../AttioIntegration"
 import { CronJobIntegrationManager } from "../CronJobIntegration"
 import { DatadogIntegrationManager } from "../DatadogIntegration"
 import { FigmaIntegrationManager } from "../FigmaIntegration"
@@ -35,5 +36,6 @@ export const INTEGRATION_REGISTRY: Array<IntegrationWithInstallation> = [
     new PosthogIntegrationManager(),
     new LaunchDarklyIntegrationManager(),
     new DatadogIntegrationManager(),
-    new WorkOSIntegrationManager()
+    new WorkOSIntegrationManager(),
+    new AttioIntegrationManager()
 ]

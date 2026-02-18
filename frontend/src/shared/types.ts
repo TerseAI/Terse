@@ -58,6 +58,12 @@ export type LinearTeam = {
     key: string
 }
 
+export type AttioObject = {
+    api_slug: string
+    singular_noun: string
+    plural_noun: string
+}
+
 export type LinearWorkspace = {
     id: string
     name: string

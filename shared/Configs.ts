@@ -20,7 +20,8 @@ export enum ConfigType {
     LINEAR_KB = "linear_kb",
     SLACK_KB = "slack_kb",
     TERSE = "terse",
-    WORKOS_INPUT = "workos_input"
+    WORKOS_INPUT = "workos_input",
+    ATTIO_OUTPUT = "attio_output"
 }
 
 // MARK: Config Metadata
@@ -235,6 +236,16 @@ export const WorkOSInputConfigMetadata = {
     isKnowledgeBase: false
 } as const satisfies ConfigDetails
 
+export const AttioOutputConfigMetadata = {
+    configType: ConfigType.ATTIO_OUTPUT,
+    name: "Attio",
+    description: "Add and update contacts in Attio",
+    integrationType: IntegrationType.ATTIO,
+    isInput: false,
+    isOutput: true,
+    isKnowledgeBase: false
+} as const satisfies ConfigDetails
+
 export type ConfigDetailsMap = Record<ConfigType, ConfigDetails>
 
 export const CONFIG_DETAILS: ConfigDetailsMap = {
@@ -257,7 +268,8 @@ export const CONFIG_DETAILS: ConfigDetailsMap = {
     [ConfigType.LINEAR_KB]: LinearKBConfigMetadata,
     [ConfigType.SLACK_KB]: SlackKBConfigMetadata,
     [ConfigType.TERSE]: TerseConfigMetadata,
-    [ConfigType.WORKOS_INPUT]: WorkOSInputConfigMetadata
+    [ConfigType.WORKOS_INPUT]: WorkOSInputConfigMetadata,
+    [ConfigType.ATTIO_OUTPUT]: AttioOutputConfigMetadata
 } as const satisfies ConfigDetailsMap
 
 export interface ConfigInstance {
@@ -772,6 +784,28 @@ export class WorkOSInputConfig implements ConfigInstance {
     }
 }
 
+export class AttioOutputConfig implements ConfigInstance {
+    integrationType: IntegrationType = IntegrationType.ATTIO
+    configType: ConfigType = ConfigType.ATTIO_OUTPUT
+
+    constructor(
+        public integrationId: string,
+        public objectSlug?: string
+    ) {}
+
+    isComplete(): boolean {
+        return !!this.objectSlug
+    }
+
+    formatForAgent(): string {
+        const parts = [`Type: Attio Output`, `Integration ID: ${this.integrationId}`]
+        if (this.objectSlug) {
+            parts.push(`Object: ${this.objectSlug}`)
+        }
+        return parts.join("\n")
+    }
+}
+
 // To be studied Later!!
 type EnsureExhaustiveMetadata<T extends Record<ConfigType, new (...args: any[]) => ConfigInstance>> = T
 
@@ -796,6 +830,7 @@ export type ConfigMetadataMap = EnsureExhaustiveMetadata<{
     [ConfigType.SLACK_KB]: typeof SlackKBConfig
     [ConfigType.TERSE]: typeof TerseConfig
     [ConfigType.WORKOS_INPUT]: typeof WorkOSInputConfig
+    [ConfigType.ATTIO_OUTPUT]: typeof AttioOutputConfig
 }>
 
 export const CONFIG_METADATA: ConfigMetadataMap = {
@@ -818,5 +853,6 @@ export const CONFIG_METADATA: ConfigMetadataMap = {
     [ConfigType.LINEAR_KB]: LinearKBConfig,
     [ConfigType.SLACK_KB]: SlackKBConfig,
     [ConfigType.TERSE]: TerseConfig,
-    [ConfigType.WORKOS_INPUT]: WorkOSInputConfig
+    [ConfigType.WORKOS_INPUT]: WorkOSInputConfig,
+    [ConfigType.ATTIO_OUTPUT]: AttioOutputConfig
 } as const satisfies ConfigMetadataMap

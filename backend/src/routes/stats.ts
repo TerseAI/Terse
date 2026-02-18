@@ -140,7 +140,7 @@ export async function getStats(req: Request, res: Response) {
                     SELECT TO_CHAR(DATE_TRUNC('minute', rhr.timestamp AT TIME ZONE 'UTC' AT TIME ZONE ${timezone}), 'YYYY-MM-DD HH24:MI') as bucket_key, COUNT(*) as count
                     FROM run_history_records rhr
                     INNER JOIN automations a ON rhr.automation_id = a.id
-                    WHERE a.organization_id = ${organizationId} AND rhr.status != ${PrismaRunHistoryStatus.skipped} AND rhr.timestamp >= ${chartStartDate}
+                    WHERE a.organization_id = ${organizationId} AND rhr.status != ${PrismaRunHistoryStatus.skipped}::"RunHistoryStatus" AND rhr.timestamp >= ${chartStartDate}
                     GROUP BY 1
                     ORDER BY 1
                 `
@@ -149,7 +149,7 @@ export async function getStats(req: Request, res: Response) {
                     SELECT TO_CHAR(DATE_TRUNC('hour', rhr.timestamp AT TIME ZONE 'UTC' AT TIME ZONE ${timezone}), 'YYYY-MM-DD HH24:00') as bucket_key, COUNT(*) as count
                     FROM run_history_records rhr
                     INNER JOIN automations a ON rhr.automation_id = a.id
-                    WHERE a.organization_id = ${organizationId} AND rhr.status != ${PrismaRunHistoryStatus.skipped} AND rhr.timestamp >= ${chartStartDate}
+                    WHERE a.organization_id = ${organizationId} AND rhr.status != ${PrismaRunHistoryStatus.skipped}::"RunHistoryStatus" AND rhr.timestamp >= ${chartStartDate}
                     GROUP BY 1
                     ORDER BY 1
                 `
@@ -157,7 +157,7 @@ export async function getStats(req: Request, res: Response) {
                     SELECT TO_CHAR(DATE_TRUNC('day', rhr.timestamp AT TIME ZONE 'UTC' AT TIME ZONE ${timezone}), 'YYYY-MM-DD') as bucket_key, COUNT(*) as count
                     FROM run_history_records rhr
                     INNER JOIN automations a ON rhr.automation_id = a.id
-                    WHERE a.organization_id = ${organizationId} AND rhr.status != ${PrismaRunHistoryStatus.skipped} AND rhr.timestamp >= ${chartStartDate}
+                    WHERE a.organization_id = ${organizationId} AND rhr.status != ${PrismaRunHistoryStatus.skipped}::"RunHistoryStatus" AND rhr.timestamp >= ${chartStartDate}
                     GROUP BY 1
                     ORDER BY 1
                 `

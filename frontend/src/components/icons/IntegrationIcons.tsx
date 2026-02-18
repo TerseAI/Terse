@@ -116,6 +116,10 @@ export function LaunchDarklyIcon() {
     return <img src="/launchdarkly.jpeg" alt="LaunchDarkly" className="w-full h-full object-contain" />
 }
 
+export function AttioIcon() {
+    return <img src="/Attio.svg" alt="Attio" className="w-full h-full object-contain dark:invert" />
+}
+
 export function WorkOSIcon() {
     return (
         <svg className="w-full h-full" viewBox="0 0 256 222" fill="none" xmlns="http://www.w3.org/2000/svg">

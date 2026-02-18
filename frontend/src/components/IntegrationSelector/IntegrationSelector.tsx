@@ -1,5 +1,6 @@
 import { ConfigType } from "@/shared/Configs"
 
+import { AttioOutputIntegration } from "./AttioOutputIntegration"
 import { ConfluenceIntegration } from "./ConfluenceIntegration"
 import { FigmaIntegration } from "./FigmaIntegration"
 import { GitHubIntegration } from "./GitHubIntegration"
@@ -54,6 +55,9 @@ export function IntegrationSelector(props: InputConfigSelectorProps) {
 
         case ConfigType.WORKOS_INPUT:
             return <WorkOSIntegration input={props.input} variant={props.variant} setConfig={props.setConfig} />
+
+        case ConfigType.ATTIO_OUTPUT:
+            return <AttioOutputIntegration input={props.input} variant={props.variant} setConfig={props.setConfig} />
 
         default:
             throw new Error(`Unsupported config type: ${props.input.configType}`)
