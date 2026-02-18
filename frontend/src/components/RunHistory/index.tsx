@@ -5,7 +5,6 @@ import { useRunHistory } from "../../hooks/api/useRunHistory"
 import { useRunHistoryChatDrawer } from "../../services/RunHistoryChatDrawerContext"
 import { RunHistoryRecord, RunHistoryStatus } from "../../shared/RunHistoryTypes"
 
-import RunHistoryChatDrawer from "./RunHistoryChatDrawer"
 import RunHistoryEmptyState from "./RunHistoryEmptyState"
 import RunHistoryItem from "./RunHistoryItem"
 import RunHistoryLoadingState from "./RunHistoryLoadingState"
@@ -150,7 +149,7 @@ export default function RunHistory({ agentId, onTriggerNow }: RunHistoryProps) {
 
     return (
         <div className="h-full w-full px-3 py-4">
-            <div className="w-full max-w-7xl">
+            <div className="w-full">
                 <RunHistoryToolBar
                     filteredCount={total}
                     startIndex={startIndex}
