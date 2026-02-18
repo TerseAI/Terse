@@ -31,31 +31,33 @@ export const attioGetObjectSchemaTool = tool({
         }
 
         try {
-            const response = await fetch(`https://api.attio.com/v2/objects/${encodeURIComponent(objectSlug)}`, {
-                method: "GET",
-                headers: {
-                    Authorization: `Bearer ${accessToken}`
-                }
-            })
+            const headers = { Authorization: `Bearer ${accessToken}` }
+            const slug = encodeURIComponent(objectSlug)
 
-            if (!response.ok) {
-                const errorText = await response.text()
-                logger.error("Attio get object schema failed", { status: response.status, error: errorText })
-                throw new Error(`Attio API error (${response.status}): ${errorText}`)
+            const [objectResponse, attributesResponse] = await Promise.all([
+                fetch(`https://api.attio.com/v2/objects/${slug}`, { method: "GET", headers }),
+                fetch(`https://api.attio.com/v2/objects/${slug}/attributes`, { method: "GET", headers })
+            ])
+
+            if (!objectResponse.ok) {
+                const errorText = await objectResponse.text()
+                logger.error("Attio get object schema failed", { status: objectResponse.status, error: errorText })
+                throw new Error(`Attio API error (${objectResponse.status}): ${errorText}`)
             }
 
-            const data = await response.json()
-            const objectData = data?.data
+            const objectData = (await objectResponse.json())?.data
+            const attributes = attributesResponse.ok ? (await attributesResponse.json())?.data || [] : []
+            const attributeCount = attributes.length
 
             const action = {
                 action: "Retrieved object schema",
                 integration: IntegrationType.ATTIO,
                 target: objectSlug,
-                details: `Retrieved schema for ${objectSlug}`,
+                details: `Retrieved schema for ${objectSlug} with ${attributeCount} attribute(s)`,
                 type: RunHistoryActionType.read
             }
 
-            return { success: true, object: objectData, actions: [action] }
+            return { success: true, object: objectData, attributes, actions: [action] }
         } catch (error: unknown) {
             const errorMessage = await formatError(runContext, error)
             logger.error("Error getting Attio object schema", { error: errorMessage, integrationId })
