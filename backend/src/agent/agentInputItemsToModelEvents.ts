@@ -3,9 +3,9 @@ import type { AgentInputItem, AssistantMessageItem, FunctionCallItem, FunctionCa
 import { IntegrationType } from "../shared/Integrations"
 import { ModelEvent } from "../shared/ModelEvents"
 
-import { parseToolApprovalContextEventItem } from "./contextEvents/toolApprovalContextEvent"
 import { parseFilterOutcomeContextEventItem } from "./contextEvents/filterOutcomeContextEvent"
 import { parseRunErrorContextEventItem } from "./contextEvents/runErrorContextEvent"
+import { parseToolApprovalContextEventItem } from "./contextEvents/toolApprovalContextEvent"
 import { parseToolExecutionResult } from "./toolExecution"
 
 /** An AgentInputItem paired with the DB timestamp it was created at. */

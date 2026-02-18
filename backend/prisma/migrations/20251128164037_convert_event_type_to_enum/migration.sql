@@ -1,5 +1,5 @@
 -- CreateEnum
-CREATE TYPE "RunHistoryChatEventType" AS ENUM ('TextDelta', 'ToolCall', 'ToolCallComplete', 'ToolApprovalRequest', 'NaturalStop', 'FilterResult');
+CREATE TYPE "RunHistoryChatEventType" AS ENUM ('TextDelta', 'ToolCall', 'ToolCallComplete', 'ToolApprovalRequest', 'NaturalStop', 'Failure', 'FilterResult');
 
 -- AlterTable: Convert existing TEXT values to the new enum type
 ALTER TABLE "run_history_chat_events" 
