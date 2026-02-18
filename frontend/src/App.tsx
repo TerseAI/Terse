@@ -24,6 +24,7 @@ import ProfilePage from "./pages/ProfilePage"
 import StatsPage from "./pages/Stats"
 import { ModelContextProvider } from "./services/ModelContextProvider"
 import { AuthProvider, useAuth } from "./services/auth"
+import { RunHistoryChatDrawerProvider } from "./services/RunHistoryChatDrawerContext"
 import { FrontendRoutes } from "./shared/FrontendRoutes"
 import { disconnectSocket, initializeSocket } from "./socket"
 
@@ -126,7 +127,9 @@ function AppLayout() {
                 <BreadCrumb />
                 <div className="flex-1 min-h-0">
                     <ModelContextProvider>
-                        <Outlet />
+                        <RunHistoryChatDrawerProvider>
+                            <Outlet />
+                        </RunHistoryChatDrawerProvider>
                     </ModelContextProvider>
                 </div>
             </main>

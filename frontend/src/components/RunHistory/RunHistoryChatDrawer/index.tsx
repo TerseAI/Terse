@@ -9,42 +9,20 @@ import RunHistoryChatAdapter from "./RunHistoryChatAdapter"
 import RunHistoryChatDrawerHeader from "./RunHistoryChatDrawerHeader"
 
 type Props = {
-    runId: string
+    runs: RunHistoryRecord[]
+    currentRunIndex: number
     isOpen: boolean
     onOpenChange: (open: boolean) => void
-    runNumber?: number
-    totalEvents?: number
-    status: RunHistoryStatus
-    trigger: RunHistoryTrigger
-    filtered: boolean
-    runs?: RunHistoryRecord[]
-    currentRunIndex?: number
     onNavigate?: (runId: string) => void
-    isFullscreen?: boolean
     onFullscreenChange?: (fullscreen: boolean) => void
     isInitialOpen?: boolean
 }
 
-export default function RunHistoryChatDrawer({
-    runId,
-    isOpen,
-    onOpenChange,
-    runNumber,
-    totalEvents,
-    status,
-    trigger,
-    filtered,
-    runs,
-    currentRunIndex,
-    onNavigate,
-    isFullscreen: externalIsFullscreen = false,
-    onFullscreenChange,
-    isInitialOpen = true
-}: Props) {
+export default function RunHistoryChatDrawer({ isOpen, onOpenChange, runs, currentRunIndex, onNavigate, onFullscreenChange, isInitialOpen = true }: Props) {
     const [internalFullscreen, setInternalFullscreen] = useState(false)
     const chatRef = useRef<ChatHandle>(null)
 
-    const isFullscreen = onFullscreenChange ? externalIsFullscreen : internalFullscreen
+    const isFullscreen = internalFullscreen
 
     const handleFullscreenChange = (fullscreen: boolean) => {
         if (onFullscreenChange) {
@@ -53,6 +31,13 @@ export default function RunHistoryChatDrawer({
             setInternalFullscreen(fullscreen)
         }
     }
+
+    const runId = runs?.[currentRunIndex ?? 0]?.id
+    const runNumber = currentRunIndex + 1
+    const totalEvents = runs.length
+    const status = runs[currentRunIndex].status
+    const trigger = runs[currentRunIndex].trigger
+    const filtered = runs[currentRunIndex].filtered
 
     return (
         <Drawer open={isOpen} onOpenChange={onOpenChange} direction="right" shouldScaleBackground={isInitialOpen} handleOnly>
