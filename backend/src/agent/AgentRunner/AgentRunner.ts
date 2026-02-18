@@ -188,34 +188,15 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance, KBCo
         // Deserialize the state first
         const state = await RunState.fromString<SessionWithTracking<T>, Agent<SessionWithTracking<T>, AgentOutputType>>(this.agent, pendingState.serializedState)
 
-        // Find the interruption from the stored interruptions array
-        // We stored the full interruption objects, so we can use them directly
-        // Helper to safely extract callId from interruption rawItem
-        const getInterruptionCallId = (int: RunToolApprovalItem): string | undefined => {
-            if (int.rawItem && typeof int.rawItem === "object" && "callId" in int.rawItem) {
-                return int.rawItem.callId as string | undefined
-            }
-            return undefined
-        }
-
-        const storedInterruption = pendingState.interruptions.find(int => {
-            const callId = getInterruptionCallId(int)
-            return callId === stepId
-        })
+        const storedInterruption = pendingState.interruptions.find(interruptionItem => (interruptionItem.rawItem as any)?.callId === stepId)
 
         if (!storedInterruption) {
             // Log for debugging
             logger.error(`[resumeFromPendingApproval] Could not find interruption for step_id: ${stepId}`)
-            const getInterruptionCallId = (int: RunToolApprovalItem): string | undefined => {
-                if (int.rawItem && typeof int.rawItem === "object" && "callId" in int.rawItem) {
-                    return int.rawItem.callId as string | undefined
-                }
-                return undefined
-            }
             logger.error(`[resumeFromPendingApproval] Available stored interruptions:`, {
-                interruptions: pendingState.interruptions.map(int => ({
-                    callId: getInterruptionCallId(int),
-                    name: int.name
+                interruptions: pendingState.interruptions.map(interruptionItem => ({
+                    callId: (interruptionItem.rawItem as any)?.callId || null,
+                    name: interruptionItem.name
                 }))
             })
             throw new Error(`Could not find matching interruption for step_id ${stepId}`)
@@ -613,20 +594,18 @@ ${inputEvent.formatForAgentRunner()}
             if (streamingParams) {
                 const io = getSocketIO()
                 for (const interruption of result.interruptions) {
-                    // Safely extract callId from interruption rawItem
-                    const getCallId = (int: RunToolApprovalItem): string => {
-                        if (int.rawItem && typeof int.rawItem === "object" && "callId" in int.rawItem) {
-                            const callId = int.rawItem.callId
-                            if (typeof callId === "string") {
-                                return callId
-                            }
-                        }
-                        return int.name || "unknown"
+                    const stepId = (interruption.rawItem as any)?.callId
+                    if (!stepId) {
+                        logger.warn("Skipping approval request event because interruption has no callId", {
+                            runId: this.runContext.runId,
+                            toolName: interruption.name
+                        })
+                        continue
                     }
-                    const stepId = getCallId(interruption)
+
                     const approvalRequest: ModelEvent = {
                         type: "ToolApprovalRequest",
-                        step_id: stepId || interruption.name,
+                        step_id: stepId,
                         name: interruption.name,
                         arguments: interruption.arguments
                     }

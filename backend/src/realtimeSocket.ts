@@ -6,7 +6,7 @@ import { Server, Socket } from "socket.io"
 
 import { AgentRunResultStatus, AgentRunner } from "./agent/AgentRunner/AgentRunner"
 import { RunContext } from "./agent/AgentRunner/SystemPromptBuilder"
-import { evaluateCompletedRun, finalizeRunStatus, markRunFailed } from "./agent/AgentRunner/runHistory"
+import { evaluateCompletedRun, finalizeRunStatus, getPendingApprovalState, markRunFailed } from "./agent/AgentRunner/runHistory"
 import { DirectiveTask, directiveTaskQueue } from "./agent/DirectiveAgent/DirectiveAgent"
 import { type ClassifiedError, buildRunErrorEvent, classifyAgentError } from "./agent/agentErrorUtils"
 import { appendRunHistoryErrorContextEvent } from "./agent/contextEvents/runErrorContextEvent"
@@ -249,6 +249,56 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
             }
 
             const userMessage = message.user_message
+
+            const pendingApprovalState = await getPendingApprovalState(runId)
+            if (pendingApprovalState && pendingApprovalState.interruptions.length > 0) {
+                let stepId: string | null = null
+                for (const interruption of pendingApprovalState.interruptions) {
+                    const callId = (interruption.rawItem as any)?.callId
+                    if (callId) {
+                        stepId = callId
+                        break
+                    }
+                }
+
+                if (stepId) {
+                    logger.info("[agent:chat:message] Pending approval found; treating user message as rejection feedback", {
+                        runId,
+                        stepId,
+                        userId
+                    })
+
+                    const approvalResult = await ApprovalService.processApproval({
+                        runId,
+                        stepId,
+                        approved: false,
+                        userId,
+                        organizationId: organizationId ?? "",
+                        rejectionReason: userMessage?.trim() || undefined
+                    })
+
+                    if (approvalResult.status === ApprovalProcessingStatus.FAILED) {
+                        logger.error("[agent:chat:message] Failed to process implicit rejection from user chat message", {
+                            runId,
+                            stepId,
+                            userId,
+                            error: approvalResult.error
+                        })
+                    }
+
+                    return
+                }
+
+                logger.warn("[agent:chat:message] Pending approval exists but no step id could be extracted", {
+                    runId,
+                    userId,
+                    interruptionCount: pendingApprovalState.interruptions.length
+                })
+
+                // Fail-safe: do not continue into a fresh model run while a pending approval exists
+                // but cannot be resolved to a stable step id.
+                return
+            }
 
             // Ensure run status is 'in_progress' so streaming works
             if (runRecord.status !== RunHistoryStatus.IN_PROGRESS) {
