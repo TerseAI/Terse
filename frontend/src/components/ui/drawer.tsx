@@ -20,11 +20,11 @@ DrawerOverlay.displayName = DrawerPrimitive.Overlay.displayName
 
 const DrawerContent = React.forwardRef<React.ElementRef<typeof DrawerPrimitive.Content>, React.ComponentPropsWithoutRef<typeof DrawerPrimitive.Content>>(({ className, children, ...props }, ref) => (
     <DrawerPortal>
-        <DrawerOverlay />
+        <div className="fixed inset-0 z-50 bg-background/80"></div>
         <DrawerPrimitive.Content
             ref={ref}
             className={cn(
-                "fixed z-50 flex flex-col border bg-background",
+                "fixed z-70 flex flex-col border bg-background",
                 // Bottom drawer (default)
                 "data-[vaul-drawer-direction=bottom]:inset-x-0 data-[vaul-drawer-direction=bottom]:bottom-0 data-[vaul-drawer-direction=bottom]:mt-24 data-[vaul-drawer-direction=bottom]:max-h-[96vh] data-[vaul-drawer-direction=bottom]:rounded-t-[10px]",
                 // Top drawer

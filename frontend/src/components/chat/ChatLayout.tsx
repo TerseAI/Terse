@@ -53,7 +53,6 @@ export const ChatLayout = forwardRef<ChatLayoutHandle, ChatLayoutProps>(function
     const isNearBottomRef = useRef(true)
     const chatInputRef = useRef<ChatInputHandle>(null)
 
-    // Check if user is near the bottom and update state accordingly.
     // With flex-col-reverse, scrollTop = 0 is the bottom (newest content).
     // Scrolling up moves scrollTop away from 0 (negative in some browsers,
     // positive in others), so we use Math.abs to handle both conventions.
