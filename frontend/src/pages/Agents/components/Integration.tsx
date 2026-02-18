@@ -1,4 +1,5 @@
 import {
+    AttioIcon,
     CalendarClockIcon,
     ConfluenceIcon,
     DatadogIcon,
@@ -54,6 +55,8 @@ export function IconForConfigType({ type }: { type: ConfigType }) {
             return <TerseIcon />
         case ConfigType.WORKOS_INPUT:
             return <WorkOSIcon />
+        case ConfigType.ATTIO_OUTPUT:
+            return <AttioIcon />
         default:
             // Exhaustive check: TypeScript will error if any IntegrationType case is missing
             throw type satisfies never
@@ -87,6 +90,8 @@ export function IconForIntegration({ integration }: { integration: IntegrationTy
             return <DatadogIcon />
         case IntegrationType.WORKOS:
             return <WorkOSIcon />
+        case IntegrationType.ATTIO:
+            return <AttioIcon />
         default:
             throw integration satisfies never
     }

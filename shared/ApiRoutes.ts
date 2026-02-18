@@ -165,6 +165,17 @@ export const ApiRoutes = {
         WEBHOOK_SECRET: "/workos-integration/webhook-secret"
     },
 
+    // Attio routes
+    ATTIO: {
+        INTEGRATIONS: "/attio/integrations",
+        OAUTH_CALLBACK: "/attio/oauth/callback",
+        OBJECTS: {
+            pattern: "/attio/integrations/:integrationId/objects",
+            build: (integrationId: string) => `/attio/integrations/${encodeURIComponent(integrationId)}/objects`,
+            params: { integrationId: "string" } as const
+        }
+    },
+
     // Agents routes
     AGENTS: {
         LIST: "/agents",

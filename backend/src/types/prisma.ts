@@ -118,6 +118,7 @@ export type AutomationOutputWithConfigs = Prisma.automation_outputsGetPayload<{
         github_config: true
         gmail_config: true
         figma_config: true
+        attio_config: true
     }
 }>
 export type AgentOutputWithConfigs = AutomationOutputWithConfigs // Alias for rebranding (formerly ChannelOutputWithConfigs)
@@ -167,6 +168,7 @@ export type AutomationWithOutputRelations = Prisma.automationsGetPayload<{
                 github_config: true
                 gmail_config: true
                 figma_config: true
+                attio_config: true
             }
         }
     }
