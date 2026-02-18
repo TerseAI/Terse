@@ -19,6 +19,7 @@ import { linearGetProjectsTool } from "./tools/getProjects"
 import { linearGetStatesTool } from "./tools/getStates"
 import { linearGetTeamsTool } from "./tools/getTeams"
 import { linearGetUsersTool } from "./tools/getUsers"
+import { linearReadTicketTool } from "./tools/readTicket"
 import { linearSearchTicketTool } from "./tools/searchTicket"
 import { linearUpdateTicketTool } from "./tools/updateTicket"
 
@@ -33,7 +34,8 @@ export class LinearTicketOutput extends Output<LinearOutputConfig> {
             { tool: linearGetUsersTool as Tool, isReadOnly: true, integration: IntegrationType.LINEAR, displayName: "Get users" },
             { tool: linearCreateTicketTool as Tool, isReadOnly: false, integration: IntegrationType.LINEAR, displayName: "Create ticket" },
             { tool: linearUpdateTicketTool as Tool, isReadOnly: false, integration: IntegrationType.LINEAR, displayName: "Update ticket" },
-            { tool: linearAddCommentTool as Tool, isReadOnly: false, integration: IntegrationType.LINEAR, displayName: "Add comment" }
+            { tool: linearAddCommentTool as Tool, isReadOnly: false, integration: IntegrationType.LINEAR, displayName: "Add comment" },
+            { tool: linearReadTicketTool as Tool, isReadOnly: true, integration: IntegrationType.LINEAR, displayName: "Read ticket" }
         ]
         super(OutputConfigType.LINEAR_TICKET, toolbox, readOnly)
     }

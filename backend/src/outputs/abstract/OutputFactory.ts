@@ -19,10 +19,7 @@ import { Output } from "./Output"
  * No switch statements - each output type is registered independently.
  */
 export class OutputFactory {
-    public static readonly OUTPUT_REGISTRY: Map<OutputConfigType, (readOnly?: boolean) => Output<ConfigInstance>> = new Map<
-        OutputConfigType,
-        (readOnly?: boolean) => Output<ConfigInstance>
-    >([
+    public static readonly OUTPUT_REGISTRY: Map<OutputConfigType, (readOnly?: boolean) => Output<ConfigInstance>> = new Map<OutputConfigType, (readOnly?: boolean) => Output<ConfigInstance>>([
         [OutputConfigType.NOTION, (readOnly = false) => new NotionOutput(readOnly)],
         [OutputConfigType.CONFLUENCE, (readOnly = false) => new ConfluenceOutput(readOnly)],
         [OutputConfigType.LINEAR_TICKET, (readOnly = false) => new LinearTicketOutput(readOnly)],

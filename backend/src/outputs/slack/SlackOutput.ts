@@ -4,7 +4,6 @@ import { OutputConfigType } from "@prisma/client"
 import { buildDummyOutputConfig } from "../../buildDummyConfigForCapability"
 import { type CapabilityDescription, CapabilityRole, extractToolMetadata, getConfigMetadata } from "../../capabilityHelpers"
 import { getSlackAccessTokenOrThrow, validateSlackChannelsExist, validateSlackUserIds } from "../../integrations/SlackIntegration"
-import { slackListUsersTool } from "../../knowledgeBase/slack/tools/listUsers"
 import { SlackOutputConfig } from "../../shared/Configs"
 import { IntegrationType } from "../../shared/Integrations"
 import { AgentOutputWithConfigs, PrismaTransaction } from "../../types/prisma"
@@ -12,13 +11,18 @@ import { SlackOutputConfigSchema, stripConfigForValidation } from "../../utility
 import { convertOutputConfigTypeToConfigType } from "../../utility/typeConverters"
 import { Output, ToolboxEntry } from "../abstract/Output"
 
+import { slackListChannelsTool } from "./tools/listChannels"
+import { slackListUsersTool } from "./tools/listUsers"
+import { slackReadConversationTool } from "./tools/readConversation"
 import { slackSendMessageTool } from "./tools/sendMessage"
 
 export class SlackOutput extends Output<SlackOutputConfig> {
     constructor(readOnly = false) {
         const toolbox: ToolboxEntry[] = [
             { tool: slackSendMessageTool as Tool, isReadOnly: false, integration: IntegrationType.SLACK, displayName: "Send message" },
-            { tool: slackListUsersTool as Tool, isReadOnly: true, integration: IntegrationType.SLACK, displayName: "List users" }
+            { tool: slackListUsersTool as Tool, isReadOnly: true, integration: IntegrationType.SLACK, displayName: "List users" },
+            { tool: slackListChannelsTool as Tool, isReadOnly: true, integration: IntegrationType.SLACK, displayName: "List channels" },
+            { tool: slackReadConversationTool as Tool, isReadOnly: true, integration: IntegrationType.SLACK, displayName: "Read conversation" }
         ]
         super(OutputConfigType.SLACK_CHANNEL, toolbox, readOnly)
     }
