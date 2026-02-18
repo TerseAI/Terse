@@ -12,7 +12,7 @@ import { Session } from "../../../types/session"
 
 export const attioUpsertRecordTool = tool({
     name: ToolName.ATTIO_UPSERT_RECORD,
-    description: `Create or update (upsert) a record in Attio. Uses a matching attribute to find existing records — if a match is found the record is updated, otherwise a new one is created. Use attio_get_object_schema first to discover available attributes for the object.`,
+    description: `Create or update (upsert) a record in Attio. Uses a matching attribute to find existing records — if a match is found the record is updated, otherwise a new one is created. Use attio_list_objects first to discover available attributes for the object.`,
     parameters: z.object({
         integrationId: z.string().describe("The integration ID of the Attio workspace to use."),
         objectSlug: z.string().describe("The Attio object type slug (e.g. 'people', 'companies')."),
@@ -32,6 +32,11 @@ export const attioUpsertRecordTool = tool({
         }
 
         const manager = new AttioIntegrationManager()
+        const orgIntegrations = await manager.getInstancesForOrganization(runContext.context.user.organizationId)
+        if (!orgIntegrations.some(i => i.id === integrationId)) {
+            throw new Error("Attio integration not found or not authorized for this organization.")
+        }
+
         const accessToken = await manager.getAccessToken(integrationId)
         if (!accessToken) {
             throw new Error("Failed to get Attio access token. The integration may not be connected.")
