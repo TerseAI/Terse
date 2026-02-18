@@ -2,6 +2,38 @@ import logger from "../../logger"
 import { AgentKnowledgeBaseWithConfigs, AgentOutput, AgentOutputWithConfigs, AgentTrigger, AgentTriggerWithConfigs, AgentWithRelations } from "../../types/prisma"
 import { convertPrismaConfigToConfigInstance, convertPrismaKnowledgeBaseConfigToConfigInstance, convertPrismaOutputConfigToConfigInstance } from "../../utility/typeConverters"
 
+type RunTriggerContextMessageInput = {
+    userContext?: string
+    userInstructions?: string
+    agentTriggers?: string
+    eventContent?: string
+}
+
+export function buildRunTriggerContextMessage({ userContext, userInstructions, agentTriggers, eventContent }: RunTriggerContextMessageInput): string {
+    const safeUserContext = userContext?.trim() || "User information not available"
+    const safeUserInstructions = userInstructions?.trim() || "No instructions provided"
+    const safeAgentTriggers = agentTriggers?.trim() || "No triggers configured"
+    const safeEventContent = eventContent?.trim() || "No event content provided"
+
+    return `
+<USER_CONTEXT>
+${safeUserContext}
+</USER_CONTEXT>
+
+<USER_INSTRUCTIONS>
+${safeUserInstructions}
+</USER_INSTRUCTIONS>
+
+<AGENT_TRIGGERS>
+${safeAgentTriggers}
+</AGENT_TRIGGERS>
+
+<EVENT>
+${safeEventContent}
+</EVENT>
+    `.trim()
+}
+
 export function formatAgentForSystemPrompt(agent: AgentWithRelations): string {
     const sections: string[] = []
 

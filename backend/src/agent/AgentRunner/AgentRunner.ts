@@ -28,7 +28,7 @@ import { isFailedToolExecutionStatus } from "../toolExecution"
 import { persistRunAction } from "./EventProcessor"
 import { processModelEventStream } from "./StreamProcessor"
 import { RunContext, SystemPromptBuilder, SystemPromptBuilderDependencies } from "./SystemPromptBuilder"
-import { formatAgentTriggersForAgent } from "./formatContext"
+import { buildRunTriggerContextMessage, formatAgentTriggersForAgent } from "./formatContext"
 import { persistOutputAttributions, removeOutputAttributions } from "./persistOutputAttributions"
 import { clearPendingApprovalState, getPendingApprovalState, markRunInProgress, storePendingApprovalState } from "./runHistory"
 
@@ -471,23 +471,12 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance, KBCo
     }
 
     private buildTextContent(inputEvent: InputEvent): string {
-        return `
-<USER_CONTEXT>
-${UserFormatter.formatForAgent(this.session.user)}
-</USER_CONTEXT>
-
-<USER_INSTRUCTIONS>
-${this.agentConfig.prompt?.content || "No instructions provided"}
-</USER_INSTRUCTIONS>
-
-<AGENT_TRIGGERS>
-${formatAgentTriggersForAgent(this.agentConfig.inputs)}
-</AGENT_TRIGGERS>
-
-<EVENT>
-${inputEvent.formatForAgentRunner()}
-</EVENT>
-        `.trim()
+        return buildRunTriggerContextMessage({
+            userContext: UserFormatter.formatForAgent(this.session.user),
+            userInstructions: this.agentConfig.prompt?.content,
+            agentTriggers: formatAgentTriggersForAgent(this.agentConfig.inputs),
+            eventContent: inputEvent.formatForAgentRunner()
+        })
     }
 
     private resetRunOutcomeTracking(): void {

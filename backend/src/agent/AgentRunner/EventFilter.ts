@@ -10,11 +10,14 @@ import type { RunHistoryModelEvent, RunHistoryModelSocketEvent, TrackingParams }
 import { SocketEvents, SocketRooms } from "../../shared/SocketEvents"
 import { AgentPrompt } from "../../types/prisma"
 import { Session } from "../../types/session"
+import { UserFormatter } from "../../utility/UserFormatter"
 import { randomString } from "../../utility/strings"
 import { RunHistoryChatMemorySession } from "../CustomMemorySession"
 import { AgentType, builderProviderDataModelSettings, runnerFactory } from "../runner"
 import { transformAgentStreamToModelEvents } from "../streaming"
 import { appendFilterOutcomeSystemEvent } from "../systemEvents/filterOutcomeSystemEvent"
+
+import { buildRunTriggerContextMessage } from "./formatContext"
 
 export interface EventFilterResult {
     isRelevant: boolean
@@ -127,47 +130,13 @@ function buildFilterHistory(agentPrompt: AgentPrompt, event: InputEvent): AgentI
     ]
 }
 
-function getAgentInputItemText(item: AgentInputItem): string {
-    const itemAny = item as any
-    const content = itemAny?.content
-
-    if (typeof content === "string") {
-        return content
-    }
-
-    if (!Array.isArray(content)) {
-        return ""
-    }
-
-    return content
-        .map((part: any) => {
-            if (!part || typeof part !== "object") return ""
-            if (typeof part.text === "string") return part.text
-            if (typeof part.input_text === "string") return part.input_text
-            return ""
-        })
-        .join("\n")
-}
-
-function hasEventContext(item: AgentInputItem): boolean {
-    const text = getAgentInputItemText(item)
-    return (text.includes("<EVENT>") && text.includes("</EVENT>")) || (text.includes("<RUN_TRIGGER_CONTEXT>") && text.includes("</RUN_TRIGGER_CONTEXT>"))
-}
-
-async function seedEventContextForFilteredRunIfNeeded(runId: string, event: InputEvent, isRelevant: boolean): Promise<void> {
+async function seedEventContextForFilteredRunIfNeeded(runId: string, eventContextText: string, isRelevant: boolean): Promise<void> {
     if (isRelevant) {
         return
     }
 
     try {
         const memorySession = new RunHistoryChatMemorySession({ sessionId: runId })
-        const existing = await memorySession.getItems(5)
-
-        if (existing.some(item => hasEventContext(item))) {
-            return
-        }
-
-        const eventContextText = ["<EVENT>", event.formatForAgentRunner(), "</EVENT>"].join("\n")
         const eventContextItem = user(eventContextText) as AgentInputItem
         await memorySession.addItems([eventContextItem])
     } catch (error) {
@@ -181,7 +150,13 @@ async function seedEventContextForFilteredRunIfNeeded(runId: string, event: Inpu
  *
  * If isStreaming is true and trackingParams are provided, automatically handles storing events and emitting them via Socket.IO
  */
-export async function filterEvent(event: InputEvent, agentPrompt: AgentPrompt, isStreaming: boolean, trackingParams: TrackingParams): Promise<{ result: EventFilterResult }> {
+export async function filterEvent(
+    event: InputEvent,
+    agentPrompt: AgentPrompt,
+    isStreaming: boolean,
+    trackingParams: TrackingParams,
+    options?: { agentTriggers?: string }
+): Promise<{ result: EventFilterResult }> {
     if (event.integrationType === IntegrationType.CRON_JOB) {
         return {
             result: {
@@ -262,7 +237,13 @@ export async function filterEvent(event: InputEvent, agentPrompt: AgentPrompt, i
                 logger.warn("Failed to append filter outcome system event to raw history", { runId: trackingParams.runId, error })
             }
 
-            await seedEventContextForFilteredRunIfNeeded(trackingParams.runId, event, parsed.isRelevant)
+            const eventContextText = buildRunTriggerContextMessage({
+                userContext: UserFormatter.formatForAgent(trackingParams.user),
+                userInstructions: agentPrompt.content,
+                agentTriggers: options?.agentTriggers,
+                eventContent: event.formatForAgentRunner()
+            })
+            await seedEventContextForFilteredRunIfNeeded(trackingParams.runId, eventContextText, parsed.isRelevant)
 
             const filterResultEvent = {
                 type: "FilterResult" as const,

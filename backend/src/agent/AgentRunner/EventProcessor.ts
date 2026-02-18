@@ -21,6 +21,7 @@ import { classifyAgentError } from "../agentErrorUtils"
 import { AgentRunResultStatus, AgentRunner, ApprovalResult, SessionWithTracking } from "./AgentRunner"
 import { filterEvent } from "./EventFilter"
 import { RunContext } from "./SystemPromptBuilder"
+import { formatAgentTriggersForAgent } from "./formatContext"
 import { appendRunAction, createRunRecord, evaluateCompletedRun, finalizeRunStatus, markRunFailed, markRunProcessed, markRunSkipped } from "./runHistory"
 
 // The job of this class is to take an Input Event, and check if it's a match for an Agent.
@@ -279,6 +280,8 @@ export class EventProcessor {
                 runId,
                 user: this.user,
                 agentId: agent.id
+            }, {
+                agentTriggers: formatAgentTriggersForAgent(agent.inputs)
             })
 
             filterResult = filterResponse.result
