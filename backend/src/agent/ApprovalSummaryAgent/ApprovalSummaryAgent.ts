@@ -5,7 +5,6 @@ import { z } from "zod"
 import { settings } from "../../config/settings"
 import logger from "../../logger"
 import { db } from "../../prismaClient"
-import { IntegrationType } from "../../shared/Integrations"
 import { ToolCall } from "../../shared/ModelEvents"
 import { User } from "../../shared/types"
 import { RunHistoryChatMemorySession, identityHistoryCallback } from "../CustomMemorySession"
@@ -60,55 +59,26 @@ export async function generateApprovalSummary(runId: string, user: User, agentId
             break
         }
     }
-
     if (!toolCallEvent) {
-        toolCallEvent = findToolCallFromRawFunctionCallItems(rawItems, stepId)
+        logger.warn(`[generateApprovalSummary] ToolCall event not found for stepId: ${stepId} in runId: ${runId}`)
+        return { approvalSummary: "Unable to generate summary: tool call not found" }
     }
 
     // Build trigger description
     const triggerDescription = buildTriggerDescription(runRecord)
 
-    // Construct user prompt based on whether we found a ToolCall event or need to fallback to actions
-    let userPrompt: string
+    // Format JSON parameters for readability
+    let formattedParameters = toolCallEvent.parameters
+    try {
+        const parsedParams = JSON.parse(toolCallEvent.parameters)
+        formattedParameters = JSON.stringify(parsedParams, null, 2)
+    } catch {
+        // If parameters aren't valid JSON, use them as-is
+        formattedParameters = toolCallEvent.parameters
+    }
 
-    if (!toolCallEvent) {
-        logger.warn(`[generateApprovalSummary] ToolCall event not found for stepId: ${stepId} in runId: ${runId}`)
-        // Fallback: try to get action details from run_history_actions
-        const runActions = await prisma.run_history_actions.findMany({
-            where: {
-                run_history_record_id: runId,
-                step_id: stepId
-            }
-        })
-
-        if (runActions.length === 0) {
-            return { approvalSummary: "Unable to generate summary: tool call not found" }
-        }
-
-        const action = runActions[0]
-        userPrompt = `Context (do NOT mention this context in the output; it is for grounding only):
-${triggerDescription}
-
-Requested action to summarize (focus only on what will be done):
-- Action: ${action.action}
-- Integration: ${action.integration}
-- Target: ${action.target}
-- Details: ${action.details}
-
-Return the single-sentence "I'm going to ..." approvalSummary.`
-    } else {
-        // Format JSON parameters for readability
-        let formattedParameters = toolCallEvent.parameters
-        try {
-            const parsedParams = JSON.parse(toolCallEvent.parameters)
-            formattedParameters = JSON.stringify(parsedParams, null, 2)
-        } catch {
-            // If parameters aren't valid JSON, use them as-is
-            formattedParameters = toolCallEvent.parameters
-        }
-
-        // Construct user prompt with tool call details
-        userPrompt = `Context (do NOT mention this context in the output; it is for grounding only):
+    // Construct user prompt with tool call details
+    const userPrompt = `Context (do NOT mention this context in the output; it is for grounding only):
 ${triggerDescription}
 
 Tool call to summarize (focus only on what will be done):
@@ -118,7 +88,6 @@ Tool call to summarize (focus only on what will be done):
 ${formattedParameters}
 
 Return the single-sentence "I'm going to ..." approvalSummary.`
-    }
 
     const session = new RunHistoryChatMemorySession({
         sessionId: runId,
@@ -167,43 +136,6 @@ Return the single-sentence "I'm going to ..." approvalSummary.`
     })
 
     return result.finalOutput ?? { approvalSummary: "" }
-}
-
-function findToolCallFromRawFunctionCallItems(items: AgentInputItem[], stepId: string): ToolCall | null {
-    for (const item of items) {
-        if (!item || typeof item !== "object") continue
-        if (!("type" in item) || item.type !== "function_call") continue
-
-        const maybeCallId = getCallId(item)
-        if (!maybeCallId || maybeCallId !== stepId) continue
-
-        const summary = typeof (item as { name?: unknown }).name === "string" ? (item as { name: string }).name || "unknown" : "unknown"
-        const argumentsValue = (item as { arguments?: unknown }).arguments
-        const parameters = typeof argumentsValue === "string" ? argumentsValue : "{}"
-
-        return {
-            summary,
-            step_id: maybeCallId,
-            parameters,
-            integration: IntegrationType.TERSE
-        }
-    }
-
-    return null
-}
-
-function getCallId(item: AgentInputItem): string | null {
-    const direct = (item as { callId?: unknown }).callId
-    if (typeof direct === "string" && direct.trim().length > 0) {
-        return direct
-    }
-
-    const snakeCase = (item as { call_id?: unknown }).call_id
-    if (typeof snakeCase === "string" && snakeCase.trim().length > 0) {
-        return snakeCase
-    }
-
-    return null
 }
 
 function buildTriggerDescription(runRecord: {
