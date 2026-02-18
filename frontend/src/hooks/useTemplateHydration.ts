@@ -45,6 +45,7 @@ export function useTemplateHydration(templateId: string | undefined, templates: 
         template.outputs && template.outputs.length > 0
             ? template.outputs.map((output: TemplateOutput) => ({
                   id: uuidv4(),
+                  readOnly: output.readOnly,
                   configType: output.config.configType as ConfigType,
                   config: undefined // User needs to select integration
               }))

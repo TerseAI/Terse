@@ -40,6 +40,7 @@ export function buildDummyOutputConfig(integration_id: string, payload: OutputDu
         id: DUMMY_ID,
         automation_id: DUMMY_ID,
         integration_id,
+        read_only: false,
         config_type: payload.config_type,
         created_at: DUMMY_DATE,
         updated_at: DUMMY_DATE

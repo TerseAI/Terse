@@ -8,6 +8,7 @@ import { v4 as uuidv4 } from "uuid"
 
 import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { Switch } from "@/components/ui/switch"
 import { useAgentCount } from "@/hooks/api/useAgentCount"
 import { useAgentMutations } from "@/hooks/api/useAgents"
 import { useBuilderSession } from "@/hooks/useBuilderSession"
@@ -21,6 +22,7 @@ import { InputConfigSelectorProps, IntegrationSelector } from "../../../componen
 import EditableTextField from "../../../components/ui/EditableTextField"
 import { Badge } from "../../../components/ui/badge"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../../../components/ui/dialog"
+import { Label } from "../../../components/ui/label"
 import { cn } from "../../../lib/utils"
 import { useModelContext } from "../../../services/ModelContextProvider"
 import { CONFIG_DETAILS, ConfigInstance, ConfigType } from "../../../shared/Configs"
@@ -709,6 +711,7 @@ function OutputLayout({ outputs, setOutputs }: { outputs: TransientAgentOutput[]
         const newOutputId = uuidv4()
         const newOutput: TransientAgentOutput = {
             id: newOutputId,
+            readOnly: false,
             config: undefined,
             configType: configType
         }
@@ -771,6 +774,10 @@ function SkillCard({
         setShowDetailsDialog(false)
     }
 
+    const handleSetReadOnly = (readOnly: boolean) => {
+        setOutputs(outputs.map(o => (o.id === output.id ? { ...o, readOnly } : o)))
+    }
+
     const handleDone = () => {
         if (draftConfig) {
             setOutputs(outputs.map(o => (o.id === output.id ? { ...o, config: draftConfig, configType: draftConfig.configType } : o)))
@@ -828,6 +835,10 @@ function SkillCard({
                         <DialogTitle>{needsConfiguration ? "Configure Skill" : "Skill Details"}</DialogTitle>
                     </DialogHeader>
                     <IntegrationSelector {...selectorProps} variant="dialog" />
+                    <div className="flex items-center gap-2">
+                        <Label htmlFor="skill-read-only-toggle">Read only</Label>
+                        <Switch id="skill-read-only-toggle" checked={output.readOnly} onCheckedChange={handleSetReadOnly} />
+                    </div>
                     <DialogFooter>
                         <Button variant="outline" onClick={handleCancel}>
                             Cancel

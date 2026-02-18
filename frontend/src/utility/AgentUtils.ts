@@ -24,6 +24,7 @@ export function toTransientAgentTrigger(input: AgentTrigger): TransientAgentTrig
 export function toTransientAgentOutput(output: AgentOutput): TransientAgentOutput {
     return {
         id: output.id,
+        readOnly: output.readOnly,
         config: output.config,
         configType: output.config.configType
     }
@@ -53,6 +54,7 @@ export function toAgentOutput(output: TransientAgentOutput | undefined): AgentOu
     }
     return {
         id: output.id,
+        readOnly: output.readOnly,
         config: output.config
     }
 }
