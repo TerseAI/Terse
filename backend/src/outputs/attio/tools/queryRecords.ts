@@ -24,7 +24,10 @@ Filter syntax uses shorthand or verbose form:
     parameters: z.object({
         integrationId: z.string().describe("The integration ID of the Attio workspace to use."),
         objectSlug: z.string().describe("The Attio object type slug (e.g. 'people', 'companies')."),
-        filter: z.string().nullable().describe("Optional Attio filter as a JSON string. Pass null for no filtering. Use shorthand (e.g. '{\"email_addresses\":\"test@example.com\"}') or verbose syntax with operators."),
+        filter: z
+            .string()
+            .nullable()
+            .describe('Optional Attio filter as a JSON string. Pass null for no filtering. Use shorthand (e.g. \'{"email_addresses":"test@example.com"}\') or verbose syntax with operators.'),
         limit: z.number().nullable().describe("Maximum number of records to return. Pass null to use the default of 20.")
     }),
     execute: async ({ integrationId, objectSlug, filter, limit }, runContext?: RunContext<SessionWithTracking<Session>>) => {
