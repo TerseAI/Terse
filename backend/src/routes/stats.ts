@@ -3,7 +3,8 @@ import { Request, Response } from "express"
 import { DateTime } from "luxon"
 
 import { db } from "../prismaClient"
-import { AgentActivityItem, CountByString, RecentAction, RecentRun, StatsInterval, StatsResponse } from "../shared/types"
+import { RunHistoryRecordWithAgent } from "../shared/RunHistoryTypes"
+import { AgentActivityItem, CountByString, RecentAction, StatsInterval, StatsResponse } from "../shared/types"
 import { convertPrismaIntegrationTypeToIntegrationTypeFromRunHistory, convertPrismaRunHistoryStatusToShared } from "../utility/typeConverters"
 
 // Stats configuration constants
@@ -251,13 +252,7 @@ export async function getStats(req: Request, res: Response) {
             },
             include: {
                 automation: { select: { name: true } },
-                actions: {
-                    select: {
-                        action: true,
-                        integration: true,
-                        type: true
-                    }
-                }
+                actions: true
             },
             orderBy: { timestamp: "desc" },
             take: 20
@@ -400,7 +395,7 @@ export async function getStats(req: Request, res: Response) {
     }))
 
     // Transform recent runs data
-    const recentRuns: RecentRun[] = recentRunsData.map(run => ({
+    const recentRuns: RunHistoryRecordWithAgent[] = recentRunsData.map(run => ({
         id: run.id,
         agentId: run.automation_id,
         agentName: run.automation.name,
@@ -413,12 +408,22 @@ export async function getStats(req: Request, res: Response) {
             subheader: run.trigger_subheader ?? undefined,
             url: run.trigger_url ?? undefined
         },
+        filtered: run.filtered,
+        decision: {
+            action: run.decision_action,
+            reasoning: run.decision_reason
+        },
         status: convertPrismaRunHistoryStatusToShared(run.status),
         actions: run.actions.map(a => ({
             action: a.action,
             integration: convertPrismaIntegrationTypeToIntegrationTypeFromRunHistory(a.integration),
+            target: a.target,
+            details: a.details,
+            url: a.url ?? undefined,
+            step_id: a.step_id ?? undefined,
             type: a.type
-        }))
+        })),
+        isManuallyTriggered: run.is_manually_triggered
     }))
 
     const response: StatsResponse = {
