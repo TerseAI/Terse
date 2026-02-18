@@ -4,6 +4,7 @@ import { POST_LOGIN_REDIRECT_KEY, isSafeRedirectPath } from "../constants/storag
 import { ApiRoutes } from "../shared/ApiRoutes"
 import {
     AtlassianIntegration,
+    AttioIntegration,
     DatadogIntegration,
     FigmaIntegration,
     GithubIntegration,
@@ -27,6 +28,7 @@ import {
     AgentTemplate,
     AgentUpdate,
     AgentsResponse,
+    AttioObject,
     ConfluenceResourcesResponse,
     DatadogIndexesResponse,
     GetGithubRepositoriesForIntegrationResponse,
@@ -242,8 +244,15 @@ interface BackendService {
     getLaunchDarklyEnvironments(integrationId: string, projectKey: string): Promise<LaunchDarklyEnvironmentsResponse>
 
     /**
-     * Gets all WorkOS integrations for the current user
+     * Gets all Attio integrations for the current user
      */
+    getAttioIntegrations(): Promise<AttioIntegration[]>
+
+    /**
+     * Gets available Attio objects for a specific integration
+     */
+    getAttioObjects(integrationId: string): Promise<AttioObject[]>
+
     getWorkOSIntegrations(): Promise<WorkOSIntegration[]>
 
     /**
@@ -739,6 +748,26 @@ export const BackendProvider: BackendService = {
             .then(response => response.data)
             .catch(error => {
                 console.error("Error getting LaunchDarkly integrations:", error)
+                throw error
+            })
+    },
+
+    getAttioIntegrations: () => {
+        return axios
+            .get<AttioIntegration[]>(`${backendBaseUrl}${ApiRoutes.ATTIO.INTEGRATIONS}`, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error("Error getting Attio integrations:", error)
+                throw error
+            })
+    },
+
+    getAttioObjects: (integrationId: string) => {
+        return axios
+            .get<AttioObject[]>(`${backendBaseUrl}${ApiRoutes.ATTIO.OBJECTS.build(integrationId)}`, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error("Error getting Attio objects:", error)
                 throw error
             })
     },

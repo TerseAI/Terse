@@ -24,6 +24,7 @@ import { ToolNameSchema } from "../../tools/ToolNames"
 import { getToolsThatRequireApprovals } from "../../tools/availableTools"
 import { HydratorType, requireHydratorType } from "../../types/rag"
 import {
+    AttioOutputConfigSchema,
     BaseConfigSchema,
     ConfluenceConfigSchema,
     DatadogConfigSchema,
@@ -491,7 +492,15 @@ const InputConfigSchema = z
     })
 
 const OutputConfigSchema = z
-    .discriminatedUnion("configType", [SlackOutputConfigSchema, NotionConfigSchema, LinearOutputConfigSchema, JiraConfigSchema, ConfluenceConfigSchema, GmailOutputConfigSchema])
+    .discriminatedUnion("configType", [
+        SlackOutputConfigSchema,
+        NotionConfigSchema,
+        LinearOutputConfigSchema,
+        JiraConfigSchema,
+        ConfluenceConfigSchema,
+        GmailOutputConfigSchema,
+        AttioOutputConfigSchema
+    ])
     .superRefine((value, ctx) => {
         enforceNonSystemIntegrationId(value, ctx)
     })

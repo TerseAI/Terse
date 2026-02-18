@@ -12,7 +12,8 @@ export enum IntegrationType {
     DATADOG = "datadog",
     CRON_JOB = "cron_job",
     LAUNCHDARKLY = "launchdarkly",
-    WORKOS = "workos"
+    WORKOS = "workos",
+    ATTIO = "attio"
 }
 
 // MARK: Integration Metadata
@@ -144,6 +145,15 @@ export const WorkOSIntegrationMetadata = {
     isKnowledgeBase: false
 } as const satisfies IntegrationDetails
 
+export const AttioIntegrationMetadata = {
+    type: IntegrationType.ATTIO,
+    name: "Attio",
+    description: "Add and update contacts in Attio",
+    isInput: false,
+    isOutput: true,
+    isKnowledgeBase: false
+} as const satisfies IntegrationDetails
+
 export type IntegrationMetadataMap = Record<IntegrationType, IntegrationDetails> // Allow indexing with any IntegrationType
 
 export const INTEGRATION_METADATA: IntegrationMetadataMap = {
@@ -159,7 +169,8 @@ export const INTEGRATION_METADATA: IntegrationMetadataMap = {
     [IntegrationType.DATADOG]: DatadogIntegrationMetadata,
     [IntegrationType.CRON_JOB]: CronJobIntegrationMetadata,
     [IntegrationType.LAUNCHDARKLY]: LaunchDarklyIntegrationMetadata,
-    [IntegrationType.WORKOS]: WorkOSIntegrationMetadata
+    [IntegrationType.WORKOS]: WorkOSIntegrationMetadata,
+    [IntegrationType.ATTIO]: AttioIntegrationMetadata
 } as const satisfies IntegrationMetadataMap
 
 // MARK: Integration Details
@@ -191,6 +202,7 @@ export type IntegrationInstallationOptions = EnsureExhaustiveInstallationOptions
     [IntegrationType.CRON_JOB]: NoInstallationOptions
     [IntegrationType.LAUNCHDARKLY]: NoInstallationOptions
     [IntegrationType.WORKOS]: NoInstallationOptions
+    [IntegrationType.ATTIO]: NoInstallationOptions
 }>
 
 export type InstallationOptionsFor<T extends IntegrationType> = IntegrationInstallationOptions[T]
@@ -262,6 +274,11 @@ export interface WorkOSIntegration extends IntegrationInstance {
     id: string
     webhookUrl: string
     environment: "live" | "test" | null
+}
+
+export interface AttioIntegration extends IntegrationInstance {
+    id: string
+    workspaceName?: string
 }
 
 export interface IntegrationWithStatus {

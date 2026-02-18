@@ -30,7 +30,8 @@ export function getOutputConfigInclude() {
         confluence_config: true,
         github_config: true,
         gmail_config: true,
-        figma_config: true
+        figma_config: true,
+        attio_config: true
     } as const
 }
 
