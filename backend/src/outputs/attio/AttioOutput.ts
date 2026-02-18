@@ -12,7 +12,6 @@ import { AttioOutputConfigSchema, stripConfigForValidation } from "../../utility
 import { convertOutputConfigTypeToConfigType } from "../../utility/typeConverters"
 import { Output, ToolboxEntry } from "../abstract/Output"
 
-import { attioGetObjectSchemaTool } from "./tools/getObjectSchema"
 import { attioListObjectsTool } from "./tools/listObjects"
 import { attioQueryRecordsTool } from "./tools/queryRecords"
 import { attioUpsertRecordTool } from "./tools/upsertRecord"
@@ -21,7 +20,6 @@ export class AttioOutput extends Output<AttioOutputConfig> {
     constructor() {
         const toolbox: ToolboxEntry[] = [
             { tool: attioListObjectsTool as Tool, isReadOnly: true, integration: IntegrationType.ATTIO, displayName: "List objects" },
-            { tool: attioGetObjectSchemaTool as Tool, isReadOnly: true, integration: IntegrationType.ATTIO, displayName: "Get object schema" },
             { tool: attioQueryRecordsTool as Tool, isReadOnly: true, integration: IntegrationType.ATTIO, displayName: "Query records" },
             { tool: attioUpsertRecordTool as Tool, isReadOnly: false, integration: IntegrationType.ATTIO, displayName: "Upsert record" }
         ]
@@ -107,7 +105,7 @@ export class AttioOutput extends Output<AttioOutputConfig> {
         sections.push("Available configurations:")
         sections.push(configList.join("\n"))
         sections.push("\nWhen calling Attio tools, you MUST include the `integrationId` parameter matching one of the integration IDs listed above.")
-        sections.push("Use attio_get_object_schema to discover available attributes before creating/updating records.")
+        sections.push("Use attio_list_objects to discover available object types and their attributes before creating/updating records.")
         sections.push("Use attio_query_records to find existing records before updating them.")
 
         return sections.join("\n")

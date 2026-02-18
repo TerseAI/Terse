@@ -77,7 +77,6 @@ export const ToolName = {
     // Attio Tools
     ATTIO_UPSERT_RECORD: "attio_upsert_record",
     ATTIO_QUERY_RECORDS: "attio_query_records",
-    ATTIO_GET_OBJECT_SCHEMA: "attio_get_object_schema",
     ATTIO_LIST_OBJECTS: "attio_list_objects",
 
     // Terse
