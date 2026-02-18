@@ -3,7 +3,7 @@ import { useRef, useState } from "react"
 import { Chat, type ChatHandle } from "@/components/chat/Chat"
 import { Drawer, DrawerContent } from "@/components/ui/drawer"
 import { cn } from "@/lib/utils"
-import { RunHistoryRecord, RunHistoryStatus, RunHistoryTrigger } from "@/shared/RunHistoryTypes"
+import { RunHistoryRecord, RunHistoryStatus } from "@/shared/RunHistoryTypes"
 
 import RunHistoryChatAdapter from "./RunHistoryChatAdapter"
 import RunHistoryChatDrawerHeader from "./RunHistoryChatDrawerHeader"
