@@ -17,10 +17,7 @@ const toolApprovalResponseSystemEventPayloadSchema = z.object({
     approved: z.boolean()
 })
 
-const toolApprovalSystemEventPayloadSchema = z.discriminatedUnion("kind", [
-    toolApprovalRequestSystemEventPayloadSchema,
-    toolApprovalResponseSystemEventPayloadSchema
-])
+const toolApprovalSystemEventPayloadSchema = z.discriminatedUnion("kind", [toolApprovalRequestSystemEventPayloadSchema, toolApprovalResponseSystemEventPayloadSchema])
 
 type ToolApprovalRequestSystemEventPayload = z.infer<typeof toolApprovalRequestSystemEventPayloadSchema>
 type ToolApprovalResponseSystemEventPayload = z.infer<typeof toolApprovalResponseSystemEventPayloadSchema>

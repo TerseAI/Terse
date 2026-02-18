@@ -12,9 +12,9 @@ import { AgentPrompt } from "../../types/prisma"
 import { Session } from "../../types/session"
 import { randomString } from "../../utility/strings"
 import { RunHistoryChatMemorySession } from "../CustomMemorySession"
-import { appendFilterOutcomeSystemEvent } from "../systemEvents/filterOutcomeSystemEvent"
 import { AgentType, builderProviderDataModelSettings, runnerFactory } from "../runner"
 import { transformAgentStreamToModelEvents } from "../streaming"
+import { appendFilterOutcomeSystemEvent } from "../systemEvents/filterOutcomeSystemEvent"
 
 export interface EventFilterResult {
     isRelevant: boolean
