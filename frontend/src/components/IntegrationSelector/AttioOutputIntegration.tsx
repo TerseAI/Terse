@@ -4,10 +4,10 @@ import { useAttioIntegrations } from "@/hooks/api/useAttioIntegrations"
 import { useAttioObjects } from "@/hooks/api/useAttioObjects"
 import { useIntegrationId } from "@/hooks/useIntegrationId"
 import { useOAuthConnection } from "@/hooks/useOAuthConnection"
-import { IntegrationType, AttioIntegration as AttioIntegrationType } from "@/shared/Integrations"
+import { AttioIntegration as AttioIntegrationType, IntegrationType } from "@/shared/Integrations"
 
 import { IconForConfigType } from "../../pages/Agents/components/Integration"
-import { ConfigType, AttioOutputConfig } from "../../shared/Configs"
+import { AttioOutputConfig, ConfigType } from "../../shared/Configs"
 import DropdownSelect from "../ui/DropdownSelect"
 import { Button } from "../ui/button"
 
@@ -143,12 +143,7 @@ export function AttioOutputIntegration({ input, variant, setConfig }: InputConfi
                             Loading objects...
                         </div>
                     ) : (
-                        <DropdownSelect
-                            statusOptions={objectSelections}
-                            selectedOption={selectedObjectOption}
-                            setSelected={onSelectObject}
-                            placeholder="Select an object type"
-                        />
+                        <DropdownSelect statusOptions={objectSelections} selectedOption={selectedObjectOption || null} setSelected={onSelectObject} placeholder="Select an object type" />
                     )}
                 </div>
             )}

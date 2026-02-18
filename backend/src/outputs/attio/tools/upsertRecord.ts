@@ -10,8 +10,8 @@ import { ToolName } from "../../../tools/ToolNames"
 import { createNeedsApprovalFunction, formatError } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
 
-export const attioAssertRecordTool = tool({
-    name: ToolName.ATTIO_ASSERT_RECORD,
+export const attioUpsertRecordTool = tool({
+    name: ToolName.ATTIO_UPSERT_RECORD,
     description: `Create or update (upsert) a record in Attio. Uses a matching attribute to find existing records — if a match is found the record is updated, otherwise a new one is created. Use attio_get_object_schema first to discover available attributes for the object.`,
     parameters: z.object({
         integrationId: z.string().describe("The integration ID of the Attio workspace to use."),
@@ -19,9 +19,9 @@ export const attioAssertRecordTool = tool({
         matchingAttribute: z.string().describe("The attribute slug to match on for upsert (e.g. 'email_addresses' for people, 'domains' for companies)."),
         values: z.record(z.unknown()).describe("A JSON object mapping attribute slugs to their values. For multi-value attributes like email_addresses, pass an array of strings.")
     }),
-    needsApproval: createNeedsApprovalFunction(ToolName.ATTIO_ASSERT_RECORD),
+    needsApproval: createNeedsApprovalFunction(ToolName.ATTIO_UPSERT_RECORD),
     execute: async ({ integrationId, objectSlug, matchingAttribute, values }, runContext?: RunContext<SessionWithTracking<Session>>) => {
-        logger.debug("Executing attio_assert_record tool", { integrationId, objectSlug, matchingAttribute })
+        logger.debug("Executing attio_upsert_record tool", { integrationId, objectSlug, matchingAttribute })
 
         if (!runContext?.context) {
             throw new Error("No context provided")
@@ -30,7 +30,7 @@ export const attioAssertRecordTool = tool({
         const manager = new AttioIntegrationManager()
         const accessToken = await manager.getAccessToken(integrationId)
         if (!accessToken) {
-            return { success: false, error: "Failed to get Attio access token. The integration may not be connected." }
+            throw new Error("Failed to get Attio access token. The integration may not be connected.")
         }
 
         try {
@@ -45,8 +45,8 @@ export const attioAssertRecordTool = tool({
 
             if (!response.ok) {
                 const errorText = await response.text()
-                logger.error("Attio assert record failed", { status: response.status, error: errorText })
-                return { success: false, error: `Attio API error (${response.status}): ${errorText}` }
+                logger.error("Attio upsert record failed", { status: response.status, error: errorText })
+                throw new Error(`Attio API error (${response.status}): ${errorText}`)
             }
 
             const data = await response.json()
@@ -54,7 +54,7 @@ export const attioAssertRecordTool = tool({
             const recordId = record?.id?.record_id
 
             const action = {
-                action: "Asserted record",
+                action: "Upserted record",
                 integration: IntegrationType.ATTIO,
                 target: `${objectSlug}/${recordId || "unknown"}`,
                 details: `Upserted ${objectSlug} record via matching attribute "${matchingAttribute}"`,
@@ -65,8 +65,8 @@ export const attioAssertRecordTool = tool({
             return { success: true, record, actions: [action] }
         } catch (error: unknown) {
             const errorMessage = await formatError(runContext, error)
-            logger.error("Error asserting Attio record", { error: errorMessage, integrationId })
-            return { success: false, error: errorMessage }
+            logger.error("Error upserting Attio record", { error: errorMessage, integrationId })
+            throw new Error(errorMessage)
         }
     },
     errorFunction: formatError
