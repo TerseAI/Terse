@@ -1,8 +1,8 @@
 import useSWR, { type KeyedMutator } from "swr"
 
 import { BackendProvider } from "@/services/backend"
-import type { AttioObject } from "@/shared/types"
 import { attioObjectsKey } from "@/shared/InvalidationKeys"
+import type { AttioObject } from "@/shared/types"
 
 type UseAttioObjectsReturn = {
     objects: AttioObject[]
@@ -14,15 +14,11 @@ type UseAttioObjectsReturn = {
 }
 
 export function useAttioObjects(integrationId: string | undefined): UseAttioObjectsReturn {
-    const { data, error, isLoading, isValidating, mutate } = useSWR<AttioObject[]>(
-        integrationId ? attioObjectsKey(integrationId) : null,
-        () => BackendProvider.getAttioObjects(integrationId!),
-        {
-            keepPreviousData: true,
-            revalidateOnFocus: false,
-            revalidateOnReconnect: true
-        }
-    )
+    const { data, error, isLoading, isValidating, mutate } = useSWR<AttioObject[]>(integrationId ? attioObjectsKey(integrationId) : null, () => BackendProvider.getAttioObjects(integrationId!), {
+        keepPreviousData: true,
+        revalidateOnFocus: false,
+        revalidateOnReconnect: true
+    })
 
     const loading = isLoading || (!data && !error && !!integrationId)
 

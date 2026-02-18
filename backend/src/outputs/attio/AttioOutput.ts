@@ -12,7 +12,7 @@ import { AttioOutputConfigSchema, stripConfigForValidation } from "../../utility
 import { convertOutputConfigTypeToConfigType } from "../../utility/typeConverters"
 import { Output, ToolboxEntry } from "../abstract/Output"
 
-import { attioAssertRecordTool } from "./tools/assertRecord"
+import { attioUpsertRecordTool } from "./tools/upsertRecord"
 import { attioGetObjectSchemaTool } from "./tools/getObjectSchema"
 import { attioListObjectsTool } from "./tools/listObjects"
 import { attioQueryRecordsTool } from "./tools/queryRecords"
@@ -23,7 +23,7 @@ export class AttioOutput extends Output<AttioOutputConfig> {
             { tool: attioListObjectsTool as Tool, isReadOnly: true, integration: IntegrationType.ATTIO, displayName: "List objects" },
             { tool: attioGetObjectSchemaTool as Tool, isReadOnly: true, integration: IntegrationType.ATTIO, displayName: "Get object schema" },
             { tool: attioQueryRecordsTool as Tool, isReadOnly: true, integration: IntegrationType.ATTIO, displayName: "Query records" },
-            { tool: attioAssertRecordTool as Tool, isReadOnly: false, integration: IntegrationType.ATTIO, displayName: "Assert record" }
+            { tool: attioUpsertRecordTool as Tool, isReadOnly: false, integration: IntegrationType.ATTIO, displayName: "Upsert record" }
         ]
         super(OutputConfigType.ATTIO, toolbox)
     }

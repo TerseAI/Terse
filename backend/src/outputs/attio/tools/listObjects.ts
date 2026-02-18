@@ -26,7 +26,7 @@ export const attioListObjectsTool = tool({
         const manager = new AttioIntegrationManager()
         const accessToken = await manager.getAccessToken(integrationId)
         if (!accessToken) {
-            return { success: false, error: "Failed to get Attio access token. The integration may not be connected." }
+            throw new Error("Failed to get Attio access token. The integration may not be connected.")
         }
 
         try {
@@ -40,7 +40,7 @@ export const attioListObjectsTool = tool({
             if (!response.ok) {
                 const errorText = await response.text()
                 logger.error("Attio list objects failed", { status: response.status, error: errorText })
-                return { success: false, error: `Attio API error (${response.status}): ${errorText}` }
+                throw new Error(`Attio API error (${response.status}): ${errorText}`)
             }
 
             const data = await response.json()
@@ -58,7 +58,7 @@ export const attioListObjectsTool = tool({
         } catch (error: unknown) {
             const errorMessage = await formatError(runContext, error)
             logger.error("Error listing Attio objects", { error: errorMessage, integrationId })
-            return { success: false, error: errorMessage }
+            throw new Error(errorMessage)
         }
     },
     errorFunction: formatError
