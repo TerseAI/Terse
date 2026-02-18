@@ -12,10 +12,10 @@ import { AttioOutputConfigSchema, stripConfigForValidation } from "../../utility
 import { convertOutputConfigTypeToConfigType } from "../../utility/typeConverters"
 import { Output, ToolboxEntry } from "../abstract/Output"
 
-import { attioUpsertRecordTool } from "./tools/upsertRecord"
 import { attioGetObjectSchemaTool } from "./tools/getObjectSchema"
 import { attioListObjectsTool } from "./tools/listObjects"
 import { attioQueryRecordsTool } from "./tools/queryRecords"
+import { attioUpsertRecordTool } from "./tools/upsertRecord"
 
 export class AttioOutput extends Output<AttioOutputConfig> {
     constructor() {
