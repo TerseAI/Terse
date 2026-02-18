@@ -9,7 +9,7 @@ import { RunContext } from "./agent/AgentRunner/SystemPromptBuilder"
 import { evaluateCompletedRun, finalizeRunStatus, getPendingApprovalState, markRunFailed } from "./agent/AgentRunner/runHistory"
 import { DirectiveTask, directiveTaskQueue } from "./agent/DirectiveAgent/DirectiveAgent"
 import { type ClassifiedError, buildRunErrorEvent, classifyAgentError } from "./agent/agentErrorUtils"
-import { appendRunHistoryErrorContextEvent } from "./agent/contextEvents/runErrorContextEvent"
+import { appendRunHistoryErrorSystemEvent } from "./agent/systemEvents/runErrorSystemEvent"
 import { nodeEnv, optional, urls } from "./config/settings"
 import { KnowledgeBase } from "./knowledgeBase/abstract/KnowledgeBase"
 import { KnowledgeBaseFactory } from "./knowledgeBase/abstract/KnowledgeBaseFactory"
@@ -447,13 +447,13 @@ export function emitCacheInvalidationWithWildcard(organizationId: string, key: s
 }
 
 /**
- * Mark run as failed, append a raw error context event for model memory, emit a live RunError, and invalidate related caches.
+ * Mark run as failed, append a raw error system event for model memory, emit a live RunError, and invalidate related caches.
  * Logs on failure; does not rethrow.
  */
 export async function markRunFailedAndInvalidate(runId: string, classified: ClassifiedError, organizationId: string | undefined, agentId: string): Promise<void> {
     try {
         await markRunFailed(runId, classified.message, "agent")
-        await appendRunHistoryErrorContextEvent(runId, classified)
+        await appendRunHistoryErrorSystemEvent(runId, classified)
 
         if (io && organizationId) {
             const runErrorEvent = buildRunErrorEvent(classified)

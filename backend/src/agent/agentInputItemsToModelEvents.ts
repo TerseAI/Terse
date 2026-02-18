@@ -3,9 +3,9 @@ import type { AgentInputItem, AssistantMessageItem, FunctionCallItem, FunctionCa
 import { IntegrationType } from "../shared/Integrations"
 import { ModelEvent } from "../shared/ModelEvents"
 
-import { parseFilterOutcomeContextEventItem } from "./contextEvents/filterOutcomeContextEvent"
-import { parseRunErrorContextEventItem } from "./contextEvents/runErrorContextEvent"
-import { parseToolApprovalContextEventItem } from "./contextEvents/toolApprovalContextEvent"
+import { parseFilterOutcomeSystemEventItem } from "./systemEvents/filterOutcomeSystemEvent"
+import { parseRunErrorSystemEventItem } from "./systemEvents/runErrorSystemEvent"
+import { parseToolApprovalSystemEventItem } from "./systemEvents/toolApprovalSystemEvent"
 import { parseToolExecutionResult } from "./toolExecution"
 
 /** An AgentInputItem paired with the DB timestamp it was created at. */
@@ -68,39 +68,39 @@ function convertSingleItem(
     toolToIntegrationMap?: Map<string, string>,
     options: Required<ConvertAgentInputItemsToModelEventsOptions> = DEFAULT_CONVERT_OPTIONS
 ): ModelEvent[] | null {
-    const runErrorContextEvent = parseRunErrorContextEventItem(item)
-    if (runErrorContextEvent) {
+    const runErrorSystemEvent = parseRunErrorSystemEventItem(item)
+    if (runErrorSystemEvent) {
         return [
             {
                 type: "RunError",
-                error: runErrorContextEvent.error,
-                ...(runErrorContextEvent.code ? { code: runErrorContextEvent.code } : {})
+                error: runErrorSystemEvent.error,
+                ...(runErrorSystemEvent.code ? { code: runErrorSystemEvent.code } : {})
             }
         ]
     }
 
-    const filterOutcomeContextEvent = parseFilterOutcomeContextEventItem(item)
-    if (filterOutcomeContextEvent) {
+    const filterOutcomeSystemEvent = parseFilterOutcomeSystemEventItem(item)
+    if (filterOutcomeSystemEvent) {
         return [
             {
                 type: "FilterResult",
-                isRelevant: filterOutcomeContextEvent.isRelevant,
-                reason: filterOutcomeContextEvent.reason,
-                confidence: filterOutcomeContextEvent.confidence,
+                isRelevant: filterOutcomeSystemEvent.isRelevant,
+                reason: filterOutcomeSystemEvent.reason,
+                confidence: filterOutcomeSystemEvent.confidence,
                 step_id: "filter-marker"
             }
         ]
     }
 
-    const toolApprovalContextEvent = parseToolApprovalContextEventItem(item)
-    if (toolApprovalContextEvent) {
-        if (toolApprovalContextEvent.type === "ToolApprovalRequest") {
+    const toolApprovalSystemEvent = parseToolApprovalSystemEventItem(item)
+    if (toolApprovalSystemEvent) {
+        if (toolApprovalSystemEvent.type === "ToolApprovalRequest") {
             return [
                 {
                     type: "ToolApprovalRequest",
-                    step_id: toolApprovalContextEvent.step_id,
-                    name: toolApprovalContextEvent.name,
-                    arguments: toolApprovalContextEvent.arguments
+                    step_id: toolApprovalSystemEvent.step_id,
+                    name: toolApprovalSystemEvent.name,
+                    arguments: toolApprovalSystemEvent.arguments
                 }
             ]
         }
@@ -108,8 +108,8 @@ function convertSingleItem(
         return [
             {
                 type: "ToolApprovalResponse",
-                step_id: toolApprovalContextEvent.step_id,
-                approved: toolApprovalContextEvent.approved
+                step_id: toolApprovalSystemEvent.step_id,
+                approved: toolApprovalSystemEvent.approved
             }
         ]
     }
