@@ -3,6 +3,7 @@ import type { AgentInputItem, AssistantMessageItem, FunctionCallItem, FunctionCa
 import { IntegrationType } from "../shared/Integrations"
 import { ModelEvent } from "../shared/ModelEvents"
 
+import { isScaffoldedRunContextUserMessage } from "./AgentRunner/formatContext"
 import { parseFilterOutcomeSystemEventItem } from "./systemEvents/filterOutcomeSystemEvent"
 import { parseRunErrorSystemEventItem } from "./systemEvents/runErrorSystemEvent"
 import { parseToolApprovalSystemEventItem } from "./systemEvents/toolApprovalSystemEvent"
@@ -234,17 +235,4 @@ function extractTextFromMessageContent(content: UserMessageItem["content"] | Ass
     }
 
     return ""
-}
-
-function isScaffoldedRunContextUserMessage(text: string): boolean {
-    const normalized = text.trim()
-    if (!normalized) return false
-
-    const hasUserContext = normalized.includes("<USER_CONTEXT>") && normalized.includes("</USER_CONTEXT>")
-    const hasUserInstructions = normalized.includes("<USER_INSTRUCTIONS>") && normalized.includes("</USER_INSTRUCTIONS>")
-    const hasAgentTriggers = normalized.includes("<AGENT_TRIGGERS>") && normalized.includes("</AGENT_TRIGGERS>")
-    const hasEvent = normalized.includes("<EVENT>") && normalized.includes("</EVENT>")
-    const hasRunTriggerContext = normalized.includes("<RUN_TRIGGER_CONTEXT>") && normalized.includes("</RUN_TRIGGER_CONTEXT>")
-
-    return (hasUserContext && hasUserInstructions && hasAgentTriggers && hasEvent) || (hasRunTriggerContext && hasEvent)
 }

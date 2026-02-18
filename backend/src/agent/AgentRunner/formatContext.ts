@@ -34,6 +34,19 @@ ${safeEventContent}
     `.trim()
 }
 
+export function isScaffoldedRunContextUserMessage(text: string): boolean {
+    const normalized = text.trim()
+    if (!normalized) return false
+
+    const hasUserContext = normalized.includes("<USER_CONTEXT>") && normalized.includes("</USER_CONTEXT>")
+    const hasUserInstructions = normalized.includes("<USER_INSTRUCTIONS>") && normalized.includes("</USER_INSTRUCTIONS>")
+    const hasAgentTriggers = normalized.includes("<AGENT_TRIGGERS>") && normalized.includes("</AGENT_TRIGGERS>")
+    const hasEvent = normalized.includes("<EVENT>") && normalized.includes("</EVENT>")
+    const hasRunTriggerContext = normalized.includes("<RUN_TRIGGER_CONTEXT>") && normalized.includes("</RUN_TRIGGER_CONTEXT>")
+
+    return (hasUserContext && hasUserInstructions && hasAgentTriggers && hasEvent) || (hasRunTriggerContext && hasEvent)
+}
+
 export function formatAgentForSystemPrompt(agent: AgentWithRelations): string {
     const sections: string[] = []
 
