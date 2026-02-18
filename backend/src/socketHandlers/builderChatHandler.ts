@@ -5,7 +5,7 @@ import WebChatInterface from "../agent/ChatAgent/ChatInterfaces/WebChatInterface
 import { SurveyAnswerTask } from "../agent/ChatAgent/SurveyAnswerTask"
 import { surveyAnswerTaskQueue } from "../agent/ChatAgent/SurveyAnswerTaskQueue"
 import { buildRunErrorEvent, classifyAgentError } from "../agent/agentErrorUtils"
-import { appendBuilderChatErrorMarker } from "../agent/runErrorMarkers"
+import { appendBuilderChatErrorContextEvent } from "../agent/contextEvents/runErrorContextEvent"
 import logger from "../logger"
 import { SendModelRequest } from "../shared/ModelEvents"
 import { SocketEvents } from "../shared/SocketEvents"
@@ -50,9 +50,9 @@ export async function registerBuilderChatHandler(socket: Socket, userId: string,
             const classified = classifyAgentError(error)
             logger.error("[builder:chat:message] Error running ChatAgent", { error, sessionId, userId })
             try {
-                await appendBuilderChatErrorMarker(sessionId, classified)
-            } catch (markerError) {
-                logger.error("[builder:chat:message] Failed to append raw error marker", { markerError, sessionId, userId })
+                await appendBuilderChatErrorContextEvent(sessionId, classified)
+            } catch (contextEventError) {
+                logger.error("[builder:chat:message] Failed to append raw error context event", { contextEventError, sessionId, userId })
             }
             socket.emit(SocketEvents.BUILDER_CHAT_EVENT, {
                 sessionId,

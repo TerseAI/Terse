@@ -3,7 +3,7 @@ import { RunHistoryStatus as PrismaRunHistoryStatus } from "@prisma/client"
 import { AgentRunResultStatus, AgentRunner } from "../agent/AgentRunner/AgentRunner"
 import { evaluateCompletedRun, finalizeRunStatus, markRunFailed, markRunInProgress } from "../agent/AgentRunner/runHistory"
 import { generateApprovalSummary } from "../agent/ApprovalSummaryAgent/ApprovalSummaryAgent"
-import { appendToolApprovalResponseMarker } from "../agent/approvalMarkers"
+import { appendToolApprovalResponseContextEvent } from "../agent/contextEvents/toolApprovalContextEvent"
 import { KnowledgeBase } from "../knowledgeBase/abstract/KnowledgeBase"
 import { KnowledgeBaseFactory } from "../knowledgeBase/abstract/KnowledgeBaseFactory"
 import logger from "../logger"
@@ -268,12 +268,12 @@ export class ApprovalService {
             }
 
             try {
-                await appendToolApprovalResponseMarker(runId, {
+                await appendToolApprovalResponseContextEvent(runId, {
                     step_id: stepId,
                     approved
                 })
             } catch (error) {
-                logger.warn("[ApprovalService] Failed to append tool approval response marker to raw history", { runId, stepId, error })
+                logger.warn("[ApprovalService] Failed to append tool approval response context event to raw history", { runId, stepId, error })
             }
 
             const io = getSocketIO()

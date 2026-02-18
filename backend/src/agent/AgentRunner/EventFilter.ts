@@ -12,7 +12,7 @@ import { AgentPrompt } from "../../types/prisma"
 import { Session } from "../../types/session"
 import { randomString } from "../../utility/strings"
 import { RunHistoryChatMemorySession } from "../CustomMemorySession"
-import { appendFilterOutcomeMarker } from "../filterOutcomeMarkers"
+import { appendFilterOutcomeContextEvent } from "../contextEvents/filterOutcomeContextEvent"
 import { AgentType, builderProviderDataModelSettings, runnerFactory } from "../runner"
 import { transformAgentStreamToModelEvents } from "../streaming"
 
@@ -253,13 +253,13 @@ export async function filterEvent(event: InputEvent, agentPrompt: AgentPrompt, i
             parsed.confidence = Math.max(0, Math.min(1, parsed.confidence))
 
             try {
-                await appendFilterOutcomeMarker(trackingParams.runId, {
+                await appendFilterOutcomeContextEvent(trackingParams.runId, {
                     isRelevant: parsed.isRelevant,
                     reason: parsed.reason,
                     confidence: parsed.confidence
                 })
             } catch (error) {
-                logger.warn("Failed to append filter outcome marker to raw history", { runId: trackingParams.runId, error })
+                logger.warn("Failed to append filter outcome context event to raw history", { runId: trackingParams.runId, error })
             }
 
             await seedEventContextForFilteredRunIfNeeded(trackingParams.runId, event, parsed.isRelevant)

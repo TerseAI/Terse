@@ -20,7 +20,7 @@ import { Session } from "../../types/session"
 import { UserFormatter } from "../../utility/UserFormatter"
 import { randomString } from "../../utility/strings"
 import { RunHistoryChatMemorySession, recentHistoryCallback } from "../CustomMemorySession"
-import { appendToolApprovalRequestMarker } from "../approvalMarkers"
+import { appendToolApprovalRequestContextEvent } from "../contextEvents/toolApprovalContextEvent"
 import { AgentType, builderProviderDataModelSettings, runnerFactory } from "../runner"
 import { transformAgentStreamToModelEvents } from "../streaming"
 import { isFailedToolExecutionStatus } from "../toolExecution"
@@ -632,13 +632,13 @@ ${inputEvent.formatForAgentRunner()}
                     }
 
                     try {
-                        await appendToolApprovalRequestMarker(this.runContext.runId, {
+                        await appendToolApprovalRequestContextEvent(this.runContext.runId, {
                             step_id: approvalRequest.step_id,
                             name: approvalRequest.name,
                             arguments: approvalRequest.arguments
                         })
                     } catch (error) {
-                        logger.warn("Failed to append tool approval request marker to raw history", { runId: this.runContext.runId, stepId: approvalRequest.step_id, error })
+                        logger.warn("Failed to append tool approval context event to raw history", { runId: this.runContext.runId, stepId: approvalRequest.step_id, error })
                     }
 
                     if (io && streamingParams.user.organizationId) {

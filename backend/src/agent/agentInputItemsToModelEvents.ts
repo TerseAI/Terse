@@ -3,9 +3,9 @@ import type { AgentInputItem, AssistantMessageItem, FunctionCallItem, FunctionCa
 import { IntegrationType } from "../shared/Integrations"
 import { ModelEvent } from "../shared/ModelEvents"
 
-import { parseToolApprovalMarkerItem } from "./approvalMarkers"
-import { parseFilterOutcomeMarkerItem } from "./filterOutcomeMarkers"
-import { parseRunErrorMarkerItem } from "./runErrorMarkers"
+import { parseToolApprovalContextEventItem } from "./contextEvents/toolApprovalContextEvent"
+import { parseFilterOutcomeContextEventItem } from "./contextEvents/filterOutcomeContextEvent"
+import { parseRunErrorContextEventItem } from "./contextEvents/runErrorContextEvent"
 import { parseToolExecutionResult } from "./toolExecution"
 
 /** An AgentInputItem paired with the DB timestamp it was created at. */
@@ -32,7 +32,7 @@ export function convertAgentInputItemsToModelEvents(items: (AgentInputItem | Tim
         }
     }
 
-    // Add a NaturalStop if there are any events and no ending marker
+    // Add a NaturalStop if there are any events and no ending event.
     if (events.length > 0) {
         const lastEvent = events[events.length - 1]
         if (lastEvent.type !== "NaturalStop") {
@@ -48,39 +48,39 @@ export function convertAgentInputItemsToModelEvents(items: (AgentInputItem | Tim
 }
 
 function convertSingleItem(item: AgentInputItem, toolToIntegrationMap?: Map<string, string>): ModelEvent[] | null {
-    const runErrorMarker = parseRunErrorMarkerItem(item)
-    if (runErrorMarker) {
+    const runErrorContextEvent = parseRunErrorContextEventItem(item)
+    if (runErrorContextEvent) {
         return [
             {
                 type: "RunError",
-                error: runErrorMarker.error,
-                ...(runErrorMarker.code ? { code: runErrorMarker.code } : {})
+                error: runErrorContextEvent.error,
+                ...(runErrorContextEvent.code ? { code: runErrorContextEvent.code } : {})
             }
         ]
     }
 
-    const filterOutcomeMarker = parseFilterOutcomeMarkerItem(item)
-    if (filterOutcomeMarker) {
+    const filterOutcomeContextEvent = parseFilterOutcomeContextEventItem(item)
+    if (filterOutcomeContextEvent) {
         return [
             {
                 type: "FilterResult",
-                isRelevant: filterOutcomeMarker.isRelevant,
-                reason: filterOutcomeMarker.reason,
-                confidence: filterOutcomeMarker.confidence,
+                isRelevant: filterOutcomeContextEvent.isRelevant,
+                reason: filterOutcomeContextEvent.reason,
+                confidence: filterOutcomeContextEvent.confidence,
                 step_id: "filter-marker"
             }
         ]
     }
 
-    const toolApprovalMarker = parseToolApprovalMarkerItem(item)
-    if (toolApprovalMarker) {
-        if (toolApprovalMarker.type === "ToolApprovalRequest") {
+    const toolApprovalContextEvent = parseToolApprovalContextEventItem(item)
+    if (toolApprovalContextEvent) {
+        if (toolApprovalContextEvent.type === "ToolApprovalRequest") {
             return [
                 {
                     type: "ToolApprovalRequest",
-                    step_id: toolApprovalMarker.step_id,
-                    name: toolApprovalMarker.name,
-                    arguments: toolApprovalMarker.arguments
+                    step_id: toolApprovalContextEvent.step_id,
+                    name: toolApprovalContextEvent.name,
+                    arguments: toolApprovalContextEvent.arguments
                 }
             ]
         }
@@ -88,8 +88,8 @@ function convertSingleItem(item: AgentInputItem, toolToIntegrationMap?: Map<stri
         return [
             {
                 type: "ToolApprovalResponse",
-                step_id: toolApprovalMarker.step_id,
-                approved: toolApprovalMarker.approved
+                step_id: toolApprovalContextEvent.step_id,
+                approved: toolApprovalContextEvent.approved
             }
         ]
     }
