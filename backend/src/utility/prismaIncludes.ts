@@ -36,20 +36,6 @@ export function getOutputConfigInclude() {
 }
 
 /**
- * Returns the include object for channel knowledge base configs.
- */
-export function getKnowledgeBaseConfigInclude() {
-    return {
-        posthog_config: true,
-        github_kb_config: true,
-        launchdarkly_config: true,
-        datadog_config: true,
-        linear_kb_config: true,
-        slack_kb_config: true
-    } as const
-}
-
-/**
  * Returns the full include object for hydrating an agent with all relations.
  * Use this when fetching agents that need their full configuration (inputs, outputs, knowledge bases, etc.)
  */
@@ -61,9 +47,6 @@ export function getAgentHydrationInclude() {
         },
         outputs: {
             include: getOutputConfigInclude()
-        },
-        knowledge_bases: {
-            include: getKnowledgeBaseConfigInclude()
         },
         tool_approvals: true
     } as const

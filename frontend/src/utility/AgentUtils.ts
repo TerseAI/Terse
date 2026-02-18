@@ -1,4 +1,4 @@
-import { AgentKnowledgeBase, AgentOutput, AgentTrigger, TransientAgentOutput, TransientAgentTrigger, TransientKnowledgeBase } from "@/shared/types"
+import { AgentOutput, AgentTrigger, TransientAgentOutput, TransientAgentTrigger } from "@/shared/types"
 
 export function getDefaultAgentName(totalCount: number = 0): string {
     // Generate "Automation #x"
@@ -56,30 +56,5 @@ export function toAgentOutput(output: TransientAgentOutput | undefined): AgentOu
         id: output.id,
         readOnly: output.readOnly,
         config: output.config
-    }
-}
-
-/**
- * Converts AgentKnowledgeBase to TransientKnowledgeBase
- */
-export function toTransientKnowledgeBase(kb: AgentKnowledgeBase): TransientKnowledgeBase {
-    return {
-        id: kb.id,
-        config: kb.config,
-        configType: kb.config.configType
-    }
-}
-
-/**
- * Converts TransientKnowledgeBase to AgentKnowledgeBase
- * Only converts if config is present (filters out incomplete knowledge bases)
- */
-export function toAgentKnowledgeBase(kb: TransientKnowledgeBase): AgentKnowledgeBase | null {
-    if (!kb.config) {
-        return null
-    }
-    return {
-        id: kb.id,
-        config: kb.config
     }
 }

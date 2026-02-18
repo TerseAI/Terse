@@ -2,7 +2,7 @@ import { INTEGRATION_REGISTRY, isSystemIntegration } from "../../integrations/ab
 import { db } from "../../prismaClient"
 import { INTEGRATION_METADATA, IntegrationInstance, IntegrationType } from "../../shared/Integrations"
 import { AgentWithRelations } from "../../types/prisma"
-import { getInputConfigInclude, getKnowledgeBaseConfigInclude, getOutputConfigInclude } from "../../utility/prismaIncludes"
+import { getInputConfigInclude, getOutputConfigInclude } from "../../utility/prismaIncludes"
 import { getUserForOrg } from "../../utility/workos"
 import { formatAgentForSystemPrompt } from "../AgentRunner/formatContext"
 
@@ -13,9 +13,7 @@ export async function buildChatAgentSystemPrompt(userId: string, organizationId:
     // setup a connection for.
     const excludedIntegrations = [IntegrationType.TERSE, IntegrationType.CRON_JOB]
     const integrationList = integrationMetadata.filter(metadata => !excludedIntegrations.includes(metadata.type))
-    const integrationDescriptions = integrationList
-        .map(metadata => `${metadata.name} - Description: ${metadata.description} - Input: ${metadata.isInput} - Output: ${metadata.isOutput} - Knowledge Base: ${metadata.isKnowledgeBase}`)
-        .join("\n")
+    const integrationDescriptions = integrationList.map(metadata => `${metadata.name} - Description: ${metadata.description} - Input: ${metadata.isInput} - Output: ${metadata.isOutput}`).join("\n")
 
     const userRecord = await getUserForOrg(userId, organizationId)
     if (!userRecord) {
@@ -58,9 +56,6 @@ export async function buildChatAgentSystemPrompt(userId: string, organizationId:
             },
             outputs: {
                 include: getOutputConfigInclude()
-            },
-            knowledge_bases: {
-                include: getKnowledgeBaseConfigInclude()
             }
         }
     })

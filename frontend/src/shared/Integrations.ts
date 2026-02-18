@@ -23,7 +23,6 @@ export interface IntegrationDetails {
     description: string
     isInput?: boolean
     isOutput?: boolean
-    isKnowledgeBase?: boolean
 }
 
 // Metadata objects - using const objects instead of classes
@@ -33,7 +32,6 @@ export const GmailIntegrationMetadata = {
     description: "Monitor incoming emails",
     isInput: true,
     isOutput: false,
-    isKnowledgeBase: false
 } as const satisfies IntegrationDetails
 
 export const NotionIntegrationMetadata = {
@@ -42,7 +40,6 @@ export const NotionIntegrationMetadata = {
     description: "Update living documents",
     isInput: false,
     isOutput: true,
-    isKnowledgeBase: false
 } as const satisfies IntegrationDetails
 
 export const LinearIntegrationMetadata = {
@@ -50,8 +47,7 @@ export const LinearIntegrationMetadata = {
     name: "Linear",
     description: "Update tasks in Linear",
     isInput: false,
-    isOutput: true,
-    isKnowledgeBase: true
+    isOutput: true
 } as const satisfies IntegrationDetails
 
 export const SlackIntegrationMetadata = {
@@ -60,8 +56,7 @@ export const SlackIntegrationMetadata = {
     description:
         "Send and receive messages in Slack (channels, group DMs, and DMs). Triggers and knowledge base can use user token to read your DMs; output can send to channels or users with either token.",
     isInput: true,
-    isOutput: false,
-    isKnowledgeBase: true
+    isOutput: true,
 } as const satisfies IntegrationDetails
 
 export const FigmaIntegrationMetadata = {
@@ -70,7 +65,6 @@ export const FigmaIntegrationMetadata = {
     description: "Trigger on Figma file comments (does not support file edits or design changes)",
     isInput: true,
     isOutput: false,
-    isKnowledgeBase: false
 } as const satisfies IntegrationDetails
 
 export const AtlassianIntegrationMetadata = {
@@ -78,8 +72,7 @@ export const AtlassianIntegrationMetadata = {
     name: "Atlassian",
     description: "Update documents in Atlassian",
     isInput: true,
-    isOutput: false,
-    isKnowledgeBase: false
+    isOutput: false
 } as const satisfies IntegrationDetails
 
 export const GithubIntegrationMetadata = {
@@ -87,8 +80,7 @@ export const GithubIntegrationMetadata = {
     name: "Github",
     description: "Update repositories in Github",
     isInput: true,
-    isOutput: false,
-    isKnowledgeBase: true
+    isOutput: true
 } as const satisfies IntegrationDetails
 
 export const TerseIntegrationMetadata = {
@@ -96,8 +88,7 @@ export const TerseIntegrationMetadata = {
     name: "Terse",
     description: "Platform tools",
     isInput: false,
-    isOutput: false,
-    isKnowledgeBase: false
+    isOutput: false
 } as const satisfies IntegrationDetails
 
 export const PosthogIntegrationMetadata = {
@@ -105,8 +96,7 @@ export const PosthogIntegrationMetadata = {
     name: "Posthog",
     description: "Update events in Posthog",
     isInput: false,
-    isOutput: false,
-    isKnowledgeBase: true
+    isOutput: true
 } as const satisfies IntegrationDetails
 
 export const DatadogIntegrationMetadata = {
@@ -114,8 +104,7 @@ export const DatadogIntegrationMetadata = {
     name: "Datadog",
     description: "Search logs in Datadog",
     isInput: false,
-    isOutput: false,
-    isKnowledgeBase: true
+    isOutput: true
 } as const satisfies IntegrationDetails
 
 export const CronJobIntegrationMetadata = {
@@ -124,7 +113,6 @@ export const CronJobIntegrationMetadata = {
     description: "System integration for time-based triggers",
     isInput: true,
     isOutput: false,
-    isKnowledgeBase: false
 } as const satisfies IntegrationDetails
 
 export const LaunchDarklyIntegrationMetadata = {
@@ -132,8 +120,7 @@ export const LaunchDarklyIntegrationMetadata = {
     name: "LaunchDarkly",
     description: "Track feature flags",
     isInput: false,
-    isOutput: false,
-    isKnowledgeBase: true
+    isOutput: true,
 } as const satisfies IntegrationDetails
 
 export const WorkOSIntegrationMetadata = {
@@ -142,7 +129,6 @@ export const WorkOSIntegrationMetadata = {
     description: "Trigger on user lifecycle events from your WorkOS account",
     isInput: true,
     isOutput: false,
-    isKnowledgeBase: false
 } as const satisfies IntegrationDetails
 
 export const AttioIntegrationMetadata = {
@@ -150,8 +136,7 @@ export const AttioIntegrationMetadata = {
     name: "Attio",
     description: "Add and update contacts in Attio",
     isInput: false,
-    isOutput: true,
-    isKnowledgeBase: false
+    isOutput: true
 } as const satisfies IntegrationDetails
 
 export type IntegrationMetadataMap = Record<IntegrationType, IntegrationDetails> // Allow indexing with any IntegrationType

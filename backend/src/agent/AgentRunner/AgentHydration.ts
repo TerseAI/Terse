@@ -1,6 +1,3 @@
-import { KnowledgeBase } from "../../knowledgeBase/abstract/KnowledgeBase"
-import { KnowledgeBaseFactory } from "../../knowledgeBase/abstract/KnowledgeBaseFactory"
-import logger from "../../logger"
 import { Output } from "../../outputs/abstract/Output"
 import { OutputFactory } from "../../outputs/abstract/OutputFactory"
 import { db } from "../../prismaClient"
@@ -27,7 +24,6 @@ export interface HydratedAgent {
     user: User
     session: Session
     outputs: Output<ConfigInstance>[]
-    knowledgeBases: KnowledgeBase<ConfigInstance>[]
 }
 
 /**
@@ -105,17 +101,13 @@ export async function hydrateAgentFromRecord(agent: AgentWithRelations, userId: 
         isUserInitiated: true
     }
 
-    // Create knowledge bases
-    const knowledgeBases = KnowledgeBaseFactory.createKnowledgeBasesFromAgent(agent.knowledge_bases || [])
-
     return {
         success: true,
         data: {
             agent,
             user,
             session,
-            outputs,
-            knowledgeBases
+            outputs
         }
     }
 }
@@ -124,7 +116,7 @@ export async function hydrateAgentFromRecord(agent: AgentWithRelations, userId: 
  * Creates a fully configured AgentRunner from hydrated agent data.
  */
 export function createAgentRunner(hydrated: HydratedAgent, runContext: RunContext): AgentRunner<Session, ConfigInstance, ConfigInstance> {
-    return new AgentRunner(hydrated.session, hydrated.outputs, hydrated.knowledgeBases, hydrated.agent, runContext)
+    return new AgentRunner(hydrated.session, hydrated.outputs, hydrated.agent, runContext)
 }
 
 /**

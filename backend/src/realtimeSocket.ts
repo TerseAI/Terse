@@ -11,8 +11,6 @@ import { DirectiveTask, directiveTaskQueue } from "./agent/DirectiveAgent/Direct
 import { type ClassifiedError, buildRunErrorEvent, classifyAgentError } from "./agent/agentErrorUtils"
 import { appendRunHistoryErrorSystemEvent } from "./agent/systemEvents/runErrorSystemEvent"
 import { nodeEnv, optional, urls } from "./config/settings"
-import { KnowledgeBase } from "./knowledgeBase/abstract/KnowledgeBase"
-import { KnowledgeBaseFactory } from "./knowledgeBase/abstract/KnowledgeBaseFactory"
 import logger from "./logger"
 import { NotificationManager } from "./notifications/Notification"
 import { Output } from "./outputs/abstract/Output"
@@ -26,7 +24,7 @@ import { type RunHistoryModelEvent, type RunHistoryModelSocketEvent, RunHistoryS
 import { SocketEvents, SocketRooms } from "./shared/SocketEvents"
 import { registerBuilderChatHandler } from "./socketHandlers/builderChatHandler"
 import { AgentWithRelations } from "./types/prisma"
-import { getInputConfigInclude, getKnowledgeBaseConfigInclude, getOutputConfigInclude } from "./utility/prismaIncludes"
+import { getInputConfigInclude, getOutputConfigInclude } from "./utility/prismaIncludes"
 import { randomString } from "./utility/strings"
 import { getUserForOrg, workos } from "./utility/workos"
 
@@ -40,10 +38,6 @@ interface AuthenticatedSocket extends Socket {
 let io: Server | null = null
 let pub: ReturnType<typeof createClient> | null = null
 let sub: ReturnType<typeof createClient> | null = null
-
-function createKnowledgeBases(agentKnowledgeBases: AgentWithRelations["knowledge_bases"]): KnowledgeBase<ConfigInstance>[] {
-    return KnowledgeBaseFactory.createKnowledgeBasesFromAgent(agentKnowledgeBases)
-}
 
 export async function initializeRealtimeSocket(server: HttpServer): Promise<Server> {
     logger.info("Initializing realtime socket", {
@@ -206,9 +200,6 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
                     outputs: {
                         include: getOutputConfigInclude()
                     },
-                    knowledge_bases: {
-                        include: getKnowledgeBaseConfigInclude()
-                    },
                     tool_approvals: true
                 }
             })
@@ -311,11 +302,8 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
                 emitCacheInvalidationWithWildcard(organizationId, "runHistory", agent.id)
             }
 
-            // Create knowledge bases from agent configuration
-            const knowledgeBases = createKnowledgeBases(agent.knowledge_bases || [])
-
             const runContext: RunContext = { runId }
-            const agentRunner = new AgentRunner(session, outputs, knowledgeBases, agent, runContext)
+            const agentRunner = new AgentRunner(session, outputs, agent, runContext)
             await agentRunner.initializeAgent()
 
             let result

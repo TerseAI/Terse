@@ -3,7 +3,6 @@ import { Tool } from "@openai/agents-core"
 import { z } from "zod"
 
 import type { CapabilityDescription } from "../../capabilityHelpers"
-import { KnowledgeBaseFactory } from "../../knowledgeBase/abstract/KnowledgeBaseFactory"
 import { OutputFactory } from "../../outputs/abstract/OutputFactory"
 import { IntegrationType } from "../../shared/Integrations"
 import { TRIGGER_REGISTRY } from "../../triggers/TriggerRegistry"
@@ -12,23 +11,12 @@ import type { ChatAgentContext } from "./ChatAgentContext"
 
 export enum CapabilityLookupCategory {
     TRIGGERS = "triggers",
-    KNOWLEDGE_BASES = "knowledgeBases",
     OUTPUTS = "outputs",
     ALL = "all"
 }
 
 function gatherTriggerCapabilities(filter?: IntegrationType): CapabilityDescription[] {
     return TRIGGER_REGISTRY.map(t => t.getCapabilityDescription()).filter(c => !filter || c.integrationType === filter)
-}
-
-function gatherKBCapabilities(filter?: IntegrationType): CapabilityDescription[] {
-    const results: CapabilityDescription[] = []
-    for (const [, factory] of KnowledgeBaseFactory.KNOWLEDGE_BASE_REGISTRY) {
-        const kb = factory()
-        const cap = kb.getCapabilityDescription()
-        if (!filter || cap.integrationType === filter) results.push(cap)
-    }
-    return results
 }
 
 function gatherOutputCapabilities(filter?: IntegrationType): CapabilityDescription[] {
@@ -54,22 +42,15 @@ export const lookupPlatformCapabilitiesTool = tool({
 
         if (category === CapabilityLookupCategory.ALL) {
             const triggers = gatherTriggerCapabilities(filter)
-            const knowledgeBases = gatherKBCapabilities(filter)
             const outputs = gatherOutputCapabilities(filter)
             return JSON.stringify({
                 [CapabilityLookupCategory.TRIGGERS]: triggers,
-                [CapabilityLookupCategory.KNOWLEDGE_BASES]: knowledgeBases,
                 [CapabilityLookupCategory.OUTPUTS]: outputs
             })
         }
 
         if (category === CapabilityLookupCategory.TRIGGERS) {
             const caps = gatherTriggerCapabilities(filter)
-            return JSON.stringify(caps)
-        }
-
-        if (category === CapabilityLookupCategory.KNOWLEDGE_BASES) {
-            const caps = gatherKBCapabilities(filter)
             return JSON.stringify(caps)
         }
 

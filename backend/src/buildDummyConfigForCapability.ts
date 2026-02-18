@@ -1,21 +1,15 @@
 import type {
     automation_attio_configs,
     automation_confluence_configs,
-    automation_datadog_configs,
-    automation_github_kb_configs,
     automation_gmail_configs,
     automation_jira_configs,
-    automation_launchdarkly_configs,
     automation_linear_configs,
-    automation_linear_kb_configs,
     automation_notion_configs,
-    automation_posthog_configs,
-    automation_slack_configs,
-    automation_slack_kb_configs
+    automation_slack_configs
 } from "@prisma/client"
-import { KnowledgeBaseConfigType, OutputConfigType } from "@prisma/client"
+import { OutputConfigType } from "@prisma/client"
 
-import type { AgentKnowledgeBaseWithConfigs, AgentOutputWithConfigs } from "./types/prisma"
+import type { AgentOutputWithConfigs } from "./types/prisma"
 
 const DUMMY_DATE = new Date(0)
 const DUMMY_ID = "example"
@@ -157,105 +151,6 @@ export function buildDummyOutputConfig(integration_id: string, payload: OutputDu
         default: {
             const _exhaustive: never = payload
             throw new Error("Unhandled output config_type")
-        }
-    }
-}
-
-// ── Knowledge base dummy configs ────────────────────────────────
-
-type KBDummyPayload =
-    | { config_type: typeof KnowledgeBaseConfigType.POSTHOG; posthog_config: Pick<automation_posthog_configs, "project_id" | "project_name"> }
-    | { config_type: typeof KnowledgeBaseConfigType.GITHUB; github_kb_config: Pick<automation_github_kb_configs, "repository_ids" | "repository_names"> }
-    | { config_type: typeof KnowledgeBaseConfigType.LAUNCHDARKLY; launchdarkly_config: Pick<automation_launchdarkly_configs, "project_key" | "environment_keys"> }
-    | { config_type: typeof KnowledgeBaseConfigType.DATADOG; datadog_config: Pick<automation_datadog_configs, "default_indexes"> }
-    | { config_type: typeof KnowledgeBaseConfigType.LINEAR; linear_kb_config: Pick<automation_linear_kb_configs, "team_id" | "team_name" | "project_id" | "project_name"> }
-    | { config_type: typeof KnowledgeBaseConfigType.SLACK; slack_kb_config: Pick<automation_slack_kb_configs, "channel_ids" | "allow_dms" | "user_ids"> }
-
-export function buildDummyKnowledgeBaseConfig(integration_id: string, payload: KBDummyPayload): AgentKnowledgeBaseWithConfigs {
-    const base: Omit<AgentKnowledgeBaseWithConfigs, "posthog_config" | "github_kb_config" | "launchdarkly_config" | "datadog_config" | "linear_kb_config" | "slack_kb_config"> = {
-        id: DUMMY_ID,
-        automation_id: DUMMY_ID,
-        integration_id,
-        config_type: payload.config_type,
-        created_at: DUMMY_DATE,
-        updated_at: DUMMY_DATE
-    }
-
-    const nullConfigs = {
-        posthog_config: null as AgentKnowledgeBaseWithConfigs["posthog_config"],
-        github_kb_config: null as AgentKnowledgeBaseWithConfigs["github_kb_config"],
-        launchdarkly_config: null as AgentKnowledgeBaseWithConfigs["launchdarkly_config"],
-        datadog_config: null as AgentKnowledgeBaseWithConfigs["datadog_config"],
-        linear_kb_config: null as AgentKnowledgeBaseWithConfigs["linear_kb_config"],
-        slack_kb_config: null as AgentKnowledgeBaseWithConfigs["slack_kb_config"]
-    }
-
-    switch (payload.config_type) {
-        case KnowledgeBaseConfigType.POSTHOG:
-            return {
-                ...base,
-                ...nullConfigs,
-                posthog_config: {
-                    id: DUMMY_ID,
-                    automation_knowledge_base_id: DUMMY_ID,
-                    ...payload.posthog_config
-                }
-            }
-        case KnowledgeBaseConfigType.GITHUB:
-            return {
-                ...base,
-                ...nullConfigs,
-                github_kb_config: {
-                    id: DUMMY_ID,
-                    automation_knowledge_base_id: DUMMY_ID,
-                    ...payload.github_kb_config
-                }
-            }
-        case KnowledgeBaseConfigType.LAUNCHDARKLY:
-            return {
-                ...base,
-                ...nullConfigs,
-                launchdarkly_config: {
-                    id: DUMMY_ID,
-                    automation_knowledge_base_id: DUMMY_ID,
-                    ...payload.launchdarkly_config
-                }
-            }
-        case KnowledgeBaseConfigType.DATADOG:
-            return {
-                ...base,
-                ...nullConfigs,
-                datadog_config: {
-                    id: DUMMY_ID,
-                    automation_knowledge_base_id: DUMMY_ID,
-                    ...payload.datadog_config
-                }
-            }
-        case KnowledgeBaseConfigType.LINEAR:
-            return {
-                ...base,
-                ...nullConfigs,
-                linear_kb_config: {
-                    id: DUMMY_ID,
-                    automation_knowledge_base_id: DUMMY_ID,
-                    ...payload.linear_kb_config
-                }
-            }
-        case KnowledgeBaseConfigType.SLACK:
-            return {
-                ...base,
-                ...nullConfigs,
-                slack_kb_config: {
-                    id: DUMMY_ID,
-                    automation_knowledge_base_id: DUMMY_ID,
-                    channel_names: [],
-                    user_names: [],
-                    ...payload.slack_kb_config
-                }
-            }
-        default: {
-            const _exhaustive: never = payload
-            throw new Error("Unhandled knowledge base config_type")
         }
     }
 }

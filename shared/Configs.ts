@@ -32,7 +32,6 @@ export interface ConfigDetails {
     integrationType: IntegrationType
     isInput: boolean
     isOutput: boolean
-    isKnowledgeBase: boolean
 }
 
 // Metadata objects - using const objects instead of classes
@@ -43,7 +42,6 @@ export const GmailConfigMetadata = {
     integrationType: IntegrationType.GMAIL,
     isInput: true,
     isOutput: false,
-    isKnowledgeBase: false
 } as const satisfies ConfigDetails
 
 export const FigmaConfigMetadata = {
@@ -53,7 +51,6 @@ export const FigmaConfigMetadata = {
     integrationType: IntegrationType.FIGMA,
     isInput: true,
     isOutput: false,
-    isKnowledgeBase: false
 } as const satisfies ConfigDetails
 
 export const SlackConfigMetadata = {
@@ -63,7 +60,6 @@ export const SlackConfigMetadata = {
     integrationType: IntegrationType.SLACK,
     isInput: true,
     isOutput: false,
-    isKnowledgeBase: false
 } as const satisfies ConfigDetails
 
 export const SlackOutputConfigMetadata = {
@@ -73,7 +69,6 @@ export const SlackOutputConfigMetadata = {
     integrationType: IntegrationType.SLACK,
     isInput: false,
     isOutput: true,
-    isKnowledgeBase: false
 } as const satisfies ConfigDetails
 
 export const GmailOutputConfigMetadata = {
@@ -83,7 +78,6 @@ export const GmailOutputConfigMetadata = {
     integrationType: IntegrationType.GMAIL,
     isInput: false,
     isOutput: true,
-    isKnowledgeBase: false
 } as const satisfies ConfigDetails
 
 export const NotionConfigMetadata = {
@@ -93,7 +87,6 @@ export const NotionConfigMetadata = {
     integrationType: IntegrationType.NOTION,
     isInput: false,
     isOutput: true,
-    isKnowledgeBase: false
 } as const satisfies ConfigDetails
 
 export const LinearInputConfigMetadata = {
@@ -103,7 +96,6 @@ export const LinearInputConfigMetadata = {
     integrationType: IntegrationType.LINEAR,
     isInput: true,
     isOutput: false,
-    isKnowledgeBase: false
 } as const satisfies ConfigDetails
 
 export const LinearOutputConfigMetadata = {
@@ -113,17 +105,15 @@ export const LinearOutputConfigMetadata = {
     integrationType: IntegrationType.LINEAR,
     isInput: false,
     isOutput: true,
-    isKnowledgeBase: false
 } as const satisfies ConfigDetails
 
 export const GitHubConfigMetadata = {
     configType: ConfigType.GITHUB,
     name: "GitHub",
-    description: "Monitor GitHub repository events",
+    description: "Monitor and read Github repositories",
     integrationType: IntegrationType.GITHUB,
     isInput: true,
-    isOutput: false,
-    isKnowledgeBase: false
+    isOutput: true,
 } as const satisfies ConfigDetails
 
 export const JiraConfigMetadata = {
@@ -133,7 +123,6 @@ export const JiraConfigMetadata = {
     integrationType: IntegrationType.ATLASSIAN,
     isInput: true,
     isOutput: true,
-    isKnowledgeBase: false
 } as const satisfies ConfigDetails
 
 export const ConfluenceConfigMetadata = {
@@ -143,7 +132,6 @@ export const ConfluenceConfigMetadata = {
     integrationType: IntegrationType.ATLASSIAN,
     isInput: false,
     isOutput: true,
-    isKnowledgeBase: false
 } as const satisfies ConfigDetails
 
 export const PosthogConfigMetadata = {
@@ -152,8 +140,7 @@ export const PosthogConfigMetadata = {
     description: "Track user events",
     integrationType: IntegrationType.POSTHOG,
     isInput: false,
-    isOutput: false,
-    isKnowledgeBase: true
+    isOutput: true,
 } as const satisfies ConfigDetails
 
 export const DatadogConfigMetadata = {
@@ -162,8 +149,7 @@ export const DatadogConfigMetadata = {
     description: "Search logs in Datadog",
     integrationType: IntegrationType.DATADOG,
     isInput: false,
-    isOutput: false,
-    isKnowledgeBase: true
+    isOutput: true,
 } as const satisfies ConfigDetails
 
 export const TimeTriggerConfigMetadata = {
@@ -173,17 +159,6 @@ export const TimeTriggerConfigMetadata = {
     integrationType: IntegrationType.CRON_JOB,
     isInput: true,
     isOutput: false,
-    isKnowledgeBase: false
-} as const satisfies ConfigDetails
-
-export const GitHubKBConfigMetadata = {
-    configType: ConfigType.GITHUB_KB,
-    name: "GitHub Codebase",
-    description: "Search and read code in repositories",
-    integrationType: IntegrationType.GITHUB,
-    isInput: false,
-    isOutput: false,
-    isKnowledgeBase: true
 } as const satisfies ConfigDetails
 
 export const LaunchDarklyConfigMetadata = {
@@ -192,28 +167,7 @@ export const LaunchDarklyConfigMetadata = {
     description: "Query feature flags",
     integrationType: IntegrationType.LAUNCHDARKLY,
     isInput: false,
-    isOutput: false,
-    isKnowledgeBase: true
-} as const satisfies ConfigDetails
-
-export const LinearKBConfigMetadata = {
-    configType: ConfigType.LINEAR_KB,
-    name: "Linear",
-    description: "Search and read Linear tickets",
-    integrationType: IntegrationType.LINEAR,
-    isInput: false,
-    isOutput: false,
-    isKnowledgeBase: true
-} as const satisfies ConfigDetails
-
-export const SlackKBConfigMetadata = {
-    configType: ConfigType.SLACK_KB,
-    name: "Slack",
-    description: "Read Slack conversation history",
-    integrationType: IntegrationType.SLACK,
-    isInput: false,
-    isOutput: false,
-    isKnowledgeBase: true
+    isOutput: true,
 } as const satisfies ConfigDetails
 
 export const TerseConfigMetadata = {
@@ -223,7 +177,6 @@ export const TerseConfigMetadata = {
     integrationType: IntegrationType.TERSE,
     isInput: false,
     isOutput: true,
-    isKnowledgeBase: false
 } as const satisfies ConfigDetails
 
 export const WorkOSInputConfigMetadata = {
@@ -233,7 +186,6 @@ export const WorkOSInputConfigMetadata = {
     integrationType: IntegrationType.WORKOS,
     isInput: true,
     isOutput: false,
-    isKnowledgeBase: false
 } as const satisfies ConfigDetails
 
 export const AttioOutputConfigMetadata = {
@@ -243,7 +195,6 @@ export const AttioOutputConfigMetadata = {
     integrationType: IntegrationType.ATTIO,
     isInput: false,
     isOutput: true,
-    isKnowledgeBase: false
 } as const satisfies ConfigDetails
 
 export type ConfigDetailsMap = Record<ConfigType, ConfigDetails>
@@ -258,15 +209,12 @@ export const CONFIG_DETAILS: ConfigDetailsMap = {
     [ConfigType.LINEAR_INPUT]: LinearInputConfigMetadata,
     [ConfigType.LINEAR_OUTPUT]: LinearOutputConfigMetadata,
     [ConfigType.GITHUB]: GitHubConfigMetadata,
-    [ConfigType.GITHUB_KB]: GitHubKBConfigMetadata,
     [ConfigType.JIRA]: JiraConfigMetadata,
     [ConfigType.CONFLUENCE]: ConfluenceConfigMetadata,
     [ConfigType.POSTHOG]: PosthogConfigMetadata,
     [ConfigType.DATADOG]: DatadogConfigMetadata,
     [ConfigType.TIME_TRIGGER]: TimeTriggerConfigMetadata,
     [ConfigType.LAUNCHDARKLY]: LaunchDarklyConfigMetadata,
-    [ConfigType.LINEAR_KB]: LinearKBConfigMetadata,
-    [ConfigType.SLACK_KB]: SlackKBConfigMetadata,
     [ConfigType.TERSE]: TerseConfigMetadata,
     [ConfigType.WORKOS_INPUT]: WorkOSInputConfigMetadata,
     [ConfigType.ATTIO_OUTPUT]: AttioOutputConfigMetadata

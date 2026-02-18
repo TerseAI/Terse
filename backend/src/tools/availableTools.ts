@@ -1,12 +1,8 @@
-import { OutputConfigType } from "@prisma/client"
-
-import { KnowledgeBaseFactory } from "../knowledgeBase/abstract/KnowledgeBaseFactory"
 import type { ToolboxEntry } from "../outputs/abstract/Output"
 import { OutputFactory } from "../outputs/abstract/OutputFactory"
 import { CONFIG_DETAILS, ConfigType } from "../shared/Configs"
-import { IntegrationType } from "../shared/Integrations"
 import type { TerseTool, TerseToolSource } from "../shared/ToolsTypes"
-import { convertConfigTypeToKnowledgeBaseConfigType, convertConfigTypeToOutputConfigType } from "../utility/typeConverters"
+import { convertConfigTypeToOutputConfigType } from "../utility/typeConverters"
 
 type CollectedEntry = {
     entry: ToolboxEntry
@@ -20,17 +16,11 @@ type CollectedEntry = {
  * tool name; first occurrence wins. Only tools with isReadOnly === false are
  * included.
  */
-export function getToolsThatRequireApprovals(skills: ConfigType[], knowledgeBases: ConfigType[]): TerseTool[] {
+export function getToolsThatRequireApprovals(skills: ConfigType[]): TerseTool[] {
     skills.forEach(ct => {
         const details = CONFIG_DETAILS[ct]
         if (!details?.isOutput) {
             throw new Error(`Invalid skill config type: ${ct}. Must be an output (isOutput: true).`)
-        }
-    })
-    knowledgeBases.forEach(ct => {
-        const details = CONFIG_DETAILS[ct]
-        if (!details?.isKnowledgeBase) {
-            throw new Error(`Invalid knowledge base config type: ${ct}. Must be a knowledge base (isKnowledgeBase: true).`)
         }
     })
 
@@ -46,20 +36,6 @@ export function getToolsThatRequireApprovals(skills: ConfigType[], knowledgeBase
             const name = entry.tool.name
             if (!map.has(name)) {
                 map.set(name, { entry, source: "skill" as TerseToolSource, configType })
-            }
-        })
-    })
-
-    knowledgeBases.forEach(configType => {
-        const kbConfigType = convertConfigTypeToKnowledgeBaseConfigType(configType)
-        const kb = KnowledgeBaseFactory.createKnowledgeBase(kbConfigType)
-        if (!kb) {
-            throw new Error(`Knowledge base type ${kbConfigType} is not supported.`)
-        }
-        kb.toolbox.forEach(entry => {
-            const name = entry.tool.name
-            if (!map.has(name)) {
-                map.set(name, { entry, source: "knowledgeBase" as TerseToolSource, configType })
             }
         })
     })

@@ -1,6 +1,6 @@
 import { ConfigType } from "./Configs"
 
-export type TerseToolSource = "skill" | "knowledgeBase"
+export type TerseToolSource = "skill" 
 
 export interface TerseTool {
     name: string
@@ -14,7 +14,6 @@ export interface TerseTool {
 
 export interface GetToolsThatRequireApprovalsRequest {
     skills: ConfigType[]
-    knowledgeBases?: ConfigType[]
 }
 
 export interface GetToolsThatRequireApprovalsResponse {

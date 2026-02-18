@@ -5,18 +5,15 @@ import {
     DatadogConfigSchema,
     FigmaConfigSchema,
     GitHubConfigSchema,
-    GitHubKnowledgeBaseConfigSchema,
     GmailConfigSchema,
     GmailOutputConfigSchema,
     JiraConfigSchema,
     LaunchDarklyConfigSchema,
     LinearInputConfigSchema,
-    LinearKnowledgeBaseConfigSchema,
     LinearOutputConfigSchema,
     NotionConfigSchema,
     PosthogConfigSchema,
     SlackConfigSchema,
-    SlackKnowledgeBaseConfigSchema,
     SlackOutputConfigSchema,
     TimeTriggerConfigSchema,
     WorkOSInputConfigSchema
@@ -50,14 +47,11 @@ export const ConfigTemplateSchema = z.discriminatedUnion("configType", [
     asTemplateConfigSchema(LinearInputConfigSchema),
     asTemplateConfigSchema(LinearOutputConfigSchema),
     asTemplateConfigSchema(GitHubConfigSchema),
-    asTemplateConfigSchema(GitHubKnowledgeBaseConfigSchema),
     asTemplateConfigSchema(JiraConfigSchema),
     asTemplateConfigSchema(ConfluenceConfigSchema),
     asTemplateConfigSchema(PosthogConfigSchema),
     asTemplateConfigSchema(LaunchDarklyConfigSchema),
     asTemplateConfigSchema(DatadogConfigSchema),
-    asTemplateConfigSchema(LinearKnowledgeBaseConfigSchema),
-    asTemplateConfigSchema(SlackKnowledgeBaseConfigSchema),
     asTemplateConfigSchema(WorkOSInputConfigSchema),
     asTemplateConfigSchema(TimeTriggerConfigSchema)
 ])
@@ -94,14 +88,6 @@ const AgentOutputTemplateSchema = z
     })
     .strict()
 
-// Agent knowledge base template schema
-const AgentKnowledgeBaseTemplateSchema = z
-    .object({
-        id: z.string().optional(), // Optional in templates
-        config: ConfigTemplateSchema
-    })
-    .strict()
-
 // Template category schema
 const TemplateCategorySchema = z.enum(["ship", "users", "sync", "track"])
 
@@ -115,7 +101,6 @@ export const AgentTemplateSchema = z
         prompt: AgentPromptSchema,
         triggers: z.array(AgentTriggerTemplateSchema).min(1, "At least one trigger is required"),
         outputs: z.array(AgentOutputTemplateSchema).min(1, "At least one output is required"),
-        knowledgeBases: z.array(AgentKnowledgeBaseTemplateSchema).optional(),
         requireApproval: z.boolean().optional().default(false),
         chatPrompt: z.string().min(1, "Template chatPrompt is required"),
         isActive: z.boolean().optional().default(true),

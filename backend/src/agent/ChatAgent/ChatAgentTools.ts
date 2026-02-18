@@ -25,31 +25,26 @@ import { getToolsThatRequireApprovals } from "../../tools/availableTools"
 import { HydratorType, requireHydratorType } from "../../types/rag"
 import {
     AttioOutputConfigSchema,
-    BaseConfigSchema,
     ConfluenceConfigSchema,
     DatadogConfigSchema,
     FigmaConfigSchema,
     GitHubConfigSchema,
-    GitHubKnowledgeBaseConfigSchema,
     GmailConfigSchema,
     GmailOutputConfigSchema,
     JiraConfigSchema,
     LaunchDarklyConfigSchema,
     LinearInputConfigSchema,
-    LinearKnowledgeBaseConfigSchema,
     LinearOutputConfigSchema,
     NonEmptyString,
     NotionConfigSchema,
     PosthogConfigSchema,
     SlackConfigSchema,
-    SlackKnowledgeBaseConfigSchema,
     SlackOutputConfigSchema,
     TimeTriggerConfigSchema,
     WorkOSInputConfigSchema,
     enforceNonSystemIntegrationId
 } from "../../utility/configSchemas"
 import { randomString } from "../../utility/strings"
-import { getUserForOrg } from "../../utility/workos"
 
 import type { ChatAgentContext } from "./ChatAgentContext"
 import ChatInterface from "./ChatInterfaces/ChatInterface"
@@ -62,19 +57,14 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
         tool({
             name: "getToolApprovalOptions",
             description:
-                "Returns the tools that can require approval for the given outputs (skills) and knowledge bases. Use this when building an agent to discover which tool names are valid for the toolApprovals field. The returned name values are the only valid choices for toolApprovals when calling applyAgent for an agent with those outputs and knowledge bases. skills must be output config types (e.g. slack_output, notion, linear_output); knowledgeBases must be knowledge base config types (e.g. github_kb, POSTHOG, slack_kb).",
+                "Returns the tools that can require approval for the given outputs (skills). Use this when building an agent to discover which tool names are valid for the toolApprovals field. The returned name values are the only valid choices for toolApprovals when calling applyAgent for an agent with those outputs. skills must be output config types (e.g. slack_output, notion, linear_output).",
             parameters: z.object({
                 skills: z
                     .array(z.nativeEnum(ConfigType))
-                    .describe("Output config types for the agent's skills. Only config types with isOutput true (e.g. slack_output, notion, gmail_output, linear_output, jira, confluence)."),
-                knowledgeBases: z
-                    .array(z.nativeEnum(ConfigType))
-                    .optional()
-                    .default([])
-                    .describe("Knowledge base config types (e.g. github_kb, POSTHOG, launchdarkly, linear_kb, slack_kb). Omit or empty if the agent has no knowledge bases.")
+                    .describe("Output config types for the agent's skills. Only config types with isOutput true (e.g. slack_output, notion, gmail_output, linear_output, jira, confluence).")
             }),
-            execute: async ({ skills, knowledgeBases }: { skills: ConfigType[]; knowledgeBases?: ConfigType[] }, _runContext?: RunContext<ChatAgentContext>): Promise<string> => {
-                const tools = getToolsThatRequireApprovals(skills, knowledgeBases ?? [])
+            execute: async ({ skills }: { skills: ConfigType[] }, _runContext?: RunContext<ChatAgentContext>): Promise<string> => {
+                const tools = getToolsThatRequireApprovals(skills)
                 return JSON.stringify({ tools })
             }
         }),
@@ -499,22 +489,12 @@ const OutputConfigSchema = z
         JiraConfigSchema,
         ConfluenceConfigSchema,
         GmailOutputConfigSchema,
-        AttioOutputConfigSchema
-    ])
-    .superRefine((value, ctx) => {
-        enforceNonSystemIntegrationId(value, ctx)
-    })
-
-const KnowledgeBaseConfigSchema = z
-    .discriminatedUnion("configType", [
-        GitHubKnowledgeBaseConfigSchema,
+        AttioOutputConfigSchema,
+        GitHubConfigSchema,
         PosthogConfigSchema,
         LaunchDarklyConfigSchema,
-        DatadogConfigSchema,
-        LinearKnowledgeBaseConfigSchema,
-        SlackKnowledgeBaseConfigSchema
+        DatadogConfigSchema
     ])
-    .describe("Knowledge base config. Match configType to integration: POSTHOG, LAUNCHDARKLY, DATADOG, github_kb for GitHub repos, linear_kb for Linear tickets, slack_kb for Slack history.")
     .superRefine((value, ctx) => {
         enforceNonSystemIntegrationId(value, ctx)
     })
@@ -538,12 +518,6 @@ const AgentPromptSchema = z
     })
     .strict()
 
-const AgentKnowledgeBaseSchema = z
-    .object({
-        config: KnowledgeBaseConfigSchema
-    })
-    .strict()
-
 const RunHistoryActionTypeSchema = z.enum(["create", "update", "delete", "read"])
 
 const AgentNotificationSettingsSchema = z
@@ -562,7 +536,6 @@ export const AgentSchema = z
         prompt: AgentPromptSchema,
         triggers: z.array(AgentTriggerSchema).min(1),
         outputs: z.array(AgentOutputSchema).min(1),
-        knowledgeBases: z.array(AgentKnowledgeBaseSchema).nullable(),
         notificationSettings: AgentNotificationSettingsSchema.nullable(),
         toolApprovals: z.array(ToolNameSchema).nullable(),
         updatedAt: z.string().nullable()
@@ -604,12 +577,6 @@ function toAgentDraft(agent: AgentSchemaInput): AgentDraft {
             ...output,
             config: toConfigInstance(normalizeConfig(output.config))
         })),
-        knowledgeBases:
-            agent.knowledgeBases?.map(kb => ({
-                id: uuidv4().toString(),
-                ...kb,
-                config: toConfigInstance(normalizeConfig(kb.config))
-            })) ?? undefined,
         notificationSettings: agent.notificationSettings ?? undefined,
         toolApprovals: agent.toolApprovals ?? undefined,
         updatedAt: agent.updatedAt ?? undefined

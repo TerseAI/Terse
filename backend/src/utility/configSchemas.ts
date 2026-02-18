@@ -107,16 +107,6 @@ export const GitHubConfigSchema = BaseConfigSchema.extend({
     repositoryIds: z.array(z.number()).min(1).describe("Array of GitHub repository IDs (numeric). From fetchResourcesForIntegration, use the repo's id from resources[].")
 })
 
-export const GitHubKnowledgeBaseConfigSchema = BaseConfigSchema.extend({
-    configType: z.literal(ConfigType.GITHUB_KB).describe("Use ONLY for GitHub repository knowledge bases. Do NOT use for PostHog, LaunchDarkly, or Datadog."),
-    integrationType: z.literal(IntegrationType.GITHUB),
-    repositoryIds: z.array(z.number()).min(1).describe("Array of GitHub repository IDs (numeric). From fetchResourcesForIntegration, use the repo's id from resources[]."),
-    repositoryNames: z
-        .array(NonEmptyString)
-        .min(1)
-        .describe("Array of repository names matching the repositoryIds. From fetchResourcesForIntegration, use the repo's name from resources[]. IMPORTANT: Must be owner/repo format.")
-})
-
 export const JiraConfigSchema = BaseConfigSchema.extend({
     configType: z.literal(ConfigType.JIRA),
     integrationType: z.literal(IntegrationType.ATLASSIAN),
@@ -151,33 +141,6 @@ export const DatadogConfigSchema = BaseConfigSchema.extend({
     configType: z.literal(ConfigType.DATADOG).describe("Use for Datadog log knowledge bases."),
     integrationType: z.literal(IntegrationType.DATADOG),
     defaultIndexes: z.array(NonEmptyString).default(["main"]).describe('Log indexes to search (e.g. ["main"]). From fetchResourcesForIntegration or use ["main"].')
-})
-
-export const LinearKnowledgeBaseConfigSchema = BaseConfigSchema.extend({
-    configType: z.literal(ConfigType.LINEAR_KB).describe("Use for Linear ticket knowledge bases. Search and read Linear issues."),
-    integrationType: z.literal(IntegrationType.LINEAR),
-    teamId: z.string().nullable().optional(),
-    teamName: z.string().nullable().optional(),
-    projectId: z.string().nullable().optional(),
-    projectName: z.string().nullable().optional()
-})
-
-export const SlackKnowledgeBaseConfigSchema = BaseConfigSchema.extend({
-    configType: z.literal(ConfigType.SLACK_KB).describe("Use for Slack conversation history."),
-    integrationType: z.literal(IntegrationType.SLACK),
-    channelId: z
-        .string()
-        .nullable()
-        .optional()
-        .describe("When not in DMs mode: selected channel ID to read. Obtain from fetchResourcesForIntegration with integrationType=SLACK (channels). Required when allowDms is false."),
-    allowDms: z.boolean().optional().default(false).describe("True = Direct messages mode. When true, channelId must be empty; userIds optional (empty = all DMs)."),
-    userIds: z
-        .array(z.string())
-        .nullable()
-        .optional()
-        .describe("When allowDms is true: optional user IDs to restrict which DMs to read. Obtain from fetchResourcesForIntegration with options.slack.objectType='users'. Leave empty for all DMs."),
-    channelName: z.string().nullable().optional().describe("Display name for the channel (UI only, not persisted)."),
-    userNames: z.array(z.string()).nullable().optional().describe("Display names for users (UI only, not persisted).")
 })
 
 export const WorkOSInputConfigSchema = BaseConfigSchema.extend({

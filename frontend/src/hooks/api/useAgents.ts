@@ -38,11 +38,7 @@ export function useAgents(params: AgentListArgs = {}) {
                               ...output,
                               config: deserializeConfig(output.config)
                           }))
-                        : [],
-                    knowledgeBases: agent.knowledgeBases?.map(kb => ({
-                        ...kb,
-                        config: deserializeConfig(kb.config)
-                    }))
+                        : []
                 }))
             }
         },
@@ -81,11 +77,7 @@ export function useAgent(id: string | null) {
                                 ...output,
                                 config: deserializeConfig(output.config)
                             }))
-                          : [],
-                      knowledgeBases: agent.knowledgeBases?.map(kb => ({
-                          ...kb,
-                          config: deserializeConfig(kb.config)
-                      }))
+                          : []
                   }
               }
             : null
@@ -159,11 +151,7 @@ export function useAgentMutations() {
                                       ...output,
                                       config: deserializeConfig(output.config)
                                   }))
-                                : [],
-                            knowledgeBases: agent.knowledgeBases?.map(kb => ({
-                                ...kb,
-                                config: deserializeConfig(kb.config)
-                            }))
+                                : []
                         }))
                     }
                 },

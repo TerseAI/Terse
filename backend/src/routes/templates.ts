@@ -39,12 +39,6 @@ type PublicTemplate = Pick<AgentTemplate, "id" | "name" | "description" | "categ
             integrationType: AgentTemplate["outputs"][number]["config"]["integrationType"]
         }
     }>
-    knowledgeBases: Array<{
-        config: {
-            configType: NonNullable<AgentTemplate["knowledgeBases"]>[number]["config"]["configType"]
-            integrationType: NonNullable<AgentTemplate["knowledgeBases"]>[number]["config"]["integrationType"]
-        }
-    }>
 }
 
 export async function getPublicTemplates(req: Request, res: Response): Promise<void> {
@@ -67,12 +61,6 @@ export async function getPublicTemplates(req: Request, res: Response): Promise<v
                 config: {
                     configType: output.config.configType,
                     integrationType: output.config.integrationType
-                }
-            })),
-            knowledgeBases: (template.knowledgeBases ?? []).map(kb => ({
-                config: {
-                    configType: kb.config.configType,
-                    integrationType: kb.config.integrationType
                 }
             }))
         }))

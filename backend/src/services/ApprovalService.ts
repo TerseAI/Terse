@@ -4,8 +4,6 @@ import { AgentRunResultStatus, AgentRunner } from "../agent/AgentRunner/AgentRun
 import { evaluateCompletedRun, finalizeRunStatus, markRunFailed, markRunInProgress } from "../agent/AgentRunner/runHistory"
 import { generateApprovalSummary } from "../agent/ApprovalSummaryAgent/ApprovalSummaryAgent"
 import { appendToolApprovalResponseSystemEvent } from "../agent/systemEvents/toolApprovalSystemEvent"
-import { KnowledgeBase } from "../knowledgeBase/abstract/KnowledgeBase"
-import { KnowledgeBaseFactory } from "../knowledgeBase/abstract/KnowledgeBaseFactory"
 import logger from "../logger"
 import { NotificationManager } from "../notifications/Notification"
 import { Output } from "../outputs/abstract/Output"
@@ -19,7 +17,7 @@ import { User } from "../shared/types"
 import { SlackApprovalMessageStatus } from "../slack/ApprovalStatus"
 import { AgentWithRelations } from "../types/prisma"
 import { Session } from "../types/session"
-import { getInputConfigInclude, getKnowledgeBaseConfigInclude, getOutputConfigInclude } from "../utility/prismaIncludes"
+import { getInputConfigInclude, getOutputConfigInclude } from "../utility/prismaIncludes"
 import { updateSlackApprovalMessage } from "../utility/slack"
 import { randomString } from "../utility/strings"
 import { getUserForOrg } from "../utility/workos"
@@ -85,9 +83,6 @@ export class ApprovalService {
                 outputs: {
                     include: getOutputConfigInclude()
                 },
-                knowledge_bases: {
-                    include: getKnowledgeBaseConfigInclude()
-                },
                 tool_approvals: true
             }
         })
@@ -101,10 +96,6 @@ export class ApprovalService {
 
     private static createOutputs(channel: AgentWithRelations): Output<ConfigInstance>[] {
         return OutputFactory.createOutputsFromAgent(channel)
-    }
-
-    private static createKnowledgeBases(channelKnowledgeBases: AgentWithRelations["knowledge_bases"]): KnowledgeBase<ConfigInstance>[] {
-        return KnowledgeBaseFactory.createKnowledgeBasesFromAgent(channelKnowledgeBases)
     }
 
     /**
@@ -248,9 +239,6 @@ export class ApprovalService {
                 isUserInitiated: true
             }
 
-            // Create knowledge bases from agent configuration
-            const knowledgeBases = this.createKnowledgeBases(channel.knowledge_bases || [])
-
             // Ensure run status is 'in_progress' for streaming
             if (runRecord.status !== RunHistoryStatus.IN_PROGRESS) {
                 await markRunInProgress(runId)
@@ -296,7 +284,7 @@ export class ApprovalService {
 
             // Create agent runner and resume from pending approval
             const runContext = { runId }
-            const agentRunner = new AgentRunner(session, outputs, knowledgeBases, channel, runContext)
+            const agentRunner = new AgentRunner(session, outputs, channel, runContext)
             await agentRunner.initializeAgent()
 
             const decision: "approve" | "reject" = approved ? "approve" : "reject"

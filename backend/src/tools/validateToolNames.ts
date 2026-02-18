@@ -1,15 +1,14 @@
 import { CapabilityRole } from "../capabilityHelpers"
-import { KnowledgeBaseFactory } from "../knowledgeBase/abstract/KnowledgeBaseFactory"
 import logger from "../logger"
 import { OutputFactory } from "../outputs/abstract/OutputFactory"
 
 import { isValidToolName } from "./ToolNames"
 
-/** Only OUTPUT and KNOWLEDGE_BASE are used in tool validation (triggers have no toolbox). */
-type ToolSourceRole = CapabilityRole.OUTPUT | CapabilityRole.KNOWLEDGE_BASE
+/** Only OUTPUT are used in tool validation (triggers have no toolbox). */
+type ToolSourceRole = CapabilityRole.OUTPUT
 
 function getSourceDisplayName(source: ToolSourceRole): string {
-    return source === CapabilityRole.OUTPUT ? "OutputFactory" : "KnowledgeBaseFactory"
+    return source === CapabilityRole.OUTPUT ? "OutputFactory" : ""
 }
 
 type ToolOccurrence = {
@@ -51,33 +50,6 @@ export function validateAllToolNames(): void {
                 toolName,
                 source: CapabilityRole.OUTPUT,
                 configType: outputConfigType,
-                tool: entry.tool
-            })
-        })
-    })
-
-    // Collect tools from all knowledge bases
-    KnowledgeBaseFactory.KNOWLEDGE_BASE_REGISTRY.forEach((factory, kbConfigType) => {
-        const kb = factory()
-        kb.toolbox.forEach(entry => {
-            const toolName = entry.tool.name
-
-            // Check if tool name is in the enum
-            if (!isValidToolName(toolName)) {
-                invalidToolNames.push({
-                    toolName,
-                    source: CapabilityRole.KNOWLEDGE_BASE,
-                    configType: kbConfigType
-                })
-            }
-
-            if (!toolOccurrences.has(toolName)) {
-                toolOccurrences.set(toolName, [])
-            }
-            toolOccurrences.get(toolName)!.push({
-                toolName,
-                source: CapabilityRole.KNOWLEDGE_BASE,
-                configType: kbConfigType,
                 tool: entry.tool
             })
         })
@@ -131,13 +103,6 @@ export function validateWriteToolsHaveNeedsApproval(): void {
         const output = factory()
         output.toolbox.forEach(entry => {
             check(CapabilityRole.OUTPUT, outputConfigType, entry)
-        })
-    })
-
-    KnowledgeBaseFactory.KNOWLEDGE_BASE_REGISTRY.forEach((factory, kbConfigType) => {
-        const kb = factory()
-        kb.toolbox.forEach(entry => {
-            check(CapabilityRole.KNOWLEDGE_BASE, kbConfigType, entry)
         })
     })
 

@@ -15,9 +15,9 @@ import { useIsMobile } from "../../hooks/use-mobile"
 import { useTemplateHydration } from "../../hooks/useTemplateHydration"
 import { cn } from "../../lib/utils"
 import { useModelContext } from "../../services/ModelContextProvider"
-import { AgentNotificationSettings, AgentPrompt, TransientAgentOutput, TransientAgentTrigger, TransientKnowledgeBase } from "../../shared/types"
-import { AgentInputsDonatedState, AgentKnowledgeBasesDonatedState, AgentNameDonatedState, AgentOutputsDonatedState, AgentPromptDonatedState } from "../../utility/AgentModelDonation"
-import { toTransientAgentOutput, toTransientAgentTrigger, toTransientKnowledgeBase } from "../../utility/AgentUtils"
+import { AgentNotificationSettings, AgentPrompt, TransientAgentOutput, TransientAgentTrigger } from "../../shared/types"
+import { AgentInputsDonatedState, AgentNameDonatedState, AgentOutputsDonatedState, AgentPromptDonatedState } from "../../utility/AgentModelDonation"
+import { toTransientAgentOutput, toTransientAgentTrigger } from "../../utility/AgentUtils"
 
 import AgentRunHistoryTab from "./tabs/AgentRunHistoryTab"
 import AgentSetupTab, { AgentSetupTabProps } from "./tabs/AgentSetupTab"
@@ -306,7 +306,6 @@ function AgentDetail() {
     const [name, setName] = useState<string | null>(null)
     const [inputs, setInputs] = useState<TransientAgentTrigger[]>([])
     const [outputs, setOutputs] = useState<TransientAgentOutput[]>([])
-    const [knowledgeBases, setKnowledgeBases] = useState<TransientKnowledgeBase[]>([])
     const [prompt, setPrompt] = useState<AgentPrompt | undefined>(undefined)
     const [isActive, setIsActive] = useState<boolean>(true)
     const [requireApproval, setRequireApproval] = useState<boolean>(false)
@@ -330,7 +329,6 @@ function AgentDetail() {
                 setToolApprovals(templateHydratedState.toolApprovals || [])
                 setInputs(templateHydratedState.inputs)
                 setOutputs(templateHydratedState.outputs)
-                setKnowledgeBases(templateHydratedState.knowledgeBases)
                 setNotificationSettings(templateHydratedState.notificationSettings)
                 setTemplateHydrated(templateId)
                 return
@@ -343,7 +341,6 @@ function AgentDetail() {
                     setName(null)
                     setInputs([])
                     setOutputs([])
-                    setKnowledgeBases([])
                     setPrompt(undefined)
                     setIsActive(true)
                     setRequireApproval(false)
@@ -355,7 +352,6 @@ function AgentDetail() {
             setName(agent.name)
             setInputs(agent.triggers.map(toTransientAgentTrigger))
             setOutputs(agent.outputs ? agent.outputs.map(toTransientAgentOutput) : [])
-            setKnowledgeBases(agent.knowledgeBases?.map(toTransientKnowledgeBase) || [])
             setPrompt(agent.prompt)
             setIsActive(agent.isActive)
             setRequireApproval(agent.requireApproval ?? false)
@@ -391,8 +387,6 @@ function AgentDetail() {
         setInputs,
         outputs,
         setOutputs,
-        knowledgeBases,
-        setKnowledgeBases,
         prompt,
         setPrompt,
         isActive,
@@ -427,7 +421,6 @@ function AgentDetail() {
     donate("Agent Name", new AgentNameDonatedState(name ?? ""))
     donate("Agent Inputs", new AgentInputsDonatedState(inputs))
     donate("Agent Skills", new AgentOutputsDonatedState(outputs))
-    donate("Agent Knowledge Bases", new AgentKnowledgeBasesDonatedState(knowledgeBases))
     donate("Agent Prompt", new AgentPromptDonatedState(prompt ?? { text: "" }))
 
     return (
