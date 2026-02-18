@@ -48,10 +48,11 @@ export function convertAgentInputItemsToModelEvents(
         }
     }
 
-    // Add a NaturalStop if there are any events and no ending event.
+    // Add a NaturalStop only when the run did not already end with a terminal sentinel (NaturalStop or RunError).
     if (events.length > 0) {
         const lastEvent = events[events.length - 1]
-        if (lastEvent.type !== "NaturalStop") {
+        const isTerminal = lastEvent.type === "NaturalStop" || lastEvent.type === "RunError"
+        if (!isTerminal) {
             events.push({
                 type: "NaturalStop",
                 step_id: "historical-stop",
