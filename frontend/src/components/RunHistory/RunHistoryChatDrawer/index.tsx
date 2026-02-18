@@ -63,51 +63,49 @@ export default function RunHistoryChatDrawer({
                     !isInitialOpen && "[&[data-state=open]]:!animate-none [&[data-state=closed]]:!animate-none [&+*]:!animate-none"
                 )}
             >
-                {isOpen && (
-                    <RunHistoryChatAdapter key={runId} runId={runId} status={status}>
-                        {({ initialTurns, isLoading, subscribeToEvents, sendMessage, handleApprove, handleReject, currentStatus }) => {
-                            const isFiltered = currentStatus === RunHistoryStatus.SKIPPED
+                <RunHistoryChatAdapter key={runId} runId={runId} status={status}>
+                    {({ initialTurns, isLoading, subscribeToEvents, sendMessage, handleApprove, handleReject, currentStatus }) => {
+                        const isFiltered = currentStatus === RunHistoryStatus.SKIPPED
 
-                            return (
-                                <>
-                                    <RunHistoryChatDrawerHeader
-                                        trigger={trigger}
-                                        runNumber={runNumber}
-                                        totalEvents={totalEvents}
-                                        status={currentStatus}
-                                        filtered={isFiltered || filtered}
-                                        runs={runs}
-                                        currentRunIndex={currentRunIndex}
-                                        onNavigate={onNavigate}
-                                        isFullscreen={isFullscreen}
-                                        onFullscreenChange={handleFullscreenChange}
-                                    />
-                                    <div className={cn("flex-1 overflow-hidden min-h-0 bg-background select-text", isFullscreen && "mx-auto w-full")}>
-                                        <div className="flex flex-col h-full relative">
-                                            <div className="flex-1 min-h-0">
-                                                <Chat
-                                                    ref={chatRef}
-                                                    initialTurns={initialTurns}
-                                                    subscribeToEvents={subscribeToEvents}
-                                                    sendMessage={sendMessage}
-                                                    onHandleApprove={handleApprove}
-                                                    onHandleReject={handleReject}
-                                                    EmptyContentPlaceholder={
-                                                        isLoading ? (
-                                                            <div className="p-4 text-center text-muted-foreground">Loading history...</div>
-                                                        ) : (
-                                                            <div className="p-4 text-center text-muted-foreground">No events found</div>
-                                                        )
-                                                    }
-                                                />
-                                            </div>
+                        return (
+                            <>
+                                <RunHistoryChatDrawerHeader
+                                    trigger={trigger}
+                                    runNumber={runNumber}
+                                    totalEvents={totalEvents}
+                                    status={currentStatus}
+                                    filtered={isFiltered || filtered}
+                                    runs={runs}
+                                    currentRunIndex={currentRunIndex}
+                                    onNavigate={onNavigate}
+                                    isFullscreen={isFullscreen}
+                                    onFullscreenChange={handleFullscreenChange}
+                                />
+                                <div className={cn("flex-1 overflow-hidden min-h-0 bg-background select-text", isFullscreen && "mx-auto w-full")}>
+                                    <div className="flex flex-col h-full relative">
+                                        <div className="flex-1 min-h-0">
+                                            <Chat
+                                                ref={chatRef}
+                                                initialTurns={initialTurns}
+                                                subscribeToEvents={subscribeToEvents}
+                                                sendMessage={sendMessage}
+                                                onHandleApprove={handleApprove}
+                                                onHandleReject={handleReject}
+                                                EmptyContentPlaceholder={
+                                                    isLoading ? (
+                                                        <div className="p-4 text-center text-muted-foreground">Loading history...</div>
+                                                    ) : (
+                                                        <div className="p-4 text-center text-muted-foreground">No events found</div>
+                                                    )
+                                                }
+                                            />
                                         </div>
                                     </div>
-                                </>
-                            )
-                        }}
-                    </RunHistoryChatAdapter>
-                )}
+                                </div>
+                            </>
+                        )
+                    }}
+                </RunHistoryChatAdapter>
             </DrawerContent>
         </Drawer>
     )
