@@ -15,12 +15,12 @@ import { Output, ToolboxEntry } from "../abstract/Output"
 import { slackSendMessageTool } from "./tools/sendMessage"
 
 export class SlackOutput extends Output<SlackOutputConfig> {
-    constructor() {
+    constructor(readOnly = false) {
         const toolbox: ToolboxEntry[] = [
             { tool: slackSendMessageTool as Tool, isReadOnly: false, integration: IntegrationType.SLACK, displayName: "Send message" },
             { tool: slackListUsersTool as Tool, isReadOnly: true, integration: IntegrationType.SLACK, displayName: "List users" }
         ]
-        super(OutputConfigType.SLACK_CHANNEL, toolbox)
+        super(OutputConfigType.SLACK_CHANNEL, toolbox, readOnly)
     }
 
     getCapabilityDescription(): CapabilityDescription {

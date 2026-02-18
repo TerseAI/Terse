@@ -23,7 +23,7 @@ import { linearSearchTicketTool } from "./tools/searchTicket"
 import { linearUpdateTicketTool } from "./tools/updateTicket"
 
 export class LinearTicketOutput extends Output<LinearOutputConfig> {
-    constructor() {
+    constructor(readOnly = false) {
         const toolbox: ToolboxEntry[] = [
             { tool: linearSearchTicketTool as Tool, isReadOnly: true, integration: IntegrationType.LINEAR, displayName: "Search tickets" },
             { tool: linearGetTeamsTool as Tool, isReadOnly: true, integration: IntegrationType.LINEAR, displayName: "Get teams" },
@@ -35,7 +35,7 @@ export class LinearTicketOutput extends Output<LinearOutputConfig> {
             { tool: linearUpdateTicketTool as Tool, isReadOnly: false, integration: IntegrationType.LINEAR, displayName: "Update ticket" },
             { tool: linearAddCommentTool as Tool, isReadOnly: false, integration: IntegrationType.LINEAR, displayName: "Add comment" }
         ]
-        super(OutputConfigType.LINEAR_TICKET, toolbox)
+        super(OutputConfigType.LINEAR_TICKET, toolbox, readOnly)
     }
 
     getCapabilityDescription(): CapabilityDescription {

@@ -11,7 +11,7 @@ import { convertOutputConfigTypeToConfigType } from "../../utility/typeConverter
 import { Output, ToolboxEntry } from "../abstract/Output"
 
 export class TerseSkillsOutput extends Output<ConfigInstance> {
-    constructor() {
+    constructor(readOnly = false) {
         const toolbox: ToolboxEntry[] = [
             {
                 tool: webSearchTool({
@@ -22,7 +22,7 @@ export class TerseSkillsOutput extends Output<ConfigInstance> {
                 displayName: "Web Search"
             }
         ]
-        super(OutputConfigType.TERSE, toolbox)
+        super(OutputConfigType.TERSE, toolbox, readOnly)
     }
 
     getCapabilityDescription(): CapabilityDescription {

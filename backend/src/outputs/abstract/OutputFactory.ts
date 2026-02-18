@@ -19,27 +19,31 @@ import { Output } from "./Output"
  * No switch statements - each output type is registered independently.
  */
 export class OutputFactory {
-    public static readonly OUTPUT_REGISTRY: Map<OutputConfigType, () => Output<ConfigInstance>> = new Map<OutputConfigType, () => Output<ConfigInstance>>([
-        [OutputConfigType.NOTION, () => new NotionOutput()],
-        [OutputConfigType.CONFLUENCE, () => new ConfluenceOutput()],
-        [OutputConfigType.LINEAR_TICKET, () => new LinearTicketOutput()],
-        [OutputConfigType.JIRA_TICKET, () => new JiraTicketOutput()],
-        [OutputConfigType.SLACK_CHANNEL, () => new SlackOutput()],
-        [OutputConfigType.GMAIL, () => new GmailOutput()],
-        [OutputConfigType.TERSE, () => new TerseSkillsOutput()],
-        [OutputConfigType.ATTIO, () => new AttioOutput()]
+    public static readonly OUTPUT_REGISTRY: Map<OutputConfigType, (readOnly?: boolean) => Output<ConfigInstance>> = new Map<
+        OutputConfigType,
+        (readOnly?: boolean) => Output<ConfigInstance>
+    >([
+        [OutputConfigType.NOTION, (readOnly = false) => new NotionOutput(readOnly)],
+        [OutputConfigType.CONFLUENCE, (readOnly = false) => new ConfluenceOutput(readOnly)],
+        [OutputConfigType.LINEAR_TICKET, (readOnly = false) => new LinearTicketOutput(readOnly)],
+        [OutputConfigType.JIRA_TICKET, (readOnly = false) => new JiraTicketOutput(readOnly)],
+        [OutputConfigType.SLACK_CHANNEL, (readOnly = false) => new SlackOutput(readOnly)],
+        [OutputConfigType.GMAIL, (readOnly = false) => new GmailOutput(readOnly)],
+        [OutputConfigType.TERSE, (readOnly = false) => new TerseSkillsOutput(readOnly)],
+        [OutputConfigType.ATTIO, (readOnly = false) => new AttioOutput(readOnly)]
     ])
 
-    static createOutput(integrationType: OutputConfigType): Output<ConfigInstance> | null {
+    static createOutput(integrationType: OutputConfigType, readOnly = false): Output<ConfigInstance> | null {
         const factory = this.OUTPUT_REGISTRY.get(integrationType)
         if (!factory) {
             return null
         }
-        return factory()
+        return factory(readOnly)
     }
 
     static createOutputWithConfigs(configType: OutputConfigType, configs: AgentOutputWithConfigs[]): Output<ConfigInstance> | null {
-        const output = this.createOutput(configType)
+        const readOnly = configs.length > 0 && configs.every(config => config.read_only)
+        const output = this.createOutput(configType, readOnly)
         if (!output) {
             return null
         }

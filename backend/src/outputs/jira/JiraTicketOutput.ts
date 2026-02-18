@@ -16,13 +16,13 @@ import { jiraSearchTicketTool } from "./tools/searchTicket"
 import { jiraUpdateTicketTool } from "./tools/updateTicket"
 
 export class JiraTicketOutput extends Output<JiraConfig> {
-    constructor() {
+    constructor(readOnly = false) {
         const toolbox: ToolboxEntry[] = [
             { tool: jiraSearchTicketTool as Tool, isReadOnly: true, integration: IntegrationType.ATLASSIAN, displayName: "Search tickets" },
             { tool: jiraCreateTicketTool as Tool, isReadOnly: false, integration: IntegrationType.ATLASSIAN, displayName: "Create ticket" },
             { tool: jiraUpdateTicketTool as Tool, isReadOnly: false, integration: IntegrationType.ATLASSIAN, displayName: "Update ticket" }
         ]
-        super(OutputConfigType.JIRA_TICKET, toolbox)
+        super(OutputConfigType.JIRA_TICKET, toolbox, readOnly)
     }
 
     getCapabilityDescription(): CapabilityDescription {

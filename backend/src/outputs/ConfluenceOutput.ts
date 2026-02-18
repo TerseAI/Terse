@@ -24,7 +24,7 @@ import { Output, ToolboxEntry } from "./abstract/Output"
 // MARK: - Exports
 
 export class ConfluenceOutput extends Output<ConfluenceConfig> {
-    constructor() {
+    constructor(readOnly = false) {
         const toolbox: ToolboxEntry[] = [
             {
                 tool: confluenceQueryPageTool as Tool,
@@ -39,7 +39,7 @@ export class ConfluenceOutput extends Output<ConfluenceConfig> {
                 displayName: "Add comment"
             }
         ]
-        super(OutputConfigType.CONFLUENCE, toolbox)
+        super(OutputConfigType.CONFLUENCE, toolbox, readOnly)
     }
 
     getCapabilityDescription(): CapabilityDescription {

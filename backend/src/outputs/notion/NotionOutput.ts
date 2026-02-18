@@ -23,7 +23,7 @@ import {
 } from "./tools"
 
 export class NotionOutput extends Output<NotionConfig> {
-    constructor() {
+    constructor(readOnly = false) {
         const toolbox: ToolboxEntry[] = [
             { tool: notionGetSchemaTool as Tool, isReadOnly: true, integration: IntegrationType.NOTION, displayName: "Get datasource schema" },
             { tool: notionQueryDatabaseTool as Tool, isReadOnly: true, integration: IntegrationType.NOTION, displayName: "Query database" },
@@ -34,7 +34,7 @@ export class NotionOutput extends Output<NotionConfig> {
             { tool: fetchRelatedEventsTool as Tool, isReadOnly: true, integration: IntegrationType.NOTION, displayName: "Fetch related events" },
             { tool: notionListUsersTool as Tool, isReadOnly: true, integration: IntegrationType.NOTION, displayName: "List workspace users" }
         ]
-        super(OutputConfigType.NOTION, toolbox)
+        super(OutputConfigType.NOTION, toolbox, readOnly)
     }
 
     getCapabilityDescription(): CapabilityDescription {
