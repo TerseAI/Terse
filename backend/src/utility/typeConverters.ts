@@ -1,6 +1,7 @@
 import { InputConfigType, KnowledgeBaseConfigType, OutputConfigType, IntegrationType as PrismaIntegrationType, RunHistoryStatus as PrismaRunHistoryStatus } from "@prisma/client"
 
 import {
+    AttioOutputConfig,
     ConfigInstance,
     ConfigType,
     ConfluenceConfig,
@@ -55,6 +56,8 @@ export const convertIntegrationTypeToPrismaIntegrationType = (integrationType: I
             return PrismaIntegrationType.DATADOG
         case IntegrationType.WORKOS:
             return PrismaIntegrationType.WORKOS
+        case IntegrationType.ATTIO:
+            return PrismaIntegrationType.ATTIO
         default:
             throw integrationType satisfies never
     }
@@ -92,6 +95,8 @@ export const convertPrismaIntegrationTypeToIntegrationType = (prismaIntegrationT
             return IntegrationType.DATADOG
         case PrismaIntegrationType.WORKOS:
             return IntegrationType.WORKOS
+        case PrismaIntegrationType.ATTIO:
+            return IntegrationType.ATTIO
         default:
             throw prismaIntegrationType satisfies never
     }
@@ -129,6 +134,8 @@ export const convertIntegrationTypeToPrismaIntegrationTypeForRunHistory = (integ
             return PrismaIntegrationType.DATADOG
         case IntegrationType.WORKOS:
             return PrismaIntegrationType.WORKOS
+        case IntegrationType.ATTIO:
+            return PrismaIntegrationType.ATTIO
         default:
             throw integrationType satisfies never
     }
@@ -167,6 +174,8 @@ export const convertPrismaIntegrationTypeToIntegrationTypeFromRunHistory = (pris
             return IntegrationType.DATADOG
         case PrismaIntegrationType.WORKOS:
             return IntegrationType.WORKOS
+        case PrismaIntegrationType.ATTIO:
+            return IntegrationType.ATTIO
         default:
             throw prismaIntegrationType satisfies never
     }
@@ -313,6 +322,10 @@ export const convertPrismaOutputConfigToConfigInstance = (channelOutput: AgentOu
         return new GmailOutputConfig(integrationId)
     }
 
+    if (channelOutput.attio_config) {
+        return new AttioOutputConfig(integrationId, channelOutput.attio_config.object_slug)
+    }
+
     // Type guard to ensure we implement conversion here
     switch (channelOutput.config_type) {
         case OutputConfigType.NOTION:
@@ -322,6 +335,7 @@ export const convertPrismaOutputConfigToConfigInstance = (channelOutput: AgentOu
         case OutputConfigType.SLACK_CHANNEL:
         case OutputConfigType.GMAIL:
         case OutputConfigType.TERSE:
+        case OutputConfigType.ATTIO:
             break
         default:
             throw channelOutput.config_type satisfies never
@@ -377,6 +391,8 @@ export const convertConfigTypeToInputConfigType = (configType: ConfigType): Inpu
             throw new Error("SLACK_KB is a knowledge base type, not an input type")
         case ConfigType.TERSE:
             throw new Error("TERSE is an output type, not an input type")
+        case ConfigType.ATTIO_OUTPUT:
+            throw new Error("ATTIO_OUTPUT is an output type, not an input type")
         default:
             throw configType satisfies never
     }
@@ -431,8 +447,10 @@ export const convertConfigTypeToOutputConfigType = (configType: ConfigType): Out
             return OutputConfigType.GMAIL
         case ConfigType.TERSE:
             return OutputConfigType.TERSE
+        case ConfigType.ATTIO_OUTPUT:
+            return OutputConfigType.ATTIO
         default:
-            throw new Error(`ConfigType ${configType} is not a valid output config type. Supported: NOTION, CONFLUENCE, LINEAR, JIRA, SLACK_OUTPUT, GMAIL_OUTPUT, TERSE.`)
+            throw new Error(`ConfigType ${configType} is not a valid output config type. Supported: NOTION, CONFLUENCE, LINEAR, JIRA, SLACK_OUTPUT, GMAIL_OUTPUT, TERSE, ATTIO.`)
     }
 }
 
@@ -455,6 +473,8 @@ export const convertOutputConfigTypeToConfigType = (outputConfigType: OutputConf
             return ConfigType.GMAIL_OUTPUT
         case OutputConfigType.TERSE:
             return ConfigType.TERSE
+        case OutputConfigType.ATTIO:
+            return ConfigType.ATTIO_OUTPUT
         default:
             throw outputConfigType satisfies never
     }
@@ -480,6 +500,8 @@ export const convertOutputConfigTypeToIntegrationType = (outputConfigType: Outpu
             return IntegrationType.GMAIL
         case OutputConfigType.TERSE:
             return IntegrationType.TERSE
+        case OutputConfigType.ATTIO:
+            return IntegrationType.ATTIO
         default:
             throw outputConfigType satisfies never
     }

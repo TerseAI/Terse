@@ -14,6 +14,7 @@ import "./integrations/IntegrationTaskHandler"
 import logger from "./logger"
 import { getRealtimeSocket, initializeRealtimeSocket } from "./realtimeSocket"
 import { createAgent, deleteAgent, getRecentAgents, getUserAgent, getUserAgents, updateAgent } from "./routes/agents"
+import { attioOAuthCallback, getAttioIntegrations, getAttioObjects } from "./routes/attio"
 import { authMiddleware, authMiddlewareAllowNoOrg, callback, getWorkOSWidgetToken, login, logout, logoutUrl, me } from "./routes/auth"
 import { githubAppCallbackIntegrate } from "./routes/auth/githubAuth"
 import { getBuilderChatHistory } from "./routes/builderChat"
@@ -343,6 +344,20 @@ app.get(ApiRoutes.NOTION.OAUTH_CALLBACK, async (req, res) => {
 
 app.get(ApiRoutes.NOTION.RESOURCES, authMiddleware, async (req, res) => {
     getNotionResources(req, res)
+})
+
+// MARK: ATTIO
+
+app.get(ApiRoutes.ATTIO.INTEGRATIONS, authMiddleware, async (req, res) => {
+    getAttioIntegrations(req, res)
+})
+
+app.get(ApiRoutes.ATTIO.OAUTH_CALLBACK, async (req, res) => {
+    attioOAuthCallback(req, res)
+})
+
+app.get(ApiRoutes.ATTIO.OBJECTS.pattern, authMiddleware, async (req, res) => {
+    getAttioObjects(req, res)
 })
 
 // MARK: FIGMA

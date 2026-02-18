@@ -74,6 +74,11 @@ export const ToolName = {
     DATADOG_LIST_RUM_EVENTS: "listRumEvents",
     DATADOG_AGGREGATE_RUM_EVENTS: "aggregateRumEvents",
 
+    // Attio Tools
+    ATTIO_UPSERT_RECORD: "attio_upsert_record",
+    ATTIO_QUERY_RECORDS: "attio_query_records",
+    ATTIO_LIST_OBJECTS: "attio_list_objects",
+
     // Terse
     WEB_SEARCH: "web_search"
 } as const

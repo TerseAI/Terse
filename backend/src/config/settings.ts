@@ -107,6 +107,13 @@ export const settings = {
         signingSecret: requireEnv("LINEAR_WEBHOOK_SIGNING_SECRET")
     },
 
+    // Attio OAuth
+    attio: {
+        clientId: requireEnv("ATTIO_CLIENT_ID"),
+        clientSecret: requireEnv("ATTIO_CLIENT_SECRET"),
+        redirectUri: requireEnv("ATTIO_REDIRECT_URI")
+    },
+
     // Atlassian OAuth
     atlassian: {
         clientId: requireEnv("ATLASSIAN_CLIENT_ID"),
@@ -154,7 +161,7 @@ export const settings = {
 } as const
 
 // Export individual settings for convenience
-export const { jwt, database, openai, urls, nodeEnv, gmail, githubApp, notion, figma, slack, gcp, gcs, cloudScheduler, optional } = settings
+export const { jwt, database, openai, urls, nodeEnv, gmail, githubApp, notion, figma, slack, attio, gcp, gcs, cloudScheduler, optional } = settings
 
 // Type exports
 export type Settings = typeof settings
