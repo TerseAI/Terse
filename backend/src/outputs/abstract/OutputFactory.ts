@@ -2,6 +2,7 @@ import { OutputConfigType } from "@prisma/client"
 
 import { ConfigInstance } from "../../shared/Configs"
 import { AgentOutputWithConfigs, AgentWithRelations } from "../../types/prisma"
+import { AttioOutput } from "../attio/AttioOutput"
 import { ConfluenceOutput } from "../ConfluenceOutput"
 import { GmailOutput } from "../gmail/GmailOutput"
 import { JiraTicketOutput } from "../jira/JiraTicketOutput"
@@ -25,7 +26,8 @@ export class OutputFactory {
         [OutputConfigType.JIRA_TICKET, () => new JiraTicketOutput()],
         [OutputConfigType.SLACK_CHANNEL, () => new SlackOutput()],
         [OutputConfigType.GMAIL, () => new GmailOutput()],
-        [OutputConfigType.TERSE, () => new TerseSkillsOutput()]
+        [OutputConfigType.TERSE, () => new TerseSkillsOutput()],
+        [OutputConfigType.ATTIO, () => new AttioOutput()]
     ])
 
     static createOutput(integrationType: OutputConfigType): Output<ConfigInstance> | null {

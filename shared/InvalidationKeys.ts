@@ -115,6 +115,14 @@ export const attioIntegrationsKey = (): readonly [string] => {
     return ["attioIntegrations"] as const
 }
 
+export const attioObjectsKey = (integrationId: string | null | undefined): readonly [string, string] | null => {
+    if (!integrationId) {
+        return null
+    }
+
+    return ["attioObjects", integrationId] as const
+}
+
 export const allRunHistoryKey = (params?: GetRunHistoryParams): readonly [string, string] | readonly [string] => {
     if (!params || Object.keys(params).length === 0) {
         return ["allRunHistory"] as const
