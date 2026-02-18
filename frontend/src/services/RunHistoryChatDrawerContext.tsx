@@ -1,55 +1,93 @@
 import { createContext, useCallback, useContext, useState } from "react"
+import { useSearchParams } from "react-router-dom"
 
 import RunHistoryChatDrawer from "@/components/RunHistory/RunHistoryChatDrawer"
 import { RunHistoryRecord } from "@/shared/RunHistoryTypes"
 
+const RUN_ID_PARAM = "runId"
+
 export type DrawerConfig = {
     runs: RunHistoryRecord[]
-    currentRunIndex: number
-    onNavigate?: (runId: string) => void
-    onClose?: () => void
+    initialRunIndex: number
     isInitialOpen?: boolean
 }
 
 type ContextValue = {
     openDrawer: (config: DrawerConfig) => void
     closeDrawer: () => void
+    openRunId: string | null
 }
 
 const RunHistoryChatDrawerContext = createContext<ContextValue | null>(null)
 
 export function RunHistoryChatDrawerProvider({ children }: { children: React.ReactNode }) {
-    const [config, setConfig] = useState<DrawerConfig | null>(null)
+    const [searchParams, setSearchParams] = useSearchParams()
+    const [runs, setRuns] = useState<RunHistoryRecord[]>([])
+    const [currentRunIndex, setCurrentRunIndex] = useState(0)
     const [isOpen, setIsOpen] = useState(false)
+    const [isFullscreen, setIsFullscreen] = useState(false)
+    const [isInitialOpen, setIsInitialOpen] = useState(true)
+
+    const openRunId = isOpen ? (runs[currentRunIndex]?.id ?? null) : null
 
     const openDrawer = (newConfig: DrawerConfig) => {
-        setConfig(newConfig)
+        const run = newConfig.runs[newConfig.initialRunIndex]
+        setRuns(newConfig.runs)
+        setCurrentRunIndex(newConfig.initialRunIndex)
+        setIsInitialOpen(newConfig.isInitialOpen ?? true)
         setIsOpen(true)
+
+        if (run) {
+            setSearchParams(
+                prev => {
+                    const next = new URLSearchParams(prev)
+                    next.set(RUN_ID_PARAM, run.id)
+                    return next
+                },
+                { replace: true }
+            )
+        }
     }
 
     const closeDrawer = () => {
         setIsOpen(false)
+        setIsFullscreen(false)
+        setSearchParams(
+            prev => {
+                const next = new URLSearchParams(prev)
+                next.delete(RUN_ID_PARAM)
+                return next
+            },
+            { replace: true }
+        )
     }
 
     const handleOpenChange = (open: boolean) => {
-        if (!open) {
-            config?.onClose?.()
-            closeDrawer()
-        }
+        if (!open) closeDrawer()
     }
 
+    const handleNavigate = useCallback(
+        (runId: string) => {
+            const newIndex = runs.findIndex(r => r.id === runId)
+            if (newIndex === -1) return
+            setCurrentRunIndex(newIndex)
+            setSearchParams(
+                prev => {
+                    const next = new URLSearchParams(prev)
+                    next.set(RUN_ID_PARAM, runId)
+                    return next
+                },
+                { replace: true }
+            )
+        },
+        [runs, setSearchParams]
+    )
+
     return (
-        <RunHistoryChatDrawerContext.Provider value={{ openDrawer, closeDrawer }}>
+        <RunHistoryChatDrawerContext.Provider value={{ openDrawer, closeDrawer, openRunId }}>
             {children}
-            {config && (
-                <RunHistoryChatDrawer
-                    isOpen={isOpen}
-                    onOpenChange={handleOpenChange}
-                    runs={config.runs}
-                    currentRunIndex={config.currentRunIndex}
-                    onNavigate={config.onNavigate}
-                    isInitialOpen={config.isInitialOpen}
-                />
+            {runs.length > 0 && (
+                <RunHistoryChatDrawer isOpen={isOpen} onOpenChange={handleOpenChange} runs={runs} currentRunIndex={currentRunIndex} onNavigate={handleNavigate} isInitialOpen={isInitialOpen} />
             )}
         </RunHistoryChatDrawerContext.Provider>
     )

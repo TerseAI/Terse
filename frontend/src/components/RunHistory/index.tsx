@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from "react"
-import { useSearchParams } from "react-router-dom"
 
 import { useRunHistory } from "../../hooks/api/useRunHistory"
 import { useRunHistoryChatDrawer } from "../../services/RunHistoryChatDrawerContext"
@@ -18,10 +17,9 @@ type RunHistoryProps = {
 }
 
 export default function RunHistory({ agentId, onTriggerNow }: RunHistoryProps) {
-    const [searchParams, setSearchParams] = useSearchParams()
     const [currentPage, setCurrentPage] = useState(1)
     const [runsPerPage, setRunsPerPage] = useState(10)
-    const { openDrawer, closeDrawer } = useRunHistoryChatDrawer()
+    const { openDrawer } = useRunHistoryChatDrawer()
 
     const [selectedStatuses, setSelectedStatuses] = useState<Set<RunHistoryStatus>>(
         new Set([RunHistoryStatus.SUCCESS, RunHistoryStatus.FAILED, RunHistoryStatus.IN_PROGRESS, RunHistoryStatus.AWAITING_APPROVAL])
@@ -31,10 +29,6 @@ export default function RunHistory({ agentId, onTriggerNow }: RunHistoryProps) {
         from: undefined,
         to: undefined
     })
-
-    // Get runId from URL params for deep linking
-    const urlRunId = searchParams.get("runId")
-    const [openDrawerRunId, setOpenDrawerRunId] = useState<string | null>(urlRunId || null)
 
     // Keep a reference to the currently viewed run so it doesn't disappear if filtered out
     const pinnedRunRef = useRef<RunHistoryRecord | null>(null)
@@ -52,46 +46,14 @@ export default function RunHistory({ agentId, onTriggerNow }: RunHistoryProps) {
         selectedStatuses
     })
 
-    // Handle URL parameter changes for deep linking
-    useEffect(() => {
-        const urlRunId = searchParams.get("runId")
-        if (urlRunId && urlRunId !== openDrawerRunId) {
-            const wasClosed = openDrawerRunId === null
-            setOpenDrawerRunId(urlRunId)
-            openDrawer({
-                runs: paginatedRuns,
-                currentRunIndex: currentDrawerRunIndex ?? 0,
-                onNavigate: newRunId => {
-                    if (openDrawerRunId === newRunId) {
-                        return
-                    }
-                }
-            })
-            if (wasClosed) {
-            }
-        } else if (!urlRunId && openDrawerRunId) {
-            // If URL param is removed but drawer is still open, close it
-            setOpenDrawerRunId(null)
-        }
-    }, [searchParams, openDrawerRunId])
-
     // Update the pinned run reference when we have a new run with the open drawer ID
     useEffect(() => {
-        if (openDrawerRunId) {
-            const currentRun = remoteRuns.find(r => r.id === openDrawerRunId)
-            if (currentRun) {
-                // Update the pinned run with fresh data
-                pinnedRunRef.current = currentRun
-            }
-        } else {
-            // Clear the pinned run when drawer is closed
-            pinnedRunRef.current = null
-        }
-    }, [openDrawerRunId, remoteRuns])
+        pinnedRunRef.current = remoteRuns[0]
+    }, [remoteRuns])
 
     // Include the pinned run in the list if it's not already there
     const filteredRuns = useMemo(() => {
-        if (!openDrawerRunId || !pinnedRunRef.current) {
+        if (!pinnedRunRef.current) {
             return remoteRuns
         }
 
@@ -118,18 +80,11 @@ export default function RunHistory({ agentId, onTriggerNow }: RunHistoryProps) {
         }
 
         return runsWithPinned
-    }, [remoteRuns, openDrawerRunId])
+    }, [remoteRuns])
 
     const totalPages = Math.ceil(total / runsPerPage) || 1
     const startIndex = (currentPage - 1) * runsPerPage
     const paginatedRuns = filteredRuns // server provides paginated items already
-    const currentDrawerRunIndex = useMemo(() => {
-        if (!openDrawerRunId) {
-            return undefined
-        }
-        const index = paginatedRuns.findIndex(run => run.id === openDrawerRunId)
-        return index >= 0 ? index : undefined
-    }, [openDrawerRunId, paginatedRuns])
     const toggleStatus = (status: RunHistoryStatus) => {
         const next = new Set(selectedStatuses)
         next.has(status) ? next.delete(status) : next.add(status)
@@ -193,14 +148,10 @@ export default function RunHistory({ agentId, onTriggerNow }: RunHistoryProps) {
                                     key={run.id}
                                     run={run}
                                     onViewChat={runId => {
-                                        if (openDrawerRunId === runId) {
-                                            return
-                                        }
-                                        setOpenDrawerRunId(runId)
-                                        // Update URL to include runId for deep linking
-                                        const nextParams = new URLSearchParams(searchParams)
-                                        nextParams.set("runId", runId)
-                                        setSearchParams(nextParams, { replace: true })
+                                        openDrawer({
+                                            runs: paginatedRuns,
+                                            initialRunIndex: paginatedRuns.findIndex(run => run.id === runId)
+                                        })
                                     }}
                                 />
                             ))}
