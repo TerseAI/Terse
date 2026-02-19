@@ -72,9 +72,7 @@ export function WorkOSKnowledgeBaseIntegration({ knowledgeBase, variant, setConf
                 </Select>
             </div>
 
-            <p className="text-xs text-muted-foreground">
-                This knowledge base gives the agent access to fetch and search users from your WorkOS account.
-            </p>
+            <p className="text-xs text-muted-foreground">This knowledge base gives the agent access to fetch and search users from your WorkOS account.</p>
 
             {selectedIntegrationId && (
                 <div className="flex items-center gap-1.5 text-xs text-green-600 dark:text-green-500">
