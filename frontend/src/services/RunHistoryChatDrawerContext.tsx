@@ -25,7 +25,6 @@ export function RunHistoryChatDrawerProvider({ children }: { children: React.Rea
     const [runs, setRuns] = useState<RunHistoryRecord[]>([])
     const [currentRunIndex, setCurrentRunIndex] = useState(0)
     const [isOpen, setIsOpen] = useState(false)
-    const [isInitialOpen, setIsInitialOpen] = useState(true)
 
     const openRunId = isOpen ? (runs[currentRunIndex]?.id ?? null) : null
 
@@ -33,7 +32,6 @@ export function RunHistoryChatDrawerProvider({ children }: { children: React.Rea
         const run = newConfig.runs[newConfig.initialRunIndex]
         setRuns(newConfig.runs)
         setCurrentRunIndex(newConfig.initialRunIndex)
-        setIsInitialOpen(newConfig.isInitialOpen ?? true)
         setIsOpen(true)
 
         if (run) {
@@ -84,9 +82,7 @@ export function RunHistoryChatDrawerProvider({ children }: { children: React.Rea
     return (
         <RunHistoryChatDrawerContext.Provider value={{ openDrawer, closeDrawer, openRunId }}>
             {children}
-            {runs.length > 0 && (
-                <RunHistoryChatDrawer isOpen={isOpen} onOpenChange={handleOpenChange} runs={runs} currentRunIndex={currentRunIndex} onNavigate={handleNavigate} isInitialOpen={isInitialOpen} />
-            )}
+            {runs.length > 0 && <RunHistoryChatDrawer isOpen={isOpen} onOpenChange={handleOpenChange} runs={runs} currentRunIndex={currentRunIndex} onNavigate={handleNavigate} />}
         </RunHistoryChatDrawerContext.Provider>
     )
 }

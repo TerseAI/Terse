@@ -15,10 +15,9 @@ type Props = {
     onOpenChange: (open: boolean) => void
     onNavigate?: (runId: string) => void
     onFullscreenChange?: (fullscreen: boolean) => void
-    isInitialOpen?: boolean
 }
 
-export default function RunHistoryChatDrawer({ isOpen, onOpenChange, runs, currentRunIndex, onNavigate, onFullscreenChange, isInitialOpen = true }: Props) {
+export default function RunHistoryChatDrawer({ isOpen, onOpenChange, runs, currentRunIndex, onNavigate, onFullscreenChange }: Props) {
     const [internalFullscreen, setInternalFullscreen] = useState(false)
     const chatRef = useRef<ChatHandle>(null)
 
@@ -32,7 +31,7 @@ export default function RunHistoryChatDrawer({ isOpen, onOpenChange, runs, curre
         }
     }
 
-    const runId = runs?.[currentRunIndex ?? 0]?.id
+    const runId = runs[currentRunIndex].id
     const runNumber = currentRunIndex + 1
     const totalEvents = runs.length
     const status = runs[currentRunIndex].status
@@ -40,12 +39,11 @@ export default function RunHistoryChatDrawer({ isOpen, onOpenChange, runs, curre
     const filtered = runs[currentRunIndex].filtered
 
     return (
-        <Drawer open={isOpen} onOpenChange={onOpenChange} direction="right" shouldScaleBackground={isInitialOpen} handleOnly>
+        <Drawer open={isOpen} onOpenChange={onOpenChange} direction="right" handleOnly>
             <DrawerContent
                 className={cn(
                     "flex flex-col overflow-hidden",
-                    isFullscreen ? "!w-screen !h-screen !max-w-none !max-h-none !rounded-none !m-0" : "!w-full sm:!w-[600px] md:!w-[700px] lg:!w-[800px] !max-w-[100vw] h-full",
-                    !isInitialOpen && "[&[data-state=open]]:!animate-none [&[data-state=closed]]:!animate-none [&+*]:!animate-none"
+                    isFullscreen ? "!w-screen !h-screen !max-w-none !max-h-none !rounded-none !m-0" : "!w-full sm:!w-[600px] md:!w-[700px] lg:!w-[800px] !max-w-[100vw] h-full"
                 )}
             >
                 <RunHistoryChatAdapter key={runId} runId={runId} status={status}>

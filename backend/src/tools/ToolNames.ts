@@ -79,6 +79,10 @@ export const ToolName = {
     ATTIO_QUERY_RECORDS: "attio_query_records",
     ATTIO_LIST_OBJECTS: "attio_list_objects",
 
+    // WorkOS Knowledge Base Tools
+    WORKOS_LIST_USERS: "listWorkOSUsers",
+    WORKOS_GET_USER: "getWorkOSUser",
+
     // Terse
     WEB_SEARCH: "web_search"
 } as const

@@ -11,7 +11,8 @@ import type {
     automation_notion_configs,
     automation_posthog_configs,
     automation_slack_configs,
-    automation_slack_kb_configs
+    automation_slack_kb_configs,
+    automation_workos_kb_configs
 } from "@prisma/client"
 import { KnowledgeBaseConfigType, OutputConfigType } from "@prisma/client"
 
@@ -169,9 +170,11 @@ type KBDummyPayload =
     | { config_type: typeof KnowledgeBaseConfigType.DATADOG; datadog_config: Pick<automation_datadog_configs, "default_indexes"> }
     | { config_type: typeof KnowledgeBaseConfigType.LINEAR; linear_kb_config: Pick<automation_linear_kb_configs, "team_id" | "team_name" | "project_id" | "project_name"> }
     | { config_type: typeof KnowledgeBaseConfigType.SLACK; slack_kb_config: Pick<automation_slack_kb_configs, "channel_ids" | "allow_dms" | "user_ids"> }
+    | { config_type: typeof KnowledgeBaseConfigType.WORKOS; workos_kb_config: Pick<automation_workos_kb_configs, "id" | "automation_knowledge_base_id"> }
+    | { config_type: typeof KnowledgeBaseConfigType.WORKOS }
 
 export function buildDummyKnowledgeBaseConfig(integration_id: string, payload: KBDummyPayload): AgentKnowledgeBaseWithConfigs {
-    const base: Omit<AgentKnowledgeBaseWithConfigs, "posthog_config" | "github_kb_config" | "launchdarkly_config" | "datadog_config" | "linear_kb_config" | "slack_kb_config"> = {
+    const base: Omit<AgentKnowledgeBaseWithConfigs, "posthog_config" | "github_kb_config" | "launchdarkly_config" | "datadog_config" | "linear_kb_config" | "slack_kb_config" | "workos_kb_config"> = {
         id: DUMMY_ID,
         automation_id: DUMMY_ID,
         integration_id,
@@ -186,7 +189,8 @@ export function buildDummyKnowledgeBaseConfig(integration_id: string, payload: K
         launchdarkly_config: null as AgentKnowledgeBaseWithConfigs["launchdarkly_config"],
         datadog_config: null as AgentKnowledgeBaseWithConfigs["datadog_config"],
         linear_kb_config: null as AgentKnowledgeBaseWithConfigs["linear_kb_config"],
-        slack_kb_config: null as AgentKnowledgeBaseWithConfigs["slack_kb_config"]
+        slack_kb_config: null as AgentKnowledgeBaseWithConfigs["slack_kb_config"],
+        workos_kb_config: null as AgentKnowledgeBaseWithConfigs["workos_kb_config"]
     }
 
     switch (payload.config_type) {
@@ -250,6 +254,15 @@ export function buildDummyKnowledgeBaseConfig(integration_id: string, payload: K
                     channel_names: [],
                     user_names: [],
                     ...payload.slack_kb_config
+                }
+            }
+        case KnowledgeBaseConfigType.WORKOS:
+            return {
+                ...base,
+                ...nullConfigs,
+                workos_kb_config: {
+                    id: DUMMY_ID,
+                    automation_knowledge_base_id: DUMMY_ID
                 }
             }
         default: {
