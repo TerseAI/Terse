@@ -3,6 +3,7 @@ import { IntegrationType } from "./Integrations"
 export enum ConfigType {
     GMAIL = "gmail",
     GMAIL_OUTPUT = "gmail_output",
+    GMAIL_DRAFT_OUTPUT = "gmail_draft_output",
     FIGMA = "figma",
     SLACK = "slack",
     SLACK_OUTPUT = "slack_output",
@@ -81,6 +82,16 @@ export const GmailOutputConfigMetadata = {
     configType: ConfigType.GMAIL_OUTPUT,
     name: "Gmail",
     description: "Send emails via Gmail",
+    integrationType: IntegrationType.GMAIL,
+    isInput: false,
+    isOutput: true,
+    isKnowledgeBase: false
+} as const satisfies ConfigDetails
+
+export const GmailDraftOutputConfigMetadata = {
+    configType: ConfigType.GMAIL_DRAFT_OUTPUT,
+    name: "Gmail Draft",
+    description: "Create draft emails in Gmail",
     integrationType: IntegrationType.GMAIL,
     isInput: false,
     isOutput: true,
@@ -262,6 +273,7 @@ export type ConfigDetailsMap = Record<ConfigType, ConfigDetails>
 export const CONFIG_DETAILS: ConfigDetailsMap = {
     [ConfigType.GMAIL]: GmailConfigMetadata,
     [ConfigType.GMAIL_OUTPUT]: GmailOutputConfigMetadata,
+    [ConfigType.GMAIL_DRAFT_OUTPUT]: GmailDraftOutputConfigMetadata,
     [ConfigType.FIGMA]: FigmaConfigMetadata,
     [ConfigType.SLACK]: SlackConfigMetadata,
     [ConfigType.SLACK_OUTPUT]: SlackOutputConfigMetadata,
@@ -414,6 +426,21 @@ export class GmailOutputConfig implements ConfigInstance {
 
     formatForAgent(): string {
         return `Type: Gmail Output\nIntegration ID: ${this.integrationId}`
+    }
+}
+
+export class GmailDraftOutputConfig implements ConfigInstance {
+    integrationType: IntegrationType = IntegrationType.GMAIL
+    configType: ConfigType = ConfigType.GMAIL_DRAFT_OUTPUT
+
+    constructor(public integrationId: string) {}
+
+    isComplete(): boolean {
+        return true
+    }
+
+    formatForAgent(): string {
+        return `Type: Gmail Draft Output\nIntegration ID: ${this.integrationId}`
     }
 }
 
@@ -842,6 +869,7 @@ export type ConfigMetadataMap = EnsureExhaustiveMetadata<{
     [ConfigType.SLACK]: typeof SlackConfig
     [ConfigType.SLACK_OUTPUT]: typeof SlackOutputConfig
     [ConfigType.GMAIL_OUTPUT]: typeof GmailOutputConfig
+    [ConfigType.GMAIL_DRAFT_OUTPUT]: typeof GmailDraftOutputConfig
     [ConfigType.NOTION]: typeof NotionConfig
     [ConfigType.LINEAR_INPUT]: typeof LinearInputConfig
     [ConfigType.LINEAR_OUTPUT]: typeof LinearOutputConfig
@@ -864,6 +892,7 @@ export type ConfigMetadataMap = EnsureExhaustiveMetadata<{
 export const CONFIG_METADATA: ConfigMetadataMap = {
     [ConfigType.GMAIL]: GmailConfig,
     [ConfigType.GMAIL_OUTPUT]: GmailOutputConfig,
+    [ConfigType.GMAIL_DRAFT_OUTPUT]: GmailDraftOutputConfig,
     [ConfigType.FIGMA]: FigmaConfig,
     [ConfigType.SLACK]: SlackConfig,
     [ConfigType.SLACK_OUTPUT]: SlackOutputConfig,
