@@ -82,12 +82,12 @@ function Home() {
     }, [hasStartedChat])
 
     // Run drawer handlers
-    const handleOpenChat = useCallback((run: RunHistoryRecordWithAgent) => {
+    const handleOpenChat = (run: RunHistoryRecordWithAgent) => {
         openDrawer({
             runs: recentRuns,
             initialRunIndex: recentRuns.findIndex(r => r.id === run.id)
         })
-    }, [])
+    }
 
     const handleClearChat = () => {
         resetSessionId()
