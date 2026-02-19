@@ -137,9 +137,6 @@ importers:
       redis:
         specifier: ^5.9.0
         version: 5.10.0
-      rfc2047:
-        specifier: ^4.0.1
-        version: 4.0.1
       socket.io:
         specifier: ^4.8.1
         version: 4.8.1
@@ -189,9 +186,6 @@ importers:
       '@types/pg':
         specifier: ^8.15.4
         version: 8.15.5
-      '@types/rfc2047':
-        specifier: ^2.0.3
-        version: 2.0.3
       '@types/uuid':
         specifier: ^10.0.0
         version: 10.0.0
@@ -1059,9 +1053,6 @@ packages:
 
   '@types/retry@0.12.0':
     resolution: {integrity: sha512-wWKOClTTiizcZhXnPY4wikVAwmdYHp8q6DmC+EJUzAMsycb7HB32Kh9RN4+0gExjmPmZSAQjgURXIGATPegAvA==}
-
-  '@types/rfc2047@2.0.3':
-    resolution: {integrity: sha512-ALrav8usNLr6OmfHPPmx6om2rgwCQaZaLw2nW+VoH43ZzU6nPbUhejE5+kyEtqr5F54aLuK9Mv6sRwYCgBYc0w==}
 
   '@types/send@0.17.5':
     resolution: {integrity: sha512-z6F2D3cOStZvuk2SaP6YrwkNO65iTZcwA2ZkSABegdkAh/lf+Aa/YQndZVfmEXT5vgAp6zv06VQ3ejSVjAny4w==}
@@ -2517,9 +2508,6 @@ packages:
     resolution: {integrity: sha512-g6QUff04oZpHs0eG5p83rFLhHeV00ug/Yf9nZM6fLeUrPguBTkTQOdpAWWspMh55TZfVQDPaN3NQJfbVRAxdIw==}
     engines: {iojs: '>=1.0.0', node: '>=0.10.0'}
 
-  rfc2047@4.0.1:
-    resolution: {integrity: sha512-x5zHBAZtSSZDuBNAqGEAVpsQFV+YUluIkMWVaYRMEeGoLPxNVMmg67TxRnXwmRmCB7QaneyrkWXeKqbjfcK6RA==}
-
   rimraf@2.7.1:
     resolution: {integrity: sha512-uWjbaKIK3T1OSVptzX7Nl6PvQ3qAGtKEtVRjRuazjfL3Bx5eI409VZSqgND+4UNnmzLVdPj9FqFJNPqBZFve4w==}
     deprecated: Rimraf versions prior to v4 are no longer supported
@@ -3951,8 +3939,6 @@ snapshots:
       form-data: 2.5.5
 
   '@types/retry@0.12.0': {}
-
-  '@types/rfc2047@2.0.3': {}
 
   '@types/send@0.17.5':
     dependencies:
@@ -5548,10 +5534,6 @@ snapshots:
   retry@0.13.1: {}
 
   reusify@1.1.0: {}
-
-  rfc2047@4.0.1:
-    dependencies:
-      iconv-lite: 0.4.5
 
   rimraf@2.7.1:
     dependencies:
