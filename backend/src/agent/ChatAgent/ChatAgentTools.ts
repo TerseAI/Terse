@@ -32,6 +32,7 @@ import {
     GitHubConfigSchema,
     GitHubKnowledgeBaseConfigSchema,
     GmailConfigSchema,
+    GmailDraftOutputConfigSchema,
     GmailOutputConfigSchema,
     JiraConfigSchema,
     LaunchDarklyConfigSchema,
@@ -500,6 +501,7 @@ const OutputConfigSchema = z
         JiraConfigSchema,
         ConfluenceConfigSchema,
         GmailOutputConfigSchema,
+        GmailDraftOutputConfigSchema,
         AttioOutputConfigSchema
     ])
     .superRefine((value, ctx) => {

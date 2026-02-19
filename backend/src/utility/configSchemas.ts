@@ -38,6 +38,11 @@ export const GmailOutputConfigSchema = BaseConfigSchema.extend({
     integrationType: z.literal(IntegrationType.GMAIL)
 })
 
+export const GmailDraftOutputConfigSchema = BaseConfigSchema.extend({
+    configType: z.literal(ConfigType.GMAIL_DRAFT_OUTPUT),
+    integrationType: z.literal(IntegrationType.GMAIL)
+})
+
 export const FigmaConfigSchema = BaseConfigSchema.extend({
     configType: z.literal(ConfigType.FIGMA),
     integrationType: z.literal(IntegrationType.FIGMA),

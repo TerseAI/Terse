@@ -8,6 +8,7 @@ import {
     GitHubConfig,
     GitHubKBConfig,
     GmailConfig,
+    GmailDraftOutputConfig,
     GmailOutputConfig,
     JiraConfig,
     LaunchDarklyConfig,
@@ -94,6 +95,8 @@ export function deserializeConfig(jsonConfig: any): ConfigInstance {
             return new SlackOutputConfig(integrationId, slackOutputConfig.channelId, slackOutputConfig.channelName, slackOutputConfig.userIds, slackOutputConfig.userNames)
         case ConfigType.GMAIL_OUTPUT:
             return new GmailOutputConfig(integrationId)
+        case ConfigType.GMAIL_DRAFT_OUTPUT:
+            return new GmailDraftOutputConfig(integrationId)
         case ConfigType.LAUNCHDARKLY:
             const launchDarklyConfig = jsonConfig as LaunchDarklyConfig
             return new LaunchDarklyConfig(integrationId, launchDarklyConfig.projectKey, launchDarklyConfig.environmentKeys)
