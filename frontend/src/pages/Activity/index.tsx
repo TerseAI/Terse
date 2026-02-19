@@ -1,10 +1,9 @@
-import { useCallback, useState } from "react"
+import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 
 import { ExternalLink, MessageSquare, Zap } from "lucide-react"
 
 import DateRangePicker from "@/components/RunHistory/DatePicker"
-import RunHistoryChatDrawer from "@/components/RunHistory/RunHistoryChatDrawer"
 import RunHistoryEmptyState from "@/components/RunHistory/RunHistoryEmptyState"
 import RunHistoryPagination from "@/components/RunHistory/RunHistoryPagination"
 import RunHistoryStatusBadge from "@/components/RunHistory/RunHistoryStatusBadge"
@@ -16,8 +15,10 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { useAllRunHistory } from "@/hooks/api/useAllRunHistory"
 import { IconForIntegration } from "@/pages/Agents/components/Integration"
 import { FrontendRoutes } from "@/shared/FrontendRoutes"
-import { type RunHistoryRecordWithAgent, RunHistoryStatus, type RunHistoryTrigger } from "@/shared/RunHistoryTypes"
+import { type RunHistoryRecordWithAgent, RunHistoryStatus } from "@/shared/RunHistoryTypes"
 import { formatTimestamp } from "@/utility/timeUtils"
+
+import { useRunHistoryChatDrawer } from "../../services/RunHistoryChatDrawerContext"
 
 // ---------------------------------------------------------------------------
 // Sub-components
@@ -124,10 +125,6 @@ export default function ActivityPage() {
     const [searchQuery, setSearchQuery] = useState("")
     const [dateRange, setDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({ from: undefined, to: undefined })
 
-    // Drawer state
-    const [selectedRun, setSelectedRun] = useState<RunHistoryRecordWithAgent | null>(null)
-    const [isDrawerOpen, setIsDrawerOpen] = useState(false)
-
     const { runs, total, isLoading } = useAllRunHistory({
         page: currentPage,
         pageSize: runsPerPage,
@@ -135,6 +132,7 @@ export default function ActivityPage() {
         dateRange,
         selectedStatuses
     })
+    const { openDrawer } = useRunHistoryChatDrawer()
 
     const totalPages = Math.ceil(total / runsPerPage) || 1
 
@@ -159,28 +157,14 @@ export default function ActivityPage() {
         setCurrentPage(1)
     }
 
-    const handleOpenChat = useCallback((run: RunHistoryRecordWithAgent) => {
-        setSelectedRun(run)
-        setIsDrawerOpen(true)
-    }, [])
-
-    const handleDrawerClose = useCallback((open: boolean) => {
-        setIsDrawerOpen(open)
-        if (!open) setSelectedRun(null)
-    }, [])
+    const handleOpenChat = (run: RunHistoryRecordWithAgent) => {
+        openDrawer({
+            runs: runs,
+            initialRunIndex: runs.findIndex(r => r.id === run.id)
+        })
+    }
 
     const hasActiveFilters = !!searchQuery || !!dateRange.from || !!dateRange.to || selectedStatuses.size < Object.values(RunHistoryStatus).length
-
-    const drawerTrigger: RunHistoryTrigger | undefined = selectedRun
-        ? {
-              event: selectedRun.trigger.event,
-              integration: selectedRun.trigger.integration,
-              source: selectedRun.trigger.source,
-              title: selectedRun.trigger.title,
-              subheader: selectedRun.trigger.subheader,
-              url: selectedRun.trigger.url
-          }
-        : undefined
 
     const startIndex = (currentPage - 1) * runsPerPage
 
@@ -263,18 +247,6 @@ export default function ActivityPage() {
                 <div className="flex justify-center mt-6">
                     <RunHistoryPagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
                 </div>
-            )}
-
-            {/* ── Run History Chat Drawer ────────────────────────── */}
-            {selectedRun && drawerTrigger && (
-                <RunHistoryChatDrawer
-                    runId={selectedRun.id}
-                    isOpen={isDrawerOpen}
-                    onOpenChange={handleDrawerClose}
-                    status={selectedRun.status}
-                    trigger={drawerTrigger}
-                    filtered={selectedRun.filtered}
-                />
             )}
         </div>
     )
