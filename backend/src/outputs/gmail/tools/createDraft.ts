@@ -1,0 +1,236 @@
+import { RunContext, tool } from "@openai/agents"
+import { RunHistoryActionType } from "@prisma/client"
+import { google } from "googleapis"
+import { z } from "zod"
+
+import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
+import { GmailIntegrationManager, getOAuth2Client } from "../../../integrations/GmailIntegration"
+import logger from "../../../logger"
+import { db } from "../../../prismaClient"
+import { IntegrationType } from "../../../shared/Integrations"
+import { ToolName } from "../../../tools/ToolNames"
+import { createNeedsApprovalFunction, formatError } from "../../../tools/toolUtils"
+import { Session } from "../../../types/session"
+
+function encodeSubjectHeader(subject: string): string {
+    // Keep ASCII subjects unchanged; encode non-ASCII as RFC 2047 UTF-8 Base64 encoded-word.
+    if (/^[\x00-\x7F]*$/.test(subject)) {
+        return subject
+    }
+    return `=?UTF-8?B?${Buffer.from(subject, "utf8").toString("base64")}?=`
+}
+
+/**
+ * Tool for creating draft emails in Gmail.
+ * Supports both creating new drafts and draft replies to existing threads.
+ */
+export const gmailCreateDraftTool = tool({
+    name: ToolName.GMAIL_CREATE_DRAFT,
+    description: `Create a draft email in Gmail. Use thread_id (the Gmail Thread ID, not the Message-ID) to create a draft reply to an existing thread, or omit it to create a new draft email. The draft will appear in the user's Gmail Drafts folder for review before sending.`,
+    parameters: z.object({
+        integrationId: z.string().describe("The integration ID of the Gmail account to use."),
+        to: z.string().describe("Recipient email address(es). Multiple addresses can be comma-separated."),
+        subject: z.string().describe("Email subject line"),
+        body: z.string().describe("Email body content (plain text)"),
+        thread_id: z.string().nullable().optional().describe("Gmail Thread ID (numeric string from the email event, NOT the Message-ID header). Omit for new drafts."),
+        cc: z.string().nullable().optional().describe("CC recipient email address(es). Multiple addresses can be comma-separated."),
+        bcc: z.string().nullable().optional().describe("BCC recipient email address(es). Multiple addresses can be comma-separated.")
+    }),
+    needsApproval: createNeedsApprovalFunction(ToolName.GMAIL_CREATE_DRAFT),
+    execute: async ({ integrationId, to, subject, body, thread_id, cc, bcc }, runContext?: RunContext<SessionWithTracking<Session>>) => {
+        if (!runContext?.context) {
+            throw new Error("No context provided")
+        }
+
+        if (!to || !subject || !body) {
+            throw new Error("to, subject, and body are required")
+        }
+
+        try {
+            // Get Gmail integration to access refresh token
+            const organizationId = runContext.context.user.organizationId
+            const gmailIntegration = await db().gmail_integrations.findUnique({
+                where: { id: integrationId, organization_id: organizationId }
+            })
+
+            if (!gmailIntegration || !gmailIntegration.is_active) {
+                throw new Error(`Gmail integration ${integrationId} not found or is inactive`)
+            }
+
+            // Get access token (will refresh if needed)
+            const gmailIntegrationManager = new GmailIntegrationManager()
+            const accessToken = await gmailIntegrationManager.getAccessToken(integrationId)
+
+            if (!accessToken) {
+                throw new Error("Failed to get Gmail access token")
+            }
+
+            // Set up OAuth2 client
+            const oauth2Client = getOAuth2Client()
+            oauth2Client.setCredentials({
+                access_token: accessToken,
+                refresh_token: gmailIntegration.refresh_token
+            })
+
+            const gmail = google.gmail({ version: "v1", auth: oauth2Client })
+
+            // Build email headers
+            const headers: string[] = [`To: ${to}`, `Subject: ${encodeSubjectHeader(subject)}`]
+
+            if (cc) {
+                headers.push(`Cc: ${cc}`)
+            }
+
+            if (bcc) {
+                headers.push(`Bcc: ${bcc}`)
+            }
+
+            // If replying, add In-Reply-To and References headers
+            if (thread_id) {
+                try {
+                    const threadResponse = await gmail.users.threads.get({
+                        userId: "me",
+                        id: thread_id,
+                        format: "metadata",
+                        metadataHeaders: ["Message-ID", "References", "In-Reply-To"]
+                    })
+
+                    const messages = threadResponse.data.messages || []
+                    if (messages.length > 0) {
+                        const mostRecentMessage = messages[messages.length - 1]
+                        const mostRecentHeaders = mostRecentMessage.payload?.headers || []
+
+                        const getHeader = (name: string) => {
+                            const header = mostRecentHeaders.find(h => h.name?.toLowerCase() === name.toLowerCase())
+                            return header?.value || ""
+                        }
+
+                        const mostRecentMessageId = getHeader("Message-ID")
+                        const mostRecentReferences = getHeader("References")
+                        const mostRecentInReplyTo = getHeader("In-Reply-To")
+
+                        let references = mostRecentReferences || ""
+
+                        if (mostRecentMessageId) {
+                            if (references) {
+                                if (!references.includes(mostRecentMessageId)) {
+                                    references = `${references} ${mostRecentMessageId}`
+                                }
+                            } else {
+                                references = mostRecentInReplyTo || mostRecentMessageId
+                                if (mostRecentMessageId && mostRecentInReplyTo && mostRecentInReplyTo !== mostRecentMessageId) {
+                                    references = `${mostRecentInReplyTo} ${mostRecentMessageId}`
+                                }
+                            }
+                        }
+
+                        if (references) {
+                            headers.push(`References: ${references}`)
+                        }
+
+                        if (mostRecentMessageId) {
+                            headers.push(`In-Reply-To: ${mostRecentMessageId}`)
+                        }
+                    }
+                } catch (error: any) {
+                    logger.warn(`Failed to fetch original message for thread ${thread_id}`, { error, thread_id })
+                }
+            }
+
+            // Build the raw email message
+            const emailContent = [
+                ...headers,
+                "", // Empty line between headers and body
+                body
+            ].join("\r\n")
+
+            // Encode the email in base64url format (required by Gmail API)
+            const encodedMessage = Buffer.from(emailContent).toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "")
+
+            // Create the draft
+            const createRequest: any = {
+                userId: "me",
+                requestBody: {
+                    message: {
+                        raw: encodedMessage
+                    }
+                }
+            }
+
+            // If replying, include the thread ID
+            if (thread_id) {
+                createRequest.requestBody.message.threadId = thread_id
+            }
+
+            const result = await gmail.users.drafts.create(createRequest)
+
+            if (!result.data.id) {
+                throw new Error("Failed to create draft: No draft ID returned")
+            }
+
+            const draftId = result.data.id
+            const messageId = result.data.message?.id || ""
+            const draftType = thread_id ? "draft reply" : "new draft"
+            const emailPreview = body.length > 100 ? body.substring(0, 100) + "..." : body
+
+            // Build Gmail draft URL
+            const draftUrl = `https://mail.google.com/mail/u/0/#drafts?compose=${messageId}`
+
+            // Return action as part of the result
+            const action = {
+                action: `Created Gmail ${draftType}`,
+                integration: IntegrationType.GMAIL,
+                target: to,
+                details: `Created ${draftType} to ${to}: "${subject}" - ${emailPreview}`,
+                url: draftUrl,
+                type: RunHistoryActionType.create
+            }
+
+            logger.debug("[gmail_create_draft] Returning action in result", {
+                userId: runContext?.context?.user?.id || "unknown",
+                action
+            })
+
+            logger.info(`[Gmail Draft Output] ${draftType} created`, {
+                draftId,
+                messageId,
+                threadId: thread_id,
+                to,
+                subject,
+                integrationId
+            })
+
+            return {
+                success: true,
+                draft_id: draftId,
+                message_id: messageId,
+                thread_id: thread_id || result.data.message?.threadId || "",
+                draft_url: draftUrl,
+                to,
+                subject,
+                summary: `${draftType} created for ${to}: "${subject}"`,
+                is_reply: !!thread_id,
+                actions: [action]
+            }
+        } catch (error: any) {
+            logger.error(`[Gmail Draft Output] Failed to create draft`, {
+                error,
+                to,
+                subject,
+                thread_id,
+                integrationId
+            })
+
+            // Provide helpful error messages
+            if (error.code === 401 || error.message?.includes("Invalid Credentials")) {
+                throw new Error(`Gmail authentication failed. Please reconnect your Gmail integration.`)
+            } else if (error.code === 403) {
+                throw new Error(`Gmail API permission denied. Please reconnect your Gmail integration to grant the required permissions.`)
+            } else if (error.message?.includes("thread")) {
+                throw new Error(`Invalid thread ID. The thread may not exist or you may not have access to it.`)
+            }
+
+            throw new Error(`Failed to create Gmail ${thread_id ? "draft reply" : "draft"}: ${error.message || error}`)
+        }
+    }
+})

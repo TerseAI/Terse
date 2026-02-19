@@ -859,6 +859,7 @@ enum OutputConfigType {
   JIRA_TICKET
   SLACK_CHANNEL
   GMAIL
+  GMAIL_DRAFT
   TERSE
   ATTIO
 }

@@ -10,6 +10,7 @@ import {
     GitHubConfig,
     GitHubKBConfig,
     GmailConfig,
+    GmailDraftOutputConfig,
     GmailOutputConfig,
     JiraConfig,
     LaunchDarklyConfig,
@@ -320,6 +321,9 @@ export const convertPrismaOutputConfigToConfigInstance = (channelOutput: AgentOu
     }
 
     if (channelOutput.gmail_config) {
+        if (channelOutput.config_type === OutputConfigType.GMAIL_DRAFT) {
+            return new GmailDraftOutputConfig(integrationId)
+        }
         return new GmailOutputConfig(integrationId)
     }
 
@@ -335,6 +339,7 @@ export const convertPrismaOutputConfigToConfigInstance = (channelOutput: AgentOu
         case OutputConfigType.JIRA_TICKET:
         case OutputConfigType.SLACK_CHANNEL:
         case OutputConfigType.GMAIL:
+        case OutputConfigType.GMAIL_DRAFT:
         case OutputConfigType.TERSE:
         case OutputConfigType.ATTIO:
             break
@@ -384,6 +389,8 @@ export const convertConfigTypeToInputConfigType = (configType: ConfigType): Inpu
         case ConfigType.GMAIL_OUTPUT:
             // GMAIL_OUTPUT is an output config type, not an input config type
             throw new Error("GMAIL_OUTPUT is an output type, not an input type")
+        case ConfigType.GMAIL_DRAFT_OUTPUT:
+            throw new Error("GMAIL_DRAFT_OUTPUT is an output type, not an input type")
         case ConfigType.DATADOG:
             throw new Error("DATADOG is not an input config type")
         case ConfigType.LINEAR_KB:
@@ -448,6 +455,8 @@ export const convertConfigTypeToOutputConfigType = (configType: ConfigType): Out
             return OutputConfigType.SLACK_CHANNEL
         case ConfigType.GMAIL_OUTPUT:
             return OutputConfigType.GMAIL
+        case ConfigType.GMAIL_DRAFT_OUTPUT:
+            return OutputConfigType.GMAIL_DRAFT
         case ConfigType.TERSE:
             return OutputConfigType.TERSE
         case ConfigType.ATTIO_OUTPUT:
@@ -474,6 +483,8 @@ export const convertOutputConfigTypeToConfigType = (outputConfigType: OutputConf
             return ConfigType.SLACK_OUTPUT
         case OutputConfigType.GMAIL:
             return ConfigType.GMAIL_OUTPUT
+        case OutputConfigType.GMAIL_DRAFT:
+            return ConfigType.GMAIL_DRAFT_OUTPUT
         case OutputConfigType.TERSE:
             return ConfigType.TERSE
         case OutputConfigType.ATTIO:
@@ -500,6 +511,8 @@ export const convertOutputConfigTypeToIntegrationType = (outputConfigType: Outpu
         case OutputConfigType.SLACK_CHANNEL:
             return IntegrationType.SLACK
         case OutputConfigType.GMAIL:
+            return IntegrationType.GMAIL
+        case OutputConfigType.GMAIL_DRAFT:
             return IntegrationType.GMAIL
         case OutputConfigType.TERSE:
             return IntegrationType.TERSE

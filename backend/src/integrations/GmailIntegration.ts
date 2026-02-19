@@ -26,7 +26,7 @@ import { InputEvent } from "./abstract/InputEvent"
 import { ConfigurationFieldDefinition, Integration, OAuthIntegrationInstallation } from "./abstract/Integration"
 
 // OAuth2 scopes for Gmail
-const SCOPES = ["https://www.googleapis.com/auth/gmail.readonly", "https://www.googleapis.com/auth/gmail.send"]
+const SCOPES = ["https://www.googleapis.com/auth/gmail.readonly", "https://www.googleapis.com/auth/gmail.compose"]
 
 export class GmailIntegrationManager implements Integration<GmailIntegration, GmailWebhookEvent, typeof GmailIntegrationMetadata, never>, OAuthIntegrationInstallation<IntegrationType.GMAIL> {
     constructor() {}
