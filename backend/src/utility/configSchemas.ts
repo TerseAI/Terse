@@ -180,6 +180,11 @@ export const SlackKnowledgeBaseConfigSchema = BaseConfigSchema.extend({
     userNames: z.array(z.string()).nullable().optional().describe("Display names for users (UI only, not persisted).")
 })
 
+export const WorkOSKnowledgeBaseConfigSchema = BaseConfigSchema.extend({
+    configType: z.literal(ConfigType.WORKOS_KB).describe("Use for WorkOS user knowledge bases. Fetch and search users from your WorkOS account."),
+    integrationType: z.literal(IntegrationType.WORKOS)
+})
+
 export const WorkOSInputConfigSchema = BaseConfigSchema.extend({
     configType: z.literal(ConfigType.WORKOS_INPUT),
     integrationType: z.literal(IntegrationType.WORKOS),
