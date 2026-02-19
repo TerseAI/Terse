@@ -8,6 +8,7 @@ import { LaunchDarklyKnowledgeBase } from "../launchdarkly/LaunchDarklyKnowledge
 import { LinearKnowledgeBase } from "../linear/LinearKnowledgeBase"
 import { PosthogKnowledgeBase } from "../posthog/PosthogKnowledgeBase"
 import { SlackKnowledgeBase } from "../slack/SlackKnowledgeBase"
+import { WorkOSKnowledgeBase } from "../workos/WorkOSKnowledgeBase"
 
 import { KnowledgeBase } from "./KnowledgeBase"
 
@@ -18,7 +19,8 @@ export class KnowledgeBaseFactory {
         [KnowledgeBaseConfigType.LAUNCHDARKLY, () => new LaunchDarklyKnowledgeBase()],
         [KnowledgeBaseConfigType.DATADOG, () => new DatadogKnowledgeBase()],
         [KnowledgeBaseConfigType.LINEAR, () => new LinearKnowledgeBase()],
-        [KnowledgeBaseConfigType.SLACK, () => new SlackKnowledgeBase()]
+        [KnowledgeBaseConfigType.SLACK, () => new SlackKnowledgeBase()],
+        [KnowledgeBaseConfigType.WORKOS, () => new WorkOSKnowledgeBase()]
     ])
 
     /**

@@ -142,7 +142,7 @@ export const WorkOSIntegrationMetadata = {
     description: "Trigger on user lifecycle events from your WorkOS account",
     isInput: true,
     isOutput: false,
-    isKnowledgeBase: false
+    isKnowledgeBase: true
 } as const satisfies IntegrationDetails
 
 export const AttioIntegrationMetadata = {

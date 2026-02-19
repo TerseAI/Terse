@@ -21,6 +21,7 @@ export enum ConfigType {
     SLACK_KB = "slack_kb",
     TERSE = "terse",
     WORKOS_INPUT = "workos_input",
+    WORKOS_KB = "workos_kb",
     ATTIO_OUTPUT = "attio_output"
 }
 
@@ -236,6 +237,16 @@ export const WorkOSInputConfigMetadata = {
     isKnowledgeBase: false
 } as const satisfies ConfigDetails
 
+export const WorkOSKBConfigMetadata = {
+    configType: ConfigType.WORKOS_KB,
+    name: "WorkOS",
+    description: "Fetch and search users from your WorkOS account",
+    integrationType: IntegrationType.WORKOS,
+    isInput: false,
+    isOutput: false,
+    isKnowledgeBase: true
+} as const satisfies ConfigDetails
+
 export const AttioOutputConfigMetadata = {
     configType: ConfigType.ATTIO_OUTPUT,
     name: "Attio",
@@ -269,6 +280,7 @@ export const CONFIG_DETAILS: ConfigDetailsMap = {
     [ConfigType.SLACK_KB]: SlackKBConfigMetadata,
     [ConfigType.TERSE]: TerseConfigMetadata,
     [ConfigType.WORKOS_INPUT]: WorkOSInputConfigMetadata,
+    [ConfigType.WORKOS_KB]: WorkOSKBConfigMetadata,
     [ConfigType.ATTIO_OUTPUT]: AttioOutputConfigMetadata
 } as const satisfies ConfigDetailsMap
 
@@ -784,6 +796,21 @@ export class WorkOSInputConfig implements ConfigInstance {
     }
 }
 
+export class WorkOSKBConfig implements ConfigInstance {
+    integrationType: IntegrationType = IntegrationType.WORKOS
+    configType: ConfigType = ConfigType.WORKOS_KB
+
+    constructor(public integrationId: string) {}
+
+    isComplete(): boolean {
+        return !!this.integrationId
+    }
+
+    formatForAgent(): string {
+        return `Type: WorkOS Knowledge Base\nIntegration ID: ${this.integrationId}`
+    }
+}
+
 export class AttioOutputConfig implements ConfigInstance {
     integrationType: IntegrationType = IntegrationType.ATTIO
     configType: ConfigType = ConfigType.ATTIO_OUTPUT
@@ -830,6 +857,7 @@ export type ConfigMetadataMap = EnsureExhaustiveMetadata<{
     [ConfigType.SLACK_KB]: typeof SlackKBConfig
     [ConfigType.TERSE]: typeof TerseConfig
     [ConfigType.WORKOS_INPUT]: typeof WorkOSInputConfig
+    [ConfigType.WORKOS_KB]: typeof WorkOSKBConfig
     [ConfigType.ATTIO_OUTPUT]: typeof AttioOutputConfig
 }>
 
@@ -854,5 +882,6 @@ export const CONFIG_METADATA: ConfigMetadataMap = {
     [ConfigType.SLACK_KB]: SlackKBConfig,
     [ConfigType.TERSE]: TerseConfig,
     [ConfigType.WORKOS_INPUT]: WorkOSInputConfig,
+    [ConfigType.WORKOS_KB]: WorkOSKBConfig,
     [ConfigType.ATTIO_OUTPUT]: AttioOutputConfig
 } as const satisfies ConfigMetadataMap

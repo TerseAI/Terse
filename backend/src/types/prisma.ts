@@ -104,6 +104,7 @@ export type AgentKnowledgeBaseWithConfigs = Prisma.automation_knowledge_basesGet
         datadog_config: true
         linear_kb_config: true
         slack_kb_config: true
+        workos_kb_config: true
     }
 }>
 
