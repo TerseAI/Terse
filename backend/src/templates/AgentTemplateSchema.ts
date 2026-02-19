@@ -7,6 +7,7 @@ import {
     GitHubConfigSchema,
     GitHubKnowledgeBaseConfigSchema,
     GmailConfigSchema,
+    GmailDraftOutputConfigSchema,
     GmailOutputConfigSchema,
     JiraConfigSchema,
     LaunchDarklyConfigSchema,
@@ -43,6 +44,7 @@ function asTemplateConfigSchema<T extends z.AnyZodObject>(schema: T): z.ZodDiscr
 export const ConfigTemplateSchema = z.discriminatedUnion("configType", [
     asTemplateConfigSchema(GmailConfigSchema),
     asTemplateConfigSchema(GmailOutputConfigSchema),
+    asTemplateConfigSchema(GmailDraftOutputConfigSchema),
     asTemplateConfigSchema(FigmaConfigSchema),
     asTemplateConfigSchema(SlackConfigSchema),
     asTemplateConfigSchema(SlackOutputConfigSchema),

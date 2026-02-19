@@ -85,7 +85,7 @@ export async function deleteGmailIntegration(req: Request, res: Response) {
         // Clean up channel outputs that reference this Gmail integration
         await db().automation_outputs.deleteMany({
             where: {
-                config_type: OutputConfigType.GMAIL,
+                config_type: { in: [OutputConfigType.GMAIL, OutputConfigType.GMAIL_DRAFT] },
                 integration_id: integration.id
             }
         })
