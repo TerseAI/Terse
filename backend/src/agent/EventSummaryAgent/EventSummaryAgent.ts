@@ -5,6 +5,7 @@ import { settings } from "../../config/settings"
 import { IntegrationType } from "../../shared/Integrations"
 import { User } from "../../shared/types"
 import { AgentType, builderProviderDataModelSettings, runnerFactory } from "../runner"
+import { createUserMessageItem } from "../userMessage"
 
 const EventSummarySchema = z.object({
     summary: z.string()
@@ -40,7 +41,7 @@ export async function generateEventSummary(integrationType: IntegrationType, eve
 
     const runner = runnerFactory(runConfig)
 
-    const result = await runner.run(eventSummaryAgent, [{ role: "user", content: userPrompt }], {
+    const result = await runner.run(eventSummaryAgent, [createUserMessageItem(userPrompt)], {
         stream: false
     })
 

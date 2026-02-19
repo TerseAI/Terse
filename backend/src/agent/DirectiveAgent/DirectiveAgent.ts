@@ -9,6 +9,7 @@ import { EventEmitterTaskQueue } from "../../tasks/abstract/eventEmitterTasks"
 import { Task } from "../../tasks/abstract/tasks"
 import { RunHistoryChatMemorySession, identityHistoryCallback } from "../CustomMemorySession"
 import { AgentType, builderProviderDataModelSettings, runnerFactory } from "../runner"
+import { createUserMessageItem } from "../userMessage"
 
 const DIRECTIVE_TASK_NAME = "DIRECTIVE_TASK" as const
 
@@ -112,7 +113,7 @@ async function classifyDirective(task: DirectiveTask): Promise<DirectiveClassifi
         modelSettings: builderProviderDataModelSettings(runConfig)
     })
 
-    const result = await runner.run(directiveAgent, [{ role: "user", content: task.message }], {
+    const result = await runner.run(directiveAgent, [createUserMessageItem(task.message)], {
         session,
         sessionInputCallback: identityHistoryCallback
     })

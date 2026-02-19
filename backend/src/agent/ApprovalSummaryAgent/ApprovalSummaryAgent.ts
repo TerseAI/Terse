@@ -10,6 +10,7 @@ import { User } from "../../shared/types"
 import { RunHistoryChatMemorySession, identityHistoryCallback } from "../CustomMemorySession"
 import { convertAgentInputItemsToModelEvents } from "../agentInputItemsToModelEvents"
 import { AgentType, builderProviderDataModelSettings, runnerFactory } from "../runner"
+import { createUserMessageItem } from "../userMessage"
 
 const ApprovalSummaryClassification = z.object({
     approvalSummary: z.string()
@@ -130,7 +131,7 @@ Return the single-sentence "I'm going to ..." approvalSummary.`
         outputType: ApprovalSummaryClassification,
         modelSettings: builderProviderDataModelSettings(runConfig)
     })
-    const result = await runner.run(approvalSummaryAgent, [{ role: "user", content: userPrompt }], {
+    const result = await runner.run(approvalSummaryAgent, [createUserMessageItem(userPrompt)], {
         session,
         sessionInputCallback: identityHistoryCallback
     })

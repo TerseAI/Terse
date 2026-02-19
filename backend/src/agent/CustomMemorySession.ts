@@ -85,7 +85,7 @@ export class RunHistoryChatMemorySession implements Session {
         const eventRecords = items.map((item, index) => {
             return {
                 run_history_record_id: this.sessionId,
-                event_key: getEventKey(item) ?? `fallback:run_history:${this.sessionId}:${startSequence + index + 1}`,
+                event_key: getEventKey(item),
                 raw_event_json: item as any,
                 sequence_order: startSequence + index + 1
             }
@@ -196,7 +196,7 @@ export class ChatMemorySession implements Session {
         const eventRecords = items.map((item, index) => {
             return {
                 chat_session_id: this.sessionId,
-                event_key: getEventKey(item) ?? `fallback:chat:${this.sessionId}:${startSequence + index + 1}`,
+                event_key: getEventKey(item),
                 raw_event_json: item as any,
                 sequence_order: startSequence + index + 1
             }

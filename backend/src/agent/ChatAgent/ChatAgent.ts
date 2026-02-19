@@ -5,6 +5,7 @@ import logger from "../../logger"
 import { User } from "../../shared/types"
 import { ChatMemorySession, recentHistoryCallback } from "../CustomMemorySession"
 import { AgentType, builderProviderDataModelSettings, runnerFactory } from "../runner"
+import { createUserMessageItem } from "../userMessage"
 
 import type { ChatAgentContext } from "./ChatAgentContext"
 import { buildChatAgentSystemPrompt } from "./ChatAgentSystemPrompt"
@@ -65,12 +66,7 @@ class ChatAgent {
 
         const result = await runner.run(
             agent,
-            [
-                {
-                    role: "user",
-                    content: message
-                }
-            ],
+            [createUserMessageItem(message)],
             {
                 stream: true,
                 context: {

@@ -1,9 +1,16 @@
+import type { AgentInputItem } from "@openai/agents-core"
 import { Prisma, RunHistoryChatEventType } from "@prisma/client"
 import "dotenv/config"
 
+import { getEventKey } from "../src/agent/eventKey"
 import { db } from "../src/prismaClient"
 
-const TARGET_EVENT_TYPES: RunHistoryChatEventType[] = [RunHistoryChatEventType.FilterResult, RunHistoryChatEventType.ToolApprovalRequest, RunHistoryChatEventType.ToolApprovalResponse]
+const TARGET_EVENT_TYPES: RunHistoryChatEventType[] = [
+    RunHistoryChatEventType.FilterResult,
+    RunHistoryChatEventType.ToolApprovalRequest,
+    RunHistoryChatEventType.ToolApprovalResponse,
+    RunHistoryChatEventType.RunError
+]
 
 type ChatEventRow = {
     id: string
@@ -13,69 +20,18 @@ type ChatEventRow = {
     timestamp: Date
 }
 
-function asRecord(value: Prisma.JsonValue): Record<string, unknown> | null {
-    if (!value || typeof value !== "object" || Array.isArray(value)) return null
-    return value as Record<string, unknown>
+type ExistingRawRow = {
+    id: string
+    event_key: string
+    sequence_order: number
+    created_at: Date
 }
 
 type SystemEventItem = {
+    type: "message"
     role: "system"
-    content: string
-}
-
-function clampConfidence(value: unknown): number {
-    const numeric = typeof value === "number" ? value : Number(value)
-    if (!Number.isFinite(numeric)) return 0
-    return Math.max(0, Math.min(1, numeric))
-}
-
-function createSystemEventItem(payload: Record<string, unknown>): SystemEventItem {
-    return {
-        role: "system",
-        content: JSON.stringify(payload)
-    }
-}
-
-function toSystemEventItem(event: ChatEventRow): SystemEventItem | null {
-    const payload = asRecord(event.event_json)
-    if (!payload) return null
-
-    if (event.event_type === RunHistoryChatEventType.FilterResult) {
-        if (typeof payload.isRelevant !== "boolean" || typeof payload.reason !== "string") return null
-        return createSystemEventItem({
-            kind: "filter_outcome",
-            isRelevant: payload.isRelevant,
-            reason: payload.reason,
-            confidence: clampConfidence(payload.confidence)
-        })
-    }
-
-    if (event.event_type === RunHistoryChatEventType.ToolApprovalRequest) {
-        if (typeof payload.step_id !== "string" || typeof payload.name !== "string") return null
-        return createSystemEventItem({
-            kind: "tool_approval_request",
-            step_id: payload.step_id,
-            name: payload.name,
-            arguments: typeof payload.arguments === "string" ? payload.arguments : JSON.stringify(payload.arguments ?? {})
-        })
-    }
-
-    if (event.event_type === RunHistoryChatEventType.ToolApprovalResponse) {
-        if (typeof payload.step_id !== "string" || typeof payload.approved !== "boolean") return null
-        return createSystemEventItem({
-            kind: "tool_approval_response",
-            step_id: payload.step_id,
-            approved: payload.approved
-        })
-    }
-
-    return null
-}
-
-type ExistingRawRow = {
     id: string
-    sequence_order: number
-    created_at: Date
+    content: string
 }
 
 type TimelineEntry =
@@ -90,8 +46,126 @@ type TimelineEntry =
           createdAt: Date
           insertOrder: number
           runId: string
+          eventKey: string
           rawItem: SystemEventItem
       }
+
+function asRecord(value: Prisma.JsonValue): Record<string, unknown> | null {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return null
+    return value as Record<string, unknown>
+}
+
+function clampConfidence(value: unknown): number {
+    const numeric = typeof value === "number" ? value : Number(value)
+    if (!Number.isFinite(numeric)) return 0
+    return Math.max(0, Math.min(1, numeric))
+}
+
+function buildToolApprovalRequestId(stepId: string): string {
+    return `tool_approval_request:${stepId}`
+}
+
+function buildToolApprovalResponseId(stepId: string): string {
+    return `tool_approval_response:${stepId}`
+}
+
+function buildFilterOutcomeId(chatEventId: string, openAiResponseId?: string): string {
+    const trimmed = openAiResponseId?.trim()
+    if (trimmed) {
+        return `filter_outcome:${trimmed}`
+    }
+    return `filter_outcome:legacy:${chatEventId}`
+}
+
+function buildRunErrorId(chatEventId: string, runErrorId?: string): { id: string; runErrorId: string } {
+    const trimmed = runErrorId?.trim()
+    const resolvedRunErrorId = trimmed || `legacy-${chatEventId}`
+    return {
+        id: `run_error:${resolvedRunErrorId}`,
+        runErrorId: resolvedRunErrorId
+    }
+}
+
+function createSystemEventItem(payload: Record<string, unknown>, id: string): { rawItem: SystemEventItem; eventKey: string } {
+    const payloadWithId = { ...payload, id }
+    const rawItem: SystemEventItem = {
+        type: "message",
+        role: "system",
+        id,
+        content: JSON.stringify(payloadWithId)
+    }
+    return {
+        rawItem,
+        eventKey: getEventKey(rawItem as AgentInputItem)
+    }
+}
+
+function toSystemEvent(event: ChatEventRow): { eventKey: string; rawItem: SystemEventItem } | null {
+    const payload = asRecord(event.event_json)
+    if (!payload) return null
+
+    if (event.event_type === RunHistoryChatEventType.FilterResult) {
+        if (typeof payload.isRelevant !== "boolean" || typeof payload.reason !== "string") return null
+        const openAiResponseId = typeof payload.openai_response_id === "string" ? payload.openai_response_id : undefined
+        const id = buildFilterOutcomeId(event.id, openAiResponseId)
+        return createSystemEventItem(
+            {
+                kind: "filter_outcome",
+                ...(openAiResponseId ? { openai_response_id: openAiResponseId } : {}),
+                isRelevant: payload.isRelevant,
+                reason: payload.reason,
+                confidence: clampConfidence(payload.confidence)
+            },
+            id
+        )
+    }
+
+    if (event.event_type === RunHistoryChatEventType.ToolApprovalRequest) {
+        if (typeof payload.step_id !== "string" || typeof payload.name !== "string") return null
+        const id = buildToolApprovalRequestId(payload.step_id)
+        return createSystemEventItem(
+            {
+                kind: "tool_approval_request",
+                step_id: payload.step_id,
+                name: payload.name,
+                arguments: typeof payload.arguments === "string" ? payload.arguments : JSON.stringify(payload.arguments ?? {})
+            },
+            id
+        )
+    }
+
+    if (event.event_type === RunHistoryChatEventType.ToolApprovalResponse) {
+        if (typeof payload.step_id !== "string" || typeof payload.approved !== "boolean") return null
+        const id = buildToolApprovalResponseId(payload.step_id)
+        return createSystemEventItem(
+            {
+                kind: "tool_approval_response",
+                step_id: payload.step_id,
+                approved: payload.approved
+            },
+            id
+        )
+    }
+
+    if (event.event_type === RunHistoryChatEventType.RunError) {
+        if (typeof payload.error !== "string") return null
+        const existingRunErrorId = typeof payload.run_error_id === "string" ? payload.run_error_id : undefined
+        const { id, runErrorId } = buildRunErrorId(event.id, existingRunErrorId)
+
+        return createSystemEventItem(
+            {
+                kind: "run_error",
+                run_error_id: runErrorId,
+                error: payload.error,
+                ...(typeof payload.code === "string" ? { code: payload.code } : {}),
+                ...(typeof payload.hint === "string" ? { hint: payload.hint } : {})
+            },
+            id
+        )
+    }
+
+    return null
+}
 
 function sortTimeline(entries: TimelineEntry[]): TimelineEntry[] {
     return entries.sort((left, right) => {
@@ -145,6 +219,7 @@ async function main(): Promise<void> {
 
     let inserted = 0
     let skipped = 0
+    let skippedExisting = 0
     let sequenceUpdates = 0
 
     for (const [runId, runEvents] of byRun) {
@@ -153,26 +228,37 @@ async function main(): Promise<void> {
             orderBy: [{ sequence_order: "asc" }, { created_at: "asc" }, { id: "asc" }],
             select: {
                 id: true,
+                event_key: true,
                 sequence_order: true,
                 created_at: true
             }
         })
 
+        const existingEventKeys = new Set(existingRawEvents.map(event => event.event_key))
+        const plannedInsertKeys = new Set<string>()
         const inserts: TimelineEntry[] = []
+
         for (let i = 0; i < runEvents.length; i++) {
             const event = runEvents[i]
-            const rawItem = toSystemEventItem(event)
-            if (!rawItem) {
+            const systemEvent = toSystemEvent(event)
+            if (!systemEvent) {
                 skipped += 1
                 continue
             }
+
+            if (existingEventKeys.has(systemEvent.eventKey) || plannedInsertKeys.has(systemEvent.eventKey)) {
+                skippedExisting += 1
+                continue
+            }
+            plannedInsertKeys.add(systemEvent.eventKey)
 
             inserts.push({
                 kind: "insert",
                 createdAt: event.timestamp,
                 insertOrder: i,
                 runId,
-                rawItem
+                eventKey: systemEvent.eventKey,
+                rawItem: systemEvent.rawItem
             })
         }
 
@@ -200,6 +286,7 @@ async function main(): Promise<void> {
 
             rowsToInsert.push({
                 run_history_record_id: entry.runId,
+                event_key: entry.eventKey,
                 raw_event_json: entry.rawItem as unknown as Prisma.InputJsonValue,
                 sequence_order: sequence,
                 created_at: entry.createdAt
@@ -223,7 +310,9 @@ async function main(): Promise<void> {
         sequenceUpdates += updates.length
     }
 
-    console.log(`[backfill-run-history-system-events] runs=${byRun.size} inserted=${inserted} sequenceUpdates=${sequenceUpdates} skipped=${skipped}`)
+    console.log(
+        `[backfill-run-history-system-events] runs=${byRun.size} inserted=${inserted} sequenceUpdates=${sequenceUpdates} skipped=${skipped} skippedExisting=${skippedExisting}`
+    )
 }
 
 main()

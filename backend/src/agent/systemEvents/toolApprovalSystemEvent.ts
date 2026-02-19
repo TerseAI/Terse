@@ -6,6 +6,7 @@ import { appendSystemEventToRunHistory } from "./systemEventSessions"
 
 const toolApprovalRequestSystemEventPayloadSchema = z.object({
     kind: z.literal("tool_approval_request"),
+    id: z.string().trim().min(1).optional(),
     step_id: z.string().trim().min(1),
     name: z.string(),
     arguments: z.string()
@@ -13,6 +14,7 @@ const toolApprovalRequestSystemEventPayloadSchema = z.object({
 
 const toolApprovalResponseSystemEventPayloadSchema = z.object({
     kind: z.literal("tool_approval_response"),
+    id: z.string().trim().min(1).optional(),
     step_id: z.string().trim().min(1),
     approved: z.boolean()
 })
@@ -72,9 +74,18 @@ class ToolApprovalSystemEvent extends BaseSystemEvent<ToolApprovalSystemEventPay
 
 const toolApprovalSystemEvent = new ToolApprovalSystemEvent()
 
+function buildToolApprovalRequestSystemEventId(stepId: string): string {
+    return `tool_approval_request:${stepId}`
+}
+
+function buildToolApprovalResponseSystemEventId(stepId: string): string {
+    return `tool_approval_response:${stepId}`
+}
+
 function buildToolApprovalRequestPayload(input: ToolApprovalRequestSystemEventInput): ToolApprovalRequestSystemEventPayload {
     return {
         kind: "tool_approval_request",
+        id: buildToolApprovalRequestSystemEventId(input.step_id),
         step_id: input.step_id,
         name: input.name,
         arguments: input.arguments
@@ -84,6 +95,7 @@ function buildToolApprovalRequestPayload(input: ToolApprovalRequestSystemEventIn
 function buildToolApprovalResponsePayload(input: ToolApprovalResponseSystemEventInput): ToolApprovalResponseSystemEventPayload {
     return {
         kind: "tool_approval_response",
+        id: buildToolApprovalResponseSystemEventId(input.step_id),
         step_id: input.step_id,
         approved: input.approved
     }

@@ -1,4 +1,4 @@
-import { Agent, AgentInputItem, user } from "@openai/agents"
+import { Agent, AgentInputItem } from "@openai/agents"
 import { z } from "zod"
 
 import { settings } from "../../config/settings"
@@ -16,6 +16,7 @@ import { RunHistoryChatMemorySession } from "../CustomMemorySession"
 import { AgentType, builderProviderDataModelSettings, runnerFactory } from "../runner"
 import { transformAgentStreamToModelEvents } from "../streaming"
 import { appendFilterOutcomeSystemEvent } from "../systemEvents/filterOutcomeSystemEvent"
+import { createUserMessageItem } from "../userMessage"
 
 import { buildRunTriggerContextMessage } from "./formatContext"
 
@@ -118,15 +119,12 @@ function buildFilterAgent(trackingParams: TrackingParams): Agent<Session, typeof
 
 function buildFilterHistory(agentPrompt: AgentPrompt, event: InputEvent): AgentInputItem[] {
     return [
-        {
-            role: "user",
-            content: [
-                {
-                    type: "input_text",
-                    text: buildFilterUserPrompt(agentPrompt.content || "No specific instructions provided", event.formatForAgentRunner())
-                }
-            ]
-        }
+        createUserMessageItem([
+            {
+                type: "input_text",
+                text: buildFilterUserPrompt(agentPrompt.content || "No specific instructions provided", event.formatForAgentRunner())
+            }
+        ])
     ]
 }
 
@@ -137,7 +135,7 @@ async function seedEventContextForFilteredRunIfNeeded(runId: string, eventContex
 
     try {
         const memorySession = new RunHistoryChatMemorySession({ sessionId: runId })
-        const eventContextItem = user(eventContextText) as AgentInputItem
+        const eventContextItem = createUserMessageItem(eventContextText)
         await memorySession.addItems([eventContextItem])
     } catch (error) {
         logger.warn("Failed to seed event context for filtered run in EventFilter", { runId, error })
@@ -231,7 +229,8 @@ export async function filterEvent(
                 await appendFilterOutcomeSystemEvent(trackingParams.runId, {
                     isRelevant: parsed.isRelevant,
                     reason: parsed.reason,
-                    confidence: parsed.confidence
+                    confidence: parsed.confidence,
+                    openai_response_id: result.lastResponseId
                 })
             } catch (error) {
                 logger.warn("Failed to append filter outcome system event to raw history", { runId: trackingParams.runId, error })

@@ -1,4 +1,4 @@
-import { Agent, AgentInputItem, AgentOutputType, RunResult, RunState, RunToolApprovalItem, StreamedRunResult, Tool, protocol, user } from "@openai/agents"
+import { Agent, AgentInputItem, AgentOutputType, RunResult, RunState, RunToolApprovalItem, StreamedRunResult, Tool, protocol } from "@openai/agents"
 import { RunHistoryActionType } from "@prisma/client"
 
 import { settings } from "../../config/settings"
@@ -24,6 +24,7 @@ import { AgentType, builderProviderDataModelSettings, runnerFactory } from "../r
 import { transformAgentStreamToModelEvents } from "../streaming"
 import { appendToolApprovalRequestSystemEvent } from "../systemEvents/toolApprovalSystemEvent"
 import { isFailedToolExecutionStatus } from "../toolExecution"
+import { createUserMessageItem } from "../userMessage"
 
 import { persistRunAction } from "./EventProcessor"
 import { processModelEventStream } from "./StreamProcessor"
@@ -157,7 +158,7 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance, KBCo
     }
 
     private buildUserHistory(content: UserMessageContent[]): AgentInputItem[] {
-        return [user(content)]
+        return [createUserMessageItem(content)]
     }
 
     async resumeFromPendingApproval(
@@ -215,7 +216,7 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance, KBCo
             if (stateWithHistory.history && Array.isArray(stateWithHistory.history)) {
                 if (hardReject) {
                     // Hard reject: tell the agent to stop completely without asking questions or retrying
-                    const hardRejectMessage = user(
+                    const hardRejectMessage = createUserMessageItem(
                         `A human reviewer rejected your previous tool call "${interruption.name}" and has chosen to stop this workflow entirely.\n\n` +
                             `Do NOT ask any follow-up questions. Do NOT attempt to retry or suggest alternatives. ` +
                             `Simply acknowledge that the action was rejected and the workflow has been stopped. ` +
@@ -228,7 +229,7 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance, KBCo
                     if (trimmedReason) {
                         // Treat the rejection reason as actionable user guidance (verbatim) so the agent can
                         // reliably detect "try again" or other imperative instructions (e.g. "Read X first").
-                        const rejectionGuidance = user(
+                        const rejectionGuidance = createUserMessageItem(
                             `A human reviewer rejected your previous tool call "${interruption.name}".\n\n` +
                                 `Reviewer feedback (treat as user instructions, verbatim):\n` +
                                 `${trimmedReason}\n\n` +
@@ -238,7 +239,7 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance, KBCo
                         stateWithHistory.history.push(rejectionGuidance)
                         logger.info("[resumeFromPendingApproval] Added rejection guidance to state history", { hasCustomReason: true })
                     } else {
-                        const rejectionMessage = user(
+                        const rejectionMessage = createUserMessageItem(
                             `The tool call "${interruption.name}" was rejected. ` + `Ask the user what they want you to do differently, or whether to skip this action entirely.`
                         )
                         stateWithHistory.history.push(rejectionMessage)

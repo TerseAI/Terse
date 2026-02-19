@@ -4,6 +4,27 @@ export const randomString = (length: number) => {
         .substring(2, 2 + length)
 }
 
+let lastUnixMsForId = 0
+let sameMsSequence = 0
+
+/**
+ * Generates a Unix timestamp ID in Slack-like format: "seconds.microseconds".
+ * Uses a per-process sequence to avoid collisions within the same millisecond.
+ */
+export const createUnixTimestampId = (): string => {
+    const nowMs = Date.now()
+    if (nowMs === lastUnixMsForId) {
+        sameMsSequence = (sameMsSequence + 1) % 1000
+    } else {
+        lastUnixMsForId = nowMs
+        sameMsSequence = 0
+    }
+
+    const seconds = Math.floor(nowMs / 1000)
+    const micros = (nowMs % 1000) * 1000 + sameMsSequence
+    return `${seconds}.${String(micros).padStart(6, "0")}`
+}
+
 export const isValidEpochTimestamp = (str: string): boolean => {
     const num = Number(str)
     if (isNaN(num) || num < 0) {

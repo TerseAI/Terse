@@ -1,11 +1,14 @@
 import type { AgentInputItem } from "@openai/agents-core"
 import { z } from "zod"
 
+import { randomString } from "../../utility/strings"
 import { BaseSystemEvent } from "./BaseSystemEvent"
 import { appendSystemEventToRunHistory } from "./systemEventSessions"
 
 const filterOutcomeSystemEventPayloadSchema = z.object({
     kind: z.literal("filter_outcome"),
+    id: z.string().trim().min(1).optional(),
+    openai_response_id: z.string().trim().min(1).optional(),
     isRelevant: z.boolean(),
     reason: z.string(),
     confidence: z.number().finite()
@@ -17,6 +20,7 @@ export type FilterOutcomeSystemEventInput = {
     isRelevant: boolean
     reason: string
     confidence: number
+    openai_response_id?: string
 }
 
 export type ParsedFilterOutcomeSystemEvent = {
@@ -45,9 +49,20 @@ class FilterOutcomeSystemEvent extends BaseSystemEvent<FilterOutcomeSystemEventP
 
 const filterOutcomeSystemEvent = new FilterOutcomeSystemEvent()
 
+function buildFilterOutcomeSystemEventId(input: FilterOutcomeSystemEventInput): string {
+    const responseId = input.openai_response_id?.trim()
+    if (responseId) {
+        return `filter_outcome:${responseId}`
+    }
+
+    return `filter_outcome:${randomString(18)}`
+}
+
 function buildPayload(input: FilterOutcomeSystemEventInput): FilterOutcomeSystemEventPayload {
     return {
         kind: "filter_outcome",
+        id: buildFilterOutcomeSystemEventId(input),
+        ...(input.openai_response_id ? { openai_response_id: input.openai_response_id } : {}),
         isRelevant: input.isRelevant,
         reason: input.reason,
         confidence: clampConfidence(input.confidence)
