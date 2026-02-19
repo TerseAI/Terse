@@ -81,33 +81,6 @@ export class WorkOSKnowledgeBase extends KnowledgeBase<WorkOSKBConfig> {
         sections.push(configList.join("\n"))
         sections.push("\nWhen calling WorkOS tools, you MUST include the `integrationId` parameter matching one of the integration IDs listed above.")
 
-        const toolsByIntegration: string[] = []
-        for (const config of configs) {
-            const availableTools = ["listWorkOSUsers", "getWorkOSUser"]
-            toolsByIntegration.push(`  Integration ID ${config.integration_id}: ${availableTools.join(", ")}`)
-        }
-
-        sections.push("\nAVAILABLE TOOLS BY INTEGRATION:")
-        sections.push(toolsByIntegration.join("\n"))
-        sections.push("\nTOOL DESCRIPTIONS:")
-
-        sections.push(
-            "• listWorkOSUsers: List users from the WorkOS account. " +
-                "Supports filtering by email address and organization ID. " +
-                "Returns user profiles with email, name, verification status, and timestamps. " +
-                "Supports pagination via the 'after' cursor."
-        )
-        sections.push(
-            "• getWorkOSUser: Get detailed information about a specific user by their WorkOS user ID. " + "Returns full profile data including email, name, verification status, and timestamps."
-        )
-
-        sections.push(`
-USAGE GUIDELINES:
-- Use listWorkOSUsers to search for users by email or to browse all users.
-- Use getWorkOSUser when you have a specific user ID and need their details.
-- When searching for a user by email, use the email filter parameter in listWorkOSUsers.
-- Paginate through results using the 'after' cursor when there are many users.`)
-
         return sections.join("\n")
     }
 }
