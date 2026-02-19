@@ -181,7 +181,7 @@ export const SlackKnowledgeBaseConfigSchema = BaseConfigSchema.extend({
 })
 
 export const WorkOSKnowledgeBaseConfigSchema = BaseConfigSchema.extend({
-    configType: z.literal(ConfigType.WORKOS_KB).describe("Use for WorkOS user knowledge bases. Fetch and search users from your WorkOS account."),
+    configType: z.literal(ConfigType.WORKOS_KB),
     integrationType: z.literal(IntegrationType.WORKOS)
 })
 

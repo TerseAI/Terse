@@ -981,7 +981,7 @@ export const BackendProvider: BackendService = {
     getUserAgents: (page = 1, limit = 10, isActive?: boolean, search?: string) => {
         const params = new URLSearchParams()
         params.append("page", page.toString())
-        params.append("limit", limit.toString())
+        params.append("pageSize", limit.toString())
         if (isActive !== undefined) {
             params.append("isActive", isActive.toString())
         }
