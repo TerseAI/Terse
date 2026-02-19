@@ -4,7 +4,6 @@ import { AttioOutputIntegration } from "./AttioOutputIntegration"
 import { ConfluenceIntegration } from "./ConfluenceIntegration"
 import { FigmaIntegration } from "./FigmaIntegration"
 import { GitHubIntegration } from "./GitHubIntegration"
-import { GmailDraftIntegration } from "./GmailDraftIntegration"
 import { GmailIntegration } from "./GmailIntegration"
 import { GmailOutputIntegration } from "./GmailOutputIntegration"
 import { JiraIntegration } from "./JiraIntegration"
@@ -23,10 +22,8 @@ export function IntegrationSelector(props: InputConfigSelectorProps) {
             return <GmailIntegration {...props} />
 
         case ConfigType.GMAIL_OUTPUT:
-            return <GmailOutputIntegration input={props.input} variant={props.variant} setConfig={props.setConfig} />
-
         case ConfigType.GMAIL_DRAFT_OUTPUT:
-            return <GmailDraftIntegration input={props.input} variant={props.variant} setConfig={props.setConfig} />
+            return <GmailOutputIntegration input={props.input} variant={props.variant} setConfig={props.setConfig} />
 
         case ConfigType.NOTION:
             return <NotionIntegration input={props.input} variant={props.variant} setConfig={props.setConfig} />
