@@ -260,13 +260,6 @@ export class ApprovalService {
             await this.updateSlackNotification(runId, stepId, SlackApprovalMessageStatus.PROCESSING, user, channel.id)
             slackMarkedProcessing = true
 
-            // Store the approval response event
-            const toolApprovalResponseEvent: ModelEvent = {
-                type: "ToolApprovalResponse",
-                step_id: stepId,
-                approved: approved
-            }
-
             try {
                 await appendToolApprovalResponseSystemEvent(runId, {
                     step_id: stepId,
@@ -274,21 +267,6 @@ export class ApprovalService {
                 })
             } catch (error) {
                 logger.warn("[ApprovalService] Failed to append tool approval response system event to raw history", { runId, stepId, error })
-            }
-
-            const io = getSocketIO()
-            if (io && channel.organization_id) {
-                const runHistoryModelEvent: RunHistoryModelEvent = {
-                    ...toolApprovalResponseEvent,
-                    id: `approval-response-live-${randomString(15)}`,
-                    timestamp: Date.now()
-                }
-                const payload: RunHistoryModelSocketEvent = {
-                    runId,
-                    agentId: channel.id,
-                    runHistoryModelEvent
-                }
-                io.to(SocketRooms.organization(channel.organization_id)).emit(SocketEvents.AGENT_CHAT_EVENT, payload)
             }
 
             emitCacheInvalidationWithWildcard(channel.organization_id, "runHistory", channel.id)
