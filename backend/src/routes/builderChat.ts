@@ -26,10 +26,7 @@ export async function getBuilderChatHistory(req: Request, res: Response) {
             where: {
                 chat_session_id: sessionId
             },
-            orderBy: [
-                { sequence_order: "asc" },
-                { created_at: "asc" } // Fallback for items without sequence_order
-            ],
+            orderBy: [{ created_at: "asc" }],
             select: {
                 raw_event_json: true,
                 created_at: true

@@ -20,6 +20,22 @@ interface ChatMemorySessionOptions {
     filterIncompleteToolCalls?: boolean
 }
 
+function collapseEventsByKey(items: AgentInputItem[]): { orderedKeys: string[]; latestByKey: Map<string, AgentInputItem> } {
+    const orderedKeys: string[] = []
+    const latestByKey = new Map<string, AgentInputItem>()
+
+    for (const item of items) {
+        const eventKey = getEventKey(item)
+        if (!latestByKey.has(eventKey)) {
+            orderedKeys.push(eventKey)
+        }
+        // Last write wins for duplicates in the same input batch.
+        latestByKey.set(eventKey, item)
+    }
+
+    return { orderedKeys, latestByKey }
+}
+
 /**
  * Inspired by the CustomMemorySession in the OpenAI agents library
  * https://openai.github.io/openai-agents-js/guides/sessions/#bring-your-own-storage
@@ -46,10 +62,7 @@ export class RunHistoryChatMemorySession implements Session {
             where: {
                 run_history_record_id: this.sessionId
             },
-            orderBy: [
-                { sequence_order: "asc" },
-                { created_at: "asc" } // Fallback for items without sequence_order (backward compatibility)
-            ],
+            orderBy: [{ created_at: "asc" }],
             take: limit,
             select: {
                 raw_event_json: true
@@ -67,33 +80,27 @@ export class RunHistoryChatMemorySession implements Session {
         if (items.length === 0) return
         const prisma = db()
 
-        // Get the current max sequence_order for this session to continue from there
-        const maxSequence = await prisma.run_history_raw_events.findFirst({
-            where: {
-                run_history_record_id: this.sessionId
-            },
-            orderBy: {
-                sequence_order: "desc"
-            },
-            select: {
-                sequence_order: true
-            }
-        })
+        const { orderedKeys, latestByKey } = collapseEventsByKey(items)
+        await prisma.$transaction(
+            orderedKeys.map(eventKey => {
+                const item = latestByKey.get(eventKey)
+                if (!item) {
+                    throw new Error(`Missing event item for key: ${eventKey}`)
+                }
 
-        const startSequence = maxSequence?.sequence_order ?? -1
-
-        const eventRecords = items.map((item, index) => {
-            return {
-                run_history_record_id: this.sessionId,
-                event_key: getEventKey(item),
-                raw_event_json: item as any,
-                sequence_order: startSequence + index + 1
-            }
-        })
-
-        await prisma.run_history_raw_events.createMany({
-            data: eventRecords
-        })
+                return prisma.run_history_raw_events.upsert({
+                    where: { event_key: eventKey },
+                    update: {
+                        raw_event_json: item as any
+                    },
+                    create: {
+                        run_history_record_id: this.sessionId,
+                        event_key: eventKey,
+                        raw_event_json: item as any
+                    }
+                })
+            })
+        )
     }
 
     async popItem(): Promise<AgentInputItem | undefined> {
@@ -103,10 +110,7 @@ export class RunHistoryChatMemorySession implements Session {
             where: {
                 run_history_record_id: this.sessionId
             },
-            orderBy: [
-                { sequence_order: "desc" },
-                { created_at: "desc" } // Fallback for items without sequence_order (backward compatibility)
-            ]
+            orderBy: [{ created_at: "desc" }]
         })
         if (!lastEvent) {
             return undefined
@@ -157,10 +161,7 @@ export class ChatMemorySession implements Session {
             where: {
                 chat_session_id: this.sessionId
             },
-            orderBy: [
-                { sequence_order: "asc" },
-                { created_at: "asc" } // Fallback for items without sequence_order (backward compatibility)
-            ],
+            orderBy: [{ created_at: "asc" }],
             take: limit,
             select: {
                 raw_event_json: true
@@ -176,35 +177,29 @@ export class ChatMemorySession implements Session {
     async addItems(items: AgentInputItem[]): Promise<void> {
         if (this.skipSave) return
         if (items.length === 0) return
+
         const prisma = db()
+        const { orderedKeys, latestByKey } = collapseEventsByKey(items)
+        await prisma.$transaction(
+            orderedKeys.map(eventKey => {
+                const item = latestByKey.get(eventKey)
+                if (!item) {
+                    throw new Error(`Missing event item for key: ${eventKey}`)
+                }
 
-        // Get the current max sequence_order for this session to continue from there
-        const maxSequence = await prisma.chat_raw_events.findFirst({
-            where: {
-                chat_session_id: this.sessionId
-            },
-            orderBy: {
-                sequence_order: "desc"
-            },
-            select: {
-                sequence_order: true
-            }
-        })
-
-        const startSequence = maxSequence?.sequence_order ?? -1
-
-        const eventRecords = items.map((item, index) => {
-            return {
-                chat_session_id: this.sessionId,
-                event_key: getEventKey(item),
-                raw_event_json: item as any,
-                sequence_order: startSequence + index + 1
-            }
-        })
-
-        await prisma.chat_raw_events.createMany({
-            data: eventRecords
-        })
+                return prisma.chat_raw_events.upsert({
+                    where: { event_key: eventKey },
+                    update: {
+                        raw_event_json: item as any
+                    },
+                    create: {
+                        chat_session_id: this.sessionId,
+                        event_key: eventKey,
+                        raw_event_json: item as any
+                    }
+                })
+            })
+        )
     }
 
     async popItem(): Promise<AgentInputItem | undefined> {
@@ -214,10 +209,7 @@ export class ChatMemorySession implements Session {
             where: {
                 chat_session_id: this.sessionId
             },
-            orderBy: [
-                { sequence_order: "desc" },
-                { created_at: "desc" } // Fallback for items without sequence_order (backward compatibility)
-            ]
+            orderBy: [{ created_at: "desc" }]
         })
         if (!lastEvent) {
             return undefined

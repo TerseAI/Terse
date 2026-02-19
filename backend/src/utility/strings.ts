@@ -1,14 +1,66 @@
+import crypto from "crypto"
+
 export const randomString = (length: number) => {
     return Math.random()
         .toString(36)
         .substring(2, 2 + length)
 }
 
+export const MODEL_ITEM_ID_MAX_LENGTH = 64
+export const MODEL_ITEM_ID_PATTERN = /^[A-Za-z0-9_-]+$/
+export const MODEL_MESSAGE_ID_PREFIX = "msg_"
+
+type SanitizeAndCapIdentifierOptions = {
+    fallback?: string
+    maxLength?: number
+    hashLength?: number
+}
+
+export const sanitizeAndCapIdentifier = (value: string, options: SanitizeAndCapIdentifierOptions = {}): string => {
+    const fallback = options.fallback ?? "unknown"
+    const maxLength = options.maxLength ?? MODEL_ITEM_ID_MAX_LENGTH
+    const hashLength = options.hashLength ?? 12
+
+    const sanitized = value.trim().replace(/[^A-Za-z0-9_-]/g, "_")
+    const base = sanitized || fallback
+
+    if (base.length <= maxLength) {
+        return base
+    }
+
+    if (maxLength <= 0) {
+        return ""
+    }
+
+    if (maxLength <= hashLength + 1) {
+        return crypto.createHash("md5").update(base, "utf8").digest("hex").slice(0, maxLength)
+    }
+
+    const hash = crypto.createHash("md5").update(base, "utf8").digest("hex").slice(0, hashLength)
+    const prefixLength = maxLength - hash.length - 1
+    return `${base.slice(0, prefixLength)}_${hash}`
+}
+
+export const sanitizeAndCapModelItemId = (value: string, fallback = "unknown"): string => {
+    return sanitizeAndCapIdentifier(value, { fallback, maxLength: MODEL_ITEM_ID_MAX_LENGTH })
+}
+
+export const sanitizeAndCapModelMessageId = (value: string, fallback = "event"): string => {
+    const maxBodyLength = Math.max(1, MODEL_ITEM_ID_MAX_LENGTH - MODEL_MESSAGE_ID_PREFIX.length)
+    const withoutPrefix = value.trim().replace(/^msg_/, "")
+    const body = sanitizeAndCapIdentifier(withoutPrefix, {
+        fallback,
+        maxLength: maxBodyLength
+    })
+    return `${MODEL_MESSAGE_ID_PREFIX}${body}`
+}
+
 let lastUnixMsForId = 0
 let sameMsSequence = 0
 
 /**
- * Generates a Unix timestamp ID in Slack-like format: "seconds.microseconds".
+ * Generates an API-safe timestamp ID using only [A-Za-z0-9_-].
+ * Format: "msg_<seconds>_<micros>".
  * Uses a per-process sequence to avoid collisions within the same millisecond.
  */
 export const createUnixTimestampId = (): string => {
@@ -22,7 +74,7 @@ export const createUnixTimestampId = (): string => {
 
     const seconds = Math.floor(nowMs / 1000)
     const micros = (nowMs % 1000) * 1000 + sameMsSequence
-    return `${seconds}.${String(micros).padStart(6, "0")}`
+    return `msg_${seconds}_${String(micros).padStart(6, "0")}`
 }
 
 export const isValidEpochTimestamp = (str: string): boolean => {

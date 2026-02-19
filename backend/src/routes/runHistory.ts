@@ -340,7 +340,7 @@ export async function getChatHistory(req: Request, res: Response) {
             where: {
                 run_history_record_id: runId
             },
-            orderBy: [{ sequence_order: "asc" }, { created_at: "asc" }],
+            orderBy: [{ created_at: "asc" }],
             select: {
                 raw_event_json: true,
                 created_at: true

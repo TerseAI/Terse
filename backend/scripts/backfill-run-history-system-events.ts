@@ -4,6 +4,7 @@ import "dotenv/config"
 
 import { getEventKey } from "../src/agent/eventKey"
 import { db } from "../src/prismaClient"
+import { MODEL_ITEM_ID_MAX_LENGTH, sanitizeAndCapIdentifier, sanitizeAndCapModelMessageId } from "../src/utility/strings"
 
 const TARGET_EVENT_TYPES: RunHistoryChatEventType[] = [
     RunHistoryChatEventType.FilterResult,
@@ -34,6 +35,11 @@ type SystemEventItem = {
     content: string
 }
 
+type SystemEventBuildResult = {
+    eventKey: string
+    rawItem: SystemEventItem
+}
+
 type TimelineEntry =
     | {
           kind: "existing"
@@ -61,27 +67,39 @@ function clampConfidence(value: unknown): number {
     return Math.max(0, Math.min(1, numeric))
 }
 
+function buildCappedIdPart(value: string, prefix: string, fallback: string): string {
+    const maxPartLength = Math.max(1, MODEL_ITEM_ID_MAX_LENGTH - prefix.length)
+    return sanitizeAndCapIdentifier(value, {
+        fallback,
+        maxLength: maxPartLength
+    })
+}
+
+function buildPrefixedId(prefix: string, value: string, fallback: string): string {
+    return sanitizeAndCapModelMessageId(`${prefix}${buildCappedIdPart(value, prefix, fallback)}`, prefix.replace(/_+$/, ""))
+}
+
 function buildToolApprovalRequestId(stepId: string): string {
-    return `tool_approval_request:${stepId}`
+    return buildPrefixedId("tool_approval_request_", stepId, "step")
 }
 
 function buildToolApprovalResponseId(stepId: string): string {
-    return `tool_approval_response:${stepId}`
+    return buildPrefixedId("tool_approval_response_", stepId, "step")
 }
 
 function buildFilterOutcomeId(chatEventId: string, openAiResponseId?: string): string {
     const trimmed = openAiResponseId?.trim()
-    if (trimmed) {
-        return `filter_outcome:${trimmed}`
+    if (!trimmed) {
+        throw new Error(`Missing openai_response_id for filter outcome chat event: ${chatEventId}`)
     }
-    return `filter_outcome:legacy:${chatEventId}`
+    return buildPrefixedId("filter_outcome_", trimmed, "response")
 }
 
 function buildRunErrorId(chatEventId: string, runErrorId?: string): { id: string; runErrorId: string } {
     const trimmed = runErrorId?.trim()
-    const resolvedRunErrorId = trimmed || `legacy-${chatEventId}`
+    const resolvedRunErrorId = buildCappedIdPart(trimmed || chatEventId, "run_error_", "run_error")
     return {
-        id: `run_error:${resolvedRunErrorId}`,
+        id: buildPrefixedId("run_error_", resolvedRunErrorId, "run_error"),
         runErrorId: resolvedRunErrorId
     }
 }
@@ -100,15 +118,16 @@ function createSystemEventItem(payload: Record<string, unknown>, id: string): { 
     }
 }
 
-function toSystemEvent(event: ChatEventRow): { eventKey: string; rawItem: SystemEventItem } | null {
+function toSystemEvent(event: ChatEventRow): SystemEventBuildResult | null {
     const payload = asRecord(event.event_json)
     if (!payload) return null
 
     if (event.event_type === RunHistoryChatEventType.FilterResult) {
         if (typeof payload.isRelevant !== "boolean" || typeof payload.reason !== "string") return null
         const openAiResponseId = typeof payload.openai_response_id === "string" ? payload.openai_response_id : undefined
+        if (!openAiResponseId?.trim()) return null
         const id = buildFilterOutcomeId(event.id, openAiResponseId)
-        return createSystemEventItem(
+        const built = createSystemEventItem(
             {
                 kind: "filter_outcome",
                 ...(openAiResponseId ? { openai_response_id: openAiResponseId } : {}),
@@ -118,12 +137,13 @@ function toSystemEvent(event: ChatEventRow): { eventKey: string; rawItem: System
             },
             id
         )
+        return built
     }
 
     if (event.event_type === RunHistoryChatEventType.ToolApprovalRequest) {
         if (typeof payload.step_id !== "string" || typeof payload.name !== "string") return null
         const id = buildToolApprovalRequestId(payload.step_id)
-        return createSystemEventItem(
+        const built = createSystemEventItem(
             {
                 kind: "tool_approval_request",
                 step_id: payload.step_id,
@@ -132,12 +152,13 @@ function toSystemEvent(event: ChatEventRow): { eventKey: string; rawItem: System
             },
             id
         )
+        return built
     }
 
     if (event.event_type === RunHistoryChatEventType.ToolApprovalResponse) {
         if (typeof payload.step_id !== "string" || typeof payload.approved !== "boolean") return null
         const id = buildToolApprovalResponseId(payload.step_id)
-        return createSystemEventItem(
+        const built = createSystemEventItem(
             {
                 kind: "tool_approval_response",
                 step_id: payload.step_id,
@@ -145,6 +166,7 @@ function toSystemEvent(event: ChatEventRow): { eventKey: string; rawItem: System
             },
             id
         )
+        return built
     }
 
     if (event.event_type === RunHistoryChatEventType.RunError) {
@@ -152,7 +174,7 @@ function toSystemEvent(event: ChatEventRow): { eventKey: string; rawItem: System
         const existingRunErrorId = typeof payload.run_error_id === "string" ? payload.run_error_id : undefined
         const { id, runErrorId } = buildRunErrorId(event.id, existingRunErrorId)
 
-        return createSystemEventItem(
+        const built = createSystemEventItem(
             {
                 kind: "run_error",
                 run_error_id: runErrorId,
@@ -162,6 +184,7 @@ function toSystemEvent(event: ChatEventRow): { eventKey: string; rawItem: System
             },
             id
         )
+        return built
     }
 
     return null

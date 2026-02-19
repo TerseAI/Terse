@@ -1,7 +1,7 @@
 import type { AgentInputItem } from "@openai/agents-core"
 import { z } from "zod"
 
-import { randomString } from "../../utility/strings"
+import { randomString, sanitizeAndCapModelMessageId } from "../../utility/strings"
 import { BaseSystemEvent } from "./BaseSystemEvent"
 import { appendSystemEventToRunHistory } from "./systemEventSessions"
 
@@ -52,10 +52,10 @@ const filterOutcomeSystemEvent = new FilterOutcomeSystemEvent()
 function buildFilterOutcomeSystemEventId(input: FilterOutcomeSystemEventInput): string {
     const responseId = input.openai_response_id?.trim()
     if (responseId) {
-        return `filter_outcome:${responseId}`
+        return sanitizeAndCapModelMessageId(`filter_outcome_${responseId}`, "filter_outcome")
     }
 
-    return `filter_outcome:${randomString(18)}`
+    return sanitizeAndCapModelMessageId(`filter_outcome_${randomString(18)}`, "filter_outcome")
 }
 
 function buildPayload(input: FilterOutcomeSystemEventInput): FilterOutcomeSystemEventPayload {
