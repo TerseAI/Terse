@@ -1,8 +1,8 @@
 import type { AgentInputItem } from "@openai/agents-core"
 import { z } from "zod"
 
-import type { ClassifiedError } from "../agentErrorUtils"
 import { MODEL_ITEM_ID_MAX_LENGTH, randomString, sanitizeAndCapIdentifier, sanitizeAndCapModelMessageId } from "../../utility/strings"
+import type { ClassifiedError } from "../agentErrorUtils"
 
 import { BaseSystemEvent } from "./BaseSystemEvent"
 import { appendSystemEventToBuilderSession, appendSystemEventToRunHistory } from "./systemEventSessions"

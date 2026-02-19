@@ -2,6 +2,7 @@ import type { AgentInputItem } from "@openai/agents-core"
 import { z } from "zod"
 
 import { randomString, sanitizeAndCapModelMessageId } from "../../utility/strings"
+
 import { BaseSystemEvent } from "./BaseSystemEvent"
 import { appendSystemEventToRunHistory } from "./systemEventSessions"
 
