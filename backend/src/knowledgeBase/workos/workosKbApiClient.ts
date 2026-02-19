@@ -46,10 +46,7 @@ export interface WorkOSListUsersResponse {
 /**
  * List users from the customer's WorkOS account using their API key.
  */
-export async function listWorkOSUsers(
-    apiKey: string,
-    options: { limit?: number; after?: string; before?: string; email?: string; organizationId?: string } = {}
-): Promise<WorkOSListUsersResponse> {
+export async function listWorkOSUsers(apiKey: string, options: { limit?: number; after?: string; before?: string; email?: string; organizationId?: string } = {}): Promise<WorkOSListUsersResponse> {
     const params = new URLSearchParams()
     if (options.limit) params.set("limit", String(Math.min(options.limit, 100)))
     if (options.after) params.set("after", options.after)

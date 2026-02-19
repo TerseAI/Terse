@@ -98,8 +98,7 @@ export class WorkOSKnowledgeBase extends KnowledgeBase<WorkOSKBConfig> {
                 "Supports pagination via the 'after' cursor."
         )
         sections.push(
-            "• getWorkOSUser: Get detailed information about a specific user by their WorkOS user ID. " +
-                "Returns full profile data including email, name, verification status, and timestamps."
+            "• getWorkOSUser: Get detailed information about a specific user by their WorkOS user ID. " + "Returns full profile data including email, name, verification status, and timestamps."
         )
 
         sections.push(`
