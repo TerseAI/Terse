@@ -85,8 +85,13 @@ TOOL:
 - gmail_send_email: Send emails or reply to existing email threads via Gmail.
 
 EMAIL TYPES:
-- New email: Send a new email by providing \`to\`, \`subject\`, and \`body\`. Leave \`thread_id\` empty.
-- Reply: Reply to an existing email by providing \`thread_id\` (the Gmail Thread ID from the email event, NOT the Message-ID) along with \`to\`, \`subject\`, and \`body\`.
+- New email: Send a new email by providing \`to\`, \`subject\`, and at least one of \`body\` or \`html_body\`. Leave \`thread_id\` empty.
+- Reply: Reply to an existing email by providing \`thread_id\` (the Gmail Thread ID from the email event, NOT the Message-ID) along with \`to\`, \`subject\`, and at least one of \`body\` or \`html_body\`.
+
+BODY FORMATS:
+- Plain text: Provide \`body\`.
+- HTML: Provide \`html_body\`.
+- Best compatibility: Provide both \`body\` and \`html_body\` to send multipart/alternative.
 
 IMPORTANT: The \`thread_id\` parameter must be the Gmail Thread ID (a numeric string like "1234567890"), NOT the Message-ID header (which looks like "<...@mail.gmail.com>").
 
@@ -97,6 +102,6 @@ WHEN TO USE:
 BEST PRACTICES:
 - Always provide clear, concise subject lines
 - For replies, use the Thread ID from the incoming email event (not the Message-ID)
-- Use plain text in the body (HTML is not currently supported)
+- Prefer sending both \`body\` and \`html_body\` for client compatibility
 - Include relevant context in replies by referencing the original email
 `.trim()

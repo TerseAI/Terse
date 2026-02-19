@@ -12,13 +12,7 @@ import { ToolName } from "../../../tools/ToolNames"
 import { createNeedsApprovalFunction, formatError } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
 
-function encodeSubjectHeader(subject: string): string {
-    // Keep ASCII subjects unchanged; encode non-ASCII as RFC 2047 UTF-8 Base64 encoded-word.
-    if (/^[\x00-\x7F]*$/.test(subject)) {
-        return subject
-    }
-    return `=?UTF-8?B?${Buffer.from(subject, "utf8").toString("base64")}?=`
-}
+import { buildEmailContent, encodeSubjectHeader } from "./mime"
 
 /**
  * Tool for sending emails or replying to email threads via Gmail.
@@ -31,19 +25,20 @@ export const gmailSendEmailTool = tool({
         integrationId: z.string().describe("The integration ID of the Gmail account to use."),
         to: z.string().describe("Recipient email address(es). Multiple addresses can be comma-separated."),
         subject: z.string().describe("Email subject line"),
-        body: z.string().describe("Email body content (plain text)"),
+        body: z.string().nullable().optional().describe("Plain text email body content."),
+        html_body: z.string().nullable().optional().describe("HTML email body content. If provided with body, sends multipart/alternative."),
         thread_id: z.string().nullable().optional().describe("Gmail Thread ID (numeric string from the email event, NOT the Message-ID header). Omit for new emails."),
         cc: z.string().nullable().optional().describe("CC recipient email address(es). Multiple addresses can be comma-separated."),
         bcc: z.string().nullable().optional().describe("BCC recipient email address(es). Multiple addresses can be comma-separated.")
     }),
     needsApproval: createNeedsApprovalFunction(ToolName.GMAIL_SEND_EMAIL),
-    execute: async ({ integrationId, to, subject, body, thread_id, cc, bcc }, runContext?: RunContext<SessionWithTracking<Session>>) => {
+    execute: async ({ integrationId, to, subject, body, html_body, thread_id, cc, bcc }, runContext?: RunContext<SessionWithTracking<Session>>) => {
         if (!runContext?.context) {
             throw new Error("No context provided")
         }
 
-        if (!to || !subject || !body) {
-            throw new Error("to, subject, and body are required")
+        if (!to || !subject || (!body?.trim() && !html_body?.trim())) {
+            throw new Error("to, subject, and at least one of body or html_body are required")
         }
 
         try {
@@ -148,12 +143,8 @@ export const gmailSendEmailTool = tool({
                 }
             }
 
-            // Build the raw email message
-            const emailContent = [
-                ...headers,
-                "", // Empty line between headers and body
-                body
-            ].join("\r\n")
+            // Build the raw MIME email message
+            const emailContent = buildEmailContent(headers, body, html_body)
 
             // Encode the email in base64url format (required by Gmail API)
             const encodedMessage = Buffer.from(emailContent).toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "")
@@ -179,7 +170,14 @@ export const gmailSendEmailTool = tool({
 
             const messageId = result.data.id
             const emailType = thread_id ? "reply" : "new email"
-            const emailPreview = body.length > 100 ? body.substring(0, 100) + "..." : body
+            const previewSource =
+                body?.trim() ||
+                html_body
+                    ?.replace(/<[^>]*>/g, " ")
+                    .replace(/\s+/g, " ")
+                    .trim() ||
+                ""
+            const emailPreview = previewSource.length > 100 ? previewSource.substring(0, 100) + "..." : previewSource
 
             // Build Gmail message URL using the thread ID with #all
             // Format: https://mail.google.com/mail/u/0/#all/{threadId}
