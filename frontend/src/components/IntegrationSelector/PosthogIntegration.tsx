@@ -192,4 +192,3 @@ export function PosthogIntegration({ input, variant, setConfig }: InputConfigSel
         </div>
     )
 }
-

@@ -261,4 +261,3 @@ export function LaunchDarklyIntegration({ input, variant, setConfig }: InputConf
         </div>
     )
 }
-

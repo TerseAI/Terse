@@ -4,8 +4,8 @@ import { OutputConfigType } from "@prisma/client"
 import { buildDummyOutputConfig } from "../../buildDummyConfigForCapability"
 import { type CapabilityDescription, CapabilityRole, extractToolMetadata, getConfigMetadata } from "../../capabilityHelpers"
 import { validatePosthogProjectExists } from "../../integrations/PosthogIntegration"
-import { searchEventsTool } from "../../knowledgeBase/posthog/tools/searchEvents"
 import { getSessionEventsTool } from "../../knowledgeBase/posthog/tools/getSessionEvents"
+import { searchEventsTool } from "../../knowledgeBase/posthog/tools/searchEvents"
 import { searchLogsTool } from "../../knowledgeBase/posthog/tools/searchLogs"
 import { searchSessionsTool } from "../../knowledgeBase/posthog/tools/searchSessions"
 import { PosthogConfig } from "../../shared/Configs"
@@ -87,9 +87,7 @@ export class PosthogSkillOutput extends Output<PosthogConfig> {
             if (!config.posthog_config) {
                 throw new Error("PostHog config not found")
             }
-            sections.push(
-                `  • Integration ID: ${config.integration_id} - Project Name: ${config.posthog_config.project_name || "N/A"}, Project ID: ${config.posthog_config.project_id || "N/A"}`
-            )
+            sections.push(`  • Integration ID: ${config.integration_id} - Project Name: ${config.posthog_config.project_name || "N/A"}, Project ID: ${config.posthog_config.project_id || "N/A"}`)
         }
 
         sections.push("\nWhen calling PostHog tools, include integrationId and projectId from a configured entry.")
@@ -99,4 +97,3 @@ export class PosthogSkillOutput extends Output<PosthogConfig> {
         return sections.join("\n")
     }
 }
-

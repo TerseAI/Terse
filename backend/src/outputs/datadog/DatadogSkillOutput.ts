@@ -96,4 +96,3 @@ export class DatadogSkillOutput extends Output<DatadogConfig> {
         return sections.join("\n")
     }
 }
-

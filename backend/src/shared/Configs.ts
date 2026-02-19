@@ -38,7 +38,7 @@ export const GmailConfigMetadata = {
     description: "Monitor incoming emails",
     integrationType: IntegrationType.GMAIL,
     isInput: true,
-    isOutput: false,
+    isOutput: false
 } as const satisfies ConfigDetails
 
 export const FigmaConfigMetadata = {
@@ -47,7 +47,7 @@ export const FigmaConfigMetadata = {
     description: "Monitor design changes in Figma files",
     integrationType: IntegrationType.FIGMA,
     isInput: true,
-    isOutput: false,
+    isOutput: false
 } as const satisfies ConfigDetails
 
 export const SlackConfigMetadata = {
@@ -56,7 +56,7 @@ export const SlackConfigMetadata = {
     description: "Monitor messages in Slack channels or DMs",
     integrationType: IntegrationType.SLACK,
     isInput: true,
-    isOutput: false,
+    isOutput: false
 } as const satisfies ConfigDetails
 
 export const SlackOutputConfigMetadata = {
@@ -65,7 +65,7 @@ export const SlackOutputConfigMetadata = {
     description: "Send messages to Slack channels, group DMs, or direct messages",
     integrationType: IntegrationType.SLACK,
     isInput: false,
-    isOutput: true,
+    isOutput: true
 } as const satisfies ConfigDetails
 
 export const GmailOutputConfigMetadata = {
@@ -74,7 +74,7 @@ export const GmailOutputConfigMetadata = {
     description: "Send emails via Gmail",
     integrationType: IntegrationType.GMAIL,
     isInput: false,
-    isOutput: true,
+    isOutput: true
 } as const satisfies ConfigDetails
 
 export const NotionConfigMetadata = {
@@ -83,7 +83,7 @@ export const NotionConfigMetadata = {
     description: "Update and monitor Notion pages and databases",
     integrationType: IntegrationType.NOTION,
     isInput: false,
-    isOutput: true,
+    isOutput: true
 } as const satisfies ConfigDetails
 
 export const LinearInputConfigMetadata = {
@@ -92,7 +92,7 @@ export const LinearInputConfigMetadata = {
     description: "Monitor Linear issues",
     integrationType: IntegrationType.LINEAR,
     isInput: true,
-    isOutput: false,
+    isOutput: false
 } as const satisfies ConfigDetails
 
 export const LinearOutputConfigMetadata = {
@@ -101,7 +101,7 @@ export const LinearOutputConfigMetadata = {
     description: "Update Linear issues",
     integrationType: IntegrationType.LINEAR,
     isInput: false,
-    isOutput: true,
+    isOutput: true
 } as const satisfies ConfigDetails
 
 export const GitHubConfigMetadata = {
@@ -110,7 +110,7 @@ export const GitHubConfigMetadata = {
     description: "Monitor and read Github repositories",
     integrationType: IntegrationType.GITHUB,
     isInput: true,
-    isOutput: true,
+    isOutput: true
 } as const satisfies ConfigDetails
 
 export const JiraConfigMetadata = {
@@ -119,7 +119,7 @@ export const JiraConfigMetadata = {
     description: "Monitor and update Jira issues",
     integrationType: IntegrationType.ATLASSIAN,
     isInput: true,
-    isOutput: true,
+    isOutput: true
 } as const satisfies ConfigDetails
 
 export const ConfluenceConfigMetadata = {
@@ -128,7 +128,7 @@ export const ConfluenceConfigMetadata = {
     description: "Update Confluence pages",
     integrationType: IntegrationType.ATLASSIAN,
     isInput: false,
-    isOutput: true,
+    isOutput: true
 } as const satisfies ConfigDetails
 
 export const PosthogConfigMetadata = {
@@ -137,7 +137,7 @@ export const PosthogConfigMetadata = {
     description: "Track user events",
     integrationType: IntegrationType.POSTHOG,
     isInput: false,
-    isOutput: true,
+    isOutput: true
 } as const satisfies ConfigDetails
 
 export const DatadogConfigMetadata = {
@@ -146,7 +146,7 @@ export const DatadogConfigMetadata = {
     description: "Search logs in Datadog",
     integrationType: IntegrationType.DATADOG,
     isInput: false,
-    isOutput: true,
+    isOutput: true
 } as const satisfies ConfigDetails
 
 export const TimeTriggerConfigMetadata = {
@@ -155,7 +155,7 @@ export const TimeTriggerConfigMetadata = {
     description: "Run on a schedule (daily, weekly, etc.)",
     integrationType: IntegrationType.CRON_JOB,
     isInput: true,
-    isOutput: false,
+    isOutput: false
 } as const satisfies ConfigDetails
 
 export const LaunchDarklyConfigMetadata = {
@@ -164,7 +164,7 @@ export const LaunchDarklyConfigMetadata = {
     description: "Query feature flags",
     integrationType: IntegrationType.LAUNCHDARKLY,
     isInput: false,
-    isOutput: true,
+    isOutput: true
 } as const satisfies ConfigDetails
 
 export const TerseConfigMetadata = {
@@ -173,7 +173,7 @@ export const TerseConfigMetadata = {
     description: "Built-in capabilities like web search (always available to agents)",
     integrationType: IntegrationType.TERSE,
     isInput: false,
-    isOutput: true,
+    isOutput: true
 } as const satisfies ConfigDetails
 
 export const WorkOSInputConfigMetadata = {
@@ -182,7 +182,7 @@ export const WorkOSInputConfigMetadata = {
     description: "Trigger on user signup, deletion, or membership changes in your app",
     integrationType: IntegrationType.WORKOS,
     isInput: true,
-    isOutput: false,
+    isOutput: false
 } as const satisfies ConfigDetails
 
 export const AttioOutputConfigMetadata = {
@@ -191,7 +191,7 @@ export const AttioOutputConfigMetadata = {
     description: "Add and update contacts in Attio",
     integrationType: IntegrationType.ATTIO,
     isInput: false,
-    isOutput: true,
+    isOutput: true
 } as const satisfies ConfigDetails
 
 export type ConfigDetailsMap = Record<ConfigType, ConfigDetails>
@@ -580,7 +580,6 @@ export class TimeTriggerConfig implements ConfigInstance {
         return parts.join("\n")
     }
 }
-
 
 export class LaunchDarklyConfig implements ConfigInstance {
     integrationType: IntegrationType = IntegrationType.LAUNCHDARKLY

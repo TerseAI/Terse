@@ -336,11 +336,7 @@ export const convertPrismaOutputConfigToConfigInstance = (channelOutput: AgentOu
     }
 
     if (channelOutput.launchdarkly_config) {
-        return new LaunchDarklyConfig(
-            integrationId,
-            channelOutput.launchdarkly_config.project_key,
-            channelOutput.launchdarkly_config.environment_keys || []
-        )
+        return new LaunchDarklyConfig(integrationId, channelOutput.launchdarkly_config.project_key, channelOutput.launchdarkly_config.environment_keys || [])
     }
 
     // Type guard to ensure we implement conversion here

@@ -4,12 +4,6 @@ import { OutputConfigType } from "@prisma/client"
 import { buildDummyOutputConfig } from "../../buildDummyConfigForCapability"
 import { type CapabilityDescription, CapabilityRole, extractToolMetadata, getConfigMetadata, getContextLabel } from "../../capabilityHelpers"
 import { validateGithubRepositoryIds } from "../../integrations/GithubIntegration"
-import { ConfigType, GitHubConfig } from "../../shared/Configs"
-import { IntegrationType } from "../../shared/Integrations"
-import { AgentOutputWithConfigs, PrismaTransaction } from "../../types/prisma"
-import { GitHubConfigSchema, stripConfigForValidation } from "../../utility/configSchemas"
-import { Output, ToolboxEntry } from "../abstract/Output"
-
 import { grepGitHubCodeTool } from "../../knowledgeBase/github/tools/grepCode"
 import { listGitHubCommitsTool } from "../../knowledgeBase/github/tools/listCommits"
 import { listGitHubDirectoryTool } from "../../knowledgeBase/github/tools/listDirectory"
@@ -17,6 +11,11 @@ import { listGitHubPullRequestsTool } from "../../knowledgeBase/github/tools/lis
 import { readGitHubFileTool } from "../../knowledgeBase/github/tools/readFile"
 import { searchGitHubCodeTool } from "../../knowledgeBase/github/tools/searchCode"
 import { summarizeGitHubPullRequestDiffTool } from "../../knowledgeBase/github/tools/summarizePullRequestDiff"
+import { ConfigType, GitHubConfig } from "../../shared/Configs"
+import { IntegrationType } from "../../shared/Integrations"
+import { AgentOutputWithConfigs, PrismaTransaction } from "../../types/prisma"
+import { GitHubConfigSchema, stripConfigForValidation } from "../../utility/configSchemas"
+import { Output, ToolboxEntry } from "../abstract/Output"
 
 /**
  * GitHub skill output. This is backed by automation_outputs rows and reuses

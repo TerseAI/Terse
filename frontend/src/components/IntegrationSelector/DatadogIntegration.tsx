@@ -328,4 +328,3 @@ export function DatadogIntegration({ input, variant, setConfig }: InputConfigSel
         </div>
     )
 }
-

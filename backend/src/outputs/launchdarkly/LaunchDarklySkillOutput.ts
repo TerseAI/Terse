@@ -97,4 +97,3 @@ export class LaunchDarklySkillOutput extends Output<LaunchDarklyConfig> {
         return sections.join("\n")
     }
 }
-

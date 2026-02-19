@@ -1,6 +1,6 @@
 import { ConfigType } from "./Configs"
 
-export type TerseToolSource = "skill" 
+export type TerseToolSource = "skill"
 
 export interface TerseTool {
     name: string

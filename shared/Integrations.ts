@@ -31,7 +31,7 @@ export const GmailIntegrationMetadata = {
     name: "Gmail",
     description: "Monitor incoming emails",
     isInput: true,
-    isOutput: false,
+    isOutput: false
 } as const satisfies IntegrationDetails
 
 export const NotionIntegrationMetadata = {
@@ -39,7 +39,7 @@ export const NotionIntegrationMetadata = {
     name: "Notion",
     description: "Update living documents",
     isInput: false,
-    isOutput: true,
+    isOutput: true
 } as const satisfies IntegrationDetails
 
 export const LinearIntegrationMetadata = {
@@ -53,10 +53,9 @@ export const LinearIntegrationMetadata = {
 export const SlackIntegrationMetadata = {
     type: IntegrationType.SLACK,
     name: "Slack",
-    description:
-        "Send and receive messages in Slack (channels, group DMs, and DMs). Triggers can use user token to read your DMs; skills can send to channels or users with either token.",
+    description: "Send and receive messages in Slack (channels, group DMs, and DMs). Triggers can use user token to read your DMs; skills can send to channels or users with either token.",
     isInput: true,
-    isOutput: true,
+    isOutput: true
 } as const satisfies IntegrationDetails
 
 export const FigmaIntegrationMetadata = {
@@ -64,7 +63,7 @@ export const FigmaIntegrationMetadata = {
     name: "Figma",
     description: "Trigger on Figma file comments (does not support file edits or design changes)",
     isInput: true,
-    isOutput: false,
+    isOutput: false
 } as const satisfies IntegrationDetails
 
 export const AtlassianIntegrationMetadata = {
@@ -112,7 +111,7 @@ export const CronJobIntegrationMetadata = {
     name: "Scheduled Jobs",
     description: "System integration for time-based triggers",
     isInput: true,
-    isOutput: false,
+    isOutput: false
 } as const satisfies IntegrationDetails
 
 export const LaunchDarklyIntegrationMetadata = {
@@ -120,7 +119,7 @@ export const LaunchDarklyIntegrationMetadata = {
     name: "LaunchDarkly",
     description: "Track feature flags",
     isInput: false,
-    isOutput: true,
+    isOutput: true
 } as const satisfies IntegrationDetails
 
 export const WorkOSIntegrationMetadata = {
@@ -128,7 +127,7 @@ export const WorkOSIntegrationMetadata = {
     name: "WorkOS",
     description: "Trigger on user lifecycle events from your WorkOS account",
     isInput: true,
-    isOutput: false,
+    isOutput: false
 } as const satisfies IntegrationDetails
 
 export const AttioIntegrationMetadata = {
