@@ -38,6 +38,7 @@ export const ToolName = {
 
     // Gmail Tools
     GMAIL_SEND_EMAIL: "gmail_send_email",
+    GMAIL_CREATE_DRAFT: "gmail_create_draft",
 
     // Slack Tools
     SLACK_SEND_MESSAGE: "slack_send_message",
