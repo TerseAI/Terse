@@ -1,12 +1,15 @@
 import { randomUUID } from "crypto"
-import { encode as encodeRfc2047 } from "rfc2047"
 
 function getRandomBoundary(): string {
     return `mime_boundary_${randomUUID()}`
 }
 
 export function encodeSubjectHeader(subject: string): string {
-    return encodeRfc2047(subject)
+    // Keep ASCII subjects unchanged; encode non-ASCII as RFC 2047 UTF-8 Base64 encoded-word.
+    if (/^[\x00-\x7F]*$/.test(subject)) {
+        return subject
+    }
+    return `=?UTF-8?B?${Buffer.from(subject, "utf8").toString("base64")}?=`
 }
 
 function buildPlainTextMime(headers: string[], body: string): string {
