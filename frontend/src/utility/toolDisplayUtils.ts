@@ -417,6 +417,20 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
             return "Email sent"
         }
     },
+    gmail_create_draft: {
+        preparing: "Getting your draft ready",
+        executing: params => {
+            const to = params?.to as string | undefined
+            return to ? `Creating draft for ${truncate(to, 30)}` : "Creating draft"
+        },
+        complete: params => {
+            const to = params?.to as string | undefined
+            const subject = params?.subject as string | undefined
+            if (subject && to) return `Draft created: "${truncate(subject, 25)}" to ${truncate(to, 20)}`
+            if (to) return `Draft created for ${truncate(to, 30)}`
+            return "Draft created"
+        }
+    },
 
     // ===================
     // Slack Tools

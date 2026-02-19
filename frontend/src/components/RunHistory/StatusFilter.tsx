@@ -17,7 +17,7 @@ function StatusFilter({ selectedStatuses, onToggleStatus, open, onOpenChange }: 
         <Popover open={open} onOpenChange={onOpenChange}>
             <PopoverTrigger asChild>
                 <Button variant="outline">
-                    <FilterIcon className="w-4 h-4 mr-2" />
+                    <FilterIcon className="w-4 h-4" />
                     {selectedStatuses.size === Object.values(RunHistoryStatus).length ? "All Status" : selectedStatuses.size === 0 ? "No Status" : `${selectedStatuses.size} Status`}
                     <ChevronDown className="ml-2 h-4 w-4" />
                 </Button>

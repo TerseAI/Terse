@@ -32,6 +32,7 @@ import {
     GitHubConfigSchema,
     GitHubKnowledgeBaseConfigSchema,
     GmailConfigSchema,
+    GmailDraftOutputConfigSchema,
     GmailOutputConfigSchema,
     JiraConfigSchema,
     LaunchDarklyConfigSchema,
@@ -46,6 +47,7 @@ import {
     SlackOutputConfigSchema,
     TimeTriggerConfigSchema,
     WorkOSInputConfigSchema,
+    WorkOSKnowledgeBaseConfigSchema,
     enforceNonSystemIntegrationId
 } from "../../utility/configSchemas"
 import { randomString } from "../../utility/strings"
@@ -499,6 +501,7 @@ const OutputConfigSchema = z
         JiraConfigSchema,
         ConfluenceConfigSchema,
         GmailOutputConfigSchema,
+        GmailDraftOutputConfigSchema,
         AttioOutputConfigSchema
     ])
     .superRefine((value, ctx) => {
@@ -512,7 +515,8 @@ const KnowledgeBaseConfigSchema = z
         LaunchDarklyConfigSchema,
         DatadogConfigSchema,
         LinearKnowledgeBaseConfigSchema,
-        SlackKnowledgeBaseConfigSchema
+        SlackKnowledgeBaseConfigSchema,
+        WorkOSKnowledgeBaseConfigSchema
     ])
     .describe("Knowledge base config. Match configType to integration: POSTHOG, LAUNCHDARKLY, DATADOG, github_kb for GitHub repos, linear_kb for Linear tickets, slack_kb for Slack history.")
     .superRefine((value, ctx) => {

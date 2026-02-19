@@ -48,8 +48,13 @@ export default function RunHistoryChatAdapter({ runId, status, children }: RunHi
     // Convert to Turns
     const turns = useMemo(() => convertRunHistoryEventsToTurns(historicalEvents), [historicalEvents])
 
-    // Create subscription function for run history
-    const subscribeToEvents: ChatEventSubscription = useMemo(() => {
+    // Create subscription function for run history — subscribe whenever runId is valid.
+    // We don't gate on isActiveRun/status because the status in the drawer is a stale
+    // snapshot from when the drawer was opened. The server won't send events for
+    // completed runs anyway, so subscribing for non-active runs is harmless.
+    const subscribeToEvents: ChatEventSubscription | null = useMemo(() => {
+        if (!runId) return null
+
         return (callback: (payload: RunHistoryModelSocketEvent) => void) => {
             return subscribeToChatEvents(runId, callback)
         }

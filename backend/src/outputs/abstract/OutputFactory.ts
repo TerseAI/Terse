@@ -4,6 +4,7 @@ import { ConfigInstance } from "../../shared/Configs"
 import { AgentOutputWithConfigs, AgentWithRelations } from "../../types/prisma"
 import { ConfluenceOutput } from "../ConfluenceOutput"
 import { AttioOutput } from "../attio/AttioOutput"
+import { GmailDraftOutput } from "../gmail/GmailDraftOutput"
 import { GmailOutput } from "../gmail/GmailOutput"
 import { JiraTicketOutput } from "../jira/JiraTicketOutput"
 import { LinearTicketOutput } from "../linear/LinearTicketOutput"
@@ -26,6 +27,7 @@ export class OutputFactory {
         [OutputConfigType.JIRA_TICKET, () => new JiraTicketOutput()],
         [OutputConfigType.SLACK_CHANNEL, () => new SlackOutput()],
         [OutputConfigType.GMAIL, () => new GmailOutput()],
+        [OutputConfigType.GMAIL_DRAFT, () => new GmailDraftOutput()],
         [OutputConfigType.TERSE, () => new TerseSkillsOutput()],
         [OutputConfigType.ATTIO, () => new AttioOutput()]
     ])

@@ -38,6 +38,7 @@ export const ToolName = {
 
     // Gmail Tools
     GMAIL_SEND_EMAIL: "gmail_send_email",
+    GMAIL_CREATE_DRAFT: "gmail_create_draft",
 
     // Slack Tools
     SLACK_SEND_MESSAGE: "slack_send_message",
@@ -78,6 +79,10 @@ export const ToolName = {
     ATTIO_UPSERT_RECORD: "attio_upsert_record",
     ATTIO_QUERY_RECORDS: "attio_query_records",
     ATTIO_LIST_OBJECTS: "attio_list_objects",
+
+    // WorkOS Knowledge Base Tools
+    WORKOS_LIST_USERS: "listWorkOSUsers",
+    WORKOS_GET_USER: "getWorkOSUser",
 
     // Terse
     WEB_SEARCH: "web_search"

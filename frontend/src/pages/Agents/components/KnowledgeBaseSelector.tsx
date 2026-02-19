@@ -7,6 +7,7 @@ import { LaunchDarklyKnowledgeBaseIntegration } from "./LaunchDarklyKnowledgeBas
 import { LinearKnowledgeBaseIntegration } from "./LinearKnowledgeBaseIntegration"
 import { PostHogKnowledgeBaseIntegration } from "./PostHogKnowledgeBaseIntegration"
 import { SlackKnowledgeBaseIntegration } from "./SlackKnowledgeBaseIntegration"
+import { WorkOSKnowledgeBaseIntegration } from "./WorkOSKnowledgeBaseIntegration"
 
 export interface KnowledgeBaseSelectorProps {
     knowledgeBase: TransientKnowledgeBase
@@ -28,6 +29,8 @@ export function KnowledgeBaseSelector(props: KnowledgeBaseSelectorProps) {
             return <LinearKnowledgeBaseIntegration {...props} />
         case ConfigType.SLACK_KB:
             return <SlackKnowledgeBaseIntegration {...props} />
+        case ConfigType.WORKOS_KB:
+            return <WorkOSKnowledgeBaseIntegration {...props} />
 
         default:
             throw new Error(`Unsupported knowledge base config type: ${props.knowledgeBase.configType}`)
