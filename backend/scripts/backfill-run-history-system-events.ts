@@ -24,7 +24,6 @@ type ChatEventRow = {
 type ExistingRawRow = {
     id: string
     event_key: string
-    sequence_order: number
     created_at: Date
 }
 
@@ -45,7 +44,6 @@ type TimelineEntry =
           kind: "existing"
           rawId: string
           createdAt: Date
-          originalSequence: number
       }
     | {
           kind: "insert"
@@ -199,10 +197,6 @@ function sortTimeline(entries: TimelineEntry[]): TimelineEntry[] {
             return left.kind === "existing" ? -1 : 1
         }
 
-        if (left.kind === "existing" && right.kind === "existing") {
-            return left.originalSequence - right.originalSequence
-        }
-
         if (left.kind === "insert" && right.kind === "insert") {
             return left.insertOrder - right.insertOrder
         }
@@ -246,18 +240,6 @@ async function main(): Promise<void> {
     let sequenceUpdates = 0
 
     for (const [runId, runEvents] of byRun) {
-        const existingRawEvents: ExistingRawRow[] = await prisma.run_history_raw_events.findMany({
-            where: { run_history_record_id: runId },
-            orderBy: [{ sequence_order: "asc" }, { created_at: "asc" }, { id: "asc" }],
-            select: {
-                id: true,
-                event_key: true,
-                sequence_order: true,
-                created_at: true
-            }
-        })
-
-        const existingEventKeys = new Set(existingRawEvents.map(event => event.event_key))
         const plannedInsertKeys = new Set<string>()
         const inserts: TimelineEntry[] = []
 
@@ -266,11 +248,6 @@ async function main(): Promise<void> {
             const systemEvent = toSystemEvent(event)
             if (!systemEvent) {
                 skipped += 1
-                continue
-            }
-
-            if (existingEventKeys.has(systemEvent.eventKey) || plannedInsertKeys.has(systemEvent.eventKey)) {
-                skippedExisting += 1
                 continue
             }
             plannedInsertKeys.add(systemEvent.eventKey)
@@ -287,23 +264,12 @@ async function main(): Promise<void> {
 
         if (inserts.length === 0) continue
 
-        const existingEntries: TimelineEntry[] = existingRawEvents.map(raw => ({
-            kind: "existing",
-            rawId: raw.id,
-            createdAt: raw.created_at,
-            originalSequence: raw.sequence_order
-        }))
-
-        const merged = sortTimeline([...existingEntries, ...inserts])
-        const updates: { id: string; sequence: number }[] = []
+        const merged = sortTimeline([...inserts])
         const rowsToInsert: Prisma.run_history_raw_eventsCreateManyInput[] = []
 
         for (let sequence = 0; sequence < merged.length; sequence++) {
             const entry = merged[sequence]
             if (entry.kind === "existing") {
-                if (entry.originalSequence !== sequence) {
-                    updates.push({ id: entry.rawId, sequence })
-                }
                 continue
             }
 
@@ -311,31 +277,20 @@ async function main(): Promise<void> {
                 run_history_record_id: entry.runId,
                 event_key: entry.eventKey,
                 raw_event_json: entry.rawItem as unknown as Prisma.InputJsonValue,
-                sequence_order: sequence,
                 created_at: entry.createdAt
             })
         }
 
         await prisma.$transaction(async tx => {
-            for (const update of updates) {
-                await tx.run_history_raw_events.update({
-                    where: { id: update.id },
-                    data: { sequence_order: update.sequence }
-                })
-            }
-
             await tx.run_history_raw_events.createMany({
                 data: rowsToInsert
             })
         })
 
         inserted += rowsToInsert.length
-        sequenceUpdates += updates.length
     }
 
-    console.log(
-        `[backfill-run-history-system-events] runs=${byRun.size} inserted=${inserted} sequenceUpdates=${sequenceUpdates} skipped=${skipped} skippedExisting=${skippedExisting}`
-    )
+    console.log(`[backfill-run-history-system-events] runs=${byRun.size} inserted=${inserted} sequenceUpdates=${sequenceUpdates} skipped=${skipped} skippedExisting=${skippedExisting}`)
 }
 
 main()
