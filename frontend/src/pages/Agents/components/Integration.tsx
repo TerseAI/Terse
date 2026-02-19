@@ -54,6 +54,7 @@ export function IconForConfigType({ type }: { type: ConfigType }) {
         case ConfigType.TERSE:
             return <TerseIcon />
         case ConfigType.WORKOS_INPUT:
+        case ConfigType.WORKOS_KB:
             return <WorkOSIcon />
         case ConfigType.ATTIO_OUTPUT:
             return <AttioIcon />
