@@ -19,7 +19,6 @@ export type TimestampedAgentInputItem = {
 
 export type ConvertAgentInputItemsToModelEventsOptions = {
     includeScaffoldedUserMessages?: boolean
-    /** When false, do not append a synthetic NaturalStop when the last event is non-terminal. Use for in-progress runs. Default: true */
     appendNaturalStop?: boolean
 }
 

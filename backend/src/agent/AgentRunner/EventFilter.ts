@@ -8,7 +8,7 @@ import { getRealtimeSocket } from "../../realtimeSocket"
 import { IntegrationType } from "../../shared/Integrations"
 import type { RunHistoryModelEvent, RunHistoryModelSocketEvent, TrackingParams } from "../../shared/RunHistoryTypes"
 import { SocketEvents, SocketRooms } from "../../shared/SocketEvents"
-import { AgentPrompt } from "../../types/prisma"
+import { AgentPrompt, AgentWithRelations } from "../../types/prisma"
 import { Session } from "../../types/session"
 import { UserFormatter } from "../../utility/UserFormatter"
 import { randomString } from "../../utility/strings"
@@ -18,7 +18,7 @@ import { transformAgentStreamToModelEvents } from "../streaming"
 import { appendFilterOutcomeSystemEvent } from "../systemEvents/filterOutcomeSystemEvent"
 import { createUserMessageItem } from "../userMessage"
 
-import { buildRunTriggerContextMessage } from "./formatContext"
+import { buildRunTriggerContextMessage, formatAgentTriggersForAgent } from "./formatContext"
 
 export interface EventFilterResult {
     isRelevant: boolean
@@ -148,13 +148,7 @@ async function seedEventContextForFilteredRunIfNeeded(runId: string, eventContex
  *
  * If isStreaming is true and trackingParams are provided, automatically handles storing events and emitting them via Socket.IO
  */
-export async function filterEvent(
-    event: InputEvent,
-    agentPrompt: AgentPrompt,
-    isStreaming: boolean,
-    trackingParams: TrackingParams,
-    options?: { agentTriggers?: string }
-): Promise<{ result: EventFilterResult }> {
+export async function filterEvent(event: InputEvent, agentWithRelations: AgentWithRelations, isStreaming: boolean, trackingParams: TrackingParams): Promise<{ result: EventFilterResult }> {
     if (event.integrationType === IntegrationType.CRON_JOB) {
         return {
             result: {
@@ -165,11 +159,12 @@ export async function filterEvent(
         }
     }
 
-    logger.info(`#WTF filtering event ${event.integrationType}`, { event })
-    logger.info(`#WTF formatted event`, { formattedEvent: event.formatForAgentRunner() })
+    if (!agentWithRelations.prompt) {
+        throw new Error("Agent prompt is required for event filtering")
+    }
 
     const agent = buildFilterAgent(trackingParams)
-    const history = buildFilterHistory(agentPrompt, event)
+    const history = buildFilterHistory(agentWithRelations.prompt, event)
     const runner = runnerFactory({
         agentId: trackingParams.agentId,
         agentType: AgentType.FILTER,
@@ -238,8 +233,8 @@ export async function filterEvent(
 
             const eventContextText = buildRunTriggerContextMessage({
                 userContext: UserFormatter.formatForAgent(trackingParams.user),
-                userInstructions: agentPrompt.content,
-                agentTriggers: options?.agentTriggers,
+                userInstructions: agentWithRelations.prompt.content,
+                agentTriggers: formatAgentTriggersForAgent(agentWithRelations.inputs),
                 eventContent: event.formatForAgentRunner()
             })
             await seedEventContextForFilteredRunIfNeeded(trackingParams.runId, eventContextText, parsed.isRelevant)
