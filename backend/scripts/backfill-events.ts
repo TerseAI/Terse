@@ -262,7 +262,8 @@ async function phase1MigrateSystemEvents(): Promise<void> {
     let sequenceUpdates = 0
 
     for (const [runId, runEvents] of byRun) {
-        const existingRawEvents: ExistingRawRow[] = await prisma.run_history_raw_events.findMany({
+        try {
+            const existingRawEvents: ExistingRawRow[] = await prisma.run_history_raw_events.findMany({
             where: { run_history_record_id: runId },
             orderBy: [{ sequence_order: "asc" }, { created_at: "asc" }, { id: "asc" }],
             select: {
