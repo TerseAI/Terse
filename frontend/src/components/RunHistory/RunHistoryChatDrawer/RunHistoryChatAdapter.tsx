@@ -5,7 +5,7 @@ import { Turn } from "@/components/chat/Turn"
 import { type ChatEventSubscription } from "@/components/chat/hooks/useCompletionSocket"
 import { filterOutThinkingOnlyTurns } from "@/components/chat/utils/turnUtils"
 import { useChatHistory } from "@/hooks/api/useChatHistory"
-import { FilterResult, ModelEvent, ModelRequest, RunError, TextDelta, ToolApprovalResponse, ToolCall, ToolCallComplete, UserMessage } from "@/shared/ModelEvents"
+import { FilterResult, ModelEvent, ModelRequest, RunError, TextDelta, ToolApprovalRequest, ToolApprovalResponse, ToolCall, ToolCallComplete, UserMessage } from "@/shared/ModelEvents"
 import { RunHistoryStatus } from "@/shared/RunHistoryTypes"
 import type { RunHistoryModelSocketEvent } from "@/shared/RunHistoryTypes"
 import { sendChatMessage, sendToolApprovalResponse, subscribeToChatEvents } from "@/socket"
@@ -178,9 +178,7 @@ export function convertRunHistoryEventsToTurns(events: (ModelEvent & { timestamp
                     turn.function_calls.push({
                         id: step_id,
                         name: e.summary,
-                        timestamp: event.timestamp ?? eventOrder++,
-                        // For historical events, start with isRunning: false
-                        // since we'll see ToolCallComplete soon
+                        timestamp: event.timestamp,
                         isRunning: false,
                         parameters: e.parameters,
                         isWaitingForUserInput: false
@@ -218,8 +216,7 @@ export function convertRunHistoryEventsToTurns(events: (ModelEvent & { timestamp
                     }
                 }
                 if (!found) {
-                    // ToolCallComplete arrived without a preceding ToolCall (e.g., from historical events)
-                    // Create the function call directly in completed state
+                    // ToolCallComplete arrived without a preceding ToolCall
                     const turn = getOrCreateTurn("assistant", step_id)
                     turn.function_calls.push({
                         id: step_id,
@@ -236,31 +233,62 @@ export function convertRunHistoryEventsToTurns(events: (ModelEvent & { timestamp
                 break
             }
             case "ToolApprovalRequest": {
-                const e = event as any
+                const e = event as ToolApprovalRequest
                 const step_id = e.step_id
+                let found = false
+                // Find the call in any turn
                 for (const t of turns) {
                     const fc = t.function_calls.find(c => c.id === step_id)
                     if (fc) {
                         fc.isWaitingForApproval = true
                         fc.isRunning = false
+                        found = true
                         break
                     }
+                }
+                if (!found) {
+                    // ToolApprovalRequest arrived without a preceding ToolCall
+                    const turn = getOrCreateTurn("assistant", step_id)
+                    turn.function_calls.push({
+                        id: step_id,
+                        name: e.name,
+                        timestamp: event.timestamp,
+                        isRunning: false,
+                        isWaitingForApproval: true,
+                        parameters: e.arguments,
+                        isWaitingForUserInput: false
+                    })
                 }
                 break
             }
             case "ToolApprovalResponse": {
                 const e = event as ToolApprovalResponse
                 const step_id = e.step_id
+                let found = false
+                // Find the call in any turn
                 for (const t of turns) {
                     const fc = t.function_calls.find(c => c.id === step_id)
                     if (fc) {
                         fc.isWaitingForApproval = false
-                        if (e.approved) {
-                            fc.isApproved = true
-                        } else {
-                            fc.isRejected = true
-                        }
+                        fc.isRunning = false
+                        fc.isApproved = e.approved
+                        fc.isRejected = !e.approved
+                        found = true
+                        break
                     }
+                }
+                if (!found) {
+                    // ToolApprovalRequest arrived without a preceding ToolCall
+                    const turn = getOrCreateTurn("assistant", step_id)
+                    turn.function_calls.push({
+                        id: step_id,
+                        name: e.step_id,
+                        timestamp: event.timestamp,
+                        isRunning: false,
+                        isApproved: e.approved,
+                        isRejected: !e.approved,
+                        isWaitingForUserInput: false
+                    })
                 }
                 break
             }
