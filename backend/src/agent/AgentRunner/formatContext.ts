@@ -34,17 +34,17 @@ ${safeEventContent}
     `.trim()
 }
 
+/**
+ * Returns true if the message is an initial event payload (scaffolded run context).
+ * We filter these when returning historical data so they don't clutter the chat UI.
+ *
+ * Criteria: contains <EVENT> - this catches both full-format events (with USER_CONTEXT,
+ * USER_INSTRUCTIONS, etc.) and migrated events that only have the EVENT block.
+ */
 export function isScaffoldedRunContextUserMessage(text: string): boolean {
     const normalized = text.trim()
     if (!normalized) return false
-
-    const hasUserContext = normalized.includes("<USER_CONTEXT>") && normalized.includes("</USER_CONTEXT>")
-    const hasUserInstructions = normalized.includes("<USER_INSTRUCTIONS>") && normalized.includes("</USER_INSTRUCTIONS>")
-    const hasAgentTriggers = normalized.includes("<AGENT_TRIGGERS>") && normalized.includes("</AGENT_TRIGGERS>")
-    const hasEvent = normalized.includes("<EVENT>") && normalized.includes("</EVENT>")
-    const hasRunTriggerContext = normalized.includes("<RUN_TRIGGER_CONTEXT>") && normalized.includes("</RUN_TRIGGER_CONTEXT>")
-
-    return (hasUserContext && hasUserInstructions && hasAgentTriggers && hasEvent) || (hasRunTriggerContext && hasEvent)
+    return normalized.includes("<EVENT>")
 }
 
 export function formatAgentForSystemPrompt(agent: AgentWithRelations): string {

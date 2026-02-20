@@ -46,6 +46,24 @@ type ExistingRawRow = {
     event_key: string
     sequence_order: number
     created_at: Date
+    raw_event_json?: unknown
+}
+
+/** Find the last assistant message id that looks like an OpenAI response id (resp_...) */
+function findLastAssistantResponseId(rawEvents: { raw_event_json?: unknown; sequence_order: number }[]): string | null {
+    const sorted = [...rawEvents].sort((a, b) => a.sequence_order - b.sequence_order)
+    for (let i = sorted.length - 1; i >= 0; i--) {
+        const item = asRecord(sorted[i].raw_event_json)
+        if (!item) continue
+        if (item.role !== "assistant") continue
+        const id = typeof item.id === "string" ? item.id.trim() : ""
+        if (id && id.startsWith("resp_")) return id
+    }
+    return null
+}
+
+function hasFilterOutcomeInRawEvents(eventKeys: Set<string>): boolean {
+    return [...eventKeys].some(k => k.startsWith("id:filter_outcome-") || k.startsWith("id:msg_filter_outcome-"))
 }
 
 type SystemEventItem = {
@@ -85,12 +103,10 @@ function buildToolApprovalResponseId(stepId: string): string {
     return `msg_tool_approval_response-${stepId}`
 }
 
-function buildFilterOutcomeId(chatEventId: string, openAiResponseId?: string): string {
-    const trimmed = openAiResponseId?.trim()
-    if (trimmed) {
-        return `filter_outcome-${trimmed}`
-    }
-    return `msg_filter_outcome-legacy-${chatEventId}`
+function buildFilterOutcomeId(openAiResponseId: string): string {
+    const trimmed = openAiResponseId.trim()
+    if (!trimmed) throw new Error("buildFilterOutcomeId requires non-empty openAiResponseId")
+    return `msg_filter_outcome-${trimmed}`
 }
 
 function buildRunErrorId(chatEventId: string, runErrorId?: string): { id: string; runErrorId: string } {
@@ -116,18 +132,32 @@ function createSystemEventItem(payload: Record<string, unknown>, id: string): { 
     }
 }
 
-function toSystemEvent(event: ChatEventRow): { eventKey: string; rawItem: SystemEventItem } | null {
+function toSystemEvent(
+    event: ChatEventRow,
+    context: { existingRawEvents: ExistingRawRow[]; existingEventKeys: Set<string> }
+): { eventKey: string; rawItem: SystemEventItem } | null {
     const payload = asRecord(event.event_json)
     if (!payload) return null
 
     if (event.event_type === RunHistoryChatEventType.FilterResult) {
         if (typeof payload.isRelevant !== "boolean" || typeof payload.reason !== "string") return null
-        const openAiResponseId = typeof payload.openai_response_id === "string" ? payload.openai_response_id : undefined
-        const id = buildFilterOutcomeId(event.id, openAiResponseId)
+        // Skip if we already have a filter_outcome in raw_events (avoids duplicate with wrong format)
+        if (hasFilterOutcomeInRawEvents(context.existingEventKeys)) return null
+        let openAiResponseId =
+            typeof payload.openai_response_id === "string" ? payload.openai_response_id.trim() : ""
+        if (!openAiResponseId && typeof payload.id === "string") {
+            const id = payload.id.trim()
+            if (id.startsWith("resp_")) openAiResponseId = id
+        }
+        if (!openAiResponseId) {
+            openAiResponseId = findLastAssistantResponseId(context.existingRawEvents) ?? ""
+        }
+        if (!openAiResponseId) return null // Don't migrate without valid response id
+        const id = buildFilterOutcomeId(openAiResponseId)
         return createSystemEventItem(
             {
                 kind: "filter_outcome",
-                ...(openAiResponseId ? { openai_response_id: openAiResponseId } : {}),
+                openai_response_id: openAiResponseId,
                 isRelevant: payload.isRelevant,
                 reason: payload.reason,
                 confidence: clampConfidence(payload.confidence)
@@ -270,17 +300,19 @@ async function phase1MigrateSystemEvents(): Promise<void> {
                 id: true,
                 event_key: true,
                 sequence_order: true,
-                created_at: true
+                created_at: true,
+                raw_event_json: true
             }
         })
 
         const existingEventKeys = new Set(existingRawEvents.map(event => event.event_key))
             const plannedInsertKeys = new Set<string>()
             const inserts: TimelineEntry[] = []
+            const phase1Context = { existingRawEvents, existingEventKeys }
 
             for (let i = 0; i < runEvents.length; i++) {
                 const event = runEvents[i]
-                const systemEvent = toSystemEvent(event)
+                const systemEvent = toSystemEvent(event, phase1Context)
                 if (!systemEvent) {
                     skipped += 1
                     continue
@@ -373,6 +405,7 @@ type BackfillRow = {
     event_key: string | null
     raw_event_json: unknown
     created_at: Date
+    run_history_record_id?: string // Only for run_history_raw_events
 }
 
 const TABLES: TableName[] = ["run_history_raw_events", "chat_raw_events"]
@@ -403,7 +436,11 @@ function getSystemContentText(content: unknown): string {
         .join("\n")
 }
 
-function normalizeSystemPayload(payload: Record<string, unknown>, rowId: string): string | null {
+function normalizeSystemPayload(
+    payload: Record<string, unknown>,
+    rowId: string,
+    resolvedFilterOutcomeResponseId?: string | null
+): string | null {
     const kind = payload.kind
     if (typeof kind !== "string") return null
 
@@ -424,9 +461,12 @@ function normalizeSystemPayload(payload: Record<string, unknown>, rowId: string)
     }
 
     if (kind === "filter_outcome") {
-        const openAiResponseId = typeof payload.openai_response_id === "string" ? payload.openai_response_id.trim() : ""
-        const id = openAiResponseId ? `filter_outcome-${openAiResponseId}` : `filter_outcome-legacy-${rowId}`
+        let openAiResponseId = typeof payload.openai_response_id === "string" ? payload.openai_response_id.trim() : ""
+        if (!openAiResponseId && resolvedFilterOutcomeResponseId) openAiResponseId = resolvedFilterOutcomeResponseId
+        if (!openAiResponseId) return null // Don't use legacy format
+        const id = `msg_filter_outcome-${openAiResponseId}`
         payload.id = id
+        payload.openai_response_id = openAiResponseId
         return id
     }
 
@@ -454,7 +494,12 @@ function hasCallId(item: Record<string, unknown>): boolean {
     return typeof item.callId === "string" && item.callId.trim().length > 0
 }
 
-function backfillEventItemIds(item: AgentInputItem, row: BackfillRow, perTimestampSequence: Map<number, number>): { normalizedItem: AgentInputItem; changed: boolean } {
+async function backfillEventItemIds(
+    item: AgentInputItem,
+    row: BackfillRow,
+    perTimestampSequence: Map<number, number>,
+    fetchFilterOutcomeResponseId?: (runId: string) => Promise<string | null>
+): Promise<{ normalizedItem: AgentInputItem; changed: boolean }> {
     const parsed = asRecord(item)
     if (!parsed) return { normalizedItem: item, changed: false }
 
@@ -480,7 +525,20 @@ function backfillEventItemIds(item: AgentInputItem, row: BackfillRow, perTimesta
                 const payload = JSON.parse(contentText)
                 const payloadRecord = asRecord(payload)
                 if (payloadRecord) {
-                    const systemEventId = normalizeSystemPayload(payloadRecord, row.id)
+                    let resolvedFilterOutcomeResponseId: string | null | undefined
+                    if (
+                        payloadRecord.kind === "filter_outcome" &&
+                        !(typeof payloadRecord.openai_response_id === "string" && payloadRecord.openai_response_id.trim()) &&
+                        row.run_history_record_id &&
+                        fetchFilterOutcomeResponseId
+                    ) {
+                        resolvedFilterOutcomeResponseId = await fetchFilterOutcomeResponseId(row.run_history_record_id)
+                    }
+                    const systemEventId = normalizeSystemPayload(
+                        payloadRecord,
+                        row.id,
+                        resolvedFilterOutcomeResponseId ?? undefined
+                    )
                     if (systemEventId) {
                         if (parsed.id !== systemEventId) {
                             parsed.id = systemEventId
@@ -511,8 +569,12 @@ function backfillEventItemIds(item: AgentInputItem, row: BackfillRow, perTimesta
 
 async function backfillTable(table: TableName): Promise<void> {
     const prisma = db()
+    const selectColumns =
+        table === "run_history_raw_events"
+            ? "id, event_key, raw_event_json, created_at, run_history_record_id"
+            : "id, event_key, raw_event_json, created_at"
     const rows = await prisma.$queryRawUnsafe<BackfillRow[]>(
-        `SELECT id, event_key, raw_event_json, created_at
+        `SELECT ${selectColumns}
          FROM "${table}"
          WHERE event_key IS NULL
             OR event_key = ''
@@ -521,11 +583,28 @@ async function backfillTable(table: TableName): Promise<void> {
          ORDER BY created_at ASC, id ASC`
     )
 
+    const fetchFilterOutcomeResponseId =
+        table === "run_history_raw_events"
+            ? async (runId: string): Promise<string | null> => {
+                  const rawEvents = await prisma.run_history_raw_events.findMany({
+                      where: { run_history_record_id: runId },
+                      orderBy: [{ sequence_order: "asc" }, { created_at: "asc" }],
+                      select: { raw_event_json: true, sequence_order: true }
+                  })
+                  return findLastAssistantResponseId(rawEvents)
+              }
+            : undefined
+
     const perTimestampSequence = new Map<number, number>()
     let updated = 0
 
     for (const row of rows) {
-        const { normalizedItem, changed } = backfillEventItemIds(row.raw_event_json as AgentInputItem, row, perTimestampSequence)
+        const { normalizedItem, changed } = await backfillEventItemIds(
+            row.raw_event_json as AgentInputItem,
+            row,
+            perTimestampSequence,
+            fetchFilterOutcomeResponseId
+        )
         const nextEventKey = getEventKey(normalizedItem)
 
         const shouldWrite = changed || row.event_key !== nextEventKey

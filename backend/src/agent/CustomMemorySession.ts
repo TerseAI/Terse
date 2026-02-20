@@ -5,7 +5,7 @@ import { db } from "../prismaClient"
 import { RunHistoryMemory } from "../rag/runHistoryRag/indexer"
 import { RunHistoryRawEventWithRelations } from "../types/prisma"
 import { RAGNamespace } from "../types/rag"
-import { MODEL_ITEM_ID_PATTERN, sanitizeAndCapModelItemId } from "../utility/strings"
+import { MODEL_ITEM_ID_MAX_LENGTH, MODEL_ITEM_ID_PATTERN, sanitizeAndCapModelItemId } from "../utility/strings"
 
 import { getEventKey } from "./eventKey"
 
@@ -332,16 +332,18 @@ export function trimToLastTurns(items: AgentInputItem[], maxTurns: number): Agen
 
 /**
  * Clones an AgentInputItem and sanitizes id/callId to match API requirements.
- * The API expects IDs to contain only letters, numbers, underscores, or dashes.
+ * The API expects IDs to contain only letters, numbers, underscores, or dashes,
+ * and to be at most 64 characters.
  * Legacy data (e.g. Slack message timestamps like "1771559447.098000") may have periods.
+ * Filter outcome IDs with long OpenAI response IDs may exceed the length limit.
  */
 function cloneAgentItem<T extends AgentInputItem>(item: T): T {
     const cloned = structuredClone(item) as T
     const itemAny = cloned as Record<string, unknown>
-    if (typeof itemAny.id === "string" && !MODEL_ITEM_ID_PATTERN.test(itemAny.id)) {
+    if (typeof itemAny.id === "string" && (!MODEL_ITEM_ID_PATTERN.test(itemAny.id) || itemAny.id.length > MODEL_ITEM_ID_MAX_LENGTH)) {
         itemAny.id = sanitizeAndCapModelItemId(itemAny.id, "legacy")
     }
-    if (typeof itemAny.callId === "string" && !MODEL_ITEM_ID_PATTERN.test(itemAny.callId)) {
+    if (typeof itemAny.callId === "string" && (!MODEL_ITEM_ID_PATTERN.test(itemAny.callId) || itemAny.callId.length > MODEL_ITEM_ID_MAX_LENGTH)) {
         itemAny.callId = sanitizeAndCapModelItemId(itemAny.callId, "legacy")
     }
     return cloned
