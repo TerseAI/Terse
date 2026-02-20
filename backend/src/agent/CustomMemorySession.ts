@@ -5,6 +5,7 @@ import { db } from "../prismaClient"
 import { RunHistoryMemory } from "../rag/runHistoryRag/indexer"
 import { RunHistoryRawEventWithRelations } from "../types/prisma"
 import { RAGNamespace } from "../types/rag"
+import { MODEL_ITEM_ID_PATTERN, sanitizeAndCapModelItemId } from "../utility/strings"
 
 import { getEventKey } from "./eventKey"
 
