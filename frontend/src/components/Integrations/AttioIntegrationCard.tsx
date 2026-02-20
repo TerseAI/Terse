@@ -1,9 +1,11 @@
 import { Users } from "lucide-react"
+import type { KeyedMutator } from "swr"
 
 import { useAttioIntegrations } from "@/hooks/api/useAttioIntegrations"
 import { useOAuthConnection } from "@/hooks/useOAuthConnection"
 import { cn } from "@/lib/utils"
-import { IntegrationType } from "@/shared/Integrations"
+import { BackendProvider } from "@/services/backend"
+import { AttioIntegration, IntegrationType } from "@/shared/Integrations"
 
 import { Card, CardContent } from "../ui/card"
 import { Skeleton } from "../ui/skeleton"
@@ -15,7 +17,7 @@ import { IntegrationItem } from "./helpers/IntegrationItem"
 
 function AttioIntegrationCard({ className, isActive = true, stateToken, compact = false }: { className?: string; isActive?: boolean; stateToken?: string; compact?: boolean }) {
     const { connect, isConnecting } = useOAuthConnection<IntegrationType.ATTIO>(IntegrationType.ATTIO, {}, stateToken)
-    const { integrations, isLoading: integrationsLoading } = useAttioIntegrations()
+    const { integrations, isLoading: integrationsLoading, mutate } = useAttioIntegrations()
 
     const isConnected = integrations.length > 0
     const summary = integrations[0]?.workspaceName
@@ -28,14 +30,14 @@ function AttioIntegrationCard({ className, isActive = true, stateToken, compact 
         <Card className={cn(className)}>
             <IntegrationCardHeader integration={IntegrationType.ATTIO} isActive={isActive} />
             <CardContent>
-                <AttioCardContent integrations={integrations} isLoading={integrationsLoading} />
+                <AttioCardContent integrations={integrations} isLoading={integrationsLoading} mutate={mutate} />
             </CardContent>
             <IntegrationCardFooter connect={connect} isConnecting={isConnecting} />
         </Card>
     )
 }
 
-function AttioCardContent({ integrations, isLoading }: { integrations: Array<{ id: string; workspaceName?: string }>; isLoading: boolean }) {
+function AttioCardContent({ integrations, isLoading, mutate }: { integrations: AttioIntegration[]; isLoading: boolean; mutate: KeyedMutator<AttioIntegration[]> }) {
     if (isLoading && integrations.length === 0) {
         return (
             <div className="space-y-3">
@@ -55,6 +57,11 @@ function AttioCardContent({ integrations, isLoading }: { integrations: Array<{ i
         )
     }
 
+    const handleDelete = async (integrationId: string) => {
+        await BackendProvider.deleteIntegration(IntegrationType.ATTIO, integrationId)
+        mutate()
+    }
+
     return (
         <div className="space-y-2">
             {integrations.map(integration => (
@@ -63,6 +70,9 @@ function AttioCardContent({ integrations, isLoading }: { integrations: Array<{ i
                     icon={<Users className="w-4 h-4" />}
                     title={integration.workspaceName || "Unknown Workspace"}
                     description={<span className="text-xs text-muted-foreground">Add and update contacts in Attio</span>}
+                    onDelete={() => handleDelete(integration.id)}
+                    deleteConfirmTitle="Remove Attio Connection"
+                    deleteConfirmDescription={`Are you sure you want to remove the connection to ${integration.workspaceName || "Unknown Workspace"}? This action cannot be undone.`}
                 />
             ))}
         </div>

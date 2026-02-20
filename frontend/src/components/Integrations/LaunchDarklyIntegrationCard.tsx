@@ -99,7 +99,7 @@ function LaunchDarklyIntegrationCard({ className, isActive = true, stateToken, c
             <Card className={cn(className)}>
                 <IntegrationCardHeader integration={IntegrationType.LAUNCHDARKLY} isActive={isActive} />
                 <CardContent>
-                    <LaunchDarklyCardContent integrations={integrations} isLoading={isLoading} />
+                    <LaunchDarklyCardContent integrations={integrations} isLoading={isLoading} mutate={mutate} />
                 </CardContent>
                 <CardFooter>
                     <Button variant="outline" onClick={handleConnect}>
@@ -112,7 +112,7 @@ function LaunchDarklyIntegrationCard({ className, isActive = true, stateToken, c
     )
 }
 
-function LaunchDarklyCardContent({ integrations, isLoading }: { integrations: Array<LaunchDarklyIntegration>; isLoading: boolean }) {
+function LaunchDarklyCardContent({ integrations, isLoading, mutate }: { integrations: Array<LaunchDarklyIntegration>; isLoading: boolean; mutate: () => void }) {
     if (isLoading) {
         return (
             <div className="space-y-3">
@@ -132,6 +132,11 @@ function LaunchDarklyCardContent({ integrations, isLoading }: { integrations: Ar
         )
     }
 
+    const handleDelete = async (integrationId: string) => {
+        await BackendProvider.deleteIntegration(IntegrationType.LAUNCHDARKLY, integrationId)
+        mutate()
+    }
+
     return (
         <div className="space-y-2">
             {integrations.map(integration => (
@@ -140,6 +145,9 @@ function LaunchDarklyCardContent({ integrations, isLoading }: { integrations: Ar
                     icon={<Flag className="w-4 h-4" />}
                     title={integration.tokenName || integration.email || "LaunchDarkly"}
                     description={integration.tokenName ? "LaunchDarkly token" : "LaunchDarkly account"}
+                    onDelete={() => handleDelete(integration.id)}
+                    deleteConfirmTitle="Remove LaunchDarkly Connection"
+                    deleteConfirmDescription={`Are you sure you want to remove the LaunchDarkly connection? This action cannot be undone.`}
                 />
             ))}
         </div>

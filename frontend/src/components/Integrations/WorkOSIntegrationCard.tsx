@@ -298,7 +298,7 @@ function WorkOSIntegrationCard({ className, isActive = true, stateToken, compact
             <Card className={cn(className)}>
                 <IntegrationCardHeader integration={IntegrationType.WORKOS} isActive={isActive} />
                 <CardContent>
-                    <WorkOSCardContent integrations={integrations} isLoading={isLoading} />
+                    <WorkOSCardContent integrations={integrations} isLoading={isLoading} mutate={mutate} />
                 </CardContent>
                 <CardFooter>
                     <Button variant="outline" onClick={isConnected ? handleManage : handleConnect}>
@@ -311,7 +311,7 @@ function WorkOSIntegrationCard({ className, isActive = true, stateToken, compact
     )
 }
 
-function WorkOSCardContent({ integrations, isLoading }: { integrations: Array<WorkOSIntegration>; isLoading: boolean }) {
+function WorkOSCardContent({ integrations, isLoading, mutate }: { integrations: Array<WorkOSIntegration>; isLoading: boolean; mutate: () => void }) {
     if (isLoading) {
         return (
             <div className="space-y-3">
@@ -331,6 +331,11 @@ function WorkOSCardContent({ integrations, isLoading }: { integrations: Array<Wo
         )
     }
 
+    const handleDelete = async (integrationId: string) => {
+        await BackendProvider.deleteIntegration(IntegrationType.WORKOS, integrationId)
+        mutate()
+    }
+
     return (
         <div className="space-y-2">
             {integrations.map(integration => (
@@ -339,6 +344,9 @@ function WorkOSCardContent({ integrations, isLoading }: { integrations: Array<Wo
                     icon={<Shield className="w-4 h-4" />}
                     title="WorkOS"
                     description={integration.environment === "test" ? "Test environment" : integration.environment === "live" ? "Production environment" : "WorkOS user lifecycle events"}
+                    onDelete={() => handleDelete(integration.id)}
+                    deleteConfirmTitle="Remove WorkOS Connection"
+                    deleteConfirmDescription={`Are you sure you want to remove the WorkOS connection? This action cannot be undone.`}
                 />
             ))}
         </div>

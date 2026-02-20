@@ -92,7 +92,7 @@ function PosthogIntegrationCard({ className, isActive = true, stateToken, compac
             <Card className={cn(className)}>
                 <IntegrationCardHeader integration={IntegrationType.POSTHOG} isActive={isActive} />
                 <CardContent>
-                    <PosthogCardContent integrations={integrations} isLoading={isLoading} />
+                    <PosthogCardContent integrations={integrations} isLoading={isLoading} mutate={mutate} />
                 </CardContent>
                 <CardFooter>
                     <Button variant="outline" onClick={handleConnect}>
@@ -105,7 +105,7 @@ function PosthogIntegrationCard({ className, isActive = true, stateToken, compac
     )
 }
 
-function PosthogCardContent({ integrations, isLoading }: { integrations: Array<PosthogIntegration>; isLoading: boolean }) {
+function PosthogCardContent({ integrations, isLoading, mutate }: { integrations: Array<PosthogIntegration>; isLoading: boolean; mutate: () => void }) {
     if (isLoading) {
         return (
             <div className="space-y-3">
@@ -125,6 +125,11 @@ function PosthogCardContent({ integrations, isLoading }: { integrations: Array<P
         )
     }
 
+    const handleDelete = async (integrationId: string) => {
+        await BackendProvider.deleteIntegration(IntegrationType.POSTHOG, integrationId)
+        mutate()
+    }
+
     return (
         <div className="space-y-2">
             {integrations.map(integration => (
@@ -133,6 +138,9 @@ function PosthogCardContent({ integrations, isLoading }: { integrations: Array<P
                     icon={<Palette className="w-4 h-4" />}
                     title={integration.email || integration.id}
                     description={integration.orgName ? `Organization: ${integration.orgName}` : "Posthog account"}
+                    onDelete={() => handleDelete(integration.id)}
+                    deleteConfirmTitle="Remove PostHog Connection"
+                    deleteConfirmDescription={`Are you sure you want to remove the connection to ${integration.email || integration.orgName || "PostHog"}? This action cannot be undone.`}
                 />
             ))}
         </div>

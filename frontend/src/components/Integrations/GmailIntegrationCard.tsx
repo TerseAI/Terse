@@ -1,9 +1,11 @@
 import { Mail } from "lucide-react"
+import type { KeyedMutator } from "swr"
 
 import { useGmailIntegrations } from "@/hooks/api/useGmailIntegrations"
 import { useOAuthConnection } from "@/hooks/useOAuthConnection"
 import { cn } from "@/lib/utils"
-import { IntegrationType } from "@/shared/Integrations"
+import { BackendProvider } from "@/services/backend"
+import { GmailIntegration, IntegrationType } from "@/shared/Integrations"
 
 import { Card, CardContent } from "../ui/card"
 import { Skeleton } from "../ui/skeleton"
@@ -15,7 +17,7 @@ import { IntegrationItem } from "./helpers/IntegrationItem"
 
 function GmailIntegrationCard({ className, isActive = true, stateToken, compact = false }: { className?: string; isActive?: boolean; stateToken?: string; compact?: boolean }) {
     const { connect, isConnecting } = useOAuthConnection<IntegrationType.GMAIL>(IntegrationType.GMAIL, {}, stateToken)
-    const { integrations, isLoading } = useGmailIntegrations()
+    const { integrations, isLoading, mutate } = useGmailIntegrations()
 
     const isConnected = integrations.length > 0
     const summary = integrations[0]?.email
@@ -28,14 +30,14 @@ function GmailIntegrationCard({ className, isActive = true, stateToken, compact 
         <Card className={cn(className)}>
             <IntegrationCardHeader integration={IntegrationType.GMAIL} isActive={isActive} />
             <CardContent>
-                <GmailCardContent integrations={integrations} isLoading={isLoading} />
+                <GmailCardContent integrations={integrations} isLoading={isLoading} mutate={mutate} />
             </CardContent>
             <IntegrationCardFooter connect={connect} isConnecting={isConnecting} />
         </Card>
     )
 }
 
-function GmailCardContent({ integrations, isLoading }: { integrations: Array<{ id: string; email: string }>; isLoading: boolean }) {
+function GmailCardContent({ integrations, isLoading, mutate }: { integrations: GmailIntegration[]; isLoading: boolean; mutate: KeyedMutator<GmailIntegration[]> }) {
     if (isLoading) {
         return (
             <div className="space-y-3">
@@ -55,10 +57,23 @@ function GmailCardContent({ integrations, isLoading }: { integrations: Array<{ i
         )
     }
 
+    const handleDelete = async (integrationId: string) => {
+        await BackendProvider.deleteIntegration(IntegrationType.GMAIL, integrationId)
+        mutate()
+    }
+
     return (
         <div className="space-y-2">
             {integrations.map(integration => (
-                <IntegrationItem key={integration.id} icon={<Mail className="w-4 h-4" />} title={integration.email} description="Gmail account" />
+                <IntegrationItem
+                    key={integration.id}
+                    icon={<Mail className="w-4 h-4" />}
+                    title={integration.email}
+                    description="Gmail account"
+                    onDelete={() => handleDelete(integration.id)}
+                    deleteConfirmTitle="Remove Gmail Connection"
+                    deleteConfirmDescription={`Are you sure you want to remove the connection to ${integration.email}? This action cannot be undone.`}
+                />
             ))}
         </div>
     )

@@ -1,9 +1,11 @@
 import { BookOpen } from "lucide-react"
+import type { KeyedMutator } from "swr"
 
 import { useNotionIntegrations } from "@/hooks/api/useNotionIntegrations"
 import { useOAuthConnection } from "@/hooks/useOAuthConnection"
 import { cn } from "@/lib/utils"
-import { IntegrationType } from "@/shared/Integrations"
+import { BackendProvider } from "@/services/backend"
+import { IntegrationType, NotionIntegration } from "@/shared/Integrations"
 
 import { Card, CardContent } from "../ui/card"
 import { Skeleton } from "../ui/skeleton"
@@ -15,7 +17,7 @@ import { IntegrationItem } from "./helpers/IntegrationItem"
 
 function NotionIntegrationCard({ className, isActive = true, stateToken, compact = false }: { className?: string; isActive?: boolean; stateToken?: string; compact?: boolean }) {
     const { connect, isConnecting } = useOAuthConnection<IntegrationType.NOTION>(IntegrationType.NOTION, {}, stateToken)
-    const { integrations, isLoading: integrationsLoading } = useNotionIntegrations()
+    const { integrations, isLoading: integrationsLoading, mutate } = useNotionIntegrations()
 
     const isConnected = integrations.length > 0
     const summary = integrations[0]?.workspaceName
@@ -28,14 +30,14 @@ function NotionIntegrationCard({ className, isActive = true, stateToken, compact
         <Card className={cn(className)}>
             <IntegrationCardHeader integration={IntegrationType.NOTION} isActive={isActive} />
             <CardContent>
-                <NotionCardContent integrations={integrations} isLoading={integrationsLoading} />
+                <NotionCardContent integrations={integrations} isLoading={integrationsLoading} mutate={mutate} />
             </CardContent>
             <IntegrationCardFooter connect={connect} isConnecting={isConnecting} />
         </Card>
     )
 }
 
-function NotionCardContent({ integrations, isLoading }: { integrations: Array<{ id: string; workspaceName?: string }>; isLoading: boolean }) {
+function NotionCardContent({ integrations, isLoading, mutate }: { integrations: NotionIntegration[]; isLoading: boolean; mutate: KeyedMutator<NotionIntegration[]> }) {
     if (isLoading && integrations.length === 0) {
         return (
             <div className="space-y-3">
@@ -55,6 +57,11 @@ function NotionCardContent({ integrations, isLoading }: { integrations: Array<{ 
         )
     }
 
+    const handleDelete = async (integrationId: string) => {
+        await BackendProvider.deleteIntegration(IntegrationType.NOTION, integrationId)
+        mutate()
+    }
+
     return (
         <div className="space-y-2">
             {integrations.map(integration => (
@@ -63,6 +70,9 @@ function NotionCardContent({ integrations, isLoading }: { integrations: Array<{ 
                     icon={<BookOpen className="w-4 h-4" />}
                     title={integration.workspaceName || "Unknown Workspace"}
                     description={<span className="text-xs text-muted-foreground">Search to find pages and databases</span>}
+                    onDelete={() => handleDelete(integration.id)}
+                    deleteConfirmTitle="Remove Notion Connection"
+                    deleteConfirmDescription={`Are you sure you want to remove the connection to ${integration.workspaceName || "Unknown Workspace"}? This action cannot be undone.`}
                 />
             ))}
         </div>

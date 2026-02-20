@@ -114,7 +114,7 @@ function DatadogIntegrationCard({ className, isActive = true, stateToken, compac
             <Card className={cn(className)}>
                 <IntegrationCardHeader integration={IntegrationType.DATADOG} isActive={isActive} />
                 <CardContent>
-                    <DatadogCardContent integrations={integrations} isLoading={isLoading} />
+                    <DatadogCardContent integrations={integrations} isLoading={isLoading} mutate={mutate} />
                 </CardContent>
                 <CardFooter>
                     <Button variant="outline" onClick={handleConnect}>
@@ -127,7 +127,7 @@ function DatadogIntegrationCard({ className, isActive = true, stateToken, compac
     )
 }
 
-function DatadogCardContent({ integrations, isLoading }: { integrations: Array<DatadogIntegration>; isLoading: boolean }) {
+function DatadogCardContent({ integrations, isLoading, mutate }: { integrations: Array<DatadogIntegration>; isLoading: boolean; mutate: () => void }) {
     if (isLoading) {
         return (
             <div className="space-y-3">
@@ -147,11 +147,26 @@ function DatadogCardContent({ integrations, isLoading }: { integrations: Array<D
         )
     }
 
+    const handleDelete = async (integrationId: string) => {
+        await BackendProvider.deleteIntegration(IntegrationType.DATADOG, integrationId)
+        mutate()
+    }
+
     return (
         <div className="space-y-2">
             {integrations.map(integration => {
                 const regionLabel = DATADOG_REGIONS.find(r => r.value === integration.region)?.label || integration.region
-                return <IntegrationItem key={integration.id} icon={<BarChart3 className="w-4 h-4" />} title={`Datadog (${regionLabel})`} description={`Region: ${integration.region.toUpperCase()}`} />
+                return (
+                    <IntegrationItem
+                        key={integration.id}
+                        icon={<BarChart3 className="w-4 h-4" />}
+                        title={`Datadog (${regionLabel})`}
+                        description={`Region: ${integration.region.toUpperCase()}`}
+                        onDelete={() => handleDelete(integration.id)}
+                        deleteConfirmTitle="Remove Datadog Connection"
+                        deleteConfirmDescription={`Are you sure you want to remove the Datadog connection for region ${integration.region.toUpperCase()}? This action cannot be undone.`}
+                    />
+                )
             })}
         </div>
     )
