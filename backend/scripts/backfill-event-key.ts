@@ -3,7 +3,6 @@ import "dotenv/config"
 
 import { getEventKey } from "../src/agent/eventKey"
 import { db } from "../src/prismaClient"
-import { MODEL_ITEM_ID_MAX_LENGTH, MODEL_ITEM_ID_PATTERN, sanitizeAndCapIdentifier, sanitizeAndCapModelMessageId } from "../src/utility/strings"
 
 type TableName = "run_history_raw_events" | "chat_raw_events"
 
@@ -19,26 +18,6 @@ const TABLES: TableName[] = ["run_history_raw_events", "chat_raw_events"]
 function asRecord(value: unknown): Record<string, unknown> | null {
     if (!value || typeof value !== "object" || Array.isArray(value)) return null
     return value as Record<string, unknown>
-}
-
-function isValidModelItemId(value: unknown): value is string {
-    return typeof value === "string" && value.length <= MODEL_ITEM_ID_MAX_LENGTH && MODEL_ITEM_ID_PATTERN.test(value)
-}
-
-function isMsgPrefixedModelItemId(value: unknown): value is string {
-    return isValidModelItemId(value) && value.startsWith("msg_")
-}
-
-function buildCappedIdPart(value: string, prefix: string, fallback: string): string {
-    const maxPartLength = Math.max(1, MODEL_ITEM_ID_MAX_LENGTH - prefix.length)
-    return sanitizeAndCapIdentifier(value, {
-        fallback,
-        maxLength: maxPartLength
-    })
-}
-
-function buildPrefixedId(prefix: string, value: string, fallback: string): string {
-    return sanitizeAndCapModelMessageId(`${prefix}${buildCappedIdPart(value, prefix, fallback)}`, prefix.replace(/_+$/, ""))
 }
 
 function getSystemContentText(content: unknown): string {
@@ -74,7 +53,7 @@ function normalizeSystemPayload(payload: Record<string, unknown>, rowId: string)
     if (kind === "tool_approval_request") {
         const stepId = payload.step_id
         if (typeof stepId !== "string" || !stepId.trim()) return null
-        const id = buildPrefixedId("tool_approval_request_", stepId, "step")
+        const id = `tool_approval_request:${stepId}`
         payload.id = id
         return id
     }
@@ -82,50 +61,36 @@ function normalizeSystemPayload(payload: Record<string, unknown>, rowId: string)
     if (kind === "tool_approval_response") {
         const stepId = payload.step_id
         if (typeof stepId !== "string" || !stepId.trim()) return null
-        const id = buildPrefixedId("tool_approval_response_", stepId, "step")
+        const id = `tool_approval_response:${stepId}`
         payload.id = id
         return id
     }
 
     if (kind === "filter_outcome") {
         const openAiResponseId = typeof payload.openai_response_id === "string" ? payload.openai_response_id.trim() : ""
-        if (openAiResponseId) {
-            const id = buildPrefixedId("filter_outcome_", openAiResponseId, "response")
-            payload.id = id
-            return id
-        }
-
-        const existingId = typeof payload.id === "string" ? payload.id.trim() : ""
-        if (existingId) {
-            const sanitizedExistingId = sanitizeAndCapModelMessageId(existingId, "filter_outcome")
-            payload.id = sanitizedExistingId
-            return sanitizedExistingId
-        }
-
-        return null
+        const id = openAiResponseId ? `filter_outcome:${openAiResponseId}` : `filter_outcome:legacy:${rowId}`
+        payload.id = id
+        return id
     }
 
     if (kind === "run_error") {
         const existingRunErrorId = typeof payload.run_error_id === "string" ? payload.run_error_id.trim() : ""
-        const runErrorId = buildCappedIdPart(existingRunErrorId || rowId, "run_error_", "run_error")
+        const runErrorId = existingRunErrorId || `legacy-${rowId}`
         payload.run_error_id = runErrorId
-        const id = buildPrefixedId("run_error_", runErrorId, "run_error")
+        const id = `run_error:${runErrorId}`
         payload.id = id
         return id
     }
 
     const existingId = typeof payload.id === "string" ? payload.id.trim() : ""
-    if (!existingId) return null
-    const sanitizedExistingId = sanitizeAndCapModelMessageId(existingId, "event")
-    payload.id = sanitizedExistingId
-    return sanitizedExistingId
+    return existingId || null
 }
 
 function createUnixTimestampIdFromDate(createdAt: Date, sequence: number): string {
     const ms = createdAt.getTime()
     const seconds = Math.floor(ms / 1000)
     const micros = (ms % 1000) * 1000 + sequence
-    return `msg_${seconds}_${String(micros).padStart(6, "0")}`
+    return `${seconds}.${String(micros).padStart(6, "0")}`
 }
 
 function hasCallId(item: Record<string, unknown>): boolean {
@@ -141,7 +106,7 @@ function backfillEventItemIds(item: AgentInputItem, row: BackfillRow, perTimesta
 
     if (role === "user") {
         const existingId = typeof parsed.id === "string" ? parsed.id.trim() : ""
-        if (!isMsgPrefixedModelItemId(existingId)) {
+        if (!existingId) {
             const ms = row.created_at.getTime()
             const seq = perTimestampSequence.get(ms) ?? 0
             perTimestampSequence.set(ms, seq + 1)
@@ -175,18 +140,12 @@ function backfillEventItemIds(item: AgentInputItem, row: BackfillRow, perTimesta
                 // Ignore non-JSON system content.
             }
         }
-
-        const existingId = typeof parsed.id === "string" ? parsed.id.trim() : ""
-        if (!isMsgPrefixedModelItemId(existingId) && !hasCallId(parsed)) {
-            parsed.id = sanitizeAndCapModelMessageId(existingId || `event_${row.id}`, "event")
-            changed = true
-        }
     }
 
-    const hasId = isValidModelItemId(parsed.id)
+    const hasId = typeof parsed.id === "string" && parsed.id.trim().length > 0
     if (!hasId && !hasCallId(parsed)) {
-        // Ensure event_key is never "id:undefined" for items with neither id nor callId.
-        parsed.id = buildPrefixedId("event_", row.id, "row")
+        // Ensure event_key is never "id:undefined" for legacy items with neither id nor callId.
+        parsed.id = `legacy:${row.id}`
         changed = true
     }
 
@@ -201,15 +160,7 @@ async function backfillTable(table: TableName): Promise<void> {
          WHERE event_key IS NULL
             OR event_key = ''
             OR event_key = 'id:undefined'
-            OR (
-                (raw_event_json->>'role' = 'user' OR raw_event_json->>'role' = 'system')
-                AND (
-                    COALESCE(raw_event_json->>'id', '') = ''
-                    OR raw_event_json->>'id' ~ '[^A-Za-z0-9_-]'
-                    OR char_length(raw_event_json->>'id') > 64
-                    OR COALESCE(raw_event_json->>'id', '') !~ '^msg_'
-                )
-            )
+            OR ((raw_event_json->>'role' = 'user' OR raw_event_json->>'role' = 'system') AND COALESCE(raw_event_json->>'id', '') = '')
          ORDER BY created_at ASC, id ASC`
     )
 

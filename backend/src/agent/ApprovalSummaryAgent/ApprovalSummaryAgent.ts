@@ -44,7 +44,7 @@ export async function generateApprovalSummary(runId: string, user: User, agentId
         where: {
             run_history_record_id: runId
         },
-        orderBy: [{ created_at: "asc" }],
+        orderBy: [{ sequence_order: "asc" }, { created_at: "asc" }],
         select: {
             raw_event_json: true
         }

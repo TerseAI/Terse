@@ -1,7 +1,7 @@
 import type { AgentInputItem } from "@openai/agents-core"
 import { z } from "zod"
 
-import { MODEL_ITEM_ID_MAX_LENGTH, randomString, sanitizeAndCapIdentifier, sanitizeAndCapModelMessageId } from "../../utility/strings"
+import { randomString } from "../../utility/strings"
 import type { ClassifiedError } from "../agentErrorUtils"
 
 import { BaseSystemEvent } from "./BaseSystemEvent"
@@ -41,29 +41,21 @@ const runErrorSystemEvent = new RunErrorSystemEvent()
 export type RunErrorSystemEventOptions = {
     runErrorId?: string
 }
-const RUN_ERROR_PREFIX = "run_error_"
-const RUN_ERROR_ID_PART_MAX_LENGTH = MODEL_ITEM_ID_MAX_LENGTH - RUN_ERROR_PREFIX.length
 
 function resolveRunErrorId(options?: RunErrorSystemEventOptions): string {
     const explicit = options?.runErrorId?.trim()
     if (explicit) {
-        return sanitizeAndCapIdentifier(explicit, {
-            fallback: "run_error",
-            maxLength: RUN_ERROR_ID_PART_MAX_LENGTH
-        })
+        return explicit
     }
 
-    return sanitizeAndCapIdentifier(randomString(18), {
-        fallback: "run_error",
-        maxLength: RUN_ERROR_ID_PART_MAX_LENGTH
-    })
+    return randomString(18)
 }
 
 function buildPayload(classified: ClassifiedError, options?: RunErrorSystemEventOptions): RunErrorSystemEventPayload {
     const runErrorId = resolveRunErrorId(options)
     const payload: RunErrorSystemEventPayload = {
         kind: "run_error",
-        id: sanitizeAndCapModelMessageId(`${RUN_ERROR_PREFIX}${runErrorId}`, "run_error"),
+        id: `run_error:${runErrorId}`,
         run_error_id: runErrorId,
         error: classified.message
     }

@@ -14,6 +14,7 @@ import { extractConversationContent } from "./conversationExtractor"
 export interface RunHistoryMetadata {
     run_history_record_id: string
     channel_id: string
+    sequence_order: number
     created_at: string
 }
 
@@ -49,6 +50,7 @@ export class RunHistoryMemory implements Indexer<RunHistoryRawEventWithRelations
                 metadata: {
                     run_history_record_id: event.run_history_record_id,
                     channel_id: channelId,
+                    sequence_order: event.sequence_order,
                     created_at: event.created_at.toISOString()
                 }
             }
@@ -58,7 +60,10 @@ export class RunHistoryMemory implements Indexer<RunHistoryRawEventWithRelations
     }
 
     async findSimilarInputEvents(query: string, channelId: string, topK: number = 10): Promise<RunHistoryRawEventWithRelations[]> {
-        const filters: Filter[] = [["channel_id", "Eq", channelId]]
+        const filters: Filter[] = [
+            ["sequence_order", "Eq", 0],
+            ["channel_id", "Eq", channelId]
+        ]
 
         const results = (await this.search.search(query, {
             topK,

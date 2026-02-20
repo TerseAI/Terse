@@ -1019,7 +1019,7 @@ model run_history_raw_events {
   run_history_record run_history_records @relation(fields: [run_history_record_id], references: [id], onDelete: Cascade)
 
   @@index([run_history_record_id])
-  @@index([run_history_record_id, event_key])
+  @@index([run_history_record_id, sequence_order])
   @@index([created_at])
 }
 
@@ -1039,7 +1039,7 @@ model chat_raw_events {
   created_at      DateTime @default(now())
 
   @@index([chat_session_id])
-  @@index([chat_session_id, event_key])
+  @@index([chat_session_id, sequence_order])
   @@index([created_at])
 }
 

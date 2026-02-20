@@ -53,10 +53,10 @@ const filterOutcomeSystemEvent = new FilterOutcomeSystemEvent()
 function buildFilterOutcomeSystemEventId(input: FilterOutcomeSystemEventInput): string {
     const responseId = input.openai_response_id?.trim()
     if (responseId) {
-        return sanitizeAndCapModelMessageId(`filter_outcome_${responseId}`, "filter_outcome")
+        return `filter_outcome:${responseId}`
     }
 
-    return sanitizeAndCapModelMessageId(`filter_outcome_${randomString(18)}`, "filter_outcome")
+    return `filter_outcome:${randomString(18)}`
 }
 
 function buildPayload(input: FilterOutcomeSystemEventInput): FilterOutcomeSystemEventPayload {

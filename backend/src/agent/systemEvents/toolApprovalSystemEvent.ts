@@ -1,8 +1,6 @@
 import type { AgentInputItem } from "@openai/agents-core"
 import { z } from "zod"
 
-import { sanitizeAndCapModelMessageId } from "../../utility/strings"
-
 import { BaseSystemEvent } from "./BaseSystemEvent"
 import { appendSystemEventToRunHistory } from "./systemEventSessions"
 
@@ -77,11 +75,11 @@ class ToolApprovalSystemEvent extends BaseSystemEvent<ToolApprovalSystemEventPay
 const toolApprovalSystemEvent = new ToolApprovalSystemEvent()
 
 function buildToolApprovalRequestSystemEventId(stepId: string): string {
-    return sanitizeAndCapModelMessageId(`tool_approval_request_${stepId}`, "tool_approval_request")
+    return `tool_approval_request:${stepId}`
 }
 
 function buildToolApprovalResponseSystemEventId(stepId: string): string {
-    return sanitizeAndCapModelMessageId(`tool_approval_response_${stepId}`, "tool_approval_response")
+    return `tool_approval_response:${stepId}`
 }
 
 function buildToolApprovalRequestPayload(input: ToolApprovalRequestSystemEventInput): ToolApprovalRequestSystemEventPayload {

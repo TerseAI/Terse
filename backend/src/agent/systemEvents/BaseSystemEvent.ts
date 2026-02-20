@@ -2,8 +2,6 @@ import { system } from "@openai/agents"
 import type { AgentInputItem } from "@openai/agents-core"
 import { z } from "zod"
 
-import { sanitizeAndCapModelMessageId } from "../../utility/strings"
-
 type SystemEventItemCandidate = {
     id?: unknown
     content?: unknown
@@ -45,16 +43,11 @@ export abstract class BaseSystemEvent<TPayload, TDecoded = TPayload> {
     private extractEventId(payload: TPayload): string | undefined {
         if (!payload || typeof payload !== "object") return undefined
 
-        const payloadRecord = payload as Record<string, unknown>
-        const maybeId = payloadRecord.id
+        const maybeId = (payload as Record<string, unknown>).id
         if (typeof maybeId !== "string") return undefined
 
         const trimmed = maybeId.trim()
-        if (trimmed.length === 0) return undefined
-
-        const normalized = sanitizeAndCapModelMessageId(trimmed, "event")
-        payloadRecord.id = normalized
-        return normalized
+        return trimmed.length > 0 ? trimmed : undefined
     }
 
     private extractPayloadFromContent(item: unknown): unknown | null {
