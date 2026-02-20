@@ -142,7 +142,6 @@ export function convertRunHistoryEventsToTurns(events: (ModelEvent & { timestamp
                         fc.isRunning = false
                         fc.isWaitingForApproval = false
                         fc.isWaitingForUserInput = false
-                        fc.name = e.tool_name
                         if (e.result) fc.result = e.result
                         if (e.errorContext) {
                             fc.isFailure = true
