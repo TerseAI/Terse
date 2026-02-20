@@ -195,6 +195,11 @@ interface BackendService {
     getSlackIntegrations(): Promise<SlackIntegration[]>
 
     /**
+     * Deletes a specific Slack integration
+     */
+    deleteSlackIntegration(integrationId: string): Promise<void>
+
+    /**
      * Deletes the Gmail integration
      */
     deleteGmailIntegration(): Promise<void>
