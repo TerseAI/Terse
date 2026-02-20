@@ -34,7 +34,7 @@ import { createOrUpdatePosthogIntegration, getPosthogIntegrations, getPosthogPro
 import { refreshAllTokens } from "./routes/refreshTokens"
 import { getAllRunHistory, getChatHistory, getRunHistory, getRunHistoryActions } from "./routes/runHistory"
 import { handleManualTrigger, handleScheduleWebhook } from "./routes/schedule"
-import { getCurrentSlackIntegration, getSlackChannels, getSlackIntegrations, getSlackUsers, slackOAuthCallback } from "./routes/slack"
+import { deleteSlackIntegration, getCurrentSlackIntegration, getSlackChannels, getSlackIntegrations, getSlackUsers, slackOAuthCallback } from "./routes/slack"
 import { getStats } from "./routes/stats"
 import { getPublicTemplates, getTemplates } from "./routes/templates"
 import { toolsThatRequireApprovalsRoute } from "./routes/tools"
@@ -444,6 +444,10 @@ app.get(ApiRoutes.SLACK.CHANNELS, authMiddleware, async (req, res) => {
 
 app.get(ApiRoutes.SLACK.USERS, authMiddleware, async (req, res) => {
     await getSlackUsers(req, res)
+})
+
+app.delete(ApiRoutes.SLACK.DELETE_INTEGRATION.pattern, authMiddleware, async (req, res) => {
+    await deleteSlackIntegration(req, res)
 })
 
 // MARK: POSTHOG

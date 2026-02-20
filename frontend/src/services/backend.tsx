@@ -928,6 +928,16 @@ export const BackendProvider: BackendService = {
             })
     },
 
+    deleteSlackIntegration: (integrationId: string) => {
+        return axios
+            .delete(`${backendBaseUrl}${ApiRoutes.SLACK.DELETE_INTEGRATION.build(integrationId)}`, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error("Error deleting Slack integration:", error)
+                throw error
+            })
+    },
+
     getNotionResources: (integrationId: string, search?: string, type?: "page" | "database") => {
         const params = new URLSearchParams({ integrationId })
         if (search) {

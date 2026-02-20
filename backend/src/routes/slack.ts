@@ -142,6 +142,64 @@ export async function handleSlackInteraction(req: Request, res: Response) {
     return
 }
 
+/**
+ * Delete a specific Slack integration for the current user
+ */
+export async function deleteSlackIntegration(req: Request, res: Response) {
+    if (!req.session?.user) {
+        return res.status(401).json({ error: "Unauthorized" })
+    }
+
+    const { integrationId } = req.params
+    if (!integrationId) {
+        return res.status(400).json({ error: "integrationId is required" })
+    }
+
+    try {
+        const userId = req.session.user.id
+        const organizationId = req.session.user.organizationId
+
+        if (!organizationId) {
+            return res.status(400).json({ error: "Organization context is required" })
+        }
+
+        // Find the user's Slack integration by ID
+        const userSlackIntegration = await db().user_slack_integrations.findFirst({
+            where: {
+                id: integrationId,
+                user_id: userId,
+                organization_id: organizationId
+            }
+        })
+
+        if (!userSlackIntegration) {
+            return res.status(404).json({ error: "Slack integration not found" })
+        }
+
+        // Delete the user's Slack integration
+        await db().user_slack_integrations.delete({
+            where: {
+                id: integrationId
+            }
+        })
+
+        logger.info("Slack integration deleted", {
+            userId,
+            integrationId,
+            slackTeamId: userSlackIntegration.slack_team_id
+        })
+
+        res.json({ message: "Slack integration deleted successfully" })
+    } catch (error) {
+        logger.error("Error deleting Slack integration", {
+            error,
+            userId: req.session.user.id,
+            integrationId
+        })
+        res.status(500).json({ error: "Failed to delete Slack integration" })
+    }
+}
+
 // MARK: - Helper Functions
 
 /**

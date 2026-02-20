@@ -1,6 +1,7 @@
 import { useState } from "react"
 
-import { Hash, MessageSquare } from "lucide-react"
+import { Hash, MessageSquare, Trash2 } from "lucide-react"
+import type { KeyedMutator } from "swr"
 
 import { useSlackChannels } from "@/hooks/api/useSlackChannels"
 import { useSlackIntegrations } from "@/hooks/api/useSlackIntegrations"
@@ -8,6 +9,7 @@ import { cn } from "@/lib/utils"
 import { BackendProvider } from "@/services/backend"
 import { IntegrationType, SlackIntegration } from "@/shared/Integrations"
 
+import { Button } from "../ui/button"
 import { Card, CardContent } from "../ui/card"
 import { Skeleton } from "../ui/skeleton"
 
@@ -22,7 +24,7 @@ function SlackIntegrationCard({ className, isActive = true, stateToken, compact 
     const [showConnectionOptions, setShowConnectionOptions] = useState(false)
     const [isBotUser, setIsBotUser] = useState(true)
     const [isConnecting, setIsConnecting] = useState(false)
-    const { integrations, isLoading: integrationsLoading } = useSlackIntegrations()
+    const { integrations, isLoading: integrationsLoading, mutate } = useSlackIntegrations()
     const handleConnectClick = () => {
         setShowConnectionOptions(true)
     }
@@ -71,7 +73,7 @@ function SlackIntegrationCard({ className, isActive = true, stateToken, compact 
                 {showConnectionOptions ? (
                     <SlackConnectionOptions isBotUser={isBotUser} setIsBotUser={setIsBotUser} onBack={handleBack} onConnect={connect} isConnecting={isConnecting} />
                 ) : (
-                    <SlackCardContent integrations={integrations} isLoading={integrationsLoading} />
+                    <SlackCardContent integrations={integrations} isLoading={integrationsLoading} mutate={mutate} />
                 )}
             </CardContent>
             {!showConnectionOptions && <IntegrationCardFooter connect={handleConnectClick} isConnecting={isConnecting} buttonText="Connect Another Slack" />}
@@ -79,7 +81,7 @@ function SlackIntegrationCard({ className, isActive = true, stateToken, compact 
     )
 }
 
-function SlackCardContent({ integrations, isLoading }: { integrations: SlackIntegration[]; isLoading: boolean }) {
+function SlackCardContent({ integrations, isLoading, mutate }: { integrations: SlackIntegration[]; isLoading: boolean; mutate: KeyedMutator<SlackIntegration[]> }) {
     if (isLoading && integrations.length === 0) {
         return (
             <div className="space-y-3">
@@ -102,28 +104,52 @@ function SlackCardContent({ integrations, isLoading }: { integrations: SlackInte
     return (
         <div className="space-y-2">
             {integrations.map(integration => (
-                <SlackIntegrationItem integration={integration} key={integration.id} />
+                <SlackIntegrationItem integration={integration} key={integration.id} mutate={mutate} />
             ))}
         </div>
     )
 }
 
-function SlackIntegrationItem({ integration }: { integration: SlackIntegration }) {
+function SlackIntegrationItem({ integration, mutate }: { integration: SlackIntegration; mutate: KeyedMutator<SlackIntegration[]> }) {
+    const [isDeleting, setIsDeleting] = useState(false)
     const { channels, isLoading: channelsLoading } = useSlackChannels(integration.id)
     const channelCount = channels.length
     const availableChannels = channels.filter(ch => !ch.isArchived).length
+
+    const handleDelete = async () => {
+        if (!confirm(`Are you sure you want to remove this Slack connection (${integration.teamName || "Unknown Workspace"})?`)) {
+            return
+        }
+
+        setIsDeleting(true)
+        try {
+            await BackendProvider.deleteSlackIntegration(integration.id)
+            mutate()
+        } catch (error) {
+            console.error("Failed to delete Slack integration:", error)
+        } finally {
+            setIsDeleting(false)
+        }
+    }
+
     return (
-        <IntegrationItem
-            key={integration.id}
-            icon={<MessageSquare className="w-4 h-4" />}
-            title={`${integration.teamName || "Unknown Workspace"}${integration.isBotUser === false ? " - User" : " - Bot"}`}
-            description={
-                <span className="flex items-center gap-2">
-                    <Hash className="size-3" />
-                    <ChannelsCount channelCount={availableChannels} totalChannels={channelCount} isLoading={channelsLoading} />
-                </span>
-            }
-        />
+        <div className="flex items-center gap-2">
+            <IntegrationItem
+                key={integration.id}
+                icon={<MessageSquare className="w-4 h-4" />}
+                title={`${integration.teamName || "Unknown Workspace"}${integration.isBotUser === false ? " - User" : " - Bot"}`}
+                description={
+                    <span className="flex items-center gap-2">
+                        <Hash className="size-3" />
+                        <ChannelsCount channelCount={availableChannels} totalChannels={channelCount} isLoading={channelsLoading} />
+                    </span>
+                }
+                className="flex-1"
+            />
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={handleDelete} disabled={isDeleting} title="Remove connection">
+                <Trash2 className="h-4 w-4" />
+            </Button>
+        </div>
     )
 }
 
