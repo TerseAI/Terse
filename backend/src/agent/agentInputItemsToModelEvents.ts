@@ -1,7 +1,9 @@
 import type { AgentInputItem, AssistantMessageItem, FunctionCallItem, FunctionCallResultItem, ReasoningItem, UserMessageItem } from "@openai/agents-core"
 
+import { db } from "../prismaClient"
+import { EntityType } from "../shared/Entities"
 import { IntegrationType } from "../shared/Integrations"
-import { ModelEvent } from "../shared/ModelEvents"
+import { ChangeEventType, ModelEvent } from "../shared/ModelEvents"
 
 import { isScaffoldedRunContextUserMessage } from "./AgentRunner/formatContext"
 import { parseFilterOutcomeSystemEventItem } from "./systemEvents/filterOutcomeSystemEvent"
@@ -26,11 +28,11 @@ const DEFAULT_CONVERT_OPTIONS: Required<ConvertAgentInputItemsToModelEventsOptio
     appendNaturalStop: true
 }
 
-export function convertAgentInputItemsToModelEvents(
+export async function convertAgentInputItemsToModelEvents(
     items: (AgentInputItem | TimestampedAgentInputItem)[],
     toolToIntegrationMap?: Map<string, string>,
     options?: ConvertAgentInputItemsToModelEventsOptions
-): ModelEvent[] {
+): Promise<ModelEvent[]> {
     const resolvedOptions: Required<ConvertAgentInputItemsToModelEventsOptions> = {
         ...DEFAULT_CONVERT_OPTIONS,
         ...options
@@ -44,7 +46,7 @@ export function convertAgentInputItemsToModelEvents(
         const ts = isTimestamped ? (entry as TimestampedAgentInputItem).createdAt : undefined
         if (ts) lastTimestamp = ts
 
-        const converted = convertSingleItem(item, toolToIntegrationMap, resolvedOptions)
+        const converted = await convertSingleItem(item, toolToIntegrationMap, resolvedOptions)
         if (converted) {
             for (const event of converted) {
                 events.push(ts ? { ...event, timestamp: ts.getTime() } : event)
@@ -69,11 +71,11 @@ export function convertAgentInputItemsToModelEvents(
     return events
 }
 
-function convertSingleItem(
+async function convertSingleItem(
     item: AgentInputItem,
     toolToIntegrationMap?: Map<string, string>,
     options: Required<ConvertAgentInputItemsToModelEventsOptions> = DEFAULT_CONVERT_OPTIONS
-): ModelEvent[] | null {
+): Promise<ModelEvent[] | null> {
     const runErrorSystemEvent = parseRunErrorSystemEventItem(item)
     if (runErrorSystemEvent) {
         return [
@@ -178,15 +180,32 @@ function convertSingleItem(
         const integration = toolToIntegrationMap?.get(item.name || "") || IntegrationType.TERSE
         const parsed = parseToolExecutionResult(item.output, item.status)
 
+        const prisma = db()
+        const runHistoryActions = await prisma.run_history_actions.findMany({
+            where: {
+                step_id: item.callId
+            }
+        })
+        const changedItems = runHistoryActions.map(action => ({
+            type_name: EntityType.RUN_HISTORY_ACTION,
+            id: action.id,
+            change_event_type: ChangeEventType.ACTION_EXECUTED
+        }))
+
+        const outputWithoutActions = {
+            ...parsed.output,
+            actions: undefined
+        }
+
         return [
             {
                 type: "ToolCallComplete",
                 tool_name: item.name || "unknown",
                 status: parsed.status,
-                step_id: item.callId || item.id || "unknown",
-                changed_items: [], // Historical events don't have changed_items tracked
+                step_id: item.callId,
+                changed_items: changedItems, // Historical events don't have changed_items tracked
                 integration,
-                result: parsed.outputString || undefined,
+                result: JSON.stringify(outputWithoutActions) || undefined,
                 ...(parsed.errorContext ? { errorContext: { error: parsed.errorContext.error } } : {})
             }
         ]

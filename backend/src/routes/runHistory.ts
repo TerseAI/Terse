@@ -359,7 +359,7 @@ export async function getChatHistory(req: Request, res: Response) {
             createdAt: rawEvent.created_at
         }))
 
-        const modelEvents = convertAgentInputItemsToModelEvents(timestampedItems, undefined, {
+        const modelEvents = await convertAgentInputItemsToModelEvents(timestampedItems, undefined, {
             includeScaffoldedUserMessages: false
         })
         const fallbackTimestamp = rawEvents[0]?.created_at ?? runRecord.timestamp

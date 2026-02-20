@@ -51,7 +51,7 @@ export async function generateApprovalSummary(runId: string, user: User, agentId
     })
 
     const rawItems = rawEvents.map(event => event.raw_event_json as AgentInputItem)
-    const modelEvents = convertAgentInputItemsToModelEvents(rawItems)
+    const modelEvents = await convertAgentInputItemsToModelEvents(rawItems)
 
     let toolCallEvent: ToolCall | null = null
     for (const modelEvent of modelEvents) {
