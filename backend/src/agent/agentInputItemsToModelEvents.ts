@@ -17,10 +17,13 @@ export type TimestampedAgentInputItem = {
 
 export type ConvertAgentInputItemsToModelEventsOptions = {
     includeScaffoldedUserMessages?: boolean
+    /** When false, do not append a synthetic NaturalStop when the last event is non-terminal. Use for in-progress runs. Default: true */
+    appendNaturalStop?: boolean
 }
 
 const DEFAULT_CONVERT_OPTIONS: Required<ConvertAgentInputItemsToModelEventsOptions> = {
-    includeScaffoldedUserMessages: true
+    includeScaffoldedUserMessages: true,
+    appendNaturalStop: true
 }
 
 export function convertAgentInputItemsToModelEvents(
@@ -50,7 +53,8 @@ export function convertAgentInputItemsToModelEvents(
     }
 
     // Add a NaturalStop only when the run did not already end with a terminal sentinel (NaturalStop or RunError).
-    if (events.length > 0) {
+    // Skip for in-progress runs so the UI does not incorrectly set isGenerating=false until the run actually completes.
+    if (events.length > 0 && resolvedOptions.appendNaturalStop) {
         const lastEvent = events[events.length - 1]
         const isTerminal = lastEvent.type === "NaturalStop" || lastEvent.type === "RunError"
         if (!isTerminal) {

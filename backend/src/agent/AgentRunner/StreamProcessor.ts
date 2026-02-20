@@ -25,7 +25,10 @@ export class StreamEventEmitter {
 
     emit(event: ModelEvent, timestamp: number): string {
         const eventId = randomString(15)
-        logger.info("[ApprovalFlow] Socket emit", { type: event.type, step_id: (event as any).step_id, runId: this.runId })
+        // Skip logging for high-frequency TextDelta (one per token) to avoid log flooding
+        if (event.type !== "TextDelta") {
+            logger.info("[ApprovalFlow] Socket emit", { type: event.type, step_id: (event as any).step_id, runId: this.runId })
+        }
         if (!this.io) return eventId
         const runHistoryModelEvent: RunHistoryModelEvent = {
             ...event,

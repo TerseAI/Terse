@@ -202,7 +202,8 @@ export class ChatMemorySession implements Session {
         })
 
         await prisma.chat_raw_events.createMany({
-            data: eventRecords
+            data: eventRecords,
+            skipDuplicates: true
         })
     }
 

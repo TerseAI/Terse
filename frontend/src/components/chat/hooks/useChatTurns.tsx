@@ -175,7 +175,6 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
     }
 
     const handleToolCallGenerating = ({ tool_name, step_id, timestamp }: ToolCallGenerating & Pick<ModelEvent, "timestamp">) => {
-        console.log("[ApprovalFlow] handleToolCallGenerating", { step_id, tool_name })
         // Track current step_id
         currentStepIdRef.current = step_id
 
@@ -240,7 +239,6 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
             if (last && last.role === "assistant") {
                 // Check if this tool call already exists (by step_id which is the unique call ID)
                 const existingCallIndex = last.function_calls.findIndex(call => call.id === step_id)
-                console.log("[ApprovalFlow] handleToolCall", { step_id, name: summary, existingCallFound: existingCallIndex !== -1, turnCount: updated.length })
 
                 if (existingCallIndex !== -1) {
                     // Update existing tool call - transition from generating to running (preserves original timestamp via spread)
@@ -299,23 +297,19 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
         setTurns(prev => {
             const updated = [...prev]
             // Find the tool call that needs approval
-            let foundExistingToolCall = false
             for (const turn of updated) {
                 const toolCall = turn.function_calls.find(call => call.id === step_id)
                 if (toolCall) {
-                    foundExistingToolCall = true
                     toolCall.isRunning = false
                     toolCall.isWaitingForApproval = true
                     break
                 }
             }
-            console.log("[ApprovalFlow] handleToolApprovalRequest", { step_id, foundExistingToolCall, turnCount: updated.length })
             return updated
         })
     }
 
     const handleToolApprovalResponse = ({ step_id, approved }: { step_id: string; approved: boolean }) => {
-        console.log("[ApprovalFlow] handleToolApprovalResponse", { step_id, approved })
         // Remove from pending approvals
         pendingApprovalsRef.current.delete(step_id)
 
@@ -323,18 +317,15 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
             // Mark as running again and approved
             setTurns(prev => {
                 const updated = [...prev]
-                let foundExistingToolCall = false
                 for (const turn of updated) {
                     const toolCall = turn.function_calls.find(call => call.id === step_id)
                     if (toolCall) {
-                        foundExistingToolCall = true
                         toolCall.isRunning = true
                         toolCall.isWaitingForApproval = false
                         toolCall.isApproved = true
                         break
                     }
                 }
-                console.log("[ApprovalFlow] handleToolApprovalResponse (approved)", { step_id, foundExistingToolCall })
                 return updated
             })
         } else {
@@ -367,7 +358,6 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
     }
 
     const handleToolCallComplete = ({ step_id, result, changed_items, errorContext }: ToolCallComplete & Pick<ModelEvent, "timestamp">) => {
-        console.log("[ApprovalFlow] handleToolCallComplete", { step_id })
         // Track current step_id
         currentStepIdRef.current = step_id
 

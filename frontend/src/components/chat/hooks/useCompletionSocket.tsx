@@ -110,7 +110,6 @@ export function useCompletionSocket(options: UseCompletionSocketOptions) {
                     onToolCallGeneratingRef.current(message)
                     break
                 case "ToolCall":
-                    console.log("[ApprovalFlow] Socket received ToolCall", { step_id: message.step_id, name: (message as any).summary })
                     onToolCallRef.current(message)
                     break
                 case "ToolCallComplete":
@@ -126,11 +125,9 @@ export function useCompletionSocket(options: UseCompletionSocketOptions) {
                     onThinkingRef.current(message.step_id)
                     break
                 case "ToolApprovalRequest":
-                    console.log("[ApprovalFlow] Socket received ToolApprovalRequest", { step_id: (message as any).step_id, name: (message as any).name })
                     onToolApprovalRequestRef.current?.(message)
                     break
                 case "ToolApprovalResponse":
-                    console.log("[ApprovalFlow] Socket received ToolApprovalResponse", { step_id: (message as any).step_id, approved: (message as any).approved })
                     onToolApprovalResponseRef.current?.(message)
                     break
                 case "Snippet":
