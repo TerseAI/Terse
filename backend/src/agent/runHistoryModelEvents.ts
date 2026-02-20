@@ -4,11 +4,7 @@ import { db } from "../prismaClient"
 import { EntityType } from "../shared/Entities"
 import { ChangeEventType, type ModelEvent } from "../shared/ModelEvents"
 
-import {
-    type ConvertAgentInputItemsToModelEventsOptions,
-    type TimestampedAgentInputItem,
-    convertAgentInputItemsToModelEvents
-} from "./agentInputItemsToModelEvents"
+import { type ConvertAgentInputItemsToModelEventsOptions, type TimestampedAgentInputItem, convertAgentInputItemsToModelEvents } from "./agentInputItemsToModelEvents"
 
 export type GetRunHistoryModelEventsOptions = ConvertAgentInputItemsToModelEventsOptions
 
@@ -17,10 +13,7 @@ export type GetRunHistoryModelEventsOptions = ConvertAgentInputItemsToModelEvent
  * run_history_actions as changed_items on ToolCallComplete events.
  * Use for run history chat API, approval summary, and any flow that needs run history as model events.
  */
-export async function getRunHistoryModelEventsWithActions(
-    runId: string,
-    options?: GetRunHistoryModelEventsOptions
-): Promise<ModelEvent[]> {
+export async function getRunHistoryModelEventsWithActions(runId: string, options?: GetRunHistoryModelEventsOptions): Promise<ModelEvent[]> {
     const prisma = db()
     const rawEvents = await prisma.run_history_raw_events.findMany({
         where: { run_history_record_id: runId },

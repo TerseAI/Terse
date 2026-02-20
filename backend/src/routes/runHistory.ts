@@ -349,8 +349,7 @@ export async function getChatHistory(req: Request, res: Response) {
         const fallbackTimestamp = runRecord.timestamp
 
         const events: ChatHistoryEvent[] = modelEvents.map((event, index) => {
-            const eventTimestamp =
-                typeof event.timestamp === "number" ? event.timestamp : fallbackTimestamp.getTime()
+            const eventTimestamp = typeof event.timestamp === "number" ? event.timestamp : fallbackTimestamp.getTime()
             return {
                 ...event,
                 id: `run-history-raw-${index}`,
