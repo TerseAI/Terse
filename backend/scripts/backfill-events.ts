@@ -78,11 +78,11 @@ function clampConfidence(value: unknown): number {
 }
 
 function buildToolApprovalRequestId(stepId: string): string {
-    return `tool_approval_request-${stepId}`
+    return `msg_tool_approval_request-${stepId}`
 }
 
 function buildToolApprovalResponseId(stepId: string): string {
-    return `tool_approval_response-${stepId}`
+    return `msg_tool_approval_response-${stepId}`
 }
 
 function buildFilterOutcomeId(chatEventId: string, openAiResponseId?: string): string {
@@ -90,14 +90,14 @@ function buildFilterOutcomeId(chatEventId: string, openAiResponseId?: string): s
     if (trimmed) {
         return `filter_outcome-${trimmed}`
     }
-    return `filter_outcome-legacy-${chatEventId}`
+    return `msg_filter_outcome-legacy-${chatEventId}`
 }
 
 function buildRunErrorId(chatEventId: string, runErrorId?: string): { id: string; runErrorId: string } {
     const trimmed = runErrorId?.trim()
     const resolvedRunErrorId = trimmed || `legacy-${chatEventId}`
     return {
-        id: `run_error-${resolvedRunErrorId}`,
+        id: `msg_run_error-${resolvedRunErrorId}`,
         runErrorId: resolvedRunErrorId
     }
 }
@@ -208,6 +208,28 @@ async function phase1MigrateSystemEvents(): Promise<void> {
     console.log("[backfill-events] Phase 1: Migrating system events from chat_events → raw_events")
     const prisma = db()
 
+    // Diagnostic: list all run_ids that have rows with null event_key
+    const runsWithNullEventKey = await prisma.$queryRaw<
+        { run_history_record_id: string; null_count: bigint; row_ids: string[] }[]
+    >`
+        SELECT run_history_record_id,
+               COUNT(*)::bigint AS null_count,
+               ARRAY_AGG(id) AS row_ids
+        FROM run_history_raw_events
+        WHERE event_key IS NULL
+        GROUP BY run_history_record_id
+    `
+    if (runsWithNullEventKey.length > 0) {
+        console.warn("[backfill-events] Phase 1: Found run_history_raw_events rows with null event_key (will cause P2032):", {
+            runCount: runsWithNullEventKey.length,
+            runs: runsWithNullEventKey.map(r => ({
+                runId: r.run_history_record_id,
+                nullCount: Number(r.null_count),
+                rowIds: r.row_ids
+            }))
+        })
+    }
+
     const chatEvents = await prisma.run_history_chat_events.findMany({
         where: {
             event_type: {
@@ -252,79 +274,86 @@ async function phase1MigrateSystemEvents(): Promise<void> {
         })
 
         const existingEventKeys = new Set(existingRawEvents.map(event => event.event_key))
-        const plannedInsertKeys = new Set<string>()
-        const inserts: TimelineEntry[] = []
+            const plannedInsertKeys = new Set<string>()
+            const inserts: TimelineEntry[] = []
 
-        for (let i = 0; i < runEvents.length; i++) {
-            const event = runEvents[i]
-            const systemEvent = toSystemEvent(event)
-            if (!systemEvent) {
-                skipped += 1
-                continue
-            }
-
-            if (existingEventKeys.has(systemEvent.eventKey) || plannedInsertKeys.has(systemEvent.eventKey)) {
-                skippedExisting += 1
-                continue
-            }
-            plannedInsertKeys.add(systemEvent.eventKey)
-
-            inserts.push({
-                kind: "insert",
-                createdAt: event.timestamp,
-                insertOrder: i,
-                runId,
-                eventKey: systemEvent.eventKey,
-                rawItem: systemEvent.rawItem
-            })
-        }
-
-        if (inserts.length === 0) continue
-
-        const existingEntries: TimelineEntry[] = existingRawEvents.map(raw => ({
-            kind: "existing",
-            rawId: raw.id,
-            createdAt: raw.created_at,
-            originalSequence: raw.sequence_order
-        }))
-
-        const merged = sortTimeline([...existingEntries, ...inserts])
-        const updates: { id: string; sequence: number }[] = []
-        const rowsToInsert: Prisma.run_history_raw_eventsCreateManyInput[] = []
-
-        for (let sequence = 0; sequence < merged.length; sequence++) {
-            const entry = merged[sequence]
-            if (entry.kind === "existing") {
-                if (entry.originalSequence !== sequence) {
-                    updates.push({ id: entry.rawId, sequence })
+            for (let i = 0; i < runEvents.length; i++) {
+                const event = runEvents[i]
+                const systemEvent = toSystemEvent(event)
+                if (!systemEvent) {
+                    skipped += 1
+                    continue
                 }
-                continue
-            }
 
-            rowsToInsert.push({
-                run_history_record_id: entry.runId,
-                event_key: entry.eventKey,
-                raw_event_json: entry.rawItem as unknown as Prisma.InputJsonValue,
-                sequence_order: sequence,
-                created_at: entry.createdAt
-            })
-        }
+                if (existingEventKeys.has(systemEvent.eventKey) || plannedInsertKeys.has(systemEvent.eventKey)) {
+                    skippedExisting += 1
+                    continue
+                }
+                plannedInsertKeys.add(systemEvent.eventKey)
 
-        await prisma.$transaction(async tx => {
-            for (const update of updates) {
-                await tx.run_history_raw_events.update({
-                    where: { id: update.id },
-                    data: { sequence_order: update.sequence }
+                inserts.push({
+                    kind: "insert",
+                    createdAt: event.timestamp,
+                    insertOrder: i,
+                    runId,
+                    eventKey: systemEvent.eventKey,
+                    rawItem: systemEvent.rawItem
                 })
             }
 
-            await tx.run_history_raw_events.createMany({
-                data: rowsToInsert
-            })
-        })
+            if (inserts.length === 0) continue
 
-        inserted += rowsToInsert.length
-        sequenceUpdates += updates.length
+            const existingEntries: TimelineEntry[] = existingRawEvents.map(raw => ({
+                kind: "existing",
+                rawId: raw.id,
+                createdAt: raw.created_at,
+                originalSequence: raw.sequence_order
+            }))
+
+            const merged = sortTimeline([...existingEntries, ...inserts])
+            const updates: { id: string; sequence: number }[] = []
+            const rowsToInsert: Prisma.run_history_raw_eventsCreateManyInput[] = []
+
+            for (let sequence = 0; sequence < merged.length; sequence++) {
+                const entry = merged[sequence]
+                if (entry.kind === "existing") {
+                    if (entry.originalSequence !== sequence) {
+                        updates.push({ id: entry.rawId, sequence })
+                    }
+                    continue
+                }
+
+                rowsToInsert.push({
+                    run_history_record_id: entry.runId,
+                    event_key: entry.eventKey,
+                    raw_event_json: entry.rawItem as unknown as Prisma.InputJsonValue,
+                    sequence_order: sequence,
+                    created_at: entry.createdAt
+                })
+            }
+
+            await prisma.$transaction(async tx => {
+                for (const update of updates) {
+                    await tx.run_history_raw_events.update({
+                        where: { id: update.id },
+                        data: { sequence_order: update.sequence }
+                    })
+                }
+
+                await tx.run_history_raw_events.createMany({
+                    data: rowsToInsert
+                })
+            })
+
+            inserted += rowsToInsert.length
+            sequenceUpdates += updates.length
+        } catch (err) {
+            console.error("[backfill-events] Phase 1: Failed for runId (likely null event_key in run_history_raw_events)", {
+                runId,
+                error: err instanceof Error ? err.message : String(err)
+            })
+            throw err
+        }
     }
 
     console.log(
@@ -417,7 +446,7 @@ function createUnixTimestampIdFromDate(createdAt: Date, sequence: number): strin
     const ms = createdAt.getTime()
     const seconds = Math.floor(ms / 1000)
     const micros = (ms % 1000) * 1000 + sequence
-    return `${seconds}.${String(micros).padStart(6, "0")}`
+    return `msg_${seconds}.${String(micros).padStart(6, "0")}`
 }
 
 function hasCallId(item: Record<string, unknown>): boolean {

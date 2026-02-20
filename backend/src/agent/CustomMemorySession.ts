@@ -328,8 +328,21 @@ export function trimToLastTurns(items: AgentInputItem[], maxTurns: number): Agen
     return items.slice(startIdx)
 }
 
+/**
+ * Clones an AgentInputItem and sanitizes id/callId to match API requirements.
+ * The API expects IDs to contain only letters, numbers, underscores, or dashes.
+ * Legacy data (e.g. Slack message timestamps like "1771559447.098000") may have periods.
+ */
 function cloneAgentItem<T extends AgentInputItem>(item: T): T {
-    return structuredClone(item)
+    const cloned = structuredClone(item) as T
+    const itemAny = cloned as Record<string, unknown>
+    if (typeof itemAny.id === "string" && !MODEL_ITEM_ID_PATTERN.test(itemAny.id)) {
+        itemAny.id = sanitizeAndCapModelItemId(itemAny.id, "legacy")
+    }
+    if (typeof itemAny.callId === "string" && !MODEL_ITEM_ID_PATTERN.test(itemAny.callId)) {
+        itemAny.callId = sanitizeAndCapModelItemId(itemAny.callId, "legacy")
+    }
+    return cloned
 }
 
 /**
