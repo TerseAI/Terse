@@ -21,13 +21,13 @@ import { UserFormatter } from "../../utility/UserFormatter"
 import { randomString } from "../../utility/strings"
 import { RunHistoryChatMemorySession, recentHistoryCallback } from "../CustomMemorySession"
 import { AgentType, builderProviderDataModelSettings, runnerFactory } from "../runner"
-import { transformAgentStreamToModelEvents } from "../streaming"
+import { createNaturalStopEvent, transformAgentStreamToModelEvents } from "../streaming"
 import { appendToolApprovalRequestSystemEvent } from "../systemEvents/toolApprovalSystemEvent"
 import { isFailedToolExecutionStatus } from "../toolExecution"
 import { createUserMessageItem } from "../userMessage"
 
 import { persistRunAction } from "./EventProcessor"
-import { processModelEventStream } from "./StreamProcessor"
+import { StreamEventEmitter, processModelEventStream } from "./StreamProcessor"
 import { RunContext, SystemPromptBuilder, SystemPromptBuilderDependencies } from "./SystemPromptBuilder"
 import { buildRunTriggerContextMessage, formatAgentTriggersForAgent } from "./formatContext"
 import { persistOutputAttributions, removeOutputAttributions } from "./persistOutputAttributions"
@@ -665,6 +665,20 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance, KBCo
 
         // Clear any pending approval state if run completed successfully
         await clearPendingApprovalState(this.runContext.runId)
+
+        // Emit NaturalStop only when the run actually completes (no interruptions).
+        // This was moved out of transformAgentStreamToModelEvents() because the generator
+        // can't know about interruptions — they're only detected here in buildResult().
+        // For interrupted runs, we emit ToolApprovalRequest instead (above).
+        if (streamingParams) {
+            const io = getSocketIO()
+            const emitter = new StreamEventEmitter(io, {
+                runId: streamingParams.runId!,
+                agentId: streamingParams.agentId!,
+                user: streamingParams.user
+            })
+            emitter.emit(createNaturalStopEvent(), Date.now())
+        }
 
         return {
             status: AgentRunResultStatus.COMPLETED,

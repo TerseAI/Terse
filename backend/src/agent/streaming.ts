@@ -56,8 +56,6 @@ export async function* transformAgentStreamToModelEvents<T extends Session>(
             continue
         }
     }
-
-    yield createNaturalStopEvent()
 }
 
 export function tryExtractThinking(event: RunStreamEvent): ModelEvent | null {

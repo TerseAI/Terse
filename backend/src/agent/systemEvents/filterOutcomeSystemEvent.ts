@@ -56,7 +56,7 @@ function buildFilterOutcomeSystemEventId(input: FilterOutcomeSystemEventInput): 
         return `filter_outcome-${responseId}`
     }
 
-    return `filter_outcome-${randomString(18)}`
+    return `msg_filter_outcome-${randomString(18)}`
 }
 
 function buildPayload(input: FilterOutcomeSystemEventInput): FilterOutcomeSystemEventPayload {
