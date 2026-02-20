@@ -23,7 +23,7 @@ import { createOrUpdateDatadogIntegration, getDatadogIndexes, getDatadogIntegrat
 import { figmaOAuthCallback, getFigmaIntegrations, handleFigmaWebhook } from "./routes/figma"
 import { getGithubIntegrations, getGithubRepositoriesForIntegration, getInstallationUrl, githubAppUnifiedEvent } from "./routes/github"
 import { deleteGmailIntegration, getGmailIntegrations, gmailCallback, handleGmailWebhook } from "./routes/gmail"
-import { getActiveIntegrations, getAllIntegrations, getIntegrationInstallationDetails } from "./routes/integrations"
+import { deleteIntegration, getActiveIntegrations, getAllIntegrations, getIntegrationInstallationDetails } from "./routes/integrations"
 import { atlassianOAuthCallback, getAtlassianIntegrations, getJiraResources, handleJiraWebhook } from "./routes/jira"
 import { createOrUpdateLaunchDarklyIntegration, getLaunchDarklyEnvironments, getLaunchDarklyIntegrations, getLaunchDarklyProjects } from "./routes/launchdarkly"
 import { getLinearIntegrations, getLinearTeams, handleLinearWebhook, linearOAuthCallback } from "./routes/linear"
@@ -34,7 +34,7 @@ import { createOrUpdatePosthogIntegration, getPosthogIntegrations, getPosthogPro
 import { refreshAllTokens } from "./routes/refreshTokens"
 import { getAllRunHistory, getChatHistory, getRunHistory, getRunHistoryActions } from "./routes/runHistory"
 import { handleManualTrigger, handleScheduleWebhook } from "./routes/schedule"
-import { deleteSlackIntegration, getCurrentSlackIntegration, getSlackChannels, getSlackIntegrations, getSlackUsers, slackOAuthCallback } from "./routes/slack"
+import { getCurrentSlackIntegration, getSlackChannels, getSlackIntegrations, getSlackUsers, slackOAuthCallback } from "./routes/slack"
 import { getStats } from "./routes/stats"
 import { getPublicTemplates, getTemplates } from "./routes/templates"
 import { toolsThatRequireApprovalsRoute } from "./routes/tools"
@@ -446,10 +446,6 @@ app.get(ApiRoutes.SLACK.USERS, authMiddleware, async (req, res) => {
     await getSlackUsers(req, res)
 })
 
-app.delete(ApiRoutes.SLACK.DELETE_INTEGRATION.pattern, authMiddleware, async (req, res) => {
-    await deleteSlackIntegration(req, res)
-})
-
 // MARK: POSTHOG
 
 app.get(ApiRoutes.POSTHOG.INTEGRATIONS, authMiddleware, async (req, res) => {
@@ -558,6 +554,10 @@ app.get("/integrations", authMiddleware, async (req, res) => {
 
 app.get("/integrations/active", authMiddleware, async (req, res) => {
     getActiveIntegrations(req, res)
+})
+
+app.delete(ApiRoutes.INTEGRATIONS.DELETE.pattern, authMiddleware, async (req, res) => {
+    deleteIntegration(req, res)
 })
 
 // MARK: NOTIFICATION DESTINATIONS

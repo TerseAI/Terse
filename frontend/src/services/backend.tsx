@@ -195,18 +195,9 @@ interface BackendService {
     getSlackIntegrations(): Promise<SlackIntegration[]>
 
     /**
-     * Deletes a specific Slack integration
+     * Deletes an integration by type and ID
      */
-    deleteSlackIntegration(integrationId: string): Promise<void>
-
-    /**
-     * Deletes the Gmail integration
-     */
-    deleteGmailIntegration(): Promise<void>
-    /**
-     * Deletes the Notion integration
-     */
-    deleteNotionIntegration(): Promise<void>
+    deleteIntegration(integrationType: IntegrationType, integrationId: string): Promise<void>
 
     /**
      * Searches Notion pages and databases by title
@@ -913,32 +904,12 @@ export const BackendProvider: BackendService = {
             })
     },
 
-    deleteGmailIntegration: () => {
+    deleteIntegration: (integrationType: IntegrationType, integrationId: string) => {
         return axios
-            .delete(`${backendBaseUrl}/gmail/delete-integration`, { withCredentials: true })
+            .delete(`${backendBaseUrl}${ApiRoutes.INTEGRATIONS.DELETE.build(integrationType, integrationId)}`, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
-                console.error("Error deleting Gmail integration:", error)
-                throw error
-            })
-    },
-
-    deleteNotionIntegration: () => {
-        return axios
-            .delete(`${backendBaseUrl}${ApiRoutes.NOTION.DELETE_INTEGRATION}`, { withCredentials: true })
-            .then(response => response.data)
-            .catch(error => {
-                console.error("Error deleting Notion integration:", error)
-                throw error
-            })
-    },
-
-    deleteSlackIntegration: (integrationId: string) => {
-        return axios
-            .delete(`${backendBaseUrl}${ApiRoutes.SLACK.DELETE_INTEGRATION.build(integrationId)}`, { withCredentials: true })
-            .then(response => response.data)
-            .catch(error => {
-                console.error("Error deleting Slack integration:", error)
+                console.error(`Error deleting ${integrationType} integration:`, error)
                 throw error
             })
     },

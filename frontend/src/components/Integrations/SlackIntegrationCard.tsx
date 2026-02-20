@@ -121,7 +121,7 @@ function SlackIntegrationItem({ integration, mutate }: { integration: SlackInteg
     const handleDelete = async () => {
         setIsDeleting(true)
         try {
-            await BackendProvider.deleteSlackIntegration(integration.id)
+            await BackendProvider.deleteIntegration(IntegrationType.SLACK, integration.id)
             mutate()
             setShowDeleteDialog(false)
         } catch (error) {

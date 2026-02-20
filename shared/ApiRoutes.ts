@@ -129,12 +129,7 @@ export const ApiRoutes = {
         OAUTH_CALLBACK: "/slack/oauth-callback",
         CHANNELS: "/slack/channels",
         USERS: "/slack/users",
-        EVENTS: "/slack/events",
-        DELETE_INTEGRATION: {
-            pattern: "/slack/integrations/:integrationId",
-            build: (integrationId: string) => `/slack/integrations/${encodeURIComponent(integrationId)}`,
-            params: { integrationId: "string" } as const
-        }
+        EVENTS: "/slack/events"
     },
 
     // Posthog routes
@@ -211,7 +206,12 @@ export const ApiRoutes = {
             params: { integrationType: "string" } as const
         },
         LIST: "/integrations",
-        ACTIVE: "/integrations/active"
+        ACTIVE: "/integrations/active",
+        DELETE: {
+            pattern: "/integrations/:integrationType/:integrationId",
+            build: (integrationType: string, integrationId: string) => `/integrations/${encodeURIComponent(integrationType)}/${encodeURIComponent(integrationId)}`,
+            params: { integrationType: "string", integrationId: "string" } as const
+        }
     },
 
     // Notification destinations routes

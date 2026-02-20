@@ -1,7 +1,7 @@
 import { Request, Response } from "express"
 
 import { Integration, isOAuthIntegrationInstallation } from "../integrations/abstract/Integration"
-import { INTEGRATION_REGISTRY } from "../integrations/abstract/IntegrationRegistry"
+import { INTEGRATION_REGISTRY, isSystemIntegration } from "../integrations/abstract/IntegrationRegistry"
 import logger from "../logger"
 import { InstallationOptionsFor, IntegrationDetails, IntegrationInstance, IntegrationType, IntegrationWithStatus } from "../shared/Integrations"
 import { OAuthInstallationDetails } from "../shared/types"
@@ -116,4 +116,61 @@ export async function getOrganizationActiveIntegrations(organizationId: string):
     const hasInstancesResults = await Promise.all(INTEGRATION_REGISTRY.map(integration => integrationHasInstances(integration, organizationId)))
 
     return INTEGRATION_REGISTRY.filter((_, index) => hasInstancesResults[index]).map(integration => integration.integrationType)
+}
+
+/**
+ * Delete an integration instance by type and ID
+ */
+export async function deleteIntegration(req: Request, res: Response) {
+    if (!req.session?.user) {
+        return res.status(401).json({ error: "Unauthorized" })
+    }
+
+    const { integrationType, integrationId } = req.params
+    if (!integrationType || !integrationId) {
+        return res.status(400).json({ error: "integrationType and integrationId are required" })
+    }
+
+    const organizationId = req.session.user.organizationId
+    if (!organizationId) {
+        return res.status(400).json({ error: "Organization context is required" })
+    }
+
+    // Prevent deletion of system integrations
+    if (isSystemIntegration(integrationType as IntegrationType)) {
+        return res.status(400).json({ error: "Cannot delete system integrations" })
+    }
+
+    try {
+        const integrationManager = INTEGRATION_REGISTRY.find(i => i.integrationType === integrationType)
+        if (!integrationManager) {
+            return res.status(404).json({ error: `Integration type '${integrationType}' not found` })
+        }
+
+        // Verify the integration belongs to the user's organization
+        const instances = await integrationManager.getInstancesForOrganization(organizationId)
+        const instance = instances.find(i => i.id === integrationId)
+        if (!instance) {
+            return res.status(404).json({ error: "Integration not found or you don't have access to it" })
+        }
+
+        await integrationManager.deleteInstallation(integrationId)
+
+        logger.info("Integration deleted", {
+            userId: req.session.user.id,
+            organizationId,
+            integrationType,
+            integrationId
+        })
+
+        res.json({ message: "Integration deleted successfully" })
+    } catch (error) {
+        logger.error("Error deleting integration", {
+            error,
+            userId: req.session.user.id,
+            integrationType,
+            integrationId
+        })
+        res.status(500).json({ error: "Failed to delete integration" })
+    }
 }
