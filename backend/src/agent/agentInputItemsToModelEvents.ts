@@ -1,9 +1,7 @@
 import type { AgentInputItem, AssistantMessageItem, FunctionCallItem, FunctionCallResultItem, ReasoningItem, UserMessageItem } from "@openai/agents-core"
 
-import { db } from "../prismaClient"
-import { EntityType } from "../shared/Entities"
 import { IntegrationType } from "../shared/Integrations"
-import { ChangeEventType, ModelEvent } from "../shared/ModelEvents"
+import { ModelEvent } from "../shared/ModelEvents"
 
 import { isScaffoldedRunContextUserMessage } from "./AgentRunner/formatContext"
 import { parseFilterOutcomeSystemEventItem } from "./systemEvents/filterOutcomeSystemEvent"
@@ -175,21 +173,11 @@ async function convertSingleItem(
     }
 
     // Function call result - convert to ToolCallComplete
+    // Note: changed_items are not populated here. Callers that need them (e.g. run history routes)
+    // should load run_history_actions once and attach via attachRunHistoryChangedItems().
     if (isFunctionCallResultItem(item)) {
         const integration = toolToIntegrationMap?.get(item.name || "") || IntegrationType.TERSE
         const parsed = parseToolExecutionResult(item.output, item.status)
-
-        const prisma = db()
-        const runHistoryActions = await prisma.run_history_actions.findMany({
-            where: {
-                step_id: item.callId
-            }
-        })
-        const changedItems = runHistoryActions.map(action => ({
-            type_name: EntityType.RUN_HISTORY_ACTION,
-            id: action.id,
-            change_event_type: ChangeEventType.ACTION_EXECUTED
-        }))
 
         const outputWithoutActions = {
             ...parsed.output,
@@ -202,7 +190,7 @@ async function convertSingleItem(
                 tool_name: item.name || "unknown",
                 status: parsed.status,
                 step_id: item.callId,
-                changed_items: changedItems, // Historical events don't have changed_items tracked
+                changed_items: [],
                 integration,
                 result: JSON.stringify(outputWithoutActions) || undefined,
                 ...(parsed.errorContext ? { errorContext: { error: parsed.errorContext.error } } : {})
