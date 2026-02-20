@@ -47,7 +47,6 @@ type ExistingRawRow = {
     event_key: string
     sequence_order: number
     created_at: Date
-    raw_event_json?: unknown
 }
 
 type SystemEventItem = {
@@ -80,20 +79,19 @@ function clampConfidence(value: unknown): number {
 }
 
 function buildToolApprovalRequestId(stepId: string): string {
-    const id = `msg_tool_approval_request-${stepId}`
-    return id.length > 64 ? sanitizeAndCapModelItemId(id, `msg_tool_approval_request-${stepId.slice(0, 20)}`) : id
+    return `msg_tool_approval_request-${stepId}`
 }
 
 function buildToolApprovalResponseId(stepId: string): string {
-    const id = `msg_tool_approval_response-${stepId}`
-    return id.length > 64 ? sanitizeAndCapModelItemId(id, `msg_tool_approval_response-${stepId.slice(0, 20)}`) : id
+    return `msg_tool_approval_response-${stepId}`
 }
 
-function buildFilterOutcomeId(openAiResponseId: string): string {
-    const trimmed = openAiResponseId.trim()
-    if (!trimmed) throw new Error("buildFilterOutcomeId requires non-empty openAiResponseId")
-    const id = `msg_filter_outcome-${trimmed}`
-    return id.length > 64 ? sanitizeAndCapModelItemId(id, `msg_filter_outcome-${trimmed.slice(0, 20)}`) : id
+function buildFilterOutcomeId(chatEventId: string, openAiResponseId?: string): string {
+    const trimmed = openAiResponseId?.trim()
+    if (trimmed) {
+        return `msg_filter_outcome-${trimmed}`
+    }
+    return `msg_filter_outcome-${chatEventId}`
 }
 
 function buildRunErrorId(chatEventId: string, runErrorId?: string): { id: string; runErrorId: string } {
@@ -106,11 +104,13 @@ function buildRunErrorId(chatEventId: string, runErrorId?: string): { id: string
 }
 
 function createSystemEventItem(payload: Record<string, unknown>, id: string): { rawItem: SystemEventItem; eventKey: string } {
-    const payloadWithId = { ...payload, id }
+    // Sanitize the ID the same way production's BaseSystemEvent.createItem does.
+    const sanitizedId = sanitizeAndCapModelItemId(id, "system-event")
+    const payloadWithId = { ...payload, id: sanitizedId }
     const rawItem: SystemEventItem = {
         type: "message",
         role: "system",
-        id,
+        id: sanitizedId,
         content: JSON.stringify(payloadWithId)
     }
     return {
@@ -119,19 +119,18 @@ function createSystemEventItem(payload: Record<string, unknown>, id: string): { 
     }
 }
 
-function toSystemEvent(event: ChatEventRow, context: { existingRawEvents: ExistingRawRow[]; existingEventKeys: Set<string> }): { eventKey: string; rawItem: SystemEventItem } | null {
+function toSystemEvent(event: ChatEventRow): { eventKey: string; rawItem: SystemEventItem } | null {
     const payload = asRecord(event.event_json)
     if (!payload) return null
 
     if (event.event_type === RunHistoryChatEventType.FilterResult) {
         if (typeof payload.isRelevant !== "boolean" || typeof payload.reason !== "string") return null
-        const openAiResponseId = typeof payload.openai_response_id === "string" ? payload.openai_response_id.trim() : ""
-        if (!openAiResponseId) return null // Don't migrate without valid response id
-        const id = buildFilterOutcomeId(openAiResponseId)
+        const openAiResponseId = typeof payload.openai_response_id === "string" ? payload.openai_response_id : undefined
+        const id = buildFilterOutcomeId(event.id, openAiResponseId)
         return createSystemEventItem(
             {
                 kind: "filter_outcome",
-                openai_response_id: openAiResponseId,
+                ...(openAiResponseId ? { openai_response_id: openAiResponseId } : {}),
                 isRelevant: payload.isRelevant,
                 reason: payload.reason,
                 confidence: clampConfidence(payload.confidence)
@@ -272,19 +271,17 @@ async function phase1MigrateSystemEvents(): Promise<void> {
                     id: true,
                     event_key: true,
                     sequence_order: true,
-                    created_at: true,
-                    raw_event_json: true
+                    created_at: true
                 }
             })
 
             const existingEventKeys = new Set(existingRawEvents.map(event => event.event_key))
             const plannedInsertKeys = new Set<string>()
             const inserts: TimelineEntry[] = []
-            const phase1Context = { existingRawEvents, existingEventKeys }
 
             for (let i = 0; i < runEvents.length; i++) {
                 const event = runEvents[i]
-                const systemEvent = toSystemEvent(event, phase1Context)
+                const systemEvent = toSystemEvent(event)
                 if (!systemEvent) {
                     skipped += 1
                     continue
@@ -375,7 +372,6 @@ type BackfillRow = {
     event_key: string | null
     raw_event_json: unknown
     created_at: Date
-    run_history_record_id?: string // Only for run_history_raw_events
 }
 
 const TABLES: TableName[] = ["run_history_raw_events", "chat_raw_events"]
@@ -406,15 +402,14 @@ function getSystemContentText(content: unknown): string {
         .join("\n")
 }
 
-function normalizeSystemPayload(payload: Record<string, unknown>, rowId: string, resolvedFilterOutcomeResponseId?: string | null): string | null {
+function normalizeSystemPayload(payload: Record<string, unknown>, rowId: string): string | null {
     const kind = payload.kind
     if (typeof kind !== "string") return null
 
     if (kind === "tool_approval_request") {
         const stepId = payload.step_id
         if (typeof stepId !== "string" || !stepId.trim()) return null
-        let id = `tool_approval_request-${stepId}`
-        if (id.length > 64) id = sanitizeAndCapModelItemId(id, `tool_approval_request-${stepId.slice(0, 20)}`)
+        const id = `msg_tool_approval_request-${stepId}`
         payload.id = id
         return id
     }
@@ -422,20 +417,15 @@ function normalizeSystemPayload(payload: Record<string, unknown>, rowId: string,
     if (kind === "tool_approval_response") {
         const stepId = payload.step_id
         if (typeof stepId !== "string" || !stepId.trim()) return null
-        let id = `tool_approval_response-${stepId}`
-        if (id.length > 64) id = sanitizeAndCapModelItemId(id, `tool_approval_response-${stepId.slice(0, 20)}`)
+        const id = `msg_tool_approval_response-${stepId}`
         payload.id = id
         return id
     }
 
     if (kind === "filter_outcome") {
-        let openAiResponseId = typeof payload.openai_response_id === "string" ? payload.openai_response_id.trim() : ""
-        if (!openAiResponseId && resolvedFilterOutcomeResponseId) openAiResponseId = resolvedFilterOutcomeResponseId
-        if (!openAiResponseId) return null // Don't use legacy format
-        let id = `msg_filter_outcome-${openAiResponseId}`
-        if (id.length > 64) id = sanitizeAndCapModelItemId(id, `msg_filter_outcome-${openAiResponseId.slice(0, 20)}`)
+        const openAiResponseId = typeof payload.openai_response_id === "string" ? payload.openai_response_id.trim() : ""
+        const id = openAiResponseId ? `msg_filter_outcome-${openAiResponseId}` : `msg_filter_outcome-${rowId}`
         payload.id = id
-        payload.openai_response_id = openAiResponseId
         return id
     }
 
@@ -443,8 +433,7 @@ function normalizeSystemPayload(payload: Record<string, unknown>, rowId: string,
         const existingRunErrorId = typeof payload.run_error_id === "string" ? payload.run_error_id.trim() : ""
         const runErrorId = existingRunErrorId || `legacy-${rowId}`
         payload.run_error_id = runErrorId
-        let id = `run_error-${runErrorId}`
-        if (id.length > 64) id = sanitizeAndCapModelItemId(id, `run_error-${runErrorId.slice(0, 20)}`)
+        const id = `msg_run_error-${runErrorId}`
         payload.id = id
         return id
     }
@@ -457,19 +446,14 @@ function createUnixTimestampIdFromDate(createdAt: Date, sequence: number): strin
     const ms = createdAt.getTime()
     const seconds = Math.floor(ms / 1000)
     const micros = (ms % 1000) * 1000 + sequence
-    return `msg_${seconds}.${String(micros).padStart(6, "0")}`
+    return `msg_${seconds}_${String(micros).padStart(6, "0")}`
 }
 
 function hasCallId(item: Record<string, unknown>): boolean {
     return typeof item.callId === "string" && item.callId.trim().length > 0
 }
 
-async function backfillEventItemIds(
-    item: AgentInputItem,
-    row: BackfillRow,
-    perTimestampSequence: Map<number, number>,
-    fetchFilterOutcomeResponseId?: (runId: string) => Promise<string | null>
-): Promise<{ normalizedItem: AgentInputItem; changed: boolean }> {
+function backfillEventItemIds(item: AgentInputItem, row: BackfillRow, perTimestampSequence: Map<number, number>): { normalizedItem: AgentInputItem; changed: boolean } {
     const parsed = asRecord(item)
     if (!parsed) return { normalizedItem: item, changed: false }
 
@@ -495,21 +479,17 @@ async function backfillEventItemIds(
                 const payload = JSON.parse(contentText)
                 const payloadRecord = asRecord(payload)
                 if (payloadRecord) {
-                    let resolvedFilterOutcomeResponseId: string | null | undefined
-                    if (
-                        payloadRecord.kind === "filter_outcome" &&
-                        !(typeof payloadRecord.openai_response_id === "string" && payloadRecord.openai_response_id.trim()) &&
-                        row.run_history_record_id &&
-                        fetchFilterOutcomeResponseId
-                    ) {
-                        resolvedFilterOutcomeResponseId = await fetchFilterOutcomeResponseId(row.run_history_record_id)
-                    }
-                    const systemEventId = normalizeSystemPayload(payloadRecord, row.id, resolvedFilterOutcomeResponseId ?? undefined)
+                    const systemEventId = normalizeSystemPayload(payloadRecord, row.id)
                     if (systemEventId) {
-                        if (parsed.id !== systemEventId) {
-                            parsed.id = systemEventId
+                        // Sanitize the system event ID the same way production's
+                        // BaseSystemEvent.createItem does.
+                        const sanitizedId = sanitizeAndCapModelItemId(systemEventId, "system-event")
+                        if (parsed.id !== sanitizedId) {
+                            parsed.id = sanitizedId
                             changed = true
                         }
+                        // Update the payload id to match the sanitized top-level id.
+                        payloadRecord.id = sanitizedId
                         const rewrittenContent = JSON.stringify(payloadRecord)
                         if (parsed.content !== rewrittenContent) {
                             parsed.content = rewrittenContent
@@ -530,14 +510,30 @@ async function backfillEventItemIds(
         changed = true
     }
 
+    // Sanitize id and callId the same way production does (BaseSystemEvent.createItem
+    // and cloneAgentItem both sanitize before the event_key is computed).
+    if (typeof parsed.id === "string") {
+        const sanitized = sanitizeAndCapModelItemId(parsed.id, "legacy")
+        if (sanitized !== parsed.id) {
+            parsed.id = sanitized
+            changed = true
+        }
+    }
+    if (typeof parsed.callId === "string") {
+        const sanitized = sanitizeAndCapModelItemId(parsed.callId as string, "legacy")
+        if (sanitized !== parsed.callId) {
+            parsed.callId = sanitized
+            changed = true
+        }
+    }
+
     return { normalizedItem: parsed as AgentInputItem, changed }
 }
 
 async function backfillTable(table: TableName): Promise<void> {
     const prisma = db()
-    const selectColumns = table === "run_history_raw_events" ? "id, event_key, raw_event_json, created_at, run_history_record_id" : "id, event_key, raw_event_json, created_at"
     const rows = await prisma.$queryRawUnsafe<BackfillRow[]>(
-        `SELECT ${selectColumns}
+        `SELECT id, event_key, raw_event_json, created_at
          FROM "${table}"
          WHERE event_key IS NULL
             OR event_key = ''
@@ -550,7 +546,9 @@ async function backfillTable(table: TableName): Promise<void> {
     let updated = 0
 
     for (const row of rows) {
-        const { normalizedItem, changed } = await backfillEventItemIds(row.raw_event_json as AgentInputItem, row, perTimestampSequence, fetchFilterOutcomeResponseId)
+        const { normalizedItem, changed } = backfillEventItemIds(row.raw_event_json as AgentInputItem, row, perTimestampSequence)
+        // Item IDs are already sanitized in backfillEventItemIds, matching production's
+        // flow where BaseSystemEvent.createItem sanitizes before getEventKey is called.
         const nextEventKey = getEventKey(normalizedItem)
 
         const shouldWrite = changed || row.event_key !== nextEventKey
