@@ -86,13 +86,3 @@ export const sanitizeAndCapIdentifier = (value: string, options: SanitizeAndCapI
 export const sanitizeAndCapModelItemId = (value: string, fallback = "unknown"): string => {
     return sanitizeAndCapIdentifier(value, { fallback, maxLength: MODEL_ITEM_ID_MAX_LENGTH })
 }
-
-export const sanitizeAndCapModelMessageId = (value: string, fallback = "event"): string => {
-    const maxBodyLength = Math.max(1, MODEL_ITEM_ID_MAX_LENGTH - MODEL_MESSAGE_ID_PREFIX.length)
-    const withoutPrefix = value.trim().replace(/^msg_/, "")
-    const body = sanitizeAndCapIdentifier(withoutPrefix, {
-        fallback,
-        maxLength: maxBodyLength
-    })
-    return `${MODEL_MESSAGE_ID_PREFIX}${body}`
-}
