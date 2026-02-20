@@ -50,23 +50,6 @@ type ExistingRawRow = {
     raw_event_json?: unknown
 }
 
-/** Find the last assistant message id that looks like an OpenAI response id (resp_...) */
-function findLastAssistantResponseId(rawEvents: { raw_event_json?: unknown; sequence_order: number }[]): string | null {
-    const sorted = [...rawEvents].sort((a, b) => a.sequence_order - b.sequence_order)
-    for (let i = sorted.length - 1; i >= 0; i--) {
-        const item = asRecord(sorted[i].raw_event_json)
-        if (!item) continue
-        if (item.role !== "assistant") continue
-        const id = typeof item.id === "string" ? item.id.trim() : ""
-        if (id && id.startsWith("resp_")) return id
-    }
-    return null
-}
-
-function hasFilterOutcomeInRawEvents(eventKeys: Set<string>): boolean {
-    return [...eventKeys].some(k => k.startsWith("id:filter_outcome-") || k.startsWith("id:msg_filter_outcome-"))
-}
-
 type SystemEventItem = {
     type: "message"
     role: "system"
@@ -136,26 +119,13 @@ function createSystemEventItem(payload: Record<string, unknown>, id: string): { 
     }
 }
 
-function toSystemEvent(
-    event: ChatEventRow,
-    context: { existingRawEvents: ExistingRawRow[]; existingEventKeys: Set<string> }
-): { eventKey: string; rawItem: SystemEventItem } | null {
+function toSystemEvent(event: ChatEventRow, context: { existingRawEvents: ExistingRawRow[]; existingEventKeys: Set<string> }): { eventKey: string; rawItem: SystemEventItem } | null {
     const payload = asRecord(event.event_json)
     if (!payload) return null
 
     if (event.event_type === RunHistoryChatEventType.FilterResult) {
         if (typeof payload.isRelevant !== "boolean" || typeof payload.reason !== "string") return null
-        // Skip if we already have a filter_outcome in raw_events (avoids duplicate with wrong format)
-        if (hasFilterOutcomeInRawEvents(context.existingEventKeys)) return null
-        let openAiResponseId =
-            typeof payload.openai_response_id === "string" ? payload.openai_response_id.trim() : ""
-        if (!openAiResponseId && typeof payload.id === "string") {
-            const id = payload.id.trim()
-            if (id.startsWith("resp_")) openAiResponseId = id
-        }
-        if (!openAiResponseId) {
-            openAiResponseId = findLastAssistantResponseId(context.existingRawEvents) ?? ""
-        }
+        const openAiResponseId = typeof payload.openai_response_id === "string" ? payload.openai_response_id.trim() : ""
         if (!openAiResponseId) return null // Don't migrate without valid response id
         const id = buildFilterOutcomeId(openAiResponseId)
         return createSystemEventItem(
@@ -243,9 +213,7 @@ async function phase1MigrateSystemEvents(): Promise<void> {
     const prisma = db()
 
     // Diagnostic: list all run_ids that have rows with null event_key
-    const runsWithNullEventKey = await prisma.$queryRaw<
-        { run_history_record_id: string; null_count: bigint; row_ids: string[] }[]
-    >`
+    const runsWithNullEventKey = await prisma.$queryRaw<{ run_history_record_id: string; null_count: bigint; row_ids: string[] }[]>`
         SELECT run_history_record_id,
                COUNT(*)::bigint AS null_count,
                ARRAY_AGG(id) AS row_ids
@@ -298,18 +266,18 @@ async function phase1MigrateSystemEvents(): Promise<void> {
     for (const [runId, runEvents] of byRun) {
         try {
             const existingRawEvents: ExistingRawRow[] = await prisma.run_history_raw_events.findMany({
-            where: { run_history_record_id: runId },
-            orderBy: [{ sequence_order: "asc" }, { created_at: "asc" }, { id: "asc" }],
-            select: {
-                id: true,
-                event_key: true,
-                sequence_order: true,
-                created_at: true,
-                raw_event_json: true
-            }
-        })
+                where: { run_history_record_id: runId },
+                orderBy: [{ sequence_order: "asc" }, { created_at: "asc" }, { id: "asc" }],
+                select: {
+                    id: true,
+                    event_key: true,
+                    sequence_order: true,
+                    created_at: true,
+                    raw_event_json: true
+                }
+            })
 
-        const existingEventKeys = new Set(existingRawEvents.map(event => event.event_key))
+            const existingEventKeys = new Set(existingRawEvents.map(event => event.event_key))
             const plannedInsertKeys = new Set<string>()
             const inserts: TimelineEntry[] = []
             const phase1Context = { existingRawEvents, existingEventKeys }
@@ -393,9 +361,7 @@ async function phase1MigrateSystemEvents(): Promise<void> {
         }
     }
 
-    console.log(
-        `[backfill-events] Phase 1 complete: runs=${byRun.size} inserted=${inserted} sequenceUpdates=${sequenceUpdates} skipped=${skipped} skippedExisting=${skippedExisting}`
-    )
+    console.log(`[backfill-events] Phase 1 complete: runs=${byRun.size} inserted=${inserted} sequenceUpdates=${sequenceUpdates} skipped=${skipped} skippedExisting=${skippedExisting}`)
 }
 
 // ---------------------------------------------------------------------------
@@ -440,11 +406,7 @@ function getSystemContentText(content: unknown): string {
         .join("\n")
 }
 
-function normalizeSystemPayload(
-    payload: Record<string, unknown>,
-    rowId: string,
-    resolvedFilterOutcomeResponseId?: string | null
-): string | null {
+function normalizeSystemPayload(payload: Record<string, unknown>, rowId: string, resolvedFilterOutcomeResponseId?: string | null): string | null {
     const kind = payload.kind
     if (typeof kind !== "string") return null
 
@@ -542,11 +504,7 @@ async function backfillEventItemIds(
                     ) {
                         resolvedFilterOutcomeResponseId = await fetchFilterOutcomeResponseId(row.run_history_record_id)
                     }
-                    const systemEventId = normalizeSystemPayload(
-                        payloadRecord,
-                        row.id,
-                        resolvedFilterOutcomeResponseId ?? undefined
-                    )
+                    const systemEventId = normalizeSystemPayload(payloadRecord, row.id, resolvedFilterOutcomeResponseId ?? undefined)
                     if (systemEventId) {
                         if (parsed.id !== systemEventId) {
                             parsed.id = systemEventId
@@ -577,10 +535,7 @@ async function backfillEventItemIds(
 
 async function backfillTable(table: TableName): Promise<void> {
     const prisma = db()
-    const selectColumns =
-        table === "run_history_raw_events"
-            ? "id, event_key, raw_event_json, created_at, run_history_record_id"
-            : "id, event_key, raw_event_json, created_at"
+    const selectColumns = table === "run_history_raw_events" ? "id, event_key, raw_event_json, created_at, run_history_record_id" : "id, event_key, raw_event_json, created_at"
     const rows = await prisma.$queryRawUnsafe<BackfillRow[]>(
         `SELECT ${selectColumns}
          FROM "${table}"
@@ -591,28 +546,11 @@ async function backfillTable(table: TableName): Promise<void> {
          ORDER BY created_at ASC, id ASC`
     )
 
-    const fetchFilterOutcomeResponseId =
-        table === "run_history_raw_events"
-            ? async (runId: string): Promise<string | null> => {
-                  const rawEvents = await prisma.run_history_raw_events.findMany({
-                      where: { run_history_record_id: runId },
-                      orderBy: [{ sequence_order: "asc" }, { created_at: "asc" }],
-                      select: { raw_event_json: true, sequence_order: true }
-                  })
-                  return findLastAssistantResponseId(rawEvents)
-              }
-            : undefined
-
     const perTimestampSequence = new Map<number, number>()
     let updated = 0
 
     for (const row of rows) {
-        const { normalizedItem, changed } = await backfillEventItemIds(
-            row.raw_event_json as AgentInputItem,
-            row,
-            perTimestampSequence,
-            fetchFilterOutcomeResponseId
-        )
+        const { normalizedItem, changed } = await backfillEventItemIds(row.raw_event_json as AgentInputItem, row, perTimestampSequence, fetchFilterOutcomeResponseId)
         const nextEventKey = getEventKey(normalizedItem)
 
         const shouldWrite = changed || row.event_key !== nextEventKey
