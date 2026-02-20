@@ -342,9 +342,7 @@ describe("convertRunHistoryEventsToTurns", () => {
      * Run history API may not include these events; if it does, consider adding handlers.
      */
     it("ignores ToolCallGenerating events (no handler)", () => {
-        const events: EventWithTimestamp[] = [
-            { type: "ToolCallGenerating", tool_name: "search", step_id: "call-1" }
-        ]
+        const events: EventWithTimestamp[] = [{ type: "ToolCallGenerating", tool_name: "search", step_id: "call-1" }]
         const turns = convertRunHistoryEventsToTurns(events)
         expect(turns).toHaveLength(0)
     })

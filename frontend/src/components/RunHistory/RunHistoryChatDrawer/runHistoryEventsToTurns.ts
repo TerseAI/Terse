@@ -116,10 +116,7 @@ export function convertRunHistoryEventsToTurns(events: (ModelEvent & { timestamp
             case "ToolCall": {
                 const e = event as ToolCall
                 const lastTurn = turns[turns.length - 1]
-                const turn =
-                    lastTurn && lastTurn.role === "assistant"
-                        ? lastTurn
-                        : getOrCreateTurn("assistant", e.step_id)
+                const turn = lastTurn && lastTurn.role === "assistant" ? lastTurn : getOrCreateTurn("assistant", e.step_id)
                 turn.disableAnimation = true
                 const existing = turn.function_calls.find(c => c.id === e.step_id)
                 if (!existing) {
