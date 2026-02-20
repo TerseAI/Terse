@@ -1011,6 +1011,7 @@ model run_history_chat_events {
 model run_history_raw_events {
   id                    String   @id @default(cuid())
   event_key             String   @unique
+  sequence_order        Int // Order of items within a session to preserve exact sequence
   run_history_record_id String
   raw_event_json        Json // Raw AgentStreamEvent stored as JSON for easy loading into OpenAI agent history
   created_at            DateTime @default(now())
@@ -1032,6 +1033,7 @@ enum ChatSessionType {
 model chat_raw_events {
   id              String   @id @default(cuid())
   event_key       String   @unique
+  sequence_order  Int // Order of items within a session to preserve exact sequence
   chat_session_id String
   raw_event_json  Json // Raw AgentStreamEvent stored as JSON for easy loading into OpenAI agent history
   created_at      DateTime @default(now())
