@@ -75,11 +75,11 @@ class ToolApprovalSystemEvent extends BaseSystemEvent<ToolApprovalSystemEventPay
 const toolApprovalSystemEvent = new ToolApprovalSystemEvent()
 
 function buildToolApprovalRequestSystemEventId(stepId: string): string {
-    return `tool_approval_request:${stepId}`
+    return `tool_approval_request-${stepId}`
 }
 
 function buildToolApprovalResponseSystemEventId(stepId: string): string {
-    return `tool_approval_response:${stepId}`
+    return `tool_approval_response-${stepId}`
 }
 
 function buildToolApprovalRequestPayload(input: ToolApprovalRequestSystemEventInput): ToolApprovalRequestSystemEventPayload {

@@ -168,6 +168,7 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance, KBCo
         rejectionReason?: string,
         hardReject?: boolean
     ): Promise<ApprovalResult<SessionWithTracking<T>, Agent<SessionWithTracking<T>, AgentOutputType>>> {
+        logger.info("[ApprovalFlow] Resuming from pending approval", { runId: this.runContext.runId, stepId, decision })
         this.resetRunOutcomeTracking()
         await this.initializeAgent()
 
@@ -283,6 +284,7 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance, KBCo
             maxTurns: this.maxTurns
         })
 
+        logger.info("[ApprovalFlow] Processing resume stream", { runId: this.runContext.runId, stepId })
         await this.processStream(result, streamingParams)
 
         return await this.buildResult(result, streamingParams)
@@ -564,6 +566,11 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance, KBCo
         const hasInterruptions = result.interruptions && result.interruptions.length > 0
 
         if (hasInterruptions) {
+            logger.info("[ApprovalFlow] Interruption detected", {
+                runId: this.runContext.runId,
+                interruptionCount: result.interruptions.length,
+                callIds: result.interruptions.map((i: RunToolApprovalItem) => (i.rawItem as any)?.callId)
+            })
             const serializedState = JSON.stringify(result.state)
             const interruptionsToStore = result.interruptions.map((interruption: RunToolApprovalItem) => {
                 // Store the full interruption object, including rawItem which contains callId
@@ -600,7 +607,10 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance, KBCo
                         arguments: interruption.arguments
                     }
 
+                    logger.info("[ApprovalFlow] Emitting ToolApprovalRequest via socket", { runId: this.runContext.runId, stepId, name: interruption.name })
+
                     try {
+                        logger.info("[ApprovalFlow] Persisting approval request system event", { runId: this.runContext.runId, stepId })
                         await appendToolApprovalRequestSystemEvent(this.runContext.runId, {
                             step_id: approvalRequest.step_id,
                             name: approvalRequest.name,

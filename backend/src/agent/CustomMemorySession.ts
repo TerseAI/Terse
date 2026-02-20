@@ -89,7 +89,8 @@ export class RunHistoryChatMemorySession implements Session {
         })
 
         await prisma.run_history_raw_events.createMany({
-            data: eventRecords
+            data: eventRecords,
+            skipDuplicates: true
         })
     }
 

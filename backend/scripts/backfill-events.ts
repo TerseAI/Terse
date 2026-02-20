@@ -1,9 +1,30 @@
+/**
+ * Unified backfill script that:
+ *   Phase 1 — Migrates system events from run_history_chat_events → run_history_raw_events
+ *   Phase 2 — Backfills event_key for all rows in run_history_raw_events and chat_raw_events
+ *
+ * Run this AFTER applying the add_event_key_columns migration and BEFORE applying
+ * the unique_constraint_event_key migration.
+ */
 import type { AgentInputItem } from "@openai/agents-core"
 import { Prisma, RunHistoryChatEventType } from "@prisma/client"
 import "dotenv/config"
 
 import { getEventKey } from "../src/agent/eventKey"
 import { db } from "../src/prismaClient"
+
+// ---------------------------------------------------------------------------
+// Shared helpers
+// ---------------------------------------------------------------------------
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return null
+    return value as Record<string, unknown>
+}
+
+// ---------------------------------------------------------------------------
+// Phase 1 — Migrate system events from run_history_chat_events
+// ---------------------------------------------------------------------------
 
 const TARGET_EVENT_TYPES: RunHistoryChatEventType[] = [
     RunHistoryChatEventType.FilterResult,
@@ -50,11 +71,6 @@ type TimelineEntry =
           rawItem: SystemEventItem
       }
 
-function asRecord(value: Prisma.JsonValue): Record<string, unknown> | null {
-    if (!value || typeof value !== "object" || Array.isArray(value)) return null
-    return value as Record<string, unknown>
-}
-
 function clampConfidence(value: unknown): number {
     const numeric = typeof value === "number" ? value : Number(value)
     if (!Number.isFinite(numeric)) return 0
@@ -62,26 +78,26 @@ function clampConfidence(value: unknown): number {
 }
 
 function buildToolApprovalRequestId(stepId: string): string {
-    return `tool_approval_request:${stepId}`
+    return `tool_approval_request-${stepId}`
 }
 
 function buildToolApprovalResponseId(stepId: string): string {
-    return `tool_approval_response:${stepId}`
+    return `tool_approval_response-${stepId}`
 }
 
 function buildFilterOutcomeId(chatEventId: string, openAiResponseId?: string): string {
     const trimmed = openAiResponseId?.trim()
     if (trimmed) {
-        return `filter_outcome:${trimmed}`
+        return `filter_outcome-${trimmed}`
     }
-    return `filter_outcome:legacy:${chatEventId}`
+    return `filter_outcome-legacy-${chatEventId}`
 }
 
 function buildRunErrorId(chatEventId: string, runErrorId?: string): { id: string; runErrorId: string } {
     const trimmed = runErrorId?.trim()
     const resolvedRunErrorId = trimmed || `legacy-${chatEventId}`
     return {
-        id: `run_error:${resolvedRunErrorId}`,
+        id: `run_error-${resolvedRunErrorId}`,
         runErrorId: resolvedRunErrorId
     }
 }
@@ -188,7 +204,8 @@ function sortTimeline(entries: TimelineEntry[]): TimelineEntry[] {
     })
 }
 
-async function main(): Promise<void> {
+async function phase1MigrateSystemEvents(): Promise<void> {
+    console.log("[backfill-events] Phase 1: Migrating system events from chat_events → raw_events")
     const prisma = db()
 
     const chatEvents = await prisma.run_history_chat_events.findMany({
@@ -311,13 +328,217 @@ async function main(): Promise<void> {
     }
 
     console.log(
-        `[backfill-run-history-system-events] runs=${byRun.size} inserted=${inserted} sequenceUpdates=${sequenceUpdates} skipped=${skipped} skippedExisting=${skippedExisting}`
+        `[backfill-events] Phase 1 complete: runs=${byRun.size} inserted=${inserted} sequenceUpdates=${sequenceUpdates} skipped=${skipped} skippedExisting=${skippedExisting}`
     )
+}
+
+// ---------------------------------------------------------------------------
+// Phase 2 — Backfill event_key for all rows
+// ---------------------------------------------------------------------------
+
+type TableName = "run_history_raw_events" | "chat_raw_events"
+
+type BackfillRow = {
+    id: string
+    event_key: string | null
+    raw_event_json: unknown
+    created_at: Date
+}
+
+const TABLES: TableName[] = ["run_history_raw_events", "chat_raw_events"]
+
+function getSystemContentText(content: unknown): string {
+    if (typeof content === "string") {
+        return content
+    }
+
+    if (!Array.isArray(content)) {
+        return ""
+    }
+
+    return content
+        .map(part => {
+            const parsed = asRecord(part)
+            if (!parsed) return ""
+
+            const text = parsed.text
+            if (typeof text === "string") return text
+
+            const inputText = parsed.input_text
+            if (typeof inputText === "string") return inputText
+
+            return ""
+        })
+        .filter(Boolean)
+        .join("\n")
+}
+
+function normalizeSystemPayload(payload: Record<string, unknown>, rowId: string): string | null {
+    const kind = payload.kind
+    if (typeof kind !== "string") return null
+
+    if (kind === "tool_approval_request") {
+        const stepId = payload.step_id
+        if (typeof stepId !== "string" || !stepId.trim()) return null
+        const id = `tool_approval_request-${stepId}`
+        payload.id = id
+        return id
+    }
+
+    if (kind === "tool_approval_response") {
+        const stepId = payload.step_id
+        if (typeof stepId !== "string" || !stepId.trim()) return null
+        const id = `tool_approval_response-${stepId}`
+        payload.id = id
+        return id
+    }
+
+    if (kind === "filter_outcome") {
+        const openAiResponseId = typeof payload.openai_response_id === "string" ? payload.openai_response_id.trim() : ""
+        const id = openAiResponseId ? `filter_outcome-${openAiResponseId}` : `filter_outcome-legacy-${rowId}`
+        payload.id = id
+        return id
+    }
+
+    if (kind === "run_error") {
+        const existingRunErrorId = typeof payload.run_error_id === "string" ? payload.run_error_id.trim() : ""
+        const runErrorId = existingRunErrorId || `legacy-${rowId}`
+        payload.run_error_id = runErrorId
+        const id = `run_error-${runErrorId}`
+        payload.id = id
+        return id
+    }
+
+    const existingId = typeof payload.id === "string" ? payload.id.trim() : ""
+    return existingId || null
+}
+
+function createUnixTimestampIdFromDate(createdAt: Date, sequence: number): string {
+    const ms = createdAt.getTime()
+    const seconds = Math.floor(ms / 1000)
+    const micros = (ms % 1000) * 1000 + sequence
+    return `${seconds}.${String(micros).padStart(6, "0")}`
+}
+
+function hasCallId(item: Record<string, unknown>): boolean {
+    return typeof item.callId === "string" && item.callId.trim().length > 0
+}
+
+function backfillEventItemIds(item: AgentInputItem, row: BackfillRow, perTimestampSequence: Map<number, number>): { normalizedItem: AgentInputItem; changed: boolean } {
+    const parsed = asRecord(item)
+    if (!parsed) return { normalizedItem: item, changed: false }
+
+    let changed = false
+    const role = parsed.role
+
+    if (role === "user") {
+        const existingId = typeof parsed.id === "string" ? parsed.id.trim() : ""
+        if (!existingId) {
+            const ms = row.created_at.getTime()
+            const seq = perTimestampSequence.get(ms) ?? 0
+            perTimestampSequence.set(ms, seq + 1)
+
+            parsed.id = createUnixTimestampIdFromDate(row.created_at, seq)
+            changed = true
+        }
+    }
+
+    if (role === "system") {
+        const contentText = getSystemContentText(parsed.content)
+        if (contentText) {
+            try {
+                const payload = JSON.parse(contentText)
+                const payloadRecord = asRecord(payload)
+                if (payloadRecord) {
+                    const systemEventId = normalizeSystemPayload(payloadRecord, row.id)
+                    if (systemEventId) {
+                        if (parsed.id !== systemEventId) {
+                            parsed.id = systemEventId
+                            changed = true
+                        }
+                        const rewrittenContent = JSON.stringify(payloadRecord)
+                        if (parsed.content !== rewrittenContent) {
+                            parsed.content = rewrittenContent
+                            changed = true
+                        }
+                    }
+                }
+            } catch {
+                // Ignore non-JSON system content.
+            }
+        }
+    }
+
+    const hasId = typeof parsed.id === "string" && parsed.id.trim().length > 0
+    if (!hasId && !hasCallId(parsed)) {
+        // Ensure event_key is never "id:undefined" for legacy items with neither id nor callId.
+        parsed.id = `legacy:${row.id}`
+        changed = true
+    }
+
+    return { normalizedItem: parsed as AgentInputItem, changed }
+}
+
+async function backfillTable(table: TableName): Promise<void> {
+    const prisma = db()
+    const rows = await prisma.$queryRawUnsafe<BackfillRow[]>(
+        `SELECT id, event_key, raw_event_json, created_at
+         FROM "${table}"
+         WHERE event_key IS NULL
+            OR event_key = ''
+            OR event_key = 'id:undefined'
+            OR ((raw_event_json->>'role' = 'user' OR raw_event_json->>'role' = 'system') AND COALESCE(raw_event_json->>'id', '') = '')
+         ORDER BY created_at ASC, id ASC`
+    )
+
+    const perTimestampSequence = new Map<number, number>()
+    let updated = 0
+
+    for (const row of rows) {
+        const { normalizedItem, changed } = backfillEventItemIds(row.raw_event_json as AgentInputItem, row, perTimestampSequence)
+        const nextEventKey = getEventKey(normalizedItem)
+
+        const shouldWrite = changed || row.event_key !== nextEventKey
+        if (!shouldWrite) {
+            continue
+        }
+
+        await prisma.$executeRawUnsafe(
+            `UPDATE "${table}"
+             SET event_key = $1,
+                 raw_event_json = $2::jsonb
+             WHERE id = $3`,
+            nextEventKey,
+            JSON.stringify(normalizedItem),
+            row.id
+        )
+        updated += 1
+    }
+
+    console.log(`[backfill-events] Phase 2 (${table}): scanned=${rows.length} updated=${updated}`)
+}
+
+async function phase2BackfillEventKeys(): Promise<void> {
+    console.log("[backfill-events] Phase 2: Backfilling event_key for all tables")
+    for (const table of TABLES) {
+        await backfillTable(table)
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Main
+// ---------------------------------------------------------------------------
+
+async function main(): Promise<void> {
+    console.log("[backfill-events] Starting unified backfill")
+    await phase1MigrateSystemEvents()
+    await phase2BackfillEventKeys()
+    console.log("[backfill-events] Done")
 }
 
 main()
     .catch(error => {
-        console.error("[backfill-run-history-system-events] failed", error)
+        console.error("[backfill-events] failed", error)
         process.exit(1)
     })
     .finally(async () => {

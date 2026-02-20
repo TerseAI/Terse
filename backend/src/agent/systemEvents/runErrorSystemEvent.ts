@@ -55,7 +55,7 @@ function buildPayload(classified: ClassifiedError, options?: RunErrorSystemEvent
     const runErrorId = resolveRunErrorId(options)
     const payload: RunErrorSystemEventPayload = {
         kind: "run_error",
-        id: `run_error:${runErrorId}`,
+        id: `run_error-${runErrorId}`,
         run_error_id: runErrorId,
         error: classified.message
     }

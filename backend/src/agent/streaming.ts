@@ -1,5 +1,6 @@
 import { Agent, FunctionCallResultItem, RunStreamEvent, RunToolCallOutputItem, StreamedRunResult } from "@openai/agents"
 
+import logger from "../logger"
 import { IntegrationType } from "../shared/Integrations"
 import { ChangedItem, ModelEvent, ToolCallExecutionStatus } from "../shared/ModelEvents"
 import { RunHistoryAction } from "../shared/RunHistoryTypes"
@@ -37,6 +38,7 @@ export async function* transformAgentStreamToModelEvents<T extends Session>(
         // Try ToolCall
         const toolCall = tryExtractToolCall(event, toolToIntegrationMap)
         if (toolCall) {
+            logger.info("[ApprovalFlow] Stream yielded ToolCall", { callId: (toolCall as any).step_id, name: (toolCall as any).summary })
             // Type guard: ensure it's a ToolCall event
             if (toolCall.type === "ToolCall" && onToolCall) {
                 onToolCall(toolCall.step_id, toolCall.summary)

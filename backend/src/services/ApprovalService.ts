@@ -260,6 +260,8 @@ export class ApprovalService {
             await this.updateSlackNotification(runId, stepId, SlackApprovalMessageStatus.PROCESSING, user, channel.id)
             slackMarkedProcessing = true
 
+            logger.info("[ApprovalFlow] Processing approval decision", { runId, stepId, decision: approved ? "approve" : "reject" })
+
             try {
                 await appendToolApprovalResponseSystemEvent(runId, {
                     step_id: stepId,
