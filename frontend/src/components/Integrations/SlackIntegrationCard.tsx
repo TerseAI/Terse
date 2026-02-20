@@ -11,6 +11,7 @@ import { IntegrationType, SlackIntegration } from "@/shared/Integrations"
 
 import { Button } from "../ui/button"
 import { Card, CardContent } from "../ui/card"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../ui/dialog"
 import { Skeleton } from "../ui/skeleton"
 
 import { CompactIntegrationRow } from "./CompactIntegrationRow"
@@ -112,19 +113,17 @@ function SlackCardContent({ integrations, isLoading, mutate }: { integrations: S
 
 function SlackIntegrationItem({ integration, mutate }: { integration: SlackIntegration; mutate: KeyedMutator<SlackIntegration[]> }) {
     const [isDeleting, setIsDeleting] = useState(false)
+    const [showDeleteDialog, setShowDeleteDialog] = useState(false)
     const { channels, isLoading: channelsLoading } = useSlackChannels(integration.id)
     const channelCount = channels.length
     const availableChannels = channels.filter(ch => !ch.isArchived).length
 
     const handleDelete = async () => {
-        if (!confirm(`Are you sure you want to remove this Slack connection (${integration.teamName || "Unknown Workspace"})?`)) {
-            return
-        }
-
         setIsDeleting(true)
         try {
             await BackendProvider.deleteSlackIntegration(integration.id)
             mutate()
+            setShowDeleteDialog(false)
         } catch (error) {
             console.error("Failed to delete Slack integration:", error)
         } finally {
@@ -133,23 +132,44 @@ function SlackIntegrationItem({ integration, mutate }: { integration: SlackInteg
     }
 
     return (
-        <div className="flex items-center gap-2">
-            <IntegrationItem
-                key={integration.id}
-                icon={<MessageSquare className="w-4 h-4" />}
-                title={`${integration.teamName || "Unknown Workspace"}${integration.isBotUser === false ? " - User" : " - Bot"}`}
-                description={
-                    <span className="flex items-center gap-2">
-                        <Hash className="size-3" />
-                        <ChannelsCount channelCount={availableChannels} totalChannels={channelCount} isLoading={channelsLoading} />
-                    </span>
-                }
-                className="flex-1"
-            />
-            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={handleDelete} disabled={isDeleting} title="Remove connection">
-                <Trash2 className="h-4 w-4" />
-            </Button>
-        </div>
+        <>
+            <div className="flex items-center gap-2">
+                <IntegrationItem
+                    key={integration.id}
+                    icon={<MessageSquare className="w-4 h-4" />}
+                    title={`${integration.teamName || "Unknown Workspace"}${integration.isBotUser === false ? " - User" : " - Bot"}`}
+                    description={
+                        <span className="flex items-center gap-2">
+                            <Hash className="size-3" />
+                            <ChannelsCount channelCount={availableChannels} totalChannels={channelCount} isLoading={channelsLoading} />
+                        </span>
+                    }
+                    className="flex-1"
+                />
+                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => setShowDeleteDialog(true)} disabled={isDeleting} title="Remove connection">
+                    <Trash2 className="h-4 w-4" />
+                </Button>
+            </div>
+
+            <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+                <DialogContent showCloseButton={false}>
+                    <DialogHeader>
+                        <DialogTitle>Remove Slack Connection</DialogTitle>
+                        <DialogDescription>
+                            Are you sure you want to remove the connection to <span className="font-medium">{integration.teamName || "Unknown Workspace"}</span>? This action cannot be undone.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setShowDeleteDialog(false)} disabled={isDeleting}>
+                            Cancel
+                        </Button>
+                        <Button variant="destructive" onClick={handleDelete} disabled={isDeleting}>
+                            {isDeleting ? "Removing..." : "Remove"}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </>
     )
 }
 
