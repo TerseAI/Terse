@@ -18,7 +18,7 @@ import { RunHistoryRecordWithAgent } from "@/shared/RunHistoryTypes"
 import { sendBuilderMessage, subscribeToBuilderChat } from "@/socket"
 import { formatTimestamp } from "@/utility/timeUtils"
 
-import { convertRunHistoryEventsToTurns } from "../../components/RunHistory/RunHistoryChatDrawer/RunHistoryChatAdapter"
+import { convertRunHistoryEventsToTurns } from "@/components/RunHistory/RunHistoryChatDrawer/runHistoryEventsToTurns"
 import { useBuilderChatHistory } from "../../hooks/api/useBuilderChatHistory"
 import { useBuilderSession } from "../../hooks/useBuilderSession"
 import { useRunHistoryChatDrawer } from "../../services/RunHistoryChatDrawerContext"
