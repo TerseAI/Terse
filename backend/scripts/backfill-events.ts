@@ -12,6 +12,7 @@ import "dotenv/config"
 
 import { getEventKey } from "../src/agent/eventKey"
 import { db } from "../src/prismaClient"
+import { sanitizeAndCapModelItemId } from "../src/utility/strings"
 
 // ---------------------------------------------------------------------------
 // Shared helpers
@@ -96,17 +97,20 @@ function clampConfidence(value: unknown): number {
 }
 
 function buildToolApprovalRequestId(stepId: string): string {
-    return `msg_tool_approval_request-${stepId}`
+    const id = `msg_tool_approval_request-${stepId}`
+    return id.length > 64 ? sanitizeAndCapModelItemId(id, `msg_tool_approval_request-${stepId.slice(0, 20)}`) : id
 }
 
 function buildToolApprovalResponseId(stepId: string): string {
-    return `msg_tool_approval_response-${stepId}`
+    const id = `msg_tool_approval_response-${stepId}`
+    return id.length > 64 ? sanitizeAndCapModelItemId(id, `msg_tool_approval_response-${stepId.slice(0, 20)}`) : id
 }
 
 function buildFilterOutcomeId(openAiResponseId: string): string {
     const trimmed = openAiResponseId.trim()
     if (!trimmed) throw new Error("buildFilterOutcomeId requires non-empty openAiResponseId")
-    return `msg_filter_outcome-${trimmed}`
+    const id = `msg_filter_outcome-${trimmed}`
+    return id.length > 64 ? sanitizeAndCapModelItemId(id, `msg_filter_outcome-${trimmed.slice(0, 20)}`) : id
 }
 
 function buildRunErrorId(chatEventId: string, runErrorId?: string): { id: string; runErrorId: string } {
@@ -447,7 +451,8 @@ function normalizeSystemPayload(
     if (kind === "tool_approval_request") {
         const stepId = payload.step_id
         if (typeof stepId !== "string" || !stepId.trim()) return null
-        const id = `tool_approval_request-${stepId}`
+        let id = `tool_approval_request-${stepId}`
+        if (id.length > 64) id = sanitizeAndCapModelItemId(id, `tool_approval_request-${stepId.slice(0, 20)}`)
         payload.id = id
         return id
     }
@@ -455,7 +460,8 @@ function normalizeSystemPayload(
     if (kind === "tool_approval_response") {
         const stepId = payload.step_id
         if (typeof stepId !== "string" || !stepId.trim()) return null
-        const id = `tool_approval_response-${stepId}`
+        let id = `tool_approval_response-${stepId}`
+        if (id.length > 64) id = sanitizeAndCapModelItemId(id, `tool_approval_response-${stepId.slice(0, 20)}`)
         payload.id = id
         return id
     }
@@ -464,7 +470,8 @@ function normalizeSystemPayload(
         let openAiResponseId = typeof payload.openai_response_id === "string" ? payload.openai_response_id.trim() : ""
         if (!openAiResponseId && resolvedFilterOutcomeResponseId) openAiResponseId = resolvedFilterOutcomeResponseId
         if (!openAiResponseId) return null // Don't use legacy format
-        const id = `msg_filter_outcome-${openAiResponseId}`
+        let id = `msg_filter_outcome-${openAiResponseId}`
+        if (id.length > 64) id = sanitizeAndCapModelItemId(id, `msg_filter_outcome-${openAiResponseId.slice(0, 20)}`)
         payload.id = id
         payload.openai_response_id = openAiResponseId
         return id
@@ -474,7 +481,8 @@ function normalizeSystemPayload(
         const existingRunErrorId = typeof payload.run_error_id === "string" ? payload.run_error_id.trim() : ""
         const runErrorId = existingRunErrorId || `legacy-${rowId}`
         payload.run_error_id = runErrorId
-        const id = `run_error-${runErrorId}`
+        let id = `run_error-${runErrorId}`
+        if (id.length > 64) id = sanitizeAndCapModelItemId(id, `run_error-${runErrorId.slice(0, 20)}`)
         payload.id = id
         return id
     }

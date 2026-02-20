@@ -1,7 +1,7 @@
 import type { AgentInputItem } from "@openai/agents-core"
 import { z } from "zod"
 
-import { MODEL_ITEM_ID_MAX_LENGTH, randomString, sanitizeAndCapModelItemId } from "../../utility/strings"
+import { randomString } from "../../utility/strings"
 
 import { BaseSystemEvent } from "./BaseSystemEvent"
 import { appendSystemEventToRunHistory } from "./systemEventSessions"
@@ -54,8 +54,7 @@ function buildFilterOutcomeSystemEventId(input: FilterOutcomeSystemEventInput): 
     const responseId = input.openai_response_id?.trim()
     const prefix = "msg_filter_outcome-"
     if (responseId) {
-        const fullId = `${prefix}${responseId}`
-        return fullId.length <= MODEL_ITEM_ID_MAX_LENGTH ? fullId : sanitizeAndCapModelItemId(fullId, `${prefix}${randomString(18)}`)
+        return `${prefix}${responseId}`
     }
     return `${prefix}${randomString(18)}`
 }

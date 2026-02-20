@@ -2,6 +2,8 @@ import { system } from "@openai/agents"
 import type { AgentInputItem } from "@openai/agents-core"
 import { z } from "zod"
 
+import { sanitizeAndCapModelItemId } from "../../utility/strings"
+
 type SystemEventItemCandidate = {
     id?: unknown
     content?: unknown
@@ -17,7 +19,8 @@ export abstract class BaseSystemEvent<TPayload, TDecoded = TPayload> {
 
     createItem(payload: TPayload): AgentInputItem {
         const validatedPayload = this.payloadSchema.parse(payload)
-        const eventId = this.extractEventId(validatedPayload)
+        const rawEventId = this.extractEventId(validatedPayload)
+        const eventId = rawEventId ? sanitizeAndCapModelItemId(rawEventId, "system-event") : undefined
         const item = system(JSON.stringify(validatedPayload), eventId ? { id: eventId } : undefined) as AgentInputItem
 
         // Mirror id at the top level for easier downstream dedup and matching.
