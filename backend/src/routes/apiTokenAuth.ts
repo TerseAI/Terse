@@ -4,16 +4,6 @@ import { NextFunction, Request, Response } from "express"
 import logger from "../logger"
 import { db } from "../prismaClient"
 
-/**
- * Middleware that authenticates requests using Bearer API tokens.
- *
- * - Hashes the incoming token with SHA-256 and looks up `api_tokens` by `token_hash`
- * - If found, populates `req.session` with the token owner's user data
- * - Fire-and-forget update to `last_used_at`
- * - If no Bearer header is present, passes through to existing session auth (non-breaking)
- *
- * This middleware is not wired to routes yet — it's ready for when SDK endpoints are built.
- */
 export async function apiTokenAuthMiddleware(req: Request, res: Response, next: NextFunction) {
     const authHeader = req.headers.authorization
     if (!authHeader || !authHeader.startsWith("Bearer ")) {

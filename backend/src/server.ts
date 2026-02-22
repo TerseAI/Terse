@@ -14,6 +14,7 @@ import "./integrations/IntegrationTaskHandler"
 import logger from "./logger"
 import { getRealtimeSocket, initializeRealtimeSocket } from "./realtimeSocket"
 import { createAgent, deleteAgent, getRecentAgents, getUserAgent, getUserAgents, updateAgent } from "./routes/agents"
+import { apiTokenAuthMiddleware } from "./routes/apiTokenAuth"
 import { createApiToken, deleteApiToken, getApiTokens, updateApiToken } from "./routes/apiTokens"
 import { attioOAuthCallback, getAttioIntegrations, getAttioObjects } from "./routes/attio"
 import { authMiddleware, authMiddlewareAllowNoOrg, callback, getWorkOSWidgetToken, login, logout, logoutUrl, me } from "./routes/auth"
@@ -47,6 +48,7 @@ import { User } from "./shared/types"
 import { setupSlackBolt } from "./slack/boltApp"
 import { runStartupValidations } from "./tools/validateToolNames"
 import { analytics } from "./utility/analytics"
+import { workos } from "./utility/workos"
 
 export type Session = {
     user: User
@@ -591,6 +593,30 @@ app.patch(ApiRoutes.API_TOKENS.BY_ID.pattern, authMiddleware, async (req, res) =
 
 app.delete(ApiRoutes.API_TOKENS.BY_ID.pattern, authMiddleware, async (req, res) => {
     deleteApiToken(req, res)
+})
+
+// MARK: SDK
+
+app.get(ApiRoutes.SDK.ME, apiTokenAuthMiddleware, async (req: Request, res: Response) => {
+    const user = req.session?.user
+    if (!user) {
+        return res.status(401).json({ error: "Unauthorized" })
+    }
+
+    try {
+        const workOSUser = await workos.userManagement.getUser(user.workosId)
+        return res.json({
+            id: user.id,
+            email: workOSUser.email,
+            firstName: workOSUser.firstName || null,
+            lastName: workOSUser.lastName || null,
+            displayName: [workOSUser.firstName, workOSUser.lastName].filter(Boolean).join(" ") || null,
+            organizationId: user.organizationId,
+        })
+    } catch (error) {
+        logger.error("[/sdk/me] Failed to fetch user from WorkOS", { error })
+        return res.status(500).json({ error: "Failed to fetch user" })
+    }
 })
 
 // MARK: TOOLS THAT REQUIRE APPROVALS
