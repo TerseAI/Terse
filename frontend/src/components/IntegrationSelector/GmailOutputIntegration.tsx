@@ -6,17 +6,31 @@ import { useOAuthConnection } from "@/hooks/useOAuthConnection"
 import { GmailIntegration as GmailIntegrationType, IntegrationType } from "@/shared/Integrations"
 
 import { IconForConfigType } from "../../pages/Agents/components/Integration"
-import { ConfigType, GmailOutputConfig } from "../../shared/Configs"
+import { ConfigType, GmailDraftOutputConfig, GmailOutputConfig } from "../../shared/Configs"
 import DropdownSelect from "../ui/DropdownSelect"
 import { StatusOption } from "../ui/DropdownSelect"
 import { Button } from "../ui/button"
 
 import { InputConfigSelectorProps } from "./types"
 
+const GMAIL_OUTPUT_VARIANTS = {
+    [ConfigType.GMAIL_OUTPUT]: {
+        ConfigClass: GmailOutputConfig,
+        description: "Terse will send emails from this Gmail account"
+    },
+    [ConfigType.GMAIL_DRAFT_OUTPUT]: {
+        ConfigClass: GmailDraftOutputConfig,
+        description: "Terse will create draft emails in this Gmail account"
+    }
+} as const
+
 export function GmailOutputIntegration({ input, variant, setConfig }: InputConfigSelectorProps) {
+    const configType = (input.config?.configType || input.configType) as ConfigType.GMAIL_OUTPUT | ConfigType.GMAIL_DRAFT_OUTPUT
+    const { ConfigClass, description } = GMAIL_OUTPUT_VARIANTS[configType]
+
     const { integrations, isLoading } = useGmailIntegrations()
-    const currentConfig = input.config as GmailOutputConfig | undefined
-    const [selectedIntegrationId, setSelectedIntegrationId] = useIntegrationId(currentConfig, ConfigType.GMAIL_OUTPUT)
+    const currentConfig = input.config as GmailOutputConfig | GmailDraftOutputConfig | undefined
+    const [selectedIntegrationId, setSelectedIntegrationId] = useIntegrationId(currentConfig, configType)
 
     const { connect: connectOAuth, isConnecting: isOAuthConnecting } = useOAuthConnection<IntegrationType.GMAIL>(IntegrationType.GMAIL, {})
 
@@ -24,7 +38,7 @@ export function GmailOutputIntegration({ input, variant, setConfig }: InputConfi
         const integration = integrations.find((integration: GmailIntegrationType) => integration.id === value)
         if (integration) {
             setSelectedIntegrationId(integration.id)
-            const config = new GmailOutputConfig(integration.id)
+            const config = new ConfigClass(integration.id)
             setConfig(config)
         }
     }
@@ -71,7 +85,7 @@ export function GmailOutputIntegration({ input, variant, setConfig }: InputConfi
     if (!selectedIntegrationId && !selectedOption && connectionSelections.length === 1) {
         const defaultIntegration = connectionSelections[0]
         setSelectedIntegrationId(defaultIntegration.value)
-        setConfig(new GmailOutputConfig(defaultIntegration.value))
+        setConfig(new ConfigClass(defaultIntegration.value))
         selectedOption = defaultIntegration
     } else if (!selectedOption) {
         selectedOption = connectionSelections[0]
@@ -97,7 +111,7 @@ export function GmailOutputIntegration({ input, variant, setConfig }: InputConfi
         <div className="flex flex-col gap-3 min-w-0 overflow-hidden">
             <div className="flex flex-row gap-2 items-center">
                 <div className="w-8 h-8 flex items-center justify-center shrink-0">
-                    <IconForConfigType type={ConfigType.GMAIL_OUTPUT} />
+                    <IconForConfigType type={configType} />
                 </div>
                 <div className="flex-1 min-w-0">
                     <DropdownSelect
@@ -113,7 +127,7 @@ export function GmailOutputIntegration({ input, variant, setConfig }: InputConfi
                 </div>
             </div>
 
-            <div className="text-xs text-muted-foreground">Terse will send emails from this Gmail account</div>
+            <div className="text-xs text-muted-foreground">{description}</div>
 
             <Button onClick={onClickConnect} disabled={isOAuthConnecting} variant="outline">
                 <Plus className="w-4 h-4" />

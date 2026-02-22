@@ -8,6 +8,7 @@ import {
     GitHubConfig,
     GitHubKBConfig,
     GmailConfig,
+    GmailDraftOutputConfig,
     GmailOutputConfig,
     JiraConfig,
     LaunchDarklyConfig,
@@ -21,7 +22,8 @@ import {
     SlackOutputConfig,
     TerseConfig,
     TimeTriggerConfig,
-    WorkOSInputConfig
+    WorkOSInputConfig,
+    WorkOSKBConfig
 } from "@/shared/Configs"
 
 /**
@@ -93,6 +95,8 @@ export function deserializeConfig(jsonConfig: any): ConfigInstance {
             return new SlackOutputConfig(integrationId, slackOutputConfig.channelId, slackOutputConfig.channelName, slackOutputConfig.userIds, slackOutputConfig.userNames)
         case ConfigType.GMAIL_OUTPUT:
             return new GmailOutputConfig(integrationId)
+        case ConfigType.GMAIL_DRAFT_OUTPUT:
+            return new GmailDraftOutputConfig(integrationId)
         case ConfigType.LAUNCHDARKLY:
             const launchDarklyConfig = jsonConfig as LaunchDarklyConfig
             return new LaunchDarklyConfig(integrationId, launchDarklyConfig.projectKey, launchDarklyConfig.environmentKeys)
@@ -117,6 +121,8 @@ export function deserializeConfig(jsonConfig: any): ConfigInstance {
         case ConfigType.WORKOS_INPUT:
             const workosConfig = jsonConfig as WorkOSInputConfig
             return new WorkOSInputConfig(integrationId, workosConfig.eventTypes || [])
+        case ConfigType.WORKOS_KB:
+            return new WorkOSKBConfig(integrationId)
         case ConfigType.ATTIO_OUTPUT:
             const attioOutputConfig = jsonConfig as AttioOutputConfig
             return new AttioOutputConfig(integrationId, attioOutputConfig.objectSlug)

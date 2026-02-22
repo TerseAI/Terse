@@ -88,8 +88,8 @@ export default function RunHistoryToolBar({
                     />
 
                     {onTriggerNow && (
-                        <Button variant="outline" size="sm" onClick={onTriggerNow}>
-                            <PlayIcon className="size-3.5" />
+                        <Button variant="outline" onClick={onTriggerNow}>
+                            <PlayIcon className="w-4 h-4" />
                             Trigger Now
                         </Button>
                     )}

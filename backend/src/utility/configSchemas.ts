@@ -38,6 +38,11 @@ export const GmailOutputConfigSchema = BaseConfigSchema.extend({
     integrationType: z.literal(IntegrationType.GMAIL)
 })
 
+export const GmailDraftOutputConfigSchema = BaseConfigSchema.extend({
+    configType: z.literal(ConfigType.GMAIL_DRAFT_OUTPUT),
+    integrationType: z.literal(IntegrationType.GMAIL)
+})
+
 export const FigmaConfigSchema = BaseConfigSchema.extend({
     configType: z.literal(ConfigType.FIGMA),
     integrationType: z.literal(IntegrationType.FIGMA),
@@ -178,6 +183,11 @@ export const SlackKnowledgeBaseConfigSchema = BaseConfigSchema.extend({
         .describe("When allowDms is true: optional user IDs to restrict which DMs to read. Obtain from fetchResourcesForIntegration with options.slack.objectType='users'. Leave empty for all DMs."),
     channelName: z.string().nullable().optional().describe("Display name for the channel (UI only, not persisted)."),
     userNames: z.array(z.string()).nullable().optional().describe("Display names for users (UI only, not persisted).")
+})
+
+export const WorkOSKnowledgeBaseConfigSchema = BaseConfigSchema.extend({
+    configType: z.literal(ConfigType.WORKOS_KB),
+    integrationType: z.literal(IntegrationType.WORKOS)
 })
 
 export const WorkOSInputConfigSchema = BaseConfigSchema.extend({

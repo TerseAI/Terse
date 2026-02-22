@@ -10,6 +10,7 @@ import {
     GitHubConfig,
     GitHubKBConfig,
     GmailConfig,
+    GmailDraftOutputConfig,
     GmailOutputConfig,
     JiraConfig,
     LaunchDarklyConfig,
@@ -22,7 +23,8 @@ import {
     SlackKBConfig,
     SlackOutputConfig,
     TimeTriggerConfig,
-    WorkOSInputConfig
+    WorkOSInputConfig,
+    WorkOSKBConfig
 } from "../shared/Configs"
 import { IntegrationType } from "../shared/Integrations"
 import { RunHistoryStatus as SharedRunHistoryStatus } from "../shared/RunHistoryTypes"
@@ -319,6 +321,9 @@ export const convertPrismaOutputConfigToConfigInstance = (channelOutput: AgentOu
     }
 
     if (channelOutput.gmail_config) {
+        if (channelOutput.config_type === OutputConfigType.GMAIL_DRAFT) {
+            return new GmailDraftOutputConfig(integrationId)
+        }
         return new GmailOutputConfig(integrationId)
     }
 
@@ -334,6 +339,7 @@ export const convertPrismaOutputConfigToConfigInstance = (channelOutput: AgentOu
         case OutputConfigType.JIRA_TICKET:
         case OutputConfigType.SLACK_CHANNEL:
         case OutputConfigType.GMAIL:
+        case OutputConfigType.GMAIL_DRAFT:
         case OutputConfigType.TERSE:
         case OutputConfigType.ATTIO:
             break
@@ -383,6 +389,8 @@ export const convertConfigTypeToInputConfigType = (configType: ConfigType): Inpu
         case ConfigType.GMAIL_OUTPUT:
             // GMAIL_OUTPUT is an output config type, not an input config type
             throw new Error("GMAIL_OUTPUT is an output type, not an input type")
+        case ConfigType.GMAIL_DRAFT_OUTPUT:
+            throw new Error("GMAIL_DRAFT_OUTPUT is an output type, not an input type")
         case ConfigType.DATADOG:
             throw new Error("DATADOG is not an input config type")
         case ConfigType.LINEAR_KB:
@@ -391,6 +399,8 @@ export const convertConfigTypeToInputConfigType = (configType: ConfigType): Inpu
             throw new Error("SLACK_KB is a knowledge base type, not an input type")
         case ConfigType.TERSE:
             throw new Error("TERSE is an output type, not an input type")
+        case ConfigType.WORKOS_KB:
+            throw new Error("WORKOS_KB is a knowledge base type, not an input type")
         case ConfigType.ATTIO_OUTPUT:
             throw new Error("ATTIO_OUTPUT is an output type, not an input type")
         default:
@@ -445,6 +455,8 @@ export const convertConfigTypeToOutputConfigType = (configType: ConfigType): Out
             return OutputConfigType.SLACK_CHANNEL
         case ConfigType.GMAIL_OUTPUT:
             return OutputConfigType.GMAIL
+        case ConfigType.GMAIL_DRAFT_OUTPUT:
+            return OutputConfigType.GMAIL_DRAFT
         case ConfigType.TERSE:
             return OutputConfigType.TERSE
         case ConfigType.ATTIO_OUTPUT:
@@ -471,6 +483,8 @@ export const convertOutputConfigTypeToConfigType = (outputConfigType: OutputConf
             return ConfigType.SLACK_OUTPUT
         case OutputConfigType.GMAIL:
             return ConfigType.GMAIL_OUTPUT
+        case OutputConfigType.GMAIL_DRAFT:
+            return ConfigType.GMAIL_DRAFT_OUTPUT
         case OutputConfigType.TERSE:
             return ConfigType.TERSE
         case OutputConfigType.ATTIO:
@@ -498,6 +512,8 @@ export const convertOutputConfigTypeToIntegrationType = (outputConfigType: Outpu
             return IntegrationType.SLACK
         case OutputConfigType.GMAIL:
             return IntegrationType.GMAIL
+        case OutputConfigType.GMAIL_DRAFT:
+            return IntegrationType.GMAIL
         case OutputConfigType.TERSE:
             return IntegrationType.TERSE
         case OutputConfigType.ATTIO:
@@ -521,8 +537,12 @@ export const convertConfigTypeToKnowledgeBaseConfigType = (configType: ConfigTyp
             return KnowledgeBaseConfigType.LINEAR
         case ConfigType.SLACK_KB:
             return KnowledgeBaseConfigType.SLACK
+        case ConfigType.WORKOS_KB:
+            return KnowledgeBaseConfigType.WORKOS
         default:
-            throw new Error(`ConfigType ${configType} is not a valid knowledge base config type. Supported knowledge base config types are: POSTHOG, GITHUB_KB, DATADOG, LINEAR_KB, SLACK_KB.`)
+            throw new Error(
+                `ConfigType ${configType} is not a valid knowledge base config type. Supported knowledge base config types are: POSTHOG, GITHUB_KB, DATADOG, LINEAR_KB, SLACK_KB, WORKOS_KB.`
+            )
     }
 }
 
@@ -567,6 +587,10 @@ export const convertPrismaKnowledgeBaseConfigToConfigInstance = (channelKnowledg
         return new SlackKBConfig(integrationId, c.channel_ids?.[0], c.channel_names?.[0], c.allow_dms ?? false, c.user_ids ?? [], c.user_names ?? [])
     }
 
+    if (channelKnowledgeBase.workos_kb_config) {
+        return new WorkOSKBConfig(integrationId)
+    }
+
     throw new Error(`Unsupported knowledge base config type: ${channelKnowledgeBase.config_type}`)
 }
 
@@ -602,6 +626,8 @@ export const convertPlainObjectToKnowledgeBaseConfigInstance = (config: any): Co
                 config.userIds ?? [],
                 config.userNames ?? []
             )
+        case ConfigType.WORKOS_KB:
+            return new WorkOSKBConfig(config.integrationId)
         default:
             throw new Error(`Unsupported knowledge base config type: ${config.configType}`)
     }
