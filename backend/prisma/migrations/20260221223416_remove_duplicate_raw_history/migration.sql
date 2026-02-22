@@ -16,7 +16,7 @@ FROM run_history_raw_events
 ), ordered_event_with_uid AS (
 	SELECT 
 	id,
-	ROW_NUMBER() OVER (PARTITION BY computed_id ORDER BY created_at) as rn
+	ROW_NUMBER() OVER (PARTITION BY computed_id, run_history_record_id ORDER BY created_at) as rn
 	from event_with_uid
 ), events_to_remove AS (
     SELECT id FROM ordered_event_with_uid WHERE rn > 1
