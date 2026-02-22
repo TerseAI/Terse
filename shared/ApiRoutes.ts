@@ -229,6 +229,11 @@ export const ApiRoutes = {
         }
     },
 
+    // SDK routes (authenticated via API tokens)
+    SDK: {
+        ME: "/sdk/me",
+    },
+
     // Webhooks routes
     WEBHOOKS: {
         GMAIL: "/webhooks/gmail",

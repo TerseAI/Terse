@@ -9,7 +9,7 @@ const client = new Terse()
 
 const job: CreateJobParameters = {
     name: "{{PROJECT_NAME}}",
-    triggers: [new TimeTriggerConfig("daily", "0 0 * * *")],
+    triggers: [new TimeTriggerConfig("0 0 * * *")],
     skills: [new GitHubConfig("github")],
     onTrigger: async (event: InputEvent, Agent) => {
         // Your job logic here
