@@ -896,7 +896,6 @@ enum RunHistoryChatEventType {
   ToolCallComplete
   ToolApprovalRequest
   NaturalStop
-  Failure
   FilterResult
   UserMessage
   Thinking
@@ -1111,14 +1110,14 @@ model directive_records {
   id                        String   @id @default(cuid())
   automation_id             String
   run_history_record_id     String
-  run_history_chat_event_id String
+  run_history_chat_event_id String? // Deprecated: kept for backwards compatibility; no longer populated for new directives
   directive_description     String
   is_active                 Boolean  @default(true)
   created_at                DateTime @default(now())
 
-  automation             automations             @relation(fields: [automation_id], references: [id], onDelete: Cascade)
-  run_history_record     run_history_records     @relation(fields: [run_history_record_id], references: [id], onDelete: Cascade)
-  run_history_chat_event run_history_chat_events @relation(fields: [run_history_chat_event_id], references: [id], onDelete: Cascade)
+  automation             automations              @relation(fields: [automation_id], references: [id], onDelete: Cascade)
+  run_history_record     run_history_records      @relation(fields: [run_history_record_id], references: [id], onDelete: Cascade)
+  run_history_chat_event run_history_chat_events? @relation(fields: [run_history_chat_event_id], references: [id], onDelete: SetNull)
 
   @@index([automation_id])
   @@index([run_history_record_id])

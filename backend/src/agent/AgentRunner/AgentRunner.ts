@@ -18,17 +18,19 @@ import { SocketEvents, SocketRooms } from "../../shared/SocketEvents"
 import { AgentWithRelations } from "../../types/prisma"
 import { Session } from "../../types/session"
 import { UserFormatter } from "../../utility/UserFormatter"
+import { randomString } from "../../utility/strings"
 import { RunHistoryChatMemorySession, recentHistoryCallback } from "../CustomMemorySession"
 import { AgentType, builderProviderDataModelSettings, runnerFactory } from "../runner"
-import { transformAgentStreamToModelEvents } from "../streaming"
+import { createNaturalStopEvent, transformAgentStreamToModelEvents } from "../streaming"
+import { appendToolApprovalRequestSystemEvent } from "../systemEvents/toolApprovalSystemEvent"
 import { isFailedToolExecutionStatus } from "../toolExecution"
 
 import { persistRunAction } from "./EventProcessor"
-import { processModelEventStream } from "./StreamProcessor"
+import { StreamEventEmitter, processModelEventStream } from "./StreamProcessor"
 import { RunContext, SystemPromptBuilder, SystemPromptBuilderDependencies } from "./SystemPromptBuilder"
-import { formatAgentTriggersForAgent } from "./formatContext"
+import { buildRunTriggerContextMessage, formatAgentTriggersForAgent } from "./formatContext"
 import { persistOutputAttributions, removeOutputAttributions } from "./persistOutputAttributions"
-import { clearPendingApprovalState, getPendingApprovalState, markRunInProgress, storeChatEvent, storePendingApprovalState } from "./runHistory"
+import { clearPendingApprovalState, getPendingApprovalState, markRunInProgress, storePendingApprovalState } from "./runHistory"
 
 // Types from @openai/agents SDK for content items
 type AgentInputText = protocol.InputText
@@ -165,6 +167,7 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance, KBCo
         rejectionReason?: string,
         hardReject?: boolean
     ): Promise<ApprovalResult<SessionWithTracking<T>, Agent<SessionWithTracking<T>, AgentOutputType>>> {
+        logger.info("[ApprovalFlow] Resuming from pending approval", { runId: this.runContext.runId, stepId, decision })
         this.resetRunOutcomeTracking()
         await this.initializeAgent()
 
@@ -186,34 +189,15 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance, KBCo
         // Deserialize the state first
         const state = await RunState.fromString<SessionWithTracking<T>, Agent<SessionWithTracking<T>, AgentOutputType>>(this.agent, pendingState.serializedState)
 
-        // Find the interruption from the stored interruptions array
-        // We stored the full interruption objects, so we can use them directly
-        // Helper to safely extract callId from interruption rawItem
-        const getInterruptionCallId = (int: RunToolApprovalItem): string | undefined => {
-            if (int.rawItem && typeof int.rawItem === "object" && "callId" in int.rawItem) {
-                return int.rawItem.callId as string | undefined
-            }
-            return undefined
-        }
-
-        const storedInterruption = pendingState.interruptions.find(int => {
-            const callId = getInterruptionCallId(int)
-            return callId === stepId
-        })
+        const storedInterruption = pendingState.interruptions.find(interruptionItem => (interruptionItem.rawItem as any)?.callId === stepId)
 
         if (!storedInterruption) {
             // Log for debugging
             logger.error(`[resumeFromPendingApproval] Could not find interruption for step_id: ${stepId}`)
-            const getInterruptionCallId = (int: RunToolApprovalItem): string | undefined => {
-                if (int.rawItem && typeof int.rawItem === "object" && "callId" in int.rawItem) {
-                    return int.rawItem.callId as string | undefined
-                }
-                return undefined
-            }
             logger.error(`[resumeFromPendingApproval] Available stored interruptions:`, {
-                interruptions: pendingState.interruptions.map(int => ({
-                    callId: getInterruptionCallId(int),
-                    name: int.name
+                interruptions: pendingState.interruptions.map(interruptionItem => ({
+                    callId: (interruptionItem.rawItem as any)?.callId || null,
+                    name: interruptionItem.name
                 }))
             })
             throw new Error(`Could not find matching interruption for step_id ${stepId}`)
@@ -299,6 +283,7 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance, KBCo
             maxTurns: this.maxTurns
         })
 
+        logger.info("[ApprovalFlow] Processing resume stream", { runId: this.runContext.runId, stepId })
         await this.processStream(result, streamingParams)
 
         return await this.buildResult(result, streamingParams)
@@ -488,23 +473,12 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance, KBCo
     }
 
     private buildTextContent(inputEvent: InputEvent): string {
-        return `
-<USER_CONTEXT>
-${UserFormatter.formatForAgent(this.session.user)}
-</USER_CONTEXT>
-
-<USER_INSTRUCTIONS>
-${this.agentConfig.prompt?.content || "No instructions provided"}
-</USER_INSTRUCTIONS>
-
-<AGENT_TRIGGERS>
-${formatAgentTriggersForAgent(this.agentConfig.inputs)}
-</AGENT_TRIGGERS>
-
-<EVENT>
-${inputEvent.formatForAgentRunner()}
-</EVENT>
-        `.trim()
+        return buildRunTriggerContextMessage({
+            userContext: UserFormatter.formatForAgent(this.session.user),
+            userInstructions: this.agentConfig.prompt?.content,
+            agentTriggers: formatAgentTriggersForAgent(this.agentConfig.inputs),
+            eventContent: inputEvent.formatForAgentRunner()
+        })
     }
 
     private resetRunOutcomeTracking(): void {
@@ -591,6 +565,11 @@ ${inputEvent.formatForAgentRunner()}
         const hasInterruptions = result.interruptions && result.interruptions.length > 0
 
         if (hasInterruptions) {
+            logger.info("[ApprovalFlow] Interruption detected", {
+                runId: this.runContext.runId,
+                interruptionCount: result.interruptions.length,
+                callIds: result.interruptions.map((i: RunToolApprovalItem) => (i.rawItem as any)?.callId)
+            })
             const serializedState = JSON.stringify(result.state)
             const interruptionsToStore = result.interruptions.map((interruption: RunToolApprovalItem) => {
                 // Store the full interruption object, including rawItem which contains callId
@@ -611,31 +590,39 @@ ${inputEvent.formatForAgentRunner()}
             if (streamingParams) {
                 const io = getSocketIO()
                 for (const interruption of result.interruptions) {
-                    // Safely extract callId from interruption rawItem
-                    const getCallId = (int: RunToolApprovalItem): string => {
-                        if (int.rawItem && typeof int.rawItem === "object" && "callId" in int.rawItem) {
-                            const callId = int.rawItem.callId
-                            if (typeof callId === "string") {
-                                return callId
-                            }
-                        }
-                        return int.name || "unknown"
+                    const stepId = (interruption.rawItem as any)?.callId
+                    if (!stepId) {
+                        logger.warn("Skipping approval request event because interruption has no callId", {
+                            runId: this.runContext.runId,
+                            toolName: interruption.name
+                        })
+                        continue
                     }
-                    const stepId = getCallId(interruption)
+
                     const approvalRequest: ModelEvent = {
                         type: "ToolApprovalRequest",
-                        step_id: stepId || interruption.name,
+                        step_id: stepId,
                         name: interruption.name,
                         arguments: interruption.arguments
                     }
 
-                    // Store and emit the approval request
-                    const eventId = await storeChatEvent(this.runContext.runId, approvalRequest)
+                    logger.info("[ApprovalFlow] Emitting ToolApprovalRequest via socket", { runId: this.runContext.runId, stepId, name: interruption.name })
+
+                    try {
+                        logger.info("[ApprovalFlow] Persisting approval request system event", { runId: this.runContext.runId, stepId })
+                        await appendToolApprovalRequestSystemEvent(this.runContext.runId, {
+                            step_id: approvalRequest.step_id,
+                            name: approvalRequest.name,
+                            arguments: approvalRequest.arguments
+                        })
+                    } catch (error) {
+                        logger.warn("Failed to append tool approval system event to raw history", { runId: this.runContext.runId, stepId: approvalRequest.step_id, error })
+                    }
 
                     if (io && streamingParams.user.organizationId) {
                         const runHistoryModelEvent: RunHistoryModelEvent = {
                             ...approvalRequest,
-                            id: eventId,
+                            id: `approval-request-live-${randomString(15)}`,
                             timestamp: Date.now()
                         }
                         const payload: RunHistoryModelSocketEvent = {
@@ -677,6 +664,20 @@ ${inputEvent.formatForAgentRunner()}
 
         // Clear any pending approval state if run completed successfully
         await clearPendingApprovalState(this.runContext.runId)
+
+        // Emit NaturalStop only when the run actually completes (no interruptions).
+        // This was moved out of transformAgentStreamToModelEvents() because the generator
+        // can't know about interruptions — they're only detected here in buildResult().
+        // For interrupted runs, we emit ToolApprovalRequest instead (above).
+        if (streamingParams) {
+            const io = getSocketIO()
+            const emitter = new StreamEventEmitter(io, {
+                runId: streamingParams.runId!,
+                agentId: streamingParams.agentId!,
+                user: streamingParams.user
+            })
+            emitter.emit(createNaturalStopEvent(), Date.now())
+        }
 
         return {
             status: AgentRunResultStatus.COMPLETED,
