@@ -1,24 +1,21 @@
 #!/usr/bin/env node
 
+import { Command } from "commander"
 import { init } from "./init.js"
 
-const args = process.argv.slice(2)
-const command = args[0]
+const program = new Command()
 
-switch (command) {
-    case "init": {
-        const projectName = args[1]
+program
+    .name("terse")
+    .description("The Terse CLI — scaffold and manage Terse projects")
+    .version("0.1.0")
+
+program
+    .command("init")
+    .description("Scaffold a new Terse project")
+    .argument("[project-name]", "Name for the project directory")
+    .action(async (projectName?: string) => {
         await init(projectName)
-        break
-    }
-    default:
-        console.log(`Usage: terse <command>
+    })
 
-Commands:
-  init [project-name]   Scaffold a new Terse project
-
-Examples:
-  terse init my-project   Create a new project in ./my-project
-  terse init              Create a new project in the current directory`)
-        process.exit(command ? 1 : 0)
-}
+await program.parseAsync()

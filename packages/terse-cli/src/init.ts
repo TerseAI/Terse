@@ -1,24 +1,30 @@
 import fs from "node:fs"
 import path from "node:path"
-import { execSync } from "node:child_process"
-import { createInterface } from "node:readline/promises"
+import { exec, execSync } from "node:child_process"
+import { promisify } from "node:util"
 import { fileURLToPath } from "node:url"
+import ora from "ora"
+import chalk from "chalk"
+import { input } from "@inquirer/prompts"
+
+const execAsync = promisify(exec)
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
 const FRONTEND_URL = "http://localhost:5173"
+const BACKEND_URL = "http://localhost:3001"
 
 export async function init(projectName?: string): Promise<void> {
     const targetDir = projectName ? path.resolve(process.cwd(), projectName) : process.cwd()
     const resolvedName = projectName ?? path.basename(process.cwd())
 
-    console.log(`\nCreating Terse project "${resolvedName}"...\n`)
+    console.log(`\n  Creating Terse project ${chalk.bold(resolvedName)}\n`)
 
     // Create target directory if it doesn't exist
     if (projectName) {
         if (fs.existsSync(targetDir)) {
-            console.error(`Error: Directory "${projectName}" already exists.`)
+            console.error(chalk.red(`Error: Directory "${projectName}" already exists.`))
             process.exit(1)
         }
         fs.mkdirSync(targetDir, { recursive: true })
@@ -44,17 +50,18 @@ export async function init(projectName?: string): Promise<void> {
         const rendered = applyReplacements(content, replacements)
         const outputPath = path.join(targetDir, file.output)
         fs.writeFileSync(outputPath, rendered)
-        console.log(`  Created ${file.output}`)
+        console.log(`  ${chalk.green("+")} ${file.output}`)
     }
 
     // Install dependencies
     const pm = detectPackageManager()
-    console.log(`\nInstalling dependencies with ${pm}...\n`)
+    const spinner = ora(`Installing dependencies with ${pm}`).start()
 
     try {
-        execSync(`${pm} install`, { cwd: targetDir, stdio: "inherit" })
+        await execAsync(`${pm} install`, { cwd: targetDir })
+        spinner.succeed(`Dependencies installed with ${pm}`)
     } catch {
-        console.warn(`\nWarning: Failed to install dependencies. Run "${pm} install" manually.`)
+        spinner.warn(`Failed to install dependencies. Run ${chalk.cyan(`${pm} install`)} manually.`)
     }
 
     // Prompt for API key and write .env
@@ -62,51 +69,64 @@ export async function init(projectName?: string): Promise<void> {
 
     const envExists = fs.existsSync(path.join(targetDir, ".env"))
 
-    console.log(`
-Done! Your Terse project is ready.
+    console.log(`\n  ${chalk.green.bold("Done!")} Your Terse project is ready.\n`)
+    console.log("  Next steps:\n")
 
-Next steps:
-  ${projectName ? `cd ${projectName}` : ""}
-  ${envExists ? "1. Edit src/index.ts to define your job" : "1. Copy .env.example to .env and add your TERSE_API_KEY\n  2. Edit src/index.ts to define your job"}
-  ${envExists ? "2" : "3"}. ${pm} run build    Build the project
-  ${envExists ? "3" : "4"}. ${pm} run dev      Run in development mode
-`)
+    let step = 1
+    if (projectName) {
+        console.log(`  ${step}. cd ${projectName}`)
+        step++
+    }
+    if (!envExists) {
+        console.log(`  ${step}. Copy .env.example to .env and add your TERSE_API_KEY`)
+        step++
+    }
+    console.log(`  ${step}. Edit src/index.ts to define your job`)
+    step++
+    console.log(`  ${step}. ${pm} run build    Build the project`)
+    step++
+    console.log(`  ${step}. ${pm} run dev      Run in development mode\n`)
 }
 
 
 async function promptForApiKey(targetDir: string): Promise<void> {
-    console.log(`\nYou can create an API key at: ${FRONTEND_URL}/app/profile?tab=api-tokens`)
+    console.log(`\n  Create an API key at: ${chalk.cyan(`${FRONTEND_URL}/app/profile?tab=api-tokens`)}\n`)
 
-    const rl = createInterface({ input: process.stdin, output: process.stdout })
     try {
-        const key = (await rl.question("Paste your API key (or press Enter to skip): ")).trim()
+        const key = (await input({ message: "Paste your API key (or press Enter to skip):" })).trim()
 
         if (!key) {
-            console.log("  Skipped — you can add TERSE_API_KEY to .env later.")
             fs.writeFileSync(path.join(targetDir, ".env"), "TERSE_API_KEY=\n")
+            console.log(chalk.dim("  Skipped — you can add TERSE_API_KEY to .env later."))
             return
         }
 
         // Validate the key against the backend
+        const spinner = ora("Verifying API key").start()
+
         try {
-            const res = await fetch(`${FRONTEND_URL}/sdk/me`, {
+            const res = await fetch(`${BACKEND_URL}/sdk/me`, {
                 headers: { Authorization: `Bearer ${key}` },
             })
 
             if (res.ok) {
                 const data = await res.json() as { firstName?: string | null; displayName?: string | null; email?: string | null }
                 const name = data.firstName || data.displayName || data.email || "there"
-                console.log(`\n  Hello, ${name}! API key verified.\n`)
+                spinner.succeed(`Hello, ${name}! API key verified.`)
             } else {
-                console.warn("\n  Warning: Could not verify API key (invalid or server error). Saving it anyway.\n")
+                spinner.warn("Could not verify API key (invalid or server error). Saving it anyway.")
             }
         } catch {
-            console.warn("\n  Warning: Could not reach the server to verify your API key. Saving it anyway.\n")
+            spinner.warn("Could not reach the server to verify your API key. Saving it anyway.")
         }
 
         fs.writeFileSync(path.join(targetDir, ".env"), `TERSE_API_KEY=${key}\n`)
-    } finally {
-        rl.close()
+    } catch (error) {
+        if (error instanceof Error && error.name === "ExitPromptError") {
+            console.log("\n")
+            process.exit(0)
+        }
+        throw error
     }
 }
 
