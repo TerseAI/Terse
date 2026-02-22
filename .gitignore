@@ -1,2 +1,7 @@
 /backend/node_modules
 /backend/dist
+/packages/terse-sdk/node_modules
+/packages/terse-sdk/dist
+/packages/terse-sdk/src/shared
+/packages/terse-cli/node_modules
+/packages/terse-cli/dist

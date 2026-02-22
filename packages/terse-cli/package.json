@@ -1,0 +1,22 @@
+{
+  "name": "terse-cli",
+  "version": "0.1.0",
+  "type": "module",
+  "bin": {
+    "terse": "dist/index.js"
+  },
+  "files": [
+    "dist",
+    "templates"
+  ],
+  "scripts": {
+    "build": "tsc"
+  },
+  "dependencies": {
+    "terse-sdk": "file:../terse-sdk"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.0.0"
+  }
+}

@@ -1,0 +1,25 @@
+import {
+    Terse,
+    TimeTriggerConfig,
+    GitHubConfig,
+} from "terse-sdk"
+import type { InputEvent, CreateJobParameters } from "terse-sdk"
+
+const client = new Terse()
+
+const job: CreateJobParameters = {
+    name: "{{PROJECT_NAME}}",
+    triggers: [new TimeTriggerConfig("daily", "0 0 * * *")],
+    skills: [new GitHubConfig("github")],
+    onTrigger: async (event: InputEvent, Agent) => {
+        // Your job logic here
+        const result = Agent.run("Summarize the latest changes", event)
+
+        for await (const chunk of result) {
+            console.log(chunk)
+        }
+    },
+    webhookURL: "https://example.com/webhook",
+}
+
+client.createJob(job)
