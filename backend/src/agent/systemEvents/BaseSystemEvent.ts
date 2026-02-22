@@ -47,7 +47,7 @@ export abstract class BaseSystemEvent<TPayload, TDecoded = TPayload> {
         const maybeId = (payload as Record<string, unknown>).id
         if (typeof maybeId !== "string") return undefined
 
-        const trimmed = maybeId.trim()
+        const trimmed = maybeId.trim().slice(0, 64)
         return trimmed.length > 0 ? trimmed : undefined
     }
 
