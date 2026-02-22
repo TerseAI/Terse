@@ -3,7 +3,7 @@ import "dotenv/config"
 
 import { db } from "../src/prismaClient"
 
-const TARGET_EVENT_TYPES: RunHistoryChatEventType[] = [RunHistoryChatEventType.FilterResult, RunHistoryChatEventType.ToolApprovalRequest, RunHistoryChatEventType.ToolApprovalResponse]
+const TARGET_EVENT_TYPES: RunHistoryChatEventType[] = [RunHistoryChatEventType.FilterResult, RunHistoryChatEventType.ToolApprovalRequest, RunHistoryChatEventType.ToolApprovalResponse, RunHistoryChatEventType.RunError]
 
 type ChatEventRow = {
     id: string
@@ -66,6 +66,15 @@ function toSystemEventItem(event: ChatEventRow): SystemEventItem | null {
             kind: "tool_approval_response",
             step_id: payload.step_id,
             approved: payload.approved
+        })
+    }
+
+    if (event.event_type === RunHistoryChatEventType.RunError) {
+        if (typeof payload.error !== "string") return null
+        return createSystemEventItem({
+            kind: "run_error",
+            error: payload.error,
+            ...(typeof payload.code === "string" ? { code: payload.code } : {})
         })
     }
 

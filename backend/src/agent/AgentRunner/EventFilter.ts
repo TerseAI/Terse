@@ -8,7 +8,7 @@ import { getRealtimeSocket } from "../../realtimeSocket"
 import { IntegrationType } from "../../shared/Integrations"
 import type { RunHistoryModelEvent, RunHistoryModelSocketEvent, TrackingParams } from "../../shared/RunHistoryTypes"
 import { SocketEvents, SocketRooms } from "../../shared/SocketEvents"
-import { AgentPrompt } from "../../types/prisma"
+import { AgentPrompt, AgentWithRelations } from "../../types/prisma"
 import { Session } from "../../types/session"
 import { UserFormatter } from "../../utility/UserFormatter"
 import { randomString } from "../../utility/strings"
@@ -17,7 +17,7 @@ import { AgentType, builderProviderDataModelSettings, runnerFactory } from "../r
 import { transformAgentStreamToModelEvents } from "../streaming"
 import { appendFilterOutcomeSystemEvent } from "../systemEvents/filterOutcomeSystemEvent"
 
-import { buildRunTriggerContextMessage } from "./formatContext"
+import { buildRunTriggerContextMessage, formatAgentTriggersForAgent } from "./formatContext"
 
 export interface EventFilterResult {
     isRelevant: boolean
@@ -118,15 +118,12 @@ function buildFilterAgent(trackingParams: TrackingParams): Agent<Session, typeof
 
 function buildFilterHistory(agentPrompt: AgentPrompt, event: InputEvent): AgentInputItem[] {
     return [
-        {
-            role: "user",
-            content: [
-                {
-                    type: "input_text",
-                    text: buildFilterUserPrompt(agentPrompt.content || "No specific instructions provided", event.formatForAgentRunner())
-                }
-            ]
-        }
+        user([
+            {
+                type: "input_text",
+                text: buildFilterUserPrompt(agentPrompt.content || "No specific instructions provided", event.formatForAgentRunner())
+            }
+        ])
     ]
 }
 
@@ -137,7 +134,7 @@ async function seedEventContextForFilteredRunIfNeeded(runId: string, eventContex
 
     try {
         const memorySession = new RunHistoryChatMemorySession({ sessionId: runId })
-        const eventContextItem = user(eventContextText) as AgentInputItem
+        const eventContextItem = user(eventContextText)
         await memorySession.addItems([eventContextItem])
     } catch (error) {
         logger.warn("Failed to seed event context for filtered run in EventFilter", { runId, error })
@@ -150,13 +147,7 @@ async function seedEventContextForFilteredRunIfNeeded(runId: string, eventContex
  *
  * If isStreaming is true and trackingParams are provided, automatically handles storing events and emitting them via Socket.IO
  */
-export async function filterEvent(
-    event: InputEvent,
-    agentPrompt: AgentPrompt,
-    isStreaming: boolean,
-    trackingParams: TrackingParams,
-    options?: { agentTriggers?: string }
-): Promise<{ result: EventFilterResult }> {
+export async function filterEvent(event: InputEvent, agentWithRelations: AgentWithRelations, isStreaming: boolean, trackingParams: TrackingParams): Promise<{ result: EventFilterResult }> {
     if (event.integrationType === IntegrationType.CRON_JOB) {
         return {
             result: {
@@ -167,11 +158,12 @@ export async function filterEvent(
         }
     }
 
-    logger.info(`#WTF filtering event ${event.integrationType}`, { event })
-    logger.info(`#WTF formatted event`, { formattedEvent: event.formatForAgentRunner() })
+    if (!agentWithRelations.prompt) {
+        throw new Error("Agent prompt is required for event filtering")
+    }
 
     const agent = buildFilterAgent(trackingParams)
-    const history = buildFilterHistory(agentPrompt, event)
+    const history = buildFilterHistory(agentWithRelations.prompt, event)
     const runner = runnerFactory({
         agentId: trackingParams.agentId,
         agentType: AgentType.FILTER,
@@ -231,7 +223,8 @@ export async function filterEvent(
                 await appendFilterOutcomeSystemEvent(trackingParams.runId, {
                     isRelevant: parsed.isRelevant,
                     reason: parsed.reason,
-                    confidence: parsed.confidence
+                    confidence: parsed.confidence,
+                    openai_response_id: result.lastResponseId
                 })
             } catch (error) {
                 logger.warn("Failed to append filter outcome system event to raw history", { runId: trackingParams.runId, error })
@@ -239,8 +232,8 @@ export async function filterEvent(
 
             const eventContextText = buildRunTriggerContextMessage({
                 userContext: UserFormatter.formatForAgent(trackingParams.user),
-                userInstructions: agentPrompt.content,
-                agentTriggers: options?.agentTriggers,
+                userInstructions: agentWithRelations.prompt.content,
+                agentTriggers: formatAgentTriggersForAgent(agentWithRelations.inputs),
                 eventContent: event.formatForAgentRunner()
             })
             await seedEventContextForFilteredRunIfNeeded(trackingParams.runId, eventContextText, parsed.isRelevant)

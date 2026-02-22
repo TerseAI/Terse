@@ -1,5 +1,4 @@
 import { Agent } from "@openai/agents"
-import { AgentInputItem } from "@openai/agents-core"
 import { z } from "zod"
 
 import { settings } from "../../config/settings"
@@ -8,7 +7,7 @@ import { db } from "../../prismaClient"
 import { ToolCall } from "../../shared/ModelEvents"
 import { User } from "../../shared/types"
 import { RunHistoryChatMemorySession, identityHistoryCallback } from "../CustomMemorySession"
-import { convertAgentInputItemsToModelEvents } from "../agentInputItemsToModelEvents"
+import { getRunHistoryModelEventsWithActions } from "../runHistoryModelEvents"
 import { AgentType, builderProviderDataModelSettings, runnerFactory } from "../runner"
 
 const ApprovalSummaryClassification = z.object({
@@ -39,18 +38,7 @@ export async function generateApprovalSummary(runId: string, user: User, agentId
     }
 
     // Build ToolCall context from raw events so summaries do not depend on run_history_chat_events.
-    const rawEvents = await prisma.run_history_raw_events.findMany({
-        where: {
-            run_history_record_id: runId
-        },
-        orderBy: [{ sequence_order: "asc" }, { created_at: "asc" }],
-        select: {
-            raw_event_json: true
-        }
-    })
-
-    const rawItems = rawEvents.map(event => event.raw_event_json as AgentInputItem)
-    const modelEvents = convertAgentInputItemsToModelEvents(rawItems)
+    const modelEvents = await getRunHistoryModelEventsWithActions(runId)
 
     let toolCallEvent: ToolCall | null = null
     for (const modelEvent of modelEvents) {

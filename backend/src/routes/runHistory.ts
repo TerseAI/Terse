@@ -1,8 +1,7 @@
-import { AgentInputItem } from "@openai/agents-core"
 import { Prisma } from "@prisma/client"
 import { Request, Response } from "express"
 
-import { type TimestampedAgentInputItem, convertAgentInputItemsToModelEvents } from "../agent/agentInputItemsToModelEvents"
+import { getRunHistoryModelEventsWithActions } from "../agent/runHistoryModelEvents"
 import logger from "../logger"
 import { PrismaClient, db } from "../prismaClient"
 import { type GetRunHistoryParams, type GetRunHistoryParamsRequest, type GetRunHistoryResponse, type RunHistoryRecord, RunHistoryStatus } from "../shared/RunHistoryTypes"
@@ -336,15 +335,8 @@ export async function getChatHistory(req: Request, res: Response) {
             return res.status(404).json({ error: "Run not found" })
         }
 
-        const rawEvents = await prisma.run_history_raw_events.findMany({
-            where: {
-                run_history_record_id: runId
-            },
-            orderBy: [{ sequence_order: "asc" }, { created_at: "asc" }],
-            select: {
-                raw_event_json: true,
-                created_at: true
-            }
+        const modelEvents = await getRunHistoryModelEventsWithActions(runId, {
+            includeScaffoldedUserMessages: false
         })
 
         type ChatHistoryEvent = {
@@ -354,15 +346,7 @@ export async function getChatHistory(req: Request, res: Response) {
             [key: string]: unknown
         }
 
-        const timestampedItems: TimestampedAgentInputItem[] = rawEvents.map(rawEvent => ({
-            item: rawEvent.raw_event_json as AgentInputItem,
-            createdAt: rawEvent.created_at
-        }))
-
-        const modelEvents = convertAgentInputItemsToModelEvents(timestampedItems, undefined, {
-            includeScaffoldedUserMessages: false
-        })
-        const fallbackTimestamp = rawEvents[0]?.created_at ?? runRecord.timestamp
+        const fallbackTimestamp = runRecord.timestamp
 
         const events: ChatHistoryEvent[] = modelEvents.map((event, index) => {
             const eventTimestamp = typeof event.timestamp === "number" ? event.timestamp : fallbackTimestamp.getTime()

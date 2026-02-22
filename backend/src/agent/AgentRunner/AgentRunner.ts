@@ -21,12 +21,12 @@ import { UserFormatter } from "../../utility/UserFormatter"
 import { randomString } from "../../utility/strings"
 import { RunHistoryChatMemorySession, recentHistoryCallback } from "../CustomMemorySession"
 import { AgentType, builderProviderDataModelSettings, runnerFactory } from "../runner"
-import { transformAgentStreamToModelEvents } from "../streaming"
+import { createNaturalStopEvent, transformAgentStreamToModelEvents } from "../streaming"
 import { appendToolApprovalRequestSystemEvent } from "../systemEvents/toolApprovalSystemEvent"
 import { isFailedToolExecutionStatus } from "../toolExecution"
 
 import { persistRunAction } from "./EventProcessor"
-import { processModelEventStream } from "./StreamProcessor"
+import { StreamEventEmitter, processModelEventStream } from "./StreamProcessor"
 import { RunContext, SystemPromptBuilder, SystemPromptBuilderDependencies } from "./SystemPromptBuilder"
 import { buildRunTriggerContextMessage, formatAgentTriggersForAgent } from "./formatContext"
 import { persistOutputAttributions, removeOutputAttributions } from "./persistOutputAttributions"
@@ -167,6 +167,7 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance, KBCo
         rejectionReason?: string,
         hardReject?: boolean
     ): Promise<ApprovalResult<SessionWithTracking<T>, Agent<SessionWithTracking<T>, AgentOutputType>>> {
+        logger.info("[ApprovalFlow] Resuming from pending approval", { runId: this.runContext.runId, stepId, decision })
         this.resetRunOutcomeTracking()
         await this.initializeAgent()
 
@@ -282,6 +283,7 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance, KBCo
             maxTurns: this.maxTurns
         })
 
+        logger.info("[ApprovalFlow] Processing resume stream", { runId: this.runContext.runId, stepId })
         await this.processStream(result, streamingParams)
 
         return await this.buildResult(result, streamingParams)
@@ -563,6 +565,11 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance, KBCo
         const hasInterruptions = result.interruptions && result.interruptions.length > 0
 
         if (hasInterruptions) {
+            logger.info("[ApprovalFlow] Interruption detected", {
+                runId: this.runContext.runId,
+                interruptionCount: result.interruptions.length,
+                callIds: result.interruptions.map((i: RunToolApprovalItem) => (i.rawItem as any)?.callId)
+            })
             const serializedState = JSON.stringify(result.state)
             const interruptionsToStore = result.interruptions.map((interruption: RunToolApprovalItem) => {
                 // Store the full interruption object, including rawItem which contains callId
@@ -599,7 +606,10 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance, KBCo
                         arguments: interruption.arguments
                     }
 
+                    logger.info("[ApprovalFlow] Emitting ToolApprovalRequest via socket", { runId: this.runContext.runId, stepId, name: interruption.name })
+
                     try {
+                        logger.info("[ApprovalFlow] Persisting approval request system event", { runId: this.runContext.runId, stepId })
                         await appendToolApprovalRequestSystemEvent(this.runContext.runId, {
                             step_id: approvalRequest.step_id,
                             name: approvalRequest.name,
@@ -654,6 +664,20 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance, KBCo
 
         // Clear any pending approval state if run completed successfully
         await clearPendingApprovalState(this.runContext.runId)
+
+        // Emit NaturalStop only when the run actually completes (no interruptions).
+        // This was moved out of transformAgentStreamToModelEvents() because the generator
+        // can't know about interruptions — they're only detected here in buildResult().
+        // For interrupted runs, we emit ToolApprovalRequest instead (above).
+        if (streamingParams) {
+            const io = getSocketIO()
+            const emitter = new StreamEventEmitter(io, {
+                runId: streamingParams.runId!,
+                agentId: streamingParams.agentId!,
+                user: streamingParams.user
+            })
+            emitter.emit(createNaturalStopEvent(), Date.now())
+        }
 
         return {
             status: AgentRunResultStatus.COMPLETED,

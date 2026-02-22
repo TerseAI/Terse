@@ -17,17 +17,19 @@ export type TimestampedAgentInputItem = {
 
 export type ConvertAgentInputItemsToModelEventsOptions = {
     includeScaffoldedUserMessages?: boolean
+    appendNaturalStop?: boolean
 }
 
 const DEFAULT_CONVERT_OPTIONS: Required<ConvertAgentInputItemsToModelEventsOptions> = {
-    includeScaffoldedUserMessages: true
+    includeScaffoldedUserMessages: true,
+    appendNaturalStop: true
 }
 
-export function convertAgentInputItemsToModelEvents(
+export async function convertAgentInputItemsToModelEvents(
     items: (AgentInputItem | TimestampedAgentInputItem)[],
     toolToIntegrationMap?: Map<string, string>,
     options?: ConvertAgentInputItemsToModelEventsOptions
-): ModelEvent[] {
+): Promise<ModelEvent[]> {
     const resolvedOptions: Required<ConvertAgentInputItemsToModelEventsOptions> = {
         ...DEFAULT_CONVERT_OPTIONS,
         ...options
@@ -41,7 +43,7 @@ export function convertAgentInputItemsToModelEvents(
         const ts = isTimestamped ? (entry as TimestampedAgentInputItem).createdAt : undefined
         if (ts) lastTimestamp = ts
 
-        const converted = convertSingleItem(item, toolToIntegrationMap, resolvedOptions)
+        const converted = await convertSingleItem(item, toolToIntegrationMap, resolvedOptions)
         if (converted) {
             for (const event of converted) {
                 events.push(ts ? { ...event, timestamp: ts.getTime() } : event)
@@ -50,7 +52,8 @@ export function convertAgentInputItemsToModelEvents(
     }
 
     // Add a NaturalStop only when the run did not already end with a terminal sentinel (NaturalStop or RunError).
-    if (events.length > 0) {
+    // Skip for in-progress runs so the UI does not incorrectly set isGenerating=false until the run actually completes.
+    if (events.length > 0 && resolvedOptions.appendNaturalStop) {
         const lastEvent = events[events.length - 1]
         const isTerminal = lastEvent.type === "NaturalStop" || lastEvent.type === "RunError"
         if (!isTerminal) {
@@ -65,11 +68,11 @@ export function convertAgentInputItemsToModelEvents(
     return events
 }
 
-function convertSingleItem(
+async function convertSingleItem(
     item: AgentInputItem,
     toolToIntegrationMap?: Map<string, string>,
     options: Required<ConvertAgentInputItemsToModelEventsOptions> = DEFAULT_CONVERT_OPTIONS
-): ModelEvent[] | null {
+): Promise<ModelEvent[] | null> {
     const runErrorSystemEvent = parseRunErrorSystemEventItem(item)
     if (runErrorSystemEvent) {
         return [
@@ -170,19 +173,26 @@ function convertSingleItem(
     }
 
     // Function call result - convert to ToolCallComplete
+    // Note: changed_items are not populated here. Callers that need them (e.g. run history routes)
+    // should load run_history_actions once and attach via attachRunHistoryChangedItems().
     if (isFunctionCallResultItem(item)) {
         const integration = toolToIntegrationMap?.get(item.name || "") || IntegrationType.TERSE
         const parsed = parseToolExecutionResult(item.output, item.status)
+
+        const outputWithoutActions = {
+            ...parsed.output,
+            actions: undefined
+        }
 
         return [
             {
                 type: "ToolCallComplete",
                 tool_name: item.name || "unknown",
                 status: parsed.status,
-                step_id: item.callId || item.id || "unknown",
-                changed_items: [], // Historical events don't have changed_items tracked
+                step_id: item.callId,
+                changed_items: [],
                 integration,
-                result: parsed.outputString || undefined,
+                result: JSON.stringify(outputWithoutActions) || undefined,
                 ...(parsed.errorContext ? { errorContext: { error: parsed.errorContext.error } } : {})
             }
         ]

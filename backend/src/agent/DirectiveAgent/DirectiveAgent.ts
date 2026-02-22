@@ -1,4 +1,4 @@
-import { Agent, run } from "@openai/agents"
+import { Agent, run, user } from "@openai/agents"
 import { z } from "zod"
 
 import { settings } from "../../config/settings"
@@ -112,7 +112,7 @@ async function classifyDirective(task: DirectiveTask): Promise<DirectiveClassifi
         modelSettings: builderProviderDataModelSettings(runConfig)
     })
 
-    const result = await runner.run(directiveAgent, [{ role: "user", content: task.message }], {
+    const result = await runner.run(directiveAgent, [user(task.message)], {
         session,
         sessionInputCallback: identityHistoryCallback
     })

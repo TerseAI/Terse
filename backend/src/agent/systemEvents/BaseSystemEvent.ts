@@ -3,6 +3,7 @@ import type { AgentInputItem } from "@openai/agents-core"
 import { z } from "zod"
 
 type SystemEventItemCandidate = {
+    id?: unknown
     content?: unknown
     role?: unknown
 }
@@ -16,7 +17,16 @@ export abstract class BaseSystemEvent<TPayload, TDecoded = TPayload> {
 
     createItem(payload: TPayload): AgentInputItem {
         const validatedPayload = this.payloadSchema.parse(payload)
-        return system(JSON.stringify(validatedPayload)) as AgentInputItem
+        const rawEventId = this.extractEventId(validatedPayload)
+        const eventId = rawEventId
+        const item = system(JSON.stringify(validatedPayload), eventId ? { id: eventId } : undefined) as AgentInputItem
+
+        // Mirror id at the top level for easier downstream dedup and matching.
+        if (eventId && typeof item === "object" && item !== null) {
+            ;(item as Record<string, unknown>).id = eventId
+        }
+
+        return item
     }
 
     parseItem(item: unknown): TDecoded | null {
@@ -30,6 +40,16 @@ export abstract class BaseSystemEvent<TPayload, TDecoded = TPayload> {
     }
 
     protected abstract decodePayload(payload: TPayload): TDecoded | null
+
+    private extractEventId(payload: TPayload): string | undefined {
+        if (!payload || typeof payload !== "object") return undefined
+
+        const maybeId = (payload as Record<string, unknown>).id
+        if (typeof maybeId !== "string") return undefined
+
+        const trimmed = maybeId.trim()
+        return trimmed.length > 0 ? trimmed : undefined
+    }
 
     private extractPayloadFromContent(item: unknown): unknown | null {
         const candidate = this.asRecord(item) as SystemEventItemCandidate | null
