@@ -11,6 +11,7 @@ SELECT
   END AS computed_id,
   raw_event_json,
   created_at,
+  run_history_record_id,
   id
 FROM run_history_raw_events
 ), ordered_event_with_uid AS (
