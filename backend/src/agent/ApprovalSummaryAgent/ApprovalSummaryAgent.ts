@@ -4,9 +4,10 @@ import { z } from "zod"
 import { settings } from "../../config/settings"
 import logger from "../../logger"
 import { db } from "../../prismaClient"
-import { ModelEvent, ToolCall } from "../../shared/ModelEvents"
+import { ToolCall } from "../../shared/ModelEvents"
 import { User } from "../../shared/types"
 import { RunHistoryChatMemorySession, identityHistoryCallback } from "../CustomMemorySession"
+import { getRunHistoryModelEventsWithActions } from "../runHistoryModelEvents"
 import { AgentType, builderProviderDataModelSettings, runnerFactory } from "../runner"
 
 const ApprovalSummaryClassification = z.object({
@@ -36,68 +37,36 @@ export async function generateApprovalSummary(runId: string, user: User, agentId
         return { approvalSummary: "Unable to generate summary: run record not found" }
     }
 
-    // Fetch all chat events for the run to find the ToolCall event
-    const chatEvents = await prisma.run_history_chat_events.findMany({
-        where: {
-            run_history_record_id: runId
-        },
-        orderBy: [{ timestamp: "asc" }, { id: "asc" }]
-    })
+    // Build ToolCall context from raw events so summaries do not depend on run_history_chat_events.
+    const modelEvents = await getRunHistoryModelEventsWithActions(runId)
 
-    // Find the ToolCall event matching the stepId
     let toolCallEvent: ToolCall | null = null
-    for (const chatEvent of chatEvents) {
-        const modelEvent = chatEvent.event_json as ModelEvent
+    for (const modelEvent of modelEvents) {
         if (modelEvent.type === "ToolCall" && modelEvent.step_id === stepId) {
             toolCallEvent = modelEvent
             break
         }
     }
+    if (!toolCallEvent) {
+        logger.warn(`[generateApprovalSummary] ToolCall event not found for stepId: ${stepId} in runId: ${runId}`)
+        return { approvalSummary: "Unable to generate summary: tool call not found" }
+    }
 
     // Build trigger description
     const triggerDescription = buildTriggerDescription(runRecord)
 
-    // Construct user prompt based on whether we found a ToolCall event or need to fallback to actions
-    let userPrompt: string
+    // Format JSON parameters for readability
+    let formattedParameters = toolCallEvent.parameters
+    try {
+        const parsedParams = JSON.parse(toolCallEvent.parameters)
+        formattedParameters = JSON.stringify(parsedParams, null, 2)
+    } catch {
+        // If parameters aren't valid JSON, use them as-is
+        formattedParameters = toolCallEvent.parameters
+    }
 
-    if (!toolCallEvent) {
-        logger.warn(`[generateApprovalSummary] ToolCall event not found for stepId: ${stepId} in runId: ${runId}`)
-        // Fallback: try to get action details from run_history_actions
-        const runActions = await prisma.run_history_actions.findMany({
-            where: {
-                run_history_record_id: runId,
-                step_id: stepId
-            }
-        })
-
-        if (runActions.length === 0) {
-            return { approvalSummary: "Unable to generate summary: tool call not found" }
-        }
-
-        const action = runActions[0]
-        userPrompt = `Context (do NOT mention this context in the output; it is for grounding only):
-${triggerDescription}
-
-Requested action to summarize (focus only on what will be done):
-- Action: ${action.action}
-- Integration: ${action.integration}
-- Target: ${action.target}
-- Details: ${action.details}
-
-Return the single-sentence "I'm going to ..." approvalSummary.`
-    } else {
-        // Format JSON parameters for readability
-        let formattedParameters = toolCallEvent.parameters
-        try {
-            const parsedParams = JSON.parse(toolCallEvent.parameters)
-            formattedParameters = JSON.stringify(parsedParams, null, 2)
-        } catch {
-            // If parameters aren't valid JSON, use them as-is
-            formattedParameters = toolCallEvent.parameters
-        }
-
-        // Construct user prompt with tool call details
-        userPrompt = `Context (do NOT mention this context in the output; it is for grounding only):
+    // Construct user prompt with tool call details
+    const userPrompt = `Context (do NOT mention this context in the output; it is for grounding only):
 ${triggerDescription}
 
 Tool call to summarize (focus only on what will be done):
@@ -107,7 +76,6 @@ Tool call to summarize (focus only on what will be done):
 ${formattedParameters}
 
 Return the single-sentence "I'm going to ..." approvalSummary.`
-    }
 
     const session = new RunHistoryChatMemorySession({
         sessionId: runId,

@@ -1,9 +1,9 @@
 import { Prisma } from "@prisma/client"
 import { Request, Response } from "express"
 
+import { getRunHistoryModelEventsWithActions } from "../agent/runHistoryModelEvents"
 import logger from "../logger"
 import { PrismaClient, db } from "../prismaClient"
-import { ModelEvent } from "../shared/ModelEvents"
 import { type GetRunHistoryParams, type GetRunHistoryParamsRequest, type GetRunHistoryResponse, type RunHistoryRecord, RunHistoryStatus } from "../shared/RunHistoryTypes"
 import { parsePageParams } from "../utility/pagination"
 import { convertPrismaIntegrationTypeToIntegrationTypeFromRunHistory, convertPrismaRunHistoryStatusToShared } from "../utility/typeConverters"
@@ -335,24 +335,25 @@ export async function getChatHistory(req: Request, res: Response) {
             return res.status(404).json({ error: "Run not found" })
         }
 
-        // Fetch all chat events for this run, ordered by timestamp then id for deterministic ordering
-        const chatEvents = await prisma.run_history_chat_events.findMany({
-            where: {
-                run_history_record_id: runId
-            },
-            orderBy: [
-                { timestamp: "asc" },
-                { id: "asc" } // Secondary sort by id for deterministic ordering when timestamps are equal
-            ]
+        const modelEvents = await getRunHistoryModelEventsWithActions(runId, {
+            includeScaffoldedUserMessages: false
         })
 
-        // Deserialize events directly from JSON, adding id and timestamp
-        const events = chatEvents.map(event => {
-            const modelEvent = event.event_json as ModelEvent
+        type ChatHistoryEvent = {
+            type: string
+            id: string
+            timestamp: string
+            [key: string]: unknown
+        }
+
+        const fallbackTimestamp = runRecord.timestamp
+
+        const events: ChatHistoryEvent[] = modelEvents.map((event, index) => {
+            const eventTimestamp = typeof event.timestamp === "number" ? event.timestamp : fallbackTimestamp.getTime()
             return {
-                ...modelEvent,
-                id: event.id,
-                timestamp: event.timestamp.toISOString()
+                ...event,
+                id: `run-history-raw-${index}`,
+                timestamp: new Date(eventTimestamp).toISOString()
             }
         })
 

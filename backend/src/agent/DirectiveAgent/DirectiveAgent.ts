@@ -1,4 +1,4 @@
-import { Agent, run } from "@openai/agents"
+import { Agent, run, user } from "@openai/agents"
 import { z } from "zod"
 
 import { settings } from "../../config/settings"
@@ -17,7 +17,6 @@ export class DirectiveTask implements Task {
     constructor(
         public automationId: string,
         public runHistoryId: string,
-        public runHistoryChatEventId: string,
         public user: User,
         public message: string
     ) {}
@@ -113,7 +112,7 @@ async function classifyDirective(task: DirectiveTask): Promise<DirectiveClassifi
         modelSettings: builderProviderDataModelSettings(runConfig)
     })
 
-    const result = await runner.run(directiveAgent, [{ role: "user", content: task.message }], {
+    const result = await runner.run(directiveAgent, [user(task.message)], {
         session,
         sessionInputCallback: identityHistoryCallback
     })
@@ -121,13 +120,13 @@ async function classifyDirective(task: DirectiveTask): Promise<DirectiveClassifi
     return result.finalOutput ?? { isDirective: false, directiveDescription: "" }
 }
 
-async function persistDirective(automationId: string, runHistoryId: string, runHistoryChatEventId: string, directiveDescription: string): Promise<string> {
+async function persistDirective(automationId: string, runHistoryId: string, directiveDescription: string): Promise<string> {
     const prisma = db()
     const directiveRecord = await prisma.directive_records.create({
         data: {
             automation_id: automationId,
             run_history_record_id: runHistoryId,
-            run_history_chat_event_id: runHistoryChatEventId,
+            run_history_chat_event_id: null,
             directive_description: directiveDescription
         }
     })
@@ -146,7 +145,7 @@ directiveTaskQueue.addListener({
             const directive = await classifyDirective(task)
             logger.info(`[Directive] Result: isDirective=${directive.isDirective}${directive.isDirective ? `, description="${directive.directiveDescription}"` : ""}`)
             if (directive.isDirective) {
-                await persistDirective(task.automationId, task.runHistoryId, task.runHistoryChatEventId, directive.directiveDescription)
+                await persistDirective(task.automationId, task.runHistoryId, directive.directiveDescription)
                 logger.info(`[Directive] Persisted directive for automation ${task.automationId}`)
             }
         } catch (error) {
