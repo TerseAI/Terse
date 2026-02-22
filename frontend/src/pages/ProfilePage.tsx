@@ -1,9 +1,10 @@
 import { useSearchParams } from "react-router-dom"
 
 import { Tab, TabGroup, TabList, TabPanel, TabPanels } from "@headlessui/react"
-import { Monitor, Shield, User2, Users } from "lucide-react"
+import { Key, Monitor, Shield, User2, Users } from "lucide-react"
 
 import { UserTable } from "@/components/UserManagement/UserManagement"
+import { ApiTokensWidget } from "@/components/UserProfile/ApiTokensWidget"
 import { UserProfileWidget } from "@/components/UserProfile/UserProfileWidget"
 import { UserSecurityWidget } from "@/components/UserProfile/UserSecurityWidget"
 import { UserSessionsWidget } from "@/components/UserProfile/UserSessionsWidget"
@@ -14,7 +15,7 @@ const tabClass = ({ selected }: { selected: boolean }) =>
         selected ? "text-foreground border-primary" : "text-muted-foreground border-transparent hover:text-foreground"
     }`
 
-const TAB_INDICES = { profile: 0, sessions: 1, security: 2, users: 3 } as const
+const TAB_INDICES = { profile: 0, sessions: 1, security: 2, "api-tokens": 3, users: 4 } as const
 
 export default function ProfilePage() {
     const { user } = useAuth()
@@ -41,6 +42,10 @@ export default function ProfilePage() {
                         <Shield className="h-4 w-4" />
                         <span>Security</span>
                     </Tab>
+                    <Tab className={tabClass}>
+                        <Key className="h-4 w-4" />
+                        <span>API Tokens</span>
+                    </Tab>
                     {isAdmin && (
                         <Tab className={tabClass}>
                             <Users className="h-4 w-4" />
@@ -57,6 +62,9 @@ export default function ProfilePage() {
                     </TabPanel>
                     <TabPanel className="flex-1 min-h-0 flex flex-col">
                         <UserSecurityWidget />
+                    </TabPanel>
+                    <TabPanel className="flex-1 min-h-0 flex flex-col">
+                        <ApiTokensWidget />
                     </TabPanel>
                     {isAdmin && (
                         <TabPanel className="flex-1 min-h-0 flex flex-col">

@@ -219,6 +219,16 @@ export const ApiRoutes = {
         }
     },
 
+    // API Tokens routes
+    API_TOKENS: {
+        LIST: "/api-tokens",
+        BY_ID: {
+            pattern: "/api-tokens/:id",
+            build: (id: string) => `/api-tokens/${encodeURIComponent(id)}`,
+            params: { id: "string" } as const
+        }
+    },
+
     // Webhooks routes
     WEBHOOKS: {
         GMAIL: "/webhooks/gmail",

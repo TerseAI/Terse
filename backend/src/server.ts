@@ -14,6 +14,7 @@ import "./integrations/IntegrationTaskHandler"
 import logger from "./logger"
 import { getRealtimeSocket, initializeRealtimeSocket } from "./realtimeSocket"
 import { createAgent, deleteAgent, getRecentAgents, getUserAgent, getUserAgents, updateAgent } from "./routes/agents"
+import { createApiToken, deleteApiToken, getApiTokens, updateApiToken } from "./routes/apiTokens"
 import { attioOAuthCallback, getAttioIntegrations, getAttioObjects } from "./routes/attio"
 import { authMiddleware, authMiddlewareAllowNoOrg, callback, getWorkOSWidgetToken, login, logout, logoutUrl, me } from "./routes/auth"
 import { githubAppCallbackIntegrate } from "./routes/auth/githubAuth"
@@ -572,6 +573,24 @@ app.put(ApiRoutes.NOTIFICATION_DESTINATIONS.BY_ID.pattern, authMiddleware, async
 
 app.delete(ApiRoutes.NOTIFICATION_DESTINATIONS.BY_ID.pattern, authMiddleware, async (req, res) => {
     deleteNotificationDestination(req, res)
+})
+
+// MARK: API TOKENS
+
+app.get(ApiRoutes.API_TOKENS.LIST, authMiddleware, async (req, res) => {
+    getApiTokens(req, res)
+})
+
+app.post(ApiRoutes.API_TOKENS.LIST, authMiddleware, async (req, res) => {
+    createApiToken(req, res)
+})
+
+app.patch(ApiRoutes.API_TOKENS.BY_ID.pattern, authMiddleware, async (req, res) => {
+    updateApiToken(req, res)
+})
+
+app.delete(ApiRoutes.API_TOKENS.BY_ID.pattern, authMiddleware, async (req, res) => {
+    deleteApiToken(req, res)
 })
 
 // MARK: TOOLS THAT REQUIRE APPROVALS

@@ -33,6 +33,7 @@ model users {
   user_github_installation  user_github_installation[]
   github_app_tokens         github_app_tokens[]
   notification_destinations user_notification_destinations[]
+  api_tokens                api_tokens[]
   posthog_integrations      posthog_integrations[]
   launchdarkly_integrations launchdarkly_integrations[]
   datadog_integrations      datadog_integrations[]
@@ -1081,6 +1082,24 @@ model user_notification_destinations {
   @@index([user_id])
   @@index([destination_type])
   @@index([slack_user_id])
+}
+
+model api_tokens {
+  id              String    @id @default(cuid())
+  user_id         String
+  organization_id String
+  name            String
+  token_hash      String    @unique
+  token_prefix    String
+  last_used_at    DateTime?
+  created_at      DateTime  @default(now())
+  updated_at      DateTime  @updatedAt
+
+  user users @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([organization_id])
+  @@index([token_hash])
 }
 
 enum NotificationDestinationType {

@@ -357,6 +357,19 @@ export interface FigmaCommentEventData {
     imageUrls?: FigmaCommentImageUrls
 }
 
+export type ApiToken = {
+    id: string
+    name: string
+    tokenPrefix: string
+    createdAt: string
+    lastUsedAt: string | null
+}
+
+export type ApiTokenCreateResponse = {
+    token: ApiToken
+    rawToken: string
+}
+
 export type AgentTrigger = {
     id: string
     config: ConfigInstance

@@ -28,6 +28,8 @@ import {
     AgentTemplate,
     AgentUpdate,
     AgentsResponse,
+    ApiToken,
+    ApiTokenCreateResponse,
     AttioObject,
     ConfluenceResourcesResponse,
     DatadogIndexesResponse,
@@ -377,6 +379,26 @@ interface BackendService {
      * Deletes a notification destination
      */
     deleteNotificationDestination(destination: NotificationDestination): Promise<void>
+
+    /**
+     * Gets all API tokens for the current user
+     */
+    getApiTokens(): Promise<ApiToken[]>
+
+    /**
+     * Creates a new API token
+     */
+    createApiToken(name: string): Promise<ApiTokenCreateResponse>
+
+    /**
+     * Updates an API token name
+     */
+    updateApiToken(id: string, name: string): Promise<ApiToken>
+
+    /**
+     * Deletes an API token
+     */
+    deleteApiToken(id: string): Promise<void>
 
     /**
      * Gets all available agent templates
@@ -1173,6 +1195,46 @@ export const BackendProvider: BackendService = {
             .then(response => response.data)
             .catch(error => {
                 console.error("Error deleting notification destination:", error)
+                throw error
+            })
+    },
+
+    getApiTokens: () => {
+        return axios
+            .get<ApiToken[]>(`${backendBaseUrl}${ApiRoutes.API_TOKENS.LIST}`, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error("Error getting API tokens:", error)
+                throw error
+            })
+    },
+
+    createApiToken: (name: string) => {
+        return axios
+            .post<ApiTokenCreateResponse>(`${backendBaseUrl}${ApiRoutes.API_TOKENS.LIST}`, { name }, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error("Error creating API token:", error)
+                throw error
+            })
+    },
+
+    updateApiToken: (id: string, name: string) => {
+        return axios
+            .patch<ApiToken>(`${backendBaseUrl}${ApiRoutes.API_TOKENS.BY_ID.build(id)}`, { name }, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error("Error updating API token:", error)
+                throw error
+            })
+    },
+
+    deleteApiToken: (id: string) => {
+        return axios
+            .delete<void>(`${backendBaseUrl}${ApiRoutes.API_TOKENS.BY_ID.build(id)}`, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error("Error deleting API token:", error)
                 throw error
             })
     },
