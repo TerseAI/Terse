@@ -25,6 +25,7 @@ export function IntegrationSelector(props: InputConfigSelectorProps) {
             return <GmailIntegration {...props} />
 
         case ConfigType.GMAIL_OUTPUT:
+        case ConfigType.GMAIL_DRAFT_OUTPUT:
             return <GmailOutputIntegration input={props.input} variant={props.variant} setConfig={props.setConfig} />
 
         case ConfigType.NOTION:

@@ -3,6 +3,7 @@ import { IntegrationType } from "./Integrations"
 export enum ConfigType {
     GMAIL = "gmail",
     GMAIL_OUTPUT = "gmail_output",
+    GMAIL_DRAFT_OUTPUT = "gmail_draft_output",
     FIGMA = "figma",
     SLACK = "slack",
     SLACK_OUTPUT = "slack_output",
@@ -18,6 +19,7 @@ export enum ConfigType {
     LAUNCHDARKLY = "launchdarkly",
     TERSE = "terse",
     WORKOS_INPUT = "workos_input",
+    WORKOS_KB = "workos_kb",
     ATTIO_OUTPUT = "attio_output"
 }
 
@@ -72,6 +74,15 @@ export const GmailOutputConfigMetadata = {
     configType: ConfigType.GMAIL_OUTPUT,
     name: "Gmail",
     description: "Send emails via Gmail",
+    integrationType: IntegrationType.GMAIL,
+    isInput: false,
+    isOutput: true
+} as const satisfies ConfigDetails
+
+export const GmailDraftOutputConfigMetadata = {
+    configType: ConfigType.GMAIL_DRAFT_OUTPUT,
+    name: "Gmail Draft",
+    description: "Create draft emails in Gmail",
     integrationType: IntegrationType.GMAIL,
     isInput: false,
     isOutput: true
@@ -185,6 +196,15 @@ export const WorkOSInputConfigMetadata = {
     isOutput: false
 } as const satisfies ConfigDetails
 
+export const WorkOSKBConfigMetadata = {
+    configType: ConfigType.WORKOS_KB,
+    name: "WorkOS",
+    description: "Fetch and search users from your WorkOS account",
+    integrationType: IntegrationType.WORKOS,
+    isInput: false,
+    isOutput: false
+} as const satisfies ConfigDetails
+
 export const AttioOutputConfigMetadata = {
     configType: ConfigType.ATTIO_OUTPUT,
     name: "Attio",
@@ -199,6 +219,7 @@ export type ConfigDetailsMap = Record<ConfigType, ConfigDetails>
 export const CONFIG_DETAILS: ConfigDetailsMap = {
     [ConfigType.GMAIL]: GmailConfigMetadata,
     [ConfigType.GMAIL_OUTPUT]: GmailOutputConfigMetadata,
+    [ConfigType.GMAIL_DRAFT_OUTPUT]: GmailDraftOutputConfigMetadata,
     [ConfigType.FIGMA]: FigmaConfigMetadata,
     [ConfigType.SLACK]: SlackConfigMetadata,
     [ConfigType.SLACK_OUTPUT]: SlackOutputConfigMetadata,
@@ -214,6 +235,7 @@ export const CONFIG_DETAILS: ConfigDetailsMap = {
     [ConfigType.LAUNCHDARKLY]: LaunchDarklyConfigMetadata,
     [ConfigType.TERSE]: TerseConfigMetadata,
     [ConfigType.WORKOS_INPUT]: WorkOSInputConfigMetadata,
+    [ConfigType.WORKOS_KB]: WorkOSKBConfigMetadata,
     [ConfigType.ATTIO_OUTPUT]: AttioOutputConfigMetadata
 } as const satisfies ConfigDetailsMap
 
@@ -347,6 +369,21 @@ export class GmailOutputConfig implements ConfigInstance {
 
     formatForAgent(): string {
         return `Type: Gmail Output\nIntegration ID: ${this.integrationId}`
+    }
+}
+
+export class GmailDraftOutputConfig implements ConfigInstance {
+    integrationType: IntegrationType = IntegrationType.GMAIL
+    configType: ConfigType = ConfigType.GMAIL_DRAFT_OUTPUT
+
+    constructor(public integrationId: string) {}
+
+    isComplete(): boolean {
+        return true
+    }
+
+    formatForAgent(): string {
+        return `Type: Gmail Draft Output\nIntegration ID: ${this.integrationId}`
     }
 }
 
@@ -641,6 +678,21 @@ export class WorkOSInputConfig implements ConfigInstance {
     }
 }
 
+export class WorkOSKBConfig implements ConfigInstance {
+    integrationType: IntegrationType = IntegrationType.WORKOS
+    configType: ConfigType = ConfigType.WORKOS_KB
+
+    constructor(public integrationId: string) {}
+
+    isComplete(): boolean {
+        return !!this.integrationId
+    }
+
+    formatForAgent(): string {
+        return `Type: WorkOS Knowledge Base\nIntegration ID: ${this.integrationId}`
+    }
+}
+
 export class AttioOutputConfig implements ConfigInstance {
     integrationType: IntegrationType = IntegrationType.ATTIO
     configType: ConfigType = ConfigType.ATTIO_OUTPUT
@@ -672,6 +724,7 @@ export type ConfigMetadataMap = EnsureExhaustiveMetadata<{
     [ConfigType.SLACK]: typeof SlackConfig
     [ConfigType.SLACK_OUTPUT]: typeof SlackOutputConfig
     [ConfigType.GMAIL_OUTPUT]: typeof GmailOutputConfig
+    [ConfigType.GMAIL_DRAFT_OUTPUT]: typeof GmailDraftOutputConfig
     [ConfigType.NOTION]: typeof NotionConfig
     [ConfigType.LINEAR_INPUT]: typeof LinearInputConfig
     [ConfigType.LINEAR_OUTPUT]: typeof LinearOutputConfig
@@ -684,12 +737,14 @@ export type ConfigMetadataMap = EnsureExhaustiveMetadata<{
     [ConfigType.LAUNCHDARKLY]: typeof LaunchDarklyConfig
     [ConfigType.TERSE]: typeof TerseConfig
     [ConfigType.WORKOS_INPUT]: typeof WorkOSInputConfig
+    [ConfigType.WORKOS_KB]: typeof WorkOSKBConfig
     [ConfigType.ATTIO_OUTPUT]: typeof AttioOutputConfig
 }>
 
 export const CONFIG_METADATA: ConfigMetadataMap = {
     [ConfigType.GMAIL]: GmailConfig,
     [ConfigType.GMAIL_OUTPUT]: GmailOutputConfig,
+    [ConfigType.GMAIL_DRAFT_OUTPUT]: GmailDraftOutputConfig,
     [ConfigType.FIGMA]: FigmaConfig,
     [ConfigType.SLACK]: SlackConfig,
     [ConfigType.SLACK_OUTPUT]: SlackOutputConfig,
@@ -705,5 +760,6 @@ export const CONFIG_METADATA: ConfigMetadataMap = {
     [ConfigType.LAUNCHDARKLY]: LaunchDarklyConfig,
     [ConfigType.TERSE]: TerseConfig,
     [ConfigType.WORKOS_INPUT]: WorkOSInputConfig,
+    [ConfigType.WORKOS_KB]: WorkOSKBConfig,
     [ConfigType.ATTIO_OUTPUT]: AttioOutputConfig
 } as const satisfies ConfigMetadataMap

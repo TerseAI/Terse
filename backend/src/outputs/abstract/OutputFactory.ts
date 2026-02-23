@@ -6,6 +6,7 @@ import { ConfluenceOutput } from "../ConfluenceOutput"
 import { AttioOutput } from "../attio/AttioOutput"
 import { DatadogSkillOutput } from "../datadog/DatadogSkillOutput"
 import { GithubSkillOutput } from "../github/GithubSkillOutput"
+import { GmailDraftOutput } from "../gmail/GmailDraftOutput"
 import { GmailOutput } from "../gmail/GmailOutput"
 import { JiraTicketOutput } from "../jira/JiraTicketOutput"
 import { LaunchDarklySkillOutput } from "../launchdarkly/LaunchDarklySkillOutput"
@@ -36,6 +37,7 @@ export class OutputFactory {
         [OutputConfigType.POSTHOG, (readOnly = false) => new PosthogSkillOutput(readOnly)],
         [OutputConfigType.DATADOG, (readOnly = false) => new DatadogSkillOutput(readOnly)],
         [OutputConfigType.LAUNCHDARKLY, (readOnly = false) => new LaunchDarklySkillOutput(readOnly)]
+        // Where is workOS?
     ])
 
     static createOutput(integrationType: OutputConfigType, readOnly = false): Output<ConfigInstance> | null {

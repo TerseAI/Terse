@@ -13,6 +13,7 @@ import { useAgent } from "../../hooks/api/useAgents"
 import { useTemplates } from "../../hooks/api/useTemplates"
 import { useIsMobile } from "../../hooks/use-mobile"
 import { useTemplateHydration } from "../../hooks/useTemplateHydration"
+import { safeStorageGet, safeStorageSet } from "../../lib/storage"
 import { cn } from "../../lib/utils"
 import { useModelContext } from "../../services/ModelContextProvider"
 import { AgentNotificationSettings, AgentPrompt, TransientAgentOutput, TransientAgentTrigger } from "../../shared/types"
@@ -24,7 +25,7 @@ import AgentSetupTab, { AgentSetupTabProps } from "./tabs/AgentSetupTab"
 
 const CHAT_PANEL_WIDTH_MIN = 0.2
 const CHAT_PANEL_WIDTH_MAX = 0.6
-const CHAT_PANEL_WIDTH_DEFAULT = CHAT_PANEL_WIDTH_MIN
+const CHAT_PANEL_WIDTH_DEFAULT = 0.3
 const CHAT_PANE_TRANSITION_MS = 200
 const CHAT_CONTENT_FADE_MS = 150
 const AGENT_DETAIL_TABS = ["setup", "history"] as const
@@ -204,13 +205,26 @@ function ResizeHandle({
     )
 }
 
+const CHAT_PANEL_WIDTH_FRACTION_KEY = "chatPanelWidthFraction"
+
+function getChatPanelWidthFraction() {
+    const storedWidth = safeStorageGet(CHAT_PANEL_WIDTH_FRACTION_KEY, localStorage)
+    if (storedWidth) {
+        const parsedWidth = parseFloat(storedWidth)
+        if (isFinite(parsedWidth) && parsedWidth >= CHAT_PANEL_WIDTH_MIN && parsedWidth <= CHAT_PANEL_WIDTH_MAX) {
+            return parsedWidth
+        }
+    }
+    return CHAT_PANEL_WIDTH_DEFAULT
+}
+
 function AgentDetail() {
     const { id, templateId } = useParams<{ id: string; templateId: string }>()
     const [searchParams, setSearchParams] = useSearchParams()
     const { getStateJSON, donate } = useModelContext()
     const [builderChatOpen, setBuilderChatOpen] = useState(true)
     const [desktopChatPaneOpen, setDesktopChatPaneOpen] = useState(true)
-    const [chatPanelWidthFraction, setChatPanelWidthFraction] = useState(CHAT_PANEL_WIDTH_DEFAULT)
+    const [chatPanelWidthFraction, setChatPanelWidthFraction] = useState(getChatPanelWidthFraction)
     const [isChatPaneResizing, setIsChatPaneResizing] = useState(false)
     const [renderBuilderChatContent, setRenderBuilderChatContent] = useState(false)
     const [showBuilderChatContent, setShowBuilderChatContent] = useState(false)
@@ -218,6 +232,11 @@ function AgentDetail() {
     const builderChatRef = useRef<BuilderChatHandle>(null)
     const chatPaneId = useId()
     const isMobile = useIsMobile()
+
+    function setChatPanelWidthFractionStorage(fraction: number) {
+        setChatPanelWidthFraction(fraction)
+        safeStorageSet(CHAT_PANEL_WIDTH_FRACTION_KEY, fraction.toString(), localStorage)
+    }
 
     // Cmd+I (Ctrl+I on Windows) toggles the builder chat panel
     useEffect(() => {
@@ -504,7 +523,7 @@ function AgentDetail() {
                         <ResizeHandle
                             currentFraction={chatPanelWidthFraction}
                             containerRef={layoutContainerRef}
-                            onResize={setChatPanelWidthFraction}
+                            onResize={setChatPanelWidthFractionStorage}
                             controlsId={chatPaneId}
                             disabled={!desktopChatPaneOpen}
                             onResizeStart={() => setIsChatPaneResizing(true)}

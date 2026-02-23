@@ -9,6 +9,7 @@ import {
     FigmaConfig,
     GitHubConfig,
     GmailConfig,
+    GmailDraftOutputConfig,
     GmailOutputConfig,
     JiraConfig,
     LaunchDarklyConfig,
@@ -19,7 +20,8 @@ import {
     SlackConfig,
     SlackOutputConfig,
     TimeTriggerConfig,
-    WorkOSInputConfig
+    WorkOSInputConfig,
+    WorkOSKBConfig
 } from "../shared/Configs"
 import { IntegrationType } from "../shared/Integrations"
 import { RunHistoryStatus as SharedRunHistoryStatus } from "../shared/RunHistoryTypes"
@@ -316,6 +318,9 @@ export const convertPrismaOutputConfigToConfigInstance = (channelOutput: AgentOu
     }
 
     if (channelOutput.gmail_config) {
+        if (channelOutput.config_type === OutputConfigType.GMAIL_DRAFT) {
+            return new GmailDraftOutputConfig(integrationId)
+        }
         return new GmailOutputConfig(integrationId)
     }
 
@@ -351,6 +356,7 @@ export const convertPrismaOutputConfigToConfigInstance = (channelOutput: AgentOu
         case OutputConfigType.POSTHOG:
         case OutputConfigType.DATADOG:
         case OutputConfigType.LAUNCHDARKLY:
+        case OutputConfigType.GMAIL_DRAFT:
         case OutputConfigType.TERSE:
         case OutputConfigType.ATTIO:
             break
@@ -394,12 +400,16 @@ export const convertConfigTypeToInputConfigType = (configType: ConfigType): Inpu
         case ConfigType.GMAIL_OUTPUT:
             // GMAIL_OUTPUT is an output config type, not an input config type
             throw new Error("GMAIL_OUTPUT is an output type, not an input type")
+        case ConfigType.GMAIL_DRAFT_OUTPUT:
+            throw new Error("GMAIL_DRAFT_OUTPUT is an output type, not an input type")
         case ConfigType.DATADOG:
             throw new Error("DATADOG is not an input config type")
         case ConfigType.LAUNCHDARKLY:
             throw new Error("LAUNCHDARKLY is not an input config type")
         case ConfigType.TERSE:
             throw new Error("TERSE is an output type, not an input type")
+        case ConfigType.WORKOS_KB:
+            throw new Error("WORKOS_KB is a knowledge base type, not an input type")
         case ConfigType.ATTIO_OUTPUT:
             throw new Error("ATTIO_OUTPUT is an output type, not an input type")
         default:
@@ -462,6 +472,8 @@ export const convertConfigTypeToOutputConfigType = (configType: ConfigType): Out
             return OutputConfigType.SLACK_CHANNEL
         case ConfigType.GMAIL_OUTPUT:
             return OutputConfigType.GMAIL
+        case ConfigType.GMAIL_DRAFT_OUTPUT:
+            return OutputConfigType.GMAIL_DRAFT
         case ConfigType.TERSE:
             return OutputConfigType.TERSE
         case ConfigType.ATTIO_OUTPUT:
@@ -496,6 +508,8 @@ export const convertOutputConfigTypeToConfigType = (outputConfigType: OutputConf
             return ConfigType.DATADOG
         case OutputConfigType.LAUNCHDARKLY:
             return ConfigType.LAUNCHDARKLY
+        case OutputConfigType.GMAIL_DRAFT:
+            return ConfigType.GMAIL_DRAFT_OUTPUT
         case OutputConfigType.TERSE:
             return ConfigType.TERSE
         case OutputConfigType.ATTIO:
@@ -531,6 +545,8 @@ export const convertOutputConfigTypeToIntegrationType = (outputConfigType: Outpu
             return IntegrationType.DATADOG
         case OutputConfigType.LAUNCHDARKLY:
             return IntegrationType.LAUNCHDARKLY
+        case OutputConfigType.GMAIL_DRAFT:
+            return IntegrationType.GMAIL
         case OutputConfigType.TERSE:
             return IntegrationType.TERSE
         case OutputConfigType.ATTIO:

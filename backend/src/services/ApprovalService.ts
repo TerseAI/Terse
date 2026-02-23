@@ -10,16 +10,13 @@ import { Output } from "../outputs/abstract/Output"
 import { OutputFactory } from "../outputs/abstract/OutputFactory"
 import { db } from "../prismaClient"
 import { ConfigInstance } from "../shared/Configs"
-import { ModelEvent } from "../shared/ModelEvents"
-import { type RunHistoryModelEvent, type RunHistoryModelSocketEvent, RunHistoryStatus } from "../shared/RunHistoryTypes"
-import { SocketEvents, SocketRooms } from "../shared/SocketEvents"
+import { RunHistoryStatus } from "../shared/RunHistoryTypes"
 import { User } from "../shared/types"
 import { SlackApprovalMessageStatus } from "../slack/ApprovalStatus"
 import { AgentWithRelations } from "../types/prisma"
 import { Session } from "../types/session"
 import { getInputConfigInclude, getOutputConfigInclude } from "../utility/prismaIncludes"
 import { updateSlackApprovalMessage } from "../utility/slack"
-import { randomString } from "../utility/strings"
 import { getUserForOrg } from "../utility/workos"
 
 import { emitCacheInvalidationWithWildcard, getSocketIO } from "./CacheInvalidationService"
@@ -248,12 +245,7 @@ export class ApprovalService {
             await this.updateSlackNotification(runId, stepId, SlackApprovalMessageStatus.PROCESSING, user, channel.id)
             slackMarkedProcessing = true
 
-            // Store the approval response event
-            const toolApprovalResponseEvent: ModelEvent = {
-                type: "ToolApprovalResponse",
-                step_id: stepId,
-                approved: approved
-            }
+            logger.info("[ApprovalFlow] Processing approval decision", { runId, stepId, decision: approved ? "approve" : "reject" })
 
             try {
                 await appendToolApprovalResponseSystemEvent(runId, {
@@ -262,21 +254,6 @@ export class ApprovalService {
                 })
             } catch (error) {
                 logger.warn("[ApprovalService] Failed to append tool approval response system event to raw history", { runId, stepId, error })
-            }
-
-            const io = getSocketIO()
-            if (io && channel.organization_id) {
-                const runHistoryModelEvent: RunHistoryModelEvent = {
-                    ...toolApprovalResponseEvent,
-                    id: `approval-response-live-${randomString(15)}`,
-                    timestamp: Date.now()
-                }
-                const payload: RunHistoryModelSocketEvent = {
-                    runId,
-                    agentId: channel.id,
-                    runHistoryModelEvent
-                }
-                io.to(SocketRooms.organization(channel.organization_id)).emit(SocketEvents.AGENT_CHAT_EVENT, payload)
             }
 
             emitCacheInvalidationWithWildcard(channel.organization_id, "runHistory", channel.id)

@@ -525,6 +525,7 @@ model automation_knowledge_bases {
   launchdarkly_config automation_launchdarkly_configs?
   linear_kb_config    automation_linear_kb_configs?
   slack_kb_config     automation_slack_kb_configs?
+  workos_kb_config    automation_workos_kb_configs?
 
   @@index([automation_id])
   @@index([config_type, integration_id])
@@ -611,6 +612,14 @@ model automation_slack_kb_configs {
   allow_dms                    Boolean  @default(false)
   user_ids                     String[]
   user_names                   String[]
+
+  automation_knowledge_base automation_knowledge_bases @relation(fields: [automation_knowledge_base_id], references: [id], onDelete: Cascade)
+}
+
+// WorkOS Knowledge Base Configuration
+model automation_workos_kb_configs {
+  id                           String @id @default(cuid())
+  automation_knowledge_base_id String @unique
 
   automation_knowledge_base automation_knowledge_bases @relation(fields: [automation_knowledge_base_id], references: [id], onDelete: Cascade)
 }
@@ -860,6 +869,7 @@ enum OutputConfigType {
   JIRA_TICKET
   SLACK_CHANNEL
   GMAIL
+  GMAIL_DRAFT
   TERSE
   ATTIO
   GITHUB
@@ -875,6 +885,7 @@ enum KnowledgeBaseConfigType {
   DATADOG
   LINEAR
   SLACK
+  WORKOS
 }
 
 // Run History enums to mirror backend/shared RunHistoryTypes

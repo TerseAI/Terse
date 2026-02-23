@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom"
 import { AnimatePresence, motion } from "framer-motion"
 import { ArrowRight, ArrowUpRight, ExternalLink, MessageSquare, RotateCcw, Zap } from "lucide-react"
 
-import RunHistoryChatDrawer from "@/components/RunHistory/RunHistoryChatDrawer"
+import { convertRunHistoryEventsToTurns } from "@/components/RunHistory/RunHistoryChatDrawer/runHistoryEventsToTurns"
 import RunHistoryStatusBadge from "@/components/RunHistory/RunHistoryStatusBadge"
 import { Chat, ChatHandle } from "@/components/chat/Chat"
 import { ChatEventPayload } from "@/components/chat/hooks/useCompletionSocket"
@@ -15,14 +15,13 @@ import { cn } from "@/lib/utils"
 import { IconForIntegration } from "@/pages/Agents/components/Integration"
 import { FrontendRoutes } from "@/shared/FrontendRoutes"
 import { ModelRequest, SendModelRequest } from "@/shared/ModelEvents"
-import { RunHistoryStatus, RunHistoryTrigger } from "@/shared/RunHistoryTypes"
-import { RecentRun } from "@/shared/types"
+import { RunHistoryRecordWithAgent } from "@/shared/RunHistoryTypes"
 import { sendBuilderMessage, subscribeToBuilderChat } from "@/socket"
 import { formatTimestamp } from "@/utility/timeUtils"
 
-import { convertRunHistoryEventsToTurns } from "../../components/RunHistory/RunHistoryChatDrawer/RunHistoryChatAdapter"
 import { useBuilderChatHistory } from "../../hooks/api/useBuilderChatHistory"
 import { useBuilderSession } from "../../hooks/useBuilderSession"
+import { useRunHistoryChatDrawer } from "../../services/RunHistoryChatDrawerContext"
 
 import { HomeEmptyState } from "./components/HomeEmptyState"
 
@@ -30,6 +29,7 @@ function Home() {
     const { agents: allAgents, isLoading: isLoadingAllAgents } = useAgents({ limit: 1 })
     const { stats, isLoading: isLoadingStats } = useStats()
     const navigate = useNavigate()
+    const { openDrawer } = useRunHistoryChatDrawer()
 
     // Builder chat state
     const { sessionId, resetSessionId } = useBuilderSession()
@@ -44,10 +44,6 @@ function Home() {
             setHasStartedChat(true)
         }
     }, [historyEvents])
-
-    // Run history chat drawer state
-    const [selectedRun, setSelectedRun] = useState<RecentRun | null>(null)
-    const [isDrawerOpen, setIsDrawerOpen] = useState(false)
 
     // Unified loading: wait for agents + chat history before deciding what to show.
     // This prevents the flicker where the "has agents" view briefly shows before
@@ -86,15 +82,12 @@ function Home() {
     }, [hasStartedChat])
 
     // Run drawer handlers
-    const handleOpenChat = useCallback((run: RecentRun) => {
-        setSelectedRun(run)
-        setIsDrawerOpen(true)
-    }, [])
-
-    const handleDrawerClose = useCallback((open: boolean) => {
-        setIsDrawerOpen(open)
-        if (!open) setSelectedRun(null)
-    }, [])
+    const handleOpenChat = (run: RunHistoryRecordWithAgent) => {
+        openDrawer({
+            runs: recentRuns,
+            initialRunIndex: recentRuns.findIndex(r => r.id === run.id)
+        })
+    }
 
     const handleClearChat = () => {
         resetSessionId()
@@ -117,18 +110,6 @@ function Home() {
     const totalEvents = stats?.totalEventsProcessed ?? 0
     const actionsTaken = stats?.actionsTaken ?? 0
     const numberOfAgents = stats?.numberOfAgents ?? 0
-
-    // Selected run data for drawer
-    const drawerTrigger: RunHistoryTrigger | undefined = selectedRun
-        ? {
-              event: selectedRun.trigger.event,
-              integration: selectedRun.trigger.integration,
-              source: selectedRun.trigger.source,
-              title: selectedRun.trigger.title,
-              subheader: selectedRun.trigger.subheader,
-              url: selectedRun.trigger.url
-          }
-        : undefined
 
     return (
         <div className="flex flex-col h-full w-full">
@@ -258,18 +239,6 @@ function Home() {
                     )}
                 </AnimatePresence>
             </div>
-
-            {/* ── Run History Chat Drawer ─────────────────────────────── */}
-            {selectedRun && drawerTrigger && (
-                <RunHistoryChatDrawer
-                    runId={selectedRun.id}
-                    isOpen={isDrawerOpen}
-                    onOpenChange={handleDrawerClose}
-                    status={selectedRun.status as RunHistoryStatus}
-                    trigger={drawerTrigger}
-                    filtered={false}
-                />
-            )}
         </div>
     )
 }
@@ -319,11 +288,11 @@ function StatPill({ label, value, change }: { label: string; value: string; chan
     )
 }
 
-function RunRow({ run, onOpenChat }: { run: RecentRun; onOpenChat: (run: RecentRun) => void }) {
+function RunRow({ run, onOpenChat }: { run: RunHistoryRecordWithAgent; onOpenChat: (run: RunHistoryRecordWithAgent) => void }) {
     const navigate = useNavigate()
 
     const title = run.trigger.title || run.trigger.source
-    const writeActions = run.actions.filter(a => a.type !== "read")
+    const writeActions = (run.actions ?? []).filter(a => a.type !== "read")
 
     return (
         <div className="group flex items-center gap-4 px-4 py-3 rounded-xl transition-colors duration-150 hover:bg-muted/40">
@@ -376,7 +345,7 @@ function RunRow({ run, onOpenChat }: { run: RecentRun; onOpenChat: (run: RecentR
             )}
 
             {/* Status */}
-            <RunHistoryStatusBadge status={run.status} filtered={false} className="hidden sm:flex" />
+            <RunHistoryStatusBadge status={run.status} filtered={run.filtered} className="hidden sm:flex" />
 
             {/* Timestamp */}
             <span className="text-xs text-muted-foreground whitespace-nowrap w-16 text-right">{formatTimestamp(run.timestamp)}</span>

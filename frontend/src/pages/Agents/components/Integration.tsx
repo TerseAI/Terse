@@ -31,6 +31,7 @@ export function IconForConfigType({ type }: { type: ConfigType }) {
             return <SlackIcon />
         case ConfigType.GMAIL:
         case ConfigType.GMAIL_OUTPUT:
+        case ConfigType.GMAIL_DRAFT_OUTPUT:
             return <GmailIcon />
         case ConfigType.NOTION:
             return <NotionIcon />
@@ -51,6 +52,7 @@ export function IconForConfigType({ type }: { type: ConfigType }) {
         case ConfigType.TERSE:
             return <TerseIcon />
         case ConfigType.WORKOS_INPUT:
+        case ConfigType.WORKOS_KB:
             return <WorkOSIcon />
         case ConfigType.ATTIO_OUTPUT:
             return <AttioIcon />

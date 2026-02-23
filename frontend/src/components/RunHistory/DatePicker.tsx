@@ -24,7 +24,7 @@ function DateRangePicker({ dateRange, onDateRangeChange, open, onOpenChange }: D
                     variant="outline"
                     className={`justify-start text-left font-normal ${dateRange.from || dateRange.to ? "border-green-600 dark:border-green-400 text-green-600 dark:text-green-400" : ""}`}
                 >
-                    <CalendarIcon className="w-4 h-4 mr-2" />
+                    <CalendarIcon className="w-4 h-4" />
                     {dateRange.from
                         ? dateRange.to
                             ? `${dateRange.from.toLocaleDateString("en-US", { month: "short", day: "2-digit" })} - ${dateRange.to.toLocaleDateString("en-US", { month: "short", day: "2-digit" })}`

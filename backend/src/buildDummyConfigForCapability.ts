@@ -31,6 +31,7 @@ type OutputDummyPayload =
     | { config_type: typeof OutputConfigType.POSTHOG; posthog_config: Pick<automation_posthog_configs, "project_id" | "project_name"> }
     | { config_type: typeof OutputConfigType.DATADOG; datadog_config: Pick<automation_datadog_configs, "default_indexes"> }
     | { config_type: typeof OutputConfigType.LAUNCHDARKLY; launchdarkly_config: Pick<automation_launchdarkly_configs, "project_key" | "environment_keys"> }
+    | { config_type: typeof OutputConfigType.GMAIL_DRAFT; gmail_config: Partial<Pick<automation_gmail_configs, never>> }
     | { config_type: typeof OutputConfigType.TERSE }
     | { config_type: typeof OutputConfigType.ATTIO; attio_config: Pick<automation_attio_configs, "object_slug"> }
 
@@ -163,7 +164,17 @@ export function buildDummyOutputConfig(integration_id: string, payload: OutputDu
                     id: DUMMY_ID,
                     automation_input_id: null,
                     automation_output_id: DUMMY_ID,
-                    repository_ids: payload.github_config.repository_ids,
+                    repository_ids: payload.github_config.repository_ids
+                }
+            }
+        case OutputConfigType.GMAIL_DRAFT:
+            return {
+                ...base,
+                ...nullConfigs,
+                gmail_config: {
+                    id: DUMMY_ID,
+                    automation_input_id: null,
+                    automation_output_id: DUMMY_ID,
                     created_at: DUMMY_DATE,
                     updated_at: DUMMY_DATE
                 }

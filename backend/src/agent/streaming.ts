@@ -1,5 +1,6 @@
 import { Agent, FunctionCallResultItem, RunStreamEvent, RunToolCallOutputItem, StreamedRunResult } from "@openai/agents"
 
+import logger from "../logger"
 import { IntegrationType } from "../shared/Integrations"
 import { ChangedItem, ModelEvent, ToolCallExecutionStatus } from "../shared/ModelEvents"
 import { RunHistoryAction } from "../shared/RunHistoryTypes"
@@ -37,6 +38,7 @@ export async function* transformAgentStreamToModelEvents<T extends Session>(
         // Try ToolCall
         const toolCall = tryExtractToolCall(event, toolToIntegrationMap)
         if (toolCall) {
+            logger.info("[ApprovalFlow] Stream yielded ToolCall", { callId: (toolCall as any).step_id, name: (toolCall as any).summary })
             // Type guard: ensure it's a ToolCall event
             if (toolCall.type === "ToolCall" && onToolCall) {
                 onToolCall(toolCall.step_id, toolCall.summary)
@@ -54,8 +56,6 @@ export async function* transformAgentStreamToModelEvents<T extends Session>(
             continue
         }
     }
-
-    yield createNaturalStopEvent()
 }
 
 export function tryExtractThinking(event: RunStreamEvent): ModelEvent | null {
@@ -137,6 +137,10 @@ export function tryExtractToolCallCompleteData(event: RunStreamEvent): ToolCallC
 
         const rawOutput = (rawItem as any).output ?? (item as any).output
         const parsed = parseToolExecutionResult(rawOutput, rawItem.status)
+        const outputWithoutActions = {
+            ...parsed.output,
+            actions: undefined
+        }
 
         // Handle function call results (including hosted tool calls)
         if (rawItem.type === "function_call_result") {
@@ -146,7 +150,7 @@ export function tryExtractToolCallCompleteData(event: RunStreamEvent): ToolCallC
                 status: parsed.status,
                 errorContext: parsed.errorContext,
                 actions: parsed.actions,
-                result: parsed.outputString ?? undefined
+                result: JSON.stringify(outputWithoutActions) ?? undefined
             }
         }
 

@@ -53,7 +53,7 @@ export interface CapabilityDescription {
 // MARK: - Helpers
 
 /**
- * Extracts tool metadata from any KB or Output's toolbox array.
+ * Extracts tool metadata from any Output's toolbox array.
  * Uses existing metadata on toolbox entries - no restating.
  */
 export function extractToolMetadata(toolbox: readonly ToolboxEntry[]): ToolInfo[] {

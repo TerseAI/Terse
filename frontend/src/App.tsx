@@ -23,6 +23,7 @@ import OrganizationCreationPage from "./pages/OrganizationCreationPage"
 import ProfilePage from "./pages/ProfilePage"
 import StatsPage from "./pages/Stats"
 import { ModelContextProvider } from "./services/ModelContextProvider"
+import { RunHistoryChatDrawerProvider } from "./services/RunHistoryChatDrawerContext"
 import { AuthProvider, useAuth } from "./services/auth"
 import { FrontendRoutes } from "./shared/FrontendRoutes"
 import { disconnectSocket, initializeSocket } from "./socket"
@@ -122,11 +123,13 @@ function AppLayout() {
     return (
         <SidebarProvider>
             <AppSidebar />
-            <main className="flex-1 flex flex-col h-full min-w-0">
+            <main className="flex-1 flex flex-col h-full min-w-0 bg-background">
                 <BreadCrumb />
                 <div className="flex-1 min-h-0">
                     <ModelContextProvider>
-                        <Outlet />
+                        <RunHistoryChatDrawerProvider>
+                            <Outlet />
+                        </RunHistoryChatDrawerProvider>
                     </ModelContextProvider>
                 </div>
             </main>

@@ -15,23 +15,23 @@ import { Session } from "../../../types/session"
 import { buildEmailContent, encodeSubjectHeader } from "./mime"
 
 /**
- * Tool for sending emails or replying to email threads via Gmail.
- * Supports both sending new emails and replying to existing threads.
+ * Tool for creating draft emails in Gmail.
+ * Supports both creating new drafts and draft replies to existing threads.
  */
-export const gmailSendEmailTool = tool({
-    name: ToolName.GMAIL_SEND_EMAIL,
-    description: `Send email or reply to an existing email thread via Gmail. Use thread_id (the Gmail Thread ID, not the Message-ID) to reply to an existing thread, or omit it to send a new email.`,
+export const gmailCreateDraftTool = tool({
+    name: ToolName.GMAIL_CREATE_DRAFT,
+    description: `Create a draft email in Gmail. Use thread_id (the Gmail Thread ID, not the Message-ID) to create a draft reply to an existing thread, or omit it to create a new draft email. The draft will appear in the user's Gmail Drafts folder for review before sending.`,
     parameters: z.object({
         integrationId: z.string().describe("The integration ID of the Gmail account to use."),
         to: z.string().describe("Recipient email address(es). Multiple addresses can be comma-separated."),
         subject: z.string().describe("Email subject line"),
         body: z.string().nullable().optional().describe("Plain text email body content."),
         html_body: z.string().nullable().optional().describe("HTML email body content. If provided with body, sends multipart/alternative."),
-        thread_id: z.string().nullable().optional().describe("Gmail Thread ID (numeric string from the email event, NOT the Message-ID header). Omit for new emails."),
+        thread_id: z.string().nullable().optional().describe("Gmail Thread ID (numeric string from the email event, NOT the Message-ID header). Omit for new drafts."),
         cc: z.string().nullable().optional().describe("CC recipient email address(es). Multiple addresses can be comma-separated."),
         bcc: z.string().nullable().optional().describe("BCC recipient email address(es). Multiple addresses can be comma-separated.")
     }),
-    needsApproval: createNeedsApprovalFunction(ToolName.GMAIL_SEND_EMAIL),
+    needsApproval: createNeedsApprovalFunction(ToolName.GMAIL_CREATE_DRAFT),
     execute: async ({ integrationId, to, subject, body, html_body, thread_id, cc, bcc }, runContext?: RunContext<SessionWithTracking<Session>>) => {
         if (!runContext?.context) {
             throw new Error("No context provided")
@@ -70,7 +70,6 @@ export const gmailSendEmailTool = tool({
             const gmail = google.gmail({ version: "v1", auth: oauth2Client })
 
             // Build email headers
-            // Subject is encoded per RFC 2047 to handle non-ASCII characters (e.g., em-dashes)
             const headers: string[] = [`To: ${to}`, `Subject: ${encodeSubjectHeader(subject)}`]
 
             if (cc) {
@@ -83,7 +82,6 @@ export const gmailSendEmailTool = tool({
 
             // If replying, add In-Reply-To and References headers
             if (thread_id) {
-                // Fetch the original message to get its Message-ID
                 try {
                     const threadResponse = await gmail.users.threads.get({
                         userId: "me",
@@ -94,8 +92,6 @@ export const gmailSendEmailTool = tool({
 
                     const messages = threadResponse.data.messages || []
                     if (messages.length > 0) {
-                        // Get the most recent message (last in array) for proper threading
-                        // Gmail API returns messages in chronological order, so the last one is most recent
                         const mostRecentMessage = messages[messages.length - 1]
                         const mostRecentHeaders = mostRecentMessage.payload?.headers || []
 
@@ -108,19 +104,14 @@ export const gmailSendEmailTool = tool({
                         const mostRecentReferences = getHeader("References")
                         const mostRecentInReplyTo = getHeader("In-Reply-To")
 
-                        // Build References header: include all previous message IDs from the thread
-                        // Start with existing References from the most recent message, then add its Message-ID
                         let references = mostRecentReferences || ""
 
-                        // If the most recent message has a Message-ID, add it to References
                         if (mostRecentMessageId) {
                             if (references) {
-                                // Append the most recent Message-ID if it's not already in References
                                 if (!references.includes(mostRecentMessageId)) {
                                     references = `${references} ${mostRecentMessageId}`
                                 }
                             } else {
-                                // If no References header exists, use In-Reply-To or Message-ID
                                 references = mostRecentInReplyTo || mostRecentMessageId
                                 if (mostRecentMessageId && mostRecentInReplyTo && mostRecentInReplyTo !== mostRecentMessageId) {
                                     references = `${mostRecentInReplyTo} ${mostRecentMessageId}`
@@ -132,14 +123,12 @@ export const gmailSendEmailTool = tool({
                             headers.push(`References: ${references}`)
                         }
 
-                        // In-Reply-To should reference the most recent message's Message-ID
                         if (mostRecentMessageId) {
                             headers.push(`In-Reply-To: ${mostRecentMessageId}`)
                         }
                     }
                 } catch (error: any) {
                     logger.warn(`Failed to fetch original message for thread ${thread_id}`, { error, thread_id })
-                    // Continue without In-Reply-To/References headers if we can't fetch them
                 }
             }
 
@@ -149,27 +138,30 @@ export const gmailSendEmailTool = tool({
             // Encode the email in base64url format (required by Gmail API)
             const encodedMessage = Buffer.from(emailContent).toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "")
 
-            // Send the email
-            const sendRequest: any = {
+            // Create the draft
+            const createRequest: any = {
                 userId: "me",
                 requestBody: {
-                    raw: encodedMessage
+                    message: {
+                        raw: encodedMessage
+                    }
                 }
             }
 
             // If replying, include the thread ID
             if (thread_id) {
-                sendRequest.requestBody.threadId = thread_id
+                createRequest.requestBody.message.threadId = thread_id
             }
 
-            const result = await gmail.users.messages.send(sendRequest)
+            const result = await gmail.users.drafts.create(createRequest)
 
             if (!result.data.id) {
-                throw new Error("Failed to send email: No message ID returned")
+                throw new Error("Failed to create draft: No draft ID returned")
             }
 
-            const messageId = result.data.id
-            const emailType = thread_id ? "reply" : "new email"
+            const draftId = result.data.id
+            const messageId = result.data.message?.id || ""
+            const draftType = thread_id ? "draft reply" : "new draft"
             const previewSource =
                 body?.trim() ||
                 html_body
@@ -179,29 +171,26 @@ export const gmailSendEmailTool = tool({
                 ""
             const emailPreview = previewSource.length > 100 ? previewSource.substring(0, 100) + "..." : previewSource
 
-            // Build Gmail message URL using the thread ID with #all
-            // Format: https://mail.google.com/mail/u/0/#all/{threadId}
-            // Using #all instead of #inbox ensures the link works regardless of label
-            // Fallback to messageId if threadId is not available (rare but possible edge case)
-            const sentThreadId = thread_id || result.data.threadId || messageId
-            const gmailUrl = `https://mail.google.com/mail/u/0/#all/${sentThreadId}`
+            // Build Gmail draft URL
+            const draftUrl = `https://mail.google.com/mail/u/0/#drafts?compose=${messageId}`
 
             // Return action as part of the result
             const action = {
-                action: `Sent Gmail ${emailType}`,
+                action: `Created Gmail ${draftType}`,
                 integration: IntegrationType.GMAIL,
                 target: to,
-                details: `Sent ${emailType} to ${to}: "${subject}" - ${emailPreview}`,
-                url: gmailUrl,
+                details: `Created ${draftType} to ${to}: "${subject}" - ${emailPreview}`,
+                url: draftUrl,
                 type: RunHistoryActionType.create
             }
 
-            logger.debug("[gmail_send_email] Returning action in result", {
+            logger.debug("[gmail_create_draft] Returning action in result", {
                 userId: runContext?.context?.user?.id || "unknown",
                 action
             })
 
-            logger.info(`[Gmail Output] ${emailType} sent`, {
+            logger.info(`[Gmail Draft Output] ${draftType} created`, {
+                draftId,
                 messageId,
                 threadId: thread_id,
                 to,
@@ -211,16 +200,18 @@ export const gmailSendEmailTool = tool({
 
             return {
                 success: true,
+                draft_id: draftId,
                 message_id: messageId,
-                thread_id: thread_id || result.data.threadId || messageId,
+                thread_id: thread_id || result.data.message?.threadId || "",
+                draft_url: draftUrl,
                 to,
                 subject,
-                summary: `${emailType} sent to ${to}: "${subject}"`,
+                summary: `${draftType} created for ${to}: "${subject}"`,
                 is_reply: !!thread_id,
                 actions: [action]
             }
         } catch (error: any) {
-            logger.error(`[Gmail Output] Failed to send email`, {
+            logger.error(`[Gmail Draft Output] Failed to create draft`, {
                 error,
                 to,
                 subject,
@@ -232,12 +223,12 @@ export const gmailSendEmailTool = tool({
             if (error.code === 401 || error.message?.includes("Invalid Credentials")) {
                 throw new Error(`Gmail authentication failed. Please reconnect your Gmail integration.`)
             } else if (error.code === 403) {
-                throw new Error(`Gmail API permission denied. Please ensure the integration has send permissions.`)
+                throw new Error(`Gmail API permission denied. Please reconnect your Gmail integration to grant the required permissions.`)
             } else if (error.message?.includes("thread")) {
                 throw new Error(`Invalid thread ID. The thread may not exist or you may not have access to it.`)
             }
 
-            throw new Error(`Failed to send Gmail ${thread_id ? "reply" : "email"}: ${error.message || error}`)
+            throw new Error(`Failed to create Gmail ${thread_id ? "draft reply" : "draft"}: ${error.message || error}`)
         }
     }
 })

@@ -7,7 +7,7 @@ import { Session } from "../types/session"
 // MARK: - Error Handling
 
 export async function formatError(context: RunContext, error: Error | unknown): Promise<string> {
-    return `[TERSE ERROR]:${JSON.stringify({ context, error: error instanceof Error ? error.message : error })}`
+    return `[TERSE ERROR]:${JSON.stringify({ error: error instanceof Error ? error.message : error })}`
 }
 
 export function detectSerializedError(error: string): boolean {

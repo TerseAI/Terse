@@ -1,4 +1,4 @@
-import { forwardRef, useImperativeHandle, useRef } from "react"
+import { forwardRef, useEffect, useImperativeHandle, useRef } from "react"
 
 import { type ModelRequest } from "../../shared/ModelEvents"
 
@@ -45,6 +45,7 @@ const Chat = forwardRef<ChatHandle, ChatProps>(function Chat(
     ref
 ) {
     const chatLayoutRef = useRef<ChatLayoutHandle>(null)
+    const hasScrolledToBottomRef = useRef(false)
     const {
         turns,
         isPendingAssistantResponse,
@@ -63,6 +64,16 @@ const Chat = forwardRef<ChatHandle, ChatProps>(function Chat(
         onMultipleChoiceAnswer,
         addUserTurnsLocally
     })
+
+    // Scroll to bottom when initialTurns are first rendered
+    useEffect(() => {
+        if (initialTurns && initialTurns.length > 0 && !hasScrolledToBottomRef.current) {
+            hasScrolledToBottomRef.current = true
+            requestAnimationFrame(() => {
+                chatLayoutRef.current?.scrollToBottom()
+            })
+        }
+    }, [initialTurns])
 
     // Expose both ChatLayout methods and setInput to parent
     useImperativeHandle(ref, () => ({
