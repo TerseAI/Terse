@@ -137,6 +137,14 @@ export async function me(req: Request, res: Response) {
 
 function createAuthMiddleware(requireOrganization: boolean) {
     return async (req: Request, res: Response, next: NextFunction) => {
+        // If apiTokenAuthMiddleware already populated the session, skip cookie auth
+        if (req.session?.user) {
+            if (requireOrganization && !req.session.user.organizationId) {
+                return sendOrganizationRequired(req, res)
+            }
+            return next()
+        }
+
         try {
             const session = workos.userManagement.loadSealedSession({
                 sessionData: req.cookies[WORKOS_SESSION_COOKIE_NAME],

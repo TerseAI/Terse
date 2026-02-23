@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { Command } from "commander"
+import { generate } from "./generate.js"
 import { init } from "./init.js"
 
 const program = new Command()
@@ -16,6 +17,13 @@ program
     .argument("[project-name]", "Name for the project directory")
     .action(async (projectName?: string) => {
         await init(projectName)
+    })
+
+program
+    .command("generate")
+    .description("Generate TypeScript types for your connected integrations")
+    .action(async () => {
+        await generate()
     })
 
 await program.parseAsync()

@@ -189,6 +189,7 @@ app.use((err: Error & { type?: string; statusCode?: number }, req: Request, res:
     next(err)
 })
 app.use(cookieParser())
+app.use(apiTokenAuthMiddleware)
 
 // MARK: AUTH
 
@@ -597,7 +598,7 @@ app.delete(ApiRoutes.API_TOKENS.BY_ID.pattern, authMiddleware, async (req, res) 
 
 // MARK: SDK
 
-app.get(ApiRoutes.SDK.ME, apiTokenAuthMiddleware, async (req: Request, res: Response) => {
+app.get(ApiRoutes.SDK.ME, authMiddleware, async (req: Request, res: Response) => {
     const user = req.session?.user
     if (!user) {
         return res.status(401).json({ error: "Unauthorized" })
@@ -611,7 +612,7 @@ app.get(ApiRoutes.SDK.ME, apiTokenAuthMiddleware, async (req: Request, res: Resp
             firstName: workOSUser.firstName || null,
             lastName: workOSUser.lastName || null,
             displayName: [workOSUser.firstName, workOSUser.lastName].filter(Boolean).join(" ") || null,
-            organizationId: user.organizationId,
+            organizationId: user.organizationId
         })
     } catch (error) {
         logger.error("[/sdk/me] Failed to fetch user from WorkOS", { error })

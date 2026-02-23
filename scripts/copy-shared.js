@@ -7,6 +7,7 @@ const targets = [
   path.join(root, 'backend', 'src', 'shared'),
   path.join(root, 'frontend', 'src', 'shared'),
   path.join(root, 'packages', 'terse-sdk', 'src', 'shared'),
+  path.join(root, 'packages', 'terse-cli', 'src', 'shared'),
 ];
 
 for (const dest of targets) {
@@ -15,4 +16,4 @@ for (const dest of targets) {
   fs.cpSync(srcDir, dest, { recursive: true });
 }
 
-console.log('Copied shared folder to backend/src/shared, frontend/src/shared, and packages/terse-sdk/src/shared');
+console.log('Copied shared folder to backend/src/shared, frontend/src/shared, packages/terse-sdk/src/shared, and packages/terse-cli/src/shared');
