@@ -31,6 +31,7 @@ export class OutputFactory {
         [OutputConfigType.JIRA_TICKET, (readOnly = false) => new JiraTicketOutput(readOnly)],
         [OutputConfigType.SLACK_CHANNEL, (readOnly = false) => new SlackOutput(readOnly)],
         [OutputConfigType.GMAIL, (readOnly = false) => new GmailOutput(readOnly)],
+        [OutputConfigType.GMAIL_DRAFT, (readOnly = false) => new GmailDraftOutput(readOnly)],
         [OutputConfigType.TERSE, (readOnly = false) => new TerseSkillsOutput(readOnly)],
         [OutputConfigType.ATTIO, (readOnly = false) => new AttioOutput(readOnly)],
         [OutputConfigType.GITHUB, (readOnly = false) => new GithubSkillOutput(readOnly)],

@@ -10,6 +10,7 @@ import { AgentOutputWithConfigs, PrismaTransaction } from "../../types/prisma"
 import { PosthogConfigSchema, stripConfigForValidation } from "../../utility/configSchemas"
 import { convertOutputConfigTypeToConfigType } from "../../utility/typeConverters"
 import { Output, ToolboxEntry } from "../abstract/Output"
+
 import { getSessionEventsTool } from "./tools/getSessionEvents"
 import { searchEventsTool } from "./tools/searchEvents"
 import { searchLogsTool } from "./tools/searchLogs"

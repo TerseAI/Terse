@@ -10,6 +10,7 @@ import { AgentOutputWithConfigs, PrismaTransaction } from "../../types/prisma"
 import { DatadogConfigSchema, stripConfigForValidation } from "../../utility/configSchemas"
 import { convertOutputConfigTypeToConfigType } from "../../utility/typeConverters"
 import { Output, ToolboxEntry } from "../abstract/Output"
+
 import { aggregateRumEventsTool } from "./tools/aggregateRumEvents"
 import { listRumEventsTool } from "./tools/listRumEvents"
 import { searchDatadogLogsTool } from "./tools/searchLogs"

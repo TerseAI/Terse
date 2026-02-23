@@ -503,6 +503,7 @@ const OutputConfigSchema = z
         JiraConfigSchema,
         ConfluenceConfigSchema,
         GmailOutputConfigSchema,
+        GmailDraftOutputConfigSchema,
         AttioOutputConfigSchema,
         GitHubConfigSchema,
         PosthogConfigSchema,
