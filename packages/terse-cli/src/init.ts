@@ -69,6 +69,13 @@ export async function init(projectName?: string): Promise<void> {
 
     const envExists = fs.existsSync(path.join(targetDir, ".env"))
 
+    try {
+        await execAsync(`$terse generate`, { cwd: targetDir })
+        spinner.succeed(`Generated code`)
+    } catch {
+        spinner.warn(`Failed to generate code. Run ${chalk.cyan(`$terse generate`)} manually.`)
+    }
+
     console.log(`\n  ${chalk.green.bold("Done!")} Your Terse project is ready.\n`)
     console.log("  Next steps:\n")
 
