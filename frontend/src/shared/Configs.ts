@@ -19,7 +19,7 @@ export enum ConfigType {
     LAUNCHDARKLY = "launchdarkly",
     TERSE = "terse",
     WORKOS_INPUT = "workos_input",
-    WORKOS_KB = "workos_kb",
+    WORKOS_OUTPUT = "workos_output",
     ATTIO_OUTPUT = "attio_output"
 }
 
@@ -196,8 +196,8 @@ export const WorkOSInputConfigMetadata = {
     isOutput: false
 } as const satisfies ConfigDetails
 
-export const WorkOSKBConfigMetadata = {
-    configType: ConfigType.WORKOS_KB,
+export const WorkOSOutputConfigMetadata = {
+    configType: ConfigType.WORKOS_OUTPUT,
     name: "WorkOS",
     description: "Fetch and search users from your WorkOS account",
     integrationType: IntegrationType.WORKOS,
@@ -235,7 +235,7 @@ export const CONFIG_DETAILS: ConfigDetailsMap = {
     [ConfigType.LAUNCHDARKLY]: LaunchDarklyConfigMetadata,
     [ConfigType.TERSE]: TerseConfigMetadata,
     [ConfigType.WORKOS_INPUT]: WorkOSInputConfigMetadata,
-    [ConfigType.WORKOS_KB]: WorkOSKBConfigMetadata,
+    [ConfigType.WORKOS_OUTPUT]: WorkOSOutputConfigMetadata,
     [ConfigType.ATTIO_OUTPUT]: AttioOutputConfigMetadata
 } as const satisfies ConfigDetailsMap
 
@@ -678,9 +678,9 @@ export class WorkOSInputConfig implements ConfigInstance {
     }
 }
 
-export class WorkOSKBConfig implements ConfigInstance {
+export class WorkOSOutputConfig implements ConfigInstance {
     integrationType: IntegrationType = IntegrationType.WORKOS
-    configType: ConfigType = ConfigType.WORKOS_KB
+    configType: ConfigType = ConfigType.WORKOS_OUTPUT
 
     constructor(public integrationId: string) {}
 
@@ -737,7 +737,7 @@ export type ConfigMetadataMap = EnsureExhaustiveMetadata<{
     [ConfigType.LAUNCHDARKLY]: typeof LaunchDarklyConfig
     [ConfigType.TERSE]: typeof TerseConfig
     [ConfigType.WORKOS_INPUT]: typeof WorkOSInputConfig
-    [ConfigType.WORKOS_KB]: typeof WorkOSKBConfig
+    [ConfigType.WORKOS_OUTPUT]: typeof WorkOSOutputConfig
     [ConfigType.ATTIO_OUTPUT]: typeof AttioOutputConfig
 }>
 
@@ -760,6 +760,6 @@ export const CONFIG_METADATA: ConfigMetadataMap = {
     [ConfigType.LAUNCHDARKLY]: LaunchDarklyConfig,
     [ConfigType.TERSE]: TerseConfig,
     [ConfigType.WORKOS_INPUT]: WorkOSInputConfig,
-    [ConfigType.WORKOS_KB]: WorkOSKBConfig,
+    [ConfigType.WORKOS_OUTPUT]: WorkOSOutputConfig,
     [ConfigType.ATTIO_OUTPUT]: AttioOutputConfig
 } as const satisfies ConfigMetadataMap

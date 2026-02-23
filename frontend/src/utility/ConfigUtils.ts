@@ -20,7 +20,7 @@ import {
     TerseConfig,
     TimeTriggerConfig,
     WorkOSInputConfig,
-    WorkOSKBConfig
+    WorkOSOutputConfig
 } from "@/shared/Configs"
 
 /**
@@ -96,8 +96,8 @@ export function deserializeConfig(jsonConfig: any): ConfigInstance {
         case ConfigType.WORKOS_INPUT:
             const workosConfig = jsonConfig as WorkOSInputConfig
             return new WorkOSInputConfig(integrationId, workosConfig.eventTypes || [])
-        case ConfigType.WORKOS_KB:
-            return new WorkOSKBConfig(integrationId)
+        case ConfigType.WORKOS_OUTPUT:
+            return new WorkOSOutputConfig(integrationId)
         case ConfigType.ATTIO_OUTPUT:
             const attioOutputConfig = jsonConfig as AttioOutputConfig
             return new AttioOutputConfig(integrationId, attioOutputConfig.objectSlug)

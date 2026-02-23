@@ -4,14 +4,14 @@ import { OutputConfigType } from "@prisma/client"
 import { buildDummyOutputConfig } from "../../buildDummyConfigForCapability"
 import { type CapabilityDescription, CapabilityRole, extractToolMetadata, getConfigMetadata } from "../../capabilityHelpers"
 import { getLaunchDarklyAccessTokenOrThrow, validateLaunchDarklyEnvironmentsExist, validateLaunchDarklyProjectExists } from "../../integrations/LaunchDarklyIntegration"
-import { getLaunchDarklyFlagDetailsTool } from "../../knowledgeBase/launchdarkly/tools/getFeatureFlagDetails"
-import { listLaunchDarklyFlagsTool } from "../../knowledgeBase/launchdarkly/tools/listFeatureFlags"
 import { LaunchDarklyConfig } from "../../shared/Configs"
 import { IntegrationType } from "../../shared/Integrations"
 import { AgentOutputWithConfigs, PrismaTransaction } from "../../types/prisma"
 import { LaunchDarklyConfigSchema, stripConfigForValidation } from "../../utility/configSchemas"
 import { convertOutputConfigTypeToConfigType } from "../../utility/typeConverters"
 import { Output, ToolboxEntry } from "../abstract/Output"
+import { getLaunchDarklyFlagDetailsTool } from "./tools/getFeatureFlagDetails"
+import { listLaunchDarklyFlagsTool } from "./tools/listFeatureFlags"
 
 export class LaunchDarklySkillOutput extends Output<LaunchDarklyConfig> {
     constructor(readOnly = false) {

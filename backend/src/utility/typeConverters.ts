@@ -20,8 +20,7 @@ import {
     SlackConfig,
     SlackOutputConfig,
     TimeTriggerConfig,
-    WorkOSInputConfig,
-    WorkOSKBConfig
+    WorkOSInputConfig
 } from "../shared/Configs"
 import { IntegrationType } from "../shared/Integrations"
 import { RunHistoryStatus as SharedRunHistoryStatus } from "../shared/RunHistoryTypes"
@@ -408,8 +407,8 @@ export const convertConfigTypeToInputConfigType = (configType: ConfigType): Inpu
             throw new Error("LAUNCHDARKLY is not an input config type")
         case ConfigType.TERSE:
             throw new Error("TERSE is an output type, not an input type")
-        case ConfigType.WORKOS_KB:
-            throw new Error("WORKOS_KB is a knowledge base type, not an input type")
+        case ConfigType.WORKOS_OUTPUT:
+            throw new Error("WORKOS_OUTPUT is an output type, not an input type")
         case ConfigType.ATTIO_OUTPUT:
             throw new Error("ATTIO_OUTPUT is an output type, not an input type")
         default:

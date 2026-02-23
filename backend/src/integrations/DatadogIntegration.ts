@@ -1,4 +1,4 @@
-import { getDatadogCredentialsByIntegrationId } from "../knowledgeBase/datadog/datadogApiClient"
+import { getDatadogCredentialsByIntegrationId } from "../outputs/datadog/datadogApiClient"
 import logger from "../logger"
 import { db } from "../prismaClient"
 import { DatadogIntegration, DatadogIntegrationMetadata, IntegrationType } from "../shared/Integrations"

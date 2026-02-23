@@ -164,6 +164,8 @@ export function buildDummyOutputConfig(integration_id: string, payload: OutputDu
                     id: DUMMY_ID,
                     automation_input_id: null,
                     automation_output_id: DUMMY_ID,
+                    created_at: DUMMY_DATE,
+                    updated_at: DUMMY_DATE,
                     repository_ids: payload.github_config.repository_ids
                 }
             }
@@ -187,6 +189,8 @@ export function buildDummyOutputConfig(integration_id: string, payload: OutputDu
                     id: DUMMY_ID,
                     automation_knowledge_base_id: null,
                     automation_output_id: DUMMY_ID,
+                    created_at: DUMMY_DATE,
+                    updated_at: DUMMY_DATE,
                     project_id: payload.posthog_config.project_id,
                     project_name: payload.posthog_config.project_name
                 }
@@ -199,6 +203,8 @@ export function buildDummyOutputConfig(integration_id: string, payload: OutputDu
                     id: DUMMY_ID,
                     automation_knowledge_base_id: null,
                     automation_output_id: DUMMY_ID,
+                    created_at: DUMMY_DATE,
+                    updated_at: DUMMY_DATE,
                     default_indexes: payload.datadog_config.default_indexes
                 }
             }
@@ -210,6 +216,8 @@ export function buildDummyOutputConfig(integration_id: string, payload: OutputDu
                     id: DUMMY_ID,
                     automation_knowledge_base_id: null,
                     automation_output_id: DUMMY_ID,
+                    created_at: DUMMY_DATE,
+                    updated_at: DUMMY_DATE,
                     project_key: payload.launchdarkly_config.project_key,
                     environment_keys: payload.launchdarkly_config.environment_keys
                 }
