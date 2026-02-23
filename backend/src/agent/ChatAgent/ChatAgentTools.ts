@@ -44,6 +44,7 @@ import {
     SlackOutputConfigSchema,
     TimeTriggerConfigSchema,
     WorkOSInputConfigSchema,
+    WorkOSOutputConfigSchema,
     enforceNonSystemIntegrationId
 } from "../../utility/configSchemas"
 import { getInputConfigInclude, getOutputConfigInclude } from "../../utility/prismaIncludes"
@@ -508,7 +509,8 @@ const OutputConfigSchema = z
         GitHubConfigSchema,
         PosthogConfigSchema,
         LaunchDarklyConfigSchema,
-        DatadogConfigSchema
+        DatadogConfigSchema,
+        WorkOSOutputConfigSchema
     ])
     .superRefine((value, ctx) => {
         enforceNonSystemIntegrationId(value, ctx)

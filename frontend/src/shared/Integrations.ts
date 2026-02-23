@@ -125,9 +125,9 @@ export const LaunchDarklyIntegrationMetadata = {
 export const WorkOSIntegrationMetadata = {
     type: IntegrationType.WORKOS,
     name: "WorkOS",
-    description: "Trigger on user lifecycle events from your WorkOS account",
+    description: "Trigger on user lifecycle events and fetch/search users from your WorkOS account",
     isInput: true,
-    isOutput: false
+    isOutput: true
 } as const satisfies IntegrationDetails
 
 export const AttioIntegrationMetadata = {

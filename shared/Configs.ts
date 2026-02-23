@@ -483,8 +483,7 @@ export class GitHubConfig implements ConfigInstance {
     ) {}
 
     isComplete(): boolean {
-        // GitHub only requires integrationId (base check handled in isInputComplete)
-        return true
+        return (this.repositoryIds?.length ?? 0) > 0
     }
 
     formatForAgent(): string {
