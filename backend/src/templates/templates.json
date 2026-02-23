@@ -371,13 +371,6 @@
                     "integrationType": "slack"
                 },
                 "readOnly": false
-            },
-            {
-                "readOnly": true,
-                "config": {
-                    "configType": "POSTHOG",
-                    "integrationType": "posthog"
-                }
             }
         ],
         "requireApproval": false,
@@ -408,13 +401,6 @@
                     "integrationType": "slack"
                 },
                 "readOnly": false
-            },
-            {
-                "readOnly": true,
-                "config": {
-                    "configType": "launchdarkly",
-                    "integrationType": "launchdarkly"
-                }
             },
             {
                 "readOnly": true,
@@ -801,6 +787,13 @@
                     "configType": "github",
                     "integrationType": "github"
                 }
+            },
+            {
+                "readOnly": true,
+                "config": {
+                    "configType": "launchdarkly",
+                    "integrationType": "launchdarkly"
+                }
             }
         ],
         "requireApproval": false,
@@ -860,6 +853,13 @@
                     "integrationType": "slack"
                 },
                 "readOnly": false
+            },
+            {
+                "readOnly": true,
+                "config": {
+                    "configType": "POSTHOG",
+                    "integrationType": "posthog"
+                }
             }
         ],
         "requireApproval": false,
