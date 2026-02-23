@@ -247,7 +247,7 @@ WITH slack_kb_base AS (
         askb."channel_ids",
         askb."channel_names",
         askb."allow_dms",
-        askb."user_ids"
+        COALESCE(askb."user_ids", ARRAY[]::TEXT[]) AS user_ids
     FROM "automation_knowledge_bases" akb
     INNER JOIN "automation_slack_kb_configs" askb
         ON askb."automation_knowledge_base_id" = akb."id"
@@ -279,11 +279,18 @@ slack_dm_rows AS (
         NULL::TEXT AS channel_id,
         NULL::TEXT AS channel_name,
         skb."user_ids" AS user_ids,
-        ('mig_sl_' || skb."kb_id" || ':dm:' || array_to_string(skb."user_ids", ',')) AS output_id,
-        ('mig_sl_cfg_' || skb."kb_config_id" || ':dm:' || array_to_string(skb."user_ids", ',')) AS output_config_id
+        CASE
+            WHEN COALESCE(array_length(skb."user_ids", 1), 0) > 0
+                THEN ('mig_sl_' || skb."kb_id" || ':dm:' || array_to_string(skb."user_ids", ','))
+            ELSE ('mig_sl_' || skb."kb_id" || ':dm:any')
+        END AS output_id,
+        CASE
+            WHEN COALESCE(array_length(skb."user_ids", 1), 0) > 0
+                THEN ('mig_sl_cfg_' || skb."kb_config_id" || ':dm:' || array_to_string(skb."user_ids", ','))
+            ELSE ('mig_sl_cfg_' || skb."kb_config_id" || ':dm:any')
+        END AS output_config_id
     FROM slack_kb_base skb
     WHERE skb."allow_dms" = TRUE
-      AND COALESCE(array_length(skb."user_ids", 1), 0) > 0
 )
 SELECT * FROM slack_channel_rows
 UNION ALL
@@ -317,7 +324,7 @@ SELECT
     sc."output_id",
     sc."channel_id",
     sc."channel_name",
-    false,
+    sc."channel_id" IS NULL,
     sc."user_ids",
     CURRENT_TIMESTAMP,
     CURRENT_TIMESTAMP

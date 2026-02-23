@@ -312,8 +312,9 @@ export const convertPrismaOutputConfigToConfigInstance = (channelOutput: AgentOu
             integrationId,
             channelOutput.slack_config.channel_id || undefined,
             channelOutput.slack_config.channel_name || undefined,
-            channelOutput.slack_config.user_ids?.length ? channelOutput.slack_config.user_ids : undefined,
-            undefined // userNames not persisted in DB; can be derived in UI
+            channelOutput.slack_config.user_ids ?? [],
+            undefined, // userNames not persisted in DB; can be derived in UI
+            channelOutput.slack_config.listen_to_user_dms || false
         )
     }
 

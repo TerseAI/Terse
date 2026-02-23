@@ -68,14 +68,15 @@ export const SlackConfigSchema = BaseConfigSchema.extend({
 export const SlackOutputConfigSchema = BaseConfigSchema.extend({
     configType: z.literal(ConfigType.SLACK_OUTPUT),
     integrationType: z.literal(IntegrationType.SLACK),
-    channelId: NonEmptyString.nullable().optional().describe("Slack channel or DM channel ID. Required if userIds is empty; otherwise optional (DM channel IDs are resolved from userIds)."),
+    channelId: NonEmptyString.nullable().optional().describe("Slack channel or DM channel ID. Required unless listenToUserDms=true or at least one userId is provided."),
     channelName: NonEmptyString.nullable().optional().describe("The channel display name. From fetchResourcesForIntegration, use resources[].name."),
+    listenToUserDms: z.boolean().nullable().optional().describe("Set true to include direct messages as scope. Leave userIds empty to include all DMs, or provide userIds to scope to specific users."),
     userIds: z
         .array(NonEmptyString)
         .nullable()
         .optional()
         .describe(
-            "Slack user IDs to send DMs to; used when destination is direct messages. Get IDs via fetchResourcesForIntegration with integrationType=SLACK and options.slack.objectType='users'. At least one of channelId or userIds required."
+            "Slack user IDs for DMs. Used as DM recipients for sending and as an optional DM user filter when listenToUserDms=true. Get IDs via fetchResourcesForIntegration with integrationType=SLACK and options.slack.objectType='users'."
         )
 })
 

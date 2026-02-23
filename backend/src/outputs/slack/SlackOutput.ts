@@ -44,6 +44,7 @@ export class SlackOutput extends Output<SlackOutputConfig> {
                 integrationId: "Slack integration connection",
                 channelId: "Slack channel or DM channel ID",
                 channelName: "Channel display name",
+                listenToUserDms: "Set true to include DM conversations as readable scope (all DMs if userIds is empty)",
                 userIds: "Slack user IDs for DMs (when sending to DMs instead of channel)"
             },
             systemInstructions
@@ -65,8 +66,9 @@ export class SlackOutput extends Output<SlackOutputConfig> {
         SlackOutputConfigSchema.parse(stripConfigForValidation(output))
         const hasChannel = !!(output.channelId && output.channelId.trim())
         const hasUsers = (output.userIds?.length ?? 0) > 0
-        if (!hasChannel && !hasUsers) {
-            throw new Error("Invalid output config for slack_output: provide either channelId or at least one userId (for DMs)")
+        const hasDmScope = output.listenToUserDms === true
+        if (!hasChannel && !hasUsers && !hasDmScope) {
+            throw new Error("Invalid output config for slack_output: provide channelId, at least one userId, or set listenToUserDms=true")
         }
         const token = await getSlackAccessTokenOrThrow(output.integrationId)
         await validateSlackChannelsExist(token, hasChannel ? [output.channelId!] : [])
@@ -79,7 +81,7 @@ export class SlackOutput extends Output<SlackOutputConfig> {
                 automation_output_id: channelOutputId,
                 channel_id: output.channelId || null,
                 channel_name: output.channelName || null,
-                listen_to_user_dms: false, // Not applicable for outputs
+                listen_to_user_dms: output.listenToUserDms === true,
                 user_ids: output.userIds ?? []
             }
         })
@@ -96,22 +98,29 @@ export class SlackOutput extends Output<SlackOutputConfig> {
             const channelId = config.slack_config.channel_id
             const channelName = config.slack_config.channel_name
             const userIds = config.slack_config.user_ids ?? []
+            const listensToUserDms = config.slack_config.listen_to_user_dms === true
             if (channelId) {
                 configList.push(`  • Integration ID: ${config.integration_id} - Channel ID: ${channelId}${channelName ? ` (${channelName})` : ""}`)
             }
-            if (userIds.length > 0) {
+            if (listensToUserDms && userIds.length === 0) {
+                configList.push(`  • Integration ID: ${config.integration_id} - Direct messages: all users`)
+            } else if (listensToUserDms && userIds.length > 0) {
+                configList.push(`  • Integration ID: ${config.integration_id} - Direct messages (user filter): ${userIds.join(", ")}`)
+            } else if (userIds.length > 0) {
                 configList.push(`  • Integration ID: ${config.integration_id} - User IDs for DMs: ${userIds.join(", ")}`)
             }
         }
 
         if (configList.length === 0) {
-            throw new Error("No Slack output destinations (channel or user IDs for DMs).")
+            throw new Error("No Slack output scope configured (channel, DM users, or DM scope).")
         }
 
         const sections: string[] = []
         sections.push("Available configurations:")
         sections.push(configList.join("\n"))
-        sections.push("\nWhen calling Slack tools, you MUST include the `integrationId` and `channelId` parameters matching one of the configurations listed above.")
+        sections.push(
+            "\nWhen calling Slack tools, you MUST include `integrationId` from one of the configurations listed above. For channel-scoped configs, use the configured `channelId`. For DM-scoped configs, use `slack_list_channels` to discover DM channel IDs before calling read/send tools."
+        )
         sections.push("\nUse slack_list_users to resolve Slack user IDs to names when needed.")
         sections.push("\n" + SLACK_OUTPUT_INSTRUCTIONS)
         return sections.join("\n")
@@ -122,7 +131,7 @@ const SLACK_OUTPUT_INSTRUCTIONS = `
 === SLACK OUTPUT ===
 
 TOOLS:
-- slack_send_message: Send messages to Slack channels or DMs. Use channelId from the listed configurations. Supports plain text (mrkdwn) or Block Kit (buttons, structured layouts).
+- slack_send_message: Send messages to Slack channels or DMs. Use configured channel IDs when provided, otherwise discover DM channel IDs with slack_list_channels. Supports plain text (mrkdwn) or Block Kit (buttons, structured layouts).
 - slack_list_users: List workspace users (id and name). Use to resolve user IDs to names when needed.
 
 MESSAGE TYPES:

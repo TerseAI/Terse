@@ -80,7 +80,14 @@ export function deserializeConfig(jsonConfig: any): ConfigInstance {
             return new TimeTriggerConfig(timeTriggerConfig.cronExpression)
         case ConfigType.SLACK_OUTPUT:
             const slackOutputConfig = jsonConfig as SlackOutputConfig
-            return new SlackOutputConfig(integrationId, slackOutputConfig.channelId, slackOutputConfig.channelName, slackOutputConfig.userIds, slackOutputConfig.userNames)
+            return new SlackOutputConfig(
+                integrationId,
+                slackOutputConfig.channelId,
+                slackOutputConfig.channelName,
+                slackOutputConfig.userIds,
+                slackOutputConfig.userNames,
+                slackOutputConfig.listenToUserDms
+            )
         case ConfigType.GMAIL_OUTPUT:
             return new GmailOutputConfig(integrationId)
         case ConfigType.GMAIL_DRAFT_OUTPUT:

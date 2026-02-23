@@ -336,18 +336,22 @@ export class SlackOutputConfig implements ConfigInstance {
         public channelId?: string,
         public channelName?: string,
         public userIds?: string[],
-        public userNames?: string[]
+        public userNames?: string[],
+        public listenToUserDms: boolean = false
     ) {}
 
     isComplete(): boolean {
-        // Slack output is complete if channelId is set or at least one user (DM destination) is set
-        return !!(this.channelId || (this.userIds?.length ?? 0) > 0)
+        // Slack output is complete if a channel is set, DM users are set, or "listen to user DMs" is enabled.
+        return !!(this.channelId || (this.userIds?.length ?? 0) > 0 || this.listenToUserDms)
     }
 
     formatForAgent(): string {
         const parts = [`Type: Slack Output`, `Integration ID: ${this.integrationId}`]
         if (this.channelId) {
             parts.push(`Channel ID: ${this.channelId}`)
+        }
+        if (this.listenToUserDms) {
+            parts.push(`Listen to user DMs: Yes`)
         }
         if (this.userIds?.length) {
             parts.push(`DM user IDs: ${this.userIds.join(", ")}`)

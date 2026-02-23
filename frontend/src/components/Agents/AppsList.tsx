@@ -49,9 +49,6 @@ export function AppsList({ agent }: AppsListProps) {
             {/* Arrow between triggers and skills */}
             {hasTriggers && hasOutput && <ChevronRight className="w-3 h-3 text-muted-foreground mx-0.5" />}
 
-            {/* Arrow between read-only and write skills */}
-            {hasOutput && <ChevronRight className="w-3 h-3 text-muted-foreground mx-0.5" />}
-
             {/* Outputs */}
             {Array.from(outputIntegrationCounts.entries()).map(([integration, count], idx) => (
                 <div key={idx} className="flex items-center">
