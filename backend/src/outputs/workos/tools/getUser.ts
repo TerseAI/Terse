@@ -7,7 +7,7 @@ import logger from "../../../logger"
 import { IntegrationType } from "../../../shared/Integrations"
 import { ToolName } from "../../../tools/ToolNames"
 import { Session } from "../../../types/session"
-import { getWorkOSApiKeyByIntegrationId, getWorkOSUser } from "../workosKbApiClient"
+import { getWorkOSApiKeyByIntegrationId, getWorkOSUser } from "../workosApiClient"
 
 export const getWorkOSUserTool = tool({
     name: ToolName.WORKOS_GET_USER,

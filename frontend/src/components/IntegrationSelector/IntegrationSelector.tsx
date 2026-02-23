@@ -17,6 +17,7 @@ import { SlackIntegration } from "./SlackIntegration"
 import { SlackOutputIntegration } from "./SlackOutputIntegration"
 import { TimeTriggerIntegration } from "./TimeTriggerIntegration"
 import { WorkOSIntegration } from "./WorkOSIntegration"
+import { WorkOSOutputIntegration } from "./WorkOSOutputIntegration"
 import { InputConfigSelectorProps } from "./types"
 
 export function IntegrationSelector(props: InputConfigSelectorProps) {
@@ -68,6 +69,9 @@ export function IntegrationSelector(props: InputConfigSelectorProps) {
 
         case ConfigType.WORKOS_INPUT:
             return <WorkOSIntegration input={props.input} variant={props.variant} setConfig={props.setConfig} />
+
+        case ConfigType.WORKOS_OUTPUT:
+            return <WorkOSOutputIntegration input={props.input} variant={props.variant} setConfig={props.setConfig} />
 
         case ConfigType.ATTIO_OUTPUT:
             return <AttioOutputIntegration input={props.input} variant={props.variant} setConfig={props.setConfig} />

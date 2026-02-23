@@ -482,6 +482,8 @@ export const convertConfigTypeToOutputConfigType = (configType: ConfigType): Out
             return OutputConfigType.TERSE
         case ConfigType.ATTIO_OUTPUT:
             return OutputConfigType.ATTIO
+        case ConfigType.WORKOS_OUTPUT:
+            return OutputConfigType.WORKOS
         default:
             throw new Error(`ConfigType ${configType} is not a valid output config type.`)
     }

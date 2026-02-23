@@ -202,7 +202,7 @@ export const WorkOSOutputConfigMetadata = {
     description: "Fetch and search users from your WorkOS account",
     integrationType: IntegrationType.WORKOS,
     isInput: false,
-    isOutput: false
+    isOutput: true
 } as const satisfies ConfigDetails
 
 export const AttioOutputConfigMetadata = {
