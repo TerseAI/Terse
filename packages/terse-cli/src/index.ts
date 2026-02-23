@@ -3,6 +3,7 @@
 import { Command } from "commander"
 import { generate } from "./generate.js"
 import { init } from "./init.js"
+import { run } from "./run.js"
 
 const program = new Command()
 
@@ -24,6 +25,14 @@ program
     .description("Generate TypeScript types for your connected integrations")
     .action(async () => {
         await generate()
+    })
+
+program
+    .command("run")
+    .description("Execute a job's onTrigger locally for testing")
+    .argument("[job-name]", "Name of the job to run (auto-selects if only one exists)")
+    .action(async (jobName?: string) => {
+        await run(jobName)
     })
 
 await program.parseAsync()

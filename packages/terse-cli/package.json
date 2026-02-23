@@ -18,7 +18,8 @@
     "chalk": "^5.0.0",
     "commander": "^13.0.0",
     "ora": "^8.0.0",
-    "terse-sdk": "file:../terse-sdk"
+    "terse-sdk": "file:../terse-sdk",
+    "tsx": "^4.0.0"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

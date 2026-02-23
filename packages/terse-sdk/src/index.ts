@@ -5,6 +5,9 @@ import type { RunHistoryAction } from "./shared/RunHistoryTypes"
 // Re-export SDK-specific types
 export type { InputEvent, ToolboxEntry } from "./types"
 
+// Re-export mocks for CLI usage
+export { MockInputEvent } from "./mocks"
+
 // Re-export shared types for consumer convenience
 export {
     ConfigType,
@@ -62,12 +65,18 @@ export type CreateJobParameters = {
     webhookURL: string
 }
 
+/** Internal job registry — lives on globalThis so it survives across module instances (e.g. tsx loaders). */
+const _global = globalThis as unknown as { __terse_jobRegistry?: Map<string, CreateJobParameters> }
+_global.__terse_jobRegistry ??= new Map<string, CreateJobParameters>()
+export const _jobRegistry: Map<string, CreateJobParameters> = _global.__terse_jobRegistry
+
 export class Terse {
     constructor() {
         // fetch api_key from env
     }
 
     createJob(params: CreateJobParameters) {
+        _jobRegistry.set(params.name, params)
         // Deploy the job, run code in Modal Sandbox etc...
     }
 }
