@@ -522,7 +522,6 @@ const AgentTriggerSchema = z
 
 const AgentOutputSchema = z
     .object({
-        readOnly: z.boolean().default(false).describe("Whether the output should use read-only tools only or not."),
         config: OutputConfigSchema
     })
     .strict()

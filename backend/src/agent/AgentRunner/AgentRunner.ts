@@ -60,9 +60,6 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance> {
 
         outputs.forEach(output => {
             output.toolbox.forEach(entry => {
-                if (output.readOnly && !entry.isReadOnly) {
-                    return
-                }
                 toolsMap.set(entry.tool.name, entry.tool)
             })
         })
@@ -335,9 +332,6 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance> {
     private buildToolMetadataMap(): void {
         this.outputs.forEach(output => {
             output.toolbox.forEach(entry => {
-                if (output.readOnly && !entry.isReadOnly) {
-                    return
-                }
                 this.toolMetadataMap.set(entry.tool.name, {
                     integration: entry.integration,
                     isReadOnly: entry.isReadOnly

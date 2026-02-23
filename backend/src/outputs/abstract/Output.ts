@@ -15,13 +15,11 @@ export interface ToolboxEntry {
 
 export abstract class Output<TConfig extends ConfigInstance> {
     integration: OutputConfigType
-    readOnly: boolean
     readonly toolbox: readonly ToolboxEntry[]
     configs: AgentOutputWithConfigs[] = []
 
-    constructor(integration: OutputConfigType, toolbox: readonly ToolboxEntry[], readOnly = false) {
+    constructor(integration: OutputConfigType, toolbox: readonly ToolboxEntry[]) {
         this.integration = integration
-        this.readOnly = readOnly
         this.toolbox = toolbox
     }
 

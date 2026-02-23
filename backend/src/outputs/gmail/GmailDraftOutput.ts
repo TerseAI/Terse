@@ -13,9 +13,9 @@ import { Output, ToolboxEntry } from "../abstract/Output"
 import { gmailCreateDraftTool } from "./tools/createDraft"
 
 export class GmailDraftOutput extends Output<GmailDraftOutputConfig> {
-    constructor(readOnly = false) {
+    constructor() {
         const toolbox: ToolboxEntry[] = [{ tool: gmailCreateDraftTool as Tool, isReadOnly: false, integration: IntegrationType.GMAIL, displayName: "Create draft" }]
-        super(OutputConfigType.GMAIL_DRAFT, toolbox, readOnly)
+        super(OutputConfigType.GMAIL_DRAFT, toolbox)
     }
 
     getCapabilityDescription(): CapabilityDescription {

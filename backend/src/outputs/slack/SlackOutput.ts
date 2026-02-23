@@ -17,14 +17,14 @@ import { slackReadConversationTool } from "./tools/readConversation"
 import { slackSendMessageTool } from "./tools/sendMessage"
 
 export class SlackOutput extends Output<SlackOutputConfig> {
-    constructor(readOnly = false) {
+    constructor() {
         const toolbox: ToolboxEntry[] = [
             { tool: slackSendMessageTool as Tool, isReadOnly: false, integration: IntegrationType.SLACK, displayName: "Send message" },
             { tool: slackListUsersTool as Tool, isReadOnly: true, integration: IntegrationType.SLACK, displayName: "List users" },
             { tool: slackListChannelsTool as Tool, isReadOnly: true, integration: IntegrationType.SLACK, displayName: "List channels" },
             { tool: slackReadConversationTool as Tool, isReadOnly: true, integration: IntegrationType.SLACK, displayName: "Read conversation" }
         ]
-        super(OutputConfigType.SLACK_CHANNEL, toolbox, readOnly)
+        super(OutputConfigType.SLACK_CHANNEL, toolbox)
     }
 
     getCapabilityDescription(): CapabilityDescription {

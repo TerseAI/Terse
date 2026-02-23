@@ -3,12 +3,7 @@ import "dotenv/config"
 
 import { db } from "../src/prismaClient"
 
-const TARGET_EVENT_TYPES: RunHistoryChatEventType[] = [
-    RunHistoryChatEventType.FilterResult,
-    RunHistoryChatEventType.ToolApprovalRequest,
-    RunHistoryChatEventType.ToolApprovalResponse,
-    RunHistoryChatEventType.RunError
-]
+const TARGET_EVENT_TYPES: RunHistoryChatEventType[] = [RunHistoryChatEventType.FilterResult, RunHistoryChatEventType.ToolApprovalRequest, RunHistoryChatEventType.ToolApprovalResponse, RunHistoryChatEventType.RunError]
 
 type ChatEventRow = {
     id: string

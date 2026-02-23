@@ -17,7 +17,7 @@ import { searchDatadogLogsTool } from "./tools/searchLogs"
 import { searchRumEventsTool } from "./tools/searchRumEvents"
 
 export class DatadogSkillOutput extends Output<DatadogConfig> {
-    constructor(readOnly = false) {
+    constructor() {
         const toolbox: ToolboxEntry[] = [
             { tool: searchDatadogLogsTool as Tool, isReadOnly: true, integration: IntegrationType.DATADOG, displayName: "Search logs" },
             { tool: listRumEventsTool as Tool, isReadOnly: true, integration: IntegrationType.DATADOG, displayName: "List events" },
@@ -25,7 +25,7 @@ export class DatadogSkillOutput extends Output<DatadogConfig> {
             { tool: aggregateRumEventsTool as Tool, isReadOnly: true, integration: IntegrationType.DATADOG, displayName: "Aggregate RUM events" }
         ]
 
-        super(OutputConfigType.DATADOG, toolbox, readOnly)
+        super(OutputConfigType.DATADOG, toolbox)
     }
 
     getCapabilityDescription(): CapabilityDescription {

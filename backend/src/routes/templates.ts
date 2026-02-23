@@ -2,14 +2,12 @@ import { Request, Response } from "express"
 
 import logger from "../logger"
 import { AgentTemplate } from "../shared/types"
-import { parseTemplates } from "../templates/AgentTemplateSchema"
+import { validateTemplates } from "../templates/AgentTemplateSchema"
 import templates from "../templates/templates.json" with { type: "json" }
-
-let parsedTemplates: AgentTemplate[] = []
 
 // Validate templates at module load time - this will throw and prevent server startup if invalid
 try {
-    parsedTemplates = parseTemplates(templates) as AgentTemplate[]
+    validateTemplates(templates)
     logger.info(`✅ Successfully validated ${templates.length} template(s)`)
 } catch (error) {
     logger.error("❌ Template validation failed at startup", { error })
@@ -19,7 +17,9 @@ try {
 
 export async function getTemplates(req: Request, res: Response): Promise<void> {
     try {
-        res.status(200).json(parsedTemplates)
+        // Templates are already validated at startup, but validate again for safety
+        validateTemplates(templates)
+        res.status(200).json(templates as AgentTemplate[])
     } catch (error) {
         logger.error("Error fetching templates", { error })
         res.status(500).json({ error: "Failed to fetch templates" })
@@ -34,7 +34,6 @@ type PublicTemplate = Pick<AgentTemplate, "id" | "name" | "description" | "categ
         }
     }>
     outputs: Array<{
-        readOnly: boolean
         config: {
             configType: AgentTemplate["outputs"][number]["config"]["configType"]
             integrationType: AgentTemplate["outputs"][number]["config"]["integrationType"]
@@ -44,7 +43,9 @@ type PublicTemplate = Pick<AgentTemplate, "id" | "name" | "description" | "categ
 
 export async function getPublicTemplates(req: Request, res: Response): Promise<void> {
     try {
-        const publicTemplates: PublicTemplate[] = parsedTemplates.map(template => ({
+        validateTemplates(templates)
+
+        const publicTemplates: PublicTemplate[] = (templates as AgentTemplate[]).map(template => ({
             id: template.id,
             name: template.name,
             description: template.description,
@@ -57,7 +58,6 @@ export async function getPublicTemplates(req: Request, res: Response): Promise<v
                 }
             })),
             outputs: template.outputs.map(output => ({
-                readOnly: output.readOnly,
                 config: {
                     configType: output.config.configType,
                     integrationType: output.config.integrationType

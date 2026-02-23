@@ -13,9 +13,9 @@ import { Output, ToolboxEntry } from "../abstract/Output"
 import { gmailSendEmailTool } from "./tools/sendEmail"
 
 export class GmailOutput extends Output<GmailOutputConfig> {
-    constructor(readOnly = false) {
+    constructor() {
         const toolbox: ToolboxEntry[] = [{ tool: gmailSendEmailTool as Tool, isReadOnly: false, integration: IntegrationType.GMAIL, displayName: "Send email" }]
-        super(OutputConfigType.GMAIL, toolbox, readOnly)
+        super(OutputConfigType.GMAIL, toolbox)
     }
 
     getCapabilityDescription(): CapabilityDescription {

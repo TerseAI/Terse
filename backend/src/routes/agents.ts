@@ -197,7 +197,6 @@ export async function applyAgentForUser(userId: string, organizationId: string, 
             const newOutput = await tx.automation_outputs.create({
                 data: {
                     automation_id: newAgent.id,
-                    read_only: output.readOnly,
                     config_type: convertConfigTypeToOutputConfigType(outputConfigType),
                     integration_id: outputIntegrationId
                 }
@@ -385,8 +384,7 @@ export async function updateAgentForUser(userId: string, organizationId: string,
                     data: {
                         automation_id: agentId,
                         config_type: convertConfigTypeToOutputConfigType(outputConfigType),
-                        integration_id: outputIntegrationId,
-                        read_only: output.readOnly
+                        integration_id: outputIntegrationId
                     }
                 })
 
@@ -770,7 +768,6 @@ function transformAgentToFrontendFormat(agent: AgentWithRelations & Partial<Agen
         })),
         outputs: agent.outputs.map(output => ({
             id: output.id,
-            readOnly: output.read_only,
             config: convertPrismaOutputConfigToConfigInstance(output)
         })),
         notificationSettings: agent.notification_settings

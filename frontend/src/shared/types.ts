@@ -364,7 +364,6 @@ export type AgentTrigger = {
 
 export type AgentOutput = {
     id: string
-    readOnly: boolean
     config: ConfigInstance
 }
 
@@ -380,7 +379,6 @@ export type TransientAgentTrigger = {
 
 export type TransientAgentOutput = {
     id: string
-    readOnly: boolean
     config?: ConfigInstance
     configType: ConfigType
 }
@@ -396,7 +394,6 @@ export type TemplateTrigger = {
 }
 
 export type TemplateOutput = {
-    readOnly: boolean
     config: TemplateConfigRef
 }
 

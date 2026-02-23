@@ -17,7 +17,7 @@ import { searchLogsTool } from "./tools/searchLogs"
 import { searchSessionsTool } from "./tools/searchSessions"
 
 export class PosthogSkillOutput extends Output<PosthogConfig> {
-    constructor(readOnly = false) {
+    constructor() {
         const toolbox: ToolboxEntry[] = [
             { tool: searchLogsTool as Tool, isReadOnly: true, integration: IntegrationType.POSTHOG, displayName: "Search logs" },
             { tool: searchSessionsTool as Tool, isReadOnly: true, integration: IntegrationType.POSTHOG, displayName: "Search sessions" },
@@ -25,7 +25,7 @@ export class PosthogSkillOutput extends Output<PosthogConfig> {
             { tool: searchEventsTool as Tool, isReadOnly: true, integration: IntegrationType.POSTHOG, displayName: "Search events" }
         ]
 
-        super(OutputConfigType.POSTHOG, toolbox, readOnly)
+        super(OutputConfigType.POSTHOG, toolbox)
     }
 
     getCapabilityDescription(): CapabilityDescription {

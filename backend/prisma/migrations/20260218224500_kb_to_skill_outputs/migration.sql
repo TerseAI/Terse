@@ -47,11 +47,10 @@ INNER JOIN "automation_github_kb_configs" agk
     ON agk."automation_knowledge_base_id" = akb."id"
 WHERE akb."config_type" = 'GITHUB';
 
-INSERT INTO "automation_outputs" ("id", "automation_id", "read_only", "config_type", "integration_id", "created_at", "updated_at")
+INSERT INTO "automation_outputs" ("id", "automation_id",  "config_type", "integration_id", "created_at", "updated_at")
 SELECT
     gk."output_id",
     gk."automation_id",
-    true,
     'GITHUB'::"OutputConfigType",
     gk."integration_id",
     CURRENT_TIMESTAMP,
@@ -126,11 +125,10 @@ INNER JOIN "automation_knowledge_bases" akb
     ON akb."id" = alc."automation_knowledge_base_id"
 WHERE alc."automation_knowledge_base_id" IS NOT NULL;
 
-INSERT INTO "automation_outputs" ("id", "automation_id", "read_only", "config_type", "integration_id", "created_at", "updated_at")
+INSERT INTO "automation_outputs" ("id", "automation_id", "config_type", "integration_id", "created_at", "updated_at")
 SELECT
     soc."output_id",
     soc."automation_id",
-    true,
     soc."output_type",
     soc."integration_id",
     CURRENT_TIMESTAMP,
@@ -195,11 +193,10 @@ INNER JOIN "automation_linear_kb_configs" alk
     ON alk."automation_knowledge_base_id" = akb."id"
 WHERE akb."config_type" = 'LINEAR';
 
-INSERT INTO "automation_outputs" ("id", "automation_id", "read_only", "config_type", "integration_id", "created_at", "updated_at")
+INSERT INTO "automation_outputs" ("id", "automation_id",  "config_type", "integration_id", "created_at", "updated_at")
 SELECT
     lk."output_id",
     lk."automation_id",
-    true,
     'LINEAR_TICKET'::"OutputConfigType",
     lk."integration_id",
     CURRENT_TIMESTAMP,
@@ -292,11 +289,10 @@ SELECT * FROM slack_channel_rows
 UNION ALL
 SELECT * FROM slack_dm_rows;
 
-INSERT INTO "automation_outputs" ("id", "automation_id", "read_only", "config_type", "integration_id", "created_at", "updated_at")
+INSERT INTO "automation_outputs" ("id", "automation_id",  "config_type", "integration_id", "created_at", "updated_at")
 SELECT
     sc."output_id",
     sc."automation_id",
-    true,
     'SLACK_CHANNEL'::"OutputConfigType",
     sc."integration_id",
     CURRENT_TIMESTAMP,

@@ -13,13 +13,13 @@ import { getWorkOSUserTool } from "./tools/getUser"
 import { listWorkOSUsersTool } from "./tools/listUsers"
 
 export class WorkOSOutput extends Output<WorkOSOutputConfig> {
-    constructor(readOnly: boolean) {
+    constructor() {
         const toolbox: ToolboxEntry[] = [
             { tool: listWorkOSUsersTool as Tool, isReadOnly: true, integration: IntegrationType.WORKOS, displayName: "List users" },
             { tool: getWorkOSUserTool as Tool, isReadOnly: true, integration: IntegrationType.WORKOS, displayName: "Get user" }
         ]
 
-        super(OutputConfigType.WORKOS, toolbox, readOnly)
+        super(OutputConfigType.WORKOS, toolbox)
     }
 
     getCapabilityDescription(): CapabilityDescription {

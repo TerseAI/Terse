@@ -234,10 +234,7 @@ export async function buildChatAgentSystemPrompt(userId: string, organizationId:
     - **If the agent has ONLY cron/scheduled triggers:** Ask the user if there is anything particular they want to test or focus on for this run, and have them confirm before triggering. If they provide context, pass it as manualContext. If they just want to run it as-is, trigger immediately.
     - **If the agent has ONLY event-based triggers:** Proceed as usual—call getSampleEvents, show the options, and let the user pick one to run.
     - **If the agent has BOTH cron/scheduled AND event-based triggers:** Ask the user which trigger they'd like to test: the scheduled run or an event-based trigger. Then follow the appropriate flow above based on their choice.
-
-    ## Read only outputs/skills
-    Set the readOnly flag to true when the user wants to use a read only output/skill. This will disable tools for that output/skill that are not read only.
-
+    
     ## Remember
     Be helpful and conversational. Listen to what the user actually wants. Only create agents when they express a need for automation - a simple "hi" just needs a friendly greeting back!
     `

@@ -23,7 +23,7 @@ import { summarizeGitHubPullRequestDiffTool } from "./tools/summarizePullRequest
  * the same read-only toolbox that used to live in GitHub knowledge bases.
  */
 export class GithubSkillOutput extends Output<GitHubConfig> {
-    constructor(readOnly = false) {
+    constructor() {
         const toolbox: ToolboxEntry[] = [
             { tool: searchGitHubCodeTool as Tool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: "Search code" },
             { tool: grepGitHubCodeTool as Tool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: "Grep code" },
@@ -34,7 +34,7 @@ export class GithubSkillOutput extends Output<GitHubConfig> {
             { tool: summarizeGitHubPullRequestDiffTool as Tool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: "Summarize PR diff" }
         ]
 
-        super(OutputConfigType.GITHUB, toolbox, readOnly)
+        super(OutputConfigType.GITHUB, toolbox)
     }
 
     getCapabilityDescription(): CapabilityDescription {

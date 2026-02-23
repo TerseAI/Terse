@@ -17,13 +17,13 @@ import { attioQueryRecordsTool } from "./tools/queryRecords"
 import { attioUpsertRecordTool } from "./tools/upsertRecord"
 
 export class AttioOutput extends Output<AttioOutputConfig> {
-    constructor(readOnly = false) {
+    constructor() {
         const toolbox: ToolboxEntry[] = [
             { tool: attioListObjectsTool as Tool, isReadOnly: true, integration: IntegrationType.ATTIO, displayName: "List objects" },
             { tool: attioQueryRecordsTool as Tool, isReadOnly: true, integration: IntegrationType.ATTIO, displayName: "Query records" },
             { tool: attioUpsertRecordTool as Tool, isReadOnly: false, integration: IntegrationType.ATTIO, displayName: "Upsert record" }
         ]
-        super(OutputConfigType.ATTIO, toolbox, readOnly)
+        super(OutputConfigType.ATTIO, toolbox)
     }
 
     getCapabilityDescription(): CapabilityDescription {
