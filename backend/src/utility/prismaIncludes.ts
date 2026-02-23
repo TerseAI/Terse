@@ -34,6 +34,7 @@ export function getOutputConfigInclude() {
         datadog_config: true,
         launchdarkly_config: true,
         figma_config: true,
+        workos_output_config: true,
         attio_config: true
     } as const
 }

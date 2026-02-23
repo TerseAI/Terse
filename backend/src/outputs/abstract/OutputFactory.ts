@@ -15,6 +15,7 @@ import { NotionOutput } from "../notion/NotionOutput"
 import { PosthogSkillOutput } from "../posthog/PosthogSkillOutput"
 import { SlackOutput } from "../slack/SlackOutput"
 import { TerseSkillsOutput } from "../terse/TerseSkillsOutput"
+import { WorkOSOutput } from "../workos/WorkOSOutput"
 
 import { Output } from "./Output"
 
@@ -37,7 +38,8 @@ export class OutputFactory {
         [OutputConfigType.GITHUB, (readOnly = false) => new GithubSkillOutput(readOnly)],
         [OutputConfigType.POSTHOG, (readOnly = false) => new PosthogSkillOutput(readOnly)],
         [OutputConfigType.DATADOG, (readOnly = false) => new DatadogSkillOutput(readOnly)],
-        [OutputConfigType.LAUNCHDARKLY, (readOnly = false) => new LaunchDarklySkillOutput(readOnly)]
+        [OutputConfigType.LAUNCHDARKLY, (readOnly = false) => new LaunchDarklySkillOutput(readOnly)],
+        [OutputConfigType.WORKOS, (readOnly = false) => new WorkOSOutput(readOnly)]
         // Where is workOS?
     ])
 

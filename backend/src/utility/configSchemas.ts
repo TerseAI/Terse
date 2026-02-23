@@ -154,6 +154,11 @@ export const WorkOSInputConfigSchema = BaseConfigSchema.extend({
     eventTypes: z.array(z.enum(WORKOS_SUPPORTED_EVENT_NAMES)).min(1).describe("WorkOS event types to trigger on.")
 })
 
+export const WorkOSOutputConfigSchema = BaseConfigSchema.extend({
+    configType: z.literal(ConfigType.WORKOS_OUTPUT),
+    integrationType: z.literal(IntegrationType.WORKOS)
+})
+
 export const TimeTriggerConfigSchema = BaseConfigSchema.extend({
     configType: z.literal(ConfigType.TIME_TRIGGER),
     integrationType: z.literal(IntegrationType.CRON_JOB),

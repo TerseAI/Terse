@@ -50,6 +50,7 @@ export function buildDummyOutputConfig(integration_id: string, payload: OutputDu
         | "datadog_config"
         | "launchdarkly_config"
         | "figma_config"
+        | "workos_output_config"
         | "attio_config"
     > = {
         id: DUMMY_ID,
@@ -73,6 +74,7 @@ export function buildDummyOutputConfig(integration_id: string, payload: OutputDu
         datadog_config: null as AgentOutputWithConfigs["datadog_config"],
         launchdarkly_config: null as AgentOutputWithConfigs["launchdarkly_config"],
         figma_config: null as AgentOutputWithConfigs["figma_config"],
+        workos_output_config: null as AgentOutputWithConfigs["workos_output_config"],
         attio_config: null as AgentOutputWithConfigs["attio_config"]
     }
 

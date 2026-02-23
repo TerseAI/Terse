@@ -503,6 +503,7 @@ model automation_outputs {
   datadog_config      automation_datadog_configs?
   launchdarkly_config automation_launchdarkly_configs?
   figma_config        automation_figma_configs?
+  workos_output_config automation_workos_output_configs?
   attio_config        automation_attio_configs?
 
   @@index([automation_id])
@@ -816,6 +817,15 @@ model automation_workos_configs {
   updated_at          DateTime @updatedAt
 
   automation_input automation_inputs @relation(fields: [automation_input_id], references: [id], onDelete: Cascade)
+}
+
+model automation_workos_output_configs {
+  id                   String   @id @default(cuid())
+  automation_output_id String   @unique
+  created_at           DateTime @default(now())
+  updated_at           DateTime @updatedAt
+
+  automation_output automation_outputs @relation(fields: [automation_output_id], references: [id], onDelete: Cascade)
 }
 
 // GitHub Event Types

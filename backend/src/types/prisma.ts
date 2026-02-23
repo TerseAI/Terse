@@ -107,6 +107,7 @@ export type AutomationOutputWithConfigs = Prisma.automation_outputsGetPayload<{
         datadog_config: true
         launchdarkly_config: true
         figma_config: true
+        workos_output_config: true
         attio_config: true
     }
 }>
@@ -160,6 +161,7 @@ export type AutomationWithOutputRelations = Prisma.automationsGetPayload<{
                 datadog_config: true
                 launchdarkly_config: true
                 figma_config: true
+                workos_output_config: true
                 attio_config: true
             }
         }
