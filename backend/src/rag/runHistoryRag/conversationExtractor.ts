@@ -136,9 +136,9 @@ export function extractConversationContent(event: AgentInputItem): string {
 export function extractConversationWithContext(events: AgentInputItem[], eventIndex: number, contextWindow: number = 2): string {
     const start = Math.max(0, eventIndex - contextWindow)
     const end = Math.min(events.length, eventIndex + contextWindow + 1)
-    const contextEvents = events.slice(start, end)
+    const surroundingEvents = events.slice(start, end)
 
-    return contextEvents
+    return surroundingEvents
         .map(event => {
             const content = extractConversationContent(event)
             const role = extractRole(event)

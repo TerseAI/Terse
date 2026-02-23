@@ -22,6 +22,7 @@ import { IntegrationType } from "../../shared/Integrations"
 import { RunHistoryStatus, TrackingParams } from "../../shared/RunHistoryTypes"
 import { ToolNameSchema } from "../../tools/ToolNames"
 import { getToolsThatRequireApprovals } from "../../tools/availableTools"
+import { AgentWithRelations } from "../../types/prisma"
 import { HydratorType, requireHydratorType } from "../../types/rag"
 import {
     AttioOutputConfigSchema,
@@ -50,6 +51,7 @@ import {
     WorkOSKnowledgeBaseConfigSchema,
     enforceNonSystemIntegrationId
 } from "../../utility/configSchemas"
+import { getInputConfigInclude, getKnowledgeBaseConfigInclude, getOutputConfigInclude } from "../../utility/prismaIncludes"
 import { randomString } from "../../utility/strings"
 import { getUserForOrg } from "../../utility/workos"
 
@@ -222,14 +224,28 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
                     count: inputEvents.length
                 })
 
-                let agentPrompt = null
-                if (agentId) {
-                    const agent = await db().automations.findUnique({
-                        where: { id: agentId },
-                        include: { prompt: true, user: true }
-                    })
-                    agentPrompt = agent?.prompt
-                    logger.info("[getSampleEvents] Filter preview", { agentId, hasPrompt: !!agentPrompt })
+                if (!agentId) {
+                    throw new Error("Agent ID is required to get sample events")
+                }
+
+                const agent: AgentWithRelations | null = await db().automations.findUnique({
+                    where: { id: agentId },
+                    include: {
+                        prompt: true,
+                        tool_approvals: true,
+                        inputs: {
+                            include: getInputConfigInclude()
+                        },
+                        outputs: {
+                            include: getOutputConfigInclude()
+                        },
+                        knowledge_bases: {
+                            include: getKnowledgeBaseConfigInclude()
+                        }
+                    }
+                })
+                if (!agent) {
+                    throw new Error("Agent not found")
                 }
 
                 const identifiableEvents = inputEvents.filter(e => e.isIdentifiable())
@@ -260,8 +276,8 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
                                 })
                                 return { summary: `${integrationType} event` }
                             }),
-                            agentPrompt
-                                ? filterEvent(event, agentPrompt, false, trackingParams).catch(err => {
+                            agent.prompt
+                                ? filterEvent(event, agent, false, trackingParams).catch(err => {
                                       logger.warn("[getSampleEvents] Filter preview failed for event", {
                                           entityId: identifiable.entityId,
                                           error: err instanceof Error ? err.message : String(err)
@@ -273,7 +289,7 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
 
                         const summary = summaryResult.summary
                         const wouldBeFiltered = filterResult ? !filterResult.result.isRelevant : false
-                        const filterReason = filterResult?.result.reason ?? (agentPrompt ? "Filter preview failed" : null)
+                        const filterReason = filterResult?.result.reason ?? (agent.prompt ? "Filter preview failed" : null)
                         const filterConfidence = filterResult?.result.confidence ?? null
 
                         return {

@@ -4,7 +4,7 @@ import { ErrorContext, detectSerializedError, parseSerializedError } from "../to
 
 type ToolExecutionParseResult = {
     status: ToolCallExecutionStatus
-    output: unknown
+    output: object
     outputString: string | null
     errorContext?: ErrorContext
     actions?: RunHistoryAction[]
@@ -39,7 +39,7 @@ export function parseToolExecutionResult(rawOutput: unknown, rawStatus: unknown)
     }
 }
 
-function normalizeToolExecutionOutput(rawOutput: unknown): unknown {
+function normalizeToolExecutionOutput(rawOutput: unknown): object {
     let output = rawOutput
 
     // OpenAI tool outputs are commonly wrapped as { type: "text", text: "..." }.
@@ -51,11 +51,11 @@ function normalizeToolExecutionOutput(rawOutput: unknown): unknown {
         try {
             return JSON.parse(output)
         } catch {
-            return output
+            return {}
         }
     }
 
-    return output
+    return {}
 }
 
 function stringifyToolExecutionOutput(output: unknown): string | null {

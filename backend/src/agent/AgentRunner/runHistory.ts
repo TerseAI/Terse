@@ -1,9 +1,7 @@
 import { RunToolApprovalItem } from "@openai/agents"
-import type { RunHistoryChatEventType } from "@prisma/client"
 import { Prisma } from "@prisma/client"
 
 import { db } from "../../prismaClient"
-import { ModelEvent } from "../../shared/ModelEvents"
 import { type RunHistoryAction, RunHistoryStatus, type RunHistoryTrigger } from "../../shared/RunHistoryTypes"
 import { convertIntegrationTypeToPrismaIntegrationTypeForRunHistory } from "../../utility/typeConverters"
 
@@ -136,26 +134,6 @@ export async function markRunFailed(runId: string, errorMessage: string, stage?:
             decision_reason: prefixedMessage
         }
     })
-}
-
-export async function storeChatEvent(runId: string, event: ModelEvent, timestamp?: Date | string): Promise<string> {
-    const prisma = db()
-
-    // Use provided timestamp or current time
-    const eventTimestamp = timestamp ? (typeof timestamp === "string" ? new Date(timestamp) : timestamp) : new Date()
-
-    // Store the full event as JSON for easy deserialization
-    const created = await prisma.run_history_chat_events.create({
-        data: {
-            run_history_record_id: runId,
-            event_type: event.type as RunHistoryChatEventType,
-            event_json: event as Prisma.InputJsonValue,
-            timestamp: eventTimestamp
-        },
-        select: { id: true }
-    })
-
-    return created.id
 }
 
 export async function storePendingApprovalState(runId: string, serializedState: string, interruptions: RunToolApprovalItem[]): Promise<void> {

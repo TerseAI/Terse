@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react"
 
 import {
     type ChatSnippetPayload,
-    type Failure,
     FilterResult,
     type ModelEvent,
     type ModelRequest,
@@ -28,7 +27,6 @@ export type UseCompletionSocketOptions = {
     onToolCallGenerating: (toolCallGenerating: ToolCallGenerating) => void
     onToolCall: (toolCall: ToolCall) => void
     onToolCallComplete: (toolCallComplete: ToolCallComplete) => void
-    onFailure: (failure: Failure) => void
     onNaturalStop: () => void
     onFilterResult: (filterResult: FilterResult) => void
     onThinking: (stepId: string) => void
@@ -46,7 +44,6 @@ export function useCompletionSocket(options: UseCompletionSocketOptions) {
         onToolCallGenerating,
         onToolCall,
         onToolCallComplete,
-        onFailure,
         onNaturalStop,
         onFilterResult,
         onThinking,
@@ -60,7 +57,6 @@ export function useCompletionSocket(options: UseCompletionSocketOptions) {
     const onToolCallGeneratingRef = useRef(onToolCallGenerating)
     const onToolCallRef = useRef(onToolCall)
     const onToolCallCompleteRef = useRef(onToolCallComplete)
-    const onFailureRef = useRef(onFailure)
     const onNaturalStopRef = useRef(onNaturalStop)
     const onFilterResultRef = useRef(onFilterResult)
     const onThinkingRef = useRef(onThinking)
@@ -77,7 +73,6 @@ export function useCompletionSocket(options: UseCompletionSocketOptions) {
         onToolCallGeneratingRef.current = onToolCallGenerating
         onToolCallRef.current = onToolCall
         onToolCallCompleteRef.current = onToolCallComplete
-        onFailureRef.current = onFailure
         onNaturalStopRef.current = onNaturalStop
         onFilterResultRef.current = onFilterResult
         onThinkingRef.current = onThinking
@@ -85,7 +80,7 @@ export function useCompletionSocket(options: UseCompletionSocketOptions) {
         onToolApprovalResponseRef.current = onToolApprovalResponse
         onSnippetRef.current = onSnippet
         onRunErrorRef.current = onRunError
-    }, [onDelta, onToolCallGenerating, onToolCall, onToolCallComplete, onFailure, onNaturalStop, onFilterResult, onThinking, onToolApprovalRequest, onToolApprovalResponse, onSnippet, onRunError])
+    }, [onDelta, onToolCallGenerating, onToolCall, onToolCallComplete, onNaturalStop, onFilterResult, onThinking, onToolApprovalRequest, onToolApprovalResponse, onSnippet, onRunError])
 
     // Subscribe to events
     useEffect(() => {
@@ -119,9 +114,6 @@ export function useCompletionSocket(options: UseCompletionSocketOptions) {
                     break
                 case "ToolCallComplete":
                     onToolCallCompleteRef.current(message)
-                    break
-                case "Failure":
-                    onFailureRef.current(message)
                     break
                 case "NaturalStop":
                     onNaturalStopRef.current()

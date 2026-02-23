@@ -3,6 +3,10 @@ import type { AgentInputItem, AssistantMessageItem, FunctionCallItem, FunctionCa
 import { IntegrationType } from "../shared/Integrations"
 import { ModelEvent } from "../shared/ModelEvents"
 
+import { isScaffoldedRunContextUserMessage } from "./AgentRunner/formatContext"
+import { parseFilterOutcomeSystemEventItem } from "./systemEvents/filterOutcomeSystemEvent"
+import { parseRunErrorSystemEventItem } from "./systemEvents/runErrorSystemEvent"
+import { parseToolApprovalSystemEventItem } from "./systemEvents/toolApprovalSystemEvent"
 import { parseToolExecutionResult } from "./toolExecution"
 
 /** An AgentInputItem paired with the DB timestamp it was created at. */
@@ -11,7 +15,25 @@ export type TimestampedAgentInputItem = {
     createdAt: Date | null
 }
 
-export function convertAgentInputItemsToModelEvents(items: (AgentInputItem | TimestampedAgentInputItem)[], toolToIntegrationMap?: Map<string, string>): ModelEvent[] {
+export type ConvertAgentInputItemsToModelEventsOptions = {
+    includeScaffoldedUserMessages?: boolean
+    appendNaturalStop?: boolean
+}
+
+const DEFAULT_CONVERT_OPTIONS: Required<ConvertAgentInputItemsToModelEventsOptions> = {
+    includeScaffoldedUserMessages: true,
+    appendNaturalStop: true
+}
+
+export async function convertAgentInputItemsToModelEvents(
+    items: (AgentInputItem | TimestampedAgentInputItem)[],
+    toolToIntegrationMap?: Map<string, string>,
+    options?: ConvertAgentInputItemsToModelEventsOptions
+): Promise<ModelEvent[]> {
+    const resolvedOptions: Required<ConvertAgentInputItemsToModelEventsOptions> = {
+        ...DEFAULT_CONVERT_OPTIONS,
+        ...options
+    }
     const events: ModelEvent[] = []
     let lastTimestamp: Date | null | undefined
 
@@ -21,7 +43,7 @@ export function convertAgentInputItemsToModelEvents(items: (AgentInputItem | Tim
         const ts = isTimestamped ? (entry as TimestampedAgentInputItem).createdAt : undefined
         if (ts) lastTimestamp = ts
 
-        const converted = convertSingleItem(item, toolToIntegrationMap)
+        const converted = await convertSingleItem(item, toolToIntegrationMap, resolvedOptions)
         if (converted) {
             for (const event of converted) {
                 events.push(ts ? { ...event, timestamp: ts.getTime() } : event)
@@ -29,10 +51,12 @@ export function convertAgentInputItemsToModelEvents(items: (AgentInputItem | Tim
         }
     }
 
-    // Add a NaturalStop if there are any events and no ending marker
-    if (events.length > 0) {
+    // Add a NaturalStop only when the run did not already end with a terminal sentinel (NaturalStop or RunError).
+    // Skip for in-progress runs so the UI does not incorrectly set isGenerating=false until the run actually completes.
+    if (events.length > 0 && resolvedOptions.appendNaturalStop) {
         const lastEvent = events[events.length - 1]
-        if (lastEvent.type !== "NaturalStop" && lastEvent.type !== "Failure") {
+        const isTerminal = lastEvent.type === "NaturalStop" || lastEvent.type === "RunError"
+        if (!isTerminal) {
             events.push({
                 type: "NaturalStop",
                 step_id: "historical-stop",
@@ -44,11 +68,64 @@ export function convertAgentInputItemsToModelEvents(items: (AgentInputItem | Tim
     return events
 }
 
-function convertSingleItem(item: AgentInputItem, toolToIntegrationMap?: Map<string, string>): ModelEvent[] | null {
+async function convertSingleItem(
+    item: AgentInputItem,
+    toolToIntegrationMap?: Map<string, string>,
+    options: Required<ConvertAgentInputItemsToModelEventsOptions> = DEFAULT_CONVERT_OPTIONS
+): Promise<ModelEvent[] | null> {
+    const runErrorSystemEvent = parseRunErrorSystemEventItem(item)
+    if (runErrorSystemEvent) {
+        return [
+            {
+                type: "RunError",
+                error: runErrorSystemEvent.error,
+                ...(runErrorSystemEvent.code ? { code: runErrorSystemEvent.code } : {})
+            }
+        ]
+    }
+
+    const filterOutcomeSystemEvent = parseFilterOutcomeSystemEventItem(item)
+    if (filterOutcomeSystemEvent) {
+        return [
+            {
+                type: "FilterResult",
+                isRelevant: filterOutcomeSystemEvent.isRelevant,
+                reason: filterOutcomeSystemEvent.reason,
+                confidence: filterOutcomeSystemEvent.confidence,
+                step_id: "filter-marker"
+            }
+        ]
+    }
+
+    const toolApprovalSystemEvent = parseToolApprovalSystemEventItem(item)
+    if (toolApprovalSystemEvent) {
+        if (toolApprovalSystemEvent.type === "ToolApprovalRequest") {
+            return [
+                {
+                    type: "ToolApprovalRequest",
+                    step_id: toolApprovalSystemEvent.step_id,
+                    name: toolApprovalSystemEvent.name,
+                    arguments: toolApprovalSystemEvent.arguments
+                }
+            ]
+        }
+
+        return [
+            {
+                type: "ToolApprovalResponse",
+                step_id: toolApprovalSystemEvent.step_id,
+                approved: toolApprovalSystemEvent.approved
+            }
+        ]
+    }
+
     // User message
     if (isUserMessageItem(item)) {
         const text = extractTextFromMessageContent(item.content)
         if (text) {
+            if (!options.includeScaffoldedUserMessages && isScaffoldedRunContextUserMessage(text)) {
+                return null
+            }
             return [{ type: "UserMessage", message: text }]
         }
         return null
@@ -96,19 +173,26 @@ function convertSingleItem(item: AgentInputItem, toolToIntegrationMap?: Map<stri
     }
 
     // Function call result - convert to ToolCallComplete
+    // Note: changed_items are not populated here. Callers that need them (e.g. run history routes)
+    // should load run_history_actions once and attach via attachRunHistoryChangedItems().
     if (isFunctionCallResultItem(item)) {
         const integration = toolToIntegrationMap?.get(item.name || "") || IntegrationType.TERSE
         const parsed = parseToolExecutionResult(item.output, item.status)
+
+        const outputWithoutActions = {
+            ...parsed.output,
+            actions: undefined
+        }
 
         return [
             {
                 type: "ToolCallComplete",
                 tool_name: item.name || "unknown",
                 status: parsed.status,
-                step_id: item.callId || item.id || "unknown",
-                changed_items: [], // Historical events don't have changed_items tracked
+                step_id: item.callId,
+                changed_items: [],
                 integration,
-                result: parsed.outputString || undefined,
+                result: JSON.stringify(outputWithoutActions) || undefined,
                 ...(parsed.errorContext ? { errorContext: { error: parsed.errorContext.error } } : {})
             }
         ]

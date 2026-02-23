@@ -13,8 +13,6 @@ export type SharedErrorContext = {
 
 export type ChangedItem = { type_name: EntityType; id: string; change_event_type: ChangeEventType }
 
-export type Failure = { error: string; step_id: string }
-
 /** Run-level / agent-level error (e.g. context window exceeded). Use optional code for specific UI handling. */
 export type RunError = { error: string; code?: string }
 
@@ -27,7 +25,6 @@ export type ModelEvent = { timestamp?: number } & (
     | ({ type: "ToolCall" } & ToolCall)
     | ({ type: "ToolCallComplete" } & ToolCallComplete)
     | ({ type: "TextDelta" } & TextDelta)
-    | ({ type: "Failure" } & Failure)
     | ({ type: "RunError" } & RunError)
     | { type: "NaturalStop"; step_id: string }
     | ({ type: "FilterResult" } & FilterResult)

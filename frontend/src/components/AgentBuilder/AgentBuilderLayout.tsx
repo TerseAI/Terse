@@ -6,7 +6,7 @@ import type { LucideIcon } from "lucide-react"
 import { FileText, MessageCircle, Rocket, RotateCcw, Users } from "lucide-react"
 
 import { TemplateCard } from "@/components/Agents/TemplateCard"
-import { convertRunHistoryEventsToTurns } from "@/components/RunHistory/RunHistoryChatDrawer/RunHistoryChatAdapter"
+import { convertRunHistoryEventsToTurns } from "@/components/RunHistory/RunHistoryChatDrawer/runHistoryEventsToTurns"
 import { Chat, ChatHandle } from "@/components/chat/Chat"
 import { ChatEventPayload } from "@/components/chat/hooks/useCompletionSocket"
 import { Card, CardContent } from "@/components/ui/card"

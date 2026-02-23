@@ -6,10 +6,10 @@ import { Server, Socket } from "socket.io"
 
 import { AgentRunResultStatus, AgentRunner } from "./agent/AgentRunner/AgentRunner"
 import { RunContext } from "./agent/AgentRunner/SystemPromptBuilder"
-import { reportRunErrorToRun } from "./agent/AgentRunner/runErrorReporter"
-import { evaluateCompletedRun, finalizeRunStatus, markRunFailed, storeChatEvent } from "./agent/AgentRunner/runHistory"
+import { evaluateCompletedRun, finalizeRunStatus, getPendingApprovalState, markRunFailed } from "./agent/AgentRunner/runHistory"
 import { DirectiveTask, directiveTaskQueue } from "./agent/DirectiveAgent/DirectiveAgent"
-import { classifyAgentError } from "./agent/agentErrorUtils"
+import { type ClassifiedError, buildRunErrorEvent, classifyAgentError } from "./agent/agentErrorUtils"
+import { appendRunHistoryErrorSystemEvent } from "./agent/systemEvents/runErrorSystemEvent"
 import { nodeEnv, optional, urls } from "./config/settings"
 import { KnowledgeBase } from "./knowledgeBase/abstract/KnowledgeBase"
 import { KnowledgeBaseFactory } from "./knowledgeBase/abstract/KnowledgeBaseFactory"
@@ -22,12 +22,12 @@ import { Session } from "./server"
 import { ApprovalProcessingStatus, ApprovalService } from "./services/ApprovalService"
 import { ConfigInstance } from "./shared/Configs"
 import { SendModelRequest, ToolApprovalResponse } from "./shared/ModelEvents"
-import { ModelEvent } from "./shared/ModelEvents"
-import { RunHistoryStatus } from "./shared/RunHistoryTypes"
+import { type RunHistoryModelEvent, type RunHistoryModelSocketEvent, RunHistoryStatus } from "./shared/RunHistoryTypes"
 import { SocketEvents, SocketRooms } from "./shared/SocketEvents"
 import { registerBuilderChatHandler } from "./socketHandlers/builderChatHandler"
 import { AgentWithRelations } from "./types/prisma"
 import { getInputConfigInclude, getKnowledgeBaseConfigInclude, getOutputConfigInclude } from "./utility/prismaIncludes"
+import { randomString } from "./utility/strings"
 import { getUserForOrg, workos } from "./utility/workos"
 
 // Extended Socket type with userId, organizationId, and WorkOS session ID
@@ -250,6 +250,56 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
 
             const userMessage = message.user_message
 
+            const pendingApprovalState = await getPendingApprovalState(runId)
+            if (pendingApprovalState && pendingApprovalState.interruptions.length > 0) {
+                let stepId: string | null = null
+                for (const interruption of pendingApprovalState.interruptions) {
+                    const callId = (interruption.rawItem as any)?.callId
+                    if (callId) {
+                        stepId = callId
+                        break
+                    }
+                }
+
+                if (stepId) {
+                    logger.info("[agent:chat:message] Pending approval found; treating user message as rejection feedback", {
+                        runId,
+                        stepId,
+                        userId
+                    })
+
+                    const approvalResult = await ApprovalService.processApproval({
+                        runId,
+                        stepId,
+                        approved: false,
+                        userId,
+                        organizationId: organizationId ?? "",
+                        rejectionReason: userMessage?.trim() || undefined
+                    })
+
+                    if (approvalResult.status === ApprovalProcessingStatus.FAILED) {
+                        logger.error("[agent:chat:message] Failed to process implicit rejection from user chat message", {
+                            runId,
+                            stepId,
+                            userId,
+                            error: approvalResult.error
+                        })
+                    }
+
+                    return
+                }
+
+                logger.warn("[agent:chat:message] Pending approval exists but no step id could be extracted", {
+                    runId,
+                    userId,
+                    interruptionCount: pendingApprovalState.interruptions.length
+                })
+
+                // Fail-safe: do not continue into a fresh model run while a pending approval exists
+                // but cannot be resolved to a stable step id.
+                return
+            }
+
             // Ensure run status is 'in_progress' so streaming works
             if (runRecord.status !== RunHistoryStatus.IN_PROGRESS) {
                 await db().run_history_records.update({
@@ -257,14 +307,8 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
                     data: { status: RunHistoryStatus.IN_PROGRESS }
                 })
             }
-            const userMessageEvent: ModelEvent = {
-                type: "UserMessage",
-                message: userMessage
-            }
-            const userMessageEventId = await storeChatEvent(runId, userMessageEvent)
             if (organizationId) {
                 emitCacheInvalidationWithWildcard(organizationId, "runHistory", agent.id)
-                emitCacheInvalidationWithWildcard(organizationId, "chatHistory", runId)
             }
 
             // Create knowledge bases from agent configuration
@@ -284,7 +328,7 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
             } catch (error) {
                 const classified = classifyAgentError(error)
                 logger.error(`[agent:chat:message] Error running agent: ${classified.message}`, { error, runId, agentId: agent.id, userId })
-                await markRunFailedAndInvalidate(runId, classified.message, organizationId ?? undefined, agent.id)
+                await markRunFailedAndInvalidate(runId, classified, organizationId ?? undefined, agent.id)
                 try {
                     await new NotificationManager(user, agent).notifyRunFailure(runId, classified.message)
                 } catch (notificationError) {
@@ -295,7 +339,6 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
                         userId
                     })
                 }
-                await reportRunErrorToRun({ runId, agentId: agent.id, organizationId: organizationId ?? "", classified, io })
                 return
             }
 
@@ -324,7 +367,7 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
                 }
             }
 
-            directiveTaskQueue.emit(new DirectiveTask(agent.id, runId, userMessageEventId, user, userMessage))
+            directiveTaskQueue.emit(new DirectiveTask(agent.id, runId, user, userMessage))
         })
 
         // Use centralized approval service - it handles Slack notifications internally
@@ -404,16 +447,35 @@ export function emitCacheInvalidationWithWildcard(organizationId: string, key: s
 }
 
 /**
- * Mark run as failed and invalidate run history cache. Logs on failure; does not rethrow.
+ * Mark run as failed, append a raw error system event for model memory, emit a live RunError, and invalidate related caches.
+ * Logs on failure; does not rethrow.
  */
-export async function markRunFailedAndInvalidate(runId: string, errorMessage: string, organizationId: string | undefined, agentId: string): Promise<void> {
+export async function markRunFailedAndInvalidate(runId: string, classified: ClassifiedError, organizationId: string | undefined, agentId: string): Promise<void> {
     try {
-        await markRunFailed(runId, errorMessage, "agent")
+        await markRunFailed(runId, classified.message, "agent")
+        await appendRunHistoryErrorSystemEvent(runId, classified)
+
+        if (io && organizationId) {
+            const runErrorEvent = buildRunErrorEvent(classified)
+            const runHistoryModelEvent: RunHistoryModelEvent = {
+                ...runErrorEvent,
+                id: `run-error-live-${randomString(15)}`,
+                timestamp: Date.now()
+            }
+            const payload: RunHistoryModelSocketEvent = {
+                runId,
+                agentId,
+                runHistoryModelEvent
+            }
+            io.to(SocketRooms.organization(organizationId)).emit(SocketEvents.AGENT_CHAT_EVENT, payload)
+        }
+
         if (organizationId) {
             emitCacheInvalidationWithWildcard(organizationId, "runHistory", agentId)
+            emitCacheInvalidationWithWildcard(organizationId, "chatHistory", runId)
         }
     } catch (e) {
-        logger.error("Failed to mark run as failed", { error: e, runId })
+        logger.error("Failed to mark run as failed and invalidate cache", { error: e, runId })
     }
 }
 

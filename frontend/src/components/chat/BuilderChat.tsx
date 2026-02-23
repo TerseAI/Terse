@@ -3,7 +3,7 @@ import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRe
 import { Bot, MessageSquare, Plug, Settings } from "lucide-react"
 import { v4 as uuidv4 } from "uuid"
 
-import { convertRunHistoryEventsToTurns } from "@/components/RunHistory/RunHistoryChatDrawer/RunHistoryChatAdapter"
+import { convertRunHistoryEventsToTurns } from "@/components/RunHistory/RunHistoryChatDrawer/runHistoryEventsToTurns"
 import { useBuilderChatHistory } from "@/hooks/api/useBuilderChatHistory"
 import { ModelRequest, SendModelRequest } from "@/shared/ModelEvents"
 import { sendBuilderMessage, sendBuilderMultipleChoiceAnswer, subscribeToBuilderChat } from "@/socket"

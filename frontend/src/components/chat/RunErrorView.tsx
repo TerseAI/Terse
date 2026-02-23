@@ -7,7 +7,7 @@ type RunErrorViewProps = {
     errorCode?: string
 }
 
-const CONTEXT_LENGTH_MESSAGE = "Context window exceeded. Try starting a new conversation or reducing the amount of context."
+const CONTEXT_LENGTH_MESSAGE = "Context window exceeded. Try reducing scope/context and retrying."
 
 export function RunErrorView({ error, errorCode }: RunErrorViewProps) {
     const isContextLength = errorCode === "context_length_exceeded"
