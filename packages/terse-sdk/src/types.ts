@@ -1,4 +1,4 @@
-import { IntegrationType } from "./shared/Integrations"
+import { IntegrationType } from "./shared/Integrations.js"
 
 /**
  * Lightweight interface for input events.

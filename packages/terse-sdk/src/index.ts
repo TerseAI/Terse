@@ -1,12 +1,23 @@
-import type { InputEvent, ToolboxEntry } from "./types"
-import type { ConfigInstance } from "./shared/Configs"
-import type { RunHistoryAction } from "./shared/RunHistoryTypes"
+import type { InputEvent, ToolboxEntry } from "./types.js"
+import type { ConfigInstance } from "./shared/Configs.js"
+import type { RunHistoryAction } from "./shared/RunHistoryTypes.js"
+import { IntegrationType } from "./shared/Integrations.js"
 
 // Re-export SDK-specific types
-export type { InputEvent, ToolboxEntry } from "./types"
+export type { InputEvent, ToolboxEntry } from "./types.js"
 
-// Re-export mocks for CLI usage
-export { MockInputEvent } from "./mocks"
+// Mock event for CLI's `terse run` command
+export class MockInputEvent implements InputEvent {
+    readonly integrationType = IntegrationType.TERSE
+
+    formatForAgentRunner(): string {
+        return "Manual trigger from terse run"
+    }
+
+    debugLog(): string {
+        return "[MockInputEvent] Manual trigger via CLI"
+    }
+}
 
 // Re-export shared types for consumer convenience
 export {
@@ -35,9 +46,9 @@ export {
     WorkOSInputConfig,
     WorkOSKBConfig,
     AttioOutputConfig
-} from "./shared/Configs"
+} from "./shared/Configs.js"
 
-export { IntegrationType } from "./shared/Integrations"
+export { IntegrationType } from "./shared/Integrations.js"
 
 export {
     RunHistoryAction,
@@ -45,7 +56,7 @@ export {
     RunHistoryTrigger,
     RunHistoryDecision,
     RunHistoryRecord
-} from "./shared/RunHistoryTypes"
+} from "./shared/RunHistoryTypes.js"
 
 // SDK types
 

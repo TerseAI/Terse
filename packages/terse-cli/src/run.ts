@@ -3,6 +3,7 @@ import path from "node:path"
 import { pathToFileURL } from "node:url"
 import chalk from "chalk"
 import { tsImport } from "tsx/esm/api"
+import { MockInputEvent, TerseAgent } from "terse-sdk"
 
 export async function run(jobName?: string): Promise<void> {
     const cwd = process.cwd()
@@ -84,14 +85,8 @@ export async function run(jobName?: string): Promise<void> {
     const job = registry.get(resolvedName)!
     console.log(chalk.cyan(`\n  Running job: ${resolvedName}\n`))
 
-    // Create a lightweight mock event and stub agent inline — avoids importing
-    // terse-sdk from the CLI (which hits Node ESM resolution issues with dist/).
-    const mockEvent = {
-        integrationType: "terse",
-        formatForAgentRunner: () => "Manual trigger from terse run",
-        debugLog: () => "[MockInputEvent] Manual trigger via CLI",
-    }
-    const stubAgent = { prompt: "", toolBox: [], run: async (prompt: string, event: unknown) => {  }}
+    const mockEvent = new MockInputEvent()
+    const stubAgent = new TerseAgent("", [])
 
     try {
         await job.onTrigger(mockEvent, stubAgent)
