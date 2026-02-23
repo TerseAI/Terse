@@ -34,6 +34,7 @@ type OutputDummyPayload =
     | { config_type: typeof OutputConfigType.GMAIL_DRAFT; gmail_config: Partial<Pick<automation_gmail_configs, never>> }
     | { config_type: typeof OutputConfigType.TERSE }
     | { config_type: typeof OutputConfigType.ATTIO; attio_config: Pick<automation_attio_configs, "object_slug"> }
+    | { config_type: typeof OutputConfigType.WORKOS }
 
 export function buildDummyOutputConfig(integration_id: string, payload: OutputDummyPayload): AgentOutputWithConfigs {
     const base: Omit<
@@ -231,6 +232,8 @@ export function buildDummyOutputConfig(integration_id: string, payload: OutputDu
                     ...payload.attio_config
                 }
             }
+        case OutputConfigType.WORKOS:
+            return { ...base, ...nullConfigs }
         default: {
             const _exhaustive: never = payload
             throw new Error("Unhandled output config_type")

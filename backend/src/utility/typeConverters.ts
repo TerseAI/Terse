@@ -20,7 +20,8 @@ import {
     SlackConfig,
     SlackOutputConfig,
     TimeTriggerConfig,
-    WorkOSInputConfig
+    WorkOSInputConfig,
+    WorkOSOutputConfig
 } from "../shared/Configs"
 import { IntegrationType } from "../shared/Integrations"
 import { RunHistoryStatus as SharedRunHistoryStatus } from "../shared/RunHistoryTypes"
@@ -343,6 +344,10 @@ export const convertPrismaOutputConfigToConfigInstance = (channelOutput: AgentOu
         return new LaunchDarklyConfig(integrationId, channelOutput.launchdarkly_config.project_key, channelOutput.launchdarkly_config.environment_keys || [])
     }
 
+    if (channelOutput.config_type === OutputConfigType.WORKOS) {
+        return new WorkOSOutputConfig(integrationId)
+    }
+
     // Type guard to ensure we implement conversion here
     switch (channelOutput.config_type) {
         case OutputConfigType.NOTION:
@@ -513,6 +518,8 @@ export const convertOutputConfigTypeToConfigType = (outputConfigType: OutputConf
             return ConfigType.TERSE
         case OutputConfigType.ATTIO:
             return ConfigType.ATTIO_OUTPUT
+        case OutputConfigType.WORKOS:
+            return ConfigType.WORKOS_OUTPUT
         default:
             throw outputConfigType satisfies never
     }
@@ -550,6 +557,8 @@ export const convertOutputConfigTypeToIntegrationType = (outputConfigType: Outpu
             return IntegrationType.TERSE
         case OutputConfigType.ATTIO:
             return IntegrationType.ATTIO
+        case OutputConfigType.WORKOS:
+            return IntegrationType.WORKOS
         default:
             throw outputConfigType satisfies never
     }

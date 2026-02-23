@@ -876,6 +876,7 @@ enum OutputConfigType {
   POSTHOG
   LAUNCHDARKLY
   DATADOG
+  WORKOS
 }
 
 enum KnowledgeBaseConfigType {
