@@ -491,19 +491,19 @@ model automation_outputs {
   automation automations @relation(fields: [automation_id], references: [id], onDelete: Cascade)
 
   // Configuration relations (one per integration type)
-  slack_config        automation_slack_configs?
-  notion_config       automation_notion_configs?
-  linear_config       automation_linear_configs?
-  jira_config         automation_jira_configs?
-  confluence_config   automation_confluence_configs?
-  github_config       automation_github_configs?
-  gmail_config        automation_gmail_configs?
-  posthog_config      automation_posthog_configs?
-  datadog_config      automation_datadog_configs?
-  launchdarkly_config automation_launchdarkly_configs?
-  figma_config        automation_figma_configs?
+  slack_config         automation_slack_configs?
+  notion_config        automation_notion_configs?
+  linear_config        automation_linear_configs?
+  jira_config          automation_jira_configs?
+  confluence_config    automation_confluence_configs?
+  github_config        automation_github_configs?
+  gmail_config         automation_gmail_configs?
+  posthog_config       automation_posthog_configs?
+  datadog_config       automation_datadog_configs?
+  launchdarkly_config  automation_launchdarkly_configs?
+  figma_config         automation_figma_configs?
   workos_output_config automation_workos_output_configs?
-  attio_config        automation_attio_configs?
+  attio_config         automation_attio_configs?
 
   @@index([automation_id])
   @@index([config_type, integration_id])
