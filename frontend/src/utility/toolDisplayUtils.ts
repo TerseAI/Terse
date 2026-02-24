@@ -105,7 +105,18 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
             const question = (params?.question as string) || "A quick question"
             return question.length > 40 ? `${question.slice(0, 40)}…` : question
         },
-        complete: () => "Thanks for your answer"
+        complete: (_params, result) => {
+            if (!result) return "Answered"
+            // Result may be a JSON-encoded string (e.g. "\"Option A\"")
+            let answer = result
+            try {
+                const parsed = JSON.parse(result)
+                if (typeof parsed === "string") answer = parsed
+            } catch {
+                // raw string, use as-is
+            }
+            return `Answered: ${truncate(answer, 50)}`
+        }
     },
     fetchResourcesForIntegration: {
         preparing: "Looking things up",
@@ -236,6 +247,22 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
             if (count !== undefined) return `Found ${count} task${count !== 1 ? "s" : ""}`
             if (query) return `Looked for "${truncate(query)}"`
             return "Search complete"
+        }
+    },
+    linear_read_ticket: {
+        preparing: "Loading task details",
+        executing: params => {
+            const issueId = params?.issueId as string | undefined
+            return issueId ? `Loading task ${issueId}` : "Loading task details"
+        },
+        complete: (_params, result) => {
+            const parsed = safeParseResult(result)
+            const issue = parsed?.issue as Record<string, unknown> | undefined
+            const identifier = issue?.identifier as string | undefined
+            const title = issue?.title as string | undefined
+            if (identifier && title) return `Loaded ${identifier}: "${truncate(title, 30)}"`
+            if (identifier) return `Loaded task ${identifier}`
+            return "Task loaded"
         }
     },
     linear_get_states: {
@@ -400,6 +427,17 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
         }
     },
 
+    notion_list_users: {
+        preparing: "Loading workspace members",
+        executing: () => "Loading workspace members",
+        complete: (_params, result) => {
+            const parsed = safeParseResult(result)
+            const count = parsed?.count as number | undefined
+            if (count !== undefined) return `Found ${count} workspace member${count !== 1 ? "s" : ""}`
+            return "Workspace members loaded"
+        }
+    },
+
     // ===================
     // Gmail Tools
     // ===================
@@ -442,6 +480,44 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
             const parsed = safeParseResult(result)
             const channel = parsed?.channel as string | undefined
             return channel ? `Sent message to ${channel}` : "Slack message sent"
+        }
+    },
+
+    slack_list_channels: {
+        preparing: "Loading channels",
+        executing: () => "Loading channels",
+        complete: (_params, result) => {
+            const parsed = safeParseResult(result)
+            const count = parsed?.count as number | undefined
+            if (count !== undefined) return `Found ${count} channel${count !== 1 ? "s" : ""}`
+            return "Channels loaded"
+        }
+    },
+    slack_list_users: {
+        preparing: "Loading people",
+        executing: params => {
+            const query = params?.query as string | undefined
+            return query ? `Looking for "${truncate(query)}"` : "Loading people"
+        },
+        complete: (params, result) => {
+            const parsed = safeParseResult(result)
+            const count = parsed?.count as number | undefined
+            const query = params?.query as string | undefined
+            if (count !== undefined && query) return `Found ${count} person${count !== 1 ? "s" : ""} matching "${truncate(query, 25)}"`
+            if (count !== undefined) return `Found ${count} person${count !== 1 ? "s" : ""}`
+            return "People loaded"
+        }
+    },
+    slack_read_conversation: {
+        preparing: "Loading conversation",
+        executing: () => "Loading conversation",
+        complete: (_params, result) => {
+            const parsed = safeParseResult(result)
+            const channelName = parsed?.channelName as string | undefined
+            const count = parsed?.count as number | undefined
+            if (channelName && count !== undefined) return `Loaded ${count} message${count !== 1 ? "s" : ""} from ${channelName}`
+            if (channelName) return `Loaded conversation from ${channelName}`
+            return "Conversation loaded"
         }
     },
 
@@ -615,6 +691,27 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
         }
     },
 
+    searchPosthogEvents: {
+        preparing: "Looking through events",
+        executing: params => {
+            const eventName = params?.eventName as string | undefined
+            const userEmail = params?.userEmail as string | undefined
+            if (eventName) return `Looking for "${truncate(eventName)}" events`
+            if (userEmail) return `Looking for events from ${truncate(userEmail, 30)}`
+            return "Looking through events"
+        },
+        complete: (params, result) => {
+            const parsed = safeParseResult(result)
+            const totalEventTypes = parsed?.totalEventTypes as number | undefined
+            const totalEvents = parsed?.totalEvents as number | undefined
+            const eventName = params?.eventName as string | undefined
+            if (totalEventTypes !== undefined) return `Found ${totalEventTypes} event type${totalEventTypes !== 1 ? "s" : ""}`
+            if (totalEvents !== undefined && eventName) return `Found ${totalEvents} "${truncate(eventName, 25)}" event${totalEvents !== 1 ? "s" : ""}`
+            if (totalEvents !== undefined) return `Found ${totalEvents} event${totalEvents !== 1 ? "s" : ""}`
+            return "Event search complete"
+        }
+    },
+
     // ===================
     // LaunchDarkly Tools
     // ===================
@@ -696,6 +793,85 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
             const parsed = safeParseResult(result)
             const total = parsed?.totalBuckets as number | undefined
             return total !== undefined ? `Summarized ${total} group${total !== 1 ? "s" : ""}` : "Summary ready"
+        }
+    },
+
+    // ===================
+    // Attio Tools
+    // ===================
+    attio_upsert_record: {
+        preparing: "Getting your record ready",
+        executing: params => {
+            const objectSlug = params?.objectSlug as string | undefined
+            return objectSlug ? `Saving ${objectSlug} record` : "Saving record"
+        },
+        complete: (params, result) => {
+            const parsed = safeParseResult(result)
+            const actions = parsed?.actions as Array<{ target?: string }> | undefined
+            const target = actions?.[0]?.target
+            const objectSlug = params?.objectSlug as string | undefined
+            if (target) return `Saved ${objectSlug || "record"}: ${truncate(target, 30)}`
+            if (objectSlug) return `Saved ${objectSlug} record`
+            return "Record saved"
+        }
+    },
+    attio_query_records: {
+        preparing: "Looking up records",
+        executing: params => {
+            const objectSlug = params?.objectSlug as string | undefined
+            return objectSlug ? `Searching ${objectSlug} records` : "Searching records"
+        },
+        complete: (params, result) => {
+            const parsed = safeParseResult(result)
+            const count = parsed?.count as number | undefined
+            const objectSlug = params?.objectSlug as string | undefined
+            if (count !== undefined && objectSlug) return `Found ${count} ${objectSlug} record${count !== 1 ? "s" : ""}`
+            if (count !== undefined) return `Found ${count} record${count !== 1 ? "s" : ""}`
+            if (objectSlug) return `Searched ${objectSlug} records`
+            return "Search complete"
+        }
+    },
+    attio_list_objects: {
+        preparing: "Loading object types",
+        executing: () => "Loading object types",
+        complete: (_params, result) => {
+            const parsed = safeParseResult(result)
+            const count = parsed?.count as number | undefined
+            if (count !== undefined) return `Found ${count} object type${count !== 1 ? "s" : ""}`
+            return "Object types loaded"
+        }
+    },
+
+    // ===================
+    // WorkOS Tools
+    // ===================
+    listWorkOSUsers: {
+        preparing: "Loading users",
+        executing: params => {
+            const email = params?.email as string | undefined
+            return email ? `Looking up ${truncate(email, 30)}` : "Loading users"
+        },
+        complete: (params, result) => {
+            const parsed = safeParseResult(result)
+            const users = parsed?.users as unknown[] | undefined
+            const count = Array.isArray(users) ? users.length : undefined
+            const email = params?.email as string | undefined
+            if (email && count !== undefined) return `Found ${count} user${count !== 1 ? "s" : ""} for ${truncate(email, 25)}`
+            if (count !== undefined) return `Found ${count} user${count !== 1 ? "s" : ""}`
+            return "Users loaded"
+        }
+    },
+    getWorkOSUser: {
+        preparing: "Loading user details",
+        executing: () => "Loading user details",
+        complete: (_params, result) => {
+            const parsed = safeParseResult(result)
+            const user = parsed?.user as Record<string, unknown> | undefined
+            const email = user?.email as string | undefined
+            const firstName = user?.firstName as string | undefined
+            if (firstName && email) return `Loaded ${firstName} (${truncate(email, 25)})`
+            if (email) return `Loaded user ${truncate(email, 30)}`
+            return "User loaded"
         }
     },
 
