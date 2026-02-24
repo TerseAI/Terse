@@ -258,6 +258,11 @@ export function buildSlackFileKey(teamId: string, fileId: string): string {
     return `slack/${teamId}/${hash}`
 }
 
+export function buildGithubFileKey(integraitonId: string, fileId: string): string {
+    const hash = md5Hash(fileId)
+    return `github/${integraitonId}/${hash}`
+}
+
 // Organization logo helpers
 
 export function buildOrgLogoKey(workosOrgId: string): string {

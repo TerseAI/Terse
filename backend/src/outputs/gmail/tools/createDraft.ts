@@ -9,10 +9,10 @@ import logger from "../../../logger"
 import { db } from "../../../prismaClient"
 import { IntegrationType } from "../../../shared/Integrations"
 import { ToolName } from "../../../tools/ToolNames"
-import { createNeedsApprovalFunction, formatError } from "../../../tools/toolUtils"
+import { createNeedsApprovalFunction } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
 
-import { buildEmailContent, encodeSubjectHeader } from "./mime"
+import { buildEmailContentWithAttachments, downloadImageAttachments, encodeSubjectHeader } from "./mime"
 
 /**
  * Tool for creating draft emails in Gmail.
@@ -20,19 +20,26 @@ import { buildEmailContent, encodeSubjectHeader } from "./mime"
  */
 export const gmailCreateDraftTool = tool({
     name: ToolName.GMAIL_CREATE_DRAFT,
-    description: `Create a draft email in Gmail. Use thread_id (the Gmail Thread ID, not the Message-ID) to create a draft reply to an existing thread, or omit it to create a new draft email. The draft will appear in the user's Gmail Drafts folder for review before sending.`,
+    description: `Create a draft email in Gmail. Use thread_id (the Gmail Thread ID, not the Message-ID) to create a draft reply to an existing thread, or omit it to create a new draft email. The draft will appear in the user's Gmail Drafts folder for review before sending. IMPORTANT: Never put image URLs directly in html_body — remote URLs expire and will result in broken images. Always use image_urls to embed images as base64-encoded inline MIME parts (CID attachments), then reference them in html_body with <img src="cid:image-1.png">.`,
     parameters: z.object({
         integrationId: z.string().describe("The integration ID of the Gmail account to use."),
         to: z.string().describe("Recipient email address(es). Multiple addresses can be comma-separated."),
         subject: z.string().describe("Email subject line"),
-        body: z.string().nullable().optional().describe("Plain text email body content."),
-        html_body: z.string().nullable().optional().describe("HTML email body content. If provided with body, sends multipart/alternative."),
+        body: z.string().nullable().optional().describe("Plain text email body content. Do not include image URLs here — images cannot be embedded in plain text."),
+        html_body: z.string().nullable().optional().describe("HTML email body content. If provided with body, sends multipart/alternative. NEVER use <img src=\"https://...\"> with remote URLs — they will expire. Images must be passed via image_urls and referenced as <img src=\"cid:image-1.png\">."),
         thread_id: z.string().nullable().optional().describe("Gmail Thread ID (numeric string from the email event, NOT the Message-ID header). Omit for new drafts."),
         cc: z.string().nullable().optional().describe("CC recipient email address(es). Multiple addresses can be comma-separated."),
-        bcc: z.string().nullable().optional().describe("BCC recipient email address(es). Multiple addresses can be comma-separated.")
+        bcc: z.string().nullable().optional().describe("BCC recipient email address(es). Multiple addresses can be comma-separated."),
+        image_urls: z
+            .array(z.string())
+            .nullable()
+            .optional()
+            .describe(
+                "URLs of images to embed in the email. Each image is downloaded and base64-encoded as an inline MIME attachment with a Content-ID. Images are assigned sequential filenames: image-1.png, image-2.png, etc. (extension reflects actual MIME type). You MUST reference each one in html_body as <img src=\"cid:image-1.png\">, <img src=\"cid:image-2.png\">, etc. Do NOT put the raw URLs in html_body."
+            )
     }),
     needsApproval: createNeedsApprovalFunction(ToolName.GMAIL_CREATE_DRAFT),
-    execute: async ({ integrationId, to, subject, body, html_body, thread_id, cc, bcc }, runContext?: RunContext<SessionWithTracking<Session>>) => {
+    execute: async ({ integrationId, to, subject, body, html_body, thread_id, cc, bcc, image_urls }, runContext?: RunContext<SessionWithTracking<Session>>) => {
         if (!runContext?.context) {
             throw new Error("No context provided")
         }
@@ -132,8 +139,45 @@ export const gmailCreateDraftTool = tool({
                 }
             }
 
+            // Download any image attachments
+            logger.info("[gmail_create_draft] Downloading image attachments", {
+                image_urls: image_urls ?? [],
+                count: (image_urls ?? []).length
+            })
+            const attachments = await downloadImageAttachments(image_urls ?? [])
+            logger.info("[gmail_create_draft] Downloaded attachments", {
+                count: attachments.length,
+                attachments: attachments.map(a => ({
+                    filename: a.filename,
+                    mimeType: a.mimeType,
+                    bytes: a.data.length
+                }))
+            })
+
+            // Check that all cid: references in html_body have a matching attachment
+            if (html_body) {
+                const cidRefs = [...html_body.matchAll(/cid:([^\s"'>]+)/g)].map(m => m[1])
+                const assignedIds = attachments.map(a => a.filename)
+                const unresolved = cidRefs.filter(cid => !assignedIds.includes(cid))
+                logger.info("[gmail_create_draft] CID reference check", {
+                    cidRefsInHtml: cidRefs,
+                    assignedContentIds: assignedIds,
+                    unresolvedCids: unresolved
+                })
+                if (unresolved.length > 0) {
+                    logger.warn("[gmail_create_draft] Unresolved cid references — images will appear broken", {
+                        unresolvedCids: unresolved
+                    })
+                }
+            }
+
             // Build the raw MIME email message
-            const emailContent = buildEmailContent(headers, body, html_body)
+            const emailContent = buildEmailContentWithAttachments(headers, body, html_body, attachments)
+
+            // Log MIME structure (first 2000 chars, skipping base64 blobs)
+            logger.info("[gmail_create_draft] Raw MIME preview (first 2000 chars)", {
+                mimePreview: emailContent.slice(0, 2000)
+            })
 
             // Encode the email in base64url format (required by Gmail API)
             const encodedMessage = Buffer.from(emailContent).toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "")
@@ -184,7 +228,7 @@ export const gmailCreateDraftTool = tool({
                 type: RunHistoryActionType.create
             }
 
-            logger.debug("[gmail_create_draft] Returning action in result", {
+            logger.info("[gmail_create_draft] Returning action in result", {
                 userId: runContext?.context?.user?.id || "unknown",
                 action
             })

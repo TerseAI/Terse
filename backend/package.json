@@ -54,6 +54,7 @@
     "axios": "^1.10.0",
     "body-parser": "^2.2.1",
     "chalk": "^5.4.1",
+    "cheerio": "^1.2.0",
     "confluence.js": "^2.1.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",

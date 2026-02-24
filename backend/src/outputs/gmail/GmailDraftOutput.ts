@@ -100,6 +100,12 @@ WORKFLOW:
 - After creating a draft, share the \`draft_url\` so the user can review it.
 - If you have a Slack output, you can share the draft URL via Slack for easy access.
 
+IMAGE ATTACHMENTS (optional):
+- Use the \`image_urls\` parameter to attach images as inline MIME parts.
+- Image URLs may be available from the source event itself (e.g. an "Attached Images" section from a GitHub PR). If present and it makes sense to forward them, pass those URLs via \`image_urls\`.
+- Each image is embedded with a Content-ID equal to its filename. To position an image within the draft body, include \`html_body\` and reference it with \`<img src="cid:FILENAME">\` (e.g. filename \`screenshot.png\` → \`<img src="cid:screenshot.png">\`). Without a \`cid:\` reference, the image appears as an inline attachment at the bottom.
+- This is a capability, not a requirement — only include images when it adds value.
+
 BEST PRACTICES:
 - Always provide clear, concise subject lines
 - For replies, use the Thread ID from the incoming email event (not the Message-ID)
