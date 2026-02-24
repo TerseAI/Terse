@@ -176,7 +176,7 @@ export function SlackConfigurationSelector({
                             <SelectSeparator />
                             <SelectGroup>
                                 <SelectLabel>Direct Messages</SelectLabel>
-                                <SelectItem value="__LISTEN_TO_DMS__">{mode === "output" ? "Send to direct messages" : "Monitor direct messages"}</SelectItem>
+                                <SelectItem value="__LISTEN_TO_DMS__">{mode === "output" ? "Read and write messages" : "Monitor messages"}</SelectItem>
                             </SelectGroup>
                         </>
                     )}

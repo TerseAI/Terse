@@ -137,10 +137,10 @@ export function SlackOutputIntegration({ input, variant, setConfig }: InputConfi
         const dmUserNames = isDmOnly && currentConfig?.userIds?.length && users?.length ? currentConfig.userIds.map(id => users.find(u => u.id === id)?.name ?? id).filter(Boolean) : []
         const summary = isDmOnly
             ? dmUserNames.length > 0
-                ? `DM to ${dmUserNames.join(", ")}`
+                ? dmUserNames.join(", ")
                 : (currentConfig?.userIds?.length ?? 0) > 0
-                  ? `DM to ${currentConfig?.userIds?.length ?? 0} user${(currentConfig?.userIds?.length ?? 0) === 1 ? "" : "s"}`
-                  : "All direct messages"
+                  ? `${currentConfig?.userIds?.length ?? 0} user${(currentConfig?.userIds?.length ?? 0) === 1 ? "" : "s"}`
+                  : "All users"
             : currentConfig?.channelName || selectedOption?.label || "No connection selected"
         return (
             <div className="text-sm flex items-center gap-1">
@@ -176,7 +176,7 @@ export function SlackOutputIntegration({ input, variant, setConfig }: InputConfi
 
             {selectedIntegrationId && (
                 <div className="mt-3 pt-3 border-t border-border min-w-0 overflow-hidden">
-                    {!currentConfig?.channelId && !sendToDms && <p className="text-sm text-muted-foreground mb-3">Select channel or direct-message scope</p>}
+                    {!currentConfig?.channelId && !sendToDms && <p className="text-sm text-muted-foreground mb-3">Choose channels or users this agent can read from and write to in Slack</p>}
                     <SlackConfigurationSelector
                         integrationId={selectedIntegrationId}
                         selectedChannelId={currentConfig?.channelId ?? ""}
