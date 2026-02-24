@@ -3,7 +3,6 @@ import { version as uuidVersion, validate as validateUuid } from "uuid"
 import { z } from "zod"
 
 import { INTEGRATION_REGISTRY, isSystemIntegration } from "../integrations/abstract/IntegrationRegistry"
-import { KnowledgeBaseFactory } from "../knowledgeBase/abstract/KnowledgeBaseFactory"
 import logger from "../logger"
 import { OutputFactory } from "../outputs/abstract/OutputFactory"
 import { db } from "../prismaClient"
@@ -17,16 +16,8 @@ import { TRIGGER_REGISTRY } from "../triggers/TriggerRegistry"
 import { AgentWithNotificationSettingsRelations, AgentWithRelations, AgentWithTriggerRelations, PrismaTransaction } from "../types/prisma"
 import { trackAgentCreated } from "../utility/analytics"
 import { parsePageParams } from "../utility/pagination"
-import { getInputConfigInclude, getKnowledgeBaseConfigInclude, getOutputConfigInclude } from "../utility/prismaIncludes"
-import {
-    convertConfigTypeToInputConfigType,
-    convertConfigTypeToKnowledgeBaseConfigType,
-    convertConfigTypeToOutputConfigType,
-    convertPlainObjectToKnowledgeBaseConfigInstance,
-    convertPrismaConfigToConfigInstance,
-    convertPrismaKnowledgeBaseConfigToConfigInstance,
-    convertPrismaOutputConfigToConfigInstance
-} from "../utility/typeConverters"
+import { getInputConfigInclude, getOutputConfigInclude } from "../utility/prismaIncludes"
+import { convertConfigTypeToInputConfigType, convertConfigTypeToOutputConfigType, convertPrismaConfigToConfigInstance, convertPrismaOutputConfigToConfigInstance } from "../utility/typeConverters"
 
 export type AgentDraft = Omit<Agent, "id"> & { id?: string }
 
@@ -54,18 +45,6 @@ async function createOutputConfig(tx: PrismaTransaction, outputId: string, confi
     }
     await output().validateConfig(config, userId)
     await output().addOutputToAgent(tx, outputId, config)
-}
-
-async function createKnowledgeBaseConfig(tx: PrismaTransaction, knowledgeBaseId: string, config: ConfigInstance, userId: string): Promise<void> {
-    // Convert plain object to proper instance if needed
-    const configInstance = convertPlainObjectToKnowledgeBaseConfigInstance(config)
-
-    const knowledgeBase = KnowledgeBaseFactory.KNOWLEDGE_BASE_REGISTRY.get(convertConfigTypeToKnowledgeBaseConfigType(configInstance.configType))
-    if (!knowledgeBase) {
-        throw new Error(`Knowledge base not found for integration type: ${configInstance.configType}`)
-    }
-    await knowledgeBase().validateConfig(configInstance, userId)
-    await knowledgeBase().addKnowledgeBaseToAgent(tx, knowledgeBaseId, configInstance)
 }
 
 export async function validateUserOwnsIntegration(organizationId: string, integrationType: IntegrationType, integrationId: string): Promise<boolean> {
@@ -114,7 +93,7 @@ function validateAndDeduplicateToolApprovals(toolApprovals: string[]): string[] 
 export type ApplyAgentOptions = { createWithId?: string }
 
 export async function applyAgentForUser(userId: string, organizationId: string, draft: AgentDraft, options?: ApplyAgentOptions): Promise<{ id: string }> {
-    const { name, triggers, outputs, knowledgeBases, prompt, isActive = true, requireApproval = false, notificationSettings, toolApprovals } = draft
+    const { name, triggers, outputs, prompt, isActive = true, requireApproval = false, notificationSettings, toolApprovals } = draft
 
     logger.debug("Outputs from frontend", {
         outputs: JSON.stringify(outputs, null, 2),
@@ -122,10 +101,6 @@ export async function applyAgentForUser(userId: string, organizationId: string, 
     })
     logger.debug("Triggers from frontend", {
         triggers: JSON.stringify(triggers, null, 2),
-        userId
-    })
-    logger.debug("Knowledge bases from frontend", {
-        knowledgeBases: JSON.stringify(knowledgeBases, null, 2),
         userId
     })
     logger.debug("Notification settings from frontend", {
@@ -231,37 +206,6 @@ export async function applyAgentForUser(userId: string, organizationId: string, 
             await createOutputConfig(tx, newOutput.id, output.config, userId)
         }
 
-        // Create knowledge bases if provided
-        if (knowledgeBases && knowledgeBases.length > 0) {
-            for (const kb of knowledgeBases) {
-                const integrationType = kb.config.integrationType
-                if (!integrationType) {
-                    throw new Error(`Unknown integration type: ${kb.config.integrationType}`)
-                }
-
-                // Validate that user owns the integration
-                const integrationId = kb.config.integrationId
-                if (!integrationId) {
-                    throw new Error(`Integration ID is required for ${kb.config.integrationType}`)
-                }
-
-                const isOwner = await validateUserOwnsIntegration(organizationId, integrationType, integrationId)
-                if (!isOwner) {
-                    throw new Error(`Integration ${kb.config.integrationType} not found or not owned by user`)
-                }
-
-                const newKnowledgeBase = await tx.automation_knowledge_bases.create({
-                    data: {
-                        automation_id: newAgent.id,
-                        config_type: convertConfigTypeToKnowledgeBaseConfigType(kb.config.configType),
-                        integration_id: integrationId
-                    }
-                })
-
-                await createKnowledgeBaseConfig(tx, newKnowledgeBase.id, kb.config, userId)
-            }
-        }
-
         // Create notification settings if provided
         if (notificationSettings) {
             await upsertNotificationSettings(tx, newAgent.id, notificationSettings)
@@ -308,7 +252,6 @@ export async function applyAgentForUser(userId: string, organizationId: string, 
         agentName: name,
         triggerCount: triggers.length,
         outputCount: outputs.length,
-        knowledgeBaseCount: knowledgeBases?.length || 0,
         requiresApproval: requireApproval
     })
 
@@ -316,7 +259,7 @@ export async function applyAgentForUser(userId: string, organizationId: string, 
 }
 
 export async function updateAgentForUser(userId: string, organizationId: string, agentId: string, update: Partial<AgentUpdate>): Promise<{ id: string }> {
-    const { name, triggers, outputs, knowledgeBases, prompt, isActive, requireApproval, notificationSettings, toolApprovals } = update
+    const { name, triggers, outputs, prompt, isActive, requireApproval, notificationSettings, toolApprovals } = update
 
     const prisma = db()
     const existingAgent: AgentWithTriggerRelations | null = await prisma.automations.findFirst({
@@ -450,46 +393,6 @@ export async function updateAgentForUser(userId: string, organizationId: string,
             }
         }
 
-        // Update knowledge bases if provided
-        if (knowledgeBases !== undefined) {
-            // Delete old knowledge bases if exists (configs cascade delete)
-            await tx.automation_knowledge_bases.deleteMany({
-                where: { automation_id: agentId }
-            })
-
-            // Create new knowledge bases if provided
-            if (knowledgeBases.length > 0) {
-                for (const kb of knowledgeBases) {
-                    const integrationType = kb.config.integrationType
-                    if (!integrationType) {
-                        throw new Error(`Unknown integration type: ${kb.config.integrationType}`)
-                    }
-
-                    // Validate that user owns the integration
-                    const integrationId = kb.config.integrationId
-                    if (!integrationId) {
-                        throw new Error(`Integration ID is required for ${kb.config.integrationType}`)
-                    }
-
-                    const isOwner = await validateUserOwnsIntegration(organizationId, integrationType, integrationId)
-                    if (!isOwner) {
-                        throw new Error(`Integration ${kb.config.integrationType} not found or not owned by user`)
-                    }
-
-                    const newKnowledgeBase = await tx.automation_knowledge_bases.create({
-                        data: {
-                            automation_id: agentId,
-                            config_type: convertConfigTypeToKnowledgeBaseConfigType(kb.config.configType),
-                            integration_id: integrationId
-                        }
-                    })
-
-                    // Create config record
-                    await createKnowledgeBaseConfig(tx, newKnowledgeBase.id, kb.config, userId)
-                }
-            }
-        }
-
         // Update notification settings if provided
         if (notificationSettings) {
             await upsertNotificationSettings(tx, agentId, notificationSettings)
@@ -581,9 +484,6 @@ export async function getUserAgents(req: Request, res: Response) {
                 outputs: {
                     include: getOutputConfigInclude()
                 },
-                knowledge_bases: {
-                    include: getKnowledgeBaseConfigInclude()
-                },
                 notification_settings: true,
                 tool_approvals: true
             },
@@ -646,9 +546,6 @@ export async function getRecentAgents(req: Request, res: Response) {
                     },
                     outputs: {
                         include: getOutputConfigInclude()
-                    },
-                    knowledge_bases: {
-                        include: getKnowledgeBaseConfigInclude()
                     },
                     tool_approvals: true
                 },
@@ -714,9 +611,6 @@ export async function getUserAgent(req: Request, res: Response) {
                 outputs: {
                     include: getOutputConfigInclude()
                 },
-                knowledge_bases: {
-                    include: getKnowledgeBaseConfigInclude()
-                },
                 notification_settings: true,
                 tool_approvals: true
             }
@@ -746,14 +640,13 @@ export async function createAgent(req: Request, res: Response) {
 
     const userId = req.session.user.id
     const organizationId = req.session.user.organizationId
-    const { name, triggers, outputs, knowledgeBases, prompt, isActive = true, requireApproval = false, notificationSettings, toolApprovals } = req.body as Agent
+    const { name, triggers, outputs, prompt, isActive = true, requireApproval = false, notificationSettings, toolApprovals } = req.body as Agent
 
     try {
         const { id } = await applyAgentForUser(userId, organizationId, {
             name,
             triggers,
             outputs,
-            knowledgeBases,
             prompt,
             isActive,
             requireApproval,
@@ -877,13 +770,6 @@ function transformAgentToFrontendFormat(agent: AgentWithRelations & Partial<Agen
             id: output.id,
             config: convertPrismaOutputConfigToConfigInstance(output)
         })),
-        knowledgeBases:
-            (agent as any).knowledge_bases && (agent as any).knowledge_bases.length > 0
-                ? (agent as any).knowledge_bases.map((kb: any) => ({
-                      id: kb.id,
-                      config: convertPrismaKnowledgeBaseConfigToConfigInstance(kb)
-                  }))
-                : undefined,
         notificationSettings: agent.notification_settings
             ? {
                   enabled: agent.notification_settings.enabled,

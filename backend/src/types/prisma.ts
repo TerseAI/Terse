@@ -7,7 +7,6 @@ import {
     automation_confluence_configs,
     automation_inputs,
     automation_jira_configs,
-    automation_knowledge_bases,
     automation_linear_configs,
     automation_notification_settings,
     automation_notion_configs,
@@ -93,21 +92,6 @@ export type AgentTriggerWithConfigs = AutomationInputWithConfigs // Alias for re
 export type AutomationOutput = automation_outputs
 export type AgentOutput = automation_outputs // Alias for rebranding (formerly ChannelOutput)
 
-export type AgentKnowledgeBase = automation_knowledge_bases
-
-// Extended type for AgentKnowledgeBase with all config relations included
-export type AgentKnowledgeBaseWithConfigs = Prisma.automation_knowledge_basesGetPayload<{
-    include: {
-        posthog_config: true
-        github_kb_config: true
-        launchdarkly_config: true
-        datadog_config: true
-        linear_kb_config: true
-        slack_kb_config: true
-        workos_kb_config: true
-    }
-}>
-
 // Extended type for AgentOutput with all config relations included
 export type AutomationOutputWithConfigs = Prisma.automation_outputsGetPayload<{
     include: {
@@ -118,7 +102,11 @@ export type AutomationOutputWithConfigs = Prisma.automation_outputsGetPayload<{
         confluence_config: true
         github_config: true
         gmail_config: true
+        posthog_config: true
+        datadog_config: true
+        launchdarkly_config: true
         figma_config: true
+        workos_output_config: true
         attio_config: true
     }
 }>
@@ -168,7 +156,11 @@ export type AutomationWithOutputRelations = Prisma.automationsGetPayload<{
                 confluence_config: true
                 github_config: true
                 gmail_config: true
+                posthog_config: true
+                datadog_config: true
+                launchdarkly_config: true
                 figma_config: true
+                workos_output_config: true
                 attio_config: true
             }
         }
@@ -198,24 +190,8 @@ export type AutomationWithToolApprovalsRelations = Prisma.automationsGetPayload<
 
 export type AgentWithToolApprovalsRelations = AutomationWithToolApprovalsRelations
 
-export type AutomationWithKnowledgeBaseRelations = Prisma.automationsGetPayload<{
-    include: {
-        knowledge_bases: {
-            include: {
-                posthog_config: true
-                github_kb_config: true
-            }
-        }
-    }
-}>
-export type AgentWithKnowledgeBaseRelations = AutomationWithKnowledgeBaseRelations
-
-export type AutomationWithRelations = AutomationWithInputRelations &
-    AutomationWithOutputRelations &
-    AutomationWithPromptRelations &
-    Partial<AutomationWithKnowledgeBaseRelations> &
-    Partial<AutomationWithToolApprovalsRelations>
-export type AgentWithRelations = AgentWithTriggerRelations & AgentWithOutputRelations & AgentWithPromptRelations & Partial<AgentWithKnowledgeBaseRelations> & AgentWithToolApprovalsRelations
+export type AutomationWithRelations = AutomationWithInputRelations & AutomationWithOutputRelations & AutomationWithPromptRelations & Partial<AutomationWithToolApprovalsRelations>
+export type AgentWithRelations = AgentWithTriggerRelations & AgentWithOutputRelations & AgentWithPromptRelations & AgentWithToolApprovalsRelations
 
 // Extract the transaction type from PrismaClient
 export type PrismaTransaction = Parameters<Parameters<PrismaClient["$transaction"]>[0]>[0]

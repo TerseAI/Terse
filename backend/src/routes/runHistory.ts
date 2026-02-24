@@ -1,3 +1,4 @@
+import { AgentInputItem } from "@openai/agents-core"
 import { Prisma } from "@prisma/client"
 import { Request, Response } from "express"
 

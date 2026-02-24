@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
 
-import { Bell, Check, ChevronRight, Copy, Database, FileText, MoreVertical, Pause, Play, PlusIcon, Trash2, Wrench, XIcon, Zap } from "lucide-react"
+import { Bell, Check, ChevronRight, Copy, FileText, MoreVertical, Pause, Play, PlusIcon, Trash2, Wrench, XIcon, Zap } from "lucide-react"
 import { toast } from "sonner"
 import { type KeyedMutator } from "swr"
 import { v4 as uuidv4 } from "uuid"
@@ -13,9 +13,9 @@ import { useAgentMutations } from "@/hooks/api/useAgents"
 import { useBuilderSession } from "@/hooks/useBuilderSession"
 import { FROM_SETUP_CHAT_PARAM } from "@/shared/FrontendRoutes"
 import { FrontendRoutes } from "@/shared/FrontendRoutes"
-import { AgentKnowledgeBase, AgentNotificationSettings as AgentNotificationSettingsType, AgentUpdate, TransientAgentOutput, TransientAgentTrigger } from "@/shared/types"
-import { Agent, AgentOutput, AgentPrompt, AgentTrigger, TransientKnowledgeBase } from "@/shared/types"
-import { getDefaultAgentName, toAgentKnowledgeBase, toAgentOutput, toAgentTrigger } from "@/utility/AgentUtils"
+import { AgentNotificationSettings as AgentNotificationSettingsType, AgentUpdate, TransientAgentOutput, TransientAgentTrigger } from "@/shared/types"
+import { Agent, AgentOutput, AgentPrompt, AgentTrigger } from "@/shared/types"
+import { getDefaultAgentName, toAgentOutput, toAgentTrigger } from "@/utility/AgentUtils"
 
 import { InputConfigSelectorProps, IntegrationSelector } from "../../../components/IntegrationSelector"
 import EditableTextField from "../../../components/ui/EditableTextField"
@@ -27,14 +27,12 @@ import { CONFIG_DETAILS, ConfigInstance, ConfigType } from "../../../shared/Conf
 import { AgentSetUpPageContext } from "../../../utility/AgentModelDonation"
 import AgentApprovalSettings from "../AgentApprovalSettings"
 import AgentNotificationSettings from "../AgentNotificationSettings"
-import { AddKnowledgeBaseModal } from "../components/AddKnowledgeBaseModal"
 import { AddOutputModal } from "../components/AddOutputModal"
 import { AddTriggerModal } from "../components/AddTriggerModal"
 import { InstructionsEditor } from "../components/InstructionsEditor"
 import { IconForConfigType } from "../components/Integration"
-import { KnowledgeBaseSelector } from "../components/KnowledgeBaseSelector"
 
-export type SetupSection = "triggers" | "knowledgeBase" | "prompt" | "skills" | "alerts"
+export type SetupSection = "triggers" | "prompt" | "skills" | "alerts"
 export type AgentSetupTabProps = {
     agentId: string | null
     name: string | null
@@ -43,8 +41,6 @@ export type AgentSetupTabProps = {
     setInputs: (inputs: TransientAgentTrigger[]) => void
     outputs: TransientAgentOutput[]
     setOutputs: (outputs: TransientAgentOutput[]) => void
-    knowledgeBases: TransientKnowledgeBase[]
-    setKnowledgeBases: (knowledgeBases: TransientKnowledgeBase[]) => void
     prompt: AgentPrompt | undefined
     setPrompt: (prompt: AgentPrompt | undefined) => void
     isActive: boolean
@@ -91,7 +87,6 @@ function AgentOptionsMenu({
     mutate,
     inputs,
     outputs,
-    knowledgeBases,
     prompt,
     requireApproval,
     toolApprovals,
@@ -104,7 +99,6 @@ function AgentOptionsMenu({
     mutate: KeyedMutator<Agent>
     inputs: AgentTrigger[]
     outputs: AgentOutput[]
-    knowledgeBases: AgentKnowledgeBase[]
     prompt: AgentPrompt | undefined
     requireApproval: boolean
     toolApprovals: string[]
@@ -143,7 +137,6 @@ function AgentOptionsMenu({
                 name: `${agentName} (copy)`,
                 triggers: inputs,
                 outputs,
-                knowledgeBases,
                 prompt,
                 isActive: false,
                 requireApproval,
@@ -227,7 +220,6 @@ function SaveAgentButton({
     name,
     inputs,
     outputs,
-    knowledgeBases,
     prompt,
     isActive,
     requireApproval,
@@ -241,7 +233,6 @@ function SaveAgentButton({
     name: string | null
     inputs: AgentTrigger[]
     outputs: AgentOutput[]
-    knowledgeBases: AgentKnowledgeBase[]
     prompt: AgentPrompt | undefined
     isActive: boolean
     requireApproval: boolean
@@ -275,7 +266,6 @@ function SaveAgentButton({
                 name: name || defaultName || "",
                 triggers: inputs,
                 outputs,
-                knowledgeBases,
                 prompt,
                 isActive,
                 requireApproval,
@@ -329,11 +319,9 @@ export default function AgentSetupTab({
     setName,
     inputs,
     outputs,
-    knowledgeBases,
     prompt,
     setInputs,
     setOutputs,
-    setKnowledgeBases,
     setPrompt,
     isActive,
     setIsActive,
@@ -363,7 +351,6 @@ export default function AgentSetupTab({
 
     const agentInputs = inputs.map(toAgentTrigger).filter((i): i is AgentTrigger => i != null)
     const agentOutputs = outputs.map(toAgentOutput).filter((o): o is AgentOutput => o != null)
-    const agentKnowledgeBases = knowledgeBases.map(toAgentKnowledgeBase).filter((kb): kb is AgentKnowledgeBase => kb != null)
 
     const triggersIncomplete = inputs.length === 0 || inputs.some(i => !i || !i.config || !i.config.isComplete())
     const promptIncomplete = !prompt?.text || prompt.text.trim() === ""
@@ -421,7 +408,6 @@ export default function AgentSetupTab({
                                 name={name}
                                 inputs={agentInputs}
                                 outputs={agentOutputs}
-                                knowledgeBases={agentKnowledgeBases}
                                 prompt={prompt}
                                 isActive={isActive}
                                 requireApproval={requireApproval}
@@ -437,7 +423,6 @@ export default function AgentSetupTab({
                                 mutate={mutate}
                                 inputs={agentInputs}
                                 outputs={agentOutputs}
-                                knowledgeBases={agentKnowledgeBases}
                                 prompt={prompt}
                                 requireApproval={requireApproval}
                                 toolApprovals={toolApprovals}
@@ -494,23 +479,6 @@ export default function AgentSetupTab({
 
                             {/* Optional sections */}
                             <button
-                                onClick={() => setActiveSection("knowledgeBase")}
-                                className={cn(
-                                    "flex w-auto items-center justify-start text-left gap-2 rounded-lg border px-3 py-2 text-sm transition-colors",
-                                    activeSection === "knowledgeBase"
-                                        ? "bg-background border-border shadow-sm text-foreground"
-                                        : "border-transparent text-muted-foreground hover:bg-background/50 hover:text-foreground"
-                                )}
-                            >
-                                <Database className="w-4 h-4" />
-                                <span className="whitespace-nowrap">Knowledge</span>
-                                {knowledgeBases.length > 0 && (
-                                    <Badge variant="secondary" className="ml-1 text-xs px-1.5 py-0">
-                                        {knowledgeBases.length}
-                                    </Badge>
-                                )}
-                            </button>
-                            <button
                                 onClick={() => setActiveSection("alerts")}
                                 className={cn(
                                     "flex w-auto items-center justify-start text-left gap-2 rounded-lg border px-3 py-2 text-sm transition-colors",
@@ -530,10 +498,6 @@ export default function AgentSetupTab({
                 <div className="p-6 max-w-7xl">
                     <div className={activeSection === "triggers" ? "block" : "hidden"}>
                         <InputLayout inputs={inputs} setInputs={setInputs} isIncomplete={triggersIncomplete} />
-                    </div>
-
-                    <div className={activeSection === "knowledgeBase" ? "block" : "hidden"}>
-                        <KnowledgeBaseLayout knowledgeBases={knowledgeBases} setKnowledgeBases={setKnowledgeBases} />
                     </div>
 
                     <div className={activeSection === "prompt" ? "block" : "hidden"}>
@@ -557,7 +521,7 @@ export default function AgentSetupTab({
                             <h2 className="text-lg font-medium mb-1">Alerts & Approval</h2>
                             <p className="text-sm text-muted-foreground mb-4">Configure when you want to be notified and whether actions need your approval.</p>
                         </div>
-                        <AgentApprovalSettings outputs={outputs} knowledgeBases={knowledgeBases} toolApprovals={toolApprovals} onToolApprovalsChange={setToolApprovals} />
+                        <AgentApprovalSettings outputs={outputs} toolApprovals={toolApprovals} onToolApprovalsChange={setToolApprovals} />
                         <AgentNotificationSettings settings={notificationSettings} onChange={setNotificationSettings} />
                     </div>
                 </div>
@@ -828,145 +792,6 @@ function SkillCard({
                         <DialogTitle>{needsConfiguration ? "Configure Skill" : "Skill Details"}</DialogTitle>
                     </DialogHeader>
                     <IntegrationSelector {...selectorProps} variant="dialog" />
-                    <DialogFooter>
-                        <Button variant="outline" onClick={handleCancel}>
-                            Cancel
-                        </Button>
-                        <Button onClick={handleDone} disabled={!isDraftValid}>
-                            Done
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-        </>
-    )
-}
-
-function KnowledgeBaseLayout({ knowledgeBases, setKnowledgeBases }: { knowledgeBases: TransientKnowledgeBase[]; setKnowledgeBases: (knowledgeBases: TransientKnowledgeBase[]) => void }) {
-    const [showAddModal, setShowAddModal] = useState(false)
-
-    const handleSelectKnowledgeBase = (configType: ConfigType) => {
-        const newKnowledgeBaseId = uuidv4()
-        const newKnowledgeBase: TransientKnowledgeBase = {
-            id: newKnowledgeBaseId,
-            config: undefined,
-            configType: configType
-        }
-        const newKnowledgeBases = [...knowledgeBases, newKnowledgeBase]
-        setKnowledgeBases(newKnowledgeBases)
-        setShowAddModal(false)
-    }
-
-    const handleRemove = (id: string) => {
-        setKnowledgeBases(knowledgeBases.filter(kb => kb.id !== id))
-    }
-
-    return (
-        <div className="space-y-4">
-            <div>
-                <h2 className="text-lg font-medium mb-1">Knowledge Base</h2>
-                <p className="text-sm text-muted-foreground">Sources the agent can reference for context. Add connected apps like Slack, GitHub, or Linear.</p>
-            </div>
-
-            <div className="flex flex-col gap-3">
-                {knowledgeBases.map(kb => (
-                    <KnowledgeBaseCard key={kb.id} knowledgeBase={kb} knowledgeBases={knowledgeBases} setKnowledgeBases={setKnowledgeBases} handleRemove={handleRemove} />
-                ))}
-                <Button variant="outline" onClick={() => setShowAddModal(true)} className="w-full justify-center border-dashed py-3">
-                    <PlusIcon className="w-4 h-4 mr-2" />
-                    Add knowledge base
-                </Button>
-            </div>
-            <AddKnowledgeBaseModal isOpen={showAddModal} onClose={() => setShowAddModal(false)} onSelectKnowledgeBase={handleSelectKnowledgeBase} />
-        </div>
-    )
-}
-
-function KnowledgeBaseCard({
-    knowledgeBase,
-    knowledgeBases,
-    setKnowledgeBases,
-    handleRemove
-}: {
-    knowledgeBase: TransientKnowledgeBase
-    knowledgeBases: TransientKnowledgeBase[]
-    setKnowledgeBases: (knowledgeBases: TransientKnowledgeBase[]) => void
-    handleRemove: (id: string) => void
-}) {
-    const [showDetailsDialog, setShowDetailsDialog] = useState(false)
-    const needsConfiguration = !knowledgeBase.config || !knowledgeBase.config.isComplete()
-    const [draftConfig, setDraftConfig] = useState<ConfigInstance | undefined>(knowledgeBase.config)
-
-    const draftKnowledgeBase = { ...knowledgeBase, config: draftConfig }
-    const isDraftValid = draftConfig?.isComplete() ?? false
-
-    const handleOpenDialog = () => {
-        setDraftConfig(knowledgeBase.config)
-        setShowDetailsDialog(true)
-    }
-
-    const handleCancel = () => {
-        setDraftConfig(knowledgeBase.config)
-        setShowDetailsDialog(false)
-    }
-
-    const handleDone = () => {
-        if (draftConfig) {
-            setKnowledgeBases(knowledgeBases.map(kb => (kb.id === knowledgeBase.id ? { ...kb, config: draftConfig, configType: draftConfig.configType } : kb)))
-        }
-        setShowDetailsDialog(false)
-    }
-
-    const selectorProps = {
-        knowledgeBase: draftKnowledgeBase,
-        setConfig: setDraftConfig,
-        variant: "card" as const
-    }
-
-    return (
-        <>
-            <div
-                className={cn("flex items-center gap-4 p-4 border rounded-lg cursor-pointer transition-colors hover:bg-muted/50", needsConfiguration && "border-yellow-500/50")}
-                onClick={handleOpenDialog}
-            >
-                <div className="w-10 h-10 shrink-0">
-                    <IconForConfigType type={knowledgeBase.configType} />
-                </div>
-                <div className="flex-1 min-w-0">
-                    <div className="font-medium text-sm">{CONFIG_DETAILS[knowledgeBase.configType].name}</div>
-                    <div className="text-xs text-muted-foreground truncate">
-                        <KnowledgeBaseSelector {...selectorProps} variant="card" />
-                    </div>
-                </div>
-                {needsConfiguration && (
-                    <Badge variant="outline" className="border-yellow-500 text-yellow-600 dark:text-yellow-500 shrink-0">
-                        Configure
-                    </Badge>
-                )}
-                <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    onClick={e => {
-                        e.stopPropagation()
-                        handleRemove(knowledgeBase.id)
-                    }}
-                    className="hover:text-destructive shrink-0"
-                >
-                    <XIcon className="w-4 h-4" />
-                </Button>
-            </div>
-
-            <Dialog
-                open={showDetailsDialog}
-                onOpenChange={open => {
-                    if (!open) handleCancel()
-                }}
-            >
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>{needsConfiguration ? "Configure Knowledge Base" : "Knowledge Base Details"}</DialogTitle>
-                    </DialogHeader>
-                    <KnowledgeBaseSelector {...selectorProps} variant="dialog" />
                     <DialogFooter>
                         <Button variant="outline" onClick={handleCancel}>
                             Cancel
