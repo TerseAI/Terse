@@ -7,8 +7,7 @@ import { generateCode, type GitHubInstanceData } from "./codegen.js"
 import type { GithubIntegration } from "./shared/Integrations.js"
 import { IntegrationType } from "./shared/Integrations.js"
 import { ApiRoutes } from "./shared/ApiRoutes.js"
-
-const BACKEND_URL = "http://localhost:3001"
+import { fetchWithAuth, readApiKey } from "./api.js"
 
 export async function generate(): Promise<void> {
     // 1. Read API key
@@ -98,49 +97,3 @@ function writeOutput(code: string): void {
     fs.writeFileSync(outPath, code)
 }
 
-// ── Helpers ──
-
-async function fetchWithAuth<T>(urlPath: string, apiKey: string): Promise<T> {
-    let res: Response
-    try {
-        res = await fetch(`${BACKEND_URL}${urlPath}`, {
-            headers: {
-                Authorization: `Bearer ${apiKey}`,
-                Accept: "application/json",
-            },
-        })
-    } catch (err: any) {
-        throw new Error(`Could not connect to ${BACKEND_URL} — is the backend running?\n  ${err.message}`)
-    }
-
-    const contentType = res.headers.get("content-type") ?? ""
-    if (!contentType.includes("application/json")) {
-        throw new Error(
-            `Expected JSON from ${urlPath} but got ${contentType || "unknown content-type"} (HTTP ${res.status}).\n` +
-            `  Is the Terse backend running on ${BACKEND_URL}?`
-        )
-    }
-
-    if (!res.ok) {
-        const body = await res.json().catch(() => ({})) as Record<string, unknown>
-        throw new Error(`${res.status} ${res.statusText} — ${urlPath}\n  ${body.error || JSON.stringify(body)}`)
-    }
-
-    return res.json() as Promise<T>
-}
-
-function readApiKey(): string | null {
-    const envPath = path.resolve(process.cwd(), ".env")
-    if (!fs.existsSync(envPath)) return null
-    const content = fs.readFileSync(envPath, "utf-8")
-    for (const line of content.split("\n")) {
-        const trimmed = line.trim()
-        if (trimmed.startsWith("#") || !trimmed.includes("=")) continue
-        const [key, ...rest] = trimmed.split("=")
-        if (key.trim() === "TERSE_API_KEY") {
-            const val = rest.join("=").trim()
-            return val || null
-        }
-    }
-    return null
-}

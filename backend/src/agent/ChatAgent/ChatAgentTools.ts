@@ -10,6 +10,7 @@ import { CronJobEvent } from "../../integrations/CronJobIntegration"
 import { FetchResourcesOptions, FetchResourcesOptionsSchema } from "../../integrations/abstract/FetchResourcesOptions"
 import { InputEvent } from "../../integrations/abstract/InputEvent"
 import { INTEGRATION_REGISTRY } from "../../integrations/abstract/IntegrationRegistry"
+import { fetchSampleEvents } from "../../integrations/abstract/sampleEvents"
 import logger from "../../logger"
 import { db } from "../../prismaClient"
 import { requireHydrator } from "../../rag/HydratorRegistry"
@@ -201,28 +202,13 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
                     agentId: agentId ?? null
                 })
 
-                const manager = INTEGRATION_REGISTRY.find(m => m.integrationType === integrationType)
-                if (!manager || !manager.getSampleEvents) {
-                    logger.warn("[getSampleEvents] Integration does not support sample events", { integrationType })
-                    throw new Error(`Integration ${integrationType} does not support sample events`)
-                }
-
                 const user = runContext?.context.user
                 if (!user) {
                     throw new Error("User is required to fetch sample events")
                 }
 
-                const ownsIntegration = await validateUserOwnsIntegration(user.organizationId, integrationType, integrationId)
-                if (!ownsIntegration) {
-                    throw new Error(`Integration ${integrationType} not found or not in your organization`)
-                }
-
                 const configInstance = toConfigInstance(normalizeConfig(triggerConfig.config))
-                const inputEvents = await manager.getSampleEvents(integrationId, user.organizationId, configInstance, { limit })
-                logger.info("[getSampleEvents] Fetched raw events from integration", {
-                    integrationType,
-                    count: inputEvents.length
-                })
+                const inputEvents = await fetchSampleEvents(integrationId, integrationType, configInstance, user.organizationId, { limit })
 
                 if (!agentId) {
                     throw new Error("Agent ID is required to get sample events")

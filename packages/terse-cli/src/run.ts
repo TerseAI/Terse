@@ -3,7 +3,14 @@ import path from "node:path"
 import { pathToFileURL } from "node:url"
 import chalk from "chalk"
 import { tsImport } from "tsx/esm/api"
-import { MockInputEvent, TerseAgent } from "terse-sdk"
+import { ConfigInstance, CreateJobParameters, TerseAgent } from "terse-sdk"
+import { fetchWithAuth, readApiKey } from "./api.js"
+import { ApiRoutes } from "./shared/ApiRoutes.js"
+import type { SerializedEvent } from "./shared/types.js"
+import { convertSerializedEventToInputEvent } from "./util.js"
+import ora from "ora"
+import { select } from "@inquirer/prompts"
+
 
 export async function run(jobName?: string): Promise<void> {
     const cwd = process.cwd()
@@ -51,7 +58,7 @@ export async function run(jobName?: string): Promise<void> {
     // module instances, which would give us an empty registry.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const registry = (globalThis as any).__terse_jobRegistry as
-        | Map<string, { name: string; onTrigger: (event: unknown, agent: unknown) => Promise<void> }>
+        | Map<string, CreateJobParameters>
         | undefined
 
     if (!registry || registry.size === 0) {
@@ -85,11 +92,43 @@ export async function run(jobName?: string): Promise<void> {
     const job = registry.get(resolvedName)!
     console.log(chalk.cyan(`\n  Running job: ${resolvedName}\n`))
 
-    const mockEvent = new MockInputEvent()
+    const apiKey = readApiKey()
+    if (!apiKey) {
+        console.error(chalk.red("Error: No API key found. Unable to run this job. Add a TERSE_API_KEY to your .env file."))
+        process.exit(1)
+    }
+
+    const spinner = ora(`Fetching sample events`).start()
+    let sampleEvents: { events: SerializedEvent[] }
+
+    try {
+        sampleEvents = await fetchWithAuth<{ events: SerializedEvent[] }>(ApiRoutes.SDK.SAMPLE_EVENTS, apiKey, {
+            triggers: job.triggers.map((trigger: ConfigInstance) => ({
+                integrationId: trigger.integrationId,
+                integrationType: trigger.integrationType,
+                config: trigger
+            }))
+        }, "POST")
+        spinner.succeed(`Sample events fetched. Found ${sampleEvents.events.length} events.`)
+    } catch {
+        spinner.fail(`Failed to fetch sample events.`)
+        sampleEvents = { events: [] }
+    }
+
+    const choice = await select<number>({
+        message: 'Select sample event:',
+        choices: sampleEvents.events.map((event, index) => ({
+          name: `${event.integrationType} - ${event.debugLog}`,
+          value: index,
+        })),
+    });
+    
+    const selectedEvent = sampleEvents.events[choice];
+    const event = convertSerializedEventToInputEvent(selectedEvent);
     const stubAgent = new TerseAgent("", [])
 
     try {
-        await job.onTrigger(mockEvent, stubAgent)
+        await job.onTrigger(event, stubAgent)
         console.log(chalk.green(`\n  Job "${resolvedName}" completed successfully.\n`))
     } catch (err) {
         console.error(chalk.red(`\n  Job "${resolvedName}" threw an error:\n`))

@@ -35,6 +35,7 @@ import { createOrganization, getCurrentOrganization, getLogoUploadUrl, getLogoUr
 import { createOrUpdatePosthogIntegration, getPosthogIntegrations, getPosthogProjects } from "./routes/posthog"
 import { refreshAllTokens } from "./routes/refreshTokens"
 import { getAllRunHistory, getChatHistory, getRunHistory, getRunHistoryActions } from "./routes/runHistory"
+import { handleSampleEvents } from "./routes/sampleEvents"
 import { handleManualTrigger, handleScheduleWebhook } from "./routes/schedule"
 import { getCurrentSlackIntegration, getSlackChannels, getSlackIntegrations, getSlackUsers, slackOAuthCallback } from "./routes/slack"
 import { getStats } from "./routes/stats"
@@ -618,6 +619,10 @@ app.get(ApiRoutes.SDK.ME, authMiddleware, async (req: Request, res: Response) =>
         logger.error("[/sdk/me] Failed to fetch user from WorkOS", { error })
         return res.status(500).json({ error: "Failed to fetch user" })
     }
+})
+
+app.post(ApiRoutes.SDK.SAMPLE_EVENTS, authMiddleware, async (req, res) => {
+    handleSampleEvents(req, res)
 })
 
 // MARK: TOOLS THAT REQUIRE APPROVALS

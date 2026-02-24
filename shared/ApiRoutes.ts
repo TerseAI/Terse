@@ -231,7 +231,8 @@ export const ApiRoutes = {
 
     // SDK routes (authenticated via API tokens)
     SDK: {
-        ME: "/sdk/me"
+        ME: "/sdk/me",
+        SAMPLE_EVENTS: "/sdk/sample-events"
     },
 
     // Webhooks routes

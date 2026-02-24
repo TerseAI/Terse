@@ -564,3 +564,15 @@ export interface StatsResponse {
     actionIntegrations: CountByString[] // Action counts grouped by integration (current period, write-only)
     actionTypes: CountByString[] // Action counts grouped by type (current period, write-only)
 }
+
+export interface TriggerPayload {
+    integrationId: string
+    integrationType: IntegrationType
+    config: Record<string, unknown>
+}
+
+export interface SerializedEvent {
+    integrationType: IntegrationType
+    formattedContent: string
+    debugLog: string
+}
