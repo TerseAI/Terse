@@ -8,7 +8,7 @@ import type { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner
 import { emitAndPersistSnippetEvent } from "../../../agent/systemEvents/emitAndPersistSnippetEvent"
 import { gemini } from "../../../config/settings"
 import logger from "../../../logger"
-import { buildImageEditKey, ensureStoredWithMetadata } from "../../../services/FileStorageService"
+import { assertInternalGcsBucketUrl, buildImageEditKey, ensureStoredWithMetadata } from "../../../services/FileStorageService"
 import { ToolName } from "../../../tools/ToolNames"
 import type { Session } from "../../../types/session"
 
@@ -17,10 +17,12 @@ export const imageEditTool = tool({
     description:
         "Edit or transform an image from a URL using a natural language prompt. Supports crops, style changes, object removal/addition, color adjustments, and other visual edits. The edited image is automatically sent to the chat UI for the user to see.",
     parameters: z.object({
-        image_url: z.string().describe("URL of the image to edit. Must be publicly accessible."),
+        image_url: z.string().describe("URL of the image to edit. Must be a signed URL from our internal GCS image bucket."),
         prompt: z.string().describe("Natural language instruction describing how to edit the image.")
     }),
     execute: async ({ image_url, prompt }, runContext?: RunContext<SessionWithTracking<Session>>) => {
+        assertInternalGcsBucketUrl(image_url)
+
         // 1. Download source image
         const downloadResponse = await axios.get(image_url, { responseType: "arraybuffer" })
         const imageBuffer = Buffer.from(downloadResponse.data)

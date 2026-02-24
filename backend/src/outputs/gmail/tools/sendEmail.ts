@@ -20,7 +20,7 @@ import { buildEmailContentWithAttachments, downloadImageAttachments, encodeSubje
  */
 export const gmailSendEmailTool = tool({
     name: ToolName.GMAIL_SEND_EMAIL,
-    description: `Send email or reply to an existing email thread via Gmail. Use thread_id (the Gmail Thread ID, not the Message-ID) to reply to an existing thread, or omit it to send a new email. IMPORTANT: Never put image URLs directly in html_body — remote URLs expire and will result in broken images. Always use image_urls to embed images as base64-encoded inline MIME parts (CID attachments), then reference them in html_body with <img src="cid:image-1.png">.`,
+    description: `Send email or reply to an existing email thread via Gmail. Use thread_id (the Gmail Thread ID, not the Message-ID) to reply to an existing thread, or omit it to send a new email. IMPORTANT: Never put image URLs directly in html_body — remote URLs expire and will result in broken images. Always use image_urls to embed images as base64-encoded inline MIME parts (CID attachments), then reference them in html_body with <img src="cid:image-1.png">. image_urls must be signed URLs from our internal GCS image bucket.`,
     parameters: z.object({
         integrationId: z.string().describe("The integration ID of the Gmail account to use."),
         to: z.string().describe("Recipient email address(es). Multiple addresses can be comma-separated."),
@@ -41,7 +41,7 @@ export const gmailSendEmailTool = tool({
             .nullable()
             .optional()
             .describe(
-                'URLs of images to embed in the email. Each image is downloaded and base64-encoded as an inline MIME attachment with a Content-ID. Images are assigned sequential filenames: image-1.png, image-2.png, etc. (extension reflects actual MIME type). You MUST reference each one in html_body as <img src="cid:image-1.png">, <img src="cid:image-2.png">, etc. Do NOT put the raw URLs in html_body.'
+                'URLs of images to embed in the email. Must be signed URLs from our internal GCS image bucket. Each image is downloaded and base64-encoded as an inline MIME attachment with a Content-ID. Images are assigned sequential filenames: image-1.png, image-2.png, etc. (extension reflects actual MIME type). You MUST reference each one in html_body as <img src="cid:image-1.png">, <img src="cid:image-2.png">, etc. Do NOT put the raw URLs in html_body.'
             )
     }),
     needsApproval: createNeedsApprovalFunction(ToolName.GMAIL_SEND_EMAIL),

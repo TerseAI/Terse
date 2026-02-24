@@ -2,6 +2,7 @@ import axios from "axios"
 import { randomUUID } from "crypto"
 
 import logger from "../../../logger"
+import { assertInternalGcsBucketUrl } from "../../../services/FileStorageService"
 
 function getRandomBoundary(): string {
     return `mime_boundary_${randomUUID()}`
@@ -38,6 +39,8 @@ function mimeTypeToExt(mimeType: string): string {
 export async function downloadImageAttachments(imageUrls: string[]): Promise<EmailAttachment[]> {
     const results = await Promise.all(
         imageUrls.map(async (url, index): Promise<{ attachment: EmailAttachment; index: number } | null> => {
+            assertInternalGcsBucketUrl(url)
+
             try {
                 const response = await axios.get(url, { responseType: "arraybuffer" })
                 const mimeType = (response.headers["content-type"] as string | undefined)?.split(";")[0].trim() || "image/png"

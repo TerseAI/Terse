@@ -1003,8 +1003,19 @@ export async function getPullRequestFiles(event: GithubAppUnifiedEventRequest, t
         return []
     }
 
-    const files = await Promise.all(imageUrls.map(url => processGithubFile(url, token, integrationId)))
-    return files.filter(Boolean) as StoredFile[]
+    const fileResults = await Promise.allSettled(imageUrls.map(url => processGithubFile(url, token, integrationId)))
+    return fileResults.flatMap((result, index) => {
+        if (result.status === "fulfilled") {
+            return result.value ? [result.value] : []
+        }
+
+        logger.warn("Skipping PR image URL after upload/download failure", {
+            url: imageUrls[index],
+            integrationId,
+            error: result.reason instanceof Error ? result.reason.message : String(result.reason)
+        })
+        return []
+    })
 }
 
 function getImageUrlsFromHtml(html: string): string[] {
@@ -1048,10 +1059,7 @@ async function processGithubFile(url: string, token: string, integrationId: stri
         }
         return storedFile ?? null
     } catch (error) {
-        if (error instanceof NonGithubUrlError) {
-            throw error
-        }
-        logger.error(`Error storing GitHub attachment`, {
+        logger.warn("Skipping GitHub PR image URL that could not be uploaded", {
             error,
             url,
             integrationId

@@ -248,6 +248,48 @@ export function md5Hash(input: string): string {
     return crypto.createHash("md5").update(input, "utf8").digest("hex")
 }
 
+/**
+ * Restrict image inputs to signed URLs from our configured internal GCS bucket.
+ * Supported formats:
+ * - https://storage.googleapis.com/<bucket>/<object>?...
+ * - https://<bucket>.storage.googleapis.com/<object>?...
+ */
+export function isInternalGcsBucketUrl(url: string): boolean {
+    let parsed: URL
+    try {
+        parsed = new URL(url)
+    } catch {
+        return false
+    }
+
+    if (parsed.protocol !== "https:") {
+        return false
+    }
+
+    const configuredBucket = gcs.imageBucket?.trim().toLowerCase()
+    if (!configuredBucket) {
+        return false
+    }
+
+    const host = parsed.hostname.toLowerCase()
+    if (host === `${configuredBucket}.storage.googleapis.com`) {
+        return true
+    }
+
+    if (host !== "storage.googleapis.com") {
+        return false
+    }
+
+    const firstPathSegment = parsed.pathname.replace(/^\/+/, "").split("/")[0]?.toLowerCase()
+    return firstPathSegment === configuredBucket
+}
+
+export function assertInternalGcsBucketUrl(url: string): void {
+    if (!isInternalGcsBucketUrl(url)) {
+        throw new Error(`Image URL must come from internal GCS bucket: ${gcs.imageBucket}`)
+    }
+}
+
 export function buildGmailFileKey(integrationId: string, messageId: string, attachmentId: string): string {
     const hash = md5Hash(`${messageId}/${attachmentId}`)
     return `gmail/${integrationId}/${hash}`
