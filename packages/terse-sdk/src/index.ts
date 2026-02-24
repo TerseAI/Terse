@@ -1,3 +1,5 @@
+declare const process: { env: Record<string, string | undefined> }
+
 import type { InputEvent, ToolboxEntry } from "./types.js"
 import type { ConfigInstance } from "./shared/Configs.js"
 import type { RunHistoryAction } from "./shared/RunHistoryTypes.js"
@@ -100,6 +102,26 @@ export class TerseAgent {
     async *run(prompt: string, event: InputEvent): AsyncGenerator<TerseAgentResult> {
         yield new TextResult("Hello, world!")
         return
+    }
+
+    async executeTool(toolName: string, params: Record<string, unknown> = {}): Promise<unknown> {
+        const apiKey = process.env.TERSE_API_KEY
+        if (!apiKey) {
+            throw new Error("TERSE_API_KEY environment variable is not set. Cannot execute tools without authentication.")
+        }
+        const res = await fetch("http://localhost:3001/sdk/tool-execute", {
+            method: "POST",
+            headers: {
+                Authorization: `Bearer ${apiKey}`,
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ toolName, params })
+        })
+        const data = (await res.json()) as { success: boolean; result?: unknown; error?: string }
+        if (!data.success) {
+            throw new Error(data.error ?? "Tool execution failed")
+        }
+        return data.result
     }
 }
 

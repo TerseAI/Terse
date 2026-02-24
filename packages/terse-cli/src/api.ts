@@ -14,6 +14,9 @@ export function readApiKey(): string | null {
         const [key, ...rest] = trimmed.split("=")
         if (key.trim() === "TERSE_API_KEY") {
             const val = rest.join("=").trim()
+            if (val) {
+                process.env.TERSE_API_KEY = val
+            }
             return val || null
         }
     }

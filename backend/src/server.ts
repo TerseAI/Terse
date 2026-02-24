@@ -37,6 +37,7 @@ import { refreshAllTokens } from "./routes/refreshTokens"
 import { getAllRunHistory, getChatHistory, getRunHistory, getRunHistoryActions } from "./routes/runHistory"
 import { handleSampleEvents } from "./routes/sampleEvents"
 import { handleManualTrigger, handleScheduleWebhook } from "./routes/schedule"
+import { handleToolExecute } from "./routes/sdkToolExecute"
 import { getCurrentSlackIntegration, getSlackChannels, getSlackIntegrations, getSlackUsers, slackOAuthCallback } from "./routes/slack"
 import { getStats } from "./routes/stats"
 import { getPublicTemplates, getTemplates } from "./routes/templates"
@@ -623,6 +624,10 @@ app.get(ApiRoutes.SDK.ME, authMiddleware, async (req: Request, res: Response) =>
 
 app.post(ApiRoutes.SDK.SAMPLE_EVENTS, authMiddleware, async (req, res) => {
     handleSampleEvents(req, res)
+})
+
+app.post(ApiRoutes.SDK.TOOL_EXECUTE, authMiddleware, async (req, res) => {
+    handleToolExecute(req, res)
 })
 
 // MARK: TOOLS THAT REQUIRE APPROVALS

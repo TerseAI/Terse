@@ -1,5 +1,6 @@
 import chalk from "chalk"
 import { TerseAgent } from "terse-sdk"
+import { readApiKey } from "./api.js"
 import { loadJob } from "./loadJob.js"
 import type { SerializedEvent } from "./shared/types.js"
 import { convertSerializedEventToInputEvent } from "./util.js"
@@ -13,6 +14,7 @@ export async function run(jobName?: string, eventJson?: string): Promise<void> {
         process.exit(1)
     }
 
+    readApiKey() // populates process.env.TERSE_API_KEY for SDK executeTool()
     const { name: resolvedName, job } = await loadJob(jobName)
     console.log(chalk.cyan(`\n  Running job: ${resolvedName}\n`))
 

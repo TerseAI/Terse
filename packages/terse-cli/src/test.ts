@@ -67,6 +67,7 @@ export async function test(jobName?: string): Promise<void> {
 
     const selectedEvent = events[choice]
     const event = convertSerializedEventToInputEvent(selectedEvent)
+
     const stubAgent = new TerseAgent("", [])
 
     try {
