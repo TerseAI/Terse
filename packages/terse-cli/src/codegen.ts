@@ -643,11 +643,28 @@ function jsonSchemaToTs(schema: JsonSchema, indent: number): string {
     }
 }
 
-function generateToolsSection(tools: ToolDefinition[]): SectionResult {
+function generateToolsSection(tools: ToolDefinition[], input: CodegenInput): SectionResult {
     if (tools.length === 0) return EMPTY_SECTION
 
     const imports = new Set(["TerseAgent"])
     const parts: string[] = [sectionHeader("Typed Tools"), ""]
+
+    // Build instance map: integration type → instances with id & displayName
+    const instanceMap = new Map<string, { id: string; displayName: string }[]>()
+    instanceMap.set("slack", input.slack.map(s => ({ id: s.id, displayName: s.displayName })))
+    instanceMap.set("github", input.github.map(g => ({ id: g.integration.id, displayName: g.integration.account_name || "" })))
+    instanceMap.set("gmail", input.gmail.map(g => ({ id: g.id, displayName: g.displayName })))
+    instanceMap.set("figma", input.figma.map(f => ({ id: f.id, displayName: f.displayName })))
+    instanceMap.set("linear", input.linear.map(l => ({ id: l.id, displayName: l.displayName })))
+    instanceMap.set("jira", input.atlassian.map(a => ({ id: a.id, displayName: a.displayName })))
+    instanceMap.set("confluence", input.atlassian.map(a => ({ id: a.id, displayName: a.displayName })))
+    instanceMap.set("atlassian", input.atlassian.map(a => ({ id: a.id, displayName: a.displayName })))
+    instanceMap.set("notion", input.notion.map(n => ({ id: n.id, displayName: n.displayName })))
+    instanceMap.set("posthog", input.posthog.map(p => ({ id: p.id, displayName: p.displayName })))
+    instanceMap.set("datadog", input.datadog.map(d => ({ id: d.id, displayName: d.displayName })))
+    instanceMap.set("launchdarkly", input.launchdarkly.map(l => ({ id: l.id, displayName: l.displayName })))
+    instanceMap.set("workos", input.workos.map(w => ({ id: w.id, displayName: w.displayName })))
+    instanceMap.set("attio", input.attio.map(a => ({ id: a.id, displayName: a.displayName })))
 
     // Group tools by integration
     const byIntegration = new Map<string, ToolDefinition[]>()
@@ -657,10 +674,29 @@ function generateToolsSection(tools: ToolDefinition[]): SectionResult {
         byIntegration.get(key)!.push(tool)
     }
 
-    // Generate per-tool param types
+    // Check if a tool has integrationId that should be auto-filled
+    const hasAutoFillId = (tool: ToolDefinition): boolean =>
+        tool.parameters.properties?.integrationId !== undefined
+
+    // Clone a schema with integrationId removed from properties and required
+    const omitIntegrationId = (schema: JsonSchema): JsonSchema => {
+        const cloned = { ...schema }
+        if (cloned.properties) {
+            cloned.properties = Object.fromEntries(
+                Object.entries(cloned.properties).filter(([key]) => key !== "integrationId")
+            )
+        }
+        if (cloned.required) {
+            cloned.required = cloned.required.filter(r => r !== "integrationId")
+        }
+        return cloned
+    }
+
+    // Generate per-tool param types (with integrationId omitted where applicable)
     for (const tool of tools) {
         const typeName = toolNameToInterfaceName(tool.name)
-        const tsType = jsonSchemaToTs(tool.parameters, 0)
+        const schema = hasAutoFillId(tool) ? omitIntegrationId(tool.parameters) : tool.parameters
+        const tsType = jsonSchemaToTs(schema, 0)
 
         if (tool.description) {
             parts.push(`/** ${tool.description} */`)
@@ -670,14 +706,32 @@ function generateToolsSection(tools: ToolDefinition[]): SectionResult {
         parts.push("")
     }
 
-    // Generate the GeneratedTools type
-    const integrationKeys = [...byIntegration.keys()].sort()
+    // Build tool groups: each group has a key, tools, and optional baked-in integrationId
+    const groups: { key: string; tools: ToolDefinition[]; integrationId?: string }[] = []
 
+    for (const [integration, integrationTools] of byIntegration) {
+        const needsAutoFill = integrationTools.some(hasAutoFillId)
+
+        if (needsAutoFill) {
+            const instances = instanceMap.get(integration) || []
+            if (instances.length === 0) continue  // Skip tools with no matching instances
+
+            for (let i = 0; i < instances.length; i++) {
+                const sfx = suffix(instances, i)
+                groups.push({ key: integration + sfx, tools: integrationTools, integrationId: instances[i].id })
+            }
+        } else {
+            groups.push({ key: integration, tools: integrationTools })
+        }
+    }
+
+    groups.sort((a, b) => a.key.localeCompare(b.key))
+
+    // Generate the GeneratedTools type
     parts.push("export type GeneratedTools = {")
-    for (const integration of integrationKeys) {
-        const integrationTools = byIntegration.get(integration)!
-        parts.push(`    ${integration}: {`)
-        for (const tool of integrationTools) {
+    for (const group of groups) {
+        parts.push(`    ${group.key}: {`)
+        for (const tool of group.tools) {
             const methodName = toCamelCase(tool.displayName)
             const paramsType = toolNameToInterfaceName(tool.name)
             if (tool.description) {
@@ -704,18 +758,19 @@ function generateToolsSection(tools: ToolDefinition[]): SectionResult {
     parts.push("    get(this: TerseAgent) {")
     parts.push("        const tools: GeneratedTools = {")
 
-    for (let g = 0; g < integrationKeys.length; g++) {
-        const integration = integrationKeys[g]
-        const integrationTools = byIntegration.get(integration)!
-        parts.push(`            ${integration}: {`)
-
-        for (const tool of integrationTools) {
+    for (const group of groups) {
+        parts.push(`            ${group.key}: {`)
+        for (const tool of group.tools) {
             const methodName = toCamelCase(tool.displayName)
             const paramsType = toolNameToInterfaceName(tool.name)
-            parts.push(`                ${methodName}: (params: ${paramsType}) =>`)
-            parts.push(`                    this.executeTool("${escapeString(tool.name)}", params),`)
+            if (group.integrationId && hasAutoFillId(tool)) {
+                parts.push(`                ${methodName}: (params: ${paramsType}) =>`)
+                parts.push(`                    this.executeTool("${escapeString(tool.name)}", { ...params, integrationId: "${escapeString(group.integrationId)}" }),`)
+            } else {
+                parts.push(`                ${methodName}: (params: ${paramsType}) =>`)
+                parts.push(`                    this.executeTool("${escapeString(tool.name)}", params),`)
+            }
         }
-
         parts.push(`            },`)
     }
 
@@ -778,7 +833,7 @@ export function generateCode(input: CodegenInput): string {
         generateLaunchDarklySection(input.launchdarkly),
         generateWorkOSSection(input.workos),
         generateAttioSection(input.attio),
-        generateToolsSection(input.tools),
+        generateToolsSection(input.tools, input),
         generateSystemSection(),
     ]
 
