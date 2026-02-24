@@ -169,6 +169,12 @@ function LaunchDarklyForm({
         <form onSubmit={onSubmit} className="space-y-4">
             <div className="space-y-2">
                 <Label htmlFor="apiKey">API Key</Label>
+                <p className="text-xs text-muted-foreground">
+                    You can create an API token in your{" "}
+                    <a href="https://app.launchdarkly.com/settings/authorization" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                        LaunchDarkly settings
+                    </a>
+                </p>
                 <div className="relative">
                     <Input
                         id="apiKey"
