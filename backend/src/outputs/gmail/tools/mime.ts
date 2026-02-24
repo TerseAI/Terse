@@ -1,6 +1,5 @@
-import { randomUUID } from "crypto"
-
 import axios from "axios"
+import { randomUUID } from "crypto"
 
 import logger from "../../../logger"
 
@@ -52,11 +51,8 @@ export async function downloadImageAttachments(imageUrls: string[]): Promise<Ema
     )
     // Assign predictable sequential filenames after filtering out failures.
     // This ensures Content-IDs match what injectInlineImages produces (image-1.png, image-2.png …).
-    return results
-        .filter((r): r is EmailAttachment => r !== null)
-        .map((a, index) => ({ ...a, filename: `image-${index + 1}.${mimeTypeToExt(a.mimeType)}` }))
+    return results.filter((r): r is EmailAttachment => r !== null).map((a, index) => ({ ...a, filename: `image-${index + 1}.${mimeTypeToExt(a.mimeType)}` }))
 }
-
 
 function buildPlainTextMime(headers: string[], body: string): string {
     return [...headers, "MIME-Version: 1.0", 'Content-Type: text/plain; charset="UTF-8"', "", body].join("\r\n")
@@ -116,12 +112,7 @@ export function buildEmailContent(headers: string[], body?: string | null, htmlB
  * since cid: references are not supported in plain text.
  * Falls back to buildEmailContent when no attachments are provided.
  */
-export function buildEmailContentWithAttachments(
-    headers: string[],
-    body: string | null | undefined,
-    htmlBody: string | null | undefined,
-    attachments: EmailAttachment[]
-): string {
+export function buildEmailContentWithAttachments(headers: string[], body: string | null | undefined, htmlBody: string | null | undefined, attachments: EmailAttachment[]): string {
     if (attachments.length === 0) {
         return buildEmailContent(headers, body, htmlBody)
     }
@@ -141,21 +132,10 @@ export function buildEmailContentWithAttachments(
  * multipart/related wrapping either a plain text/html pair (multipart/alternative)
  * or just HTML, followed by inline image parts with Content-ID headers.
  */
-function buildRelated(
-    headers: string[],
-    plainTextBody: string | null,
-    htmlBody: string,
-    attachments: EmailAttachment[]
-): string {
+function buildRelated(headers: string[], plainTextBody: string | null, htmlBody: string, attachments: EmailAttachment[]): string {
     const outerBoundary = getRandomBoundary()
 
-    const lines: string[] = [
-        ...headers,
-        "MIME-Version: 1.0",
-        `Content-Type: multipart/related; boundary="${outerBoundary}"`,
-        "",
-        `--${outerBoundary}`
-    ]
+    const lines: string[] = [...headers, "MIME-Version: 1.0", `Content-Type: multipart/related; boundary="${outerBoundary}"`, "", `--${outerBoundary}`]
 
     // Body sub-part: multipart/alternative when we have both plain text and HTML.
     if (plainTextBody) {

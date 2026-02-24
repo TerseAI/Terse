@@ -26,7 +26,13 @@ export const gmailSendEmailTool = tool({
         to: z.string().describe("Recipient email address(es). Multiple addresses can be comma-separated."),
         subject: z.string().describe("Email subject line"),
         body: z.string().nullable().optional().describe("Plain text email body content. Do not include image URLs here — images cannot be embedded in plain text."),
-        html_body: z.string().nullable().optional().describe("HTML email body content. If provided with body, sends multipart/alternative. NEVER use <img src=\"https://...\"> with remote URLs — they will expire. Images must be passed via image_urls and referenced as <img src=\"cid:image-1.png\">."),
+        html_body: z
+            .string()
+            .nullable()
+            .optional()
+            .describe(
+                'HTML email body content. If provided with body, sends multipart/alternative. NEVER use <img src="https://..."> with remote URLs — they will expire. Images must be passed via image_urls and referenced as <img src="cid:image-1.png">.'
+            ),
         thread_id: z.string().nullable().optional().describe("Gmail Thread ID (numeric string from the email event, NOT the Message-ID header). Omit for new emails."),
         cc: z.string().nullable().optional().describe("CC recipient email address(es). Multiple addresses can be comma-separated."),
         bcc: z.string().nullable().optional().describe("BCC recipient email address(es). Multiple addresses can be comma-separated."),
@@ -35,7 +41,7 @@ export const gmailSendEmailTool = tool({
             .nullable()
             .optional()
             .describe(
-                "URLs of images to embed in the email. Each image is downloaded and base64-encoded as an inline MIME attachment with a Content-ID. Images are assigned sequential filenames: image-1.png, image-2.png, etc. (extension reflects actual MIME type). You MUST reference each one in html_body as <img src=\"cid:image-1.png\">, <img src=\"cid:image-2.png\">, etc. Do NOT put the raw URLs in html_body."
+                'URLs of images to embed in the email. Each image is downloaded and base64-encoded as an inline MIME attachment with a Content-ID. Images are assigned sequential filenames: image-1.png, image-2.png, etc. (extension reflects actual MIME type). You MUST reference each one in html_body as <img src="cid:image-1.png">, <img src="cid:image-2.png">, etc. Do NOT put the raw URLs in html_body.'
             )
     }),
     needsApproval: createNeedsApprovalFunction(ToolName.GMAIL_SEND_EMAIL),

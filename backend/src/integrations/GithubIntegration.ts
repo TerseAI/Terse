@@ -394,7 +394,6 @@ export class GithubIntegrationManager
                 const eventData = await createPullRequestEventData(pr, repo, installationIdNum, accessToken)
                 let storedFiles: StoredFile[] = []
                 if (eventData) storedFiles = await getPullRequestFiles(eventData, accessToken, installationIdNum.toString())
-                console.log({ storedFiles })
                 if (eventData) events.push(new GithubEvent(eventData, storedFiles))
             }
             if (events.length >= maxEvents) break
@@ -520,10 +519,7 @@ export class GithubEvent extends InputEvent implements Identifiable {
 
         // Stored image URLs for images that appeared in the PR description.
         // The original GitHub asset URLs (github.com/user-attachments/...) require authentication
-        // and will not render in email clients or other external contexts. These stored URLs are
-        // publicly accessible replacements. When referencing PR images in emails, use these URLs
-        // instead of any GitHub URLs found in the PR body — either via the image_urls parameter
-        // or directly as <img src> in html_body.
+        // and will not render in email clients or other external contexts.
         let attachedImagesInfo: string | null = null
         if (this.storedFiles.length > 0) {
             const lines = this.storedFiles.map(f => `- ${f.filename || "image"} (${f.mimeType}): ${f.url}`)
