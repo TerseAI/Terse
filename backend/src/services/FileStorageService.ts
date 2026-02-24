@@ -263,6 +263,11 @@ export function buildGithubFileKey(integraitonId: string, fileId: string): strin
     return `github/${integraitonId}/${hash}`
 }
 
+export function buildImageEditKey(imageUrl: string, prompt: string): string {
+    const hash = md5Hash(`${imageUrl}/${prompt}`)
+    return `image-edits/${hash}`
+}
+
 // Organization logo helpers
 
 export function buildOrgLogoKey(workosOrgId: string): string {

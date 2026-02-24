@@ -75,6 +75,7 @@ export type ChatSnippet = { timestamp?: number } & (
     | { type: "integration_prompt"; integration: string; message: string; id: string; stateToken?: string }
     | { type: "navigate"; path: string; id: string }
     | { type: "multiple_choice"; questionId: string; question: string; options: MultipleChoiceOption[]; id: string; allowMultiple?: boolean; selectedValue?: string }
+    | { type: "image"; url: string; id: string }
 )
 
 export type ChatSnippetPayload = { timestamp?: number } & (
@@ -82,4 +83,5 @@ export type ChatSnippetPayload = { timestamp?: number } & (
     | { type: "integration_prompt"; integration: string; message: string; stateToken?: string }
     | { type: "navigate"; path: string }
     | { type: "multiple_choice"; questionId: string; question: string; options: MultipleChoiceOption[]; allowMultiple?: boolean }
+    | { type: "image"; url: string }
 )

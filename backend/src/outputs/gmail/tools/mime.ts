@@ -37,21 +37,28 @@ function mimeTypeToExt(mimeType: string): string {
 
 export async function downloadImageAttachments(imageUrls: string[]): Promise<EmailAttachment[]> {
     const results = await Promise.all(
-        imageUrls.map(async (url): Promise<EmailAttachment | null> => {
+        imageUrls.map(async (url, index): Promise<{ attachment: EmailAttachment; index: number } | null> => {
             try {
                 const response = await axios.get(url, { responseType: "arraybuffer" })
                 const mimeType = (response.headers["content-type"] as string | undefined)?.split(";")[0].trim() || "image/png"
-                // Filename is assigned after filtering so sequential indices are gap-free
-                return { filename: "", mimeType, data: Buffer.from(response.data) }
+                return {
+                    attachment: { filename: "", mimeType, data: Buffer.from(response.data) },
+                    index
+                }
             } catch (error) {
                 logger.warn("Failed to download image attachment for Gmail", { url, error })
                 return null
             }
         })
     )
-    // Assign predictable sequential filenames after filtering out failures.
-    // This ensures Content-IDs match what injectInlineImages produces (image-1.png, image-2.png …).
-    return results.filter((r): r is EmailAttachment => r !== null).map((a, index) => ({ ...a, filename: `image-${index + 1}.${mimeTypeToExt(a.mimeType)}` }))
+    // Use original image_urls indices for filenames so CID references (cid:image-1, cid:image-2, …)
+    // in html_body stay correct even when some downloads fail.
+    return results
+        .filter((r): r is { attachment: EmailAttachment; index: number } => r !== null)
+        .map(({ attachment, index }) => ({
+            ...attachment,
+            filename: `image-${index + 1}.${mimeTypeToExt(attachment.mimeType)}`
+        }))
 }
 
 function buildPlainTextMime(headers: string[], body: string): string {

@@ -6,6 +6,7 @@ import { ModelEvent } from "../shared/ModelEvents"
 import { isScaffoldedRunContextUserMessage } from "./AgentRunner/formatContext"
 import { parseFilterOutcomeSystemEventItem } from "./systemEvents/filterOutcomeSystemEvent"
 import { parseRunErrorSystemEventItem } from "./systemEvents/runErrorSystemEvent"
+import { parseSnippetSystemEventItem } from "./systemEvents/snippetSystemEvent"
 import { parseToolApprovalSystemEventItem } from "./systemEvents/toolApprovalSystemEvent"
 import { parseToolExecutionResult } from "./toolExecution"
 
@@ -115,6 +116,16 @@ async function convertSingleItem(
                 type: "ToolApprovalResponse",
                 step_id: toolApprovalSystemEvent.step_id,
                 approved: toolApprovalSystemEvent.approved
+            }
+        ]
+    }
+
+    const snippetSystemEvent = parseSnippetSystemEventItem(item)
+    if (snippetSystemEvent) {
+        return [
+            {
+                type: "Snippet",
+                snippet: snippetSystemEvent.snippet
             }
         ]
     }

@@ -1048,7 +1048,10 @@ async function processGithubFile(url: string, token: string, integrationId: stri
         }
         return storedFile ?? null
     } catch (error) {
-        logger.error(`Error storing Gmail attachment`, {
+        if (error instanceof NonGithubUrlError) {
+            throw error
+        }
+        logger.error(`Error storing GitHub attachment`, {
             error,
             url,
             integrationId
@@ -1057,7 +1060,43 @@ async function processGithubFile(url: string, token: string, integrationId: stri
     }
 }
 
+/** Allowed hostnames for GitHub asset URLs. Prevents token leakage to attacker-controlled servers. */
+const GITHUB_ASSET_HOSTS = new Set([
+    "github.com",
+    "user-images.githubusercontent.com",
+    "private-user-images.githubusercontent.com",
+    "github.githubassets.com",
+    "raw.githubusercontent.com",
+    "camo.githubusercontent.com",
+    "avatars.githubusercontent.com",
+    "media.githubusercontent.com"
+])
+
+class NonGithubUrlError extends Error {
+    constructor(message: string) {
+        super(message)
+        this.name = "NonGithubUrlError"
+    }
+}
+
+function assertIsGithubAssetUrl(url: string): void {
+    let parsed: URL
+    try {
+        parsed = new URL(url)
+    } catch {
+        throw new NonGithubUrlError(`Invalid URL for GitHub asset: ${url}`)
+    }
+    if (parsed.protocol !== "https:") {
+        throw new NonGithubUrlError(`Non-HTTPS URL rejected (would not send token): ${url}`)
+    }
+    const host = parsed.hostname.toLowerCase()
+    if (!GITHUB_ASSET_HOSTS.has(host) && !host.endsWith(".githubusercontent.com") && !host.endsWith(".githubassets.com")) {
+        throw new NonGithubUrlError(`Refusing to send GitHub token to non-GitHub URL: ${url}`)
+    }
+}
+
 async function downloadGithubFile(url: string, token: string): Promise<GithubFile | null> {
+    assertIsGithubAssetUrl(url)
     try {
         const response = await axios.get(url, {
             headers: {

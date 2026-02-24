@@ -230,7 +230,11 @@ export function convertRunHistoryEventsToTurns(events: (ModelEvent & { timestamp
             }
             case "Snippet": {
                 const e = event as { type: "Snippet"; snippet: ChatSnippetPayload }
-                const snippet: ChatSnippet = { ...e.snippet, id: uuidv4() } as ChatSnippet
+                const snippet: ChatSnippet = {
+                    ...e.snippet,
+                    id: uuidv4(),
+                    ...(typeof event.timestamp === "number" ? { timestamp: event.timestamp } : {})
+                } as ChatSnippet
                 const lastTurn = turns[turns.length - 1]
                 if (lastTurn && lastTurn.role === "assistant") {
                     const snippets = mergeSnippetIntoList(lastTurn.snippets ?? [], snippet, e.snippet)

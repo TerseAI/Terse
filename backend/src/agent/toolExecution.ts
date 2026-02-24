@@ -47,6 +47,10 @@ function normalizeToolExecutionOutput(rawOutput: unknown): object {
         output = (output as { text: string }).text
     }
 
+    if (output && typeof output === "object") {
+        return output as object
+    }
+
     if (typeof output === "string") {
         try {
             return JSON.parse(output)

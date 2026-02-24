@@ -378,7 +378,9 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance> {
             agent: {
                 requireApproval: this.agentConfig.require_approval ?? false,
                 toolApprovals: toolApprovals
-            }
+            },
+            runId: this.runContext.runId,
+            agentId: this.agentConfig.id
         }
     }
 
@@ -672,6 +674,8 @@ export type SessionWithTracking<T extends Session> = T & {
         requireApproval: boolean
         toolApprovals?: string[]
     }
+    runId: string
+    agentId: string
 }
 
 export enum AgentRunResultStatus {
