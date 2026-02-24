@@ -107,15 +107,20 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
         },
         complete: (_params, result) => {
             if (!result) return "Answered"
-            // Result may be a JSON-encoded string (e.g. "\"Option A\"")
-            let answer = result
+            // Result may be a JSON-encoded string (e.g. "\"Option A\"") or a JSON object
             try {
                 const parsed = JSON.parse(result)
-                if (typeof parsed === "string") answer = parsed
+                if (typeof parsed === "string") return `Answered: ${truncate(parsed, 50)}`
+                if (typeof parsed === "object" && parsed !== null) {
+                    // Try to extract a meaningful answer from common field names
+                    const answer = (parsed as Record<string, unknown>).answer ?? (parsed as Record<string, unknown>).value
+                    if (typeof answer === "string") return `Answered: ${truncate(answer, 50)}`
+                    return "Answered"
+                }
             } catch {
                 // raw string, use as-is
             }
-            return `Answered: ${truncate(answer, 50)}`
+            return `Answered: ${truncate(result, 50)}`
         }
     },
     fetchResourcesForIntegration: {
