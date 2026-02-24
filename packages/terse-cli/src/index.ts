@@ -4,6 +4,7 @@ import { Command } from "commander"
 import { generate } from "./generate.js"
 import { init } from "./init.js"
 import { run } from "./run.js"
+import { test } from "./test.js"
 
 const program = new Command()
 
@@ -29,10 +30,19 @@ program
 
 program
     .command("run")
-    .description("Execute a job's onTrigger locally for testing")
+    .description("Execute a job's onTrigger with a serialized event JSON")
     .argument("[job-name]", "Name of the job to run (auto-selects if only one exists)")
+    .option("--event <json>", "Serialized event JSON string")
+    .action(async (jobName?: string, opts?: { event?: string }) => {
+        await run(jobName, opts?.event)
+    })
+
+program
+    .command("test")
+    .description("Fetch sample events and run a job interactively")
+    .argument("[job-name]", "Name of the job to test (auto-selects if only one exists)")
     .action(async (jobName?: string) => {
-        await run(jobName)
+        await test(jobName)
     })
 
 await program.parseAsync()
