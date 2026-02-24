@@ -33,6 +33,26 @@ export interface DatadogInstanceData extends IntegrationInstanceData { indexes: 
 export interface LaunchDarklyInstanceData extends IntegrationInstanceData { projects: LaunchDarklyProjectData[] }
 export interface AttioInstanceData extends IntegrationInstanceData { objects: AttioObjectData[] }
 
+export interface ToolDefinition {
+    name: string
+    displayName: string
+    description: string
+    integration: string
+    isReadOnly: boolean
+    parameters: JsonSchema
+}
+
+export interface JsonSchema {
+    type?: string
+    properties?: Record<string, JsonSchema>
+    required?: string[]
+    items?: JsonSchema
+    enum?: (string | number | boolean)[]
+    anyOf?: JsonSchema[]
+    description?: string
+    [key: string]: unknown
+}
+
 export interface CodegenInput {
     github: GitHubInstanceData[]
     slack: SlackInstanceData[]
@@ -46,6 +66,7 @@ export interface CodegenInput {
     launchdarkly: LaunchDarklyInstanceData[]
     workos: IntegrationInstanceData[]
     attio: AttioInstanceData[]
+    tools: ToolDefinition[]
 }
 
 // ── Internal Types ────────────────────────────────────────────────────
@@ -547,6 +568,168 @@ function generateAttioSection(instances: AttioInstanceData[]): SectionResult {
     return { code: parts.join("\n"), imports }
 }
 
+// ── Typed Tools ───────────────────────────────────────────────────────
+
+/**
+ * Converts a displayName like "Create ticket" to camelCase like "createTicket".
+ */
+function toCamelCase(s: string): string {
+    const pascal = toPascalCase(s)
+    return pascal.charAt(0).toLowerCase() + pascal.slice(1)
+}
+
+/**
+ * Converts a tool name like "linear_create_ticket" to a PascalCase interface name
+ * like "LinearCreateTicketParams".
+ */
+function toolNameToInterfaceName(name: string): string {
+    return name.split("_").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join("") + "Params"
+}
+
+/**
+ * Converts a JSON Schema type to a TypeScript type string.
+ * Handles nested objects, arrays, enums, anyOf (nullable), and primitives.
+ */
+function jsonSchemaToTs(schema: JsonSchema, indent: number): string {
+    if (!schema) return "unknown"
+
+    // Handle enums
+    if (schema.enum) {
+        return schema.enum.map(v => typeof v === "string" ? `"${escapeString(v)}"` : String(v)).join(" | ")
+    }
+
+    // Handle anyOf (commonly used for nullable: [X, { type: "null" }])
+    if (schema.anyOf) {
+        const nonNull = schema.anyOf.filter(s => s.type !== "null")
+        const hasNull = schema.anyOf.some(s => s.type === "null")
+        if (nonNull.length === 1 && hasNull) {
+            return `${jsonSchemaToTs(nonNull[0], indent)} | null`
+        }
+        return schema.anyOf.map(s => jsonSchemaToTs(s, indent)).join(" | ")
+    }
+
+    switch (schema.type) {
+        case "string":
+            return "string"
+        case "number":
+        case "integer":
+            return "number"
+        case "boolean":
+            return "boolean"
+        case "array":
+            if (schema.items) {
+                const itemType = jsonSchemaToTs(schema.items, indent)
+                // Wrap union types in parens for array
+                return itemType.includes("|") ? `(${itemType})[]` : `${itemType}[]`
+            }
+            return "unknown[]"
+        case "object": {
+            if (!schema.properties || Object.keys(schema.properties).length === 0) {
+                return "Record<string, unknown>"
+            }
+            const requiredSet = new Set(schema.required || [])
+            const pad = " ".repeat(indent)
+            const innerPad = " ".repeat(indent + 4)
+            const entries = Object.entries(schema.properties).map(([key, prop]) => {
+                const optional = requiredSet.has(key) ? "" : "?"
+                const tsType = jsonSchemaToTs(prop, indent + 4)
+                const desc = prop.description ? ` /** ${prop.description} */\n${innerPad}` : ""
+                return `${desc}${key}${optional}: ${tsType}`
+            })
+            return `{\n${innerPad}${entries.join(`\n${innerPad}`)}\n${pad}}`
+        }
+        default:
+            return "unknown"
+    }
+}
+
+function generateToolsSection(tools: ToolDefinition[]): SectionResult {
+    if (tools.length === 0) return EMPTY_SECTION
+
+    const imports = new Set(["TerseAgent"])
+    const parts: string[] = [sectionHeader("Typed Tools"), ""]
+
+    // Group tools by integration
+    const byIntegration = new Map<string, ToolDefinition[]>()
+    for (const tool of tools) {
+        const key = tool.integration.toLowerCase()
+        if (!byIntegration.has(key)) byIntegration.set(key, [])
+        byIntegration.get(key)!.push(tool)
+    }
+
+    // Generate per-tool param types
+    for (const tool of tools) {
+        const typeName = toolNameToInterfaceName(tool.name)
+        const tsType = jsonSchemaToTs(tool.parameters, 0)
+
+        if (tool.description) {
+            parts.push(`/** ${tool.description} */`)
+        }
+        // Always use `type` (not `interface`) so params are assignable to Record<string, unknown>
+        parts.push(`export type ${typeName} = ${tsType}`)
+        parts.push("")
+    }
+
+    // Generate the GeneratedTools type
+    const integrationKeys = [...byIntegration.keys()].sort()
+
+    parts.push("export type GeneratedTools = {")
+    for (const integration of integrationKeys) {
+        const integrationTools = byIntegration.get(integration)!
+        parts.push(`    ${integration}: {`)
+        for (const tool of integrationTools) {
+            const methodName = toCamelCase(tool.displayName)
+            const paramsType = toolNameToInterfaceName(tool.name)
+            if (tool.description) {
+                parts.push(`        /** ${tool.description} */`)
+            }
+            parts.push(`        ${methodName}(params: ${paramsType}): Promise<unknown>`)
+        }
+        parts.push("    }")
+    }
+    parts.push("}")
+    parts.push("")
+
+    // Module augmentation — adds `tools` to TerseAgent's type
+    parts.push('declare module "terse-sdk" {')
+    parts.push("    interface TerseAgent {")
+    parts.push("        readonly tools: GeneratedTools")
+    parts.push("    }")
+    parts.push("}")
+    parts.push("")
+
+    // Runtime: lazy getter on prototype, cached per instance
+    parts.push("// Register typed tools on TerseAgent (lazy, cached per instance)")
+    parts.push('Object.defineProperty(TerseAgent.prototype, "tools", {')
+    parts.push("    get(this: TerseAgent) {")
+    parts.push("        const tools: GeneratedTools = {")
+
+    for (let g = 0; g < integrationKeys.length; g++) {
+        const integration = integrationKeys[g]
+        const integrationTools = byIntegration.get(integration)!
+        parts.push(`            ${integration}: {`)
+
+        for (const tool of integrationTools) {
+            const methodName = toCamelCase(tool.displayName)
+            const paramsType = toolNameToInterfaceName(tool.name)
+            parts.push(`                ${methodName}: (params: ${paramsType}) =>`)
+            parts.push(`                    this.executeTool("${escapeString(tool.name)}", params),`)
+        }
+
+        parts.push(`            },`)
+    }
+
+    parts.push("        }")
+    parts.push('        Object.defineProperty(this, "tools", { value: tools })')
+    parts.push("        return tools")
+    parts.push("    },")
+    parts.push("    configurable: true,")
+    parts.push("})")
+    parts.push("")
+
+    return { code: parts.join("\n"), imports }
+}
+
 // ── System (always included) ──────────────────────────────────────────
 
 function generateSystemSection(): SectionResult {
@@ -595,6 +778,7 @@ export function generateCode(input: CodegenInput): string {
         generateLaunchDarklySection(input.launchdarkly),
         generateWorkOSSection(input.workos),
         generateAttioSection(input.attio),
+        generateToolsSection(input.tools),
         generateSystemSection(),
     ]
 

@@ -15,6 +15,7 @@ import {
     type DatadogInstanceData,
     type LaunchDarklyInstanceData,
     type AttioInstanceData,
+    type ToolDefinition,
 } from "./codegen.js"
 import type {
     GithubIntegration,
@@ -65,7 +66,20 @@ export async function generate(): Promise<void> {
         process.exit(1)
     }
 
-    // 3. Fetch all integration instances + resources in parallel
+    // 3. Fetch tool definitions
+    spinner.text = "Fetching tool definitions..."
+
+    let toolDefs: ToolDefinition[] = []
+    try {
+        const resp = await fetchWithAuth<{ tools: ToolDefinition[] }>(ApiRoutes.SDK.TOOL_DEFINITIONS, apiKey)
+        // Filter to only tools whose integration matches an active integration type
+        const activeSet = new Set(activeTypes as string[])
+        toolDefs = resp.tools.filter(t => activeSet.has(t.integration))
+    } catch {
+        // Non-fatal: proceed without tool definitions
+    }
+
+    // 4. Fetch all integration instances + resources in parallel
     spinner.text = "Fetching integration details..."
 
     const input: CodegenInput = {
@@ -73,6 +87,7 @@ export async function generate(): Promise<void> {
         linear: [], atlassian: [], notion: [],
         posthog: [], datadog: [], launchdarkly: [],
         workos: [], attio: [],
+        tools: toolDefs,
     }
 
     const has = (t: IntegrationType) => activeTypes.includes(t)
@@ -246,19 +261,22 @@ export async function generate(): Promise<void> {
 
     spinner.succeed(`Fetched ${integrationCount} integration(s)`)
 
-    // 4. Generate code
+    // 5. Generate code
     const codegenStart = performance.now()
     const code = generateCode(input)
     const codegenMs = performance.now() - codegenStart
 
-    // 5. Write output
+    // 6. Write output
     writeOutput(code)
 
-    // 6. Summary
+    // 7. Summary
     const totalMs = performance.now() - totalStart
 
     console.log("")
     printSummary(input)
+    if (input.tools.length > 0) {
+        console.log(`  ${chalk.green("+")} ${input.tools.length} typed tool ${input.tools.length === 1 ? "wrapper" : "wrappers"}`)
+    }
     console.log(`  ${chalk.green("+")} Schedule trigger`)
     console.log(`  ${chalk.green("+")} Terse skills (web search)`)
     console.log("")
