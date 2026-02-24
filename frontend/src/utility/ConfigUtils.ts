@@ -62,13 +62,7 @@ export function deserializeConfig(jsonConfig: any): ConfigInstance {
             return new LinearInputConfig(integrationId, linearInputConfig.projectId, linearInputConfig.projectName)
         case ConfigType.LINEAR_OUTPUT:
             const linearOutputConfig = jsonConfig as LinearOutputConfig
-            return new LinearOutputConfig(
-                integrationId,
-                linearOutputConfig.teamId,
-                linearOutputConfig.teamName,
-                linearOutputConfig.projectId,
-                linearOutputConfig.projectName
-            )
+            return new LinearOutputConfig(integrationId, linearOutputConfig.teamId, linearOutputConfig.teamName, linearOutputConfig.projectId, linearOutputConfig.projectName)
         case ConfigType.GITHUB:
             const githubConfig = jsonConfig as GitHubConfig
             return new GitHubConfig(integrationId, githubConfig.repositoryIds)

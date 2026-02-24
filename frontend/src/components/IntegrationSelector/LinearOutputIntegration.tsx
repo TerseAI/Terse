@@ -23,13 +23,7 @@ export function LinearOutputIntegration({ input, variant, setConfig }: InputConf
         const integration = integrations.find((integration: LinearIntegrationType) => integration.id === value)
         if (integration) {
             // Preserve existing team and project when switching integrations
-            const linearConfig = new LinearOutputConfig(
-                integration.id,
-                currentConfig?.teamId,
-                currentConfig?.teamName,
-                currentConfig?.projectId,
-                currentConfig?.projectName
-            )
+            const linearConfig = new LinearOutputConfig(integration.id, currentConfig?.teamId, currentConfig?.teamName, currentConfig?.projectId, currentConfig?.projectName)
             setConfig(linearConfig)
         }
     }

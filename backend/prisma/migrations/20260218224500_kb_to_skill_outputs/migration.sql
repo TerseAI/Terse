@@ -247,7 +247,11 @@ WITH slack_kb_base AS (
         askb."channel_ids",
         askb."channel_names",
         askb."allow_dms",
-        COALESCE(askb."user_ids", ARRAY[]::TEXT[]) AS user_ids
+        ARRAY(
+            SELECT DISTINCT uid
+            FROM unnest(COALESCE(askb."user_ids", ARRAY[]::TEXT[])) AS uid
+            ORDER BY uid
+        ) AS user_ids
     FROM "automation_knowledge_bases" akb
     INNER JOIN "automation_slack_kb_configs" askb
         ON askb."automation_knowledge_base_id" = akb."id"
@@ -314,7 +318,15 @@ WHERE NOT EXISTS (
       AND ao."integration_id" = sc."integration_id"
       AND ao."config_type" = 'SLACK_CHANNEL'::"OutputConfigType"
       AND ascf."channel_id" IS NOT DISTINCT FROM sc."channel_id"
-      AND ascf."user_ids" = sc."user_ids"
+      AND ARRAY(
+            SELECT DISTINCT uid
+            FROM unnest(COALESCE(ascf."user_ids", ARRAY[]::TEXT[])) AS uid
+            ORDER BY uid
+      ) = ARRAY(
+            SELECT DISTINCT uid
+            FROM unnest(COALESCE(sc."user_ids", ARRAY[]::TEXT[])) AS uid
+            ORDER BY uid
+      )
 )
 ON CONFLICT ("id") DO NOTHING;
 

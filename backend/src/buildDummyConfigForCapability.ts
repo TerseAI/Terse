@@ -25,8 +25,7 @@ type OutputDummyPayload =
     | { config_type: typeof OutputConfigType.NOTION; notion_config: Pick<automation_notion_configs, "database_ids" | "database_names" | "page_ids" | "page_names"> }
     | {
           config_type: typeof OutputConfigType.LINEAR_TICKET
-          linear_config: Pick<automation_linear_configs, "team_id" | "team_name"> &
-              Partial<Pick<automation_linear_configs, "project_id" | "project_name">>
+          linear_config: Pick<automation_linear_configs, "team_id" | "team_name"> & Partial<Pick<automation_linear_configs, "project_id" | "project_name">>
       }
     | { config_type: typeof OutputConfigType.JIRA_TICKET; jira_config: Pick<automation_jira_configs, "project_key" | "project_id"> }
     | { config_type: typeof OutputConfigType.CONFLUENCE; confluence_config: Pick<automation_confluence_configs, "space_name" | "space_id" | "page_id" | "page_name"> }
