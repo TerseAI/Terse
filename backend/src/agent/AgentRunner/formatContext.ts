@@ -1,6 +1,6 @@
 import logger from "../../logger"
-import { AgentKnowledgeBaseWithConfigs, AgentOutput, AgentOutputWithConfigs, AgentTrigger, AgentTriggerWithConfigs, AgentWithRelations } from "../../types/prisma"
-import { convertPrismaConfigToConfigInstance, convertPrismaKnowledgeBaseConfigToConfigInstance, convertPrismaOutputConfigToConfigInstance } from "../../utility/typeConverters"
+import { AgentOutput, AgentOutputWithConfigs, AgentTrigger, AgentTriggerWithConfigs, AgentWithRelations } from "../../types/prisma"
+import { convertPrismaConfigToConfigInstance, convertPrismaOutputConfigToConfigInstance } from "../../utility/typeConverters"
 
 type RunTriggerContextMessageInput = {
     userContext?: string
@@ -70,13 +70,6 @@ export function formatAgentForSystemPrompt(agent: AgentWithRelations): string {
         sections.push(indent(formatAgentOutputsForAgent(agent.outputs)))
     }
 
-    // Knowledge Bases section
-    if (agent.knowledge_bases && agent.knowledge_bases.length > 0) {
-        sections.push("")
-        sections.push("Knowledge Bases:")
-        sections.push(indent(formatAgentKnowledgeBasesForAgent(agent.knowledge_bases as AgentKnowledgeBaseWithConfigs[])))
-    }
-
     return sections.join("\n")
 }
 
@@ -97,16 +90,6 @@ export function formatAgentOutputForAgent(output: AgentOutput | AgentOutputWithC
     } catch (error) {
         logger.warn("Failed to convert channel output to ConfigInstance", { error, configType: output.config_type, outputId: output.id })
         return `Type: ${output.config_type}`
-    }
-}
-
-export function formatAgentKnowledgeBaseForAgent(kb: AgentKnowledgeBaseWithConfigs): string {
-    try {
-        const configInstance = convertPrismaKnowledgeBaseConfigToConfigInstance(kb)
-        return configInstance.formatForAgent()
-    } catch (error) {
-        logger.warn("Failed to convert knowledge base to ConfigInstance", { error, configType: kb.config_type, kbId: kb.id })
-        return `Type: ${kb.config_type}`
     }
 }
 
@@ -140,23 +123,6 @@ export function formatAgentOutputsForAgent(outputs: (AgentOutput | AgentOutputWi
         .map((output, index) => {
             const formatted = formatAgentOutputForAgent(output)
             return `Output ${index + 1}:\n${indent(formatted)}`
-        })
-        .join("\n\n")
-}
-
-export function formatAgentKnowledgeBasesForAgent(knowledgeBases: AgentKnowledgeBaseWithConfigs[]): string {
-    if (knowledgeBases.length === 0) {
-        return "No knowledge bases configured"
-    }
-
-    if (knowledgeBases.length === 1) {
-        return formatAgentKnowledgeBaseForAgent(knowledgeBases[0])
-    }
-
-    return knowledgeBases
-        .map((kb, index) => {
-            const formatted = formatAgentKnowledgeBaseForAgent(kb)
-            return `Knowledge Base ${index + 1}:\n${indent(formatted)}`
         })
         .join("\n\n")
 }

@@ -11,18 +11,15 @@ export enum ConfigType {
     LINEAR_INPUT = "linear_input",
     LINEAR_OUTPUT = "linear_output",
     GITHUB = "github",
-    GITHUB_KB = "github_kb",
     JIRA = "jira",
     CONFLUENCE = "confluence",
     POSTHOG = "POSTHOG",
     DATADOG = "DATADOG",
     TIME_TRIGGER = "time_trigger",
     LAUNCHDARKLY = "launchdarkly",
-    LINEAR_KB = "linear_kb",
-    SLACK_KB = "slack_kb",
     TERSE = "terse",
     WORKOS_INPUT = "workos_input",
-    WORKOS_KB = "workos_kb",
+    WORKOS_OUTPUT = "workos_output",
     ATTIO_OUTPUT = "attio_output"
 }
 
@@ -34,7 +31,6 @@ export interface ConfigDetails {
     integrationType: IntegrationType
     isInput: boolean
     isOutput: boolean
-    isKnowledgeBase: boolean
 }
 
 // Metadata objects - using const objects instead of classes
@@ -44,8 +40,7 @@ export const GmailConfigMetadata = {
     description: "Monitor incoming emails",
     integrationType: IntegrationType.GMAIL,
     isInput: true,
-    isOutput: false,
-    isKnowledgeBase: false
+    isOutput: false
 } as const satisfies ConfigDetails
 
 export const FigmaConfigMetadata = {
@@ -54,8 +49,7 @@ export const FigmaConfigMetadata = {
     description: "Monitor design changes in Figma files",
     integrationType: IntegrationType.FIGMA,
     isInput: true,
-    isOutput: false,
-    isKnowledgeBase: false
+    isOutput: false
 } as const satisfies ConfigDetails
 
 export const SlackConfigMetadata = {
@@ -64,8 +58,7 @@ export const SlackConfigMetadata = {
     description: "Monitor messages in Slack channels or DMs",
     integrationType: IntegrationType.SLACK,
     isInput: true,
-    isOutput: false,
-    isKnowledgeBase: false
+    isOutput: false
 } as const satisfies ConfigDetails
 
 export const SlackOutputConfigMetadata = {
@@ -74,8 +67,7 @@ export const SlackOutputConfigMetadata = {
     description: "Send messages to Slack channels, group DMs, or direct messages",
     integrationType: IntegrationType.SLACK,
     isInput: false,
-    isOutput: true,
-    isKnowledgeBase: false
+    isOutput: true
 } as const satisfies ConfigDetails
 
 export const GmailOutputConfigMetadata = {
@@ -84,8 +76,7 @@ export const GmailOutputConfigMetadata = {
     description: "Send emails via Gmail",
     integrationType: IntegrationType.GMAIL,
     isInput: false,
-    isOutput: true,
-    isKnowledgeBase: false
+    isOutput: true
 } as const satisfies ConfigDetails
 
 export const GmailDraftOutputConfigMetadata = {
@@ -94,8 +85,7 @@ export const GmailDraftOutputConfigMetadata = {
     description: "Create draft emails in Gmail",
     integrationType: IntegrationType.GMAIL,
     isInput: false,
-    isOutput: true,
-    isKnowledgeBase: false
+    isOutput: true
 } as const satisfies ConfigDetails
 
 export const NotionConfigMetadata = {
@@ -104,8 +94,7 @@ export const NotionConfigMetadata = {
     description: "Update and monitor Notion pages and databases",
     integrationType: IntegrationType.NOTION,
     isInput: false,
-    isOutput: true,
-    isKnowledgeBase: false
+    isOutput: true
 } as const satisfies ConfigDetails
 
 export const LinearInputConfigMetadata = {
@@ -114,8 +103,7 @@ export const LinearInputConfigMetadata = {
     description: "Monitor Linear issues",
     integrationType: IntegrationType.LINEAR,
     isInput: true,
-    isOutput: false,
-    isKnowledgeBase: false
+    isOutput: false
 } as const satisfies ConfigDetails
 
 export const LinearOutputConfigMetadata = {
@@ -124,18 +112,16 @@ export const LinearOutputConfigMetadata = {
     description: "Update Linear issues",
     integrationType: IntegrationType.LINEAR,
     isInput: false,
-    isOutput: true,
-    isKnowledgeBase: false
+    isOutput: true
 } as const satisfies ConfigDetails
 
 export const GitHubConfigMetadata = {
     configType: ConfigType.GITHUB,
     name: "GitHub",
-    description: "Monitor GitHub repository events",
+    description: "Monitor and read Github repositories",
     integrationType: IntegrationType.GITHUB,
     isInput: true,
-    isOutput: false,
-    isKnowledgeBase: false
+    isOutput: true
 } as const satisfies ConfigDetails
 
 export const JiraConfigMetadata = {
@@ -144,8 +130,7 @@ export const JiraConfigMetadata = {
     description: "Monitor and update Jira issues",
     integrationType: IntegrationType.ATLASSIAN,
     isInput: true,
-    isOutput: true,
-    isKnowledgeBase: false
+    isOutput: true
 } as const satisfies ConfigDetails
 
 export const ConfluenceConfigMetadata = {
@@ -154,8 +139,7 @@ export const ConfluenceConfigMetadata = {
     description: "Update Confluence pages",
     integrationType: IntegrationType.ATLASSIAN,
     isInput: false,
-    isOutput: true,
-    isKnowledgeBase: false
+    isOutput: true
 } as const satisfies ConfigDetails
 
 export const PosthogConfigMetadata = {
@@ -164,8 +148,7 @@ export const PosthogConfigMetadata = {
     description: "Track user events",
     integrationType: IntegrationType.POSTHOG,
     isInput: false,
-    isOutput: false,
-    isKnowledgeBase: true
+    isOutput: true
 } as const satisfies ConfigDetails
 
 export const DatadogConfigMetadata = {
@@ -174,8 +157,7 @@ export const DatadogConfigMetadata = {
     description: "Search logs in Datadog",
     integrationType: IntegrationType.DATADOG,
     isInput: false,
-    isOutput: false,
-    isKnowledgeBase: true
+    isOutput: true
 } as const satisfies ConfigDetails
 
 export const TimeTriggerConfigMetadata = {
@@ -184,18 +166,7 @@ export const TimeTriggerConfigMetadata = {
     description: "Run on a schedule (daily, weekly, etc.)",
     integrationType: IntegrationType.CRON_JOB,
     isInput: true,
-    isOutput: false,
-    isKnowledgeBase: false
-} as const satisfies ConfigDetails
-
-export const GitHubKBConfigMetadata = {
-    configType: ConfigType.GITHUB_KB,
-    name: "GitHub Codebase",
-    description: "Search and read code in repositories",
-    integrationType: IntegrationType.GITHUB,
-    isInput: false,
-    isOutput: false,
-    isKnowledgeBase: true
+    isOutput: false
 } as const satisfies ConfigDetails
 
 export const LaunchDarklyConfigMetadata = {
@@ -204,28 +175,7 @@ export const LaunchDarklyConfigMetadata = {
     description: "Query feature flags",
     integrationType: IntegrationType.LAUNCHDARKLY,
     isInput: false,
-    isOutput: false,
-    isKnowledgeBase: true
-} as const satisfies ConfigDetails
-
-export const LinearKBConfigMetadata = {
-    configType: ConfigType.LINEAR_KB,
-    name: "Linear",
-    description: "Search and read Linear tickets",
-    integrationType: IntegrationType.LINEAR,
-    isInput: false,
-    isOutput: false,
-    isKnowledgeBase: true
-} as const satisfies ConfigDetails
-
-export const SlackKBConfigMetadata = {
-    configType: ConfigType.SLACK_KB,
-    name: "Slack",
-    description: "Read Slack conversation history",
-    integrationType: IntegrationType.SLACK,
-    isInput: false,
-    isOutput: false,
-    isKnowledgeBase: true
+    isOutput: true
 } as const satisfies ConfigDetails
 
 export const TerseConfigMetadata = {
@@ -234,8 +184,7 @@ export const TerseConfigMetadata = {
     description: "Built-in capabilities like web search (always available to agents)",
     integrationType: IntegrationType.TERSE,
     isInput: false,
-    isOutput: true,
-    isKnowledgeBase: false
+    isOutput: true
 } as const satisfies ConfigDetails
 
 export const WorkOSInputConfigMetadata = {
@@ -244,18 +193,16 @@ export const WorkOSInputConfigMetadata = {
     description: "Trigger on user signup, deletion, or membership changes in your app",
     integrationType: IntegrationType.WORKOS,
     isInput: true,
-    isOutput: false,
-    isKnowledgeBase: false
+    isOutput: false
 } as const satisfies ConfigDetails
 
-export const WorkOSKBConfigMetadata = {
-    configType: ConfigType.WORKOS_KB,
+export const WorkOSOutputConfigMetadata = {
+    configType: ConfigType.WORKOS_OUTPUT,
     name: "WorkOS",
     description: "Fetch and search users from your WorkOS account",
     integrationType: IntegrationType.WORKOS,
     isInput: false,
-    isOutput: false,
-    isKnowledgeBase: true
+    isOutput: true
 } as const satisfies ConfigDetails
 
 export const AttioOutputConfigMetadata = {
@@ -264,8 +211,7 @@ export const AttioOutputConfigMetadata = {
     description: "Add and update contacts in Attio",
     integrationType: IntegrationType.ATTIO,
     isInput: false,
-    isOutput: true,
-    isKnowledgeBase: false
+    isOutput: true
 } as const satisfies ConfigDetails
 
 export type ConfigDetailsMap = Record<ConfigType, ConfigDetails>
@@ -281,18 +227,15 @@ export const CONFIG_DETAILS: ConfigDetailsMap = {
     [ConfigType.LINEAR_INPUT]: LinearInputConfigMetadata,
     [ConfigType.LINEAR_OUTPUT]: LinearOutputConfigMetadata,
     [ConfigType.GITHUB]: GitHubConfigMetadata,
-    [ConfigType.GITHUB_KB]: GitHubKBConfigMetadata,
     [ConfigType.JIRA]: JiraConfigMetadata,
     [ConfigType.CONFLUENCE]: ConfluenceConfigMetadata,
     [ConfigType.POSTHOG]: PosthogConfigMetadata,
     [ConfigType.DATADOG]: DatadogConfigMetadata,
     [ConfigType.TIME_TRIGGER]: TimeTriggerConfigMetadata,
     [ConfigType.LAUNCHDARKLY]: LaunchDarklyConfigMetadata,
-    [ConfigType.LINEAR_KB]: LinearKBConfigMetadata,
-    [ConfigType.SLACK_KB]: SlackKBConfigMetadata,
     [ConfigType.TERSE]: TerseConfigMetadata,
     [ConfigType.WORKOS_INPUT]: WorkOSInputConfigMetadata,
-    [ConfigType.WORKOS_KB]: WorkOSKBConfigMetadata,
+    [ConfigType.WORKOS_OUTPUT]: WorkOSOutputConfigMetadata,
     [ConfigType.ATTIO_OUTPUT]: AttioOutputConfigMetadata
 } as const satisfies ConfigDetailsMap
 
@@ -393,18 +336,22 @@ export class SlackOutputConfig implements ConfigInstance {
         public channelId?: string,
         public channelName?: string,
         public userIds?: string[],
-        public userNames?: string[]
+        public userNames?: string[],
+        public listenToUserDms: boolean = false
     ) {}
 
     isComplete(): boolean {
-        // Slack output is complete if channelId is set or at least one user (DM destination) is set
-        return !!(this.channelId || (this.userIds?.length ?? 0) > 0)
+        // Slack output is complete if a channel is set, DM users are set, or "listen to user DMs" is enabled.
+        return !!(this.channelId || (this.userIds?.length ?? 0) > 0 || this.listenToUserDms)
     }
 
     formatForAgent(): string {
         const parts = [`Type: Slack Output`, `Integration ID: ${this.integrationId}`]
         if (this.channelId) {
             parts.push(`Channel ID: ${this.channelId}`)
+        }
+        if (this.listenToUserDms) {
+            parts.push(`Listen to user DMs: Yes`)
         }
         if (this.userIds?.length) {
             parts.push(`DM user IDs: ${this.userIds.join(", ")}`)
@@ -508,11 +455,13 @@ export class LinearOutputConfig implements ConfigInstance {
     constructor(
         public integrationId: string,
         public teamId?: string,
-        public teamName?: string
+        public teamName?: string,
+        public projectId?: string,
+        public projectName?: string
     ) {}
 
     isComplete(): boolean {
-        return !!this.teamId
+        return !!this.integrationId
     }
 
     formatForAgent(): string {
@@ -521,6 +470,11 @@ export class LinearOutputConfig implements ConfigInstance {
             parts.push(`Team: ${this.teamName}`)
         } else if (this.teamId) {
             parts.push(`Team ID: ${this.teamId}`)
+        }
+        if (this.projectName) {
+            parts.push(`Project: ${this.projectName}`)
+        } else if (this.projectId) {
+            parts.push(`Project ID: ${this.projectId}`)
         }
         return parts.join("\n")
     }
@@ -536,8 +490,7 @@ export class GitHubConfig implements ConfigInstance {
     ) {}
 
     isComplete(): boolean {
-        // GitHub only requires integrationId (base check handled in isInputComplete)
-        return true
+        return (this.repositoryIds?.length ?? 0) > 0
     }
 
     formatForAgent(): string {
@@ -675,29 +628,6 @@ export class TimeTriggerConfig implements ConfigInstance {
     }
 }
 
-export class GitHubKBConfig implements ConfigInstance {
-    integrationType: IntegrationType = IntegrationType.GITHUB
-    configType: ConfigType = ConfigType.GITHUB_KB
-
-    constructor(
-        public integrationId: string,
-        public repositoryIds: number[],
-        public repositoryNames: string[] // Full names like "owner/repo"
-    ) {}
-
-    isComplete(): boolean {
-        return this.repositoryIds.length > 0
-    }
-
-    formatForAgent(): string {
-        const parts = [`Type: GitHub Codebase`, `Integration ID: ${this.integrationId}`]
-        if (this.repositoryNames.length > 0) {
-            parts.push(`Repositories: ${this.repositoryNames.join(", ")}`)
-        }
-        return parts.join("\n")
-    }
-}
-
 export class LaunchDarklyConfig implements ConfigInstance {
     integrationType: IntegrationType = IntegrationType.LAUNCHDARKLY
     configType: ConfigType = ConfigType.LAUNCHDARKLY
@@ -719,71 +649,6 @@ export class LaunchDarklyConfig implements ConfigInstance {
         }
         if (this.environmentKeys.length > 0) {
             parts.push(`Environments: ${this.environmentKeys.join(", ")}`)
-        }
-        return parts.join("\n")
-    }
-}
-
-export class LinearKBConfig implements ConfigInstance {
-    integrationType: IntegrationType = IntegrationType.LINEAR
-    configType: ConfigType = ConfigType.LINEAR_KB
-
-    constructor(
-        public integrationId: string,
-        public teamId?: string,
-        public teamName?: string,
-        public projectId?: string,
-        public projectName?: string
-    ) {}
-
-    isComplete(): boolean {
-        return !!this.integrationId
-    }
-
-    formatForAgent(): string {
-        const parts = [`Type: Linear Knowledge Base`, `Integration ID: ${this.integrationId}`]
-        if (this.teamName) {
-            parts.push(`Team: ${this.teamName}`)
-        } else if (this.teamId) {
-            parts.push(`Team ID: ${this.teamId}`)
-        }
-        if (this.projectName) {
-            parts.push(`Project: ${this.projectName}`)
-        } else if (this.projectId) {
-            parts.push(`Project ID: ${this.projectId}`)
-        }
-        return parts.join("\n")
-    }
-}
-
-export class SlackKBConfig implements ConfigInstance {
-    integrationType: IntegrationType = IntegrationType.SLACK
-    configType: ConfigType = ConfigType.SLACK_KB
-
-    constructor(
-        public integrationId: string,
-        public channelId?: string,
-        public channelName?: string,
-        public allowDms: boolean = false,
-        public userIds?: string[],
-        public userNames?: string[]
-    ) {}
-
-    isComplete(): boolean {
-        const hasChannel = !!this.channelId?.trim()
-        return !!this.integrationId && (hasChannel || this.allowDms)
-    }
-
-    formatForAgent(): string {
-        const parts = [`Type: Slack Knowledge Base`, `Integration ID: ${this.integrationId}`]
-        if (this.channelId) {
-            parts.push(`Channel ID: ${this.channelId}`)
-        }
-        if (this.allowDms) {
-            parts.push("Allow DMs: Yes")
-        }
-        if (this.userIds?.length) {
-            parts.push(`Filter to user IDs: ${this.userIds.join(", ")}`)
         }
         return parts.join("\n")
     }
@@ -823,9 +688,9 @@ export class WorkOSInputConfig implements ConfigInstance {
     }
 }
 
-export class WorkOSKBConfig implements ConfigInstance {
+export class WorkOSOutputConfig implements ConfigInstance {
     integrationType: IntegrationType = IntegrationType.WORKOS
-    configType: ConfigType = ConfigType.WORKOS_KB
+    configType: ConfigType = ConfigType.WORKOS_OUTPUT
 
     constructor(public integrationId: string) {}
 
@@ -834,7 +699,7 @@ export class WorkOSKBConfig implements ConfigInstance {
     }
 
     formatForAgent(): string {
-        return `Type: WorkOS Knowledge Base\nIntegration ID: ${this.integrationId}`
+        return `Type: WorkOS Skill\nIntegration ID: ${this.integrationId}`
     }
 }
 
@@ -874,18 +739,15 @@ export type ConfigMetadataMap = EnsureExhaustiveMetadata<{
     [ConfigType.LINEAR_INPUT]: typeof LinearInputConfig
     [ConfigType.LINEAR_OUTPUT]: typeof LinearOutputConfig
     [ConfigType.GITHUB]: typeof GitHubConfig
-    [ConfigType.GITHUB_KB]: typeof GitHubKBConfig
     [ConfigType.JIRA]: typeof JiraConfig
     [ConfigType.CONFLUENCE]: typeof ConfluenceConfig
     [ConfigType.POSTHOG]: typeof PosthogConfig
     [ConfigType.DATADOG]: typeof DatadogConfig
     [ConfigType.TIME_TRIGGER]: typeof TimeTriggerConfig
     [ConfigType.LAUNCHDARKLY]: typeof LaunchDarklyConfig
-    [ConfigType.LINEAR_KB]: typeof LinearKBConfig
-    [ConfigType.SLACK_KB]: typeof SlackKBConfig
     [ConfigType.TERSE]: typeof TerseConfig
     [ConfigType.WORKOS_INPUT]: typeof WorkOSInputConfig
-    [ConfigType.WORKOS_KB]: typeof WorkOSKBConfig
+    [ConfigType.WORKOS_OUTPUT]: typeof WorkOSOutputConfig
     [ConfigType.ATTIO_OUTPUT]: typeof AttioOutputConfig
 }>
 
@@ -900,17 +762,14 @@ export const CONFIG_METADATA: ConfigMetadataMap = {
     [ConfigType.LINEAR_INPUT]: LinearInputConfig,
     [ConfigType.LINEAR_OUTPUT]: LinearOutputConfig,
     [ConfigType.GITHUB]: GitHubConfig,
-    [ConfigType.GITHUB_KB]: GitHubKBConfig,
     [ConfigType.JIRA]: JiraConfig,
     [ConfigType.CONFLUENCE]: ConfluenceConfig,
     [ConfigType.POSTHOG]: PosthogConfig,
     [ConfigType.DATADOG]: DatadogConfig,
     [ConfigType.TIME_TRIGGER]: TimeTriggerConfig,
     [ConfigType.LAUNCHDARKLY]: LaunchDarklyConfig,
-    [ConfigType.LINEAR_KB]: LinearKBConfig,
-    [ConfigType.SLACK_KB]: SlackKBConfig,
     [ConfigType.TERSE]: TerseConfig,
     [ConfigType.WORKOS_INPUT]: WorkOSInputConfig,
-    [ConfigType.WORKOS_KB]: WorkOSKBConfig,
+    [ConfigType.WORKOS_OUTPUT]: WorkOSOutputConfig,
     [ConfigType.ATTIO_OUTPUT]: AttioOutputConfig
 } as const satisfies ConfigMetadataMap

@@ -1,8 +1,6 @@
 import { AgentOutputType, Agent as OpenAIAgent, RunResult } from "@openai/agents"
 
 import { InputEvent } from "../../integrations/abstract/InputEvent"
-import { KnowledgeBase } from "../../knowledgeBase/abstract/KnowledgeBase"
-import { KnowledgeBaseFactory } from "../../knowledgeBase/abstract/KnowledgeBaseFactory"
 import logger from "../../logger"
 import { NotificationManager } from "../../notifications/Notification"
 import { Output } from "../../outputs/abstract/Output"
@@ -15,7 +13,7 @@ import { User } from "../../shared/types"
 import { AgentWithRelations, Agent as PrismaAgent } from "../../types/prisma"
 import { Session } from "../../types/session"
 import { trackActionTaken, trackAgentTriggered } from "../../utility/analytics"
-import { getInputConfigInclude, getKnowledgeBaseConfigInclude, getOutputConfigInclude } from "../../utility/prismaIncludes"
+import { getInputConfigInclude, getOutputConfigInclude } from "../../utility/prismaIncludes"
 import { classifyAgentError } from "../agentErrorUtils"
 
 import { AgentRunResultStatus, AgentRunner, ApprovalResult, SessionWithTracking } from "./AgentRunner"
@@ -81,9 +79,6 @@ export class EventProcessor {
                 },
                 outputs: {
                     include: getOutputConfigInclude()
-                },
-                knowledge_bases: {
-                    include: getKnowledgeBaseConfigInclude()
                 },
                 tool_approvals: true
             }
@@ -186,9 +181,6 @@ export class EventProcessor {
                 outputs: {
                     include: getOutputConfigInclude()
                 },
-                knowledge_bases: {
-                    include: getKnowledgeBaseConfigInclude()
-                },
                 tool_approvals: true
             }
         })
@@ -229,10 +221,6 @@ export class EventProcessor {
                 agentId: agent.id
             })
         }
-    }
-
-    private createKnowledgeBases(agentKnowledgeBases: AgentWithRelations["knowledge_bases"]): KnowledgeBase<ConfigInstance>[] {
-        return KnowledgeBaseFactory.createKnowledgeBasesFromAgent(agentKnowledgeBases)
     }
 
     private async processAgent(agent: AgentWithRelations, existingRunId?: string): Promise<ProcessorResult> {
@@ -345,12 +333,9 @@ export class EventProcessor {
             runId
         })
 
-        // Create knowledge bases from agent configuration
-        const knowledgeBases = this.createKnowledgeBases(agent.knowledge_bases || [])
-
         // Create agent runner with the session and outputs
         const runContext: RunContext = { runId }
-        const agentRunner = new AgentRunner(session, outputs, knowledgeBases, agent, runContext)
+        const agentRunner = new AgentRunner(session, outputs, agent, runContext)
         agentRunner.setInputEvent(this.inputEvent)
 
         // Run the agent runner with streaming parameters

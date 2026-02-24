@@ -1,8 +1,7 @@
-import { getDatadogCredentialsByIntegrationId } from "../knowledgeBase/datadog/datadogApiClient"
 import logger from "../logger"
+import { getDatadogCredentialsByIntegrationId } from "../outputs/datadog/datadogApiClient"
 import { db } from "../prismaClient"
 import { DatadogIntegration, DatadogIntegrationMetadata, IntegrationType } from "../shared/Integrations"
-import { User } from "../shared/types"
 import { AgentTriggerWithConfigs } from "../types/prisma"
 import { getDatadogApiUrl } from "../utility/datadog"
 

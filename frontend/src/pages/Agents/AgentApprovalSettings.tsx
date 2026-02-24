@@ -1,7 +1,7 @@
 import { Loader2 } from "lucide-react"
 
 import { TerseTool } from "@/shared/ToolsTypes"
-import { TransientAgentOutput, TransientKnowledgeBase } from "@/shared/types"
+import { TransientAgentOutput } from "@/shared/types"
 
 import { MultiSelect, type MultiSelectOption } from "../../components/MultiSelect"
 import { Label } from "../../components/ui/label"
@@ -11,7 +11,6 @@ import { IconForConfigType } from "./components/Integration"
 
 export type AgentApprovalSettingsProps = {
     outputs: TransientAgentOutput[]
-    knowledgeBases: TransientKnowledgeBase[]
     toolApprovals: string[]
     onToolApprovalsChange: (toolApprovals: string[]) => void
 }
@@ -31,12 +30,10 @@ function toolToOption(tool: TerseTool): MultiSelectOption {
     return { id: tool.name, label: tool.displayName }
 }
 
-function AgentApprovalSettings({ outputs, knowledgeBases, toolApprovals, onToolApprovalsChange }: AgentApprovalSettingsProps) {
+function AgentApprovalSettings({ outputs, toolApprovals, onToolApprovalsChange }: AgentApprovalSettingsProps) {
     const outputConfigTypes = outputs.filter(output => output.config && output.config.isComplete()).map(output => output.configType)
 
-    const knowledgeBaseConfigTypes = knowledgeBases.filter(kb => kb.config && kb.config.isComplete()).map(kb => kb.configType)
-
-    const request = outputConfigTypes.length > 0 ? { skills: outputConfigTypes, knowledgeBases: knowledgeBaseConfigTypes } : null
+    const request = outputConfigTypes.length > 0 ? { skills: outputConfigTypes } : null
 
     const { tools: toolsThatRequireApprovals, isLoading, isError } = useToolsThatRequireApprovals(request)
 
@@ -44,7 +41,7 @@ function AgentApprovalSettings({ outputs, knowledgeBases, toolApprovals, onToolA
 
     const renderBody = () => {
         if (outputConfigTypes.length === 0) {
-            return <p className="text-sm text-muted-foreground">Configure skills and knowledge bases to select which tools require approval.</p>
+            return <p className="text-sm text-muted-foreground">Configure skills to select which tools require approval.</p>
         }
 
         if (isLoading) {
@@ -61,7 +58,7 @@ function AgentApprovalSettings({ outputs, knowledgeBases, toolApprovals, onToolA
         }
 
         if (toolsThatRequireApprovals.length === 0) {
-            return <p className="text-sm text-muted-foreground">No write-only tools for the configured skills and knowledge bases.</p>
+            return <p className="text-sm text-muted-foreground">No write-only tools for the configured skills.</p>
         }
 
         const toolMap = new Map(toolsThatRequireApprovals.map(t => [t.name, t]))

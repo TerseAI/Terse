@@ -5,19 +5,16 @@ import {
     DatadogConfigSchema,
     FigmaConfigSchema,
     GitHubConfigSchema,
-    GitHubKnowledgeBaseConfigSchema,
     GmailConfigSchema,
     GmailDraftOutputConfigSchema,
     GmailOutputConfigSchema,
     JiraConfigSchema,
     LaunchDarklyConfigSchema,
     LinearInputConfigSchema,
-    LinearKnowledgeBaseConfigSchema,
     LinearOutputConfigSchema,
     NotionConfigSchema,
     PosthogConfigSchema,
     SlackConfigSchema,
-    SlackKnowledgeBaseConfigSchema,
     SlackOutputConfigSchema,
     TimeTriggerConfigSchema,
     WorkOSInputConfigSchema
@@ -52,14 +49,11 @@ export const ConfigTemplateSchema = z.discriminatedUnion("configType", [
     asTemplateConfigSchema(LinearInputConfigSchema),
     asTemplateConfigSchema(LinearOutputConfigSchema),
     asTemplateConfigSchema(GitHubConfigSchema),
-    asTemplateConfigSchema(GitHubKnowledgeBaseConfigSchema),
     asTemplateConfigSchema(JiraConfigSchema),
     asTemplateConfigSchema(ConfluenceConfigSchema),
     asTemplateConfigSchema(PosthogConfigSchema),
     asTemplateConfigSchema(LaunchDarklyConfigSchema),
     asTemplateConfigSchema(DatadogConfigSchema),
-    asTemplateConfigSchema(LinearKnowledgeBaseConfigSchema),
-    asTemplateConfigSchema(SlackKnowledgeBaseConfigSchema),
     asTemplateConfigSchema(WorkOSInputConfigSchema),
     asTemplateConfigSchema(TimeTriggerConfigSchema)
 ])
@@ -92,14 +86,7 @@ const AgentTriggerTemplateSchema = z
 const AgentOutputTemplateSchema = z
     .object({
         id: z.string().optional(), // Optional in templates
-        config: ConfigTemplateSchema
-    })
-    .strict()
-
-// Agent knowledge base template schema
-const AgentKnowledgeBaseTemplateSchema = z
-    .object({
-        id: z.string().optional(), // Optional in templates
+        readOnly: z.boolean().optional().default(false),
         config: ConfigTemplateSchema
     })
     .strict()
@@ -117,7 +104,6 @@ export const AgentTemplateSchema = z
         prompt: AgentPromptSchema,
         triggers: z.array(AgentTriggerTemplateSchema).min(1, "At least one trigger is required"),
         outputs: z.array(AgentOutputTemplateSchema).min(1, "At least one output is required"),
-        knowledgeBases: z.array(AgentKnowledgeBaseTemplateSchema).optional(),
         requireApproval: z.boolean().optional().default(false),
         chatPrompt: z.string().min(1, "Template chatPrompt is required"),
         isActive: z.boolean().optional().default(true),
@@ -140,7 +126,7 @@ export type AgentTemplates = z.infer<typeof AgentTemplatesSchema>
  * @param templates - The templates to validate
  * @throws {Error} If validation fails, with detailed error messages
  */
-export function validateTemplates(templates: unknown): asserts templates is AgentTemplates {
+export function parseTemplates(templates: unknown): AgentTemplates {
     const result = AgentTemplatesSchema.safeParse(templates)
 
     if (!result.success) {
@@ -162,4 +148,10 @@ export function validateTemplates(templates: unknown): asserts templates is Agen
             `Template validation failed! The templates.json file contains invalid data.\n\n` + `Errors:\n${errorMessages}\n\n` + `Please fix these issues before the application can start.`
         )
     }
+
+    return result.data
+}
+
+export function validateTemplates(templates: unknown): asserts templates is AgentTemplates {
+    parseTemplates(templates)
 }

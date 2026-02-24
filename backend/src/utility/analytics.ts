@@ -43,7 +43,6 @@ interface AgentCreatedProperties {
     agentName: string
     triggerCount: number
     outputCount: number
-    knowledgeBaseCount: number
     requiresApproval: boolean
 }
 

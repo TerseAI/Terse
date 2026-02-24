@@ -20,9 +20,7 @@ export async function toolsThatRequireApprovalsRoute(req: Request, res: Response
             })
         }
 
-        const knowledgeBases = Array.isArray(body.knowledgeBases) ? body.knowledgeBases : []
-
-        const tools = getToolsThatRequireApprovals(body.skills, knowledgeBases)
+        const tools = getToolsThatRequireApprovals(body.skills)
         const response: GetToolsThatRequireApprovalsResponse = { tools }
         return res.status(200).json(response)
     } catch (error: unknown) {

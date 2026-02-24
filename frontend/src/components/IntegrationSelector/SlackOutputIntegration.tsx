@@ -38,7 +38,7 @@ export function SlackOutputIntegration({ input, variant, setConfig }: InputConfi
         const integration = integrations.find((integration: SlackIntegrationType) => integration.id === value)
         if (integration) {
             setSelectedIntegrationId(integration.id)
-            setConfig(new SlackOutputConfig(integration.id, undefined, undefined, undefined, undefined))
+            setConfig(new SlackOutputConfig(integration.id, undefined, undefined, undefined, undefined, false))
         }
     }
 
@@ -95,7 +95,8 @@ export function SlackOutputIntegration({ input, variant, setConfig }: InputConfi
                 sameIntegration ? currentConfig?.channelId : undefined,
                 sameIntegration ? currentConfig?.channelName : undefined,
                 sameIntegration ? currentConfig?.userIds : undefined,
-                undefined
+                undefined,
+                sameIntegration ? (currentConfig?.listenToUserDms ?? false) : false
             )
         )
         selectedOption = defaultIntegration
@@ -106,7 +107,7 @@ export function SlackOutputIntegration({ input, variant, setConfig }: InputConfi
     // Card variant: compact view
     if (variant === "card") {
         const hasConfig = !!currentConfig && !!currentConfig.integrationId
-        const hasDestination = !!(currentConfig?.channelId || (currentConfig?.userIds?.length ?? 0) > 0)
+        const hasDestination = !!(currentConfig?.channelId || (currentConfig?.userIds?.length ?? 0) > 0 || currentConfig?.listenToUserDms)
         const isComplete = hasConfig && hasDestination
         if (!isComplete) {
             if (!hasConfig) {
@@ -132,12 +133,14 @@ export function SlackOutputIntegration({ input, variant, setConfig }: InputConfi
                 </div>
             )
         }
-        const isDmOnly = (currentConfig?.userIds?.length ?? 0) > 0 && !currentConfig?.channelId
+        const isDmOnly = !!currentConfig?.listenToUserDms || ((currentConfig?.userIds?.length ?? 0) > 0 && !currentConfig?.channelId)
         const dmUserNames = isDmOnly && currentConfig?.userIds?.length && users?.length ? currentConfig.userIds.map(id => users.find(u => u.id === id)?.name ?? id).filter(Boolean) : []
         const summary = isDmOnly
             ? dmUserNames.length > 0
-                ? `DM to ${dmUserNames.join(", ")}`
-                : `DM to ${currentConfig?.userIds?.length ?? 0} user${(currentConfig?.userIds?.length ?? 0) === 1 ? "" : "s"}`
+                ? dmUserNames.join(", ")
+                : (currentConfig?.userIds?.length ?? 0) > 0
+                  ? `${currentConfig?.userIds?.length ?? 0} user${(currentConfig?.userIds?.length ?? 0) === 1 ? "" : "s"}`
+                  : "All users"
             : currentConfig?.channelName || selectedOption?.label || "No connection selected"
         return (
             <div className="text-sm flex items-center gap-1">
@@ -147,7 +150,7 @@ export function SlackOutputIntegration({ input, variant, setConfig }: InputConfi
         )
     }
 
-    const sendToDms = !currentConfig?.channelId && currentConfig?.userIds !== undefined
+    const sendToDms = currentConfig?.listenToUserDms === true
     const selectedIntegration = integrations.find((i: SlackIntegrationType) => i.id === selectedIntegrationId)
 
     // Dialog variant: full view
@@ -173,7 +176,7 @@ export function SlackOutputIntegration({ input, variant, setConfig }: InputConfi
 
             {selectedIntegrationId && (
                 <div className="mt-3 pt-3 border-t border-border min-w-0 overflow-hidden">
-                    {!currentConfig?.channelId && !sendToDms && <p className="text-sm text-muted-foreground mb-3">Select where Terse should send messages</p>}
+                    {!currentConfig?.channelId && !sendToDms && <p className="text-sm text-muted-foreground mb-3">Choose channels or users this agent can read from and write to in Slack</p>}
                     <SlackConfigurationSelector
                         integrationId={selectedIntegrationId}
                         selectedChannelId={currentConfig?.channelId ?? ""}
@@ -185,17 +188,17 @@ export function SlackOutputIntegration({ input, variant, setConfig }: InputConfi
                         mode="output"
                         onSelectChannel={(channelId, channelName) => {
                             const hasChannel = !!channelId?.trim()
-                            setConfig(new SlackOutputConfig(selectedIntegrationId, hasChannel ? channelId : undefined, hasChannel ? channelName : undefined, undefined, undefined))
+                            setConfig(new SlackOutputConfig(selectedIntegrationId, hasChannel ? channelId : undefined, hasChannel ? channelName : undefined, undefined, undefined, false))
                         }}
                         onListenToUserDmsChange={listenToUserDms => {
                             if (listenToUserDms) {
-                                setConfig(new SlackOutputConfig(selectedIntegrationId, undefined, undefined, currentConfig?.userIds ?? [], undefined))
+                                setConfig(new SlackOutputConfig(selectedIntegrationId, undefined, undefined, currentConfig?.userIds ?? [], undefined, true))
                             } else {
-                                setConfig(new SlackOutputConfig(selectedIntegrationId, currentConfig?.channelId, currentConfig?.channelName, undefined, undefined))
+                                setConfig(new SlackOutputConfig(selectedIntegrationId, currentConfig?.channelId, currentConfig?.channelName, undefined, undefined, false))
                             }
                         }}
                         onSelectUsers={userIds => {
-                            setConfig(new SlackOutputConfig(selectedIntegrationId, undefined, undefined, userIds, undefined))
+                            setConfig(new SlackOutputConfig(selectedIntegrationId, undefined, undefined, userIds, undefined, currentConfig?.listenToUserDms ?? true))
                         }}
                     />
                 </div>

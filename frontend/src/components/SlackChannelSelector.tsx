@@ -20,7 +20,7 @@ interface SlackChannelSelectorProps {
     showListenToDMsOption?: boolean // Show DM option (for triggers: only user tokens; for output: both)
     showUserFilter?: boolean // Show user list (for triggers: only user tokens; for output: both)
     isBotToken?: boolean // Whether this is a bot token (vs user token)
-    mode?: "trigger" | "output" | "knowledgeBase" // knowledgeBase: single channel or DMs; DM label "Read direct messages"
+    mode?: "trigger" | "output"
     onSelectChannel: (channelId: string, agentName?: string) => void
     onListenToUserDmsChange: (listenToUserDms: boolean) => void
     onSelectUsers: (userIds: string[]) => void
@@ -39,7 +39,6 @@ export function SlackConfigurationSelector({
     onListenToUserDmsChange,
     onSelectUsers
 }: SlackChannelSelectorProps) {
-    const isKnowledgeBase = mode === "knowledgeBase"
     const { channels, isLoading, isError, error, isValidating, mutate } = useSlackChannels(integrationId)
 
     const { users, isLoading: usersLoading, isError: usersIsError, error: usersError, isValidating: usersIsValidating, mutate: usersMutate } = useSlackUsers(showUserFilter ? integrationId : null)
@@ -119,11 +118,6 @@ export function SlackConfigurationSelector({
     const publicChannels = channels.filter(ch => !ch.isPrivate && !ch.isArchived)
     const privateChannels = channels.filter(ch => ch.isPrivate && !ch.isArchived)
 
-    const isOutputMode = mode === "output"
-    const needsUsersForDms = isOutputMode && listenToUserDms && (selectedUserIds?.length ?? 0) === 0
-    const hasChannelSelection = !!selectedChannelId
-    const isIncomplete = !hasChannelSelection && !listenToUserDms ? true : needsUsersForDms
-
     return (
         <div className="space-y-2">
             <div className="flex items-center justify-between">
@@ -182,9 +176,7 @@ export function SlackConfigurationSelector({
                             <SelectSeparator />
                             <SelectGroup>
                                 <SelectLabel>Direct Messages</SelectLabel>
-                                <SelectItem value="__LISTEN_TO_DMS__">
-                                    {mode === "output" ? "Send to direct messages" : mode === "knowledgeBase" ? "Read direct messages" : "Monitor direct messages"}
-                                </SelectItem>
+                                <SelectItem value="__LISTEN_TO_DMS__">{mode === "output" ? "Read and write messages" : "Monitor messages"}</SelectItem>
                             </SelectGroup>
                         </>
                     )}
@@ -195,15 +187,12 @@ export function SlackConfigurationSelector({
                     {channels.length} channel{channels.length !== 1 ? "s" : ""} available
                 </div>
             )}
-            {isIncomplete && needsUsersForDms && <p className="text-xs text-muted-foreground">Select at least one user to send DMs to.</p>}
-            {isKnowledgeBase && !listenToUserDms && !selectedChannelId && <p className="text-xs text-amber-600 dark:text-amber-500">Select a channel, or choose Direct messages above.</p>}
-
-            {/* User selector - for triggers: optional filter "DMs from these users only"; for output: required when "Send to DMs" selected */}
+            {/* User selector - optional filter for DM scope */}
             {showUserFilter && (selectedChannelId || listenToUserDms) && (
                 <div className="space-y-2">
                     <div className="flex items-center justify-between">
                         <label className="text-xs font-medium text-[theme(text-secondary)]">
-                            {mode === "output" && listenToUserDms ? "Select Users (Required)" : listenToUserDms ? "Only DMs from these users (optional)" : "Select Users (Optional)"}
+                            {mode === "output" && listenToUserDms ? "DM User Filter (Optional)" : listenToUserDms ? "Only DMs from these users (optional)" : "Select Users (Optional)"}
                         </label>
                         <RefreshButton onClick={handleUsersRefresh} isRefreshing={usersIsValidating && !usersLoading} title="Refresh user list" />
                     </div>
@@ -217,18 +206,17 @@ export function SlackConfigurationSelector({
                             onSelectUsers?.(ids as string[])
                         }}
                         placeholder={
-                            mode === "output" && listenToUserDms ? "Select users to send DMs to..." : listenToUserDms ? "All DMs (leave empty) or select users..." : "Select users (optional)..."
+                            mode === "output" && listenToUserDms
+                                ? "All DMs (leave empty) or select users..."
+                                : listenToUserDms
+                                  ? "All DMs (leave empty) or select users..."
+                                  : "Select users (optional)..."
                         }
                         searchPlaceholder="Search users..."
                         emptyMessage="No users found."
                         displayText={(count, selected) => (count === 0 ? "Select users..." : count === 1 ? selected[0].label : `${count} users selected`)}
                     />
-                    {listenToUserDms && mode === "trigger" && (
-                        <p className="text-xs text-muted-foreground">Leave empty to trigger on all DMs. Select users to only trigger when those users send a direct message.</p>
-                    )}
-                    {listenToUserDms && mode === "knowledgeBase" && (
-                        <p className="text-xs text-muted-foreground">Leave empty to include all DM messages. Select users to only read those users&apos; DMs.</p>
-                    )}
+                    {listenToUserDms && <p className="text-xs text-muted-foreground">Leave empty to include all DMs. Select users to scope to direct messages with those users.</p>}
                     {users.length > 0 && (
                         <div className="text-xs text-foreground-muted">
                             {selectedUserIds.length > 0

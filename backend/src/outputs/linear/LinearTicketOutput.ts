@@ -3,7 +3,7 @@ import { OutputConfigType } from "@prisma/client"
 
 import { buildDummyOutputConfig } from "../../buildDummyConfigForCapability"
 import { type CapabilityDescription, CapabilityRole, extractToolMetadata, getConfigMetadata } from "../../capabilityHelpers"
-import { validateLinearTeamExists } from "../../integrations/LinearIntegration"
+import { validateLinearProjectExists, validateLinearTeamExists } from "../../integrations/LinearIntegration"
 import { db } from "../../prismaClient"
 import { LinearOutputConfig } from "../../shared/Configs"
 import { IntegrationType } from "../../shared/Integrations"
@@ -19,6 +19,7 @@ import { linearGetProjectsTool } from "./tools/getProjects"
 import { linearGetStatesTool } from "./tools/getStates"
 import { linearGetTeamsTool } from "./tools/getTeams"
 import { linearGetUsersTool } from "./tools/getUsers"
+import { linearReadTicketTool } from "./tools/readTicket"
 import { linearSearchTicketTool } from "./tools/searchTicket"
 import { linearUpdateTicketTool } from "./tools/updateTicket"
 
@@ -33,7 +34,8 @@ export class LinearTicketOutput extends Output<LinearOutputConfig> {
             { tool: linearGetUsersTool as Tool, isReadOnly: true, integration: IntegrationType.LINEAR, displayName: "Get users" },
             { tool: linearCreateTicketTool as Tool, isReadOnly: false, integration: IntegrationType.LINEAR, displayName: "Create ticket" },
             { tool: linearUpdateTicketTool as Tool, isReadOnly: false, integration: IntegrationType.LINEAR, displayName: "Update ticket" },
-            { tool: linearAddCommentTool as Tool, isReadOnly: false, integration: IntegrationType.LINEAR, displayName: "Add comment" }
+            { tool: linearAddCommentTool as Tool, isReadOnly: false, integration: IntegrationType.LINEAR, displayName: "Add comment" },
+            { tool: linearReadTicketTool as Tool, isReadOnly: true, integration: IntegrationType.LINEAR, displayName: "Read ticket" }
         ]
         super(OutputConfigType.LINEAR_TICKET, toolbox)
     }
@@ -53,8 +55,10 @@ export class LinearTicketOutput extends Output<LinearOutputConfig> {
             tools,
             configFields: {
                 integrationId: "Linear integration connection",
-                teamId: "Linear team ID",
-                teamName: "Team display name"
+                teamId: "Optional Linear team ID",
+                teamName: "Optional team display name",
+                projectId: "Optional Linear project ID",
+                projectName: "Optional project display name"
             },
             systemInstructions
         }
@@ -72,10 +76,12 @@ export class LinearTicketOutput extends Output<LinearOutputConfig> {
 
     async validateConfig(output: LinearOutputConfig, _userId: string): Promise<void> {
         LinearOutputConfigSchema.parse(stripConfigForValidation(output))
-        if (!output.teamId) {
-            throw new Error("Invalid output config for linear_output: missing teamId")
+        if (output.teamId) {
+            await validateLinearTeamExists(output.integrationId, output.teamId)
         }
-        await validateLinearTeamExists(output.integrationId, output.teamId)
+        if (output.projectId) {
+            await validateLinearProjectExists(output.integrationId, output.projectId)
+        }
     }
 
     async addOutputToAgent(tx: PrismaTransaction, channelOutputId: string, output: LinearOutputConfig): Promise<void> {
@@ -83,7 +89,9 @@ export class LinearTicketOutput extends Output<LinearOutputConfig> {
             data: {
                 automation_output_id: channelOutputId,
                 team_id: output.teamId || null,
-                team_name: output.teamName || null
+                team_name: output.teamName || null,
+                project_id: output.projectId || null,
+                project_name: output.projectName || null
             }
         })
     }
@@ -104,7 +112,11 @@ export class LinearTicketOutput extends Output<LinearOutputConfig> {
             }
             const teamId = config.linear_config.team_id
             const teamName = config.linear_config.team_name
-            configList.push(`  • Integration ID: ${config.integration_id} - Team Name: ${teamName || "N/A"}, Team ID: ${teamId || "N/A"}`)
+            const projectId = config.linear_config.project_id
+            const projectName = config.linear_config.project_name
+            configList.push(
+                `  • Integration ID: ${config.integration_id} - Team Name: ${teamName || "N/A"}, Team ID: ${teamId || "N/A"}, Project Name: ${projectName || "N/A"}, Project ID: ${projectId || "N/A"}`
+            )
         }
         sections.push("Available configurations:")
         sections.push(configList.join("\n"))

@@ -1,4 +1,5 @@
 import { Agent } from "@openai/agents"
+import { AgentInputItem } from "@openai/agents-core"
 import { z } from "zod"
 
 import { settings } from "../../config/settings"

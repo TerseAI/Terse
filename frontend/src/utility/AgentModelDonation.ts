@@ -1,6 +1,6 @@
 import { SetupSection } from "../pages/Agents/tabs/AgentSetupTab"
 import { DonatedState } from "../shared/DonatedState"
-import { AgentPrompt, TransientAgentOutput, TransientAgentTrigger, TransientKnowledgeBase } from "../shared/types"
+import { AgentPrompt, TransientAgentOutput, TransientAgentTrigger } from "../shared/types"
 
 export class AgentSetUpPageContext extends DonatedState {
     readonly stateType = "Agent Set Up Page Context"
@@ -76,22 +76,6 @@ export class AgentOutputsDonatedState extends DonatedState {
     toJSON(): Record<string, unknown> {
         return {
             outputs: this.outputs.map(output => output.config?.formatForAgent() || `Type: ${output.configType}`)
-        }
-    }
-}
-
-export class AgentKnowledgeBasesDonatedState extends DonatedState {
-    readonly stateType = "Agent Knowledge Bases"
-    readonly knowledgeBases: TransientKnowledgeBase[]
-
-    constructor(knowledgeBases: TransientKnowledgeBase[]) {
-        super()
-        this.knowledgeBases = knowledgeBases
-    }
-
-    toJSON(): Record<string, unknown> {
-        return {
-            knowledgeBases: this.knowledgeBases.map(knowledgeBase => knowledgeBase.config?.formatForAgent() || `Type: ${knowledgeBase.configType}`)
         }
     }
 }

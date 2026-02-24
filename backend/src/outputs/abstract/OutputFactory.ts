@@ -4,13 +4,18 @@ import { ConfigInstance } from "../../shared/Configs"
 import { AgentOutputWithConfigs, AgentWithRelations } from "../../types/prisma"
 import { ConfluenceOutput } from "../ConfluenceOutput"
 import { AttioOutput } from "../attio/AttioOutput"
+import { DatadogSkillOutput } from "../datadog/DatadogSkillOutput"
+import { GithubSkillOutput } from "../github/GithubSkillOutput"
 import { GmailDraftOutput } from "../gmail/GmailDraftOutput"
 import { GmailOutput } from "../gmail/GmailOutput"
 import { JiraTicketOutput } from "../jira/JiraTicketOutput"
+import { LaunchDarklySkillOutput } from "../launchdarkly/LaunchDarklySkillOutput"
 import { LinearTicketOutput } from "../linear/LinearTicketOutput"
 import { NotionOutput } from "../notion/NotionOutput"
+import { PosthogSkillOutput } from "../posthog/PosthogSkillOutput"
 import { SlackOutput } from "../slack/SlackOutput"
 import { TerseSkillsOutput } from "../terse/TerseSkillsOutput"
+import { WorkOSOutput } from "../workos/WorkOSOutput"
 
 import { Output } from "./Output"
 
@@ -29,7 +34,13 @@ export class OutputFactory {
         [OutputConfigType.GMAIL, () => new GmailOutput()],
         [OutputConfigType.GMAIL_DRAFT, () => new GmailDraftOutput()],
         [OutputConfigType.TERSE, () => new TerseSkillsOutput()],
-        [OutputConfigType.ATTIO, () => new AttioOutput()]
+        [OutputConfigType.ATTIO, () => new AttioOutput()],
+        [OutputConfigType.GITHUB, () => new GithubSkillOutput()],
+        [OutputConfigType.POSTHOG, () => new PosthogSkillOutput()],
+        [OutputConfigType.DATADOG, () => new DatadogSkillOutput()],
+        [OutputConfigType.LAUNCHDARKLY, () => new LaunchDarklySkillOutput()],
+        [OutputConfigType.WORKOS, () => new WorkOSOutput()]
+        // Where is workOS?
     ])
 
     static createOutput(integrationType: OutputConfigType): Output<ConfigInstance> | null {

@@ -3,7 +3,6 @@ import { RunHistoryStatus } from "@prisma/client"
 
 import { settings } from "../../config/settings"
 import { InputEvent } from "../../integrations/abstract/InputEvent"
-import { KnowledgeBase } from "../../knowledgeBase/abstract/KnowledgeBase"
 import logger from "../../logger"
 import { Output } from "../../outputs/abstract/Output"
 import { db } from "../../prismaClient"
@@ -18,11 +17,10 @@ export interface RunContext {
     runId: string
 }
 
-export interface SystemPromptBuilderDependencies<T extends Session, TConfig extends ConfigInstance, KBConfig extends ConfigInstance> {
+export interface SystemPromptBuilderDependencies<T extends Session, TConfig extends ConfigInstance> {
     session: T
     agent: AgentWithRelations
     outputs: Output<TConfig>[]
-    knowledgeBases?: KnowledgeBase<KBConfig>[]
 }
 
 interface Section {
@@ -32,11 +30,11 @@ interface Section {
 
 type SectionBuilder = () => Section | null | Promise<Section | null>
 
-export class SystemPromptBuilder<T extends Session, TConfig extends ConfigInstance, KBConfig extends ConfigInstance> {
+export class SystemPromptBuilder<T extends Session, TConfig extends ConfigInstance> {
     private sections: SectionBuilder[] = []
 
     constructor(
-        private deps: SystemPromptBuilderDependencies<T, TConfig, KBConfig>,
+        private deps: SystemPromptBuilderDependencies<T, TConfig>,
         private runContext: RunContext
     ) {}
 
@@ -52,7 +50,6 @@ export class SystemPromptBuilder<T extends Session, TConfig extends ConfigInstan
             .withSection(() => this.buildDirectivesSection())
             .withSection(() => this.buildDeepLinkingSection())
             .withSection(() => this.buildOutputsSection())
-            .withSection(() => this.buildKnowledgeBasesSection())
     }
 
     /**
@@ -235,32 +232,6 @@ When explicitly asked by the user, include these links in your responses to help
         return {
             header: "OUTPUT INSTRUCTIONS",
             content: outputSections.join("\n\n")
-        }
-    }
-
-    private buildKnowledgeBasesSection(): Section | null {
-        if (!this.deps.knowledgeBases || this.deps.knowledgeBases.length === 0) {
-            return null
-        }
-
-        const kbSections: string[] = []
-
-        for (const kb of this.deps.knowledgeBases) {
-            if (!kb || kb.configs.length === 0) {
-                continue
-            }
-
-            const instructions = kb.getSystemInstructions()
-            kbSections.push(instructions)
-        }
-
-        if (kbSections.length === 0) {
-            return null
-        }
-
-        return {
-            header: "KNOWLEDGE BASE INSTRUCTIONS",
-            content: kbSections.join("\n\n")
         }
     }
 

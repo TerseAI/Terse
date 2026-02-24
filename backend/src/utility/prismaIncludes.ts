@@ -30,29 +30,18 @@ export function getOutputConfigInclude() {
         confluence_config: true,
         github_config: true,
         gmail_config: true,
+        posthog_config: true,
+        datadog_config: true,
+        launchdarkly_config: true,
         figma_config: true,
+        workos_output_config: true,
         attio_config: true
     } as const
 }
 
 /**
- * Returns the include object for channel knowledge base configs.
- */
-export function getKnowledgeBaseConfigInclude() {
-    return {
-        posthog_config: true,
-        github_kb_config: true,
-        launchdarkly_config: true,
-        datadog_config: true,
-        linear_kb_config: true,
-        slack_kb_config: true,
-        workos_kb_config: true
-    } as const
-}
-
-/**
  * Returns the full include object for hydrating an agent with all relations.
- * Use this when fetching agents that need their full configuration (inputs, outputs, knowledge bases, etc.)
+ * Use this when fetching agents that need their full configuration (inputs and outputs).
  */
 export function getAgentHydrationInclude() {
     return {
@@ -62,9 +51,6 @@ export function getAgentHydrationInclude() {
         },
         outputs: {
             include: getOutputConfigInclude()
-        },
-        knowledge_bases: {
-            include: getKnowledgeBaseConfigInclude()
         },
         tool_approvals: true
     } as const

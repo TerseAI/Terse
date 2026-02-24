@@ -23,7 +23,7 @@ export const BaseConfigSchema = z
         integrationId: NonEmptyString.describe(
             'The integration instance ID (CUID format like "cm..."). When using fetchResourcesForIntegration, this is the "integration.id" field - NOT teamId, channelId, workspaceId, or any resource ID. Use "system" only for TIME_TRIGGER configs.'
         ),
-        configType: z.nativeEnum(ConfigType).describe("The config type for this input/output/knowledge base."),
+        configType: z.nativeEnum(ConfigType).describe("The config type for this trigger or skill."),
         integrationType: z.nativeEnum(IntegrationType).describe("The integration provider type (must match configType).")
     })
     .strict()
@@ -68,14 +68,15 @@ export const SlackConfigSchema = BaseConfigSchema.extend({
 export const SlackOutputConfigSchema = BaseConfigSchema.extend({
     configType: z.literal(ConfigType.SLACK_OUTPUT),
     integrationType: z.literal(IntegrationType.SLACK),
-    channelId: NonEmptyString.nullable().optional().describe("Slack channel or DM channel ID. Required if userIds is empty; otherwise optional (DM channel IDs are resolved from userIds)."),
+    channelId: NonEmptyString.nullable().optional().describe("Slack channel or DM channel ID. Required unless listenToUserDms=true or at least one userId is provided."),
     channelName: NonEmptyString.nullable().optional().describe("The channel display name. From fetchResourcesForIntegration, use resources[].name."),
+    listenToUserDms: z.boolean().nullable().optional().describe("Set true to include direct messages as scope. Leave userIds empty to include all DMs, or provide userIds to scope to specific users."),
     userIds: z
         .array(NonEmptyString)
         .nullable()
         .optional()
         .describe(
-            "Slack user IDs to send DMs to; used when destination is direct messages. Get IDs via fetchResourcesForIntegration with integrationType=SLACK and options.slack.objectType='users'. At least one of channelId or userIds required."
+            "Slack user IDs for DMs. Used as DM recipients for sending and as an optional DM user filter when listenToUserDms=true. Get IDs via fetchResourcesForIntegration with integrationType=SLACK and options.slack.objectType='users'."
         )
 })
 
@@ -102,24 +103,16 @@ export const LinearInputConfigSchema = BaseConfigSchema.extend({
 export const LinearOutputConfigSchema = BaseConfigSchema.extend({
     configType: z.literal(ConfigType.LINEAR_OUTPUT),
     integrationType: z.literal(IntegrationType.LINEAR),
-    teamId: NonEmptyString.nullable().describe("The Linear team ID. From fetchResourcesForIntegration, use the team's id from resources[]."),
-    teamName: z.string().nullable().describe("The team display name. From fetchResourcesForIntegration, use the team's name from resources[].")
+    teamId: NonEmptyString.nullable().optional().describe("Optional Linear team ID scope. From fetchResourcesForIntegration, use the team's id from resources[]."),
+    teamName: z.string().nullable().optional().describe("Optional team display name. From fetchResourcesForIntegration, use the team's name from resources[]."),
+    projectId: NonEmptyString.nullable().optional().describe("Optional Linear project ID scope. From fetchResourcesForIntegration, use the project's id from resources[]."),
+    projectName: z.string().nullable().optional().describe("Optional project display name. From fetchResourcesForIntegration, use the project's name from resources[].")
 })
 
 export const GitHubConfigSchema = BaseConfigSchema.extend({
     configType: z.literal(ConfigType.GITHUB),
     integrationType: z.literal(IntegrationType.GITHUB),
     repositoryIds: z.array(z.number()).min(1).describe("Array of GitHub repository IDs (numeric). From fetchResourcesForIntegration, use the repo's id from resources[].")
-})
-
-export const GitHubKnowledgeBaseConfigSchema = BaseConfigSchema.extend({
-    configType: z.literal(ConfigType.GITHUB_KB).describe("Use ONLY for GitHub repository knowledge bases. Do NOT use for PostHog, LaunchDarkly, or Datadog."),
-    integrationType: z.literal(IntegrationType.GITHUB),
-    repositoryIds: z.array(z.number()).min(1).describe("Array of GitHub repository IDs (numeric). From fetchResourcesForIntegration, use the repo's id from resources[]."),
-    repositoryNames: z
-        .array(NonEmptyString)
-        .min(1)
-        .describe("Array of repository names matching the repositoryIds. From fetchResourcesForIntegration, use the repo's name from resources[]. IMPORTANT: Must be owner/repo format.")
 })
 
 export const JiraConfigSchema = BaseConfigSchema.extend({
@@ -139,61 +132,34 @@ export const ConfluenceConfigSchema = BaseConfigSchema.extend({
 })
 
 export const PosthogConfigSchema = BaseConfigSchema.extend({
-    configType: z.literal(ConfigType.POSTHOG).describe("Use for PostHog analytics knowledge bases. Requires projectId."),
+    configType: z.literal(ConfigType.POSTHOG).describe("Use for PostHog analytics skills. Requires projectId."),
     integrationType: z.literal(IntegrationType.POSTHOG),
     projectId: NonEmptyString.describe("The PostHog project ID. From fetchResourcesForIntegration with integrationType=POSTHOG, use resources[].id."),
     projectName: z.string().nullable().describe("The PostHog project name. From fetchResourcesForIntegration, use resources[].name.")
 })
 
 export const LaunchDarklyConfigSchema = BaseConfigSchema.extend({
-    configType: z.literal(ConfigType.LAUNCHDARKLY).describe("Use for LaunchDarkly feature flag knowledge bases. Requires projectKey and environmentKeys."),
+    configType: z.literal(ConfigType.LAUNCHDARKLY).describe("Use for LaunchDarkly feature-flag skills. Requires projectKey and environmentKeys."),
     integrationType: z.literal(IntegrationType.LAUNCHDARKLY),
     projectKey: NonEmptyString.describe("The LaunchDarkly project key. From fetchResourcesForIntegration with integrationType=LAUNCHDARKLY."),
     environmentKeys: z.array(NonEmptyString).min(1).describe("Array of LaunchDarkly environment keys to include.")
 })
 
 export const DatadogConfigSchema = BaseConfigSchema.extend({
-    configType: z.literal(ConfigType.DATADOG).describe("Use for Datadog log knowledge bases."),
+    configType: z.literal(ConfigType.DATADOG).describe("Use for Datadog log skills."),
     integrationType: z.literal(IntegrationType.DATADOG),
     defaultIndexes: z.array(NonEmptyString).default(["main"]).describe('Log indexes to search (e.g. ["main"]). From fetchResourcesForIntegration or use ["main"].')
-})
-
-export const LinearKnowledgeBaseConfigSchema = BaseConfigSchema.extend({
-    configType: z.literal(ConfigType.LINEAR_KB).describe("Use for Linear ticket knowledge bases. Search and read Linear issues."),
-    integrationType: z.literal(IntegrationType.LINEAR),
-    teamId: z.string().nullable().optional(),
-    teamName: z.string().nullable().optional(),
-    projectId: z.string().nullable().optional(),
-    projectName: z.string().nullable().optional()
-})
-
-export const SlackKnowledgeBaseConfigSchema = BaseConfigSchema.extend({
-    configType: z.literal(ConfigType.SLACK_KB).describe("Use for Slack conversation history."),
-    integrationType: z.literal(IntegrationType.SLACK),
-    channelId: z
-        .string()
-        .nullable()
-        .optional()
-        .describe("When not in DMs mode: selected channel ID to read. Obtain from fetchResourcesForIntegration with integrationType=SLACK (channels). Required when allowDms is false."),
-    allowDms: z.boolean().optional().default(false).describe("True = Direct messages mode. When true, channelId must be empty; userIds optional (empty = all DMs)."),
-    userIds: z
-        .array(z.string())
-        .nullable()
-        .optional()
-        .describe("When allowDms is true: optional user IDs to restrict which DMs to read. Obtain from fetchResourcesForIntegration with options.slack.objectType='users'. Leave empty for all DMs."),
-    channelName: z.string().nullable().optional().describe("Display name for the channel (UI only, not persisted)."),
-    userNames: z.array(z.string()).nullable().optional().describe("Display names for users (UI only, not persisted).")
-})
-
-export const WorkOSKnowledgeBaseConfigSchema = BaseConfigSchema.extend({
-    configType: z.literal(ConfigType.WORKOS_KB),
-    integrationType: z.literal(IntegrationType.WORKOS)
 })
 
 export const WorkOSInputConfigSchema = BaseConfigSchema.extend({
     configType: z.literal(ConfigType.WORKOS_INPUT),
     integrationType: z.literal(IntegrationType.WORKOS),
     eventTypes: z.array(z.enum(WORKOS_SUPPORTED_EVENT_NAMES)).min(1).describe("WorkOS event types to trigger on.")
+})
+
+export const WorkOSOutputConfigSchema = BaseConfigSchema.extend({
+    configType: z.literal(ConfigType.WORKOS_OUTPUT),
+    integrationType: z.literal(IntegrationType.WORKOS)
 })
 
 export const TimeTriggerConfigSchema = BaseConfigSchema.extend({

@@ -1,4 +1,4 @@
-import { InputConfigType, KnowledgeBaseConfigType, OutputConfigType, IntegrationType as PrismaIntegrationType, RunHistoryStatus as PrismaRunHistoryStatus } from "@prisma/client"
+import { InputConfigType, OutputConfigType, IntegrationType as PrismaIntegrationType, RunHistoryStatus as PrismaRunHistoryStatus } from "@prisma/client"
 
 import {
     AttioOutputConfig,
@@ -8,27 +8,24 @@ import {
     DatadogConfig,
     FigmaConfig,
     GitHubConfig,
-    GitHubKBConfig,
     GmailConfig,
     GmailDraftOutputConfig,
     GmailOutputConfig,
     JiraConfig,
     LaunchDarklyConfig,
     LinearInputConfig,
-    LinearKBConfig,
     LinearOutputConfig,
     NotionConfig,
     PosthogConfig,
     SlackConfig,
-    SlackKBConfig,
     SlackOutputConfig,
     TimeTriggerConfig,
     WorkOSInputConfig,
-    WorkOSKBConfig
+    WorkOSOutputConfig
 } from "../shared/Configs"
 import { IntegrationType } from "../shared/Integrations"
 import { RunHistoryStatus as SharedRunHistoryStatus } from "../shared/RunHistoryTypes"
-import { AgentKnowledgeBaseWithConfigs, AgentOutputWithConfigs, AgentTriggerWithConfigs } from "../types/prisma"
+import { AgentOutputWithConfigs, AgentTriggerWithConfigs } from "../types/prisma"
 
 export const convertIntegrationTypeToPrismaIntegrationType = (integrationType: IntegrationType): PrismaIntegrationType => {
     switch (integrationType) {
@@ -303,7 +300,13 @@ export const convertPrismaOutputConfigToConfigInstance = (channelOutput: AgentOu
     }
 
     if (channelOutput.linear_config) {
-        return new LinearOutputConfig(integrationId, channelOutput.linear_config.team_id || undefined, channelOutput.linear_config.team_name || undefined)
+        return new LinearOutputConfig(
+            integrationId,
+            channelOutput.linear_config.team_id || undefined,
+            channelOutput.linear_config.team_name || undefined,
+            channelOutput.linear_config.project_id || undefined,
+            channelOutput.linear_config.project_name || undefined
+        )
     }
 
     if (channelOutput.jira_config) {
@@ -315,8 +318,9 @@ export const convertPrismaOutputConfigToConfigInstance = (channelOutput: AgentOu
             integrationId,
             channelOutput.slack_config.channel_id || undefined,
             channelOutput.slack_config.channel_name || undefined,
-            channelOutput.slack_config.user_ids?.length ? channelOutput.slack_config.user_ids : undefined,
-            undefined // userNames not persisted in DB; can be derived in UI
+            channelOutput.slack_config.user_ids ?? [],
+            undefined, // userNames not persisted in DB; can be derived in UI
+            channelOutput.slack_config.listen_to_user_dms || false
         )
     }
 
@@ -331,6 +335,26 @@ export const convertPrismaOutputConfigToConfigInstance = (channelOutput: AgentOu
         return new AttioOutputConfig(integrationId, channelOutput.attio_config.object_slug)
     }
 
+    if (channelOutput.github_config) {
+        return new GitHubConfig(integrationId, channelOutput.github_config.repository_ids || [])
+    }
+
+    if (channelOutput.posthog_config) {
+        return new PosthogConfig(integrationId, channelOutput.posthog_config.project_id, channelOutput.posthog_config.project_name || undefined)
+    }
+
+    if (channelOutput.datadog_config) {
+        return new DatadogConfig(integrationId, channelOutput.datadog_config.default_indexes || ["main"])
+    }
+
+    if (channelOutput.launchdarkly_config) {
+        return new LaunchDarklyConfig(integrationId, channelOutput.launchdarkly_config.project_key, channelOutput.launchdarkly_config.environment_keys || [])
+    }
+
+    if (channelOutput.config_type === OutputConfigType.WORKOS) {
+        return new WorkOSOutputConfig(integrationId)
+    }
+
     // Type guard to ensure we implement conversion here
     switch (channelOutput.config_type) {
         case OutputConfigType.NOTION:
@@ -339,6 +363,10 @@ export const convertPrismaOutputConfigToConfigInstance = (channelOutput: AgentOu
         case OutputConfigType.JIRA_TICKET:
         case OutputConfigType.SLACK_CHANNEL:
         case OutputConfigType.GMAIL:
+        case OutputConfigType.GITHUB:
+        case OutputConfigType.POSTHOG:
+        case OutputConfigType.DATADOG:
+        case OutputConfigType.LAUNCHDARKLY:
         case OutputConfigType.GMAIL_DRAFT:
         case OutputConfigType.TERSE:
         case OutputConfigType.ATTIO:
@@ -377,12 +405,6 @@ export const convertConfigTypeToInputConfigType = (configType: ConfigType): Inpu
             return InputConfigType.TIME_TRIGGER
         case ConfigType.WORKOS_INPUT:
             return InputConfigType.WORKOS_INPUT
-        case ConfigType.GITHUB_KB:
-            // GitHub KB is a knowledge base config type, not an input config type
-            throw new Error("GITHUB_KB is a knowledge base type, not an input type")
-        case ConfigType.LAUNCHDARKLY:
-            // LaunchDarkly is a knowledge base config type, not an input config type
-            throw new Error("LAUNCHDARKLY is a knowledge base type, not an input type")
         case ConfigType.SLACK_OUTPUT:
             // SLACK_OUTPUT is an output config type, not an input config type
             throw new Error("SLACK_OUTPUT is an output type, not an input type")
@@ -393,14 +415,12 @@ export const convertConfigTypeToInputConfigType = (configType: ConfigType): Inpu
             throw new Error("GMAIL_DRAFT_OUTPUT is an output type, not an input type")
         case ConfigType.DATADOG:
             throw new Error("DATADOG is not an input config type")
-        case ConfigType.LINEAR_KB:
-            throw new Error("LINEAR_KB is a knowledge base type, not an input type")
-        case ConfigType.SLACK_KB:
-            throw new Error("SLACK_KB is a knowledge base type, not an input type")
+        case ConfigType.LAUNCHDARKLY:
+            throw new Error("LAUNCHDARKLY is not an input config type")
         case ConfigType.TERSE:
             throw new Error("TERSE is an output type, not an input type")
-        case ConfigType.WORKOS_KB:
-            throw new Error("WORKOS_KB is a knowledge base type, not an input type")
+        case ConfigType.WORKOS_OUTPUT:
+            throw new Error("WORKOS_OUTPUT is an output type, not an input type")
         case ConfigType.ATTIO_OUTPUT:
             throw new Error("ATTIO_OUTPUT is an output type, not an input type")
         default:
@@ -443,6 +463,14 @@ export const convertInputConfigTypeToConfigType = (inputConfigType: InputConfigT
  */
 export const convertConfigTypeToOutputConfigType = (configType: ConfigType): OutputConfigType => {
     switch (configType) {
+        case ConfigType.GITHUB:
+            return OutputConfigType.GITHUB
+        case ConfigType.POSTHOG:
+            return OutputConfigType.POSTHOG
+        case ConfigType.DATADOG:
+            return OutputConfigType.DATADOG
+        case ConfigType.LAUNCHDARKLY:
+            return OutputConfigType.LAUNCHDARKLY
         case ConfigType.NOTION:
             return OutputConfigType.NOTION
         case ConfigType.CONFLUENCE:
@@ -461,8 +489,10 @@ export const convertConfigTypeToOutputConfigType = (configType: ConfigType): Out
             return OutputConfigType.TERSE
         case ConfigType.ATTIO_OUTPUT:
             return OutputConfigType.ATTIO
+        case ConfigType.WORKOS_OUTPUT:
+            return OutputConfigType.WORKOS
         default:
-            throw new Error(`ConfigType ${configType} is not a valid output config type. Supported: NOTION, CONFLUENCE, LINEAR, JIRA, SLACK_OUTPUT, GMAIL_OUTPUT, TERSE, ATTIO.`)
+            throw new Error(`ConfigType ${configType} is not a valid output config type.`)
     }
 }
 
@@ -483,12 +513,22 @@ export const convertOutputConfigTypeToConfigType = (outputConfigType: OutputConf
             return ConfigType.SLACK_OUTPUT
         case OutputConfigType.GMAIL:
             return ConfigType.GMAIL_OUTPUT
+        case OutputConfigType.GITHUB:
+            return ConfigType.GITHUB
+        case OutputConfigType.POSTHOG:
+            return ConfigType.POSTHOG
+        case OutputConfigType.DATADOG:
+            return ConfigType.DATADOG
+        case OutputConfigType.LAUNCHDARKLY:
+            return ConfigType.LAUNCHDARKLY
         case OutputConfigType.GMAIL_DRAFT:
             return ConfigType.GMAIL_DRAFT_OUTPUT
         case OutputConfigType.TERSE:
             return ConfigType.TERSE
         case OutputConfigType.ATTIO:
             return ConfigType.ATTIO_OUTPUT
+        case OutputConfigType.WORKOS:
+            return ConfigType.WORKOS_OUTPUT
         default:
             throw outputConfigType satisfies never
     }
@@ -512,124 +552,24 @@ export const convertOutputConfigTypeToIntegrationType = (outputConfigType: Outpu
             return IntegrationType.SLACK
         case OutputConfigType.GMAIL:
             return IntegrationType.GMAIL
+        case OutputConfigType.GITHUB:
+            return IntegrationType.GITHUB
+        case OutputConfigType.POSTHOG:
+            return IntegrationType.POSTHOG
+        case OutputConfigType.DATADOG:
+            return IntegrationType.DATADOG
+        case OutputConfigType.LAUNCHDARKLY:
+            return IntegrationType.LAUNCHDARKLY
         case OutputConfigType.GMAIL_DRAFT:
             return IntegrationType.GMAIL
         case OutputConfigType.TERSE:
             return IntegrationType.TERSE
         case OutputConfigType.ATTIO:
             return IntegrationType.ATTIO
+        case OutputConfigType.WORKOS:
+            return IntegrationType.WORKOS
         default:
             throw outputConfigType satisfies never
-    }
-}
-
-export const convertConfigTypeToKnowledgeBaseConfigType = (configType: ConfigType): KnowledgeBaseConfigType => {
-    switch (configType) {
-        case ConfigType.POSTHOG:
-            return KnowledgeBaseConfigType.POSTHOG
-        case ConfigType.GITHUB_KB:
-            return KnowledgeBaseConfigType.GITHUB
-        case ConfigType.LAUNCHDARKLY:
-            return KnowledgeBaseConfigType.LAUNCHDARKLY
-        case ConfigType.DATADOG:
-            return KnowledgeBaseConfigType.DATADOG
-        case ConfigType.LINEAR_KB:
-            return KnowledgeBaseConfigType.LINEAR
-        case ConfigType.SLACK_KB:
-            return KnowledgeBaseConfigType.SLACK
-        case ConfigType.WORKOS_KB:
-            return KnowledgeBaseConfigType.WORKOS
-        default:
-            throw new Error(
-                `ConfigType ${configType} is not a valid knowledge base config type. Supported knowledge base config types are: POSTHOG, GITHUB_KB, DATADOG, LINEAR_KB, SLACK_KB, WORKOS_KB.`
-            )
-    }
-}
-
-/**
- * Converts a ChannelKnowledgeBase with configs to a ConfigInstance.
- */
-export const convertPrismaKnowledgeBaseConfigToConfigInstance = (channelKnowledgeBase: AgentKnowledgeBaseWithConfigs): ConfigInstance => {
-    const integrationId = channelKnowledgeBase.integration_id
-
-    if (channelKnowledgeBase.posthog_config) {
-        const posthogIntegration = channelKnowledgeBase.posthog_config
-        if (!posthogIntegration.project_id) {
-            throw new Error("Posthog config requires project_id")
-        }
-        return new PosthogConfig(integrationId, posthogIntegration.project_id, posthogIntegration.project_name || undefined)
-    }
-
-    if (channelKnowledgeBase.github_kb_config) {
-        return new GitHubKBConfig(integrationId, channelKnowledgeBase.github_kb_config.repository_ids || [], channelKnowledgeBase.github_kb_config.repository_names || [])
-    }
-
-    if (channelKnowledgeBase.launchdarkly_config) {
-        const launchdarklyIntegration = channelKnowledgeBase.launchdarkly_config
-        if (!launchdarklyIntegration.project_key) {
-            throw new Error("LaunchDarkly config requires project_key")
-        }
-        return new LaunchDarklyConfig(integrationId, launchdarklyIntegration.project_key, launchdarklyIntegration.environment_keys || [])
-    }
-
-    if (channelKnowledgeBase.datadog_config) {
-        const datadogConfig = channelKnowledgeBase.datadog_config
-        return new DatadogConfig(integrationId, datadogConfig.default_indexes && datadogConfig.default_indexes.length > 0 ? datadogConfig.default_indexes : ["main"])
-    }
-
-    if (channelKnowledgeBase.linear_kb_config) {
-        const c = channelKnowledgeBase.linear_kb_config
-        return new LinearKBConfig(integrationId, c.team_id ?? undefined, c.team_name ?? undefined, c.project_id ?? undefined, c.project_name ?? undefined)
-    }
-
-    if (channelKnowledgeBase.slack_kb_config) {
-        const c = channelKnowledgeBase.slack_kb_config
-        return new SlackKBConfig(integrationId, c.channel_ids?.[0], c.channel_names?.[0], c.allow_dms ?? false, c.user_ids ?? [], c.user_names ?? [])
-    }
-
-    if (channelKnowledgeBase.workos_kb_config) {
-        return new WorkOSKBConfig(integrationId)
-    }
-
-    throw new Error(`Unsupported knowledge base config type: ${channelKnowledgeBase.config_type}`)
-}
-
-/**
- * Converts a plain object config (from request body JSON) to a proper ConfigInstance.
- * This is needed because JSON deserialization creates plain objects, not class instances.
- * If the config is already an instance (has isComplete method), returns it as-is.
- */
-export const convertPlainObjectToKnowledgeBaseConfigInstance = (config: any): ConfigInstance => {
-    // If it's already an instance (has isComplete method), return as-is
-    if (typeof config.isComplete === "function") {
-        return config as ConfigInstance
-    }
-
-    // Convert plain object to proper instance based on configType
-    switch (config.configType) {
-        case ConfigType.DATADOG:
-            return new DatadogConfig(config.integrationId, config.defaultIndexes || ["main"])
-        case ConfigType.POSTHOG:
-            return new PosthogConfig(config.integrationId, config.projectId, config.projectName)
-        case ConfigType.GITHUB_KB:
-            return new GitHubKBConfig(config.integrationId, config.repositoryIds || [], config.repositoryNames || [])
-        case ConfigType.LAUNCHDARKLY:
-            return new LaunchDarklyConfig(config.integrationId, config.projectKey, config.environmentKeys || [])
-        case ConfigType.LINEAR_KB:
-            return new LinearKBConfig(config.integrationId, config.teamId, config.teamName, config.projectId, config.projectName)
-        case ConfigType.SLACK_KB:
-            return new SlackKBConfig(
-                config.integrationId,
-                config.channelId ?? (config as any).channelIds?.[0],
-                config.channelName ?? (config as any).channelNames?.[0],
-                config.allowDms ?? false,
-                config.userIds ?? [],
-                config.userNames ?? []
-            )
-        case ConfigType.WORKOS_KB:
-            return new WorkOSKBConfig(config.integrationId)
-        default:
-            throw new Error(`Unsupported knowledge base config type: ${config.configType}`)
     }
 }
 
