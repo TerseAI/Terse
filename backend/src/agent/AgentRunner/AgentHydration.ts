@@ -1,6 +1,3 @@
-import { KnowledgeBase } from "../../knowledgeBase/abstract/KnowledgeBase"
-import { KnowledgeBaseFactory } from "../../knowledgeBase/abstract/KnowledgeBaseFactory"
-import logger from "../../logger"
 import { Output } from "../../outputs/abstract/Output"
 import { OutputFactory } from "../../outputs/abstract/OutputFactory"
 import { db } from "../../prismaClient"
@@ -27,12 +24,11 @@ export interface HydratedAgent {
     user: User
     session: Session
     outputs: Output<ConfigInstance>[]
-    knowledgeBases: KnowledgeBase<ConfigInstance>[]
 }
 
 /**
  * Fetches and hydrates an agent by ID with all required relations.
- * Returns the agent along with validated outputs and knowledge bases.
+ * Returns the agent along with validated outputs.
  * Authorization is scoped by organizationId (not userId) so any user in the org can access.
  */
 export async function hydrateAgentById(agentId: string, userId: string, organizationId: string): Promise<HydrationResult> {
@@ -57,7 +53,7 @@ export async function hydrateAgentById(agentId: string, userId: string, organiza
 }
 
 /**
- * Hydrates an already-fetched agent record with outputs, knowledge bases, and session.
+ * Hydrates an already-fetched agent record with outputs and session.
  * Use this when you already have the agent data (e.g., from a batch query).
  */
 export async function hydrateAgentFromRecord(agent: AgentWithRelations, userId: string): Promise<HydrationResult> {
@@ -105,17 +101,13 @@ export async function hydrateAgentFromRecord(agent: AgentWithRelations, userId: 
         isUserInitiated: true
     }
 
-    // Create knowledge bases
-    const knowledgeBases = KnowledgeBaseFactory.createKnowledgeBasesFromAgent(agent.knowledge_bases || [])
-
     return {
         success: true,
         data: {
             agent,
             user,
             session,
-            outputs,
-            knowledgeBases
+            outputs
         }
     }
 }
@@ -123,8 +115,8 @@ export async function hydrateAgentFromRecord(agent: AgentWithRelations, userId: 
 /**
  * Creates a fully configured AgentRunner from hydrated agent data.
  */
-export function createAgentRunner(hydrated: HydratedAgent, runContext: RunContext): AgentRunner<Session, ConfigInstance, ConfigInstance> {
-    return new AgentRunner(hydrated.session, hydrated.outputs, hydrated.knowledgeBases, hydrated.agent, runContext)
+export function createAgentRunner(hydrated: HydratedAgent, runContext: RunContext): AgentRunner<Session, ConfigInstance> {
+    return new AgentRunner(hydrated.session, hydrated.outputs, hydrated.agent, runContext)
 }
 
 /**
@@ -135,7 +127,7 @@ export async function hydrateAndCreateRunner(
     userId: string,
     organizationId: string,
     runContext: RunContext
-): Promise<{ success: true; runner: AgentRunner<Session, ConfigInstance, ConfigInstance>; hydrated: HydratedAgent } | { success: false; error: HydrationError }> {
+): Promise<{ success: true; runner: AgentRunner<Session, ConfigInstance>; hydrated: HydratedAgent } | { success: false; error: HydrationError }> {
     const result = await hydrateAgentById(agentId, userId, organizationId)
 
     if (!result.success) {

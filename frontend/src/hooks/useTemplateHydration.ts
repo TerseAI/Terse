@@ -2,7 +2,7 @@ import { v4 as uuidv4 } from "uuid"
 
 import { AgentTemplate } from "../hooks/api/useTemplates"
 import { ConfigType } from "../shared/Configs"
-import { AgentNotificationSettings, AgentPrompt, TemplateKnowledgeBase, TemplateOutput, TemplateTrigger, TransientAgentOutput, TransientAgentTrigger, TransientKnowledgeBase } from "../shared/types"
+import { AgentNotificationSettings, AgentPrompt, TemplateOutput, TemplateTrigger, TransientAgentOutput, TransientAgentTrigger } from "../shared/types"
 
 export interface HydratedTemplateState {
     name: string | null
@@ -12,7 +12,6 @@ export interface HydratedTemplateState {
     toolApprovals: string[]
     inputs: TransientAgentTrigger[]
     outputs: TransientAgentOutput[]
-    knowledgeBases: TransientKnowledgeBase[]
     notificationSettings: AgentNotificationSettings
 }
 
@@ -50,16 +49,6 @@ export function useTemplateHydration(templateId: string | undefined, templates: 
               }))
             : []
 
-    // Convert template knowledge bases to transient knowledge bases
-    const transientKBs: TransientKnowledgeBase[] =
-        template.knowledgeBases && template.knowledgeBases.length > 0
-            ? template.knowledgeBases.map((kb: TemplateKnowledgeBase) => ({
-                  id: uuidv4(),
-                  configType: kb.config.configType as ConfigType,
-                  config: undefined // User needs to select integration
-              }))
-            : []
-
     // Handle notification settings from template
     const notificationSettings: AgentNotificationSettings = { enabled: false, actionTypes: [], notifyOnRunFailure: false }
 
@@ -72,7 +61,6 @@ export function useTemplateHydration(templateId: string | undefined, templates: 
             toolApprovals: [],
             inputs: transientInputs,
             outputs: transientOutputs,
-            knowledgeBases: transientKBs,
             notificationSettings
         },
         templateFound: true

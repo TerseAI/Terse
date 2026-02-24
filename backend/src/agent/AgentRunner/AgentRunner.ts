@@ -3,7 +3,6 @@ import { RunHistoryActionType } from "@prisma/client"
 
 import { settings } from "../../config/settings"
 import { InputEvent } from "../../integrations/abstract/InputEvent"
-import { KnowledgeBase } from "../../knowledgeBase/abstract/KnowledgeBase"
 import logger from "../../logger"
 import { NotificationManager } from "../../notifications/Notification"
 import { Output } from "../../outputs/abstract/Output"
@@ -39,12 +38,11 @@ type AgentInputFile = protocol.InputFile
 
 type UserMessageContent = AgentInputText | AgentInputImage | AgentInputFile
 
-export class AgentRunner<T extends Session, TConfig extends ConfigInstance, KBConfig extends ConfigInstance> {
+export class AgentRunner<T extends Session, TConfig extends ConfigInstance> {
     private session: T
     private inputEvent: InputEvent | null = null
     private agentConfig: AgentWithRelations
     private outputs: Output<TConfig>[]
-    private knowledgeBases: KnowledgeBase<KBConfig>[]
     private agent?: Agent<SessionWithTracking<T>, AgentOutputType>
     private tools: Tool<SessionWithTracking<T>>[] = []
     private runContext: RunContext
@@ -54,21 +52,14 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance, KBCo
     private maxTurns: number
     private notificationManager: NotificationManager
 
-    constructor(session: T, outputs: Output<TConfig>[], knowledgeBases: KnowledgeBase<KBConfig>[], agent: AgentWithRelations, runContext: RunContext, maxTurns: number = 50) {
+    constructor(session: T, outputs: Output<TConfig>[], agent: AgentWithRelations, runContext: RunContext, maxTurns: number = 50) {
         this.session = session
         this.outputs = outputs
-        this.knowledgeBases = knowledgeBases
         this.agentConfig = agent
         const toolsMap = new Map<string, Tool<SessionWithTracking<T>>>()
 
         outputs.forEach(output => {
             output.toolbox.forEach(entry => {
-                toolsMap.set(entry.tool.name, entry.tool)
-            })
-        })
-
-        knowledgeBases.forEach(kb => {
-            kb.toolbox.forEach(entry => {
                 toolsMap.set(entry.tool.name, entry.tool)
             })
         })
@@ -347,16 +338,6 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance, KBCo
                 })
             })
         })
-
-        // Populate metadata from knowledge base toolboxes
-        this.knowledgeBases.forEach(kb => {
-            kb.toolbox.forEach(entry => {
-                this.toolMetadataMap.set(entry.tool.name, {
-                    integration: entry.integration,
-                    isReadOnly: entry.isReadOnly
-                })
-            })
-        })
     }
 
     private chooseModel(): string {
@@ -364,14 +345,13 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance, KBCo
     }
 
     async initializeAgent(): Promise<void> {
-        const deps: SystemPromptBuilderDependencies<T, TConfig, KBConfig> = {
+        const deps: SystemPromptBuilderDependencies<T, TConfig> = {
             session: this.session,
             agent: this.agentConfig,
-            outputs: this.outputs,
-            knowledgeBases: this.knowledgeBases
+            outputs: this.outputs
         }
 
-        const builder = new SystemPromptBuilder<T, TConfig, KBConfig>(deps, this.runContext).withStandardSections()
+        const builder = new SystemPromptBuilder<T, TConfig>(deps, this.runContext).withStandardSections()
 
         const fullSystemPrompt = await builder.build()
 

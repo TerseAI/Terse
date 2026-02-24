@@ -19,14 +19,6 @@ export function TemplateAppsList({ template }: TemplateAppsListProps) {
         inputIntegrationCounts.set(integrationType, count + 1)
     })
 
-    // Count knowledge base integrations using a hashmap
-    const knowledgeBaseIntegrationCounts = new Map<IntegrationType, number>()
-    template.knowledgeBases?.forEach(kb => {
-        const integrationType = kb.config.integrationType
-        const count = knowledgeBaseIntegrationCounts.get(integrationType) || 0
-        knowledgeBaseIntegrationCounts.set(integrationType, count + 1)
-    })
-
     // Count output integrations using a hashmap
     const outputIntegrationCounts = new Map<IntegrationType, number>()
     if (template.outputs && template.outputs.length > 0) {
@@ -38,7 +30,6 @@ export function TemplateAppsList({ template }: TemplateAppsListProps) {
     }
 
     const hasInputs = inputIntegrationCounts.size > 0
-    const hasKnowledgeBases = knowledgeBaseIntegrationCounts.size > 0
     const hasOutput = outputIntegrationCounts.size > 0
 
     return (
@@ -57,25 +48,8 @@ export function TemplateAppsList({ template }: TemplateAppsListProps) {
                 </div>
             ))}
 
-            {/* Arrow between inputs and knowledge bases/outputs */}
-            {hasInputs && (hasKnowledgeBases || hasOutput) && <ChevronRight className="w-3 h-3 text-muted-foreground mx-0.5" />}
-
-            {/* Knowledge Bases */}
-            {Array.from(knowledgeBaseIntegrationCounts.entries()).map(([integration, count], idx) => (
-                <div key={idx} className="flex items-center">
-                    <div className="relative w-7 h-7 flex items-center justify-center rounded bg-card p-1" title={capitalize(integration)}>
-                        <IconForIntegration integration={integration} />
-                        {count > 1 && (
-                            <sup className="absolute -top-1.5 -right-1.5 text-[9px] font-mono tabular-nums leading-none z-10 text-primary-foreground rounded-full w-4 h-4 flex items-center justify-center shadow-md backdrop-blur-sm">
-                                {count}
-                            </sup>
-                        )}
-                    </div>
-                </div>
-            ))}
-
-            {/* Arrow between knowledge bases and outputs */}
-            {hasKnowledgeBases && hasOutput && <ChevronRight className="w-3 h-3 text-muted-foreground mx-0.5" />}
+            {/* Arrow between triggers and skills */}
+            {hasInputs && hasOutput && <ChevronRight className="w-3 h-3 text-muted-foreground mx-0.5" />}
 
             {/* Outputs */}
             {Array.from(outputIntegrationCounts.entries()).map(([integration, count], idx) => (

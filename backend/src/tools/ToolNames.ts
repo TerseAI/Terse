@@ -50,7 +50,7 @@ export const ToolName = {
     CONFLUENCE_QUERY_PAGE: "confluence_query_page",
     CONFLUENCE_ADD_COMMENT: "confluence_add_comment",
 
-    // GitHub Knowledge Base Tools
+    // GitHub Tools
     GITHUB_SEARCH_CODE: "searchGitHubCode",
     GITHUB_READ_FILE: "readGitHubFile",
     GITHUB_LIST_PULL_REQUESTS: "listGitHubPullRequests",
@@ -59,17 +59,17 @@ export const ToolName = {
     GITHUB_GREP_CODE: "grepGitHubCode",
     GITHUB_SUMMARIZE_PULL_REQUEST_DIFF: "summarizeGitHubPullRequestDiff",
 
-    // PostHog Knowledge Base Tools
+    // PostHog Tools
     POSTHOG_SEARCH_SESSIONS: "searchPosthogSessions",
     POSTHOG_SEARCH_LOGS: "searchPosthogLogs",
     POSTHOG_GET_SESSION_EVENTS: "getPosthogSessionEvents",
     POSTHOG_SEARCH_EVENTS: "searchPosthogEvents",
 
-    // LaunchDarkly Knowledge Base Tools
+    // LaunchDarkly Tools
     LAUNCHDARKLY_LIST_FEATURE_FLAGS: "listLaunchDarklyFlags",
     LAUNCHDARKLY_GET_FEATURE_FLAG_DETAILS: "getLaunchDarklyFlagDetails",
 
-    // Datadog Knowledge Base Tools
+    // Datadog Tools
     DATADOG_SEARCH_LOGS: "searchDatadogLogs",
     DATADOG_SEARCH_RUM_EVENTS: "searchRumEvents",
     DATADOG_LIST_RUM_EVENTS: "listRumEvents",
@@ -80,7 +80,7 @@ export const ToolName = {
     ATTIO_QUERY_RECORDS: "attio_query_records",
     ATTIO_LIST_OBJECTS: "attio_list_objects",
 
-    // WorkOS Knowledge Base Tools
+    // WorkOS Tools
     WORKOS_LIST_USERS: "listWorkOSUsers",
     WORKOS_GET_USER: "getWorkOSUser",
 
