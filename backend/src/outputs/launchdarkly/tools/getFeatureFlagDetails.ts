@@ -17,7 +17,7 @@ export const getLaunchDarklyFlagDetailsTool = tool({
     description:
         "Get detailed information about a specific feature flag including targeting rules, rollout strategies, variations, and per-environment configuration. Optionally includes change history when includeHistory=true.",
     parameters: z.object({
-        integrationId: z.string().describe("The integration ID of the LaunchDarkly knowledge base to use."),
+        integrationId: z.string().describe("The integration ID of the LaunchDarkly skill to use."),
         projectKey: z.string().describe("The LaunchDarkly project key."),
         environmentKeys: z.array(z.string()).describe("Array of environment keys to query."),
         flagKey: z.string().describe("The flag key to retrieve."),

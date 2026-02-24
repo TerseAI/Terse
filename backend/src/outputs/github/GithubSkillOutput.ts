@@ -18,10 +18,6 @@ import { readGitHubFileTool } from "./tools/readFile"
 import { searchGitHubCodeTool } from "./tools/searchCode"
 import { summarizeGitHubPullRequestDiffTool } from "./tools/summarizePullRequestDiff"
 
-/**
- * GitHub skill output. This is backed by automation_outputs rows and reuses
- * the same read-only toolbox that used to live in GitHub knowledge bases.
- */
 export class GithubSkillOutput extends Output<GitHubConfig> {
     constructor() {
         const toolbox: ToolboxEntry[] = [

@@ -14,7 +14,7 @@ export const listWorkOSUsersTool = tool({
     description:
         "List users from the customer's WorkOS account. Supports filtering by email and organization ID. Returns user profiles including email, name, and creation date. Use pagination (after cursor) for large user sets.",
     parameters: z.object({
-        integrationId: z.string().describe("The integration ID of the WorkOS knowledge base to use."),
+        integrationId: z.string().describe("The integration ID of the WorkOS skill to use."),
         email: z.union([z.string(), z.null()]).describe("Filter by exact email address. Pass null to list all users."),
         organizationId: z.union([z.string(), z.null()]).describe("Filter users by WorkOS organization ID. Pass null for all organizations."),
         limit: z.number().default(20).describe("Maximum number of users to return (default: 20, max: 100)."),

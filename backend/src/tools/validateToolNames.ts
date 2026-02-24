@@ -75,7 +75,7 @@ export function validateAllToolNames(): void {
         const allSameTool = occurrences.every(occ => occ.tool === firstTool)
         if (!allSameTool) {
             const sources = occurrences.map(occ => `${getSourceDisplayName(occ.source)} (${occ.configType})`).join(" and ")
-            const errorMessage = `Duplicate tool name '${toolName}' found in: ${sources}. The same tool name must refer to the same tool implementation (e.g. reuse the same tool reference in both Output and Knowledge Base).`
+            const errorMessage = `Duplicate tool name '${toolName}' found in: ${sources}. The same tool name must refer to the same tool implementation`
             logger.error("Tool name validation failed - duplicate names with different implementations", { toolName, occurrences })
             throw new Error(errorMessage)
         }

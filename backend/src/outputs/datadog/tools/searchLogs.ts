@@ -19,7 +19,7 @@ export const searchDatadogLogsTool = tool({
     name: ToolName.DATADOG_SEARCH_LOGS,
     description: "Query Datadog logs. Filter by query string, indexes, time range. Returns logs with timestamps, status, messages, hosts, services, tags.",
     parameters: z.object({
-        integrationId: z.string().describe("The integration ID of the Datadog knowledge base to use."),
+        integrationId: z.string().describe("The integration ID of the Datadog skill to use."),
         defaultIndexes: z
             .union([z.array(z.string()), z.null()])
             .optional()

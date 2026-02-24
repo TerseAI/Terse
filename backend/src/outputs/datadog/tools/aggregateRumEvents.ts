@@ -47,7 +47,7 @@ export const aggregateRumEventsTool = tool({
             .describe("Facets to group results by"),
         timezone: z.string().default("GMT").describe('Timezone for time-based queries (default: "GMT")'),
         pageLimit: z.number().default(25).describe("Maximum number of buckets to return (default: 25)"),
-        integrationId: z.string().describe("The integration ID of the Datadog knowledge base to use.")
+        integrationId: z.string().describe("The integration ID of the Datadog skill to use.")
     }),
     execute: async ({ integrationId, query, from, to, compute, groupBy, timezone, pageLimit }, runContext?: RunContext<SessionWithTracking<Session>>) => {
         if (!runContext?.context) {

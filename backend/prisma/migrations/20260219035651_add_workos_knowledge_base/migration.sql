@@ -1,5 +1,5 @@
 -- AlterEnum
-ALTER TYPE "KnowledgeBaseConfigType" ADD VALUE IF NOT EXISTS 'WORKOS';
+ALTER TYPE "KnowledgeBaseConfigType" ADD VALUE 'WORKOS';
 
 -- CreateTable
 CREATE TABLE "automation_workos_kb_configs" (

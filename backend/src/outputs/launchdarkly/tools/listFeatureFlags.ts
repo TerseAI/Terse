@@ -15,7 +15,7 @@ export const listLaunchDarklyFlagsTool = tool({
     name: ToolName.LAUNCHDARKLY_LIST_FEATURE_FLAGS,
     description: "List all feature flags with enabled/disabled states per environment. Use summary=true for quick overview, summary=false for full details.",
     parameters: z.object({
-        integrationId: z.string().describe("The integration ID of the LaunchDarkly knowledge base to use."),
+        integrationId: z.string().describe("The integration ID of the LaunchDarkly skill to use."),
         projectKey: z.string().describe("The LaunchDarkly project key."),
         environmentKeys: z.array(z.string()).describe("Array of environment keys to query."),
         summary: z.boolean().default(true).describe("If true, return only flag key, name, and on/off state per environment. If false, return full flag details."),

@@ -18,7 +18,7 @@ export const searchSessionsTool = tool({
     description:
         "Query PostHog session recordings for a specific user by their email address. Returns session recordings data and links to view sessions in PostHog. Use this when you need to replay user sessions, investigate user behavior, or understand how users interact with the application. Returns the most recent session recordings first.",
     parameters: z.object({
-        integrationId: z.string().describe("The integration ID of the PostHog knowledge base to use."),
+        integrationId: z.string().describe("The integration ID of the PostHog skill to use."),
         projectId: z.string().describe("The PostHog project ID."),
         userEmail: z.string().email().describe("The email address of the user to query session recordings for. Must be a valid email address."),
         limit: z.number().default(10).describe("Maximum number of session recordings to return (default: 10, max: 100)"),

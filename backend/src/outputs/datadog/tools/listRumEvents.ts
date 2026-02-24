@@ -21,7 +21,7 @@ export const listRumEventsTool = tool({
     name: ToolName.DATADOG_LIST_RUM_EVENTS,
     description: "List recent Datadog RUM events. Use for discovery when unsure what to query. Returns sessions, views, actions, errors, resources, long tasks.",
     parameters: z.object({
-        integrationId: z.string().describe("The integration ID of the Datadog knowledge base to use."),
+        integrationId: z.string().describe("The integration ID of the Datadog skill to use."),
         query: z.union([z.string(), z.null()]).optional().describe("Datadog RUM search query to filter events (e.g., @type:view)"),
         from: z.union([z.string(), z.null()]).optional().describe('Minimum timestamp (ISO8601 only, e.g., "2020-09-17T11:48:36+01:00")'),
         to: z.union([z.string(), z.null()]).optional().describe("Maximum timestamp (ISO8601 only). Defaults to now if not provided."),

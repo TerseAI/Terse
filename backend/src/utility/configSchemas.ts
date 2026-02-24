@@ -103,8 +103,10 @@ export const LinearInputConfigSchema = BaseConfigSchema.extend({
 export const LinearOutputConfigSchema = BaseConfigSchema.extend({
     configType: z.literal(ConfigType.LINEAR_OUTPUT),
     integrationType: z.literal(IntegrationType.LINEAR),
-    teamId: NonEmptyString.nullable().describe("The Linear team ID. From fetchResourcesForIntegration, use the team's id from resources[]."),
-    teamName: z.string().nullable().describe("The team display name. From fetchResourcesForIntegration, use the team's name from resources[].")
+    teamId: NonEmptyString.nullable().optional().describe("Optional Linear team ID scope. From fetchResourcesForIntegration, use the team's id from resources[]."),
+    teamName: z.string().nullable().optional().describe("Optional team display name. From fetchResourcesForIntegration, use the team's name from resources[]."),
+    projectId: NonEmptyString.nullable().optional().describe("Optional Linear project ID scope. From fetchResourcesForIntegration, use the project's id from resources[]."),
+    projectName: z.string().nullable().optional().describe("Optional project display name. From fetchResourcesForIntegration, use the project's name from resources[].")
 })
 
 export const GitHubConfigSchema = BaseConfigSchema.extend({

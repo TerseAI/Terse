@@ -455,11 +455,13 @@ export class LinearOutputConfig implements ConfigInstance {
     constructor(
         public integrationId: string,
         public teamId?: string,
-        public teamName?: string
+        public teamName?: string,
+        public projectId?: string,
+        public projectName?: string
     ) {}
 
     isComplete(): boolean {
-        return !!this.teamId
+        return !!this.integrationId
     }
 
     formatForAgent(): string {
@@ -468,6 +470,11 @@ export class LinearOutputConfig implements ConfigInstance {
             parts.push(`Team: ${this.teamName}`)
         } else if (this.teamId) {
             parts.push(`Team ID: ${this.teamId}`)
+        }
+        if (this.projectName) {
+            parts.push(`Project: ${this.projectName}`)
+        } else if (this.projectId) {
+            parts.push(`Project ID: ${this.projectId}`)
         }
         return parts.join("\n")
     }
@@ -692,7 +699,7 @@ export class WorkOSOutputConfig implements ConfigInstance {
     }
 
     formatForAgent(): string {
-        return `Type: WorkOS Knowledge Base\nIntegration ID: ${this.integrationId}`
+        return `Type: WorkOS Skill\nIntegration ID: ${this.integrationId}`
     }
 }
 

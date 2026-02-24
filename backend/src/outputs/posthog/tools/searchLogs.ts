@@ -18,7 +18,7 @@ export const searchLogsTool = tool({
     description:
         "Query PostHog logs with flexible filtering. Returns logs data and a link to view logs in PostHog. You can filter by user email, log severity levels (error, warn, info, debug), message text search, or combinations. At least one filter (user email, severity levels, or message search) should be provided to avoid overly broad queries. Use this when you need to investigate user activity, errors, or events in PostHog logs.",
     parameters: z.object({
-        integrationId: z.string().describe("The integration ID of the PostHog knowledge base to use."),
+        integrationId: z.string().describe("The integration ID of the PostHog skill to use."),
         projectId: z.string().describe("The PostHog project ID."),
         userEmail: z.union([z.string(), z.null()]).optional().describe('Optional: User email to filter logs by (e.g., "user@example.com").'),
         severityLevels: z

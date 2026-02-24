@@ -23,7 +23,11 @@ const DUMMY_ID = "example"
 type OutputDummyPayload =
     | { config_type: typeof OutputConfigType.SLACK_CHANNEL; slack_config: Pick<automation_slack_configs, "channel_id" | "channel_name" | "user_ids"> }
     | { config_type: typeof OutputConfigType.NOTION; notion_config: Pick<automation_notion_configs, "database_ids" | "database_names" | "page_ids" | "page_names"> }
-    | { config_type: typeof OutputConfigType.LINEAR_TICKET; linear_config: Pick<automation_linear_configs, "team_id" | "team_name"> }
+    | {
+          config_type: typeof OutputConfigType.LINEAR_TICKET
+          linear_config: Pick<automation_linear_configs, "team_id" | "team_name"> &
+              Partial<Pick<automation_linear_configs, "project_id" | "project_name">>
+      }
     | { config_type: typeof OutputConfigType.JIRA_TICKET; jira_config: Pick<automation_jira_configs, "project_key" | "project_id"> }
     | { config_type: typeof OutputConfigType.CONFLUENCE; confluence_config: Pick<automation_confluence_configs, "space_name" | "space_id" | "page_id" | "page_name"> }
     | { config_type: typeof OutputConfigType.GMAIL; gmail_config: Partial<Pick<automation_gmail_configs, never>> }
@@ -113,11 +117,12 @@ export function buildDummyOutputConfig(integration_id: string, payload: OutputDu
                     id: DUMMY_ID,
                     automation_input_id: null,
                     automation_output_id: DUMMY_ID,
-                    project_id: null,
-                    project_name: null,
                     created_at: DUMMY_DATE,
                     updated_at: DUMMY_DATE,
-                    ...payload.linear_config
+                    team_id: payload.linear_config.team_id,
+                    team_name: payload.linear_config.team_name,
+                    project_id: payload.linear_config.project_id ?? null,
+                    project_name: payload.linear_config.project_name ?? null
                 }
             }
         case OutputConfigType.JIRA_TICKET:

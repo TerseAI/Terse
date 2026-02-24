@@ -300,7 +300,13 @@ export const convertPrismaOutputConfigToConfigInstance = (channelOutput: AgentOu
     }
 
     if (channelOutput.linear_config) {
-        return new LinearOutputConfig(integrationId, channelOutput.linear_config.team_id || undefined, channelOutput.linear_config.team_name || undefined)
+        return new LinearOutputConfig(
+            integrationId,
+            channelOutput.linear_config.team_id || undefined,
+            channelOutput.linear_config.team_name || undefined,
+            channelOutput.linear_config.project_id || undefined,
+            channelOutput.linear_config.project_name || undefined
+        )
     }
 
     if (channelOutput.jira_config) {

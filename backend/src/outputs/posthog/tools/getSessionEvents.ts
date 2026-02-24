@@ -21,7 +21,7 @@ export const getSessionEventsTool = tool({
     description:
         "Fetch and decode session replay events from PostHog. Returns summarized meaningful events (clicks, inputs, scroll, console logs, network errors, navigation) within a specified time window. Use this to investigate what a user did during a session - what they clicked, what they typed, any errors that occurred, etc. The events are decoded and summarized for easy analysis.",
     parameters: z.object({
-        integrationId: z.string().describe("The integration ID of the PostHog knowledge base to use."),
+        integrationId: z.string().describe("The integration ID of the PostHog skill to use."),
         projectId: z.string().describe("The PostHog project ID."),
         sessionId: z.string().uuid().describe("The PostHog session ID (UUID format) to fetch events for. You can get this from searchPosthogSessions."),
         startSeconds: z.union([z.number().min(0), z.null()]).describe("Optional: Start time in seconds from the beginning of the session. If not provided, starts from the beginning."),

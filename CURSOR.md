@@ -89,8 +89,7 @@ pnpm exec prisma studio
 - **Channel**: An automation that connects inputs (data sources) to an output (destination)
 - **Integration**: A connected third-party service (Slack, Notion, GitHub, etc.)
 - **Input**: Event source that triggers the agent (e.g., Slack message, GitHub PR)
-- **Output**: Destination where the agent writes (e.g., Notion database, Linear)
-- **Knowledge Base**: A data source that agents can query for context (e.g., PostHog, GitHub, LaunchDarkly)
+- **Output/Skill**: Destination where the agent writes (e.g., Notion database, Linear)PostHog, GitHub, LaunchDarkly)
 
 ## Integration Setup Guide
 

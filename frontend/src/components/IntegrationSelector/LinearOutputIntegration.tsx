@@ -23,7 +23,13 @@ export function LinearOutputIntegration({ input, variant, setConfig }: InputConf
         const integration = integrations.find((integration: LinearIntegrationType) => integration.id === value)
         if (integration) {
             // Preserve existing team and project when switching integrations
-            const linearConfig = new LinearOutputConfig(integration.id, currentConfig?.teamId, currentConfig?.teamName)
+            const linearConfig = new LinearOutputConfig(
+                integration.id,
+                currentConfig?.teamId,
+                currentConfig?.teamName,
+                currentConfig?.projectId,
+                currentConfig?.projectName
+            )
             setConfig(linearConfig)
         }
     }
@@ -65,7 +71,7 @@ export function LinearOutputIntegration({ input, variant, setConfig }: InputConf
     let selectedOption = connectionSelections.find(option => option.value === currentConfig?.integrationId)
     if (!selectedIntegrationId && !selectedOption && connectionSelections.length == 1) {
         const defaultIntegration = connectionSelections[0]
-        setConfig(new LinearOutputConfig(defaultIntegration.value, currentConfig?.teamId, currentConfig?.teamName))
+        setConfig(new LinearOutputConfig(defaultIntegration.value, currentConfig?.teamId, currentConfig?.teamName, currentConfig?.projectId, currentConfig?.projectName))
         selectedOption = defaultIntegration
     } else if (!selectedOption) {
         selectedOption = connectionSelections[0]
@@ -74,22 +80,13 @@ export function LinearOutputIntegration({ input, variant, setConfig }: InputConf
     // Card variant: compact view
     if (variant === "card") {
         const hasConfig = !!currentConfig && !!currentConfig.integrationId
-        const needsTeam = !currentConfig?.teamId
-        const isComplete = hasConfig && !needsTeam
+        const isComplete = hasConfig && (currentConfig?.isComplete?.() ?? false)
         if (!isComplete) {
             if (!hasConfig) {
                 return (
                     <div className="flex items-center gap-1 text-xs text-muted-foreground">
                         <AlertTriangleIcon className="size-3 text-yellow-500" />
                         Configure
-                    </div>
-                )
-            }
-            if (needsTeam) {
-                return (
-                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <AlertTriangleIcon className="size-3 text-yellow-500" />
-                        Select team
                     </div>
                 )
             }
@@ -100,7 +97,7 @@ export function LinearOutputIntegration({ input, variant, setConfig }: InputConf
                 </div>
             )
         }
-        return <div className="text-sm">{currentConfig?.teamName || selectedOption?.label || "No connection selected"}</div>
+        return <div className="text-sm">{currentConfig?.teamName || currentConfig?.projectName || selectedOption?.label || "No connection selected"}</div>
     }
 
     // Dialog variant: full view
@@ -124,15 +121,14 @@ export function LinearOutputIntegration({ input, variant, setConfig }: InputConf
                 </div>
             </div>
 
-            {/* Team selector - required for output, optional for input */}
+            {/* Team selector - optional scoping for output */}
             {selectedIntegrationId && (
                 <div className="mt-3 pt-3 border-t border-border min-w-0 overflow-hidden">
-                    {!currentConfig?.teamId && <p className="text-sm text-muted-foreground mb-3">Select a team to continue</p>}
                     <LinearTeamSelector
                         integrationId={selectedIntegrationId}
                         selectedTeamId={currentConfig?.teamId}
                         onSelect={(teamId: string, teamName: string) => {
-                            const updatedConfig = new LinearOutputConfig(selectedIntegrationId, teamId, teamName)
+                            const updatedConfig = new LinearOutputConfig(selectedIntegrationId, teamId, teamName, currentConfig?.projectId, currentConfig?.projectName)
                             setConfig(updatedConfig)
                         }}
                     />

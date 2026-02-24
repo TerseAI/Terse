@@ -13,7 +13,7 @@ export const getWorkOSUserTool = tool({
     name: ToolName.WORKOS_GET_USER,
     description: "Get detailed information about a specific WorkOS user by their user ID. Returns profile data including email, name, verification status, and timestamps.",
     parameters: z.object({
-        integrationId: z.string().describe("The integration ID of the WorkOS knowledge base to use."),
+        integrationId: z.string().describe("The integration ID of the WorkOS skill to use."),
         userId: z.string().describe("The WorkOS user ID to look up.")
     }),
     execute: async ({ integrationId, userId }, runContext?: RunContext<SessionWithTracking<Session>>) => {

@@ -20,7 +20,7 @@ export const searchRumEventsTool = tool({
     name: ToolName.DATADOG_SEARCH_RUM_EVENTS,
     description: "Query Datadog RUM events. Filter by query string, time range. Returns sessions, views, actions, errors, resources, long tasks.",
     parameters: z.object({
-        integrationId: z.string().describe("The integration ID of the Datadog knowledge base to use."),
+        integrationId: z.string().describe("The integration ID of the Datadog skill to use."),
         query: z.union([z.string(), z.null()]).optional().describe("Datadog RUM search query (e.g., @type:error AND @error.source:network)"),
         from: z.string().describe('Start time (ISO8601 or relative like "now-15m")'),
         to: z.union([z.string(), z.null()]).optional().describe('End time (ISO8601). Defaults to "now" if not provided.'),

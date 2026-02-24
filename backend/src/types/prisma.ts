@@ -7,7 +7,6 @@ import {
     automation_confluence_configs,
     automation_inputs,
     automation_jira_configs,
-    automation_knowledge_bases,
     automation_linear_configs,
     automation_notification_settings,
     automation_notion_configs,

@@ -18,7 +18,7 @@ export const searchEventsTool = tool({
     description:
         "Query PostHog analytics events. Use countByEventNameOnly: true (default) to get counts per event name. Use customEventsOnly: true (default) to exclude PostHog built-in events (names starting with $) and return only the project's custom-tracked events. Works for any PostHog project.",
     parameters: z.object({
-        integrationId: z.string().describe("The integration ID of the PostHog knowledge base to use."),
+        integrationId: z.string().describe("The integration ID of the PostHog skill to use."),
         projectId: z.string().describe("The PostHog project ID."),
         countByEventNameOnly: z.boolean().default(true).describe("If true (default), returns only event names and their counts. If false, returns full event list (larger response)."),
         customEventsOnly: z
