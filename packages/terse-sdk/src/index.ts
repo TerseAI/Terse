@@ -33,18 +33,14 @@ export {
     LinearInputConfig,
     LinearOutputConfig,
     GitHubConfig,
-    GitHubKBConfig,
     JiraConfig,
     ConfluenceConfig,
     PosthogConfig,
     DatadogConfig,
     TimeTriggerConfig,
     LaunchDarklyConfig,
-    LinearKBConfig,
-    SlackKBConfig,
     TerseConfig,
     WorkOSInputConfig,
-    WorkOSKBConfig,
     AttioOutputConfig
 } from "./shared/Configs.js"
 

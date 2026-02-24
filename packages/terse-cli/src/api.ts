@@ -30,7 +30,7 @@ export async function fetchWithAuth<T>(urlPath: string, apiKey: string, params: 
                 Authorization: `Bearer ${apiKey}`,
                 "Content-Type": "application/json",
             },
-            body: JSON.stringify(params)
+            body: type === "POST" ? JSON.stringify(params) : undefined
         })
     } catch (err: any) {
         throw new Error(`Could not connect to ${BACKEND_URL} — is the backend running?\n  ${err.message}`)

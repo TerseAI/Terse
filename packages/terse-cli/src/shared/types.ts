@@ -396,17 +396,6 @@ export type TransientAgentOutput = {
     configType: ConfigType
 }
 
-export type AgentKnowledgeBase = {
-    id: string
-    config: ConfigInstance
-}
-
-export type TransientKnowledgeBase = {
-    id: string
-    config?: ConfigInstance
-    configType: ConfigType
-}
-
 // Template types - simplified config references without integrationId
 export type TemplateConfigRef = {
     configType: ConfigType
@@ -418,10 +407,6 @@ export type TemplateTrigger = {
 }
 
 export type TemplateOutput = {
-    config: TemplateConfigRef
-}
-
-export type TemplateKnowledgeBase = {
     config: TemplateConfigRef
 }
 
@@ -440,7 +425,6 @@ export type AgentTemplate = {
     prompt: AgentPrompt
     triggers: TemplateTrigger[]
     outputs: TemplateOutput[]
-    knowledgeBases?: TemplateKnowledgeBase[]
     requireApproval: boolean
     isActive: boolean
 }
@@ -453,7 +437,6 @@ export type Agent = {
     prompt: AgentPrompt
     triggers: AgentTrigger[]
     outputs: AgentOutput[]
-    knowledgeBases?: AgentKnowledgeBase[]
     notificationSettings?: AgentNotificationSettings
     toolApprovals?: string[]
     updatedAt?: string
@@ -472,7 +455,6 @@ export type AgentUpdate = {
     prompt?: AgentPrompt
     isActive?: boolean
     requireApproval?: boolean
-    knowledgeBases?: AgentKnowledgeBase[]
     notificationSettings?: AgentNotificationSettings
     toolApprovals?: string[]
 }
