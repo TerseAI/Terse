@@ -23,7 +23,7 @@ import { appendToolApprovalRequestSystemEvent } from "../systemEvents/toolApprov
 import { AgentRunnerLoopCore, AgentRunnerLoopResult } from "./AgentRunnerLoopCore"
 import { persistRunAction } from "./EventProcessor"
 import { StreamEventEmitter } from "./StreamProcessor"
-import { RunContext, SystemPromptBuilder, SystemPromptBuilderDependencies } from "./SystemPromptBuilder"
+import { RunContext, SystemPromptBuilderDependencies } from "./SystemPromptBuilder"
 import { buildRunTriggerContextMessage, formatAgentTriggersForAgent } from "./formatContext"
 import { persistOutputAttributions, removeOutputAttributions } from "./persistOutputAttributions"
 import { clearPendingApprovalState, getPendingApprovalState, markRunInProgress, storePendingApprovalState } from "./runHistory"
@@ -277,17 +277,6 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance> {
         await this.createInitializedLoopCore()
     }
 
-    private async buildSystemPrompt(): Promise<string> {
-        const deps: SystemPromptBuilderDependencies<T, TConfig> = {
-            session: this.session,
-            agent: this.agentConfig,
-            outputs: this.outputs
-        }
-
-        const builder = new SystemPromptBuilder<T, TConfig>(deps, this.runContext).withStandardSections()
-        return builder.build()
-    }
-
     private getModelSettings() {
         return builderProviderDataModelSettings({
             agentId: this.agentConfig.id,
@@ -455,10 +444,16 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance> {
 
     private async createInitializedLoopCore(streamingParams?: TrackingParams): Promise<AgentRunnerLoopCore<SessionWithTracking<T>, Agent<SessionWithTracking<T>, AgentOutputType>>> {
         const loop = this.createLoopCore(streamingParams)
-        const fullSystemPrompt = await this.buildSystemPrompt()
-        loop.initializeAgent({
+        const deps: SystemPromptBuilderDependencies<T, TConfig> = {
+            session: this.session,
+            agent: this.agentConfig,
+            outputs: this.outputs
+        }
+
+        await loop.initializeAgent({
             name: "Automation Agent",
-            instructions: fullSystemPrompt,
+            systemPromptDeps: deps as SystemPromptBuilderDependencies<SessionWithTracking<T>, ConfigInstance>,
+            runContext: this.runContext,
             model: this.chooseModel(),
             tools: this.tools,
             modelSettings: this.getModelSettings()

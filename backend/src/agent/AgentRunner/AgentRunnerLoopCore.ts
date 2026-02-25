@@ -2,11 +2,13 @@ import { Agent, AgentInputItem, AgentOutputType, RunResult, RunState, RunToolApp
 import type { Session as AgentMemorySession, ModelSettings, RunStreamEvent } from "@openai/agents-core"
 
 import logger from "../../logger"
+import { ConfigInstance } from "../../shared/Configs"
 import { ChangedItem, ModelEvent } from "../../shared/ModelEvents"
 import { RunHistoryAction } from "../../shared/RunHistoryTypes"
 import { Session as AppSession } from "../../types/session"
 import { createNaturalStopEvent, transformAgentStreamToModelEvents } from "../streaming"
 import { isFailedToolExecutionStatus } from "../toolExecution"
+import { RunContext, SystemPromptBuilder, SystemPromptBuilderDependencies } from "./SystemPromptBuilder"
 
 import type { SessionWithTracking } from "./AgentRunner"
 
@@ -23,10 +25,12 @@ export class AgentRunnerLoopCore<TSession extends SessionWithTracking<AppSession
         this.toolToIntegrationMap = params.toolToIntegrationMap
     }
 
-    initializeAgent(params: AgentInitializationParams<TSession>): TAgent {
+    async initializeAgent(params: AgentInitializationParams<TSession>): Promise<TAgent> {
+        const builder = new SystemPromptBuilder<TSession, ConfigInstance>(params.systemPromptDeps, params.runContext).withStandardSections()
+        const instructions = await builder.build()
         this.agent = new Agent<TSession, AgentOutputType>({
             name: params.name,
-            instructions: params.instructions,
+            instructions,
             model: params.model,
             tools: params.tools,
             modelSettings: params.modelSettings
@@ -244,9 +248,10 @@ type RunExecutionSettings<TSession extends SessionWithTracking<AppSession>, TAge
     maxTurns: number
 }
 
-type AgentInitializationParams<TSession> = {
+type AgentInitializationParams<TSession extends AppSession> = {
     name: string
-    instructions: string
+    systemPromptDeps: SystemPromptBuilderDependencies<TSession, ConfigInstance>
+    runContext: RunContext
     model: string
     tools: Tool<TSession>[]
     modelSettings?: ModelSettings
