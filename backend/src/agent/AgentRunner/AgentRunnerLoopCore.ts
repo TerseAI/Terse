@@ -1,5 +1,5 @@
 import { Agent, AgentInputItem, AgentOutputType, RunResult, RunState, RunToolApprovalItem, StreamedRunResult, Tool } from "@openai/agents"
-import type { Session as AgentMemorySession, ModelSettings } from "@openai/agents-core"
+import type { Session as AgentMemorySession, ModelSettings, RunStreamEvent } from "@openai/agents-core"
 
 import logger from "../../logger"
 import { ChangedItem, ModelEvent } from "../../shared/ModelEvents"
@@ -113,7 +113,7 @@ export class AgentRunnerLoopCore<TSession extends SessionWithTracking<AppSession
     }
 
     private async processWithLogging(result: StreamedRunResult<TSession, TAgent>): Promise<void> {
-        for await (const event of result as any) {
+        for await (const event of result as AsyncIterable<RunStreamEvent>) {
             if (event.type === "raw_model_stream_event") {
                 logger.info(event.type, { data: event.data })
             } else if (event.type === "agent_updated_stream_event") {
