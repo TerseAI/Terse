@@ -55,7 +55,9 @@ export async function handleToolExecute(req: Request, res: Response) {
         context: {
             user,
             isUserInitiated: true,
-            agent: { requireApproval: false, toolApprovals: [] }
+            agent: { requireApproval: false, toolApprovals: [] },
+            runId: `sdk-tool-execute-${Date.now()}`,
+            agentId: "sdk-tool-execute"
         } satisfies SessionWithTracking<Session>
     }
 

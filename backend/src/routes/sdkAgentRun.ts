@@ -73,7 +73,9 @@ export async function handleSdkAgentRun(req: Request, res: Response) {
             agent: {
                 requireApproval: normalized.options.requireApproval,
                 toolApprovals: []
-            }
+            },
+            runId: `sdk-run-${Date.now()}`,
+            agentId: "sdk-agent-run"
         }
 
         const result = await runner.run(
