@@ -9,6 +9,7 @@ import { RunHistoryAction } from "../../shared/RunHistoryTypes"
 import { User } from "../../shared/types"
 import { Agent, UserNotificationDestination } from "../../types/prisma"
 import { loadTemplate } from "../emails/templating"
+import { formatApprovalNotificationFor } from "../utils"
 
 const resend = new Resend(settings.resend.apiKey)
 const notificationModuleDir = path.dirname(fileURLToPath(import.meta.url))
@@ -44,19 +45,6 @@ async function getEmailBranding(): Promise<EmailBranding> {
     } catch {
         return { logoSrc: fallbackLogoUrl }
     }
-}
-
-function formatApprovalNotificationFor(action: string | undefined): string {
-    if (!action || action.trim() === "") {
-        return "Approval requested"
-    }
-
-    const cleanedAction = action.trim()
-    if (/^approval requested for\b/i.test(cleanedAction)) {
-        return cleanedAction
-    }
-
-    return `Approval requested for ${cleanedAction}`
 }
 
 export async function sendEmailNotification(notificationDestination: UserNotificationDestination, runAction: RunHistoryAction, agent: Agent) {

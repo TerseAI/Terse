@@ -2,6 +2,7 @@ import logger from "../../logger"
 import { RunHistoryAction } from "../../shared/RunHistoryTypes"
 import { Agent, UserNotificationDestination } from "../../types/prisma"
 import { formatNotificationMessage, formatRunFailureNotificationMessage, resolveSlackChannelIdForDestination, sendSlackApprovalMessage, sendSlackMessage } from "../../utility/slack"
+import { formatApprovalNotificationFor } from "../utils"
 
 export async function sendSlackNotification(notificationDestination: UserNotificationDestination, runAction: RunHistoryAction, agent: Agent) {
     if (!notificationDestination.slack_integration_id) {
@@ -65,17 +66,4 @@ export async function sendSlackRunFailure(notificationDestination: UserNotificat
     })
 
     await sendSlackMessage(notificationDestination.slack_integration_id, targetChannelId, message)
-}
-
-function formatApprovalNotificationFor(action: string | undefined): string {
-    if (!action || action.trim() === "") {
-        return "Approval requested"
-    }
-
-    const cleanedAction = action.trim()
-    if (/^approval requested for\b/i.test(cleanedAction)) {
-        return cleanedAction
-    }
-
-    return `Approval requested for ${cleanedAction}`
 }

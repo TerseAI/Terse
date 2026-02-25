@@ -20,7 +20,7 @@ function ApprovalSettingsCard({ children }: { children: React.ReactNode }) {
     return (
         <div className="flex flex-col gap-3 p-4 border rounded-lg">
             <div className="flex flex-col gap-1">
-                <Label className="text-base font-medium">Tool call approvals</Label>
+                <Label className="text-base font-medium">Approval Settings</Label>
                 <p className="text-sm text-muted-foreground">Choose which tool calls pause for review.</p>
                 {children}
             </div>

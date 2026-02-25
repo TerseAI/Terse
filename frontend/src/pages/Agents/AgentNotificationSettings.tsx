@@ -79,7 +79,7 @@ function AgentNotificationSettings({ settings, onChange }: AgentNotificationSett
                 <div className="flex items-center justify-between gap-4">
                     <div className="flex flex-col gap-1">
                         <Label htmlFor="notifications-toggle" className="text-sm font-medium">
-                            Extra activity alerts
+                            Activity alerts
                         </Label>
                         <p className="text-sm text-muted-foreground">Optional Create/Read/Update/Delete alerts. Off by default.</p>
                     </div>

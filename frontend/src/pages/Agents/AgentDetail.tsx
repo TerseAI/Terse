@@ -331,8 +331,7 @@ function AgentDetail() {
     const [toolApprovals, setToolApprovals] = useState<string[]>([])
     const [notificationSettings, setNotificationSettings] = useState<AgentNotificationSettings>({
         enabled: false,
-        actionTypes: [],
-        notifyOnRunFailure: false
+        actionTypes: []
     })
 
     // Sync local state with fetched data - convert from AgentTrigger/Output to Transient types
@@ -364,7 +363,7 @@ function AgentDetail() {
                     setIsActive(true)
                     setRequireApproval(false)
                     setToolApprovals([])
-                    setNotificationSettings({ enabled: false, actionTypes: [], notifyOnRunFailure: false })
+                    setNotificationSettings({ enabled: false, actionTypes: [] })
                 }
             }
         } else if (agent) {
@@ -375,7 +374,7 @@ function AgentDetail() {
             setIsActive(agent.isActive)
             setRequireApproval(agent.requireApproval ?? false)
             setToolApprovals(agent.toolApprovals || [])
-            setNotificationSettings(agent.notificationSettings ?? { enabled: false, actionTypes: [], notifyOnRunFailure: false })
+            setNotificationSettings(agent.notificationSettings ?? { enabled: false, actionTypes: [] })
         }
     }, [agent, agentId, templateId, templateFound, templateHydratedState, templateHydrated])
 
