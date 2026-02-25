@@ -289,14 +289,6 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance> exte
         return "gpt-5.2"
     }
 
-    /**
-     * Backward-compatible preflight hook for existing callers.
-     * Core now owns agent construction; this validates we can build/init it.
-     */
-    async initializeAgent(): Promise<void> {
-        await this.initializeLoopAgent(this.getAgentInitializationParams())
-    }
-
     private getModelSettings() {
         return builderProviderDataModelSettings({
             agentId: this.agentConfig.id,
