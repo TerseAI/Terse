@@ -1,4 +1,4 @@
-import { Agent, AgentInputItem, AgentOutputType, RunResult, RunState, RunToolApprovalItem, StreamedRunResult, Tool, protocol, user } from "@openai/agents"
+import { Agent, AgentInputItem, AgentOutputType, RunResult, RunState, RunToolApprovalItem, Tool, protocol, user } from "@openai/agents"
 import { RunHistoryActionType } from "@prisma/client"
 
 import { settings } from "../../config/settings"
@@ -11,21 +11,18 @@ import { FileCategory, StoredFile } from "../../services/FileStorageService"
 import { ConfigInstance } from "../../shared/Configs"
 import { EntityType } from "../../shared/Entities"
 import { IntegrationType } from "../../shared/Integrations"
-import { ChangeEventType, ChangedItem, ModelEvent } from "../../shared/ModelEvents"
-import type { RunHistoryAction, RunHistoryModelEvent, RunHistoryModelSocketEvent, TrackingParams } from "../../shared/RunHistoryTypes"
-import { SocketEvents, SocketRooms } from "../../shared/SocketEvents"
+import { ChangeEventType, ChangedItem } from "../../shared/ModelEvents"
+import type { RunHistoryAction, TrackingParams } from "../../shared/RunHistoryTypes"
 import { AgentWithRelations } from "../../types/prisma"
 import { Session } from "../../types/session"
 import { UserFormatter } from "../../utility/UserFormatter"
-import { randomString } from "../../utility/strings"
 import { RunHistoryChatMemorySession, recentHistoryCallback } from "../CustomMemorySession"
 import { AgentType, builderProviderDataModelSettings, runnerFactory } from "../runner"
-import { createNaturalStopEvent, transformAgentStreamToModelEvents } from "../streaming"
 import { appendToolApprovalRequestSystemEvent } from "../systemEvents/toolApprovalSystemEvent"
-import { isFailedToolExecutionStatus } from "../toolExecution"
 
+import { AgentRunnerLoopCore, AgentRunnerLoopResult } from "./AgentRunnerLoopCore"
 import { persistRunAction } from "./EventProcessor"
-import { StreamEventEmitter, processModelEventStream } from "./StreamProcessor"
+import { StreamEventEmitter } from "./StreamProcessor"
 import { RunContext, SystemPromptBuilder, SystemPromptBuilderDependencies } from "./SystemPromptBuilder"
 import { buildRunTriggerContextMessage, formatAgentTriggersForAgent } from "./formatContext"
 import { persistOutputAttributions, removeOutputAttributions } from "./persistOutputAttributions"
@@ -43,11 +40,9 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance> {
     private inputEvent: InputEvent | null = null
     private agentConfig: AgentWithRelations
     private outputs: Output<TConfig>[]
-    private agent?: Agent<SessionWithTracking<T>, AgentOutputType>
     private tools: Tool<SessionWithTracking<T>>[] = []
     private runContext: RunContext
     private toolMetadataMap: Map<string, ToolMetadata> = new Map()
-    private endedWithToolFailure = false
     private memorySession: RunHistoryChatMemorySession
     private maxTurns: number
     private notificationManager: NotificationManager
@@ -83,13 +78,6 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance> {
             throw new Error("No input event set. Call setInputEvent() before run()")
         }
 
-        this.resetRunOutcomeTracking()
-        await this.initializeAgent()
-
-        if (!this.agent) {
-            throw new Error("Agent not initialized. Call initializeAgent() before run()")
-        }
-
         const text = this.buildTextContent(this.inputEvent)
         const userMessage = this.buildUserContent(text, this.inputEvent.getFiles())
         const userHistory: AgentInputItem[] = this.buildUserHistory(userMessage)
@@ -104,27 +92,18 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance> {
 
         logger.info("User history build to be sent to agent", { userHistory: JSON.stringify(userHistory, null, 2) })
 
-        const result = await runner.run(this.agent, userHistory, {
+        const loop = await this.createInitializedLoopCore(streamingParams)
+        const loopResult = await loop.runUserHistory(userHistory, {
+            runner,
             context: this.getToolContext(),
-            stream: true,
-            session: this.memorySession,
+            memorySession: this.memorySession,
             sessionInputCallback: recentHistoryCallback,
             maxTurns: this.maxTurns
         })
-
-        await this.processStream(result, streamingParams)
-
-        return await this.buildResult(result, streamingParams)
+        return this.mapLoopResult(loopResult)
     }
 
     async userMessageRun(userMessage: string, files?: StoredFile[], streamingParams?: TrackingParams): Promise<ApprovalResult<SessionWithTracking<T>, Agent<SessionWithTracking<T>, AgentOutputType>>> {
-        this.resetRunOutcomeTracking()
-        await this.initializeAgent()
-
-        if (!this.agent) {
-            throw new Error("Agent not initialized. Call initializeAgent() before run()")
-        }
-
         const content = this.buildUserContent(userMessage, files)
         const userHistory = this.buildUserHistory(content)
         const runner = runnerFactory({
@@ -134,17 +113,15 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance> {
             user: this.session.user,
             env: settings.nodeEnv
         })
-        const result = await runner.run(this.agent, userHistory, {
+        const loop = await this.createInitializedLoopCore(streamingParams)
+        const loopResult = await loop.runUserHistory(userHistory, {
+            runner,
             context: this.getToolContext(),
-            stream: true,
-            session: this.memorySession,
+            memorySession: this.memorySession,
             sessionInputCallback: recentHistoryCallback,
             maxTurns: this.maxTurns
         })
-
-        await this.processStream(result, streamingParams)
-
-        return await this.buildResult(result, streamingParams)
+        return this.mapLoopResult(loopResult)
     }
 
     private buildUserHistory(content: UserMessageContent[]): AgentInputItem[] {
@@ -159,96 +136,7 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance> {
         hardReject?: boolean
     ): Promise<ApprovalResult<SessionWithTracking<T>, Agent<SessionWithTracking<T>, AgentOutputType>>> {
         logger.info("[ApprovalFlow] Resuming from pending approval", { runId: this.runContext.runId, stepId, decision })
-        this.resetRunOutcomeTracking()
-        await this.initializeAgent()
 
-        if (!this.agent) {
-            throw new Error("Agent not initialized. Call initializeAgent() before resumeFromPendingApproval()")
-        }
-
-        // Retrieve pending approval state from database
-        const pendingState = await getPendingApprovalState(this.runContext.runId)
-        if (!pendingState) {
-            throw new Error(`No pending approval state found for run ${this.runContext.runId}`)
-        }
-
-        // Deserialize state
-        if (!pendingState.serializedState || typeof pendingState.serializedState !== "string") {
-            throw new Error(`Invalid serialized state format for run ${this.runContext.runId}. Expected string, got ${typeof pendingState.serializedState}`)
-        }
-
-        // Deserialize the state first
-        const state = await RunState.fromString<SessionWithTracking<T>, Agent<SessionWithTracking<T>, AgentOutputType>>(this.agent, pendingState.serializedState)
-
-        const storedInterruption = pendingState.interruptions.find(interruptionItem => (interruptionItem.rawItem as any)?.callId === stepId)
-
-        if (!storedInterruption) {
-            // Log for debugging
-            logger.error(`[resumeFromPendingApproval] Could not find interruption for step_id: ${stepId}`)
-            logger.error(`[resumeFromPendingApproval] Available stored interruptions:`, {
-                interruptions: pendingState.interruptions.map(interruptionItem => ({
-                    callId: (interruptionItem.rawItem as any)?.callId || null,
-                    name: interruptionItem.name
-                }))
-            })
-            throw new Error(`Could not find matching interruption for step_id ${stepId}`)
-        }
-
-        // Use the stored interruption object directly (matching SDK pattern)
-        // The interruption object should be compatible with state.approve/reject
-        const interruption = storedInterruption as RunToolApprovalItem
-
-        // Apply decision using the stored interruption
-        if (decision === "approve") {
-            state.approve(interruption)
-        } else {
-            state.reject(interruption)
-            const stateWithHistory = state as unknown as { history?: AgentInputItem[] }
-            if (stateWithHistory.history && Array.isArray(stateWithHistory.history)) {
-                if (hardReject) {
-                    // Hard reject: tell the agent to stop completely without asking questions or retrying
-                    const hardRejectMessage = user(
-                        `A human reviewer rejected your previous tool call "${interruption.name}" and has chosen to stop this workflow entirely.\n\n` +
-                            `Do NOT ask any follow-up questions. Do NOT attempt to retry or suggest alternatives. ` +
-                            `Simply acknowledge that the action was rejected and the workflow has been stopped. ` +
-                            `End your response with a brief confirmation that no further actions will be taken.`
-                    )
-                    stateWithHistory.history.push(hardRejectMessage)
-                    logger.info("[resumeFromPendingApproval] Added hard reject message to state history", { hardReject: true })
-                } else {
-                    const trimmedReason = rejectionReason?.trim()
-                    if (trimmedReason) {
-                        // Treat the rejection reason as actionable user guidance (verbatim) so the agent can
-                        // reliably detect "try again" or other imperative instructions (e.g. "Read X first").
-                        const rejectionGuidance = user(
-                            `A human reviewer rejected your previous tool call "${interruption.name}".\n\n` +
-                                `Reviewer feedback (treat as user instructions, verbatim):\n` +
-                                `${trimmedReason}\n\n` +
-                                `If the feedback asks you to retry (e.g. "try again", "retry") OR provides guidance on how to proceed differently (e.g. "read X first", "narrow the scope"), proceed now by adapting your next steps/tool calls accordingly. ` +
-                                `Only ask a clarification question if the feedback is not sufficient to act.`
-                        )
-                        stateWithHistory.history.push(rejectionGuidance)
-                        logger.info("[resumeFromPendingApproval] Added rejection guidance to state history", { hasCustomReason: true })
-                    } else {
-                        const rejectionMessage = user(
-                            `The tool call "${interruption.name}" was rejected. ` + `Ask the user what they want you to do differently, or whether to skip this action entirely.`
-                        )
-                        stateWithHistory.history.push(rejectionMessage)
-                        logger.info("[resumeFromPendingApproval] Added rejection message to state history", { hasCustomReason: false })
-                    }
-                }
-            } else {
-                logger.warn("[resumeFromPendingApproval] Could not access state.history directly.")
-            }
-        }
-
-        // Move run back to in-progress now that we're resuming execution
-        await markRunInProgress(this.runContext.runId)
-
-        // Clear pending approval state
-        await clearPendingApprovalState(this.runContext.runId)
-
-        // Resume execution
         const runner = runnerFactory({
             agentId: this.agentConfig.id,
             agentType: AgentType.AGENT_RUNNER,
@@ -257,27 +145,64 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance> {
             env: settings.nodeEnv
         })
         const toolContext = this.getToolContext()
-
-        // Bug in the SDK where functions are not serialized properly.
-        // This is a workaround to get the context to work.
-        const unifiedContext: SessionWithTracking<T> = {
-            ...toolContext,
-            ...state._context
-        }
-        state._context.context = unifiedContext
-
-        const result = await runner.run(this.agent, state, {
-            context: toolContext,
-            stream: true,
-            session: this.memorySession,
-            sessionInputCallback: recentHistoryCallback,
-            maxTurns: this.maxTurns
+        const loop = await this.createInitializedLoopCore(streamingParams)
+        const loopResult = await loop.resumeFromPendingApproval({
+            decision,
+            stepId,
+            settings: {
+                runner,
+                context: toolContext,
+                memorySession: this.memorySession,
+                sessionInputCallback: recentHistoryCallback,
+                maxTurns: this.maxTurns
+            },
+            onRejected: async (state, interruption) => {
+                const stateWithHistory = state as unknown as { history?: AgentInputItem[] }
+                if (stateWithHistory.history && Array.isArray(stateWithHistory.history)) {
+                    if (hardReject) {
+                        const hardRejectMessage = user(
+                            `A human reviewer rejected your previous tool call "${interruption.name}" and has chosen to stop this workflow entirely.\n\n` +
+                                `Do NOT ask any follow-up questions. Do NOT attempt to retry or suggest alternatives. ` +
+                                `Simply acknowledge that the action was rejected and the workflow has been stopped. ` +
+                                `End your response with a brief confirmation that no further actions will be taken.`
+                        )
+                        stateWithHistory.history.push(hardRejectMessage)
+                        logger.info("[resumeFromPendingApproval] Added hard reject message to state history", { hardReject: true })
+                    } else {
+                        const trimmedReason = rejectionReason?.trim()
+                        if (trimmedReason) {
+                            const rejectionGuidance = user(
+                                `A human reviewer rejected your previous tool call "${interruption.name}".\n\n` +
+                                    `Reviewer feedback (treat as user instructions, verbatim):\n` +
+                                    `${trimmedReason}\n\n` +
+                                    `If the feedback asks you to retry (e.g. "try again", "retry") OR provides guidance on how to proceed differently (e.g. "read X first", "narrow the scope"), proceed now by adapting your next steps/tool calls accordingly. ` +
+                                    `Only ask a clarification question if the feedback is not sufficient to act.`
+                            )
+                            stateWithHistory.history.push(rejectionGuidance)
+                            logger.info("[resumeFromPendingApproval] Added rejection guidance to state history", { hasCustomReason: true })
+                        } else {
+                            const rejectionMessage = user(
+                                `The tool call "${interruption.name}" was rejected. ` + `Ask the user what they want you to do differently, or whether to skip this action entirely.`
+                            )
+                            stateWithHistory.history.push(rejectionMessage)
+                            logger.info("[resumeFromPendingApproval] Added rejection message to state history", { hasCustomReason: false })
+                        }
+                    }
+                } else {
+                    logger.warn("[resumeFromPendingApproval] Could not access state.history directly.")
+                }
+            },
+            prepareResumeState: async state => {
+                // Bug in the SDK where functions are not serialized properly.
+                // This is a workaround to get the context to work.
+                const unifiedContext: SessionWithTracking<T> = {
+                    ...toolContext,
+                    ...(state as any)._context
+                }
+                ;(state as any)._context.context = unifiedContext
+            }
         })
-
-        logger.info("[ApprovalFlow] Processing resume stream", { runId: this.runContext.runId, stepId })
-        await this.processStream(result, streamingParams)
-
-        return await this.buildResult(result, streamingParams)
+        return this.mapLoopResult(loopResult)
     }
 
     setInputEvent(event: InputEvent): void {
@@ -344,7 +269,15 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance> {
         return "gpt-5.2"
     }
 
+    /**
+     * Backward-compatible preflight hook for existing callers.
+     * Core now owns agent construction; this validates we can build/init it.
+     */
     async initializeAgent(): Promise<void> {
+        await this.createInitializedLoopCore()
+    }
+
+    private async buildSystemPrompt(): Promise<string> {
         const deps: SystemPromptBuilderDependencies<T, TConfig> = {
             session: this.session,
             agent: this.agentConfig,
@@ -352,21 +285,16 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance> {
         }
 
         const builder = new SystemPromptBuilder<T, TConfig>(deps, this.runContext).withStandardSections()
+        return builder.build()
+    }
 
-        const fullSystemPrompt = await builder.build()
-
-        this.agent = new Agent<SessionWithTracking<T>, AgentOutputType>({
-            name: "Automation Agent",
-            instructions: fullSystemPrompt,
-            model: this.chooseModel(),
-            tools: this.tools,
-            modelSettings: builderProviderDataModelSettings({
-                agentId: this.agentConfig.id,
-                agentType: AgentType.AGENT_RUNNER,
-                runId: this.runContext.runId,
-                user: this.session.user,
-                env: settings.nodeEnv
-            })
+    private getModelSettings() {
+        return builderProviderDataModelSettings({
+            agentId: this.agentConfig.id,
+            agentType: AgentType.AGENT_RUNNER,
+            runId: this.runContext.runId,
+            user: this.session.user,
+            env: settings.nodeEnv
         })
     }
 
@@ -463,62 +391,6 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance> {
         })
     }
 
-    private resetRunOutcomeTracking(): void {
-        this.endedWithToolFailure = false
-    }
-
-    private observeModelEvent(event: ModelEvent): void {
-        if (event.type !== "ToolCallComplete") return
-
-        const toolFailed = isFailedToolExecutionStatus(event.status) || Boolean(event.errorContext)
-        // We only care whether execution ended on a failed tool call.
-        // A subsequent successful tool completion clears this.
-        this.endedWithToolFailure = toolFailed
-    }
-
-    private async *trackEventStream(eventStream: AsyncGenerator<ModelEvent, void, unknown>): AsyncGenerator<ModelEvent, void, unknown> {
-        for await (const event of eventStream) {
-            this.observeModelEvent(event)
-            yield event
-        }
-    }
-
-    private async processStream<TSession extends Session = Session, TAgent extends Agent<any, any> = Agent<Session, any>>(
-        result: StreamedRunResult<TSession, TAgent>,
-        streamingParams?: TrackingParams
-    ): Promise<void> {
-        const shouldStream = !!streamingParams
-
-        if (shouldStream) {
-            await this.processWithStreaming(result, streamingParams!)
-        } else {
-            await this.processWithLogging(result)
-        }
-    }
-
-    private async processWithStreaming<TSession extends Session = Session, TAgent extends Agent<any, any> = Agent<Session, any>>(
-        result: StreamedRunResult<TSession, TAgent>,
-        streamingParams: TrackingParams
-    ): Promise<void> {
-        const io = getSocketIO()
-
-        const eventStream = transformAgentStreamToModelEvents(result, {
-            toolToIntegrationMap: this.getToolToIntegrationMap(),
-            onToolCallComplete: (callId, toolName, actions) => {
-                return this.flushPendingActions(callId, toolName, actions)
-            }
-        })
-
-        const trackedEventStream = this.trackEventStream(eventStream)
-
-        await processModelEventStream(trackedEventStream, {
-            runId: streamingParams.runId!,
-            agentId: streamingParams.agentId!,
-            user: streamingParams.user,
-            io
-        })
-    }
-
     private getToolToIntegrationMap(): Map<string, IntegrationType> {
         const map = new Map<string, IntegrationType>()
         this.toolMetadataMap.forEach((metadata, toolName) => {
@@ -527,144 +399,87 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance> {
         return map
     }
 
-    private async processWithLogging<TSession extends Session = Session, TAgent extends Agent<any, any> = Agent<Session, any>>(result: StreamedRunResult<TSession, TAgent>): Promise<void> {
-        for await (const event of result) {
-            this.logRawEvent(event)
-        }
-    }
+    private createLoopCore(streamingParams?: TrackingParams): AgentRunnerLoopCore<SessionWithTracking<T>, Agent<SessionWithTracking<T>, AgentOutputType>> {
+        const io = getSocketIO()
 
-    private logRawEvent(event: any): void {
-        if (event.type === "raw_model_stream_event") {
-            logger.info(event.type, { data: event.data })
-        } else if (event.type === "agent_updated_stream_event") {
-            logger.info(event.type, { agentName: event.agent.name })
-        } else if (event.type === "run_item_stream_event") {
-            logger.info(event.type, { item: event.item })
-        }
-    }
-
-    private async buildResult(result: any, streamingParams?: TrackingParams): Promise<ApprovalResult<SessionWithTracking<T>, Agent<SessionWithTracking<T>, AgentOutputType>>> {
-        const hasInterruptions = result.interruptions && result.interruptions.length > 0
-
-        if (hasInterruptions) {
-            logger.info("[ApprovalFlow] Interruption detected", {
-                runId: this.runContext.runId,
-                interruptionCount: result.interruptions.length,
-                callIds: result.interruptions.map((i: RunToolApprovalItem) => (i.rawItem as any)?.callId)
-            })
-            const serializedState = JSON.stringify(result.state)
-            const interruptionsToStore = result.interruptions.map((interruption: RunToolApprovalItem) => {
-                // Store the full interruption object, including rawItem which contains callId
-                return {
-                    type: interruption.type || "tool_approval_item",
-                    rawItem: interruption.rawItem,
-                    agent: interruption.agent,
-                    toolName: interruption.toolName || interruption.name,
-                    name: interruption.name,
-                    arguments: interruption.arguments
-                }
-            })
-
-            // Store pending approval state in database
-            await storePendingApprovalState(this.runContext.runId, serializedState, interruptionsToStore)
-
-            // Emit ToolApprovalRequest events for each interruption
-            if (streamingParams) {
-                const io = getSocketIO()
-                for (const interruption of result.interruptions) {
-                    const stepId = (interruption.rawItem as any)?.callId
-                    if (!stepId) {
-                        logger.warn("Skipping approval request event because interruption has no callId", {
-                            runId: this.runContext.runId,
-                            toolName: interruption.name
-                        })
-                        continue
-                    }
-
-                    const approvalRequest: ModelEvent = {
-                        type: "ToolApprovalRequest",
-                        step_id: stepId,
-                        name: interruption.name,
-                        arguments: interruption.arguments
-                    }
-
-                    logger.info("[ApprovalFlow] Emitting ToolApprovalRequest via socket", { runId: this.runContext.runId, stepId, name: interruption.name })
-
+        return new AgentRunnerLoopCore<SessionWithTracking<T>, Agent<SessionWithTracking<T>, AgentOutputType>>({
+            runId: this.runContext.runId,
+            toolToIntegrationMap: this.getToolToIntegrationMap(),
+            callbacks: {
+                onModelEvent: async (event, timestamp) => {
+                    if (!streamingParams) return
+                    const emitter = new StreamEventEmitter(io, {
+                        runId: streamingParams.runId!,
+                        agentId: streamingParams.agentId!,
+                        user: streamingParams.user
+                    })
+                    emitter.emit(event, timestamp)
+                },
+                onToolCallComplete: (callId, toolName, actions) => this.flushPendingActions(callId, toolName, actions),
+                savePendingApprovalState: (runId, serializedState, interruptions) => storePendingApprovalState(runId, serializedState, interruptions),
+                loadPendingApprovalState: runId => getPendingApprovalState(runId),
+                clearPendingApprovalState: runId => clearPendingApprovalState(runId),
+                markRunInProgress: runId => markRunInProgress(runId),
+                onApprovalRequest: async ({ runId, stepId, name, arguments: toolArgs }) => {
                     try {
-                        logger.info("[ApprovalFlow] Persisting approval request system event", { runId: this.runContext.runId, stepId })
-                        await appendToolApprovalRequestSystemEvent(this.runContext.runId, {
-                            step_id: approvalRequest.step_id,
-                            name: approvalRequest.name,
-                            arguments: approvalRequest.arguments
+                        logger.info("[ApprovalFlow] Persisting approval request system event", { runId, stepId })
+                        await appendToolApprovalRequestSystemEvent(runId, {
+                            step_id: stepId,
+                            name,
+                            arguments: toolArgs
                         })
                     } catch (error) {
-                        logger.warn("Failed to append tool approval system event to raw history", { runId: this.runContext.runId, stepId: approvalRequest.step_id, error })
+                        logger.warn("Failed to append tool approval system event to raw history", { runId, stepId, error })
                     }
 
-                    if (io && streamingParams.user.organizationId) {
-                        const runHistoryModelEvent: RunHistoryModelEvent = {
-                            ...approvalRequest,
-                            id: `approval-request-live-${randomString(15)}`,
-                            timestamp: Date.now()
-                        }
-                        const payload: RunHistoryModelSocketEvent = {
-                            runId: streamingParams.runId!,
-                            agentId: streamingParams.agentId!,
-                            runHistoryModelEvent
-                        }
-                        io.to(SocketRooms.organization(streamingParams.user.organizationId)).emit(SocketEvents.AGENT_CHAT_EVENT, payload)
-                    }
-
-                    // Send notification for approval request
                     try {
-                        const toolMetadata = this.toolMetadataMap.get(interruption.name)
+                        const toolMetadata = this.toolMetadataMap.get(name)
                         const integration = toolMetadata?.integration || IntegrationType.TERSE
-
                         const approvalAction: RunHistoryAction = {
-                            action: `Approval requested for ${interruption.name}`,
+                            action: `Approval requested for ${name}`,
                             integration,
-                            target: interruption.name,
-                            details: `The bot is requesting approval to execute: ${interruption.name} with arguments: ${JSON.stringify(interruption.arguments)}`,
+                            target: name,
+                            details: `The bot is requesting approval to execute: ${name} with arguments: ${JSON.stringify(toolArgs)}`,
                             step_id: stepId,
                             type: RunHistoryActionType.update,
                             isReadOnly: false
                         }
-
-                        await this.notificationManager.notifyApprovalRequest(this.runContext.runId, approvalAction)
+                        await this.notificationManager.notifyApprovalRequest(runId, approvalAction)
                     } catch (error) {
                         logger.error("Failed to send approval request notification:", { error })
                     }
                 }
             }
+        })
+    }
 
+    private async createInitializedLoopCore(streamingParams?: TrackingParams): Promise<AgentRunnerLoopCore<SessionWithTracking<T>, Agent<SessionWithTracking<T>, AgentOutputType>>> {
+        const loop = this.createLoopCore(streamingParams)
+        const fullSystemPrompt = await this.buildSystemPrompt()
+        loop.initializeAgent({
+            name: "Automation Agent",
+            instructions: fullSystemPrompt,
+            model: this.chooseModel(),
+            tools: this.tools,
+            modelSettings: this.getModelSettings()
+        })
+        return loop
+    }
+
+    private mapLoopResult(
+        loopResult: AgentRunnerLoopResult<SessionWithTracking<T>, Agent<SessionWithTracking<T>, AgentOutputType>>
+    ): ApprovalResult<SessionWithTracking<T>, Agent<SessionWithTracking<T>, AgentOutputType>> {
+        if (loopResult.status === "awaiting_approval") {
             return {
                 status: AgentRunResultStatus.AWAITING_APPROVAL,
-                state: result.state,
-                interruptions: result.interruptions
+                state: loopResult.state,
+                interruptions: loopResult.interruptions
             }
         }
-
-        // Clear any pending approval state if run completed successfully
-        await clearPendingApprovalState(this.runContext.runId)
-
-        // Emit NaturalStop only when the run actually completes (no interruptions).
-        // This was moved out of transformAgentStreamToModelEvents() because the generator
-        // can't know about interruptions — they're only detected here in buildResult().
-        // For interrupted runs, we emit ToolApprovalRequest instead (above).
-        if (streamingParams) {
-            const io = getSocketIO()
-            const emitter = new StreamEventEmitter(io, {
-                runId: streamingParams.runId!,
-                agentId: streamingParams.agentId!,
-                user: streamingParams.user
-            })
-            emitter.emit(createNaturalStopEvent(), Date.now())
-        }
-
         return {
             status: AgentRunResultStatus.COMPLETED,
-            result,
-            endedWithToolFailure: this.endedWithToolFailure
+            result: loopResult.result,
+            endedWithToolFailure: loopResult.endedWithToolFailure
         }
     }
 }
