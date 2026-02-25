@@ -41,6 +41,7 @@ function AgentNotificationSettings({ settings, onChange }: AgentNotificationSett
 
     return (
         <div className="flex flex-col gap-4 p-4 border rounded-lg">
+            <Label className="text-base font-medium">Notification Destinations</Label>
             <div className="flex flex-wrap gap-2">
                 <Badge variant="outline">Always-on: approvals + failures</Badge>
                 <Badge variant="outline">Optional Alerts: {crudAlertCount} selected</Badge>
