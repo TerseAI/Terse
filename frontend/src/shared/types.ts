@@ -603,6 +603,7 @@ export type SdkAgentRunResponseBody = {
 
 export type SdkAgentStreamEvent =
     | { type: "text"; text: string }
+    | { type: "final_output"; finalOutput: string }
     | { type: "tool_call_params"; toolCallParams: string }
     | { type: "tool_call_started"; toolCallStarted: string }
     | { type: "tool_call_completed"; toolCallCompleted: string }
