@@ -1,32 +1,13 @@
-import Handlebars from "handlebars"
 import fs from "fs/promises"
+import Handlebars from "handlebars"
 import path from "path"
 import { fileURLToPath } from "url"
 
 const moduleDir = path.dirname(fileURLToPath(import.meta.url))
-
-async function resolveTemplatePath(pathToTemplate: string): Promise<string> {
-    const candidates = [
-        path.join(moduleDir, "templates", pathToTemplate),
-        path.resolve(process.cwd(), "src/notifications/emails/templates", pathToTemplate),
-        path.resolve(process.cwd(), "dist/notifications/emails/templates", pathToTemplate),
-        path.resolve(process.cwd(), "dist/src/notifications/emails/templates", pathToTemplate)
-    ]
-
-    for (const candidate of candidates) {
-        try {
-            await fs.access(candidate)
-            return candidate
-        } catch {
-            // Try next candidate path.
-        }
-    }
-
-    throw new Error(`Template not found: ${pathToTemplate}`)
-}
+const templatesDir = path.resolve(moduleDir, "templates")
 
 export async function loadTemplate(pathToTemplate: string, data: any): Promise<string> {
-    const templatePath = await resolveTemplatePath(pathToTemplate)
+    const templatePath = path.resolve(templatesDir, pathToTemplate)
 
     try {
         const templateContent = await fs.readFile(templatePath, "utf-8")

@@ -14,6 +14,7 @@ const resend = new Resend(settings.resend.apiKey)
 const notificationModuleDir = path.dirname(fileURLToPath(import.meta.url))
 const inlineLogoCid = "terse-logo"
 const fallbackLogoUrl = "https://app.useterse.ai/terse.png"
+const inlineLogoPath = path.resolve(notificationModuleDir, "../emails/assets/terse-logo.png")
 
 type EmailBranding = {
     logoSrc: string
@@ -25,46 +26,23 @@ type EmailBranding = {
     }>
 }
 
-async function resolveInlineLogoPath(): Promise<string | null> {
-    const candidates = [
-        path.resolve(notificationModuleDir, "../emails/assets/terse-logo.png"),
-        path.resolve(process.cwd(), "src/notifications/emails/assets/terse-logo.png"),
-        path.resolve(process.cwd(), "backend/src/notifications/emails/assets/terse-logo.png"),
-        path.resolve(notificationModuleDir, "../../../../frontend/public/terse.png"),
-        path.resolve(process.cwd(), "../frontend/public/terse.png"),
-        path.resolve(process.cwd(), "frontend/public/terse.png")
-    ]
-
-    for (const candidate of candidates) {
-        try {
-            await fs.access(candidate)
-            return candidate
-        } catch {
-            // Continue to next candidate.
-        }
-    }
-
-    return null
-}
-
 async function getEmailBranding(): Promise<EmailBranding> {
-    const inlineLogoPath = await resolveInlineLogoPath()
-    if (!inlineLogoPath) {
+    try {
+        const logoContent = await fs.readFile(inlineLogoPath)
+
+        return {
+            logoSrc: `cid:${inlineLogoCid}`,
+            attachments: [
+                {
+                    filename: "terse-logo.png",
+                    content: logoContent.toString("base64"),
+                    contentType: "image/png",
+                    contentId: inlineLogoCid
+                }
+            ]
+        }
+    } catch {
         return { logoSrc: fallbackLogoUrl }
-    }
-
-    const logoContent = await fs.readFile(inlineLogoPath)
-
-    return {
-        logoSrc: `cid:${inlineLogoCid}`,
-        attachments: [
-            {
-                filename: "terse-logo.png",
-                content: logoContent.toString("base64"),
-                contentType: "image/png",
-                contentId: inlineLogoCid
-            }
-        ]
     }
 }
 

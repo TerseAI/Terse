@@ -2,8 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { useSearchParams } from "react-router-dom"
 
 import { useRunHistory } from "../../hooks/api/useRunHistory"
-import { BackendProvider } from "../../services/backend"
 import { useRunHistoryChatDrawer } from "../../services/RunHistoryChatDrawerContext"
+import { BackendProvider } from "../../services/backend"
 import { RunHistoryRecord, RunHistoryStatus } from "../../shared/RunHistoryTypes"
 
 import RunHistoryEmptyState from "./RunHistoryEmptyState"
