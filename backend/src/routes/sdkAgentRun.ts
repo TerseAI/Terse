@@ -46,8 +46,7 @@ export async function handleSdkAgentRun(req: Request, res: Response) {
 
     try {
         const { tools, toolToIntegrationMap } = buildToolsForSkills(normalized.skills.map(s => s.integrationType))
-        const runPrefix = normalized.options.isTestRun ? "sdk-test-run" : "sdk-run"
-        const runId = `${runPrefix}-${Date.now()}`
+        const runId = `sdk-run-${Date.now()}`
         const eventText = [`Integration Type: ${normalized.event.integrationType}`, `Event Content:`, normalized.event.formattedContent, ``, `Debug Log: ${normalized.event.debugLog}`].join("\n")
         const sdkRunner = new SdkAgentRunner({
             runId,

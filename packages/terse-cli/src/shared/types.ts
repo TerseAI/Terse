@@ -573,7 +573,6 @@ export type SdkAgentSkillPayload = {
 export type SdkAgentRunOptionsPayload = {
     maxTurns?: number
     requireApproval?: boolean
-    isTestRun?: boolean
 }
 
 export type SdkAgentRunRequestBody = {
@@ -598,7 +597,6 @@ export type SdkAgentRunResponseBody = {
         options: {
             maxTurns: number
             requireApproval: boolean
-            isTestRun: boolean
         }
     }
 }
