@@ -108,12 +108,13 @@ export class TerseAgent {
         this.apiBaseUrl = apiBaseUrl
     }
 
-    async *run(prompt: string, event: InputEvent): AsyncGenerator<TerseAgentResult> {
+    async *run(prompt: string, event?: InputEvent): AsyncGenerator<TerseAgentResult> {
         const apiKey = process.env.TERSE_API_KEY
         if (!apiKey) {
             throw new Error("TERSE_API_KEY environment variable is not set. Cannot run agent without authentication.")
         }
 
+        const resolvedEvent = event ?? new MockInputEvent()
         const skills: SdkAgentSkillPayload[] = this.skills.map(skill => ({
             integrationType: skill.integrationType,
             id: skill.integrationId || undefined
@@ -122,9 +123,9 @@ export class TerseAgent {
         const requestBody: SdkAgentRunRequestBody = {
             prompt,
             event: {
-                integrationType: event.integrationType,
-                formattedContent: event.formatForAgentRunner(),
-                debugLog: event.debugLog()
+                integrationType: resolvedEvent.integrationType,
+                formattedContent: resolvedEvent.formatForAgentRunner(),
+                debugLog: resolvedEvent.debugLog()
             },
             skills
         }

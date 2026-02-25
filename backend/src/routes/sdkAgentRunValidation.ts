@@ -18,25 +18,30 @@ export function validateAndNormalizeSdkAgentRunBody(body: SdkAgentRunRequestBody
     }
 
     const event = body.event
-    if (!event || typeof event !== "object" || Array.isArray(event)) {
-        validationErrors.push("`event` is required and must be an object")
+    if (event !== undefined && (!event || typeof event !== "object" || Array.isArray(event))) {
+        validationErrors.push("`event` must be an object when provided")
     }
 
     const rawEventIntegrationType = typeof event?.integrationType === "string" ? event.integrationType.trim() : ""
-    if (!rawEventIntegrationType) {
-        validationErrors.push("`event.integrationType` is required and must be a non-empty string")
-    } else if (!isIntegrationType(rawEventIntegrationType)) {
-        validationErrors.push("`event.integrationType` must be a valid IntegrationType")
-    }
-
     const formattedContent = typeof event?.formattedContent === "string" ? event.formattedContent.trim() : ""
-    if (!formattedContent) {
-        validationErrors.push("`event.formattedContent` is required and must be a non-empty string")
-    }
-
     const debugLog = typeof event?.debugLog === "string" ? event.debugLog.trim() : ""
-    if (!debugLog) {
-        validationErrors.push("`event.debugLog` is required and must be a non-empty string")
+
+    // Event is optional. If provided, require all fields and validate integration type.
+    // If omitted, we synthesize a TERSE manual-trigger event.
+    if (event !== undefined) {
+        if (!rawEventIntegrationType) {
+            validationErrors.push("`event.integrationType` is required and must be a non-empty string")
+        } else if (!isIntegrationType(rawEventIntegrationType)) {
+            validationErrors.push("`event.integrationType` must be a valid IntegrationType")
+        }
+
+        if (!formattedContent) {
+            validationErrors.push("`event.formattedContent` is required and must be a non-empty string")
+        }
+
+        if (!debugLog) {
+            validationErrors.push("`event.debugLog` is required and must be a non-empty string")
+        }
     }
 
     const normalizedSkills: NonNullable<NormalizedSdkAgentRunRequest["skills"]> = []
@@ -90,9 +95,9 @@ export function validateAndNormalizeSdkAgentRunBody(body: SdkAgentRunRequestBody
     const normalized: NormalizedSdkAgentRunRequest = {
         prompt,
         event: {
-            integrationType: rawEventIntegrationType as IntegrationType,
-            formattedContent,
-            debugLog
+            integrationType: event === undefined ? IntegrationType.TERSE : (rawEventIntegrationType as IntegrationType),
+            formattedContent: event === undefined ? "Manual trigger from terse run" : formattedContent,
+            debugLog: event === undefined ? "[MockInputEvent] Manual trigger via SDK" : debugLog
         },
         skills: normalizedSkills,
         options: {
