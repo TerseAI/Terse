@@ -9,6 +9,7 @@ import { IntegrationType } from "../../shared/Integrations"
 import { AgentOutputWithConfigs, PrismaTransaction } from "../../types/prisma"
 import { convertOutputConfigTypeToConfigType } from "../../utility/typeConverters"
 import { Output, ToolboxEntry } from "../abstract/Output"
+
 import { imageEditTool } from "./tools/editImage"
 
 export class TerseSkillsOutput extends Output<ConfigInstance> {
@@ -27,7 +28,7 @@ export class TerseSkillsOutput extends Output<ConfigInstance> {
                 isReadOnly: true,
                 integration: IntegrationType.TERSE,
                 displayName: "Edit Image"
-            },
+            }
         ]
         super(OutputConfigType.TERSE, toolbox)
     }

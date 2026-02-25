@@ -1,6 +1,7 @@
-import { ToolCallExecutionStatus } from "../shared/ModelEvents"
+import { ChatSnippetPayload, ToolCallExecutionStatus } from "../shared/ModelEvents"
 import { RunHistoryAction } from "../shared/RunHistoryTypes"
 import { ErrorContext, detectSerializedError, parseSerializedError } from "../tools/toolUtils"
+import { chatSnippetPayloadSchema } from "./systemEvents/snippetSystemEvent"
 
 type ToolExecutionParseResult = {
     status: ToolCallExecutionStatus
@@ -8,6 +9,7 @@ type ToolExecutionParseResult = {
     outputString: string | null
     errorContext?: ErrorContext
     actions?: RunHistoryAction[]
+    snippets?: ChatSnippetPayload[]
 }
 
 const FALLBACK_FAILURE_MESSAGE = "Tool returned success=false"
@@ -29,13 +31,15 @@ export function parseToolExecutionResult(rawOutput: unknown, rawStatus: unknown)
     const outputString = stringifyToolExecutionOutput(output)
     const errorContext = extractToolExecutionErrorContext(output, outputString, status)
     const actions = extractToolExecutionActions(output)
+    const snippets = extractToolExecutionSnippets(output)
 
     return {
         status,
         output,
         outputString,
         ...(errorContext ? { errorContext } : {}),
-        ...(actions ? { actions } : {})
+        ...(actions ? { actions } : {}),
+        ...(snippets ? { snippets } : {})
     }
 }
 
@@ -80,6 +84,31 @@ function extractToolExecutionActions(output: unknown): RunHistoryAction[] | unde
 
     const candidate = output as { actions?: unknown }
     return Array.isArray(candidate.actions) ? (candidate.actions as RunHistoryAction[]) : undefined
+}
+
+function extractToolExecutionSnippets(output: unknown): ChatSnippetPayload[] | undefined {
+    if (!output || typeof output !== "object") {
+        return undefined
+    }
+
+    const candidate = output as { snippets?: unknown; snippet?: unknown }
+
+    if (Array.isArray(candidate.snippets)) {
+        const parsedSnippets = candidate.snippets
+            .map(snippet => chatSnippetPayloadSchema.safeParse(snippet))
+            .filter((parseResult): parseResult is { success: true; data: ChatSnippetPayload } => parseResult.success)
+            .map(parseResult => parseResult.data)
+        return parsedSnippets.length > 0 ? parsedSnippets : undefined
+    }
+
+    if (candidate.snippet !== undefined) {
+        const parsedSnippet = chatSnippetPayloadSchema.safeParse(candidate.snippet)
+        if (parsedSnippet.success) {
+            return [parsedSnippet.data]
+        }
+    }
+
+    return undefined
 }
 
 function extractStructuredFailure(output: unknown): ErrorContext | undefined {

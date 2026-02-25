@@ -42,6 +42,39 @@ function updateOrCreateFunctionCall(
     }
 }
 
+function findSnippetTargetTurnIndex(turns: Turn[], snippetTimestamp?: number): number {
+    let latestAssistantIndex = -1
+    let bestToolTurnIndex = -1
+    let bestToolTurnTimestamp = Number.NEGATIVE_INFINITY
+
+    for (let i = 0; i < turns.length; i++) {
+        const turn = turns[i]
+        if (turn.role !== "assistant") continue
+
+        latestAssistantIndex = i
+        if (!turn.function_calls.length) continue
+
+        const toolTimestamp = Math.max(...turn.function_calls.map(call => (typeof call.timestamp === "number" ? call.timestamp : Number.NEGATIVE_INFINITY)))
+        if (!Number.isFinite(toolTimestamp)) continue
+
+        if (typeof snippetTimestamp === "number") {
+            if (toolTimestamp <= snippetTimestamp && toolTimestamp >= bestToolTurnTimestamp) {
+                bestToolTurnTimestamp = toolTimestamp
+                bestToolTurnIndex = i
+            }
+        } else if (toolTimestamp >= bestToolTurnTimestamp) {
+            bestToolTurnTimestamp = toolTimestamp
+            bestToolTurnIndex = i
+        }
+    }
+
+    if (bestToolTurnIndex !== -1) {
+        return bestToolTurnIndex
+    }
+
+    return latestAssistantIndex
+}
+
 export function convertRunHistoryEventsToTurns(events: (ModelEvent & { timestamp?: number })[]): Turn[] {
     const turns: Turn[] = []
     const stepBuffers = new Map<string, string>()
@@ -235,10 +268,11 @@ export function convertRunHistoryEventsToTurns(events: (ModelEvent & { timestamp
                     id: uuidv4(),
                     ...(typeof event.timestamp === "number" ? { timestamp: event.timestamp } : {})
                 } as ChatSnippet
-                const lastTurn = turns[turns.length - 1]
-                if (lastTurn && lastTurn.role === "assistant") {
-                    const snippets = mergeSnippetIntoList(lastTurn.snippets ?? [], snippet, e.snippet)
-                    lastTurn.snippets = snippets
+                const targetTurnIndex = findSnippetTargetTurnIndex(turns, event.timestamp)
+                if (targetTurnIndex !== -1) {
+                    const targetTurn = turns[targetTurnIndex]
+                    const snippets = mergeSnippetIntoList(targetTurn.snippets ?? [], snippet, e.snippet)
+                    targetTurn.snippets = snippets
                 } else {
                     const turn = getOrCreateTurn("assistant", `snippet-${snippet.id}`)
                     turn.snippets = [snippet]

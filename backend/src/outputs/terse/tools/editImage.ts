@@ -1,16 +1,12 @@
 import { GoogleGenAI } from "@google/genai"
 import { tool } from "@openai/agents"
-import type { RunContext } from "@openai/agents"
 import axios from "axios"
 import { z } from "zod"
 
-import type { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
-import { emitAndPersistSnippetEvent } from "../../../agent/systemEvents/emitAndPersistSnippetEvent"
 import { gemini } from "../../../config/settings"
 import logger from "../../../logger"
 import { assertInternalGcsBucketUrl, buildImageEditKey, ensureStoredWithMetadata } from "../../../services/FileStorageService"
 import { ToolName } from "../../../tools/ToolNames"
-import type { Session } from "../../../types/session"
 
 export const imageEditTool = tool({
     name: ToolName.IMAGE_EDIT,
@@ -20,7 +16,7 @@ export const imageEditTool = tool({
         image_url: z.string().describe("URL of the image to edit. Must be a signed URL from our internal GCS image bucket."),
         prompt: z.string().describe("Natural language instruction describing how to edit the image.")
     }),
-    execute: async ({ image_url, prompt }, runContext?: RunContext<SessionWithTracking<Session>>) => {
+    execute: async ({ image_url, prompt }) => {
         assertInternalGcsBucketUrl(image_url)
 
         // 1. Download source image
@@ -68,19 +64,12 @@ export const imageEditTool = tool({
 
         logger.info("Image edit complete", { image_url, storageKey, url: storedFile.url })
 
-        // 5. Persist and emit image snippet for live + historical chat
-        await emitAndPersistSnippetEvent({
-            organizationId: runContext?.context?.user?.organizationId,
-            runId: runContext?.context?.runId,
-            agentId: runContext?.context?.agentId,
-            snippet: { type: "image", url: storedFile.url }
-        })
-
         return {
             success: true,
             url: storedFile.url,
             image_url: storedFile.url,
-            summary: "Image edited successfully."
+            summary: "Image edited successfully.",
+            snippets: [{ type: "image", url: storedFile.url }]
         }
     }
 })

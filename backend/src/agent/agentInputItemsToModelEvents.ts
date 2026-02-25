@@ -192,20 +192,30 @@ async function convertSingleItem(
 
         const outputWithoutActions = {
             ...parsed.output,
-            actions: undefined
+            actions: undefined,
+            snippets: undefined,
+            snippet: undefined
         }
 
+        const toolCallCompleteEvent: ModelEvent = {
+            type: "ToolCallComplete",
+            tool_name: item.name || "unknown",
+            status: parsed.status,
+            step_id: item.callId,
+            changed_items: [],
+            integration,
+            result: JSON.stringify(outputWithoutActions) || undefined,
+            ...(parsed.errorContext ? { errorContext: { error: parsed.errorContext.error } } : {})
+        }
+
+        const snippetEvents: ModelEvent[] = (parsed.snippets ?? []).map(snippet => ({
+            type: "Snippet",
+            snippet
+        }))
+
         return [
-            {
-                type: "ToolCallComplete",
-                tool_name: item.name || "unknown",
-                status: parsed.status,
-                step_id: item.callId,
-                changed_items: [],
-                integration,
-                result: JSON.stringify(outputWithoutActions) || undefined,
-                ...(parsed.errorContext ? { errorContext: { error: parsed.errorContext.error } } : {})
-            }
+            toolCallCompleteEvent,
+            ...snippetEvents
         ]
     }
 
