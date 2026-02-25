@@ -1228,17 +1228,28 @@ export const BackendProvider: BackendService = {
             console.error("Failed to store post-login redirect", error)
         }
 
+        const LOGIN_URL_TIMEOUT_MS = 15_000
+
         void axios
             .get<{ loginUrl: string }>(`${backendBaseUrl}${ApiRoutes.AUTH.LOGIN_URL}`, {
                 withCredentials: true,
-                headers: { "x-skip-auth-redirect": "true" }
+                headers: { "x-skip-auth-redirect": "true" },
+                timeout: LOGIN_URL_TIMEOUT_MS
             })
             .then(response => {
-                window.location.href = response.data.loginUrl
+                const loginUrl = response.data?.loginUrl
+                if (typeof loginUrl === "string" && loginUrl.length > 0) {
+                    window.location.href = loginUrl
+                } else {
+                    window.location.href = `${backendRedirectUrl}${ApiRoutes.AUTH.LOGIN}`
+                }
             })
             .catch(error => {
                 console.error("Error getting WorkOS login URL, falling back to backend login endpoint:", error)
                 window.location.href = `${backendRedirectUrl}${ApiRoutes.AUTH.LOGIN}`
+            })
+            .finally(() => {
+                loginRedirectInProgress = false
             })
     },
 
