@@ -304,7 +304,6 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
 
             const runContext: RunContext = { runId }
             const agentRunner = new AgentRunner(session, outputs, agent, runContext)
-            await agentRunner.initializeAgent()
 
             let result
             try {
