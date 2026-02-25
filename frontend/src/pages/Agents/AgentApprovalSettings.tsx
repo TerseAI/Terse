@@ -21,7 +21,6 @@ function ApprovalSettingsCard({ children }: { children: React.ReactNode }) {
         <div className="flex flex-col gap-3 p-4 border rounded-lg">
             <div className="flex flex-col gap-1">
                 <Label className="text-base font-medium">Approval Settings</Label>
-                <p className="text-sm text-muted-foreground">Choose which tool calls pause for review.</p>
                 {children}
             </div>
         </div>
@@ -107,7 +106,6 @@ function AgentApprovalSettings({ outputs, toolApprovals, onToolApprovalsChange }
                         )
                     }}
                 />
-                <p className="text-xs text-muted-foreground">Each approval request also sends an alert automatically.</p>
             </div>
         )
     }

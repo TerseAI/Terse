@@ -194,3 +194,8 @@ export const orgLogoKey = (organizationId: string | null | undefined): readonly 
     if (!organizationId) return null
     return ["orgLogo", organizationId] as const
 }
+
+export const userByIdKey = (userId: string | null | undefined): readonly [string, string] | null => {
+    if (!userId) return null
+    return ["userById", userId] as const
+}

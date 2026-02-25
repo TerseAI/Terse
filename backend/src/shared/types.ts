@@ -424,6 +424,7 @@ export type Agent = {
     prompt: AgentPrompt
     triggers: AgentTrigger[]
     outputs: AgentOutput[]
+    createdByUserId: string
     notificationSettings?: AgentNotificationSettings
     toolApprovals?: string[]
     updatedAt?: string

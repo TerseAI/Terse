@@ -80,7 +80,8 @@ export class ApprovalService {
                 outputs: {
                     include: getOutputConfigInclude()
                 },
-                tool_approvals: true
+                tool_approvals: true,
+                user: true
             }
         })
 

@@ -649,6 +649,7 @@ export async function createAgent(req: Request, res: Response) {
             isActive,
             requireApproval,
             notificationSettings,
+            createdByUserId: userId,
             toolApprovals
         })
 
@@ -775,6 +776,7 @@ function transformAgentToFrontendFormat(agent: AgentWithRelations & Partial<Agen
               }
             : undefined,
         toolApprovals: agent.tool_approvals.map((ta: any) => ta.tool_name),
+        createdByUserId: agent.user_id,
         updatedAt: agent.updated_at.toISOString()
     }
 }

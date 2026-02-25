@@ -38,6 +38,7 @@ import { getCurrentSlackIntegration, getSlackChannels, getSlackIntegrations, get
 import { getStats } from "./routes/stats"
 import { getPublicTemplates, getTemplates } from "./routes/templates"
 import { toolsThatRequireApprovalsRoute } from "./routes/tools"
+import { getUserById } from "./routes/users"
 import { handleWorkOSWebhook } from "./routes/workos"
 import { createOrUpdateWorkOSIntegration, getWorkOSIntegrations, handleWorkOSTriggerWebhook, updateWorkOSWebhookSecret } from "./routes/workosIntegration"
 import { registerSocketGetter } from "./services/CacheInvalidationService"
@@ -266,6 +267,12 @@ app.get(ApiRoutes.BUILDER_CHAT.HISTORY_BY_SESSION_ID.pattern, authMiddleware, as
 
 app.get(ApiRoutes.SESSION.TOKEN, authMiddleware, async (req, res) => {
     requestSessionSocketToken(req, res)
+})
+
+// MARK: USERS
+
+app.get(ApiRoutes.USERS.BY_ID.pattern, authMiddleware, async (req, res) => {
+    getUserById(req, res)
 })
 
 // MARK: GITHUB APP

@@ -88,7 +88,7 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
                 }
 
                 try {
-                    const draft = toAgentDraft(agent)
+                    const draft = toAgentDraft(agent, user.id)
                     const sessionId = runContext?.context?.sessionId
                     const createWithId = !id && chatInterface.name === "Web" && sessionId && isUuidV4(sessionId) ? { createWithId: sessionId } : undefined
                     const result = id ? await updateAgentForUser(user.id, user.organizationId, id, draft) : await applyAgentForUser(user.id, user.organizationId, draft, createWithId)
@@ -228,7 +228,8 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
                         },
                         outputs: {
                             include: getOutputConfigInclude()
-                        }
+                        },
+                        user: true
                     }
                 })
                 if (!agent) {
@@ -579,7 +580,7 @@ function normalizeConfig<T extends Record<string, any>>(config: T): T {
     return config
 }
 
-function toAgentDraft(agent: AgentSchemaInput): AgentDraft {
+function toAgentDraft(agent: AgentSchemaInput, userId: string): AgentDraft {
     return {
         ...agent,
         triggers: agent.triggers.map(trigger => ({
@@ -594,6 +595,7 @@ function toAgentDraft(agent: AgentSchemaInput): AgentDraft {
         })),
         notificationSettings: agent.notificationSettings ?? undefined,
         toolApprovals: agent.toolApprovals ?? undefined,
+        createdByUserId: userId,
         updatedAt: agent.updatedAt ?? undefined
     }
 }

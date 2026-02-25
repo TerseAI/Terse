@@ -416,6 +416,7 @@ function AgentDetail() {
         notificationSettings,
         setNotificationSettings,
         isLoading,
+        agentCreator: agent?.createdByUserId,
         mutate,
         updatedAt: agent?.updatedAt
     }
