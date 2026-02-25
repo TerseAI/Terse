@@ -1071,9 +1071,9 @@ model automation_notification_settings {
   id            String                 @id @default(cuid())
   automation_id String                 @unique
   enabled       Boolean                @default(true)
-  action_types RunHistoryActionType[]
-  created_at   DateTime               @default(now())
-  updated_at   DateTime               @updatedAt
+  action_types  RunHistoryActionType[]
+  created_at    DateTime               @default(now())
+  updated_at    DateTime               @updatedAt
 
   automation automations @relation(fields: [automation_id], references: [id], onDelete: Cascade)
 }
