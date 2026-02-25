@@ -1,10 +1,8 @@
-import { Agent, AgentOutputType, Tool } from "@openai/agents"
+import { Tool } from "@openai/agents"
 import { Request, Response } from "express"
 
 import { SessionWithTracking } from "../agent/AgentRunner/AgentRunner"
-import { AgentType, runnerFactory } from "../agent/runner"
-import { transformAgentStreamToModelEvents } from "../agent/streaming"
-import { settings } from "../config/settings"
+import { SdkAgentRunner } from "../agent/AgentRunner/SdkAgentRunner"
 import { OutputFactory } from "../outputs/abstract/OutputFactory"
 import { IntegrationType } from "../shared/Integrations"
 import { SdkAgentRunRequestBody, SdkAgentRunResponseBody, SdkAgentStreamEvent, User } from "../shared/types"
@@ -48,86 +46,30 @@ export async function handleSdkAgentRun(req: Request, res: Response) {
 
     try {
         const { tools, toolToIntegrationMap } = buildToolsForSkills(normalized.skills.map(s => s.integrationType))
-
-        const runConfig = {
-            agentId: "sdk-agent-run",
-            agentType: AgentType.AGENT_RUNNER,
-            runId: `sdk-run-${Date.now()}`,
-            user,
-            env: settings.nodeEnv
-        }
-
-        const agent = new Agent<SessionWithTracking<Session>, AgentOutputType>({
-            name: "Terse SDK Agent",
-            model: "gpt-5.2",
-            instructions: normalized.prompt,
-            tools
-        })
-
-        const runner = runnerFactory(runConfig)
+        const runPrefix = normalized.options.isTestRun ? "sdk-test-run" : "sdk-run"
+        const runId = `${runPrefix}-${Date.now()}`
         const eventText = [`Integration Type: ${normalized.event.integrationType}`, `Event Content:`, normalized.event.formattedContent, ``, `Debug Log: ${normalized.event.debugLog}`].join("\n")
-
-        const toolContext: SessionWithTracking<Session> = {
+        const sdkRunner = new SdkAgentRunner({
+            runId,
             user,
-            isUserInitiated: true,
-            agent: {
-                requireApproval: normalized.options.requireApproval,
-                toolApprovals: []
-            },
-            runId: `sdk-run-${Date.now()}`,
-            agentId: "sdk-agent-run"
-        }
-
-        const result = await runner.run(
-            agent,
-            [
-                {
-                    role: "user",
-                    content: eventText
-                }
-            ],
-            {
-                stream: true,
-                context: toolContext,
-                maxTurns: normalized.options.maxTurns
-            }
-        )
-
-        const modelEvents = transformAgentStreamToModelEvents(result, {
+            prompt: normalized.prompt,
+            tools,
             toolToIntegrationMap,
-            onToolCallComplete: async (_callId, _toolName, actions) => {
-                for (const action of actions ?? []) {
-                    send({ type: "action", action })
-                }
-                return []
-            }
+            maxTurns: normalized.options.maxTurns,
+            requireApproval: normalized.options.requireApproval,
+            send
         })
+        const { loopResult } = await sdkRunner.run(eventText)
 
-        for await (const event of modelEvents) {
-            if (event.type === "TextDelta" && event.delta) {
-                send({ type: "text", text: event.delta })
-                continue
-            }
-            if (event.type === "ToolCall") {
-                send({ type: "tool_call_params", toolCallParams: event.parameters })
-                send({ type: "tool_call_started", toolCallStarted: event.summary })
-                continue
-            }
-            if (event.type === "ToolCallComplete") {
-                send({
-                    type: "tool_call_completed",
-                    toolCallCompleted: JSON.stringify({
-                        tool: event.tool_name,
-                        status: event.status,
-                        result: event.result
-                    })
-                })
-                continue
-            }
+        if (loopResult.status === "awaiting_approval") {
+            send({ type: "error", message: "This SDK run is waiting for tool approval, but approval resume is not supported in this route yet." })
+            send({ type: "done" })
+            return res.end()
         }
 
-        if (typeof result.finalOutput === "string" && result.finalOutput.trim()) {
-            send({ type: "text", text: result.finalOutput })
+        const finalOutput = SdkAgentRunner.getFinalOutput(loopResult.result)
+        if (finalOutput) {
+            send({ type: "text", text: finalOutput })
         }
         send({ type: "done" })
         return res.end()

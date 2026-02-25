@@ -85,6 +85,9 @@ export function validateAndNormalizeSdkAgentRunBody(body: SdkAgentRunRequestBody
             if (options.requireApproval !== undefined && typeof options.requireApproval !== "boolean") {
                 validationErrors.push("`options.requireApproval` must be a boolean when provided")
             }
+            if (options.isTestRun !== undefined && typeof options.isTestRun !== "boolean") {
+                validationErrors.push("`options.isTestRun` must be a boolean when provided")
+            }
         }
     }
 
@@ -102,7 +105,8 @@ export function validateAndNormalizeSdkAgentRunBody(body: SdkAgentRunRequestBody
         skills: normalizedSkills,
         options: {
             maxTurns: options?.maxTurns ?? 50,
-            requireApproval: options?.requireApproval ?? false
+            requireApproval: options?.requireApproval ?? false,
+            isTestRun: options?.isTestRun ?? false
         }
     }
 

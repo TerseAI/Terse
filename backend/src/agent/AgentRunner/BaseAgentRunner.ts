@@ -25,7 +25,7 @@ export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSe
     private runId: string
     private toolToIntegrationMap?: Map<string, string>
     private endedWithToolFailure = false
-    private agent?: TAgent
+    protected agent?: TAgent
     // Protect lazy initialization from double-build races when run/resume are called concurrently.
     private buildAgentPromise?: Promise<TAgent>
 
