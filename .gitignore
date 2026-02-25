@@ -5,3 +5,4 @@
 /packages/terse-sdk/src/shared
 /packages/terse-cli/node_modules
 /packages/terse-cli/dist
+.pnpm-store/
