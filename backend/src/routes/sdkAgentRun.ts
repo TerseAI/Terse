@@ -68,7 +68,7 @@ export async function handleSdkAgentRun(req: Request, res: Response) {
 
         const finalOutput = SdkAgentRunner.getFinalOutput(loopResult.result)
         if (finalOutput) {
-            send({ type: "text", text: finalOutput })
+            send({ type: "final_output", finalOutput })
         }
         send({ type: "done" })
         return res.end()

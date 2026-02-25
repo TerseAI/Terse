@@ -192,6 +192,7 @@ export class TerseAgent {
 
 export enum EventType {
     TEXT = "text",
+    FINAL_OUTPUT = "final_output",
     TOOL_CALL_PARAMS = "tool_call_params",
     TOOL_CALL_STARTED = "tool_call_started",
     TOOL_CALL_COMPLETED = "tool_call_completed",
@@ -209,6 +210,16 @@ export class TextResult implements TerseAgentResult {
     constructor(text: string) {
         this.type = EventType.TEXT
         this.text = text
+    }
+}
+
+export class FinalOutputResult implements TerseAgentResult {
+    type: EventType.FINAL_OUTPUT
+    finalOutput: string
+
+    constructor(finalOutput: string) {
+        this.type = EventType.FINAL_OUTPUT
+        this.finalOutput = finalOutput
     }
 }
 
@@ -298,6 +309,8 @@ function mapStreamEventToResult(event: SdkAgentStreamEvent): TerseAgentResult {
     switch (event.type) {
         case "text":
             return new TextResult(event.text)
+        case "final_output":
+            return new FinalOutputResult(event.finalOutput)
         case "tool_call_params":
             return new ToolCallParamsResult(event.toolCallParams)
         case "tool_call_started":
