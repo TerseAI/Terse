@@ -1,10 +1,34 @@
 import chalk from "chalk"
-import { TerseAgent } from "terse-sdk"
+import { CreateJobParameters, TerseAgent } from "terse-sdk"
 import { readApiKey } from "./api.js"
 import { loadJob } from "./loadJob.js"
 import type { SerializedEvent } from "./shared/types.js"
 import { convertSerializedEventToInputEvent } from "./util.js"
 
+
+/**
+ * Create a TerseAgent scoped to a job's skills and execute onTrigger.
+ * Tools are registered from the codegen factory on globalThis (needed because
+ * tsx may load a separate module instance of terse-sdk).
+ */
+export async function executeJob(job: CreateJobParameters, event: SerializedEvent): Promise<void> {
+    const inputEvent = convertSerializedEventToInputEvent(event)
+
+    const agent = new TerseAgent(job.skills)
+    const createTools = (globalThis as any).__terse_createTools as ((agent: TerseAgent) => unknown) | undefined
+    if (createTools) {
+        Object.defineProperty(agent, "tools", { value: createTools(agent) })
+    }
+
+    try {
+        await job.onTrigger(inputEvent, agent)
+        console.log(chalk.green(`\n  Job "${job.name}" completed successfully.\n`))
+    } catch (err) {
+        console.error(chalk.red(`\n  Job "${job.name}" threw an error:\n`))
+        console.error(err)
+        process.exit(1)
+    }
+}
 
 export async function run(jobName?: string, eventJson?: string): Promise<void> {
     if (!eventJson) {
@@ -15,8 +39,8 @@ export async function run(jobName?: string, eventJson?: string): Promise<void> {
     }
 
     readApiKey() // populates process.env.TERSE_API_KEY for SDK executeTool()
-    const { name: resolvedName, job } = await loadJob(jobName)
-    console.log(chalk.cyan(`\n  Running job: ${resolvedName}\n`))
+    const { job } = await loadJob(jobName)
+    console.log(chalk.cyan(`\n  Running job: ${job.name}\n`))
 
     let parsed: SerializedEvent
     try {
@@ -25,16 +49,6 @@ export async function run(jobName?: string, eventJson?: string): Promise<void> {
         console.error(chalk.red("Error: --event value is not valid JSON."))
         process.exit(1)
     }
-    const event = convertSerializedEventToInputEvent(parsed)
 
-    const stubAgent = new TerseAgent("", [])
-
-    try {
-        await job.onTrigger(event, stubAgent)
-        console.log(chalk.green(`\n  Job "${resolvedName}" completed successfully.\n`))
-    } catch (err) {
-        console.error(chalk.red(`\n  Job "${resolvedName}" threw an error:\n`))
-        console.error(err)
-        process.exit(1)
-    }
+    await executeJob(job, parsed)
 }

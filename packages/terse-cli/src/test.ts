@@ -1,17 +1,17 @@
 import chalk from "chalk"
 import ora from "ora"
 import { select } from "@inquirer/prompts"
-import { ConfigInstance, IntegrationType, TerseAgent } from "terse-sdk"
+import { ConfigInstance, IntegrationType } from "terse-sdk"
 import { fetchWithAuth, readApiKey } from "./api.js"
 import { ApiRoutes } from "./shared/ApiRoutes.js"
 import type { SerializedEvent } from "./shared/types.js"
-import { convertSerializedEventToInputEvent } from "./util.js"
 import { loadJob } from "./loadJob.js"
+import { executeJob } from "./run.js"
 
 
 export async function test(jobName?: string): Promise<void> {
-    const { name: resolvedName, job } = await loadJob(jobName)
-    console.log(chalk.cyan(`\n  Testing job: ${resolvedName}\n`))
+    const { job } = await loadJob(jobName)
+    console.log(chalk.cyan(`\n  Testing job: ${job.name}\n`))
 
     const apiKey = readApiKey()
     if (!apiKey) {
@@ -65,17 +65,5 @@ export async function test(jobName?: string): Promise<void> {
         })),
     })
 
-    const selectedEvent = events[choice]
-    const event = convertSerializedEventToInputEvent(selectedEvent)
-
-    const stubAgent = new TerseAgent("", [])
-
-    try {
-        await job.onTrigger(event, stubAgent)
-        console.log(chalk.green(`\n  Job "${resolvedName}" completed successfully.\n`))
-    } catch (err) {
-        console.error(chalk.red(`\n  Job "${resolvedName}" threw an error:\n`))
-        console.error(err)
-        process.exit(1)
-    }
+    await executeJob(job, events[choice])
 }

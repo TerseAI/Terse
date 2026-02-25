@@ -1,6 +1,6 @@
 declare const process: { env: Record<string, string | undefined> }
 
-import type { InputEvent, ToolboxEntry } from "./types.js"
+import type { InputEvent } from "./types.js"
 import type { ConfigInstance } from "./shared/Configs.js"
 import type { RunHistoryAction } from "./shared/RunHistoryTypes.js"
 import { IntegrationType } from "./shared/Integrations.js"
@@ -57,7 +57,6 @@ export {
 
 // SDK types
 
-type ToolBox = ToolboxEntry[]
 type Action = RunHistoryAction
 
 export type FilterConfiguration = {
@@ -90,12 +89,10 @@ export class Terse {
 }
 
 export class TerseAgent {
-    private readonly prompt: string
-    private readonly toolBox: ToolBox
+    readonly skills: ConfigInstance[]
 
-    constructor(prompt: string, toolBox: ToolBox) {
-        this.prompt = prompt
-        this.toolBox = toolBox
+    constructor(skills: ConfigInstance[] = []) {
+        this.skills = skills
     }
 
     async *run(prompt: string, event: InputEvent): AsyncGenerator<TerseAgentResult> {

@@ -104,6 +104,17 @@ function suffix(instances: { displayName: string }[], i: number): string {
     return instances.length > 1 ? toPascalCase(instances[i].displayName || `Instance${i + 1}`) : ""
 }
 
+/** Map a tool's integration key back to the IntegrationType enum value used by ConfigInstance. */
+function toolIntegrationToIntegrationType(toolIntegration: string): string {
+    switch (toolIntegration) {
+        case "jira":
+        case "confluence":
+            return "atlassian"
+        default:
+            return toolIntegration
+    }
+}
+
 function generateResourceClass(
     className: string,
     fields: ResourceFieldMapping[],
@@ -706,8 +717,8 @@ function generateToolsSection(tools: ToolDefinition[], input: CodegenInput): Sec
         parts.push("")
     }
 
-    // Build tool groups: each group has a key, tools, and optional baked-in integrationId
-    const groups: { key: string; tools: ToolDefinition[]; integrationId?: string }[] = []
+    // Build tool groups: each group has a key, raw integration, tools, and optional baked-in integrationId
+    const groups: { key: string; integration: string; tools: ToolDefinition[]; integrationId?: string }[] = []
 
     for (const [integration, integrationTools] of byIntegration) {
         const needsAutoFill = integrationTools.some(hasAutoFillId)
@@ -718,10 +729,10 @@ function generateToolsSection(tools: ToolDefinition[], input: CodegenInput): Sec
 
             for (let i = 0; i < instances.length; i++) {
                 const sfx = suffix(instances, i)
-                groups.push({ key: integration + sfx, tools: integrationTools, integrationId: instances[i].id })
+                groups.push({ key: integration + sfx, integration, tools: integrationTools, integrationId: instances[i].id })
             }
         } else {
-            groups.push({ key: integration, tools: integrationTools })
+            groups.push({ key: integration, integration, tools: integrationTools })
         }
     }
 
@@ -752,34 +763,35 @@ function generateToolsSection(tools: ToolDefinition[], input: CodegenInput): Sec
     parts.push("}")
     parts.push("")
 
-    // Runtime: lazy getter on prototype, cached per instance
-    parts.push("// Register typed tools on TerseAgent (lazy, cached per instance)")
-    parts.push('Object.defineProperty(TerseAgent.prototype, "tools", {')
-    parts.push("    get(this: TerseAgent) {")
-    parts.push("        const tools: GeneratedTools = {")
+    // Runtime: factory that builds the tools object for a given agent instance,
+    // filtered to only include tools whose integration matches the agent's skills.
+    parts.push("function createTools(agent: TerseAgent): GeneratedTools {")
+    parts.push("    const allowed: Set<string> = new Set(agent.skills.map(s => s.integrationType))")
+    parts.push("    return {")
 
     for (const group of groups) {
-        parts.push(`            ${group.key}: {`)
+        const intType = toolIntegrationToIntegrationType(group.integration)
+        parts.push(`        ...(allowed.has("${escapeString(intType)}") ? { ${group.key}: {`)
         for (const tool of group.tools) {
             const methodName = toCamelCase(tool.displayName)
             const paramsType = toolNameToInterfaceName(tool.name)
             if (group.integrationId && hasAutoFillId(tool)) {
-                parts.push(`                ${methodName}: (params: ${paramsType}) =>`)
-                parts.push(`                    this.executeTool("${escapeString(tool.name)}", { ...params, integrationId: "${escapeString(group.integrationId)}" }),`)
+                parts.push(`            ${methodName}: (params: ${paramsType}) =>`)
+                parts.push(`                agent.executeTool("${escapeString(tool.name)}", { ...params, integrationId: "${escapeString(group.integrationId)}" }),`)
             } else {
-                parts.push(`                ${methodName}: (params: ${paramsType}) =>`)
-                parts.push(`                    this.executeTool("${escapeString(tool.name)}", params),`)
+                parts.push(`            ${methodName}: (params: ${paramsType}) =>`)
+                parts.push(`                agent.executeTool("${escapeString(tool.name)}", params),`)
             }
         }
-        parts.push(`            },`)
+        parts.push(`        } } : {}),`)
     }
 
-    parts.push("        }")
-    parts.push('        Object.defineProperty(this, "tools", { value: tools })')
-    parts.push("        return tools")
-    parts.push("    },")
-    parts.push("    configurable: true,")
-    parts.push("})")
+    parts.push("    } as GeneratedTools")
+    parts.push("}")
+    parts.push("")
+
+    // Expose factory on globalThis for CLI (tsx may load a separate module instance)
+    parts.push(";(globalThis as any).__terse_createTools = createTools")
     parts.push("")
 
     return { code: parts.join("\n"), imports }

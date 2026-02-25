@@ -2,10 +2,11 @@ import fs from "node:fs"
 import path from "node:path"
 import { pathToFileURL } from "node:url"
 import chalk from "chalk"
+import { select } from "@inquirer/prompts"
 import { tsImport } from "tsx/esm/api"
 import { CreateJobParameters } from "terse-sdk"
 
-export async function loadJob(jobName?: string): Promise<{ name: string; job: CreateJobParameters }> {
+export async function loadJob(jobName?: string): Promise<{ job: CreateJobParameters }> {
     const cwd = process.cwd()
 
     // Validate this is a Terse project
@@ -75,14 +76,13 @@ export async function loadJob(jobName?: string): Promise<{ name: string; job: Cr
     } else if (registry.size === 1) {
         resolvedName = registry.keys().next().value!
     } else {
-        console.log("Multiple jobs found. Specify which one to run:\n")
-        for (const name of registry.keys()) {
-            console.log(`  terse run "${name}"`)
-        }
-        process.exit(1)
+        resolvedName = await select<string>({
+            message: "Multiple jobs found. Which one?",
+            choices: [...registry.keys()].map(name => ({ name, value: name })),
+        })
     }
 
-    return { name: resolvedName, job: registry.get(resolvedName)! }
+    return { job: registry.get(resolvedName)! }
 }
 
 function isModuleNotFoundError(err: unknown): err is Error & { code: string } {
