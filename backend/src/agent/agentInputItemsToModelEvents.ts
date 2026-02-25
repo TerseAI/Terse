@@ -213,10 +213,7 @@ async function convertSingleItem(
             snippet
         }))
 
-        return [
-            toolCallCompleteEvent,
-            ...snippetEvents
-        ]
+        return [toolCallCompleteEvent, ...snippetEvents]
     }
 
     return null
