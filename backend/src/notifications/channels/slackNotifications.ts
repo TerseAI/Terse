@@ -1,7 +1,5 @@
-import { generateApprovalSummary } from "../../agent/ApprovalSummaryAgent/ApprovalSummaryAgent"
 import logger from "../../logger"
 import { RunHistoryAction } from "../../shared/RunHistoryTypes"
-import { User } from "../../shared/types"
 import { Agent, UserNotificationDestination } from "../../types/prisma"
 import { formatNotificationMessage, formatRunFailureNotificationMessage, resolveSlackChannelIdForDestination, sendSlackApprovalMessage, sendSlackMessage } from "../../utility/slack"
 
@@ -18,12 +16,12 @@ export async function sendSlackNotification(notificationDestination: UserNotific
         return
     }
 
-    const message = formatNotificationMessage(runAction, { channelName: agent.name })
+    const message = formatNotificationMessage(runAction, { agentName: agent.name })
 
     await sendSlackMessage(notificationDestination.slack_integration_id, targetChannelId, message)
 }
 
-export async function sendSlackApprovalRequest(notificationDestination: UserNotificationDestination, runId: string, runAction: RunHistoryAction, agent: Agent, user: User) {
+export async function sendSlackApprovalRequest(notificationDestination: UserNotificationDestination, runId: string, runAction: RunHistoryAction, agent: Agent) {
     if (!notificationDestination.slack_integration_id) {
         logger.debug(`[notifyApprovalRequest] No Slack integration ID found. Skipping.`)
         return
@@ -41,9 +39,9 @@ export async function sendSlackApprovalRequest(notificationDestination: UserNoti
         return
     }
 
-    const { approvalSummary } = await generateApprovalSummary(runId, user, agent.id, runAction.step_id)
+    const notificationFor = formatApprovalNotificationFor(runAction.action)
 
-    await sendSlackApprovalMessage(notificationDestination.slack_integration_id, targetChannelId, runId, runAction.step_id, approvalSummary, agent.name, agent.id)
+    await sendSlackApprovalMessage(notificationDestination.slack_integration_id, targetChannelId, runId, runAction.step_id, notificationFor, agent.name, agent.id)
 }
 
 export async function sendSlackRunFailure(notificationDestination: UserNotificationDestination, agent: Agent, runId: string, errorMessage: string) {
@@ -67,4 +65,17 @@ export async function sendSlackRunFailure(notificationDestination: UserNotificat
     })
 
     await sendSlackMessage(notificationDestination.slack_integration_id, targetChannelId, message)
+}
+
+function formatApprovalNotificationFor(action: string | undefined): string {
+    if (!action || action.trim() === "") {
+        return "Approval requested"
+    }
+
+    const cleanedAction = action.trim()
+    if (/^approval requested for\b/i.test(cleanedAction)) {
+        return cleanedAction
+    }
+
+    return `Approval requested for ${cleanedAction}`
 }

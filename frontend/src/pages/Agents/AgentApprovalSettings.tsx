@@ -4,6 +4,7 @@ import { TerseTool } from "@/shared/ToolsTypes"
 import { TransientAgentOutput } from "@/shared/types"
 
 import { MultiSelect, type MultiSelectOption } from "../../components/MultiSelect"
+import { Badge } from "../../components/ui/badge"
 import { Label } from "../../components/ui/label"
 import { useToolsThatRequireApprovals } from "../../hooks/api/useToolsThatRequireApprovals"
 
@@ -17,9 +18,10 @@ export type AgentApprovalSettingsProps = {
 
 function ApprovalSettingsCard({ children }: { children: React.ReactNode }) {
     return (
-        <div className="flex flex-col gap-2 p-4 border rounded-lg">
+        <div className="flex flex-col gap-3 p-4 border rounded-lg">
             <div className="flex flex-col gap-1">
-                <Label className="text-base font-medium">Approval Settings</Label>
+                <Label className="text-base font-medium">Tool call approvals</Label>
+                <p className="text-sm text-muted-foreground">Choose which tool calls pause for review.</p>
                 {children}
             </div>
         </div>
@@ -38,10 +40,11 @@ function AgentApprovalSettings({ outputs, toolApprovals, onToolApprovalsChange }
     const { tools: toolsThatRequireApprovals, isLoading, isError } = useToolsThatRequireApprovals(request)
 
     const options = toolsThatRequireApprovals.map(toolToOption)
+    const selectedCount = toolApprovals.length
 
     const renderBody = () => {
         if (outputConfigTypes.length === 0) {
-            return <p className="text-sm text-muted-foreground">Configure skills to select which tools require approval.</p>
+            return <p className="text-sm text-muted-foreground">Add at least one skill to choose approval tools.</p>
         }
 
         if (isLoading) {
@@ -58,14 +61,17 @@ function AgentApprovalSettings({ outputs, toolApprovals, onToolApprovalsChange }
         }
 
         if (toolsThatRequireApprovals.length === 0) {
-            return <p className="text-sm text-muted-foreground">No write-only tools for the configured skills.</p>
+            return <p className="text-sm text-muted-foreground">No tools available for approval in the current skills.</p>
         }
 
         const toolMap = new Map(toolsThatRequireApprovals.map(t => [t.name, t]))
 
         return (
-            <div className="flex flex-col gap-2">
-                <Label className="text-sm font-medium">Tools requiring approval</Label>
+            <div className="flex flex-col gap-3">
+                <div className="flex items-center justify-between gap-2">
+                    <Label className="text-sm font-medium">Require approval for these tools</Label>
+                    <Badge variant="outline">{selectedCount} selected</Badge>
+                </div>
                 <MultiSelect
                     options={options}
                     selectedIds={toolApprovals}
@@ -101,6 +107,7 @@ function AgentApprovalSettings({ outputs, toolApprovals, onToolApprovalsChange }
                         )
                     }}
                 />
+                <p className="text-xs text-muted-foreground">Each approval request also sends an alert automatically.</p>
             </div>
         )
     }

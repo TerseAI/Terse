@@ -63,7 +63,7 @@ export class NotificationManager {
 
         switch (notificationDestination.destination_type) {
             case NotificationDestinationType.SLACK:
-                await sendSlackApprovalRequest(notificationDestination, runId, runAction, this.agent, this.user)
+                await sendSlackApprovalRequest(notificationDestination, runId, runAction, this.agent)
                 break
             case NotificationDestinationType.EMAIL:
                 await sendEmailApprovalRequest(notificationDestination, runId, runAction, this.agent, this.user)

@@ -76,6 +76,24 @@ export function createActionBlock(elements: Button[]): KnownBlock {
     }
 }
 
+function createMetaBlock(label: string, value: string): KnownBlock {
+    return createSectionBlock(`*${label}*\n${value}`)
+}
+
+function createHeaderBlock(title: string, subtitle: string): KnownBlock[] {
+    return [
+        {
+            type: "header",
+            text: {
+                type: "plain_text",
+                text: title
+            }
+        },
+        createSectionBlock(subtitle),
+        createDividerBlock()
+    ]
+}
+
 /**
  * Creates a divider block
  */
@@ -173,33 +191,12 @@ export function createIntegrationConnectionMessage(
 /**
  * Creates an approval message with approve/reject/request changes buttons
  */
-export function createApprovalMessage(options: { channelName: string; summary: string; runId: string; stepId: string; runHistoryLink?: string }): KnownBlock[] {
+export function createApprovalMessage(options: { agentName: string; notificationFor: string; runId: string; stepId: string; runHistoryLink?: string }): KnownBlock[] {
     const blocks: KnownBlock[] = []
 
-    // Header section
-    const headerText = options.runHistoryLink
-        ? `You have a new approval request:\n*<${options.runHistoryLink}|${options.channelName} - Action pending approval>*`
-        : `You have a new approval request:\n*${options.channelName} - Action pending approval*`
-
-    blocks.push(createSectionBlock(headerText))
-
-    // Details section with fields
-    blocks.push(
-        createSectionBlock("", [
-            {
-                label: "Channel",
-                value: options.channelName
-            },
-            {
-                label: "Status",
-                value: ":clock1: Pending approval"
-            },
-            {
-                label: "Action",
-                value: options.summary
-            }
-        ])
-    )
+    blocks.push(...createHeaderBlock("Approval Required", "Your review is required before this step can continue."))
+    blocks.push(createMetaBlock("Agent", options.agentName))
+    blocks.push(createMetaBlock("Notification For", options.notificationFor))
 
     // Action buttons
     const buttons: Button[] = [
@@ -218,7 +215,7 @@ export function createApprovalMessage(options: { channelName: string; summary: s
 
     if (options.runHistoryLink) {
         buttons.push(
-            createButton("View Details", "view_run_history", {
+            createButton("Open run to review", "view_run_history", {
                 url: options.runHistoryLink
             })
         )
@@ -233,8 +230,8 @@ export function createApprovalMessage(options: { channelName: string; summary: s
  * Creates an updated approval message with status
  */
 export function createUpdatedApprovalMessage(options: {
-    channelName: string
-    summary: string
+    agentName: string
+    notificationFor: string
     status: SlackApprovalMessageStatus
     statusEmoji: string
     statusText: string
@@ -243,56 +240,22 @@ export function createUpdatedApprovalMessage(options: {
 }): KnownBlock[] {
     const blocks: KnownBlock[] = []
 
-    // Determine status message
-    let statusMessage: string
-    if (options.status === SlackApprovalMessageStatus.APPROVED) {
-        statusMessage = "approved"
-    } else if (options.status === SlackApprovalMessageStatus.REJECTED) {
-        statusMessage = "rejected"
-    } else if (options.status === SlackApprovalMessageStatus.CHANGES_REQUESTED) {
-        statusMessage = "has changes requested"
-    } else if (options.status === SlackApprovalMessageStatus.FAILED) {
-        statusMessage = "failed"
-    } else {
-        statusMessage = "is being processed"
-    }
-
-    // Header section
-    const headerText = options.runHistoryLink
-        ? `Approval request ${statusMessage}:\n*<${options.runHistoryLink}|${options.channelName} - ${options.statusText}>*`
-        : `Approval request ${statusMessage}:\n*${options.channelName} - ${options.statusText}*`
-
-    blocks.push(createSectionBlock(headerText))
-
-    // Details section with fields
-    blocks.push(
-        createSectionBlock("", [
-            {
-                label: "Channel",
-                value: options.channelName
-            },
-            {
-                label: "Status",
-                value: `${options.statusEmoji} ${options.statusText}`
-            },
-            {
-                label: "Action",
-                value: options.summary
-            }
-        ])
-    )
+    blocks.push(...createHeaderBlock("Approval Updated", "This approval request has been updated."))
+    blocks.push(createMetaBlock("Agent", options.agentName))
+    blocks.push(createMetaBlock("Notification For", options.notificationFor))
+    blocks.push(createMetaBlock("Status", `${options.statusEmoji} ${options.statusText}`))
 
     // Add rejection reason / feedback section if available
     if ((options.status === SlackApprovalMessageStatus.REJECTED || options.status === SlackApprovalMessageStatus.CHANGES_REQUESTED) && options.rejectionReason) {
         const feedbackLabel = options.status === SlackApprovalMessageStatus.CHANGES_REQUESTED ? "Feedback" : "Rejection Reason"
-        blocks.push(createSectionBlock(`*${feedbackLabel}:*\n${options.rejectionReason}`))
+        blocks.push(createMetaBlock(feedbackLabel, options.rejectionReason))
     }
 
     // Add view run history button if link is available
     if (options.runHistoryLink) {
         blocks.push(
             createActionBlock([
-                createButton("View Run History", "view_run_history", {
+                createButton("Open run to review", "view_run_history", {
                     url: options.runHistoryLink
                 })
             ])
@@ -305,11 +268,12 @@ export function createUpdatedApprovalMessage(options: {
 /**
  * Creates a notification message
  */
-export function createNotificationMessage(options: { action: string; target: string; emoji: string; details?: string; url?: string }): KnownBlock[] {
+export function createNotificationMessage(options: { agentName: string; notificationFor: string; details?: string; url?: string }): KnownBlock[] {
     const blocks: KnownBlock[] = []
 
-    // Main notification text
-    blocks.push(createSectionBlock(`*${options.action}* - ${options.emoji} ${options.target}`))
+    blocks.push(...createHeaderBlock("Notification", "A quick update from your agent."))
+    blocks.push(createMetaBlock("Agent", options.agentName))
+    blocks.push(createMetaBlock("Notification For", options.notificationFor))
 
     // Details if provided
     if (options.details) {
@@ -320,7 +284,7 @@ export function createNotificationMessage(options: { action: string; target: str
     if (options.url) {
         blocks.push(
             createActionBlock([
-                createButton("View", "view_action", {
+                createButton("Open details", "view_action", {
                     url: options.url
                 })
             ])
@@ -333,25 +297,18 @@ export function createNotificationMessage(options: { action: string; target: str
 /**
  * Creates a run failure notification message.
  */
-export function createRunFailureNotificationMessage(options: { agentName: string; runId: string; errorSummary: string; runHistoryLink?: string }): KnownBlock[] {
+export function createRunFailureNotificationMessage(options: { agentName: string; errorSummary: string; runHistoryLink?: string }): KnownBlock[] {
     const blocks: KnownBlock[] = []
 
-    const headerText = options.runHistoryLink ? `:x: *Run failed* in *<${options.runHistoryLink}|${options.agentName}>*` : `:x: *Run failed* in *${options.agentName}*`
-    blocks.push(createSectionBlock(headerText))
-
-    blocks.push(
-        createSectionBlock("", [
-            { label: "Agent", value: options.agentName },
-            { label: "Status", value: ":x: Failed" },
-            { label: "Run ID", value: `\`${options.runId}\`` },
-            { label: "Error", value: options.errorSummary }
-        ])
-    )
+    blocks.push(...createHeaderBlock("Run Failed", "This run ended with an error and needs attention."))
+    blocks.push(createMetaBlock("Agent", options.agentName))
+    blocks.push(createMetaBlock("Notification For", "A run failed."))
+    blocks.push(createMetaBlock("Error", options.errorSummary))
 
     if (options.runHistoryLink) {
         blocks.push(
             createActionBlock([
-                createButton("Open Run History", "view_run_history", {
+                createButton("Open run history", "view_run_history", {
                     url: options.runHistoryLink
                 })
             ])

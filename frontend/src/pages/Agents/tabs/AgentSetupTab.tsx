@@ -519,7 +519,9 @@ export default function AgentSetupTab({
                     <div className={cn(activeSection === "alerts" ? "block" : "hidden", "space-y-6")}>
                         <div>
                             <h2 className="text-lg font-medium mb-1">Alerts & Approval</h2>
-                            <p className="text-sm text-muted-foreground mb-4">Approval requests and run failures are always sent. CRUD action notifications are optional and can be enabled below.</p>
+                            <p className="text-sm text-muted-foreground mb-4">
+                                Set tool call approvals first, then choose alert routing. Approval requests and run failures are always sent; CRUD alerts are optional.
+                            </p>
                         </div>
                         <AgentApprovalSettings outputs={outputs} toolApprovals={toolApprovals} onToolApprovalsChange={setToolApprovals} />
                         <AgentNotificationSettings settings={notificationSettings} onChange={setNotificationSettings} />
