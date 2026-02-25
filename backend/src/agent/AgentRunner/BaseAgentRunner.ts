@@ -26,7 +26,8 @@ export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSe
     private toolToIntegrationMap?: Map<string, string>
     private endedWithToolFailure = false
     private agent?: TAgent
-    private initialized = false
+    // Protect lazy initialization from double-build races when run/resume are called concurrently.
+    private buildAgentPromise?: Promise<TAgent>
 
     constructor(params: { runId: string; toolToIntegrationMap?: Map<string, string> }) {
         this.runId = params.runId
@@ -53,12 +54,16 @@ export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSe
     protected abstract getAgentInitializationParams(): AgentInitializationParams<TSession>
 
     protected async initializeLoopIfNeeded(): Promise<void> {
-        if (this.initialized) return
-        await this.initializeLoopAgent(this.getAgentInitializationParams())
-        this.initialized = true
+        if (this.agent) return
+        if (!this.buildAgentPromise) {
+            this.buildAgentPromise = this.buildAgent(this.getAgentInitializationParams()).finally(() => {
+                this.buildAgentPromise = undefined
+            })
+        }
+        await this.buildAgentPromise
     }
 
-    async initializeLoopAgent(params: AgentInitializationParams<TSession>): Promise<TAgent> {
+    async buildAgent(params: AgentInitializationParams<TSession>): Promise<TAgent> {
         const builder = new SystemPromptBuilder<TSession, ConfigInstance>(params.systemPromptDeps, params.runContext).withStandardSections()
         const instructions = await builder.build()
         this.agent = new Agent<TSession, AgentOutputType>({
