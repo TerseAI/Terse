@@ -240,7 +240,19 @@ function TurnTimeline({
             snippet,
             ts: snippet.timestamp ?? completedCalls.length + i
         }))
-    ].sort((a, b) => a.ts - b.ts)
+    ].sort((a, b) => {
+        const timeDiff = a.ts - b.ts
+        if (timeDiff !== 0) {
+            return timeDiff
+        }
+
+        if (a.kind === b.kind) {
+            return 0
+        }
+
+        // For equal timestamps, always render tool completion before snippet.
+        return a.kind === "function_call" ? -1 : 1
+    })
 
     const hasTimeline = timeline.length > 0
     const hasInProgress = inProgressCalls.length > 0

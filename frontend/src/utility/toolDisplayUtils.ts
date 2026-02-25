@@ -893,6 +893,17 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
             const query = params?.query as string | undefined
             return query ? `Found web results for "${truncate(query)}"` : "Web search complete"
         }
+    },
+    image_edit: {
+        preparing: "Getting image ready",
+        executing: params => {
+            const prompt = params?.prompt as string | undefined
+            return prompt ? `Editing image: "${truncate(prompt)}"` : "Editing image"
+        },
+        complete: params => {
+            const prompt = params?.prompt as string | undefined
+            return prompt ? `Image edited: "${truncate(prompt)}"` : "Image edited"
+        }
     }
 }
 

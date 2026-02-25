@@ -2,7 +2,7 @@ import { Agent, FunctionCallResultItem, RunStreamEvent, RunToolCallOutputItem, S
 
 import logger from "../logger"
 import { IntegrationType } from "../shared/Integrations"
-import { ChangedItem, ModelEvent, ToolCallExecutionStatus } from "../shared/ModelEvents"
+import { ChangedItem, ChatSnippetPayload, ModelEvent, ToolCallExecutionStatus } from "../shared/ModelEvents"
 import { RunHistoryAction } from "../shared/RunHistoryTypes"
 import { ErrorContext } from "../tools/toolUtils"
 import { Session } from "../types/session"
@@ -53,6 +53,14 @@ export async function* transformAgentStreamToModelEvents<T extends Session>(
             const changedItems = onToolCallComplete ? await onToolCallComplete(toolCompleteData.callId, toolCompleteData.name, toolCompleteData.actions) : []
 
             yield createToolCallCompleteEvent(toolCompleteData, changedItems, toolToIntegrationMap)
+            if (toolCompleteData.snippets?.length) {
+                for (const snippet of toolCompleteData.snippets) {
+                    yield {
+                        type: "Snippet",
+                        snippet
+                    }
+                }
+            }
             continue
         }
     }
@@ -139,7 +147,9 @@ export function tryExtractToolCallCompleteData(event: RunStreamEvent): ToolCallC
         const parsed = parseToolExecutionResult(rawOutput, rawItem.status)
         const outputWithoutActions = {
             ...parsed.output,
-            actions: undefined
+            actions: undefined,
+            snippets: undefined,
+            snippet: undefined
         }
 
         // Handle function call results (including hosted tool calls)
@@ -150,7 +160,8 @@ export function tryExtractToolCallCompleteData(event: RunStreamEvent): ToolCallC
                 status: parsed.status,
                 errorContext: parsed.errorContext,
                 actions: parsed.actions,
-                result: JSON.stringify(outputWithoutActions) ?? undefined
+                result: JSON.stringify(outputWithoutActions) ?? undefined,
+                snippets: parsed.snippets
             }
         }
 
@@ -162,7 +173,8 @@ export function tryExtractToolCallCompleteData(event: RunStreamEvent): ToolCallC
                 status: parsed.status,
                 errorContext: parsed.errorContext,
                 actions: parsed.actions,
-                result: parsed.outputString ?? undefined
+                result: parsed.outputString ?? undefined,
+                snippets: parsed.snippets
             }
         }
     }
@@ -278,4 +290,5 @@ export type ToolCallCompleteData = {
     result?: string
     errorContext?: ErrorContext
     actions?: RunHistoryAction[]
+    snippets?: ChatSnippetPayload[]
 }
