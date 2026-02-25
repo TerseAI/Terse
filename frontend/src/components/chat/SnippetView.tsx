@@ -1,7 +1,7 @@
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
 
-import { ExternalLink, SquareArrowOutUpRight } from "lucide-react"
+import { ExternalLink, ImageOff, SquareArrowOutUpRight } from "lucide-react"
 
 import { IntegrationType } from "../../shared/Integrations"
 import { ChatSnippet } from "../../shared/ModelEvents"
@@ -83,5 +83,27 @@ export function SnippetView({ snippet, onMultipleChoiceAnswer }: { snippet: Chat
         )
     }
 
+    if (snippet.type === "image") {
+        return <ImageSnippet url={snippet.url} />
+    }
+
     return null
+}
+
+function ImageSnippet({ url }: { url: string }) {
+    const [errored, setErrored] = useState(false)
+
+    if (errored) {
+        return (
+            <div className="flex items-center gap-2 rounded-md border border-border bg-muted/40 px-1 py-1 text-sm text-muted-foreground">
+                <ImageOff className="h-4 w-4 flex-shrink-0" />
+                <span>Image unavailable</span>
+                <a href={url} target="_blank" rel="noopener noreferrer" className="ml-auto text-xs underline hover:text-foreground">
+                    Open URL
+                </a>
+            </div>
+        )
+    }
+
+    return <img src={url} alt="Generated image" className="max-w-sm rounded-md border border-border" onError={() => setErrored(true)} />
 }

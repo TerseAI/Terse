@@ -7,7 +7,7 @@ import { Turn } from "../Turn"
 export function filterOutThinkingOnlyTurns(turns: Turn[]): Turn[] {
     return turns.filter((turn, index) => {
         // Keep all turns that have content
-        if (turn.role === "user" || turn.text?.length > 0 || turn.function_calls?.length > 0 || turn.filter_result) {
+        if (turn.role === "user" || turn.text?.length > 0 || turn.function_calls?.length > 0 || turn.filter_result || (turn.snippets?.length ?? 0) > 0) {
             return true
         }
         // Keep thinking turns if they're the last turn (still thinking)

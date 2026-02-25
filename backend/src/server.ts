@@ -17,7 +17,7 @@ import { createAgent, deleteAgent, getRecentAgents, getUserAgent, getUserAgents,
 import { apiTokenAuthMiddleware } from "./routes/apiTokenAuth"
 import { createApiToken, deleteApiToken, getApiTokens, updateApiToken } from "./routes/apiTokens"
 import { attioOAuthCallback, getAttioIntegrations, getAttioObjects } from "./routes/attio"
-import { authMiddleware, authMiddlewareAllowNoOrg, callback, getWorkOSWidgetToken, login, logout, logoutUrl, me } from "./routes/auth"
+import { authMiddleware, authMiddlewareAllowNoOrg, callback, getWorkOSWidgetToken, login, loginUrl, logout, logoutUrl, me } from "./routes/auth"
 import { githubAppCallbackIntegrate } from "./routes/auth/githubAuth"
 import { getBuilderChatHistory } from "./routes/builderChat"
 import { getConfluenceIntegrations, getConfluenceResources } from "./routes/confluence"
@@ -206,6 +206,10 @@ app.get(ApiRoutes.AUTH.GITHUB_APP_CALLBACK, async (req, res) => {
 
 app.get(ApiRoutes.AUTH.LOGIN, async (req, res) => {
     login(req, res)
+})
+
+app.get(ApiRoutes.AUTH.LOGIN_URL, async (req, res) => {
+    await loginUrl(req, res)
 })
 
 app.get(ApiRoutes.AUTH.LOGOUT, async (req, res) => {

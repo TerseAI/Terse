@@ -2,6 +2,7 @@ import { Octokit } from "@octokit/rest"
 import type { RestEndpointMethodTypes } from "@octokit/rest"
 import { InputConfigType } from "@prisma/client"
 import axios, { AxiosResponse } from "axios"
+import * as cheerio from "cheerio"
 import { Request, Response } from "express"
 
 import { EventProcessor } from "../agent/AgentRunner/EventProcessor"
@@ -18,7 +19,7 @@ import {
     GithubAppUser
 } from "../routes/GithubTypes"
 import { fetchGithubRepositoriesForIntegration } from "../routes/github"
-import { StoredFile } from "../services/FileStorageService"
+import { FileDownloadResult, StoredFile, buildGithubFileKey, ensureStoredWithMetadata } from "../services/FileStorageService"
 import { ConfigInstance, ConfigType, GitHubConfig as GitHubConfigClass } from "../shared/Configs"
 import { FrontendRoutes } from "../shared/FrontendRoutes"
 import { AdditionalStateParams, GithubIntegration, GithubIntegrationMetadata, InstallationOptionsFor, IntegrationType } from "../shared/Integrations"
@@ -126,13 +127,16 @@ export class GithubIntegrationManager
         for (const user of users) {
             const token = await db().github_app_tokens.findFirst({
                 where: { user_id: user.id },
-                select: { organization_id: true }
+                select: { organization_id: true, access_token: true }
             })
             if (!token?.organization_id) continue
             const fullUser = await getUserForOrg(user.id, token.organization_id)
             if (!fullUser) continue
+
+            // Attach any images or files from the event
+            const storedFiles: StoredFile[] = await getPullRequestFiles(event, token.access_token, event.installationId.toString())
             await runWithUserContext(fullUser, async () => {
-                const githubEvent = new GithubEvent(event, [])
+                const githubEvent = new GithubEvent(event, storedFiles)
                 const eventProcessor = new EventProcessor(githubEvent, fullUser)
                 await eventProcessor.process()
             })
@@ -388,7 +392,9 @@ export class GithubIntegrationManager
             const pullRequests = await fetchRecentPullRequestsForSample(accessToken, repo.owner, repo.name, 5)
             for (const pr of pullRequests) {
                 const eventData = await createPullRequestEventData(pr, repo, installationIdNum, accessToken)
-                if (eventData) events.push(new GithubEvent(eventData, []))
+                let storedFiles: StoredFile[] = []
+                if (eventData) storedFiles = await getPullRequestFiles(eventData, accessToken, installationIdNum.toString())
+                if (eventData) events.push(new GithubEvent(eventData, storedFiles))
             }
             if (events.length >= maxEvents) break
         }
@@ -511,6 +517,15 @@ export class GithubEvent extends InputEvent implements Identifiable {
             commitsInfo = commitLines.join("\n")
         }
 
+        // Stored image URLs for images that appeared in the PR description.
+        // The original GitHub asset URLs (github.com/user-attachments/...) require authentication
+        // and will not render in email clients or other external contexts.
+        let attachedImagesInfo: string | null = null
+        if (this.storedFiles.length > 0) {
+            const lines = this.storedFiles.map(f => `- ${f.filename || "image"} (${f.mimeType}): ${f.url}`)
+            attachedImagesInfo = `Attached Images (publicly accessible replacements for the GitHub image URLs in the PR description — use these, not the original github.com URLs):\n${lines.join("\n")}`
+        }
+
         // Build the formatted output
         const sections = [
             `Incoming GitHub Event: ${eventDescription}`,
@@ -518,10 +533,12 @@ export class GithubEvent extends InputEvent implements Identifiable {
             `\nActor Information:\n${indentMultiline(senderInfo)}`,
             ...(branchInfo ? [`\nBranch Information:\n${indentMultiline(branchInfo)}`] : []),
             ...(prInfo ? [`\nPull Request Information:\n${indentMultiline(prInfo)}`] : []),
-            ...(commitsInfo ? [`\n${commitsInfo}`] : [])
+            ...(commitsInfo ? [`\n${commitsInfo}`] : []),
+            ...(attachedImagesInfo ? [`\n${attachedImagesInfo}`] : [])
         ].filter(Boolean)
 
-        return sections.join("\n\n") + "\n"
+        const resp = sections.join("\n\n") + "\n"
+        return resp
     }
 
     debugLog(): string {
@@ -947,6 +964,164 @@ async function createPullRequestEventData(
         }
     } catch (error) {
         logger.error("Error creating pull request event data for sample", { error, pr: pr.number })
+        return null
+    }
+}
+
+export async function getPullRequestFiles(event: GithubAppUnifiedEventRequest, token: string, integrationId: string): Promise<StoredFile[]> {
+    if (!event.pullRequest) {
+        return []
+    }
+
+    const [owner, repo] = event.repositoryName.split("/")
+    if (!owner || !repo) {
+        return []
+    }
+
+    const prNumber = event.pullRequest.number
+    let bodyHtml: string | null = null
+    try {
+        const octokit = new Octokit({ auth: token })
+        const response = await octokit.request("GET /repos/{owner}/{repo}/pulls/{pull_number}", {
+            owner,
+            repo,
+            pull_number: prNumber,
+            headers: { accept: "application/vnd.github.html+json" }
+        })
+        bodyHtml = (response.data as any).body_html ?? null
+    } catch (error) {
+        logger.error("Error fetching rendered PR body from GitHub API", { error, prNumber, repositoryName: event.repositoryName })
+        return []
+    }
+
+    if (!bodyHtml) {
+        return []
+    }
+
+    const imageUrls = getImageUrlsFromHtml(bodyHtml)
+    if (imageUrls.length === 0) {
+        return []
+    }
+
+    const fileResults = await Promise.allSettled(imageUrls.map(url => processGithubFile(url, token, integrationId)))
+    return fileResults.flatMap((result, index) => {
+        if (result.status === "fulfilled") {
+            return result.value ? [result.value] : []
+        }
+
+        logger.warn("Skipping PR image URL after upload/download failure", {
+            url: imageUrls[index],
+            integrationId,
+            error: result.reason instanceof Error ? result.reason.message : String(result.reason)
+        })
+        return []
+    })
+}
+
+function getImageUrlsFromHtml(html: string): string[] {
+    const $ = cheerio.load(html)
+    return $("img")
+        .map((_, img) => $(img).attr("src"))
+        .get()
+        .filter((src): src is string => Boolean(src))
+}
+
+type GithubFile = {
+    filename: string
+    contentType: string
+    data: Buffer
+}
+
+async function processGithubFile(url: string, token: string, integrationId: string): Promise<StoredFile | null> {
+    try {
+        const primaryKey = buildGithubFileKey(integrationId, url)
+        const storedFile = await ensureStoredWithMetadata(primaryKey, async (): Promise<FileDownloadResult> => {
+            const resp = await downloadGithubFile(url, token)
+            if (!resp) {
+                throw new Error(`Failed to download file from GitHub URL: ${url}`)
+            }
+            const { filename, contentType, data } = resp
+            return {
+                data: data,
+                mimeType: contentType || "application/octet-stream",
+                filename: filename
+            }
+        })
+
+        if (storedFile) {
+            logger.debug(`✅ Stored Github attachment in GCS`, {
+                url,
+                integrationId,
+                filename: storedFile.filename,
+                mimeType: storedFile.mimeType,
+                sizeBytes: storedFile.sizeBytes
+            })
+        }
+        return storedFile ?? null
+    } catch (error) {
+        logger.warn("Skipping GitHub PR image URL that could not be uploaded", {
+            error,
+            url,
+            integrationId
+        })
+        return null
+    }
+}
+
+/** Allowed hostnames for GitHub asset URLs. Prevents token leakage to attacker-controlled servers. */
+const GITHUB_ASSET_HOSTS = new Set([
+    "github.com",
+    "user-images.githubusercontent.com",
+    "private-user-images.githubusercontent.com",
+    "github.githubassets.com",
+    "raw.githubusercontent.com",
+    "camo.githubusercontent.com",
+    "avatars.githubusercontent.com",
+    "media.githubusercontent.com"
+])
+
+class NonGithubUrlError extends Error {
+    constructor(message: string) {
+        super(message)
+        this.name = "NonGithubUrlError"
+    }
+}
+
+function assertIsGithubAssetUrl(url: string): void {
+    let parsed: URL
+    try {
+        parsed = new URL(url)
+    } catch {
+        throw new NonGithubUrlError(`Invalid URL for GitHub asset: ${url}`)
+    }
+    if (parsed.protocol !== "https:") {
+        throw new NonGithubUrlError(`Non-HTTPS URL rejected (would not send token): ${url}`)
+    }
+    const host = parsed.hostname.toLowerCase()
+    if (!GITHUB_ASSET_HOSTS.has(host) && !host.endsWith(".githubusercontent.com") && !host.endsWith(".githubassets.com")) {
+        throw new NonGithubUrlError(`Refusing to send GitHub token to non-GitHub URL: ${url}`)
+    }
+}
+
+async function downloadGithubFile(url: string, token: string): Promise<GithubFile | null> {
+    assertIsGithubAssetUrl(url)
+    try {
+        const response = await axios.get(url, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+                Accept: "application/vnd.github+json"
+            },
+            responseType: "arraybuffer"
+        })
+        const contentType = response.headers["content-type"] || "application/octet-stream"
+        const filename = url.split("/").pop() || "file"
+        return {
+            filename,
+            contentType,
+            data: response.data
+        }
+    } catch (error) {
+        logger.error("Error downloading GitHub file", { error, url })
         return null
     }
 }

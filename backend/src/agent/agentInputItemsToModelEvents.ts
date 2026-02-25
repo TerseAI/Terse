@@ -6,6 +6,7 @@ import { ModelEvent } from "../shared/ModelEvents"
 import { isScaffoldedRunContextUserMessage } from "./AgentRunner/formatContext"
 import { parseFilterOutcomeSystemEventItem } from "./systemEvents/filterOutcomeSystemEvent"
 import { parseRunErrorSystemEventItem } from "./systemEvents/runErrorSystemEvent"
+import { parseSnippetSystemEventItem } from "./systemEvents/snippetSystemEvent"
 import { parseToolApprovalSystemEventItem } from "./systemEvents/toolApprovalSystemEvent"
 import { parseToolExecutionResult } from "./toolExecution"
 
@@ -119,6 +120,16 @@ async function convertSingleItem(
         ]
     }
 
+    const snippetSystemEvent = parseSnippetSystemEventItem(item)
+    if (snippetSystemEvent) {
+        return [
+            {
+                type: "Snippet",
+                snippet: snippetSystemEvent.snippet
+            }
+        ]
+    }
+
     // User message
     if (isUserMessageItem(item)) {
         const text = extractTextFromMessageContent(item.content)
@@ -181,21 +192,28 @@ async function convertSingleItem(
 
         const outputWithoutActions = {
             ...parsed.output,
-            actions: undefined
+            actions: undefined,
+            snippets: undefined,
+            snippet: undefined
         }
 
-        return [
-            {
-                type: "ToolCallComplete",
-                tool_name: item.name || "unknown",
-                status: parsed.status,
-                step_id: item.callId,
-                changed_items: [],
-                integration,
-                result: JSON.stringify(outputWithoutActions) || undefined,
-                ...(parsed.errorContext ? { errorContext: { error: parsed.errorContext.error } } : {})
-            }
-        ]
+        const toolCallCompleteEvent: ModelEvent = {
+            type: "ToolCallComplete",
+            tool_name: item.name || "unknown",
+            status: parsed.status,
+            step_id: item.callId,
+            changed_items: [],
+            integration,
+            result: JSON.stringify(outputWithoutActions) || undefined,
+            ...(parsed.errorContext ? { errorContext: { error: parsed.errorContext.error } } : {})
+        }
+
+        const snippetEvents: ModelEvent[] = (parsed.snippets ?? []).map(snippet => ({
+            type: "Snippet",
+            snippet
+        }))
+
+        return [toolCallCompleteEvent, ...snippetEvents]
     }
 
     return null

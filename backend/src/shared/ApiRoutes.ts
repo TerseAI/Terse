@@ -15,6 +15,7 @@ export const ApiRoutes = {
     AUTH: {
         ME: "/me",
         LOGIN: "/login",
+        LOGIN_URL: "/login/url",
         LOGOUT: "/logout",
         LOGOUT_URL: "/logout/url",
         GITHUB_APP_CALLBACK: "/auth/github-app/callback",

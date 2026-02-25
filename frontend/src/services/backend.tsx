@@ -55,14 +55,16 @@ const backendBaseUrl = "/api"
 // For browser redirects (login/logout), we need the actual backend URL since window.location.href
 // bypasses Vite's proxy. Falls back to /api for production where the proxy is handled by nginx/etc.
 const backendRedirectUrl = import.meta.env.VITE_BACKEND_REDIRECT_URL || "/api"
+let loginRedirectInProgress = false
 
 // Global 401 handler: when session is invalidated (e.g., user revokes session in WorkOS widget),
 // redirect to login so the user gets a fresh session. The backend clears the cookie on auth failure.
 axios.interceptors.response.use(
     response => response,
     error => {
-        if (error.response?.status === 401) {
-            window.location.href = `${backendRedirectUrl}${ApiRoutes.AUTH.LOGIN}`
+        const skipAuthRedirect = error.config?.headers?.["x-skip-auth-redirect"] === "true" || error.config?.headers?.["X-Skip-Auth-Redirect"] === "true"
+        if (error.response?.status === 401 && !skipAuthRedirect) {
+            BackendProvider.loginRedirect()
         }
         return Promise.reject(error)
     }
@@ -1270,6 +1272,11 @@ export const BackendProvider: BackendService = {
     },
 
     loginRedirect: () => {
+        if (loginRedirectInProgress) {
+            return
+        }
+        loginRedirectInProgress = true
+
         try {
             const { pathname, search, hash } = window.location
             const redirectPath = `${pathname}${search}${hash}`.replace(/#$/, "")
@@ -1283,16 +1290,39 @@ export const BackendProvider: BackendService = {
             console.error("Failed to store post-login redirect", error)
         }
 
-        window.location.href = `${backendRedirectUrl}${ApiRoutes.AUTH.LOGIN}`
+        const LOGIN_URL_TIMEOUT_MS = 15_000
+
+        void axios
+            .get<{ loginUrl: string }>(`${backendBaseUrl}${ApiRoutes.AUTH.LOGIN_URL}`, {
+                withCredentials: true,
+                headers: { "x-skip-auth-redirect": "true" },
+                timeout: LOGIN_URL_TIMEOUT_MS
+            })
+            .then(response => {
+                const loginUrl = response.data?.loginUrl
+                if (typeof loginUrl === "string" && loginUrl.length > 0) {
+                    window.location.href = loginUrl
+                } else {
+                    window.location.href = `${backendRedirectUrl}${ApiRoutes.AUTH.LOGIN}`
+                }
+            })
+            .catch(error => {
+                console.error("Error getting WorkOS login URL, falling back to backend login endpoint:", error)
+                window.location.href = `${backendRedirectUrl}${ApiRoutes.AUTH.LOGIN}`
+            })
+            .finally(() => {
+                loginRedirectInProgress = false
+            })
     },
 
     logoutRedirect: async () => {
+        const redirectToLoginQuery = "redirectToLogin=true"
         try {
-            const response = await axios.get<{ logoutUrl: string }>(`${backendBaseUrl}${ApiRoutes.AUTH.LOGOUT_URL}`, { withCredentials: true })
+            const response = await axios.get<{ logoutUrl: string }>(`${backendBaseUrl}${ApiRoutes.AUTH.LOGOUT_URL}?${redirectToLoginQuery}`, { withCredentials: true })
             window.location.href = response.data.logoutUrl
         } catch (error) {
             console.error("Error getting WorkOS logout URL, falling back to backend logout endpoint:", error)
-            window.location.href = `${backendRedirectUrl}${ApiRoutes.AUTH.LOGOUT}`
+            window.location.href = `${backendRedirectUrl}${ApiRoutes.AUTH.LOGOUT}?${redirectToLoginQuery}`
         }
     },
 

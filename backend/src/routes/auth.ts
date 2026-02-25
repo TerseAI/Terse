@@ -5,6 +5,7 @@ import { NextFunction, Request, Response } from "express"
 import { settings } from "../config/settings"
 import logger from "../logger"
 import { db } from "../prismaClient"
+import { ApiRoutes } from "../shared/ApiRoutes"
 import { Role, User } from "../shared/types"
 import { Session } from "../types/session"
 import { workos } from "../utility/workos"
@@ -20,15 +21,46 @@ const workosSessionCookieBaseOptions = {
 
 export const WORKOS_SESSION_COOKIE_OPTIONS = settings.optional.cookieDomain ? { ...workosSessionCookieBaseOptions, domain: settings.optional.cookieDomain } : workosSessionCookieBaseOptions
 
-export async function login(req: Request, res: Response) {
-    const authorizationUrl = workos.userManagement.getAuthorizationUrl({
+function getDirectWorkOSLoginUrl(): string {
+    return workos.userManagement.getAuthorizationUrl({
         provider: "authkit",
         redirectUri: settings.workos.redirectUri
     })
+}
+
+export async function login(req: Request, res: Response) {
+    const authorizationUrl = getDirectWorkOSLoginUrl()
     res.redirect(authorizationUrl)
 }
 
-async function getDirectWorkOSLogoutUrl(sealedSessionData: string | undefined): Promise<string | null> {
+export async function loginUrl(req: Request, res: Response) {
+    const authorizationUrl = getDirectWorkOSLoginUrl()
+    return res.json({ loginUrl: authorizationUrl })
+}
+
+function shouldRedirectToLogin(value: unknown): boolean {
+    const queryValue = Array.isArray(value) ? value[0] : value
+    if (typeof queryValue !== "string") {
+        return false
+    }
+    const normalizedValue = queryValue.trim().toLowerCase()
+    return normalizedValue === "true" || normalizedValue === "1"
+}
+
+function getBackendLoginUrl(): string {
+    if (!settings.urls.backend) {
+        return getDirectWorkOSLoginUrl()
+    }
+    const normalizedBackendUrl = settings.urls.backend.endsWith("/") ? settings.urls.backend : `${settings.urls.backend}/`
+    const loginPath = ApiRoutes.AUTH.LOGIN.replace(/^\//, "")
+    return new URL(loginPath, normalizedBackendUrl).toString()
+}
+
+function getPostLogoutRedirectUrl(redirectToLogin: boolean): string {
+    return redirectToLogin ? getBackendLoginUrl() : settings.urls.frontend
+}
+
+async function getDirectWorkOSLogoutUrl(sealedSessionData: string | undefined, returnTo: string): Promise<string | null> {
     if (!sealedSessionData) {
         return null
     }
@@ -37,36 +69,48 @@ async function getDirectWorkOSLogoutUrl(sealedSessionData: string | undefined): 
         sessionData: sealedSessionData,
         cookiePassword: settings.workos.cookiePassword
     })
-    return session.getLogoutUrl({ returnTo: settings.urls.frontend })
+    return session.getLogoutUrl({ returnTo })
 }
 
 export async function logoutUrl(req: Request, res: Response) {
+    const redirectToLogin = shouldRedirectToLogin(req.query.redirectToLogin)
+    const postLogoutRedirectUrl = getPostLogoutRedirectUrl(redirectToLogin)
     const sealedSessionData = req.cookies[WORKOS_SESSION_COOKIE_NAME]
     res.clearCookie(WORKOS_SESSION_COOKIE_NAME, WORKOS_SESSION_COOKIE_OPTIONS)
 
     try {
-        const workosLogoutUrl = await getDirectWorkOSLogoutUrl(sealedSessionData)
-        return res.json({ logoutUrl: workosLogoutUrl ?? settings.urls.frontend })
+        const workosLogoutUrl = await getDirectWorkOSLogoutUrl(sealedSessionData, postLogoutRedirectUrl)
+        return res.json({ logoutUrl: workosLogoutUrl ?? postLogoutRedirectUrl })
     } catch (error) {
-        logger.warn("[/logout/url] Failed to build WorkOS logout URL, falling back to frontend redirect", { error })
-        return res.json({ logoutUrl: settings.urls.frontend })
+        logger.warn("[/logout/url] Failed to build WorkOS logout URL, falling back to post-logout redirect", {
+            error,
+            postLogoutRedirectUrl
+        })
+        return res.json({ logoutUrl: postLogoutRedirectUrl })
     }
 }
 
 export async function logout(req: Request, res: Response) {
+    const redirectToLogin = shouldRedirectToLogin(req.query.redirectToLogin)
+    const postLogoutRedirectUrl = getPostLogoutRedirectUrl(redirectToLogin)
     const sealedSessionData = req.cookies[WORKOS_SESSION_COOKIE_NAME]
     res.clearCookie(WORKOS_SESSION_COOKIE_NAME, WORKOS_SESSION_COOKIE_OPTIONS)
 
     try {
-        const workosLogoutUrl = await getDirectWorkOSLogoutUrl(sealedSessionData)
+        const workosLogoutUrl = await getDirectWorkOSLogoutUrl(sealedSessionData, postLogoutRedirectUrl)
         if (!workosLogoutUrl) {
-            logger.info("[/logout] No session cookie found, redirecting to frontend")
-            return res.redirect(settings.urls.frontend)
+            logger.info("[/logout] No session cookie found, redirecting to post-logout URL", {
+                postLogoutRedirectUrl
+            })
+            return res.redirect(postLogoutRedirectUrl)
         }
         return res.redirect(workosLogoutUrl)
     } catch (error) {
-        logger.warn("[/logout] Failed to build WorkOS logout URL, falling back to frontend redirect", { error })
-        return res.redirect(settings.urls.frontend)
+        logger.warn("[/logout] Failed to build WorkOS logout URL, falling back to post-logout redirect", {
+            error,
+            postLogoutRedirectUrl
+        })
+        return res.redirect(postLogoutRedirectUrl)
     }
 }
 
@@ -206,6 +250,11 @@ function createAuthMiddleware(requireOrganization: boolean) {
             // update the cookie if we have a sealed session
             if (refreshedSessionResult.sealedSession) {
                 res.cookie(WORKOS_SESSION_COOKIE_NAME, refreshedSessionResult.sealedSession, WORKOS_SESSION_COOKIE_OPTIONS)
+                // Keep request-scoped cookie data in sync so downstream handlers in the
+                // same request (e.g. /session/token) read the refreshed sealed session.
+                if (req.cookies) {
+                    req.cookies[WORKOS_SESSION_COOKIE_NAME] = refreshedSessionResult.sealedSession
+                }
             }
             return next()
         } catch (error) {
@@ -443,4 +492,4 @@ export const authMiddleware = createAuthMiddleware(true)
 // Some routes have an exception to this rule
 export const authMiddlewareAllowNoOrg = createAuthMiddleware(false)
 
-export default { me, login, logout, logoutUrl, getWorkOSWidgetToken, callback }
+export default { me, login, loginUrl, logout, logoutUrl, getWorkOSWidgetToken, callback }
