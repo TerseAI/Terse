@@ -145,14 +145,24 @@ export class TerseAgent {
             if (!res.body) {
                 throw new Error("Agent run stream did not provide a response body.")
             }
+            const failedToolCalls: string[] = []
             for await (const eventData of iterateSseDataLines(res.body)) {
                 const parsed = safeParseStreamEvent(eventData)
                 if (!parsed) continue
                 if (parsed.type === "done") {
+                    if (failedToolCalls.length > 0) {
+                        throw new Error(`Run completed with failed tool calls: ${failedToolCalls.join("; ")}`)
+                    }
                     return
                 }
                 if (parsed.type === "error") {
                     throw new Error(parsed.message)
+                }
+                if (parsed.type === "tool_call_completed") {
+                    const parsedTool = parseToolCallCompleted(parsed.toolCallCompleted)
+                    if (parsedTool && parsedTool.status && parsedTool.status !== "completed") {
+                        failedToolCalls.push(`${parsedTool.tool}: ${parsedTool.status}`)
+                    }
                 }
                 yield mapStreamEventToResult(parsed)
             }
@@ -324,5 +334,13 @@ function mapStreamEventToResult(event: SdkAgentStreamEvent): TerseAgentResult {
             return new TextResult("")
         default:
             return new TextResult("")
+    }
+}
+
+function parseToolCallCompleted(raw: string): { tool?: string; status?: string } | null {
+    try {
+        return JSON.parse(raw) as { tool?: string; status?: string }
+    } catch {
+        return null
     }
 }

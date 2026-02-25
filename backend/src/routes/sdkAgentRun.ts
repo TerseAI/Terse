@@ -5,7 +5,7 @@ import { SessionWithTracking } from "../agent/AgentRunner/AgentRunner"
 import { SdkAgentRunner } from "../agent/AgentRunner/SdkAgentRunner"
 import { OutputFactory } from "../outputs/abstract/OutputFactory"
 import { IntegrationType } from "../shared/Integrations"
-import { SdkAgentRunRequestBody, SdkAgentRunResponseBody, SdkAgentStreamEvent, User } from "../shared/types"
+import { SdkAgentRunRequestBody, SdkAgentRunResponseBody, SdkAgentSkillPayload, SdkAgentStreamEvent, User } from "../shared/types"
 import { Session } from "../types/session"
 
 import { validateAndNormalizeSdkAgentRunBody } from "./sdkAgentRunValidation"
@@ -47,7 +47,15 @@ export async function handleSdkAgentRun(req: Request, res: Response) {
     try {
         const { tools, toolToIntegrationMap } = buildToolsForSkills(normalized.skills.map(s => s.integrationType))
         const runId = `sdk-run-${Date.now()}`
-        const eventText = [`Integration Type: ${normalized.event.integrationType}`, `Event Content:`, normalized.event.formattedContent, ``, `Debug Log: ${normalized.event.debugLog}`].join("\n")
+        const eventText = [
+            ...buildSkillContextLines(normalized.skills),
+            "",
+            `Integration Type: ${normalized.event.integrationType}`,
+            `Event Content:`,
+            normalized.event.formattedContent,
+            ``,
+            `Debug Log: ${normalized.event.debugLog}`
+        ].join("\n")
         const sdkRunner = new SdkAgentRunner({
             runId,
             user,
@@ -66,6 +74,12 @@ export async function handleSdkAgentRun(req: Request, res: Response) {
             return res.end()
         }
 
+        if (loopResult.endedWithToolFailure || sdkRunner.hasToolFailures()) {
+            send({ type: "error", message: sdkRunner.getToolFailureSummary() })
+            send({ type: "done" })
+            return res.end()
+        }
+
         const finalOutput = SdkAgentRunner.getFinalOutput(loopResult.result)
         if (finalOutput) {
             send({ type: "final_output", finalOutput })
@@ -78,6 +92,16 @@ export async function handleSdkAgentRun(req: Request, res: Response) {
         send({ type: "done" })
         return res.end()
     }
+}
+
+function buildSkillContextLines(skills: SdkAgentSkillPayload[]): string[] {
+    const lines = ["<SDK_SKILLS>", "Configured integration skills (use these exact integration IDs when a tool requires integrationId):"]
+    for (const skill of skills) {
+        const id = skill.id?.trim()
+        lines.push(`- ${skill.integrationType}: ${id ? id : "<missing>"}`)
+    }
+    lines.push("If the required integrationId is missing, ask for it or avoid write actions that require a bound integration.", "</SDK_SKILLS>")
+    return lines
 }
 
 function buildToolsForSkills(skillIntegrationTypes: IntegrationType[]): {

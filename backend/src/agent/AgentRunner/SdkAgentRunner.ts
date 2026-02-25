@@ -3,7 +3,7 @@ import type { Session as AgentMemorySession } from "@openai/agents-core"
 
 import { settings } from "../../config/settings"
 import { ConfigInstance } from "../../shared/Configs"
-import { ChangedItem, ModelEvent } from "../../shared/ModelEvents"
+import { ChangedItem, ModelEvent, ToolCallExecutionStatus } from "../../shared/ModelEvents"
 import { RunHistoryAction } from "../../shared/RunHistoryTypes"
 import { SdkAgentStreamEvent, User } from "../../shared/types"
 import { Session } from "../../types/session"
@@ -72,6 +72,7 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
     private readonly send: (event: SdkAgentStreamEvent) => void
     private readonly memorySession: AgentMemorySession
     private pendingApprovalState: PendingApprovalState | null = null
+    private readonly failedToolCalls: Array<{ tool: string; status: ToolCallExecutionStatus; error?: string }> = []
 
     constructor(params: SdkAgentRunnerParams) {
         super({
@@ -124,6 +125,13 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
             return
         }
         if (event.type === "ToolCallComplete") {
+            if (event.status !== ToolCallExecutionStatus.COMPLETED) {
+                this.failedToolCalls.push({
+                    tool: event.tool_name,
+                    status: event.status,
+                    error: event.errorContext ? String(event.errorContext.error) : undefined
+                })
+            }
             this.send({
                 type: "tool_call_completed",
                 toolCallCompleted: JSON.stringify({
@@ -208,5 +216,20 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
         if (typeof result.finalOutput !== "string") return null
         const output = result.finalOutput.trim()
         return output || null
+    }
+
+    hasToolFailures(): boolean {
+        return this.failedToolCalls.length > 0
+    }
+
+    getToolFailureSummary(maxItems: number = 3): string {
+        if (this.failedToolCalls.length === 0) return "One or more tool calls failed."
+        const summarized = this.failedToolCalls.slice(0, maxItems).map(failure => {
+            const detail = failure.error ? ` (${failure.error})` : ""
+            return `${failure.tool}: ${failure.status}${detail}`
+        })
+        const remaining = this.failedToolCalls.length - summarized.length
+        const suffix = remaining > 0 ? ` (+${remaining} more)` : ""
+        return `Tool call failures: ${summarized.join("; ")}${suffix}`
     }
 }
