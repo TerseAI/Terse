@@ -1,15 +1,16 @@
 import { Agent, AgentInputItem, AgentOutputType, RunResult, RunState, RunToolApprovalItem, StreamedRunResult, Tool } from "@openai/agents"
+import type { Session as AgentMemorySession, ModelSettings } from "@openai/agents-core"
 
 import logger from "../../logger"
 import { ChangedItem, ModelEvent } from "../../shared/ModelEvents"
 import { RunHistoryAction } from "../../shared/RunHistoryTypes"
-import { Session } from "../../types/session"
+import { Session as AppSession } from "../../types/session"
 import { createNaturalStopEvent, transformAgentStreamToModelEvents } from "../streaming"
 import { isFailedToolExecutionStatus } from "../toolExecution"
 
-import { SessionWithTracking } from "./AgentRunner"
+import type { SessionWithTracking } from "./AgentRunner"
 
-export class AgentRunnerLoopCore<TSession extends SessionWithTracking<Session>, TAgent extends Agent<TSession, AgentOutputType>> {
+export class AgentRunnerLoopCore<TSession extends SessionWithTracking<AppSession>, TAgent extends Agent<TSession, AgentOutputType>> {
     private runId: string
     private callbacks: AgentRunnerLoopCallbacks
     private toolToIntegrationMap?: Map<string, string>
@@ -23,7 +24,7 @@ export class AgentRunnerLoopCore<TSession extends SessionWithTracking<Session>, 
     }
 
     initializeAgent(params: AgentInitializationParams<TSession>): TAgent {
-        this.agent = new Agent<SessionWithTracking<TSession>, AgentOutputType>({
+        this.agent = new Agent<TSession, AgentOutputType>({
             name: params.name,
             instructions: params.instructions,
             model: params.model,
@@ -200,6 +201,8 @@ export class AgentRunnerLoopCore<TSession extends SessionWithTracking<Session>, 
     }
 }
 
+type SessionInputCallback = (history: AgentInputItem[], newItems: AgentInputItem[]) => AgentInputItem[]
+
 type LoopRunner<TSession, TAgent extends Agent<TSession, any>> = {
     run: (
         agent: TAgent,
@@ -207,8 +210,8 @@ type LoopRunner<TSession, TAgent extends Agent<TSession, any>> = {
         options: {
             context: TSession
             stream: true
-            session: any
-            sessionInputCallback?: any
+            session: AgentMemorySession
+            sessionInputCallback?: SessionInputCallback
             maxTurns: number
         }
     ) => Promise<StreamedRunResult<TSession, TAgent>>
@@ -229,15 +232,15 @@ export type AgentRunnerLoopCallbacks = {
     markRunInProgress: (runId: string) => Promise<void>
 }
 
-export type AgentRunnerLoopResult<TSession extends SessionWithTracking<Session>, TAgent extends Agent<TSession, AgentOutputType>> =
+export type AgentRunnerLoopResult<TSession extends SessionWithTracking<AppSession>, TAgent extends Agent<TSession, AgentOutputType>> =
     | { status: "completed"; result: RunResult<TSession, TAgent>; endedWithToolFailure: boolean }
     | { status: "awaiting_approval"; state: RunState<TSession, TAgent>; interruptions: RunToolApprovalItem[] }
 
-type RunExecutionSettings<TSession extends SessionWithTracking<Session>, TAgent extends Agent<TSession, AgentOutputType>> = {
+type RunExecutionSettings<TSession extends SessionWithTracking<AppSession>, TAgent extends Agent<TSession, AgentOutputType>> = {
     runner: LoopRunner<TSession, TAgent>
     context: TSession
-    memorySession: any
-    sessionInputCallback?: any
+    memorySession: AgentMemorySession
+    sessionInputCallback?: SessionInputCallback
     maxTurns: number
 }
 
@@ -246,5 +249,5 @@ type AgentInitializationParams<TSession> = {
     instructions: string
     model: string
     tools: Tool<TSession>[]
-    modelSettings?: any
+    modelSettings?: ModelSettings
 }
