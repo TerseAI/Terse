@@ -624,7 +624,7 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance> {
                             action: `Approval requested for ${interruption.name}`,
                             integration,
                             target: interruption.name,
-                            details: `The bot is requesting approval to execute: ${interruption.name} with arguments: ${JSON.stringify(interruption.arguments)}`,
+                            details: `The bot is requesting approval to execute: ${interruption.name}`,
                             step_id: stepId,
                             type: RunHistoryActionType.update,
                             isReadOnly: false

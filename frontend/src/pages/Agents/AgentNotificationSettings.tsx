@@ -1,12 +1,11 @@
-import { AlertTriangle, Eye, Pencil, Plus, Trash2 } from "lucide-react"
+import { Eye, Pencil, Plus, Trash2 } from "lucide-react"
 
 import { MultiSelect } from "../../components/MultiSelect"
 import { AddNotificationDestination } from "../../components/Notifications/AddNotificationDestination"
 import { Button } from "../../components/ui/button"
-import { Checkbox } from "../../components/ui/checkbox"
 import { Label } from "../../components/ui/label"
 import { Switch } from "../../components/ui/switch"
-import { useNotificationDestinations } from "../../hooks/api/useNotificationDestinations"
+import { useAuth } from "../../services/auth"
 import { RunHistoryActionType } from "../../shared/RunHistoryTypes"
 import { AgentNotificationSettings as AgentNotificationSettingsType } from "../../shared/types"
 
@@ -16,8 +15,8 @@ export type AgentNotificationSettingsProps = {
 }
 
 function AgentNotificationSettings({ settings, onChange }: AgentNotificationSettingsProps) {
-    const { notificationDestinations, isValidating } = useNotificationDestinations()
-    const hasNoDestinations = !isValidating && (!notificationDestinations || notificationDestinations.length === 0)
+    const { user } = useAuth()
+    const defaultEmail = user?.email || "your account email"
 
     const handleToggleEnabled = (enabled: boolean) => {
         onChange({ ...settings, enabled })
@@ -27,53 +26,38 @@ function AgentNotificationSettings({ settings, onChange }: AgentNotificationSett
         onChange({ ...settings, actionTypes })
     }
 
-    const handleToggleRunFailureNotifications = (checked: boolean) => {
-        onChange({ ...settings, notifyOnRunFailure: checked })
-    }
-
-    const showNoDestinationsWarning = settings.enabled && hasNoDestinations
-
     return (
         <div className="flex flex-col gap-4 p-4 border rounded-lg">
             <div className="flex items-center justify-between">
                 <div className="flex flex-col gap-1">
-                    <div className="flex items-center gap-2">
-                        <Label htmlFor="notifications-toggle" className="text-base font-medium">
-                            Notifications
-                        </Label>
-                        {showNoDestinationsWarning && <AlertTriangle className="size-4 text-yellow-500" />}
-                    </div>
-                    <p className="text-sm text-muted-foreground">Get notified when this agent takes actions or a run fails</p>
+                    <Label htmlFor="notifications-toggle" className="text-base font-medium">
+                        CRUD Notifications
+                    </Label>
+                    <p className="text-sm text-muted-foreground">Optional and off by default. Enable these to get alerts for create, read, update, and delete actions.</p>
                 </div>
                 <Switch id="notifications-toggle" checked={settings.enabled} onCheckedChange={handleToggleEnabled} />
             </div>
-            {showNoDestinationsWarning && (
-                <div className="flex items-center justify-between gap-2 p-3 rounded-md bg-yellow-500/10 border border-yellow-500/20">
-                    <div className="flex items-center gap-2">
-                        <AlertTriangle className="size-4 text-yellow-500 shrink-0" />
-                        <p className="text-sm text-yellow-600 dark:text-yellow-500">No notification destinations configured.</p>
-                    </div>
-                    <AddNotificationDestination
-                        trigger={
-                            <Button variant="outline" size="sm">
-                                <Plus className="size-4" />
-                                Add
-                            </Button>
-                        }
-                    />
+
+            <div className="flex flex-col gap-3 rounded-md border bg-muted/30 p-3">
+                <div className="space-y-1">
+                    <p className="text-sm font-medium">Always-on alerts</p>
+                    <p className="text-sm text-muted-foreground">
+                        Approval requests and run failures are always sent. By default, notifications go to <span className="text-foreground font-medium">{defaultEmail}</span>. Configure Slack to
+                        route notifications there instead.
+                    </p>
                 </div>
-            )}
+                <AddNotificationDestination
+                    trigger={
+                        <Button variant="outline" size="sm" className="self-start">
+                            <Plus className="size-4" />
+                            Configure Slack destination
+                        </Button>
+                    }
+                />
+            </div>
+
             {settings.enabled && (
                 <div className="flex flex-col gap-2">
-                    <div className="flex items-start gap-3 rounded-md border p-3">
-                        <Checkbox id="run-failure-notifications-toggle" checked={settings.notifyOnRunFailure} onCheckedChange={value => handleToggleRunFailureNotifications(value === true)} />
-                        <div className="space-y-1">
-                            <Label htmlFor="run-failure-notifications-toggle" className="text-sm font-medium">
-                                Notify when a run fails
-                            </Label>
-                            <p className="text-sm text-muted-foreground">Send a notification when this agent finishes with a failed run status.</p>
-                        </div>
-                    </div>
                     <Label className="text-sm font-medium">Notify for these action types</Label>
                     <MultiSelect
                         options={EVENT_TYPE_OPTIONS.map(option => ({

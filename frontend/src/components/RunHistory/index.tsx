@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react"
+import { useSearchParams } from "react-router-dom"
 
 import { useRunHistory } from "../../hooks/api/useRunHistory"
+import { BackendProvider } from "../../services/backend"
 import { useRunHistoryChatDrawer } from "../../services/RunHistoryChatDrawerContext"
 import { RunHistoryRecord, RunHistoryStatus } from "../../shared/RunHistoryTypes"
 
@@ -16,10 +18,83 @@ type RunHistoryProps = {
     onTriggerNow?: () => void
 }
 
+const DEEP_LINK_PAGE_SIZE = 20
+const ALL_STATUSES = Object.values(RunHistoryStatus) as RunHistoryStatus[]
+
+type OpenDrawer = (config: { runs: RunHistoryRecord[]; initialRunIndex: number }) => void
+
+function openRunFromList(runId: string, runs: RunHistoryRecord[], openDrawer: OpenDrawer): boolean {
+    const initialRunIndex = runs.findIndex(run => run.id === runId)
+    if (initialRunIndex === -1) return false
+    openDrawer({ runs, initialRunIndex })
+    return true
+}
+
+async function fetchDeepLinkedRun(agentId: string, runId: string): Promise<RunHistoryRecord | null> {
+    const response = await BackendProvider.getRunHistory(agentId, {
+        page: 1,
+        pageSize: DEEP_LINK_PAGE_SIZE,
+        q: runId,
+        status: ALL_STATUSES
+    })
+
+    return response.items.find(run => run.id === runId) ?? null
+}
+
+function useDeepLinkedRun({
+    agentId,
+    runId,
+    runs,
+    openRunId,
+    openDrawer
+}: {
+    agentId: string | null
+    runId: string | null
+    runs: RunHistoryRecord[]
+    openRunId: string | null
+    openDrawer: OpenDrawer
+}) {
+    const attemptedRunIdRef = useRef<string | null>(null)
+
+    useEffect(() => {
+        if (!runId) attemptedRunIdRef.current = null
+    }, [runId])
+
+    useEffect(() => {
+        if (!agentId || !runId || attemptedRunIdRef.current === runId) return
+
+        if (openRunId === runId || openRunFromList(runId, runs, openDrawer)) {
+            attemptedRunIdRef.current = runId
+            return
+        }
+
+        let cancelled = false
+
+        ;(async () => {
+            try {
+                const matchedRun = await fetchDeepLinkedRun(agentId, runId)
+                if (!matchedRun || cancelled) return
+
+                if (openRunFromList(runId, [matchedRun], openDrawer)) {
+                    attemptedRunIdRef.current = runId
+                }
+            } catch (error) {
+                console.error("Failed to load deep-linked run", { agentId, runId, error })
+            }
+        })()
+
+        return () => {
+            cancelled = true
+        }
+    }, [agentId, runId, runs, openRunId, openDrawer])
+}
+
 export default function RunHistory({ agentId, onTriggerNow }: RunHistoryProps) {
+    const [searchParams] = useSearchParams()
     const [currentPage, setCurrentPage] = useState(1)
     const [runsPerPage, setRunsPerPage] = useState(10)
-    const { openDrawer } = useRunHistoryChatDrawer()
+    const { openDrawer, openRunId } = useRunHistoryChatDrawer()
+    const deepLinkedRunId = searchParams.get("runId")?.trim() || null
 
     const [selectedStatuses, setSelectedStatuses] = useState<Set<RunHistoryStatus>>(
         new Set([RunHistoryStatus.SUCCESS, RunHistoryStatus.FAILED, RunHistoryStatus.IN_PROGRESS, RunHistoryStatus.AWAITING_APPROVAL])
@@ -85,6 +160,15 @@ export default function RunHistory({ agentId, onTriggerNow }: RunHistoryProps) {
     const totalPages = Math.ceil(total / runsPerPage) || 1
     const startIndex = (currentPage - 1) * runsPerPage
     const paginatedRuns = filteredRuns // server provides paginated items already
+
+    useDeepLinkedRun({
+        agentId,
+        runId: deepLinkedRunId,
+        runs: paginatedRuns,
+        openRunId,
+        openDrawer
+    })
+
     const toggleStatus = (status: RunHistoryStatus) => {
         const next = new Set(selectedStatuses)
         next.has(status) ? next.delete(status) : next.add(status)
@@ -148,10 +232,7 @@ export default function RunHistory({ agentId, onTriggerNow }: RunHistoryProps) {
                                     key={run.id}
                                     run={run}
                                     onViewChat={runId => {
-                                        openDrawer({
-                                            runs: paginatedRuns,
-                                            initialRunIndex: paginatedRuns.findIndex(run => run.id === runId)
-                                        })
+                                        openRunFromList(runId, paginatedRuns, openDrawer)
                                     }}
                                 />
                             ))}

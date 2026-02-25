@@ -53,6 +53,7 @@ export async function getAllRunHistory(req: Request, res: Response) {
 
         if (params.q) {
             where.OR = [
+                { id: { contains: params.q, mode: "insensitive" } },
                 { trigger_title: { contains: params.q, mode: "insensitive" } },
                 { event: { contains: params.q, mode: "insensitive" } },
                 { trigger_source: { contains: params.q, mode: "insensitive" } },
@@ -172,6 +173,7 @@ export async function getRunHistory(req: Request, res: Response) {
         if (params.q) {
             // Search across multiple relevant fields
             where.OR = [
+                { id: { contains: params.q, mode: "insensitive" } },
                 { trigger_title: { contains: params.q, mode: "insensitive" } },
                 { event: { contains: params.q, mode: "insensitive" } },
                 { trigger_source: { contains: params.q, mode: "insensitive" } },
