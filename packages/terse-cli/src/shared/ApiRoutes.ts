@@ -234,7 +234,8 @@ export const ApiRoutes = {
         ME: "/sdk/me",
         SAMPLE_EVENTS: "/sdk/sample-events",
         TOOL_EXECUTE: "/sdk/tool-execute",
-        TOOL_DEFINITIONS: "/sdk/tool-definitions"
+        TOOL_DEFINITIONS: "/sdk/tool-definitions",
+        AGENT_RUN: "/sdk/agent-run"
     },
 
     // Webhooks routes

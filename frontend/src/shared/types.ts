@@ -1,6 +1,6 @@
 import { ConfigInstance, ConfigType } from "./Configs"
 import { IntegrationType } from "./Integrations"
-import { RunHistoryActionType, RunHistoryRecordWithAgent } from "./RunHistoryTypes"
+import { RunHistoryAction, RunHistoryActionType, RunHistoryRecordWithAgent } from "./RunHistoryTypes"
 import { Project, Ticket } from "./TicketSystem"
 
 export type Role = "admin" | "user"
@@ -558,3 +558,54 @@ export interface SerializedEvent {
     formattedContent: string
     debugLog: string
 }
+
+export type SdkAgentRunEventPayload = {
+    integrationType: IntegrationType
+    formattedContent: string
+    debugLog: string
+}
+
+export type SdkAgentSkillPayload = {
+    integrationType: IntegrationType
+    id?: string
+}
+
+export type SdkAgentRunOptionsPayload = {
+    maxTurns?: number
+    requireApproval?: boolean
+}
+
+export type SdkAgentRunRequestBody = {
+    prompt?: string
+    event?: Partial<SdkAgentRunEventPayload>
+    skills?: SdkAgentSkillPayload[]
+    options?: SdkAgentRunOptionsPayload
+}
+
+export type SdkAgentRunResponseBody = {
+    success: boolean
+    error?: string
+    details?: string[]
+    contract?: {
+        responseMode: "streaming"
+        supportsInterruptions: boolean
+    }
+    normalizedRequest?: {
+        prompt: string
+        event: SdkAgentRunEventPayload
+        skills: SdkAgentSkillPayload[]
+        options: {
+            maxTurns: number
+            requireApproval: boolean
+        }
+    }
+}
+
+export type SdkAgentStreamEvent =
+    | { type: "text"; text: string }
+    | { type: "tool_call_params"; toolCallParams: string }
+    | { type: "tool_call_started"; toolCallStarted: string }
+    | { type: "tool_call_completed"; toolCallCompleted: string }
+    | { type: "action"; action: RunHistoryAction }
+    | { type: "error"; message: string }
+    | { type: "done" }

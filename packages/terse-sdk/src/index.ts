@@ -3,7 +3,9 @@ declare const process: { env: Record<string, string | undefined> }
 import type { InputEvent } from "./types.js"
 import type { ConfigInstance } from "./shared/Configs.js"
 import type { RunHistoryAction } from "./shared/RunHistoryTypes.js"
+import type { SdkAgentRunRequestBody, SdkAgentRunResponseBody, SdkAgentSkillPayload, SdkAgentStreamEvent } from "./shared/types.js"
 import { IntegrationType } from "./shared/Integrations.js"
+import { ApiRoutes } from "./shared/ApiRoutes.js"
 // Re-export SDK-specific types
 export type { InputEvent, ToolboxEntry } from "./types.js"
 
@@ -44,6 +46,15 @@ export {
     WorkOSInputConfig,
     AttioOutputConfig
 } from "./shared/Configs.js"
+
+export type {
+    SdkAgentRunEventPayload,
+    SdkAgentSkillPayload,
+    SdkAgentRunOptionsPayload,
+    SdkAgentRunRequestBody,
+    SdkAgentRunResponseBody,
+    SdkAgentStreamEvent
+} from "./shared/types.js"
 
 export { IntegrationType } from "./shared/Integrations.js"
 
@@ -90,13 +101,70 @@ export class Terse {
 
 export class TerseAgent {
     readonly skills: ConfigInstance[]
+    private readonly apiBaseUrl: string
 
-    constructor(skills: ConfigInstance[] = []) {
+    constructor(skills: ConfigInstance[] = [], apiBaseUrl: string = "http://localhost:3001") {
         this.skills = skills
+        this.apiBaseUrl = apiBaseUrl
     }
 
     async *run(prompt: string, event: InputEvent): AsyncGenerator<TerseAgentResult> {
-        yield new TextResult("Hello, world!")
+        const apiKey = process.env.TERSE_API_KEY
+        if (!apiKey) {
+            throw new Error("TERSE_API_KEY environment variable is not set. Cannot run agent without authentication.")
+        }
+
+        const skills: SdkAgentSkillPayload[] = this.skills.map(skill => ({
+            integrationType: skill.integrationType,
+            id: skill.integrationId || undefined
+        }))
+
+        const requestBody: SdkAgentRunRequestBody = {
+            prompt,
+            event: {
+                integrationType: event.integrationType,
+                formattedContent: event.formatForAgentRunner(),
+                debugLog: event.debugLog()
+            },
+            skills
+        }
+
+        const res = await fetch(`${this.apiBaseUrl}${ApiRoutes.SDK.AGENT_RUN}`, {
+            method: "POST",
+            headers: {
+                Authorization: `Bearer ${apiKey}`,
+                "Content-Type": "application/json",
+                Accept: "text/event-stream"
+            },
+            body: JSON.stringify(requestBody)
+        })
+
+        const contentType = res.headers.get("content-type") ?? ""
+        if (contentType.includes("text/event-stream")) {
+            if (!res.body) {
+                throw new Error("Agent run stream did not provide a response body.")
+            }
+            for await (const eventData of iterateSseDataLines(res.body)) {
+                const parsed = safeParseStreamEvent(eventData)
+                if (!parsed) continue
+                if (parsed.type === "done") {
+                    return
+                }
+                if (parsed.type === "error") {
+                    throw new Error(parsed.message)
+                }
+                yield mapStreamEventToResult(parsed)
+            }
+            return
+        }
+
+        const data = (await res.json()) as SdkAgentRunResponseBody
+        if (!res.ok || !data.success) {
+            const details = data.details?.length ? ` (${data.details.join("; ")})` : ""
+            throw new Error(`${data.error ?? "Agent run failed"}${details}`)
+        }
+
+        yield new TextResult("Agent run request accepted.")
         return
     }
 
@@ -105,7 +173,7 @@ export class TerseAgent {
         if (!apiKey) {
             throw new Error("TERSE_API_KEY environment variable is not set. Cannot execute tools without authentication.")
         }
-        const res = await fetch("http://localhost:3001/sdk/tool-execute", {
+        const res = await fetch(`${this.apiBaseUrl}${ApiRoutes.SDK.TOOL_EXECUTE}`, {
             method: "POST",
             headers: {
                 Authorization: `Bearer ${apiKey}`,
@@ -180,5 +248,67 @@ export class ActionResult implements TerseAgentResult {
     constructor(action: Action) {
         this.type = EventType.ACTION
         this.action = action
+    }
+}
+
+async function* iterateSseDataLines(stream: ReadableStream<Uint8Array>): AsyncGenerator<string> {
+    const reader = stream.getReader()
+    const decoder = new TextDecoder()
+    let buffer = ""
+
+    try {
+        while (true) {
+            const { done, value } = await reader.read()
+            if (done) break
+            buffer += decoder.decode(value, { stream: true })
+
+            let separatorIndex = buffer.indexOf("\n\n")
+            while (separatorIndex !== -1) {
+                const rawEvent = buffer.slice(0, separatorIndex)
+                buffer = buffer.slice(separatorIndex + 2)
+
+                const dataLines = rawEvent
+                    .split("\n")
+                    .filter(line => line.startsWith("data:"))
+                    .map(line => line.slice(5).trim())
+                    .filter(Boolean)
+
+                if (dataLines.length > 0) {
+                    yield dataLines.join("\n")
+                }
+
+                separatorIndex = buffer.indexOf("\n\n")
+            }
+        }
+    } finally {
+        reader.releaseLock()
+    }
+}
+
+function safeParseStreamEvent(raw: string): SdkAgentStreamEvent | null {
+    try {
+        return JSON.parse(raw) as SdkAgentStreamEvent
+    } catch {
+        return null
+    }
+}
+
+function mapStreamEventToResult(event: SdkAgentStreamEvent): TerseAgentResult {
+    switch (event.type) {
+        case "text":
+            return new TextResult(event.text)
+        case "tool_call_params":
+            return new ToolCallParamsResult(event.toolCallParams)
+        case "tool_call_started":
+            return new ToolCallStartedResult(event.toolCallStarted)
+        case "tool_call_completed":
+            return new ToolCallCompletedResult(event.toolCallCompleted)
+        case "action":
+            return new ActionResult(event.action)
+        case "done":
+        case "error":
+            return new TextResult("")
+        default:
+            return new TextResult("")
     }
 }
