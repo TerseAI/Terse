@@ -85,7 +85,8 @@ export const ToolName = {
     WORKOS_GET_USER: "getWorkOSUser",
 
     // Terse
-    WEB_SEARCH: "web_search"
+    WEB_SEARCH: "web_search",
+    IMAGE_EDIT: "image_edit"
 } as const
 
 /**

@@ -106,4 +106,9 @@ BEST PRACTICES:
 - Prefer including both \`body\` and \`html_body\` for client compatibility
 - Include relevant context in replies by referencing the original email
 - Always share the draft URL so the user can find and review the draft
+
+USER-FACING RESPONSE STYLE:
+- After creating a draft, confirm the outcome succinctly in user-facing language.
+- Do NOT mention low-level implementation details unless explicitly asked (for example: CID/content-id, MIME/base64 internals, replacement image URLs, attachment plumbing).
+- If the user explicitly asks for technical/debug details, you may provide those details.
 `.trim()

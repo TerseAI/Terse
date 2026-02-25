@@ -2,9 +2,11 @@ import { Octokit } from "@octokit/rest"
 
 import { getAppInstallationsForUser } from "../../integrations/GithubIntegration"
 import { GithubEvent } from "../../integrations/GithubIntegration"
+import { getPullRequestFiles } from "../../integrations/GithubIntegration"
 import logger from "../../logger"
 import { db } from "../../prismaClient"
 import type { GithubAppUnifiedEventRequest } from "../../routes/GithubTypes"
+import { StoredFile } from "../../services/FileStorageService"
 import { HydratorType } from "../../types/rag"
 import { HydrationContext, Hydrator, Identifiable } from "../Hydrator"
 
@@ -118,7 +120,8 @@ export class GithubEventHydrator extends Hydrator<GithubEvent> {
                         user: { login: pr.user?.login ?? "", email: (pr.user as any)?.email }
                     }
                 }
-                return new GithubEvent(eventData, [])
+                const storedFiles: StoredFile[] = await getPullRequestFiles(eventData, accessToken, installationId.toString())
+                return new GithubEvent(eventData, storedFiles)
             }
 
             if (type === "commit") {

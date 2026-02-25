@@ -154,6 +154,14 @@ class WebChatInterface extends ChatInterface {
         if (toolCompleteData) {
             const toolCompleteEvent = createToolCallCompleteEvent(toolCompleteData, [])
             this.emitEvent(toolCompleteEvent)
+            if (toolCompleteData.snippets?.length) {
+                for (const snippet of toolCompleteData.snippets) {
+                    this.emitEvent({
+                        type: "Snippet",
+                        snippet
+                    })
+                }
+            }
             return
         }
     }
