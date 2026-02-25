@@ -50,7 +50,9 @@ Examples — single operation:
 - Delete: {"operation": "delete", "block_id": "abc123"}
 
 Examples — batch (array):
-[{"operation": "append", "blocks": [...]}, {"operation": "update", "block_id": "abc", "block": {...}}, {"operation": "delete", "block_id": "def"}]`,
+[{"operation": "append", "blocks": [...]}, {"operation": "update", "block_id": "abc", "block": {...}}, {"operation": "delete", "block_id": "def"}]
+
+Error recovery: If Notion returns an error that suggests JSON/body/validation incompatibility, retry. First fix the specific issue mentioned in the error; if that is unclear or still failing, retry with a simpler payload (fewer blocks, simpler block types like plain paragraphs).`,
     parameters: z.object({
         integrationId: z.string().describe("The integration ID of the Notion workspace to use."),
         pageId: z.string().describe("The Notion page ID to modify."),
@@ -76,7 +78,9 @@ Append with after_block_id inserts after that block; omit for end of page/parent
                 throw new Error("operation_json must be an object or array of objects")
             }
         } catch (error) {
-            throw new Error("Invalid JSON in operation_json parameter. Ensure operation_json is a valid JSON string")
+            throw new Error(
+                "Invalid JSON in operation_json parameter. Ensure operation_json is strict valid JSON (for example: straight quotes, escaped inner quotes, no trailing commas), then retry with a simpler payload if needed."
+            )
         }
 
         const ops: Op[] = Array.isArray(parsed) ? parsed : [parsed]
@@ -268,6 +272,7 @@ Append with after_block_id inserts after that block; omit for end of page/parent
                 }
             } catch (error: any) {
                 failedAtIndex = i
+                const errorMessage = error instanceof Error ? error.message : String(error)
                 return {
                     success: false,
                     failed_at_index: i,
@@ -275,8 +280,10 @@ Append with after_block_id inserts after that block; omit for end of page/parent
                     actions: allActions,
                     block_ids: allBlockIds,
                     total_operations: ops.length,
-                    error: error.message,
-                    hint: "Check that block structure matches Notion API format and block_id is valid"
+                    error: errorMessage,
+                    hint: "Check that block structure matches Notion API format and block_id is valid.",
+                    retry_instructions:
+                        "Use the Notion error message to decide whether to retry. If it clearly indicates JSON/body/validation incompatibility, retry by first fixing the exact issue mentioned. If the fix is not obvious or still fails, retry with a simpler payload (fewer blocks, plain paragraph blocks, minimal formatting)."
                 }
             }
         }
