@@ -65,5 +65,5 @@ export async function test(jobName?: string): Promise<void> {
         })),
     })
 
-    await executeJob(job, events[choice])
+    await executeJob(job, events[choice], { verbose: true })
 }
