@@ -7,6 +7,7 @@ import logger from "../../../logger"
 import { IntegrationType } from "../../../shared/Integrations"
 import type { ToolOutputByName } from "../../../shared/types"
 import { ToolName } from "../../../tools/ToolNames"
+import { toolOutput } from "../../../tools/toolOutput"
 import { Session } from "../../../types/session"
 import { createGitHubClient, getFileContents, getGitHubAccessToken, parseRepoFullName } from "../githubApiClient"
 
@@ -142,10 +143,10 @@ Note: This reads from the default branch (main/master). Large files may be trunc
                 isReadOnly: true
             }
 
-            return {
+            return toolOutput("readGitHubFile", {
                 ...response,
                 actions: [action]
-            }
+            })
         } catch (error: any) {
             const errorMessage = error instanceof Error ? error.message : String(error)
             logger.error("[GitHub KB] readGitHubFile - Failed", {

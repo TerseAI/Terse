@@ -9,6 +9,7 @@ import { db } from "../../../prismaClient"
 import { IntegrationType } from "../../../shared/Integrations"
 import type { ToolOutputByName } from "../../../shared/types"
 import { ToolName } from "../../../tools/ToolNames"
+import { toolOutput } from "../../../tools/toolOutput"
 import { createNeedsApprovalFunction } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
 import { isValidEpochTimestamp } from "../../../utility/strings"
@@ -164,7 +165,7 @@ export const slackSendMessageTool = tool<z.ZodObject<any>, SessionWithTracking<S
                 blocksCount: blocks?.length
             })
 
-            return {
+            return toolOutput("slack_send_message", {
                 success: true,
                 message_ts: result.ts,
                 channel: channelName,
@@ -172,7 +173,7 @@ export const slackSendMessageTool = tool<z.ZodObject<any>, SessionWithTracking<S
                 summary: `${messageType} message sent to ${channelName}: "${messagePreview}"`,
                 has_blocks: !!blocks,
                 actions: [action]
-            }
+            })
         } catch (error: any) {
             logger.error(`[Slack Output] Failed to send message`, {
                 error,

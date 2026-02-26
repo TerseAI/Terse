@@ -10,6 +10,7 @@ import logger from "../../../logger"
 import { IntegrationType } from "../../../shared/Integrations"
 import type { ToolOutputByName } from "../../../shared/types"
 import { ToolName } from "../../../tools/ToolNames"
+import { toolOutput } from "../../../tools/toolOutput"
 import { Session } from "../../../types/session"
 import { createGitHubClient, getGitHubAccessToken, getPullRequestDiff, parseRepoFullName } from "../githubApiClient"
 
@@ -269,10 +270,10 @@ You can optionally provide high-level context about what you're looking for in t
                 isReadOnly: true
             }
 
-            return {
+            return toolOutput("summarizeGitHubPullRequestDiff", {
                 ...response,
                 actions: [action]
-            }
+            })
         } catch (error: any) {
             const errorMessage = error instanceof Error ? error.message : String(error)
             logger.error("[GitHub KB] summarizeGitHubPullRequestDiff - Failed", {

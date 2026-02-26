@@ -8,6 +8,7 @@ import logger from "../../../logger"
 import { IntegrationType } from "../../../shared/Integrations"
 import type { ToolOutputByName } from "../../../shared/types"
 import { ToolName } from "../../../tools/ToolNames"
+import { toolOutput } from "../../../tools/toolOutput"
 import { formatError } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
 
@@ -49,12 +50,12 @@ Returns non-bot members. Optionally filter by name with the query parameter.`,
                 type: RunHistoryActionType.read
             }
 
-            return {
+            return toolOutput("slack_list_users", {
                 success: true,
                 users: users.map(u => ({ id: u.id, name: u.name })),
                 count: users.length,
                 actions: [action]
-            }
+            })
         } catch (error: unknown) {
             const errorMessage = error instanceof Error ? error.message : String(error)
             logger.error("❌ Error listing Slack users", { error: errorMessage, integrationId })

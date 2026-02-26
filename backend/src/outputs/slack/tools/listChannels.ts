@@ -9,6 +9,7 @@ import { db } from "../../../prismaClient"
 import { IntegrationType } from "../../../shared/Integrations"
 import type { ToolOutputByName } from "../../../shared/types"
 import { ToolName } from "../../../tools/ToolNames"
+import { toolOutput } from "../../../tools/toolOutput"
 import { formatError } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
 
@@ -99,14 +100,14 @@ Supports pagination: if the response includes nextCursor and hasMore, pass nextC
             }
 
             const nextCursor = (result as { response_metadata?: { next_cursor?: string } }).response_metadata?.next_cursor ?? null
-            return {
+            return toolOutput("slack_list_channels", {
                 success: true,
                 channels,
                 count: channels.length,
                 nextCursor,
                 hasMore: !!nextCursor,
                 actions: [action]
-            }
+            })
         } catch (error: unknown) {
             const errorMessage = error instanceof Error ? error.message : String(error)
             logger.error("❌ Error listing Slack channels", { error: errorMessage, integrationId })

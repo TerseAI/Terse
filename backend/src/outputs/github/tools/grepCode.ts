@@ -7,6 +7,7 @@ import logger from "../../../logger"
 import { IntegrationType } from "../../../shared/Integrations"
 import type { ToolOutputByName } from "../../../shared/types"
 import { ToolName } from "../../../tools/ToolNames"
+import { toolOutput } from "../../../tools/toolOutput"
 import { Session } from "../../../types/session"
 import { createGitHubClient, getGitHubAccessToken, searchCode } from "../githubApiClient"
 
@@ -169,10 +170,10 @@ This is more precise than semantic search - use it when you know exactly what te
                 isReadOnly: true
             }
 
-            return {
+            return toolOutput("grepGitHubCode", {
                 ...response,
                 actions: [action]
-            }
+            })
         } catch (error: any) {
             const errorMessage = error instanceof Error ? error.message : String(error)
             logger.error("[GitHub KB] grepGitHubCode - Failed", {

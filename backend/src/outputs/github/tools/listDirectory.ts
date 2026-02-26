@@ -7,6 +7,7 @@ import logger from "../../../logger"
 import { IntegrationType } from "../../../shared/Integrations"
 import type { ToolOutputByName } from "../../../shared/types"
 import { ToolName } from "../../../tools/ToolNames"
+import { toolOutput } from "../../../tools/toolOutput"
 import { Session } from "../../../types/session"
 import { createGitHubClient, getBranch, getGitHubAccessToken, getRepositoryInfo, getTree, listDirectory, parseRepoFullName } from "../githubApiClient"
 
@@ -145,10 +146,10 @@ Start with the root directory (empty path) to see the top-level structure, then 
                     isReadOnly: true
                 }
 
-                return {
+                return toolOutput("listGitHubDirectory", {
                     ...response,
                     actions: [action]
-                }
+                })
             } else {
                 // Use Contents API for non-recursive listing
                 const entries = await listDirectory(client, owner, repo, path)
@@ -210,10 +211,10 @@ Start with the root directory (empty path) to see the top-level structure, then 
                     isReadOnly: true
                 }
 
-                return {
+                return toolOutput("listGitHubDirectory", {
                     ...response,
                     actions: [action]
-                }
+                })
             }
         } catch (error: any) {
             const errorMessage = error instanceof Error ? error.message : String(error)

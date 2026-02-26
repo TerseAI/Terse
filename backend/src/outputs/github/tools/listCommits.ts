@@ -7,6 +7,7 @@ import logger from "../../../logger"
 import { IntegrationType } from "../../../shared/Integrations"
 import type { ToolOutputByName } from "../../../shared/types"
 import { ToolName } from "../../../tools/ToolNames"
+import { toolOutput } from "../../../tools/toolOutput"
 import { Session } from "../../../types/session"
 import { createGitHubClient, getGitHubAccessToken, listCommits, parseRepoFullName } from "../githubApiClient"
 
@@ -141,10 +142,10 @@ The tool returns commit details including message, author, date, and SHA.`,
                 isReadOnly: true
             }
 
-            return {
+            return toolOutput("listGitHubCommits", {
                 ...response,
                 actions: [action]
-            }
+            })
         } catch (error: any) {
             const errorMessage = error instanceof Error ? error.message : String(error)
             logger.error("[GitHub KB] listGitHubCommits - Failed", {

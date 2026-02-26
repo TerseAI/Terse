@@ -7,6 +7,7 @@ import logger from "../../../logger"
 import { IntegrationType } from "../../../shared/Integrations"
 import type { ToolOutputByName } from "../../../shared/types"
 import { ToolName } from "../../../tools/ToolNames"
+import { toolOutput } from "../../../tools/toolOutput"
 import { Session } from "../../../types/session"
 import { createGitHubClient, getGitHubAccessToken, searchCode } from "../githubApiClient"
 
@@ -170,10 +171,10 @@ Tips:
                 action
             })
 
-            return {
+            return toolOutput("searchGitHubCode", {
                 ...response,
                 actions: [action]
-            }
+            })
         } catch (error: any) {
             const errorMessage = error instanceof Error ? error.message : String(error)
             logger.error("[GitHub KB] searchGitHubCode - Failed", {

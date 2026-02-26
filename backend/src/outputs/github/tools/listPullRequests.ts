@@ -7,6 +7,7 @@ import logger from "../../../logger"
 import { IntegrationType } from "../../../shared/Integrations"
 import type { ToolOutputByName } from "../../../shared/types"
 import { ToolName } from "../../../tools/ToolNames"
+import { toolOutput } from "../../../tools/toolOutput"
 import { Session } from "../../../types/session"
 import { createGitHubClient, getGitHubAccessToken, listPullRequests, parseRepoFullName } from "../githubApiClient"
 
@@ -164,10 +165,10 @@ Dates are specified in YYYY-MM-DD format (e.g., "2024-01-15"). The since date is
                 isReadOnly: true
             }
 
-            return {
+            return toolOutput("listGitHubPullRequests", {
                 ...response,
                 actions: [action]
-            }
+            })
         } catch (error: any) {
             const errorMessage = error instanceof Error ? error.message : String(error)
             logger.error("[GitHub KB] listGitHubPullRequests - Failed", {
