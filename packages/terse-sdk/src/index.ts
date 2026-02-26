@@ -179,6 +179,16 @@ export class TerseAgent {
         return
     }
 
+    /**
+     * Runs the agent to completion and discards streamed output.
+     * Useful when you only care that the run finished (or threw).
+     */
+    async runAndWait(prompt: string, event?: InputEvent): Promise<void> {
+        for await (const _chunk of this.run(prompt, event)) {
+            // Intentionally drain the stream without returning output.
+        }
+    }
+
     async executeTool(toolName: string, params: Record<string, unknown> = {}): Promise<unknown> {
         const apiKey = process.env.TERSE_API_KEY
         if (!apiKey) {
