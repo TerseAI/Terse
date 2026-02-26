@@ -58,10 +58,21 @@ export async function generate(): Promise<void> {
         activeTypes = await fetchWithAuth<IntegrationType[]>(ApiRoutes.INTEGRATIONS.ACTIVE, apiKey)
     } catch (error: any) {
         spinner.fail("Failed to fetch integrations")
-        if (error.message?.includes("401")) {
-            console.error(chalk.red("\n  Invalid API key. Check your TERSE_API_KEY in .env\n"))
+        const message = String(error?.message || "")
+        const isAuthError =
+            message.includes("401") ||
+            message.includes("403") ||
+            message.toLowerCase().includes("authentication failed") ||
+            message.toLowerCase().includes("unauthorized") ||
+            message.toLowerCase().includes("forbidden")
+
+        if (isAuthError) {
+            console.error(
+                chalk.red("\n  Authentication failed: your TERSE_API_KEY was rejected.\n") +
+                chalk.dim("  Update TERSE_API_KEY in .env and try again.\n")
+            )
         } else {
-            console.error(chalk.red(`\n  ${error.message}\n`))
+            console.error(chalk.red(`\n  ${message}\n`))
         }
         process.exit(1)
     }

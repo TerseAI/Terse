@@ -1,19 +1,22 @@
 import {
     Terse,
-    TimeTriggerConfig,
-    GitHubConfig,
 } from "terse-sdk"
-import type { InputEvent, CreateJobParameters } from "terse-sdk"
+import type { CreateJobParameters } from "terse-sdk"
+import {
+    ScheduleTrigger,
+    TerseSkill,
+    GithubSkill
+} from "./terse.generated"
 
 const client = new Terse()
 
 const job: CreateJobParameters = {
     name: "{{PROJECT_NAME}}",
-    triggers: [new TimeTriggerConfig("0 0 * * *")],
-    skills: [new GitHubConfig("github")],
-    onTrigger: async (event: InputEvent, Agent) => {
+    triggers: [new ScheduleTrigger("0 0 * * *")],
+    skills: [new GithubSkill()],
+    onTrigger: async (event, agent) => {
         // Your job logic here
-        const result = Agent.run("Summarize the latest changes", event)
+        const result = agent.run("Summarize the latest changes", event)
 
         for await (const chunk of result) {
             console.log(chunk)

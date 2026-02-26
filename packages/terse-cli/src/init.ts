@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url"
 import ora from "ora"
 import chalk from "chalk"
 import { input } from "@inquirer/prompts"
+import { generate } from "./generate.js"
 
 const execAsync = promisify(exec)
 
@@ -70,7 +71,7 @@ export async function init(projectName?: string): Promise<void> {
     const envExists = fs.existsSync(path.join(targetDir, ".env"))
 
     try {
-        await execAsync(`terse generate`, { cwd: targetDir })
+        await generate()
         spinner.succeed(`Generated code`)
     } catch {
         spinner.warn(`Failed to generate code. Run ${chalk.cyan(`$terse generate`)} manually.`)
