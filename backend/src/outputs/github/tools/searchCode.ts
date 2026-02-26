@@ -5,6 +5,7 @@ import { z } from "zod"
 import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
 import logger from "../../../logger"
 import { IntegrationType } from "../../../shared/Integrations"
+import type { ToolOutputByName } from "../../../shared/types"
 import { ToolName } from "../../../tools/ToolNames"
 import { Session } from "../../../types/session"
 import { createGitHubClient, getGitHubAccessToken, searchCode } from "../githubApiClient"
@@ -13,7 +14,7 @@ import { createGitHubClient, getGitHubAccessToken, searchCode } from "../githubA
  * Tool for semantic code search in GitHub repositories.
  * Uses GitHub's Code Search API to find code by meaning, function names, classes, etc.
  */
-export const searchGitHubCodeTool = tool({
+export const searchGitHubCodeTool = tool<z.ZodObject<any>, SessionWithTracking<Session>, ToolOutputByName["searchGitHubCode"]>({
     name: ToolName.GITHUB_SEARCH_CODE,
     description: `Search GitHub repositories for code by SEMANTIC MEANING (conceptual search). Use this when you DON'T know the exact code text.
 
@@ -149,7 +150,7 @@ Tips:
             logger.debug("[GitHub KB] searchGitHubCode - Full response", { response })
 
             // Build URL with repository filter
-            const repoFilter = repositoryNames.map(repo => `repo:${repo}`).join(" ")
+            const repoFilter = repositoryNames.map((repo: string) => `repo:${repo}`).join(" ")
             const urlQuery = `${enhancedQuery} ${repoFilter}`
             const searchUrl = `https://github.com/search?q=${encodeURIComponent(urlQuery)}&type=code`
 

@@ -7,11 +7,12 @@ import { initializeSlackWebClient } from "../../../integrations/SlackClient"
 import logger from "../../../logger"
 import { db } from "../../../prismaClient"
 import { IntegrationType } from "../../../shared/Integrations"
+import type { ToolOutputByName } from "../../../shared/types"
 import { ToolName } from "../../../tools/ToolNames"
 import { formatError } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
 
-export const slackReadConversationTool = tool({
+export const slackReadConversationTool = tool<z.ZodObject<any>, SessionWithTracking<Session>, ToolOutputByName["slack_read_conversation"]>({
     name: ToolName.SLACK_READ_CONVERSATION,
     description: `Read message history from a Slack channel or DM.
 Use the channel ID from slack_list_channels. Supports public channels, private channels, and DMs.

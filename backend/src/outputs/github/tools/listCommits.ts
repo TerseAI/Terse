@@ -5,6 +5,7 @@ import { z } from "zod"
 import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
 import logger from "../../../logger"
 import { IntegrationType } from "../../../shared/Integrations"
+import type { ToolOutputByName } from "../../../shared/types"
 import { ToolName } from "../../../tools/ToolNames"
 import { Session } from "../../../types/session"
 import { createGitHubClient, getGitHubAccessToken, listCommits, parseRepoFullName } from "../githubApiClient"
@@ -12,7 +13,7 @@ import { createGitHubClient, getGitHubAccessToken, listCommits, parseRepoFullNam
 /**
  * Tool for listing commits in GitHub repositories within a time window.
  */
-export const listGitHubCommitsTool = tool({
+export const listGitHubCommitsTool = tool<z.ZodObject<any>, SessionWithTracking<Session>, ToolOutputByName["listGitHubCommits"]>({
     name: ToolName.GITHUB_LIST_COMMITS,
     description: `List commits in GitHub repositories within a time window. Use this to:
 - Review recent changes and development activity

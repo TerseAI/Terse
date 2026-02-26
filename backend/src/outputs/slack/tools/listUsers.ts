@@ -6,11 +6,12 @@ import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
 import { fetchSlackUsersForIntegration } from "../../../integrations/SlackIntegration"
 import logger from "../../../logger"
 import { IntegrationType } from "../../../shared/Integrations"
+import type { ToolOutputByName } from "../../../shared/types"
 import { ToolName } from "../../../tools/ToolNames"
 import { formatError } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
 
-export const slackListUsersTool = tool({
+export const slackListUsersTool = tool<z.ZodObject<any>, SessionWithTracking<Session>, ToolOutputByName["slack_list_users"]>({
     name: ToolName.SLACK_LIST_USERS,
     description: `List Slack workspace users (id and name). Use this to resolve user IDs to names when needed.
 Returns non-bot members. Optionally filter by name with the query parameter.`,

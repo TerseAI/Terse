@@ -7,11 +7,12 @@ import { initializeSlackWebClient } from "../../../integrations/SlackClient"
 import logger from "../../../logger"
 import { db } from "../../../prismaClient"
 import { IntegrationType } from "../../../shared/Integrations"
+import type { ToolOutputByName } from "../../../shared/types"
 import { ToolName } from "../../../tools/ToolNames"
 import { formatError } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
 
-export const slackListChannelsTool = tool({
+export const slackListChannelsTool = tool<z.ZodObject<any>, SessionWithTracking<Session>, ToolOutputByName["slack_list_channels"]>({
     name: ToolName.SLACK_LIST_CHANNELS,
     description: `List available Slack channels and conversations (public, private, DMs, multi-person DMs) that the integration can access.
 Use this to discover channel IDs before reading conversation history.

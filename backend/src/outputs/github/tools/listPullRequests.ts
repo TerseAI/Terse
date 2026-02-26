@@ -5,6 +5,7 @@ import { z } from "zod"
 import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
 import logger from "../../../logger"
 import { IntegrationType } from "../../../shared/Integrations"
+import type { ToolOutputByName } from "../../../shared/types"
 import { ToolName } from "../../../tools/ToolNames"
 import { Session } from "../../../types/session"
 import { createGitHubClient, getGitHubAccessToken, listPullRequests, parseRepoFullName } from "../githubApiClient"
@@ -31,7 +32,7 @@ const calculateSummary = (prs: Array<{ merged: boolean; state: string }>) => {
     }
 }
 
-export const listGitHubPullRequestsTool = tool({
+export const listGitHubPullRequestsTool = tool<z.ZodObject<any>, SessionWithTracking<Session>, ToolOutputByName["listGitHubPullRequests"]>({
     name: ToolName.GITHUB_LIST_PULL_REQUESTS,
     description: `List pull requests in GitHub repositories within a time window. Use this to:
 - Find recently merged PRs to understand recent changes
@@ -108,13 +109,13 @@ Dates are specified in YYYY-MM-DD format (e.g., "2024-01-15"). The since date is
             const formattedResults = results.items.map(pr => ({
                 number: pr.number,
                 title: pr.title,
-                description: pr.body,
+                description: pr.body ?? "",
                 author: pr.author,
                 state: pr.state,
                 merged: pr.merged,
-                mergedAt: pr.mergedAt,
+                mergedAt: pr.mergedAt ?? undefined,
                 createdAt: pr.createdAt,
-                closedAt: pr.closedAt,
+                closedAt: pr.closedAt ?? undefined,
                 labels: pr.labels,
                 baseBranch: pr.baseBranch,
                 headBranch: pr.headBranch,
