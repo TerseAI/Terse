@@ -466,8 +466,8 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance> exte
     }
 
     protected getAgentInitializationParams() {
-        const deps: SystemPromptBuilderDependencies<T, TConfig> = {
-            session: this.session,
+        const deps: SystemPromptBuilderDependencies<SessionWithTracking<T>, TConfig> = {
+            session: this.getToolContext(),
             agent: this.agentConfig,
             outputs: this.outputs
         }
