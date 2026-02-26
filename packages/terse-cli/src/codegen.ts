@@ -657,7 +657,7 @@ function jsonSchemaToTs(schema: JsonSchema, indent: number): string {
 function generateToolsSection(tools: ToolDefinition[], input: CodegenInput): SectionResult {
     if (tools.length === 0) return EMPTY_SECTION
 
-    const imports = new Set(["TerseAgent"])
+    const imports = new Set(["TerseAgent", "ToolOutputByName"])
     const parts: string[] = [sectionHeader("Typed Tools"), ""]
 
     // Build instance map: integration type → instances with id & displayName
@@ -748,7 +748,7 @@ function generateToolsSection(tools: ToolDefinition[], input: CodegenInput): Sec
             if (tool.description) {
                 parts.push(`        /** ${tool.description} */`)
             }
-            parts.push(`        ${methodName}(params: ${paramsType}): Promise<unknown>`)
+            parts.push(`        ${methodName}(params: ${paramsType}): Promise<ToolOutputByName["${escapeString(tool.name)}"]>`)
         }
         parts.push("    }")
     }
@@ -777,10 +777,10 @@ function generateToolsSection(tools: ToolDefinition[], input: CodegenInput): Sec
             const paramsType = toolNameToInterfaceName(tool.name)
             if (group.integrationId && hasAutoFillId(tool)) {
                 parts.push(`            ${methodName}: (params: ${paramsType}) =>`)
-                parts.push(`                agent.executeTool("${escapeString(tool.name)}", { ...params, integrationId: "${escapeString(group.integrationId)}" }),`)
+                parts.push(`                agent.executeTool<ToolOutputByName["${escapeString(tool.name)}"]>("${escapeString(tool.name)}", { ...params, integrationId: "${escapeString(group.integrationId)}" }),`)
             } else {
                 parts.push(`            ${methodName}: (params: ${paramsType}) =>`)
-                parts.push(`                agent.executeTool("${escapeString(tool.name)}", params),`)
+                parts.push(`                agent.executeTool<ToolOutputByName["${escapeString(tool.name)}"]>("${escapeString(tool.name)}", params),`)
             }
         }
         parts.push(`        } } : {}),`)

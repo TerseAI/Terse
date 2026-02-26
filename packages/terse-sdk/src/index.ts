@@ -53,7 +53,8 @@ export type {
     SdkAgentRunOptionsPayload,
     SdkAgentRunRequestBody,
     SdkAgentRunResponseBody,
-    SdkAgentStreamEvent
+    SdkAgentStreamEvent,
+    ToolOutputByName
 } from "./shared/types.js"
 
 export { IntegrationType } from "./shared/Integrations.js"
@@ -189,7 +190,7 @@ export class TerseAgent {
         }
     }
 
-    async executeTool(toolName: string, params: Record<string, unknown> = {}): Promise<unknown> {
+    async executeTool<TOutput = unknown>(toolName: string, params: Record<string, unknown> = {}): Promise<TOutput> {
         const apiKey = process.env.TERSE_API_KEY
         if (!apiKey) {
             throw new Error("TERSE_API_KEY environment variable is not set. Cannot execute tools without authentication.")
@@ -206,7 +207,7 @@ export class TerseAgent {
         if (!data.success) {
             throw new Error(data.error ?? "Tool execution failed")
         }
-        return data.result
+        return data.result as TOutput
     }
 }
 

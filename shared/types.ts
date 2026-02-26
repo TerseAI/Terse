@@ -610,3 +610,135 @@ export type SdkAgentStreamEvent =
     | { type: "action"; action: RunHistoryAction }
     | { type: "error"; message: string }
     | { type: "done" }
+
+export type ToolOutputBase = {
+    success: boolean
+    actions?: RunHistoryAction[]
+}
+
+export type ToolOutputByName = {
+    [toolName: string]: unknown
+    slack_send_message: ToolOutputBase & {
+        message_ts: string | undefined
+        channel: string
+        thread_ts: string | undefined
+        summary: string
+        has_blocks: boolean
+    }
+    slack_list_channels: ToolOutputBase & {
+        channels: Array<{ id?: string; name: string; isPrivate: boolean; isIm: boolean; isMpim: boolean }>
+        count: number
+        nextCursor: string | null
+        hasMore: boolean
+    }
+    slack_list_users: ToolOutputBase & {
+        users: Array<{ id: string; name: string }>
+        count: number
+    }
+    slack_read_conversation: ToolOutputBase & {
+        channelId: string
+        channelName?: string
+        messages: Array<{ userId?: string; userName?: string; text: string; timestamp?: string; threadTs?: string }>
+        count: number
+        hasMore: boolean
+        nextCursor: string | null
+    }
+    searchGitHubCode: ToolOutputBase & {
+        totalCount: number
+        resultsReturned: number
+        query: string
+        repositories: string[]
+        pagination: { page: number; perPage: number; hasMore: boolean }
+        results: Array<{ index: number; repository: string; path: string; url: string; snippets: string }>
+        message: string
+        tip: string
+    }
+    readGitHubFile: ToolOutputBase & {
+        repository: string
+        path: string
+        url: string
+        totalLines: number
+        displayedLines: string
+        size: number
+        content: string
+        warning?: string
+    }
+    listGitHubPullRequests: ToolOutputBase & {
+        repository: string
+        timeWindow: string
+        summary: { total: number; merged: number; open: number; closed: number }
+        pagination: { page: number; perPage: number; hasMore: boolean }
+        pullRequests: Array<{
+            number: number
+            title: string
+            description: string
+            author: string
+            state: string
+            merged: boolean
+            mergedAt?: string
+            createdAt: string
+            closedAt?: string
+            labels: string[]
+            baseBranch: string
+            headBranch: string
+            url: string
+        }>
+        message: string
+    }
+    listGitHubDirectory: ToolOutputBase & {
+        repository: string
+        path: string
+        recursive: boolean
+        totalItems: number
+        directories: Array<{ name?: string; path?: string; type?: "directory" } | string>
+        files: Array<{ name?: string; path: string; type?: "file"; size?: number }>
+        warning?: string
+        tip?: string
+        truncated?: boolean
+        other?: Array<{ name: string; type: string }>
+    }
+    listGitHubCommits: ToolOutputBase & {
+        repository: string
+        timeWindow: string
+        filters: string
+        summary: { total: number; byAuthor: Record<string, number> }
+        commits: Array<{
+            sha: string
+            fullSha: string
+            message: string
+            fullMessage: string
+            author: string
+            date: string
+            url: string
+        }>
+        message: string
+        tip: string
+    }
+    grepGitHubCode: ToolOutputBase & {
+        totalCount: number
+        resultsReturned: number
+        pattern: string
+        query: string
+        repositories: string[]
+        pagination: { page: number; perPage: number; hasMore: boolean }
+        results: Array<{ index: number; repository: string; file: string; url: string; matches: string }>
+        message: string
+        tip: string
+    }
+    summarizeGitHubPullRequestDiff: ToolOutputBase & {
+        repository: string
+        pullRequest: {
+            number: number
+            title: string
+            state: string
+            merged: boolean
+            baseBranch: string
+            headBranch: string
+            url: string
+        }
+        summary: Record<string, unknown>
+        pagination: { page: number; perPage: number; hasMore: boolean }
+        analysis: string
+        message: string
+    }
+}
