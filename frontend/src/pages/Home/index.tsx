@@ -38,7 +38,7 @@ function Home() {
     const { events: historyEvents, isLoading: isHistoryLoading } = useBuilderChatHistory(sessionId)
     const [initialTurns, setInitialTurns] = useState<ReturnType<typeof convertRunHistoryEventsToTurns>>([])
     useEffect(() => {
-        const turns = convertRunHistoryEventsToTurns(historyEvents.map(event => ({ ...event, isHistorical: true })))
+        const turns = convertRunHistoryEventsToTurns(historyEvents)
         setInitialTurns(turns)
         if (turns.length > 0) {
             setHasStartedChat(true)
@@ -175,7 +175,7 @@ function Home() {
                         initialTurns={initialTurns}
                         subscribeToEvents={subscribeToEvents}
                         sendMessage={sendMessage}
-                        onCancel={handleCancel}
+                        onHandleCancellation={handleCancel}
                         onUserMessage={handleUserMessage}
                         addUserTurnsLocally={true}
                         inputSize={hasStartedChat ? "small" : "large"}

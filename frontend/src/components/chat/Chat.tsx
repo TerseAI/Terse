@@ -15,9 +15,8 @@ type ChatProps = {
     onUserMessage?: (message: string) => void
     onHandleApprove?: (stepId: string) => void
     onHandleReject?: (stepId: string) => void
+    onHandleCancellation?: () => void
     onMultipleChoiceAnswer?: (questionId: string, value: string) => void
-    onCancel?: () => Promise<boolean>
-    isRunInProgress?: boolean
     addUserTurnsLocally?: boolean
     inputSize?: "small" | "medium" | "large"
     placeholders?: string[]
@@ -38,9 +37,8 @@ const Chat = forwardRef<ChatHandle, ChatProps>(function Chat(
         onUserMessage,
         onHandleApprove,
         onHandleReject,
+        onHandleCancellation,
         onMultipleChoiceAnswer,
-        onCancel,
-        isRunInProgress,
         addUserTurnsLocally,
         inputSize = "small",
         placeholders = [],
@@ -53,12 +51,10 @@ const Chat = forwardRef<ChatHandle, ChatProps>(function Chat(
     const {
         turns,
         isPendingAssistantResponse,
-        isCancelling,
         input,
         setInput,
         sendMessage: sendUserMessage,
         sendModelRequest,
-        cancelRun,
         handleMultipleChoiceAnswer
     } = useChat({
         subscribeToEvents,
@@ -68,11 +64,8 @@ const Chat = forwardRef<ChatHandle, ChatProps>(function Chat(
         onToolCall: () => {},
         onToolCallComplete: () => {},
         onMultipleChoiceAnswer,
-        cancelRun: onCancel,
-        isRunInProgress,
         addUserTurnsLocally
     })
-
     // Scroll to bottom when initialTurns are first rendered
     useEffect(() => {
         if (initialTurns && initialTurns.length > 0 && !hasScrolledToBottomRef.current) {
@@ -95,8 +88,6 @@ const Chat = forwardRef<ChatHandle, ChatProps>(function Chat(
             ref={chatLayoutRef}
             turns={turns}
             isPendingAssistantResponse={isPendingAssistantResponse}
-            isCancelling={isCancelling}
-            onCancel={onCancel ? cancelRun : undefined}
             onSendMessage={sendUserMessage}
             onSendModelRequest={sendModelRequest}
             input={input}
@@ -105,6 +96,7 @@ const Chat = forwardRef<ChatHandle, ChatProps>(function Chat(
             EmptyContentPlaceholder={EmptyContentPlaceholder}
             onApprove={onHandleApprove}
             onReject={onHandleReject}
+            onCancel={onHandleCancellation}
             onMultipleChoiceAnswer={handleMultipleChoiceAnswer}
             inputSize={inputSize}
             showPlaceholderChips={showPlaceholderChips}

@@ -2,7 +2,7 @@ import { Agent, FunctionCallResultItem, RunStreamEvent, RunToolCallOutputItem, S
 
 import logger from "../logger"
 import { IntegrationType } from "../shared/Integrations"
-import { ChangedItem, ChatSnippetPayload, ModelEvent, ToolCallExecutionStatus } from "../shared/ModelEvents"
+import { ChangedItem, type ChatSnippet, ModelEvent, ToolCallExecutionStatus } from "../shared/ModelEvents"
 import { RunHistoryAction } from "../shared/RunHistoryTypes"
 import { ErrorContext } from "../tools/toolUtils"
 import { Session } from "../types/session"
@@ -94,6 +94,7 @@ export function tryExtractTextDelta(event: RunStreamEvent): ModelEvent | null {
         const eventData = (event as any).data.event
         return {
             type: "TextDelta",
+            timestamp: Date.now(),
             delta: eventData.delta,
             step_id: eventData.item_id || "unknown"
         }
@@ -112,6 +113,7 @@ export function tryExtractToolCallGenerating(event: RunStreamEvent): ModelEvent 
         const item = (event as any).data.event.item
         return {
             type: "ToolCallGenerating",
+            timestamp: Date.now(),
             tool_name: item.name || "unknown",
             step_id: item.call_id || item.id || "unknown"
         }
@@ -128,6 +130,7 @@ export function tryExtractToolCall(event: RunStreamEvent, toolToIntegrationMap?:
             const integration = toolToIntegrationMap?.get(item.name) || "unknown"
             return {
                 type: "ToolCall",
+                timestamp: Date.now(),
                 summary: item.name,
                 step_id: item.callId || "unknown",
                 parameters: item.arguments || "{}",
@@ -186,6 +189,7 @@ export function createToolCallCompleteEvent(data: ToolCallCompleteData, changedI
 
     const event: ModelEvent = {
         type: "ToolCallComplete",
+        timestamp: Date.now(),
         tool_name: data.name,
         status: data.status,
         step_id: data.callId,
@@ -201,14 +205,16 @@ export function createToolCallCompleteEvent(data: ToolCallCompleteData, changedI
 
 export function createNaturalStopEvent(): ModelEvent {
     // generate a random step_id
-    return { type: "NaturalStop", step_id: randomString(15) }
+    const ts = Date.now()
+    return { type: "NaturalStop", step_id: randomString(15), timestamp: ts }
 }
 
 export function createCancelledEvent(reason?: string): ModelEvent {
+    const ts = Date.now()
     if (reason?.trim()) {
-        return { type: "Cancelled", reason: reason.trim() }
+        return { type: "Cancelled", reason: reason.trim(), timestamp: ts }
     }
-    return { type: "Cancelled" }
+    return { type: "Cancelled", timestamp: ts }
 }
 
 export enum RawModelStreamEventType {
@@ -297,5 +303,5 @@ export type ToolCallCompleteData = {
     result?: string
     errorContext?: ErrorContext
     actions?: RunHistoryAction[]
-    snippets?: ChatSnippetPayload[]
+    snippets?: ChatSnippet[]
 }

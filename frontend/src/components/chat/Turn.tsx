@@ -3,7 +3,7 @@ import { useState } from "react"
 import { CheckCircleIcon, CheckIcon, DocumentDuplicateIcon, HandThumbDownIcon, HandThumbUpIcon, XCircleIcon } from "@heroicons/react/24/outline"
 import { HandThumbDownIcon as HandThumbDownFilledIcon, HandThumbUpIcon as HandThumbUpFilledIcon } from "@heroicons/react/24/solid"
 
-import { ChangedItem, ChatSnippet, SharedErrorContext } from "../../shared/ModelEvents"
+import { ChangedItem, type RenderedChatSnippet, SharedErrorContext } from "../../shared/ModelEvents"
 
 import FunctionCallItem from "./FunctionCallItem"
 import { RunErrorView } from "./RunErrorView"
@@ -14,6 +14,7 @@ import ToolCallsSummary from "./ToolCallsSummary"
 interface Turn {
     role: "user" | "assistant"
     text: string
+    timestamp: number
     function_calls: FunctionCallEvent[]
     step_id: string
     localTurnId?: string
@@ -27,7 +28,7 @@ interface Turn {
         reason: string
         confidence: number
     }
-    snippets?: ChatSnippet[]
+    snippets?: RenderedChatSnippet[]
     disableAnimation?: boolean
     onApprove?: (stepId: string) => void
     onReject?: (stepId: string) => void
@@ -205,7 +206,7 @@ function FeedbackButtons({}: {}) {
 // keeping in-progress calls (generating / running) at the bottom.
 // ---------------------------------------------------------------------------
 
-type TimelineItem = { kind: "function_call"; call: FunctionCallEvent; ts: number } | { kind: "snippet"; snippet: ChatSnippet; ts: number }
+type TimelineItem = { kind: "function_call"; call: FunctionCallEvent; ts: number } | { kind: "snippet"; snippet: RenderedChatSnippet; ts: number }
 
 function TurnTimeline({
     functionCalls,
@@ -216,7 +217,7 @@ function TurnTimeline({
     onMultipleChoiceAnswer
 }: {
     functionCalls: FunctionCallEvent[]
-    snippets: ChatSnippet[]
+    snippets: RenderedChatSnippet[]
     isTurnFailure: boolean
     onApprove?: (stepId: string) => void
     onReject?: (stepId: string) => void

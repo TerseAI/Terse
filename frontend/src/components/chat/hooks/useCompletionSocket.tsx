@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 
 import {
-    type ChatSnippetPayload,
     type Cancelled,
+    type ChatSnippet,
     FilterResult,
     type ModelEvent,
     type ModelRequest,
     type RunError,
     type TextDelta,
+    Thinking,
     type ToolApprovalRequest,
     ToolApprovalResponse,
     type ToolCall,
@@ -30,10 +31,10 @@ export type UseCompletionSocketOptions = {
     onToolCallComplete: (toolCallComplete: ToolCallComplete) => void
     onNaturalStop: () => void
     onFilterResult: (filterResult: FilterResult) => void
-    onThinking: (stepId: string) => void
+    onThinking: (thinking: Thinking) => void
     onToolApprovalRequest?: (request: ToolApprovalRequest) => void
     onToolApprovalResponse?: (response: ToolApprovalResponse) => void
-    onSnippet?: (snippet: ChatSnippetPayload) => void
+    onSnippet?: (snippet: ChatSnippet) => void
     onRunError?: (event: RunError) => void
     onCancelled?: (event: Cancelled) => void
 }
@@ -156,80 +157,43 @@ export function useCompletionSocket(options: UseCompletionSocketOptions) {
 
             switch (message.type) {
                 case "TextDelta":
-                    logCompletionSocket("Dispatching TextDelta handler", {
-                        stepId: message.step_id,
-                        deltaLength: message.delta.length
-                    })
                     onDeltaRef.current(message)
                     break
                 case "ToolCallGenerating":
-                    logCompletionSocket("Dispatching ToolCallGenerating handler", {
-                        stepId: message.step_id,
-                        toolName: message.tool_name
-                    })
                     onToolCallGeneratingRef.current(message)
                     break
                 case "ToolCall":
-                    logCompletionSocket("Dispatching ToolCall handler", {
-                        stepId: message.step_id,
-                        summary: message.summary
-                    })
                     onToolCallRef.current(message)
                     break
                 case "ToolCallComplete":
-                    logCompletionSocket("Dispatching ToolCallComplete handler", {
-                        stepId: message.step_id,
-                        hasResult: Boolean(message.result),
-                        hasErrorContext: Boolean(message.errorContext)
-                    })
                     onToolCallCompleteRef.current(message)
                     break
                 case "NaturalStop":
-                    logCompletionSocket("Dispatching NaturalStop handler")
                     onNaturalStopRef.current()
                     break
                 case "FilterResult":
-                    logCompletionSocket("Dispatching FilterResult handler", {
-                        isRelevant: message.isRelevant,
-                        confidence: message.confidence
-                    })
                     onFilterResultRef.current(message)
                     break
                 case "Thinking":
-                    logCompletionSocket("Dispatching Thinking handler", { stepId: message.step_id })
-                    onThinkingRef.current(message.step_id)
+                    onThinkingRef.current(message)
                     break
                 case "ToolApprovalRequest":
-                    logCompletionSocket("Dispatching ToolApprovalRequest handler", {
-                        stepId: message.step_id,
-                        toolName: message.name
-                    })
                     onToolApprovalRequestRef.current?.(message)
                     break
                 case "ToolApprovalResponse":
-                    logCompletionSocket("Dispatching ToolApprovalResponse handler", {
-                        stepId: message.step_id,
-                        approved: message.approved
-                    })
                     onToolApprovalResponseRef.current?.(message)
                     break
                 case "Snippet":
-                    logCompletionSocket("Dispatching Snippet handler", {
-                        snippetType: message.snippet.type
+                    onSnippetRef.current?.({
+                        ...message.snippet,
+                        timestamp: message.snippet.timestamp ?? message.timestamp
                     })
-                    onSnippetRef.current?.({ ...message.snippet, timestamp: message.timestamp })
                     break
                 case "RunError":
-                    logCompletionSocket("Dispatching RunError handler", {
-                        code: message.code ?? null
-                    })
-                    onRunErrorRef.current?.({ error: message.error, ...(message.code && { code: message.code }) })
+                    onRunErrorRef.current?.(message)
                     break
                 case "Cancelled":
-                    logCompletionSocket("Dispatching Cancelled handler", {
-                        reason: message.reason ?? null
-                    })
-                    onCancelledRef.current?.({ ...(message.reason ? { reason: message.reason } : {}) })
+                    onCancelledRef.current?.(message)
                     break
                 default:
                     console.warn(LOG_PREFIX, "Unknown event type:", message.type)

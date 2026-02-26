@@ -67,7 +67,7 @@ export function AgentBuilderLayout({ header }: AgentBuilderLayoutProps) {
     const isInitialLoading = isHistoryLoading || isLoadingTemplates
 
     useEffect(() => {
-        const turns = convertRunHistoryEventsToTurns(historyEvents.map(event => ({ ...event, isHistorical: true })))
+        const turns = convertRunHistoryEventsToTurns(historyEvents)
         setInitialTurns(turns)
         if (turns.length > 0) {
             setHasStartedChat(true)
@@ -239,7 +239,7 @@ export function AgentBuilderLayout({ header }: AgentBuilderLayoutProps) {
                         key={sessionId}
                         subscribeToEvents={subscribeToEvents}
                         sendMessage={sendMessage}
-                        onCancel={handleCancel}
+                        onHandleCancellation={handleCancel}
                         onUserMessage={handleUserMessage}
                         onMultipleChoiceAnswer={handleMultipleChoiceAnswer}
                         addUserTurnsLocally={true}

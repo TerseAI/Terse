@@ -41,8 +41,7 @@ export const BuilderChat = forwardRef<BuilderChatHandle, BuilderChatProps>(funct
         agentId && historyEvents.length > 0
             ? convertRunHistoryEventsToTurns(
                   historyEvents.map(event => ({
-                      ...event,
-                      isHistorical: true
+                      ...event
                   }))
               )
             : undefined
@@ -120,7 +119,7 @@ export const BuilderChat = forwardRef<BuilderChatHandle, BuilderChatProps>(funct
                 key={sessionId}
                 subscribeToEvents={subscribeToEvents}
                 sendMessage={sendMessage}
-                onCancel={handleCancel}
+                onHandleCancellation={handleCancel}
                 addUserTurnsLocally={true}
                 initialTurns={initialTurns}
                 EmptyContentPlaceholder={<BuilderChatEmptyState />}

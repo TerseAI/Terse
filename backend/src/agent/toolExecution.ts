@@ -1,4 +1,4 @@
-import { ChatSnippetPayload, ToolCallExecutionStatus } from "../shared/ModelEvents"
+import { ChatSnippet, ToolCallExecutionStatus } from "../shared/ModelEvents"
 import { RunHistoryAction } from "../shared/RunHistoryTypes"
 import { ErrorContext, detectSerializedError, parseSerializedError } from "../tools/toolUtils"
 
@@ -10,7 +10,7 @@ type ToolExecutionParseResult = {
     outputString: string | null
     errorContext?: ErrorContext
     actions?: RunHistoryAction[]
-    snippets?: ChatSnippetPayload[]
+    snippets?: ChatSnippet[]
 }
 
 const FALLBACK_FAILURE_MESSAGE = "Tool returned success=false"
@@ -87,9 +87,9 @@ function extractToolExecutionActions(output: unknown): RunHistoryAction[] | unde
     return Array.isArray(candidate.actions) ? (candidate.actions as RunHistoryAction[]) : undefined
 }
 
-function extractToolExecutionSnippets(output: unknown): ChatSnippetPayload[] | undefined {
+function extractToolExecutionSnippets(output: unknown): ChatSnippet[] {
     if (!output || typeof output !== "object") {
-        return undefined
+        return []
     }
 
     const candidate = output as { snippets?: unknown; snippet?: unknown }
@@ -97,9 +97,9 @@ function extractToolExecutionSnippets(output: unknown): ChatSnippetPayload[] | u
     if (Array.isArray(candidate.snippets)) {
         const parsedSnippets = candidate.snippets
             .map(snippet => chatSnippetPayloadSchema.safeParse(snippet))
-            .filter((parseResult): parseResult is { success: true; data: ChatSnippetPayload } => parseResult.success)
+            .filter((parseResult): parseResult is { success: true; data: ChatSnippet } => parseResult.success)
             .map(parseResult => parseResult.data)
-        return parsedSnippets.length > 0 ? parsedSnippets : undefined
+        return parsedSnippets.length > 0 ? parsedSnippets : []
     }
 
     if (candidate.snippet !== undefined) {
@@ -109,7 +109,7 @@ function extractToolExecutionSnippets(output: unknown): ChatSnippetPayload[] | u
         }
     }
 
-    return undefined
+    return []
 }
 
 function extractStructuredFailure(output: unknown): ErrorContext | undefined {

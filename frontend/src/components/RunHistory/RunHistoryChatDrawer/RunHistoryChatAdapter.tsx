@@ -7,7 +7,7 @@ import { useChatHistory } from "@/hooks/api/useChatHistory"
 import { ModelRequest } from "@/shared/ModelEvents"
 import { RunHistoryStatus } from "@/shared/RunHistoryTypes"
 import type { RunHistoryModelSocketEvent } from "@/shared/RunHistoryTypes"
-import { sendChatMessage, sendToolApprovalResponse, subscribeToChatEvents } from "@/socket"
+import { cancelAgentChatRun, sendChatMessage, sendToolApprovalResponse, subscribeToChatEvents } from "@/socket"
 
 import { convertRunHistoryEventsToTurns } from "./runHistoryEventsToTurns"
 
@@ -24,8 +24,8 @@ type RunHistoryChatAdapterProps = {
         sendMessage: (message: ModelRequest) => void
         handleApprove: (stepId: string) => void
         handleReject: (stepId: string) => void
+        handleCancellation: () => void
         currentStatus: RunHistoryStatus
-        cancelRun: () => Promise<boolean>
     }) => React.ReactNode
 }
 
@@ -37,9 +37,7 @@ export default function RunHistoryChatAdapter({ runId, status, children }: RunHi
     const historicalEvents = useMemo(
         () =>
             events.map(event => ({
-                ...event,
-                timestamp: event.timestamp ? new Date(event.timestamp).getTime() : undefined,
-                isHistorical: true
+                ...event
             })),
         [events]
     )
@@ -75,11 +73,9 @@ export default function RunHistoryChatAdapter({ runId, status, children }: RunHi
         sendToolApprovalResponse(runId, stepId, false)
     }
 
-    const cancelRun = async () => {
-        return true
+    const handleCancellation = () => {
+        cancelAgentChatRun(runId)
     }
-
-    const isRunInProgress = currentStatus === RunHistoryStatus.IN_PROGRESS
 
     if (children) {
         return (
@@ -95,8 +91,7 @@ export default function RunHistoryChatAdapter({ runId, status, children }: RunHi
                     currentStatus,
                     handleApprove,
                     handleReject,
-                    cancelRun,
-                    isRunInProgress
+                    handleCancellation
                 })}
             </>
         )
@@ -110,6 +105,7 @@ export default function RunHistoryChatAdapter({ runId, status, children }: RunHi
             addUserTurnsLocally={true}
             onHandleApprove={handleApprove}
             onHandleReject={handleReject}
+            onHandleCancellation={handleCancellation}
             EmptyContentPlaceholder={
                 isLoading ? <div className="p-4 text-center text-muted-foreground">Loading history...</div> : <div className="p-4 text-center text-muted-foreground">No events found</div>
             }

@@ -4,27 +4,27 @@ import { Link, useNavigate } from "react-router-dom"
 import { ExternalLink, ImageOff, SquareArrowOutUpRight } from "lucide-react"
 
 import { IntegrationType } from "../../shared/Integrations"
-import { ChatSnippet } from "../../shared/ModelEvents"
+import { type RenderedChatSnippet } from "../../shared/ModelEvents"
 import IntegrationCard from "../Integrations/IntegrationCard"
 import { Button } from "../ui/button"
 
 import { MultipleChoiceQuestionForm } from "./MultipleChoiceQuestionForm"
 
-export function SnippetView({ snippet, onMultipleChoiceAnswer }: { snippet: ChatSnippet; onMultipleChoiceAnswer?: (questionId: string, value: string) => void }) {
+export function SnippetView({ snippet, onMultipleChoiceAnswer }: { snippet: RenderedChatSnippet; onMultipleChoiceAnswer?: (questionId: string, value: string) => void }) {
     const navigate = useNavigate()
 
     useEffect(() => {
-        if (snippet.type === "navigate") {
+        if (snippet.snippetType === "navigate") {
             navigate(snippet.path)
         }
     }, [snippet, navigate])
 
-    if (snippet.type === "navigate") {
+    if (snippet.snippetType === "navigate") {
         // Return null since we're navigating away
         return null
     }
 
-    if (snippet.type === "button") {
+    if (snippet.snippetType === "button") {
         const isInternalPath = snippet.url.startsWith("/")
         return (
             <div>
@@ -47,7 +47,7 @@ export function SnippetView({ snippet, onMultipleChoiceAnswer }: { snippet: Chat
         )
     }
 
-    if (snippet.type === "integration_prompt") {
+    if (snippet.snippetType === "integration_prompt") {
         // Convert string to IntegrationType if it's a valid enum value
         const integrationType = Object.values(IntegrationType).includes(snippet.integration as IntegrationType) ? (snippet.integration as IntegrationType) : null
 
@@ -70,7 +70,7 @@ export function SnippetView({ snippet, onMultipleChoiceAnswer }: { snippet: Chat
         )
     }
 
-    if (snippet.type === "multiple_choice") {
+    if (snippet.snippetType === "multiple_choice") {
         return (
             <MultipleChoiceQuestionForm
                 questionId={snippet.questionId}
@@ -83,7 +83,7 @@ export function SnippetView({ snippet, onMultipleChoiceAnswer }: { snippet: Chat
         )
     }
 
-    if (snippet.type === "image") {
+    if (snippet.snippetType === "image") {
         return <ImageSnippet url={snippet.url} />
     }
 

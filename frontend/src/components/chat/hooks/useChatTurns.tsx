@@ -3,12 +3,16 @@ import { useEffect, useRef, useState } from "react"
 import { v4 as uuidv4 } from "uuid"
 
 import {
+    type Cancelled,
     type ChatSnippet,
-    type ChatSnippetPayload,
-    FilterResult,
+    type FilterResult,
     type ModelEvent,
+    type RenderedChatSnippet,
     type RunError,
     type TextDelta,
+    type Thinking,
+    type ToolApprovalRequest,
+    type ToolApprovalResponse,
     type ToolCall,
     type ToolCallComplete,
     type ToolCallGenerating
@@ -32,11 +36,11 @@ function findTurnForSnippet(turns: Turn[], currentStepId: string | null): { turn
 /**
  * Merge a new snippet into an existing list. For multiple_choice, replaces any snippet with the same questionId; otherwise appends.
  */
-function mergeSnippetIntoList(existingSnippets: ChatSnippet[], newSnippet: ChatSnippet, payload: ChatSnippetPayload): ChatSnippet[] {
-    if (payload.type !== "multiple_choice") {
+function mergeSnippetIntoList(existingSnippets: RenderedChatSnippet[], newSnippet: RenderedChatSnippet): RenderedChatSnippet[] {
+    if (newSnippet.snippetType !== "multiple_choice") {
         return [...existingSnippets, newSnippet]
     }
-    const existingIndex = existingSnippets.findIndex(s => s.type === "multiple_choice" && s.questionId === payload.questionId)
+    const existingIndex = existingSnippets.findIndex(s => s.snippetType === "multiple_choice" && s.questionId === newSnippet.questionId)
     if (existingIndex === -1) {
         return [...existingSnippets, newSnippet]
     }
@@ -63,7 +67,7 @@ function mergeFunctionCallsForHydration(initialCalls: Turn["function_calls"], ex
     return mergedCalls
 }
 
-function mergeSnippetsForHydration(initialSnippets?: ChatSnippet[], existingSnippets?: ChatSnippet[]): ChatSnippet[] | undefined {
+function mergeSnippetsForHydration(initialSnippets?: RenderedChatSnippet[], existingSnippets?: RenderedChatSnippet[]): RenderedChatSnippet[] | undefined {
     if (!initialSnippets?.length && !existingSnippets?.length) return undefined
     if (!initialSnippets?.length) return existingSnippets
     if (!existingSnippets?.length) return initialSnippets
@@ -82,6 +86,42 @@ function mergeAssistantTurnForHydration(initialTurn: Turn, existingTurn: Turn): 
         text: existingText.length >= initialText.length ? existingText : initialText,
         function_calls: mergeFunctionCallsForHydration(initialTurn.function_calls, existingTurn.function_calls),
         snippets: mergeSnippetsForHydration(initialTurn.snippets, existingTurn.snippets)
+    }
+}
+
+function getEventTimestamp(timestamp?: number): number {
+    return timestamp ?? Date.now()
+}
+
+function toChatSnippet(payload: ChatSnippet, fallbackStepId: string, fallbackTimestamp: number): RenderedChatSnippet {
+    const base = {
+        id: uuidv4(),
+        timestamp: payload.timestamp ?? fallbackTimestamp,
+        step_id: payload.step_id ?? fallbackStepId
+    }
+
+    switch (payload.type) {
+        case "button":
+            return { ...base, snippetType: "button", label: payload.label, url: payload.url }
+        case "integration_prompt":
+            return { ...base, snippetType: "integration_prompt", integration: payload.integration, message: payload.message, ...(payload.stateToken ? { stateToken: payload.stateToken } : {}) }
+        case "navigate":
+            return { ...base, snippetType: "navigate", path: payload.path }
+        case "multiple_choice":
+            return {
+                ...base,
+                snippetType: "multiple_choice",
+                questionId: payload.questionId,
+                question: payload.question,
+                options: payload.options,
+                ...(payload.allowMultiple ? { allowMultiple: true } : {})
+            }
+        case "image":
+            return { ...base, snippetType: "image", url: payload.url }
+        default: {
+            const exhaustiveCheck: never = payload
+            return exhaustiveCheck
+        }
     }
 }
 
@@ -143,7 +183,8 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
 
     const isPendingAssistantResponse = (turns.length > 0 && (turns[turns.length - 1]?.role === "user" || turns[turns.length - 1]?.isGenerating)) || false
 
-    const handleDelta = ({ delta, step_id }: TextDelta) => {
+    const handleDelta = ({ delta, step_id, timestamp }: TextDelta) => {
+        const eventTimestamp = getEventTimestamp(timestamp)
         // Track current step_id
         currentStepIdRef.current = step_id
 
@@ -162,6 +203,7 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
                     {
                         role: "assistant",
                         text: newText,
+                        timestamp: eventTimestamp,
                         function_calls: [],
                         isGenerating: true,
                         step_id
@@ -174,7 +216,8 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
         })
     }
 
-    const handleToolCallGenerating = ({ tool_name, step_id, timestamp }: ToolCallGenerating & Pick<ModelEvent, "timestamp">) => {
+    const handleToolCallGenerating = ({ tool_name, step_id, timestamp }: ToolCallGenerating) => {
+        const eventTimestamp = getEventTimestamp(timestamp)
         // Track current step_id
         currentStepIdRef.current = step_id
 
@@ -192,7 +235,7 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
                     last.function_calls.push({
                         id: step_id,
                         name: tool_name,
-                        timestamp,
+                        timestamp: eventTimestamp,
                         isGeneratingParams: true,
                         isRunning: false,
                         isWaitingForApproval: false,
@@ -209,11 +252,12 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
                 {
                     role: "assistant",
                     text: "",
+                    timestamp: eventTimestamp,
                     function_calls: [
                         {
                             id: step_id,
                             name: tool_name,
-                            timestamp,
+                            timestamp: eventTimestamp,
                             isGeneratingParams: true,
                             isRunning: false,
                             isWaitingForApproval: false,
@@ -227,7 +271,8 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
         })
     }
 
-    const handleToolCall = ({ summary, step_id, parameters, timestamp }: ToolCall & Pick<ModelEvent, "timestamp">) => {
+    const handleToolCall = ({ summary, step_id, parameters, timestamp }: ToolCall) => {
+        const eventTimestamp = getEventTimestamp(timestamp)
         // Track current step_id
         currentStepIdRef.current = step_id
 
@@ -253,7 +298,7 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
                     last.function_calls.push({
                         id: step_id,
                         name: summary,
-                        timestamp,
+                        timestamp: eventTimestamp,
                         isGeneratingParams: false,
                         isRunning: true,
                         isWaitingForApproval: false,
@@ -271,11 +316,12 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
                 {
                     role: "assistant",
                     text: "",
+                    timestamp: eventTimestamp,
                     function_calls: [
                         {
                             id: step_id,
                             name: summary,
-                            timestamp,
+                            timestamp: eventTimestamp,
                             isGeneratingParams: false,
                             isRunning: true,
                             isWaitingForApproval: false,
@@ -290,7 +336,7 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
         })
     }
 
-    const handleToolApprovalRequest = ({ step_id }: { step_id: string; name: string; arguments: string }) => {
+    const handleToolApprovalRequest = ({ step_id }: ToolApprovalRequest) => {
         // Mark this tool call as waiting for approval
         pendingApprovalsRef.current.add(step_id)
 
@@ -309,7 +355,7 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
         })
     }
 
-    const handleToolApprovalResponse = ({ step_id, approved }: { step_id: string; approved: boolean }) => {
+    const handleToolApprovalResponse = ({ step_id, approved, timestamp }: ToolApprovalResponse) => {
         // Remove from pending approvals
         pendingApprovalsRef.current.delete(step_id)
 
@@ -352,7 +398,7 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
 
             // Process each queued tool call
             queuedCalls.forEach(call => {
-                handleToolCall({ summary: call.summary, step_id: call.step_id, parameters: call.parameters, integration: "unknown" })
+                handleToolCall({ summary: call.summary, step_id: call.step_id, parameters: call.parameters, integration: "unknown", timestamp })
             })
         }
     }
@@ -399,7 +445,8 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
         })
     }
 
-    const handleRunError = ({ error, code }: RunError) => {
+    const handleRunError = ({ error, code, timestamp }: RunError) => {
+        const eventTimestamp = getEventTimestamp(timestamp)
         setTurns(prev => {
             const updated = [...prev]
             const last = updated[updated.length - 1]
@@ -411,6 +458,7 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
                 {
                     role: "assistant",
                     text: error,
+                    timestamp: eventTimestamp,
                     function_calls: [],
                     step_id: "run-error",
                     isFailure: true,
@@ -433,7 +481,30 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
         })
     }
 
-    const handleFilterResult = ({ isRelevant, reason, confidence }: FilterResult) => {
+    const handleCancel = (cancellation: Cancelled) => {
+        const cancellationTimestamp = getEventTimestamp(cancellation.timestamp)
+        setTurns(prev => {
+            const updated = [...prev]
+            const last = updated[updated.length - 1]
+            if (last) {
+                last.isGenerating = false
+            }
+            return [
+                ...updated,
+                {
+                    role: "assistant",
+                    text: cancellation.reason ? `Run cancelled: ${cancellation.reason}` : "Run cancelled by user",
+                    timestamp: cancellationTimestamp,
+                    function_calls: [],
+                    step_id: "cancel",
+                    isCancelled: true
+                }
+            ]
+        })
+    }
+
+    const handleFilterResult = ({ isRelevant, reason, confidence, timestamp }: FilterResult) => {
+        const eventTimestamp = getEventTimestamp(timestamp)
         setTurns(prev => {
             const updated = [...prev]
             return [
@@ -441,6 +512,7 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
                 {
                     role: "assistant",
                     text: "",
+                    timestamp: eventTimestamp,
                     function_calls: [],
                     step_id: "filter",
                     isGenerating: isRelevant ? true : false,
@@ -454,8 +526,10 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
         })
     }
 
-    const handleThinking = (stepId: string) => {
+    const handleThinking = (thinking: Thinking) => {
         // Track current step_id
+        const { step_id: stepId, timestamp } = thinking
+        const eventTimestamp = getEventTimestamp(timestamp)
         currentStepIdRef.current = stepId
 
         setTurns(prev => {
@@ -470,6 +544,7 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
                 {
                     role: "assistant",
                     text: "",
+                    timestamp: eventTimestamp,
                     function_calls: [],
                     step_id: stepId,
                     isThinking: true,
@@ -485,6 +560,7 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
         const userTurn: Turn = {
             role: "user",
             text: message,
+            timestamp: Date.now(),
             function_calls: [],
             step_id: "user_turn",
             localTurnId
@@ -494,28 +570,27 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
         })
     }
 
-    const handleSnippet = (snippetPayload: ChatSnippetPayload) => {
-        const snippet: ChatSnippet = {
-            ...snippetPayload,
-            id: uuidv4()
-        }
+    const handleSnippet = (snippetPayload: ChatSnippet) => {
+        const fallbackStepId = currentStepIdRef.current || snippetPayload.step_id || `snippet-${uuidv4()}`
+        const snippet = toChatSnippet(snippetPayload, fallbackStepId, Date.now())
 
         setTurns(prev => {
             const updated = [...prev]
-            const target = findTurnForSnippet(updated, currentStepIdRef.current)
+            const target = findTurnForSnippet(updated, currentStepIdRef.current || snippet.step_id)
 
             if (target) {
-                const snippets = mergeSnippetIntoList(target.turn.snippets || [], snippet, snippetPayload)
+                const snippets = mergeSnippetIntoList(target.turn.snippets || [], snippet)
                 const updatedTurn = { ...target.turn, snippets }
                 return [...updated.slice(0, target.index), updatedTurn, ...updated.slice(target.index + 1)]
             }
 
-            const stepId = currentStepIdRef.current || `snippet-${snippet.id}`
+            const stepId = snippet.step_id
             return [
                 ...updated,
                 {
                     role: "assistant",
                     text: "",
+                    timestamp: snippet.timestamp,
                     function_calls: [],
                     step_id: stepId,
                     snippets: [snippet]
@@ -528,11 +603,11 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
         setTurns(prev =>
             prev.map(turn => {
                 const snippets = turn.snippets ?? []
-                const hasMatch = snippets.some(s => s.type === "multiple_choice" && s.questionId === questionId)
+                const hasMatch = snippets.some(s => s.snippetType === "multiple_choice" && s.questionId === questionId)
                 if (!hasMatch) return turn
                 return {
                     ...turn,
-                    snippets: snippets.map(s => (s.type === "multiple_choice" && s.questionId === questionId ? { ...s, selectedValue: value } : s))
+                    snippets: snippets.map(s => (s.snippetType === "multiple_choice" && s.questionId === questionId ? { ...s, selectedValue: value } : s))
                 }
             })
         )
@@ -547,8 +622,11 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
         lastInitialUserTurnCountRef.current = 0
     }
 
+    const filteredTurns = filterOutThinkingOnlyTurns(turns)
+    const sortedTurns = [...filteredTurns].sort((a, b) => a.timestamp - b.timestamp)
+
     return {
-        turns: filterOutThinkingOnlyTurns(turns),
+        turns: sortedTurns,
         isPendingAssistantResponse,
         handleDelta,
         handleToolCallGenerating,
@@ -557,6 +635,7 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
         handleToolApprovalResponse,
         handleToolCallComplete,
         handleRunError,
+        handleCancel,
         handleNaturalStop,
         handleFilterResult,
         handleThinking,

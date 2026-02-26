@@ -2,7 +2,7 @@ import { z } from "zod"
 
 import logger from "../../logger"
 import { getSocketIO } from "../../services/CacheInvalidationService"
-import type { ChatSnippetPayload } from "../../shared/ModelEvents"
+import type { ChatSnippet } from "../../shared/ModelEvents"
 import type { RunHistoryModelEvent, RunHistoryModelSocketEvent } from "../../shared/RunHistoryTypes"
 import { SocketEvents, SocketRooms } from "../../shared/SocketEvents"
 import { randomString } from "../../utility/strings"
@@ -20,7 +20,7 @@ export type EmitAndPersistSnippetEventInput = {
     runId: string | null | undefined
     organizationId: string | null | undefined
     agentId: string | null | undefined
-    snippet: ChatSnippetPayload | null | undefined
+    snippet: ChatSnippet | null | undefined
 }
 
 export async function emitAndPersistSnippetEvent(input: EmitAndPersistSnippetEventInput): Promise<void> {

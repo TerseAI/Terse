@@ -37,7 +37,6 @@ export const ChatLayout = forwardRef<ChatLayoutHandle, ChatLayoutProps>(function
         turns,
         isPendingAssistantResponse,
         isCancelling = false,
-        onCancel,
         onSendMessage,
         input,
         setInput,
@@ -45,6 +44,7 @@ export const ChatLayout = forwardRef<ChatLayoutHandle, ChatLayoutProps>(function
         EmptyContentPlaceholder,
         onApprove,
         onReject,
+        onCancel,
         onMultipleChoiceAnswer,
         inputSize = "small",
         showPlaceholderChips = false
