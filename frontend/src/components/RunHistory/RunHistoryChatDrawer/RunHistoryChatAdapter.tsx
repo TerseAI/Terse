@@ -25,6 +25,7 @@ type RunHistoryChatAdapterProps = {
         handleApprove: (stepId: string) => void
         handleReject: (stepId: string) => void
         currentStatus: RunHistoryStatus
+        cancelRun: () => Promise<boolean>
     }) => React.ReactNode
 }
 
@@ -74,8 +75,31 @@ export default function RunHistoryChatAdapter({ runId, status, children }: RunHi
         sendToolApprovalResponse(runId, stepId, false)
     }
 
+    const cancelRun = async () => {
+        return true
+    }
+
+    const isRunInProgress = currentStatus === RunHistoryStatus.IN_PROGRESS
+
     if (children) {
-        return <>{children({ initialTurns: turns, isLoading, runId, startTimestamp, endTimestamp, subscribeToEvents, sendMessage, currentStatus, handleApprove, handleReject })}</>
+        return (
+            <>
+                {children({
+                    initialTurns: turns,
+                    isLoading,
+                    runId,
+                    startTimestamp,
+                    endTimestamp,
+                    subscribeToEvents,
+                    sendMessage,
+                    currentStatus,
+                    handleApprove,
+                    handleReject,
+                    cancelRun,
+                    isRunInProgress
+                })}
+            </>
+        )
     }
 
     return (

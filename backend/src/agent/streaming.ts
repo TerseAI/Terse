@@ -204,6 +204,13 @@ export function createNaturalStopEvent(): ModelEvent {
     return { type: "NaturalStop", step_id: randomString(15) }
 }
 
+export function createCancelledEvent(reason?: string): ModelEvent {
+    if (reason?.trim()) {
+        return { type: "Cancelled", reason: reason.trim() }
+    }
+    return { type: "Cancelled" }
+}
+
 export enum RawModelStreamEventType {
     OutputTextDelta = "output_text_delta",
     Model = "model"

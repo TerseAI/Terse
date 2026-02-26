@@ -84,7 +84,8 @@ export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSe
             stream: true,
             session: settings.memorySession,
             sessionInputCallback: settings.sessionInputCallback,
-            maxTurns: settings.maxTurns
+            maxTurns: settings.maxTurns,
+            signal: settings.signal
         })
 
         await this.processStream(result)
@@ -131,7 +132,8 @@ export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSe
             stream: true,
             session: params.settings.memorySession,
             sessionInputCallback: params.settings.sessionInputCallback,
-            maxTurns: params.settings.maxTurns
+            maxTurns: params.settings.maxTurns,
+            signal: params.settings.signal
         })
 
         await this.processStream(result)
@@ -234,6 +236,7 @@ type LoopRunner<TSession, TAgent extends Agent<TSession, AgentOutputType>> = {
             session: AgentMemorySession
             sessionInputCallback?: SessionInputCallback
             maxTurns: number
+            signal?: AbortSignal
         }
     ) => Promise<StreamedRunResult<TSession, TAgent>>
 }
@@ -253,6 +256,7 @@ type RunExecutionSettings<TSession extends SessionWithTracking<AppSession>, TAge
     memorySession: AgentMemorySession
     sessionInputCallback?: SessionInputCallback
     maxTurns: number
+    signal?: AbortSignal
 }
 
 type AgentInitializationParams<TSession extends AppSession> = {

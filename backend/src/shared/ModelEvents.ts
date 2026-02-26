@@ -15,6 +15,7 @@ export type ChangedItem = { type_name: EntityType; id: string; change_event_type
 
 /** Run-level / agent-level error (e.g. context window exceeded). Use optional code for specific UI handling. */
 export type RunError = { error: string; code?: string }
+export type Cancelled = { reason?: string }
 
 export type FunctionCall = { function_name: string; result: string; step_id: string }
 
@@ -26,6 +27,7 @@ export type ModelEvent = { timestamp?: number } & (
     | ({ type: "ToolCallComplete" } & ToolCallComplete)
     | ({ type: "TextDelta" } & TextDelta)
     | ({ type: "RunError" } & RunError)
+    | ({ type: "Cancelled" } & Cancelled)
     | { type: "NaturalStop"; step_id: string }
     | ({ type: "FilterResult" } & FilterResult)
     | ({ type: "UserMessage" } & UserMessage)

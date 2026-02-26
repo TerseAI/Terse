@@ -136,6 +136,18 @@ export async function markRunFailed(runId: string, errorMessage: string, stage?:
     })
 }
 
+export async function markRunCancelled(runId: string, reason: string = "Run cancelled by user"): Promise<void> {
+    const prisma = db()
+    await prisma.run_history_records.update({
+        where: { id: runId },
+        data: {
+            status: RunHistoryStatus.CANCELLED,
+            decision_action: "processed",
+            decision_reason: reason
+        }
+    })
+}
+
 export async function storePendingApprovalState(runId: string, serializedState: string, interruptions: RunToolApprovalItem[]): Promise<void> {
     const prisma = db()
 

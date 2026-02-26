@@ -14,6 +14,7 @@ let socket: Socket | null = null
 type ChatEventCallback = (payload: RunHistoryModelSocketEvent) => void
 type BuilderEventPayload = { sessionId: string; event: ModelEvent }
 type BuilderEventCallback = (payload: BuilderEventPayload) => void
+type CancelAckResponse = { accepted: boolean; reason?: string }
 
 // Pending subscriptions queue for handling race conditions
 type PendingChatSubscription = {
@@ -289,4 +290,38 @@ export function sendBuilderMultipleChoiceAnswer(sessionId: string, questionId: s
         return
     }
     socket.emit(SocketEvents.BUILDER_CHAT_MULTIPLE_CHOICE_ANSWER, { sessionId, questionId, value })
+}
+
+export async function cancelAgentChatRun(runId: string): Promise<CancelAckResponse> {
+    const activeSocket = socket
+    if (!activeSocket || !activeSocket.connected) {
+        return { accepted: false, reason: "socket_not_connected" }
+    }
+
+    return await new Promise(resolve => {
+        activeSocket.timeout(5000).emit(SocketEvents.AGENT_CHAT_CANCEL, { runId }, (err: Error | null, response?: CancelAckResponse) => {
+            if (err) {
+                resolve({ accepted: false, reason: "timeout" })
+                return
+            }
+            resolve(response ?? { accepted: false, reason: "no_response" })
+        })
+    })
+}
+
+export async function cancelBuilderChatSession(sessionId: string): Promise<CancelAckResponse> {
+    const activeSocket = socket
+    if (!activeSocket || !activeSocket.connected) {
+        return { accepted: false, reason: "socket_not_connected" }
+    }
+
+    return await new Promise(resolve => {
+        activeSocket.timeout(5000).emit(SocketEvents.BUILDER_CHAT_CANCEL, { sessionId }, (err: Error | null, response?: CancelAckResponse) => {
+            if (err) {
+                resolve({ accepted: false, reason: "timeout" })
+                return
+            }
+            resolve(response ?? { accepted: false, reason: "no_response" })
+        })
+    })
 }

@@ -10,7 +10,14 @@ import { parsePageParams } from "../utility/pagination"
 import { convertPrismaIntegrationTypeToIntegrationTypeFromRunHistory, convertPrismaRunHistoryStatusToShared } from "../utility/typeConverters"
 
 // Valid status values for validation
-const VALID_STATUSES: RunHistoryStatus[] = [RunHistoryStatus.SUCCESS, RunHistoryStatus.FAILED, RunHistoryStatus.SKIPPED, RunHistoryStatus.IN_PROGRESS, RunHistoryStatus.AWAITING_APPROVAL]
+const VALID_STATUSES: RunHistoryStatus[] = [
+    RunHistoryStatus.SUCCESS,
+    RunHistoryStatus.FAILED,
+    RunHistoryStatus.CANCELLED,
+    RunHistoryStatus.SKIPPED,
+    RunHistoryStatus.IN_PROGRESS,
+    RunHistoryStatus.AWAITING_APPROVAL
+]
 
 /**
  * Get run history across ALL agents in the organization

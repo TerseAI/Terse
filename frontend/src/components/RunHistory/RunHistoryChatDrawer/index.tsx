@@ -47,7 +47,7 @@ export default function RunHistoryChatDrawer({ isOpen, onOpenChange, runs, curre
                 )}
             >
                 <RunHistoryChatAdapter key={runId} runId={runId} status={status}>
-                    {({ initialTurns, isLoading, subscribeToEvents, sendMessage, handleApprove, handleReject, currentStatus }) => {
+                    {({ initialTurns, isLoading, subscribeToEvents, sendMessage, cancelRun, isRunInProgress, handleApprove, handleReject, currentStatus }) => {
                         const isFiltered = currentStatus === RunHistoryStatus.SKIPPED
 
                         return (
@@ -72,6 +72,8 @@ export default function RunHistoryChatDrawer({ isOpen, onOpenChange, runs, curre
                                                 initialTurns={initialTurns}
                                                 subscribeToEvents={subscribeToEvents}
                                                 sendMessage={sendMessage}
+                                                onCancel={cancelRun}
+                                                isRunInProgress={isRunInProgress}
                                                 addUserTurnsLocally={true}
                                                 onHandleApprove={handleApprove}
                                                 onHandleReject={handleReject}

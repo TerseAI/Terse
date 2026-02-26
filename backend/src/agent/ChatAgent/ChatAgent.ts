@@ -36,7 +36,7 @@ class ChatAgent {
         return this.memorySession
     }
 
-    async run(message: string): Promise<string> {
+    async run(message: string, options?: { signal?: AbortSignal }): Promise<string> {
         logger.info("Starting chat agent run for message in interface", {
             message,
             interface: this.chatInterface.name
@@ -80,7 +80,8 @@ class ChatAgent {
                 },
                 session: memorySession,
                 sessionInputCallback: recentHistoryCallback,
-                maxTurns: CHAT_AGENT_MAX_TURNS
+                maxTurns: CHAT_AGENT_MAX_TURNS,
+                signal: options?.signal
             }
         )
 

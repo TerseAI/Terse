@@ -4,6 +4,7 @@ import { IntegrationType } from "../shared/Integrations"
 import { ModelEvent } from "../shared/ModelEvents"
 
 import { isScaffoldedRunContextUserMessage } from "./AgentRunner/formatContext"
+import { parseCancelledSystemEventItem } from "./systemEvents/cancelledSystemEvent"
 import { parseFilterOutcomeSystemEventItem } from "./systemEvents/filterOutcomeSystemEvent"
 import { parseRunErrorSystemEventItem } from "./systemEvents/runErrorSystemEvent"
 import { parseSnippetSystemEventItem } from "./systemEvents/snippetSystemEvent"
@@ -56,7 +57,7 @@ export async function convertAgentInputItemsToModelEvents(
     // Skip for in-progress runs so the UI does not incorrectly set isGenerating=false until the run actually completes.
     if (events.length > 0 && resolvedOptions.appendNaturalStop) {
         const lastEvent = events[events.length - 1]
-        const isTerminal = lastEvent.type === "NaturalStop" || lastEvent.type === "RunError"
+        const isTerminal = lastEvent.type === "NaturalStop" || lastEvent.type === "RunError" || lastEvent.type === "Cancelled"
         if (!isTerminal) {
             events.push({
                 type: "NaturalStop",
@@ -74,6 +75,16 @@ async function convertSingleItem(
     toolToIntegrationMap?: Map<string, string>,
     options: Required<ConvertAgentInputItemsToModelEventsOptions> = DEFAULT_CONVERT_OPTIONS
 ): Promise<ModelEvent[] | null> {
+    const cancelledSystemEvent = parseCancelledSystemEventItem(item)
+    if (cancelledSystemEvent) {
+        return [
+            {
+                type: "Cancelled",
+                ...(cancelledSystemEvent.reason ? { reason: cancelledSystemEvent.reason } : {})
+            }
+        ]
+    }
+
     const runErrorSystemEvent = parseRunErrorSystemEventItem(item)
     if (runErrorSystemEvent) {
         return [

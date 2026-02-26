@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 
 import {
     type ChatSnippetPayload,
+    type Cancelled,
     FilterResult,
     type ModelEvent,
     type ModelRequest,
@@ -34,6 +35,46 @@ export type UseCompletionSocketOptions = {
     onToolApprovalResponse?: (response: ToolApprovalResponse) => void
     onSnippet?: (snippet: ChatSnippetPayload) => void
     onRunError?: (event: RunError) => void
+    onCancelled?: (event: Cancelled) => void
+}
+
+const LOG_PREFIX = "[useCompletionSocket]"
+
+function logCompletionSocket(message: string, details?: Record<string, unknown>): void {
+    if (details) {
+        console.log(LOG_PREFIX, message, details)
+        return
+    }
+    console.log(LOG_PREFIX, message)
+}
+
+function getSocketEventDetails(message: ModelEvent): Record<string, unknown> {
+    const details: Record<string, unknown> = {
+        type: message.type,
+        timestamp: message.timestamp ?? null
+    }
+    if ("step_id" in message) {
+        details.stepId = message.step_id
+    }
+    if ("tool_name" in message) {
+        details.toolName = message.tool_name
+    }
+    if ("summary" in message) {
+        details.summary = message.summary
+    }
+    if (message.type === "TextDelta") {
+        details.deltaLength = message.delta.length
+    }
+    if (message.type === "Snippet") {
+        details.snippetType = message.snippet.type
+    }
+    if (message.type === "ToolApprovalResponse") {
+        details.approved = message.approved
+    }
+    if (message.type === "Cancelled") {
+        details.reason = message.reason ?? null
+    }
+    return details
 }
 
 export function useCompletionSocket(options: UseCompletionSocketOptions) {
@@ -50,7 +91,8 @@ export function useCompletionSocket(options: UseCompletionSocketOptions) {
         onToolApprovalRequest,
         onToolApprovalResponse,
         onSnippet,
-        onRunError
+        onRunError,
+        onCancelled
     } = options
 
     const onDeltaRef = useRef(onDelta)
@@ -64,6 +106,7 @@ export function useCompletionSocket(options: UseCompletionSocketOptions) {
     const onToolApprovalResponseRef = useRef(onToolApprovalResponse)
     const onSnippetRef = useRef(onSnippet)
     const onRunErrorRef = useRef(onRunError)
+    const onCancelledRef = useRef(onCancelled)
     // For now we assume connected, or we could expose socket connection state globally
     const [isConnected] = useState(true)
 
@@ -80,73 +123,132 @@ export function useCompletionSocket(options: UseCompletionSocketOptions) {
         onToolApprovalResponseRef.current = onToolApprovalResponse
         onSnippetRef.current = onSnippet
         onRunErrorRef.current = onRunError
-    }, [onDelta, onToolCallGenerating, onToolCall, onToolCallComplete, onNaturalStop, onFilterResult, onThinking, onToolApprovalRequest, onToolApprovalResponse, onSnippet, onRunError])
+        onCancelledRef.current = onCancelled
+    }, [onDelta, onToolCallGenerating, onToolCall, onToolCallComplete, onNaturalStop, onFilterResult, onThinking, onToolApprovalRequest, onToolApprovalResponse, onSnippet, onRunError, onCancelled])
 
     // Subscribe to events
     useEffect(() => {
         if (!subscribeToEvents) {
-            console.log("[useCompletionSocket] No subscribeToEvents provided, skipping subscription")
+            logCompletionSocket("No subscribeToEvents provided, skipping subscription")
             return
         }
 
-        console.log("[useCompletionSocket] Setting up event subscription")
+        logCompletionSocket("Setting up event subscription")
         const unsubscribe = subscribeToEvents(payload => {
             const message = payload.runHistoryModelEvent
-            console.log("[useCompletionSocket] Event received:", message.type)
+            logCompletionSocket("Event received", getSocketEventDetails(message))
 
             // Normalize timestamps to epoch-ms for stable ordering in the chat timeline.
+            const originalTimestamp = message.timestamp
             if (typeof message.timestamp === "string") {
                 const parsed = Date.parse(message.timestamp)
                 message.timestamp = Number.isNaN(parsed) ? Date.now() : parsed
             } else {
                 message.timestamp = message.timestamp ?? Date.now()
             }
+            if (originalTimestamp !== message.timestamp) {
+                logCompletionSocket("Normalized event timestamp", {
+                    type: message.type,
+                    originalTimestamp: originalTimestamp ?? null,
+                    normalizedTimestamp: message.timestamp
+                })
+            }
 
             switch (message.type) {
                 case "TextDelta":
+                    logCompletionSocket("Dispatching TextDelta handler", {
+                        stepId: message.step_id,
+                        deltaLength: message.delta.length
+                    })
                     onDeltaRef.current(message)
                     break
                 case "ToolCallGenerating":
+                    logCompletionSocket("Dispatching ToolCallGenerating handler", {
+                        stepId: message.step_id,
+                        toolName: message.tool_name
+                    })
                     onToolCallGeneratingRef.current(message)
                     break
                 case "ToolCall":
+                    logCompletionSocket("Dispatching ToolCall handler", {
+                        stepId: message.step_id,
+                        summary: message.summary
+                    })
                     onToolCallRef.current(message)
                     break
                 case "ToolCallComplete":
+                    logCompletionSocket("Dispatching ToolCallComplete handler", {
+                        stepId: message.step_id,
+                        hasResult: Boolean(message.result),
+                        hasErrorContext: Boolean(message.errorContext)
+                    })
                     onToolCallCompleteRef.current(message)
                     break
                 case "NaturalStop":
+                    logCompletionSocket("Dispatching NaturalStop handler")
                     onNaturalStopRef.current()
                     break
                 case "FilterResult":
+                    logCompletionSocket("Dispatching FilterResult handler", {
+                        isRelevant: message.isRelevant,
+                        confidence: message.confidence
+                    })
                     onFilterResultRef.current(message)
                     break
                 case "Thinking":
+                    logCompletionSocket("Dispatching Thinking handler", { stepId: message.step_id })
                     onThinkingRef.current(message.step_id)
                     break
                 case "ToolApprovalRequest":
+                    logCompletionSocket("Dispatching ToolApprovalRequest handler", {
+                        stepId: message.step_id,
+                        toolName: message.name
+                    })
                     onToolApprovalRequestRef.current?.(message)
                     break
                 case "ToolApprovalResponse":
+                    logCompletionSocket("Dispatching ToolApprovalResponse handler", {
+                        stepId: message.step_id,
+                        approved: message.approved
+                    })
                     onToolApprovalResponseRef.current?.(message)
                     break
                 case "Snippet":
-                    console.log("Snippet event received", message.snippet)
+                    logCompletionSocket("Dispatching Snippet handler", {
+                        snippetType: message.snippet.type
+                    })
                     onSnippetRef.current?.({ ...message.snippet, timestamp: message.timestamp })
                     break
                 case "RunError":
+                    logCompletionSocket("Dispatching RunError handler", {
+                        code: message.code ?? null
+                    })
                     onRunErrorRef.current?.({ error: message.error, ...(message.code && { code: message.code }) })
                     break
+                case "Cancelled":
+                    logCompletionSocket("Dispatching Cancelled handler", {
+                        reason: message.reason ?? null
+                    })
+                    onCancelledRef.current?.({ ...(message.reason ? { reason: message.reason } : {}) })
+                    break
                 default:
-                    console.warn("[useCompletionSocket] Unknown event type:", message.type)
+                    console.warn(LOG_PREFIX, "Unknown event type:", message.type)
             }
         })
 
         return () => {
-            console.log("[useCompletionSocket] Cleaning up event subscription")
+            logCompletionSocket("Cleaning up event subscription")
             unsubscribe()
         }
     }, [subscribeToEvents])
 
-    return { sendMessage, isConnected }
+    const sendMessageWithLogging = useCallback(
+        (message: ModelRequest) => {
+            logCompletionSocket("Sending message through socket hook", { type: message.type })
+            sendMessage(message)
+        },
+        [sendMessage]
+    )
+
+    return { sendMessage: sendMessageWithLogging, isConnected }
 }

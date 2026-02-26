@@ -78,7 +78,10 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance> exte
         this.notificationManager = new NotificationManager(session.user, agent)
     }
 
-    async run(streamingParams?: TrackingParams): Promise<ApprovalResult<SessionWithTracking<T>, Agent<SessionWithTracking<T>, AgentOutputType>>> {
+    async run(
+        streamingParams?: TrackingParams,
+        options?: { signal?: AbortSignal }
+    ): Promise<ApprovalResult<SessionWithTracking<T>, Agent<SessionWithTracking<T>, AgentOutputType>>> {
         if (!this.inputEvent) {
             throw new Error("No input event set. Call setInputEvent() before run()")
         }
@@ -105,7 +108,8 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance> exte
                 context: this.getToolContext(),
                 memorySession: this.memorySession,
                 sessionInputCallback: recentHistoryCallback,
-                maxTurns: this.maxTurns
+                maxTurns: this.maxTurns,
+                signal: options?.signal
             })
         } finally {
             this.activeStreamingParams = undefined
@@ -113,7 +117,12 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance> exte
         return this.mapLoopResult(loopResult)
     }
 
-    async userMessageRun(userMessage: string, files?: StoredFile[], streamingParams?: TrackingParams): Promise<ApprovalResult<SessionWithTracking<T>, Agent<SessionWithTracking<T>, AgentOutputType>>> {
+    async userMessageRun(
+        userMessage: string,
+        files?: StoredFile[],
+        streamingParams?: TrackingParams,
+        options?: { signal?: AbortSignal }
+    ): Promise<ApprovalResult<SessionWithTracking<T>, Agent<SessionWithTracking<T>, AgentOutputType>>> {
         const content = this.buildUserContent(userMessage, files)
         const userHistory = this.buildUserHistory(content)
         const runner = runnerFactory({
@@ -131,7 +140,8 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance> exte
                 context: this.getToolContext(),
                 memorySession: this.memorySession,
                 sessionInputCallback: recentHistoryCallback,
-                maxTurns: this.maxTurns
+                maxTurns: this.maxTurns,
+                signal: options?.signal
             })
         } finally {
             this.activeStreamingParams = undefined
@@ -148,7 +158,8 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance> exte
         stepId: string,
         streamingParams?: TrackingParams,
         rejectionReason?: string,
-        hardReject?: boolean
+        hardReject?: boolean,
+        options?: { signal?: AbortSignal }
     ): Promise<ApprovalResult<SessionWithTracking<T>, Agent<SessionWithTracking<T>, AgentOutputType>>> {
         logger.info("[ApprovalFlow] Resuming from pending approval", { runId: this.runContext.runId, stepId, decision })
 
@@ -171,7 +182,8 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance> exte
                     context: toolContext,
                     memorySession: this.memorySession,
                     sessionInputCallback: recentHistoryCallback,
-                    maxTurns: this.maxTurns
+                    maxTurns: this.maxTurns,
+                    signal: options?.signal
                 },
                 onRejected: async (state, interruption) => {
                     const stateWithHistory = state as unknown as { history?: AgentInputItem[] }

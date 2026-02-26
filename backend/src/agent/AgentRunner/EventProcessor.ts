@@ -15,6 +15,8 @@ import { Session } from "../../types/session"
 import { trackActionTaken, trackAgentTriggered } from "../../utility/analytics"
 import { getInputConfigInclude, getOutputConfigInclude } from "../../utility/prismaIncludes"
 import { classifyAgentError } from "../agentErrorUtils"
+import { listenForRunCancellation } from "../cancellation/RunCancellationTaskQueue"
+import { markRunCancelledAndInvalidate } from "../cancellation/runCancellationEffects"
 
 import { AgentRunResultStatus, AgentRunner, ApprovalResult, SessionWithTracking } from "./AgentRunner"
 import { filterEvent } from "./EventFilter"
@@ -337,6 +339,8 @@ export class EventProcessor {
         const runContext: RunContext = { runId }
         const agentRunner = new AgentRunner(session, outputs, agent, runContext)
         agentRunner.setInputEvent(this.inputEvent)
+        const cancellationController = new AbortController()
+        const cancellationSubscription = listenForRunCancellation(runId, cancellationController)
 
         // Run the agent runner with streaming parameters
         let result: ApprovalResult<SessionWithTracking<Session>, OpenAIAgent<SessionWithTracking<Session>, AgentOutputType>>
@@ -345,8 +349,15 @@ export class EventProcessor {
                 runId,
                 agentId: agent.id,
                 user: this.user
+            }, {
+                signal: cancellationController.signal
             })
         } catch (error) {
+            if (cancellationSubscription.isCancellationRequested()) {
+                await markRunCancelledAndInvalidate(runId, agent.id, this.user.organizationId, this.user.id)
+                return new ProcessorResult(false, "Run cancelled by user", agent, undefined, runId)
+            }
+
             const classified = classifyAgentError(error)
             logger.error(`Error running agent "${agent.name}"`, {
                 error,
@@ -357,6 +368,13 @@ export class EventProcessor {
             await markRunFailedAndInvalidate(runId, classified, this.user.organizationId, agent.id)
             await this.notifyRunFailure(agent, runId, classified.message)
             throw error
+        } finally {
+            cancellationSubscription.unsubscribe()
+        }
+
+        if (cancellationSubscription.isCancellationRequested()) {
+            await markRunCancelledAndInvalidate(runId, agent.id, this.user.organizationId, this.user.id)
+            return new ProcessorResult(false, "Run cancelled by user", agent, undefined, runId)
         }
 
         if (result.status === AgentRunResultStatus.COMPLETED) {

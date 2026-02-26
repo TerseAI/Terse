@@ -16,6 +16,8 @@ type ChatProps = {
     onHandleApprove?: (stepId: string) => void
     onHandleReject?: (stepId: string) => void
     onMultipleChoiceAnswer?: (questionId: string, value: string) => void
+    onCancel?: () => Promise<boolean>
+    isRunInProgress?: boolean
     addUserTurnsLocally?: boolean
     inputSize?: "small" | "medium" | "large"
     placeholders?: string[]
@@ -37,6 +39,8 @@ const Chat = forwardRef<ChatHandle, ChatProps>(function Chat(
         onHandleApprove,
         onHandleReject,
         onMultipleChoiceAnswer,
+        onCancel,
+        isRunInProgress,
         addUserTurnsLocally,
         inputSize = "small",
         placeholders = [],
@@ -49,10 +53,12 @@ const Chat = forwardRef<ChatHandle, ChatProps>(function Chat(
     const {
         turns,
         isPendingAssistantResponse,
+        isCancelling,
         input,
         setInput,
         sendMessage: sendUserMessage,
         sendModelRequest,
+        cancelRun,
         handleMultipleChoiceAnswer
     } = useChat({
         subscribeToEvents,
@@ -62,6 +68,8 @@ const Chat = forwardRef<ChatHandle, ChatProps>(function Chat(
         onToolCall: () => {},
         onToolCallComplete: () => {},
         onMultipleChoiceAnswer,
+        cancelRun: onCancel,
+        isRunInProgress,
         addUserTurnsLocally
     })
 
@@ -87,6 +95,8 @@ const Chat = forwardRef<ChatHandle, ChatProps>(function Chat(
             ref={chatLayoutRef}
             turns={turns}
             isPendingAssistantResponse={isPendingAssistantResponse}
+            isCancelling={isCancelling}
+            onCancel={onCancel ? cancelRun : undefined}
             onSendMessage={sendUserMessage}
             onSendModelRequest={sendModelRequest}
             input={input}

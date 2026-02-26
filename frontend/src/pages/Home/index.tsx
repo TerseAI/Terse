@@ -16,7 +16,7 @@ import { IconForIntegration } from "@/pages/Agents/components/Integration"
 import { FrontendRoutes } from "@/shared/FrontendRoutes"
 import { ModelRequest, SendModelRequest } from "@/shared/ModelEvents"
 import { RunHistoryRecordWithAgent } from "@/shared/RunHistoryTypes"
-import { sendBuilderMessage, subscribeToBuilderChat } from "@/socket"
+import { cancelBuilderChatSession, sendBuilderMessage, subscribeToBuilderChat } from "@/socket"
 import { formatTimestamp } from "@/utility/timeUtils"
 
 import { useBuilderChatHistory } from "../../hooks/api/useBuilderChatHistory"
@@ -80,6 +80,11 @@ function Home() {
     const handleUserMessage = useCallback(() => {
         if (!hasStartedChat) setHasStartedChat(true)
     }, [hasStartedChat])
+
+    const handleCancel = async () => {
+        const response = await cancelBuilderChatSession(sessionId)
+        return response.accepted
+    }
 
     // Run drawer handlers
     const handleOpenChat = (run: RunHistoryRecordWithAgent) => {
@@ -170,6 +175,7 @@ function Home() {
                         initialTurns={initialTurns}
                         subscribeToEvents={subscribeToEvents}
                         sendMessage={sendMessage}
+                        onCancel={handleCancel}
                         onUserMessage={handleUserMessage}
                         addUserTurnsLocally={true}
                         inputSize={hasStartedChat ? "small" : "large"}

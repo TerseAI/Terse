@@ -12,6 +12,8 @@ import { type Turn, TurnView } from "./Turn"
 interface ChatLayoutProps {
     turns: Turn[]
     isPendingAssistantResponse: boolean
+    isCancelling?: boolean
+    onCancel?: () => Promise<void> | void
     onSendMessage: (message: string) => void
     onSendModelRequest?: (request: ModelRequest) => void
     input: string
@@ -34,6 +36,8 @@ export const ChatLayout = forwardRef<ChatLayoutHandle, ChatLayoutProps>(function
     {
         turns,
         isPendingAssistantResponse,
+        isCancelling = false,
+        onCancel,
         onSendMessage,
         input,
         setInput,
@@ -150,7 +154,10 @@ export const ChatLayout = forwardRef<ChatLayoutHandle, ChatLayoutProps>(function
                     input={input}
                     setInput={setInput}
                     placeholders={placeholders}
-                    disabled={isPendingAssistantResponse}
+                    disabled={isPendingAssistantResponse || isCancelling}
+                    isGenerating={isPendingAssistantResponse}
+                    isCancelling={isCancelling}
+                    onCancel={onCancel}
                     inputSize={inputSize}
                     showPlaceholderChips={showPlaceholderChips}
                 />

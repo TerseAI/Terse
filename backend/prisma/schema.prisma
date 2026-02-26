@@ -902,6 +902,7 @@ enum KnowledgeBaseConfigType {
 enum RunHistoryStatus {
   success
   failed
+  cancelled
   skipped
   in_progress
   awaiting_approval
