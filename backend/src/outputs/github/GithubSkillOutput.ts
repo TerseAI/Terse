@@ -3,11 +3,13 @@ import { OutputConfigType } from "@prisma/client"
 
 import { type CapabilityDescription, CapabilityRole, extractToolMetadata, getConfigMetadata, getContextLabel } from "../../capabilityHelpers"
 import { validateGithubRepositoryIds } from "../../integrations/GithubIntegration"
+import logger from "../../logger"
 import { ConfigType, GitHubConfig } from "../../shared/Configs"
 import { IntegrationType } from "../../shared/Integrations"
 import { PrismaTransaction } from "../../types/prisma"
 import { GitHubConfigSchema, stripConfigForValidation } from "../../utility/configSchemas"
-import { Output, ToolboxEntry } from "../abstract/Output"
+import { Output, RuntimeSystemInstructionsContext, ToolboxEntry } from "../abstract/Output"
+import { createGitHubClient, getGitHubAccessToken, getRepositoryNamesByIds } from "./githubApiClient"
 
 import { grepGitHubCodeTool } from "./tools/grepCode"
 import { listGitHubCommitsTool } from "./tools/listCommits"
@@ -76,7 +78,28 @@ export class GithubSkillOutput extends Output<GitHubConfig> {
         return new GitHubConfig("example", [0])
     }
 
+    async getRuntimeSystemInstructions(context: RuntimeSystemInstructionsContext): Promise<string> {
+        const accessToken = await getGitHubAccessToken(context.userId)
+        if (!accessToken) {
+            logger.warn("Skipping GitHub repo-name hydration because no token was found", { userId: context.userId })
+            return this.getSystemInstructions()
+        }
+
+        const allRepositoryIds = this.configs.flatMap(config => config.repositoryIds ?? [])
+        if (!allRepositoryIds.length) {
+            return this.getSystemInstructions()
+        }
+
+        const client = createGitHubClient(accessToken)
+        const repositoryNamesById = await getRepositoryNamesByIds(client, allRepositoryIds)
+        return this.buildSystemInstructionsForConfigs(this.configs, repositoryNamesById)
+    }
+
     protected getSystemInstructionsForConfigs(configs: GitHubConfig[]): string {
+        return this.buildSystemInstructionsForConfigs(configs, new Map())
+    }
+
+    private buildSystemInstructionsForConfigs(configs: GitHubConfig[], repositoryNamesById: Map<number, string>): string {
         if (configs.length === 0) {
             throw new Error("No GitHub skill configs provided")
         }
@@ -86,10 +109,16 @@ export class GithubSkillOutput extends Output<GitHubConfig> {
         lines.push("Available configurations:")
         for (const config of configs) {
             const repoIds = config.repositoryIds ?? []
-            lines.push(`  • Integration ID: ${config.integrationId} - Repository IDs: ${repoIds.length > 0 ? repoIds.join(", ") : "N/A"}`)
+            const repoDetails = repoIds
+                .map(repoId => {
+                    const name = repositoryNamesById.get(repoId)
+                    return name ? `${name} (ID: ${repoId})` : `ID: ${repoId}`
+                })
+                .join(", ")
+            lines.push(`  • Integration ID: ${config.integrationId} - Repositories: ${repoDetails || "N/A"}`)
         }
         lines.push("\nGitHub tools are read-only in this skill and automatically use the connected user's GitHub token.")
-        lines.push("Use repository IDs from the configured entries when calling GitHub tools.")
+        lines.push('When a tool asks for repository, use the configured entries above (prefer "owner/repo" when available, otherwise use repository IDs).')
         return lines.join("\n")
     }
 }

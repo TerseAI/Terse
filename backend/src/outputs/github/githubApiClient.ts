@@ -59,6 +59,33 @@ export async function getRepositoryInfo(client: Octokit, owner: string, repo: st
 }
 
 /**
+ * Resolve repository full names from repository IDs.
+ */
+export async function getRepositoryNamesByIds(client: Octokit, repositoryIds: number[]): Promise<Map<number, string>> {
+    const uniqueRepoIds = [...new Set(repositoryIds)].filter(id => Number.isInteger(id) && id > 0)
+    if (uniqueRepoIds.length === 0) {
+        return new Map()
+    }
+
+    const pairs = await Promise.all(
+        uniqueRepoIds.map(async repoId => {
+            try {
+                const { data } = await client.request("GET /repositories/{repository_id}", { repository_id: repoId })
+                return [repoId, data.full_name] as const
+            } catch (error: any) {
+                logger.warn("Failed to resolve repository name from ID", {
+                    repoId,
+                    error: error?.message ?? String(error)
+                })
+                return null
+            }
+        })
+    )
+
+    return new Map(pairs.filter((pair): pair is readonly [number, string] => pair !== null))
+}
+
+/**
  * Search code in GitHub repositories
  */
 export interface CodeSearchResult {
