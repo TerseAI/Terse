@@ -2,11 +2,10 @@ import { Tool } from "@openai/agents"
 import { webSearchTool } from "@openai/agents"
 import { OutputConfigType } from "@prisma/client"
 
-import { buildDummyOutputConfig } from "../../buildDummyConfigForCapability"
 import { type CapabilityDescription, CapabilityRole, extractToolMetadata, getConfigMetadata } from "../../capabilityHelpers"
-import { ConfigInstance } from "../../shared/Configs"
+import { ConfigInstance, TerseConfig } from "../../shared/Configs"
 import { IntegrationType } from "../../shared/Integrations"
-import { AgentOutputWithConfigs, PrismaTransaction } from "../../types/prisma"
+import { PrismaTransaction } from "../../types/prisma"
 import { convertOutputConfigTypeToConfigType } from "../../utility/typeConverters"
 import { Output, ToolboxEntry } from "../abstract/Output"
 
@@ -57,11 +56,11 @@ export class TerseSkillsOutput extends Output<ConfigInstance> {
         // No database records needed - this is always available
     }
 
-    protected getDummyConfigForCapability(): AgentOutputWithConfigs {
-        return buildDummyOutputConfig("example", { config_type: OutputConfigType.TERSE })
+    protected getDummyConfigForCapability(): ConfigInstance {
+        return new TerseConfig()
     }
 
-    protected getSystemInstructionsForConfigs(_configs: AgentOutputWithConfigs[]): string {
+    protected getSystemInstructionsForConfigs(_configs: ConfigInstance[]): string {
         return ""
     }
 }

@@ -1,12 +1,11 @@
 import { Tool } from "@openai/agents"
 import { OutputConfigType } from "@prisma/client"
 
-import { buildDummyOutputConfig } from "../../buildDummyConfigForCapability"
 import { type CapabilityDescription, CapabilityRole, extractToolMetadata, getConfigMetadata } from "../../capabilityHelpers"
 import { getNotionAccessTokenOrThrow, validateNotionDatabasesExist, validateNotionPagesExist } from "../../integrations/NotionIntegration"
 import { NotionConfig } from "../../shared/Configs"
 import { IntegrationType } from "../../shared/Integrations"
-import { AgentOutputWithConfigs, PrismaTransaction } from "../../types/prisma"
+import { PrismaTransaction } from "../../types/prisma"
 import { NotionConfigSchema, stripConfigForValidation } from "../../utility/configSchemas"
 import { convertOutputConfigTypeToConfigType } from "../../utility/typeConverters"
 import { Output, ToolboxEntry } from "../abstract/Output"
@@ -61,16 +60,8 @@ export class NotionOutput extends Output<NotionConfig> {
         }
     }
 
-    protected getDummyConfigForCapability(): AgentOutputWithConfigs {
-        return buildDummyOutputConfig("example", {
-            config_type: OutputConfigType.NOTION,
-            notion_config: {
-                database_ids: ["example-db-id"],
-                database_names: ["Example DB"],
-                page_ids: ["example-page-id"],
-                page_names: ["Example Page"]
-            }
-        })
+    protected getDummyConfigForCapability(): NotionConfig {
+        return new NotionConfig("example", ["example-db-id"], ["Example DB"], ["example-page-id"], ["Example Page"])
     }
 
     async validateConfig(output: NotionConfig, _userId: string): Promise<void> {
@@ -97,7 +88,7 @@ export class NotionOutput extends Output<NotionConfig> {
         })
     }
 
-    protected getSystemInstructionsForConfigs(configs: AgentOutputWithConfigs[]): string {
+    protected getSystemInstructionsForConfigs(configs: NotionConfig[]): string {
         if (configs.length === 0) {
             throw new Error("No Notion configs provided")
         }
@@ -107,15 +98,11 @@ export class NotionOutput extends Output<NotionConfig> {
 
         const configList: string[] = []
         for (const config of configs) {
-            if (!config.notion_config) {
-                throw new Error("Notion config not found")
-            }
-            const nc = config.notion_config
-            const dbIds = nc.database_ids ?? []
-            const dbNames = nc.database_names ?? []
-            const pageIds = nc.page_ids ?? []
-            const pageNames = nc.page_names ?? []
-            const parts: string[] = [`Integration ID: ${config.integration_id}`]
+            const dbIds = config.databaseIds ?? []
+            const dbNames = config.databaseNames ?? []
+            const pageIds = config.pageIds ?? []
+            const pageNames = config.pageNames ?? []
+            const parts: string[] = [`Integration ID: ${config.integrationId}`]
             if (dbIds.length > 0) {
                 parts.push(`Allowed databases: ${dbIds.map((id, i) => `${dbNames[i] || id} (${id})`).join("; ")}`)
             }
