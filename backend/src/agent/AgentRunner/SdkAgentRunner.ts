@@ -275,8 +275,10 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
         for (const [outputType, configs] of grouped.entries()) {
             const output = OutputFactory.createOutput(outputType)
             if (!output) continue
+            output.configs = configs
             outputs.push(output)
         }
+
         return outputs
     }
 }

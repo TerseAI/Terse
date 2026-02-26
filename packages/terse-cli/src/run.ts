@@ -95,7 +95,7 @@ function logStreamChunk(chunk: TerseAgentResult): void {
     }
     if (chunk.type === EventType.FINAL_OUTPUT) {
         const data = chunk as FinalOutputResult
-        console.log(chalk.green(`\n  [final_output] ${truncate(data.finalOutput, 220)}\n`))
+        console.log(chalk.green(`\n  [final_output] ${data.finalOutput}\n`))
     }
 }
 
