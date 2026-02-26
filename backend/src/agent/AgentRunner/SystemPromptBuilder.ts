@@ -126,7 +126,7 @@ When explicitly asked by the user, include these links in your responses to help
         }
     }
 
-    protected buildOutputsSection(): Section | null {
+    protected async buildOutputsSection(): Promise<Section | null> {
         if (!this.deps.outputs || this.deps.outputs.length === 0) {
             return null
         }
@@ -138,7 +138,7 @@ When explicitly asked by the user, include these links in your responses to help
                 continue
             }
 
-            const instructions = output.getSystemInstructions()
+            const instructions = await output.getRuntimeSystemInstructions({ userId: this.deps.session.user.id })
             outputSections.push(instructions)
         }
 
