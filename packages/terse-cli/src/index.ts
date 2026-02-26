@@ -2,6 +2,7 @@
 
 import { Command } from "commander"
 import { generate } from "./generate.js"
+import { integrate } from "./integrate.js"
 import { init } from "./init.js"
 import { run } from "./run.js"
 import { test } from "./test.js"
@@ -26,6 +27,13 @@ program
     .description("Generate TypeScript types for your connected integrations")
     .action(async () => {
         await generate()
+    })
+
+program
+    .command("integrate")
+    .description("Open the integrations page in the Terse Web UI")
+    .action(async () => {
+        await integrate()
     })
 
 program
