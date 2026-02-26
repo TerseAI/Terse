@@ -13,6 +13,10 @@ export interface ToolboxEntry {
     displayName: string
 }
 
+export interface RuntimeSystemInstructionsContext {
+    userId: string
+}
+
 export abstract class Output<TConfig extends ConfigInstance> {
     integration: OutputConfigType
     readonly toolbox: readonly ToolboxEntry[]
@@ -45,4 +49,11 @@ export abstract class Output<TConfig extends ConfigInstance> {
      * Protected method that subclasses implement to generate system instructions.
      */
     protected abstract getSystemInstructionsForConfigs(configs: TConfig[]): string
+
+    /**
+     * Returns runtime system instructions, with access to run-scoped context (e.g. userId).
+     */
+    async getRuntimeSystemInstructions(_context: RuntimeSystemInstructionsContext): Promise<string> {
+        return this.getSystemInstructions()
+    }
 }
