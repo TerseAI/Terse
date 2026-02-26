@@ -1,3 +1,4 @@
+import { CONFIG_DETAILS, ConfigType } from "../shared/Configs"
 import { IntegrationType } from "../shared/Integrations"
 import { SdkAgentRunRequestBody, SdkAgentRunResponseBody } from "../shared/types"
 
@@ -7,6 +8,10 @@ type ValidationResult = { ok: true; normalized: NormalizedSdkAgentRunRequest } |
 
 function isIntegrationType(value: string): value is IntegrationType {
     return Object.values(IntegrationType).includes(value as IntegrationType)
+}
+
+function isConfigType(value: string): value is ConfigType {
+    return Object.values(ConfigType).includes(value as ConfigType)
 }
 
 export function validateAndNormalizeSdkAgentRunBody(body: SdkAgentRunRequestBody): ValidationResult {
@@ -55,20 +60,27 @@ export function validateAndNormalizeSdkAgentRunBody(body: SdkAgentRunRequestBody
                 validationErrors.push(`\`skills[${i}]\` must be an object`)
                 continue
             }
-            if (typeof skill.integrationType !== "string" || !skill.integrationType.trim()) {
-                validationErrors.push(`\`skills[${i}].integrationType\` is required and must be a non-empty string`)
-            } else if (!isIntegrationType(skill.integrationType.trim())) {
-                validationErrors.push(`\`skills[${i}].integrationType\` must be a valid IntegrationType`)
+            if (typeof skill.configType !== "string" || !isConfigType(skill.configType.trim())) {
+                validationErrors.push(`\`skills[${i}].configType\` is required and must be a valid ConfigType`)
             }
-            if (skill.id !== undefined && (typeof skill.id !== "string" || !skill.id.trim())) {
-                validationErrors.push(`\`skills[${i}].id\` must be a non-empty string when provided`)
+            if (!skill.config || typeof skill.config !== "object" || Array.isArray(skill.config)) {
+                validationErrors.push(`\`skills[${i}].config\` is required and must be an object`)
             }
 
-            const trimmedIntegrationType = typeof skill.integrationType === "string" ? skill.integrationType.trim() : ""
-            if (trimmedIntegrationType && isIntegrationType(trimmedIntegrationType)) {
+            const trimmedConfigType = typeof skill.configType === "string" ? skill.configType.trim() : ""
+            if (trimmedConfigType && isConfigType(trimmedConfigType)) {
+                const integrationType = CONFIG_DETAILS[trimmedConfigType].integrationType
+                if (!isIntegrationType(integrationType)) {
+                    validationErrors.push(`\`skills[${i}].configType\` maps to an unsupported integration type`)
+                    continue
+                }
                 normalizedSkills.push({
-                    integrationType: trimmedIntegrationType,
-                    id: skill.id?.trim()
+                    configType: trimmedConfigType,
+                    config: {
+                        ...(skill.config as Record<string, unknown>),
+                        integrationType,
+                        configType: trimmedConfigType
+                    }
                 })
             }
         }

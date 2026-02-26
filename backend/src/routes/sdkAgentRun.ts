@@ -4,6 +4,7 @@ import { Request, Response } from "express"
 import { SessionWithTracking } from "../agent/AgentRunner/AgentRunner"
 import { SdkAgentRunner } from "../agent/AgentRunner/SdkAgentRunner"
 import { OutputFactory } from "../outputs/abstract/OutputFactory"
+import { CONFIG_DETAILS } from "../shared/Configs"
 import { IntegrationType } from "../shared/Integrations"
 import { SdkAgentRunRequestBody, SdkAgentRunResponseBody, SdkAgentSkillPayload, SdkAgentStreamEvent, User } from "../shared/types"
 import { Session } from "../types/session"
@@ -45,21 +46,14 @@ export async function handleSdkAgentRun(req: Request, res: Response) {
     }
 
     try {
-        const { tools, toolToIntegrationMap } = buildToolsForSkills(normalized.skills.map(s => s.integrationType))
+        const { tools, toolToIntegrationMap } = buildToolsForSkills(normalized.skills.map(s => CONFIG_DETAILS[s.configType].integrationType))
         const runId = `sdk-run-${Date.now()}`
-        const eventText = [
-            ...buildSkillContextLines(normalized.skills),
-            "",
-            `Integration Type: ${normalized.event.integrationType}`,
-            `Event Content:`,
-            normalized.event.formattedContent,
-            ``,
-            `Debug Log: ${normalized.event.debugLog}`
-        ].join("\n")
+        const eventText = ["", `Integration Type: ${normalized.event.integrationType}`, `Event Content:`, normalized.event.formattedContent, ``, `Debug Log: ${normalized.event.debugLog}`].join("\n")
         const sdkRunner = new SdkAgentRunner({
             runId,
             user,
             prompt: normalized.prompt,
+            skills: normalized.skills,
             tools,
             toolToIntegrationMap,
             maxTurns: normalized.options.maxTurns,
@@ -94,15 +88,16 @@ export async function handleSdkAgentRun(req: Request, res: Response) {
     }
 }
 
-function buildSkillContextLines(skills: SdkAgentSkillPayload[]): string[] {
-    const lines = ["<SDK_SKILLS>", "Configured integration skills (use these exact integration IDs when a tool requires integrationId):"]
-    for (const skill of skills) {
-        const id = skill.id?.trim()
-        lines.push(`- ${skill.integrationType}: ${id ? id : "<missing>"}`)
-    }
-    lines.push("If the required integrationId is missing, ask for it or avoid write actions that require a bound integration.", "</SDK_SKILLS>")
-    return lines
-}
+// function buildSkillContextLines(skills: SdkAgentSkillPayload[]): string[] {
+//     const lines = ["<SDK_SKILLS>", "Configured skill configs (use the integration IDs from each config when a tool requires integrationId):"]
+//     for (const skill of skills) {
+//         const integration = CONFIG_DETAILS[skill.configType].integrationType
+//         const integrationId = typeof skill.config.integrationId === "string" ? skill.config.integrationId : "<missing>"
+//         lines.push(`- ${skill.configType} (${integration}): ${integrationId}`)
+//     }
+//     lines.push("If the required integrationId is missing, ask for it or avoid write actions that require a bound integration.", "</SDK_SKILLS>")
+//     return lines
+// }
 
 function buildToolsForSkills(skillIntegrationTypes: IntegrationType[]): {
     tools: Tool<SessionWithTracking<Session>>[]

@@ -1,16 +1,20 @@
 import { Agent, AgentInputItem, AgentOutputType, RunResult, RunToolApprovalItem, Tool } from "@openai/agents"
-import type { Session as AgentMemorySession } from "@openai/agents-core"
+import type { Session as AgentMemorySession, ModelSettings } from "@openai/agents-core"
+import { OutputConfigType } from "@prisma/client"
 
 import { settings } from "../../config/settings"
-import { ConfigInstance } from "../../shared/Configs"
+import { Output } from "../../outputs/abstract/Output"
+import { OutputFactory } from "../../outputs/abstract/OutputFactory"
+import { CONFIG_DETAILS, ConfigInstance } from "../../shared/Configs"
 import { ChangedItem, ModelEvent, ToolCallExecutionStatus } from "../../shared/ModelEvents"
 import { RunHistoryAction } from "../../shared/RunHistoryTypes"
-import { SdkAgentStreamEvent, User } from "../../shared/types"
+import { SdkAgentSkillPayload, SdkAgentStreamEvent, User } from "../../shared/types"
 import { Session } from "../../types/session"
+import { convertConfigTypeToOutputConfigType, convertPlainObjectToConfigInstance } from "../../utility/typeConverters"
 import { AgentType, runnerFactory } from "../runner"
 
 import { AgentRunnerLoopResult, BaseAgentRunner, PendingApprovalState, SessionWithTracking } from "./BaseAgentRunner"
-import { RunContext, SystemPromptBuilderDependencies } from "./SystemPromptBuilder"
+import { BaseSystemPromptBuilder, RunContext, SystemPromptBuilderDependencies } from "./SystemPromptBuilder"
 
 type SdkRunnerSession = SessionWithTracking<Session>
 
@@ -18,6 +22,7 @@ type SdkAgentRunnerParams = {
     runId: string
     user: User
     prompt: string
+    skills: SdkAgentSkillPayload[]
     tools: Tool<SdkRunnerSession>[]
     toolToIntegrationMap: Map<string, string>
     maxTurns: number
@@ -66,6 +71,7 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
     private readonly sdkRunId: string
     private readonly user: User
     private readonly prompt: string
+    private readonly outputs: Output<ConfigInstance>[]
     private readonly tools: Tool<SdkRunnerSession>[]
     private readonly maxTurns: number
     private readonly requireApproval: boolean
@@ -82,6 +88,8 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
         this.sdkRunId = params.runId
         this.user = params.user
         this.prompt = params.prompt
+        const skillConfigs = params.skills.map(skill => convertPlainObjectToConfigInstance(skill.config))
+        this.outputs = this.buildOutputsFromConfigs(skillConfigs)
         this.tools = params.tools
         this.maxTurns = params.maxTurns
         this.requireApproval = params.requireApproval
@@ -179,20 +187,39 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
         runContext: RunContext
         model: string
         tools: Tool<SdkRunnerSession>[]
+        modelSettings?: ModelSettings
     }): Promise<Agent<SdkRunnerSession, AgentOutputType>> {
+        const instructions = await new BaseSystemPromptBuilder<SdkRunnerSession, ConfigInstance>(_params.systemPromptDeps, _params.runContext)
+            .withStandardSections()
+            .withSection(() => ({
+                header: "SDK USER INSTRUCTIONS",
+                content: this.prompt
+            }))
+            .build()
+
         this.agent = new Agent<SdkRunnerSession, AgentOutputType>({
-            name: "Terse SDK Agent",
-            model: "gpt-5.2",
-            instructions: this.prompt,
-            tools: this.tools
+            name: _params.name,
+            model: _params.model,
+            instructions,
+            tools: _params.tools,
+            modelSettings: _params.modelSettings
         })
         return this.agent
     }
 
     protected getAgentInitializationParams() {
+        const deps: SystemPromptBuilderDependencies<SdkRunnerSession, ConfigInstance> = {
+            session: this.getToolContext(),
+            agent: {
+                id: "sdk-agent-run",
+                user_id: this.user.id
+            },
+            outputs: this.outputs
+        }
+
         return {
             name: "Terse SDK Agent",
-            systemPromptDeps: {} as SystemPromptBuilderDependencies<SdkRunnerSession, ConfigInstance>,
+            systemPromptDeps: deps,
             runContext: { runId: this.sdkRunId } as RunContext,
             model: "gpt-5.2",
             tools: this.tools
@@ -231,5 +258,25 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
         const remaining = this.failedToolCalls.length - summarized.length
         const suffix = remaining > 0 ? ` (+${remaining} more)` : ""
         return `Tool call failures: ${summarized.join("; ")}${suffix}`
+    }
+
+    private buildOutputsFromConfigs(configs: ConfigInstance[]): Output<ConfigInstance>[] {
+        const grouped = new Map<OutputConfigType, ConfigInstance[]>()
+        for (const config of configs) {
+            const details = CONFIG_DETAILS[config.configType]
+            if (!details.isOutput) continue
+            const outputType = convertConfigTypeToOutputConfigType(config.configType)
+            const existing = grouped.get(outputType) ?? []
+            existing.push(config)
+            grouped.set(outputType, existing)
+        }
+
+        const outputs: Output<ConfigInstance>[] = []
+        for (const [outputType, configs] of grouped.entries()) {
+            const output = OutputFactory.createOutput(outputType)
+            if (!output) continue
+            outputs.push(output)
+        }
+        return outputs
     }
 }

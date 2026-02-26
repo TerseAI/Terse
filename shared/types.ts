@@ -566,8 +566,8 @@ export type SdkAgentRunEventPayload = {
 }
 
 export type SdkAgentSkillPayload = {
-    integrationType: IntegrationType
-    id?: string
+    configType: ConfigType
+    config: Record<string, unknown>
 }
 
 export type SdkAgentRunOptionsPayload = {

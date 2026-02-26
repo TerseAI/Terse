@@ -1,6 +1,7 @@
 declare const process: { env: Record<string, string | undefined> }
 
 import type { InputEvent } from "./types.js"
+import { CONFIG_DETAILS } from "./shared/Configs.js"
 import type { ConfigInstance } from "./shared/Configs.js"
 import type { RunHistoryAction } from "./shared/RunHistoryTypes.js"
 import type { SdkAgentRunRequestBody, SdkAgentRunResponseBody, SdkAgentSkillPayload, SdkAgentStreamEvent } from "./shared/types.js"
@@ -117,8 +118,8 @@ export class TerseAgent {
 
         const resolvedEvent = event ?? new MockInputEvent()
         const skills: SdkAgentSkillPayload[] = this.skills.map(skill => ({
-            integrationType: skill.integrationType,
-            id: skill.integrationId || undefined
+            configType: skill.configType,
+            config: serializeSkillConfig(skill)
         }))
 
         const requestBody: SdkAgentRunRequestBody = {
@@ -209,6 +210,18 @@ export class TerseAgent {
         }
         return data.result as TOutput
     }
+}
+
+function serializeSkillConfig(skill: ConfigInstance): Record<string, unknown> {
+    const serialized: Record<string, unknown> = {}
+    for (const [key, value] of Object.entries(skill as unknown as Record<string, unknown>)) {
+        if (typeof value === "function" || value === undefined) continue
+        serialized[key] = value
+    }
+    const details = CONFIG_DETAILS[skill.configType]
+    serialized.integrationType = details.integrationType
+    serialized.configType = skill.configType
+    return serialized
 }
 
 export enum EventType {

@@ -7,7 +7,7 @@ import type { GithubIntegration } from "./shared/Integrations.js"
 
 // ── Public Types ──────────────────────────────────────────────────────
 
-export interface GitHubRepo { id: number; name: string; owner: string }
+export interface GitHubRepo { id: number; name: string; owner: string; fullName?: string }
 export interface GitHubInstanceData { integration: GithubIntegration; repositories: GitHubRepo[] }
 
 export interface IntegrationInstanceData { id: string; displayName: string }
@@ -162,13 +162,72 @@ function generateGitHubSection(instances: GitHubInstanceData[]): SectionResult {
         const sfx = instances.length > 1
             ? toPascalCase(inst.integration.account_name || `Instance${i + 1}`)
             : ""
+        const ownerClass = `GithubOwner${sfx}`
         const repoClass = `Repository${sfx}`
         const id = inst.integration.id
 
-        parts.push(generateResourceClass(repoClass, [
-            { classField: "repositoryId", type: "number", sourceField: "id" },
-            { classField: "name", type: "string", sourceField: "name" },
-        ], "name", inst.repositories))
+        const toStaticName = (raw: string, fallback: string): string => {
+            let name = toPascalCase(raw || fallback)
+            if (!name) name = fallback
+            if (/^\d/.test(name)) name = `_${name}`
+            return name
+        }
+
+        const repositoriesWithFullName = inst.repositories.map(repo => {
+            const owner = repo.owner || "UnknownOwner"
+            const fullName = repo.owner && repo.name ? `${repo.owner}/${repo.name}` : repo.name
+            return { ...repo, owner, fullName }
+        })
+
+        const ownerEntries = new Map<string, { staticName: string; repos: typeof repositoriesWithFullName }>()
+        const usedOwnerNames = new Set<string>()
+        for (const repo of repositoriesWithFullName) {
+            if (!ownerEntries.has(repo.owner)) {
+                let ownerStaticName = toStaticName(repo.owner, "UnknownOwner")
+                while (usedOwnerNames.has(ownerStaticName)) ownerStaticName += "_"
+                usedOwnerNames.add(ownerStaticName)
+                ownerEntries.set(repo.owner, { staticName: ownerStaticName, repos: [] as any })
+            }
+            ownerEntries.get(repo.owner)!.repos.push(repo as any)
+        }
+
+        parts.push(`export class ${ownerClass} {`)
+        parts.push(`    constructor(public readonly name: string) {}`)
+        if (ownerEntries.size > 0) {
+            parts.push("")
+            for (const [owner, data] of ownerEntries) {
+                parts.push(`    static ${data.staticName} = new ${ownerClass}("${escapeString(owner)}")`)
+            }
+        }
+        parts.push("}")
+        parts.push("")
+
+        parts.push(`export class ${repoClass} {`)
+        parts.push(`    constructor(`)
+        parts.push(`        public readonly repositoryId: number,`)
+        parts.push(`        public readonly name: string,`)
+        parts.push(`        public readonly owner: ${ownerClass},`)
+        parts.push(`        public readonly fullName: string`)
+        parts.push(`    ) {}`)
+
+        if (ownerEntries.size > 0) {
+            parts.push("")
+            for (const [owner, data] of ownerEntries) {
+                const usedRepoNames = new Set<string>()
+                parts.push(`    static ${data.staticName} = {`)
+                for (const repo of data.repos) {
+                    let repoStaticName = toStaticName(repo.name, "Repository")
+                    while (usedRepoNames.has(repoStaticName)) repoStaticName += "_"
+                    usedRepoNames.add(repoStaticName)
+                    parts.push(
+                        `        ${repoStaticName}: new ${repoClass}(${repo.id}, "${escapeString(repo.name)}", ${ownerClass}.${data.staticName}, "${escapeString(repo.fullName)}"),`
+                    )
+                }
+                parts.push("    } as const")
+            }
+        }
+
+        parts.push("}")
         parts.push("")
 
         parts.push(`/** Use in \`triggers[]\` */`)
@@ -703,6 +762,27 @@ function generateToolsSection(tools: ToolDefinition[], input: CodegenInput): Sec
         return cloned
     }
 
+    // Ensure GitHub repository params are full "owner/repo".
+    // Supports:
+    // - Repository objects (uses .fullName)
+    // - full string "owner/repo" (passthrough)
+    // - short repo name string "repo" (resolved via known generated repositories when unique)
+    const normalizeGitHubRepositoryParams = (toolName: string): string => {
+        switch (toolName) {
+            case "readGitHubFile":
+            case "listGitHubPullRequests":
+            case "listGitHubDirectory":
+            case "listGitHubCommits":
+            case "summarizeGitHubPullRequestDiff":
+                return "{ ...params, repository: __normalizeGitHubRepository((params as any).repository) }"
+            case "searchGitHubCode":
+            case "grepGitHubCode":
+                return "{ ...params, repositoryNames: __normalizeGitHubRepositoryNames((params as any).repositoryNames) }"
+            default:
+                return "params"
+        }
+    }
+
     // Generate per-tool param types (with integrationId omitted where applicable)
     for (const tool of tools) {
         const typeName = toolNameToInterfaceName(tool.name)
@@ -737,6 +817,51 @@ function generateToolsSection(tools: ToolDefinition[], input: CodegenInput): Sec
     }
 
     groups.sort((a, b) => a.key.localeCompare(b.key))
+
+    const githubToolsExist = groups.some(g => g.integration === "github")
+    if (githubToolsExist) {
+        const githubRepoFullNames = Array.from(
+            new Set(
+                input.github.flatMap(g => g.repositories.map(r => (r.owner && r.name ? `${r.owner}/${r.name}` : r.name).trim())).filter(Boolean)
+            )
+        )
+
+        const nameToFullName = new Map<string, string>()
+        const ambiguousNames = new Set<string>()
+        for (const fullName of githubRepoFullNames) {
+            const [, repoName = fullName] = fullName.split("/", 2)
+            if (nameToFullName.has(repoName) && nameToFullName.get(repoName) !== fullName) {
+                ambiguousNames.add(repoName)
+                nameToFullName.delete(repoName)
+            } else if (!ambiguousNames.has(repoName)) {
+                nameToFullName.set(repoName, fullName)
+            }
+        }
+
+        parts.push(`const __githubRepoNameToFullName = new Map<string, string>([`)
+        for (const [name, fullName] of Array.from(nameToFullName.entries()).sort((a, b) => a[0].localeCompare(b[0]))) {
+            parts.push(`    ["${escapeString(name)}", "${escapeString(fullName)}"],`)
+        }
+        parts.push(`])`)
+        parts.push("")
+        parts.push(`function __normalizeGitHubRepository(repo: unknown): string {`)
+        parts.push(`    if (repo && typeof repo === "object" && "fullName" in (repo as Record<string, unknown>)) {`)
+        parts.push(`        const fullName = (repo as { fullName?: unknown }).fullName`)
+        parts.push(`        if (typeof fullName === "string" && fullName.length > 0) return fullName`)
+        parts.push(`    }`)
+        parts.push(`    if (typeof repo === "string") {`)
+        parts.push(`        if (repo.includes("/")) return repo`)
+        parts.push(`        return __githubRepoNameToFullName.get(repo) ?? repo`)
+        parts.push(`    }`)
+        parts.push(`    return String(repo ?? "")`)
+        parts.push(`}`)
+        parts.push("")
+        parts.push(`function __normalizeGitHubRepositoryNames(repositories: unknown): string[] {`)
+        parts.push(`    if (!Array.isArray(repositories)) return []`)
+        parts.push(`    return repositories.map(repo => __normalizeGitHubRepository(repo))`)
+        parts.push(`}`)
+        parts.push("")
+    }
 
     // Generate the GeneratedTools type
     parts.push("export type GeneratedTools = {")
@@ -775,12 +900,15 @@ function generateToolsSection(tools: ToolDefinition[], input: CodegenInput): Sec
         for (const tool of group.tools) {
             const methodName = toCamelCase(tool.displayName)
             const paramsType = toolNameToInterfaceName(tool.name)
+            const normalizedParamsExpr = group.integration === "github" ? normalizeGitHubRepositoryParams(tool.name) : "params"
             if (group.integrationId && hasAutoFillId(tool)) {
                 parts.push(`            ${methodName}: (params: ${paramsType}) =>`)
-                parts.push(`                agent.executeTool<ToolOutputByName["${escapeString(tool.name)}"]>("${escapeString(tool.name)}", { ...params, integrationId: "${escapeString(group.integrationId)}" }),`)
+                parts.push(
+                    `                agent.executeTool<ToolOutputByName["${escapeString(tool.name)}"]>("${escapeString(tool.name)}", { ...(${normalizedParamsExpr}), integrationId: "${escapeString(group.integrationId)}" }),`
+                )
             } else {
                 parts.push(`            ${methodName}: (params: ${paramsType}) =>`)
-                parts.push(`                agent.executeTool<ToolOutputByName["${escapeString(tool.name)}"]>("${escapeString(tool.name)}", params),`)
+                parts.push(`                agent.executeTool<ToolOutputByName["${escapeString(tool.name)}"]>("${escapeString(tool.name)}", ${normalizedParamsExpr}),`)
             }
         }
         parts.push(`        } } : {}),`)

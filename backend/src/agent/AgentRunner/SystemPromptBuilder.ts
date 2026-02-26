@@ -10,7 +10,6 @@ import { extractConversationContent } from "../../rag/runHistoryRag/conversation
 import { RunHistoryMemory } from "../../rag/runHistoryRag/indexer"
 import { ConfigInstance } from "../../shared/Configs"
 import { FrontendRoutes } from "../../shared/FrontendRoutes"
-import { AgentWithRelations } from "../../types/prisma"
 import { Session } from "../../types/session"
 
 export interface RunContext {
@@ -19,7 +18,10 @@ export interface RunContext {
 
 export interface SystemPromptBuilderDependencies<T extends Session, TConfig extends ConfigInstance> {
     session: T
-    agent: AgentWithRelations
+    agent: {
+        id: string
+        user_id?: string
+    }
     outputs: Output<TConfig>[]
 }
 
@@ -30,12 +32,12 @@ interface Section {
 
 type SectionBuilder = () => Section | null | Promise<Section | null>
 
-export class SystemPromptBuilder<T extends Session, TConfig extends ConfigInstance> {
+export class BaseSystemPromptBuilder<T extends Session, TConfig extends ConfigInstance> {
     private sections: SectionBuilder[] = []
 
     constructor(
-        private deps: SystemPromptBuilderDependencies<T, TConfig>,
-        private runContext: RunContext
+        protected deps: SystemPromptBuilderDependencies<T, TConfig>,
+        protected runContext: RunContext
     ) {}
 
     withSection(builder: SectionBuilder): this {
@@ -44,6 +46,115 @@ export class SystemPromptBuilder<T extends Session, TConfig extends ConfigInstan
     }
 
     withStandardSections(): this {
+        return this.withSection(() => this.buildTimeSection())
+            .withSection(() => this.buildCoreInstructions())
+            .withSection(() => this.buildDeepLinkingSection())
+            .withSection(() => this.buildOutputsSection())
+    }
+
+    async build(): Promise<string> {
+        const results = await Promise.all(this.sections.map(fn => fn()))
+        const validSections = results.filter((s): s is Section => s !== null)
+
+        return validSections.map((section, index) => this.formatSection(section, index)).join("\n\n")
+    }
+
+    protected formatSection(section: Section, index: number): string {
+        return `
+=====================
+${index}. ${section.header}
+=====================
+${section.content}
+`.trim()
+    }
+
+    protected buildTimeSection(): Section {
+        const currentTimeUtc = new Date().toISOString()
+        return {
+            header: "CURRENT TIME",
+            content: `The current time in UTC is: ${currentTimeUtc}
+
+Use this information to understand temporal context.`
+        }
+    }
+
+    protected buildCoreInstructions(): Section {
+        return {
+            header: "CORE INSTRUCTIONS",
+            content: CORE_INSTRUCTIONS
+        }
+    }
+
+    protected buildDeepLinkingSection(): Section {
+        const frontendUrl = settings.urls.frontend
+        const agentId = this.deps.agent.id
+        const runId = this.runContext.runId
+
+        const channelLink = `${frontendUrl}${FrontendRoutes.AGENTS.DETAIL(agentId)}`
+        const channelHistoryLink = `${frontendUrl}${FrontendRoutes.AGENTS.HISTORY(agentId)}`
+        const specificRunLink = `${frontendUrl}${FrontendRoutes.AGENTS.RUN_HISTORY(agentId, runId)}`
+
+        return {
+            header: "DEEP LINKING TO TERSE APPLICATION",
+            content: `You can create links to specific pages within the Terse application to help users navigate to relevant content.
+
+BASE URL: ${frontendUrl}
+The base URL is automatically determined from the environment (localhost for development, app.useterse.ai for production).
+
+AVAILABLE LINK TYPES:
+
+1. Channel Detail Page:
+   Format: ${frontendUrl}${FrontendRoutes.AGENTS.DETAIL("{agentId}")}
+   Example: ${channelLink}
+   Use when: Referencing a specific automation/channel
+
+2. Run History (Channel Activity Tab):
+   Format: ${frontendUrl}${FrontendRoutes.AGENTS.HISTORY("{agentId}")}
+   Example: ${channelHistoryLink}
+   Use when: Directing users to view all runs for a channel
+
+3. Specific Run History:
+   Format: ${frontendUrl}${FrontendRoutes.AGENTS.RUN_HISTORY("{agentId}", "{runId}")}
+   Example: ${specificRunLink}
+   Use when: Referencing a specific run execution
+
+CURRENT CONTEXT:
+- Channel ID: ${agentId}
+- Current Run ID: ${runId}
+
+When explicitly asked by the user, include these links in your responses to help users navigate to relevant parts of the application. For example, you might include a link to the current run's history when explaining what actions were taken, or link to the channel page when referencing the automation configuration.`
+        }
+    }
+
+    protected buildOutputsSection(): Section | null {
+        if (!this.deps.outputs || this.deps.outputs.length === 0) {
+            return null
+        }
+
+        const outputSections: string[] = []
+
+        for (const output of this.deps.outputs) {
+            if (!output || output.configs.length === 0) {
+                continue
+            }
+
+            const instructions = output.getSystemInstructions()
+            outputSections.push(instructions)
+        }
+
+        if (outputSections.length === 0) {
+            return null
+        }
+
+        return {
+            header: "OUTPUT INSTRUCTIONS",
+            content: outputSections.join("\n\n")
+        }
+    }
+}
+
+export class SystemPromptBuilder<T extends Session, TConfig extends ConfigInstance> extends BaseSystemPromptBuilder<T, TConfig> {
+    override withStandardSections(): this {
         return this.withSection(() => this.buildTimeSection())
             .withSection(() => this.buildCoreInstructions())
             .withSection(() => this.buildRunContextSection())
@@ -57,32 +168,6 @@ export class SystemPromptBuilder<T extends Session, TConfig extends ConfigInstan
      */
     withSimilarEventsSection(inputEvent: InputEvent): this {
         return this.withSection(() => this.buildSimilarEventsSection(inputEvent))
-    }
-
-    async build(): Promise<string> {
-        const results = await Promise.all(this.sections.map(fn => fn()))
-        const validSections = results.filter((s): s is Section => s !== null)
-
-        return validSections.map((section, index) => this.formatSection(section, index)).join("\n\n")
-    }
-
-    private formatSection(section: Section, index: number): string {
-        return `
-=====================
-${index}. ${section.header}
-=====================
-${section.content}
-`.trim()
-    }
-
-    private buildTimeSection(): Section {
-        const currentTimeUtc = new Date().toISOString()
-        return {
-            header: "CURRENT TIME",
-            content: `The current time in UTC is: ${currentTimeUtc}
-
-Use this information to understand temporal context.`
-        }
     }
 
     private async buildRunContextSection(): Promise<Section> {
@@ -132,13 +217,6 @@ This is event #${eventPosition} processed by this automation.`
         }
     }
 
-    private buildCoreInstructions(): Section {
-        return {
-            header: "CORE INSTRUCTIONS",
-            content: CORE_INSTRUCTIONS
-        }
-    }
-
     private async buildDirectivesSection(): Promise<Section | null> {
         const prisma = db()
         const directives = (await prisma.directive_records.findMany({
@@ -168,75 +246,11 @@ Follow these directives in addition to the USER INSTRUCTIONS provided in each me
         }
     }
 
-    private buildDeepLinkingSection(): Section {
-        const frontendUrl = settings.urls.frontend
-        const agentId = this.deps.agent.id
-        const runId = this.runContext.runId
-
-        const channelLink = `${frontendUrl}${FrontendRoutes.AGENTS.DETAIL(agentId)}`
-        const channelHistoryLink = `${frontendUrl}${FrontendRoutes.AGENTS.HISTORY(agentId)}`
-        const specificRunLink = `${frontendUrl}${FrontendRoutes.AGENTS.RUN_HISTORY(agentId, runId)}`
-
-        return {
-            header: "DEEP LINKING TO TERSE APPLICATION",
-            content: `You can create links to specific pages within the Terse application to help users navigate to relevant content.
-
-BASE URL: ${frontendUrl}
-The base URL is automatically determined from the environment (localhost for development, app.useterse.ai for production).
-
-AVAILABLE LINK TYPES:
-
-1. Channel Detail Page:
-   Format: ${frontendUrl}${FrontendRoutes.AGENTS.DETAIL("{agentId}")}
-   Example: ${channelLink}
-   Use when: Referencing a specific automation/channel
-
-2. Run History (Channel Activity Tab):
-   Format: ${frontendUrl}${FrontendRoutes.AGENTS.HISTORY("{agentId}")}
-   Example: ${channelHistoryLink}
-   Use when: Directing users to view all runs for a channel
-
-3. Specific Run History:
-   Format: ${frontendUrl}${FrontendRoutes.AGENTS.RUN_HISTORY("{agentId}", "{runId}")}
-   Example: ${specificRunLink}
-   Use when: Referencing a specific run execution
-
-CURRENT CONTEXT:
-- Channel ID: ${agentId}
-- Current Run ID: ${runId}
-
-When explicitly asked by the user, include these links in your responses to help users navigate to relevant parts of the application. For example, you might include a link to the current run's history when explaining what actions were taken, or link to the channel page when referencing the automation configuration.`
-        }
-    }
-
-    private buildOutputsSection(): Section | null {
-        if (!this.deps.outputs || this.deps.outputs.length === 0) {
-            return null
-        }
-
-        const outputSections: string[] = []
-
-        for (const output of this.deps.outputs) {
-            if (!output || output.configs.length === 0) {
-                continue
-            }
-
-            const instructions = output.getSystemInstructions()
-            outputSections.push(instructions)
-        }
-
-        if (outputSections.length === 0) {
-            return null
-        }
-
-        return {
-            header: "OUTPUT INSTRUCTIONS",
-            content: outputSections.join("\n\n")
-        }
-    }
-
     private async buildSimilarEventsSection(inputEvent: InputEvent): Promise<Section | null> {
         try {
+            if (!this.deps.agent.user_id) {
+                return null
+            }
             // Extract searchable content from the current input event
             const currentEventContent = inputEvent.formatForAgentRunner()
 

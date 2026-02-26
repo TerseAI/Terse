@@ -4,7 +4,7 @@ import { OutputConfigType } from "@prisma/client"
 import { CapabilityDescription } from "../../capabilityHelpers"
 import { ConfigInstance } from "../../shared/Configs"
 import { IntegrationType } from "../../shared/Integrations"
-import { AgentOutputWithConfigs, PrismaTransaction, User } from "../../types/prisma"
+import { AgentOutputWithConfigs, PrismaTransaction } from "../../types/prisma"
 
 export interface ToolboxEntry {
     tool: Tool

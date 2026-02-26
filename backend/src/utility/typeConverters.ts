@@ -19,6 +19,7 @@ import {
     PosthogConfig,
     SlackConfig,
     SlackOutputConfig,
+    TerseConfig,
     TimeTriggerConfig,
     WorkOSInputConfig,
     WorkOSOutputConfig
@@ -601,5 +602,60 @@ export const convertPlainObjectToInputConfigInstance = (config: any): ConfigInst
             return new WorkOSInputConfig(config.integrationId, config.eventTypes || [])
         default:
             throw new Error(`Unsupported input config type: ${config.configType}`)
+    }
+}
+
+/**
+ * Converts a plain object config to a ConfigInstance.
+ * Supports both input and output config types.
+ */
+export const convertPlainObjectToConfigInstance = (config: any): ConfigInstance => {
+    if (typeof config.isComplete === "function") {
+        return config as ConfigInstance
+    }
+
+    switch (config.configType) {
+        case ConfigType.GMAIL:
+            return new GmailConfig(config.integrationId)
+        case ConfigType.FIGMA:
+            return new FigmaConfig(config.integrationId, config.fileKey, config.fileName || "", config.teamId || "")
+        case ConfigType.SLACK:
+            return new SlackConfig(config.integrationId, config.channelId, config.channelName, config.listenToUserDms ?? false, config.userIds)
+        case ConfigType.NOTION:
+            return new NotionConfig(config.integrationId, config.databaseIds ?? [], config.databaseNames ?? [], config.pageIds ?? [], config.pageNames ?? [])
+        case ConfigType.LINEAR_INPUT:
+            return new LinearInputConfig(config.integrationId, config.projectId, config.projectName)
+        case ConfigType.LINEAR_OUTPUT:
+            return new LinearOutputConfig(config.integrationId, config.teamId, config.teamName, config.projectId, config.projectName)
+        case ConfigType.GITHUB:
+            return new GitHubConfig(config.integrationId, config.repositoryIds || [])
+        case ConfigType.JIRA:
+            return new JiraConfig(config.integrationId, config.projectKey, config.projectId)
+        case ConfigType.CONFLUENCE:
+            return new ConfluenceConfig(config.integrationId, config.spaceName ?? "", config.spaceId ?? "", config.pageId ?? "", config.pageName ?? "")
+        case ConfigType.POSTHOG:
+            return new PosthogConfig(config.integrationId, config.projectId ?? "", config.projectName)
+        case ConfigType.DATADOG:
+            return new DatadogConfig(config.integrationId, config.defaultIndexes || ["main"])
+        case ConfigType.TIME_TRIGGER:
+            return new TimeTriggerConfig(config.cronExpression || "")
+        case ConfigType.SLACK_OUTPUT:
+            return new SlackOutputConfig(config.integrationId, config.channelId, config.channelName, config.userIds, config.userNames, config.listenToUserDms ?? false)
+        case ConfigType.GMAIL_OUTPUT:
+            return new GmailOutputConfig(config.integrationId)
+        case ConfigType.GMAIL_DRAFT_OUTPUT:
+            return new GmailDraftOutputConfig(config.integrationId)
+        case ConfigType.LAUNCHDARKLY:
+            return new LaunchDarklyConfig(config.integrationId, config.projectKey ?? "", config.environmentKeys || [])
+        case ConfigType.TERSE:
+            return new TerseConfig()
+        case ConfigType.WORKOS_INPUT:
+            return new WorkOSInputConfig(config.integrationId, config.eventTypes || [])
+        case ConfigType.WORKOS_OUTPUT:
+            return new WorkOSOutputConfig(config.integrationId)
+        case ConfigType.ATTIO_OUTPUT:
+            return new AttioOutputConfig(config.integrationId, config.objectSlug)
+        default:
+            throw new Error(`Unsupported config type: ${config.configType}`)
     }
 }
