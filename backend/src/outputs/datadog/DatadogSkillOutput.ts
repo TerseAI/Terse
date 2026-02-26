@@ -1,12 +1,11 @@
 import { Tool } from "@openai/agents"
 import { OutputConfigType } from "@prisma/client"
 
-import { buildDummyOutputConfig } from "../../buildDummyConfigForCapability"
 import { type CapabilityDescription, CapabilityRole, extractToolMetadata, getConfigMetadata } from "../../capabilityHelpers"
 import { validateDatadogIndexesExist } from "../../integrations/DatadogIntegration"
 import { DatadogConfig } from "../../shared/Configs"
 import { IntegrationType } from "../../shared/Integrations"
-import { AgentOutputWithConfigs, PrismaTransaction } from "../../types/prisma"
+import { PrismaTransaction } from "../../types/prisma"
 import { DatadogConfigSchema, stripConfigForValidation } from "../../utility/configSchemas"
 import { convertOutputConfigTypeToConfigType } from "../../utility/typeConverters"
 import { Output, ToolboxEntry } from "../abstract/Output"
@@ -49,13 +48,8 @@ export class DatadogSkillOutput extends Output<DatadogConfig> {
         }
     }
 
-    protected getDummyConfigForCapability(): AgentOutputWithConfigs {
-        return buildDummyOutputConfig("example", {
-            config_type: OutputConfigType.DATADOG,
-            datadog_config: {
-                default_indexes: ["main"]
-            }
-        })
+    protected getDummyConfigForCapability(): DatadogConfig {
+        return new DatadogConfig("example", ["main"])
     }
 
     async validateConfig(output: DatadogConfig, _userId: string): Promise<void> {
@@ -73,7 +67,7 @@ export class DatadogSkillOutput extends Output<DatadogConfig> {
         })
     }
 
-    protected getSystemInstructionsForConfigs(configs: AgentOutputWithConfigs[]): string {
+    protected getSystemInstructionsForConfigs(configs: DatadogConfig[]): string {
         if (configs.length === 0) {
             throw new Error("No Datadog skill configs provided")
         }
@@ -83,11 +77,8 @@ export class DatadogSkillOutput extends Output<DatadogConfig> {
         sections.push("Available configurations:")
 
         for (const config of configs) {
-            if (!config.datadog_config) {
-                throw new Error("Datadog config not found")
-            }
-            const indexes = config.datadog_config.default_indexes || ["main"]
-            sections.push(`  • Integration ID: ${config.integration_id} - Default indexes: ${indexes.join(", ")}`)
+            const indexes = config.defaultIndexes || ["main"]
+            sections.push(`  • Integration ID: ${config.integrationId} - Default indexes: ${indexes.join(", ")}`)
         }
 
         sections.push("\nWhen calling Datadog tools, include integrationId from a configured entry.")

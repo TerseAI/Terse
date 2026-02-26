@@ -474,7 +474,7 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance> exte
 
         return {
             name: "Automation Agent",
-            systemPromptDeps: deps as SystemPromptBuilderDependencies<SessionWithTracking<T>, ConfigInstance>,
+            systemPromptDeps: deps as unknown as SystemPromptBuilderDependencies<SessionWithTracking<T>, ConfigInstance>,
             runContext: this.runContext,
             model: this.chooseModel(),
             tools: this.tools,

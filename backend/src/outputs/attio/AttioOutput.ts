@@ -1,13 +1,12 @@
 import { Tool } from "@openai/agents"
 import { OutputConfigType } from "@prisma/client"
 
-import { buildDummyOutputConfig } from "../../buildDummyConfigForCapability"
 import { type CapabilityDescription, CapabilityRole, extractToolMetadata, getConfigMetadata } from "../../capabilityHelpers"
 import { AttioIntegrationManager } from "../../integrations/AttioIntegration"
 import { db } from "../../prismaClient"
 import { AttioOutputConfig } from "../../shared/Configs"
 import { IntegrationType } from "../../shared/Integrations"
-import { AgentOutputWithConfigs, PrismaTransaction } from "../../types/prisma"
+import { PrismaTransaction } from "../../types/prisma"
 import { AttioOutputConfigSchema, stripConfigForValidation } from "../../utility/configSchemas"
 import { convertOutputConfigTypeToConfigType } from "../../utility/typeConverters"
 import { Output, ToolboxEntry } from "../abstract/Output"
@@ -47,13 +46,8 @@ export class AttioOutput extends Output<AttioOutputConfig> {
         }
     }
 
-    protected getDummyConfigForCapability(): AgentOutputWithConfigs {
-        return buildDummyOutputConfig("example", {
-            config_type: OutputConfigType.ATTIO,
-            attio_config: {
-                object_slug: "people"
-            }
-        })
+    protected getDummyConfigForCapability(): AttioOutputConfig {
+        return new AttioOutputConfig("example", "people")
     }
 
     async validateConfig(output: AttioOutputConfig, _userId: string): Promise<void> {
@@ -86,7 +80,7 @@ export class AttioOutput extends Output<AttioOutputConfig> {
         })
     }
 
-    protected getSystemInstructionsForConfigs(configs: AgentOutputWithConfigs[]): string {
+    protected getSystemInstructionsForConfigs(configs: AttioOutputConfig[]): string {
         if (configs.length === 0) {
             throw new Error("No Attio configs provided")
         }
@@ -96,11 +90,8 @@ export class AttioOutput extends Output<AttioOutputConfig> {
 
         const configList: string[] = []
         for (const config of configs) {
-            if (!config.attio_config) {
-                throw new Error("Attio config not found")
-            }
-            const objectSlug = config.attio_config.object_slug
-            configList.push(`  - Integration ID: ${config.integration_id} - Object: ${objectSlug}`)
+            const objectSlug = config.objectSlug
+            configList.push(`  - Integration ID: ${config.integrationId} - Object: ${objectSlug}`)
         }
         sections.push("Available configurations:")
         sections.push(configList.join("\n"))
