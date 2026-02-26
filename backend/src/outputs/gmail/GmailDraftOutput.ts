@@ -1,11 +1,10 @@
 import { Tool } from "@openai/agents"
 import { OutputConfigType } from "@prisma/client"
 
-import { buildDummyOutputConfig } from "../../buildDummyConfigForCapability"
 import { type CapabilityDescription, CapabilityRole, extractToolMetadata, getConfigMetadata } from "../../capabilityHelpers"
 import { GmailDraftOutputConfig } from "../../shared/Configs"
 import { IntegrationType } from "../../shared/Integrations"
-import { AgentOutputWithConfigs, PrismaTransaction } from "../../types/prisma"
+import { PrismaTransaction } from "../../types/prisma"
 import { GmailDraftOutputConfigSchema, stripConfigForValidation } from "../../utility/configSchemas"
 import { convertOutputConfigTypeToConfigType } from "../../utility/typeConverters"
 import { Output, ToolboxEntry } from "../abstract/Output"
@@ -38,8 +37,8 @@ export class GmailDraftOutput extends Output<GmailDraftOutputConfig> {
         }
     }
 
-    protected getDummyConfigForCapability(): AgentOutputWithConfigs {
-        return buildDummyOutputConfig("example", { config_type: OutputConfigType.GMAIL_DRAFT, gmail_config: {} })
+    protected getDummyConfigForCapability(): GmailDraftOutputConfig {
+        return new GmailDraftOutputConfig("example")
     }
 
     async validateConfig(output: GmailDraftOutputConfig, _userId: string): Promise<void> {
@@ -54,7 +53,7 @@ export class GmailDraftOutput extends Output<GmailDraftOutputConfig> {
         })
     }
 
-    protected getSystemInstructionsForConfigs(configs: AgentOutputWithConfigs[]): string {
+    protected getSystemInstructionsForConfigs(configs: GmailDraftOutputConfig[]): string {
         if (configs.length === 0) {
             throw new Error("No Gmail Draft configs provided")
         }
@@ -64,10 +63,7 @@ export class GmailDraftOutput extends Output<GmailDraftOutputConfig> {
         // List all available configurations
         const configList: string[] = []
         for (const config of configs) {
-            if (!config.gmail_config) {
-                throw new Error("Gmail config not found")
-            }
-            configList.push(`  - Integration ID: ${config.integration_id}`)
+            configList.push(`  - Integration ID: ${config.integrationId}`)
         }
         sections.push("Available configurations:")
         sections.push(configList.join("\n"))

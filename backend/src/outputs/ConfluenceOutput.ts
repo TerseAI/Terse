@@ -4,7 +4,6 @@ import chalk from "chalk"
 import { z } from "zod"
 
 import { SessionWithTracking } from "../agent/AgentRunner/AgentRunner"
-import { buildDummyOutputConfig } from "../buildDummyConfigForCapability"
 import { type CapabilityDescription, CapabilityRole, extractToolMetadata, getConfigMetadata } from "../capabilityHelpers"
 import { getAtlassianIntegrationContextForOrganization } from "../integrations/AtlassianClient"
 import { validateConfluencePageExists } from "../integrations/AtlassianIntegration"
@@ -14,7 +13,7 @@ import { ConfluenceConfig } from "../shared/Configs"
 import { IntegrationType } from "../shared/Integrations"
 import { ToolName } from "../tools/ToolNames"
 import { createNeedsApprovalFunction, formatError } from "../tools/toolUtils"
-import { AgentOutputWithConfigs, PrismaTransaction } from "../types/prisma"
+import { PrismaTransaction } from "../types/prisma"
 import { Session } from "../types/session"
 import { ConfluenceConfigSchema, stripConfigForValidation } from "../utility/configSchemas"
 import { convertOutputConfigTypeToConfigType } from "../utility/typeConverters"
@@ -66,16 +65,8 @@ export class ConfluenceOutput extends Output<ConfluenceConfig> {
         }
     }
 
-    protected getDummyConfigForCapability(): AgentOutputWithConfigs {
-        return buildDummyOutputConfig("example", {
-            config_type: OutputConfigType.CONFLUENCE,
-            confluence_config: {
-                space_name: "Example Space",
-                space_id: "123",
-                page_id: "456",
-                page_name: "Example Page"
-            }
-        })
+    protected getDummyConfigForCapability(): ConfluenceConfig {
+        return new ConfluenceConfig("example", "Example Space", "123", "456", "Example Page")
     }
 
     async validateConfig(output: ConfluenceConfig, _userId: string): Promise<void> {
@@ -96,7 +87,7 @@ export class ConfluenceOutput extends Output<ConfluenceConfig> {
         })
     }
 
-    protected getSystemInstructionsForConfigs(configs: AgentOutputWithConfigs[]): string {
+    protected getSystemInstructionsForConfigs(configs: ConfluenceConfig[]): string {
         if (configs.length === 0) {
             throw new Error("No Confluence configs provided")
         }
@@ -107,12 +98,9 @@ export class ConfluenceOutput extends Output<ConfluenceConfig> {
         // List all available configurations
         const configList: string[] = []
         for (const config of configs) {
-            if (!config.confluence_config) {
-                throw new Error("Confluence config not found")
-            }
-            const pageId = config.confluence_config.page_id
-            const pageName = config.confluence_config.page_name
-            configList.push(`  • Integration ID: ${config.integration_id} - Page Name: ${pageName || "N/A"}, Page ID: ${pageId || "N/A"}`)
+            const pageId = config.pageId
+            const pageName = config.pageName
+            configList.push(`  • Integration ID: ${config.integrationId} - Page Name: ${pageName || "N/A"}, Page ID: ${pageId || "N/A"}`)
         }
         sections.push("Available configurations:")
         sections.push(configList.join("\n"))
