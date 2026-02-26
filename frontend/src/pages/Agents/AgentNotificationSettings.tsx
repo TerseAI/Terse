@@ -1,12 +1,11 @@
 import { useMemo } from "react"
 import { Link } from "react-router-dom"
 
-import { Ban, Eye, Mail, Pencil, Plus, Stamp, Trash2 } from "lucide-react"
+import { Eye, Mail, Pencil, Plus, Trash2 } from "lucide-react"
 
 import { MultiSelect } from "../../components/MultiSelect"
 import { SlackIcon } from "../../components/icons/IntegrationIcons"
 import { Label } from "../../components/ui/label"
-import { Switch } from "../../components/ui/switch"
 import { useNotificationDestinations } from "../../hooks/api/useNotificationDestinations"
 import { FrontendRoutes } from "../../shared/FrontendRoutes"
 import { NotificationDestinationType, SlackNotificationDestination } from "../../shared/Notifications"
