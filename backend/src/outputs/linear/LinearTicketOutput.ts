@@ -1,13 +1,12 @@
 import { Tool } from "@openai/agents"
 import { OutputConfigType } from "@prisma/client"
 
-import { buildDummyOutputConfig } from "../../buildDummyConfigForCapability"
 import { type CapabilityDescription, CapabilityRole, extractToolMetadata, getConfigMetadata } from "../../capabilityHelpers"
 import { validateLinearProjectExists, validateLinearTeamExists } from "../../integrations/LinearIntegration"
 import { db } from "../../prismaClient"
 import { LinearOutputConfig } from "../../shared/Configs"
 import { IntegrationType } from "../../shared/Integrations"
-import { AgentOutputWithConfigs, PrismaTransaction } from "../../types/prisma"
+import { PrismaTransaction } from "../../types/prisma"
 import { LinearOutputConfigSchema, stripConfigForValidation } from "../../utility/configSchemas"
 import { convertOutputConfigTypeToConfigType } from "../../utility/typeConverters"
 import { Output, ToolboxEntry } from "../abstract/Output"
@@ -64,14 +63,8 @@ export class LinearTicketOutput extends Output<LinearOutputConfig> {
         }
     }
 
-    protected getDummyConfigForCapability(): AgentOutputWithConfigs {
-        return buildDummyOutputConfig("example", {
-            config_type: OutputConfigType.LINEAR_TICKET,
-            linear_config: {
-                team_id: "team-123",
-                team_name: "Example Team"
-            }
-        })
+    protected getDummyConfigForCapability(): LinearOutputConfig {
+        return new LinearOutputConfig("example", "team-123", "Example Team")
     }
 
     async validateConfig(output: LinearOutputConfig, _userId: string): Promise<void> {
@@ -96,7 +89,7 @@ export class LinearTicketOutput extends Output<LinearOutputConfig> {
         })
     }
 
-    protected getSystemInstructionsForConfigs(configs: AgentOutputWithConfigs[]): string {
+    protected getSystemInstructionsForConfigs(configs: LinearOutputConfig[]): string {
         if (configs.length === 0) {
             throw new Error("No Linear configs provided")
         }
@@ -107,15 +100,12 @@ export class LinearTicketOutput extends Output<LinearOutputConfig> {
         // List all available configurations
         const configList: string[] = []
         for (const config of configs) {
-            if (!config.linear_config) {
-                throw new Error("Linear config not found")
-            }
-            const teamId = config.linear_config.team_id
-            const teamName = config.linear_config.team_name
-            const projectId = config.linear_config.project_id
-            const projectName = config.linear_config.project_name
+            const teamId = config.teamId
+            const teamName = config.teamName
+            const projectId = config.projectId
+            const projectName = config.projectName
             configList.push(
-                `  • Integration ID: ${config.integration_id} - Team Name: ${teamName || "N/A"}, Team ID: ${teamId || "N/A"}, Project Name: ${projectName || "N/A"}, Project ID: ${projectId || "N/A"}`
+                `  • Integration ID: ${config.integrationId} - Team Name: ${teamName || "N/A"}, Team ID: ${teamId || "N/A"}, Project Name: ${projectName || "N/A"}, Project ID: ${projectId || "N/A"}`
             )
         }
         sections.push("Available configurations:")

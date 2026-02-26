@@ -1,12 +1,11 @@
 import { Tool } from "@openai/agents"
 import { OutputConfigType } from "@prisma/client"
 
-import { buildDummyOutputConfig } from "../../buildDummyConfigForCapability"
 import { type CapabilityDescription, CapabilityRole, extractToolMetadata, getConfigMetadata } from "../../capabilityHelpers"
 import { validateJiraProjectExists } from "../../integrations/AtlassianIntegration"
 import { JiraConfig } from "../../shared/Configs"
 import { IntegrationType } from "../../shared/Integrations"
-import { AgentOutputWithConfigs, PrismaTransaction } from "../../types/prisma"
+import { PrismaTransaction } from "../../types/prisma"
 import { JiraConfigSchema, stripConfigForValidation } from "../../utility/configSchemas"
 import { convertOutputConfigTypeToConfigType } from "../../utility/typeConverters"
 import { Output, ToolboxEntry } from "../abstract/Output"
@@ -47,14 +46,8 @@ export class JiraTicketOutput extends Output<JiraConfig> {
         }
     }
 
-    protected getDummyConfigForCapability(): AgentOutputWithConfigs {
-        return buildDummyOutputConfig("example", {
-            config_type: OutputConfigType.JIRA_TICKET,
-            jira_config: {
-                project_key: "PROJ",
-                project_id: "12345"
-            }
-        })
+    protected getDummyConfigForCapability(): JiraConfig {
+        return new JiraConfig("example", "PROJ", "12345")
     }
 
     async validateConfig(output: JiraConfig, _userId: string): Promise<void> {
@@ -75,7 +68,7 @@ export class JiraTicketOutput extends Output<JiraConfig> {
         })
     }
 
-    protected getSystemInstructionsForConfigs(configs: AgentOutputWithConfigs[]): string {
+    protected getSystemInstructionsForConfigs(configs: JiraConfig[]): string {
         if (configs.length === 0) {
             throw new Error("No Jira configs provided")
         }
@@ -86,12 +79,9 @@ export class JiraTicketOutput extends Output<JiraConfig> {
         // List all available configurations
         const configList: string[] = []
         for (const config of configs) {
-            if (!config.jira_config) {
-                throw new Error("Jira config not found")
-            }
-            const projectKey = config.jira_config.project_key
-            const projectId = config.jira_config.project_id
-            configList.push(`  • Integration ID: ${config.integration_id} - Project Key: ${projectKey || "N/A"}, Project ID: ${projectId || "N/A"}`)
+            const projectKey = config.projectKey
+            const projectId = config.projectId
+            configList.push(`  • Integration ID: ${config.integrationId} - Project Key: ${projectKey || "N/A"}, Project ID: ${projectId || "N/A"}`)
         }
         sections.push("Available configurations:")
         sections.push(configList.join("\n"))

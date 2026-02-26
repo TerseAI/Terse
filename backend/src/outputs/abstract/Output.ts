@@ -4,7 +4,7 @@ import { OutputConfigType } from "@prisma/client"
 import { CapabilityDescription } from "../../capabilityHelpers"
 import { ConfigInstance } from "../../shared/Configs"
 import { IntegrationType } from "../../shared/Integrations"
-import { AgentOutputWithConfigs, PrismaTransaction } from "../../types/prisma"
+import { PrismaTransaction } from "../../types/prisma"
 
 export interface ToolboxEntry {
     tool: Tool
@@ -16,7 +16,7 @@ export interface ToolboxEntry {
 export abstract class Output<TConfig extends ConfigInstance> {
     integration: OutputConfigType
     readonly toolbox: readonly ToolboxEntry[]
-    configs: AgentOutputWithConfigs[] = []
+    configs: TConfig[] = []
 
     constructor(integration: OutputConfigType, toolbox: readonly ToolboxEntry[]) {
         this.integration = integration
@@ -39,10 +39,10 @@ export abstract class Output<TConfig extends ConfigInstance> {
     }
 
     /** Minimal dummy config for generating system instructions when no real configs exist. */
-    protected abstract getDummyConfigForCapability(): AgentOutputWithConfigs
+    protected abstract getDummyConfigForCapability(): TConfig
 
     /**
      * Protected method that subclasses implement to generate system instructions.
      */
-    protected abstract getSystemInstructionsForConfigs(configs: AgentOutputWithConfigs[]): string
+    protected abstract getSystemInstructionsForConfigs(configs: TConfig[]): string
 }
