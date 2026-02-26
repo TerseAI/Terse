@@ -37,10 +37,13 @@ function AgentNotificationSettings({ settings, agentCreator, onChange }: AgentNo
         <div className="flex flex-col gap-4 p-4 border rounded-lg">
             <Label className="text-base font-medium">Notifications</Label>
             <div className="flex flex-wrap items-center gap-2">
-                Sent to:
+                Send to:
                 {hasSlackOverride ? (
                     <span className="flex items-center flex-row gap-1">
-                        <SlackIcon /> {activeSlackDestination?.slackChannelName}
+                        <div className="w-4 h-4">
+                            <SlackIcon />
+                        </div>{" "}
+                        {activeSlackDestination?.slackChannelName}
                     </span>
                 ) : (
                     <span className="flex items-center flex-row gap-1">

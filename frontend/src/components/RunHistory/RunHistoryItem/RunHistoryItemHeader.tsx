@@ -14,8 +14,8 @@ export default function RunHistoryItemHeader({ run, formattedTimestamp, onCopy }
 
     return (
         <div className="group min-w-0 no-underline hover:no-underline">
-            <div className="flex items-start gap-3">
-                <div className="text-muted-foreground size-4 flex-shrink-0 mt-1">
+            <div className="flex items-start gap-3.5">
+                <div className="text-muted-foreground size-5 flex-shrink-0 mt-0.5">
                     <IconForIntegration integration={run.trigger.integration} />
                 </div>
                 <div className="flex-1 min-w-0">

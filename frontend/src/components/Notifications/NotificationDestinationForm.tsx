@@ -165,10 +165,9 @@ export function NotificationDestinationForm({ existingDestination, onSuccess, on
 
     return (
         <div className="space-y-5 px-6 pb-6 pt-5">
-            <div className="space-y-3 rounded-xl border bg-card/50 p-4 sm:p-5">
+            <div className="space-y-3 rounded-xl p-4 sm:p-5">
                 <div className="space-y-1">
                     <Label className="text-sm font-medium">Slack Workspace</Label>
-                    <p className="text-xs text-muted-foreground">Choose which workspace should receive notifications.</p>
                 </div>
 
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -194,38 +193,38 @@ export function NotificationDestinationForm({ existingDestination, onSuccess, on
                         Connect Another Workspace
                     </Button>
                 </div>
-            </div>
 
-            {selectedIntegrationId && (
-                <SelectSlackDestinationForm
-                    integrationId={selectedIntegrationId}
-                    isBotUser={selectedSlackIntegration?.isBotUser}
-                    selectedChannelId={selectedChannelId}
-                    selectedChannelName={selectedChannelName}
-                    selectedUserId={selectedUserId}
-                    selectedUserName={selectedUserName}
-                    onSelectChannel={(channelId, channelName) => {
-                        setSelectedChannelId(channelId)
-                        setSelectedChannelName(channelName)
-                        if (channelId) {
-                            setSelectedUserId(undefined)
-                            setSelectedUserName(undefined)
-                        }
-                    }}
-                    onSelectUser={(userId, userName) => {
-                        setSelectedUserId(userId)
-                        setSelectedUserName(userName)
-                        if (userId) {
-                            setSelectedChannelId(undefined)
-                            setSelectedChannelName(undefined)
-                        }
-                    }}
-                />
-            )}
+                {selectedIntegrationId && (
+                    <SelectSlackDestinationForm
+                        integrationId={selectedIntegrationId}
+                        isBotUser={selectedSlackIntegration?.isBotUser}
+                        selectedChannelId={selectedChannelId}
+                        selectedChannelName={selectedChannelName}
+                        selectedUserId={selectedUserId}
+                        selectedUserName={selectedUserName}
+                        onSelectChannel={(channelId, channelName) => {
+                            setSelectedChannelId(channelId)
+                            setSelectedChannelName(channelName)
+                            if (channelId) {
+                                setSelectedUserId(undefined)
+                                setSelectedUserName(undefined)
+                            }
+                        }}
+                        onSelectUser={(userId, userName) => {
+                            setSelectedUserId(userId)
+                            setSelectedUserName(userName)
+                            if (userId) {
+                                setSelectedChannelId(undefined)
+                                setSelectedChannelName(undefined)
+                            }
+                        }}
+                    />
+                )}
+            </div>
 
             {validationError && <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">{validationError}</div>}
 
-            <div className="flex flex-col-reverse gap-2 border-t pt-4 sm:flex-row sm:justify-end">
+            <div className="flex flex-col-reverse sm:flex-row sm:justify-end">
                 {onCancel && (
                     <Button variant="outline" onClick={onCancel}>
                         Cancel
@@ -273,10 +272,9 @@ function SelectSlackDestinationForm({
     const effectiveChannelName = selectedUserId ? undefined : selectedChannelName
 
     return (
-        <div className="space-y-3 rounded-xl border bg-card/40 p-4 sm:p-5">
+        <div className="space-y-3 rounded-xl">
             <div className="space-y-1">
                 <p className="text-sm font-medium">Destination</p>
-                <p className="text-xs text-muted-foreground">Choose exactly one destination. Selecting one option clears the other automatically.</p>
             </div>
 
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">

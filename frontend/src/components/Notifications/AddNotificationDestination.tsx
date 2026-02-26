@@ -2,7 +2,6 @@ import { ReactNode, useState } from "react"
 
 import { PlusIcon } from "lucide-react"
 
-import { Badge } from "../ui/badge"
 import { Button } from "../ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "../ui/dialog"
 
@@ -31,9 +30,6 @@ export function AddNotificationDestination({ trigger }: AddNotificationDestinati
                         <div className="space-y-1">
                             <div className="flex items-center gap-2">
                                 <DialogTitle className="text-xl">Add Notification Destination</DialogTitle>
-                                <Badge variant="outline" className="hidden sm:inline-flex">
-                                    Slack
-                                </Badge>
                             </div>
                         </div>
                     </div>
