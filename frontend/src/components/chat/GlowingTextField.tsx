@@ -1,7 +1,8 @@
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react"
 import TextareaAutosize from "react-textarea-autosize"
 
-import { Send, Square } from "lucide-react"
+import { Button } from "@headlessui/react"
+import { CircleStop, Send } from "lucide-react"
 
 interface GlowingTextFieldProps {
     isLoading: boolean
@@ -243,17 +244,16 @@ const GlowingTextField = forwardRef<GlowingTextFieldHandle, GlowingTextFieldProp
                     )}
                     {/* Send button */}
                     {hasActionButton && (
-                        <button
-                            type="button"
+                        <Button
                             onClick={showStopButton ? onStop : onSend}
                             disabled={showStopButton ? isCancelling : disabled}
-                            className={`absolute right-3 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all p-2 ${
+                            className={`absolute right-3 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all p-1 ${
                                 !showStopButton && inputValue.trim() ? "" : !showStopButton ? "opacity-50" : ""
                             } ${isLarge ? "bottom-3" : "top-1/2 -translate-y-1/2"}`}
                             aria-label={showStopButton ? (isCancelling ? "Stopping generation" : "Stop generation") : "Send message"}
                         >
-                            {showStopButton ? <Square className="h-5 w-5 fill-current stroke-0 text-white dark:text-black" /> : <Send className="w-5 h-5" />}
-                        </button>
+                            {showStopButton ? <CircleStop className="h-5 w-5" /> : <Send className="w-5 h-5" />}
+                        </Button>
                     )}
                 </div>
             </div>
