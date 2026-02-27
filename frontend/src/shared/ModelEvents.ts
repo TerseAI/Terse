@@ -33,9 +33,9 @@ export type ModelEvent = (
     | ({ type: "UserMessage" } & UserMessage)
     | ({ type: "Thinking" } & Thinking)
     | ({ type: "Snippet" } & { snippet: ChatSnippet })
-) & { timestamp: number}
+) & { timestamp: number }
 
-export type NaturalStop = { step_id: string, timestamp: number }
+export type NaturalStop = { step_id: string; timestamp: number }
 
 export type ModelRequest = ({ type: "SendModelRequest" } & SendModelRequest) | ({ type: "ToolApprovalResponse" } & ToolApprovalResponse)
 
@@ -45,7 +45,7 @@ export type ToolApprovalResponse = { step_id: string; approved: boolean; timesta
 
 export type ToolApprovalRequest = { step_id: string; name: string; arguments: string; timestamp: number }
 
-export type TextDelta = { delta: string; step_id: string; timestamp: number; }
+export type TextDelta = { delta: string; step_id: string; timestamp: number }
 
 export type ToolCallGenerating = { tool_name: string; step_id: string; timestamp: number }
 

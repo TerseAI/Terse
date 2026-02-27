@@ -44,6 +44,7 @@ export function useChat({
         handleSnippet,
         handleMultipleChoiceAnswered
     } = useChatTurns({ initialTurns })
+    console.log("useChat turns", { turns, isPendingAssistantResponse })
 
     const { sendMessage: sendSocketMessage } = useCompletionSocket({
         subscribeToEvents,

@@ -324,22 +324,13 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
     const handleCancel = (cancellation: Cancelled) => {
         setTurns(prev => {
             const next = prev.slice()
-            if (next.length > 0) {
-                const last = next[next.length - 1]
-                last.isCancelled = true
-                last.isGenerating = false
-                return next
-            } else {
-                return [
-                    {
-                        role: "assistant",
-                        text: cancellation.reason || "",
-                        timestamp: cancellation.timestamp,
-                        function_calls: [],
-                        step_id: "run-error"
-                    }
-                ]
-            }
+            return next.concat({
+                role: "assistant",
+                text: cancellation.reason || "",
+                timestamp: cancellation.timestamp,
+                function_calls: [],
+                step_id: "run-error"
+            })
         })
     }
 
@@ -542,25 +533,6 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
     const sortedTurns = [...filteredTurns].sort((a, b) => a.timestamp - b.timestamp)
     const lastTurn = sortedTurns[sortedTurns.length - 1]
     const isPendingAssistantResponse = (sortedTurns.length > 0 && (lastTurn?.role === "user" || lastTurn?.isGenerating)) || false
-    console.log("[useChatTurns] render", {
-        turnCount: sortedTurns.length,
-        isPendingAssistantResponse,
-        lastTurn: lastTurn
-            ? {
-                  role: lastTurn.role,
-                  step_id: lastTurn.step_id,
-                  isGenerating: lastTurn.isGenerating,
-                  snippetCount: lastTurn.snippets?.length ?? 0,
-                  snippetTypes: lastTurn.snippets?.map(s => s.type),
-                  fcCount: lastTurn.function_calls.length,
-                  fcStates: lastTurn.function_calls.map(fc => ({
-                      id: fc.id,
-                      isRunning: fc.isRunning,
-                      isGeneratingParams: fc.isGeneratingParams
-                  }))
-              }
-            : null
-    })
 
     return {
         turns: sortedTurns,
