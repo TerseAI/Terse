@@ -3,6 +3,7 @@ import { Request, Response } from "express"
 
 import { SessionWithTracking } from "../agent/AgentRunner/AgentRunner"
 import { SdkAgentRunner } from "../agent/AgentRunner/SdkAgentRunner"
+import { emitSessionEvent } from "../agent/SessionEventBus"
 import { OutputFactory } from "../outputs/abstract/OutputFactory"
 import { CONFIG_DETAILS } from "../shared/Configs"
 import { IntegrationType } from "../shared/Integrations"
@@ -41,8 +42,11 @@ export async function handleSdkAgentRun(req: Request, res: Response) {
     res.setHeader("Connection", "keep-alive")
     res.flushHeaders()
 
+    const sessionId = req.headers["x-terse-session-id"] as string | undefined
+
     const send = (event: SdkAgentStreamEvent) => {
         res.write(`data: ${JSON.stringify(event)}\n\n`)
+        if (sessionId) emitSessionEvent(sessionId, event)
     }
 
     try {

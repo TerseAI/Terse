@@ -1,10 +1,12 @@
 import chalk from "chalk"
-import { ActionResult, CreateJobParameters, EventType, FinalOutputResult, TerseAgent, TerseAgentResult, ToolCallCompletedResult, ToolCallStartedResult } from "terse-sdk"
+import { CreateJobParameters, TerseAgent } from "terse-sdk"
 import { readApiKey } from "./api.js"
 import { loadJob } from "./loadJob.js"
+import { ApiRoutes } from "./shared/ApiRoutes.js"
 import type { SerializedEvent } from "./shared/types.js"
 import { convertSerializedEventToInputEvent } from "./util.js"
 
+const BACKEND_URL = "http://localhost:3001"
 
 /**
  * Create a TerseAgent scoped to a job's skills and execute onTrigger.
@@ -15,13 +17,20 @@ export async function executeJob(job: CreateJobParameters, event: SerializedEven
     const inputEvent = convertSerializedEventToInputEvent(event)
     const isVerbose = options?.verbose ?? false
 
-    const agent = new TerseAgent(job.skills)
+    const apiKey = process.env.TERSE_API_KEY ?? null
+    let sessionId: string | undefined
+    let closeSession: (() => void) | undefined
+
+    if (isVerbose && apiKey) {
+        const session = await openSessionStream(apiKey)
+        sessionId = session.sessionId
+        closeSession = session.close
+    }
+
+    const agent = new TerseAgent(job.skills, BACKEND_URL, sessionId)
     const createTools = (globalThis as any).__terse_createTools as ((agent: TerseAgent) => unknown) | undefined
     if (createTools) {
         Object.defineProperty(agent, "tools", { value: createTools(agent) })
-    }
-    if (isVerbose) {
-        instrumentAgentRunForCliLogs(agent)
     }
 
     try {
@@ -34,6 +43,8 @@ export async function executeJob(job: CreateJobParameters, event: SerializedEven
         console.error(chalk.red(`\n  Job "${job.name}" threw an error:\n`))
         console.error(err)
         process.exit(1)
+    } finally {
+        closeSession?.()
     }
 }
 
@@ -45,7 +56,7 @@ export async function run(jobName?: string, eventJson?: string): Promise<void> {
         process.exit(1)
     }
 
-    readApiKey() // populates process.env.TERSE_API_KEY for SDK executeTool()
+    readApiKey()
     const { job } = await loadJob(jobName)
     console.log(chalk.cyan(`\n  Running job: ${job.name}\n`))
 
@@ -60,42 +71,111 @@ export async function run(jobName?: string, eventJson?: string): Promise<void> {
     await executeJob(job, parsed)
 }
 
-function instrumentAgentRunForCliLogs(agent: TerseAgent): void {
-    const originalRun = agent.run.bind(agent)
-    agent.run = (async function* (prompt: string, event?: any): AsyncGenerator<TerseAgentResult> {
-        console.log(chalk.gray(`\n  [agent.run] prompt: ${truncate(prompt, 120)}\n`))
-        for await (const chunk of originalRun(prompt, event)) {
-            logStreamChunk(chunk)
-            yield chunk
-        }
-    }) as TerseAgent["run"]
+// -- Session SSE lifecycle --------------------------------------------------
+
+type SessionHandle = { sessionId: string; close: () => void }
+
+async function openSessionStream(apiKey: string): Promise<SessionHandle> {
+    const res = await fetch(`${BACKEND_URL}${ApiRoutes.SDK.SESSION_EVENTS}`, {
+        headers: { Authorization: `Bearer ${apiKey}`, Accept: "text/event-stream" }
+    })
+
+    if (!res.ok || !res.body) {
+        throw new Error(`Failed to open session event stream (HTTP ${res.status})`)
+    }
+
+    const reader = res.body.getReader()
+    const decoder = new TextDecoder()
+    let buffer = ""
+
+    const sessionId = await readSessionId(reader, decoder, buffer)
+    buffer = sessionId._remainingBuffer
+
+    startEventConsumer(reader, decoder, buffer)
+
+    return {
+        sessionId: sessionId.value,
+        close: () => reader.cancel().catch(() => {})
+    }
 }
 
-function logStreamChunk(chunk: TerseAgentResult): void {
-    if (chunk.type === EventType.TOOL_CALL_STARTED) {
-        const data = chunk as ToolCallStartedResult
-        console.log(chalk.blue(`  [tool:start] ${data.toolCallStarted}`))
-        return
+async function readSessionId(
+    reader: ReadableStreamDefaultReader<Uint8Array>,
+    decoder: TextDecoder,
+    buffer: string
+): Promise<{ value: string; _remainingBuffer: string }> {
+    while (true) {
+        const { done, value } = await reader.read()
+        if (done) throw new Error("Session stream ended before sending sessionId")
+        buffer += decoder.decode(value, { stream: true })
+
+        const lines = buffer.split("\n")
+        buffer = lines.pop() ?? ""
+
+        for (const line of lines) {
+            if (!line.startsWith("data: ")) continue
+            const event = safeParseJson(line.slice(6))
+            if (event?.type === "session_started" && typeof event.sessionId === "string") {
+                return { value: event.sessionId, _remainingBuffer: buffer }
+            }
+        }
     }
-    if (chunk.type === EventType.TOOL_CALL_COMPLETED) {
-        const data = chunk as ToolCallCompletedResult
-        const parsed = safeParseJson(data.toolCallCompleted)
-        const toolName = parsed?.tool || "unknown_tool"
-        const status = parsed?.status || "unknown"
-        const symbol = status === "completed" ? chalk.green("ok") : chalk.red("failed")
-        console.log(`  [tool:done] ${toolName} (${symbol})`)
-        return
-    }
-    if (chunk.type === EventType.ACTION) {
-        const data = chunk as ActionResult
-        const actionName = data.action?.action || "action"
-        const target = data.action?.target ? ` -> ${data.action.target}` : ""
-        console.log(chalk.magenta(`  [action] ${actionName}${target}`))
-        return
-    }
-    if (chunk.type === EventType.FINAL_OUTPUT) {
-        const data = chunk as FinalOutputResult
-        console.log(chalk.green(`\n  [final_output] ${data.finalOutput}\n`))
+}
+
+function startEventConsumer(
+    reader: ReadableStreamDefaultReader<Uint8Array>,
+    decoder: TextDecoder,
+    initialBuffer: string
+): void {
+    let buffer = initialBuffer;
+    (async () => {
+        try {
+            while (true) {
+                const { done, value } = await reader.read()
+                if (done) break
+                buffer += decoder.decode(value, { stream: true })
+
+                const lines = buffer.split("\n")
+                buffer = lines.pop() ?? ""
+
+                for (const line of lines) {
+                    if (!line.startsWith("data: ")) continue
+                    const event = safeParseJson(line.slice(6))
+                    if (event) logSessionEvent(event)
+                }
+            }
+        } catch {
+            // Stream cancelled by close() — expected
+        }
+    })()
+}
+
+function logSessionEvent(event: Record<string, unknown>): void {
+    switch (event.type) {
+        case "tool_call_started":
+            console.log(chalk.blue(`  [tool:start] ${event.toolCallStarted}`))
+            break
+        case "tool_call_completed": {
+            const parsed = safeParseJson(event.toolCallCompleted as string)
+            const toolName = parsed?.tool || "unknown_tool"
+            const status = parsed?.status || "unknown"
+            const symbol = status === "completed" ? chalk.green("ok") : chalk.red("failed")
+            console.log(`  [tool:done] ${toolName} (${symbol})`)
+            break
+        }
+        case "action": {
+            const action = event.action as Record<string, unknown> | undefined
+            const actionName = (action?.action as string) || "action"
+            const target = action?.target ? ` -> ${action.target}` : ""
+            console.log(chalk.magenta(`  [action] ${actionName}${target}`))
+            break
+        }
+        case "final_output":
+            console.log(chalk.green(`\n  [final_output] ${event.finalOutput}\n`))
+            break
+        case "error":
+            console.log(chalk.red(`  [error] ${event.message}`))
+            break
     }
 }
 
@@ -105,10 +185,4 @@ function safeParseJson(value: string): Record<string, any> | null {
     } catch {
         return null
     }
-}
-
-function truncate(text: string, maxLength: number): string {
-    const normalized = text.trim()
-    if (normalized.length <= maxLength) return normalized
-    return `${normalized.slice(0, maxLength - 3)}...`
 }

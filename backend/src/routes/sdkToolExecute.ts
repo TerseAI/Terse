@@ -3,8 +3,10 @@ import { Request, Response } from "express"
 import { z } from "zod"
 
 import { SessionWithTracking } from "../agent/AgentRunner/AgentRunner"
+import { emitSessionEvent } from "../agent/SessionEventBus"
 import logger from "../logger"
 import { OutputFactory } from "../outputs/abstract/OutputFactory"
+import { RunHistoryAction } from "../shared/RunHistoryTypes"
 import { User } from "../shared/types"
 import { Session } from "../types/session"
 
@@ -76,6 +78,11 @@ export async function handleToolExecute(req: Request, res: Response) {
         return res.status(404).json({ success: false, error: `Tool "${toolName}" not found` })
     }
 
+    const sessionId = req.headers["x-terse-session-id"] as string | undefined
+    if (sessionId) {
+        emitSessionEvent(sessionId, { type: "tool_call_started", toolCallStarted: toolName })
+    }
+
     const runContextPayload = {
         context: {
             user,
@@ -87,15 +94,35 @@ export async function handleToolExecute(req: Request, res: Response) {
     }
 
     try {
-        // OpenAI's invoke API expects a concrete RunContext class instance with private fields.
-        // We only need the user context for our tools, so we bridge with a narrow cast at this boundary.
         const invokeContext = runContextPayload as unknown as RunContext<SessionWithTracking<Session>>
         const rawResult = await tool.invoke(invokeContext, JSON.stringify(params ?? {}))
         const result = normalizeInvokedToolResult(rawResult)
+
+        if (sessionId) {
+            emitSessionEvent(sessionId, {
+                type: "tool_call_completed",
+                toolCallCompleted: JSON.stringify({ tool: toolName, status: "completed" })
+            })
+            const actions = result && typeof result === "object" && "actions" in result ? ((result as { actions?: unknown }).actions as RunHistoryAction[] | undefined) : undefined
+            if (actions?.length) {
+                for (const action of actions) {
+                    emitSessionEvent(sessionId, { type: "action", action })
+                }
+            }
+        }
+
         return res.json({ success: true, result })
     } catch (err) {
         const message = err instanceof Error ? err.message : String(err)
         logger.error("[sdk/tool-execute] Tool execution failed", { toolName, error: message })
+
+        if (sessionId) {
+            emitSessionEvent(sessionId, {
+                type: "tool_call_completed",
+                toolCallCompleted: JSON.stringify({ tool: toolName, status: "failed", error: message })
+            })
+        }
+
         return res.status(500).json({ success: false, error: message })
     }
 }

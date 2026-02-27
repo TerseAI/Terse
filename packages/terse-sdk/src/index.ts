@@ -104,10 +104,12 @@ export class Terse {
 export class TerseAgent {
     readonly skills: ConfigInstance[]
     private readonly apiBaseUrl: string
+    private readonly sessionId?: string
 
-    constructor(skills: ConfigInstance[] = [], apiBaseUrl: string = "http://localhost:3001") {
+    constructor(skills: ConfigInstance[] = [], apiBaseUrl: string = "http://localhost:3001", sessionId?: string) {
         this.skills = skills
         this.apiBaseUrl = apiBaseUrl
+        this.sessionId = sessionId
     }
 
     async *run(prompt: string, event?: InputEvent): AsyncGenerator<TerseAgentResult> {
@@ -132,13 +134,16 @@ export class TerseAgent {
             skills
         }
 
+        const headers: Record<string, string> = {
+            Authorization: `Bearer ${apiKey}`,
+            "Content-Type": "application/json",
+            Accept: "text/event-stream"
+        }
+        if (this.sessionId) headers["X-Terse-Session-Id"] = this.sessionId
+
         const res = await fetch(`${this.apiBaseUrl}${ApiRoutes.SDK.AGENT_RUN}`, {
             method: "POST",
-            headers: {
-                Authorization: `Bearer ${apiKey}`,
-                "Content-Type": "application/json",
-                Accept: "text/event-stream"
-            },
+            headers,
             body: JSON.stringify(requestBody)
         })
 
@@ -196,12 +201,15 @@ export class TerseAgent {
         if (!apiKey) {
             throw new Error("TERSE_API_KEY environment variable is not set. Cannot execute tools without authentication.")
         }
+        const headers: Record<string, string> = {
+            Authorization: `Bearer ${apiKey}`,
+            "Content-Type": "application/json"
+        }
+        if (this.sessionId) headers["X-Terse-Session-Id"] = this.sessionId
+
         const res = await fetch(`${this.apiBaseUrl}${ApiRoutes.SDK.TOOL_EXECUTE}`, {
             method: "POST",
-            headers: {
-                Authorization: `Bearer ${apiKey}`,
-                "Content-Type": "application/json"
-            },
+            headers,
             body: JSON.stringify({ toolName, params })
         })
         const data = (await res.json()) as { success: boolean; result?: unknown; error?: string }
