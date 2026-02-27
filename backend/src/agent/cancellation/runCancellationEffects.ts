@@ -35,13 +35,7 @@ function emitCancelledForRun(runId: string, agentId: string, organizationId: str
     io.to(SocketRooms.organization(organizationId)).emit(SocketEvents.AGENT_CHAT_EVENT, payload)
 }
 
-export async function markRunCancelledAndInvalidate(
-    runId: string,
-    agentId: string,
-    organizationId: string,
-    userId: string,
-    reason: string = USER_CANCELLED_REASON
-): Promise<void> {
+export async function markRunCancelledAndInvalidate(runId: string, agentId: string, organizationId: string, userId: string, reason: string = USER_CANCELLED_REASON): Promise<void> {
     try {
         await markRunCancelled(runId, reason)
     } catch (cancelError) {

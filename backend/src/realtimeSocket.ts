@@ -358,36 +358,33 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
             directiveTaskQueue.emit(new DirectiveTask(agent.id, runId, user, userMessage))
         })
 
-        socket.on(
-            SocketEvents.AGENT_CHAT_CANCEL,
-            async (payload: { runId: string | null }, ack?: (response: CancelAckResponse) => void) => {
-                const runId = payload?.runId?.trim()
-                if (!runId) {
-                    ack?.({ accepted: false, reason: "missing_run_id" })
-                    return
-                }
-
-                const runRecord = await getAccessibleRunRecord(runId, organizationId)
-                if (!runRecord) {
-                    ack?.({ accepted: false, reason: "run_not_found" })
-                    return
-                }
-
-                if (runRecord.status === RunHistoryStatus.AWAITING_APPROVAL) {
-                    await markRunCancelledAndInvalidate(runId, runRecord.automation.id, runRecord.automation.organization_id, userId)
-                    ack?.({ accepted: true })
-                    return
-                }
-
-                if (runRecord.status !== RunHistoryStatus.IN_PROGRESS) {
-                    ack?.({ accepted: false, reason: "no_active_run" })
-                    return
-                }
-
-                requestRunCancellation(runId, USER_CANCELLED_REASON)
-                ack?.({ accepted: true })
+        socket.on(SocketEvents.AGENT_CHAT_CANCEL, async (payload: { runId: string | null }, ack?: (response: CancelAckResponse) => void) => {
+            const runId = payload?.runId?.trim()
+            if (!runId) {
+                ack?.({ accepted: false, reason: "missing_run_id" })
+                return
             }
-        )
+
+            const runRecord = await getAccessibleRunRecord(runId, organizationId)
+            if (!runRecord) {
+                ack?.({ accepted: false, reason: "run_not_found" })
+                return
+            }
+
+            if (runRecord.status === RunHistoryStatus.AWAITING_APPROVAL) {
+                await markRunCancelledAndInvalidate(runId, runRecord.automation.id, runRecord.automation.organization_id, userId)
+                ack?.({ accepted: true })
+                return
+            }
+
+            if (runRecord.status !== RunHistoryStatus.IN_PROGRESS) {
+                ack?.({ accepted: false, reason: "no_active_run" })
+                return
+            }
+
+            requestRunCancellation(runId, USER_CANCELLED_REASON)
+            ack?.({ accepted: true })
+        })
 
         // Use centralized approval service - it handles Slack notifications internally
         socket.on(SocketEvents.AGENT_CHAT_APPROVAL, async (payload: { runId: string; message: ToolApprovalResponse }) => {

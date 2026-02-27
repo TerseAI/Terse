@@ -44,11 +44,7 @@ function shouldInvalidateRunStatusCaches(event: ModelEvent): boolean {
 }
 
 function invalidateRunStatusCaches(runId: string, agentId: string): void {
-    void mutate(
-        key =>
-            Array.isArray(key) &&
-            ((key[0] === "chatHistory" && key[1] === runId) || (key[0] === "runHistory" && key[1] === agentId) || key[0] === "allRunHistory")
-    )
+    void mutate(key => Array.isArray(key) && ((key[0] === "chatHistory" && key[1] === runId) || (key[0] === "runHistory" && key[1] === agentId) || key[0] === "allRunHistory"))
 }
 
 function setupChatEventListener() {

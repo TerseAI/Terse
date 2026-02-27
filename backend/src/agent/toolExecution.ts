@@ -95,17 +95,34 @@ function extractToolExecutionSnippets(output: unknown): ChatSnippet[] {
     const candidate = output as { snippets?: unknown; snippet?: unknown }
 
     if (Array.isArray(candidate.snippets)) {
-        const parsedSnippets = candidate.snippets
-            .map(snippet => chatSnippetPayloadSchema.safeParse(snippet))
-            .filter((parseResult): parseResult is { success: true; data: ChatSnippet } => parseResult.success)
-            .map(parseResult => parseResult.data)
-        return parsedSnippets.length > 0 ? parsedSnippets : []
+        const parsedSnippets: ChatSnippet[] = []
+        for (const snippet of candidate.snippets) {
+            const enrichedSnippet =
+                snippet && typeof snippet === "object" ? { ...(snippet as Record<string, unknown>), timestamp: (snippet as { timestamp?: unknown }).timestamp ?? Date.now() } : snippet
+            const parsedSnippet = chatSnippetPayloadSchema.safeParse(enrichedSnippet)
+            if (!parsedSnippet.success) {
+                continue
+            }
+            parsedSnippets.push({
+                ...parsedSnippet.data,
+                timestamp: parsedSnippet.data.timestamp ?? Date.now()
+            })
+        }
+        return parsedSnippets
     }
 
     if (candidate.snippet !== undefined) {
-        const parsedSnippet = chatSnippetPayloadSchema.safeParse(candidate.snippet)
+        const enrichedSnippet =
+            candidate.snippet && typeof candidate.snippet === "object"
+                ? { ...(candidate.snippet as Record<string, unknown>), timestamp: (candidate.snippet as { timestamp?: unknown }).timestamp ?? Date.now() }
+                : candidate.snippet
+        const parsedSnippet = chatSnippetPayloadSchema.safeParse(enrichedSnippet)
         if (parsedSnippet.success) {
-            return [parsedSnippet.data]
+            const data: ChatSnippet = {
+                ...parsedSnippet.data,
+                timestamp: parsedSnippet.data.timestamp ?? Date.now()
+            }
+            return [data]
         }
     }
 

@@ -44,12 +44,16 @@ export async function emitAndPersistSnippetEvent(input: EmitAndPersistSnippetEve
 
     const { runId, organizationId, agentId, snippet } = parsed.data
     const timestamp = Date.now()
+    const normalizedSnippet: ChatSnippet = {
+        ...snippet,
+        timestamp: snippet.timestamp ?? timestamp
+    }
     const eventId = buildSnippetSystemEventId(randomString(18))
 
     try {
         await appendSnippetSystemEvent(runId, {
             id: eventId,
-            snippet
+            snippet: normalizedSnippet
         })
     } catch (error) {
         logger.warn("emitAndPersistSnippetEvent: failed to persist snippet system event", {
@@ -73,7 +77,7 @@ export async function emitAndPersistSnippetEvent(input: EmitAndPersistSnippetEve
     try {
         const runHistoryModelEvent: RunHistoryModelEvent = {
             type: "Snippet",
-            snippet,
+            snippet: normalizedSnippet,
             id: eventId,
             timestamp,
             stream_seq: nextRunStreamSequence(runId)

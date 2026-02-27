@@ -70,6 +70,7 @@ export async function* transformAgentStreamToModelEvents<T extends Session>(
                 for (const snippet of toolCompleteData.snippets) {
                     yield {
                         type: "Snippet",
+                        timestamp: snippet.timestamp,
                         snippet
                     }
                 }
@@ -90,6 +91,7 @@ export function tryExtractThinking(event: RunStreamEvent): ModelEvent | null {
         const item = (event as any).data.event.item
         return {
             type: "Thinking",
+            timestamp: Date.now(),
             step_id: item.id || "unknown"
         }
     }

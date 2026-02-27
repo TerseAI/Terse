@@ -119,9 +119,7 @@ function buildFilterAgent(trackingParams: TrackingParams): Agent<Session, typeof
 }
 
 function buildFilterHistory(agentPrompt: AgentPrompt, event: InputEvent): AgentInputItem[] {
-    return [
-        buildUserMessage(buildFilterUserPrompt(agentPrompt.content || "No specific instructions provided", event.formatForAgentRunner()))
-    ]
+    return [buildUserMessage(buildFilterUserPrompt(agentPrompt.content || "No specific instructions provided", event.formatForAgentRunner()))]
 }
 
 async function seedEventContextForFilteredRunIfNeeded(runId: string, eventContextText: string, isRelevant: boolean): Promise<void> {

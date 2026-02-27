@@ -137,7 +137,21 @@ export function useCompletionSocket(options: UseCompletionSocketOptions) {
         onRunErrorRef.current = onRunError
         onCancelledRef.current = onCancelled
         onTextStreamGapRef.current = onTextStreamGap
-    }, [onDelta, onToolCallGenerating, onToolCall, onToolCallComplete, onNaturalStop, onFilterResult, onThinking, onToolApprovalRequest, onToolApprovalResponse, onSnippet, onRunError, onCancelled, onTextStreamGap])
+    }, [
+        onDelta,
+        onToolCallGenerating,
+        onToolCall,
+        onToolCallComplete,
+        onNaturalStop,
+        onFilterResult,
+        onThinking,
+        onToolApprovalRequest,
+        onToolApprovalResponse,
+        onSnippet,
+        onRunError,
+        onCancelled,
+        onTextStreamGap
+    ])
 
     // Subscribe to events
     useEffect(() => {

@@ -70,9 +70,13 @@ class SnippetSystemEvent extends BaseSystemEvent<SnippetSystemEventPayload, Pars
     }
 
     protected decodePayload(payload: SnippetSystemEventPayload): ParsedSnippetSystemEvent | null {
+        const timestamp = payload.snippet.timestamp ?? Date.now()
         return {
             type: "Snippet",
-            snippet: payload.snippet
+            snippet: {
+                ...payload.snippet,
+                timestamp
+            }
         }
     }
 }

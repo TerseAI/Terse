@@ -79,10 +79,7 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance> exte
         this.notificationManager = new NotificationManager(session.user, agent)
     }
 
-    async run(
-        streamingParams?: TrackingParams,
-        options?: { signal?: AbortSignal }
-    ): Promise<ApprovalResult<SessionWithTracking<T>, Agent<SessionWithTracking<T>, AgentOutputType>>> {
+    async run(streamingParams?: TrackingParams, options?: { signal?: AbortSignal }): Promise<ApprovalResult<SessionWithTracking<T>, Agent<SessionWithTracking<T>, AgentOutputType>>> {
         if (!this.inputEvent) {
             throw new Error("No input event set. Call setInputEvent() before run()")
         }

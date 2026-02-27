@@ -14,12 +14,12 @@ export type SharedErrorContext = {
 export type ChangedItem = { type_name: EntityType; id: string; change_event_type: ChangeEventType }
 
 /** Run-level / agent-level error (e.g. context window exceeded). Use optional code for specific UI handling. */
-export type RunError = { error: string; code?: string; timestamp?: number }
-export type Cancelled = { reason?: string; timestamp?: number }
+export type RunError = { error: string; code?: string; timestamp: number }
+export type Cancelled = { reason?: string; timestamp: number }
 
 export type FunctionCall = { function_name: string; result: string; step_id: string }
 
-export type ModelEvent = { timestamp?: number } & (
+export type ModelEvent = { timestamp: number } & (
     | ({ type: "ToolApprovalResponse" } & ToolApprovalResponse)
     | ({ type: "ToolApprovalRequest" } & ToolApprovalRequest)
     | ({ type: "ToolCallGenerating" } & ToolCallGenerating)
@@ -39,17 +39,17 @@ export type ModelRequest = ({ type: "SendModelRequest" } & SendModelRequest) | (
 
 export type SendModelRequest = { user_message: string; timezone: string; ui_state?: string }
 
-export type ToolApprovalResponse = { step_id: string; approved: boolean; timestamp?: number }
+export type ToolApprovalResponse = { step_id: string; approved: boolean; timestamp: number }
 
-export type ToolApprovalRequest = { step_id: string; name: string; arguments: string; timestamp?: number }
+export type ToolApprovalRequest = { step_id: string; name: string; arguments: string; timestamp: number }
 
-export type TextDelta = { delta: string; step_id: string; timestamp?: number; delta_index?: number }
+export type TextDelta = { delta: string; step_id: string; timestamp: number; delta_index?: number }
 
-export type ToolCallGenerating = { tool_name: string; step_id: string; timestamp?: number }
+export type ToolCallGenerating = { tool_name: string; step_id: string; timestamp: number }
 
-export type ToolCall = { summary: string; step_id: string; parameters: string; integration: string; timestamp?: number }
+export type ToolCall = { summary: string; step_id: string; parameters: string; integration: string; timestamp: number }
 
-export type Thinking = { step_id: string; timestamp?: number }
+export type Thinking = { step_id: string; timestamp: number }
 
 export enum ToolCallExecutionStatus {
     COMPLETED = "completed",
@@ -60,7 +60,7 @@ export enum ToolCallExecutionStatus {
 
 export type ToolCallComplete = {
     tool_name: string
-    timestamp?: number
+    timestamp: number
     status: ToolCallExecutionStatus
     step_id: string
     changed_items: ChangedItem[]
@@ -70,12 +70,12 @@ export type ToolCallComplete = {
     errorContext?: SharedErrorContext
 }
 
-export type FilterResult = { isRelevant: boolean; reason: string; confidence: number; step_id: string; timestamp?: number }
+export type FilterResult = { isRelevant: boolean; reason: string; confidence: number; step_id: string; timestamp: number }
 
 export type UserMessage = { message: string }
 
 // Canonical snippet payload persisted/emitted by backend system events and tool outputs.
-export type ChatSnippet = { timestamp?: number; step_id?: string } & (
+export type ChatSnippet = { timestamp: number; step_id?: string } & (
     | { type: "button"; label: string; url: string }
     | { type: "integration_prompt"; integration: string; message: string; stateToken?: string }
     | { type: "navigate"; path: string }

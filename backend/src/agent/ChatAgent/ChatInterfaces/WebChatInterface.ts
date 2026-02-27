@@ -40,7 +40,7 @@ class WebChatInterface extends ChatInterface {
     private emitEvent(event: ModelEvent): void {
         this.socket.emit(SocketEvents.BUILDER_CHAT_EVENT, {
             sessionId: this.sessionId,
-            event: { ...event, timestamp: Date.now() }
+            event
         })
     }
 
@@ -76,9 +76,12 @@ class WebChatInterface extends ChatInterface {
 
         // Emit integration_prompt snippet - works for both OAuth and form integrations
         // The integration card will handle fetching OAuth URLs or showing forms
+        const timestamp = Date.now()
         this.emitEvent({
             type: "Snippet",
+            timestamp,
             snippet: {
+                timestamp,
                 type: "integration_prompt",
                 integration,
                 message: `To connect ${integration}, please use the form or button below.`,
@@ -106,9 +109,12 @@ class WebChatInterface extends ChatInterface {
 
     async askSurveyQuestion(multipleChoiceQuestion: MultipleChoiceQuestion): Promise<string> {
         const questionId = uuidv4().toString()
+        const timestamp = Date.now()
         this.emitEvent({
             type: "Snippet",
+            timestamp,
             snippet: {
+                timestamp,
                 type: "multiple_choice",
                 questionId,
                 question: multipleChoiceQuestion.question,
@@ -158,6 +164,7 @@ class WebChatInterface extends ChatInterface {
                 for (const snippet of toolCompleteData.snippets) {
                     this.emitEvent({
                         type: "Snippet",
+                        timestamp: snippet.timestamp,
                         snippet
                     })
                 }
@@ -177,9 +184,12 @@ class WebChatInterface extends ChatInterface {
     }
 
     async buildButton(label: string, url: string): Promise<void> {
+        const timestamp = Date.now()
         this.emitEvent({
             type: "Snippet",
+            timestamp,
             snippet: {
+                timestamp,
                 type: "button",
                 label,
                 url
@@ -188,9 +198,12 @@ class WebChatInterface extends ChatInterface {
     }
 
     async navigate(path: string): Promise<void> {
+        const timestamp = Date.now()
         this.emitEvent({
             type: "Snippet",
+            timestamp,
             snippet: {
+                timestamp,
                 type: "navigate",
                 path
             }
