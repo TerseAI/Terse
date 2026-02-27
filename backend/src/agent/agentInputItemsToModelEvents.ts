@@ -151,7 +151,8 @@ async function convertSingleItem(
             if (!options.includeScaffoldedUserMessages && isScaffoldedRunContextUserMessage(text)) {
                 return null
             }
-            return [{ type: "UserMessage", timestamp: eventTimestamp, message: text }]
+            if (!item.id) return null
+            return [{ type: "UserMessage", timestamp: eventTimestamp, message: text, step_id: item.id, client_turn_id: "" }]
         }
         return null
     }

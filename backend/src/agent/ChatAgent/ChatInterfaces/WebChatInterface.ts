@@ -1,6 +1,6 @@
 import { RunStreamEvent } from "@openai/agents-core"
+import { randomUUID } from "crypto"
 import { Socket } from "socket.io"
-import { uuidv4 } from "zod/v4"
 
 import { INTEGRATION_REGISTRY } from "../../../integrations/abstract/IntegrationRegistry"
 import logger from "../../../logger"

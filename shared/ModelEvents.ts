@@ -37,7 +37,7 @@ export type ModelEvent = { timestamp: number } & (
 
 export type ModelRequest = ({ type: "SendModelRequest" } & SendModelRequest) | ({ type: "ToolApprovalResponse" } & ToolApprovalResponse)
 
-export type SendModelRequest = { user_message: string; timezone: string; ui_state?: string }
+export type SendModelRequest = { user_message: string; timezone: string; ui_state?: string; client_turn_id: string }
 
 export type ToolApprovalResponse = { step_id: string; approved: boolean; timestamp: number }
 
@@ -72,22 +72,20 @@ export type ToolCallComplete = {
 
 export type FilterResult = { isRelevant: boolean; reason: string; confidence: number; step_id: string; timestamp: number }
 
-export type UserMessage = { message: string }
+export type UserMessage = { message: string; step_id: string; client_turn_id: string }
 
-// Canonical snippet payload persisted/emitted by backend system events and tool outputs.
-export type ChatSnippet = { timestamp: number; step_id?: string } & (
+// Shared variant union – the payload shapes used by every snippet type.
+export type SnippetVariant =
     | { type: "button"; label: string; url: string }
     | { type: "integration_prompt"; integration: string; message: string; stateToken?: string }
     | { type: "navigate"; path: string }
     | { type: "multiple_choice"; questionId: string; question: string; options: MultipleChoiceOption[]; allowMultiple?: boolean }
     | { type: "image"; url: string }
-)
+
+// Canonical snippet payload persisted/emitted by backend system events and tool outputs.
+export type ChatSnippet = { timestamp: number; step_id?: string } & SnippetVariant
 
 // Render-ready frontend snippet model.
-export type RenderedChatSnippet = { timestamp: number; step_id: string } & (
-    | { snippetType: "button"; label: string; url: string; id: string }
-    | { snippetType: "integration_prompt"; integration: string; message: string; id: string; stateToken?: string }
-    | { snippetType: "navigate"; path: string; id: string }
-    | { snippetType: "multiple_choice"; questionId: string; question: string; options: MultipleChoiceOption[]; id: string; allowMultiple?: boolean; selectedValue?: string }
-    | { snippetType: "image"; url: string; id: string }
-)
+// Adds `id` (React key / dedup) and makes `step_id` required.
+// `selectedValue` is UI-only state for answered multiple-choice questions.
+export type RenderedChatSnippet = { timestamp: number; step_id: string; id: string; selectedValue?: string } & SnippetVariant

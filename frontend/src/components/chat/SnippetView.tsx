@@ -14,17 +14,17 @@ export function SnippetView({ snippet, onMultipleChoiceAnswer }: { snippet: Rend
     const navigate = useNavigate()
 
     useEffect(() => {
-        if (snippet.snippetType === "navigate") {
+        if (snippet.type === "navigate") {
             navigate(snippet.path)
         }
     }, [snippet, navigate])
 
-    if (snippet.snippetType === "navigate") {
+    if (snippet.type === "navigate") {
         // Return null since we're navigating away
         return null
     }
 
-    if (snippet.snippetType === "button") {
+    if (snippet.type === "button") {
         const isInternalPath = snippet.url.startsWith("/")
         return (
             <div>
@@ -47,7 +47,7 @@ export function SnippetView({ snippet, onMultipleChoiceAnswer }: { snippet: Rend
         )
     }
 
-    if (snippet.snippetType === "integration_prompt") {
+    if (snippet.type === "integration_prompt") {
         // Convert string to IntegrationType if it's a valid enum value
         const integrationType = Object.values(IntegrationType).includes(snippet.integration as IntegrationType) ? (snippet.integration as IntegrationType) : null
 
@@ -70,7 +70,7 @@ export function SnippetView({ snippet, onMultipleChoiceAnswer }: { snippet: Rend
         )
     }
 
-    if (snippet.snippetType === "multiple_choice") {
+    if (snippet.type === "multiple_choice") {
         return (
             <MultipleChoiceQuestionForm
                 questionId={snippet.questionId}
@@ -83,7 +83,7 @@ export function SnippetView({ snippet, onMultipleChoiceAnswer }: { snippet: Rend
         )
     }
 
-    if (snippet.snippetType === "image") {
+    if (snippet.type === "image") {
         return <ImageSnippet url={snippet.url} />
     }
 

@@ -274,7 +274,7 @@ export class ApprovalService {
                     ? SlackApprovalMessageStatus.CHANGES_REQUESTED
                     : SlackApprovalMessageStatus.REJECTED
 
-            const decision: "approve" | "reject" = approved ? "approve" : "reject"
+            const decision = approved ? "approve" : "reject"
             const cancellationController = new AbortController()
             const cancellationSubscription = listenForRunCancellation(runId, cancellationController)
 

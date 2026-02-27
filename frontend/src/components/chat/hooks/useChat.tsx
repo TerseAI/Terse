@@ -42,8 +42,7 @@ export function useChat({
         handleToolApprovalResponse,
         addUserTurn,
         handleSnippet,
-        handleMultipleChoiceAnswered,
-        handleTextStreamGap
+        handleMultipleChoiceAnswered
     } = useChatTurns({ initialTurns })
 
     const { sendMessage: sendSocketMessage } = useCompletionSocket({
@@ -66,17 +65,14 @@ export function useChat({
         onToolApprovalRequest: handleToolApprovalRequest,
         onToolApprovalResponse: handleToolApprovalResponse,
         onSnippet: handleSnippet,
-        onCancelled: handleCancel,
-        onTextStreamGap: ({ step_id }) => {
-            handleTextStreamGap(step_id)
-        }
+        onCancelled: handleCancel
     })
 
     const { input, setInput, sendMessage } = useChatInput({
         sendMessage: sendSocketMessage,
-        onUserMessage: (message: string) => {
+        onUserMessage: (message: string, clientTurnId: string) => {
             if (addUserTurnsLocally) {
-                addUserTurn(message)
+                addUserTurn(message, clientTurnId)
             }
             onUserMessage?.(message)
         }

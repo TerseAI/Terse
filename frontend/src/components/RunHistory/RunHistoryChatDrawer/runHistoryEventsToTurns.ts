@@ -6,10 +6,10 @@ import { FilterResult, ModelEvent, type RenderedChatSnippet, RunError, TextDelta
 type FunctionCallEvent = Turn["function_calls"][number]
 
 function mergeSnippetIntoList(existingSnippets: RenderedChatSnippet[], newSnippet: RenderedChatSnippet): RenderedChatSnippet[] {
-    if (newSnippet.snippetType !== "multiple_choice") {
+    if (newSnippet.type !== "multiple_choice") {
         return [...existingSnippets, newSnippet]
     }
-    const existingIndex = existingSnippets.findIndex(s => s.snippetType === "multiple_choice" && s.questionId === newSnippet.questionId)
+    const existingIndex = existingSnippets.findIndex(s => s.type === "multiple_choice" && s.questionId === newSnippet.questionId)
     if (existingIndex === -1) {
         return [...existingSnippets, newSnippet]
     }
@@ -69,35 +69,12 @@ function findLastAssistantTurnIndex(turns: Turn[]): number {
     return -1
 }
 
-function toRenderedChatSnippet(payload: ChatSnippet, fallbackStepId: string, fallbackTimestamp: number, fallbackIdSeed: string): RenderedChatSnippet {
-    const base = {
-        id: fallbackIdSeed,
+function toRenderedChatSnippet(payload: ChatSnippet, fallbackStepId: string, fallbackTimestamp: number, fallbackId: string): RenderedChatSnippet {
+    return {
+        ...payload,
+        id: fallbackId,
         timestamp: payload.timestamp ?? fallbackTimestamp,
         step_id: payload.step_id ?? fallbackStepId
-    }
-
-    switch (payload.type) {
-        case "button":
-            return { ...base, snippetType: "button", label: payload.label, url: payload.url }
-        case "integration_prompt":
-            return { ...base, snippetType: "integration_prompt", integration: payload.integration, message: payload.message, ...(payload.stateToken ? { stateToken: payload.stateToken } : {}) }
-        case "navigate":
-            return { ...base, snippetType: "navigate", path: payload.path }
-        case "multiple_choice":
-            return {
-                ...base,
-                snippetType: "multiple_choice",
-                questionId: payload.questionId,
-                question: payload.question,
-                options: payload.options,
-                ...(payload.allowMultiple ? { allowMultiple: true } : {})
-            }
-        case "image":
-            return { ...base, snippetType: "image", url: payload.url }
-        default: {
-            const exhaustiveCheck: never = payload
-            return exhaustiveCheck
-        }
     }
 }
 
@@ -156,7 +133,7 @@ export function convertRunHistoryEventsToTurns(events: ModelEvent[]): Turn[] {
                     text: e.message,
                     timestamp: eventTimestamp,
                     function_calls: [],
-                    step_id: "user",
+                    step_id: event.step_id,
                     isGenerating: false,
                     disableAnimation: true
                 })

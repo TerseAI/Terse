@@ -37,7 +37,7 @@ class ChatAgent {
         return this.memorySession
     }
 
-    async run(message: string, options?: { signal?: AbortSignal }): Promise<string> {
+    async run(message: string, options?: { signal?: AbortSignal; clientTurnId?: string }): Promise<string> {
         logger.info("Starting chat agent run for message in interface", {
             message,
             interface: this.chatInterface.name
@@ -64,7 +64,7 @@ class ChatAgent {
 
         const runner = runnerFactory(runConfig)
 
-        const result = await runner.run(agent, [buildUserMessage(message)], {
+        const result = await runner.run(agent, [buildUserMessage(message, options?.clientTurnId)], {
             stream: true,
             context: {
                 chatInterface: this.chatInterface,

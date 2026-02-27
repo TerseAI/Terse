@@ -3,7 +3,7 @@ import { randomUUID } from "crypto"
 
 const MAX_USER_MESSAGE_ID_LENGTH = 63
 
-function buildUserMessageId(): string {
+export function buildUserMessageId(): string {
     const id = `msg_${randomUUID()}`
     if (id.length <= MAX_USER_MESSAGE_ID_LENGTH) {
         return id
@@ -15,20 +15,20 @@ function buildUserMessageId(): string {
  * Build a user message AgentInputItem with a stable ID format for dedupe.
  * ID format: msg_<uuid>, always shorter than 64 chars.
  */
-export function buildUserMessage(text: string): UserMessageItem {
+export function buildUserMessage(text: string, id?: string): UserMessageItem {
     return buildUserMessageFromContent([
         {
             type: "input_text",
             text
         }
-    ])
+    ], id)
 }
 
 /**
  * Build a user message AgentInputItem from pre-built content parts
  * (e.g. input_text + input_file/input_image attachments).
  */
-export function buildUserMessageFromContent(content: UserMessageItem["content"]): UserMessageItem {
+export function buildUserMessageFromContent(content: UserMessageItem["content"], id?: string): UserMessageItem {
     const normalizedContent =
         typeof content === "string"
             ? [
@@ -42,7 +42,7 @@ export function buildUserMessageFromContent(content: UserMessageItem["content"])
     return {
         type: "message",
         role: "user",
-        id: buildUserMessageId(),
+        id: id ?? buildUserMessageId(),
         content: normalizedContent
     }
 }

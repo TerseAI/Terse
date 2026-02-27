@@ -80,7 +80,7 @@ export async function registerBuilderChatHandler(socket: Socket, userId: string,
         const chatAgent = new ChatAgent(webChatInterface, sessionId, user, uiState)
 
         try {
-            await chatAgent.run(userMessage, { signal: activeExecution.controller.signal })
+            await chatAgent.run(userMessage, { signal: activeExecution.controller.signal, clientTurnId: message.client_turn_id })
             if (activeExecution.cancelRequested) {
                 await emitAndPersistCancelledEvent(sessionId, USER_CANCELLED_REASON)
                 return
