@@ -318,7 +318,8 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
                         agentId: agent.id
                     },
                     {
-                        signal: cancellationController.signal
+                        signal: cancellationController.signal,
+                        clientTurnId: message.client_turn_id
                     }
                 )
             } catch (error) {

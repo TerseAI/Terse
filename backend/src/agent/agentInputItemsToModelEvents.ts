@@ -152,7 +152,7 @@ async function convertSingleItem(
                 return null
             }
             if (!item.id) return null
-            return [{ type: "UserMessage", timestamp: eventTimestamp, message: text, step_id: item.id, client_turn_id: "" }]
+            return [{ type: "UserMessage", timestamp: eventTimestamp, message: text, step_id: item.id, client_turn_id: item.id }]
         }
         return null
     }

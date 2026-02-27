@@ -44,8 +44,37 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
 
                 // Server turns override local turns with the same step_id.
                 // Local turns that have no server counterpart are preserved.
+                // Also dedupe local tool-call placeholders when the same call ID
+                // is already present in server turns (stream + reload race).
                 const serverStepIds = new Set(initialTurns.map(t => t.step_id))
-                const localOnlyTurns = prev.filter(t => !serverStepIds.has(t.step_id))
+                const serverFunctionCallIds = new Set(initialTurns.flatMap(t => t.function_calls.map(fc => fc.id)))
+
+                const localOnlyTurns = prev
+                    .filter(t => !serverStepIds.has(t.step_id))
+                    .map(turn => {
+                        if (turn.function_calls.length === 0) {
+                            return turn
+                        }
+
+                        const nextFunctionCalls = turn.function_calls.filter(fc => !serverFunctionCallIds.has(fc.id))
+                        if (nextFunctionCalls.length === turn.function_calls.length) {
+                            return turn
+                        }
+
+                        return {
+                            ...turn,
+                            function_calls: nextFunctionCalls
+                        }
+                    })
+                    .filter(turn => {
+                        if (turn.role === "user") {
+                            return true
+                        }
+                        const hasText = turn.text.trim().length > 0
+                        const hasFunctionCalls = turn.function_calls.length > 0
+                        const hasSnippets = (turn.snippets?.length ?? 0) > 0
+                        return hasText || hasFunctionCalls || hasSnippets
+                    })
 
                 return [...initialTurns, ...localOnlyTurns]
             })

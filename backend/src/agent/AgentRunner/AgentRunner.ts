@@ -119,10 +119,10 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance> exte
         userMessage: string,
         files?: StoredFile[],
         streamingParams?: TrackingParams,
-        options?: { signal?: AbortSignal }
+        options?: { signal?: AbortSignal; clientTurnId?: string }
     ): Promise<ApprovalResult<SessionWithTracking<T>, Agent<SessionWithTracking<T>, AgentOutputType>>> {
         const content = this.buildUserContent(userMessage, files)
-        const userHistory = this.buildUserHistory(content)
+        const userHistory = this.buildUserHistory(content, options?.clientTurnId)
         const runner = runnerFactory({
             agentId: this.agentConfig.id,
             agentType: AgentType.AGENT_RUNNER,
@@ -147,8 +147,8 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance> exte
         return this.mapLoopResult(loopResult)
     }
 
-    private buildUserHistory(content: UserMessageContent[]): AgentInputItem[] {
-        return [buildUserMessageFromContent(content)]
+    private buildUserHistory(content: UserMessageContent[], clientTurnId?: string): AgentInputItem[] {
+        return [buildUserMessageFromContent(content, clientTurnId)]
     }
 
     async resumeFromPendingApproval(

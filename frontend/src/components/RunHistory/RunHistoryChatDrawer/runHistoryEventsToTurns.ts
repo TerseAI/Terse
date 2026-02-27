@@ -133,7 +133,7 @@ export function convertRunHistoryEventsToTurns(events: ModelEvent[]): Turn[] {
                     text: e.message,
                     timestamp: eventTimestamp,
                     function_calls: [],
-                    step_id: event.step_id,
+                    step_id: e.step_id,
                     isGenerating: false,
                     disableAnimation: true
                 })

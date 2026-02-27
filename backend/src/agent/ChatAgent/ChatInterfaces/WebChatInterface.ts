@@ -108,7 +108,7 @@ class WebChatInterface extends ChatInterface {
     }
 
     async askSurveyQuestion(multipleChoiceQuestion: MultipleChoiceQuestion): Promise<string> {
-        const questionId = uuidv4().toString()
+        const questionId = randomUUID()
         const timestamp = Date.now()
         this.emitEvent({
             type: "Snippet",
