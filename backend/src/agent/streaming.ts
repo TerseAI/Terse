@@ -16,11 +16,23 @@ export async function* transformAgentStreamToModelEvents<T extends Session>(
         toolToIntegrationMap?: Map<string, string>
         onToolCall?: (stepId: string, toolName: string) => void
         onToolCallComplete?: ToolCallCompleteHandler
+        onRawStreamEvent?: (event: RunStreamEvent) => Promise<void> | void
     } = {}
 ): AsyncGenerator<ModelEvent, void, unknown> {
-    const { toolToIntegrationMap, onToolCall, onToolCallComplete } = options
+    const { toolToIntegrationMap, onToolCall, onToolCallComplete, onRawStreamEvent } = options
 
     for await (const event of result as AsyncIterable<RunStreamEvent>) {
+        if (onRawStreamEvent) {
+            try {
+                await onRawStreamEvent(event)
+            } catch (error) {
+                logger.warn("Failed to persist raw stream event", {
+                    error,
+                    eventType: event.type
+                })
+            }
+        }
+
         // Try Thinking (reasoning start) - check early so users see activity immediately
         const thinkingEvent = tryExtractThinking(event)
         if (thinkingEvent) {

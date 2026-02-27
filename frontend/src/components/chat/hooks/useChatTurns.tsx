@@ -93,6 +93,67 @@ function getEventTimestamp(timestamp?: number): number {
     return timestamp ?? Date.now()
 }
 
+function isLikelyPendingFunctionCall(call: Turn["function_calls"][number]): boolean {
+    if (call.isGeneratingParams || call.isRunning || call.isWaitingForApproval || call.isWaitingForUserInput) {
+        return true
+    }
+
+    const hasTerminalState = Boolean(call.result) || call.isFailure || call.isRejected
+    return !hasTerminalState
+}
+
+function inferStepIdToRemoveOnCancel(turns: Turn[], currentStepId: string | null): string | null {
+    if (currentStepId) {
+        return currentStepId
+    }
+
+    for (let i = turns.length - 1; i >= 0; i--) {
+        const turn = turns[i]
+        if (turn.role !== "assistant") continue
+        if (turn.isCancelled || turn.step_id === "cancel" || turn.step_id === "run-error") continue
+
+        const hasPendingText = Boolean(turn.isGenerating)
+        const hasLikelyPendingCalls = turn.function_calls.some(isLikelyPendingFunctionCall)
+        const looksLikeToolOnlyTurn = turn.function_calls.length > 0 && !turn.text
+
+        if (hasPendingText || hasLikelyPendingCalls || looksLikeToolOnlyTurn) {
+            return turn.step_id
+        }
+
+        // Stop after the newest non-cancel assistant turn if it does not look pending.
+        break
+    }
+
+    return null
+}
+
+function removeStepFromTurns(turns: Turn[], stepId: string | null): Turn[] {
+    if (!stepId) {
+        return turns
+    }
+
+    return turns
+        .map(turn => {
+            if (turn.role === "assistant" && turn.step_id === stepId) {
+                return null
+            }
+
+            const filteredFunctionCalls = turn.function_calls.filter(call => call.id !== stepId)
+            const filteredSnippets = turn.snippets?.filter(snippet => snippet.step_id !== stepId)
+
+            if (turn.function_calls.length === filteredFunctionCalls.length && turn.snippets?.length === filteredSnippets?.length) {
+                return turn
+            }
+
+            return {
+                ...turn,
+                function_calls: filteredFunctionCalls,
+                ...(filteredSnippets && filteredSnippets.length > 0 ? { snippets: filteredSnippets } : { snippets: undefined })
+            }
+        })
+        .filter((turn): turn is Turn => turn !== null)
+}
+
 function toChatSnippet(payload: ChatSnippet, fallbackStepId: string, fallbackTimestamp: number): RenderedChatSnippet {
     const base = {
         id: uuidv4(),
@@ -483,8 +544,16 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
 
     const handleCancel = (cancellation: Cancelled) => {
         const cancellationTimestamp = getEventTimestamp(cancellation.timestamp)
+        const stepIdToRemove = inferStepIdToRemoveOnCancel(turns, currentStepIdRef.current)
+
+        if (stepIdToRemove) {
+            stepBuffersRef.current.delete(stepIdToRemove)
+            pendingApprovalsRef.current.delete(stepIdToRemove)
+            queuedToolCallsRef.current = queuedToolCallsRef.current.filter(call => call.step_id !== stepIdToRemove)
+        }
+
         setTurns(prev => {
-            const updated = [...prev]
+            const updated = removeStepFromTurns([...prev], stepIdToRemove)
             const last = updated[updated.length - 1]
             if (last) {
                 last.isGenerating = false
@@ -501,6 +570,7 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
                 }
             ]
         })
+        currentStepIdRef.current = null
     }
 
     const handleFilterResult = ({ isRelevant, reason, confidence, timestamp }: FilterResult) => {

@@ -1,4 +1,4 @@
-import { Agent, AgentInputItem, user } from "@openai/agents"
+import { Agent, AgentInputItem } from "@openai/agents"
 import { z } from "zod"
 
 import { settings } from "../../config/settings"
@@ -16,6 +16,7 @@ import { RunHistoryChatMemorySession } from "../CustomMemorySession"
 import { AgentType, builderProviderDataModelSettings, runnerFactory } from "../runner"
 import { transformAgentStreamToModelEvents } from "../streaming"
 import { appendFilterOutcomeSystemEvent } from "../systemEvents/filterOutcomeSystemEvent"
+import { buildUserMessage } from "../userMessage"
 
 import { buildRunTriggerContextMessage, formatAgentTriggersForAgent } from "./formatContext"
 
@@ -118,12 +119,7 @@ function buildFilterAgent(trackingParams: TrackingParams): Agent<Session, typeof
 
 function buildFilterHistory(agentPrompt: AgentPrompt, event: InputEvent): AgentInputItem[] {
     return [
-        user([
-            {
-                type: "input_text",
-                text: buildFilterUserPrompt(agentPrompt.content || "No specific instructions provided", event.formatForAgentRunner())
-            }
-        ])
+        buildUserMessage(buildFilterUserPrompt(agentPrompt.content || "No specific instructions provided", event.formatForAgentRunner()))
     ]
 }
 
@@ -134,7 +130,7 @@ async function seedEventContextForFilteredRunIfNeeded(runId: string, eventContex
 
     try {
         const memorySession = new RunHistoryChatMemorySession({ sessionId: runId })
-        const eventContextItem = user(eventContextText)
+        const eventContextItem = buildUserMessage(eventContextText)
         await memorySession.addItems([eventContextItem])
     } catch (error) {
         logger.warn("Failed to seed event context for filtered run in EventFilter", { runId, error })

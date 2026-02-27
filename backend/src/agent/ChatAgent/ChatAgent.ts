@@ -5,6 +5,7 @@ import logger from "../../logger"
 import { User } from "../../shared/types"
 import { ChatMemorySession, recentHistoryCallback } from "../CustomMemorySession"
 import { AgentType, builderProviderDataModelSettings, runnerFactory } from "../runner"
+import { buildUserMessage } from "../userMessage"
 
 import type { ChatAgentContext } from "./ChatAgentContext"
 import { buildChatAgentSystemPrompt } from "./ChatAgentSystemPrompt"
@@ -65,12 +66,7 @@ class ChatAgent {
 
         const result = await runner.run(
             agent,
-            [
-                {
-                    role: "user",
-                    content: message
-                }
-            ],
+            [buildUserMessage(message)],
             {
                 stream: true,
                 context: {
@@ -86,6 +82,14 @@ class ChatAgent {
         )
 
         for await (const event of result as AsyncIterable<RunStreamEvent>) {
+            try {
+                await memorySession.ingestStreamEvent(event)
+            } catch (error) {
+                logger.warn("Failed to ingest chat stream event into memory session", {
+                    sessionId: this.sessionId,
+                    error
+                })
+            }
             this.chatInterface.processStreamEvent(this.sessionId, event)
         }
 

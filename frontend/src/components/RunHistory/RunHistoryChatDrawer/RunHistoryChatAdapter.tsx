@@ -1,5 +1,6 @@
 import { useMemo } from "react"
 
+import { AwaitingResponseAnimation } from "@/components/chat/AwaitingResponseAnimation"
 import { Chat } from "@/components/chat/Chat"
 import { Turn } from "@/components/chat/Turn"
 import { type ChatEventSubscription } from "@/components/chat/hooks/useCompletionSocket"
@@ -26,12 +27,13 @@ type RunHistoryChatAdapterProps = {
         handleReject: (stepId: string) => void
         handleCancellation: () => void
         currentStatus: RunHistoryStatus
+        isRunPending: boolean
     }) => React.ReactNode
 }
 
 export default function RunHistoryChatAdapter({ runId, status, children }: RunHistoryChatAdapterProps) {
     // Fetch History (API)
-    const { events, isLoading, startTimestamp, endTimestamp } = useChatHistory(runId)
+    const { events, isLoading, startTimestamp, endTimestamp, status: apiStatus } = useChatHistory(runId)
 
     // Parse server ISO timestamps to epoch ms for chronological ordering
     const historicalEvents = useMemo(
@@ -43,7 +45,8 @@ export default function RunHistoryChatAdapter({ runId, status, children }: RunHi
     )
 
     // Use API status if available, otherwise fall back to prop status
-    const currentStatus = status
+    const currentStatus = apiStatus ?? status
+    const isRunPending = currentStatus === RunHistoryStatus.IN_PROGRESS || currentStatus === RunHistoryStatus.AWAITING_APPROVAL
 
     // Convert to Turns
     const turns = useMemo(() => convertRunHistoryEventsToTurns(historicalEvents), [historicalEvents])
@@ -89,6 +92,7 @@ export default function RunHistoryChatAdapter({ runId, status, children }: RunHi
                     subscribeToEvents,
                     sendMessage,
                     currentStatus,
+                    isRunPending,
                     handleApprove,
                     handleReject,
                     handleCancellation
@@ -96,6 +100,16 @@ export default function RunHistoryChatAdapter({ runId, status, children }: RunHi
             </>
         )
     }
+
+    const emptyPlaceholder = turns.length === 0 && isRunPending ? (
+        <div className="p-4">
+            <AwaitingResponseAnimation />
+        </div>
+    ) : isLoading ? (
+        <div className="p-4 text-center text-muted-foreground">Loading history...</div>
+    ) : (
+        <div className="p-4 text-center text-muted-foreground">No messages found</div>
+    )
 
     return (
         <Chat
@@ -106,9 +120,7 @@ export default function RunHistoryChatAdapter({ runId, status, children }: RunHi
             onHandleApprove={handleApprove}
             onHandleReject={handleReject}
             onHandleCancellation={handleCancellation}
-            EmptyContentPlaceholder={
-                isLoading ? <div className="p-4 text-center text-muted-foreground">Loading history...</div> : <div className="p-4 text-center text-muted-foreground">No events found</div>
-            }
+            EmptyContentPlaceholder={emptyPlaceholder}
         />
     )
 }

@@ -7,6 +7,7 @@ import { ConfigInstance } from "../../shared/Configs"
 import { ChangedItem, ModelEvent } from "../../shared/ModelEvents"
 import { RunHistoryAction } from "../../shared/RunHistoryTypes"
 import { Session as AppSession } from "../../types/session"
+import type { StreamEventIngestionSession } from "../CustomMemorySession"
 import { createNaturalStopEvent, transformAgentStreamToModelEvents } from "../streaming"
 import { isFailedToolExecutionStatus } from "../toolExecution"
 
@@ -88,7 +89,7 @@ export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSe
             signal: settings.signal
         })
 
-        await this.processStream(result)
+        await this.processStream(result, settings.memorySession)
         return this.buildResult(result)
     }
 
@@ -136,14 +137,19 @@ export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSe
             signal: params.settings.signal
         })
 
-        await this.processStream(result)
+        await this.processStream(result, params.settings.memorySession)
         return this.buildResult(result)
     }
 
-    private async processStream(result: StreamedRunResult<TSession, TAgent>): Promise<void> {
+    private async processStream(result: StreamedRunResult<TSession, TAgent>, memorySession: AgentMemorySession): Promise<void> {
+        const streamIngestionSession = asStreamEventIngestionSession(memorySession)
         const eventStream = transformAgentStreamToModelEvents(result, {
             toolToIntegrationMap: this.toolToIntegrationMap,
-            onToolCallComplete: (callId, toolName, actions) => this.onToolCallComplete(callId, toolName, actions)
+            onToolCallComplete: (callId, toolName, actions) => this.onToolCallComplete(callId, toolName, actions),
+            onRawStreamEvent: async streamEvent => {
+                if (!streamIngestionSession) return
+                await streamIngestionSession.ingestStreamEvent(streamEvent)
+            }
         })
 
         for await (const event of this.trackEventStream(eventStream)) {
@@ -222,6 +228,14 @@ export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSe
         }
         return this.agent
     }
+}
+
+function asStreamEventIngestionSession(memorySession: AgentMemorySession): StreamEventIngestionSession | null {
+    const candidate = memorySession as unknown as StreamEventIngestionSession
+    if (typeof candidate?.ingestStreamEvent !== "function") {
+        return null
+    }
+    return candidate
 }
 
 type SessionInputCallback = (history: AgentInputItem[], newItems: AgentInputItem[]) => AgentInputItem[]

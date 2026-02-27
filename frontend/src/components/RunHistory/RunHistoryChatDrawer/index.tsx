@@ -1,5 +1,6 @@
 import { useRef, useState } from "react"
 
+import { AwaitingResponseAnimation } from "@/components/chat/AwaitingResponseAnimation"
 import { Chat, type ChatHandle } from "@/components/chat/Chat"
 import { Drawer, DrawerContent } from "@/components/ui/drawer"
 import { cn } from "@/lib/utils"
@@ -47,8 +48,17 @@ export default function RunHistoryChatDrawer({ isOpen, onOpenChange, runs, curre
                 )}
             >
                 <RunHistoryChatAdapter key={runId} runId={runId} status={status}>
-                    {({ initialTurns, isLoading, subscribeToEvents, sendMessage, handleApprove, handleReject, handleCancellation, currentStatus }) => {
+                    {({ initialTurns, isLoading, subscribeToEvents, sendMessage, handleApprove, handleReject, handleCancellation, currentStatus, isRunPending }) => {
                         const isFiltered = currentStatus === RunHistoryStatus.SKIPPED
+                        const emptyPlaceholder = initialTurns.length === 0 && isRunPending ? (
+                            <div className="p-4">
+                                <AwaitingResponseAnimation />
+                            </div>
+                        ) : isLoading ? (
+                            <div className="p-4 text-center text-muted-foreground">Loading history...</div>
+                        ) : (
+                            <div className="p-4 text-center text-muted-foreground">No messages found</div>
+                        )
 
                         return (
                             <>
@@ -76,13 +86,7 @@ export default function RunHistoryChatDrawer({ isOpen, onOpenChange, runs, curre
                                                 onHandleApprove={handleApprove}
                                                 onHandleReject={handleReject}
                                                 onHandleCancellation={handleCancellation}
-                                                EmptyContentPlaceholder={
-                                                    isLoading ? (
-                                                        <div className="p-4 text-center text-muted-foreground">Loading history...</div>
-                                                    ) : (
-                                                        <div className="p-4 text-center text-muted-foreground">No events found</div>
-                                                    )
-                                                }
+                                                EmptyContentPlaceholder={emptyPlaceholder}
                                             />
                                         </div>
                                     </div>
