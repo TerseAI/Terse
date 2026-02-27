@@ -7,10 +7,11 @@ import { Server, Socket } from "socket.io"
 import { AgentRunResultStatus, AgentRunner } from "./agent/AgentRunner/AgentRunner"
 import { RunContext } from "./agent/AgentRunner/SystemPromptBuilder"
 import { evaluateCompletedRun, finalizeRunStatus, getPendingApprovalState, markRunFailed } from "./agent/AgentRunner/runHistory"
-import { listenForRunCancellation, requestRunCancellation } from "./agent/cancellation/RunCancellationTaskQueue"
-import { markRunCancelledAndInvalidate } from "./agent/cancellation/runCancellationEffects"
 import { DirectiveTask, directiveTaskQueue } from "./agent/DirectiveAgent/DirectiveAgent"
 import { type ClassifiedError, buildRunErrorEvent, classifyAgentError } from "./agent/agentErrorUtils"
+import { listenForRunCancellation, requestRunCancellation } from "./agent/cancellation/RunCancellationTaskQueue"
+import { markRunCancelledAndInvalidate } from "./agent/cancellation/runCancellationEffects"
+import { nextRunStreamSequence } from "./agent/streamSequence"
 import { appendRunHistoryErrorSystemEvent } from "./agent/systemEvents/runErrorSystemEvent"
 import { nodeEnv, optional, urls } from "./config/settings"
 import logger from "./logger"
@@ -298,7 +299,7 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
                     data: { status: RunHistoryStatus.IN_PROGRESS }
                 })
             }
-            emitCacheInvalidationWithWildcard(organizationIdForRun, "runHistory", agent.id)
+            invalidateRunAndChatHistory(organizationIdForRun, agent.id, runId)
 
             const runContext: RunContext = { runId }
             const agentRunner = new AgentRunner(session, outputs, agent, runContext)
@@ -513,7 +514,8 @@ export async function markRunFailedAndInvalidate(runId: string, classified: Clas
             const runHistoryModelEvent: RunHistoryModelEvent = {
                 ...runErrorEvent,
                 id: `run-error-live-${randomString(15)}`,
-                timestamp: Date.now()
+                timestamp: Date.now(),
+                stream_seq: nextRunStreamSequence(runId)
             }
             const payload: RunHistoryModelSocketEvent = {
                 runId,

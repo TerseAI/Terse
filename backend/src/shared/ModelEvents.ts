@@ -43,7 +43,7 @@ export type ToolApprovalResponse = { step_id: string; approved: boolean; timesta
 
 export type ToolApprovalRequest = { step_id: string; name: string; arguments: string; timestamp?: number }
 
-export type TextDelta = { delta: string; step_id: string; timestamp?: number }
+export type TextDelta = { delta: string; step_id: string; timestamp?: number; delta_index?: number }
 
 export type ToolCallGenerating = { tool_name: string; step_id: string; timestamp?: number }
 

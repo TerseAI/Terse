@@ -64,22 +64,18 @@ class ChatAgent {
 
         const runner = runnerFactory(runConfig)
 
-        const result = await runner.run(
-            agent,
-            [buildUserMessage(message)],
-            {
-                stream: true,
-                context: {
-                    chatInterface: this.chatInterface,
-                    user: this.user,
-                    sessionId: this.sessionId
-                },
-                session: memorySession,
-                sessionInputCallback: recentHistoryCallback,
-                maxTurns: CHAT_AGENT_MAX_TURNS,
-                signal: options?.signal
-            }
-        )
+        const result = await runner.run(agent, [buildUserMessage(message)], {
+            stream: true,
+            context: {
+                chatInterface: this.chatInterface,
+                user: this.user,
+                sessionId: this.sessionId
+            },
+            session: memorySession,
+            sessionInputCallback: recentHistoryCallback,
+            maxTurns: CHAT_AGENT_MAX_TURNS,
+            signal: options?.signal
+        })
 
         for await (const event of result as AsyncIterable<RunStreamEvent>) {
             try {

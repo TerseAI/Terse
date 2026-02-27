@@ -6,7 +6,7 @@ import { InputEvent } from "../../integrations/abstract/InputEvent"
 import logger from "../../logger"
 import { NotificationManager } from "../../notifications/Notification"
 import { Output } from "../../outputs/abstract/Output"
-import { getSocketIO } from "../../services/CacheInvalidationService"
+import { emitCacheInvalidationWithWildcard, getSocketIO } from "../../services/CacheInvalidationService"
 import { FileCategory, StoredFile } from "../../services/FileStorageService"
 import { ConfigInstance } from "../../shared/Configs"
 import { EntityType } from "../../shared/Entities"
@@ -449,6 +449,11 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance> exte
         arguments: string
         interruption: RunToolApprovalItem
     }): Promise<void> {
+        if (this.session.user.organizationId) {
+            emitCacheInvalidationWithWildcard(this.session.user.organizationId, "runHistory", this.agentConfig.id)
+            emitCacheInvalidationWithWildcard(this.session.user.organizationId, "chatHistory", runId)
+        }
+
         try {
             logger.info("[ApprovalFlow] Persisting approval request system event", { runId, stepId })
             await appendToolApprovalRequestSystemEvent(runId, {

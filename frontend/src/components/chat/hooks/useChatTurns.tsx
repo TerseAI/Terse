@@ -193,6 +193,7 @@ interface UseChatTurnsOptions {
 export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
     const [turns, setTurns] = useState<Turn[]>(initialTurns || [])
     const stepBuffersRef = useRef<Map<string, string>>(new Map())
+    const incompleteTextStepIdsRef = useRef<Set<string>>(new Set())
     const pendingApprovalsRef = useRef<Set<string>>(new Set())
     const queuedToolCallsRef = useRef<Array<{ summary: string; step_id: string; parameters: string }>>([])
     const currentStepIdRef = useRef<string | null>(null)
@@ -210,6 +211,13 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
             pendingLocalUserTurnIdsRef.current = pendingLocalUserTurnIdsRef.current.slice(newlyPersistedLocalUserTurns)
         }
         lastInitialUserTurnCountRef.current = initialUserTurnCount
+
+        for (const turn of initialTurns) {
+            if (turn.role === "assistant" && turn.text) {
+                stepBuffersRef.current.set(turn.step_id, turn.text)
+                incompleteTextStepIdsRef.current.delete(turn.step_id)
+            }
+        }
 
         if (initialTurns && initialTurns.length > 0) {
             setTurns(prev => {
@@ -244,10 +252,49 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
 
     const isPendingAssistantResponse = (turns.length > 0 && (turns[turns.length - 1]?.role === "user" || turns[turns.length - 1]?.isGenerating)) || false
 
-    const handleDelta = ({ delta, step_id, timestamp }: TextDelta) => {
+    const markTextStepIncomplete = (stepId: string, eventTimestamp: number) => {
+        incompleteTextStepIdsRef.current.add(stepId)
+        stepBuffersRef.current.delete(stepId)
+
+        setTurns(prev => {
+            const updated = [...prev]
+            const last = updated[updated.length - 1]
+
+            if (!last || last.step_id !== stepId) {
+                return [
+                    ...updated,
+                    {
+                        role: "assistant",
+                        text: "",
+                        timestamp: eventTimestamp,
+                        function_calls: [],
+                        isGenerating: true,
+                        step_id: stepId
+                    }
+                ]
+            }
+
+            last.text = ""
+            last.isThinking = false
+            last.isGenerating = true
+            return updated
+        })
+    }
+
+    const handleDelta = ({ delta, step_id, timestamp, delta_index }: TextDelta) => {
         const eventTimestamp = getEventTimestamp(timestamp)
         // Track current step_id
         currentStepIdRef.current = step_id
+
+        const isFirstDeltaForStep = !stepBuffersRef.current.has(step_id)
+        if (isFirstDeltaForStep && typeof delta_index === "number" && delta_index > 0) {
+            markTextStepIncomplete(step_id, eventTimestamp)
+            return
+        }
+        if (incompleteTextStepIdsRef.current.has(step_id)) {
+            markTextStepIncomplete(step_id, eventTimestamp)
+            return
+        }
 
         // Merge delta into buffer
         const existing = stepBuffersRef.current.get(step_id) ?? ""
@@ -508,6 +555,7 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
 
     const handleRunError = ({ error, code, timestamp }: RunError) => {
         const eventTimestamp = getEventTimestamp(timestamp)
+        incompleteTextStepIdsRef.current.clear()
         setTurns(prev => {
             const updated = [...prev]
             const last = updated[updated.length - 1]
@@ -537,6 +585,9 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
                 last.isGenerating = false
             }
             // Clear current step_id when message ends
+            if (currentStepIdRef.current) {
+                incompleteTextStepIdsRef.current.delete(currentStepIdRef.current)
+            }
             currentStepIdRef.current = null
             return updated
         })
@@ -548,6 +599,7 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
 
         if (stepIdToRemove) {
             stepBuffersRef.current.delete(stepIdToRemove)
+            incompleteTextStepIdsRef.current.delete(stepIdToRemove)
             pendingApprovalsRef.current.delete(stepIdToRemove)
             queuedToolCallsRef.current = queuedToolCallsRef.current.filter(call => call.step_id !== stepIdToRemove)
         }
@@ -669,6 +721,11 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
         })
     }
 
+    const handleTextStreamGap = (stepId: string) => {
+        currentStepIdRef.current = stepId
+        markTextStepIncomplete(stepId, Date.now())
+    }
+
     const handleMultipleChoiceAnswered = (questionId: string, value: string) => {
         setTurns(prev =>
             prev.map(turn => {
@@ -686,6 +743,7 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
     const clearTurns = () => {
         setTurns([])
         stepBuffersRef.current.clear()
+        incompleteTextStepIdsRef.current.clear()
         pendingApprovalsRef.current.clear()
         queuedToolCallsRef.current = []
         pendingLocalUserTurnIdsRef.current = []
@@ -712,6 +770,7 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
         addUserTurn,
         handleSnippet,
         handleMultipleChoiceAnswered,
+        handleTextStreamGap,
         clearTurns
     }
 }

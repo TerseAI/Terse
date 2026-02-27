@@ -39,6 +39,18 @@ const builderEventCallbacks = new Map<string, Set<BuilderEventCallback>>()
 let chatEventListenerSetUp = false
 let builderEventListenerSetUp = false
 
+function shouldInvalidateRunStatusCaches(event: ModelEvent): boolean {
+    return event.type === "ToolApprovalRequest" || event.type === "ToolApprovalResponse" || event.type === "Cancelled" || event.type === "RunError" || event.type === "NaturalStop"
+}
+
+function invalidateRunStatusCaches(runId: string, agentId: string): void {
+    void mutate(
+        key =>
+            Array.isArray(key) &&
+            ((key[0] === "chatHistory" && key[1] === runId) || (key[0] === "runHistory" && key[1] === agentId) || key[0] === "allRunHistory")
+    )
+}
+
 function setupChatEventListener() {
     if (!socket || chatEventListenerSetUp) {
         return
@@ -48,6 +60,9 @@ function setupChatEventListener() {
         const callbacks = chatEventCallbacks.get(payload.runId)
         if (callbacks) {
             callbacks.forEach(cb => cb(payload))
+        }
+        if (shouldInvalidateRunStatusCaches(payload.runHistoryModelEvent)) {
+            invalidateRunStatusCaches(payload.runId, payload.agentId)
         }
     })
 
@@ -157,6 +172,9 @@ export function initializeSocket() {
                 }
                 return false
             })
+            if (key === "runHistory") {
+                mutate(k => Array.isArray(k) && k[0] === "allRunHistory")
+            }
         } else if (key) {
             mutate(k => Array.isArray(k) && k[0] === key)
         }

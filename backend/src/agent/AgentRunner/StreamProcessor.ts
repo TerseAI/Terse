@@ -6,6 +6,7 @@ import type { RunHistoryModelEvent, RunHistoryModelSocketEvent, TrackingParams }
 import { SocketEvents, SocketRooms } from "../../shared/SocketEvents"
 import { User } from "../../shared/types"
 import { randomString } from "../../utility/strings"
+import { nextRunStreamSequence } from "../streamSequence"
 
 export class StreamEventEmitter {
     private io: Server | null
@@ -29,7 +30,8 @@ export class StreamEventEmitter {
         const runHistoryModelEvent: RunHistoryModelEvent = {
             ...event,
             id: eventId,
-            timestamp
+            timestamp,
+            stream_seq: nextRunStreamSequence(this.runId)
         }
 
         const payload: RunHistoryModelSocketEvent = {

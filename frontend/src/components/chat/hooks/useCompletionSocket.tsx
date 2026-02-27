@@ -17,10 +17,12 @@ import {
 } from "../../../shared/ModelEvents"
 
 export type ChatEventPayload = {
-    runHistoryModelEvent: ModelEvent
+    runHistoryModelEvent: ModelEvent & { stream_seq?: number }
 }
 
 export type ChatEventSubscription = (callback: (payload: ChatEventPayload) => void) => () => void
+
+export type TextStreamGapReason = "delta_index" | "stream_seq"
 
 export type UseCompletionSocketOptions = {
     subscribeToEvents?: ChatEventSubscription | null
@@ -37,6 +39,7 @@ export type UseCompletionSocketOptions = {
     onSnippet?: (snippet: ChatSnippet) => void
     onRunError?: (event: RunError) => void
     onCancelled?: (event: Cancelled) => void
+    onTextStreamGap?: (params: { step_id: string; reason: TextStreamGapReason }) => void
 }
 
 const LOG_PREFIX = "[useCompletionSocket]"
@@ -53,6 +56,9 @@ function getSocketEventDetails(message: ModelEvent): Record<string, unknown> {
     const details: Record<string, unknown> = {
         type: message.type,
         timestamp: message.timestamp ?? null
+    }
+    if ("stream_seq" in message) {
+        details.streamSeq = (message as ModelEvent & { stream_seq?: number }).stream_seq ?? null
     }
     if ("step_id" in message) {
         details.stepId = message.step_id
@@ -93,7 +99,8 @@ export function useCompletionSocket(options: UseCompletionSocketOptions) {
         onToolApprovalResponse,
         onSnippet,
         onRunError,
-        onCancelled
+        onCancelled,
+        onTextStreamGap
     } = options
 
     const onDeltaRef = useRef(onDelta)
@@ -108,6 +115,10 @@ export function useCompletionSocket(options: UseCompletionSocketOptions) {
     const onSnippetRef = useRef(onSnippet)
     const onRunErrorRef = useRef(onRunError)
     const onCancelledRef = useRef(onCancelled)
+    const onTextStreamGapRef = useRef(onTextStreamGap)
+    const lastSeenStreamSeqRef = useRef<number | null>(null)
+    const seenTextDeltaStepIdsRef = useRef<Set<string>>(new Set())
+    const gapReportedStepIdsRef = useRef<Set<string>>(new Set())
     // For now we assume connected, or we could expose socket connection state globally
     const [isConnected] = useState(true)
 
@@ -125,7 +136,8 @@ export function useCompletionSocket(options: UseCompletionSocketOptions) {
         onSnippetRef.current = onSnippet
         onRunErrorRef.current = onRunError
         onCancelledRef.current = onCancelled
-    }, [onDelta, onToolCallGenerating, onToolCall, onToolCallComplete, onNaturalStop, onFilterResult, onThinking, onToolApprovalRequest, onToolApprovalResponse, onSnippet, onRunError, onCancelled])
+        onTextStreamGapRef.current = onTextStreamGap
+    }, [onDelta, onToolCallGenerating, onToolCall, onToolCallComplete, onNaturalStop, onFilterResult, onThinking, onToolApprovalRequest, onToolApprovalResponse, onSnippet, onRunError, onCancelled, onTextStreamGap])
 
     // Subscribe to events
     useEffect(() => {
@@ -135,9 +147,29 @@ export function useCompletionSocket(options: UseCompletionSocketOptions) {
         }
 
         logCompletionSocket("Setting up event subscription")
+        lastSeenStreamSeqRef.current = null
+        seenTextDeltaStepIdsRef.current = new Set()
+        gapReportedStepIdsRef.current = new Set()
         const unsubscribe = subscribeToEvents(payload => {
             const message = payload.runHistoryModelEvent
             logCompletionSocket("Event received", getSocketEventDetails(message))
+
+            const streamSeq = typeof message.stream_seq === "number" ? message.stream_seq : null
+            if (streamSeq !== null && lastSeenStreamSeqRef.current !== null && streamSeq > lastSeenStreamSeqRef.current + 1) {
+                const stepId = message.type === "TextDelta" ? message.step_id : null
+                if (stepId && !gapReportedStepIdsRef.current.has(stepId)) {
+                    gapReportedStepIdsRef.current.add(stepId)
+                    onTextStreamGapRef.current?.({ step_id: stepId, reason: "stream_seq" })
+                    logCompletionSocket("Detected text stream gap from stream sequence", {
+                        stepId,
+                        expectedNextStreamSeq: lastSeenStreamSeqRef.current + 1,
+                        receivedStreamSeq: streamSeq
+                    })
+                }
+            }
+            if (streamSeq !== null && (lastSeenStreamSeqRef.current === null || streamSeq > lastSeenStreamSeqRef.current)) {
+                lastSeenStreamSeqRef.current = streamSeq
+            }
 
             // Normalize timestamps to epoch-ms for stable ordering in the chat timeline.
             const originalTimestamp = message.timestamp
@@ -157,6 +189,17 @@ export function useCompletionSocket(options: UseCompletionSocketOptions) {
 
             switch (message.type) {
                 case "TextDelta":
+                    if (!seenTextDeltaStepIdsRef.current.has(message.step_id)) {
+                        seenTextDeltaStepIdsRef.current.add(message.step_id)
+                        if (typeof message.delta_index === "number" && message.delta_index > 0 && !gapReportedStepIdsRef.current.has(message.step_id)) {
+                            gapReportedStepIdsRef.current.add(message.step_id)
+                            onTextStreamGapRef.current?.({ step_id: message.step_id, reason: "delta_index" })
+                            logCompletionSocket("Detected text stream gap from delta index", {
+                                stepId: message.step_id,
+                                receivedFirstDeltaIndex: message.delta_index
+                            })
+                        }
+                    }
                     onDeltaRef.current(message)
                     break
                 case "ToolCallGenerating":

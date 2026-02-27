@@ -1,6 +1,5 @@
-import { randomUUID } from "crypto"
-
 import type { UserMessageItem } from "@openai/agents-core"
+import { randomUUID } from "crypto"
 
 const MAX_USER_MESSAGE_ID_LENGTH = 63
 

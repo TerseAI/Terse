@@ -50,15 +50,16 @@ export default function RunHistoryChatDrawer({ isOpen, onOpenChange, runs, curre
                 <RunHistoryChatAdapter key={runId} runId={runId} status={status}>
                     {({ initialTurns, isLoading, subscribeToEvents, sendMessage, handleApprove, handleReject, handleCancellation, currentStatus, isRunPending }) => {
                         const isFiltered = currentStatus === RunHistoryStatus.SKIPPED
-                        const emptyPlaceholder = initialTurns.length === 0 && isRunPending ? (
-                            <div className="p-4">
-                                <AwaitingResponseAnimation />
-                            </div>
-                        ) : isLoading ? (
-                            <div className="p-4 text-center text-muted-foreground">Loading history...</div>
-                        ) : (
-                            <div className="p-4 text-center text-muted-foreground">No messages found</div>
-                        )
+                        const emptyPlaceholder =
+                            initialTurns.length === 0 && isRunPending ? (
+                                <div className="p-4">
+                                    <AwaitingResponseAnimation />
+                                </div>
+                            ) : isLoading ? (
+                                <div className="p-4 text-center text-muted-foreground">Loading history...</div>
+                            ) : (
+                                <div className="p-4 text-center text-muted-foreground">No messages found</div>
+                            )
 
                         return (
                             <>

@@ -20,6 +20,7 @@ export async function* transformAgentStreamToModelEvents<T extends Session>(
     } = {}
 ): AsyncGenerator<ModelEvent, void, unknown> {
     const { toolToIntegrationMap, onToolCall, onToolCallComplete, onRawStreamEvent } = options
+    const textDeltaIndexByStepId = new Map<string, number>()
 
     for await (const event of result as AsyncIterable<RunStreamEvent>) {
         if (onRawStreamEvent) {
@@ -41,7 +42,7 @@ export async function* transformAgentStreamToModelEvents<T extends Session>(
         }
 
         // Try TextDelta
-        const textDelta = tryExtractTextDelta(event)
+        const textDelta = tryExtractTextDelta(event, textDeltaIndexByStepId)
         if (textDelta) {
             yield textDelta
             continue
@@ -95,7 +96,7 @@ export function tryExtractThinking(event: RunStreamEvent): ModelEvent | null {
     return null
 }
 
-export function tryExtractTextDelta(event: RunStreamEvent): ModelEvent | null {
+export function tryExtractTextDelta(event: RunStreamEvent, deltaIndexByStepId?: Map<string, number>): ModelEvent | null {
     // Check for the nested OpenAI SDK event structure
     if (
         event.type === "raw_model_stream_event" &&
@@ -104,11 +105,17 @@ export function tryExtractTextDelta(event: RunStreamEvent): ModelEvent | null {
         typeof (event as any).data?.event?.delta === "string"
     ) {
         const eventData = (event as any).data.event
+        const stepId = eventData.item_id || "unknown"
+        const deltaIndex = deltaIndexByStepId ? (deltaIndexByStepId.get(stepId) ?? 0) : undefined
+        if (deltaIndexByStepId) {
+            deltaIndexByStepId.set(stepId, (deltaIndex ?? 0) + 1)
+        }
         return {
             type: "TextDelta",
             timestamp: Date.now(),
             delta: eventData.delta,
-            step_id: eventData.item_id || "unknown"
+            step_id: stepId,
+            ...(typeof deltaIndex === "number" ? { delta_index: deltaIndex } : {})
         }
     }
     return null

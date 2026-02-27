@@ -345,13 +345,16 @@ export class EventProcessor {
         // Run the agent runner with streaming parameters
         let result: ApprovalResult<SessionWithTracking<Session>, OpenAIAgent<SessionWithTracking<Session>, AgentOutputType>>
         try {
-            result = await agentRunner.run({
-                runId,
-                agentId: agent.id,
-                user: this.user
-            }, {
-                signal: cancellationController.signal
-            })
+            result = await agentRunner.run(
+                {
+                    runId,
+                    agentId: agent.id,
+                    user: this.user
+                },
+                {
+                    signal: cancellationController.signal
+                }
+            )
         } catch (error) {
             if (cancellationSubscription.isCancellationRequested()) {
                 await markRunCancelledAndInvalidate(runId, agent.id, this.user.organizationId, this.user.id)

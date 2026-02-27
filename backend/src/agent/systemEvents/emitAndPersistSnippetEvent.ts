@@ -6,6 +6,7 @@ import type { ChatSnippet } from "../../shared/ModelEvents"
 import type { RunHistoryModelEvent, RunHistoryModelSocketEvent } from "../../shared/RunHistoryTypes"
 import { SocketEvents, SocketRooms } from "../../shared/SocketEvents"
 import { randomString } from "../../utility/strings"
+import { nextRunStreamSequence } from "../streamSequence"
 
 import { appendSnippetSystemEvent, buildSnippetSystemEventId, chatSnippetPayloadSchema } from "./snippetSystemEvent"
 
@@ -74,7 +75,8 @@ export async function emitAndPersistSnippetEvent(input: EmitAndPersistSnippetEve
             type: "Snippet",
             snippet,
             id: eventId,
-            timestamp
+            timestamp,
+            stream_seq: nextRunStreamSequence(runId)
         }
         const payload: RunHistoryModelSocketEvent = {
             runId,

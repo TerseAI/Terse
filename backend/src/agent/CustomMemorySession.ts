@@ -1,7 +1,6 @@
-import { createHash } from "crypto"
-
 import type { RunStreamEvent } from "@openai/agents"
 import type { AgentInputItem, Session } from "@openai/agents-core"
+import { createHash } from "crypto"
 
 import logger from "../logger"
 import { db } from "../prismaClient"
@@ -434,11 +433,7 @@ type CompletedTextSegment = {
 }
 
 function tryExtractCompletedTextSegment(event: RunStreamEvent): CompletedTextSegment | null {
-    if (
-        event.type !== "raw_model_stream_event" ||
-        (event as any).data?.type !== "model" ||
-        (event as any).data?.event?.type !== "response.output_text.done"
-    ) {
+    if (event.type !== "raw_model_stream_event" || (event as any).data?.type !== "model" || (event as any).data?.event?.type !== "response.output_text.done") {
         return null
     }
 

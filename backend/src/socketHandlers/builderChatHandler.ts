@@ -12,15 +12,8 @@ import logger from "../logger"
 import { SendModelRequest } from "../shared/ModelEvents"
 import { SocketEvents } from "../shared/SocketEvents"
 import { getUserForOrg } from "../utility/workos"
-import {
-    ActiveExecution,
-    CancelAckResponse,
-    USER_CANCELLED_REASON,
-    cancelActiveExecution,
-    clearActiveExecution,
-    createActiveExecution,
-    isAbortLikeError
-} from "./activeExecution"
+
+import { ActiveExecution, CancelAckResponse, USER_CANCELLED_REASON, cancelActiveExecution, clearActiveExecution, createActiveExecution, isAbortLikeError } from "./activeExecution"
 
 const activeBuilderExecutions = new Map<string, ActiveExecution>()
 
@@ -114,23 +107,20 @@ export async function registerBuilderChatHandler(socket: Socket, userId: string,
         }
     })
 
-    socket.on(
-        SocketEvents.BUILDER_CHAT_CANCEL,
-        (payload: { sessionId: string | null }, ack?: (response: CancelAckResponse) => void) => {
-            const sessionId = payload?.sessionId?.trim()
-            if (!sessionId) {
-                ack?.({ accepted: false, reason: "missing_session_id" })
-                return
-            }
-
-            const activeExecution = activeBuilderExecutions.get(executionKey(organizationId, sessionId))
-            if (!activeExecution) {
-                ack?.({ accepted: false, reason: "no_active_run" })
-                return
-            }
-
-            cancelActiveExecution(activeExecution)
-            ack?.({ accepted: true })
+    socket.on(SocketEvents.BUILDER_CHAT_CANCEL, (payload: { sessionId: string | null }, ack?: (response: CancelAckResponse) => void) => {
+        const sessionId = payload?.sessionId?.trim()
+        if (!sessionId) {
+            ack?.({ accepted: false, reason: "missing_session_id" })
+            return
         }
-    )
+
+        const activeExecution = activeBuilderExecutions.get(executionKey(organizationId, sessionId))
+        if (!activeExecution) {
+            ack?.({ accepted: false, reason: "no_active_run" })
+            return
+        }
+
+        cancelActiveExecution(activeExecution)
+        ack?.({ accepted: true })
+    })
 }

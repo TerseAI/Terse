@@ -101,15 +101,16 @@ export default function RunHistoryChatAdapter({ runId, status, children }: RunHi
         )
     }
 
-    const emptyPlaceholder = turns.length === 0 && isRunPending ? (
-        <div className="p-4">
-            <AwaitingResponseAnimation />
-        </div>
-    ) : isLoading ? (
-        <div className="p-4 text-center text-muted-foreground">Loading history...</div>
-    ) : (
-        <div className="p-4 text-center text-muted-foreground">No messages found</div>
-    )
+    const emptyPlaceholder =
+        turns.length === 0 && isRunPending ? (
+            <div className="p-4">
+                <AwaitingResponseAnimation />
+            </div>
+        ) : isLoading ? (
+            <div className="p-4 text-center text-muted-foreground">Loading history...</div>
+        ) : (
+            <div className="p-4 text-center text-muted-foreground">No messages found</div>
+        )
 
     return (
         <Chat

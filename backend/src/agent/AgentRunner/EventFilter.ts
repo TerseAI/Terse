@@ -14,6 +14,7 @@ import { UserFormatter } from "../../utility/UserFormatter"
 import { randomString } from "../../utility/strings"
 import { RunHistoryChatMemorySession } from "../CustomMemorySession"
 import { AgentType, builderProviderDataModelSettings, runnerFactory } from "../runner"
+import { nextRunStreamSequence } from "../streamSequence"
 import { transformAgentStreamToModelEvents } from "../streaming"
 import { appendFilterOutcomeSystemEvent } from "../systemEvents/filterOutcomeSystemEvent"
 import { buildUserMessage } from "../userMessage"
@@ -191,7 +192,8 @@ export async function filterEvent(event: InputEvent, agentWithRelations: AgentWi
                         const runHistoryModelEvent: RunHistoryModelEvent = {
                             ...modelEvent,
                             id: `filter-stream-live-${randomString(15)}`,
-                            timestamp: Date.now()
+                            timestamp: Date.now(),
+                            stream_seq: nextRunStreamSequence(trackingParams.runId)
                         }
                         const payload: RunHistoryModelSocketEvent = {
                             runId: trackingParams.runId,
@@ -245,7 +247,8 @@ export async function filterEvent(event: InputEvent, agentWithRelations: AgentWi
                 const runHistoryModelEvent: RunHistoryModelEvent = {
                     ...filterResultEvent,
                     id: `filter-result-live-${randomString(15)}`,
-                    timestamp: Date.now()
+                    timestamp: Date.now(),
+                    stream_seq: nextRunStreamSequence(trackingParams.runId)
                 }
                 const payload: RunHistoryModelSocketEvent = {
                     runId: trackingParams.runId,
