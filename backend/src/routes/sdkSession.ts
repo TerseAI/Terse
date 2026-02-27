@@ -1,5 +1,5 @@
-import crypto from "node:crypto"
 import { Request, Response } from "express"
+import crypto from "node:crypto"
 
 import { onSessionEvent } from "../agent/SessionEventBus"
 import { User } from "../shared/types"
@@ -19,7 +19,7 @@ export function handleSessionEvents(req: Request, res: Response) {
 
     res.write(`data: ${JSON.stringify({ type: "session_started", sessionId })}\n\n`)
 
-    const unsubscribe = onSessionEvent(sessionId, (event) => {
+    const unsubscribe = onSessionEvent(sessionId, event => {
         res.write(`data: ${JSON.stringify(event)}\n\n`)
     })
 

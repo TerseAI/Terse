@@ -15,6 +15,6 @@ export function emitSessionEvent(sessionId: string, event: SdkAgentStreamEvent):
 export function onSessionEvent(sessionId: string, listener: (event: SdkAgentStreamEvent) => void): () => void {
     return queue.addListener({
         taskName: sessionId,
-        onTask: (task) => listener(task.event)
+        onTask: task => listener(task.event)
     })
 }
