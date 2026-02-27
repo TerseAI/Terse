@@ -21,6 +21,7 @@ interface Turn {
     isFailure?: boolean
     isGenerating?: boolean
     isThinking?: boolean
+    isCancelled?: boolean
     /** Run-level error code (e.g. context_length_exceeded) for specific UI copy */
     errorCode?: string
     filter_result?: {
@@ -60,6 +61,7 @@ function TurnView({
     isFailure = false,
     isGenerating = false,
     isThinking = false,
+    isCancelled = false,
     errorCode,
     filter_result,
     snippets = [],
@@ -70,6 +72,10 @@ function TurnView({
 }: Turn) {
     const isUser = role === "user"
     const isAssistantFinishedGenerating = !isGenerating && role === "assistant" && text.length > 0
+
+    // hide cancelled steps entirely to avoid confusion
+    if (isCancelled) return null
+
     // Expanded state - show all steps with status
     return (
         <div className={`flex rounded-lg ${isUser ? "justify-end animate-in fade-in-0" : "justify-start"}`}>

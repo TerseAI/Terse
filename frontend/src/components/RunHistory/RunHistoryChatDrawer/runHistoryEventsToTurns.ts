@@ -306,9 +306,10 @@ export function convertRunHistoryEventsToTurns(events: ModelEvent[]): Turn[] {
                     timestamp: eventTimestamp,
                     text: e.reason ? `Run cancelled: ${e.reason}` : "Run cancelled by user",
                     function_calls: [],
-                    step_id: "cancelled",
+                    step_id: "cancel",
                     isFailure: false,
                     isGenerating: false,
+                    isCancelled: true,
                     disableAnimation: true
                 })
                 break
