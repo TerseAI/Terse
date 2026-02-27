@@ -44,10 +44,7 @@ export async function emitAndPersistSnippetEvent(input: EmitAndPersistSnippetEve
 
     const { runId, organizationId, agentId, snippet } = parsed.data
     const timestamp = Date.now()
-    const normalizedSnippet: ChatSnippet = {
-        ...snippet,
-        timestamp: snippet.timestamp ?? timestamp
-    }
+    const normalizedSnippet: ChatSnippet = { ...snippet }
     const eventId = buildSnippetSystemEventId(randomString(18))
 
     try {
@@ -79,7 +76,7 @@ export async function emitAndPersistSnippetEvent(input: EmitAndPersistSnippetEve
             type: "Snippet",
             snippet: normalizedSnippet,
             id: eventId,
-            timestamp,
+            timestamp: timestamp,
             stream_seq: nextRunStreamSequence(runId)
         }
         const payload: RunHistoryModelSocketEvent = {

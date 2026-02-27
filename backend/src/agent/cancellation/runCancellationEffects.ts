@@ -23,7 +23,6 @@ function emitCancelledForRun(runId: string, agentId: string, organizationId: str
     const runHistoryModelEvent: RunHistoryModelEvent = {
         ...cancelledEvent,
         id: `run-cancelled-live-${randomString(15)}`,
-        timestamp: Date.now(),
         stream_seq: nextRunStreamSequence(runId)
     }
     const payload: RunHistoryModelSocketEvent = {

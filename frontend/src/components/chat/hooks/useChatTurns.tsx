@@ -7,7 +7,6 @@ import {
     type ChatSnippet,
     type FilterResult,
     type ModelEvent,
-    type RenderedChatSnippet,
     type RunError,
     type TextDelta,
     type Thinking,
@@ -412,40 +411,38 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
     }
 
     /**
-     * handleSnippet – converts a backend ChatSnippet into a RenderedChatSnippet
-     * (just adds `id` + ensures `step_id` is set) and attaches it to the
-     * matching turn. Falls back to the last assistant turn, or creates a new
-     * one if nothing exists yet.
+     * handleSnippet – normalizes snippet UI fields (`id`, `step_id`) and
+     * attaches the snippet to a matching turn. Falls back to the last assistant
+     * turn, or creates a new one if nothing exists yet.
      */
-    const handleSnippet = (snippetPayload: ChatSnippet) => {
+    const handleSnippet = (snippetPayload: ChatSnippet, snippetTimestamp?: number) => {
+        const normalized: ChatSnippet = {
+            ...snippetPayload,
+            id: snippetPayload.id ?? uuidv4(),
+            ...(snippetPayload.step_id ? { step_id: snippetPayload.step_id } : {})
+        }
+
         console.log("[handleSnippet] received snippet", {
             type: snippetPayload.type,
             step_id: snippetPayload.step_id,
-            timestamp: snippetPayload.timestamp,
             payload: snippetPayload
         })
 
-        const rendered: RenderedChatSnippet = {
-            ...snippetPayload,
-            id: uuidv4(),
-            step_id: snippetPayload.step_id ?? ""
-        }
-
-        console.log("[handleSnippet] rendered snippet", {
-            id: rendered.id,
-            type: rendered.type,
-            step_id: rendered.step_id
+        console.log("[handleSnippet] normalized snippet", {
+            id: normalized.id,
+            type: normalized.type,
+            step_id: normalized.step_id
         })
 
         setTurns(prev => {
             const next = prev.slice()
 
             // Try to find the turn this snippet belongs to via step_id.
-            let targetIndex = rendered.step_id ? next.findIndex(t => t.step_id === rendered.step_id) : -1
+            let targetIndex = normalized.step_id ? next.findIndex(t => t.step_id === normalized.step_id) : -1
 
             console.log("[handleSnippet] step_id lookup", {
-                snippetStepId: rendered.step_id,
-                stepIdTruthy: !!rendered.step_id,
+                snippetStepId: normalized.step_id,
+                stepIdTruthy: !!normalized.step_id,
                 targetIndex,
                 turnStepIds: next.map(t => t.step_id)
             })
@@ -464,6 +461,7 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
             if (targetIndex !== -1) {
                 const turn = next[targetIndex]
                 const existingSnippets = turn.snippets ?? []
+                const snippetForTurn = normalized.step_id ? normalized : { ...normalized, step_id: turn.step_id }
                 console.log("[handleSnippet] attaching to turn", {
                     turnStepId: turn.step_id,
                     turnRole: turn.role,
@@ -472,7 +470,7 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
                 })
                 next[targetIndex] = {
                     ...turn,
-                    snippets: [...existingSnippets, rendered]
+                    snippets: [...existingSnippets, snippetForTurn]
                 }
                 return next
             }
@@ -485,10 +483,10 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
                 {
                     role: "assistant",
                     text: "",
-                    timestamp: rendered.timestamp,
+                    timestamp: snippetTimestamp ?? Date.now(),
                     function_calls: [],
-                    step_id: rendered.step_id || `snippet-${rendered.id}`,
-                    snippets: [rendered]
+                    step_id: normalized.step_id || `snippet-${normalized.id}`,
+                    snippets: [normalized]
                 }
             ]
         })

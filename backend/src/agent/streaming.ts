@@ -70,7 +70,7 @@ export async function* transformAgentStreamToModelEvents<T extends Session>(
                 for (const snippet of toolCompleteData.snippets) {
                     yield {
                         type: "Snippet",
-                        timestamp: snippet.timestamp,
+                        timestamp: Date.now(),
                         snippet
                     }
                 }

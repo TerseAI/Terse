@@ -3,7 +3,7 @@ import { useState } from "react"
 import { CheckCircleIcon, CheckIcon, DocumentDuplicateIcon, HandThumbDownIcon, HandThumbUpIcon, XCircleIcon } from "@heroicons/react/24/outline"
 import { HandThumbDownIcon as HandThumbDownFilledIcon, HandThumbUpIcon as HandThumbUpFilledIcon } from "@heroicons/react/24/solid"
 
-import { ChangedItem, type RenderedChatSnippet, SharedErrorContext } from "../../shared/ModelEvents"
+import { ChangedItem, type ChatSnippet, SharedErrorContext } from "../../shared/ModelEvents"
 
 import FunctionCallItem from "./FunctionCallItem"
 import { RunErrorView } from "./RunErrorView"
@@ -28,7 +28,7 @@ interface Turn {
         reason: string
         confidence: number
     }
-    snippets?: RenderedChatSnippet[]
+    snippets?: ChatSnippet[]
     disableAnimation?: boolean
     onApprove?: (stepId: string) => void
     onReject?: (stepId: string) => void
@@ -211,7 +211,7 @@ function FeedbackButtons({}: {}) {
 // keeping in-progress calls (generating / running) at the bottom.
 // ---------------------------------------------------------------------------
 
-type TimelineItem = { kind: "function_call"; call: FunctionCallEvent; ts: number } | { kind: "snippet"; snippet: RenderedChatSnippet; ts: number }
+type TimelineItem = { kind: "function_call"; call: FunctionCallEvent; ts: number } | { kind: "snippet"; snippet: ChatSnippet; ts: number }
 
 function TurnTimeline({
     functionCalls,
@@ -222,7 +222,7 @@ function TurnTimeline({
     onMultipleChoiceAnswer
 }: {
     functionCalls: FunctionCallEvent[]
-    snippets: RenderedChatSnippet[]
+    snippets: ChatSnippet[]
     isTurnFailure: boolean
     onApprove?: (stepId: string) => void
     onReject?: (stepId: string) => void
@@ -244,7 +244,7 @@ function TurnTimeline({
         ...snippets.map((snippet, i) => ({
             kind: "snippet" as const,
             snippet,
-            ts: snippet.timestamp ?? completedCalls.length + i
+            ts: completedCalls.length + i
         }))
     ].sort((a, b) => {
         const timeDiff = a.ts - b.ts
@@ -275,7 +275,7 @@ function TurnTimeline({
                             return <FunctionCallItem key={`fc-${item.call.id}`} call={item.call} index={index} isTurnFailure={isTurnFailure} onApprove={onApprove} onReject={onReject} />
                         }
                         return (
-                            <div key={`sn-${item.snippet.id}`} className="py-1">
+                            <div key={`sn-${item.snippet.id ?? index}`} className="py-1">
                                 <SnippetView snippet={item.snippet} onMultipleChoiceAnswer={onMultipleChoiceAnswer} />
                             </div>
                         )

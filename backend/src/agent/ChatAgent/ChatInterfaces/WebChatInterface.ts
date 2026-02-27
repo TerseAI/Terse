@@ -81,7 +81,6 @@ class WebChatInterface extends ChatInterface {
             type: "Snippet",
             timestamp,
             snippet: {
-                timestamp,
                 type: "integration_prompt",
                 integration,
                 message: `To connect ${integration}, please use the form or button below.`,
@@ -114,7 +113,6 @@ class WebChatInterface extends ChatInterface {
             type: "Snippet",
             timestamp,
             snippet: {
-                timestamp,
                 type: "multiple_choice",
                 questionId,
                 question: multipleChoiceQuestion.question,
@@ -162,9 +160,10 @@ class WebChatInterface extends ChatInterface {
             this.emitEvent(toolCompleteEvent)
             if (toolCompleteData.snippets?.length) {
                 for (const snippet of toolCompleteData.snippets) {
+                    const timestamp = Date.now()
                     this.emitEvent({
                         type: "Snippet",
-                        timestamp: snippet.timestamp,
+                        timestamp,
                         snippet
                     })
                 }
@@ -189,7 +188,6 @@ class WebChatInterface extends ChatInterface {
             type: "Snippet",
             timestamp,
             snippet: {
-                timestamp,
                 type: "button",
                 label,
                 url
@@ -203,7 +201,6 @@ class WebChatInterface extends ChatInterface {
             type: "Snippet",
             timestamp,
             snippet: {
-                timestamp,
                 type: "navigate",
                 path
             }

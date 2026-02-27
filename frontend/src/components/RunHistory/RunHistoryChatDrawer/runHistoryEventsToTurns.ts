@@ -1,11 +1,11 @@
 import { Turn } from "@/components/chat/Turn"
 import { filterOutThinkingOnlyTurns } from "@/components/chat/utils/turnUtils"
 import type { Cancelled, ChatSnippet, Thinking } from "@/shared/ModelEvents"
-import { FilterResult, ModelEvent, type RenderedChatSnippet, RunError, TextDelta, ToolApprovalRequest, ToolApprovalResponse, ToolCall, ToolCallComplete, UserMessage } from "@/shared/ModelEvents"
+import { FilterResult, ModelEvent, RunError, TextDelta, ToolApprovalRequest, ToolApprovalResponse, ToolCall, ToolCallComplete, UserMessage } from "@/shared/ModelEvents"
 
 type FunctionCallEvent = Turn["function_calls"][number]
 
-function mergeSnippetIntoList(existingSnippets: RenderedChatSnippet[], newSnippet: RenderedChatSnippet): RenderedChatSnippet[] {
+function mergeSnippetIntoList(existingSnippets: ChatSnippet[], newSnippet: ChatSnippet): ChatSnippet[] {
     if (newSnippet.type !== "multiple_choice") {
         return [...existingSnippets, newSnippet]
     }
@@ -69,11 +69,10 @@ function findLastAssistantTurnIndex(turns: Turn[]): number {
     return -1
 }
 
-function toRenderedChatSnippet(payload: ChatSnippet, fallbackStepId: string, fallbackTimestamp: number, fallbackId: string): RenderedChatSnippet {
+function normalizeSnippet(payload: ChatSnippet, fallbackStepId: string, fallbackId: string): ChatSnippet {
     return {
         ...payload,
         id: fallbackId,
-        timestamp: payload.timestamp ?? fallbackTimestamp,
         step_id: payload.step_id ?? fallbackStepId
     }
 }
@@ -82,16 +81,6 @@ export function convertRunHistoryEventsToTurns(events: ModelEvent[]): Turn[] {
     const turns: Turn[] = []
     const stepBuffers = new Map<string, string>()
     let eventOrder = 0
-    let lastTimestamp = Date.now()
-
-    const resolveTimestamp = (timestamp?: number): number => {
-        if (typeof timestamp === "number") {
-            lastTimestamp = timestamp
-            return timestamp
-        }
-        lastTimestamp += 1
-        return lastTimestamp
-    }
 
     const getOrCreateTurn = (role: "assistant" | "user", step_id: string, timestamp: number): Turn => {
         const lastTurn = turns[turns.length - 1]
@@ -123,15 +112,13 @@ export function convertRunHistoryEventsToTurns(events: ModelEvent[]): Turn[] {
     })
 
     for (const event of events) {
-        const eventTimestamp = resolveTimestamp(event.timestamp)
-
         switch (event.type) {
             case "UserMessage": {
                 const e = event as UserMessage
                 turns.push({
                     role: "user",
                     text: e.message,
-                    timestamp: eventTimestamp,
+                    timestamp: event.timestamp,
                     function_calls: [],
                     step_id: e.step_id,
                     isGenerating: false,
@@ -144,7 +131,7 @@ export function convertRunHistoryEventsToTurns(events: ModelEvent[]): Turn[] {
                 turns.push({
                     role: "assistant",
                     text: "",
-                    timestamp: eventTimestamp,
+                    timestamp: e.timestamp,
                     function_calls: [],
                     step_id: "filter",
                     isGenerating: true,
@@ -157,7 +144,7 @@ export function convertRunHistoryEventsToTurns(events: ModelEvent[]): Turn[] {
                 const e = event as TextDelta
                 const text = (stepBuffers.get(e.step_id) ?? "") + e.delta
                 stepBuffers.set(e.step_id, text)
-                const turn = getOrCreateTurn("assistant", e.step_id, eventTimestamp)
+                const turn = getOrCreateTurn("assistant", e.step_id, e.timestamp)
                 turn.text = text
                 turn.isThinking = false
                 turn.isGenerating = true
@@ -167,12 +154,12 @@ export function convertRunHistoryEventsToTurns(events: ModelEvent[]): Turn[] {
             case "ToolCall": {
                 const e = event as ToolCall
                 const lastTurn = turns[turns.length - 1]
-                const turn = lastTurn && lastTurn.role === "assistant" ? lastTurn : getOrCreateTurn("assistant", e.step_id, eventTimestamp)
+                const turn = lastTurn && lastTurn.role === "assistant" ? lastTurn : getOrCreateTurn("assistant", e.step_id, e.timestamp)
                 turn.disableAnimation = true
                 const existing = turn.function_calls.find(c => c.id === e.step_id)
                 if (!existing) {
                     turn.function_calls.push({
-                        ...baseFc(e.step_id, eventTimestamp),
+                        ...baseFc(e.step_id, e.timestamp),
                         name: e.summary,
                         parameters: e.parameters
                     })
@@ -189,7 +176,7 @@ export function convertRunHistoryEventsToTurns(events: ModelEvent[]): Turn[] {
                     turns,
                     getOrCreateTurn,
                     e.step_id,
-                    eventTimestamp,
+                    e.timestamp,
                     fc => {
                         fc.isRunning = false
                         fc.isWaitingForApproval = false
@@ -202,7 +189,7 @@ export function convertRunHistoryEventsToTurns(events: ModelEvent[]): Turn[] {
                         if (e.changed_items) fc.changed_items = e.changed_items
                     },
                     () => ({
-                        ...baseFc(e.step_id, eventTimestamp),
+                        ...baseFc(e.step_id, e.timestamp),
                         name: e.tool_name,
                         result: e.result,
                         changed_items: e.changed_items,
@@ -218,13 +205,13 @@ export function convertRunHistoryEventsToTurns(events: ModelEvent[]): Turn[] {
                     turns,
                     getOrCreateTurn,
                     e.step_id,
-                    eventTimestamp,
+                    e.timestamp,
                     fc => {
                         fc.isWaitingForApproval = true
                         fc.isRunning = false
                     },
                     () => ({
-                        ...baseFc(e.step_id, eventTimestamp),
+                        ...baseFc(e.step_id, e.timestamp),
                         name: e.name,
                         parameters: e.arguments,
                         isWaitingForApproval: true
@@ -238,7 +225,7 @@ export function convertRunHistoryEventsToTurns(events: ModelEvent[]): Turn[] {
                     turns,
                     getOrCreateTurn,
                     e.step_id,
-                    eventTimestamp,
+                    e.timestamp,
                     fc => {
                         fc.isWaitingForApproval = false
                         fc.isRunning = false
@@ -246,7 +233,7 @@ export function convertRunHistoryEventsToTurns(events: ModelEvent[]): Turn[] {
                         fc.isRejected = !e.approved
                     },
                     () => ({
-                        ...baseFc(e.step_id, eventTimestamp),
+                        ...baseFc(e.step_id, e.timestamp),
                         name: e.step_id,
                         isApproved: e.approved,
                         isRejected: !e.approved,
@@ -261,7 +248,7 @@ export function convertRunHistoryEventsToTurns(events: ModelEvent[]): Turn[] {
                 turns.push({
                     role: "assistant",
                     text: e.error,
-                    timestamp: eventTimestamp,
+                    timestamp: event.timestamp,
                     function_calls: [],
                     step_id: "run-error",
                     isFailure: true,
@@ -280,7 +267,7 @@ export function convertRunHistoryEventsToTurns(events: ModelEvent[]): Turn[] {
                 stopLastTurn()
                 turns.push({
                     role: "assistant",
-                    timestamp: eventTimestamp,
+                    timestamp: event.timestamp,
                     text: e.reason ? `Run cancelled: ${e.reason}` : "Run cancelled by user",
                     function_calls: [],
                     step_id: "cancel",
@@ -293,7 +280,7 @@ export function convertRunHistoryEventsToTurns(events: ModelEvent[]): Turn[] {
             }
             case "Thinking": {
                 const e = event as Thinking
-                const turn = getOrCreateTurn("assistant", e.step_id, eventTimestamp)
+                const turn = getOrCreateTurn("assistant", e.step_id, event.timestamp)
                 turn.isThinking = true
                 turn.isGenerating = true
                 turn.disableAnimation = true
@@ -302,7 +289,7 @@ export function convertRunHistoryEventsToTurns(events: ModelEvent[]): Turn[] {
             case "Snippet": {
                 const payload = event.snippet
                 const fallbackStepId = payload.step_id ?? `snippet-${eventOrder}`
-                const snippet = toRenderedChatSnippet(payload, fallbackStepId, eventTimestamp, `snippet-${eventOrder++}`)
+                const snippet = normalizeSnippet(payload, fallbackStepId, `snippet-${eventOrder++}`)
                 const targetTurnIndex = findSnippetTargetTurnIndex(turns, snippet.step_id)
 
                 if (targetTurnIndex !== -1) {
@@ -318,7 +305,7 @@ export function convertRunHistoryEventsToTurns(events: ModelEvent[]): Turn[] {
                     break
                 }
 
-                const turn = getOrCreateTurn("assistant", snippet.step_id, snippet.timestamp)
+                const turn = getOrCreateTurn("assistant", snippet.step_id ?? `snippet-${eventOrder}`, event.timestamp)
                 turn.snippets = [snippet]
                 break
             }

@@ -512,7 +512,6 @@ export async function markRunFailedAndInvalidate(runId: string, classified: Clas
             const runHistoryModelEvent: RunHistoryModelEvent = {
                 ...runErrorEvent,
                 id: `run-error-live-${randomString(15)}`,
-                timestamp: Date.now(),
                 stream_seq: nextRunStreamSequence(runId)
             }
             const payload: RunHistoryModelSocketEvent = {

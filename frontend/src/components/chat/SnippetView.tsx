@@ -4,13 +4,13 @@ import { Link, useNavigate } from "react-router-dom"
 import { ExternalLink, ImageOff, SquareArrowOutUpRight } from "lucide-react"
 
 import { IntegrationType } from "../../shared/Integrations"
-import { type RenderedChatSnippet } from "../../shared/ModelEvents"
+import { type ChatSnippet } from "../../shared/ModelEvents"
 import IntegrationCard from "../Integrations/IntegrationCard"
 import { Button } from "../ui/button"
 
 import { MultipleChoiceQuestionForm } from "./MultipleChoiceQuestionForm"
 
-export function SnippetView({ snippet, onMultipleChoiceAnswer }: { snippet: RenderedChatSnippet; onMultipleChoiceAnswer?: (questionId: string, value: string) => void }) {
+export function SnippetView({ snippet, onMultipleChoiceAnswer }: { snippet: ChatSnippet; onMultipleChoiceAnswer?: (questionId: string, value: string) => void }) {
     const navigate = useNavigate()
 
     useEffect(() => {

@@ -13,7 +13,6 @@ const multipleChoiceOptionSchema = z.object({
 })
 
 const snippetBaseSchema = z.object({
-    timestamp: z.number().optional(),
     step_id: z.string().optional()
 })
 
@@ -70,13 +69,9 @@ class SnippetSystemEvent extends BaseSystemEvent<SnippetSystemEventPayload, Pars
     }
 
     protected decodePayload(payload: SnippetSystemEventPayload): ParsedSnippetSystemEvent | null {
-        const timestamp = payload.snippet.timestamp ?? Date.now()
         return {
             type: "Snippet",
-            snippet: {
-                ...payload.snippet,
-                timestamp
-            }
+            snippet: payload.snippet
         }
     }
 }

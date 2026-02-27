@@ -30,7 +30,6 @@ export class StreamEventEmitter {
         const runHistoryModelEvent: RunHistoryModelEvent = {
             ...event,
             id: eventId,
-            timestamp,
             stream_seq: nextRunStreamSequence(this.runId)
         }
 

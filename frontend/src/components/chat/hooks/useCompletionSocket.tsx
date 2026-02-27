@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 
 import {
     type Cancelled,
@@ -17,12 +17,10 @@ import {
 } from "../../../shared/ModelEvents"
 
 export type ChatEventPayload = {
-    runHistoryModelEvent: ModelEvent & { stream_seq?: number }
+    runHistoryModelEvent: ModelEvent
 }
 
 export type ChatEventSubscription = (callback: (payload: ChatEventPayload) => void) => () => void
-
-export type TextStreamGapReason = "delta_index" | "stream_seq"
 
 export type UseCompletionSocketOptions = {
     subscribeToEvents?: ChatEventSubscription | null
@@ -36,7 +34,7 @@ export type UseCompletionSocketOptions = {
     onThinking: (thinking: Thinking) => void
     onToolApprovalRequest?: (request: ToolApprovalRequest) => void
     onToolApprovalResponse?: (response: ToolApprovalResponse) => void
-    onSnippet?: (snippet: ChatSnippet) => void
+    onSnippet?: (snippet: ChatSnippet, timestamp: number) => void
     onRunError?: (event: RunError) => void
     onCancelled?: (event: Cancelled) => void
 }
@@ -126,10 +124,7 @@ export function useCompletionSocket(options: UseCompletionSocketOptions) {
                     onToolApprovalResponseRef.current?.(message)
                     break
                 case "Snippet":
-                    onSnippetRef.current?.({
-                        ...message.snippet,
-                        timestamp: message.snippet.timestamp ?? message.timestamp
-                    })
+                    onSnippetRef.current?.(message.snippet, message.timestamp)
                     break
                 case "UserMessage":
                     // No-op: user turns are created locally via addUserTurn.
@@ -154,13 +149,10 @@ export function useCompletionSocket(options: UseCompletionSocketOptions) {
         }
     }, [subscribeToEvents])
 
-    const sendMessageWithLogging = useCallback(
-        (message: ModelRequest) => {
-            console.log("Sending message through socket hook", { type: message.type })
-            sendMessage(message)
-        },
-        [sendMessage]
-    )
+    const sendMessageWithLogging = (message: ModelRequest) => {
+        console.log("Sending message through socket hook", { type: message.type })
+        sendMessage(message)
+    }
 
     return { sendMessage: sendMessageWithLogging, isConnected }
 }

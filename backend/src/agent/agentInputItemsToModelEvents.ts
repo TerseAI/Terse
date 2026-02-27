@@ -139,7 +139,7 @@ async function convertSingleItem(
             {
                 type: "Snippet",
                 timestamp: eventTimestamp,
-                snippet: { ...snippetSystemEvent.snippet, timestamp: eventTimestamp }
+                snippet: snippetSystemEvent.snippet
             }
         ]
     }
@@ -230,7 +230,7 @@ async function convertSingleItem(
         const snippetEvents: ModelEvent[] = (parsed.snippets ?? []).map(snippet => ({
             type: "Snippet",
             timestamp: eventTimestamp,
-            snippet: { ...snippet, timestamp: eventTimestamp }
+            snippet
         }))
 
         return [toolCallCompleteEvent, ...snippetEvents]

@@ -190,7 +190,6 @@ export async function filterEvent(event: InputEvent, agentWithRelations: AgentWi
                         const runHistoryModelEvent: RunHistoryModelEvent = {
                             ...modelEvent,
                             id: `filter-stream-live-${randomString(15)}`,
-                            timestamp: Date.now(),
                             stream_seq: nextRunStreamSequence(trackingParams.runId)
                         }
                         const payload: RunHistoryModelSocketEvent = {

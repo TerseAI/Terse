@@ -97,32 +97,19 @@ function extractToolExecutionSnippets(output: unknown): ChatSnippet[] {
     if (Array.isArray(candidate.snippets)) {
         const parsedSnippets: ChatSnippet[] = []
         for (const snippet of candidate.snippets) {
-            const enrichedSnippet =
-                snippet && typeof snippet === "object" ? { ...(snippet as Record<string, unknown>), timestamp: (snippet as { timestamp?: unknown }).timestamp ?? Date.now() } : snippet
-            const parsedSnippet = chatSnippetPayloadSchema.safeParse(enrichedSnippet)
+            const parsedSnippet = chatSnippetPayloadSchema.safeParse(snippet)
             if (!parsedSnippet.success) {
                 continue
             }
-            parsedSnippets.push({
-                ...parsedSnippet.data,
-                timestamp: parsedSnippet.data.timestamp ?? Date.now()
-            })
+            parsedSnippets.push(parsedSnippet.data)
         }
         return parsedSnippets
     }
 
     if (candidate.snippet !== undefined) {
-        const enrichedSnippet =
-            candidate.snippet && typeof candidate.snippet === "object"
-                ? { ...(candidate.snippet as Record<string, unknown>), timestamp: (candidate.snippet as { timestamp?: unknown }).timestamp ?? Date.now() }
-                : candidate.snippet
-        const parsedSnippet = chatSnippetPayloadSchema.safeParse(enrichedSnippet)
+        const parsedSnippet = chatSnippetPayloadSchema.safeParse(candidate.snippet)
         if (parsedSnippet.success) {
-            const data: ChatSnippet = {
-                ...parsedSnippet.data,
-                timestamp: parsedSnippet.data.timestamp ?? Date.now()
-            }
-            return [data]
+            return [parsedSnippet.data]
         }
     }
 

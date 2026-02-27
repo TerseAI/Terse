@@ -19,7 +19,7 @@ export type Cancelled = { reason?: string; timestamp: number }
 
 export type FunctionCall = { function_name: string; result: string; step_id: string }
 
-export type ModelEvent = { timestamp: number } & (
+export type ModelEvent = (
     | ({ type: "ToolApprovalResponse" } & ToolApprovalResponse)
     | ({ type: "ToolApprovalRequest" } & ToolApprovalRequest)
     | ({ type: "ToolCallGenerating" } & ToolCallGenerating)
@@ -28,12 +28,14 @@ export type ModelEvent = { timestamp: number } & (
     | ({ type: "TextDelta" } & TextDelta)
     | ({ type: "RunError" } & RunError)
     | ({ type: "Cancelled" } & Cancelled)
-    | { type: "NaturalStop"; step_id: string }
+    | ({ type: "NaturalStop" } & NaturalStop)
     | ({ type: "FilterResult" } & FilterResult)
     | ({ type: "UserMessage" } & UserMessage)
     | ({ type: "Thinking" } & Thinking)
     | ({ type: "Snippet" } & { snippet: ChatSnippet })
-)
+) & { timestamp: number}
+
+export type NaturalStop = { step_id: string, timestamp: number }
 
 export type ModelRequest = ({ type: "SendModelRequest" } & SendModelRequest) | ({ type: "ToolApprovalResponse" } & ToolApprovalResponse)
 
@@ -43,7 +45,7 @@ export type ToolApprovalResponse = { step_id: string; approved: boolean; timesta
 
 export type ToolApprovalRequest = { step_id: string; name: string; arguments: string; timestamp: number }
 
-export type TextDelta = { delta: string; step_id: string; timestamp: number; delta_index?: number }
+export type TextDelta = { delta: string; step_id: string; timestamp: number; }
 
 export type ToolCallGenerating = { tool_name: string; step_id: string; timestamp: number }
 
@@ -72,7 +74,7 @@ export type ToolCallComplete = {
 
 export type FilterResult = { isRelevant: boolean; reason: string; confidence: number; step_id: string; timestamp: number }
 
-export type UserMessage = { message: string; step_id: string; client_turn_id: string }
+export type UserMessage = { message: string; step_id: string; client_turn_id: string; timestamp: number }
 
 // Shared variant union – the payload shapes used by every snippet type.
 export type SnippetVariant =
@@ -82,10 +84,6 @@ export type SnippetVariant =
     | { type: "multiple_choice"; questionId: string; question: string; options: MultipleChoiceOption[]; allowMultiple?: boolean }
     | { type: "image"; url: string }
 
-// Canonical snippet payload persisted/emitted by backend system events and tool outputs.
-export type ChatSnippet = { timestamp: number; step_id?: string } & SnippetVariant
-
-// Render-ready frontend snippet model.
-// Adds `id` (React key / dedup) and makes `step_id` required.
-// `selectedValue` is UI-only state for answered multiple-choice questions.
-export type RenderedChatSnippet = { timestamp: number; step_id: string; id: string; selectedValue?: string } & SnippetVariant
+// Canonical snippet payload used across backend and frontend.
+// `id` and `selectedValue` are optional UI fields added by the web client.
+export type ChatSnippet = { id?: string; step_id?: string; selectedValue?: string } & SnippetVariant
