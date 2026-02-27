@@ -141,7 +141,10 @@ export function useCompletionSocket(options: UseCompletionSocketOptions) {
                     onCancelledRef.current?.(message)
                     break
                 default:
-                    console.warn("Unknown event type:", message.type)
+                    // Exhaustive switch guard: if ModelEvent gains a new variant,
+                    // TypeScript will fail here until we handle it explicitly.
+                    const exhaustiveCheck: never = message
+                    console.warn("Unhandled chat event", exhaustiveCheck)
             }
         })
 
