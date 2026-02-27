@@ -24,11 +24,6 @@ interface UseChatTurnsOptions {
     initialTurns?: Turn[] | undefined
 }
 
-// Note server turns ALWAYS WIN
-function mergeServerTurns(newTurn: Turn, existingTurn: Turn): Turn {
-    return newTurn
-}
-
 export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
     const [turns, setTurns] = useState<Turn[]>(initialTurns || [])
 

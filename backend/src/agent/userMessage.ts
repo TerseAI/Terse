@@ -16,12 +16,15 @@ export function buildUserMessageId(): string {
  * ID format: msg_<uuid>, always shorter than 64 chars.
  */
 export function buildUserMessage(text: string, id?: string): UserMessageItem {
-    return buildUserMessageFromContent([
-        {
-            type: "input_text",
-            text
-        }
-    ], id)
+    return buildUserMessageFromContent(
+        [
+            {
+                type: "input_text",
+                text
+            }
+        ],
+        id
+    )
 }
 
 /**
