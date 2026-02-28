@@ -10,6 +10,7 @@ import { emitCacheInvalidationWithKey, emitCacheInvalidationWithWildcard, markRu
 import { ConfigInstance } from "../../shared/Configs"
 import { RunHistoryAction } from "../../shared/RunHistoryTypes"
 import { User } from "../../shared/types"
+import { USER_CANCELLED_REASON } from "../../socketHandlers/activeExecution"
 import { AgentWithRelations, Agent as PrismaAgent } from "../../types/prisma"
 import { Session } from "../../types/session"
 import { trackActionTaken, trackAgentTriggered } from "../../utility/analytics"
@@ -17,7 +18,6 @@ import { getInputConfigInclude, getOutputConfigInclude } from "../../utility/pri
 import { classifyAgentError } from "../agentErrorUtils"
 import { listenForRunCancellation } from "../cancellation/RunCancellationTaskQueue"
 import { markRunCancelledAndInvalidate } from "../cancellation/runCancellationEffects"
-import { USER_CANCELLED_REASON } from "../../socketHandlers/activeExecution"
 
 import { AgentRunResultStatus, AgentRunner, ApprovalResult, SessionWithTracking } from "./AgentRunner"
 import { filterEvent } from "./EventFilter"
