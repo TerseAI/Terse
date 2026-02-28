@@ -1,15 +1,16 @@
 import { Tool } from "@openai/agents"
 import { OutputConfigType } from "@prisma/client"
 
-import { buildDummyOutputConfig } from "../../buildDummyConfigForCapability"
 import { type CapabilityDescription, CapabilityRole, extractToolMetadata, getConfigMetadata, getContextLabel } from "../../capabilityHelpers"
 import { validateGithubRepositoryIds } from "../../integrations/GithubIntegration"
+import logger from "../../logger"
 import { ConfigType, GitHubConfig } from "../../shared/Configs"
 import { IntegrationType } from "../../shared/Integrations"
-import { AgentOutputWithConfigs, PrismaTransaction } from "../../types/prisma"
+import { PrismaTransaction } from "../../types/prisma"
 import { GitHubConfigSchema, stripConfigForValidation } from "../../utility/configSchemas"
-import { Output, ToolboxEntry } from "../abstract/Output"
+import { Output, RuntimeSystemInstructionsContext, ToolboxEntry } from "../abstract/Output"
 
+import { createGitHubClient, getGitHubAccessToken, getRepositoryNamesByIds } from "./githubApiClient"
 import { grepGitHubCodeTool } from "./tools/grepCode"
 import { listGitHubCommitsTool } from "./tools/listCommits"
 import { listGitHubDirectoryTool } from "./tools/listDirectory"
@@ -73,23 +74,32 @@ export class GithubSkillOutput extends Output<GitHubConfig> {
         })
     }
 
-    protected getDummyConfigForCapability(): AgentOutputWithConfigs {
-        const base = buildDummyOutputConfig("example", { config_type: OutputConfigType.GITHUB, github_config: { repository_ids: [0] } })
-
-        return {
-            ...base,
-            github_config: {
-                id: "example",
-                automation_input_id: null,
-                automation_output_id: base.id,
-                repository_ids: [0],
-                created_at: new Date(0),
-                updated_at: new Date(0)
-            }
-        }
+    protected getDummyConfigForCapability(): GitHubConfig {
+        return new GitHubConfig("example", [0])
     }
 
-    protected getSystemInstructionsForConfigs(configs: AgentOutputWithConfigs[]): string {
+    async getRuntimeSystemInstructions(context: RuntimeSystemInstructionsContext): Promise<string> {
+        const accessToken = await getGitHubAccessToken(context.userId)
+        if (!accessToken) {
+            logger.warn("Skipping GitHub repo-name hydration because no token was found", { userId: context.userId })
+            return this.getSystemInstructions()
+        }
+
+        const allRepositoryIds = this.configs.flatMap(config => config.repositoryIds ?? [])
+        if (!allRepositoryIds.length) {
+            return this.getSystemInstructions()
+        }
+
+        const client = createGitHubClient(accessToken)
+        const repositoryNamesById = await getRepositoryNamesByIds(client, allRepositoryIds)
+        return this.buildSystemInstructionsForConfigs(this.configs, repositoryNamesById)
+    }
+
+    protected getSystemInstructionsForConfigs(configs: GitHubConfig[]): string {
+        return this.buildSystemInstructionsForConfigs(configs, new Map())
+    }
+
+    private buildSystemInstructionsForConfigs(configs: GitHubConfig[], repositoryNamesById: Map<number, string>): string {
         if (configs.length === 0) {
             throw new Error("No GitHub skill configs provided")
         }
@@ -98,11 +108,17 @@ export class GithubSkillOutput extends Output<GitHubConfig> {
         lines.push("=== GITHUB SKILL (READ-ONLY) ===")
         lines.push("Available configurations:")
         for (const config of configs) {
-            const repoIds = config.github_config?.repository_ids ?? []
-            lines.push(`  • Integration ID: ${config.integration_id} - Repository IDs: ${repoIds.length > 0 ? repoIds.join(", ") : "N/A"}`)
+            const repoIds = config.repositoryIds ?? []
+            const repoDetails = repoIds
+                .map(repoId => {
+                    const name = repositoryNamesById.get(repoId)
+                    return name ? `${name} (ID: ${repoId})` : `ID: ${repoId}`
+                })
+                .join(", ")
+            lines.push(`  • Integration ID: ${config.integrationId} - Repositories: ${repoDetails || "N/A"}`)
         }
         lines.push("\nGitHub tools are read-only in this skill and automatically use the connected user's GitHub token.")
-        lines.push("Use repository IDs from the configured entries when calling GitHub tools.")
+        lines.push('When a tool asks for repository, use the configured entries above (prefer "owner/repo" when available, otherwise use repository IDs).')
         return lines.join("\n")
     }
 }

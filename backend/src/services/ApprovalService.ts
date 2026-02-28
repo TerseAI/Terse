@@ -263,7 +263,6 @@ export class ApprovalService {
             // Create agent runner and resume from pending approval
             const runContext = { runId }
             const agentRunner = new AgentRunner(session, outputs, channel, runContext)
-            await agentRunner.initializeAgent()
 
             const decision: "approve" | "reject" = approved ? "approve" : "reject"
             const result = await agentRunner.resumeFromPendingApproval(

@@ -1,7 +1,24 @@
 import { OutputConfigType } from "@prisma/client"
 
-import { ConfigInstance } from "../../shared/Configs"
+import {
+    AttioOutputConfig,
+    ConfigInstance,
+    ConfluenceConfig,
+    DatadogConfig,
+    GitHubConfig,
+    GmailDraftOutputConfig,
+    GmailOutputConfig,
+    JiraConfig,
+    LaunchDarklyConfig,
+    LinearOutputConfig,
+    NotionConfig,
+    PosthogConfig,
+    SlackOutputConfig,
+    TerseConfig,
+    WorkOSOutputConfig
+} from "../../shared/Configs"
 import { AgentOutputWithConfigs, AgentWithRelations } from "../../types/prisma"
+import { convertPrismaOutputConfigToConfigInstance } from "../../utility/typeConverters"
 import { ConfluenceOutput } from "../ConfluenceOutput"
 import { AttioOutput } from "../attio/AttioOutput"
 import { DatadogSkillOutput } from "../datadog/DatadogSkillOutput"
@@ -51,12 +68,57 @@ export class OutputFactory {
         return factory()
     }
 
-    static createOutputWithConfigs(configType: OutputConfigType, configs: AgentOutputWithConfigs[]): Output<ConfigInstance> | null {
+    static createOutputWithConfigs(configType: OutputConfigType, configs: ConfigInstance[]): Output<ConfigInstance> | null {
         const output = this.createOutput(configType)
         if (!output) {
             return null
         }
-        output.configs = configs
+        switch (configType) {
+            case OutputConfigType.NOTION:
+                ;(output as Output<NotionConfig>).configs = configs as NotionConfig[]
+                break
+            case OutputConfigType.CONFLUENCE:
+                ;(output as Output<ConfluenceConfig>).configs = configs as ConfluenceConfig[]
+                break
+            case OutputConfigType.LINEAR_TICKET:
+                ;(output as Output<LinearOutputConfig>).configs = configs as LinearOutputConfig[]
+                break
+            case OutputConfigType.JIRA_TICKET:
+                ;(output as Output<JiraConfig>).configs = configs as JiraConfig[]
+                break
+            case OutputConfigType.SLACK_CHANNEL:
+                ;(output as Output<SlackOutputConfig>).configs = configs as SlackOutputConfig[]
+                break
+            case OutputConfigType.GMAIL:
+                ;(output as Output<GmailOutputConfig>).configs = configs as GmailOutputConfig[]
+                break
+            case OutputConfigType.GMAIL_DRAFT:
+                ;(output as Output<GmailDraftOutputConfig>).configs = configs as GmailDraftOutputConfig[]
+                break
+            case OutputConfigType.ATTIO:
+                ;(output as Output<AttioOutputConfig>).configs = configs as AttioOutputConfig[]
+                break
+            case OutputConfigType.GITHUB:
+                ;(output as Output<GitHubConfig>).configs = configs as GitHubConfig[]
+                break
+            case OutputConfigType.POSTHOG:
+                ;(output as Output<PosthogConfig>).configs = configs as PosthogConfig[]
+                break
+            case OutputConfigType.DATADOG:
+                ;(output as Output<DatadogConfig>).configs = configs as DatadogConfig[]
+                break
+            case OutputConfigType.LAUNCHDARKLY:
+                ;(output as Output<LaunchDarklyConfig>).configs = configs as LaunchDarklyConfig[]
+                break
+            case OutputConfigType.WORKOS:
+                ;(output as Output<WorkOSOutputConfig>).configs = configs as WorkOSOutputConfig[]
+                break
+            case OutputConfigType.TERSE:
+                ;(output as Output<TerseConfig>).configs = configs as TerseConfig[]
+                break
+            default:
+                throw configType satisfies never
+        }
         return output
     }
 
@@ -66,7 +128,7 @@ export class OutputFactory {
         }
 
         // Group configs by type
-        const configsByType = new Map<OutputConfigType, AgentOutputWithConfigs[]>()
+        const configsByType = new Map<OutputConfigType, ConfigInstance[]>()
         for (const outputIntegration of agent.outputs) {
             const configType = outputIntegration.config_type as OutputConfigType
             // Skip TERSE - it's always included automatically
@@ -76,7 +138,7 @@ export class OutputFactory {
             if (!configsByType.has(configType)) {
                 configsByType.set(configType, [])
             }
-            configsByType.get(configType)!.push(outputIntegration as AgentOutputWithConfigs)
+            configsByType.get(configType)!.push(convertPrismaOutputConfigToConfigInstance(outputIntegration as AgentOutputWithConfigs))
         }
 
         // Create one output instance per type with all configs of that type

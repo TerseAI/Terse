@@ -1,12 +1,11 @@
 import { Tool } from "@openai/agents"
 import { OutputConfigType } from "@prisma/client"
 
-import { buildDummyOutputConfig } from "../../buildDummyConfigForCapability"
 import { type CapabilityDescription, CapabilityRole, extractToolMetadata, getConfigMetadata } from "../../capabilityHelpers"
 import { getLaunchDarklyAccessTokenOrThrow, validateLaunchDarklyEnvironmentsExist, validateLaunchDarklyProjectExists } from "../../integrations/LaunchDarklyIntegration"
 import { LaunchDarklyConfig } from "../../shared/Configs"
 import { IntegrationType } from "../../shared/Integrations"
-import { AgentOutputWithConfigs, PrismaTransaction } from "../../types/prisma"
+import { PrismaTransaction } from "../../types/prisma"
 import { LaunchDarklyConfigSchema, stripConfigForValidation } from "../../utility/configSchemas"
 import { convertOutputConfigTypeToConfigType } from "../../utility/typeConverters"
 import { Output, ToolboxEntry } from "../abstract/Output"
@@ -46,14 +45,8 @@ export class LaunchDarklySkillOutput extends Output<LaunchDarklyConfig> {
         }
     }
 
-    protected getDummyConfigForCapability(): AgentOutputWithConfigs {
-        return buildDummyOutputConfig("example", {
-            config_type: OutputConfigType.LAUNCHDARKLY,
-            launchdarkly_config: {
-                project_key: "example-project",
-                environment_keys: ["production"]
-            }
-        })
+    protected getDummyConfigForCapability(): LaunchDarklyConfig {
+        return new LaunchDarklyConfig("example", "example-project", ["production"])
     }
 
     async validateConfig(output: LaunchDarklyConfig, _userId: string): Promise<void> {
@@ -73,7 +66,7 @@ export class LaunchDarklySkillOutput extends Output<LaunchDarklyConfig> {
         })
     }
 
-    protected getSystemInstructionsForConfigs(configs: AgentOutputWithConfigs[]): string {
+    protected getSystemInstructionsForConfigs(configs: LaunchDarklyConfig[]): string {
         if (configs.length === 0) {
             throw new Error("No LaunchDarkly skill configs provided")
         }
@@ -83,12 +76,7 @@ export class LaunchDarklySkillOutput extends Output<LaunchDarklyConfig> {
         sections.push("Available configurations:")
 
         for (const config of configs) {
-            if (!config.launchdarkly_config) {
-                throw new Error("LaunchDarkly config not found")
-            }
-            sections.push(
-                `  • Integration ID: ${config.integration_id} - Project: ${config.launchdarkly_config.project_key}, Environments: ${(config.launchdarkly_config.environment_keys || []).join(", ")}`
-            )
+            sections.push(`  • Integration ID: ${config.integrationId} - Project: ${config.projectKey}, Environments: ${(config.environmentKeys || []).join(", ")}`)
         }
 
         sections.push("\nWhen calling LaunchDarkly tools, include integrationId, projectKey, and environmentKeys from a configured entry.")
