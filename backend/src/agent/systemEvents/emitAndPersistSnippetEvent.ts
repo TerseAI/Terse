@@ -76,8 +76,7 @@ export async function emitAndPersistSnippetEvent(input: EmitAndPersistSnippetEve
             type: "Snippet",
             snippet: normalizedSnippet,
             id: eventId,
-            timestamp: timestamp,
-            stream_seq: nextRunStreamSequence(runId)
+            timestamp: timestamp
         }
         const payload: RunHistoryModelSocketEvent = {
             runId,
