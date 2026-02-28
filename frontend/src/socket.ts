@@ -313,7 +313,7 @@ export async function cancelAgentChatRun(runId: string): Promise<CancelAckRespon
     }
 
     return await new Promise(resolve => {
-        activeSocket.timeout(5000).emit(SocketEvents.AGENT_CHAT_CANCEL, { runId }, (err: Error | null, response?: CancelAckResponse) => {
+        activeSocket.emit(SocketEvents.AGENT_CHAT_CANCEL, { runId }, (err: Error | null, response?: CancelAckResponse) => {
             if (err) {
                 resolve({ accepted: false, reason: "timeout" })
                 return
@@ -330,7 +330,7 @@ export async function cancelBuilderChatSession(sessionId: string): Promise<Cance
     }
 
     return await new Promise(resolve => {
-        activeSocket.timeout(5000).emit(SocketEvents.BUILDER_CHAT_CANCEL, { sessionId }, (err: Error | null, response?: CancelAckResponse) => {
+        activeSocket.emit(SocketEvents.BUILDER_CHAT_CANCEL, { sessionId }, (err: Error | null, response?: CancelAckResponse) => {
             if (err) {
                 resolve({ accepted: false, reason: "timeout" })
                 return

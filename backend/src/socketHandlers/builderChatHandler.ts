@@ -13,7 +13,7 @@ import { SendModelRequest } from "../shared/ModelEvents"
 import { SocketEvents } from "../shared/SocketEvents"
 import { getUserForOrg } from "../utility/workos"
 
-import { ActiveExecution, CancelAckResponse, USER_CANCELLED_REASON, cancelActiveExecution, clearActiveExecution, createActiveExecution, isAbortLikeError } from "./activeExecution"
+import { ActiveExecution, CancelAckResponse, USER_CANCELLED_REASON, cancelActiveExecution, clearActiveExecution, createActiveExecution } from "./activeExecution"
 
 const activeBuilderExecutions = new Map<string, ActiveExecution>()
 
@@ -86,7 +86,7 @@ export async function registerBuilderChatHandler(socket: Socket, userId: string,
                 return
             }
         } catch (error) {
-            if (activeExecution.cancelRequested || isAbortLikeError(error)) {
+            if (activeExecution.cancelRequested) {
                 await emitAndPersistCancelledEvent(sessionId, USER_CANCELLED_REASON)
                 return
             }

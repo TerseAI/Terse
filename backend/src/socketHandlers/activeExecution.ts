@@ -28,14 +28,3 @@ export function cancelActiveExecution(activeExecution: ActiveExecution): void {
     activeExecution.cancelRequested = true
     activeExecution.controller.abort("user_cancelled")
 }
-
-export function isAbortLikeError(error: unknown): boolean {
-    if (!error) return false
-    if (error instanceof Error && error.name === "AbortError") return true
-
-    const anyError = error as { name?: unknown; code?: unknown; message?: unknown }
-    if (anyError?.name === "AbortError") return true
-    if (typeof anyError?.code === "string" && anyError.code.toLowerCase().includes("abort")) return true
-    if (typeof anyError?.message === "string" && anyError.message.toLowerCase().includes("abort")) return true
-    return false
-}

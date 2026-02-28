@@ -38,11 +38,11 @@ export async function convertAgentInputItemsToModelEvents(
     }
     const events: ModelEvent[] = []
 
-    for (const entry of items) {
+    for (const [itemIndex, entry] of items.entries()) {
         const item: AgentInputItem = entry.item
         const ts = entry.createdAt
         const eventTimestamp = ts.getTime()
-        const converted = await convertSingleItem(item, eventTimestamp, toolToIntegrationMap, resolvedOptions)
+        const converted = await convertSingleItem(item, eventTimestamp, itemIndex, toolToIntegrationMap, resolvedOptions)
         if (converted) {
             events.push(...converted)
         }
@@ -69,6 +69,7 @@ export async function convertAgentInputItemsToModelEvents(
 async function convertSingleItem(
     item: AgentInputItem,
     eventTimestamp: number,
+    itemIndex: number,
     toolToIntegrationMap?: Map<string, string>,
     options: Required<ConvertAgentInputItemsToModelEventsOptions> = DEFAULT_CONVERT_OPTIONS
 ): Promise<ModelEvent[] | null> {
@@ -151,8 +152,8 @@ async function convertSingleItem(
             if (!options.includeScaffoldedUserMessages && isScaffoldedRunContextUserMessage(text)) {
                 return null
             }
-            if (!item.id) return null
-            return [{ type: "UserMessage", timestamp: eventTimestamp, message: text, step_id: item.id, client_turn_id: item.id }]
+            const stepId = resolveUserMessageStepId(item, eventTimestamp, itemIndex)
+            return [{ type: "UserMessage", timestamp: eventTimestamp, message: text, step_id: stepId, client_turn_id: stepId }]
         }
         return null
     }
@@ -267,6 +268,16 @@ function isReasoningItem(event: AgentInputItem): event is ReasoningItem {
     }
 
     return false
+}
+
+function resolveUserMessageStepId(item: UserMessageItem, eventTimestamp: number, itemIndex: number): string {
+    const itemId = typeof item.id === "string" ? item.id.trim() : ""
+    if (itemId) {
+        return itemId
+    }
+
+    // Backward compatibility for historical user messages persisted before IDs were guaranteed.
+    return `legacy-user-msg-${eventTimestamp}-${itemIndex}`
 }
 
 // Content extraction helpers
