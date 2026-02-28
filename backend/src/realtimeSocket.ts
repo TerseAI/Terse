@@ -19,11 +19,13 @@ import { Output } from "./outputs/abstract/Output"
 import { OutputFactory } from "./outputs/abstract/OutputFactory"
 import { db } from "./prismaClient"
 import { Session } from "./server"
+import { invalidateRunAndChatHistory } from "./services/CacheInvalidationService"
 import { ApprovalProcessingStatus, ApprovalService } from "./services/ApprovalService"
 import { ConfigInstance } from "./shared/Configs"
 import { SendModelRequest, ToolApprovalResponse } from "./shared/ModelEvents"
 import { type RunHistoryModelEvent, type RunHistoryModelSocketEvent, RunHistoryStatus } from "./shared/RunHistoryTypes"
 import { SocketEvents, SocketRooms } from "./shared/SocketEvents"
+import { CancelAckResponse, USER_CANCELLED_REASON } from "./socketHandlers/activeExecution"
 import { registerBuilderChatHandler } from "./socketHandlers/builderChatHandler"
 import { AgentWithRelations } from "./types/prisma"
 import { getInputConfigInclude, getOutputConfigInclude } from "./utility/prismaIncludes"
@@ -40,13 +42,6 @@ interface AuthenticatedSocket extends Socket {
 let io: Server | null = null
 let pub: ReturnType<typeof createClient> | null = null
 let sub: ReturnType<typeof createClient> | null = null
-
-type CancelAckResponse = {
-    accepted: boolean
-    reason?: string
-}
-
-const USER_CANCELLED_REASON = "Run cancelled by user"
 
 export async function initializeRealtimeSocket(server: HttpServer): Promise<Server> {
     logger.info("Initializing realtime socket", {
@@ -460,11 +455,6 @@ export function emitCacheInvalidationWithWildcard(organizationId: string, key: s
         key,
         id
     })
-}
-
-function invalidateRunAndChatHistory(organizationId: string, agentId: string, runId: string): void {
-    emitCacheInvalidationWithWildcard(organizationId, "runHistory", agentId)
-    emitCacheInvalidationWithWildcard(organizationId, "chatHistory", runId)
 }
 
 async function notifyRunFailure(notificationManager: NotificationManager, runId: string, failureReason: string, agentId: string, userId: string): Promise<void> {

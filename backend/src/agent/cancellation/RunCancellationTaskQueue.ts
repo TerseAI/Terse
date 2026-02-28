@@ -1,3 +1,4 @@
+import { USER_CANCELLED_REASON } from "../../socketHandlers/activeExecution"
 import { EventEmitterTaskQueue } from "../../tasks/abstract/eventEmitterTasks"
 import { Task } from "../../tasks/abstract/tasks"
 
@@ -8,7 +9,7 @@ class RunCancellationTask implements Task {
 
     constructor(
         public runId: string,
-        public reason: string = "Run cancelled by user"
+        public reason: string = USER_CANCELLED_REASON
     ) {}
 }
 
@@ -19,7 +20,7 @@ type RunCancellationSubscription = {
     unsubscribe: () => void
 }
 
-export function requestRunCancellation(runId: string, reason: string = "Run cancelled by user"): void {
+export function requestRunCancellation(runId: string, reason: string = USER_CANCELLED_REASON): void {
     runCancellationTaskQueue.emit(new RunCancellationTask(runId, reason))
 }
 

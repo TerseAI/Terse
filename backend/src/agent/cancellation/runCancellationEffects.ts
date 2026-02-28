@@ -1,18 +1,12 @@
 import logger from "../../logger"
-import { emitCacheInvalidationWithWildcard, getSocketIO } from "../../services/CacheInvalidationService"
+import { getSocketIO, invalidateRunAndChatHistory } from "../../services/CacheInvalidationService"
 import { type RunHistoryModelEvent, type RunHistoryModelSocketEvent } from "../../shared/RunHistoryTypes"
 import { SocketEvents, SocketRooms } from "../../shared/SocketEvents"
+import { USER_CANCELLED_REASON } from "../../socketHandlers/activeExecution"
 import { randomString } from "../../utility/strings"
 import { markRunCancelled } from "../AgentRunner/runHistory"
 import { createCancelledEvent } from "../streaming"
 import { appendRunHistoryCancelledSystemEvent } from "../systemEvents/cancelledSystemEvent"
-
-const USER_CANCELLED_REASON = "Run cancelled by user"
-
-function invalidateRunAndChatHistory(organizationId: string, agentId: string, runId: string): void {
-    emitCacheInvalidationWithWildcard(organizationId, "runHistory", agentId)
-    emitCacheInvalidationWithWildcard(organizationId, "chatHistory", runId)
-}
 
 function emitCancelledForRun(runId: string, agentId: string, organizationId: string, reason?: string): void {
     const io = getSocketIO()

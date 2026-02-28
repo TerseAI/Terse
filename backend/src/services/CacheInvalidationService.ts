@@ -34,3 +34,8 @@ export function emitCacheInvalidationWithWildcard(organizationId: string, key: s
     // If id is not provided, frontend will match on tag only
     io.to(SocketRooms.organization(organizationId)).emit(SocketEvents.INVALIDATE, { key, id })
 }
+
+export function invalidateRunAndChatHistory(organizationId: string, agentId: string, runId: string): void {
+    emitCacheInvalidationWithWildcard(organizationId, "runHistory", agentId)
+    emitCacheInvalidationWithWildcard(organizationId, "chatHistory", runId)
+}

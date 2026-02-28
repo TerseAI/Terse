@@ -17,6 +17,7 @@ import { getInputConfigInclude, getOutputConfigInclude } from "../../utility/pri
 import { classifyAgentError } from "../agentErrorUtils"
 import { listenForRunCancellation } from "../cancellation/RunCancellationTaskQueue"
 import { markRunCancelledAndInvalidate } from "../cancellation/runCancellationEffects"
+import { USER_CANCELLED_REASON } from "../../socketHandlers/activeExecution"
 
 import { AgentRunResultStatus, AgentRunner, ApprovalResult, SessionWithTracking } from "./AgentRunner"
 import { filterEvent } from "./EventFilter"
@@ -358,7 +359,7 @@ export class EventProcessor {
         } catch (error) {
             if (cancellationSubscription.isCancellationRequested()) {
                 await markRunCancelledAndInvalidate(runId, agent.id, this.user.organizationId, this.user.id)
-                return new ProcessorResult(false, "Run cancelled by user", agent, undefined, runId)
+                return new ProcessorResult(false, USER_CANCELLED_REASON, agent, undefined, runId)
             }
 
             const classified = classifyAgentError(error)
@@ -377,7 +378,7 @@ export class EventProcessor {
 
         if (cancellationSubscription.isCancellationRequested()) {
             await markRunCancelledAndInvalidate(runId, agent.id, this.user.organizationId, this.user.id)
-            return new ProcessorResult(false, "Run cancelled by user", agent, undefined, runId)
+            return new ProcessorResult(false, USER_CANCELLED_REASON, agent, undefined, runId)
         }
 
         if (result.status === AgentRunResultStatus.COMPLETED) {
