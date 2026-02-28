@@ -329,7 +329,11 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
                 text: cancellation.reason || "",
                 timestamp: cancellation.timestamp,
                 function_calls: [],
-                step_id: "run-error"
+                step_id: "run-error",
+                isCancelled: true,
+                isGenerating: false,
+                isFailure: false,
+                isThinking: false
             })
         })
     }

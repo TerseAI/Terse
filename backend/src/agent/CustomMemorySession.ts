@@ -8,24 +8,308 @@ import { RunHistoryMemory } from "../rag/runHistoryRag/indexer"
 import { RunHistoryRawEventWithRelations } from "../types/prisma"
 import { RAGNamespace } from "../types/rag"
 
-interface RunHistoryChatMemorySessionOptions {
+type BaseMemorySessionOptions = {
     sessionId: string
     skipSave?: boolean
     filterIncompleteToolCalls?: boolean
 }
 
-interface ChatMemorySessionOptions {
+interface RunHistoryChatMemorySessionOptions extends BaseMemorySessionOptions {}
+
+interface ChatMemorySessionOptions extends BaseMemorySessionOptions {
     sessionId: string // chat_session_id from chat_sessions table
-    skipSave?: boolean
-    filterIncompleteToolCalls?: boolean
 }
 
 type CompletedAssistantTextMap = Map<string, Map<number, string>>
 type PendingFunctionCallsMap = Map<string, AgentInputItem>
 type CompletedFunctionCallIdsSet = Set<string>
 
+type StoredRawEvent = {
+    id: string
+    rawEvent: AgentInputItem
+}
+
+type RawEventStorageStrategy = {
+    getItems(sessionId: string, limit?: number): Promise<AgentInputItem[]>
+    upsertByEventKey(sessionId: string, eventKey: string, item: AgentInputItem, sequenceOrder: number): Promise<void>
+    getLatestItem(sessionId: string): Promise<StoredRawEvent | null>
+    deleteById(id: string): Promise<void>
+    clear(sessionId: string): Promise<void>
+    getMaxSequenceOrder(sessionId: string): Promise<number | null>
+}
+
+const runHistoryStorageStrategy: RawEventStorageStrategy = {
+    async getItems(sessionId, limit) {
+        const prisma = db()
+        const items = await prisma.run_history_raw_events.findMany({
+            where: {
+                run_history_record_id: sessionId
+            },
+            orderBy: [
+                { sequence_order: "asc" },
+                { created_at: "asc" } // Fallback for items without sequence_order (backward compatibility)
+            ],
+            take: limit,
+            select: {
+                raw_event_json: true
+            }
+        })
+        return items.map(item => item.raw_event_json as AgentInputItem)
+    },
+
+    async upsertByEventKey(sessionId, eventKey, item, sequenceOrder) {
+        const prisma = db()
+        await prisma.run_history_raw_events.upsert({
+            where: {
+                run_history_record_id_event_key: {
+                    run_history_record_id: sessionId,
+                    event_key: eventKey
+                }
+            },
+            update: {
+                raw_event_json: item as any
+            },
+            create: {
+                run_history_record_id: sessionId,
+                event_key: eventKey,
+                raw_event_json: item as any,
+                sequence_order: sequenceOrder
+            }
+        })
+    },
+
+    async getLatestItem(sessionId) {
+        const prisma = db()
+        const lastEvent = await prisma.run_history_raw_events.findFirst({
+            where: {
+                run_history_record_id: sessionId
+            },
+            orderBy: [
+                { sequence_order: "desc" },
+                { created_at: "desc" } // Fallback for items without sequence_order (backward compatibility)
+            ]
+        })
+        if (!lastEvent) {
+            return null
+        }
+        return {
+            id: lastEvent.id,
+            rawEvent: lastEvent.raw_event_json as AgentInputItem
+        }
+    },
+
+    async deleteById(id) {
+        const prisma = db()
+        await prisma.run_history_raw_events.delete({
+            where: {
+                id
+            }
+        })
+    },
+
+    async clear(sessionId) {
+        const prisma = db()
+        await prisma.run_history_raw_events.deleteMany({
+            where: {
+                run_history_record_id: sessionId
+            }
+        })
+    },
+
+    async getMaxSequenceOrder(sessionId) {
+        const prisma = db()
+        const maxSequence = await prisma.run_history_raw_events.findFirst({
+            where: {
+                run_history_record_id: sessionId
+            },
+            orderBy: {
+                sequence_order: "desc"
+            },
+            select: {
+                sequence_order: true
+            }
+        })
+        return maxSequence?.sequence_order ?? null
+    }
+}
+
+const chatStorageStrategy: RawEventStorageStrategy = {
+    async getItems(sessionId, limit) {
+        const prisma = db()
+        const items = await prisma.chat_raw_events.findMany({
+            where: {
+                chat_session_id: sessionId
+            },
+            orderBy: [
+                { sequence_order: "asc" },
+                { created_at: "asc" } // Fallback for items without sequence_order (backward compatibility)
+            ],
+            take: limit,
+            select: {
+                raw_event_json: true
+            }
+        })
+        return items.map(item => item.raw_event_json as AgentInputItem)
+    },
+
+    async upsertByEventKey(sessionId, eventKey, item, sequenceOrder) {
+        const prisma = db()
+        await prisma.chat_raw_events.upsert({
+            where: {
+                chat_session_id_event_key: {
+                    chat_session_id: sessionId,
+                    event_key: eventKey
+                }
+            },
+            update: {
+                raw_event_json: item as any
+            },
+            create: {
+                chat_session_id: sessionId,
+                event_key: eventKey,
+                raw_event_json: item as any,
+                sequence_order: sequenceOrder
+            }
+        })
+    },
+
+    async getLatestItem(sessionId) {
+        const prisma = db()
+        const lastEvent = await prisma.chat_raw_events.findFirst({
+            where: {
+                chat_session_id: sessionId
+            },
+            orderBy: [
+                { sequence_order: "desc" },
+                { created_at: "desc" } // Fallback for items without sequence_order (backward compatibility)
+            ]
+        })
+        if (!lastEvent) {
+            return null
+        }
+        return {
+            id: lastEvent.id,
+            rawEvent: lastEvent.raw_event_json as AgentInputItem
+        }
+    },
+
+    async deleteById(id) {
+        const prisma = db()
+        await prisma.chat_raw_events.delete({
+            where: {
+                id
+            }
+        })
+    },
+
+    async clear(sessionId) {
+        const prisma = db()
+        await prisma.chat_raw_events.deleteMany({
+            where: {
+                chat_session_id: sessionId
+            }
+        })
+    },
+
+    async getMaxSequenceOrder(sessionId) {
+        const prisma = db()
+        const maxSequence = await prisma.chat_raw_events.findFirst({
+            where: {
+                chat_session_id: sessionId
+            },
+            orderBy: {
+                sequence_order: "desc"
+            },
+            select: {
+                sequence_order: true
+            }
+        })
+        return maxSequence?.sequence_order ?? null
+    }
+}
+
 export type StreamEventIngestionSession = {
     ingestStreamEvent(event: RunStreamEvent): Promise<void>
+}
+
+class BaseChatMemorySession implements Session {
+    private readonly sessionId: string
+    private readonly skipSave: boolean
+    private readonly filterIncompleteToolCalls: boolean
+    private readonly storage: RawEventStorageStrategy
+    private readonly completedAssistantTextByItemId: CompletedAssistantTextMap = new Map()
+    private readonly pendingFunctionCallsByCallId: PendingFunctionCallsMap = new Map()
+    private readonly completedFunctionCallIds: CompletedFunctionCallIdsSet = new Set()
+
+    constructor(options: BaseMemorySessionOptions, storage: RawEventStorageStrategy) {
+        this.sessionId = options.sessionId
+        this.skipSave = options.skipSave ?? false
+        this.filterIncompleteToolCalls = options.filterIncompleteToolCalls ?? false
+        this.storage = storage
+    }
+
+    async getSessionId(): Promise<string> {
+        return this.sessionId
+    }
+
+    async getItems(limit?: number): Promise<AgentInputItem[]> {
+        const rawEvents = await this.storage.getItems(this.sessionId, limit)
+        const filteredEvents = filterReasoningItems(rawEvents)
+        const deduplicatedEvents = deduplicateItemsById(filteredEvents)
+        const filteredToolCallEvents = this.filterIncompleteToolCalls ? filterToolCallEvents(deduplicatedEvents) : deduplicatedEvents
+        return filteredToolCallEvents.map(cloneAgentItem)
+    }
+
+    async addItems(items: AgentInputItem[]): Promise<void> {
+        await this.addItemsWithEventKeys(items)
+    }
+
+    async addItemsWithEventKeys(items: AgentInputItem[]): Promise<void> {
+        if (this.skipSave) return
+        if (items.length === 0) return
+
+        let nextSequenceOrder = await this.getNextSequenceOrder()
+        for (const item of items) {
+            const eventKey = buildAgentInputItemEventKey(item)
+            await this.storage.upsertByEventKey(this.sessionId, eventKey, item, nextSequenceOrder++)
+        }
+    }
+
+    async upsertItemByEventKey(item: AgentInputItem, eventKey: string): Promise<void> {
+        if (this.skipSave) return
+        await this.storage.upsertByEventKey(this.sessionId, eventKey, item, await this.getNextSequenceOrder())
+    }
+
+    async ingestStreamEvent(event: RunStreamEvent): Promise<void> {
+        if (this.skipSave) return
+        await ingestStreamEventToSession(event, {
+            completedAssistantTextByItemId: this.completedAssistantTextByItemId,
+            pendingFunctionCallsByCallId: this.pendingFunctionCallsByCallId,
+            completedFunctionCallIds: this.completedFunctionCallIds,
+            upsertItemByEventKey: (item, eventKey) => this.upsertItemByEventKey(item, eventKey)
+        })
+    }
+
+    async popItem(): Promise<AgentInputItem | undefined> {
+        if (this.skipSave) return undefined
+        const lastEvent = await this.storage.getLatestItem(this.sessionId)
+        if (!lastEvent) {
+            return undefined
+        }
+        const cloned = cloneAgentItem(lastEvent.rawEvent)
+        await this.storage.deleteById(lastEvent.id)
+        return cloned
+    }
+
+    async clearSession(): Promise<void> {
+        if (this.skipSave) return
+        await this.storage.clear(this.sessionId)
+    }
+
+    private async getNextSequenceOrder(): Promise<number> {
+        const maxSequenceOrder = await this.storage.getMaxSequenceOrder(this.sessionId)
+        return (maxSequenceOrder ?? -1) + 1
+    }
 }
 
 /**
@@ -34,160 +318,9 @@ export type StreamEventIngestionSession = {
  *
  * Session implementation for run history records (uses run_history_raw_events table)
  */
-export class RunHistoryChatMemorySession implements Session {
-    private readonly sessionId: string
-    private readonly skipSave: boolean
-    private readonly filterIncompleteToolCalls: boolean
-    private readonly completedAssistantTextByItemId: CompletedAssistantTextMap = new Map()
-    private readonly pendingFunctionCallsByCallId: PendingFunctionCallsMap = new Map()
-    private readonly completedFunctionCallIds: CompletedFunctionCallIdsSet = new Set()
+export class RunHistoryChatMemorySession extends BaseChatMemorySession {
     constructor(options: RunHistoryChatMemorySessionOptions) {
-        this.sessionId = options.sessionId
-        this.skipSave = options.skipSave ?? false
-        this.filterIncompleteToolCalls = options.filterIncompleteToolCalls ?? false
-    }
-
-    async getSessionId(): Promise<string> {
-        return this.sessionId
-    }
-
-    async getItems(limit?: number): Promise<AgentInputItem[]> {
-        const primsa = db()
-        const items = await primsa.run_history_raw_events.findMany({
-            where: {
-                run_history_record_id: this.sessionId
-            },
-            orderBy: [
-                { sequence_order: "asc" },
-                { created_at: "asc" } // Fallback for items without sequence_order (backward compatibility)
-            ],
-            take: limit,
-            select: {
-                raw_event_json: true
-            }
-        })
-        const rawEvents = items.map(item => item.raw_event_json as AgentInputItem)
-        const filteredEvents = filterReasoningItems(rawEvents)
-        const deduplicatedEvents = deduplicateItemsById(filteredEvents)
-        const filteredToolCallEvents = this.filterIncompleteToolCalls ? filterToolCallEvents(deduplicatedEvents) : deduplicatedEvents
-        return filteredToolCallEvents.map(cloneAgentItem)
-    }
-
-    async addItems(items: AgentInputItem[]): Promise<void> {
-        await this.addItemsWithEventKeys(items)
-    }
-
-    async addItemsWithEventKeys(items: AgentInputItem[]): Promise<void> {
-        if (this.skipSave) return
-        if (items.length === 0) return
-        const prisma = db()
-
-        let nextSequenceOrder = await this.getNextSequenceOrder()
-        for (const item of items) {
-            const eventKey = buildAgentInputItemEventKey(item)
-            await prisma.run_history_raw_events.upsert({
-                where: {
-                    run_history_record_id_event_key: {
-                        run_history_record_id: this.sessionId,
-                        event_key: eventKey
-                    }
-                },
-                update: {
-                    raw_event_json: item as any
-                },
-                create: {
-                    run_history_record_id: this.sessionId,
-                    event_key: eventKey,
-                    raw_event_json: item as any,
-                    sequence_order: nextSequenceOrder++
-                }
-            })
-        }
-    }
-
-    async upsertItemByEventKey(item: AgentInputItem, eventKey: string): Promise<void> {
-        if (this.skipSave) return
-        const prisma = db()
-
-        await prisma.run_history_raw_events.upsert({
-            where: {
-                run_history_record_id_event_key: {
-                    run_history_record_id: this.sessionId,
-                    event_key: eventKey
-                }
-            },
-            update: {
-                raw_event_json: item as any
-            },
-            create: {
-                run_history_record_id: this.sessionId,
-                event_key: eventKey,
-                raw_event_json: item as any,
-                sequence_order: await this.getNextSequenceOrder()
-            }
-        })
-    }
-
-    async ingestStreamEvent(event: RunStreamEvent): Promise<void> {
-        if (this.skipSave) return
-        await ingestStreamEventToSession(event, {
-            completedAssistantTextByItemId: this.completedAssistantTextByItemId,
-            pendingFunctionCallsByCallId: this.pendingFunctionCallsByCallId,
-            completedFunctionCallIds: this.completedFunctionCallIds,
-            upsertItemByEventKey: (item, eventKey) => this.upsertItemByEventKey(item, eventKey)
-        })
-    }
-
-    async popItem(): Promise<AgentInputItem | undefined> {
-        if (this.skipSave) return undefined
-        const prisma = db()
-        const lastEvent = await prisma.run_history_raw_events.findFirst({
-            where: {
-                run_history_record_id: this.sessionId
-            },
-            orderBy: [
-                { sequence_order: "desc" },
-                { created_at: "desc" } // Fallback for items without sequence_order (backward compatibility)
-            ]
-        })
-        if (!lastEvent) {
-            return undefined
-        }
-        const rawEvent = lastEvent.raw_event_json as AgentInputItem
-        const cloned = cloneAgentItem(rawEvent)
-        await prisma.run_history_raw_events.delete({
-            where: {
-                id: lastEvent.id
-            }
-        })
-        return cloned
-    }
-
-    async clearSession(): Promise<void> {
-        if (this.skipSave) return
-        const prisma = db()
-        await prisma.run_history_raw_events.deleteMany({
-            where: {
-                run_history_record_id: this.sessionId
-            }
-        })
-    }
-
-    private async getNextSequenceOrder(): Promise<number> {
-        const prisma = db()
-        const maxSequence = await prisma.run_history_raw_events.findFirst({
-            where: {
-                run_history_record_id: this.sessionId
-            },
-            orderBy: {
-                sequence_order: "desc"
-            },
-            select: {
-                sequence_order: true
-            }
-        })
-
-        return (maxSequence?.sequence_order ?? -1) + 1
+        super(options, runHistoryStorageStrategy)
     }
 }
 
@@ -195,161 +328,9 @@ export class RunHistoryChatMemorySession implements Session {
  * Session implementation for general chat sessions (uses chat_raw_events table)
  * For chats not tied to run history records (e.g., Slack threads, direct chats)
  */
-export class ChatMemorySession implements Session {
-    private readonly sessionId: string
-    private readonly skipSave: boolean
-    private readonly filterIncompleteToolCalls: boolean
-    private readonly completedAssistantTextByItemId: CompletedAssistantTextMap = new Map()
-    private readonly pendingFunctionCallsByCallId: PendingFunctionCallsMap = new Map()
-    private readonly completedFunctionCallIds: CompletedFunctionCallIdsSet = new Set()
-
+export class ChatMemorySession extends BaseChatMemorySession {
     constructor(options: ChatMemorySessionOptions) {
-        this.sessionId = options.sessionId
-        this.skipSave = options.skipSave ?? false
-        this.filterIncompleteToolCalls = options.filterIncompleteToolCalls ?? false
-    }
-
-    async getSessionId(): Promise<string> {
-        return this.sessionId
-    }
-
-    async getItems(limit?: number): Promise<AgentInputItem[]> {
-        const prisma = db()
-        const items = await prisma.chat_raw_events.findMany({
-            where: {
-                chat_session_id: this.sessionId
-            },
-            orderBy: [
-                { sequence_order: "asc" },
-                { created_at: "asc" } // Fallback for items without sequence_order (backward compatibility)
-            ],
-            take: limit,
-            select: {
-                raw_event_json: true
-            }
-        })
-        const rawEvents = items.map(item => item.raw_event_json as AgentInputItem)
-        const filteredEvents = filterReasoningItems(rawEvents)
-        const deduplicatedEvents = deduplicateItemsById(filteredEvents)
-        const filteredToolCallEvents = this.filterIncompleteToolCalls ? filterToolCallEvents(deduplicatedEvents) : deduplicatedEvents
-        return filteredToolCallEvents.map(cloneAgentItem)
-    }
-
-    async addItems(items: AgentInputItem[]): Promise<void> {
-        await this.addItemsWithEventKeys(items)
-    }
-
-    async addItemsWithEventKeys(items: AgentInputItem[]): Promise<void> {
-        if (this.skipSave) return
-        if (items.length === 0) return
-        const prisma = db()
-
-        let nextSequenceOrder = await this.getNextSequenceOrder()
-        for (const item of items) {
-            const eventKey = buildAgentInputItemEventKey(item)
-            await prisma.chat_raw_events.upsert({
-                where: {
-                    chat_session_id_event_key: {
-                        chat_session_id: this.sessionId,
-                        event_key: eventKey
-                    }
-                },
-                update: {
-                    raw_event_json: item as any
-                },
-                create: {
-                    chat_session_id: this.sessionId,
-                    event_key: eventKey,
-                    raw_event_json: item as any,
-                    sequence_order: nextSequenceOrder++
-                }
-            })
-        }
-    }
-
-    async upsertItemByEventKey(item: AgentInputItem, eventKey: string): Promise<void> {
-        if (this.skipSave) return
-        const prisma = db()
-
-        await prisma.chat_raw_events.upsert({
-            where: {
-                chat_session_id_event_key: {
-                    chat_session_id: this.sessionId,
-                    event_key: eventKey
-                }
-            },
-            update: {
-                raw_event_json: item as any
-            },
-            create: {
-                chat_session_id: this.sessionId,
-                event_key: eventKey,
-                raw_event_json: item as any,
-                sequence_order: await this.getNextSequenceOrder()
-            }
-        })
-    }
-
-    async ingestStreamEvent(event: RunStreamEvent): Promise<void> {
-        if (this.skipSave) return
-        await ingestStreamEventToSession(event, {
-            completedAssistantTextByItemId: this.completedAssistantTextByItemId,
-            pendingFunctionCallsByCallId: this.pendingFunctionCallsByCallId,
-            completedFunctionCallIds: this.completedFunctionCallIds,
-            upsertItemByEventKey: (item, eventKey) => this.upsertItemByEventKey(item, eventKey)
-        })
-    }
-
-    async popItem(): Promise<AgentInputItem | undefined> {
-        if (this.skipSave) return undefined
-        const prisma = db()
-        const lastEvent = await prisma.chat_raw_events.findFirst({
-            where: {
-                chat_session_id: this.sessionId
-            },
-            orderBy: [
-                { sequence_order: "desc" },
-                { created_at: "desc" } // Fallback for items without sequence_order (backward compatibility)
-            ]
-        })
-        if (!lastEvent) {
-            return undefined
-        }
-        const rawEvent = lastEvent.raw_event_json as AgentInputItem
-        const cloned = cloneAgentItem(rawEvent)
-        await prisma.chat_raw_events.delete({
-            where: {
-                id: lastEvent.id
-            }
-        })
-        return cloned
-    }
-
-    async clearSession(): Promise<void> {
-        if (this.skipSave) return
-        const prisma = db()
-        await prisma.chat_raw_events.deleteMany({
-            where: {
-                chat_session_id: this.sessionId
-            }
-        })
-    }
-
-    private async getNextSequenceOrder(): Promise<number> {
-        const prisma = db()
-        const maxSequence = await prisma.chat_raw_events.findFirst({
-            where: {
-                chat_session_id: this.sessionId
-            },
-            orderBy: {
-                sequence_order: "desc"
-            },
-            select: {
-                sequence_order: true
-            }
-        })
-
-        return (maxSequence?.sequence_order ?? -1) + 1
+        super(options, chatStorageStrategy)
     }
 }
 
