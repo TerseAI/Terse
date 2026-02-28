@@ -6,7 +6,6 @@ import type { RunHistoryModelEvent, RunHistoryModelSocketEvent, TrackingParams }
 import { SocketEvents, SocketRooms } from "../../shared/SocketEvents"
 import { User } from "../../shared/types"
 import { randomString } from "../../utility/strings"
-import { nextRunStreamSequence } from "../streamSequence"
 
 export class StreamEventEmitter {
     private io: Server | null

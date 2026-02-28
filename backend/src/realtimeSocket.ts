@@ -11,7 +11,6 @@ import { DirectiveTask, directiveTaskQueue } from "./agent/DirectiveAgent/Direct
 import { type ClassifiedError, buildRunErrorEvent, classifyAgentError } from "./agent/agentErrorUtils"
 import { listenForRunCancellation, requestRunCancellation } from "./agent/cancellation/RunCancellationTaskQueue"
 import { markRunCancelledAndInvalidate } from "./agent/cancellation/runCancellationEffects"
-import { nextRunStreamSequence } from "./agent/streamSequence"
 import { appendRunHistoryErrorSystemEvent } from "./agent/systemEvents/runErrorSystemEvent"
 import { nodeEnv, optional, urls } from "./config/settings"
 import logger from "./logger"

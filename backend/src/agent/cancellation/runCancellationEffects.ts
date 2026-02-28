@@ -4,7 +4,6 @@ import { type RunHistoryModelEvent, type RunHistoryModelSocketEvent } from "../.
 import { SocketEvents, SocketRooms } from "../../shared/SocketEvents"
 import { randomString } from "../../utility/strings"
 import { markRunCancelled } from "../AgentRunner/runHistory"
-import { nextRunStreamSequence } from "../streamSequence"
 import { createCancelledEvent } from "../streaming"
 import { appendRunHistoryCancelledSystemEvent } from "../systemEvents/cancelledSystemEvent"
 
