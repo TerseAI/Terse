@@ -220,6 +220,14 @@ export const ApiRoutes = {
         }
     },
 
+    SENT_NOTIFICATIONS: {
+        LIST: "/sent-notifications"
+    },
+
+    PENDING_APPROVALS: {
+        LIST: "/pending-approvals"
+    },
+
     // Webhooks routes
     WEBHOOKS: {
         GMAIL: "/webhooks/gmail",

@@ -30,10 +30,12 @@ import { getLinearIntegrations, getLinearTeams, handleLinearWebhook, linearOAuth
 import { createNotificationDestination, deleteNotificationDestination, getNotificationDestinations, updateNotificationDestination } from "./routes/notificationDestinations"
 import { getNotionIntegrations, getNotionResources, notionOAuthCallback } from "./routes/notion"
 import { createOrganization, getCurrentOrganization, getLogoUploadUrl, getLogoUrl, getUserOrganizations, switchOrganization, updateOrganization } from "./routes/organization"
+import { getPendingApprovals } from "./routes/pendingApprovals"
 import { createOrUpdatePosthogIntegration, getPosthogIntegrations, getPosthogProjects } from "./routes/posthog"
 import { refreshAllTokens } from "./routes/refreshTokens"
 import { getAllRunHistory, getChatHistory, getRunHistory, getRunHistoryActions } from "./routes/runHistory"
 import { handleManualTrigger, handleScheduleWebhook } from "./routes/schedule"
+import { getSentNotifications } from "./routes/sentNotifications"
 import { getCurrentSlackIntegration, getSlackChannels, getSlackIntegrations, getSlackUsers, slackOAuthCallback } from "./routes/slack"
 import { getStats } from "./routes/stats"
 import { getPublicTemplates, getTemplates } from "./routes/templates"
@@ -583,6 +585,14 @@ app.put(ApiRoutes.NOTIFICATION_DESTINATIONS.BY_ID.pattern, authMiddleware, async
 
 app.delete(ApiRoutes.NOTIFICATION_DESTINATIONS.BY_ID.pattern, authMiddleware, async (req, res) => {
     deleteNotificationDestination(req, res)
+})
+
+app.get(ApiRoutes.SENT_NOTIFICATIONS.LIST, authMiddleware, async (req, res) => {
+    getSentNotifications(req, res)
+})
+
+app.get(ApiRoutes.PENDING_APPROVALS.LIST, authMiddleware, async (req, res) => {
+    getPendingApprovals(req, res)
 })
 
 // MARK: TOOLS THAT REQUIRE APPROVALS

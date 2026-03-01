@@ -2,6 +2,7 @@ import axios from "axios"
 
 import { POST_LOGIN_REDIRECT_KEY, isSafeRedirectPath } from "../constants/storageKeys"
 import { ApiRoutes } from "../shared/ApiRoutes"
+import { ApprovalRequestFilter, GetPendingApprovalsResponse } from "../shared/ApprovalTypes"
 import {
     AtlassianIntegration,
     AttioIntegration,
@@ -22,6 +23,7 @@ import {
 import { CreateNotificationDestinationRequest, NotificationDestination } from "../shared/Notifications"
 import type { RunHistoryActionWithId, RunHistoryModelEvent } from "../shared/RunHistoryTypes"
 import { GetAllRunHistoryResponse, GetRunHistoryParams, GetRunHistoryResponse } from "../shared/RunHistoryTypes"
+import { GetSentNotificationsResponse } from "../shared/SentNotifications"
 import { GetToolsThatRequireApprovalsRequest, GetToolsThatRequireApprovalsResponse } from "../shared/ToolsTypes"
 import {
     Agent,
@@ -364,6 +366,16 @@ interface BackendService {
      * Gets all notification destinations for the current user
      */
     getNotificationDestinations(): Promise<NotificationDestination[]>
+
+    /**
+     * Gets sent notifications for the current organization
+     */
+    getSentNotifications(params: { page?: number; pageSize?: number }): Promise<GetSentNotificationsResponse>
+
+    /**
+     * Gets pending approval requests for the current organization
+     */
+    getPendingApprovals(params?: { status?: ApprovalRequestFilter }): Promise<GetPendingApprovalsResponse>
 
     /**
      * Creates a new notification destination
@@ -1145,6 +1157,37 @@ export const BackendProvider: BackendService = {
             .then(response => response.data)
             .catch(error => {
                 console.error("Error getting notification destinations:", error)
+                throw error
+            })
+    },
+
+    getSentNotifications: ({ page = 1, pageSize = 12 }) => {
+        const params = new URLSearchParams()
+        params.append("page", page.toString())
+        params.append("pageSize", pageSize.toString())
+
+        return axios
+            .get<GetSentNotificationsResponse>(`${backendBaseUrl}${ApiRoutes.SENT_NOTIFICATIONS.LIST}?${params.toString()}`, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error("Error getting sent notifications:", error)
+                throw error
+            })
+    },
+
+    getPendingApprovals: (params?: { status?: ApprovalRequestFilter }) => {
+        const queryParams = new URLSearchParams()
+        if (params?.status) {
+            queryParams.append("status", params.status)
+        }
+        const queryString = queryParams.toString()
+        const url = `${backendBaseUrl}${ApiRoutes.PENDING_APPROVALS.LIST}${queryString ? `?${queryString}` : ""}`
+
+        return axios
+            .get<GetPendingApprovalsResponse>(url, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error("Error getting pending approvals:", error)
                 throw error
             })
     },

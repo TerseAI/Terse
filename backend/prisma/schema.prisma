@@ -1129,6 +1129,36 @@ model approval_slack_messages {
   @@index([status])
 }
 
+enum SentNotificationEventType {
+  run_notification
+  approval_request
+  run_failure
+}
+
+enum SentNotificationStatus {
+  sent
+  failed
+}
+
+model sent_notifications {
+  id                String                    @id @default(cuid())
+  organization_id   String
+  user_id           String
+  automation_id     String?
+  run_id            String?
+  event_type        SentNotificationEventType
+  destination_type  NotificationDestinationType
+  destination_label String
+  status            SentNotificationStatus
+  error_message     String?
+  agent_name        String?
+  sent_at           DateTime                  @default(now())
+
+  @@index([organization_id, sent_at])
+  @@index([automation_id])
+  @@index([run_id])
+}
+
 model directive_records {
   id                        String   @id @default(cuid())
   automation_id             String

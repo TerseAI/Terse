@@ -11,6 +11,10 @@ export const integrationsKey = (): readonly [string] => ["integrations"]
 
 export const notificationDestinationsKey = (): readonly [string] => ["notificationDestinations"]
 
+export const sentNotificationsKey = (): readonly [string] => ["sentNotifications"]
+
+export const pendingApprovalsKey = (): readonly [string] => ["pendingApprovals"]
+
 export const slackChannelsKey = (integrationId: string | null | undefined): readonly [string, string] | null => {
     if (!integrationId) {
         return null
