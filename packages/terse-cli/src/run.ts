@@ -1,6 +1,7 @@
 import chalk from "chalk"
 import { CreateJobParameters, TerseAgent } from "terse-sdk"
 import { readApiKey } from "./api.js"
+import { assertProjectRoot } from "./assertProjectRoot.js"
 import { loadJob } from "./loadJob.js"
 import { ApiRoutes } from "./shared/ApiRoutes.js"
 import type { SerializedEvent } from "./shared/types.js"
@@ -49,6 +50,8 @@ export async function executeJob(job: CreateJobParameters, event: SerializedEven
 }
 
 export async function run(jobName?: string, eventJson?: string): Promise<void> {
+    assertProjectRoot()
+
     if (!eventJson) {
         console.error(chalk.red("Error: --event <json> is required.\n"))
         console.error(chalk.dim("  Usage: terse run --event '{\"integrationType\":\"...\",\"formattedContent\":\"...\",\"debugLog\":\"...\"}'"))

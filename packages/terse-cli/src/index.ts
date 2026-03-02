@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { Command } from "commander"
+import { deploy } from "./deploy.js"
 import { generate } from "./generate.js"
 import { integrate } from "./integrate.js"
 import { init } from "./init.js"
@@ -51,6 +52,15 @@ program
     .argument("[job-name]", "Name of the job to test (auto-selects if only one exists)")
     .action(async (jobName?: string) => {
         await test(jobName)
+    })
+
+program
+    .command("deploy")
+    .description("Deploy a job to Terse")
+    .argument("[job-name]", "Name of the job to deploy")
+    .option("--all", "Deploy all jobs in the project")
+    .action(async (jobName?: string, opts?: { all?: boolean }) => {
+        await deploy(jobName, opts?.all)
     })
 
 await program.parseAsync()

@@ -25,7 +25,7 @@ export function isUuidV4(s: string): boolean {
     return validateUuid(s) && uuidVersion(s) === 4
 }
 
-async function createTriggerConfig(tx: PrismaTransaction, triggerId: string, config: AgentTrigger, userId: string): Promise<void> {
+export async function createTriggerConfig(tx: PrismaTransaction, triggerId: string, config: AgentTrigger, userId: string): Promise<void> {
     logger.debug("🔵 [TRIGGER CONFIG] config", {
         triggerId,
         config: JSON.stringify(config, null, 2)
@@ -491,10 +491,6 @@ export async function getUserAgents(req: Request, res: Response) {
             skip,
             take
         })
-        if (agents.length > 0 && !agents.some(agent => agent.outputs && agent.outputs.length > 0)) {
-            throw new Error(`Agent outputs not found`)
-        }
-
         // Transform the data to match frontend format
         const response: AgentsResponse = {
             agents: agents.map(agent => transformAgentToFrontendFormat(agent)),
@@ -616,7 +612,7 @@ export async function getUserAgent(req: Request, res: Response) {
             }
         })
 
-        if (!agent || !agent.outputs || agent.outputs.length === 0) {
+        if (!agent) {
             res.status(404).json({ error: "Agent not found" })
             return
         }
@@ -752,10 +748,6 @@ export async function deleteAgent(req: Request, res: Response) {
 
 // Helper function to transform AgentWithRelations to frontend Agent format
 function transformAgentToFrontendFormat(agent: AgentWithRelations & Partial<AgentWithNotificationSettingsRelations>): Agent {
-    if (!agent.outputs || agent.outputs.length === 0) {
-        throw new Error(`Agent outputs not found for agent ${agent.id}`)
-    }
-
     return {
         id: agent.id,
         name: agent.name,
@@ -766,7 +758,7 @@ function transformAgentToFrontendFormat(agent: AgentWithRelations & Partial<Agen
             id: trigger.id,
             config: convertPrismaConfigToConfigInstance(trigger)
         })),
-        outputs: agent.outputs.map(output => ({
+        outputs: (agent.outputs ?? []).map(output => ({
             id: output.id,
             config: convertPrismaOutputConfigToConfigInstance(output)
         })),
@@ -782,7 +774,7 @@ function transformAgentToFrontendFormat(agent: AgentWithRelations & Partial<Agen
     }
 }
 
-async function setupAgentTriggers(agent: AgentWithTriggerRelations): Promise<void> {
+export async function setupAgentTriggers(agent: AgentWithTriggerRelations): Promise<void> {
     for (const trigger of agent.inputs) {
         try {
             // Convert prisma config to shared config instance to get integration type
@@ -816,7 +808,7 @@ async function setupAgentTriggers(agent: AgentWithTriggerRelations): Promise<voi
  * Tears down setup for all triggers in an agent by calling teardownAgentTrigger on each integration.
  * Called before an agent is deleted.
  */
-async function tearDownAgentTriggers(agent: AgentWithTriggerRelations): Promise<void> {
+export async function tearDownAgentTriggers(agent: AgentWithTriggerRelations): Promise<void> {
     for (const trigger of agent.inputs) {
         try {
             // Convert prisma config to shared config instance to get integration type

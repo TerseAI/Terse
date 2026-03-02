@@ -416,14 +416,15 @@ model attio_integrations {
 
 // Automation tables
 model automations {
-  id               String   @id @default(cuid())
+  id               String           @id @default(cuid())
   user_id          String
   organization_id  String
   name             String
-  is_active        Boolean  @default(true)
-  require_approval Boolean  @default(false)
-  created_at       DateTime @default(now())
-  updated_at       DateTime @updatedAt
+  is_active        Boolean          @default(true)
+  require_approval Boolean          @default(false)
+  source           AutomationSource @default(WEB_UI)
+  created_at       DateTime         @default(now())
+  updated_at       DateTime         @updatedAt
 
   user                       users                             @relation(fields: [user_id], references: [id], onDelete: Cascade)
   prompt                     automation_prompts?
@@ -439,15 +440,17 @@ model automations {
   @@index([user_id])
   @@index([organization_id])
   @@index([is_active])
+  @@index([name, organization_id, source])
 }
 
 // Separate table for prompts (future-proof for versioning, templates, etc.)
 model automation_prompts {
-  id            String   @id @default(cuid())
-  automation_id String   @unique
-  content       String   @db.Text
-  created_at    DateTime @default(now())
-  updated_at    DateTime @updatedAt
+  id                  String   @id @default(cuid())
+  automation_id       String   @unique
+  content             String   @db.Text
+  source_code_gcs_key String?
+  created_at          DateTime @default(now())
+  updated_at          DateTime @updatedAt
 
   automation automations @relation(fields: [automation_id], references: [id], onDelete: Cascade)
 }
@@ -887,6 +890,11 @@ enum OutputConfigType {
   LAUNCHDARKLY
   DATADOG
   WORKOS
+}
+
+enum AutomationSource {
+  WEB_UI
+  SDK
 }
 
 enum KnowledgeBaseConfigType {

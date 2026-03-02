@@ -3,6 +3,7 @@ import ora from "ora"
 import { select } from "@inquirer/prompts"
 import { ConfigInstance, IntegrationType } from "terse-sdk"
 import { fetchWithAuth, readApiKey } from "./api.js"
+import { assertProjectRoot } from "./assertProjectRoot.js"
 import { ApiRoutes } from "./shared/ApiRoutes.js"
 import type { SerializedEvent } from "./shared/types.js"
 import { loadJob } from "./loadJob.js"
@@ -10,6 +11,8 @@ import { executeJob } from "./run.js"
 
 
 export async function test(jobName?: string): Promise<void> {
+    assertProjectRoot()
+
     const { job } = await loadJob(jobName)
     console.log(chalk.cyan(`\n  Testing job: ${job.name}\n`))
 

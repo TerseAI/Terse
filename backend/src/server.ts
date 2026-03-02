@@ -38,6 +38,7 @@ import { getAllRunHistory, getChatHistory, getRunHistory, getRunHistoryActions }
 import { handleSampleEvents } from "./routes/sampleEvents"
 import { handleManualTrigger, handleScheduleWebhook } from "./routes/schedule"
 import { handleSdkAgentRun } from "./routes/sdkAgentRun"
+import { handleSdkDeploy } from "./routes/sdkDeploy"
 import { handleSessionEvents } from "./routes/sdkSession"
 import { handleToolDefinitions } from "./routes/sdkToolDefinitions"
 import { handleToolExecute } from "./routes/sdkToolExecute"
@@ -142,7 +143,7 @@ if (slackReceiver?.receiver) {
 }
 
 // Routes that need larger body limits for webhooks with potentially large payloads
-const LARGE_BODY_LIMIT_ROUTES: string[] = [ApiRoutes.GITHUB.UNIFIED_EVENT]
+const LARGE_BODY_LIMIT_ROUTES: string[] = [ApiRoutes.GITHUB.UNIFIED_EVENT, ApiRoutes.SDK.DEPLOY]
 const LARGE_BODY_LIMIT = "10mb"
 const DEFAULT_BODY_LIMIT = "1mb"
 
@@ -647,6 +648,10 @@ app.post(ApiRoutes.SDK.AGENT_RUN, authMiddleware, async (req, res) => {
 
 app.get(ApiRoutes.SDK.SESSION_EVENTS, authMiddleware, async (req, res) => {
     handleSessionEvents(req, res)
+})
+
+app.post(ApiRoutes.SDK.DEPLOY, authMiddleware, async (req, res) => {
+    handleSdkDeploy(req, res)
 })
 
 // MARK: TOOLS THAT REQUIRE APPROVALS

@@ -15,6 +15,7 @@ declare module "@google-cloud/storage" {
         delete(): Promise<unknown[]>
         exists(): Promise<[boolean]>
         getMetadata(): Promise<[FileMetadata]>
+        download(options?: unknown): Promise<[Buffer]>
     }
     export class Bucket {
         file(name: string): File

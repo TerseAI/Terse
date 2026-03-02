@@ -1,27 +1,20 @@
-import fs from "node:fs"
 import path from "node:path"
 import { pathToFileURL } from "node:url"
 import chalk from "chalk"
 import { select } from "@inquirer/prompts"
 import { tsImport } from "tsx/esm/api"
 import { CreateJobParameters } from "terse-sdk"
+import { assertProjectRoot } from "./assertProjectRoot.js"
 
-export async function loadJob(jobName?: string): Promise<{ job: CreateJobParameters }> {
+/**
+ * Imports the user's entry file and returns the full job registry.
+ * Each createJob() call in src/index.ts populates this map.
+ */
+export async function loadJobRegistry(): Promise<Map<string, CreateJobParameters>> {
+    assertProjectRoot()
+
     const cwd = process.cwd()
-
-    // Validate this is a Terse project
-    const pkgPath = path.join(cwd, "package.json")
     const entryPath = path.join(cwd, "src", "index.ts")
-
-    if (!fs.existsSync(pkgPath)) {
-        console.error(chalk.red("Error: No package.json found. Are you in a Terse project directory?"))
-        process.exit(1)
-    }
-
-    if (!fs.existsSync(entryPath)) {
-        console.error(chalk.red("Error: No src/index.ts found. Are you in a Terse project directory?"))
-        process.exit(1)
-    }
 
     // Import the user's entry file via tsx — this triggers createJob() calls which
     // populate the global job registry on globalThis.__terse_jobRegistry.
@@ -59,6 +52,12 @@ export async function loadJob(jobName?: string): Promise<{ job: CreateJobParamet
         console.error(chalk.red("No jobs found. Make sure your src/index.ts calls client.createJob()."))
         process.exit(1)
     }
+
+    return registry
+}
+
+export async function loadJob(jobName?: string): Promise<{ job: CreateJobParameters }> {
+    const registry = await loadJobRegistry()
 
     // Resolve which job to run
     let resolvedName: string

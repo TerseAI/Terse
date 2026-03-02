@@ -3,6 +3,7 @@ import path from "node:path"
 import chalk from "chalk"
 import ora from "ora"
 
+import { assertProjectRoot } from "./assertProjectRoot.js"
 import {
     generateCode,
     type CodegenInput,
@@ -38,6 +39,8 @@ import { fetchWithAuth, readApiKey } from "./api.js"
 // ── Main ──────────────────────────────────────────────────────────────
 
 export async function generate(): Promise<void> {
+    assertProjectRoot()
+
     const totalStart = performance.now()
 
     // 1. Read API key
