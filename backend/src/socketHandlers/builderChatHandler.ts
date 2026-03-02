@@ -5,6 +5,7 @@ import WebChatInterface from "../agent/ChatAgent/ChatInterfaces/WebChatInterface
 import { SurveyAnswerTask } from "../agent/ChatAgent/SurveyAnswerTask"
 import { surveyAnswerTaskQueue } from "../agent/ChatAgent/SurveyAnswerTaskQueue"
 import { buildRunErrorEvent, classifyAgentError } from "../agent/agentErrorUtils"
+import { listenForBuilderChatCancellation, requestBuilderChatCancellation } from "../agent/cancellation/BuilderChatCancellationTaskQueue"
 import { createCancelledEvent } from "../agent/streaming"
 import { appendBuilderChatCancelledSystemEvent } from "../agent/systemEvents/cancelledSystemEvent"
 import { appendBuilderChatErrorSystemEvent } from "../agent/systemEvents/runErrorSystemEvent"
@@ -12,8 +13,6 @@ import logger from "../logger"
 import { SendModelRequest } from "../shared/ModelEvents"
 import { SocketEvents } from "../shared/SocketEvents"
 import { getUserForOrg } from "../utility/workos"
-
-import { listenForBuilderChatCancellation, requestBuilderChatCancellation } from "../agent/cancellation/BuilderChatCancellationTaskQueue"
 
 import { CancelAckResponse, USER_CANCELLED_REASON } from "./activeExecution"
 
