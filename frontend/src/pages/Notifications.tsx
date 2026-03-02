@@ -131,9 +131,7 @@ function NotificationsPage() {
                         <Card className="gap-0 overflow-hidden border-border/60 bg-card/35 py-0 backdrop-blur-sm">
                             <CardContent className="p-4">
                                 {isDestinationsValidating && <LoadingNotificationChannelList />}
-                                {!isDestinationsValidating && (isDestinationsError || notificationDestinations === undefined) && (
-                                    <ErrorNotificationChannelList onRetry={() => mutateDestinations()} />
-                                )}
+                                {!isDestinationsValidating && (isDestinationsError || notificationDestinations === undefined) && <ErrorNotificationChannelList onRetry={() => mutateDestinations()} />}
                                 {!isDestinationsValidating && !isDestinationsError && notificationDestinations !== undefined && (
                                     <NotificationChannelList notificationDestinations={notificationDestinations} />
                                 )}
@@ -329,6 +327,8 @@ function formatEventType(eventType: SentNotificationEventType): string {
             return "Approval request"
         case SentNotificationEventType.RUN_FAILURE:
             return "Run failure"
+        case SentNotificationEventType.WEEKLY_REVIEW:
+            return "Weekly agent review"
         default:
             throw eventType satisfies never
     }

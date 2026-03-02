@@ -189,6 +189,11 @@ export const agentDetailKey = (id: string | null): readonly [string, { id: strin
     return ["agent", { id }]
 }
 
+export const agentImprovementsKey = (agentId: string | null): readonly [string, { agentId: string }] | null => {
+    if (!agentId) return null
+    return ["agentImprovements", { agentId }]
+}
+
 export const builderChatHistoryKey = (sessionId: string | null | undefined): readonly [string, string] | null => {
     if (!sessionId) return null
     return ["builderChatHistory", sessionId] as const

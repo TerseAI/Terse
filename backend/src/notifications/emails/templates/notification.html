@@ -37,12 +37,6 @@
                 text-align: left;
             }
 
-            .brand {
-                margin: 0 0 12px;
-                line-height: 1;
-                text-align: left;
-            }
-
             .logo {
                 width: 45px;
                 height: 45px;
@@ -148,9 +142,7 @@
                     <table role="presentation" cellpadding="0" cellspacing="0" class="card">
                         <tr>
                             <td class="header">
-                                <p class="brand">
-                                    <img src="{{#if logoSrc}}{{logoSrc}}{{else}}https://app.useterse.ai/terse.png{{/if}}" width="45" height="45" alt="Terse" class="logo" style="display: block; margin: 0; width: 45px; height: 45px;" />
-                                </p>
+                                <img src="{{#if logoSrc}}{{logoSrc}}{{else}}https://app.useterse.ai/terse.png{{/if}}" width="45" height="45" alt="Terse" class="logo" style="display: block; margin: 0 0 12px; width: 45px; height: 45px;" />
                                 <h1 class="title">Notification</h1>
                                 <p class="subtitle">A quick update from your agent.</p>
                             </td>

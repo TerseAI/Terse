@@ -1,7 +1,8 @@
 export enum SentNotificationEventType {
     RUN_NOTIFICATION = "run_notification",
     APPROVAL_REQUEST = "approval_request",
-    RUN_FAILURE = "run_failure"
+    RUN_FAILURE = "run_failure",
+    WEEKLY_REVIEW = "weekly_review"
 }
 
 export enum SentNotificationStatus {

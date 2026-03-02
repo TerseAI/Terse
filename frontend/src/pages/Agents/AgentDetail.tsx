@@ -2,7 +2,7 @@ import { useCallback, useEffect, useId, useRef, useState } from "react"
 import { useParams, useSearchParams } from "react-router-dom"
 
 import { Tab, TabGroup, TabList } from "@headlessui/react"
-import { Clock, MessageSquare, Settings, X } from "lucide-react"
+import { Clock, Lightbulb, MessageSquare, Settings, X } from "lucide-react"
 
 import BreadCrumb from "../../components/BreadCrumb"
 import { BuilderChat, BuilderChatHandle } from "../../components/chat/BuilderChat"
@@ -21,6 +21,7 @@ import { AgentInputsDonatedState, AgentNameDonatedState, AgentOutputsDonatedStat
 import { toTransientAgentOutput, toTransientAgentTrigger } from "../../utility/AgentUtils"
 
 import AgentRunHistoryTab from "./tabs/AgentRunHistoryTab"
+import AgentImprovementsTab from "./tabs/AgentImprovementsTab"
 import AgentSetupTab, { AgentSetupTabProps } from "./tabs/AgentSetupTab"
 
 const CHAT_PANEL_WIDTH_MIN = 0.2
@@ -28,7 +29,7 @@ const CHAT_PANEL_WIDTH_MAX = 0.6
 const CHAT_PANEL_WIDTH_DEFAULT = 0.3
 const CHAT_PANE_TRANSITION_MS = 200
 const CHAT_CONTENT_FADE_MS = 150
-const AGENT_DETAIL_TABS = ["setup", "history"] as const
+const AGENT_DETAIL_TABS = ["setup", "history", "improvements"] as const
 
 function ChatSidebarTrigger({ className, onClick, isOpen, ...props }: React.ComponentProps<typeof Button> & { isOpen: boolean }) {
     return (
@@ -494,9 +495,25 @@ function AgentDetail() {
                             <Clock className="h-4 w-4" />
                             <span>Activity</span>
                         </Tab>
+                        <Tab
+                            className={({ selected }) =>
+                                `px-3 py-2 text-sm font-medium rounded-t-md border-b-2 -mb-px inline-flex items-center gap-2 ${selected ? "text-foreground border-primary" : "text-muted-foreground border-transparent hover:text-foreground"}`
+                            }
+                        >
+                            <Lightbulb className="h-4 w-4" />
+                            <span>Improvements</span>
+                        </Tab>
                     </TabList>
                 </TabGroup>
-                <div className="min-w-0">{selectedIndex === 0 ? <AgentSetupTab {...agentProps} /> : <AgentRunHistoryTab agentId={agentId} onTriggerNow={handleTriggerNow} />}</div>
+                <div className="min-w-0">
+                    {selectedIndex === 0 ? (
+                        <AgentSetupTab {...agentProps} />
+                    ) : selectedIndex === 1 ? (
+                        <AgentRunHistoryTab agentId={agentId} onTriggerNow={handleTriggerNow} />
+                    ) : (
+                        <AgentImprovementsTab agentId={agentId} builderChatRef={builderChatRef} setBuilderChatOpen={setBuilderChatOpen} builderChatOpen={builderChatOpen} />
+                    )}
+                </div>
             </div>
             {isMobile ? (
                 <Sheet open={builderChatOpen} onOpenChange={setBuilderChatOpen}>

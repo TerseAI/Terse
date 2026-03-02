@@ -3,7 +3,7 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Terse Run Error</title>
+        <title>Weekly Agent Review</title>
         <style>
             body {
                 margin: 0;
@@ -63,33 +63,17 @@
                 padding: 20px 24px 24px;
             }
 
-            .meta {
-                margin: 0;
+            .agent-block {
+                border: 1px solid #e4e4e7;
+                border-radius: 10px;
+                padding: 14px;
             }
 
-            .meta + .meta {
-                margin-top: 14px;
+            .agent-block + .agent-block {
+                margin-top: 12px;
             }
 
-            .meta + .error-block {
-                margin-top: 14px;
-            }
-
-            .meta + .button {
-                margin-top: 14px;
-            }
-
-            .label {
-                margin: 0 0 6px;
-                font-size: 11px;
-                line-height: 1;
-                font-weight: 600;
-                letter-spacing: 0.06em;
-                text-transform: uppercase;
-                color: #6b7280;
-            }
-
-            .value {
+            .agent-title {
                 margin: 0;
                 font-size: 15px;
                 line-height: 1.45;
@@ -97,24 +81,29 @@
                 color: #111827;
             }
 
-            .error-block {
-                margin: 0;
-                padding: 12px 14px;
-                border: 1px solid #fecaca;
-                border-radius: 10px;
-                background: #fff1f2;
-            }
-
-            .error-text {
-                margin: 0;
+            .agent-score {
+                margin: 4px 0 10px;
                 font-size: 13px;
-                line-height: 1.5;
-                color: #7f1d1d;
-                word-break: break-word;
+                line-height: 1.45;
+                color: #4b5563;
             }
 
-            .error-block + .button {
-                margin-top: 14px;
+            .improvements {
+                margin: 0 0 12px;
+                padding-left: 18px;
+                color: #374151;
+                font-size: 13px;
+            }
+
+            .improvement-item + .improvement-item {
+                margin-top: 4px;
+            }
+
+            .empty-state {
+                margin: 0;
+                font-size: 14px;
+                line-height: 1.5;
+                color: #6b7280;
             }
 
             .button {
@@ -152,30 +141,26 @@
                         <tr>
                             <td class="header">
                                 <img src="{{#if logoSrc}}{{logoSrc}}{{else}}https://app.useterse.ai/terse.png{{/if}}" width="45" height="45" alt="Terse" class="logo" style="display: block; margin: 0 0 12px; width: 45px; height: 45px;" />
-                                <h1 class="title">Run Failed</h1>
-                                <p class="subtitle">This run ended with an error and needs attention.</p>
+                                <h1 class="title">Weekly Agent Review</h1>
+                                <p class="subtitle">A weekly summary of performance improvements for your active agents.</p>
                             </td>
                         </tr>
                         <tr>
                             <td class="content">
-                                <div class="meta">
-                                    <p class="label">Agent</p>
-                                    <p class="value">{{#if agent.name}}{{agent.name}}{{else}}Unknown agent{{/if}}</p>
+                                {{#each agents}}
+                                <div class="agent-block">
+                                    <p class="agent-title">{{name}}</p>
+                                    <p class="agent-score">Overall score: {{overallScore}}/100</p>
+                                    <ul class="improvements">
+                                        {{#each improvements}}
+                                        <li class="improvement-item">{{title}}</li>
+                                        {{/each}}
+                                    </ul>
+                                    <a href="{{improvementsUrl}}" class="button">View Improvements</a>
                                 </div>
-
-                                <div class="meta">
-                                    <p class="label">Notification For</p>
-                                    <p class="value">A run failed.</p>
-                                </div>
-
-                                <div class="error-block">
-                                    <p class="label" style="color: #7f1d1d; margin-bottom: 6px">Error</p>
-                                    <p class="error-text">{{#if errorMessage}}{{errorMessage}}{{else}}No error details available.{{/if}}</p>
-                                </div>
-
-                                {{#if runUrl}}
-                                <a href="{{runUrl}}" class="button">Open run history</a>
-                                {{/if}}
+                                {{else}}
+                                <p class="empty-state">No new improvements this week.</p>
+                                {{/each}}
                             </td>
                         </tr>
                     </table>

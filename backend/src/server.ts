@@ -23,6 +23,7 @@ import { createOrUpdateDatadogIntegration, getDatadogIndexes, getDatadogIntegrat
 import { figmaOAuthCallback, getFigmaIntegrations, handleFigmaWebhook } from "./routes/figma"
 import { getGithubIntegrations, getGithubRepositoriesForIntegration, getInstallationUrl, githubAppUnifiedEvent } from "./routes/github"
 import { deleteGmailIntegration, getGmailIntegrations, gmailCallback, handleGmailWebhook } from "./routes/gmail"
+import { applyImprovement, dismissImprovement, getAgentImprovements, toggleImprovementsEnabled } from "./routes/improvements"
 import { getActiveIntegrations, getAllIntegrations, getIntegrationInstallationDetails } from "./routes/integrations"
 import { atlassianOAuthCallback, getAtlassianIntegrations, getJiraResources, handleJiraWebhook } from "./routes/jira"
 import { createOrUpdateLaunchDarklyIntegration, getLaunchDarklyEnvironments, getLaunchDarklyIntegrations, getLaunchDarklyProjects } from "./routes/launchdarkly"
@@ -33,6 +34,7 @@ import { createOrganization, getCurrentOrganization, getLogoUploadUrl, getLogoUr
 import { getPendingApprovals } from "./routes/pendingApprovals"
 import { createOrUpdatePosthogIntegration, getPosthogIntegrations, getPosthogProjects } from "./routes/posthog"
 import { refreshAllTokens } from "./routes/refreshTokens"
+import { reviewAllAgents } from "./routes/reviewAgents"
 import { getAllRunHistory, getChatHistory, getRunHistory, getRunHistoryActions } from "./routes/runHistory"
 import { handleManualTrigger, handleScheduleWebhook } from "./routes/schedule"
 import { getSentNotifications } from "./routes/sentNotifications"
@@ -343,6 +345,10 @@ app.post(ApiRoutes.REFRESH_TOKENS, async (req, res) => {
     refreshAllTokens(req, res)
 })
 
+app.post(ApiRoutes.REVIEW_AGENTS, async (req, res) => {
+    reviewAllAgents(req, res)
+})
+
 // MARK: NOTION
 
 app.get(ApiRoutes.NOTION.INTEGRATIONS, authMiddleware, async (req, res) => {
@@ -543,6 +549,24 @@ app.patch(ApiRoutes.AGENTS.BY_ID.pattern, authMiddleware, async (req, res) => {
 
 app.delete(ApiRoutes.AGENTS.BY_ID.pattern, authMiddleware, async (req, res) => {
     deleteAgent(req, res)
+})
+
+// MARK: IMPROVEMENTS
+
+app.get(ApiRoutes.IMPROVEMENTS.BY_AGENT_ID.pattern, authMiddleware, async (req, res) => {
+    getAgentImprovements(req, res)
+})
+
+app.post(ApiRoutes.IMPROVEMENTS.APPLY.pattern, authMiddleware, async (req, res) => {
+    applyImprovement(req, res)
+})
+
+app.post(ApiRoutes.IMPROVEMENTS.DISMISS.pattern, authMiddleware, async (req, res) => {
+    dismissImprovement(req, res)
+})
+
+app.patch(ApiRoutes.IMPROVEMENTS.TOGGLE_ENABLED.pattern, authMiddleware, async (req, res) => {
+    toggleImprovementsEnabled(req, res)
 })
 
 // MARK: TEMPLATES

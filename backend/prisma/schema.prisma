@@ -420,6 +420,7 @@ model automations {
   organization_id  String
   name             String
   is_active        Boolean  @default(true)
+  improvements_enabled Boolean @default(true)
   require_approval Boolean  @default(false)
   created_at       DateTime @default(now())
   updated_at       DateTime @updatedAt
@@ -434,6 +435,8 @@ model automations {
   output_change_attributions output_change_attributions[]
   knowledge_bases            automation_knowledge_bases[]
   tool_approvals             automation_tool_approvals[]
+  agent_reviews              agent_reviews[]
+  agent_improvements         agent_improvements[]
 
   @@index([user_id])
   @@index([organization_id])
@@ -1133,6 +1136,7 @@ enum SentNotificationEventType {
   run_notification
   approval_request
   run_failure
+  weekly_review
 }
 
 enum SentNotificationStatus {
@@ -1140,8 +1144,14 @@ enum SentNotificationStatus {
   failed
 }
 
+enum AgentImprovementStatus {
+  PENDING
+  APPLIED
+  DISMISSED
+}
+
 model sent_notifications {
-  id                String                    @id @default(cuid())
+  id                String                      @id @default(cuid())
   organization_id   String
   user_id           String
   automation_id     String?
@@ -1152,11 +1162,57 @@ model sent_notifications {
   status            SentNotificationStatus
   error_message     String?
   agent_name        String?
-  sent_at           DateTime                  @default(now())
+  sent_at           DateTime                    @default(now())
 
   @@index([organization_id, sent_at])
   @@index([automation_id])
   @@index([run_id])
+}
+
+model agent_reviews {
+  id                  String   @id @default(cuid())
+  automation_id       String
+  organization_id     String
+  score_task_quality  Int
+  score_consistency   Int
+  score_efficiency    Int
+  overall_score       Int
+  summary             String   @db.Text
+  runs_analyzed       Int
+  review_period_start DateTime
+  review_period_end   DateTime
+  created_at          DateTime @default(now())
+
+  automation   automations          @relation(fields: [automation_id], references: [id], onDelete: Cascade)
+  improvements agent_improvements[]
+
+  @@index([automation_id])
+  @@index([organization_id])
+  @@index([created_at])
+}
+
+model agent_improvements {
+  id             String                 @id @default(cuid())
+  review_id      String
+  automation_id  String
+  title          String
+  description    String                 @db.Text
+  target_area    String
+  confidence     Float
+  status         AgentImprovementStatus @default(PENDING)
+  applied_prompt String?                @db.Text
+  applied_at     DateTime?
+  dismissed_at   DateTime?
+  created_at     DateTime               @default(now())
+  updated_at     DateTime               @updatedAt
+
+  review     agent_reviews @relation(fields: [review_id], references: [id], onDelete: Cascade)
+  automation automations   @relation(fields: [automation_id], references: [id], onDelete: Cascade)
+
+  @@index([automation_id])
+  @@index([review_id])
+  @@index([status])
+  @@index([automation_id, title])
 }
 
 model directive_records {

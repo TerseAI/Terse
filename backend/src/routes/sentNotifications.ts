@@ -14,6 +14,8 @@ function convertPrismaEventTypeToShared(value: PrismaSentNotificationEventType):
             return SentNotificationEventType.APPROVAL_REQUEST
         case PrismaSentNotificationEventType.run_failure:
             return SentNotificationEventType.RUN_FAILURE
+        case PrismaSentNotificationEventType.weekly_review:
+            return SentNotificationEventType.WEEKLY_REVIEW
         default:
             throw value satisfies never
     }

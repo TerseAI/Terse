@@ -13,6 +13,11 @@ import ChatInterface from "./ChatInterfaces/ChatInterface"
 
 const CHAT_AGENT_MAX_TURNS = 50
 
+type ChatAgentOptions = {
+    skipSave?: boolean
+    readOnly?: boolean
+}
+
 class ChatAgent {
     private memorySession: ChatMemorySession | null = null
 
@@ -20,7 +25,8 @@ class ChatAgent {
         private readonly chatInterface: ChatInterface,
         private readonly sessionId: string, // This is the external_id (e.g., Slack thread timestamp)
         private readonly user: User,
-        private readonly uiState?: string | null // UI context from the web interface
+        private readonly uiState?: string | null, // UI context from the web interface
+        private readonly options: ChatAgentOptions = {}
     ) {}
 
     private async getMemorySession(): Promise<ChatMemorySession> {
@@ -30,7 +36,8 @@ class ChatAgent {
 
         // Create the memory session
         this.memorySession = new ChatMemorySession({
-            sessionId: this.sessionId
+            sessionId: this.sessionId,
+            skipSave: this.options.skipSave
         })
 
         return this.memorySession
@@ -55,7 +62,7 @@ class ChatAgent {
             name: "Terse Automation Assistant",
             instructions: await buildChatAgentSystemPrompt(this.user.id, this.user.organizationId, userTimezone, this.uiState),
             model: "gpt-5.2",
-            tools: buildChatAgentTools(this.chatInterface),
+            tools: this.options.readOnly ? [] : buildChatAgentTools(this.chatInterface),
             modelSettings: builderProviderDataModelSettings(runConfig)
         })
 

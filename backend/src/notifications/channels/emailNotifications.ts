@@ -85,3 +85,23 @@ export async function sendEmailRunFailure(notificationDestination: UserNotificat
         attachments: branding.attachments
     })
 }
+
+export async function sendWeeklyReviewEmail(
+    emailAddress: string,
+    agents: Array<{
+        name: string
+        overallScore: number
+        improvements: Array<{ title: string }>
+        improvementsUrl: string
+    }>
+): Promise<void> {
+    const branding = await getEmailBranding()
+
+    await resend.emails.send({
+        from: settings.resend.fromEmail || "",
+        to: emailAddress,
+        subject: "Weekly Agent Review",
+        html: await loadTemplate("weeklyReview.html", { agents, logoSrc: branding.logoSrc }),
+        attachments: branding.attachments
+    })
+}

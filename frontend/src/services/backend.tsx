@@ -27,12 +27,15 @@ import { GetSentNotificationsResponse } from "../shared/SentNotifications"
 import { GetToolsThatRequireApprovalsRequest, GetToolsThatRequireApprovalsResponse } from "../shared/ToolsTypes"
 import {
     Agent,
+    ApplyImprovementResponse,
     AgentTemplate,
     AgentUpdate,
     AgentsResponse,
     AttioObject,
     ConfluenceResourcesResponse,
     DatadogIndexesResponse,
+    DismissImprovementResponse,
+    GetAgentImprovementsResponse,
     GetGithubRepositoriesForIntegrationResponse,
     JiraCredentialsValidationResponse,
     JiraResourcesResponse,
@@ -46,7 +49,8 @@ import {
     SlackChannelsResponse,
     SlackUsersResponse,
     StatsInterval,
-    StatsResponse
+    StatsResponse,
+    ToggleImprovementsEnabledResponse
 } from "../shared/types"
 import { User } from "../types/User"
 import { deserializeConfig } from "../utility/ConfigUtils"
@@ -321,6 +325,26 @@ interface BackendService {
      * Gets a single agent by ID
      */
     getAgentById(id: string): Promise<Agent>
+
+    /**
+     * Gets the latest review and improvements for an agent
+     */
+    getAgentImprovements(agentId: string): Promise<GetAgentImprovementsResponse>
+
+    /**
+     * Marks a pending improvement as applied and returns the prefill prompt
+     */
+    applyImprovement(agentId: string, improvementId: string): Promise<ApplyImprovementResponse>
+
+    /**
+     * Marks a pending improvement as dismissed
+     */
+    dismissImprovement(agentId: string, improvementId: string): Promise<DismissImprovementResponse>
+
+    /**
+     * Toggles whether weekly improvements are enabled for an agent
+     */
+    toggleImprovementsEnabled(agentId: string, enabled: boolean): Promise<ToggleImprovementsEnabledResponse>
 
     /**
      * Creates a new agent
@@ -1046,6 +1070,46 @@ export const BackendProvider: BackendService = {
             .then(response => response.data)
             .catch(error => {
                 console.error("Error getting agent:", error)
+                throw error
+            })
+    },
+
+    getAgentImprovements: (agentId: string) => {
+        return axios
+            .get<GetAgentImprovementsResponse>(`${backendBaseUrl}${ApiRoutes.IMPROVEMENTS.BY_AGENT_ID.build(agentId)}`, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error("Error getting agent improvements:", error)
+                throw error
+            })
+    },
+
+    applyImprovement: (agentId: string, improvementId: string) => {
+        return axios
+            .post<ApplyImprovementResponse>(`${backendBaseUrl}${ApiRoutes.IMPROVEMENTS.APPLY.build(agentId, improvementId)}`, {}, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error("Error applying improvement:", error)
+                throw error
+            })
+    },
+
+    dismissImprovement: (agentId: string, improvementId: string) => {
+        return axios
+            .post<DismissImprovementResponse>(`${backendBaseUrl}${ApiRoutes.IMPROVEMENTS.DISMISS.build(agentId, improvementId)}`, {}, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error("Error dismissing improvement:", error)
+                throw error
+            })
+    },
+
+    toggleImprovementsEnabled: (agentId: string, enabled: boolean) => {
+        return axios
+            .patch<ToggleImprovementsEnabledResponse>(`${backendBaseUrl}${ApiRoutes.IMPROVEMENTS.TOGGLE_ENABLED.build(agentId)}`, { enabled }, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error("Error toggling improvements setting:", error)
                 throw error
             })
     },
