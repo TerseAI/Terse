@@ -1,12 +1,11 @@
 import { Tool } from "@openai/agents"
 import { OutputConfigType } from "@prisma/client"
 
-import { buildDummyOutputConfig } from "../../buildDummyConfigForCapability"
 import { type CapabilityDescription, CapabilityRole, extractToolMetadata, getConfigMetadata } from "../../capabilityHelpers"
 import { validatePosthogProjectExists } from "../../integrations/PosthogIntegration"
 import { PosthogConfig } from "../../shared/Configs"
 import { IntegrationType } from "../../shared/Integrations"
-import { AgentOutputWithConfigs, PrismaTransaction } from "../../types/prisma"
+import { PrismaTransaction } from "../../types/prisma"
 import { PosthogConfigSchema, stripConfigForValidation } from "../../utility/configSchemas"
 import { convertOutputConfigTypeToConfigType } from "../../utility/typeConverters"
 import { Output, ToolboxEntry } from "../abstract/Output"
@@ -50,14 +49,8 @@ export class PosthogSkillOutput extends Output<PosthogConfig> {
         }
     }
 
-    protected getDummyConfigForCapability(): AgentOutputWithConfigs {
-        return buildDummyOutputConfig("example", {
-            config_type: OutputConfigType.POSTHOG,
-            posthog_config: {
-                project_id: "example-project",
-                project_name: "Example Project"
-            }
-        })
+    protected getDummyConfigForCapability(): PosthogConfig {
+        return new PosthogConfig("example", "example-project", "Example Project")
     }
 
     async validateConfig(output: PosthogConfig, _userId: string): Promise<void> {
@@ -75,7 +68,7 @@ export class PosthogSkillOutput extends Output<PosthogConfig> {
         })
     }
 
-    protected getSystemInstructionsForConfigs(configs: AgentOutputWithConfigs[]): string {
+    protected getSystemInstructionsForConfigs(configs: PosthogConfig[]): string {
         if (configs.length === 0) {
             throw new Error("No PostHog skill configs provided")
         }
@@ -85,10 +78,7 @@ export class PosthogSkillOutput extends Output<PosthogConfig> {
         sections.push("Available configurations:")
 
         for (const config of configs) {
-            if (!config.posthog_config) {
-                throw new Error("PostHog config not found")
-            }
-            sections.push(`  • Integration ID: ${config.integration_id} - Project Name: ${config.posthog_config.project_name || "N/A"}, Project ID: ${config.posthog_config.project_id || "N/A"}`)
+            sections.push(`  • Integration ID: ${config.integrationId} - Project Name: ${config.projectName || "N/A"}, Project ID: ${config.projectId || "N/A"}`)
         }
 
         sections.push("\nWhen calling PostHog tools, include integrationId and projectId from a configured entry.")

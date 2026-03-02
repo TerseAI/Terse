@@ -1,12 +1,11 @@
 import { Tool } from "@openai/agents"
 import { OutputConfigType } from "@prisma/client"
 
-import { buildDummyOutputConfig } from "../../buildDummyConfigForCapability"
 import { type CapabilityDescription, CapabilityRole, extractToolMetadata, getConfigMetadata } from "../../capabilityHelpers"
 import { getSlackAccessTokenOrThrow, validateSlackChannelsExist, validateSlackUserIds } from "../../integrations/SlackIntegration"
 import { SlackOutputConfig } from "../../shared/Configs"
 import { IntegrationType } from "../../shared/Integrations"
-import { AgentOutputWithConfigs, PrismaTransaction } from "../../types/prisma"
+import { PrismaTransaction } from "../../types/prisma"
 import { SlackOutputConfigSchema, stripConfigForValidation } from "../../utility/configSchemas"
 import { convertOutputConfigTypeToConfigType } from "../../utility/typeConverters"
 import { Output, ToolboxEntry } from "../abstract/Output"
@@ -51,15 +50,8 @@ export class SlackOutput extends Output<SlackOutputConfig> {
         }
     }
 
-    protected getDummyConfigForCapability(): AgentOutputWithConfigs {
-        return buildDummyOutputConfig("example", {
-            config_type: OutputConfigType.SLACK_CHANNEL,
-            slack_config: {
-                channel_id: "C123",
-                channel_name: "Example Channel",
-                user_ids: []
-            }
-        })
+    protected getDummyConfigForCapability(): SlackOutputConfig {
+        return new SlackOutputConfig("example", "C123", "Example Channel", [])
     }
 
     async validateConfig(output: SlackOutputConfig, _userId: string): Promise<void> {
@@ -87,27 +79,26 @@ export class SlackOutput extends Output<SlackOutputConfig> {
         })
     }
 
-    protected getSystemInstructionsForConfigs(configs: AgentOutputWithConfigs[]): string {
+    protected getSystemInstructionsForConfigs(configs: SlackOutputConfig[]): string {
         if (configs.length === 0) {
             throw new Error("No Slack configs provided")
         }
 
         const configList: string[] = []
         for (const config of configs) {
-            if (!config.slack_config) throw new Error("Slack config not found")
-            const channelId = config.slack_config.channel_id
-            const channelName = config.slack_config.channel_name
-            const userIds = config.slack_config.user_ids ?? []
-            const listensToUserDms = config.slack_config.listen_to_user_dms === true
+            const channelId = config.channelId
+            const channelName = config.channelName
+            const userIds = config.userIds ?? []
+            const listensToUserDms = config.listenToUserDms === true
             if (channelId) {
-                configList.push(`  • Integration ID: ${config.integration_id} - Channel ID: ${channelId}${channelName ? ` (${channelName})` : ""}`)
+                configList.push(`  • Integration ID: ${config.integrationId} - Channel ID: ${channelId}${channelName ? ` (${channelName})` : ""}`)
             }
             if (listensToUserDms && userIds.length === 0) {
-                configList.push(`  • Integration ID: ${config.integration_id} - Direct messages: all users`)
+                configList.push(`  • Integration ID: ${config.integrationId} - Direct messages: all users`)
             } else if (listensToUserDms && userIds.length > 0) {
-                configList.push(`  • Integration ID: ${config.integration_id} - Direct messages (user filter): ${userIds.join(", ")}`)
+                configList.push(`  • Integration ID: ${config.integrationId} - Direct messages (user filter): ${userIds.join(", ")}`)
             } else if (userIds.length > 0) {
-                configList.push(`  • Integration ID: ${config.integration_id} - User IDs for DMs: ${userIds.join(", ")}`)
+                configList.push(`  • Integration ID: ${config.integrationId} - User IDs for DMs: ${userIds.join(", ")}`)
             }
         }
 
