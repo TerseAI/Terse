@@ -217,7 +217,7 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
         })
     }
 
-    const handleToolApprovalResponse = ({ step_id, approved, timestamp }: ToolApprovalResponse) => {
+    const handleToolApprovalResponse = ({ step_id, approved }: ToolApprovalResponse) => {
         if (approved) {
             // Mark as running again and approved
             setTurns(prev => {
