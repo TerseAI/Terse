@@ -242,17 +242,28 @@ const GlowingTextField = forwardRef<GlowingTextFieldHandle, GlowingTextFieldProp
                             <span>to use</span>
                         </div>
                     )}
-                    {/* Send button */}
-                    {hasActionButton && (
+                    {/* Stop button */}
+                    {hasActionButton && showStopButton && (
                         <Button
-                            onClick={showStopButton ? onStop : onSend}
-                            disabled={showStopButton ? isCancelling : disabled}
-                            className={`absolute right-3 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all p-1 ${
-                                !showStopButton && inputValue.trim() ? "" : !showStopButton ? "opacity-50" : ""
-                            } ${isLarge ? "bottom-3" : "top-1/2 -translate-y-1/2"}`}
-                            aria-label={showStopButton ? (isCancelling ? "Stopping generation" : "Stop generation") : "Send message"}
+                            onClick={onStop}
+                            disabled={isCancelling}
+                            className={`absolute right-3 rounded-md border border-foreground/15 hover:bg-foreground/15 disabled:opacity-50 disabled:cursor-not-allowed transition-all p-1 ${isLarge ? "bottom-3" : "top-1/2 -translate-y-1/2"}`}
+                            aria-label={isCancelling ? "Stopping generation" : "Stop generation"}
                         >
-                            {showStopButton ? <CircleStop className="h-5 w-5" /> : <Send className="w-5 h-5" />}
+                            <CircleStop className="h-5 w-5 [&_rect]:fill-current [&_rect]:stroke-none" />
+                        </Button>
+                    )}
+                    {/* Send button */}
+                    {hasActionButton && !showStopButton && (
+                        <Button
+                            onClick={onSend}
+                            disabled={disabled}
+                            className={`absolute right-3 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all p-1 ${
+                                inputValue.trim() ? "" : "opacity-50"
+                            } ${isLarge ? "bottom-3" : "top-1/2 -translate-y-1/2"}`}
+                            aria-label="Send message"
+                        >
+                            <Send className="w-5 h-5" />
                         </Button>
                     )}
                 </div>

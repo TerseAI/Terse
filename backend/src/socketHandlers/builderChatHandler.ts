@@ -13,13 +13,9 @@ import { SendModelRequest } from "../shared/ModelEvents"
 import { SocketEvents } from "../shared/SocketEvents"
 import { getUserForOrg } from "../utility/workos"
 
-import { ActiveExecution, CancelAckResponse, USER_CANCELLED_REASON, cancelActiveExecution, clearActiveExecution, createActiveExecution } from "./activeExecution"
+import { listenForBuilderChatCancellation, requestBuilderChatCancellation } from "../agent/cancellation/BuilderChatCancellationTaskQueue"
 
-const activeBuilderExecutions = new Map<string, ActiveExecution>()
-
-function executionKey(organizationId: string, sessionId: string): string {
-    return `${organizationId}:${sessionId}`
-}
+import { CancelAckResponse, USER_CANCELLED_REASON } from "./activeExecution"
 
 export async function registerBuilderChatHandler(socket: Socket, userId: string, organizationId: string): Promise<void> {
     const user = await getUserForOrg(userId, organizationId)
@@ -72,21 +68,20 @@ export async function registerBuilderChatHandler(socket: Socket, userId: string,
         const timezone = message.timezone
         logger.info(`[builder:chat:message] Processing message`, { sessionId, userId, userMessage, hasUiState: !!uiState, timezone })
 
-        const activeExecution = createActiveExecution()
-        const key = executionKey(organizationId, sessionId)
-        activeBuilderExecutions.set(key, activeExecution)
+        const cancellationController = new AbortController()
+        const cancellationSubscription = listenForBuilderChatCancellation(sessionId, cancellationController)
 
         const webChatInterface = new WebChatInterface(sessionId, userId, socket, organizationId, timezone)
         const chatAgent = new ChatAgent(webChatInterface, sessionId, user, uiState)
 
         try {
-            await chatAgent.run(userMessage, { signal: activeExecution.controller.signal, clientTurnId: message.client_turn_id })
-            if (activeExecution.cancelRequested) {
+            await chatAgent.run(userMessage, { signal: cancellationController.signal, clientTurnId: message.client_turn_id })
+            if (cancellationSubscription.isCancellationRequested()) {
                 await emitAndPersistCancelledEvent(sessionId, USER_CANCELLED_REASON)
                 return
             }
         } catch (error) {
-            if (activeExecution.cancelRequested) {
+            if (cancellationSubscription.isCancellationRequested()) {
                 await emitAndPersistCancelledEvent(sessionId, USER_CANCELLED_REASON)
                 return
             }
@@ -103,7 +98,7 @@ export async function registerBuilderChatHandler(socket: Socket, userId: string,
                 event: buildRunErrorEvent(classified)
             })
         } finally {
-            clearActiveExecution(activeBuilderExecutions, key, activeExecution)
+            cancellationSubscription.unsubscribe()
         }
     })
 
@@ -114,13 +109,7 @@ export async function registerBuilderChatHandler(socket: Socket, userId: string,
             return
         }
 
-        const activeExecution = activeBuilderExecutions.get(executionKey(organizationId, sessionId))
-        if (!activeExecution) {
-            ack?.({ accepted: false, reason: "no_active_run" })
-            return
-        }
-
-        cancelActiveExecution(activeExecution)
+        requestBuilderChatCancellation(sessionId, USER_CANCELLED_REASON)
         ack?.({ accepted: true })
     })
 }
