@@ -1,13 +1,13 @@
 import useSWR from "swr"
 
 import { BackendProvider } from "@/services/backend"
-import type { RunHistoryModelEvent } from "@/shared/RunHistoryTypes"
+import type { RunHistoryModelEvent, RunHistoryStatus } from "@/shared/RunHistoryTypes"
 
 type ChatHistoryResponse = {
     events: Array<RunHistoryModelEvent>
     startTimestamp?: string
     endTimestamp?: string
-    status?: string
+    status?: RunHistoryStatus
 }
 
 export function useChatHistory(runId: string | null | undefined) {

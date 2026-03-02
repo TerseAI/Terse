@@ -29,7 +29,7 @@ export class StreamEventEmitter {
         const runHistoryModelEvent: RunHistoryModelEvent = {
             ...event,
             id: eventId,
-            timestamp
+            timestamp: event.timestamp ?? timestamp
         }
 
         const payload: RunHistoryModelSocketEvent = {

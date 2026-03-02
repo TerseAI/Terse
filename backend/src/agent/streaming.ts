@@ -2,7 +2,7 @@ import { Agent, FunctionCallResultItem, RunStreamEvent, RunToolCallOutputItem, S
 
 import logger from "../logger"
 import { IntegrationType } from "../shared/Integrations"
-import { ChangedItem, ChatSnippetPayload, ModelEvent, ToolCallExecutionStatus } from "../shared/ModelEvents"
+import { ChangedItem, type ChatSnippet, ModelEvent, ToolCallExecutionStatus } from "../shared/ModelEvents"
 import { RunHistoryAction } from "../shared/RunHistoryTypes"
 import { ErrorContext } from "../tools/toolUtils"
 import { Session } from "../types/session"
@@ -16,11 +16,24 @@ export async function* transformAgentStreamToModelEvents<T extends Session>(
         toolToIntegrationMap?: Map<string, string>
         onToolCall?: (stepId: string, toolName: string) => void
         onToolCallComplete?: ToolCallCompleteHandler
+        onRawStreamEvent?: (event: RunStreamEvent) => Promise<void> | void
     } = {}
 ): AsyncGenerator<ModelEvent, void, unknown> {
-    const { toolToIntegrationMap, onToolCall, onToolCallComplete } = options
+    const { toolToIntegrationMap, onToolCall, onToolCallComplete, onRawStreamEvent } = options
+    const textDeltaIndexByStepId = new Map<string, number>()
 
     for await (const event of result as AsyncIterable<RunStreamEvent>) {
+        if (onRawStreamEvent) {
+            try {
+                await onRawStreamEvent(event)
+            } catch (error) {
+                logger.warn("Failed to persist raw stream event", {
+                    error,
+                    eventType: event.type
+                })
+            }
+        }
+
         // Try Thinking (reasoning start) - check early so users see activity immediately
         const thinkingEvent = tryExtractThinking(event)
         if (thinkingEvent) {
@@ -29,7 +42,7 @@ export async function* transformAgentStreamToModelEvents<T extends Session>(
         }
 
         // Try TextDelta
-        const textDelta = tryExtractTextDelta(event)
+        const textDelta = tryExtractTextDelta(event, textDeltaIndexByStepId)
         if (textDelta) {
             yield textDelta
             continue
@@ -57,6 +70,7 @@ export async function* transformAgentStreamToModelEvents<T extends Session>(
                 for (const snippet of toolCompleteData.snippets) {
                     yield {
                         type: "Snippet",
+                        timestamp: Date.now(),
                         snippet
                     }
                 }
@@ -77,13 +91,14 @@ export function tryExtractThinking(event: RunStreamEvent): ModelEvent | null {
         const item = (event as any).data.event.item
         return {
             type: "Thinking",
+            timestamp: Date.now(),
             step_id: item.id || "unknown"
         }
     }
     return null
 }
 
-export function tryExtractTextDelta(event: RunStreamEvent): ModelEvent | null {
+export function tryExtractTextDelta(event: RunStreamEvent, deltaIndexByStepId?: Map<string, number>): ModelEvent | null {
     // Check for the nested OpenAI SDK event structure
     if (
         event.type === "raw_model_stream_event" &&
@@ -92,10 +107,17 @@ export function tryExtractTextDelta(event: RunStreamEvent): ModelEvent | null {
         typeof (event as any).data?.event?.delta === "string"
     ) {
         const eventData = (event as any).data.event
+        const stepId = eventData.item_id || "unknown"
+        const deltaIndex = deltaIndexByStepId ? (deltaIndexByStepId.get(stepId) ?? 0) : undefined
+        if (deltaIndexByStepId) {
+            deltaIndexByStepId.set(stepId, (deltaIndex ?? 0) + 1)
+        }
         return {
             type: "TextDelta",
+            timestamp: Date.now(),
             delta: eventData.delta,
-            step_id: eventData.item_id || "unknown"
+            step_id: stepId,
+            ...(typeof deltaIndex === "number" ? { delta_index: deltaIndex } : {})
         }
     }
     return null
@@ -112,6 +134,7 @@ export function tryExtractToolCallGenerating(event: RunStreamEvent): ModelEvent 
         const item = (event as any).data.event.item
         return {
             type: "ToolCallGenerating",
+            timestamp: Date.now(),
             tool_name: item.name || "unknown",
             step_id: item.call_id || item.id || "unknown"
         }
@@ -128,6 +151,7 @@ export function tryExtractToolCall(event: RunStreamEvent, toolToIntegrationMap?:
             const integration = toolToIntegrationMap?.get(item.name) || "unknown"
             return {
                 type: "ToolCall",
+                timestamp: Date.now(),
                 summary: item.name,
                 step_id: item.callId || "unknown",
                 parameters: item.arguments || "{}",
@@ -186,6 +210,7 @@ export function createToolCallCompleteEvent(data: ToolCallCompleteData, changedI
 
     const event: ModelEvent = {
         type: "ToolCallComplete",
+        timestamp: Date.now(),
         tool_name: data.name,
         status: data.status,
         step_id: data.callId,
@@ -201,7 +226,16 @@ export function createToolCallCompleteEvent(data: ToolCallCompleteData, changedI
 
 export function createNaturalStopEvent(): ModelEvent {
     // generate a random step_id
-    return { type: "NaturalStop", step_id: randomString(15) }
+    const ts = Date.now()
+    return { type: "NaturalStop", step_id: randomString(15), timestamp: ts }
+}
+
+export function createCancelledEvent(reason?: string): ModelEvent {
+    const ts = Date.now()
+    if (reason?.trim()) {
+        return { type: "Cancelled", reason: reason.trim(), timestamp: ts }
+    }
+    return { type: "Cancelled", timestamp: ts }
 }
 
 export enum RawModelStreamEventType {
@@ -290,5 +324,5 @@ export type ToolCallCompleteData = {
     result?: string
     errorContext?: ErrorContext
     actions?: RunHistoryAction[]
-    snippets?: ChatSnippetPayload[]
+    snippets?: ChatSnippet[]
 }

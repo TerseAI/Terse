@@ -15,6 +15,7 @@ type ChatProps = {
     onUserMessage?: (message: string) => void
     onHandleApprove?: (stepId: string) => void
     onHandleReject?: (stepId: string) => void
+    onHandleCancellation?: () => void
     onMultipleChoiceAnswer?: (questionId: string, value: string) => void
     addUserTurnsLocally?: boolean
     inputSize?: "small" | "medium" | "large"
@@ -36,6 +37,7 @@ const Chat = forwardRef<ChatHandle, ChatProps>(function Chat(
         onUserMessage,
         onHandleApprove,
         onHandleReject,
+        onHandleCancellation,
         onMultipleChoiceAnswer,
         addUserTurnsLocally,
         inputSize = "small",
@@ -64,7 +66,6 @@ const Chat = forwardRef<ChatHandle, ChatProps>(function Chat(
         onMultipleChoiceAnswer,
         addUserTurnsLocally
     })
-
     // Scroll to bottom when initialTurns are first rendered
     useEffect(() => {
         if (initialTurns && initialTurns.length > 0 && !hasScrolledToBottomRef.current) {
@@ -95,6 +96,7 @@ const Chat = forwardRef<ChatHandle, ChatProps>(function Chat(
             EmptyContentPlaceholder={EmptyContentPlaceholder}
             onApprove={onHandleApprove}
             onReject={onHandleReject}
+            onCancel={onHandleCancellation}
             onMultipleChoiceAnswer={handleMultipleChoiceAnswer}
             inputSize={inputSize}
             showPlaceholderChips={showPlaceholderChips}

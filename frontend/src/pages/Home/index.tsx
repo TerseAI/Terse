@@ -16,7 +16,7 @@ import { IconForIntegration } from "@/pages/Agents/components/Integration"
 import { FrontendRoutes } from "@/shared/FrontendRoutes"
 import { ModelRequest, SendModelRequest } from "@/shared/ModelEvents"
 import { RunHistoryRecordWithAgent } from "@/shared/RunHistoryTypes"
-import { sendBuilderMessage, subscribeToBuilderChat } from "@/socket"
+import { cancelBuilderChatSession, sendBuilderMessage, subscribeToBuilderChat } from "@/socket"
 import { formatTimestamp } from "@/utility/timeUtils"
 
 import { useBuilderChatHistory } from "../../hooks/api/useBuilderChatHistory"
@@ -38,7 +38,7 @@ function Home() {
     const { events: historyEvents, isLoading: isHistoryLoading } = useBuilderChatHistory(sessionId)
     const [initialTurns, setInitialTurns] = useState<ReturnType<typeof convertRunHistoryEventsToTurns>>([])
     useEffect(() => {
-        const turns = convertRunHistoryEventsToTurns(historyEvents.map(event => ({ ...event, isHistorical: true })))
+        const turns = convertRunHistoryEventsToTurns(historyEvents)
         setInitialTurns(turns)
         if (turns.length > 0) {
             setHasStartedChat(true)
@@ -80,6 +80,11 @@ function Home() {
     const handleUserMessage = useCallback(() => {
         if (!hasStartedChat) setHasStartedChat(true)
     }, [hasStartedChat])
+
+    const handleCancel = async () => {
+        const response = await cancelBuilderChatSession(sessionId)
+        return response.accepted
+    }
 
     // Run drawer handlers
     const handleOpenChat = (run: RunHistoryRecordWithAgent) => {
@@ -170,6 +175,7 @@ function Home() {
                         initialTurns={initialTurns}
                         subscribeToEvents={subscribeToEvents}
                         sendMessage={sendMessage}
+                        onHandleCancellation={handleCancel}
                         onUserMessage={handleUserMessage}
                         addUserTurnsLocally={true}
                         inputSize={hasStartedChat ? "small" : "large"}
