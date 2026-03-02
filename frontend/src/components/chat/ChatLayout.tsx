@@ -12,6 +12,8 @@ import { type Turn, TurnView } from "./Turn"
 interface ChatLayoutProps {
     turns: Turn[]
     isPendingAssistantResponse: boolean
+    isCancelling?: boolean
+    onCancel?: () => Promise<void> | void
     onSendMessage: (message: string) => void
     onSendModelRequest?: (request: ModelRequest) => void
     input: string
@@ -34,6 +36,7 @@ export const ChatLayout = forwardRef<ChatLayoutHandle, ChatLayoutProps>(function
     {
         turns,
         isPendingAssistantResponse,
+        isCancelling = false,
         onSendMessage,
         input,
         setInput,
@@ -41,6 +44,7 @@ export const ChatLayout = forwardRef<ChatLayoutHandle, ChatLayoutProps>(function
         EmptyContentPlaceholder,
         onApprove,
         onReject,
+        onCancel,
         onMultipleChoiceAnswer,
         inputSize = "small",
         showPlaceholderChips = false
@@ -101,7 +105,6 @@ export const ChatLayout = forwardRef<ChatLayoutHandle, ChatLayoutProps>(function
             container.scrollTo({ top: 0, behavior: "smooth" })
         }
     }
-
     return (
         <div className={`h-full w-full bg-background backdrop-blur-sm shadow-lg transition-opacity duration-300 opacity-100 rounded-lg flex flex-col relative`}>
             <div ref={scrollContainerRef} className="flex-1 flex flex-col-reverse overflow-y-auto p-4 select-text">
@@ -150,7 +153,10 @@ export const ChatLayout = forwardRef<ChatLayoutHandle, ChatLayoutProps>(function
                     input={input}
                     setInput={setInput}
                     placeholders={placeholders}
-                    disabled={isPendingAssistantResponse}
+                    disabled={isPendingAssistantResponse || isCancelling}
+                    isGenerating={isPendingAssistantResponse}
+                    isCancelling={isCancelling}
+                    onCancel={onCancel}
                     inputSize={inputSize}
                     showPlaceholderChips={showPlaceholderChips}
                 />

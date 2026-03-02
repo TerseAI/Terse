@@ -1,7 +1,7 @@
 import type { AgentInputItem } from "@openai/agents-core"
 import { z } from "zod"
 
-import type { ChatSnippetPayload } from "../../shared/ModelEvents"
+import type { ChatSnippet } from "../../shared/ModelEvents"
 import { randomString } from "../../utility/strings"
 
 import { BaseSystemEvent } from "./BaseSystemEvent"
@@ -12,30 +12,34 @@ const multipleChoiceOptionSchema = z.object({
     value: z.string()
 })
 
+const snippetBaseSchema = z.object({
+    step_id: z.string().optional()
+})
+
 export const chatSnippetPayloadSchema = z.discriminatedUnion("type", [
-    z.object({
+    snippetBaseSchema.extend({
         type: z.literal("button"),
         label: z.string(),
         url: z.string()
     }),
-    z.object({
+    snippetBaseSchema.extend({
         type: z.literal("integration_prompt"),
         integration: z.string(),
         message: z.string(),
         stateToken: z.string().optional()
     }),
-    z.object({
+    snippetBaseSchema.extend({
         type: z.literal("navigate"),
         path: z.string()
     }),
-    z.object({
+    snippetBaseSchema.extend({
         type: z.literal("multiple_choice"),
         questionId: z.string(),
         question: z.string(),
         options: z.array(multipleChoiceOptionSchema),
         allowMultiple: z.boolean().optional()
     }),
-    z.object({
+    snippetBaseSchema.extend({
         type: z.literal("image"),
         url: z.string()
     })
@@ -51,12 +55,12 @@ type SnippetSystemEventPayload = z.infer<typeof snippetSystemEventPayloadSchema>
 
 export type SnippetSystemEventInput = {
     id?: string
-    snippet: ChatSnippetPayload
+    snippet: ChatSnippet
 }
 
 export type ParsedSnippetSystemEvent = {
     type: "Snippet"
-    snippet: ChatSnippetPayload
+    snippet: ChatSnippet
 }
 
 class SnippetSystemEvent extends BaseSystemEvent<SnippetSystemEventPayload, ParsedSnippetSystemEvent> {

@@ -1,14 +1,17 @@
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useState } from "react"
 
 import { v4 as uuidv4 } from "uuid"
 
 import {
+    type Cancelled,
     type ChatSnippet,
-    type ChatSnippetPayload,
-    FilterResult,
+    type FilterResult,
     type ModelEvent,
     type RunError,
     type TextDelta,
+    type Thinking,
+    type ToolApprovalRequest,
+    type ToolApprovalResponse,
     type ToolCall,
     type ToolCallComplete,
     type ToolCallGenerating
@@ -16,204 +19,120 @@ import {
 import { type Turn } from "../Turn"
 import { filterOutThinkingOnlyTurns } from "../utils/turnUtils"
 
-/** Find the assistant turn that should receive the snippet (by step_id or last assistant turn). */
-function findTurnForSnippet(turns: Turn[], currentStepId: string | null): { turn: Turn; index: number } | null {
-    if (currentStepId) {
-        const index = turns.findIndex(turn => turn.step_id === currentStepId && turn.role === "assistant")
-        if (index !== -1) return { turn: turns[index], index }
-    }
-    const lastIndex = turns.length - 1
-    if (lastIndex >= 0 && turns[lastIndex].role === "assistant") {
-        return { turn: turns[lastIndex], index: lastIndex }
-    }
-    return null
-}
-
-/**
- * Merge a new snippet into an existing list. For multiple_choice, replaces any snippet with the same questionId; otherwise appends.
- */
-function mergeSnippetIntoList(existingSnippets: ChatSnippet[], newSnippet: ChatSnippet, payload: ChatSnippetPayload): ChatSnippet[] {
-    if (payload.type !== "multiple_choice") {
-        return [...existingSnippets, newSnippet]
-    }
-    const existingIndex = existingSnippets.findIndex(s => s.type === "multiple_choice" && s.questionId === payload.questionId)
-    if (existingIndex === -1) {
-        return [...existingSnippets, newSnippet]
-    }
-    return existingSnippets.map((s, i) => (i === existingIndex ? newSnippet : s))
-}
-
-function mergeFunctionCallsForHydration(initialCalls: Turn["function_calls"], existingCalls: Turn["function_calls"]): Turn["function_calls"] {
-    if (initialCalls.length === 0) return existingCalls
-    if (existingCalls.length === 0) return initialCalls
-
-    const existingCallsById = new Map(existingCalls.map(call => [call.id, call]))
-    const mergedCalls = initialCalls.map(call => {
-        const existingCall = existingCallsById.get(call.id)
-        // Server data is source-of-truth on re-hydration; keep local-only fields only when missing from server payload.
-        return existingCall ? { ...existingCall, ...call } : call
-    })
-
-    existingCalls.forEach(call => {
-        if (!mergedCalls.some(existing => existing.id === call.id)) {
-            mergedCalls.push(call)
-        }
-    })
-
-    return mergedCalls
-}
-
-function mergeSnippetsForHydration(initialSnippets?: ChatSnippet[], existingSnippets?: ChatSnippet[]): ChatSnippet[] | undefined {
-    if (!initialSnippets?.length && !existingSnippets?.length) return undefined
-    if (!initialSnippets?.length) return existingSnippets
-    if (!existingSnippets?.length) return initialSnippets
-
-    const seen = new Set(initialSnippets.map(snippet => snippet.id))
-    return [...initialSnippets, ...existingSnippets.filter(snippet => !seen.has(snippet.id))]
-}
-
-function mergeAssistantTurnForHydration(initialTurn: Turn, existingTurn: Turn): Turn {
-    const initialText = initialTurn.text ?? ""
-    const existingText = existingTurn.text ?? ""
-
-    return {
-        ...existingTurn,
-        ...initialTurn,
-        text: existingText.length >= initialText.length ? existingText : initialText,
-        function_calls: mergeFunctionCallsForHydration(initialTurn.function_calls, existingTurn.function_calls),
-        snippets: mergeSnippetsForHydration(initialTurn.snippets, existingTurn.snippets)
-    }
-}
-
 interface UseChatTurnsOptions {
     initialTurns?: Turn[] | undefined
 }
 
 export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
     const [turns, setTurns] = useState<Turn[]>(initialTurns || [])
-    const stepBuffersRef = useRef<Map<string, string>>(new Map())
-    const pendingApprovalsRef = useRef<Set<string>>(new Set())
-    const queuedToolCallsRef = useRef<Array<{ summary: string; step_id: string; parameters: string }>>([])
-    const currentStepIdRef = useRef<string | null>(null)
-    const pendingLocalUserTurnIdsRef = useRef<string[]>([])
-    const lastInitialUserTurnCountRef = useRef<number>((initialTurns || []).filter(turn => turn.role === "user").length)
 
     useEffect(() => {
         if (!initialTurns) {
             return
         }
-
-        const initialUserTurnCount = initialTurns.filter(turn => turn.role === "user").length
-        const newlyPersistedLocalUserTurns = Math.max(0, initialUserTurnCount - lastInitialUserTurnCountRef.current)
-        if (newlyPersistedLocalUserTurns > 0 && pendingLocalUserTurnIdsRef.current.length > 0) {
-            pendingLocalUserTurnIdsRef.current = pendingLocalUserTurnIdsRef.current.slice(newlyPersistedLocalUserTurns)
-        }
-        lastInitialUserTurnCountRef.current = initialUserTurnCount
-
         if (initialTurns && initialTurns.length > 0) {
             setTurns(prev => {
                 if (prev.length === 0) {
                     return initialTurns
                 }
 
-                const previousAssistantTurnsByStepId = new Map(prev.filter(turn => turn.role === "assistant").map(turn => [turn.step_id, turn]))
-                const initialAssistantStepIds = new Set(initialTurns.filter(turn => turn.role === "assistant").map(turn => turn.step_id))
+                // Server turns override local turns with the same step_id.
+                // Local turns that have no server counterpart are preserved.
+                // Also dedupe local tool-call placeholders when the same call ID
+                // is already present in server turns (stream + reload race).
+                const serverStepIds = new Set(initialTurns.map(t => t.step_id))
+                const serverFunctionCallIds = new Set(initialTurns.flatMap(t => t.function_calls.map(fc => fc.id)))
 
-                const mergedInitialTurns = initialTurns.map(turn => {
-                    if (turn.role !== "assistant") return turn
-                    const existingTurn = previousAssistantTurnsByStepId.get(turn.step_id)
-                    return existingTurn ? mergeAssistantTurnForHydration(turn, existingTurn) : turn
-                })
+                const localOnlyTurns = prev
+                    .filter(t => !serverStepIds.has(t.step_id))
+                    .map(turn => {
+                        if (turn.function_calls.length === 0) {
+                            return turn
+                        }
 
-                const pendingLocalUserTurnIds = new Set(pendingLocalUserTurnIdsRef.current)
-                const additionalLocalTurns = prev.filter(turn => {
-                    if (turn.role === "assistant") {
-                        return !initialAssistantStepIds.has(turn.step_id)
-                    }
-                    if (turn.role === "user" && turn.localTurnId) {
-                        return pendingLocalUserTurnIds.has(turn.localTurnId)
-                    }
-                    return false
-                })
+                        const nextFunctionCalls = turn.function_calls.filter(fc => !serverFunctionCallIds.has(fc.id))
+                        if (nextFunctionCalls.length === turn.function_calls.length) {
+                            return turn
+                        }
 
-                return additionalLocalTurns.length > 0 ? [...mergedInitialTurns, ...additionalLocalTurns] : mergedInitialTurns
+                        return {
+                            ...turn,
+                            function_calls: nextFunctionCalls
+                        }
+                    })
+                    .filter(turn => {
+                        if (turn.role === "user") {
+                            return true
+                        }
+                        const hasText = turn.text.trim().length > 0
+                        const hasFunctionCalls = turn.function_calls.length > 0
+                        const hasSnippets = (turn.snippets?.length ?? 0) > 0
+                        return hasText || hasFunctionCalls || hasSnippets
+                    })
+
+                return [...initialTurns, ...localOnlyTurns]
             })
         }
     }, [initialTurns])
 
-    const isPendingAssistantResponse = (turns.length > 0 && (turns[turns.length - 1]?.role === "user" || turns[turns.length - 1]?.isGenerating)) || false
-
-    const handleDelta = ({ delta, step_id }: TextDelta) => {
-        // Track current step_id
-        currentStepIdRef.current = step_id
-
-        // Merge delta into buffer
-        const existing = stepBuffersRef.current.get(step_id) ?? ""
-        const newText = existing + delta
-        stepBuffersRef.current.set(step_id, newText)
-
+    const handleDelta = ({ delta, step_id, timestamp }: TextDelta) => {
         setTurns(prev => {
-            const updated = [...prev]
-            const last = updated[updated.length - 1]
+            const next = prev.slice()
+            const i = next.findIndex(t => t.step_id === step_id)
 
-            if (!last || last.step_id !== step_id) {
-                return [
-                    ...updated,
-                    {
-                        role: "assistant",
-                        text: newText,
-                        function_calls: [],
-                        isGenerating: true,
-                        step_id
-                    }
-                ]
+            if (i !== -1) {
+                const t = next[i]
+                next[i] = {
+                    ...t,
+                    text: t.text + delta,
+                    timestamp,
+                    isGenerating: true
+                }
+                return next
             }
-            last.text = newText
-            last.isGenerating = true
-            return updated
+            return next.concat({
+                role: "assistant",
+                step_id,
+                timestamp,
+                text: delta,
+                function_calls: [],
+                isGenerating: true
+            })
         })
     }
 
-    const handleToolCallGenerating = ({ tool_name, step_id, timestamp }: ToolCallGenerating & Pick<ModelEvent, "timestamp">) => {
-        // Track current step_id
-        currentStepIdRef.current = step_id
-
+    const handleToolCallGenerating = ({ tool_name, step_id, timestamp }: ToolCallGenerating) => {
         setTurns(prev => {
-            const updated = [...prev]
-            const last = updated[updated.length - 1]
-
-            // If last turn is an assistant turn, add generating tool call to it
-            if (last && last.role === "assistant") {
-                // Check if this tool call already exists
-                const existingCallIndex = last.function_calls.findIndex(call => call.id === step_id)
-
-                if (existingCallIndex === -1) {
-                    // Add new tool call in generating state
-                    last.function_calls.push({
-                        id: step_id,
-                        name: tool_name,
-                        timestamp,
-                        isGeneratingParams: true,
-                        isRunning: false,
-                        isWaitingForApproval: false,
-                        isWaitingForUserInput: false
-                    })
+            const next = prev.slice()
+            const i = next.findIndex(t => t.step_id === step_id)
+            if (i !== -1) {
+                const t = next[i]
+                const existingCallIndex = t.function_calls.findIndex(call => call.id === step_id)
+                const newCall = {
+                    id: step_id,
+                    name: tool_name,
+                    timestamp: timestamp,
+                    isGeneratingParams: true,
+                    isRunning: false,
+                    isWaitingForApproval: false,
+                    isWaitingForUserInput: false
                 }
-                last.isGenerating = true
-                return updated
-            }
-
-            // Otherwise create new assistant turn
-            return [
-                ...updated,
-                {
+                if (existingCallIndex === -1) {
+                    t.function_calls.push(newCall)
+                } else {
+                    t.function_calls[existingCallIndex] = newCall
+                }
+                return next
+            } else {
+                return next.concat({
                     role: "assistant",
                     text: "",
+                    timestamp: timestamp,
                     function_calls: [
                         {
                             id: step_id,
                             name: tool_name,
-                            timestamp,
+                            timestamp: timestamp,
                             isGeneratingParams: true,
                             isRunning: false,
                             isWaitingForApproval: false,
@@ -222,35 +141,27 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
                     ],
                     isGenerating: true,
                     step_id
-                }
-            ]
+                })
+            }
         })
     }
 
-    const handleToolCall = ({ summary, step_id, parameters, timestamp }: ToolCall & Pick<ModelEvent, "timestamp">) => {
-        // Track current step_id
-        currentStepIdRef.current = step_id
-
+    const handleToolCall = ({ summary, step_id, parameters, timestamp }: ToolCall) => {
         setTurns(prev => {
-            const updated = [...prev]
-            const last = updated[updated.length - 1]
-
-            // If last turn is an assistant turn, add tool call to it
-            if (last && last.role === "assistant") {
-                // Check if this tool call already exists (by step_id which is the unique call ID)
-                const existingCallIndex = last.function_calls.findIndex(call => call.id === step_id)
-
+            const next = prev.slice()
+            const i = next.findIndex(t => t.step_id === step_id)
+            if (i !== -1) {
+                const t = next[i]
+                const existingCallIndex = t.function_calls.findIndex(call => call.id === step_id)
                 if (existingCallIndex !== -1) {
-                    // Update existing tool call - transition from generating to running (preserves original timestamp via spread)
-                    last.function_calls[existingCallIndex] = {
-                        ...last.function_calls[existingCallIndex],
+                    t.function_calls[existingCallIndex] = {
+                        ...t.function_calls[existingCallIndex],
                         isGeneratingParams: false,
                         isRunning: true,
                         parameters
                     }
                 } else {
-                    // Add new tool call (in case we missed the generating event)
-                    last.function_calls.push({
+                    t.function_calls.push({
                         id: step_id,
                         name: summary,
                         timestamp,
@@ -261,39 +172,36 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
                         parameters
                     })
                 }
-                last.isGenerating = true
-                return updated
+                t.isGenerating = true
+                return next
+            } else {
+                return [
+                    ...next,
+                    {
+                        role: "assistant",
+                        text: "",
+                        timestamp,
+                        function_calls: [
+                            {
+                                id: step_id,
+                                name: summary,
+                                timestamp,
+                                isGeneratingParams: false,
+                                isRunning: true,
+                                isWaitingForApproval: false,
+                                isWaitingForUserInput: false,
+                                parameters
+                            }
+                        ],
+                        isGenerating: true,
+                        step_id
+                    }
+                ]
             }
-
-            // Otherwise create new assistant turn
-            return [
-                ...updated,
-                {
-                    role: "assistant",
-                    text: "",
-                    function_calls: [
-                        {
-                            id: step_id,
-                            name: summary,
-                            timestamp,
-                            isGeneratingParams: false,
-                            isRunning: true,
-                            isWaitingForApproval: false,
-                            isWaitingForUserInput: false,
-                            parameters
-                        }
-                    ],
-                    isGenerating: true,
-                    step_id
-                }
-            ]
         })
     }
 
-    const handleToolApprovalRequest = ({ step_id }: { step_id: string; name: string; arguments: string }) => {
-        // Mark this tool call as waiting for approval
-        pendingApprovalsRef.current.add(step_id)
-
+    const handleToolApprovalRequest = ({ step_id }: ToolApprovalRequest) => {
         setTurns(prev => {
             const updated = [...prev]
             // Find the tool call that needs approval
@@ -309,10 +217,7 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
         })
     }
 
-    const handleToolApprovalResponse = ({ step_id, approved }: { step_id: string; approved: boolean }) => {
-        // Remove from pending approvals
-        pendingApprovalsRef.current.delete(step_id)
-
+    const handleToolApprovalResponse = ({ step_id, approved }: ToolApprovalResponse) => {
         if (approved) {
             // Mark as running again and approved
             setTurns(prev => {
@@ -344,26 +249,9 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
                 return updated
             })
         }
-
-        // Process any queued tool calls now that approval is resolved
-        if (pendingApprovalsRef.current.size === 0 && queuedToolCallsRef.current.length > 0) {
-            const queuedCalls = [...queuedToolCallsRef.current]
-            queuedToolCallsRef.current = []
-
-            // Process each queued tool call
-            queuedCalls.forEach(call => {
-                handleToolCall({ summary: call.summary, step_id: call.step_id, parameters: call.parameters, integration: "unknown" })
-            })
-        }
     }
 
     const handleToolCallComplete = ({ step_id, result, changed_items, errorContext }: ToolCallComplete & Pick<ModelEvent, "timestamp">) => {
-        // Track current step_id
-        currentStepIdRef.current = step_id
-
-        // Remove from pending approvals if it was there
-        pendingApprovalsRef.current.delete(step_id)
-
         setTurns(prev => {
             const updated = [...prev]
             let foundExistingCall = false
@@ -399,7 +287,7 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
         })
     }
 
-    const handleRunError = ({ error, code }: RunError) => {
+    const handleRunError = ({ error, code, timestamp }: RunError) => {
         setTurns(prev => {
             const updated = [...prev]
             const last = updated[updated.length - 1]
@@ -411,6 +299,7 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
                 {
                     role: "assistant",
                     text: error,
+                    timestamp: timestamp,
                     function_calls: [],
                     step_id: "run-error",
                     isFailure: true,
@@ -427,20 +316,41 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
             if (last) {
                 last.isGenerating = false
             }
-            // Clear current step_id when message ends
-            currentStepIdRef.current = null
             return updated
         })
     }
 
-    const handleFilterResult = ({ isRelevant, reason, confidence }: FilterResult) => {
+    const handleCancel = (cancellation: Cancelled) => {
         setTurns(prev => {
-            const updated = [...prev]
+            const next = prev.slice()
+            return next.concat({
+                role: "assistant",
+                text: cancellation.reason || "",
+                timestamp: cancellation.timestamp,
+                function_calls: [],
+                step_id: "run-error",
+                isCancelled: true,
+                isGenerating: false,
+                isFailure: false,
+                isThinking: false
+            })
+        })
+    }
+
+    const handleFilterResult = ({ isRelevant, reason, confidence, timestamp }: FilterResult) => {
+        setTurns(prev => {
+            const next = prev.slice()
+            if (next.length > 0) {
+                const last = next[next.length - 1]
+                last.isGenerating = false
+                return next
+            }
             return [
-                ...updated,
+                ...next,
                 {
                     role: "assistant",
                     text: "",
+                    timestamp: timestamp,
                     function_calls: [],
                     step_id: "filter",
                     isGenerating: isRelevant ? true : false,
@@ -454,15 +364,15 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
         })
     }
 
-    const handleThinking = (stepId: string) => {
-        // Track current step_id
-        currentStepIdRef.current = stepId
-
+    const handleThinking = (thinking: Thinking) => {
+        const { step_id: stepId, timestamp } = thinking
         setTurns(prev => {
-            const last = prev[prev.length - 1]
-            if (last && last.step_id === stepId && !last.text && last.function_calls.length === 0) {
-                // Update existing turn
-                return prev.map(t => (t === last ? { ...t, isThinking: true, isGenerating: true } : t))
+            const next = prev.slice()
+            const t = next.findIndex(t => t.step_id === stepId)
+            if (t !== -1) {
+                next[t].isThinking = true
+                next[t].isGenerating = true
+                return next
             }
             // Create new thinking turn
             return [
@@ -470,6 +380,7 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
                 {
                     role: "assistant",
                     text: "",
+                    timestamp: timestamp,
                     function_calls: [],
                     step_id: stepId,
                     isThinking: true,
@@ -479,54 +390,78 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
         })
     }
 
-    const addUserTurn = (message: string) => {
-        const localTurnId = `local-user-${uuidv4()}`
-        pendingLocalUserTurnIdsRef.current.push(localTurnId)
+    const addUserTurn = (message: string, clientTurnId: string) => {
         const userTurn: Turn = {
             role: "user",
             text: message,
+            timestamp: Date.now(),
             function_calls: [],
-            step_id: "user_turn",
-            localTurnId
+            step_id: clientTurnId,
+            isGenerating: true
         }
         setTurns(prev => {
             return [...prev, userTurn]
         })
     }
 
-    const handleSnippet = (snippetPayload: ChatSnippetPayload) => {
-        const snippet: ChatSnippet = {
+    /**
+     * handleSnippet – normalizes snippet UI fields (`id`, `step_id`) and
+     * attaches the snippet to a matching turn. Falls back to the last assistant
+     * turn, or creates a new one if nothing exists yet.
+     */
+    const handleSnippet = (snippetPayload: ChatSnippet, snippetTimestamp?: number) => {
+        const normalized: ChatSnippet = {
             ...snippetPayload,
-            id: uuidv4()
+            id: snippetPayload.id ?? uuidv4(),
+            ...(snippetPayload.step_id ? { step_id: snippetPayload.step_id } : {})
         }
 
         setTurns(prev => {
-            const updated = [...prev]
-            const target = findTurnForSnippet(updated, currentStepIdRef.current)
+            const next = prev.slice()
 
-            if (target) {
-                const snippets = mergeSnippetIntoList(target.turn.snippets || [], snippet, snippetPayload)
-                const updatedTurn = { ...target.turn, snippets }
-                return [...updated.slice(0, target.index), updatedTurn, ...updated.slice(target.index + 1)]
+            // Try to find the turn this snippet belongs to via step_id.
+            let targetIndex = normalized.step_id ? next.findIndex(t => t.step_id === normalized.step_id) : -1
+
+            // Fallback: attach to the last assistant turn.
+            if (targetIndex === -1) {
+                for (let i = next.length - 1; i >= 0; i--) {
+                    if (next[i].role === "assistant") {
+                        targetIndex = i
+                        break
+                    }
+                }
             }
 
-            const stepId = currentStepIdRef.current || `snippet-${snippet.id}`
+            if (targetIndex !== -1) {
+                const turn = next[targetIndex]
+                const existingSnippets = turn.snippets ?? []
+                const snippetForTurn = normalized.step_id ? normalized : { ...normalized, step_id: turn.step_id }
+                next[targetIndex] = {
+                    ...turn,
+                    snippets: [...existingSnippets, snippetForTurn]
+                }
+                return next
+            }
+
+            // No existing turn — create a minimal assistant turn so the
+            // snippet doesn't get lost.
             return [
-                ...updated,
+                ...next,
                 {
                     role: "assistant",
                     text: "",
+                    timestamp: snippetTimestamp ?? Date.now(),
                     function_calls: [],
-                    step_id: stepId,
-                    snippets: [snippet]
+                    step_id: normalized.step_id || `snippet-${normalized.id}`,
+                    snippets: [normalized]
                 }
             ]
         })
     }
 
     const handleMultipleChoiceAnswered = (questionId: string, value: string) => {
-        setTurns(prev =>
-            prev.map(turn => {
+        setTurns(prev => {
+            return prev.map(turn => {
                 const snippets = turn.snippets ?? []
                 const hasMatch = snippets.some(s => s.type === "multiple_choice" && s.questionId === questionId)
                 if (!hasMatch) return turn
@@ -535,20 +470,20 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
                     snippets: snippets.map(s => (s.type === "multiple_choice" && s.questionId === questionId ? { ...s, selectedValue: value } : s))
                 }
             })
-        )
+        })
     }
 
     const clearTurns = () => {
         setTurns([])
-        stepBuffersRef.current.clear()
-        pendingApprovalsRef.current.clear()
-        queuedToolCallsRef.current = []
-        pendingLocalUserTurnIdsRef.current = []
-        lastInitialUserTurnCountRef.current = 0
     }
 
+    const filteredTurns = filterOutThinkingOnlyTurns(turns)
+    const sortedTurns = [...filteredTurns].sort((a, b) => a.timestamp - b.timestamp)
+    const lastTurn = sortedTurns[sortedTurns.length - 1]
+    const isPendingAssistantResponse = (sortedTurns.length > 0 && (lastTurn?.role === "user" || lastTurn?.isGenerating)) || false
+
     return {
-        turns: filterOutThinkingOnlyTurns(turns),
+        turns: sortedTurns,
         isPendingAssistantResponse,
         handleDelta,
         handleToolCallGenerating,
@@ -557,6 +492,7 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
         handleToolApprovalResponse,
         handleToolCallComplete,
         handleRunError,
+        handleCancel,
         handleNaturalStop,
         handleFilterResult,
         handleThinking,

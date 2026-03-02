@@ -8,6 +8,9 @@ interface ChatInputProps {
     setInput: (input: string) => void
     placeholders: string[]
     disabled?: boolean
+    isGenerating?: boolean
+    isCancelling?: boolean
+    onCancel?: () => Promise<void> | void
     inputSize?: "small" | "medium" | "large"
     showPlaceholderChips?: boolean
 }
@@ -17,7 +20,7 @@ export interface ChatInputHandle {
 }
 
 const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function ChatInput(
-    { sendMessage, input, setInput, placeholders, disabled = false, inputSize = "small", showPlaceholderChips = false },
+    { sendMessage, input, setInput, placeholders, disabled = false, isGenerating = false, isCancelling = false, onCancel, inputSize = "small", showPlaceholderChips = false },
     ref
 ) {
     const prevSelectedRef = useRef<number | null>(null)
@@ -55,7 +58,7 @@ const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function ChatInput
     const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
         if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault()
-            if (!disabled) {
+            if (!disabled && !isGenerating) {
                 sanitizeAndSendMessage(input)
             }
         }
@@ -113,7 +116,10 @@ const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function ChatInput
                 focusOverride={focusOverride}
                 minRows={minRows}
                 showBorder={showBorder}
-                onSend={() => sanitizeAndSendMessage(input)}
+                onSend={isGenerating ? undefined : () => sanitizeAndSendMessage(input)}
+                onStop={isGenerating && onCancel ? onCancel : undefined}
+                isGenerating={isGenerating}
+                isCancelling={isCancelling}
                 onPlaceholderSelect={handlePlaceholderSelect}
                 showPlaceholderChips={showPlaceholderChips}
             />

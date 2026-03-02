@@ -6,7 +6,7 @@ import { v4 as uuidv4 } from "uuid"
 import { convertRunHistoryEventsToTurns } from "@/components/RunHistory/RunHistoryChatDrawer/runHistoryEventsToTurns"
 import { useBuilderChatHistory } from "@/hooks/api/useBuilderChatHistory"
 import { ModelRequest, SendModelRequest } from "@/shared/ModelEvents"
-import { sendBuilderMessage, sendBuilderMultipleChoiceAnswer, subscribeToBuilderChat } from "@/socket"
+import { cancelBuilderChatSession, sendBuilderMessage, sendBuilderMultipleChoiceAnswer, subscribeToBuilderChat } from "@/socket"
 
 import { Chat, ChatHandle } from "./Chat"
 import { ChatEventPayload } from "./hooks/useCompletionSocket"
@@ -41,8 +41,7 @@ export const BuilderChat = forwardRef<BuilderChatHandle, BuilderChatProps>(funct
         agentId && historyEvents.length > 0
             ? convertRunHistoryEventsToTurns(
                   historyEvents.map(event => ({
-                      ...event,
-                      isHistorical: true
+                      ...event
                   }))
               )
             : undefined
@@ -99,6 +98,11 @@ export const BuilderChat = forwardRef<BuilderChatHandle, BuilderChatProps>(funct
         [sessionId]
     )
 
+    const handleCancel = async () => {
+        const response = await cancelBuilderChatSession(sessionId)
+        return response.accepted
+    }
+
     // Show loading state while fetching history for existing sessions
     if (agentId && isHistoryLoading) {
         return (
@@ -115,6 +119,7 @@ export const BuilderChat = forwardRef<BuilderChatHandle, BuilderChatProps>(funct
                 key={sessionId}
                 subscribeToEvents={subscribeToEvents}
                 sendMessage={sendMessage}
+                onHandleCancellation={handleCancel}
                 addUserTurnsLocally={true}
                 initialTurns={initialTurns}
                 EmptyContentPlaceholder={<BuilderChatEmptyState />}

@@ -3,6 +3,8 @@ import { RunHistoryStatus as PrismaRunHistoryStatus } from "@prisma/client"
 import { AgentRunResultStatus, AgentRunner } from "../agent/AgentRunner/AgentRunner"
 import { evaluateCompletedRun, finalizeRunStatus, markRunFailed, markRunInProgress } from "../agent/AgentRunner/runHistory"
 import { generateApprovalSummary } from "../agent/ApprovalSummaryAgent/ApprovalSummaryAgent"
+import { listenForRunCancellation } from "../agent/cancellation/RunCancellationTaskQueue"
+import { markRunCancelledAndInvalidate } from "../agent/cancellation/runCancellationEffects"
 import { appendToolApprovalResponseSystemEvent } from "../agent/systemEvents/toolApprovalSystemEvent"
 import logger from "../logger"
 import { NotificationManager } from "../notifications/Notification"
@@ -263,19 +265,6 @@ export class ApprovalService {
             const runContext = { runId }
             const agentRunner = new AgentRunner(session, outputs, channel, runContext)
 
-            const decision: "approve" | "reject" = approved ? "approve" : "reject"
-            const result = await agentRunner.resumeFromPendingApproval(
-                decision,
-                stepId,
-                {
-                    runId,
-                    user: user,
-                    agentId: channel.id
-                },
-                rejectionReason,
-                hardReject
-            )
-
             // Use 'changes_requested' for request changes flow (rejected with feedback), 'rejected' for hard reject
             const finalSlackStatus = approved
                 ? SlackApprovalMessageStatus.APPROVED
@@ -284,6 +273,47 @@ export class ApprovalService {
                   : rejectionReason
                     ? SlackApprovalMessageStatus.CHANGES_REQUESTED
                     : SlackApprovalMessageStatus.REJECTED
+
+            const decision = approved ? "approve" : "reject"
+            const cancellationController = new AbortController()
+            const cancellationSubscription = listenForRunCancellation(runId, cancellationController)
+
+            let result: Awaited<ReturnType<typeof agentRunner.resumeFromPendingApproval>>
+            try {
+                result = await agentRunner.resumeFromPendingApproval(
+                    decision,
+                    stepId,
+                    {
+                        runId,
+                        user: user,
+                        agentId: channel.id
+                    },
+                    rejectionReason,
+                    hardReject,
+                    {
+                        signal: cancellationController.signal
+                    }
+                )
+            } catch (error) {
+                if (cancellationSubscription.isCancellationRequested()) {
+                    await markRunCancelledAndInvalidate(runId, channel.id, channel.organization_id, user.id)
+                    await this.updateSlackNotification(runId, stepId, finalSlackStatus, user, channel.id)
+                    return {
+                        status: ApprovalProcessingStatus.COMPLETED
+                    }
+                }
+                throw error
+            } finally {
+                cancellationSubscription.unsubscribe()
+            }
+
+            if (cancellationSubscription.isCancellationRequested()) {
+                await markRunCancelledAndInvalidate(runId, channel.id, channel.organization_id, user.id)
+                await this.updateSlackNotification(runId, stepId, finalSlackStatus, user, channel.id)
+                return {
+                    status: ApprovalProcessingStatus.COMPLETED
+                }
+            }
 
             // Finalize run status based on result
             if (result.status === AgentRunResultStatus.COMPLETED) {

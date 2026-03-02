@@ -34,6 +34,7 @@ export function useChat({
         handleToolCall,
         handleToolCallComplete,
         handleRunError,
+        handleCancel,
         handleNaturalStop,
         handleFilterResult,
         handleThinking,
@@ -63,14 +64,15 @@ export function useChat({
         onThinking: handleThinking,
         onToolApprovalRequest: handleToolApprovalRequest,
         onToolApprovalResponse: handleToolApprovalResponse,
-        onSnippet: handleSnippet
+        onSnippet: handleSnippet,
+        onCancelled: handleCancel
     })
 
     const { input, setInput, sendMessage } = useChatInput({
         sendMessage: sendSocketMessage,
-        onUserMessage: (message: string) => {
+        onUserMessage: (message: string, clientTurnId: string) => {
             if (addUserTurnsLocally) {
-                addUserTurn(message)
+                addUserTurn(message, clientTurnId)
             }
             onUserMessage?.(message)
         }

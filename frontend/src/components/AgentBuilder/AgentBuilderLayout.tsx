@@ -16,7 +16,7 @@ import { useTemplates } from "@/hooks/api/useTemplates"
 import { useBuilderSession } from "@/hooks/useBuilderSession"
 import { ModelRequest, SendModelRequest } from "@/shared/ModelEvents"
 import { AgentTemplate, TemplateCategory } from "@/shared/types"
-import { sendBuilderMessage, sendBuilderMultipleChoiceAnswer, subscribeToBuilderChat } from "@/socket"
+import { cancelBuilderChatSession, sendBuilderMessage, sendBuilderMultipleChoiceAnswer, subscribeToBuilderChat } from "@/socket"
 
 const TEMPLATE_CATEGORIES: { id: TemplateCategory; label: string; icon: LucideIcon }[] = [
     { id: "users", label: "Understand Users", icon: Users },
@@ -67,7 +67,7 @@ export function AgentBuilderLayout({ header }: AgentBuilderLayoutProps) {
     const isInitialLoading = isHistoryLoading || isLoadingTemplates
 
     useEffect(() => {
-        const turns = convertRunHistoryEventsToTurns(historyEvents.map(event => ({ ...event, isHistorical: true })))
+        const turns = convertRunHistoryEventsToTurns(historyEvents)
         setInitialTurns(turns)
         if (turns.length > 0) {
             setHasStartedChat(true)
@@ -164,6 +164,11 @@ export function AgentBuilderLayout({ header }: AgentBuilderLayoutProps) {
         [sessionId]
     )
 
+    const handleCancel = useCallback(async () => {
+        const response = await cancelBuilderChatSession(sessionId)
+        return response.accepted
+    }, [sessionId])
+
     // While data is loading, show an empty container to prevent layout shifts.
     if (isInitialLoading) {
         return <div className="flex flex-col h-full w-full" />
@@ -234,6 +239,7 @@ export function AgentBuilderLayout({ header }: AgentBuilderLayoutProps) {
                         key={sessionId}
                         subscribeToEvents={subscribeToEvents}
                         sendMessage={sendMessage}
+                        onHandleCancellation={handleCancel}
                         onUserMessage={handleUserMessage}
                         onMultipleChoiceAnswer={handleMultipleChoiceAnswer}
                         addUserTurnsLocally={true}
