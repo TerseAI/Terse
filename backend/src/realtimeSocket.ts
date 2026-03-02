@@ -317,7 +317,10 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
                     }
                 )
             } catch (error) {
-                if (cancellationSubscription.isCancellationRequested()) {
+                const wasCancelledOnError = cancellationSubscription.isCancellationRequested()
+                cancellationSubscription.unsubscribe()
+
+                if (wasCancelledOnError || (error instanceof Error && error.name === "AbortError")) {
                     await markRunCancelledAndInvalidate(runId, agent.id, organizationIdForRun, userId)
                     return
                 }
@@ -327,11 +330,12 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
                 await markRunFailedAndInvalidate(runId, classified, organizationIdForRun, agent.id)
                 await notifyRunFailure(notificationManager, runId, classified.message, agent.id, userId)
                 return
-            } finally {
-                cancellationSubscription.unsubscribe()
             }
 
-            if (cancellationSubscription.isCancellationRequested()) {
+            const wasCancelled = cancellationSubscription.isCancellationRequested()
+            cancellationSubscription.unsubscribe()
+
+            if (wasCancelled) {
                 await markRunCancelledAndInvalidate(runId, agent.id, organizationIdForRun, userId)
                 return
             }

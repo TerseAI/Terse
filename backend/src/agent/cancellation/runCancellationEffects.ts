@@ -49,6 +49,25 @@ export async function markRunCancelledAndInvalidate(runId: string, agentId: stri
         })
     }
 
-    emitCancelledForRun(runId, agentId, organizationId, reason)
-    invalidateRunAndChatHistory(organizationId, agentId, runId)
+    try {
+        emitCancelledForRun(runId, agentId, organizationId, reason)
+    } catch (emitError) {
+        logger.error("[agent:run:cancel] Failed to emit cancelled event", {
+            emitError,
+            runId,
+            agentId,
+            userId
+        })
+    }
+
+    try {
+        invalidateRunAndChatHistory(organizationId, agentId, runId)
+    } catch (invalidateError) {
+        logger.error("[agent:run:cancel] Failed to invalidate cache", {
+            invalidateError,
+            runId,
+            agentId,
+            userId
+        })
+    }
 }

@@ -144,15 +144,9 @@ export function useCompletionSocket(options: UseCompletionSocketOptions) {
         })
 
         return () => {
-            console.log("Cleaning up event subscription")
             unsubscribe()
         }
     }, [subscribeToEvents])
 
-    const sendMessageWithLogging = (message: ModelRequest) => {
-        console.log("Sending message through socket hook", { type: message.type })
-        sendMessage(message)
-    }
-
-    return { sendMessage: sendMessageWithLogging, isConnected }
+    return { sendMessage, isConnected }
 }

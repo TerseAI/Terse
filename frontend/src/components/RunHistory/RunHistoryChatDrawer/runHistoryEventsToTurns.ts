@@ -72,7 +72,7 @@ function findLastAssistantTurnIndex(turns: Turn[]): number {
 function normalizeSnippet(payload: ChatSnippet, fallbackStepId: string, fallbackId: string): ChatSnippet {
     return {
         ...payload,
-        id: fallbackId,
+        id: payload.id ?? fallbackId,
         step_id: payload.step_id ?? fallbackStepId
     }
 }

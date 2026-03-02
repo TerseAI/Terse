@@ -357,7 +357,10 @@ export class EventProcessor {
                 }
             )
         } catch (error) {
-            if (cancellationSubscription.isCancellationRequested()) {
+            const wasCancelledOnError = cancellationSubscription.isCancellationRequested()
+            cancellationSubscription.unsubscribe()
+
+            if (wasCancelledOnError || (error instanceof Error && error.name === "AbortError")) {
                 await markRunCancelledAndInvalidate(runId, agent.id, this.user.organizationId, this.user.id)
                 return new ProcessorResult(false, USER_CANCELLED_REASON, agent, undefined, runId)
             }
@@ -372,11 +375,12 @@ export class EventProcessor {
             await markRunFailedAndInvalidate(runId, classified, this.user.organizationId, agent.id)
             await this.notifyRunFailure(agent, runId, classified.message)
             throw error
-        } finally {
-            cancellationSubscription.unsubscribe()
         }
 
-        if (cancellationSubscription.isCancellationRequested()) {
+        const wasCancelled = cancellationSubscription.isCancellationRequested()
+        cancellationSubscription.unsubscribe()
+
+        if (wasCancelled) {
             await markRunCancelledAndInvalidate(runId, agent.id, this.user.organizationId, this.user.id)
             return new ProcessorResult(false, USER_CANCELLED_REASON, agent, undefined, runId)
         }

@@ -218,7 +218,6 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
     }
 
     const handleToolApprovalResponse = ({ step_id, approved, timestamp }: ToolApprovalResponse) => {
-        console.log("Handling tool approval response", { step_id, approved, timestamp })
         if (approved) {
             // Mark as running again and approved
             setTurns(prev => {
@@ -417,30 +416,11 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
             ...(snippetPayload.step_id ? { step_id: snippetPayload.step_id } : {})
         }
 
-        console.log("[handleSnippet] received snippet", {
-            type: snippetPayload.type,
-            step_id: snippetPayload.step_id,
-            payload: snippetPayload
-        })
-
-        console.log("[handleSnippet] normalized snippet", {
-            id: normalized.id,
-            type: normalized.type,
-            step_id: normalized.step_id
-        })
-
         setTurns(prev => {
             const next = prev.slice()
 
             // Try to find the turn this snippet belongs to via step_id.
             let targetIndex = normalized.step_id ? next.findIndex(t => t.step_id === normalized.step_id) : -1
-
-            console.log("[handleSnippet] step_id lookup", {
-                snippetStepId: normalized.step_id,
-                stepIdTruthy: !!normalized.step_id,
-                targetIndex,
-                turnStepIds: next.map(t => t.step_id)
-            })
 
             // Fallback: attach to the last assistant turn.
             if (targetIndex === -1) {
@@ -450,19 +430,12 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
                         break
                     }
                 }
-                console.log("[handleSnippet] fallback to last assistant turn", { targetIndex })
             }
 
             if (targetIndex !== -1) {
                 const turn = next[targetIndex]
                 const existingSnippets = turn.snippets ?? []
                 const snippetForTurn = normalized.step_id ? normalized : { ...normalized, step_id: turn.step_id }
-                console.log("[handleSnippet] attaching to turn", {
-                    turnStepId: turn.step_id,
-                    turnRole: turn.role,
-                    turnIsGenerating: turn.isGenerating,
-                    existingSnippetCount: existingSnippets.length
-                })
                 next[targetIndex] = {
                     ...turn,
                     snippets: [...existingSnippets, snippetForTurn]
@@ -470,7 +443,6 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
                 return next
             }
 
-            console.log("[handleSnippet] no turn found, creating new assistant turn")
             // No existing turn — create a minimal assistant turn so the
             // snippet doesn't get lost.
             return [
@@ -488,43 +460,15 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
     }
 
     const handleMultipleChoiceAnswered = (questionId: string, value: string) => {
-        console.log("[handleMultipleChoiceAnswered] called", { questionId, value })
-
         setTurns(prev => {
-            const allSnippets = prev.flatMap(t => t.snippets ?? [])
-            console.log(
-                "[handleMultipleChoiceAnswered] all snippets across turns",
-                allSnippets.map(s => ({
-                    id: s.id,
-                    type: s.type,
-                    step_id: s.step_id,
-                    ...(s.type === "multiple_choice" ? { questionId: s.questionId, selectedValue: s.selectedValue } : {})
-                }))
-            )
-
-            const matchingTurn = prev.find(turn => (turn.snippets ?? []).some(s => s.type === "multiple_choice" && s.questionId === questionId))
-            console.log("[handleMultipleChoiceAnswered] matching turn found?", {
-                found: !!matchingTurn,
-                turnStepId: matchingTurn?.step_id,
-                turnIsGenerating: matchingTurn?.isGenerating
-            })
-
             return prev.map(turn => {
                 const snippets = turn.snippets ?? []
                 const hasMatch = snippets.some(s => s.type === "multiple_choice" && s.questionId === questionId)
                 if (!hasMatch) return turn
-                const updated = {
+                return {
                     ...turn,
                     snippets: snippets.map(s => (s.type === "multiple_choice" && s.questionId === questionId ? { ...s, selectedValue: value } : s))
                 }
-                console.log("[handleMultipleChoiceAnswered] updated turn", {
-                    turnStepId: updated.step_id,
-                    snippets: updated.snippets?.map(s => ({
-                        type: s.type,
-                        ...(s.type === "multiple_choice" ? { questionId: s.questionId, selectedValue: s.selectedValue } : {})
-                    }))
-                })
-                return updated
             })
         })
     }
