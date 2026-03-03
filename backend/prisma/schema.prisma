@@ -911,6 +911,7 @@ enum KnowledgeBaseConfigType {
 enum RunHistoryStatus {
   success
   failed
+  cancelled
   skipped
   in_progress
   awaiting_approval
@@ -1044,12 +1045,14 @@ model run_history_chat_events {
 model run_history_raw_events {
   id                    String   @id @default(cuid())
   run_history_record_id String
+  event_key             String
   raw_event_json        Json // Raw AgentStreamEvent stored as JSON for easy loading into OpenAI agent history
   sequence_order        Int // Order of items within a session to preserve exact sequence
   created_at            DateTime @default(now())
 
   run_history_record run_history_records @relation(fields: [run_history_record_id], references: [id], onDelete: Cascade)
 
+  @@unique([run_history_record_id, event_key])
   @@index([run_history_record_id])
   @@index([run_history_record_id, sequence_order])
   @@index([created_at])
@@ -1065,10 +1068,12 @@ enum ChatSessionType {
 model chat_raw_events {
   id              String   @id @default(cuid())
   chat_session_id String
+  event_key       String
   raw_event_json  Json // Raw AgentStreamEvent stored as JSON for easy loading into OpenAI agent history
   sequence_order  Int // Order of items within a session to preserve exact sequence
   created_at      DateTime @default(now())
 
+  @@unique([chat_session_id, event_key])
   @@index([chat_session_id])
   @@index([chat_session_id, sequence_order])
   @@index([created_at])

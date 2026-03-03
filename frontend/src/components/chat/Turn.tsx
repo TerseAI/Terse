@@ -3,7 +3,7 @@ import { useState } from "react"
 import { CheckCircleIcon, CheckIcon, DocumentDuplicateIcon, HandThumbDownIcon, HandThumbUpIcon, XCircleIcon } from "@heroicons/react/24/outline"
 import { HandThumbDownIcon as HandThumbDownFilledIcon, HandThumbUpIcon as HandThumbUpFilledIcon } from "@heroicons/react/24/solid"
 
-import { ChangedItem, ChatSnippet, SharedErrorContext } from "../../shared/ModelEvents"
+import { ChangedItem, type ChatSnippet, SharedErrorContext } from "../../shared/ModelEvents"
 
 import FunctionCallItem from "./FunctionCallItem"
 import { RunErrorView } from "./RunErrorView"
@@ -14,12 +14,13 @@ import ToolCallsSummary from "./ToolCallsSummary"
 interface Turn {
     role: "user" | "assistant"
     text: string
+    timestamp: number
     function_calls: FunctionCallEvent[]
     step_id: string
-    localTurnId?: string
     isFailure?: boolean
     isGenerating?: boolean
     isThinking?: boolean
+    isCancelled?: boolean
     /** Run-level error code (e.g. context_length_exceeded) for specific UI copy */
     errorCode?: string
     filter_result?: {
@@ -59,6 +60,7 @@ function TurnView({
     isFailure = false,
     isGenerating = false,
     isThinking = false,
+    isCancelled = false,
     errorCode,
     filter_result,
     snippets = [],
@@ -69,6 +71,10 @@ function TurnView({
 }: Turn) {
     const isUser = role === "user"
     const isAssistantFinishedGenerating = !isGenerating && role === "assistant" && text.length > 0
+
+    // hide cancelled steps entirely to avoid confusion
+    if (isCancelled) return null
+
     // Expanded state - show all steps with status
     return (
         <div className={`flex rounded-lg ${isUser ? "justify-end animate-in fade-in-0" : "justify-start"}`}>
@@ -238,7 +244,7 @@ function TurnTimeline({
         ...snippets.map((snippet, i) => ({
             kind: "snippet" as const,
             snippet,
-            ts: snippet.timestamp ?? completedCalls.length + i
+            ts: completedCalls.length + i
         }))
     ].sort((a, b) => {
         const timeDiff = a.ts - b.ts
@@ -269,7 +275,7 @@ function TurnTimeline({
                             return <FunctionCallItem key={`fc-${item.call.id}`} call={item.call} index={index} isTurnFailure={isTurnFailure} onApprove={onApprove} onReject={onReject} />
                         }
                         return (
-                            <div key={`sn-${item.snippet.id}`} className="py-1">
+                            <div key={`sn-${item.snippet.id ?? index}`} className="py-1">
                                 <SnippetView snippet={item.snippet} onMultipleChoiceAnswer={onMultipleChoiceAnswer} />
                             </div>
                         )

@@ -187,6 +187,8 @@ export const convertPrismaRunHistoryStatusToShared = (status: PrismaRunHistorySt
             return SharedRunHistoryStatus.SUCCESS
         case PrismaRunHistoryStatus.failed:
             return SharedRunHistoryStatus.FAILED
+        case PrismaRunHistoryStatus.cancelled:
+            return SharedRunHistoryStatus.CANCELLED
         case PrismaRunHistoryStatus.skipped:
             return SharedRunHistoryStatus.SKIPPED
         case PrismaRunHistoryStatus.in_progress:

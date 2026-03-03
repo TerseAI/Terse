@@ -5,6 +5,7 @@ import logger from "../../logger"
 import { User } from "../../shared/types"
 import { ChatMemorySession, recentHistoryCallback } from "../CustomMemorySession"
 import { AgentType, builderProviderDataModelSettings, runnerFactory } from "../runner"
+import { buildUserMessage } from "../userMessage"
 
 import type { ChatAgentContext } from "./ChatAgentContext"
 import { buildChatAgentSystemPrompt } from "./ChatAgentSystemPrompt"
@@ -36,7 +37,7 @@ class ChatAgent {
         return this.memorySession
     }
 
-    async run(message: string): Promise<string> {
+    async run(message: string, options?: { signal?: AbortSignal; clientTurnId?: string }): Promise<string> {
         logger.info("Starting chat agent run for message in interface", {
             message,
             interface: this.chatInterface.name
@@ -63,28 +64,28 @@ class ChatAgent {
 
         const runner = runnerFactory(runConfig)
 
-        const result = await runner.run(
-            agent,
-            [
-                {
-                    role: "user",
-                    content: message
-                }
-            ],
-            {
-                stream: true,
-                context: {
-                    chatInterface: this.chatInterface,
-                    user: this.user,
-                    sessionId: this.sessionId
-                },
-                session: memorySession,
-                sessionInputCallback: recentHistoryCallback,
-                maxTurns: CHAT_AGENT_MAX_TURNS
-            }
-        )
+        const result = await runner.run(agent, [buildUserMessage(message, options?.clientTurnId)], {
+            stream: true,
+            context: {
+                chatInterface: this.chatInterface,
+                user: this.user,
+                sessionId: this.sessionId
+            },
+            session: memorySession,
+            sessionInputCallback: recentHistoryCallback,
+            maxTurns: CHAT_AGENT_MAX_TURNS,
+            signal: options?.signal
+        })
 
         for await (const event of result as AsyncIterable<RunStreamEvent>) {
+            try {
+                await memorySession.ingestStreamEvent(event)
+            } catch (error) {
+                logger.warn("Failed to ingest chat stream event into memory session", {
+                    sessionId: this.sessionId,
+                    error
+                })
+            }
             this.chatInterface.processStreamEvent(this.sessionId, event)
         }
 

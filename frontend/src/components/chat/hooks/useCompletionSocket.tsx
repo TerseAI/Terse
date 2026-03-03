@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState } from "react"
 
 import {
-    type ChatSnippetPayload,
+    type Cancelled,
+    type ChatSnippet,
     FilterResult,
     type ModelEvent,
     type ModelRequest,
     type RunError,
     type TextDelta,
+    Thinking,
     type ToolApprovalRequest,
     ToolApprovalResponse,
     type ToolCall,
@@ -29,11 +31,12 @@ export type UseCompletionSocketOptions = {
     onToolCallComplete: (toolCallComplete: ToolCallComplete) => void
     onNaturalStop: () => void
     onFilterResult: (filterResult: FilterResult) => void
-    onThinking: (stepId: string) => void
+    onThinking: (thinking: Thinking) => void
     onToolApprovalRequest?: (request: ToolApprovalRequest) => void
     onToolApprovalResponse?: (response: ToolApprovalResponse) => void
-    onSnippet?: (snippet: ChatSnippetPayload) => void
+    onSnippet?: (snippet: ChatSnippet, timestamp: number) => void
     onRunError?: (event: RunError) => void
+    onCancelled?: (event: Cancelled) => void
 }
 
 export function useCompletionSocket(options: UseCompletionSocketOptions) {
@@ -50,7 +53,8 @@ export function useCompletionSocket(options: UseCompletionSocketOptions) {
         onToolApprovalRequest,
         onToolApprovalResponse,
         onSnippet,
-        onRunError
+        onRunError,
+        onCancelled
     } = options
 
     const onDeltaRef = useRef(onDelta)
@@ -64,6 +68,7 @@ export function useCompletionSocket(options: UseCompletionSocketOptions) {
     const onToolApprovalResponseRef = useRef(onToolApprovalResponse)
     const onSnippetRef = useRef(onSnippet)
     const onRunErrorRef = useRef(onRunError)
+    const onCancelledRef = useRef(onCancelled)
     // For now we assume connected, or we could expose socket connection state globally
     const [isConnected] = useState(true)
 
@@ -80,28 +85,16 @@ export function useCompletionSocket(options: UseCompletionSocketOptions) {
         onToolApprovalResponseRef.current = onToolApprovalResponse
         onSnippetRef.current = onSnippet
         onRunErrorRef.current = onRunError
-    }, [onDelta, onToolCallGenerating, onToolCall, onToolCallComplete, onNaturalStop, onFilterResult, onThinking, onToolApprovalRequest, onToolApprovalResponse, onSnippet, onRunError])
+        onCancelledRef.current = onCancelled
+    }, [onDelta, onToolCallGenerating, onToolCall, onToolCallComplete, onNaturalStop, onFilterResult, onThinking, onToolApprovalRequest, onToolApprovalResponse, onSnippet, onRunError, onCancelled])
 
     // Subscribe to events
     useEffect(() => {
         if (!subscribeToEvents) {
-            console.log("[useCompletionSocket] No subscribeToEvents provided, skipping subscription")
             return
         }
-
-        console.log("[useCompletionSocket] Setting up event subscription")
         const unsubscribe = subscribeToEvents(payload => {
             const message = payload.runHistoryModelEvent
-            console.log("[useCompletionSocket] Event received:", message.type)
-
-            // Normalize timestamps to epoch-ms for stable ordering in the chat timeline.
-            if (typeof message.timestamp === "string") {
-                const parsed = Date.parse(message.timestamp)
-                message.timestamp = Number.isNaN(parsed) ? Date.now() : parsed
-            } else {
-                message.timestamp = message.timestamp ?? Date.now()
-            }
-
             switch (message.type) {
                 case "TextDelta":
                     onDeltaRef.current(message)
@@ -122,7 +115,7 @@ export function useCompletionSocket(options: UseCompletionSocketOptions) {
                     onFilterResultRef.current(message)
                     break
                 case "Thinking":
-                    onThinkingRef.current(message.step_id)
+                    onThinkingRef.current(message)
                     break
                 case "ToolApprovalRequest":
                     onToolApprovalRequestRef.current?.(message)
@@ -131,19 +124,26 @@ export function useCompletionSocket(options: UseCompletionSocketOptions) {
                     onToolApprovalResponseRef.current?.(message)
                     break
                 case "Snippet":
-                    console.log("Snippet event received", message.snippet)
-                    onSnippetRef.current?.({ ...message.snippet, timestamp: message.timestamp })
+                    onSnippetRef.current?.(message.snippet, message.timestamp)
+                    break
+                case "UserMessage":
+                    // No-op: user turns are created locally via addUserTurn.
                     break
                 case "RunError":
-                    onRunErrorRef.current?.({ error: message.error, ...(message.code && { code: message.code }) })
+                    onRunErrorRef.current?.(message)
+                    break
+                case "Cancelled":
+                    onCancelledRef.current?.(message)
                     break
                 default:
-                    console.warn("[useCompletionSocket] Unknown event type:", message.type)
+                    // Exhaustive switch guard: if ModelEvent gains a new variant,
+                    // TypeScript will fail here until we handle it explicitly.
+                    const exhaustiveCheck: never = message
+                    console.warn("Unhandled chat event", exhaustiveCheck)
             }
         })
 
         return () => {
-            console.log("[useCompletionSocket] Cleaning up event subscription")
             unsubscribe()
         }
     }, [subscribeToEvents])

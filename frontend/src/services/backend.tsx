@@ -21,7 +21,7 @@ import {
 } from "../shared/Integrations"
 import { CreateNotificationDestinationRequest, NotificationDestination } from "../shared/Notifications"
 import type { RunHistoryActionWithId, RunHistoryModelEvent } from "../shared/RunHistoryTypes"
-import { GetAllRunHistoryResponse, GetRunHistoryParams, GetRunHistoryResponse } from "../shared/RunHistoryTypes"
+import { GetAllRunHistoryResponse, GetRunHistoryParams, GetRunHistoryResponse, RunHistoryStatus } from "../shared/RunHistoryTypes"
 import { GetToolsThatRequireApprovalsRequest, GetToolsThatRequireApprovalsResponse } from "../shared/ToolsTypes"
 import {
     Agent,
@@ -350,7 +350,7 @@ interface BackendService {
     /**
      * Fetch chat history for a specific run
      */
-    getChatHistory(runId: string): Promise<{ events: Array<RunHistoryModelEvent>; startTimestamp?: string; endTimestamp?: string; status?: string }>
+    getChatHistory(runId: string): Promise<{ events: Array<RunHistoryModelEvent>; startTimestamp?: string; endTimestamp?: string; status?: RunHistoryStatus }>
 
     /**
      * Fetch builder chat history for a session
@@ -1129,7 +1129,7 @@ export const BackendProvider: BackendService = {
     getChatHistory: runId => {
         const url = `${backendBaseUrl}${ApiRoutes.RUN_HISTORY.CHAT_BY_RUN_ID.build(runId)}`
         return axios
-            .get<{ events: Array<RunHistoryModelEvent>; startTimestamp?: string; endTimestamp?: string; status?: string }>(url, { withCredentials: true })
+            .get<{ events: Array<RunHistoryModelEvent>; startTimestamp?: string; endTimestamp?: string; status?: RunHistoryStatus }>(url, { withCredentials: true })
             .then(r => r.data)
             .catch(error => {
                 console.error("Error fetching chat history:", error)

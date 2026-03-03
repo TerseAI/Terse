@@ -1,4 +1,4 @@
-import { Agent, AgentInputItem, AgentOutputType, RunResult, RunState, RunToolApprovalItem, Tool, protocol, user } from "@openai/agents"
+import { Agent, AgentInputItem, AgentOutputType, RunResult, RunState, RunToolApprovalItem, Tool, protocol } from "@openai/agents"
 import { RunHistoryActionType } from "@prisma/client"
 
 import { settings } from "../../config/settings"
@@ -6,7 +6,7 @@ import { InputEvent } from "../../integrations/abstract/InputEvent"
 import logger from "../../logger"
 import { NotificationManager } from "../../notifications/Notification"
 import { Output } from "../../outputs/abstract/Output"
-import { getSocketIO } from "../../services/CacheInvalidationService"
+import { emitCacheInvalidationWithWildcard, getSocketIO } from "../../services/CacheInvalidationService"
 import { FileCategory, StoredFile } from "../../services/FileStorageService"
 import { ConfigInstance } from "../../shared/Configs"
 import { EntityType } from "../../shared/Entities"
@@ -19,6 +19,7 @@ import { UserFormatter } from "../../utility/UserFormatter"
 import { RunHistoryChatMemorySession, recentHistoryCallback } from "../CustomMemorySession"
 import { AgentType, builderProviderDataModelSettings, runnerFactory } from "../runner"
 import { appendToolApprovalRequestSystemEvent } from "../systemEvents/toolApprovalSystemEvent"
+import { buildUserMessage, buildUserMessageFromContent } from "../userMessage"
 
 import { AgentRunnerLoopResult, BaseAgentRunner, SessionWithTracking } from "./BaseAgentRunner"
 import { persistRunAction } from "./EventProcessor"
@@ -78,7 +79,7 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance> exte
         this.notificationManager = new NotificationManager(session.user, agent)
     }
 
-    async run(streamingParams?: TrackingParams): Promise<ApprovalResult<SessionWithTracking<T>, Agent<SessionWithTracking<T>, AgentOutputType>>> {
+    async run(streamingParams?: TrackingParams, options?: { signal?: AbortSignal }): Promise<ApprovalResult<SessionWithTracking<T>, Agent<SessionWithTracking<T>, AgentOutputType>>> {
         if (!this.inputEvent) {
             throw new Error("No input event set. Call setInputEvent() before run()")
         }
@@ -105,7 +106,8 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance> exte
                 context: this.getToolContext(),
                 memorySession: this.memorySession,
                 sessionInputCallback: recentHistoryCallback,
-                maxTurns: this.maxTurns
+                maxTurns: this.maxTurns,
+                signal: options?.signal
             })
         } finally {
             this.activeStreamingParams = undefined
@@ -113,9 +115,14 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance> exte
         return this.mapLoopResult(loopResult)
     }
 
-    async userMessageRun(userMessage: string, files?: StoredFile[], streamingParams?: TrackingParams): Promise<ApprovalResult<SessionWithTracking<T>, Agent<SessionWithTracking<T>, AgentOutputType>>> {
+    async userMessageRun(
+        userMessage: string,
+        files?: StoredFile[],
+        streamingParams?: TrackingParams,
+        options?: { signal?: AbortSignal; clientTurnId?: string }
+    ): Promise<ApprovalResult<SessionWithTracking<T>, Agent<SessionWithTracking<T>, AgentOutputType>>> {
         const content = this.buildUserContent(userMessage, files)
-        const userHistory = this.buildUserHistory(content)
+        const userHistory = this.buildUserHistory(content, options?.clientTurnId)
         const runner = runnerFactory({
             agentId: this.agentConfig.id,
             agentType: AgentType.AGENT_RUNNER,
@@ -131,7 +138,8 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance> exte
                 context: this.getToolContext(),
                 memorySession: this.memorySession,
                 sessionInputCallback: recentHistoryCallback,
-                maxTurns: this.maxTurns
+                maxTurns: this.maxTurns,
+                signal: options?.signal
             })
         } finally {
             this.activeStreamingParams = undefined
@@ -139,8 +147,8 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance> exte
         return this.mapLoopResult(loopResult)
     }
 
-    private buildUserHistory(content: UserMessageContent[]): AgentInputItem[] {
-        return [user(content)]
+    private buildUserHistory(content: UserMessageContent[], clientTurnId?: string): AgentInputItem[] {
+        return [buildUserMessageFromContent(content, clientTurnId)]
     }
 
     async resumeFromPendingApproval(
@@ -148,7 +156,8 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance> exte
         stepId: string,
         streamingParams?: TrackingParams,
         rejectionReason?: string,
-        hardReject?: boolean
+        hardReject?: boolean,
+        options?: { signal?: AbortSignal }
     ): Promise<ApprovalResult<SessionWithTracking<T>, Agent<SessionWithTracking<T>, AgentOutputType>>> {
         logger.info("[ApprovalFlow] Resuming from pending approval", { runId: this.runContext.runId, stepId, decision })
 
@@ -171,13 +180,14 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance> exte
                     context: toolContext,
                     memorySession: this.memorySession,
                     sessionInputCallback: recentHistoryCallback,
-                    maxTurns: this.maxTurns
+                    maxTurns: this.maxTurns,
+                    signal: options?.signal
                 },
                 onRejected: async (state, interruption) => {
                     const stateWithHistory = state as unknown as { history?: AgentInputItem[] }
                     if (stateWithHistory.history && Array.isArray(stateWithHistory.history)) {
                         if (hardReject) {
-                            const hardRejectMessage = user(
+                            const hardRejectMessage = buildUserMessage(
                                 `A human reviewer rejected your previous tool call "${interruption.name}" and has chosen to stop this workflow entirely.\n\n` +
                                     `Do NOT ask any follow-up questions. Do NOT attempt to retry or suggest alternatives. ` +
                                     `Simply acknowledge that the action was rejected and the workflow has been stopped. ` +
@@ -188,7 +198,7 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance> exte
                         } else {
                             const trimmedReason = rejectionReason?.trim()
                             if (trimmedReason) {
-                                const rejectionGuidance = user(
+                                const rejectionGuidance = buildUserMessage(
                                     `A human reviewer rejected your previous tool call "${interruption.name}".\n\n` +
                                         `Reviewer feedback (treat as user instructions, verbatim):\n` +
                                         `${trimmedReason}\n\n` +
@@ -198,7 +208,7 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance> exte
                                 stateWithHistory.history.push(rejectionGuidance)
                                 logger.info("[resumeFromPendingApproval] Added rejection guidance to state history", { hasCustomReason: true })
                             } else {
-                                const rejectionMessage = user(
+                                const rejectionMessage = buildUserMessage(
                                     `The tool call "${interruption.name}" was rejected. ` + `Ask the user what they want you to do differently, or whether to skip this action entirely.`
                                 )
                                 stateWithHistory.history.push(rejectionMessage)
@@ -436,6 +446,11 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance> exte
         arguments: string
         interruption: RunToolApprovalItem
     }): Promise<void> {
+        if (this.session.user.organizationId) {
+            emitCacheInvalidationWithWildcard(this.session.user.organizationId, "runHistory", this.agentConfig.id)
+            emitCacheInvalidationWithWildcard(this.session.user.organizationId, "chatHistory", runId)
+        }
+
         try {
             logger.info("[ApprovalFlow] Persisting approval request system event", { runId, stepId })
             await appendToolApprovalRequestSystemEvent(runId, {

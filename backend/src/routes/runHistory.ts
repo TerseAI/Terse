@@ -10,7 +10,14 @@ import { parsePageParams } from "../utility/pagination"
 import { convertPrismaIntegrationTypeToIntegrationTypeFromRunHistory, convertPrismaRunHistoryStatusToShared } from "../utility/typeConverters"
 
 // Valid status values for validation
-const VALID_STATUSES: RunHistoryStatus[] = [RunHistoryStatus.SUCCESS, RunHistoryStatus.FAILED, RunHistoryStatus.SKIPPED, RunHistoryStatus.IN_PROGRESS, RunHistoryStatus.AWAITING_APPROVAL]
+const VALID_STATUSES: RunHistoryStatus[] = [
+    RunHistoryStatus.SUCCESS,
+    RunHistoryStatus.FAILED,
+    RunHistoryStatus.CANCELLED,
+    RunHistoryStatus.SKIPPED,
+    RunHistoryStatus.IN_PROGRESS,
+    RunHistoryStatus.AWAITING_APPROVAL
+]
 
 /**
  * Get run history across ALL agents in the organization
@@ -343,18 +350,15 @@ export async function getChatHistory(req: Request, res: Response) {
         type ChatHistoryEvent = {
             type: string
             id: string
-            timestamp: string
+            timestamp: number
             [key: string]: unknown
         }
 
-        const fallbackTimestamp = runRecord.timestamp
-
         const events: ChatHistoryEvent[] = modelEvents.map((event, index) => {
-            const eventTimestamp = typeof event.timestamp === "number" ? event.timestamp : fallbackTimestamp.getTime()
             return {
                 ...event,
                 id: `run-history-raw-${index}`,
-                timestamp: new Date(eventTimestamp).toISOString()
+                timestamp: event.timestamp
             }
         })
 

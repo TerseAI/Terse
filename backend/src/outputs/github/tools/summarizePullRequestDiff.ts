@@ -1,10 +1,10 @@
-import { RunContext, tool } from "@openai/agents"
-import { Agent, AgentInputItem, AgentOutputType, run, user } from "@openai/agents"
+import { Agent, AgentInputItem, AgentOutputType, RunContext, run, tool } from "@openai/agents"
 import { RunHistoryActionType } from "@prisma/client"
 import { z } from "zod"
 
 import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
 import { AgentType, builderProviderDataModelSettings, runnerFactory } from "../../../agent/runner"
+import { buildUserMessage } from "../../../agent/userMessage"
 import { settings } from "../../../config/settings"
 import logger from "../../../logger"
 import { IntegrationType } from "../../../shared/Integrations"
@@ -133,7 +133,7 @@ You can optionally provide high-level context about what you're looking for in t
             })
 
             // Prepare the history for the sub-agent
-            const history: AgentInputItem[] = [user(userPrompt)]
+            const history: AgentInputItem[] = [buildUserMessage(userPrompt)]
 
             // Create runner for the sub-agent
             const runner = runnerFactory(runConfig)
