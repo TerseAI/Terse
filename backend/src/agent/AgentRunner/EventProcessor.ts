@@ -7,6 +7,7 @@ import { Output } from "../../outputs/abstract/Output"
 import { OutputFactory } from "../../outputs/abstract/OutputFactory"
 import { db } from "../../prismaClient"
 import { emitCacheInvalidationWithKey, emitCacheInvalidationWithWildcard, markRunFailedAndInvalidate } from "../../realtimeSocket"
+import { SdkJobExecutionService } from "../../services/SdkJobExecutionService"
 import { ConfigInstance } from "../../shared/Configs"
 import { RunHistoryAction } from "../../shared/RunHistoryTypes"
 import { SerializedEvent, User } from "../../shared/types"
@@ -19,7 +20,6 @@ import { classifyAgentError } from "../agentErrorUtils"
 import { listenForRunCancellation } from "../cancellation/RunCancellationTaskQueue"
 import { markRunCancelledAndInvalidate } from "../cancellation/runCancellationEffects"
 
-import { SdkJobExecutionService } from "../../services/SdkJobExecutionService"
 import { AgentRunResultStatus, AgentRunner, ApprovalResult, SessionWithTracking } from "./AgentRunner"
 import { filterEvent } from "./EventFilter"
 import { RunContext } from "./SystemPromptBuilder"
@@ -419,20 +419,22 @@ export class EventProcessor {
 
         // Fire-and-forget: sandbox runs asynchronously
         const service = new SdkJobExecutionService()
-        void service.execute({
-            gcsKey,
-            runId,
-            agentId: agent.id,
-            orgId: this.user.organizationId,
-            userId: agent.user_id,
-            eventJson
-        }).catch(error => {
-            logger.error(`SDK sandbox execution failed for agent "${agent.name}"`, {
-                error,
+        void service
+            .execute({
+                gcsKey,
                 runId,
-                agentId: agent.id
+                agentId: agent.id,
+                orgId: this.user.organizationId,
+                userId: agent.user_id,
+                eventJson
             })
-        })
+            .catch(error => {
+                logger.error(`SDK sandbox execution failed for agent "${agent.name}"`, {
+                    error,
+                    runId,
+                    agentId: agent.id
+                })
+            })
 
         return new ProcessorResult(true, "SDK job execution started", agent, undefined, runId)
     }

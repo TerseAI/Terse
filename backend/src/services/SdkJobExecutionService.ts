@@ -1,5 +1,4 @@
 import crypto from "crypto"
-
 import { ModalClient } from "modal"
 
 import { finalizeRunStatus, markRunFailed } from "../agent/AgentRunner/runHistory"
@@ -8,6 +7,7 @@ import logger from "../logger"
 import { db } from "../prismaClient"
 import { emitCacheInvalidationWithWildcard } from "../realtimeSocket"
 import { RunHistoryStatus } from "../shared/RunHistoryTypes"
+
 import { downloadSdkDeployZip } from "./FileStorageService"
 
 export interface SdkJobExecutionParams {
@@ -84,19 +84,16 @@ export class SdkJobExecutionService {
 
                 // Install unzip & extract
                 t = performance.now()
-                const unzipProc = await sb.exec(
-                    ["sh", "-c", "apt-get update -qq && apt-get install -y -qq unzip > /dev/null 2>&1 && cd /tmp && unzip -o code.zip -d project > /dev/null"],
-                    { stdout: "pipe", stderr: "pipe" }
-                )
+                const unzipProc = await sb.exec(["sh", "-c", "apt-get update -qq && apt-get install -y -qq unzip > /dev/null 2>&1 && cd /tmp && unzip -o code.zip -d project > /dev/null"], {
+                    stdout: "pipe",
+                    stderr: "pipe"
+                })
                 await unzipProc.wait()
                 logger.info("SDK sandbox: unzipped code", { runId, agentId, duration: this.elapsed(t) })
 
                 // npm install
                 t = performance.now()
-                const installProc = await sb.exec(
-                    ["sh", "-c", "cd /tmp/project && npm install --omit=dev 2>&1"],
-                    { stdout: "pipe", stderr: "pipe", env: sandboxEnv }
-                )
+                const installProc = await sb.exec(["sh", "-c", "cd /tmp/project && npm install --omit=dev 2>&1"], { stdout: "pipe", stderr: "pipe", env: sandboxEnv })
                 const installStdout = await installProc.stdout.readText()
                 const installExitCode = await installProc.wait()
                 logger.info("SDK sandbox: npm install", { runId, agentId, duration: this.elapsed(t), exitCode: installExitCode, output: installStdout.slice(0, 500) })
@@ -111,15 +108,9 @@ export class SdkJobExecutionService {
 
                 // terse run
                 t = performance.now()
-                const runProc = await sb.exec(
-                    ["sh", "-c", `cd /tmp/project && npx terse run --event '${eventJson.replace(/'/g, "'\\''")}'`],
-                    { stdout: "pipe", stderr: "pipe", env: sandboxEnv }
-                )
+                const runProc = await sb.exec(["sh", "-c", `cd /tmp/project && npx terse run --event '${eventJson.replace(/'/g, "'\\''")}'`], { stdout: "pipe", stderr: "pipe", env: sandboxEnv })
 
-                const [stdout, stderr] = await Promise.all([
-                    runProc.stdout.readText(),
-                    runProc.stderr.readText()
-                ])
+                const [stdout, stderr] = await Promise.all([runProc.stdout.readText(), runProc.stderr.readText()])
                 const exitCode = await runProc.wait()
                 const runDuration = this.elapsed(t)
 
