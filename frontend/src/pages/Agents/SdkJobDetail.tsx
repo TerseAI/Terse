@@ -18,8 +18,6 @@ import { FrontendRoutes } from "../../shared/FrontendRoutes"
 import { IconForConfigType } from "./components/Integration"
 import AgentRunHistoryTab from "./tabs/AgentRunHistoryTab"
 
-const SDK_DETAIL_TABS = ["overview", "activity"] as const
-
 export default function SdkJobDetail({ agentId }: { agentId: string }) {
     const navigate = useNavigate()
     const { agent, isLoading, mutate } = useAgent(agentId)
