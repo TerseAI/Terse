@@ -3,10 +3,13 @@ import { Request, Response } from "express"
 
 import { SessionWithTracking } from "../agent/AgentRunner/AgentRunner"
 import { SdkAgentRunner } from "../agent/AgentRunner/SdkAgentRunner"
+import { appendRunAction } from "../agent/AgentRunner/runHistory"
 import { emitSessionEvent } from "../agent/SessionEventBus"
+import logger from "../logger"
 import { OutputFactory } from "../outputs/abstract/OutputFactory"
 import { CONFIG_DETAILS } from "../shared/Configs"
 import { IntegrationType } from "../shared/Integrations"
+import { RunHistoryAction } from "../shared/RunHistoryTypes"
 import { SdkAgentRunRequestBody, SdkAgentRunResponseBody, SdkAgentSkillPayload, SdkAgentStreamEvent, User } from "../shared/types"
 import { Session } from "../types/session"
 
@@ -43,15 +46,23 @@ export async function handleSdkAgentRun(req: Request, res: Response) {
     res.flushHeaders()
 
     const sessionId = req.headers["x-terse-session-id"] as string | undefined
+    const sandboxRunId = req.headers["x-terse-run-id"] as string | undefined
 
     const send = (event: SdkAgentStreamEvent) => {
         res.write(`data: ${JSON.stringify(event)}\n\n`)
         if (sessionId) emitSessionEvent(sessionId, event)
+
+        // Persist actions to run history when running inside a sandbox
+        if (sandboxRunId && event.type === "action") {
+            void appendRunAction(sandboxRunId, event.action as RunHistoryAction).catch(err => {
+                logger.warn("Failed to append run action for sandbox run", { error: err, runId: sandboxRunId })
+            })
+        }
     }
 
     try {
         const { tools, toolToIntegrationMap } = buildToolsForSkills(normalized.skills.map(s => CONFIG_DETAILS[s.configType].integrationType))
-        const runId = `sdk-run-${Date.now()}`
+        const runId = sandboxRunId ?? `sdk-run-${Date.now()}`
         const eventText = ["", `Integration Type: ${normalized.event.integrationType}`, `Event Content:`, normalized.event.formattedContent, ``, `Debug Log: ${normalized.event.debugLog}`].join("\n")
         const sdkRunner = new SdkAgentRunner({
             runId,

@@ -2,7 +2,7 @@ import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 
 import { Tab, TabGroup, TabList } from "@headlessui/react"
-import { Clock, Info, MoreVertical, Pause, Play, Trash2 } from "lucide-react"
+import { Clock, Info, Loader2, MoreVertical, Pause, Play, Trash2, Zap } from "lucide-react"
 import { toast } from "sonner"
 
 import BreadCrumb from "../../components/BreadCrumb"
@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "../../components/ui/dropdown-menu"
 import { SidebarTrigger } from "../../components/ui/sidebar"
 import { useAgent, useAgentMutations } from "../../hooks/api/useAgents"
+import { BackendProvider } from "../../services/backend"
 import { CONFIG_DETAILS } from "../../shared/Configs"
 import { FrontendRoutes } from "../../shared/FrontendRoutes"
 
@@ -26,6 +27,7 @@ export default function SdkJobDetail({ agentId }: { agentId: string }) {
     const [selectedTab, setSelectedTab] = useState(0)
     const [showDeleteDialog, setShowDeleteDialog] = useState(false)
     const [isDeleting, setIsDeleting] = useState(false)
+    const [isTriggering, setIsTriggering] = useState(false)
 
     const handleToggleActive = async () => {
         if (!agent) return
@@ -57,6 +59,26 @@ export default function SdkJobDetail({ agentId }: { agentId: string }) {
         }
     }
 
+    const handleTriggerNow = async () => {
+        if (!agent) return
+        const triggerId = agent.triggers?.[0]?.id
+        if (!triggerId) {
+            toast.error("No trigger configured for this job")
+            return
+        }
+        setIsTriggering(true)
+        try {
+            await BackendProvider.triggerManually(triggerId, "Manual trigger from SDK job detail page")
+            toast.success("Job triggered")
+            setSelectedTab(1) // Switch to Activity tab
+        } catch (error) {
+            console.error("Failed to trigger job:", error)
+            toast.error("Failed to trigger job")
+        } finally {
+            setIsTriggering(false)
+        }
+    }
+
     if (isLoading || !agent) {
         return (
             <div className="flex h-full items-center justify-center">
@@ -82,7 +104,11 @@ export default function SdkJobDetail({ agentId }: { agentId: string }) {
                 <Badge variant="outline" className={agent.isActive ? "text-green-600 border-green-500" : "text-muted-foreground"}>
                     {agent.isActive ? "Active" : "Paused"}
                 </Badge>
-                <div className="ml-auto">
+                <div className="ml-auto flex items-center gap-2">
+                    <Button variant="outline" size="sm" onClick={handleTriggerNow} disabled={isTriggering || !agent.isActive || !agent.triggers?.length}>
+                        {isTriggering ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
+                        Trigger Now
+                    </Button>
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon">

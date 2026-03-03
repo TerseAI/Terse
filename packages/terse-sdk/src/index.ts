@@ -140,6 +140,8 @@ export class TerseAgent {
             Accept: "text/event-stream"
         }
         if (this.sessionId) headers["X-Terse-Session-Id"] = this.sessionId
+        const runId = process.env.TERSE_RUN_ID
+        if (runId) headers["X-Terse-Run-Id"] = runId
 
         const res = await fetch(`${this.apiBaseUrl}${ApiRoutes.SDK.AGENT_RUN}`, {
             method: "POST",
@@ -206,6 +208,8 @@ export class TerseAgent {
             "Content-Type": "application/json"
         }
         if (this.sessionId) headers["X-Terse-Session-Id"] = this.sessionId
+        const toolRunId = process.env.TERSE_RUN_ID
+        if (toolRunId) headers["X-Terse-Run-Id"] = toolRunId
 
         const res = await fetch(`${this.apiBaseUrl}${ApiRoutes.SDK.TOOL_EXECUTE}`, {
             method: "POST",

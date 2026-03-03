@@ -1,7 +1,7 @@
 import path from "node:path"
 import fs from "node:fs"
 
-const BACKEND_URL = "http://localhost:3001"
+const BACKEND_URL = process.env.TERSE_BACKEND_URL || "http://localhost:3001"
 
 
 export function readApiKey(): string | null {

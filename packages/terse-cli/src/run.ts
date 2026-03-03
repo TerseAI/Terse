@@ -7,7 +7,7 @@ import { ApiRoutes } from "./shared/ApiRoutes.js"
 import type { SerializedEvent } from "./shared/types.js"
 import { convertSerializedEventToInputEvent } from "./util.js"
 
-const BACKEND_URL = "http://localhost:3001"
+const BACKEND_URL = process.env.TERSE_BACKEND_URL || "http://localhost:3001"
 
 /**
  * Create a TerseAgent scoped to a job's skills and execute onTrigger.

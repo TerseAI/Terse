@@ -9,7 +9,7 @@ import { db } from "../../prismaClient"
 import { emitCacheInvalidationWithKey, emitCacheInvalidationWithWildcard, markRunFailedAndInvalidate } from "../../realtimeSocket"
 import { ConfigInstance } from "../../shared/Configs"
 import { RunHistoryAction } from "../../shared/RunHistoryTypes"
-import { User } from "../../shared/types"
+import { SerializedEvent, User } from "../../shared/types"
 import { USER_CANCELLED_REASON } from "../../socketHandlers/activeExecution"
 import { AgentWithRelations, Agent as PrismaAgent } from "../../types/prisma"
 import { Session } from "../../types/session"
@@ -19,6 +19,7 @@ import { classifyAgentError } from "../agentErrorUtils"
 import { listenForRunCancellation } from "../cancellation/RunCancellationTaskQueue"
 import { markRunCancelledAndInvalidate } from "../cancellation/runCancellationEffects"
 
+import { SdkJobExecutionService } from "../../services/SdkJobExecutionService"
 import { AgentRunResultStatus, AgentRunner, ApprovalResult, SessionWithTracking } from "./AgentRunner"
 import { filterEvent } from "./EventFilter"
 import { RunContext } from "./SystemPromptBuilder"
@@ -237,6 +238,11 @@ export class EventProcessor {
             return new ProcessorResult(false, "No prompt found for this agent", agent, undefined, existingRunId ?? null)
         }
 
+        // SDK agents run in a Modal sandbox instead of the normal agent pipeline
+        if (agent.source === "SDK" && agent.prompt?.source_code_gcs_key) {
+            return this.processSdkAgent(agent, existingRunId)
+        }
+
         const runId = existingRunId ?? (await this.createRunForAgent(agent))
         const trigger = this.inputEvent.createTriggerMetadata()
 
@@ -395,6 +401,40 @@ export class EventProcessor {
             logger.info(`Agent "${agent.name}" awaiting approval:`)
             return new ProcessorResult<SessionWithTracking<Session>>(false, "Agent awaiting approval", agent, result, runId)
         }
+    }
+
+    private async processSdkAgent(agent: AgentWithRelations, existingRunId?: string): Promise<ProcessorResult> {
+        const runId = existingRunId ?? (await this.createRunForAgent(agent))
+
+        const serializedEvent: SerializedEvent = {
+            integrationType: this.inputEvent.integrationType,
+            formattedContent: this.inputEvent.formatForAgentRunner(),
+            debugLog: this.inputEvent.debugLog()
+        }
+        const eventJson = JSON.stringify(serializedEvent)
+
+        const gcsKey = agent.prompt!.source_code_gcs_key!
+
+        logger.info(`Starting SDK sandbox execution for agent "${agent.name}"`, { runId, agentId: agent.id, gcsKey })
+
+        // Fire-and-forget: sandbox runs asynchronously
+        const service = new SdkJobExecutionService()
+        void service.execute({
+            gcsKey,
+            runId,
+            agentId: agent.id,
+            orgId: this.user.organizationId,
+            userId: agent.user_id,
+            eventJson
+        }).catch(error => {
+            logger.error(`SDK sandbox execution failed for agent "${agent.name}"`, {
+                error,
+                runId,
+                agentId: agent.id
+            })
+        })
+
+        return new ProcessorResult(true, "SDK job execution started", agent, undefined, runId)
     }
 }
 

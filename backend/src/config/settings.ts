@@ -159,6 +159,12 @@ export const settings = {
         host: optionalEnv("POSTHOG_HOST", "https://us.i.posthog.com")
     },
 
+    // Modal (sandbox execution for SDK jobs)
+    modal: {
+        tokenId: optionalEnv("MODAL_TOKEN_ID"),
+        tokenSecret: optionalEnv("MODAL_TOKEN_SECRET")
+    },
+
     // Optional configuration
     optional: {
         redisUrl: optionalEnv("REDIS_URL"),
