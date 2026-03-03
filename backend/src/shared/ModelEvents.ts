@@ -39,7 +39,7 @@ export type NaturalStop = { step_id: string; timestamp: number }
 
 export type ModelRequest = ({ type: "SendModelRequest" } & SendModelRequest) | ({ type: "ToolApprovalResponse" } & ToolApprovalResponse)
 
-export type SendModelRequest = { user_message: string; timezone: string; ui_state?: string; client_turn_id: string }
+export type SendModelRequest = { user_message: string; timezone: string; ui_state?: string; client_turn_id: string, template_id?: string }
 
 export type ToolApprovalResponse = { step_id: string; approved: boolean; timestamp: number }
 
@@ -74,7 +74,7 @@ export type ToolCallComplete = {
 
 export type FilterResult = { isRelevant: boolean; reason: string; confidence: number; step_id: string; timestamp: number }
 
-export type UserMessage = { message: string; step_id: string; client_turn_id: string; timestamp: number }
+export type UserMessage = { message: string; step_id: string; client_turn_id: string; timestamp: number; }
 
 // Shared variant union – the payload shapes used by every snippet type.
 export type SnippetVariant =

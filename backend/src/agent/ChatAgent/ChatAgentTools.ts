@@ -22,6 +22,7 @@ import { IntegrationType } from "../../shared/Integrations"
 import { RunHistoryStatus, TrackingParams } from "../../shared/RunHistoryTypes"
 import { ToolNameSchema } from "../../tools/ToolNames"
 import { getToolsThatRequireApprovals } from "../../tools/availableTools"
+import { formatError } from "../../tools/toolUtils"
 import { AgentWithRelations } from "../../types/prisma"
 import { HydratorType, requireHydratorType } from "../../types/rag"
 import {
@@ -70,7 +71,8 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
             execute: async ({ skills }: { skills: ConfigType[] }, _runContext?: RunContext<ChatAgentContext>): Promise<string> => {
                 const tools = getToolsThatRequireApprovals(skills)
                 return JSON.stringify({ tools })
-            }
+            },
+            errorFunction: formatError
         }),
         tool({
             name: "applyAgent",
@@ -100,7 +102,8 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
                     logger.error("applyAgent failed", { error, user, agent })
                     throw error
                 }
-            }
+            },
+            errorFunction: formatError
         }),
         tool({
             name: "promptForIntegration",
@@ -111,7 +114,8 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
             }),
             execute: async ({ integration }: { integration: IntegrationType }, runContext?: RunContext<ChatAgentContext>): Promise<string> => {
                 return await chatInterface.promptForIntegration(integration)
-            }
+            },
+            errorFunction: formatError
         }),
         tool({
             name: "fetchResourcesForIntegration",
@@ -144,7 +148,8 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
                     throw new Error("User is required to fetch resources")
                 }
                 return await fetchResourcesForIntegrationType(integrationType, user.organizationId, query ?? undefined, options)
-            }
+            },
+            errorFunction: formatError
         }),
         tool({
             name: "askSurveyQuestion",
@@ -165,7 +170,8 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
                 _runContext?: RunContext<ChatAgentContext>
             ): Promise<string> => {
                 return await chatInterface.askSurveyQuestion({ question, options, allowMultiple })
-            }
+            },
+            errorFunction: formatError
         }),
         tool({
             name: "getSampleEvents",
@@ -298,7 +304,8 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
                 })
 
                 return JSON.stringify({ events: results })
-            }
+            },
+            errorFunction: formatError
         }),
         tool({
             name: "triggerAgentRun",
@@ -394,7 +401,8 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
                     status: RunHistoryStatus.IN_PROGRESS,
                     runHistoryPath
                 })
-            }
+            },
+            errorFunction: formatError
         }),
         tool({
             name: "pollTriggeredRunStatus",
@@ -462,7 +470,8 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
                     timedOut,
                     runHistoryPath
                 })
-            }
+            },
+            errorFunction: formatError
         })
     ]
 }
