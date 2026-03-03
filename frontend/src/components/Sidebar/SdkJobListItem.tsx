@@ -1,7 +1,5 @@
 import { Link, useLocation } from "react-router-dom"
 
-import { Terminal } from "lucide-react"
-
 import { SidebarMenuSubButton, SidebarMenuSubItem } from "@/components/ui/sidebar"
 import { FrontendRoutes } from "@/shared/FrontendRoutes"
 import { Agent } from "@/shared/types"

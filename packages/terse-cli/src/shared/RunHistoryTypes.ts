@@ -6,6 +6,7 @@ import type { User } from "./types"
 export enum RunHistoryStatus {
     SUCCESS = "success",
     FAILED = "failed",
+    CANCELLED = "cancelled",
     SKIPPED = "skipped",
     IN_PROGRESS = "in_progress",
     AWAITING_APPROVAL = "awaiting_approval"
@@ -118,8 +119,4 @@ export type TrackingParams = {
     runId: string
     agentId: string
     user: User
-}
-
-export type TrackingParamsWithCallback = TrackingParams & {
-    onEvent?: (event: ModelEvent) => Promise<void>
 }

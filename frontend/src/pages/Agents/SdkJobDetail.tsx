@@ -12,11 +12,11 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "../../components/ui/dropdown-menu"
 import { SidebarTrigger } from "../../components/ui/sidebar"
 import { useAgent, useAgentMutations } from "../../hooks/api/useAgents"
-import { FrontendRoutes } from "../../shared/FrontendRoutes"
 import { CONFIG_DETAILS } from "../../shared/Configs"
+import { FrontendRoutes } from "../../shared/FrontendRoutes"
 
-import AgentRunHistoryTab from "./tabs/AgentRunHistoryTab"
 import { IconForConfigType } from "./components/Integration"
+import AgentRunHistoryTab from "./tabs/AgentRunHistoryTab"
 
 const SDK_DETAIL_TABS = ["overview", "activity"] as const
 
@@ -137,11 +137,7 @@ export default function SdkJobDetail({ agentId }: { agentId: string }) {
                 </TabList>
 
                 <div className="flex-1 min-h-0 overflow-y-auto">
-                    {selectedTab === 0 ? (
-                        <OverviewTab triggers={triggers} updatedAt={agent.updatedAt} isActive={agent.isActive} />
-                    ) : (
-                        <AgentRunHistoryTab agentId={agentId} />
-                    )}
+                    {selectedTab === 0 ? <OverviewTab triggers={triggers} updatedAt={agent.updatedAt} isActive={agent.isActive} /> : <AgentRunHistoryTab agentId={agentId} />}
                 </div>
             </TabGroup>
 
@@ -168,15 +164,7 @@ export default function SdkJobDetail({ agentId }: { agentId: string }) {
     )
 }
 
-function OverviewTab({
-    triggers,
-    updatedAt,
-    isActive
-}: {
-    triggers: { id: string; config: { configType: string } }[]
-    updatedAt?: string
-    isActive: boolean
-}) {
+function OverviewTab({ triggers, updatedAt, isActive }: { triggers: { id: string; config: { configType: string } }[]; updatedAt?: string; isActive: boolean }) {
     return (
         <div className="p-4 space-y-6 max-w-2xl">
             {/* Status */}
