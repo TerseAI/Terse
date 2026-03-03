@@ -30,14 +30,9 @@ export async function handleToolDefinitions(req: Request, res: Response) {
 
         const seen = new Set<string>()
 
-        // Limit to Slack and GitHub while we validate the architecture
-        const allowedIntegrations = new Set<string>([IntegrationType.SLACK, IntegrationType.GITHUB])
-
         for (const [, factory] of OutputFactory.OUTPUT_REGISTRY) {
             const output = factory()
             for (const entry of output.toolbox) {
-                if (!allowedIntegrations.has(entry.integration)) continue
-
                 const name = entry.tool.name
                 if (seen.has(name)) continue
                 seen.add(name)
