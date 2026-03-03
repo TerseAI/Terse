@@ -440,6 +440,7 @@ export type Agent = {
     notificationSettings?: AgentNotificationSettings
     toolApprovals?: string[]
     updatedAt?: string
+    source?: "WEB_UI" | "SDK"
 }
 
 export type AgentNotificationSettings = {

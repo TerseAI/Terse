@@ -770,7 +770,8 @@ function transformAgentToFrontendFormat(agent: AgentWithRelations & Partial<Agen
               }
             : undefined,
         toolApprovals: agent.tool_approvals.map((ta: any) => ta.tool_name),
-        updatedAt: agent.updated_at.toISOString()
+        updatedAt: agent.updated_at.toISOString(),
+        source: agent.source
     }
 }
 

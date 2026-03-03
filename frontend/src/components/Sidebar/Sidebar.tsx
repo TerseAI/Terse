@@ -1,7 +1,8 @@
 import { Link, useLocation, useNavigate } from "react-router-dom"
 
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@radix-ui/react-collapsible"
 import type { LucideIcon } from "lucide-react"
-import { Activity, BarChart3, Bell, Home, Plug, Plus, Zap } from "lucide-react"
+import { Activity, BarChart3, Bell, ChevronRight, Home, Plug, Plus, Terminal, Zap } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -22,12 +23,16 @@ import { useAgents } from "@/hooks/api/useAgents"
 import { FrontendRoutes } from "@/shared/FrontendRoutes"
 import { Agent } from "@/shared/types"
 
+import { SdkJobsList } from "./SdkJobsList"
 import { AppSidebarFooter } from "./SidebarFooter"
 import { AppSidebarHeader } from "./SidebarHeader"
 
 export function AppSidebar() {
     const { agents, isLoading } = useAgents({ limit: 100 })
     const navigate = useNavigate()
+
+    const webUiAgents = agents.filter(a => a.source !== "SDK")
+    const sdkJobs = agents.filter(a => a.source === "SDK")
 
     return (
         <Sidebar>
@@ -42,7 +47,7 @@ export function AppSidebar() {
                 <SidebarGroup>
                     <SidebarGroupLabel>Application</SidebarGroupLabel>
                     <SidebarGroupContent>
-                        <ApplicationNavigation agents={agents} loading={isLoading} />
+                        <ApplicationNavigation agents={webUiAgents} sdkJobs={sdkJobs} loading={isLoading} />
                     </SidebarGroupContent>
                 </SidebarGroup>
 
@@ -60,26 +65,63 @@ export function AppSidebar() {
 
 interface ApplicationNavigationProps {
     agents: Agent[]
+    sdkJobs: Agent[]
     loading: boolean
 }
 
-function ApplicationNavigation({ agents, loading }: ApplicationNavigationProps) {
+function PlainNavItem({ title, url, icon: Icon, iconColor }: NavItem) {
     const location = useLocation()
-    const applicationItems = DefaultApplicationItems
+    return (
+        <SidebarMenuItem>
+            <SidebarMenuButton asChild isActive={location.pathname === url}>
+                <Link to={url}>
+                    <Icon className={iconColor} />
+                    <span>{title}</span>
+                </Link>
+            </SidebarMenuButton>
+        </SidebarMenuItem>
+    )
+}
 
+function ApplicationNavigation({ agents, sdkJobs, loading }: ApplicationNavigationProps) {
     return (
         <SidebarMenu>
-            {applicationItems.map(item => (
-                <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild isActive={location.pathname === item.url}>
-                        <Link to={item.url}>
-                            <item.icon className={item.iconColor} />
-                            <span>{item.title}</span>
-                        </Link>
-                    </SidebarMenuButton>
-                    {item.title === "Agents" && <AgentsList agents={agents} loading={loading} />}
+            <PlainNavItem title="Home" url={FrontendRoutes.APP} icon={Home} iconColor="text-primary" />
+
+            <Collapsible defaultOpen className="group/collapsible">
+                <SidebarMenuItem>
+                    <CollapsibleTrigger asChild>
+                        <SidebarMenuButton>
+                            <Zap className="text-primary" />
+                            <span>Agents</span>
+                            <ChevronRight className="ml-auto size-4 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                        </SidebarMenuButton>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                        <AgentsList agents={agents} loading={loading} />
+                    </CollapsibleContent>
                 </SidebarMenuItem>
-            ))}
+            </Collapsible>
+
+            {(sdkJobs.length > 0 || loading) && (
+                <Collapsible defaultOpen asChild>
+                    <SidebarMenuItem className="group/collapsible">
+                        <CollapsibleTrigger asChild>
+                            <SidebarMenuButton className="cursor-pointer">
+                                <Terminal className="text-primary" />
+                                <span>SDK Jobs</span>
+                                <ChevronRight className="ml-auto size-4 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                            </SidebarMenuButton>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent className="overflow-hidden">
+                            <SdkJobsList agents={sdkJobs} loading={loading} />
+                        </CollapsibleContent>
+                    </SidebarMenuItem>
+                </Collapsible>
+            )}
+
+            <PlainNavItem title="Activity" url={FrontendRoutes.ACTIVITY} icon={Activity} iconColor="text-primary" />
+            <PlainNavItem title="Stats" url={FrontendRoutes.STATS} icon={BarChart3} iconColor="text-primary" />
         </SidebarMenu>
     )
 }
@@ -171,33 +213,6 @@ interface NavItem {
     icon: LucideIcon
     iconColor?: string
 }
-
-const DefaultApplicationItems: NavItem[] = [
-    {
-        title: "Home",
-        url: FrontendRoutes.APP,
-        icon: Home,
-        iconColor: "text-primary"
-    },
-    {
-        title: "Agents",
-        url: FrontendRoutes.AGENTS.SETUP,
-        icon: Zap,
-        iconColor: "text-primary"
-    },
-    {
-        title: "Activity",
-        url: FrontendRoutes.ACTIVITY,
-        icon: Activity,
-        iconColor: "text-primary"
-    },
-    {
-        title: "Stats",
-        url: FrontendRoutes.STATS,
-        icon: BarChart3,
-        iconColor: "text-primary"
-    }
-]
 
 const SettingsItems: NavItem[] = [
     {

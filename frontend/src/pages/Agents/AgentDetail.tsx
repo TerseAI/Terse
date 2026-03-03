@@ -20,6 +20,7 @@ import { AgentNotificationSettings, AgentPrompt, TransientAgentOutput, Transient
 import { AgentInputsDonatedState, AgentNameDonatedState, AgentOutputsDonatedState, AgentPromptDonatedState } from "../../utility/AgentModelDonation"
 import { toTransientAgentOutput, toTransientAgentTrigger } from "../../utility/AgentUtils"
 
+import SdkJobDetail from "./SdkJobDetail"
 import AgentRunHistoryTab from "./tabs/AgentRunHistoryTab"
 import AgentSetupTab, { AgentSetupTabProps } from "./tabs/AgentSetupTab"
 
@@ -441,6 +442,20 @@ function AgentDetail() {
     donate("Agent Inputs", new AgentInputsDonatedState(inputs))
     donate("Agent Skills", new AgentOutputsDonatedState(outputs))
     donate("Agent Prompt", new AgentPromptDonatedState(prompt ?? { text: "" }))
+
+    // SDK-sourced agents get a simplified detail view
+    if (agentId && agent?.source === "SDK") {
+        return <SdkJobDetail agentId={agentId} />
+    }
+
+    // Show loading state while determining agent source for existing agents
+    if (agentId && isFetching && !agent) {
+        return (
+            <div className="flex h-full items-center justify-center">
+                <div className="text-muted-foreground text-sm">Loading...</div>
+            </div>
+        )
+    }
 
     return (
         <div ref={layoutContainerRef} className="flex h-full min-w-0">
