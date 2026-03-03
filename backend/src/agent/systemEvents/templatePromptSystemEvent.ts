@@ -52,10 +52,6 @@ export function parseTemplatePromptSystemEventItem(item: unknown): ParsedTemplat
     return templatePromptSystemEvent.parseItem(item)
 }
 
-export async function appendBuilderChatTemplatePromptSystemEvent(
-    sessionId: string,
-    templateId: string,
-    promptText: string
-): Promise<void> {
+export async function appendBuilderChatTemplatePromptSystemEvent(sessionId: string, templateId: string, promptText: string): Promise<void> {
     await appendSystemEventToBuilderSession(sessionId, buildTemplatePromptSystemEventItem(templateId, promptText))
 }
