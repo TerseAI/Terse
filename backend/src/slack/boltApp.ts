@@ -19,7 +19,7 @@ import logger from "../logger"
 import { db } from "../prismaClient"
 import { ApprovalProcessingStatus, ApprovalService } from "../services/ApprovalService"
 import { IntegrationType } from "../shared/Integrations"
-import { User } from "../shared/types"
+import { TERSE_AGENT_MESSAGE_EVENT_TYPE, TerseAgentMessageMetadata, User } from "../shared/types"
 import { OAuthStatePayload, createOAuthStateToken } from "../utility/oauth"
 import { getUserForOrg } from "../utility/workos"
 
@@ -146,8 +146,9 @@ export async function setupSlackBolt() {
                             })
                             return
                         }
+                        const threadAgentContext = (await getAgentMessageContext(client, messageEvent.channel, threadTs, user.organizationId)) ?? undefined
                         const slackChatInterface = new SlackChatInterface(messageEvent.channel, client, user.id, user.organizationId, messageEvent.user, threadTs)
-                        const chatAgent = new ChatAgent(slackChatInterface, threadTs, user)
+                        const chatAgent = new ChatAgent(slackChatInterface, threadTs, user, threadAgentContext)
                         await chatAgent.run(messageEvent.text)
                     } catch (error) {
                         logger.error("Error processing Slack thread reply:", { error })
@@ -228,8 +229,14 @@ export async function setupSlackBolt() {
                 })
                 return
             }
+            let agentContext: string | undefined
+            const threadTs = event.thread_ts as string | undefined
+            if (threadTs) {
+                agentContext = (await getAgentMessageContext(client, event.channel, threadTs, user.organizationId)) ?? undefined
+            }
+
             const slackChatInterface = new SlackChatInterface(event.channel, client, user.id, user.organizationId, event.user, chatId)
-            const chatAgent = new ChatAgent(slackChatInterface, chatId, user)
+            const chatAgent = new ChatAgent(slackChatInterface, chatId, user, agentContext)
 
             const messageWithContext = await buildSlackChannelContextMessage(client, message, event.channel)
 
@@ -1659,6 +1666,57 @@ export async function setupSlackBolt() {
     return {
         slack,
         receiver
+    }
+}
+
+async function getAgentMessageContext(client: SlackApp["client"], channel: string, threadTs: string, organizationId: string): Promise<string | null> {
+    try {
+        const replies = await client.conversations.replies({
+            channel,
+            ts: threadTs,
+            limit: 1,
+            include_all_metadata: true
+        })
+        const rootMessage = replies.messages?.[0]
+        if (rootMessage?.metadata?.event_type !== TERSE_AGENT_MESSAGE_EVENT_TYPE) return null
+
+        const { run_id, automation_id, organization_id } = (rootMessage.metadata as TerseAgentMessageMetadata).event_payload
+
+        if (organization_id !== organizationId) return null
+
+        const [agent, runRecord] = await Promise.all([
+            db().automations.findFirst({ where: { id: automation_id, organization_id: organizationId }, include: { prompt: true } }),
+            db().run_history_records.findFirst({
+                where: { id: run_id, automation: { organization_id: organizationId } },
+                include: { actions: { orderBy: { created_at: "asc" }, take: 20 } }
+            })
+        ])
+
+        const lines: string[] = [
+            "## Agent Message Context",
+            "The user is replying to a Slack message sent by one of their automation agents.",
+            "Use this context to help them understand what the agent did, modify the agent, or take follow-up actions.",
+            ""
+        ]
+        if (agent) {
+            lines.push(`Agent Name: "${agent.name}"`, `Agent ID: ${agent.id}`)
+            if (agent.prompt?.content) {
+                const preview = agent.prompt.content.length > 500 ? agent.prompt.content.slice(0, 500) + "..." : agent.prompt.content
+                lines.push(`Agent Instructions: ${preview}`)
+            }
+        }
+        if (runRecord) {
+            lines.push("", `Run ID: ${run_id}`, `Run Status: ${runRecord.status}`, `Trigger: ${runRecord.event}`)
+            if (runRecord.decision_reason) lines.push(`Decision: ${runRecord.decision_action} - ${runRecord.decision_reason}`)
+            if (runRecord.actions?.length) {
+                lines.push("", "Actions taken:")
+                for (const a of runRecord.actions) lines.push(`- ${a.action}: ${a.details}`)
+            }
+        }
+        return lines.join("\n")
+    } catch (error) {
+        logger.error("Error fetching agent message context:", { error, channel, threadTs })
+        return null
     }
 }
 
