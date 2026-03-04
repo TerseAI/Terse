@@ -146,7 +146,7 @@ export async function setupSlackBolt() {
                             })
                             return
                         }
-                        const threadAgentContext = (await getAgentMessageContext(client, messageEvent.channel, threadTs)) ?? undefined
+                        const threadAgentContext = (await getAgentMessageContext(client, messageEvent.channel, threadTs, user.organizationId)) ?? undefined
                         const slackChatInterface = new SlackChatInterface(messageEvent.channel, client, user.id, user.organizationId, messageEvent.user, threadTs)
                         const chatAgent = new ChatAgent(slackChatInterface, threadTs, user, threadAgentContext)
                         await chatAgent.run(messageEvent.text)
@@ -232,7 +232,7 @@ export async function setupSlackBolt() {
             let agentContext: string | undefined
             const threadTs = event.thread_ts as string | undefined
             if (threadTs) {
-                agentContext = (await getAgentMessageContext(client, event.channel, threadTs)) ?? undefined
+                agentContext = (await getAgentMessageContext(client, event.channel, threadTs, user.organizationId)) ?? undefined
             }
 
             const slackChatInterface = new SlackChatInterface(event.channel, client, user.id, user.organizationId, event.user, chatId)
@@ -1669,7 +1669,7 @@ export async function setupSlackBolt() {
     }
 }
 
-async function getAgentMessageContext(client: SlackApp["client"], channel: string, threadTs: string): Promise<string | null> {
+async function getAgentMessageContext(client: SlackApp["client"], channel: string, threadTs: string, organizationId: string): Promise<string | null> {
     try {
         const replies = await client.conversations.replies({
             channel,
@@ -1680,12 +1680,14 @@ async function getAgentMessageContext(client: SlackApp["client"], channel: strin
         const rootMessage = replies.messages?.[0]
         if (rootMessage?.metadata?.event_type !== TERSE_AGENT_MESSAGE_EVENT_TYPE) return null
 
-        const { run_id, automation_id } = (rootMessage.metadata as TerseAgentMessageMetadata).event_payload
+        const { run_id, automation_id, organization_id } = (rootMessage.metadata as TerseAgentMessageMetadata).event_payload
+
+        if (organization_id !== organizationId) return null
 
         const [agent, runRecord] = await Promise.all([
-            db().automations.findUnique({ where: { id: automation_id }, include: { prompt: true } }),
-            db().run_history_records.findUnique({
-                where: { id: run_id },
+            db().automations.findFirst({ where: { id: automation_id, organization_id: organizationId }, include: { prompt: true } }),
+            db().run_history_records.findFirst({
+                where: { id: run_id, automation: { organization_id: organizationId } },
                 include: { actions: { orderBy: { created_at: "asc" }, take: 20 } }
             })
         ])
