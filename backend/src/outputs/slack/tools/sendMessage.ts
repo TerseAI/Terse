@@ -7,6 +7,7 @@ import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
 import logger from "../../../logger"
 import { db } from "../../../prismaClient"
 import { IntegrationType } from "../../../shared/Integrations"
+import { TERSE_AGENT_MESSAGE_EVENT_TYPE, TerseAgentMessageMetadata } from "../../../shared/types"
 import { ToolName } from "../../../tools/ToolNames"
 import { createNeedsApprovalFunction } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
@@ -127,7 +128,15 @@ export const slackSendMessageTool = tool({
                 blocks: blocks,
                 thread_ts: thread_ts || undefined,
                 unfurl_links: true,
-                unfurl_media: true
+                unfurl_media: true,
+                metadata: {
+                    event_type: TERSE_AGENT_MESSAGE_EVENT_TYPE,
+                    event_payload: {
+                        run_id: runContext.context.runId,
+                        automation_id: runContext.context.agentId,
+                        organization_id: organizationId
+                    }
+                } satisfies TerseAgentMessageMetadata
             })
 
             if (!result.ok) {
