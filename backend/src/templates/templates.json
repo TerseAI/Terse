@@ -800,6 +800,43 @@
         "isActive": true
     },
     {
+        "id": "dependency-upgrade-reporter",
+        "category": "track",
+        "name": "External Dependency Tracker",
+        "description": "Receive weekly external dependency updates in Slack",
+        "chatPrompt": "Build a weekly agent that reviews external library releases and code changes against our usage, then posts a Slack report with upgrade benefits, risks, and recommended actions.",
+        "prompt": {
+            "text": "Build a weekly agent that reviews external library releases (for e.g. npm) and code changes against our usage, then posts a Slack report with upgrade benefits, risks, and recommended actions. Please make sure to ask me which specific libraries (such as express) we should track if any. Please prioritize being as concise and terse as possible."
+        },
+        "triggers": [
+            {
+                "config": {
+                    "configType": "time_trigger",
+                    "integrationType": "cron_job",
+                    "cronExpression": "0 9 * * 1"
+                }
+            }
+        ],
+        "outputs": [
+            {
+                "config": {
+                    "configType": "slack_output",
+                    "integrationType": "slack"
+                },
+                "readOnly": false
+            },
+            {
+                "readOnly": true,
+                "config": {
+                    "configType": "github",
+                    "integrationType": "github"
+                }
+            }
+        ],
+        "requireApproval": false,
+        "isActive": true
+    },
+    {
         "id": "community-questions-aggregator",
         "category": "users",
         "name": "Community Questions Aggregator",
