@@ -100,44 +100,6 @@ function escapeString(s: string): string {
     return s.replace(/\\/g, "\\\\").replace(/"/g, '\\"')
 }
 
-function suffix(instances: { displayName: string }[], i: number): string {
-    return instances.length > 1 ? toPascalCase(instances[i].displayName || `Instance${i + 1}`) : ""
-}
-
-function generateInstanceLookup(
-    parts: string[],
-    prefix: string,
-    instances: { id: string; name: string }[]
-): { typeRef: string; varName: string; enumName: string; names: string[] } {
-    const enumName = `${prefix}Instance`
-    const varName = `__${prefix.charAt(0).toLowerCase()}${prefix.slice(1)}InstanceIds`
-    const typeName = `${prefix}InstanceName`
-    const names: string[] = []
-    const usedNames = new Set<string>()
-    for (const inst of instances) {
-        let name = toPascalCase(inst.name || "Instance")
-        if (!name) name = "Instance"
-        while (usedNames.has(name)) name += "_"
-        usedNames.add(name)
-        names.push(name)
-    }
-
-    parts.push(`export const ${enumName} = {`)
-    for (const name of names) {
-        parts.push(`    ${name}: "${name}",`)
-    }
-    parts.push("} as const")
-    parts.push(`export type ${typeName} = typeof ${enumName}[keyof typeof ${enumName}]`)
-    parts.push(`const ${varName}: Record<${typeName}, string> = {`)
-    for (let i = 0; i < instances.length; i++) {
-        parts.push(`    ${names[i]}: "${escapeString(instances[i].id)}",`)
-    }
-    parts.push("}")
-    parts.push("")
-
-    return { typeRef: typeName, varName, enumName, names }
-}
-
 /** Map a tool's integration key back to the IntegrationType enum value used by ConfigInstance. */
 function toolIntegrationToIntegrationType(toolIntegration: string): string {
     switch (toolIntegration) {
@@ -188,118 +150,86 @@ function generateResourceClass(
 function generateGitHubSection(instances: GitHubInstanceData[]): SectionResult {
     if (instances.length === 0) return EMPTY_SECTION
 
+    const inst = instances[0]
     const imports = new Set(["GitHubConfig"])
     const parts: string[] = [sectionHeader("GitHub"), ""]
+    const id = inst.integration.id
 
-    const multi = instances.length > 1
-    const repoTypes: string[] = []
-
-    for (let i = 0; i < instances.length; i++) {
-        const inst = instances[i]
-        const sfx = multi
-            ? toPascalCase(inst.integration.account_name || `Instance${i + 1}`)
-            : ""
-        const ownerClass = `GithubOwner${sfx}`
-        const repoClass = `Repository${sfx}`
-        repoTypes.push(repoClass)
-
-        const toStaticName = (raw: string, fallback: string): string => {
-            let name = toPascalCase(raw || fallback)
-            if (!name) name = fallback
-            if (/^\d/.test(name)) name = `_${name}`
-            return name
-        }
-
-        const repositoriesWithFullName = inst.repositories.map(repo => {
-            const owner = repo.owner || "UnknownOwner"
-            const fullName = repo.owner && repo.name ? `${repo.owner}/${repo.name}` : repo.name
-            return { ...repo, owner, fullName }
-        })
-
-        const ownerEntries = new Map<string, { staticName: string; repos: typeof repositoriesWithFullName }>()
-        const usedOwnerNames = new Set<string>()
-        for (const repo of repositoriesWithFullName) {
-            if (!ownerEntries.has(repo.owner)) {
-                let ownerStaticName = toStaticName(repo.owner, "UnknownOwner")
-                while (usedOwnerNames.has(ownerStaticName)) ownerStaticName += "_"
-                usedOwnerNames.add(ownerStaticName)
-                ownerEntries.set(repo.owner, { staticName: ownerStaticName, repos: [] as any })
-            }
-            ownerEntries.get(repo.owner)!.repos.push(repo as any)
-        }
-
-        parts.push(`export class ${ownerClass} {`)
-        parts.push(`    constructor(public readonly name: string) {}`)
-        if (ownerEntries.size > 0) {
-            parts.push("")
-            for (const [owner, data] of ownerEntries) {
-                parts.push(`    static ${data.staticName} = new ${ownerClass}("${escapeString(owner)}")`)
-            }
-        }
-        parts.push("}")
-        parts.push("")
-
-        parts.push(`export class ${repoClass} {`)
-        parts.push(`    constructor(`)
-        parts.push(`        public readonly repositoryId: number,`)
-        parts.push(`        public readonly name: string,`)
-        parts.push(`        public readonly owner: ${ownerClass},`)
-        parts.push(`        public readonly fullName: string`)
-        parts.push(`    ) {}`)
-
-        if (ownerEntries.size > 0) {
-            parts.push("")
-            for (const [owner, data] of ownerEntries) {
-                const usedRepoNames = new Set<string>()
-                parts.push(`    static ${data.staticName} = {`)
-                for (const repo of data.repos) {
-                    let repoStaticName = toStaticName(repo.name, "Repository")
-                    while (usedRepoNames.has(repoStaticName)) repoStaticName += "_"
-                    usedRepoNames.add(repoStaticName)
-                    parts.push(
-                        `        ${repoStaticName}: new ${repoClass}(${repo.id}, "${escapeString(repo.name)}", ${ownerClass}.${data.staticName}, "${escapeString(repo.fullName)}"),`
-                    )
-                }
-                parts.push("    } as const")
-            }
-        }
-
-        parts.push("}")
-        parts.push("")
+    const toStaticName = (raw: string, fallback: string): string => {
+        let name = toPascalCase(raw || fallback)
+        if (!name) name = fallback
+        if (/^\d/.test(name)) name = `_${name}`
+        return name
     }
 
-    if (multi) {
-        const { typeRef, varName } = generateInstanceLookup(parts, "Github",
-            instances.map(inst => ({ id: inst.integration.id, name: inst.integration.account_name || "" })))
-        const repoUnion = repoTypes.join(" | ")
+    const repositoriesWithFullName = inst.repositories.map(repo => {
+        const owner = repo.owner || "UnknownOwner"
+        const fullName = repo.owner && repo.name ? `${repo.owner}/${repo.name}` : repo.name
+        return { ...repo, owner, fullName }
+    })
 
-        parts.push(`/** Use in \`triggers[]\` */`)
-        parts.push(`export function GithubTrigger(instance: ${typeRef}, repositories: (${repoUnion})[]): GitHubConfig {`)
-        parts.push(`    return new GitHubConfig(${varName}[instance], repositories.map(r => r.repositoryId))`)
-        parts.push("}")
-        parts.push("")
-
-        parts.push(`/** Use in \`skills[]\` */`)
-        parts.push(`export function GithubSkill(instance: ${typeRef}, repositories: (${repoUnion})[]): GitHubConfig {`)
-        parts.push(`    return new GitHubConfig(${varName}[instance], repositories.map(r => r.repositoryId))`)
-        parts.push("}")
-        parts.push("")
-    } else {
-        const repoClass = repoTypes[0]
-        const id = instances[0].integration.id
-
-        parts.push(`/** Use in \`triggers[]\` */`)
-        parts.push(`export function GithubTrigger(repositories: ${repoClass}[]): GitHubConfig {`)
-        parts.push(`    return new GitHubConfig("${id}", repositories.map(r => r.repositoryId))`)
-        parts.push("}")
-        parts.push("")
-
-        parts.push(`/** Use in \`skills[]\` */`)
-        parts.push(`export function GithubSkill(repositories: ${repoClass}[]): GitHubConfig {`)
-        parts.push(`    return new GitHubConfig("${id}", repositories.map(r => r.repositoryId))`)
-        parts.push("}")
-        parts.push("")
+    const ownerEntries = new Map<string, { staticName: string; repos: typeof repositoriesWithFullName }>()
+    const usedOwnerNames = new Set<string>()
+    for (const repo of repositoriesWithFullName) {
+        if (!ownerEntries.has(repo.owner)) {
+            let ownerStaticName = toStaticName(repo.owner, "UnknownOwner")
+            while (usedOwnerNames.has(ownerStaticName)) ownerStaticName += "_"
+            usedOwnerNames.add(ownerStaticName)
+            ownerEntries.set(repo.owner, { staticName: ownerStaticName, repos: [] as any })
+        }
+        ownerEntries.get(repo.owner)!.repos.push(repo as any)
     }
+
+    parts.push("export class GithubOwner {")
+    parts.push("    constructor(public readonly name: string) {}")
+    if (ownerEntries.size > 0) {
+        parts.push("")
+        for (const [owner, data] of ownerEntries) {
+            parts.push(`    static ${data.staticName} = new GithubOwner("${escapeString(owner)}")`)
+        }
+    }
+    parts.push("}")
+    parts.push("")
+
+    parts.push("export class Repository {")
+    parts.push("    constructor(")
+    parts.push("        public readonly repositoryId: number,")
+    parts.push("        public readonly name: string,")
+    parts.push("        public readonly owner: GithubOwner,")
+    parts.push("        public readonly fullName: string")
+    parts.push("    ) {}")
+
+    if (ownerEntries.size > 0) {
+        parts.push("")
+        for (const [, data] of ownerEntries) {
+            const usedRepoNames = new Set<string>()
+            parts.push(`    static ${data.staticName} = {`)
+            for (const repo of data.repos) {
+                let repoStaticName = toStaticName(repo.name, "Repository")
+                while (usedRepoNames.has(repoStaticName)) repoStaticName += "_"
+                usedRepoNames.add(repoStaticName)
+                parts.push(
+                    `        ${repoStaticName}: new Repository(${repo.id}, "${escapeString(repo.name)}", GithubOwner.${data.staticName}, "${escapeString(repo.fullName)}"),`
+                )
+            }
+            parts.push("    } as const")
+        }
+    }
+
+    parts.push("}")
+    parts.push("")
+
+    parts.push(`/** Use in \`triggers[]\` */`)
+    parts.push(`export function GithubTrigger(repositories: Repository[]): GitHubConfig {`)
+    parts.push(`    return new GitHubConfig("${id}", repositories.map(r => r.repositoryId))`)
+    parts.push("}")
+    parts.push("")
+
+    parts.push(`/** Use in \`skills[]\` */`)
+    parts.push(`export function GithubSkill(repositories: Repository[]): GitHubConfig {`)
+    parts.push(`    return new GitHubConfig("${id}", repositories.map(r => r.repositoryId))`)
+    parts.push("}")
+    parts.push("")
 
     return { code: parts.join("\n"), imports }
 }
@@ -311,51 +241,25 @@ function generateGmailSection(instances: IntegrationInstanceData[]): SectionResu
 
     const imports = new Set(["GmailConfig", "GmailOutputConfig", "GmailDraftOutputConfig"])
     const parts: string[] = [sectionHeader("Gmail"), ""]
+    const id = instances[0].id
 
-    const multi = instances.length > 1
+    parts.push(`/** Use in \`triggers[]\` */`)
+    parts.push(`export function GmailTrigger(): GmailConfig {`)
+    parts.push(`    return new GmailConfig("${id}")`)
+    parts.push("}")
+    parts.push("")
 
-    if (multi) {
-        const { typeRef, varName } = generateInstanceLookup(parts, "Gmail",
-            instances.map(inst => ({ id: inst.id, name: inst.displayName })))
+    parts.push(`/** Use in \`skills[]\` */`)
+    parts.push(`export function GmailSkill(): GmailOutputConfig {`)
+    parts.push(`    return new GmailOutputConfig("${id}")`)
+    parts.push("}")
+    parts.push("")
 
-        parts.push(`/** Use in \`triggers[]\` */`)
-        parts.push(`export function GmailTrigger(instance: ${typeRef}): GmailConfig {`)
-        parts.push(`    return new GmailConfig(${varName}[instance])`)
-        parts.push("}")
-        parts.push("")
-
-        parts.push(`/** Use in \`skills[]\` */`)
-        parts.push(`export function GmailSkill(instance: ${typeRef}): GmailOutputConfig {`)
-        parts.push(`    return new GmailOutputConfig(${varName}[instance])`)
-        parts.push("}")
-        parts.push("")
-
-        parts.push(`/** Use in \`skills[]\` — creates draft emails */`)
-        parts.push(`export function GmailDraftSkill(instance: ${typeRef}): GmailDraftOutputConfig {`)
-        parts.push(`    return new GmailDraftOutputConfig(${varName}[instance])`)
-        parts.push("}")
-        parts.push("")
-    } else {
-        const id = instances[0].id
-
-        parts.push(`/** Use in \`triggers[]\` */`)
-        parts.push(`export function GmailTrigger(): GmailConfig {`)
-        parts.push(`    return new GmailConfig("${id}")`)
-        parts.push("}")
-        parts.push("")
-
-        parts.push(`/** Use in \`skills[]\` */`)
-        parts.push(`export function GmailSkill(): GmailOutputConfig {`)
-        parts.push(`    return new GmailOutputConfig("${id}")`)
-        parts.push("}")
-        parts.push("")
-
-        parts.push(`/** Use in \`skills[]\` — creates draft emails */`)
-        parts.push(`export function GmailDraftSkill(): GmailDraftOutputConfig {`)
-        parts.push(`    return new GmailDraftOutputConfig("${id}")`)
-        parts.push("}")
-        parts.push("")
-    }
+    parts.push(`/** Use in \`skills[]\` — creates draft emails */`)
+    parts.push(`export function GmailDraftSkill(): GmailDraftOutputConfig {`)
+    parts.push(`    return new GmailDraftOutputConfig("${id}")`)
+    parts.push("}")
+    parts.push("")
 
     return { code: parts.join("\n"), imports }
 }
@@ -365,57 +269,28 @@ function generateGmailSection(instances: IntegrationInstanceData[]): SectionResu
 function generateSlackSection(instances: SlackInstanceData[]): SectionResult {
     if (instances.length === 0) return EMPTY_SECTION
 
+    const inst = instances[0]
     const imports = new Set(["SlackConfig", "SlackOutputConfig"])
     const parts: string[] = [sectionHeader("Slack"), ""]
+    const id = inst.id
 
-    const multi = instances.length > 1
-    const channelTypes: string[] = []
+    parts.push(generateResourceClass("SlackChannel", [
+        { classField: "channelId", type: "string", sourceField: "id" },
+        { classField: "name", type: "string", sourceField: "name" },
+    ], "name", inst.channels))
+    parts.push("")
 
-    for (let i = 0; i < instances.length; i++) {
-        const inst = instances[i]
-        const sfx = multi ? suffix(instances, i) : ""
-        const channelClass = `SlackChannel${sfx}`
-        channelTypes.push(channelClass)
+    parts.push(`/** Use in \`triggers[]\` */`)
+    parts.push(`export function SlackTrigger(channel?: SlackChannel, listenToUserDms?: boolean, userIds?: string[]): SlackConfig {`)
+    parts.push(`    return new SlackConfig("${id}", channel?.channelId, channel?.name, listenToUserDms, userIds)`)
+    parts.push("}")
+    parts.push("")
 
-        parts.push(generateResourceClass(channelClass, [
-            { classField: "channelId", type: "string", sourceField: "id" },
-            { classField: "name", type: "string", sourceField: "name" },
-        ], "name", inst.channels))
-        parts.push("")
-    }
-
-    if (multi) {
-        const { typeRef, varName } = generateInstanceLookup(parts, "Slack",
-            instances.map(inst => ({ id: inst.id, name: inst.displayName })))
-        const channelUnion = channelTypes.join(" | ")
-
-        parts.push(`/** Use in \`triggers[]\` */`)
-        parts.push(`export function SlackTrigger(instance: ${typeRef}, channel?: ${channelUnion}, listenToUserDms?: boolean, userIds?: string[]): SlackConfig {`)
-        parts.push(`    return new SlackConfig(${varName}[instance], channel?.channelId, channel?.name, listenToUserDms, userIds)`)
-        parts.push("}")
-        parts.push("")
-
-        parts.push(`/** Use in \`skills[]\` */`)
-        parts.push(`export function SlackSkill(instance: ${typeRef}, channel?: ${channelUnion}, userIds?: string[], userNames?: string[], listenToUserDms?: boolean): SlackOutputConfig {`)
-        parts.push(`    return new SlackOutputConfig(${varName}[instance], channel?.channelId, channel?.name, userIds, userNames, listenToUserDms)`)
-        parts.push("}")
-        parts.push("")
-    } else {
-        const channelClass = channelTypes[0]
-        const id = instances[0].id
-
-        parts.push(`/** Use in \`triggers[]\` */`)
-        parts.push(`export function SlackTrigger(channel?: ${channelClass}, listenToUserDms?: boolean, userIds?: string[]): SlackConfig {`)
-        parts.push(`    return new SlackConfig("${id}", channel?.channelId, channel?.name, listenToUserDms, userIds)`)
-        parts.push("}")
-        parts.push("")
-
-        parts.push(`/** Use in \`skills[]\` */`)
-        parts.push(`export function SlackSkill(channel?: ${channelClass}, userIds?: string[], userNames?: string[], listenToUserDms?: boolean): SlackOutputConfig {`)
-        parts.push(`    return new SlackOutputConfig("${id}", channel?.channelId, channel?.name, userIds, userNames, listenToUserDms)`)
-        parts.push("}")
-        parts.push("")
-    }
+    parts.push(`/** Use in \`skills[]\` */`)
+    parts.push(`export function SlackSkill(channel?: SlackChannel, userIds?: string[], userNames?: string[], listenToUserDms?: boolean): SlackOutputConfig {`)
+    parts.push(`    return new SlackOutputConfig("${id}", channel?.channelId, channel?.name, userIds, userNames, listenToUserDms)`)
+    parts.push("}")
+    parts.push("")
 
     return { code: parts.join("\n"), imports }
 }
@@ -428,24 +303,11 @@ function generateFigmaSection(instances: IntegrationInstanceData[]): SectionResu
     const imports = new Set(["FigmaConfig"])
     const parts: string[] = [sectionHeader("Figma"), ""]
 
-    const multi = instances.length > 1
-
-    if (multi) {
-        const { typeRef, varName } = generateInstanceLookup(parts, "Figma",
-            instances.map(inst => ({ id: inst.id, name: inst.displayName })))
-
-        parts.push(`/** Use in \`triggers[]\` */`)
-        parts.push(`export function FigmaTrigger(instance: ${typeRef}, fileKey: string, fileName: string, teamId: string): FigmaConfig {`)
-        parts.push(`    return new FigmaConfig(${varName}[instance], fileKey, fileName, teamId)`)
-        parts.push("}")
-        parts.push("")
-    } else {
-        parts.push(`/** Use in \`triggers[]\` */`)
-        parts.push(`export function FigmaTrigger(fileKey: string, fileName: string, teamId: string): FigmaConfig {`)
-        parts.push(`    return new FigmaConfig("${instances[0].id}", fileKey, fileName, teamId)`)
-        parts.push("}")
-        parts.push("")
-    }
+    parts.push(`/** Use in \`triggers[]\` */`)
+    parts.push(`export function FigmaTrigger(fileKey: string, fileName: string, teamId: string): FigmaConfig {`)
+    parts.push(`    return new FigmaConfig("${instances[0].id}", fileKey, fileName, teamId)`)
+    parts.push("}")
+    parts.push("")
 
     return { code: parts.join("\n"), imports }
 }
@@ -455,58 +317,29 @@ function generateFigmaSection(instances: IntegrationInstanceData[]): SectionResu
 function generateLinearSection(instances: LinearInstanceData[]): SectionResult {
     if (instances.length === 0) return EMPTY_SECTION
 
+    const inst = instances[0]
     const imports = new Set(["LinearInputConfig", "LinearOutputConfig"])
     const parts: string[] = [sectionHeader("Linear"), ""]
+    const id = inst.id
 
-    const multi = instances.length > 1
-    const teamTypes: string[] = []
+    parts.push(generateResourceClass("LinearTeam", [
+        { classField: "teamId", type: "string", sourceField: "id" },
+        { classField: "name", type: "string", sourceField: "name" },
+        { classField: "key", type: "string", sourceField: "key" },
+    ], "name", inst.teams))
+    parts.push("")
 
-    for (let i = 0; i < instances.length; i++) {
-        const inst = instances[i]
-        const sfx = multi ? suffix(instances, i) : ""
-        const teamClass = `LinearTeam${sfx}`
-        teamTypes.push(teamClass)
+    parts.push(`/** Use in \`triggers[]\` */`)
+    parts.push(`export function LinearTrigger(projectId?: string, projectName?: string): LinearInputConfig {`)
+    parts.push(`    return new LinearInputConfig("${id}", projectId, projectName)`)
+    parts.push("}")
+    parts.push("")
 
-        parts.push(generateResourceClass(teamClass, [
-            { classField: "teamId", type: "string", sourceField: "id" },
-            { classField: "name", type: "string", sourceField: "name" },
-            { classField: "key", type: "string", sourceField: "key" },
-        ], "name", inst.teams))
-        parts.push("")
-    }
-
-    if (multi) {
-        const { typeRef, varName } = generateInstanceLookup(parts, "Linear",
-            instances.map(inst => ({ id: inst.id, name: inst.displayName })))
-        const teamUnion = teamTypes.join(" | ")
-
-        parts.push(`/** Use in \`triggers[]\` */`)
-        parts.push(`export function LinearTrigger(instance: ${typeRef}, projectId?: string, projectName?: string): LinearInputConfig {`)
-        parts.push(`    return new LinearInputConfig(${varName}[instance], projectId, projectName)`)
-        parts.push("}")
-        parts.push("")
-
-        parts.push(`/** Use in \`skills[]\` */`)
-        parts.push(`export function LinearSkill(instance: ${typeRef}, team?: ${teamUnion}, projectId?: string, projectName?: string): LinearOutputConfig {`)
-        parts.push(`    return new LinearOutputConfig(${varName}[instance], team?.teamId, team?.name, projectId, projectName)`)
-        parts.push("}")
-        parts.push("")
-    } else {
-        const teamClass = teamTypes[0]
-        const id = instances[0].id
-
-        parts.push(`/** Use in \`triggers[]\` */`)
-        parts.push(`export function LinearTrigger(projectId?: string, projectName?: string): LinearInputConfig {`)
-        parts.push(`    return new LinearInputConfig("${id}", projectId, projectName)`)
-        parts.push("}")
-        parts.push("")
-
-        parts.push(`/** Use in \`skills[]\` */`)
-        parts.push(`export function LinearSkill(team?: ${teamClass}, projectId?: string, projectName?: string): LinearOutputConfig {`)
-        parts.push(`    return new LinearOutputConfig("${id}", team?.teamId, team?.name, projectId, projectName)`)
-        parts.push("}")
-        parts.push("")
-    }
+    parts.push(`/** Use in \`skills[]\` */`)
+    parts.push(`export function LinearSkill(team?: LinearTeam, projectId?: string, projectName?: string): LinearOutputConfig {`)
+    parts.push(`    return new LinearOutputConfig("${id}", team?.teamId, team?.name, projectId, projectName)`)
+    parts.push("}")
+    parts.push("")
 
     return { code: parts.join("\n"), imports }
 }
@@ -516,83 +349,43 @@ function generateLinearSection(instances: LinearInstanceData[]): SectionResult {
 function generateAtlassianSection(instances: AtlassianInstanceData[]): SectionResult {
     if (instances.length === 0) return EMPTY_SECTION
 
+    const inst = instances[0]
     const imports = new Set(["JiraConfig", "ConfluenceConfig"])
     const parts: string[] = [sectionHeader("Jira & Confluence"), ""]
+    const id = inst.id
 
-    const multi = instances.length > 1
-    const projectTypes: string[] = []
-    const pageTypes: string[] = []
+    parts.push(generateResourceClass("JiraProject", [
+        { classField: "projectKey", type: "string", sourceField: "key" },
+        { classField: "projectId", type: "string", sourceField: "id" },
+        { classField: "name", type: "string", sourceField: "name" },
+    ], "name", inst.jiraProjects))
+    parts.push("")
 
-    for (let i = 0; i < instances.length; i++) {
-        const inst = instances[i]
-        const sfx = multi ? suffix(instances, i) : ""
-        const projectClass = `JiraProject${sfx}`
-        const pageClass = `ConfluencePage${sfx}`
-        projectTypes.push(projectClass)
-        pageTypes.push(pageClass)
+    parts.push(generateResourceClass("ConfluencePage", [
+        { classField: "pageId", type: "string", sourceField: "id" },
+        { classField: "title", type: "string", sourceField: "title" },
+        { classField: "spaceId", type: "string", sourceField: "spaceId" },
+        { classField: "spaceName", type: "string", sourceField: "spaceName" },
+    ], "title", inst.confluencePages))
+    parts.push("")
 
-        parts.push(generateResourceClass(projectClass, [
-            { classField: "projectKey", type: "string", sourceField: "key" },
-            { classField: "projectId", type: "string", sourceField: "id" },
-            { classField: "name", type: "string", sourceField: "name" },
-        ], "name", inst.jiraProjects))
-        parts.push("")
+    parts.push(`/** Use in \`triggers[]\` */`)
+    parts.push(`export function JiraTrigger(project?: JiraProject): JiraConfig {`)
+    parts.push(`    return new JiraConfig("${id}", project?.projectKey, project?.projectId)`)
+    parts.push("}")
+    parts.push("")
 
-        parts.push(generateResourceClass(pageClass, [
-            { classField: "pageId", type: "string", sourceField: "id" },
-            { classField: "title", type: "string", sourceField: "title" },
-            { classField: "spaceId", type: "string", sourceField: "spaceId" },
-            { classField: "spaceName", type: "string", sourceField: "spaceName" },
-        ], "title", inst.confluencePages))
-        parts.push("")
-    }
+    parts.push(`/** Use in \`skills[]\` */`)
+    parts.push(`export function JiraSkill(project?: JiraProject): JiraConfig {`)
+    parts.push(`    return new JiraConfig("${id}", project?.projectKey, project?.projectId)`)
+    parts.push("}")
+    parts.push("")
 
-    if (multi) {
-        const { typeRef, varName } = generateInstanceLookup(parts, "Atlassian",
-            instances.map(inst => ({ id: inst.id, name: inst.displayName })))
-        const projectUnion = projectTypes.join(" | ")
-        const pageUnion = pageTypes.join(" | ")
-
-        parts.push(`/** Use in \`triggers[]\` */`)
-        parts.push(`export function JiraTrigger(instance: ${typeRef}, project?: ${projectUnion}): JiraConfig {`)
-        parts.push(`    return new JiraConfig(${varName}[instance], project?.projectKey, project?.projectId)`)
-        parts.push("}")
-        parts.push("")
-
-        parts.push(`/** Use in \`skills[]\` */`)
-        parts.push(`export function JiraSkill(instance: ${typeRef}, project?: ${projectUnion}): JiraConfig {`)
-        parts.push(`    return new JiraConfig(${varName}[instance], project?.projectKey, project?.projectId)`)
-        parts.push("}")
-        parts.push("")
-
-        parts.push(`/** Use in \`skills[]\` */`)
-        parts.push(`export function ConfluenceSkill(instance: ${typeRef}, page: ${pageUnion}): ConfluenceConfig {`)
-        parts.push(`    return new ConfluenceConfig(${varName}[instance], page.spaceName, page.spaceId, page.pageId, page.title)`)
-        parts.push("}")
-        parts.push("")
-    } else {
-        const projectClass = projectTypes[0]
-        const pageClass = pageTypes[0]
-        const id = instances[0].id
-
-        parts.push(`/** Use in \`triggers[]\` */`)
-        parts.push(`export function JiraTrigger(project?: ${projectClass}): JiraConfig {`)
-        parts.push(`    return new JiraConfig("${id}", project?.projectKey, project?.projectId)`)
-        parts.push("}")
-        parts.push("")
-
-        parts.push(`/** Use in \`skills[]\` */`)
-        parts.push(`export function JiraSkill(project?: ${projectClass}): JiraConfig {`)
-        parts.push(`    return new JiraConfig("${id}", project?.projectKey, project?.projectId)`)
-        parts.push("}")
-        parts.push("")
-
-        parts.push(`/** Use in \`skills[]\` */`)
-        parts.push(`export function ConfluenceSkill(page: ${pageClass}): ConfluenceConfig {`)
-        parts.push(`    return new ConfluenceConfig("${id}", page.spaceName, page.spaceId, page.pageId, page.title)`)
-        parts.push("}")
-        parts.push("")
-    }
+    parts.push(`/** Use in \`skills[]\` */`)
+    parts.push(`export function ConfluenceSkill(page: ConfluencePage): ConfluenceConfig {`)
+    parts.push(`    return new ConfluenceConfig("${id}", page.spaceName, page.spaceId, page.pageId, page.title)`)
+    parts.push("}")
+    parts.push("")
 
     return { code: parts.join("\n"), imports }
 }
@@ -602,60 +395,30 @@ function generateAtlassianSection(instances: AtlassianInstanceData[]): SectionRe
 function generateNotionSection(instances: NotionInstanceData[]): SectionResult {
     if (instances.length === 0) return EMPTY_SECTION
 
+    const inst = instances[0]
     const imports = new Set(["NotionConfig"])
     const parts: string[] = [sectionHeader("Notion"), ""]
+    const id = inst.id
 
-    const multi = instances.length > 1
-    const dbTypes: string[] = []
-    const pageTypes: string[] = []
+    parts.push(generateResourceClass("NotionDatabase", [
+        { classField: "databaseId", type: "string", sourceField: "id" },
+        { classField: "title", type: "string", sourceField: "title" },
+    ], "title", inst.databases))
+    parts.push("")
 
-    for (let i = 0; i < instances.length; i++) {
-        const inst = instances[i]
-        const sfx = multi ? suffix(instances, i) : ""
-        const dbClass = `NotionDatabase${sfx}`
-        const pageClass = `NotionPage${sfx}`
-        dbTypes.push(dbClass)
-        pageTypes.push(pageClass)
+    parts.push(generateResourceClass("NotionPage", [
+        { classField: "pageId", type: "string", sourceField: "id" },
+        { classField: "title", type: "string", sourceField: "title" },
+    ], "title", inst.pages))
+    parts.push("")
 
-        parts.push(generateResourceClass(dbClass, [
-            { classField: "databaseId", type: "string", sourceField: "id" },
-            { classField: "title", type: "string", sourceField: "title" },
-        ], "title", inst.databases))
-        parts.push("")
-
-        parts.push(generateResourceClass(pageClass, [
-            { classField: "pageId", type: "string", sourceField: "id" },
-            { classField: "title", type: "string", sourceField: "title" },
-        ], "title", inst.pages))
-        parts.push("")
-    }
-
-    if (multi) {
-        const { typeRef, varName } = generateInstanceLookup(parts, "Notion",
-            instances.map(inst => ({ id: inst.id, name: inst.displayName })))
-        const dbUnion = dbTypes.join(" | ")
-        const pageUnion = pageTypes.join(" | ")
-
-        parts.push(`/** Use in \`skills[]\` */`)
-        parts.push(`export function NotionSkill(instance: ${typeRef}, databases?: (${dbUnion})[], pages?: (${pageUnion})[]): NotionConfig {`)
-        parts.push(`    return new NotionConfig(${varName}[instance],`)
-        parts.push(`        databases?.map(d => d.databaseId), databases?.map(d => d.title),`)
-        parts.push(`        pages?.map(p => p.pageId), pages?.map(p => p.title))`)
-        parts.push("}")
-        parts.push("")
-    } else {
-        const dbClass = dbTypes[0]
-        const pageClass = pageTypes[0]
-        const id = instances[0].id
-
-        parts.push(`/** Use in \`skills[]\` */`)
-        parts.push(`export function NotionSkill(databases?: ${dbClass}[], pages?: ${pageClass}[]): NotionConfig {`)
-        parts.push(`    return new NotionConfig("${id}",`)
-        parts.push(`        databases?.map(d => d.databaseId), databases?.map(d => d.title),`)
-        parts.push(`        pages?.map(p => p.pageId), pages?.map(p => p.title))`)
-        parts.push("}")
-        parts.push("")
-    }
+    parts.push(`/** Use in \`skills[]\` */`)
+    parts.push(`export function NotionSkill(databases?: NotionDatabase[], pages?: NotionPage[]): NotionConfig {`)
+    parts.push(`    return new NotionConfig("${id}",`)
+    parts.push(`        databases?.map(d => d.databaseId), databases?.map(d => d.title),`)
+    parts.push(`        pages?.map(p => p.pageId), pages?.map(p => p.title))`)
+    parts.push("}")
+    parts.push("")
 
     return { code: parts.join("\n"), imports }
 }
@@ -665,45 +428,22 @@ function generateNotionSection(instances: NotionInstanceData[]): SectionResult {
 function generatePosthogSection(instances: PosthogInstanceData[]): SectionResult {
     if (instances.length === 0) return EMPTY_SECTION
 
+    const inst = instances[0]
     const imports = new Set(["PosthogConfig"])
     const parts: string[] = [sectionHeader("PostHog"), ""]
+    const id = inst.id
 
-    const multi = instances.length > 1
-    const projTypes: string[] = []
+    parts.push(generateResourceClass("PosthogProject", [
+        { classField: "projectId", type: "string", sourceField: "id" },
+        { classField: "name", type: "string", sourceField: "name" },
+    ], "name", inst.projects))
+    parts.push("")
 
-    for (let i = 0; i < instances.length; i++) {
-        const inst = instances[i]
-        const sfx = multi ? suffix(instances, i) : ""
-        const projClass = `PosthogProject${sfx}`
-        projTypes.push(projClass)
-
-        parts.push(generateResourceClass(projClass, [
-            { classField: "projectId", type: "string", sourceField: "id" },
-            { classField: "name", type: "string", sourceField: "name" },
-        ], "name", inst.projects))
-        parts.push("")
-    }
-
-    if (multi) {
-        const { typeRef, varName } = generateInstanceLookup(parts, "Posthog",
-            instances.map(inst => ({ id: inst.id, name: inst.displayName })))
-        const projUnion = projTypes.join(" | ")
-
-        parts.push(`/** Use in \`skills[]\` */`)
-        parts.push(`export function PosthogSkill(instance: ${typeRef}, project: ${projUnion}): PosthogConfig {`)
-        parts.push(`    return new PosthogConfig(${varName}[instance], project.projectId, project.name)`)
-        parts.push("}")
-        parts.push("")
-    } else {
-        const projClass = projTypes[0]
-        const id = instances[0].id
-
-        parts.push(`/** Use in \`skills[]\` */`)
-        parts.push(`export function PosthogSkill(project: ${projClass}): PosthogConfig {`)
-        parts.push(`    return new PosthogConfig("${id}", project.projectId, project.name)`)
-        parts.push("}")
-        parts.push("")
-    }
+    parts.push(`/** Use in \`skills[]\` */`)
+    parts.push(`export function PosthogSkill(project: PosthogProject): PosthogConfig {`)
+    parts.push(`    return new PosthogConfig("${id}", project.projectId, project.name)`)
+    parts.push("}")
+    parts.push("")
 
     return { code: parts.join("\n"), imports }
 }
@@ -713,44 +453,21 @@ function generatePosthogSection(instances: PosthogInstanceData[]): SectionResult
 function generateDatadogSection(instances: DatadogInstanceData[]): SectionResult {
     if (instances.length === 0) return EMPTY_SECTION
 
+    const inst = instances[0]
     const imports = new Set(["DatadogConfig"])
     const parts: string[] = [sectionHeader("Datadog"), ""]
+    const id = inst.id
 
-    const multi = instances.length > 1
-    const indexTypes: string[] = []
+    parts.push(generateResourceClass("DatadogIndex", [
+        { classField: "name", type: "string", sourceField: "name" },
+    ], "name", inst.indexes))
+    parts.push("")
 
-    for (let i = 0; i < instances.length; i++) {
-        const inst = instances[i]
-        const sfx = multi ? suffix(instances, i) : ""
-        const indexClass = `DatadogIndex${sfx}`
-        indexTypes.push(indexClass)
-
-        parts.push(generateResourceClass(indexClass, [
-            { classField: "name", type: "string", sourceField: "name" },
-        ], "name", inst.indexes))
-        parts.push("")
-    }
-
-    if (multi) {
-        const { typeRef, varName } = generateInstanceLookup(parts, "Datadog",
-            instances.map(inst => ({ id: inst.id, name: inst.displayName })))
-        const indexUnion = indexTypes.join(" | ")
-
-        parts.push(`/** Use in \`skills[]\` */`)
-        parts.push(`export function DatadogSkill(instance: ${typeRef}, indexes?: (${indexUnion})[]): DatadogConfig {`)
-        parts.push(`    return new DatadogConfig(${varName}[instance], indexes?.map(i => i.name))`)
-        parts.push("}")
-        parts.push("")
-    } else {
-        const indexClass = indexTypes[0]
-        const id = instances[0].id
-
-        parts.push(`/** Use in \`skills[]\` */`)
-        parts.push(`export function DatadogSkill(indexes?: ${indexClass}[]): DatadogConfig {`)
-        parts.push(`    return new DatadogConfig("${id}", indexes?.map(i => i.name))`)
-        parts.push("}")
-        parts.push("")
-    }
+    parts.push(`/** Use in \`skills[]\` */`)
+    parts.push(`export function DatadogSkill(indexes?: DatadogIndex[]): DatadogConfig {`)
+    parts.push(`    return new DatadogConfig("${id}", indexes?.map(i => i.name))`)
+    parts.push("}")
+    parts.push("")
 
     return { code: parts.join("\n"), imports }
 }
@@ -760,45 +477,22 @@ function generateDatadogSection(instances: DatadogInstanceData[]): SectionResult
 function generateLaunchDarklySection(instances: LaunchDarklyInstanceData[]): SectionResult {
     if (instances.length === 0) return EMPTY_SECTION
 
+    const inst = instances[0]
     const imports = new Set(["LaunchDarklyConfig"])
     const parts: string[] = [sectionHeader("LaunchDarkly"), ""]
+    const id = inst.id
 
-    const multi = instances.length > 1
-    const projTypes: string[] = []
+    parts.push(generateResourceClass("LaunchDarklyProject", [
+        { classField: "projectKey", type: "string", sourceField: "key" },
+        { classField: "name", type: "string", sourceField: "name" },
+    ], "name", inst.projects))
+    parts.push("")
 
-    for (let i = 0; i < instances.length; i++) {
-        const inst = instances[i]
-        const sfx = multi ? suffix(instances, i) : ""
-        const projClass = `LaunchDarklyProject${sfx}`
-        projTypes.push(projClass)
-
-        parts.push(generateResourceClass(projClass, [
-            { classField: "projectKey", type: "string", sourceField: "key" },
-            { classField: "name", type: "string", sourceField: "name" },
-        ], "name", inst.projects))
-        parts.push("")
-    }
-
-    if (multi) {
-        const { typeRef, varName } = generateInstanceLookup(parts, "LaunchDarkly",
-            instances.map(inst => ({ id: inst.id, name: inst.displayName })))
-        const projUnion = projTypes.join(" | ")
-
-        parts.push(`/** Use in \`skills[]\` */`)
-        parts.push(`export function LaunchDarklySkill(instance: ${typeRef}, project: ${projUnion}, environmentKeys: string[]): LaunchDarklyConfig {`)
-        parts.push(`    return new LaunchDarklyConfig(${varName}[instance], project.projectKey, environmentKeys)`)
-        parts.push("}")
-        parts.push("")
-    } else {
-        const projClass = projTypes[0]
-        const id = instances[0].id
-
-        parts.push(`/** Use in \`skills[]\` */`)
-        parts.push(`export function LaunchDarklySkill(project: ${projClass}, environmentKeys: string[]): LaunchDarklyConfig {`)
-        parts.push(`    return new LaunchDarklyConfig("${id}", project.projectKey, environmentKeys)`)
-        parts.push("}")
-        parts.push("")
-    }
+    parts.push(`/** Use in \`skills[]\` */`)
+    parts.push(`export function LaunchDarklySkill(project: LaunchDarklyProject, environmentKeys: string[]): LaunchDarklyConfig {`)
+    parts.push(`    return new LaunchDarklyConfig("${id}", project.projectKey, environmentKeys)`)
+    parts.push("}")
+    parts.push("")
 
     return { code: parts.join("\n"), imports }
 }
@@ -810,39 +504,19 @@ function generateWorkOSSection(instances: IntegrationInstanceData[]): SectionRes
 
     const imports = new Set(["WorkOSInputConfig", "WorkOSOutputConfig"])
     const parts: string[] = [sectionHeader("WorkOS"), ""]
+    const id = instances[0].id
 
-    const multi = instances.length > 1
+    parts.push(`/** Use in \`triggers[]\` */`)
+    parts.push(`export function WorkOSTrigger(eventTypes?: string[]): WorkOSInputConfig {`)
+    parts.push(`    return new WorkOSInputConfig("${id}", eventTypes)`)
+    parts.push("}")
+    parts.push("")
 
-    if (multi) {
-        const { typeRef, varName } = generateInstanceLookup(parts, "WorkOS",
-            instances.map(inst => ({ id: inst.id, name: inst.displayName })))
-
-        parts.push(`/** Use in \`triggers[]\` */`)
-        parts.push(`export function WorkOSTrigger(instance: ${typeRef}, eventTypes?: string[]): WorkOSInputConfig {`)
-        parts.push(`    return new WorkOSInputConfig(${varName}[instance], eventTypes)`)
-        parts.push("}")
-        parts.push("")
-
-        parts.push(`/** Use in \`skills[]\` */`)
-        parts.push(`export function WorkOSSkill(instance: ${typeRef}): WorkOSOutputConfig {`)
-        parts.push(`    return new WorkOSOutputConfig(${varName}[instance])`)
-        parts.push("}")
-        parts.push("")
-    } else {
-        const id = instances[0].id
-
-        parts.push(`/** Use in \`triggers[]\` */`)
-        parts.push(`export function WorkOSTrigger(eventTypes?: string[]): WorkOSInputConfig {`)
-        parts.push(`    return new WorkOSInputConfig("${id}", eventTypes)`)
-        parts.push("}")
-        parts.push("")
-
-        parts.push(`/** Use in \`skills[]\` */`)
-        parts.push(`export function WorkOSSkill(): WorkOSOutputConfig {`)
-        parts.push(`    return new WorkOSOutputConfig("${id}")`)
-        parts.push("}")
-        parts.push("")
-    }
+    parts.push(`/** Use in \`skills[]\` */`)
+    parts.push(`export function WorkOSSkill(): WorkOSOutputConfig {`)
+    parts.push(`    return new WorkOSOutputConfig("${id}")`)
+    parts.push("}")
+    parts.push("")
 
     return { code: parts.join("\n"), imports }
 }
@@ -852,45 +526,22 @@ function generateWorkOSSection(instances: IntegrationInstanceData[]): SectionRes
 function generateAttioSection(instances: AttioInstanceData[]): SectionResult {
     if (instances.length === 0) return EMPTY_SECTION
 
+    const inst = instances[0]
     const imports = new Set(["AttioOutputConfig"])
     const parts: string[] = [sectionHeader("Attio"), ""]
+    const id = inst.id
 
-    const multi = instances.length > 1
-    const objTypes: string[] = []
+    parts.push(generateResourceClass("AttioObject", [
+        { classField: "apiSlug", type: "string", sourceField: "api_slug" },
+        { classField: "name", type: "string", sourceField: "singular_noun" },
+    ], "singular_noun", inst.objects))
+    parts.push("")
 
-    for (let i = 0; i < instances.length; i++) {
-        const inst = instances[i]
-        const sfx = multi ? suffix(instances, i) : ""
-        const objClass = `AttioObject${sfx}`
-        objTypes.push(objClass)
-
-        parts.push(generateResourceClass(objClass, [
-            { classField: "apiSlug", type: "string", sourceField: "api_slug" },
-            { classField: "name", type: "string", sourceField: "singular_noun" },
-        ], "singular_noun", inst.objects))
-        parts.push("")
-    }
-
-    if (multi) {
-        const { typeRef, varName } = generateInstanceLookup(parts, "Attio",
-            instances.map(inst => ({ id: inst.id, name: inst.displayName })))
-        const objUnion = objTypes.join(" | ")
-
-        parts.push(`/** Use in \`skills[]\` */`)
-        parts.push(`export function AttioSkill(instance: ${typeRef}, object?: ${objUnion}): AttioOutputConfig {`)
-        parts.push(`    return new AttioOutputConfig(${varName}[instance], object?.apiSlug)`)
-        parts.push("}")
-        parts.push("")
-    } else {
-        const objClass = objTypes[0]
-        const id = instances[0].id
-
-        parts.push(`/** Use in \`skills[]\` */`)
-        parts.push(`export function AttioSkill(object?: ${objClass}): AttioOutputConfig {`)
-        parts.push(`    return new AttioOutputConfig("${id}", object?.apiSlug)`)
-        parts.push("}")
-        parts.push("")
-    }
+    parts.push(`/** Use in \`skills[]\` */`)
+    parts.push(`export function AttioSkill(object?: AttioObject): AttioOutputConfig {`)
+    parts.push(`    return new AttioOutputConfig("${id}", object?.apiSlug)`)
+    parts.push("}")
+    parts.push("")
 
     return { code: parts.join("\n"), imports }
 }
@@ -1054,7 +705,6 @@ function generateToolsSection(tools: ToolDefinition[], input: CodegenInput): Sec
         parts.push("")
     }
 
-    // Build tool groups: each group has a key, raw integration, tools, and optional baked-in integrationId
     const groups: { key: string; integration: string; tools: ToolDefinition[]; integrationId?: string }[] = []
 
     for (const [integration, integrationTools] of byIntegration) {
@@ -1062,12 +712,8 @@ function generateToolsSection(tools: ToolDefinition[], input: CodegenInput): Sec
 
         if (needsAutoFill) {
             const instances = instanceMap.get(integration) || []
-            if (instances.length === 0) continue  // Skip tools with no matching instances
-
-            for (let i = 0; i < instances.length; i++) {
-                const sfx = suffix(instances, i)
-                groups.push({ key: integration + sfx, integration, tools: integrationTools, integrationId: instances[i].id })
-            }
+            if (instances.length === 0) continue
+            groups.push({ key: integration, integration, tools: integrationTools, integrationId: instances[0].id })
         } else {
             groups.push({ key: integration, integration, tools: integrationTools })
         }
