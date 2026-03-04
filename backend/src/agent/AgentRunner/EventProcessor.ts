@@ -426,7 +426,8 @@ export class EventProcessor {
                 agentId: agent.id,
                 orgId: this.user.organizationId,
                 userId: agent.user_id,
-                eventJson
+                eventJson,
+                jobName: agent.name
             })
             .catch(error => {
                 logger.error(`SDK sandbox execution failed for agent "${agent.name}"`, {

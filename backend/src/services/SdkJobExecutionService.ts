@@ -17,6 +17,7 @@ export interface SdkJobExecutionParams {
     orgId: string
     userId: string
     eventJson: string
+    jobName: string
 }
 
 export class SdkJobExecutionService {
@@ -25,7 +26,7 @@ export class SdkJobExecutionService {
     }
 
     async execute(params: SdkJobExecutionParams): Promise<void> {
-        const { gcsKey, runId, agentId, orgId, userId, eventJson } = params
+        const { gcsKey, runId, agentId, orgId, userId, eventJson, jobName } = params
         const executionStart = performance.now()
 
         let sandboxApiKey: string | undefined
@@ -106,13 +107,36 @@ export class SdkJobExecutionService {
                     return
                 }
 
+                // npm install terse-cli
+                t = performance.now()
+                const installTerseProc = await sb.exec(["sh", "-c", "cd /tmp/project && npm install terse-cli@latest 2>&1"], { stdout: "pipe", stderr: "pipe", env: sandboxEnv })
+                const installTerseStdout = await installTerseProc.stdout.readText()
+                const installTerseExitCode = await installTerseProc.wait()
+                logger.info("SDK sandbox: npm install terse-cli", { runId, agentId, duration: this.elapsed(t), exitCode: installTerseExitCode, output: installTerseStdout.slice(0, 500) })
+
+                if (installTerseExitCode !== 0) {
+                    logger.error("SDK sandbox: npm install terse-cli failed", { runId, agentId, exitCode: installTerseExitCode, output: installTerseStdout.slice(0, 500) })
+                    const installTerseStderr = await installTerseProc.stderr.readText()
+                    await markRunFailed(runId, `npm install terse-cli failed (exit ${installTerseExitCode}): ${installTerseStderr.slice(0, 500)}`, "agent")
+                    emitCacheInvalidationWithWildcard(orgId, "runHistory", agentId)
+                    await sb.terminate()
+                    return
+                }
+
                 // terse run
                 t = performance.now()
-                const runProc = await sb.exec(["sh", "-c", `cd /tmp/project && npx terse run --event '${eventJson.replace(/'/g, "'\\''")}'`], { stdout: "pipe", stderr: "pipe", env: sandboxEnv })
+                const escapedJobName = jobName.replace(/'/g, "'\\''")
+                const runProc = await sb.exec(["sh", "-c", `cd /tmp/project && npx terse run '${escapedJobName}' --event '${eventJson.replace(/'/g, "'\\''")}'`], {
+                    stdout: "pipe",
+                    stderr: "pipe",
+                    env: sandboxEnv
+                })
 
                 const [stdout, stderr] = await Promise.all([runProc.stdout.readText(), runProc.stderr.readText()])
                 const exitCode = await runProc.wait()
                 const runDuration = this.elapsed(t)
+
+                logger.info("SDK sandbox: terse run", { runId, agentId, duration: runDuration, exitCode, stdout: stdout.slice(0, 2000), stderr: stderr.slice(0, 2000) })
 
                 if (stdout) {
                     logger.info("SDK sandbox: terse run stdout", { runId, agentId, stdout: stdout.slice(0, 2000) })
