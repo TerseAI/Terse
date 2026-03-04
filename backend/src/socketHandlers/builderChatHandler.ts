@@ -9,9 +9,11 @@ import { listenForBuilderChatCancellation, requestBuilderChatCancellation } from
 import { createCancelledEvent } from "../agent/streaming"
 import { appendBuilderChatCancelledSystemEvent } from "../agent/systemEvents/cancelledSystemEvent"
 import { appendBuilderChatErrorSystemEvent } from "../agent/systemEvents/runErrorSystemEvent"
+import { appendBuilderChatTemplatePromptSystemEvent } from "../agent/systemEvents/templatePromptSystemEvent"
 import logger from "../logger"
 import { SendModelRequest } from "../shared/ModelEvents"
 import { SocketEvents } from "../shared/SocketEvents"
+import { findTemplateById } from "../templates/templateLookup"
 import { getUserForOrg } from "../utility/workos"
 
 import { CancelAckResponse, USER_CANCELLED_REASON } from "./activeExecution"
@@ -66,6 +68,32 @@ export async function registerBuilderChatHandler(socket: Socket, userId: string,
         const uiState = message.ui_state
         const timezone = message.timezone
         logger.info(`[builder:chat:message] Processing message`, { sessionId, userId, userMessage, hasUiState: !!uiState, timezone })
+
+        const templateId = message.template_id
+        if (templateId) {
+            const template = findTemplateById(templateId)
+            if (template?.prompt?.text) {
+                try {
+                    await appendBuilderChatTemplatePromptSystemEvent(sessionId, templateId, template.prompt.text)
+                    logger.info("[builder:chat:message] Injected template prompt system event", {
+                        sessionId,
+                        templateId,
+                        promptLength: template.prompt.text.length
+                    })
+                } catch (systemEventError) {
+                    logger.error("[builder:chat:message] Failed to append template prompt system event", {
+                        systemEventError,
+                        sessionId,
+                        templateId
+                    })
+                }
+            } else {
+                logger.warn("[builder:chat:message] Template not found or has no prompt text", {
+                    sessionId,
+                    templateId
+                })
+            }
+        }
 
         const cancellationController = new AbortController()
         const cancellationSubscription = listenForBuilderChatCancellation(sessionId, cancellationController)

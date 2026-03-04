@@ -55,6 +55,7 @@ export function AgentBuilderLayout({ header }: AgentBuilderLayoutProps) {
     const [selectedCategory, setSelectedCategory] = useState<TemplateCategory>("users")
     const chatRef = useRef<ChatHandle>(null)
     const appliedDeepLinkKey = useRef<string | null>(null)
+    const pendingTemplateId = useRef<string | null>(null)
     const [searchParams] = useSearchParams()
 
     // Load chat history for the persisted session
@@ -80,6 +81,7 @@ export function AgentBuilderLayout({ header }: AgentBuilderLayoutProps) {
     }
 
     const handleTemplateSelect = useCallback((template: AgentTemplate) => {
+        pendingTemplateId.current = template.id
         chatRef.current?.setInput(template.chatPrompt)
         chatRef.current?.focus()
     }, [])
@@ -108,6 +110,10 @@ export function AgentBuilderLayout({ header }: AgentBuilderLayoutProps) {
             appliedDeepLinkKey.current = key
             chatRef.current?.setInput(chatContent)
             chatRef.current?.focus()
+        }
+
+        if (templateIdParam) {
+            pendingTemplateId.current = templateIdParam
         }
 
         // Set category from template when templateId is present
@@ -141,8 +147,10 @@ export function AgentBuilderLayout({ header }: AgentBuilderLayoutProps) {
             if (message.type === "SendModelRequest") {
                 const enrichedMessage: { type: "SendModelRequest" } & SendModelRequest = {
                     ...message,
-                    ui_state: JSON.stringify({ page: "agent-setup" })
+                    ui_state: JSON.stringify({ page: "agent-setup" }),
+                    ...(pendingTemplateId.current ? { template_id: pendingTemplateId.current } : {})
                 }
+                pendingTemplateId.current = null
                 sendBuilderMessage(sessionId, enrichedMessage)
             } else {
                 sendBuilderMessage(sessionId, message)
