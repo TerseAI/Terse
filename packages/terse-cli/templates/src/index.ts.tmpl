@@ -12,8 +12,8 @@ const client = new Terse()
 
 const job: CreateJobParameters = {
     name: "{{PROJECT_NAME}}",
-    triggers: [new ScheduleTrigger("0 0 * * *")],
-    skills: [new GithubSkill()],
+    triggers: [ScheduleTrigger("0 0 * * *")],
+    skills: [GithubSkill()],
     onTrigger: async (event, agent) => {
         // Your job logic here
         const result = agent.run("Summarize the latest changes", event)
