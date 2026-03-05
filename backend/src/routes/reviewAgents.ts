@@ -9,6 +9,7 @@ import { db } from "../prismaClient"
 import { emitCacheInvalidationWithKey } from "../services/CacheInvalidationService"
 import { FrontendRoutes } from "../shared/FrontendRoutes"
 import { sentNotificationsKey } from "../shared/InvalidationKeys"
+import { FeatureFlag, FeatureFlagService } from "../utility/featureFlags"
 import { getUserForOrg } from "../utility/workos"
 
 type EmailAgentSummary = {
@@ -24,18 +25,17 @@ type EmailGroup = {
 }
 
 function validateCloudSchedulerRequest(req: Request): boolean {
+    const authHeader = req.headers["authorization"]
+    if (!authHeader) {
+        logger.warn("[ReviewAgents] Missing Authorization header")
+        return false
+    }
+    const token = authHeader.startsWith("Bearer ") ? authHeader.substring(7) : authHeader
+    if (token !== cloudScheduler.secret) {
+        logger.warn("[ReviewAgents] Invalid cron secret token")
+        return false
+    }
     return true
-    // const authHeader = req.headers["authorization"]
-    // if (!authHeader) {
-    //     logger.warn("[ReviewAgents] Missing Authorization header")
-    //     return false
-    // }
-    // const token = authHeader.startsWith("Bearer ") ? authHeader.substring(7) : authHeader
-    // if (token !== cloudScheduler.secret) {
-    //     logger.warn("[ReviewAgents] Invalid cron secret token")
-    //     return false
-    // }
-    // return true
 }
 
 export async function reviewAllAgents(req: Request, res: Response) {
@@ -45,6 +45,7 @@ export async function reviewAllAgents(req: Request, res: Response) {
         return res.status(401).json({ error: "Unauthorized" })
     }
 
+    const featureFlagService = FeatureFlagService.getInstance()
     const periodEnd = new Date()
     const periodStart = new Date(periodEnd.getTime() - 7 * 24 * 60 * 60 * 1000)
 
@@ -63,6 +64,7 @@ export async function reviewAllAgents(req: Request, res: Response) {
         })
 
         const userCache = new Map<string, Awaited<ReturnType<typeof getUserForOrg>>>()
+        const featureFlagCache = new Map<string, boolean>()
         const emailGroups = new Map<string, EmailGroup>()
         const failures: Array<{ automationId: string; error: string }> = []
 
@@ -79,6 +81,14 @@ export async function reviewAllAgents(req: Request, res: Response) {
                 const user = userCache.get(userCacheKey)
                 if (!user) {
                     failures.push({ automationId: automation.id, error: "User not found for organization context" })
+                    continue
+                }
+
+                // Per-user feature flag check (cached by email)
+                if (!featureFlagCache.has(user.email)) {
+                    featureFlagCache.set(user.email, await featureFlagService.isFeatureFlagEnabled(FeatureFlag.WEEKLY_REVIEW_EMAILS, user.email))
+                }
+                if (!featureFlagCache.get(user.email)) {
                     continue
                 }
 

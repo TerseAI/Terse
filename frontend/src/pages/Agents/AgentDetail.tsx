@@ -11,6 +11,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 import { SidebarTrigger } from "../../components/ui/sidebar"
 import { useAgent } from "../../hooks/api/useAgents"
 import { useTemplates } from "../../hooks/api/useTemplates"
+import { FeatureFlags, useFeatureFlag } from "../../hooks/useFeatureFlag"
 import { useIsMobile } from "../../hooks/use-mobile"
 import { useTemplateHydration } from "../../hooks/useTemplateHydration"
 import { safeStorageGet, safeStorageSet } from "../../lib/storage"
@@ -310,7 +311,9 @@ function AgentDetail() {
     // Only pass agentId if it's not "new"
     const agentId: string | null = id && id !== "new" ? id : null
 
-    const pendingImprovementCount = useAgentPendingCount(agentId)
+    const showImprovementsTab = useFeatureFlag(FeatureFlags.AGENT_IMPROVEMENTS_TAB)
+    const activeTabs = showImprovementsTab ? AGENT_DETAIL_TABS : AGENT_DETAIL_TABS.filter(t => t !== "improvements")
+    const pendingImprovementCount = useAgentPendingCount(showImprovementsTab ? agentId : null)
 
     // Fetch agent data using useSWR
     const { agent, isLoading: isFetching, mutate } = useAgent(agentId)
@@ -383,15 +386,15 @@ function AgentDetail() {
 
     const tabFromQuery = searchParams.get("tab")
     const [selectedIndex, setSelectedIndex] = useState(() => {
-        return Math.max(0, AGENT_DETAIL_TABS.indexOf((tabFromQuery as (typeof AGENT_DETAIL_TABS)[number]) || "setup"))
+        return Math.max(0, activeTabs.indexOf((tabFromQuery as (typeof AGENT_DETAIL_TABS)[number]) || "setup"))
     })
 
-    // Update selected index when URL changes
+    // Update selected index when URL or available tabs change
     useEffect(() => {
         const tabFromQuery = searchParams.get("tab")
-        const newIndex = Math.max(0, AGENT_DETAIL_TABS.indexOf((tabFromQuery as (typeof AGENT_DETAIL_TABS)[number]) || "setup"))
+        const newIndex = Math.max(0, activeTabs.indexOf((tabFromQuery as (typeof AGENT_DETAIL_TABS)[number]) || "setup"))
         setSelectedIndex(newIndex)
-    }, [searchParams])
+    }, [searchParams, activeTabs])
 
     // Determine if we're still loading
     // - For existing agents: wait for agent data
@@ -473,7 +476,7 @@ function AgentDetail() {
                     selectedIndex={selectedIndex}
                     onChange={index => {
                         setSelectedIndex(index)
-                        const next = AGENT_DETAIL_TABS[index]
+                        const next = activeTabs[index]
                         const nextParams = new URLSearchParams(searchParams)
                         nextParams.set("tab", next)
                         setSearchParams(nextParams, { replace: true })
@@ -497,19 +500,21 @@ function AgentDetail() {
                             <Clock className="h-4 w-4" />
                             <span>Activity</span>
                         </Tab>
-                        <Tab
-                            className={({ selected }) =>
-                                `px-3 py-2 text-sm font-medium rounded-t-md border-b-2 -mb-px inline-flex items-center gap-2 ${selected ? "text-foreground border-primary" : "text-muted-foreground border-transparent hover:text-foreground"}`
-                            }
-                        >
-                            <Lightbulb className="h-4 w-4" />
-                            <span>Improvements</span>
-                            {pendingImprovementCount > 0 && (
-                                <span className="inline-flex items-center justify-center h-5 min-w-5 px-1.5 rounded-full bg-primary text-primary-foreground text-xs font-medium">
-                                    {pendingImprovementCount}
-                                </span>
-                            )}
-                        </Tab>
+                        {showImprovementsTab && (
+                            <Tab
+                                className={({ selected }) =>
+                                    `px-3 py-2 text-sm font-medium rounded-t-md border-b-2 -mb-px inline-flex items-center gap-2 ${selected ? "text-foreground border-primary" : "text-muted-foreground border-transparent hover:text-foreground"}`
+                                }
+                            >
+                                <Lightbulb className="h-4 w-4" />
+                                <span>Improvements</span>
+                                {pendingImprovementCount > 0 && (
+                                    <span className="inline-flex items-center justify-center h-5 min-w-5 px-1.5 rounded-full bg-primary text-primary-foreground text-xs font-medium">
+                                        {pendingImprovementCount}
+                                    </span>
+                                )}
+                            </Tab>
+                        )}
                     </TabList>
                 </TabGroup>
                 <div className="min-w-0">
@@ -517,9 +522,9 @@ function AgentDetail() {
                         <AgentSetupTab {...agentProps} />
                     ) : selectedIndex === 1 ? (
                         <AgentRunHistoryTab agentId={agentId} onTriggerNow={handleTriggerNow} />
-                    ) : (
+                    ) : showImprovementsTab ? (
                         <AgentImprovementsTab agentId={agentId} builderChatRef={builderChatRef} setBuilderChatOpen={setBuilderChatOpen} builderChatOpen={builderChatOpen} />
-                    )}
+                    ) : null}
                 </div>
             </div>
             {isMobile ? (
