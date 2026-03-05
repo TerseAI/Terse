@@ -382,21 +382,33 @@ export class GithubIntegrationManager
             }))
         }
 
+        const requestedTypes = githubConfig.eventTypes ?? []
+        const wantsPush = requestedTypes.length === 0 || requestedTypes.includes(GitHubEventType.PUSH)
+        const wantsPR = requestedTypes.length === 0 || requestedTypes.some(t => t.startsWith("pull_request."))
+
         const events: InputEvent[] = []
         for (const repo of repos) {
-            const commits = await fetchRecentCommitsForSample(accessToken, repo.owner, repo.name, 5)
-            for (const commit of commits) {
-                const eventData = await createPushEventData(commit, repo, installationIdNum, accessToken)
-                if (eventData) events.push(new GithubEvent(eventData, []))
+            if (wantsPush) {
+                const commits = await fetchRecentCommitsForSample(accessToken, repo.owner, repo.name, 5)
+                for (const commit of commits) {
+                    const eventData = await createPushEventData(commit, repo, installationIdNum, accessToken)
+                    if (eventData) events.push(new GithubEvent(eventData, []))
+                }
             }
-            const pullRequests = await fetchRecentPullRequestsForSample(accessToken, repo.owner, repo.name, 5)
-            for (const pr of pullRequests) {
-                const eventData = await createPullRequestEventData(pr, repo, installationIdNum, accessToken)
-                let storedFiles: StoredFile[] = []
-                if (eventData) storedFiles = await getPullRequestFiles(eventData, accessToken, installationIdNum.toString())
-                if (eventData) events.push(new GithubEvent(eventData, storedFiles))
+            if (wantsPR) {
+                const pullRequests = await fetchRecentPullRequestsForSample(accessToken, repo.owner, repo.name, 5)
+                for (const pr of pullRequests) {
+                    const eventData = await createPullRequestEventData(pr, repo, installationIdNum, accessToken)
+                    let storedFiles: StoredFile[] = []
+                    if (eventData) storedFiles = await getPullRequestFiles(eventData, accessToken, installationIdNum.toString())
+                    if (eventData) events.push(new GithubEvent(eventData, storedFiles))
+                }
             }
             if (events.length >= maxEvents) break
+        }
+
+        if (requestedTypes.length > 0) {
+            return events.filter(e => requestedTypes.includes((e as GithubEvent).eventType)).slice(0, maxEvents)
         }
         return events.slice(0, maxEvents)
     }

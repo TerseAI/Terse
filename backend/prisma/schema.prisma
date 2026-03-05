@@ -736,13 +736,13 @@ model automation_github_configs {
   automation_output_id String? @unique // FK to automation_outputs (unique constraint)
 
   repository_ids Int[]
+  event_types    String[] @default([])
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
   automation_input  automation_inputs?  @relation(fields: [automation_input_id], references: [id], onDelete: Cascade)
   automation_output automation_outputs? @relation(fields: [automation_output_id], references: [id], onDelete: Cascade)
-  // Future: could add branch, path filters for more granular control
 
   @@index([repository_ids])
 }
