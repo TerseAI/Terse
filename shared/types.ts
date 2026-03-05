@@ -622,7 +622,7 @@ export type SdkDeployTrigger = {
 export type SdkDeployJob = {
     jobName: string
     triggers: SdkDeployTrigger[]
-    webhookURL: string
+    webhookURL?: string
 }
 
 export type SdkDeployRequestBody = {

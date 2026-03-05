@@ -87,7 +87,7 @@ export type CreateJobParameters = {
     skills: ConfigInstance[]
     filter?: (event: InputEvent) => boolean | Promise<boolean>
     onTrigger: (event: InputEvent, Agent: TerseAgent) => Promise<void>
-    webhookURL: string
+    webhookURL?: string
 }
 
 /** Internal job registry — lives on globalThis so it survives across module instances (e.g. tsx loaders). */
