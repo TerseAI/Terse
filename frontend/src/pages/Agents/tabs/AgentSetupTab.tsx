@@ -339,7 +339,6 @@ export default function AgentSetupTab({
     const { totalCount } = useAgentCount()
     const { clearSessionId } = useBuilderSession()
     const [searchParams, setSearchParams] = useSearchParams()
-    console.log({ agentCreator })
     const { user: agentCreatorUser } = useUser(agentCreator)
     const defaultName = getDefaultAgentName(totalCount)
     void _setRequireApproval
