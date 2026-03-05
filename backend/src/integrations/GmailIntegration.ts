@@ -10,7 +10,7 @@ import logger, { runWithUserContext } from "../logger"
 import { db } from "../prismaClient"
 import { Identifiable } from "../rag/Hydrator"
 import { FileDownloadResult, StoredFile, buildGmailFileKey, ensureStoredWithMetadata, isSupportedFileType } from "../services/FileStorageService"
-import { ConfigInstance, ConfigType } from "../shared/Configs"
+import { ConfigInstance, ConfigType, GmailEventType } from "../shared/Configs"
 import { FrontendRoutes } from "../shared/FrontendRoutes"
 import { AdditionalStateParams, GmailIntegration, GmailIntegrationMetadata, InstallationOptionsFor, IntegrationType } from "../shared/Integrations"
 import { RunHistoryTrigger } from "../shared/RunHistoryTypes"
@@ -557,6 +557,7 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
 
 export class GmailEvent extends InputEvent implements Identifiable {
     readonly integrationType: IntegrationType = IntegrationType.GMAIL
+    readonly eventType: GmailEventType = GmailEventType.EMAIL_RECEIVED
     entityType = HydratorType.GMAIL_EVENT
     entityId: string
     data: GmailEventData

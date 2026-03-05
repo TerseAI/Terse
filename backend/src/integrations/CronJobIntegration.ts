@@ -250,6 +250,7 @@ function isSchedulerJobNotFoundError(error: unknown): boolean {
 
 export class CronJobEvent extends InputEvent {
     readonly integrationType: IntegrationType = IntegrationType.CRON_JOB
+    readonly eventType: string = "cron"
     data: ScheduleWebhookEvent
 
     constructor(data: ScheduleWebhookEvent) {

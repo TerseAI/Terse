@@ -35,6 +35,14 @@ export async function executeJob(job: CreateJobParameters, event: SerializedEven
     }
 
     try {
+        if (job.filter) {
+            const shouldRun = await job.filter(inputEvent)
+            if (!shouldRun) {
+                console.log(chalk.dim(`\n  Job "${job.name}" skipped (filter returned false).\n`))
+                return
+            }
+        }
+
         if (isVerbose) {
             console.log(chalk.cyan(`  Job "${job.name}" started`))
         }

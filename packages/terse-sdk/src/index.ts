@@ -13,6 +13,7 @@ export type { InputEvent, ToolboxEntry } from "./types.js"
 // Mock event for CLI's `terse run` command
 export class MockInputEvent implements InputEvent {
     readonly integrationType = IntegrationType.TERSE
+    readonly eventType = "manual"
 
     formatForAgentRunner(): string {
         return "Manual trigger from terse run"
@@ -45,7 +46,13 @@ export {
     LaunchDarklyConfig,
     TerseConfig,
     WorkOSInputConfig,
-    AttioOutputConfig
+    AttioOutputConfig,
+    SlackEventType,
+    GitHubEventType,
+    LinearEventType,
+    JiraEventType,
+    FigmaEventType,
+    GmailEventType,
 } from "./shared/Configs.js"
 
 export type {
@@ -72,15 +79,11 @@ export {
 
 type Action = RunHistoryAction
 
-export type FilterConfiguration = {
-    criteria: string
-}
-
 export type CreateJobParameters = {
     name: string
     triggers: ConfigInstance[]
     skills: ConfigInstance[]
-    filterConfiguration?: FilterConfiguration[]
+    filter?: (event: InputEvent) => boolean | Promise<boolean>
     onTrigger: (event: InputEvent, Agent: TerseAgent) => Promise<void>
     webhookURL: string
 }

@@ -20,7 +20,7 @@
     "fflate": "^0.8.0",
     "inquirer": "^13.3.0",
     "ora": "^8.0.0",
-    "terse-sdk": "^0.1.0",
+    "terse-sdk": "file:../terse-sdk",
     "tsx": "^4.0.0"
   },
   "devDependencies": {

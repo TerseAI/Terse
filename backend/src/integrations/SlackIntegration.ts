@@ -13,7 +13,7 @@ import logger, { runWithUserContext } from "../logger"
 import { db } from "../prismaClient"
 import { Identifiable } from "../rag/Hydrator"
 import { FileCategory, FileDownloadResult, StoredFile, buildSlackFileKey, ensureStoredWithMetadata, isSupportedFileType } from "../services/FileStorageService"
-import { ConfigInstance, ConfigType, SlackConfig as SlackConfigClass } from "../shared/Configs"
+import { ConfigInstance, ConfigType, SlackConfig as SlackConfigClass, SlackEventType } from "../shared/Configs"
 import { FrontendRoutes } from "../shared/FrontendRoutes"
 import { AdditionalStateParams, InstallationOptionsFor, IntegrationType, SlackIntegration, SlackIntegrationMetadata } from "../shared/Integrations"
 import { RunHistoryTrigger } from "../shared/RunHistoryTypes"
@@ -881,6 +881,7 @@ export const fetchSlackUsersForIntegration = async (userId: string, organization
 
 export class SlackEvent extends InputEvent implements Identifiable {
     readonly integrationType: IntegrationType = IntegrationType.SLACK
+    readonly eventType: SlackEventType = SlackEventType.MESSAGE
     data: SlackEventData
     entityType: HydratorType = HydratorType.SLACK_MESSAGE_EVENT
     entityId: string

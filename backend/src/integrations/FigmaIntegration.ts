@@ -9,7 +9,7 @@ import { db } from "../prismaClient"
 import { Identifiable } from "../rag/Hydrator"
 import { FileCategory, StoredFile } from "../services/FileStorageService"
 import { ApiRoutes } from "../shared/ApiRoutes"
-import { ConfigInstance, ConfigType, FigmaConfig as FigmaConfigClass } from "../shared/Configs"
+import { ConfigInstance, ConfigType, FigmaConfig as FigmaConfigClass, FigmaEventType } from "../shared/Configs"
 import { FrontendRoutes } from "../shared/FrontendRoutes"
 import { AdditionalStateParams, FigmaIntegration, FigmaIntegrationMetadata, InstallationOptionsFor, IntegrationType } from "../shared/Integrations"
 import { RunHistoryTrigger } from "../shared/RunHistoryTypes"
@@ -1018,6 +1018,7 @@ export async function validateFigmaFileExists(integrationId: string, fileKey: st
 
 export class FigmaCommentEvent extends InputEvent implements Identifiable {
     readonly integrationType: IntegrationType = IntegrationType.FIGMA
+    readonly eventType: FigmaEventType = FigmaEventType.FILE_COMMENT
     entityType = HydratorType.FIGMA_COMMENT_EVENT
     entityId: string
     data: FigmaCommentEventData

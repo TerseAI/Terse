@@ -6,6 +6,7 @@ import { IntegrationType } from "./shared/Integrations.js"
  */
 export interface InputEvent {
     readonly integrationType: IntegrationType
+    readonly eventType: string
     formatForAgentRunner(): string
     debugLog(): string
 }

@@ -306,6 +306,7 @@ export interface WorkOSWebhookRequest {
 
 export class WorkOSEvent extends InputEvent implements Identifiable {
     readonly integrationType: IntegrationType = IntegrationType.WORKOS
+    readonly eventType: string
     entityType = HydratorType.WORKOS_EVENT
     entityId: string
     data: WorkOSWebhookPayload
@@ -316,6 +317,7 @@ export class WorkOSEvent extends InputEvent implements Identifiable {
     ) {
         super()
         this.data = payload
+        this.eventType = payload.event
         this.entityId = `${integrationId}:${payload.id}`
     }
 

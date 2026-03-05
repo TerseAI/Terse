@@ -20,7 +20,7 @@ import {
 } from "../routes/GithubTypes"
 import { fetchGithubRepositoriesForIntegration } from "../routes/github"
 import { FileDownloadResult, StoredFile, buildGithubFileKey, ensureStoredWithMetadata } from "../services/FileStorageService"
-import { ConfigInstance, ConfigType, GitHubConfig as GitHubConfigClass } from "../shared/Configs"
+import { ConfigInstance, ConfigType, GitHubConfig as GitHubConfigClass, GitHubEventType } from "../shared/Configs"
 import { FrontendRoutes } from "../shared/FrontendRoutes"
 import { AdditionalStateParams, GithubIntegration, GithubIntegrationMetadata, InstallationOptionsFor, IntegrationType } from "../shared/Integrations"
 import { RunHistoryTrigger } from "../shared/RunHistoryTypes"
@@ -406,6 +406,7 @@ export class GithubIntegrationManager
 
 export class GithubEvent extends InputEvent implements Identifiable {
     readonly integrationType: IntegrationType = IntegrationType.GITHUB
+    readonly eventType: GitHubEventType
     entityType = HydratorType.GITHUB_EVENT
     entityId: string
     data: GithubAppUnifiedEventRequest
@@ -415,6 +416,7 @@ export class GithubEvent extends InputEvent implements Identifiable {
         super()
         this.data = data
         this.storedFiles = storedFiles
+        this.eventType = data.eventType as GitHubEventType
         if (data.pullRequest) {
             this.entityId = `${data.installationId}:${data.repository.id}:pr/${data.pullRequest.number}`
         } else if (data.commits?.length) {

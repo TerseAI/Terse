@@ -7,11 +7,13 @@ export function convertSerializedEventToInputEvent(serializedEvent: SerializedEv
 
 export class SerializedEventInputEvent implements InputEvent {
     readonly integrationType: IntegrationType;
+    readonly eventType: string;
     readonly formattedContent: string;
     readonly debugLogResult: string;
     
     constructor(serializedEvent: SerializedEvent) {
         this.integrationType = serializedEvent.integrationType;
+        this.eventType = (serializedEvent as any).eventType ?? "unknown";
         this.formattedContent = serializedEvent.formattedContent;
         this.debugLogResult = serializedEvent.debugLog;
     }

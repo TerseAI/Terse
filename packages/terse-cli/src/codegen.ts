@@ -191,7 +191,7 @@ function generateGitHubSection(instances: GitHubInstanceData[]): SectionResult {
     parts.push("}")
     parts.push("")
 
-    parts.push("export class Repository {")
+    parts.push("export class Repos {")
     parts.push("    constructor(")
     parts.push("        public readonly repositoryId: number,")
     parts.push("        public readonly name: string,")
@@ -205,11 +205,11 @@ function generateGitHubSection(instances: GitHubInstanceData[]): SectionResult {
             const usedRepoNames = new Set<string>()
             parts.push(`    static ${data.staticName} = {`)
             for (const repo of data.repos) {
-                let repoStaticName = toStaticName(repo.name, "Repository")
+                let repoStaticName = toStaticName(repo.name, "Repos")
                 while (usedRepoNames.has(repoStaticName)) repoStaticName += "_"
                 usedRepoNames.add(repoStaticName)
                 parts.push(
-                    `        ${repoStaticName}: new Repository(${repo.id}, "${escapeString(repo.name)}", GithubOwner.${data.staticName}, "${escapeString(repo.fullName)}"),`
+                    `        ${repoStaticName}: new Repos(${repo.id}, "${escapeString(repo.name)}", GithubOwner.${data.staticName}, "${escapeString(repo.fullName)}"),`
                 )
             }
             parts.push("    } as const")
@@ -219,15 +219,38 @@ function generateGitHubSection(instances: GitHubInstanceData[]): SectionResult {
     parts.push("}")
     parts.push("")
 
-    parts.push(`/** Use in \`triggers[]\` */`)
-    parts.push(`export function GithubTrigger(repositories: Repository[]): GitHubConfig {`)
-    parts.push(`    return new GitHubConfig("${id}", repositories.map(r => r.repositoryId))`)
-    parts.push("}")
-    parts.push("")
+    imports.add("GitHubEventType")
 
-    parts.push(`/** Use in \`skills[]\` */`)
-    parts.push(`export function GithubSkill(repositories: Repository[]): GitHubConfig {`)
-    parts.push(`    return new GitHubConfig("${id}", repositories.map(r => r.repositoryId))`)
+    // Namespace object with typed event triggers
+    parts.push("export const GitHub = {")
+    parts.push(`    /** Trigger on push to a repository */`)
+    parts.push(`    onPush(opts: { repo: Repos }): GitHubConfig {`)
+    parts.push(`        return new GitHubConfig("${id}", [opts.repo.repositoryId], [GitHubEventType.PUSH])`)
+    parts.push("    },")
+    parts.push(`    /** Trigger when a pull request is opened */`)
+    parts.push(`    onPROpened(opts: { repo: Repos }): GitHubConfig {`)
+    parts.push(`        return new GitHubConfig("${id}", [opts.repo.repositoryId], [GitHubEventType.PR_OPENED])`)
+    parts.push("    },")
+    parts.push(`    /** Trigger when a pull request is merged */`)
+    parts.push(`    onPRMerged(opts: { repo: Repos }): GitHubConfig {`)
+    parts.push(`        return new GitHubConfig("${id}", [opts.repo.repositoryId], [GitHubEventType.PR_MERGED])`)
+    parts.push("    },")
+    parts.push(`    /** Trigger when a pull request is closed */`)
+    parts.push(`    onPRClosed(opts: { repo: Repos }): GitHubConfig {`)
+    parts.push(`        return new GitHubConfig("${id}", [opts.repo.repositoryId], [GitHubEventType.PR_CLOSED])`)
+    parts.push("    },")
+    parts.push(`    /** Trigger on any pull request event */`)
+    parts.push(`    onPR(opts: { repo: Repos }): GitHubConfig {`)
+    parts.push(`        return new GitHubConfig("${id}", [opts.repo.repositoryId], [GitHubEventType.PR_OPENED, GitHubEventType.PR_MERGED, GitHubEventType.PR_CLOSED, GitHubEventType.PR_SYNCHRONIZE])`)
+    parts.push("    },")
+    parts.push(`    /** Trigger on specific GitHub events for the given repositories */`)
+    parts.push(`    trigger(opts: { repos: Repos[]; eventTypes?: GitHubEventType[] }): GitHubConfig {`)
+    parts.push(`        return new GitHubConfig("${id}", opts.repos.map(r => r.repositoryId), opts.eventTypes)`)
+    parts.push("    },")
+    parts.push(`    /** Use in \`skills[]\` */`)
+    parts.push(`    skill(opts: { repos: Repos[] }): GitHubConfig {`)
+    parts.push(`        return new GitHubConfig("${id}", opts.repos.map(r => r.repositoryId))`)
+    parts.push("    },")
     parts.push("}")
     parts.push("")
 
@@ -243,21 +266,26 @@ function generateGmailSection(instances: IntegrationInstanceData[]): SectionResu
     const parts: string[] = [sectionHeader("Gmail"), ""]
     const id = instances[0].id
 
-    parts.push(`/** Use in \`triggers[]\` */`)
-    parts.push(`export function GmailTrigger(): GmailConfig {`)
-    parts.push(`    return new GmailConfig("${id}")`)
-    parts.push("}")
-    parts.push("")
+    imports.add("GmailEventType")
 
-    parts.push(`/** Use in \`skills[]\` */`)
-    parts.push(`export function GmailSkill(): GmailOutputConfig {`)
-    parts.push(`    return new GmailOutputConfig("${id}")`)
-    parts.push("}")
-    parts.push("")
+    parts.push("export const Gmail = {")
+    parts.push(`    /** Trigger when a new email is received */`)
+    parts.push(`    onEmail(): GmailConfig {`)
+    parts.push(`        return new GmailConfig("${id}", [GmailEventType.EMAIL_RECEIVED])`)
+    parts.push("    },")
+    parts.push(`    /** Trigger on all Gmail events */`)
+    parts.push(`    trigger(opts?: { eventTypes?: GmailEventType[] }): GmailConfig {`)
+    parts.push(`        return new GmailConfig("${id}", opts?.eventTypes)`)
+    parts.push("    },")
 
-    parts.push(`/** Use in \`skills[]\` — creates draft emails */`)
-    parts.push(`export function GmailDraftSkill(): GmailDraftOutputConfig {`)
-    parts.push(`    return new GmailDraftOutputConfig("${id}")`)
+    parts.push(`    /** Use in \`skills[]\` */`)
+    parts.push(`    skill(): GmailOutputConfig {`)
+    parts.push(`        return new GmailOutputConfig("${id}")`)
+    parts.push("    },")
+    parts.push(`    /** Use in \`skills[]\` — creates draft emails */`)
+    parts.push(`    draftSkill(): GmailDraftOutputConfig {`)
+    parts.push(`        return new GmailDraftOutputConfig("${id}")`)
+    parts.push("    },")
     parts.push("}")
     parts.push("")
 
@@ -280,15 +308,26 @@ function generateSlackSection(instances: SlackInstanceData[]): SectionResult {
     ], "name", inst.channels))
     parts.push("")
 
-    parts.push(`/** Use in \`triggers[]\` */`)
-    parts.push(`export function SlackTrigger(channel?: SlackChannel, listenToUserDms?: boolean, userIds?: string[]): SlackConfig {`)
-    parts.push(`    return new SlackConfig("${id}", channel?.channelId, channel?.name, listenToUserDms, userIds)`)
-    parts.push("}")
-    parts.push("")
+    imports.add("SlackEventType")
 
-    parts.push(`/** Use in \`skills[]\` */`)
-    parts.push(`export function SlackSkill(channel?: SlackChannel, userIds?: string[], userNames?: string[], listenToUserDms?: boolean): SlackOutputConfig {`)
-    parts.push(`    return new SlackOutputConfig("${id}", channel?.channelId, channel?.name, userIds, userNames, listenToUserDms)`)
+    // Namespace object with typed event triggers
+    parts.push("export const Slack = {")
+    parts.push(`    /** Trigger on any message in a channel */`)
+    parts.push(`    onMessage(opts: { channel: SlackChannel; userIds?: string[] }): SlackConfig {`)
+    parts.push(`        return new SlackConfig("${id}", opts.channel.channelId, opts.channel.name, false, opts.userIds, [SlackEventType.MESSAGE])`)
+    parts.push("    },")
+    parts.push(`    /** Trigger on direct messages to the bot */`)
+    parts.push(`    onDm(opts?: { userIds?: string[] }): SlackConfig {`)
+    parts.push(`        return new SlackConfig("${id}", undefined, undefined, true, opts?.userIds, [SlackEventType.MESSAGE])`)
+    parts.push("    },")
+    parts.push(`    /** Trigger on all Slack events (messages + DMs) for a channel */`)
+    parts.push(`    trigger(opts?: { channel?: SlackChannel; listenToUserDms?: boolean; userIds?: string[]; eventTypes?: SlackEventType[] }): SlackConfig {`)
+    parts.push(`        return new SlackConfig("${id}", opts?.channel?.channelId, opts?.channel?.name, opts?.listenToUserDms, opts?.userIds, opts?.eventTypes)`)
+    parts.push("    },")
+    parts.push(`    /** Use in \`skills[]\` */`)
+    parts.push(`    skill(opts?: { channel?: SlackChannel; userIds?: string[]; userNames?: string[]; listenToUserDms?: boolean }): SlackOutputConfig {`)
+    parts.push(`        return new SlackOutputConfig("${id}", opts?.channel?.channelId, opts?.channel?.name, opts?.userIds, opts?.userNames, opts?.listenToUserDms)`)
+    parts.push("    },")
     parts.push("}")
     parts.push("")
 
@@ -302,10 +341,19 @@ function generateFigmaSection(instances: IntegrationInstanceData[]): SectionResu
 
     const imports = new Set(["FigmaConfig"])
     const parts: string[] = [sectionHeader("Figma"), ""]
+    const id = instances[0].id
 
-    parts.push(`/** Use in \`triggers[]\` */`)
-    parts.push(`export function FigmaTrigger(fileKey: string, fileName: string, teamId: string): FigmaConfig {`)
-    parts.push(`    return new FigmaConfig("${instances[0].id}", fileKey, fileName, teamId)`)
+    imports.add("FigmaEventType")
+
+    parts.push("export const Figma = {")
+    parts.push(`    /** Trigger when a comment is added to a Figma file */`)
+    parts.push(`    onComment(opts: { fileKey: string; fileName: string; teamId: string }): FigmaConfig {`)
+    parts.push(`        return new FigmaConfig("${id}", opts.fileKey, opts.fileName, opts.teamId, [FigmaEventType.FILE_COMMENT])`)
+    parts.push("    },")
+    parts.push(`    /** Trigger on all Figma events */`)
+    parts.push(`    trigger(opts: { fileKey: string; fileName: string; teamId: string; eventTypes?: FigmaEventType[] }): FigmaConfig {`)
+    parts.push(`        return new FigmaConfig("${id}", opts.fileKey, opts.fileName, opts.teamId, opts.eventTypes)`)
+    parts.push("    },")
     parts.push("}")
     parts.push("")
 
@@ -329,15 +377,29 @@ function generateLinearSection(instances: LinearInstanceData[]): SectionResult {
     ], "name", inst.teams))
     parts.push("")
 
-    parts.push(`/** Use in \`triggers[]\` */`)
-    parts.push(`export function LinearTrigger(projectId?: string, projectName?: string): LinearInputConfig {`)
-    parts.push(`    return new LinearInputConfig("${id}", projectId, projectName)`)
-    parts.push("}")
-    parts.push("")
+    imports.add("LinearEventType")
 
-    parts.push(`/** Use in \`skills[]\` */`)
-    parts.push(`export function LinearSkill(team?: LinearTeam, projectId?: string, projectName?: string): LinearOutputConfig {`)
-    parts.push(`    return new LinearOutputConfig("${id}", team?.teamId, team?.name, projectId, projectName)`)
+    parts.push("export const Linear = {")
+    parts.push(`    /** Trigger when a new issue is created */`)
+    parts.push(`    onIssueCreated(opts?: { projectId?: string; projectName?: string }): LinearInputConfig {`)
+    parts.push(`        return new LinearInputConfig("${id}", opts?.projectId, opts?.projectName, [LinearEventType.ISSUE_CREATED])`)
+    parts.push("    },")
+    parts.push(`    /** Trigger when an issue is updated */`)
+    parts.push(`    onIssueUpdated(opts?: { projectId?: string; projectName?: string }): LinearInputConfig {`)
+    parts.push(`        return new LinearInputConfig("${id}", opts?.projectId, opts?.projectName, [LinearEventType.ISSUE_UPDATED])`)
+    parts.push("    },")
+    parts.push(`    /** Trigger when a comment is added to an issue */`)
+    parts.push(`    onComment(opts?: { projectId?: string; projectName?: string }): LinearInputConfig {`)
+    parts.push(`        return new LinearInputConfig("${id}", opts?.projectId, opts?.projectName, [LinearEventType.COMMENT_CREATED])`)
+    parts.push("    },")
+    parts.push(`    /** Trigger on all Linear events */`)
+    parts.push(`    trigger(opts?: { projectId?: string; projectName?: string; eventTypes?: LinearEventType[] }): LinearInputConfig {`)
+    parts.push(`        return new LinearInputConfig("${id}", opts?.projectId, opts?.projectName, opts?.eventTypes)`)
+    parts.push("    },")
+    parts.push(`    /** Use in \`skills[]\` */`)
+    parts.push(`    skill(opts?: { team?: LinearTeam; projectId?: string; projectName?: string }): LinearOutputConfig {`)
+    parts.push(`        return new LinearOutputConfig("${id}", opts?.team?.teamId, opts?.team?.name, opts?.projectId, opts?.projectName)`)
+    parts.push("    },")
     parts.push("}")
     parts.push("")
 
@@ -369,21 +431,33 @@ function generateAtlassianSection(instances: AtlassianInstanceData[]): SectionRe
     ], "title", inst.confluencePages))
     parts.push("")
 
-    parts.push(`/** Use in \`triggers[]\` */`)
-    parts.push(`export function JiraTrigger(project?: JiraProject): JiraConfig {`)
-    parts.push(`    return new JiraConfig("${id}", project?.projectKey, project?.projectId)`)
+    imports.add("JiraEventType")
+
+    parts.push("export const Jira = {")
+    parts.push(`    /** Trigger when a Jira issue is created */`)
+    parts.push(`    onIssueCreated(opts?: { project?: JiraProject }): JiraConfig {`)
+    parts.push(`        return new JiraConfig("${id}", opts?.project?.projectKey, opts?.project?.projectId, [JiraEventType.ISSUE_CREATED])`)
+    parts.push("    },")
+    parts.push(`    /** Trigger when a Jira issue is updated */`)
+    parts.push(`    onIssueUpdated(opts?: { project?: JiraProject }): JiraConfig {`)
+    parts.push(`        return new JiraConfig("${id}", opts?.project?.projectKey, opts?.project?.projectId, [JiraEventType.ISSUE_UPDATED])`)
+    parts.push("    },")
+    parts.push(`    /** Trigger on all Jira events */`)
+    parts.push(`    trigger(opts?: { project?: JiraProject; eventTypes?: JiraEventType[] }): JiraConfig {`)
+    parts.push(`        return new JiraConfig("${id}", opts?.project?.projectKey, opts?.project?.projectId, opts?.eventTypes)`)
+    parts.push("    },")
+    parts.push(`    /** Use in \`skills[]\` */`)
+    parts.push(`    skill(opts?: { project?: JiraProject }): JiraConfig {`)
+    parts.push(`        return new JiraConfig("${id}", opts?.project?.projectKey, opts?.project?.projectId)`)
+    parts.push("    },")
     parts.push("}")
     parts.push("")
 
-    parts.push(`/** Use in \`skills[]\` */`)
-    parts.push(`export function JiraSkill(project?: JiraProject): JiraConfig {`)
-    parts.push(`    return new JiraConfig("${id}", project?.projectKey, project?.projectId)`)
-    parts.push("}")
-    parts.push("")
-
-    parts.push(`/** Use in \`skills[]\` */`)
-    parts.push(`export function ConfluenceSkill(page: ConfluencePage): ConfluenceConfig {`)
-    parts.push(`    return new ConfluenceConfig("${id}", page.spaceName, page.spaceId, page.pageId, page.title)`)
+    parts.push("export const Confluence = {")
+    parts.push(`    /** Use in \`skills[]\` */`)
+    parts.push(`    skill(opts: { page: ConfluencePage }): ConfluenceConfig {`)
+    parts.push(`        return new ConfluenceConfig("${id}", opts.page.spaceName, opts.page.spaceId, opts.page.pageId, opts.page.title)`)
+    parts.push("    },")
     parts.push("}")
     parts.push("")
 
@@ -412,11 +486,13 @@ function generateNotionSection(instances: NotionInstanceData[]): SectionResult {
     ], "title", inst.pages))
     parts.push("")
 
-    parts.push(`/** Use in \`skills[]\` */`)
-    parts.push(`export function NotionSkill(databases?: NotionDatabase[], pages?: NotionPage[]): NotionConfig {`)
-    parts.push(`    return new NotionConfig("${id}",`)
-    parts.push(`        databases?.map(d => d.databaseId), databases?.map(d => d.title),`)
-    parts.push(`        pages?.map(p => p.pageId), pages?.map(p => p.title))`)
+    parts.push("export const Notion = {")
+    parts.push(`    /** Use in \`skills[]\` */`)
+    parts.push(`    skill(opts?: { databases?: NotionDatabase[]; pages?: NotionPage[] }): NotionConfig {`)
+    parts.push(`        return new NotionConfig("${id}",`)
+    parts.push(`            opts?.databases?.map(d => d.databaseId), opts?.databases?.map(d => d.title),`)
+    parts.push(`            opts?.pages?.map(p => p.pageId), opts?.pages?.map(p => p.title))`)
+    parts.push("    },")
     parts.push("}")
     parts.push("")
 
@@ -439,9 +515,11 @@ function generatePosthogSection(instances: PosthogInstanceData[]): SectionResult
     ], "name", inst.projects))
     parts.push("")
 
-    parts.push(`/** Use in \`skills[]\` */`)
-    parts.push(`export function PosthogSkill(project: PosthogProject): PosthogConfig {`)
-    parts.push(`    return new PosthogConfig("${id}", project.projectId, project.name)`)
+    parts.push("export const Posthog = {")
+    parts.push(`    /** Use in \`skills[]\` */`)
+    parts.push(`    skill(opts: { project: PosthogProject }): PosthogConfig {`)
+    parts.push(`        return new PosthogConfig("${id}", opts.project.projectId, opts.project.name)`)
+    parts.push("    },")
     parts.push("}")
     parts.push("")
 
@@ -463,9 +541,11 @@ function generateDatadogSection(instances: DatadogInstanceData[]): SectionResult
     ], "name", inst.indexes))
     parts.push("")
 
-    parts.push(`/** Use in \`skills[]\` */`)
-    parts.push(`export function DatadogSkill(indexes?: DatadogIndex[]): DatadogConfig {`)
-    parts.push(`    return new DatadogConfig("${id}", indexes?.map(i => i.name))`)
+    parts.push("export const Datadog = {")
+    parts.push(`    /** Use in \`skills[]\` */`)
+    parts.push(`    skill(opts?: { indexes?: DatadogIndex[] }): DatadogConfig {`)
+    parts.push(`        return new DatadogConfig("${id}", opts?.indexes?.map(i => i.name))`)
+    parts.push("    },")
     parts.push("}")
     parts.push("")
 
@@ -488,9 +568,11 @@ function generateLaunchDarklySection(instances: LaunchDarklyInstanceData[]): Sec
     ], "name", inst.projects))
     parts.push("")
 
-    parts.push(`/** Use in \`skills[]\` */`)
-    parts.push(`export function LaunchDarklySkill(project: LaunchDarklyProject, environmentKeys: string[]): LaunchDarklyConfig {`)
-    parts.push(`    return new LaunchDarklyConfig("${id}", project.projectKey, environmentKeys)`)
+    parts.push("export const LaunchDarkly = {")
+    parts.push(`    /** Use in \`skills[]\` */`)
+    parts.push(`    skill(opts: { project: LaunchDarklyProject; environmentKeys: string[] }): LaunchDarklyConfig {`)
+    parts.push(`        return new LaunchDarklyConfig("${id}", opts.project.projectKey, opts.environmentKeys)`)
+    parts.push("    },")
     parts.push("}")
     parts.push("")
 
@@ -506,15 +588,19 @@ function generateWorkOSSection(instances: IntegrationInstanceData[]): SectionRes
     const parts: string[] = [sectionHeader("WorkOS"), ""]
     const id = instances[0].id
 
-    parts.push(`/** Use in \`triggers[]\` */`)
-    parts.push(`export function WorkOSTrigger(eventTypes?: string[]): WorkOSInputConfig {`)
-    parts.push(`    return new WorkOSInputConfig("${id}", eventTypes)`)
-    parts.push("}")
-    parts.push("")
-
-    parts.push(`/** Use in \`skills[]\` */`)
-    parts.push(`export function WorkOSSkill(): WorkOSOutputConfig {`)
-    parts.push(`    return new WorkOSOutputConfig("${id}")`)
+    parts.push("export const WorkOS = {")
+    parts.push(`    /** Trigger on specific WorkOS event types */`)
+    parts.push(`    onEvent(opts: { eventTypes: string[] }): WorkOSInputConfig {`)
+    parts.push(`        return new WorkOSInputConfig("${id}", opts.eventTypes)`)
+    parts.push("    },")
+    parts.push(`    /** Trigger on all WorkOS events */`)
+    parts.push(`    trigger(opts?: { eventTypes?: string[] }): WorkOSInputConfig {`)
+    parts.push(`        return new WorkOSInputConfig("${id}", opts?.eventTypes)`)
+    parts.push("    },")
+    parts.push(`    /** Use in \`skills[]\` */`)
+    parts.push(`    skill(): WorkOSOutputConfig {`)
+    parts.push(`        return new WorkOSOutputConfig("${id}")`)
+    parts.push("    },")
     parts.push("}")
     parts.push("")
 
@@ -537,9 +623,11 @@ function generateAttioSection(instances: AttioInstanceData[]): SectionResult {
     ], "singular_noun", inst.objects))
     parts.push("")
 
-    parts.push(`/** Use in \`skills[]\` */`)
-    parts.push(`export function AttioSkill(object?: AttioObject): AttioOutputConfig {`)
-    parts.push(`    return new AttioOutputConfig("${id}", object?.apiSlug)`)
+    parts.push("export const Attio = {")
+    parts.push(`    /** Use in \`skills[]\` */`)
+    parts.push(`    skill(opts?: { object?: AttioObject }): AttioOutputConfig {`)
+    parts.push(`        return new AttioOutputConfig("${id}", opts?.object?.apiSlug)`)
+    parts.push("    },")
     parts.push("}")
     parts.push("")
 
@@ -672,20 +760,20 @@ function generateToolsSection(tools: ToolDefinition[], input: CodegenInput): Sec
 
     // Ensure GitHub repository params are full "owner/repo".
     // Supports:
-    // - Repository objects (uses .fullName)
+    // - Repos objects (uses .fullName)
     // - full string "owner/repo" (passthrough)
     // - short repo name string "repo" (resolved via known generated repositories when unique)
-    const normalizeGitHubRepositoryParams = (toolName: string): string => {
+    const normalizeGitHubReposParams = (toolName: string): string => {
         switch (toolName) {
             case "readGitHubFile":
             case "listGitHubPullRequests":
             case "listGitHubDirectory":
             case "listGitHubCommits":
             case "summarizeGitHubPullRequestDiff":
-                return "{ ...params, repository: __normalizeGitHubRepository((params as any).repository) }"
+                return "{ ...params, repository: __normalizeGitHubRepos((params as any).repository) }"
             case "searchGitHubCode":
             case "grepGitHubCode":
-                return "{ ...params, repositoryNames: __normalizeGitHubRepositoryNames((params as any).repositoryNames) }"
+                return "{ ...params, repositoryNames: __normalizeGitHubReposNames((params as any).repositoryNames) }"
             default:
                 return "params"
         }
@@ -747,7 +835,7 @@ function generateToolsSection(tools: ToolDefinition[], input: CodegenInput): Sec
         }
         parts.push(`])`)
         parts.push("")
-        parts.push(`function __normalizeGitHubRepository(repo: unknown): string {`)
+        parts.push(`function __normalizeGitHubRepos(repo: unknown): string {`)
         parts.push(`    if (repo && typeof repo === "object" && "fullName" in (repo as Record<string, unknown>)) {`)
         parts.push(`        const fullName = (repo as { fullName?: unknown }).fullName`)
         parts.push(`        if (typeof fullName === "string" && fullName.length > 0) return fullName`)
@@ -759,9 +847,9 @@ function generateToolsSection(tools: ToolDefinition[], input: CodegenInput): Sec
         parts.push(`    return String(repo ?? "")`)
         parts.push(`}`)
         parts.push("")
-        parts.push(`function __normalizeGitHubRepositoryNames(repositories: unknown): string[] {`)
+        parts.push(`function __normalizeGitHubReposNames(repositories: unknown): string[] {`)
         parts.push(`    if (!Array.isArray(repositories)) return []`)
-        parts.push(`    return repositories.map(repo => __normalizeGitHubRepository(repo))`)
+        parts.push(`    return repositories.map(repo => __normalizeGitHubRepos(repo))`)
         parts.push(`}`)
         parts.push("")
     }
@@ -803,7 +891,7 @@ function generateToolsSection(tools: ToolDefinition[], input: CodegenInput): Sec
         for (const tool of group.tools) {
             const methodName = toCamelCase(tool.displayName)
             const paramsType = toolNameToInterfaceName(tool.name)
-            const normalizedParamsExpr = group.integration === "github" ? normalizeGitHubRepositoryParams(tool.name) : "params"
+            const normalizedParamsExpr = group.integration === "github" ? normalizeGitHubReposParams(tool.name) : "params"
             if (group.integrationId && hasAutoFillId(tool)) {
                 parts.push(`            ${methodName}: (params: ${paramsType}) =>`)
                 parts.push(
@@ -836,17 +924,21 @@ function generateSystemSection(): SectionResult {
 
     parts.push(sectionHeader("Schedule"))
     parts.push("")
-    parts.push(`/** Use in \`triggers[]\` — run on a cron schedule */`)
-    parts.push("export function ScheduleTrigger(cronExpression: string): TimeTriggerConfig {")
-    parts.push("    return new TimeTriggerConfig(cronExpression)")
+    parts.push("export const Schedule = {")
+    parts.push(`    /** Use in \`triggers[]\` — run on a cron schedule */`)
+    parts.push("    cron(opts: { expression: string }): TimeTriggerConfig {")
+    parts.push("        return new TimeTriggerConfig(opts.expression)")
+    parts.push("    },")
     parts.push("}")
     parts.push("")
 
     parts.push(sectionHeader("Terse"))
     parts.push("")
-    parts.push(`/** Use in \`skills[]\` — built-in web search */`)
-    parts.push("export function TerseSkill(): TerseConfig {")
-    parts.push("    return new TerseConfig()")
+    parts.push("export const Terse = {")
+    parts.push(`    /** Use in \`skills[]\` — built-in web search */`)
+    parts.push("    skill(): TerseConfig {")
+    parts.push("        return new TerseConfig()")
+    parts.push("    },")
     parts.push("}")
     parts.push("")
 

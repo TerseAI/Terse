@@ -8,7 +8,7 @@ import logger, { runWithUserContext } from "../logger"
 import { db } from "../prismaClient"
 import { Identifiable } from "../rag/Hydrator"
 import { StoredFile } from "../services/FileStorageService"
-import { ConfigInstance, ConfigType, JiraConfig as JiraConfigClass } from "../shared/Configs"
+import { ConfigInstance, ConfigType, JiraConfig as JiraConfigClass, JiraEventType } from "../shared/Configs"
 import { FrontendRoutes } from "../shared/FrontendRoutes"
 import { AdditionalStateParams, AtlassianIntegration, AtlassianIntegrationMetadata, InstallationOptionsFor, IntegrationType } from "../shared/Integrations"
 import { RunHistoryTrigger } from "../shared/RunHistoryTypes"
@@ -879,6 +879,7 @@ function jiraDescriptionToPlainText(description: unknown): string {
 
 export class JiraEvent extends InputEvent implements Identifiable {
     readonly integrationType: IntegrationType = IntegrationType.ATLASSIAN
+    readonly eventType: JiraEventType
     entityType = HydratorType.JIRA_EVENT
     entityId: string
     data: JiraWebhookPayload
@@ -890,6 +891,8 @@ export class JiraEvent extends InputEvent implements Identifiable {
         this.data = data
         this.integrationId = integrationId
         this.storedFiles = storedFiles
+        // Normalize "jira:issue_created" → "issue.created"
+        this.eventType = data.webhookEvent.replace(/^jira:/, "").replace(/_/g, ".") as JiraEventType
         const issue = data.issue
         this.entityId = `${integrationId}:${issue?.key ?? issue?.id ?? "unknown"}`
     }

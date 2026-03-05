@@ -10,7 +10,7 @@ import { db } from "../prismaClient"
 import { Identifiable } from "../rag/Hydrator"
 import { fetchLinearTeams } from "../routes/linear"
 import { StoredFile } from "../services/FileStorageService"
-import { ConfigInstance, ConfigType } from "../shared/Configs"
+import { ConfigInstance, ConfigType, LinearEventType } from "../shared/Configs"
 import { FrontendRoutes } from "../shared/FrontendRoutes"
 import { AdditionalStateParams, InstallationOptionsFor, IntegrationType, LinearIntegration, LinearIntegrationMetadata } from "../shared/Integrations"
 import { RunHistoryTrigger } from "../shared/RunHistoryTypes"
@@ -603,6 +603,7 @@ export async function validateLinearProjectExists(integrationId: string, project
 
 export class LinearEvent extends InputEvent implements Identifiable {
     readonly integrationType: IntegrationType = IntegrationType.LINEAR
+    readonly eventType: LinearEventType
     entityType = HydratorType.LINEAR_EVENT
     entityId: string
     data: LinearWebhookPayload
@@ -612,6 +613,7 @@ export class LinearEvent extends InputEvent implements Identifiable {
         super()
         this.data = data
         this.integrationId = integrationId
+        this.eventType = `${data.type.toLowerCase()}.${data.action}` as LinearEventType
         const dataId = (data.data as { id?: string })?.id
         this.entityId = `${integrationId}:${dataId ?? "unknown"}`
     }

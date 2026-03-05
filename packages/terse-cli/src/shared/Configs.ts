@@ -239,6 +239,41 @@ export const CONFIG_DETAILS: ConfigDetailsMap = {
     [ConfigType.ATTIO_OUTPUT]: AttioOutputConfigMetadata
 } as const satisfies ConfigDetailsMap
 
+// MARK: Event Types — specific events within each integration trigger
+
+export enum SlackEventType {
+    MESSAGE = "message",
+    APP_MENTION = "app_mention",
+    REACTION_ADDED = "reaction_added"
+}
+
+export enum GitHubEventType {
+    PUSH = "push",
+    PR_OPENED = "pull_request.opened",
+    PR_MERGED = "pull_request.merged",
+    PR_CLOSED = "pull_request.closed",
+    PR_SYNCHRONIZE = "pull_request.synchronize"
+}
+
+export enum LinearEventType {
+    ISSUE_CREATED = "issue.created",
+    ISSUE_UPDATED = "issue.updated",
+    COMMENT_CREATED = "comment.created"
+}
+
+export enum JiraEventType {
+    ISSUE_CREATED = "issue.created",
+    ISSUE_UPDATED = "issue.updated"
+}
+
+export enum FigmaEventType {
+    FILE_COMMENT = "file_comment"
+}
+
+export enum GmailEventType {
+    EMAIL_RECEIVED = "email.received"
+}
+
 export interface ConfigInstance {
     integrationId: string
     integrationType: IntegrationType
@@ -251,7 +286,10 @@ export class GmailConfig implements ConfigInstance {
     integrationType: IntegrationType = IntegrationType.GMAIL
     configType: ConfigType = ConfigType.GMAIL
 
-    constructor(public integrationId: string) {}
+    constructor(
+        public integrationId: string,
+        public eventTypes?: GmailEventType[]
+    ) {}
 
     isComplete(): boolean {
         // Gmail only requires integrationId (base check handled in isInputComplete)
@@ -270,12 +308,12 @@ export class FigmaConfig implements ConfigInstance {
     constructor(
         public integrationId: string,
         public fileKey: string,
-        public fileName: string, // Optional display name
-        public teamId: string // Figma team ID (required for webhook creation)
+        public fileName: string,
+        public teamId: string,
+        public eventTypes?: FigmaEventType[]
     ) {}
 
     isComplete(): boolean {
-        // Figma requires both fileKey and teamId
         return !!(this.fileKey && this.teamId)
     }
 
@@ -290,7 +328,7 @@ export class FigmaConfig implements ConfigInstance {
         return parts.join("\n")
     }
 }
-// Typed config per integration type
+
 export class SlackConfig implements ConfigInstance {
     integrationType: IntegrationType = IntegrationType.SLACK
     configType: ConfigType = ConfigType.SLACK
@@ -300,7 +338,8 @@ export class SlackConfig implements ConfigInstance {
         public channelId?: string,
         public channelName?: string,
         public listenToUserDms: boolean = false,
-        public userIds?: string[]
+        public userIds?: string[],
+        public eventTypes?: SlackEventType[]
     ) {}
 
     isComplete(): boolean {
@@ -430,7 +469,8 @@ export class LinearInputConfig implements ConfigInstance {
     constructor(
         public integrationId: string,
         public projectId?: string,
-        public projectName?: string
+        public projectName?: string,
+        public eventTypes?: LinearEventType[]
     ) {}
 
     isComplete(): boolean {
@@ -486,7 +526,8 @@ export class GitHubConfig implements ConfigInstance {
 
     constructor(
         public integrationId: string,
-        public repositoryIds: number[]
+        public repositoryIds: number[],
+        public eventTypes?: GitHubEventType[]
     ) {}
 
     isComplete(): boolean {
@@ -509,7 +550,8 @@ export class JiraConfig implements ConfigInstance {
     constructor(
         public integrationId: string,
         public projectKey?: string,
-        public projectId?: string
+        public projectId?: string,
+        public eventTypes?: JiraEventType[]
     ) {}
 
     isComplete(): boolean {
