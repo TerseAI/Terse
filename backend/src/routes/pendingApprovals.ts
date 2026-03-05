@@ -33,7 +33,7 @@ function mapRunStatusToApprovalStatus(status: PrismaRunHistoryStatus): ApprovalR
         case PrismaRunHistoryStatus.success:
         case PrismaRunHistoryStatus.failed:
         case PrismaRunHistoryStatus.skipped:
-        case PrismaRunHistoryStatus.canceled:
+        case PrismaRunHistoryStatus.cancelled:
             return "completed"
         default:
             throw status satisfies never
