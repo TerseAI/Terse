@@ -612,6 +612,32 @@ export type SdkAgentStreamEvent =
     | { type: "error"; message: string }
     | { type: "done" }
 
+export type SdkDeployTrigger = {
+    configType: string
+    integrationType: string
+    integrationId: string
+    config: Record<string, unknown>
+}
+
+export type SdkDeployJob = {
+    jobName: string
+    triggers: SdkDeployTrigger[]
+    webhookURL: string
+}
+
+export type SdkDeployRequestBody = {
+    jobs: SdkDeployJob[]
+    sourceZipBase64: string
+}
+
+export type SdkDeployResponseBody = {
+    success: boolean
+    results: { jobName: string; automationId: string; isUpdate: boolean }[]
+    removed: { id: string; name: string }[]
+    error?: string
+    details?: string
+}
+
 export type ToolOutputBase = {
     success: boolean
     actions?: RunHistoryAction[]

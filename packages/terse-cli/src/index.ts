@@ -56,11 +56,9 @@ program
 
 program
     .command("deploy")
-    .description("Deploy a job to Terse")
-    .argument("[job-name]", "Name of the job to deploy")
-    .option("--all", "Deploy all jobs in the project")
-    .action(async (jobName?: string, opts?: { all?: boolean }) => {
-        await deploy(jobName, opts?.all)
+        .description("Deploy all jobs to Terse (syncs with server — removed jobs are deleted)")
+    .action(async () => {
+        await deploy()
     })
 
 await program.parseAsync()

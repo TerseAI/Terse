@@ -3,65 +3,17 @@ import path from "node:path"
 import chalk from "chalk"
 import ora from "ora"
 import { zipSync } from "fflate"
-import { CreateJobParameters } from "terse-sdk"
 
 import { fetchWithAuth, readApiKey } from "./api.js"
 import { assertProjectRoot } from "./assertProjectRoot.js"
-import { loadJob, loadJobRegistry } from "./loadJob.js"
+import { loadJobRegistry } from "./loadJob.js"
 import { ApiRoutes } from "./shared/ApiRoutes.js"
+import type { SdkDeployResponseBody } from "./shared/types.js"
 
 const EXCLUDED_DIRS = new Set(["node_modules", ".git", "dist", ".next", ".turbo"])
 const EXCLUDED_FILES = new Set([".env", ".DS_Store"])
 
-async function deploySingleJob(
-    job: CreateJobParameters,
-    apiKey: string,
-    sourceZipBase64: string,
-    fileCount: number,
-    zipSizeBytes: number
-): Promise<boolean> {
-    const spinner = ora(`Deploying "${job.name}"...`).start()
-
-    try {
-        const triggers = job.triggers.map(serializeTrigger)
-
-        spinner.text = `Uploading "${job.name}"...`
-        const result = await fetchWithAuth<DeployResponse>(
-            ApiRoutes.SDK.DEPLOY,
-            apiKey,
-            {
-                jobName: job.name,
-                triggers,
-                webhookURL: job.webhookURL,
-                sourceZipBase64
-            },
-            "POST"
-        )
-
-        if (result.success) {
-            spinner.succeed(
-                result.isUpdate
-                    ? chalk.green(`Updated "${job.name}" (${result.automationId})`)
-                    : chalk.green(`Deployed "${job.name}" (${result.automationId})`)
-            )
-            console.log(chalk.dim(`  Triggers: ${triggers.length}`))
-            console.log(chalk.dim(`  Files: ${fileCount}`))
-            console.log(chalk.dim(`  Zip size: ${(zipSizeBytes / 1024).toFixed(1)} KB`))
-            return true
-        } else {
-            spinner.fail(chalk.red(`Deploy failed for "${job.name}": ${result.error}`))
-            if (result.details) {
-                console.error(chalk.dim(`  ${result.details}`))
-            }
-            return false
-        }
-    } catch (error) {
-        spinner.fail(chalk.red(`Deploy failed for "${job.name}": ${(error as Error).message}`))
-        return false
-    }
-}
-
-export async function deploy(jobName?: string, all?: boolean) {
+export async function deploy() {
     assertProjectRoot()
 
     const apiKey = readApiKey()
@@ -71,34 +23,54 @@ export async function deploy(jobName?: string, all?: boolean) {
         process.exit(1)
     }
 
-    // Zip once — all jobs in the same package share the same source
+    const registry = await loadJobRegistry()
+    const jobs = [...registry.values()]
     const { sourceZipBase64, fileCount, zipSizeBytes } = buildZipPayload()
 
-    if (all) {
-        // Deploy every job in the registry
-        const registry = await loadJobRegistry()
-        const jobs = [...registry.values()]
+    const spinner = ora(`Deploying ${jobs.length} job${jobs.length === 1 ? "" : "s"}...`).start()
 
-        console.log(chalk.bold(`Deploying ${jobs.length} job${jobs.length === 1 ? "" : "s"}...\n`))
+    try {
+        const result = await fetchWithAuth<SdkDeployResponseBody>(
+            ApiRoutes.SDK.DEPLOY,
+            apiKey,
+            {
+                jobs: jobs.map(job => ({
+                    jobName: job.name,
+                    triggers: job.triggers.map(serializeTrigger),
+                    webhookURL: job.webhookURL
+                })),
+                sourceZipBase64
+            },
+            "POST"
+        )
 
-        let failed = 0
-        for (const job of jobs) {
-            const ok = await deploySingleJob(job, apiKey, sourceZipBase64, fileCount, zipSizeBytes)
-            if (!ok) failed++
-            console.log() // blank line between jobs
-        }
-
-        if (failed > 0) {
-            console.error(chalk.red(`\n${failed} of ${jobs.length} deploy(s) failed.`))
+        if (!result.success) {
+            spinner.fail(chalk.red(`Deploy failed: ${result.error}`))
+            if (result.details) {
+                console.error(chalk.dim(`  ${result.details}`))
+            }
             process.exit(1)
         }
 
-        console.log(chalk.green(`\nAll ${jobs.length} job${jobs.length === 1 ? "" : "s"} deployed successfully.`))
-    } else {
-        // Deploy a single job (prompt if multiple exist and no name given)
-        const { job } = await loadJob(jobName)
-        const ok = await deploySingleJob(job, apiKey, sourceZipBase64, fileCount, zipSizeBytes)
-        if (!ok) process.exit(1)
+        spinner.succeed(chalk.green(`Deployed ${result.results.length} job${result.results.length === 1 ? "" : "s"}`))
+
+        for (const r of result.results) {
+            const verb = r.isUpdate ? "Updated" : "Created"
+            console.log(chalk.dim(`  ${verb} "${r.jobName}" (${r.automationId})`))
+        }
+
+        console.log(chalk.dim(`  Files: ${fileCount}`))
+        console.log(chalk.dim(`  Zip size: ${(zipSizeBytes / 1024).toFixed(1)} KB`))
+
+        if (result.removed.length > 0) {
+            console.log(chalk.yellow(`\nRemoved ${result.removed.length} stale job${result.removed.length === 1 ? "" : "s"} no longer in project:`))
+            for (const r of result.removed) {
+                console.log(chalk.dim(`  - ${r.name} (${r.id})`))
+            }
+        }
+    } catch (error) {
+        spinner.fail(chalk.red(`Deploy failed: ${(error as Error).message}`))
+        process.exit(1)
     }
 }
 
@@ -128,7 +100,6 @@ function serializeTrigger(config: any): {
     integrationId: string
     config: Record<string, unknown>
 } {
-    // Extract data properties from the ConfigInstance class, excluding methods
     const { isComplete, formatForAgent, configType, integrationType, integrationId, ...rest } = config
     return {
         configType,
@@ -136,14 +107,6 @@ function serializeTrigger(config: any): {
         integrationId,
         config: rest
     }
-}
-
-interface DeployResponse {
-    success: boolean
-    automationId: string
-    isUpdate: boolean
-    error?: string
-    details?: string
 }
 
 function buildZipPayload(): { sourceZipBase64: string; fileCount: number; zipSizeBytes: number } {

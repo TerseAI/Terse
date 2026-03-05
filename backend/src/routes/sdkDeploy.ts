@@ -5,25 +5,11 @@ import logger from "../logger"
 import { db } from "../prismaClient"
 import { emitCacheInvalidationWithKey } from "../realtimeSocket"
 import { uploadSdkDeployZip } from "../services/FileStorageService"
-import { User } from "../shared/types"
+import { SdkDeployRequestBody, SdkDeployTrigger, User } from "../shared/types"
 import { getInputConfigInclude } from "../utility/prismaIncludes"
 import { convertConfigTypeToInputConfigType } from "../utility/typeConverters"
 
 import { createTriggerConfig, setupAgentTriggers, tearDownAgentTriggers, validateUserOwnsIntegration } from "./agents"
-
-interface SdkDeployTrigger {
-    configType: string
-    integrationType: string
-    integrationId: string
-    config: Record<string, unknown>
-}
-
-interface SdkDeployRequest {
-    jobName: string
-    triggers: SdkDeployTrigger[]
-    webhookURL: string
-    sourceZipBase64: string
-}
 
 export async function handleSdkDeploy(req: Request, res: Response) {
     const user = req.session?.user as User | undefined
@@ -35,62 +21,67 @@ export async function handleSdkDeploy(req: Request, res: Response) {
     const organizationId = user.organizationId
 
     try {
-        const { jobName, triggers, webhookURL, sourceZipBase64 } = req.body as SdkDeployRequest
+        const { jobs, sourceZipBase64 } = req.body as SdkDeployRequestBody
 
-        // Validate required fields
-        if (!jobName || !triggers || triggers.length === 0 || !sourceZipBase64) {
+        if (!jobs || jobs.length === 0 || !sourceZipBase64) {
             return res.status(400).json({
                 success: false,
-                error: "Missing required fields: jobName, triggers, and sourceZipBase64 are required"
+                error: "Missing required fields: jobs and sourceZipBase64 are required"
             })
         }
 
-        // Decode and validate the zip
         const zipBuffer = Buffer.from(sourceZipBase64, "base64")
         if (zipBuffer.length === 0) {
             return res.status(400).json({ success: false, error: "sourceZipBase64 is empty" })
         }
 
-        // Upload zip first (content-addressed by SHA-256, deduped across jobs in the same package).
+        // Upload zip (content-addressed by SHA-256, deduped across deploys).
         // TODO: On re-deploy with changed code the old blob is orphaned in GCS. Add a
         // cleanup job or reference-counting to reclaim stale zips.
         const gcsKey = await uploadSdkDeployZip(zipBuffer)
-
         const prisma = db()
 
-        // Check for existing SDK automation with same name in this org (upsert)
-        const existing = await prisma.automations.findFirst({
-            where: {
-                name: jobName,
-                organization_id: organizationId,
-                source: "SDK"
-            },
-            include: {
-                inputs: {
-                    include: getInputConfigInclude()
-                }
+        const results: { jobName: string; automationId: string; isUpdate: boolean }[] = []
+
+        for (const job of jobs) {
+            if (!job.jobName || !job.triggers || job.triggers.length === 0) {
+                return res.status(400).json({
+                    success: false,
+                    error: `Invalid job entry: jobName and triggers are required (got "${job.jobName}")`
+                })
             }
-        })
 
-        const isUpdate = !!existing
-        const automationId = isUpdate
-            ? await updateExistingAutomation(prisma, existing, jobName, triggers, organizationId, userId, gcsKey)
-            : await createNewAutomation(prisma, jobName, triggers, organizationId, userId, gcsKey)
+            const existing = await prisma.automations.findFirst({
+                where: {
+                    name: job.jobName,
+                    organization_id: organizationId,
+                    source: "SDK"
+                },
+                include: { inputs: { include: getInputConfigInclude() } }
+            })
 
-        await finalizeDeployment(prisma, automationId, organizationId)
+            const isUpdate = !!existing
+            const automationId = isUpdate
+                ? await updateExistingAutomation(prisma, existing, job.jobName, job.triggers, organizationId, userId, gcsKey)
+                : await createNewAutomation(prisma, job.jobName, job.triggers, organizationId, userId, gcsKey)
 
-        logger.info(`SDK deploy ${isUpdate ? "updated" : "created"} automation`, {
-            automationId,
-            jobName,
-            organizationId,
-            triggerCount: triggers.length
-        })
+            await finalizeDeployment(prisma, automationId, organizationId)
 
-        return res.status(200).json({
-            success: true,
-            automationId,
-            isUpdate
-        })
+            results.push({ jobName: job.jobName, automationId, isUpdate })
+
+            logger.info(`SDK deploy ${isUpdate ? "updated" : "created"} automation`, {
+                automationId,
+                jobName: job.jobName,
+                organizationId,
+                triggerCount: job.triggers.length
+            })
+        }
+
+        // Delete any SDK automations not in this deploy
+        const deployedNames = new Set(jobs.map(j => j.jobName))
+        const removed = await removeStaleAutomations(prisma, organizationId, deployedNames)
+
+        return res.status(200).json({ success: true, results, removed })
     } catch (error) {
         logger.error("SDK deploy failed", { error, userId })
         return res.status(500).json({
@@ -203,6 +194,34 @@ async function createTriggersForAutomation(tx: any, automationId: string, trigge
 
         await createTriggerConfig(tx, newTrigger.id, agentTrigger as any, userId)
     }
+}
+
+async function removeStaleAutomations(prisma: ReturnType<typeof db>, organizationId: string, deployedNames: Set<string>): Promise<{ id: string; name: string }[]> {
+    const sdkAutomations = await prisma.automations.findMany({
+        where: { organization_id: organizationId, source: "SDK" },
+        include: { inputs: { include: getInputConfigInclude() } }
+    })
+
+    const stale = sdkAutomations.filter(a => !deployedNames.has(a.name))
+
+    for (const automation of stale) {
+        await tearDownAgentTriggers(automation)
+        await prisma.automations.deleteMany({
+            where: { id: automation.id, organization_id: organizationId }
+        })
+        logger.info("SDK deploy removed stale automation", {
+            automationId: automation.id,
+            name: automation.name,
+            organizationId
+        })
+    }
+
+    if (stale.length > 0) {
+        emitCacheInvalidationWithKey(organizationId, "recentAgents")
+        emitCacheInvalidationWithKey(organizationId, "agents")
+    }
+
+    return stale.map(a => ({ id: a.id, name: a.name }))
 }
 
 async function finalizeDeployment(prisma: ReturnType<typeof db>, automationId: string, organizationId: string) {
