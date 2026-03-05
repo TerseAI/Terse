@@ -20,8 +20,8 @@ import { AgentNotificationSettings, AgentPrompt, TransientAgentOutput, Transient
 import { AgentInputsDonatedState, AgentNameDonatedState, AgentOutputsDonatedState, AgentPromptDonatedState } from "../../utility/AgentModelDonation"
 import { toTransientAgentOutput, toTransientAgentTrigger } from "../../utility/AgentUtils"
 
-import AgentRunHistoryTab from "./tabs/AgentRunHistoryTab"
 import AgentImprovementsTab from "./tabs/AgentImprovementsTab"
+import AgentRunHistoryTab from "./tabs/AgentRunHistoryTab"
 import AgentSetupTab, { AgentSetupTabProps } from "./tabs/AgentSetupTab"
 
 const CHAT_PANEL_WIDTH_MIN = 0.2

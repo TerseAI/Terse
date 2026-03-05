@@ -186,7 +186,7 @@ export default function AgentImprovementsTab({ agentId, builderChatRef, setBuild
 
                         {filteredImprovements.length === 0 ? (
                             <p className="text-sm text-muted-foreground">
-                                {statusFilter === "PENDING" && improvements.length > 0 ? "No pending recommendations. Switch to \"All\" to see past ones." : "No recommendations for this review."}
+                                {statusFilter === "PENDING" && improvements.length > 0 ? 'No pending recommendations. Switch to "All" to see past ones.' : "No recommendations for this review."}
                             </p>
                         ) : (
                             filteredImprovements.map(improvement => (

@@ -3,25 +3,25 @@ import { tool } from "@openai/agents"
 import { Tool } from "@openai/agents-core"
 import { z } from "zod"
 
-import { settings } from "../../config/settings"
 import type { CapabilityDescription } from "../../capabilityHelpers"
+import { settings } from "../../config/settings"
 import logger from "../../logger"
-import { ConfigInstance } from "../../shared/Configs"
-import { IntegrationType } from "../../shared/Integrations"
-import { RunHistoryChatMemorySession, identityHistoryCallback } from "../CustomMemorySession"
-import { AgentType, builderProviderDataModelSettings, runnerFactory } from "../runner"
 import { OutputFactory } from "../../outputs/abstract/OutputFactory"
 import { db } from "../../prismaClient"
-import { TRIGGER_REGISTRY } from "../../triggers/TriggerRegistry"
+import { ConfigInstance } from "../../shared/Configs"
+import { IntegrationType } from "../../shared/Integrations"
 import { User } from "../../shared/types"
-import { Session } from "../../types/session"
+import { TRIGGER_REGISTRY } from "../../triggers/TriggerRegistry"
 import { AgentWithRelations } from "../../types/prisma"
+import { Session } from "../../types/session"
 import { getInputConfigInclude, getOutputConfigInclude } from "../../utility/prismaIncludes"
 import { SessionWithTracking } from "../AgentRunner/AgentRunner"
 import { SystemPromptBuilder } from "../AgentRunner/SystemPromptBuilder"
 import { formatAgentForSystemPrompt } from "../AgentRunner/formatContext"
 import { buildChatAgentSystemPrompt } from "../ChatAgent/ChatAgentSystemPrompt"
 import { buildChatAgentTools } from "../ChatAgent/ChatAgentTools"
+import { RunHistoryChatMemorySession, identityHistoryCallback } from "../CustomMemorySession"
+import { AgentType, builderProviderDataModelSettings, runnerFactory } from "../runner"
 
 import HeadlessChatInterface from "./HeadlessChatInterface"
 
@@ -116,8 +116,7 @@ export function buildJudgeAgentTools(user: User): Tool[] {
         }),
         tool({
             name: "getRunHistory",
-            description:
-                "Get the run history for the agent over a time period. Returns run statuses, timestamps, trigger sources, decision actions and reasons, and whether runs were filtered.",
+            description: "Get the run history for the agent over a time period. Returns run statuses, timestamps, trigger sources, decision actions and reasons, and whether runs were filtered.",
             parameters: z.object({
                 automationId: z.string(),
                 periodDays: z.number().int().min(1).max(30).default(PERIOD_DAYS_DEFAULT).describe("Number of days to look back")
@@ -263,8 +262,7 @@ export function buildJudgeAgentTools(user: User): Tool[] {
         }),
         tool({
             name: "getChatAgentConfig",
-            description:
-                "Read the ChatAgent (builder assistant) configuration for the user who owns this agent. Returns the system prompt template and available tool names.",
+            description: "Read the ChatAgent (builder assistant) configuration for the user who owns this agent. Returns the system prompt template and available tool names.",
             parameters: z.object({
                 userId: z.string(),
                 organizationId: z.string()
@@ -286,8 +284,7 @@ export function buildJudgeAgentTools(user: User): Tool[] {
         }),
         tool({
             name: "getPastImprovements",
-            description:
-                "Get all past improvement recommendations made for this agent, including their status (PENDING, APPLIED, DISMISSED). Use this to avoid recommending the same thing twice.",
+            description: "Get all past improvement recommendations made for this agent, including their status (PENDING, APPLIED, DISMISSED). Use this to avoid recommending the same thing twice.",
             parameters: z.object({
                 automationId: z.string()
             }),
@@ -479,8 +476,7 @@ export function buildJudgeAgentTools(user: User): Tool[] {
                 logger.info("[JudgeAgent:lookupPlatformCapabilities] Looking up capabilities", { category, integration })
                 const filter = integration ?? undefined
 
-                const gatherTriggers = (f?: IntegrationType): CapabilityDescription[] =>
-                    TRIGGER_REGISTRY.map(t => t.getCapabilityDescription()).filter(c => !f || c.integrationType === f)
+                const gatherTriggers = (f?: IntegrationType): CapabilityDescription[] => TRIGGER_REGISTRY.map(t => t.getCapabilityDescription()).filter(c => !f || c.integrationType === f)
 
                 const gatherOutputs = (f?: IntegrationType): CapabilityDescription[] => {
                     const results: CapabilityDescription[] = []

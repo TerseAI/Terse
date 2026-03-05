@@ -27,10 +27,10 @@ import { GetSentNotificationsResponse } from "../shared/SentNotifications"
 import { GetToolsThatRequireApprovalsRequest, GetToolsThatRequireApprovalsResponse } from "../shared/ToolsTypes"
 import {
     Agent,
-    ApplyImprovementResponse,
     AgentTemplate,
     AgentUpdate,
     AgentsResponse,
+    ApplyImprovementResponse,
     AttioObject,
     ConfluenceResourcesResponse,
     DatadogIndexesResponse,
