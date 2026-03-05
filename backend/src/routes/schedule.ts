@@ -1,12 +1,54 @@
 import { Request, Response } from "express"
 
+import { EventProcessor } from "../agent/AgentRunner/EventProcessor"
 import { cloudScheduler } from "../config/settings"
 import { CronJobIntegrationManager } from "../integrations/CronJobIntegration"
-import logger from "../logger"
+import { InputEvent } from "../integrations/abstract/InputEvent"
+import logger, { runWithUserContext } from "../logger"
+import { db } from "../prismaClient"
+import { IntegrationType } from "../shared/Integrations"
+import { RunHistoryTrigger } from "../shared/RunHistoryTypes"
+import { AgentTriggerWithConfigs } from "../types/prisma"
 import { Session } from "../types/session"
+import { getUserForOrg } from "../utility/workos"
 
 export interface ManualTriggerRequest {
     context?: string
+}
+
+class SyntheticEvent extends InputEvent {
+    readonly integrationType: IntegrationType
+    readonly eventType: string = "manual_sample"
+    private readonly _formattedContent: string
+    private readonly _debugLog: string
+
+    constructor(integrationType: IntegrationType, formattedContent: string, debugLog: string) {
+        super()
+        this.integrationType = integrationType
+        this._formattedContent = formattedContent
+        this._debugLog = debugLog
+    }
+
+    formatForAgentRunner(): string {
+        return this._formattedContent
+    }
+
+    debugLog(): string {
+        return this._debugLog
+    }
+
+    matchesAgentTrigger(_agentTrigger: AgentTriggerWithConfigs): boolean {
+        return true
+    }
+
+    createTriggerMetadata(): RunHistoryTrigger {
+        return {
+            event: "manual_sample",
+            integration: this.integrationType,
+            source: "Manual trigger with sample event",
+            title: this._debugLog
+        }
+    }
 }
 
 export async function handleManualTrigger(req: Request, res: Response) {
@@ -79,5 +121,45 @@ export async function handleScheduleWebhook(req: Request, res: Response) {
     const cronJobManager = new CronJobIntegrationManager()
     cronJobManager.processWebhookEvent({ inputId }).catch(error => {
         logger.error("❌ Error processing schedule webhook", { error, inputId })
+    })
+}
+
+export async function handleTriggerWithEvent(req: Request, res: Response) {
+    const { automationId } = req.params
+    const session = req.session
+    if (!session?.user) {
+        return res.status(401).json({ error: "Unauthorized" })
+    }
+
+    const { event } = req.body as {
+        event: { integrationType: string; formattedContent: string; debugLog: string }
+    }
+
+    if (!automationId || !event?.integrationType || !event?.formattedContent) {
+        return res.status(400).json({ error: "Missing automationId or event payload" })
+    }
+
+    const prisma = db()
+    const automation = await prisma.automations.findFirst({
+        where: { id: automationId, organization_id: session.user.organizationId }
+    })
+
+    if (!automation) {
+        return res.status(404).json({ error: "Automation not found" })
+    }
+
+    const user = await getUserForOrg(session.user.id, session.user.organizationId)
+    if (!user) {
+        return res.status(404).json({ error: "User not found" })
+    }
+
+    res.status(200).json({ received: true, message: "Trigger with event initiated" })
+
+    runWithUserContext(user, async () => {
+        const syntheticEvent = new SyntheticEvent(event.integrationType as IntegrationType, event.formattedContent, event.debugLog)
+        const eventProcessor = new EventProcessor(syntheticEvent, user, { isManuallyTriggered: true })
+        await eventProcessor.processSingleAgent(automationId)
+    }).catch(error => {
+        logger.error("Error processing trigger with event", { error, automationId })
     })
 }

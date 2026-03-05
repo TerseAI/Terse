@@ -12,9 +12,11 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "../../components/ui/dropdown-menu"
 import { SidebarTrigger } from "../../components/ui/sidebar"
 import { useAgent, useAgentMutations } from "../../hooks/api/useAgents"
+import { useSampleEvents } from "../../hooks/api/useSampleEvents"
 import { BackendProvider } from "../../services/backend"
 import { CONFIG_DETAILS } from "../../shared/Configs"
 import { FrontendRoutes } from "../../shared/FrontendRoutes"
+import type { SerializedEvent } from "../../shared/types"
 
 import { IconForConfigType } from "./components/Integration"
 import AgentRunHistoryTab from "./tabs/AgentRunHistoryTab"
@@ -27,7 +29,18 @@ export default function SdkJobDetail({ agentId }: { agentId: string }) {
     const [selectedTab, setSelectedTab] = useState(0)
     const [showDeleteDialog, setShowDeleteDialog] = useState(false)
     const [isDeleting, setIsDeleting] = useState(false)
-    const [isTriggering, setIsTriggering] = useState(false)
+    const [isManualTriggering, setIsManualTriggering] = useState(false)
+
+    const {
+        isFetching: isFetchingSamples,
+        isTriggering: isEventTriggering,
+        events: sampleEvents,
+        isDialogOpen: showSamplesDialog,
+        hasIntegrationTriggers,
+        fetchSamples,
+        triggerWithEvent,
+        closeDialog: closeSamplesDialog
+    } = useSampleEvents(agent?.triggers ?? [], agentId)
 
     const handleToggleActive = async () => {
         if (!agent) return
@@ -61,23 +74,37 @@ export default function SdkJobDetail({ agentId }: { agentId: string }) {
 
     const handleTriggerNow = async () => {
         if (!agent) return
+
+        if (hasIntegrationTriggers) {
+            await fetchSamples()
+            return
+        }
+
+        // Fall back to manual cron trigger for time-only jobs
         const triggerId = agent.triggers?.[0]?.id
         if (!triggerId) {
             toast.error("No trigger configured for this job")
             return
         }
-        setIsTriggering(true)
+        setIsManualTriggering(true)
         try {
             await BackendProvider.triggerManually(triggerId, "Manual trigger from SDK job detail page")
             toast.success("Job triggered")
-            setSelectedTab(1) // Switch to Activity tab
+            setSelectedTab(1)
         } catch (error) {
             console.error("Failed to trigger job:", error)
             toast.error("Failed to trigger job")
         } finally {
-            setIsTriggering(false)
+            setIsManualTriggering(false)
         }
     }
+
+    const handleSelectEvent = async (event: SerializedEvent) => {
+        await triggerWithEvent(event)
+        setSelectedTab(1)
+    }
+
+    const isBusy = isFetchingSamples || isManualTriggering
 
     if (isLoading || !agent) {
         return (
@@ -105,9 +132,9 @@ export default function SdkJobDetail({ agentId }: { agentId: string }) {
                     {agent.isActive ? "Active" : "Paused"}
                 </Badge>
                 <div className="ml-auto flex items-center gap-2">
-                    <Button variant="outline" size="sm" onClick={handleTriggerNow} disabled={isTriggering || !agent.isActive || !agent.triggers?.length}>
-                        {isTriggering ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
-                        Trigger Now
+                    <Button variant="outline" size="sm" onClick={handleTriggerNow} disabled={isBusy || !agent.isActive || !agent.triggers?.length}>
+                        {isBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
+                        {isFetchingSamples ? "Fetching events…" : "Trigger Now"}
                     </Button>
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -184,7 +211,72 @@ export default function SdkJobDetail({ agentId }: { agentId: string }) {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            {/* Sample events picker dialog */}
+            <SampleEventsDialog events={sampleEvents} open={showSamplesDialog} isFetching={isFetchingSamples} isTriggering={isEventTriggering} onSelect={handleSelectEvent} onClose={closeSamplesDialog} />
         </div>
+    )
+}
+
+function SampleEventsDialog({
+    events,
+    open,
+    isFetching,
+    isTriggering,
+    onSelect,
+    onClose
+}: {
+    events: SerializedEvent[]
+    open: boolean
+    isFetching: boolean
+    isTriggering: boolean
+    onSelect: (event: SerializedEvent) => void
+    onClose: () => void
+}) {
+    return (
+        <Dialog open={open} onOpenChange={v => !v && !isFetching && onClose()}>
+            <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
+                <DialogHeader>
+                    <DialogTitle>{isFetching ? "Fetching Sample Events…" : "Select a Sample Event"}</DialogTitle>
+                    <DialogDescription>
+                        {isFetching
+                            ? "Pulling recent events from your connected integrations. This may take a few seconds."
+                            : `Pick an event to trigger your job with. ${events.length} sample event${events.length !== 1 ? "s" : ""} found.`}
+                    </DialogDescription>
+                </DialogHeader>
+                {isFetching ? (
+                    <div className="flex flex-col items-center justify-center py-12 gap-3">
+                        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                        <p className="text-sm text-muted-foreground">Fetching sample events…</p>
+                    </div>
+                ) : (
+                    <div className="flex-1 min-h-0 overflow-y-auto space-y-2 pr-1">
+                        {events.map((event, i) => (
+                            <button
+                                key={i}
+                                className="w-full text-left rounded-md border border-input p-3 space-y-1.5 hover:bg-accent/50 transition-colors disabled:opacity-50"
+                                onClick={() => onSelect(event)}
+                                disabled={isTriggering}
+                            >
+                                <div className="flex items-center gap-2">
+                                    <Badge variant="outline" className="text-xs">
+                                        {event.integrationType}
+                                    </Badge>
+                                    <span className="text-sm font-medium truncate">{event.debugLog}</span>
+                                    <Zap className="h-3.5 w-3.5 text-muted-foreground ml-auto shrink-0" />
+                                </div>
+                                <pre className="text-xs text-muted-foreground whitespace-pre-wrap break-words max-h-32 overflow-y-auto bg-muted/50 rounded p-2">{event.formattedContent}</pre>
+                            </button>
+                        ))}
+                    </div>
+                )}
+                <DialogFooter>
+                    <Button variant="outline" onClick={onClose} disabled={isTriggering || isFetching}>
+                        Cancel
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
     )
 }
 

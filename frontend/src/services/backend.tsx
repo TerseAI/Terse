@@ -43,10 +43,12 @@ import {
     OAuthInstallationDetails,
     PosthogProjectsResponse,
     RecentAgent,
+    SerializedEvent,
     SlackChannelsResponse,
     SlackUsersResponse,
     StatsInterval,
-    StatsResponse
+    StatsResponse,
+    TriggerPayload
 } from "../shared/types"
 import { User } from "../types/User"
 import { deserializeConfig } from "../utility/ConfigUtils"
@@ -406,6 +408,16 @@ interface BackendService {
      * Gets all available agent templates
      */
     getTemplates(): Promise<AgentTemplate[]>
+
+    /**
+     * Fetches sample events for the given triggers (e.g. GitHub push/PR events)
+     */
+    fetchSampleEvents(triggers: TriggerPayload[]): Promise<{ events: SerializedEvent[] }>
+
+    /**
+     * Triggers an automation with a specific event payload (e.g. a sample event)
+     */
+    triggerWithEvent(automationId: string, event: SerializedEvent): Promise<{ received: boolean; message: string }>
 
     /**
      * Manually triggers a scheduled automation trigger
@@ -1247,6 +1259,26 @@ export const BackendProvider: BackendService = {
             .then(response => response.data)
             .catch(error => {
                 console.error("Error getting templates:", error)
+                throw error
+            })
+    },
+
+    fetchSampleEvents: (triggers: TriggerPayload[]) => {
+        return axios
+            .post<{ events: SerializedEvent[] }>(`${backendBaseUrl}${ApiRoutes.SDK.SAMPLE_EVENTS}`, { triggers }, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error("Error fetching sample events:", error)
+                throw error
+            })
+    },
+
+    triggerWithEvent: (automationId: string, event: SerializedEvent) => {
+        return axios
+            .post<{ received: boolean; message: string }>(`${backendBaseUrl}${ApiRoutes.SCHEDULE.TRIGGER_WITH_EVENT.build(automationId)}`, { event }, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error("Error triggering with event:", error)
                 throw error
             })
     },

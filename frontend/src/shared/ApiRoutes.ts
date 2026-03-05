@@ -274,6 +274,11 @@ export const ApiRoutes = {
             pattern: "/schedule/trigger/:inputId",
             build: (inputId: string) => `/schedule/trigger/${encodeURIComponent(inputId)}`,
             params: { inputId: "string" } as const
+        },
+        TRIGGER_WITH_EVENT: {
+            pattern: "/schedule/trigger-with-event/:automationId",
+            build: (automationId: string) => `/schedule/trigger-with-event/${encodeURIComponent(automationId)}`,
+            params: { automationId: "string" } as const
         }
     },
 

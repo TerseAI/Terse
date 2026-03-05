@@ -36,7 +36,7 @@ import { createOrUpdatePosthogIntegration, getPosthogIntegrations, getPosthogPro
 import { refreshAllTokens } from "./routes/refreshTokens"
 import { getAllRunHistory, getChatHistory, getRunHistory, getRunHistoryActions } from "./routes/runHistory"
 import { handleSampleEvents } from "./routes/sampleEvents"
-import { handleManualTrigger, handleScheduleWebhook } from "./routes/schedule"
+import { handleManualTrigger, handleScheduleWebhook, handleTriggerWithEvent } from "./routes/schedule"
 import { handleSdkAgentRun } from "./routes/sdkAgentRun"
 import { handleSdkDeploy } from "./routes/sdkDeploy"
 import { handleSessionEvents } from "./routes/sdkSession"
@@ -436,6 +436,11 @@ app.post(ApiRoutes.WEBHOOKS.SCHEDULE_BY_INPUT_ID.pattern, async (req, res) => {
 // Manual trigger endpoint (authenticated)
 app.post(ApiRoutes.SCHEDULE.TRIGGER_BY_INPUT_ID.pattern, authMiddleware, async (req, res) => {
     handleManualTrigger(req, res)
+})
+
+// Trigger with a specific event payload (authenticated)
+app.post(ApiRoutes.SCHEDULE.TRIGGER_WITH_EVENT.pattern, authMiddleware, async (req, res) => {
+    handleTriggerWithEvent(req, res)
 })
 
 // MARK: SLACK
