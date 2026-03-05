@@ -415,15 +415,15 @@ model attio_integrations {
 
 // Automation tables
 model automations {
-  id               String   @id @default(cuid())
-  user_id          String
-  organization_id  String
-  name             String
-  is_active        Boolean  @default(true)
-  improvements_enabled Boolean @default(true)
-  require_approval Boolean  @default(false)
-  created_at       DateTime @default(now())
-  updated_at       DateTime @updatedAt
+  id                   String   @id @default(cuid())
+  user_id              String
+  organization_id      String
+  name                 String
+  is_active            Boolean  @default(true)
+  improvements_enabled Boolean  @default(true)
+  require_approval     Boolean  @default(false)
+  created_at           DateTime @default(now())
+  updated_at           DateTime @updatedAt
 
   user                       users                             @relation(fields: [user_id], references: [id], onDelete: Cascade)
   prompt                     automation_prompts?
