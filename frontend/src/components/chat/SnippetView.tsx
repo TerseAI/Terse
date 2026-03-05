@@ -4,7 +4,7 @@ import { Link, useNavigate } from "react-router-dom"
 import { ExternalLink, ImageOff, SquareArrowOutUpRight } from "lucide-react"
 
 import { IntegrationType } from "../../shared/Integrations"
-import { ChatSnippet } from "../../shared/ModelEvents"
+import { type ChatSnippet } from "../../shared/ModelEvents"
 import IntegrationCard from "../Integrations/IntegrationCard"
 import { Button } from "../ui/button"
 

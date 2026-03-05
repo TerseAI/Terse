@@ -120,7 +120,7 @@ export default function ActivityPage() {
     const [currentPage, setCurrentPage] = useState(1)
     const [runsPerPage, setRunsPerPage] = useState(20)
     const [selectedStatuses, setSelectedStatuses] = useState<Set<RunHistoryStatus>>(
-        new Set([RunHistoryStatus.SUCCESS, RunHistoryStatus.FAILED, RunHistoryStatus.IN_PROGRESS, RunHistoryStatus.AWAITING_APPROVAL])
+        new Set([RunHistoryStatus.SUCCESS, RunHistoryStatus.FAILED, RunHistoryStatus.CANCELLED, RunHistoryStatus.IN_PROGRESS, RunHistoryStatus.AWAITING_APPROVAL])
     )
     const [searchQuery, setSearchQuery] = useState("")
     const [dateRange, setDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({ from: undefined, to: undefined })
@@ -227,7 +227,14 @@ export default function ActivityPage() {
                                 setSearchQuery("")
                                 setDateRange({ from: undefined, to: undefined })
                                 setSelectedStatuses(
-                                    new Set([RunHistoryStatus.SUCCESS, RunHistoryStatus.FAILED, RunHistoryStatus.SKIPPED, RunHistoryStatus.IN_PROGRESS, RunHistoryStatus.AWAITING_APPROVAL])
+                                    new Set([
+                                        RunHistoryStatus.SUCCESS,
+                                        RunHistoryStatus.FAILED,
+                                        RunHistoryStatus.CANCELLED,
+                                        RunHistoryStatus.SKIPPED,
+                                        RunHistoryStatus.IN_PROGRESS,
+                                        RunHistoryStatus.AWAITING_APPROVAL
+                                    ])
                                 )
                                 setCurrentPage(1)
                             }}

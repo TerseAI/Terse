@@ -1,6 +1,6 @@
 import { RunStreamEvent } from "@openai/agents-core"
+import { randomUUID } from "crypto"
 import { Socket } from "socket.io"
-import { uuidv4 } from "zod/v4"
 
 import { INTEGRATION_REGISTRY } from "../../../integrations/abstract/IntegrationRegistry"
 import logger from "../../../logger"
@@ -40,7 +40,7 @@ class WebChatInterface extends ChatInterface {
     private emitEvent(event: ModelEvent): void {
         this.socket.emit(SocketEvents.BUILDER_CHAT_EVENT, {
             sessionId: this.sessionId,
-            event: { ...event, timestamp: Date.now() }
+            event
         })
     }
 
@@ -76,8 +76,10 @@ class WebChatInterface extends ChatInterface {
 
         // Emit integration_prompt snippet - works for both OAuth and form integrations
         // The integration card will handle fetching OAuth URLs or showing forms
+        const timestamp = Date.now()
         this.emitEvent({
             type: "Snippet",
+            timestamp,
             snippet: {
                 type: "integration_prompt",
                 integration,
@@ -105,9 +107,11 @@ class WebChatInterface extends ChatInterface {
     }
 
     async askSurveyQuestion(multipleChoiceQuestion: MultipleChoiceQuestion): Promise<string> {
-        const questionId = uuidv4().toString()
+        const questionId = randomUUID()
+        const timestamp = Date.now()
         this.emitEvent({
             type: "Snippet",
+            timestamp,
             snippet: {
                 type: "multiple_choice",
                 questionId,
@@ -156,8 +160,10 @@ class WebChatInterface extends ChatInterface {
             this.emitEvent(toolCompleteEvent)
             if (toolCompleteData.snippets?.length) {
                 for (const snippet of toolCompleteData.snippets) {
+                    const timestamp = Date.now()
                     this.emitEvent({
                         type: "Snippet",
+                        timestamp,
                         snippet
                     })
                 }
@@ -177,8 +183,10 @@ class WebChatInterface extends ChatInterface {
     }
 
     async buildButton(label: string, url: string): Promise<void> {
+        const timestamp = Date.now()
         this.emitEvent({
             type: "Snippet",
+            timestamp,
             snippet: {
                 type: "button",
                 label,
@@ -188,8 +196,10 @@ class WebChatInterface extends ChatInterface {
     }
 
     async navigate(path: string): Promise<void> {
+        const timestamp = Date.now()
         this.emitEvent({
             type: "Snippet",
+            timestamp,
             snippet: {
                 type: "navigate",
                 path

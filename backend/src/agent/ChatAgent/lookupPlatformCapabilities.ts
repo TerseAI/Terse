@@ -5,6 +5,7 @@ import { z } from "zod"
 import type { CapabilityDescription } from "../../capabilityHelpers"
 import { OutputFactory } from "../../outputs/abstract/OutputFactory"
 import { IntegrationType } from "../../shared/Integrations"
+import { formatError } from "../../tools/toolUtils"
 import { TRIGGER_REGISTRY } from "../../triggers/TriggerRegistry"
 
 import type { ChatAgentContext } from "./ChatAgentContext"
@@ -56,5 +57,6 @@ export const lookupPlatformCapabilitiesTool = tool({
 
         const caps = gatherOutputCapabilities(filter)
         return JSON.stringify(caps)
-    }
+    },
+    errorFunction: formatError
 }) as Tool<ChatAgentContext>

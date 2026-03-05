@@ -15,6 +15,7 @@ interface ToolDisplayConfig {
 enum PolledRunStatus {
     SUCCESS = "success",
     FAILED = "failed",
+    CANCELLED = "cancelled",
     SKIPPED = "skipped",
     AWAITING_APPROVAL = "awaiting_approval",
     IN_PROGRESS = "in_progress"
@@ -51,6 +52,8 @@ function toPolledRunStatus(status: unknown): PolledRunStatus | null {
             return PolledRunStatus.SUCCESS
         case PolledRunStatus.FAILED:
             return PolledRunStatus.FAILED
+        case PolledRunStatus.CANCELLED:
+            return PolledRunStatus.CANCELLED
         case PolledRunStatus.SKIPPED:
             return PolledRunStatus.SKIPPED
         case PolledRunStatus.AWAITING_APPROVAL:
@@ -178,6 +181,8 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
                     return name ? `"${truncate(name)}" finished` : "Finished"
                 case PolledRunStatus.FAILED:
                     return name ? `"${truncate(name)}" could not finish` : "Could not finish"
+                case PolledRunStatus.CANCELLED:
+                    return name ? `"${truncate(name)}" was cancelled` : "Cancelled"
                 case PolledRunStatus.SKIPPED:
                     return name ? `"${truncate(name)}" was skipped` : "Skipped"
                 case PolledRunStatus.AWAITING_APPROVAL:

@@ -7,6 +7,7 @@ import { ConfigInstance } from "../../shared/Configs"
 import { ChangedItem, ModelEvent } from "../../shared/ModelEvents"
 import { RunHistoryAction } from "../../shared/RunHistoryTypes"
 import { Session as AppSession } from "../../types/session"
+import type { StreamEventIngestionSession } from "../CustomMemorySession"
 import { createNaturalStopEvent, transformAgentStreamToModelEvents } from "../streaming"
 import { isFailedToolExecutionStatus } from "../toolExecution"
 
@@ -84,10 +85,11 @@ export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSe
             stream: true,
             session: settings.memorySession,
             sessionInputCallback: settings.sessionInputCallback,
-            maxTurns: settings.maxTurns
+            maxTurns: settings.maxTurns,
+            signal: settings.signal
         })
 
-        await this.processStream(result)
+        await this.processStream(result, settings.memorySession)
         return this.buildResult(result)
     }
 
@@ -131,17 +133,23 @@ export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSe
             stream: true,
             session: params.settings.memorySession,
             sessionInputCallback: params.settings.sessionInputCallback,
-            maxTurns: params.settings.maxTurns
+            maxTurns: params.settings.maxTurns,
+            signal: params.settings.signal
         })
 
-        await this.processStream(result)
+        await this.processStream(result, params.settings.memorySession)
         return this.buildResult(result)
     }
 
-    private async processStream(result: StreamedRunResult<TSession, TAgent>): Promise<void> {
+    private async processStream(result: StreamedRunResult<TSession, TAgent>, memorySession: AgentMemorySession): Promise<void> {
+        const streamIngestionSession = asStreamEventIngestionSession(memorySession)
         const eventStream = transformAgentStreamToModelEvents(result, {
             toolToIntegrationMap: this.toolToIntegrationMap,
-            onToolCallComplete: (callId, toolName, actions) => this.onToolCallComplete(callId, toolName, actions)
+            onToolCallComplete: (callId, toolName, actions) => this.onToolCallComplete(callId, toolName, actions),
+            onRawStreamEvent: async streamEvent => {
+                if (!streamIngestionSession) return
+                await streamIngestionSession.ingestStreamEvent(streamEvent)
+            }
         })
 
         for await (const event of this.trackEventStream(eventStream)) {
@@ -166,6 +174,7 @@ export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSe
                 }
                 const approvalRequest: ModelEvent = {
                     type: "ToolApprovalRequest",
+                    timestamp: Date.now(),
                     step_id: stepId,
                     name: interruption.name ?? "unknown_tool",
                     arguments: interruption.arguments ?? "{}"
@@ -222,6 +231,14 @@ export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSe
     }
 }
 
+function asStreamEventIngestionSession(memorySession: AgentMemorySession): StreamEventIngestionSession | null {
+    const candidate = memorySession as unknown as StreamEventIngestionSession
+    if (typeof candidate?.ingestStreamEvent !== "function") {
+        return null
+    }
+    return candidate
+}
+
 type SessionInputCallback = (history: AgentInputItem[], newItems: AgentInputItem[]) => AgentInputItem[]
 
 type LoopRunner<TSession, TAgent extends Agent<TSession, AgentOutputType>> = {
@@ -234,6 +251,7 @@ type LoopRunner<TSession, TAgent extends Agent<TSession, AgentOutputType>> = {
             session: AgentMemorySession
             sessionInputCallback?: SessionInputCallback
             maxTurns: number
+            signal?: AbortSignal
         }
     ) => Promise<StreamedRunResult<TSession, TAgent>>
 }
@@ -253,6 +271,7 @@ type RunExecutionSettings<TSession extends SessionWithTracking<AppSession>, TAge
     memorySession: AgentMemorySession
     sessionInputCallback?: SessionInputCallback
     maxTurns: number
+    signal?: AbortSignal
 }
 
 type AgentInitializationParams<TSession extends AppSession> = {

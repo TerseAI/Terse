@@ -1,7 +1,8 @@
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react"
 import TextareaAutosize from "react-textarea-autosize"
 
-import { Send } from "lucide-react"
+import { Button } from "@headlessui/react"
+import { CircleStop, Send } from "lucide-react"
 
 interface GlowingTextFieldProps {
     isLoading: boolean
@@ -17,6 +18,9 @@ interface GlowingTextFieldProps {
     minRows?: number
     showBorder?: boolean
     onSend?: () => void // When provided, shows send button inside the text field
+    onStop?: () => Promise<void> | void // When provided while generating, shows stop button inside the text field
+    isGenerating?: boolean
+    isCancelling?: boolean
     onPlaceholderSelect?: (placeholder: string) => void // When user clicks a placeholder suggestion
     showPlaceholderChips?: boolean // Show clickable placeholder chips below input
 }
@@ -46,6 +50,9 @@ const GlowingTextField = forwardRef<GlowingTextFieldHandle, GlowingTextFieldProp
         minRows,
         showBorder = false,
         onSend,
+        onStop,
+        isGenerating = false,
+        isCancelling = false,
         onPlaceholderSelect,
         showPlaceholderChips = false
     },
@@ -177,6 +184,9 @@ const GlowingTextField = forwardRef<GlowingTextFieldHandle, GlowingTextFieldProp
 
     // Get placeholders to show as chips (excluding current one being typed)
     const chipPlaceholders = placeholders.filter((_, idx) => idx !== currentPlaceholderIndex)
+    const showStopButton = Boolean(onStop) && isGenerating
+    const hasActionButton = Boolean(onSend) || showStopButton
+    const actionRightPadding = hasActionButton ? "pr-14" : ""
 
     return (
         <div className={`flex flex-col w-full max-w-full overflow-visible`}>
@@ -207,7 +217,7 @@ const GlowingTextField = forwardRef<GlowingTextFieldHandle, GlowingTextFieldProp
                                 text-foreground
                                 resize-none
                                 ${getSizeClasses()}
-                                ${onSend ? "pr-14" : ""}
+                                ${actionRightPadding}
                                 placeholder:text-muted-foreground
                                 rounded-lg
                                 focus:outline-none
@@ -226,23 +236,35 @@ const GlowingTextField = forwardRef<GlowingTextFieldHandle, GlowingTextFieldProp
                     {/* Tab hint - shows when placeholder is fully typed and input is empty */}
                     {isFullyTyped && inputValue.length === 0 && onPlaceholderSelect && (
                         <div
-                            className={`absolute flex items-center gap-1.5 text-xs text-muted-foreground/70 pointer-events-none animate-in fade-in duration-300 ${onSend ? "right-14" : "right-4"} ${isLarge ? "bottom-4" : "top-1/2 -translate-y-1/2"}`}
+                            className={`absolute flex items-center gap-1.5 text-xs text-muted-foreground/70 pointer-events-none animate-in fade-in duration-300 ${hasActionButton ? "right-14" : "right-4"} ${isLarge ? "bottom-4" : "top-1/2 -translate-y-1/2"}`}
                         >
                             <kbd className="px-1.5 py-0.5 bg-muted/30 border border-border/30 rounded text-[10px] font-mono">Tab</kbd>
                             <span>to use</span>
                         </div>
                     )}
+                    {/* Stop button */}
+                    {hasActionButton && showStopButton && (
+                        <Button
+                            onClick={onStop}
+                            disabled={isCancelling}
+                            className={`absolute right-3 rounded-md border border-foreground/15 hover:bg-foreground/15 disabled:opacity-50 disabled:cursor-not-allowed transition-all p-1 ${isLarge ? "bottom-3" : "top-1/2 -translate-y-1/2"}`}
+                            aria-label={isCancelling ? "Stopping generation" : "Stop generation"}
+                        >
+                            <CircleStop className="h-5 w-5 [&_rect]:fill-current [&_rect]:stroke-none" />
+                        </Button>
+                    )}
                     {/* Send button */}
-                    {onSend && (
-                        <button
-                            type="button"
+                    {hasActionButton && !showStopButton && (
+                        <Button
                             onClick={onSend}
                             disabled={disabled}
-                            className={`absolute right-3 p-2 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all ${inputValue.trim() ? "" : "opacity-50"} ${isLarge ? "bottom-3" : "top-1/2 -translate-y-1/2"}`}
+                            className={`absolute right-3 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all p-1 ${
+                                inputValue.trim() ? "" : "opacity-50"
+                            } ${isLarge ? "bottom-3" : "top-1/2 -translate-y-1/2"}`}
                             aria-label="Send message"
                         >
                             <Send className="w-5 h-5" />
-                        </button>
+                        </Button>
                     )}
                 </div>
             </div>

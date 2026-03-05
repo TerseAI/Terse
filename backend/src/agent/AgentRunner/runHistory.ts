@@ -5,6 +5,7 @@ import { db } from "../../prismaClient"
 import { emitCacheInvalidationWithKey } from "../../services/CacheInvalidationService"
 import { pendingApprovalsKey } from "../../shared/InvalidationKeys"
 import { type RunHistoryAction, RunHistoryStatus, type RunHistoryTrigger } from "../../shared/RunHistoryTypes"
+import { USER_CANCELLED_REASON } from "../../socketHandlers/activeExecution"
 import { convertIntegrationTypeToPrismaIntegrationTypeForRunHistory } from "../../utility/typeConverters"
 
 export type RunTrigger = RunHistoryTrigger
@@ -135,6 +136,18 @@ export async function markRunFailed(runId: string, errorMessage: string, stage?:
             status: RunHistoryStatus.FAILED,
             decision_action: "processed",
             decision_reason: prefixedMessage
+        }
+    })
+}
+
+export async function markRunCancelled(runId: string, reason: string = USER_CANCELLED_REASON): Promise<void> {
+    const prisma = db()
+    await prisma.run_history_records.update({
+        where: { id: runId },
+        data: {
+            status: RunHistoryStatus.CANCELLED,
+            decision_action: "processed",
+            decision_reason: reason
         }
     })
 }

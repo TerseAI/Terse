@@ -16,6 +16,7 @@ export const SocketEvents = {
     AGENT_CHAT_EVENT: "agent:chat:event",
     AGENT_CHAT_MESSAGE: "agent:chat:message",
     AGENT_CHAT_APPROVAL: "agent:chat:approval",
+    AGENT_CHAT_CANCEL: "agent:chat:cancel",
 
     // WorkOS user events
     WORKOS_USER_UPDATED: "workos:user:updated",
@@ -26,6 +27,7 @@ export const SocketEvents = {
     // Builder chat events
     BUILDER_CHAT_EVENT: "builder:chat:event",
     BUILDER_CHAT_MESSAGE: "builder:chat:message",
+    BUILDER_CHAT_CANCEL: "builder:chat:cancel",
     BUILDER_CHAT_APPROVAL: "builder:chat:approval",
     BUILDER_CHAT_MULTIPLE_CHOICE_ANSWER: "builder:chat:multiple_choice_answer"
 } as const

@@ -1,4 +1,4 @@
-import { CheckCircle2, Clock, Filter, XCircle } from "lucide-react"
+import { Ban, CheckCircle2, Clock, Filter, XCircle } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
@@ -32,6 +32,13 @@ export default function RunHistoryStatusBadge({ status, filtered: _filtered, cla
             <Badge variant="outline" className={cn("gap-1.5", className)}>
                 <XCircle className="text-destructive" />
                 Failed
+            </Badge>
+        )
+    if (status === RunHistoryStatus.CANCELLED)
+        return (
+            <Badge variant="outline" className={cn("gap-1.5", className)}>
+                <Ban className="text-muted-foreground" />
+                Cancelled
             </Badge>
         )
     if (status === RunHistoryStatus.IN_PROGRESS)

@@ -2,7 +2,7 @@ import { z } from "zod"
 
 import logger from "../../logger"
 import { getSocketIO } from "../../services/CacheInvalidationService"
-import type { ChatSnippetPayload } from "../../shared/ModelEvents"
+import type { ChatSnippet } from "../../shared/ModelEvents"
 import type { RunHistoryModelEvent, RunHistoryModelSocketEvent } from "../../shared/RunHistoryTypes"
 import { SocketEvents, SocketRooms } from "../../shared/SocketEvents"
 import { randomString } from "../../utility/strings"
@@ -20,7 +20,7 @@ export type EmitAndPersistSnippetEventInput = {
     runId: string | null | undefined
     organizationId: string | null | undefined
     agentId: string | null | undefined
-    snippet: ChatSnippetPayload | null | undefined
+    snippet: ChatSnippet | null | undefined
 }
 
 export async function emitAndPersistSnippetEvent(input: EmitAndPersistSnippetEventInput): Promise<void> {
@@ -43,12 +43,13 @@ export async function emitAndPersistSnippetEvent(input: EmitAndPersistSnippetEve
 
     const { runId, organizationId, agentId, snippet } = parsed.data
     const timestamp = Date.now()
+    const normalizedSnippet: ChatSnippet = { ...snippet }
     const eventId = buildSnippetSystemEventId(randomString(18))
 
     try {
         await appendSnippetSystemEvent(runId, {
             id: eventId,
-            snippet
+            snippet: normalizedSnippet
         })
     } catch (error) {
         logger.warn("emitAndPersistSnippetEvent: failed to persist snippet system event", {
@@ -72,9 +73,9 @@ export async function emitAndPersistSnippetEvent(input: EmitAndPersistSnippetEve
     try {
         const runHistoryModelEvent: RunHistoryModelEvent = {
             type: "Snippet",
-            snippet,
+            snippet: normalizedSnippet,
             id: eventId,
-            timestamp
+            timestamp: timestamp
         }
         const payload: RunHistoryModelSocketEvent = {
             runId,
