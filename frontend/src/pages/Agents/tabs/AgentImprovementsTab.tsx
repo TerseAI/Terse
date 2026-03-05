@@ -31,12 +31,6 @@ function getScoreColor(score: number): string {
     return "text-red-500 dark:text-red-400"
 }
 
-function getScoreBg(score: number): string {
-    if (score >= 80) return "border-emerald-500/20"
-    if (score >= 60) return "border-yellow-500/20"
-    return "border-red-500/20"
-}
-
 function getStatusBadge(status: AgentImprovement["status"]) {
     if (status === "APPLIED") {
         return (
@@ -57,19 +51,6 @@ function getStatusBadge(status: AgentImprovement["status"]) {
             Pending
         </Badge>
     )
-}
-
-function formatTargetArea(area: AgentImprovement["targetArea"]): string {
-    switch (area) {
-        case "prompt":
-            return "Prompt"
-        case "trigger_config":
-            return "Trigger Config"
-        case "output_config":
-            return "Output Config"
-        default:
-            return "General"
-    }
 }
 
 export default function AgentImprovementsTab({ agentId, builderChatRef, setBuilderChatOpen, builderChatOpen }: AgentImprovementsTabProps) {
