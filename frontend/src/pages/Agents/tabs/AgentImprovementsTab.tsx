@@ -4,9 +4,8 @@ import { ChevronRight } from "lucide-react"
 import { toast } from "sonner"
 
 import { BuilderChatHandle } from "@/components/chat/BuilderChat"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Separator } from "@/components/ui/separator"
 import { Switch } from "@/components/ui/switch"
 import { useAgentImprovements } from "@/hooks/api/useAgentImprovements"
 import { cn } from "@/lib/utils"
@@ -23,34 +22,13 @@ type AgentImprovementsTabProps = {
     builderChatOpen: boolean
 }
 
-type StatusFilter = "PENDING" | "ALL"
-
-function getScoreColor(score: number): string {
-    if (score >= 80) return "text-emerald-500 dark:text-emerald-400"
-    if (score >= 60) return "text-yellow-500 dark:text-yellow-400"
-    return "text-red-500 dark:text-red-400"
-}
-
-function getStatusBadge(status: AgentImprovement["status"]) {
-    if (status === "APPLIED") {
-        return (
-            <Badge variant="outline" className="border-green-500 text-green-600">
-                Applied
-            </Badge>
-        )
-    }
-    if (status === "DISMISSED") {
-        return (
-            <Badge variant="outline" className="border-muted-foreground/50 text-muted-foreground">
-                Dismissed
-            </Badge>
-        )
-    }
-    return (
-        <Badge variant="outline" className="border-primary/40 text-primary">
-            Pending
-        </Badge>
-    )
+/** Lightweight hook for the tab badge — reuses the same SWR cache as the full hook. */
+export function useAgentPendingCount(agentId: string | null): number {
+    const { improvements, improvementsEnabled } = useAgentImprovements(agentId)
+    return useMemo(() => {
+        if (!improvementsEnabled) return 0
+        return improvements.filter(i => i.status === "PENDING").length
+    }, [improvements, improvementsEnabled])
 }
 
 export default function AgentImprovementsTab({ agentId, builderChatRef, setBuilderChatOpen, builderChatOpen }: AgentImprovementsTabProps) {
@@ -58,12 +36,8 @@ export default function AgentImprovementsTab({ agentId, builderChatRef, setBuild
     const [isToggling, setIsToggling] = useState(false)
     const [isApplyingId, setIsApplyingId] = useState<string | null>(null)
     const [isDismissingId, setIsDismissingId] = useState<string | null>(null)
-    const [statusFilter, setStatusFilter] = useState<StatusFilter>("PENDING")
-
-    const filteredImprovements = useMemo(() => {
-        if (statusFilter === "ALL") return improvements
-        return improvements.filter(i => i.status === "PENDING")
-    }, [improvements, statusFilter])
+    const [isApplyingAll, setIsApplyingAll] = useState(false)
+    const pendingImprovements = useMemo(() => improvements.filter(i => i.status === "PENDING"), [improvements])
 
     if (!agentId) {
         return <div className="p-4 text-sm text-muted-foreground">Save this agent first to receive weekly improvements.</div>
@@ -108,7 +82,20 @@ export default function AgentImprovementsTab({ agentId, builderChatRef, setBuild
         try {
             await BackendProvider.dismissImprovement(agentId, improvementId)
             await mutate()
-            toast.success("Improvement dismissed")
+            toast("Improvement dismissed", {
+                action: {
+                    label: "Undo",
+                    onClick: async () => {
+                        try {
+                            await BackendProvider.undoDismissImprovement(agentId, improvementId)
+                            await mutate()
+                            toast.success("Dismiss undone")
+                        } catch {
+                            toast.error("Failed to undo dismiss")
+                        }
+                    }
+                }
+            })
         } catch (error) {
             console.error("Failed to dismiss improvement", error)
             toast.error("Failed to dismiss improvement")
@@ -117,79 +104,94 @@ export default function AgentImprovementsTab({ agentId, builderChatRef, setBuild
         }
     }
 
+    const handleApplyAll = async () => {
+        setIsApplyingAll(true)
+        try {
+            const prompts: string[] = []
+            for (const improvement of pendingImprovements) {
+                const response = await BackendProvider.applyImprovement(agentId, improvement.id)
+                prompts.push(response.appliedPrompt)
+            }
+            await mutate()
+            if (prompts.length > 0) {
+                const combined = prompts.join("\n\n---\n\n")
+                setBuilderChatOpen(true)
+                setTimeout(
+                    () => {
+                        builderChatRef.current?.sendMessage(combined)
+                    },
+                    builderChatOpen ? 0 : CHAT_OPEN_DELAY_MS
+                )
+                toast.success(`Applying ${prompts.length} improvements via builder chat...`)
+            }
+        } catch (error) {
+            console.error("Failed to apply all improvements", error)
+            toast.error("Failed to apply all improvements")
+            await mutate()
+        } finally {
+            setIsApplyingAll(false)
+        }
+    }
+
     if (isLoading) {
         return <div className="p-4 text-sm text-muted-foreground">Loading improvements...</div>
     }
 
+    const isBusy = isApplyingId !== null || isDismissingId !== null || isApplyingAll
+
     return (
         <div className="flex flex-col h-full p-4 space-y-4">
-            {!review ? (
-                <p className="text-sm text-muted-foreground">No review available yet. Reviews are generated weekly.</p>
-            ) : (
-                <div className="flex flex-col lg:flex-row lg:gap-0 flex-1 min-h-0">
-                    {/* Left column: high-level review */}
-                    <div className="flex-shrink-0 lg:w-[320px] space-y-4 lg:pr-6">
-                        {/* Overall score */}
-                        <div className="flex items-baseline gap-0.5">
-                            <span className={cn("text-4xl font-semibold tabular-nums", getScoreColor(review.overallScore))}>{review.overallScore}</span>
-                            <span className={cn("text-xl font-semibold", getScoreColor(review.overallScore))}>%</span>
-                        </div>
-
-                        {/* Dimension stat pills — matching home page StatPill style */}
-                        <div className="grid grid-cols-3 gap-2">
-                            <ScorePill label="Execution" value={review.scoreTaskQuality} />
-                            <ScorePill label="Consistency" value={review.scoreConsistency} />
-                            <ScorePill label="Efficiency" value={review.scoreEfficiency} />
-                        </div>
-
-                        <p className="text-sm text-muted-foreground">{review.summary}</p>
-                        <p className="text-xs text-muted-foreground/60">Reviewed {formatRelativeTime(review.createdAt)}</p>
-                    </div>
-
-                    {/* Divider */}
-                    <div className="hidden lg:block w-px bg-border/60 self-stretch mx-0" />
-                    <div className="lg:hidden h-px bg-border/60 my-4" />
-
-                    {/* Right column: recommendations */}
-                    <div className="flex-1 lg:pl-6 space-y-3 min-w-0">
-                        <div className="flex items-center justify-start">
-                            <Select value={statusFilter} onValueChange={v => setStatusFilter(v as StatusFilter)}>
-                                <SelectTrigger className="h-8 w-[150px]">
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="PENDING">Pending only</SelectItem>
-                                    <SelectItem value="ALL">All</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-
-                        {filteredImprovements.length === 0 ? (
-                            <p className="text-sm text-muted-foreground">
-                                {statusFilter === "PENDING" && improvements.length > 0 ? 'No pending recommendations. Switch to "All" to see past ones.' : "No recommendations for this review."}
-                            </p>
-                        ) : (
-                            filteredImprovements.map(improvement => (
-                                <ImprovementRow
-                                    key={improvement.id}
-                                    improvement={improvement}
-                                    isApplying={isApplyingId === improvement.id}
-                                    isDismissing={isDismissingId === improvement.id}
-                                    disabled={isApplyingId !== null || isDismissingId !== null}
-                                    onApply={() => handleApply(improvement)}
-                                    onDismiss={() => handleDismiss(improvement.id)}
-                                />
-                            ))
-                        )}
-                    </div>
+            {/* Title row + toggle */}
+            <div className="flex items-center justify-between">
+                {improvementsEnabled && review && pendingImprovements.length > 0 ? (
+                    <h3 className="text-base font-semibold">{review.title || `Last review at ${new Date(review.createdAt).toLocaleDateString()}`}</h3>
+                ) : (
+                    <p className="text-sm text-muted-foreground">
+                        {!improvementsEnabled
+                            ? "Enable weekly reviews to get AI-generated improvement recommendations for this agent."
+                            : improvementsEnabled && review
+                              ? "No pending recommendations. Check back next week for new reviews."
+                              : "No review available yet. Reviews are generated weekly."}
+                    </p>
+                )}
+                <div className="flex items-center gap-2 shrink-0">
+                    {improvementsEnabled && <span className="text-sm text-muted-foreground">Enabled</span>}
+                    <Switch checked={improvementsEnabled} onCheckedChange={handleToggleEnabled} disabled={isToggling} />
                 </div>
-            )}
-
-            {/* Toggle — bottom left */}
-            <div className="flex items-center gap-2 pt-2 mt-auto">
-                <Switch checked={improvementsEnabled} onCheckedChange={handleToggleEnabled} disabled={isToggling} />
-                <span className="text-sm text-muted-foreground">{improvementsEnabled ? "Reviews enabled" : "Reviews disabled"}</span>
             </div>
+
+            {improvementsEnabled && review && pendingImprovements.length > 0 && (
+                <>
+                    <p className="text-sm text-muted-foreground">{review.summary}</p>
+
+                    <Separator />
+
+                    {/* Improvements */}
+                    <div className="space-y-3 flex-1 min-h-0">
+                        {pendingImprovements.length > 1 && (
+                            <div className="flex items-center justify-between">
+                                <span className="text-sm font-medium text-muted-foreground">{pendingImprovements.length} recommendations</span>
+                                <Button size="sm" variant="outline" onClick={handleApplyAll} disabled={isBusy}>
+                                    {isApplyingAll ? "Applying all..." : "Apply all"}
+                                </Button>
+                            </div>
+                        )}
+                        {pendingImprovements.map(improvement => (
+                            <ImprovementRow
+                                key={improvement.id}
+                                improvement={improvement}
+                                isApplying={isApplyingId === improvement.id}
+                                isDismissing={isDismissingId === improvement.id}
+                                disabled={isBusy}
+                                onApply={() => handleApply(improvement)}
+                                onDismiss={() => handleDismiss(improvement.id)}
+                                defaultExpanded={pendingImprovements.length === 1}
+                            />
+                        ))}
+                    </div>
+                    <span className="text-xs text-muted-foreground/60 mt-auto">Reviewed {formatRelativeTime(review.createdAt)}</span>
+                </>
+            )}
         </div>
     )
 }
@@ -200,7 +202,8 @@ function ImprovementRow({
     isDismissing,
     disabled,
     onApply,
-    onDismiss
+    onDismiss,
+    defaultExpanded = false
 }: {
     improvement: AgentImprovement
     isApplying: boolean
@@ -208,41 +211,31 @@ function ImprovementRow({
     disabled: boolean
     onApply: () => void
     onDismiss: () => void
+    defaultExpanded?: boolean
 }) {
-    const [expanded, setExpanded] = useState(false)
-    const isPending = improvement.status === "PENDING"
+    const [expanded, setExpanded] = useState(defaultExpanded)
 
     return (
         <div className="rounded-lg border border-border bg-card/50 px-4 py-3 space-y-0">
-            <button type="button" onClick={() => setExpanded(e => !e)} className="flex items-center gap-2 w-full text-left">
-                <ChevronRight className={cn("h-3.5 w-3.5 text-muted-foreground shrink-0 transition-transform", expanded && "rotate-90")} />
-                <span className="font-medium text-sm flex-1">{improvement.title}</span>
-                {!isPending && getStatusBadge(improvement.status)}
-            </button>
+            <div className="flex items-center gap-2">
+                <button type="button" onClick={() => setExpanded(e => !e)} className="flex items-center gap-2 flex-1 text-left min-w-0">
+                    <ChevronRight className={cn("h-3.5 w-3.5 text-muted-foreground shrink-0 transition-transform", expanded && "rotate-90")} />
+                    <span className="font-medium text-sm truncate">{improvement.title}</span>
+                </button>
+                <div className="flex items-center gap-1.5 shrink-0">
+                    <Button size="sm" onClick={onApply} disabled={disabled}>
+                        {isApplying ? "Applying..." : "Apply"}
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={onDismiss} disabled={disabled}>
+                        {isDismissing ? "Dismissing..." : "Dismiss"}
+                    </Button>
+                </div>
+            </div>
             {expanded && (
-                <div className="pl-[22px] pt-2 space-y-2">
+                <div className="pl-[22px] pt-2">
                     <p className="text-sm text-muted-foreground">{improvement.description}</p>
-                    {isPending && (
-                        <div className="flex items-center gap-2 pt-1">
-                            <Button size="sm" onClick={onApply} disabled={disabled}>
-                                {isApplying ? "Applying..." : "Apply"}
-                            </Button>
-                            <Button size="sm" variant="ghost" onClick={onDismiss} disabled={disabled}>
-                                {isDismissing ? "Dismissing..." : "Dismiss"}
-                            </Button>
-                        </div>
-                    )}
                 </div>
             )}
-        </div>
-    )
-}
-
-function ScorePill({ label, value }: { label: string; value: number }) {
-    return (
-        <div className="flex flex-col gap-1 rounded-2xl bg-card/50 backdrop-blur-sm px-3 py-2.5 transition-all duration-300 hover:bg-card hover:shadow-sm">
-            <span className="text-[10px] font-medium tracking-wide text-muted-foreground uppercase leading-tight">{label}</span>
-            <span className={cn("text-lg font-semibold tabular-nums tracking-tight", getScoreColor(value))}>{value}</span>
         </div>
     )
 }

@@ -479,10 +479,7 @@ export type AgentImprovementTargetArea = "prompt" | "trigger_config" | "output_c
 export type AgentReview = {
     id: string
     automationId: string
-    scoreTaskQuality: number
-    scoreConsistency: number
-    scoreEfficiency: number
-    overallScore: number
+    title: string
     summary: string
     runsAnalyzed: number
     reviewPeriodStart: string

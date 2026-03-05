@@ -20,7 +20,7 @@ import { AgentNotificationSettings, AgentPrompt, TransientAgentOutput, Transient
 import { AgentInputsDonatedState, AgentNameDonatedState, AgentOutputsDonatedState, AgentPromptDonatedState } from "../../utility/AgentModelDonation"
 import { toTransientAgentOutput, toTransientAgentTrigger } from "../../utility/AgentUtils"
 
-import AgentImprovementsTab from "./tabs/AgentImprovementsTab"
+import AgentImprovementsTab, { useAgentPendingCount } from "./tabs/AgentImprovementsTab"
 import AgentRunHistoryTab from "./tabs/AgentRunHistoryTab"
 import AgentSetupTab, { AgentSetupTabProps } from "./tabs/AgentSetupTab"
 
@@ -310,6 +310,8 @@ function AgentDetail() {
     // Only pass agentId if it's not "new"
     const agentId: string | null = id && id !== "new" ? id : null
 
+    const pendingImprovementCount = useAgentPendingCount(agentId)
+
     // Fetch agent data using useSWR
     const { agent, isLoading: isFetching, mutate } = useAgent(agentId)
 
@@ -502,6 +504,11 @@ function AgentDetail() {
                         >
                             <Lightbulb className="h-4 w-4" />
                             <span>Improvements</span>
+                            {pendingImprovementCount > 0 && (
+                                <span className="inline-flex items-center justify-center h-5 min-w-5 px-1.5 rounded-full bg-primary text-primary-foreground text-xs font-medium">
+                                    {pendingImprovementCount}
+                                </span>
+                            )}
                         </Tab>
                     </TabList>
                 </TabGroup>

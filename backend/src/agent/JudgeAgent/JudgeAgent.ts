@@ -9,9 +9,7 @@ import { AgentType, builderProviderDataModelSettings, runnerFactory } from "../r
 import { buildJudgeAgentTools } from "./JudgeAgentTools"
 
 export const JudgeAgentOutput = z.object({
-    scoreTaskQuality: z.number().int().min(0).max(100),
-    scoreConsistency: z.number().int().min(0).max(100),
-    scoreEfficiency: z.number().int().min(0).max(100),
+    title: z.string(),
     summary: z.string(),
     improvements: z.array(
         z.object({
@@ -24,10 +22,6 @@ export const JudgeAgentOutput = z.object({
 })
 
 export type JudgeAgentOutputType = z.infer<typeof JudgeAgentOutput>
-
-export function computeOverallScore(scores: Pick<JudgeAgentOutputType, "scoreTaskQuality" | "scoreConsistency" | "scoreEfficiency">): number {
-    return Math.round((scores.scoreTaskQuality + scores.scoreConsistency + scores.scoreEfficiency) / 3)
-}
 
 function buildJudgeSystemPrompt(automationId: string): string {
     return `You're reviewing automation ${automationId}. Be friendly and straight to the point — no fluff.
@@ -63,12 +57,6 @@ Use lookupPlatformCapabilities if you need to check what triggers/outputs the pl
 5. getChatAgentConfig if you need to suggest prompt changes
 6. lookupPlatformCapabilities if you need to verify what the platform can do
 
-== Scoring (0-100) ==
-
-- Execution: Are runs producing good, correct results?
-- Consistency: Is it behaving reliably across runs?
-- Efficiency: Is it doing too much or running unnecessarily?
-
 == Things to ignore — do NOT flag these ==
 
 - Manual/test runs. Users test their agents frequently — that's normal, not spam. Don't suggest reducing manual runs.
@@ -78,6 +66,7 @@ Use lookupPlatformCapabilities if you need to check what triggers/outputs the pl
 
 == Writing style ==
 
+- Title should be a short headline for the review (e.g. "Running smoothly", "A couple things to tighten up", "Needs attention"). Keep it under 8 words.
 - Summary should be 1-2 casual sentences. Talk like a helpful teammate, not a report.
 - Each improvement title: short and punchy (e.g. "Tighten the trigger filter")
 - Each improvement description: 1-2 plain sentences. Say what's wrong and what to do about it. No bullet points, no markdown, no lists — just a brief plain-text explanation.
@@ -129,24 +118,17 @@ export async function evaluateAgent(params: { automationId: string; user: User }
     if (!output) {
         logger.warn("[JudgeAgent] No evaluation output produced", { automationId: params.automationId, runId })
         return {
-            scoreTaskQuality: 0,
-            scoreConsistency: 0,
-            scoreEfficiency: 0,
+            title: "No evaluation produced",
             summary: "No evaluation output produced.",
             improvements: []
         }
     }
 
     const filteredImprovements = output.improvements.filter(improvement => improvement.confidence >= 0.7)
-    const overallScore = computeOverallScore(output)
 
     logger.info("[JudgeAgent] Evaluation complete", {
         automationId: params.automationId,
         runId,
-        overallScore,
-        scoreTaskQuality: output.scoreTaskQuality,
-        scoreConsistency: output.scoreConsistency,
-        scoreEfficiency: output.scoreEfficiency,
         totalImprovements: output.improvements.length,
         filteredImprovements: filteredImprovements.length
     })

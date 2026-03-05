@@ -90,7 +90,6 @@ export async function sendWeeklyReviewEmail(
     emailAddress: string,
     agents: Array<{
         name: string
-        overallScore: number
         improvements: Array<{ title: string }>
         improvementsUrl: string
     }>

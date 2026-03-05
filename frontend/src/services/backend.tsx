@@ -342,6 +342,11 @@ interface BackendService {
     dismissImprovement(agentId: string, improvementId: string): Promise<DismissImprovementResponse>
 
     /**
+     * Reverts a dismissed improvement back to pending
+     */
+    undoDismissImprovement(agentId: string, improvementId: string): Promise<{ success: boolean }>
+
+    /**
      * Toggles whether weekly improvements are enabled for an agent
      */
     toggleImprovementsEnabled(agentId: string, enabled: boolean): Promise<ToggleImprovementsEnabledResponse>
@@ -1100,6 +1105,16 @@ export const BackendProvider: BackendService = {
             .then(response => response.data)
             .catch(error => {
                 console.error("Error dismissing improvement:", error)
+                throw error
+            })
+    },
+
+    undoDismissImprovement: (agentId: string, improvementId: string) => {
+        return axios
+            .post<{ success: boolean }>(`${backendBaseUrl}${ApiRoutes.IMPROVEMENTS.UNDO_DISMISS.build(agentId, improvementId)}`, {}, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error("Error undoing dismiss:", error)
                 throw error
             })
     },

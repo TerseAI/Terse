@@ -1178,10 +1178,7 @@ model agent_reviews {
   id                  String   @id @default(cuid())
   automation_id       String
   organization_id     String
-  score_task_quality  Int
-  score_consistency   Int
-  score_efficiency    Int
-  overall_score       Int
+  title               String   @default("")
   summary             String   @db.Text
   runs_analyzed       Int
   review_period_start DateTime

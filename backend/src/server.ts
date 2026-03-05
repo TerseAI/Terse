@@ -23,7 +23,7 @@ import { createOrUpdateDatadogIntegration, getDatadogIndexes, getDatadogIntegrat
 import { figmaOAuthCallback, getFigmaIntegrations, handleFigmaWebhook } from "./routes/figma"
 import { getGithubIntegrations, getGithubRepositoriesForIntegration, getInstallationUrl, githubAppUnifiedEvent } from "./routes/github"
 import { deleteGmailIntegration, getGmailIntegrations, gmailCallback, handleGmailWebhook } from "./routes/gmail"
-import { applyImprovement, dismissImprovement, getAgentImprovements, toggleImprovementsEnabled } from "./routes/improvements"
+import { applyImprovement, dismissImprovement, getAgentImprovements, toggleImprovementsEnabled, undoDismissImprovement } from "./routes/improvements"
 import { getActiveIntegrations, getAllIntegrations, getIntegrationInstallationDetails } from "./routes/integrations"
 import { atlassianOAuthCallback, getAtlassianIntegrations, getJiraResources, handleJiraWebhook } from "./routes/jira"
 import { createOrUpdateLaunchDarklyIntegration, getLaunchDarklyEnvironments, getLaunchDarklyIntegrations, getLaunchDarklyProjects } from "./routes/launchdarkly"
@@ -563,6 +563,10 @@ app.post(ApiRoutes.IMPROVEMENTS.APPLY.pattern, authMiddleware, async (req, res) 
 
 app.post(ApiRoutes.IMPROVEMENTS.DISMISS.pattern, authMiddleware, async (req, res) => {
     dismissImprovement(req, res)
+})
+
+app.post(ApiRoutes.IMPROVEMENTS.UNDO_DISMISS.pattern, authMiddleware, async (req, res) => {
+    undoDismissImprovement(req, res)
 })
 
 app.patch(ApiRoutes.IMPROVEMENTS.TOGGLE_ENABLED.pattern, authMiddleware, async (req, res) => {

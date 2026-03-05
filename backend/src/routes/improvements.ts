@@ -11,10 +11,7 @@ const AGENT_IMPROVEMENTS_INVALIDATION_KEY = "agentImprovements"
 function mapReview(review: {
     id: string
     automation_id: string
-    score_task_quality: number
-    score_consistency: number
-    score_efficiency: number
-    overall_score: number
+    title: string
     summary: string
     runs_analyzed: number
     review_period_start: Date
@@ -24,10 +21,7 @@ function mapReview(review: {
     return {
         id: review.id,
         automationId: review.automation_id,
-        scoreTaskQuality: review.score_task_quality,
-        scoreConsistency: review.score_consistency,
-        scoreEfficiency: review.score_efficiency,
-        overallScore: review.overall_score,
+        title: review.title || `Last review at ${review.created_at.toLocaleDateString()}`,
         summary: review.summary,
         runsAnalyzed: review.runs_analyzed,
         reviewPeriodStart: review.review_period_start.toISOString(),
@@ -270,6 +264,60 @@ export async function dismissImprovement(req: Request, res: Response) {
             organizationId: auth.organizationId
         })
         return res.status(500).json({ error: "Failed to dismiss improvement" })
+    }
+}
+
+export async function undoDismissImprovement(req: Request, res: Response) {
+    const auth = requireAuth(req, res)
+    if (!auth) return
+
+    const agentId = req.params.agentId?.trim()
+    const improvementId = req.params.id?.trim()
+
+    if (!agentId || !improvementId) {
+        return res.status(400).json({ error: "agentId and improvement id are required" })
+    }
+
+    try {
+        const improvement = await db().agent_improvements.findFirst({
+            where: {
+                id: improvementId,
+                automation_id: agentId,
+                automation: { organization_id: auth.organizationId }
+            },
+            select: {
+                id: true,
+                status: true
+            }
+        })
+
+        if (!improvement) {
+            return res.status(404).json({ error: "Improvement not found" })
+        }
+
+        if (improvement.status !== AgentImprovementStatus.DISMISSED) {
+            return res.status(409).json({ error: "Improvement is not dismissed" })
+        }
+
+        await db().agent_improvements.update({
+            where: { id: improvement.id },
+            data: {
+                status: AgentImprovementStatus.PENDING,
+                dismissed_at: null
+            }
+        })
+
+        emitCacheInvalidationWithKey(auth.organizationId, AGENT_IMPROVEMENTS_INVALIDATION_KEY)
+
+        return res.status(200).json({ success: true })
+    } catch (error) {
+        logger.error("[Improvements] Failed to undo dismiss improvement", {
+            error,
+            agentId,
+            improvementId,
+            organizationId: auth.organizationId
+        })
+        return res.status(500).json({ error: "Failed to undo dismiss improvement" })
     }
 }
 

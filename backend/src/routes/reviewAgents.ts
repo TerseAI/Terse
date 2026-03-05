@@ -1,7 +1,7 @@
 import { NotificationDestinationType, SentNotificationEventType, SentNotificationStatus } from "@prisma/client"
 import { Request, Response } from "express"
 
-import { computeOverallScore, evaluateAgent } from "../agent/JudgeAgent/JudgeAgent"
+import { evaluateAgent } from "../agent/JudgeAgent/JudgeAgent"
 import { cloudScheduler, settings } from "../config/settings"
 import logger from "../logger"
 import { sendWeeklyReviewEmail } from "../notifications/channels/emailNotifications"
@@ -13,7 +13,6 @@ import { getUserForOrg } from "../utility/workos"
 
 type EmailAgentSummary = {
     name: string
-    overallScore: number
     improvements: Array<{ title: string }>
     improvementsUrl: string
 }
@@ -107,7 +106,6 @@ export async function reviewAllAgents(req: Request, res: Response) {
                     user
                 })
 
-                const overallScore = computeOverallScore(evaluation)
                 const improvementRecords = evaluation.improvements
 
                 await db().$transaction(async tx => {
@@ -115,10 +113,7 @@ export async function reviewAllAgents(req: Request, res: Response) {
                         data: {
                             automation_id: automation.id,
                             organization_id: automation.organization_id,
-                            score_task_quality: evaluation.scoreTaskQuality,
-                            score_consistency: evaluation.scoreConsistency,
-                            score_efficiency: evaluation.scoreEfficiency,
-                            overall_score: overallScore,
+                            title: evaluation.title,
                             summary: evaluation.summary,
                             runs_analyzed: runCount,
                             review_period_start: periodStart,
@@ -149,7 +144,6 @@ export async function reviewAllAgents(req: Request, res: Response) {
                     const group = emailGroups.get(user.id)!
                     group.agents.push({
                         name: automation.name,
-                        overallScore,
                         improvements: improvementRecords.map(item => ({ title: item.title })),
                         improvementsUrl
                     })

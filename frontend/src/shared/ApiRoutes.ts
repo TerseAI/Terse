@@ -204,6 +204,11 @@ export const ApiRoutes = {
             build: (agentId: string, id: string) => `/agents/${encodeURIComponent(agentId)}/improvements/${encodeURIComponent(id)}/dismiss`,
             params: { agentId: "string", id: "string" } as const
         },
+        UNDO_DISMISS: {
+            pattern: "/agents/:agentId/improvements/:id/undo-dismiss",
+            build: (agentId: string, id: string) => `/agents/${encodeURIComponent(agentId)}/improvements/${encodeURIComponent(id)}/undo-dismiss`,
+            params: { agentId: "string", id: "string" } as const
+        },
         TOGGLE_ENABLED: {
             pattern: "/agents/:agentId/improvements-enabled",
             build: (agentId: string) => `/agents/${encodeURIComponent(agentId)}/improvements-enabled`,
