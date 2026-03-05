@@ -46,6 +46,7 @@ export {
     LaunchDarklyConfig,
     TerseConfig,
     WorkOSInputConfig,
+    WorkOSOutputConfig,
     AttioOutputConfig,
     SlackEventType,
     GitHubEventType,
@@ -53,7 +54,7 @@ export {
     JiraEventType,
     FigmaEventType,
     GmailEventType,
-    WorkOSEventType,
+    WorkOSEventType
 } from "./shared/Configs.js"
 
 export type {

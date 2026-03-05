@@ -281,7 +281,7 @@ export enum WorkOSEventType {
     ORGANIZATION_MEMBERSHIP_CREATED = "organization_membership.created",
     ORGANIZATION_MEMBERSHIP_UPDATED = "organization_membership.updated",
     ORGANIZATION_MEMBERSHIP_DELETED = "organization_membership.deleted",
-    INVITATION_ACCEPTED = "invitation.accepted",
+    INVITATION_ACCEPTED = "invitation.accepted"
 }
 
 export interface ConfigInstance {

@@ -21,6 +21,7 @@ import {
     SlackOutputConfig,
     TerseConfig,
     TimeTriggerConfig,
+    WorkOSEventType,
     WorkOSInputConfig,
     WorkOSOutputConfig
 } from "../shared/Configs"
@@ -254,7 +255,7 @@ export const convertPrismaConfigToConfigInstance = (channelInput: AgentTriggerWi
     }
 
     if (channelInput.workos_config) {
-        return new WorkOSInputConfig(integrationId, channelInput.workos_config.event_types || [])
+        return new WorkOSInputConfig(integrationId, (channelInput.workos_config.event_types || []) as WorkOSEventType[])
     }
 
     // Type guard to ensure we implement conversion here
@@ -601,7 +602,7 @@ export const convertPlainObjectToInputConfigInstance = (config: any): ConfigInst
         case ConfigType.TIME_TRIGGER:
             return new TimeTriggerConfig(config.cronExpression || "")
         case ConfigType.WORKOS_INPUT:
-            return new WorkOSInputConfig(config.integrationId, config.eventTypes || [])
+            return new WorkOSInputConfig(config.integrationId, (config.eventTypes || []) as WorkOSEventType[])
         default:
             throw new Error(`Unsupported input config type: ${config.configType}`)
     }
@@ -652,7 +653,7 @@ export const convertPlainObjectToConfigInstance = (config: any): ConfigInstance 
         case ConfigType.TERSE:
             return new TerseConfig()
         case ConfigType.WORKOS_INPUT:
-            return new WorkOSInputConfig(config.integrationId, config.eventTypes || [])
+            return new WorkOSInputConfig(config.integrationId, (config.eventTypes || []) as WorkOSEventType[])
         case ConfigType.WORKOS_OUTPUT:
             return new WorkOSOutputConfig(config.integrationId)
         case ConfigType.ATTIO_OUTPUT:

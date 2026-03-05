@@ -19,6 +19,7 @@ import {
     SlackOutputConfig,
     TerseConfig,
     TimeTriggerConfig,
+    WorkOSEventType,
     WorkOSInputConfig,
     WorkOSOutputConfig
 } from "@/shared/Configs"
@@ -102,7 +103,7 @@ export function deserializeConfig(jsonConfig: any): ConfigInstance {
             return new TerseConfig()
         case ConfigType.WORKOS_INPUT:
             const workosConfig = jsonConfig as WorkOSInputConfig
-            return new WorkOSInputConfig(integrationId, workosConfig.eventTypes || [])
+            return new WorkOSInputConfig(integrationId, (workosConfig.eventTypes || []) as WorkOSEventType[])
         case ConfigType.WORKOS_OUTPUT:
             return new WorkOSOutputConfig(integrationId)
         case ConfigType.ATTIO_OUTPUT:

@@ -5,13 +5,16 @@ import { ConfigType } from "../shared/Configs"
 import { IntegrationType } from "../shared/Integrations"
 
 /**
- * Removes ConfigInstance runtime-only keys (isComplete, formatForAgent) so Zod .strict() schemas
- * do not reject config objects that are class instances.
+ * Removes ConfigInstance runtime-only keys (isComplete, formatForAgent, eventTypes) so Zod
+ * .strict() schemas do not reject config objects that are class instances.
+ * eventTypes lives on many ConfigInstance classes for runtime filtering but is not persisted
+ * by most trigger handlers, so we strip it before schema validation.
  */
 export function stripConfigForValidation<T extends object>(config: T): T {
-    const { isComplete, formatForAgent, ...rest } = { ...config } as T & {
+    const { isComplete, formatForAgent, eventTypes, ...rest } = { ...config } as T & {
         isComplete?: unknown
         formatForAgent?: unknown
+        eventTypes?: unknown
     }
     return rest as T
 }
