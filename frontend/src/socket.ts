@@ -14,6 +14,7 @@ let socket: Socket | null = null
 type ChatEventCallback = (payload: RunHistoryModelSocketEvent) => void
 type BuilderEventPayload = { sessionId: string; event: ModelEvent }
 type BuilderEventCallback = (payload: BuilderEventPayload) => void
+type CancelAckResponse = { accepted: boolean; reason?: string }
 
 // Pending subscriptions queue for handling race conditions
 type PendingChatSubscription = {
@@ -38,6 +39,14 @@ const builderEventCallbacks = new Map<string, Set<BuilderEventCallback>>()
 let chatEventListenerSetUp = false
 let builderEventListenerSetUp = false
 
+function shouldInvalidateRunStatusCaches(event: ModelEvent): boolean {
+    return event.type === "ToolApprovalRequest" || event.type === "ToolApprovalResponse" || event.type === "Cancelled" || event.type === "RunError" || event.type === "NaturalStop"
+}
+
+function invalidateRunStatusCaches(runId: string, agentId: string): void {
+    void mutate(key => Array.isArray(key) && ((key[0] === "chatHistory" && key[1] === runId) || (key[0] === "runHistory" && key[1] === agentId) || key[0] === "allRunHistory"))
+}
+
 function setupChatEventListener() {
     if (!socket || chatEventListenerSetUp) {
         return
@@ -47,6 +56,9 @@ function setupChatEventListener() {
         const callbacks = chatEventCallbacks.get(payload.runId)
         if (callbacks) {
             callbacks.forEach(cb => cb(payload))
+        }
+        if (shouldInvalidateRunStatusCaches(payload.runHistoryModelEvent)) {
+            invalidateRunStatusCaches(payload.runId, payload.agentId)
         }
     })
 
@@ -156,6 +168,9 @@ export function initializeSocket() {
                 }
                 return false
             })
+            if (key === "runHistory") {
+                mutate(k => Array.isArray(k) && k[0] === "allRunHistory")
+            }
         } else if (key) {
             mutate(k => Array.isArray(k) && k[0] === key)
         }
@@ -289,4 +304,38 @@ export function sendBuilderMultipleChoiceAnswer(sessionId: string, questionId: s
         return
     }
     socket.emit(SocketEvents.BUILDER_CHAT_MULTIPLE_CHOICE_ANSWER, { sessionId, questionId, value })
+}
+
+export async function cancelAgentChatRun(runId: string): Promise<CancelAckResponse> {
+    const activeSocket = socket
+    if (!activeSocket || !activeSocket.connected) {
+        return { accepted: false, reason: "socket_not_connected" }
+    }
+
+    return await new Promise(resolve => {
+        activeSocket.timeout(5000).emit(SocketEvents.AGENT_CHAT_CANCEL, { runId }, (err: Error | null, response?: CancelAckResponse) => {
+            if (err) {
+                resolve({ accepted: false, reason: "timeout" })
+                return
+            }
+            resolve(response ?? { accepted: false, reason: "no_response" })
+        })
+    })
+}
+
+export async function cancelBuilderChatSession(sessionId: string): Promise<CancelAckResponse> {
+    const activeSocket = socket
+    if (!activeSocket || !activeSocket.connected) {
+        return { accepted: false, reason: "socket_not_connected" }
+    }
+
+    return await new Promise(resolve => {
+        activeSocket.timeout(5000).emit(SocketEvents.BUILDER_CHAT_CANCEL, { sessionId }, (err: Error | null, response?: CancelAckResponse) => {
+            if (err) {
+                resolve({ accepted: false, reason: "timeout" })
+                return
+            }
+            resolve(response ?? { accepted: false, reason: "no_response" })
+        })
+    })
 }

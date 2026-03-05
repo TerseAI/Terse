@@ -54,11 +54,11 @@ export async function getBuilderChatHistory(req: Request, res: Response) {
         const modelEvents = await convertAgentInputItemsToModelEvents(timestampedItems)
 
         // Add per-event id, keeping epoch-ms timestamps (matching RunHistoryModelEvent shape)
-        const firstTimestamp = rawEvents[0]?.created_at?.getTime()
+        const firstTimestamp = rawEvents[0]?.created_at?.getTime() ?? Date.now()
         const events = modelEvents.map((event, i) => ({
             ...event,
             id: `builder-hist-${i}`,
-            timestamp: event.timestamp ?? firstTimestamp
+            timestamp: event.timestamp ?? firstTimestamp + i
         }))
 
         // Get timestamps

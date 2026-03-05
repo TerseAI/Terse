@@ -1,4 +1,4 @@
-import { Agent, run, user } from "@openai/agents"
+import { Agent } from "@openai/agents"
 import { z } from "zod"
 
 import { settings } from "../../config/settings"
@@ -9,6 +9,7 @@ import { EventEmitterTaskQueue } from "../../tasks/abstract/eventEmitterTasks"
 import { Task } from "../../tasks/abstract/tasks"
 import { RunHistoryChatMemorySession, identityHistoryCallback } from "../CustomMemorySession"
 import { AgentType, builderProviderDataModelSettings, runnerFactory } from "../runner"
+import { buildUserMessage } from "../userMessage"
 
 const DIRECTIVE_TASK_NAME = "DIRECTIVE_TASK" as const
 
@@ -112,7 +113,7 @@ async function classifyDirective(task: DirectiveTask): Promise<DirectiveClassifi
         modelSettings: builderProviderDataModelSettings(runConfig)
     })
 
-    const result = await runner.run(directiveAgent, [user(task.message)], {
+    const result = await runner.run(directiveAgent, [buildUserMessage(task.message)], {
         session,
         sessionInputCallback: identityHistoryCallback
     })

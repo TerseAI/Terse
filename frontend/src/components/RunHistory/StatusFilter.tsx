@@ -1,4 +1,4 @@
-import { CheckCircle2, ChevronDown, Clock, Filter as FilterIcon, Loader2, XCircle } from "lucide-react"
+import { Ban, CheckCircle2, ChevronDown, Clock, Filter as FilterIcon, Loader2, XCircle } from "lucide-react"
 
 import { RunHistoryStatus } from "../../shared/RunHistoryTypes"
 import { Button } from "../ui/button"
@@ -33,6 +33,11 @@ function StatusFilter({ selectedStatuses, onToggleStatus, open, onOpenChange }: 
                         <Checkbox checked={selectedStatuses.has(RunHistoryStatus.FAILED)} onCheckedChange={() => onToggleStatus(RunHistoryStatus.FAILED)} />
                         <XCircle className="w-4 h-4 text-destructive" />
                         <span className="text-sm">Failed</span>
+                    </div>
+                    <div className="flex items-center gap-3 cursor-pointer" onClick={() => onToggleStatus(RunHistoryStatus.CANCELLED)}>
+                        <Checkbox checked={selectedStatuses.has(RunHistoryStatus.CANCELLED)} onCheckedChange={() => onToggleStatus(RunHistoryStatus.CANCELLED)} />
+                        <Ban className="w-4 h-4 text-muted-foreground" />
+                        <span className="text-sm">Cancelled</span>
                     </div>
                     <div className="flex items-center gap-3 cursor-pointer" onClick={() => onToggleStatus(RunHistoryStatus.IN_PROGRESS)}>
                         <Checkbox checked={selectedStatuses.has(RunHistoryStatus.IN_PROGRESS)} onCheckedChange={() => onToggleStatus(RunHistoryStatus.IN_PROGRESS)} />

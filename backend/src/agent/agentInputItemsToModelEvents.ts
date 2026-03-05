@@ -4,6 +4,7 @@ import { IntegrationType } from "../shared/Integrations"
 import { ModelEvent } from "../shared/ModelEvents"
 
 import { isScaffoldedRunContextUserMessage } from "./AgentRunner/formatContext"
+import { parseCancelledSystemEventItem } from "./systemEvents/cancelledSystemEvent"
 import { parseFilterOutcomeSystemEventItem } from "./systemEvents/filterOutcomeSystemEvent"
 import { parseRunErrorSystemEventItem } from "./systemEvents/runErrorSystemEvent"
 import { parseSnippetSystemEventItem } from "./systemEvents/snippetSystemEvent"
@@ -13,7 +14,7 @@ import { parseToolExecutionResult } from "./toolExecution"
 /** An AgentInputItem paired with the DB timestamp it was created at. */
 export type TimestampedAgentInputItem = {
     item: AgentInputItem
-    createdAt: Date | null
+    createdAt: Date
 }
 
 export type ConvertAgentInputItemsToModelEventsOptions = {
@@ -27,7 +28,7 @@ const DEFAULT_CONVERT_OPTIONS: Required<ConvertAgentInputItemsToModelEventsOptio
 }
 
 export async function convertAgentInputItemsToModelEvents(
-    items: (AgentInputItem | TimestampedAgentInputItem)[],
+    items: TimestampedAgentInputItem[],
     toolToIntegrationMap?: Map<string, string>,
     options?: ConvertAgentInputItemsToModelEventsOptions
 ): Promise<ModelEvent[]> {
@@ -36,19 +37,14 @@ export async function convertAgentInputItemsToModelEvents(
         ...options
     }
     const events: ModelEvent[] = []
-    let lastTimestamp: Date | null | undefined
 
-    for (const entry of items) {
-        const isTimestamped = typeof entry === "object" && entry !== null && "item" in entry && "createdAt" in entry
-        const item: AgentInputItem = isTimestamped ? (entry as TimestampedAgentInputItem).item : (entry as AgentInputItem)
-        const ts = isTimestamped ? (entry as TimestampedAgentInputItem).createdAt : undefined
-        if (ts) lastTimestamp = ts
-
-        const converted = await convertSingleItem(item, toolToIntegrationMap, resolvedOptions)
+    for (const [itemIndex, entry] of items.entries()) {
+        const item: AgentInputItem = entry.item
+        const ts = entry.createdAt
+        const eventTimestamp = ts.getTime()
+        const converted = await convertSingleItem(item, eventTimestamp, itemIndex, toolToIntegrationMap, resolvedOptions)
         if (converted) {
-            for (const event of converted) {
-                events.push(ts ? { ...event, timestamp: ts.getTime() } : event)
-            }
+            events.push(...converted)
         }
     }
 
@@ -56,12 +52,13 @@ export async function convertAgentInputItemsToModelEvents(
     // Skip for in-progress runs so the UI does not incorrectly set isGenerating=false until the run actually completes.
     if (events.length > 0 && resolvedOptions.appendNaturalStop) {
         const lastEvent = events[events.length - 1]
-        const isTerminal = lastEvent.type === "NaturalStop" || lastEvent.type === "RunError"
+        const isTerminal = lastEvent.type === "NaturalStop" || lastEvent.type === "RunError" || lastEvent.type === "Cancelled"
         if (!isTerminal) {
+            const timestamp = lastEvent.timestamp
             events.push({
                 type: "NaturalStop",
-                step_id: "historical-stop",
-                ...(lastTimestamp ? { timestamp: lastTimestamp.getTime() } : {})
+                timestamp,
+                step_id: "historical-stop"
             })
         }
     }
@@ -71,14 +68,28 @@ export async function convertAgentInputItemsToModelEvents(
 
 async function convertSingleItem(
     item: AgentInputItem,
+    eventTimestamp: number,
+    itemIndex: number,
     toolToIntegrationMap?: Map<string, string>,
     options: Required<ConvertAgentInputItemsToModelEventsOptions> = DEFAULT_CONVERT_OPTIONS
 ): Promise<ModelEvent[] | null> {
+    const cancelledSystemEvent = parseCancelledSystemEventItem(item)
+    if (cancelledSystemEvent) {
+        return [
+            {
+                type: "Cancelled",
+                timestamp: eventTimestamp,
+                ...(cancelledSystemEvent.reason ? { reason: cancelledSystemEvent.reason } : {})
+            }
+        ]
+    }
+
     const runErrorSystemEvent = parseRunErrorSystemEventItem(item)
     if (runErrorSystemEvent) {
         return [
             {
                 type: "RunError",
+                timestamp: eventTimestamp,
                 error: runErrorSystemEvent.error,
                 ...(runErrorSystemEvent.code ? { code: runErrorSystemEvent.code } : {})
             }
@@ -90,6 +101,7 @@ async function convertSingleItem(
         return [
             {
                 type: "FilterResult",
+                timestamp: eventTimestamp,
                 isRelevant: filterOutcomeSystemEvent.isRelevant,
                 reason: filterOutcomeSystemEvent.reason,
                 confidence: filterOutcomeSystemEvent.confidence,
@@ -104,6 +116,7 @@ async function convertSingleItem(
             return [
                 {
                     type: "ToolApprovalRequest",
+                    timestamp: eventTimestamp,
                     step_id: toolApprovalSystemEvent.step_id,
                     name: toolApprovalSystemEvent.name,
                     arguments: toolApprovalSystemEvent.arguments
@@ -114,6 +127,7 @@ async function convertSingleItem(
         return [
             {
                 type: "ToolApprovalResponse",
+                timestamp: eventTimestamp,
                 step_id: toolApprovalSystemEvent.step_id,
                 approved: toolApprovalSystemEvent.approved
             }
@@ -125,6 +139,7 @@ async function convertSingleItem(
         return [
             {
                 type: "Snippet",
+                timestamp: eventTimestamp,
                 snippet: snippetSystemEvent.snippet
             }
         ]
@@ -137,7 +152,8 @@ async function convertSingleItem(
             if (!options.includeScaffoldedUserMessages && isScaffoldedRunContextUserMessage(text)) {
                 return null
             }
-            return [{ type: "UserMessage", message: text }]
+            const stepId = resolveUserMessageStepId(item, eventTimestamp, itemIndex)
+            return [{ type: "UserMessage", timestamp: eventTimestamp, message: text, step_id: stepId, client_turn_id: stepId }]
         }
         return null
     }
@@ -150,6 +166,7 @@ async function convertSingleItem(
             return [
                 {
                     type: "TextDelta",
+                    timestamp: eventTimestamp,
                     delta: text,
                     step_id: stepId
                 }
@@ -164,6 +181,7 @@ async function convertSingleItem(
         return [
             {
                 type: "Thinking",
+                timestamp: eventTimestamp,
                 step_id: stepId
             }
         ]
@@ -176,6 +194,7 @@ async function convertSingleItem(
             {
                 type: "ToolCall",
                 summary: item.name,
+                timestamp: eventTimestamp,
                 step_id: item.callId || item.id || "unknown",
                 parameters: item.arguments || "{}",
                 integration
@@ -200,6 +219,7 @@ async function convertSingleItem(
         const toolCallCompleteEvent: ModelEvent = {
             type: "ToolCallComplete",
             tool_name: item.name || "unknown",
+            timestamp: eventTimestamp,
             status: parsed.status,
             step_id: item.callId,
             changed_items: [],
@@ -210,6 +230,7 @@ async function convertSingleItem(
 
         const snippetEvents: ModelEvent[] = (parsed.snippets ?? []).map(snippet => ({
             type: "Snippet",
+            timestamp: eventTimestamp,
             snippet
         }))
 
@@ -247,6 +268,16 @@ function isReasoningItem(event: AgentInputItem): event is ReasoningItem {
     }
 
     return false
+}
+
+function resolveUserMessageStepId(item: UserMessageItem, eventTimestamp: number, itemIndex: number): string {
+    const itemId = typeof item.id === "string" ? item.id.trim() : ""
+    if (itemId) {
+        return itemId
+    }
+
+    // Backward compatibility for historical user messages persisted before IDs were guaranteed.
+    return `legacy-user-msg-${eventTimestamp}-${itemIndex}`
 }
 
 // Content extraction helpers

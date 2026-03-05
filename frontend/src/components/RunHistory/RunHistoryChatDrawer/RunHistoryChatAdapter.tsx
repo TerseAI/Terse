@@ -1,5 +1,6 @@
 import { useMemo } from "react"
 
+import { AwaitingResponseAnimation } from "@/components/chat/AwaitingResponseAnimation"
 import { Chat } from "@/components/chat/Chat"
 import { Turn } from "@/components/chat/Turn"
 import { type ChatEventSubscription } from "@/components/chat/hooks/useCompletionSocket"
@@ -7,7 +8,7 @@ import { useChatHistory } from "@/hooks/api/useChatHistory"
 import { ModelRequest } from "@/shared/ModelEvents"
 import { RunHistoryStatus } from "@/shared/RunHistoryTypes"
 import type { RunHistoryModelSocketEvent } from "@/shared/RunHistoryTypes"
-import { sendChatMessage, sendToolApprovalResponse, subscribeToChatEvents } from "@/socket"
+import { cancelAgentChatRun, sendChatMessage, sendToolApprovalResponse, subscribeToChatEvents } from "@/socket"
 
 import { convertRunHistoryEventsToTurns } from "./runHistoryEventsToTurns"
 
@@ -24,27 +25,28 @@ type RunHistoryChatAdapterProps = {
         sendMessage: (message: ModelRequest) => void
         handleApprove: (stepId: string) => void
         handleReject: (stepId: string) => void
+        handleCancellation: () => void
         currentStatus: RunHistoryStatus
+        isRunPending: boolean
     }) => React.ReactNode
 }
 
 export default function RunHistoryChatAdapter({ runId, status, children }: RunHistoryChatAdapterProps) {
     // Fetch History (API)
-    const { events, isLoading, startTimestamp, endTimestamp } = useChatHistory(runId)
+    const { events, isLoading, startTimestamp, endTimestamp, status: apiStatus } = useChatHistory(runId)
 
     // Parse server ISO timestamps to epoch ms for chronological ordering
     const historicalEvents = useMemo(
         () =>
             events.map(event => ({
-                ...event,
-                timestamp: event.timestamp ? new Date(event.timestamp).getTime() : undefined,
-                isHistorical: true
+                ...event
             })),
         [events]
     )
 
     // Use API status if available, otherwise fall back to prop status
-    const currentStatus = status
+    const currentStatus = apiStatus ?? status
+    const isRunPending = currentStatus === RunHistoryStatus.IN_PROGRESS || currentStatus === RunHistoryStatus.AWAITING_APPROVAL
 
     // Convert to Turns
     const turns = useMemo(() => convertRunHistoryEventsToTurns(historicalEvents), [historicalEvents])
@@ -74,9 +76,41 @@ export default function RunHistoryChatAdapter({ runId, status, children }: RunHi
         sendToolApprovalResponse(runId, stepId, false)
     }
 
-    if (children) {
-        return <>{children({ initialTurns: turns, isLoading, runId, startTimestamp, endTimestamp, subscribeToEvents, sendMessage, currentStatus, handleApprove, handleReject })}</>
+    const handleCancellation = () => {
+        cancelAgentChatRun(runId)
     }
+
+    if (children) {
+        return (
+            <>
+                {children({
+                    initialTurns: turns,
+                    isLoading,
+                    runId,
+                    startTimestamp,
+                    endTimestamp,
+                    subscribeToEvents,
+                    sendMessage,
+                    currentStatus,
+                    isRunPending,
+                    handleApprove,
+                    handleReject,
+                    handleCancellation
+                })}
+            </>
+        )
+    }
+
+    const emptyPlaceholder =
+        turns.length === 0 && isRunPending ? (
+            <div className="p-4">
+                <AwaitingResponseAnimation />
+            </div>
+        ) : isLoading ? (
+            <div className="p-4 text-center text-muted-foreground">Loading history...</div>
+        ) : (
+            <div className="p-4 text-center text-muted-foreground">No messages found</div>
+        )
 
     return (
         <Chat
@@ -86,9 +120,8 @@ export default function RunHistoryChatAdapter({ runId, status, children }: RunHi
             addUserTurnsLocally={true}
             onHandleApprove={handleApprove}
             onHandleReject={handleReject}
-            EmptyContentPlaceholder={
-                isLoading ? <div className="p-4 text-center text-muted-foreground">Loading history...</div> : <div className="p-4 text-center text-muted-foreground">No events found</div>
-            }
+            onHandleCancellation={handleCancellation}
+            EmptyContentPlaceholder={emptyPlaceholder}
         />
     )
 }

@@ -10,11 +10,14 @@ import { emitCacheInvalidationWithKey, emitCacheInvalidationWithWildcard, markRu
 import { ConfigInstance } from "../../shared/Configs"
 import { RunHistoryAction } from "../../shared/RunHistoryTypes"
 import { User } from "../../shared/types"
+import { USER_CANCELLED_REASON } from "../../socketHandlers/activeExecution"
 import { AgentWithRelations, Agent as PrismaAgent } from "../../types/prisma"
 import { Session } from "../../types/session"
 import { trackActionTaken, trackAgentTriggered } from "../../utility/analytics"
 import { getInputConfigInclude, getOutputConfigInclude } from "../../utility/prismaIncludes"
 import { classifyAgentError } from "../agentErrorUtils"
+import { listenForRunCancellation } from "../cancellation/RunCancellationTaskQueue"
+import { markRunCancelledAndInvalidate } from "../cancellation/runCancellationEffects"
 
 import { AgentRunResultStatus, AgentRunner, ApprovalResult, SessionWithTracking } from "./AgentRunner"
 import { filterEvent } from "./EventFilter"
@@ -337,16 +340,31 @@ export class EventProcessor {
         const runContext: RunContext = { runId }
         const agentRunner = new AgentRunner(session, outputs, agent, runContext)
         agentRunner.setInputEvent(this.inputEvent)
+        const cancellationController = new AbortController()
+        const cancellationSubscription = listenForRunCancellation(runId, cancellationController)
 
         // Run the agent runner with streaming parameters
         let result: ApprovalResult<SessionWithTracking<Session>, OpenAIAgent<SessionWithTracking<Session>, AgentOutputType>>
         try {
-            result = await agentRunner.run({
-                runId,
-                agentId: agent.id,
-                user: this.user
-            })
+            result = await agentRunner.run(
+                {
+                    runId,
+                    agentId: agent.id,
+                    user: this.user
+                },
+                {
+                    signal: cancellationController.signal
+                }
+            )
         } catch (error) {
+            const wasCancelledOnError = cancellationSubscription.isCancellationRequested()
+            cancellationSubscription.unsubscribe()
+
+            if (wasCancelledOnError || (error instanceof Error && error.name === "AbortError")) {
+                await markRunCancelledAndInvalidate(runId, agent.id, this.user.organizationId, this.user.id)
+                return new ProcessorResult(false, USER_CANCELLED_REASON, agent, undefined, runId)
+            }
+
             const classified = classifyAgentError(error)
             logger.error(`Error running agent "${agent.name}"`, {
                 error,
@@ -357,6 +375,14 @@ export class EventProcessor {
             await markRunFailedAndInvalidate(runId, classified, this.user.organizationId, agent.id)
             await this.notifyRunFailure(agent, runId, classified.message)
             throw error
+        }
+
+        const wasCancelled = cancellationSubscription.isCancellationRequested()
+        cancellationSubscription.unsubscribe()
+
+        if (wasCancelled) {
+            await markRunCancelledAndInvalidate(runId, agent.id, this.user.organizationId, this.user.id)
+            return new ProcessorResult(false, USER_CANCELLED_REASON, agent, undefined, runId)
         }
 
         if (result.status === AgentRunResultStatus.COMPLETED) {

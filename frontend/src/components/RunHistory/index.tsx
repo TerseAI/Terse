@@ -97,7 +97,7 @@ export default function RunHistory({ agentId, onTriggerNow }: RunHistoryProps) {
     const deepLinkedRunId = searchParams.get("runId")?.trim() || null
 
     const [selectedStatuses, setSelectedStatuses] = useState<Set<RunHistoryStatus>>(
-        new Set([RunHistoryStatus.SUCCESS, RunHistoryStatus.FAILED, RunHistoryStatus.IN_PROGRESS, RunHistoryStatus.AWAITING_APPROVAL])
+        new Set([RunHistoryStatus.SUCCESS, RunHistoryStatus.FAILED, RunHistoryStatus.CANCELLED, RunHistoryStatus.IN_PROGRESS, RunHistoryStatus.AWAITING_APPROVAL])
     )
     const [searchQuery, setSearchQuery] = useState("")
     const [dateRange, setDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({
@@ -219,7 +219,14 @@ export default function RunHistory({ agentId, onTriggerNow }: RunHistoryProps) {
                             setSearchQuery("")
                             setDateRange({ from: undefined, to: undefined })
                             setSelectedStatuses(
-                                new Set([RunHistoryStatus.SUCCESS, RunHistoryStatus.FAILED, RunHistoryStatus.SKIPPED, RunHistoryStatus.IN_PROGRESS, RunHistoryStatus.AWAITING_APPROVAL])
+                                new Set([
+                                    RunHistoryStatus.SUCCESS,
+                                    RunHistoryStatus.FAILED,
+                                    RunHistoryStatus.CANCELLED,
+                                    RunHistoryStatus.SKIPPED,
+                                    RunHistoryStatus.IN_PROGRESS,
+                                    RunHistoryStatus.AWAITING_APPROVAL
+                                ])
                             )
                             setCurrentPage(1)
                         }}

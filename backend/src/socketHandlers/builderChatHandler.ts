@@ -5,17 +5,44 @@ import WebChatInterface from "../agent/ChatAgent/ChatInterfaces/WebChatInterface
 import { SurveyAnswerTask } from "../agent/ChatAgent/SurveyAnswerTask"
 import { surveyAnswerTaskQueue } from "../agent/ChatAgent/SurveyAnswerTaskQueue"
 import { buildRunErrorEvent, classifyAgentError } from "../agent/agentErrorUtils"
+import { listenForBuilderChatCancellation, requestBuilderChatCancellation } from "../agent/cancellation/BuilderChatCancellationTaskQueue"
+import { createCancelledEvent } from "../agent/streaming"
+import { appendBuilderChatCancelledSystemEvent } from "../agent/systemEvents/cancelledSystemEvent"
 import { appendBuilderChatErrorSystemEvent } from "../agent/systemEvents/runErrorSystemEvent"
+import { appendBuilderChatTemplatePromptSystemEvent } from "../agent/systemEvents/templatePromptSystemEvent"
 import logger from "../logger"
 import { SendModelRequest } from "../shared/ModelEvents"
 import { SocketEvents } from "../shared/SocketEvents"
+import { findTemplateById } from "../templates/templateLookup"
 import { getUserForOrg } from "../utility/workos"
+
+import { CancelAckResponse, USER_CANCELLED_REASON } from "./activeExecution"
 
 export async function registerBuilderChatHandler(socket: Socket, userId: string, organizationId: string): Promise<void> {
     const user = await getUserForOrg(userId, organizationId)
     if (!user) {
         logger.error("[builder:chat:registerBuilderChatHandler] User not found", { userId, organizationId })
         return
+    }
+
+    const emitAndPersistCancelledEvent = async (sessionId: string, reason: string) => {
+        try {
+            await appendBuilderChatCancelledSystemEvent(sessionId, reason)
+        } catch (systemEventError) {
+            logger.error("[builder:chat:message] Failed to append cancelled system event", {
+                systemEventError,
+                sessionId,
+                userId
+            })
+        }
+
+        socket.emit(SocketEvents.BUILDER_CHAT_EVENT, {
+            sessionId,
+            event: {
+                ...createCancelledEvent(reason),
+                timestamp: Date.now()
+            }
+        })
     }
 
     socket.on(SocketEvents.BUILDER_CHAT_MULTIPLE_CHOICE_ANSWER, async (payload: { sessionId: string; questionId: string; value: string }) => {
@@ -42,11 +69,50 @@ export async function registerBuilderChatHandler(socket: Socket, userId: string,
         const timezone = message.timezone
         logger.info(`[builder:chat:message] Processing message`, { sessionId, userId, userMessage, hasUiState: !!uiState, timezone })
 
+        const templateId = message.template_id
+        if (templateId) {
+            const template = findTemplateById(templateId)
+            if (template?.prompt?.text) {
+                try {
+                    await appendBuilderChatTemplatePromptSystemEvent(sessionId, templateId, template.prompt.text)
+                    logger.info("[builder:chat:message] Injected template prompt system event", {
+                        sessionId,
+                        templateId,
+                        promptLength: template.prompt.text.length
+                    })
+                } catch (systemEventError) {
+                    logger.error("[builder:chat:message] Failed to append template prompt system event", {
+                        systemEventError,
+                        sessionId,
+                        templateId
+                    })
+                }
+            } else {
+                logger.warn("[builder:chat:message] Template not found or has no prompt text", {
+                    sessionId,
+                    templateId
+                })
+            }
+        }
+
+        const cancellationController = new AbortController()
+        const cancellationSubscription = listenForBuilderChatCancellation(sessionId, cancellationController)
+
         const webChatInterface = new WebChatInterface(sessionId, userId, socket, organizationId, timezone)
         const chatAgent = new ChatAgent(webChatInterface, sessionId, user, uiState)
+
         try {
-            await chatAgent.run(userMessage)
+            await chatAgent.run(userMessage, { signal: cancellationController.signal, clientTurnId: message.client_turn_id })
+            if (cancellationSubscription.isCancellationRequested()) {
+                await emitAndPersistCancelledEvent(sessionId, USER_CANCELLED_REASON)
+                return
+            }
         } catch (error) {
+            if (cancellationSubscription.isCancellationRequested()) {
+                await emitAndPersistCancelledEvent(sessionId, USER_CANCELLED_REASON)
+                return
+            }
+
             const classified = classifyAgentError(error)
             logger.error("[builder:chat:message] Error running ChatAgent", { error, sessionId, userId })
             try {
@@ -58,6 +124,19 @@ export async function registerBuilderChatHandler(socket: Socket, userId: string,
                 sessionId,
                 event: buildRunErrorEvent(classified)
             })
+        } finally {
+            cancellationSubscription.unsubscribe()
         }
+    })
+
+    socket.on(SocketEvents.BUILDER_CHAT_CANCEL, (payload: { sessionId: string | null }, ack: (response: CancelAckResponse) => void) => {
+        const sessionId = payload?.sessionId?.trim()
+        if (!sessionId) {
+            ack({ accepted: false, reason: "missing_session_id" })
+            return
+        }
+
+        requestBuilderChatCancellation(sessionId, USER_CANCELLED_REASON)
+        ack({ accepted: true })
     })
 }

@@ -9,6 +9,8 @@ import { RunContext } from "./agent/AgentRunner/SystemPromptBuilder"
 import { evaluateCompletedRun, finalizeRunStatus, getPendingApprovalState, markRunFailed } from "./agent/AgentRunner/runHistory"
 import { DirectiveTask, directiveTaskQueue } from "./agent/DirectiveAgent/DirectiveAgent"
 import { type ClassifiedError, buildRunErrorEvent, classifyAgentError } from "./agent/agentErrorUtils"
+import { listenForRunCancellation, requestRunCancellation } from "./agent/cancellation/RunCancellationTaskQueue"
+import { markRunCancelledAndInvalidate } from "./agent/cancellation/runCancellationEffects"
 import { appendRunHistoryErrorSystemEvent } from "./agent/systemEvents/runErrorSystemEvent"
 import { nodeEnv, optional, urls } from "./config/settings"
 import logger from "./logger"
@@ -18,10 +20,12 @@ import { OutputFactory } from "./outputs/abstract/OutputFactory"
 import { db } from "./prismaClient"
 import { Session } from "./server"
 import { ApprovalProcessingStatus, ApprovalService } from "./services/ApprovalService"
+import { invalidateRunAndChatHistory } from "./services/CacheInvalidationService"
 import { ConfigInstance } from "./shared/Configs"
 import { SendModelRequest, ToolApprovalResponse } from "./shared/ModelEvents"
 import { type RunHistoryModelEvent, type RunHistoryModelSocketEvent, RunHistoryStatus } from "./shared/RunHistoryTypes"
 import { SocketEvents, SocketRooms } from "./shared/SocketEvents"
+import { CancelAckResponse, USER_CANCELLED_REASON } from "./socketHandlers/activeExecution"
 import { registerBuilderChatHandler } from "./socketHandlers/builderChatHandler"
 import { AgentWithRelations } from "./types/prisma"
 import { getInputConfigInclude, getOutputConfigInclude } from "./utility/prismaIncludes"
@@ -173,24 +177,19 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
                 })
                 return
             }
-            const prisma = db()
-            const runRecord = await prisma.run_history_records.findUnique({
-                where: {
-                    id: runId
-                },
-                include: {
-                    automation: true
-                }
-            })
-            if (!runRecord || !runRecord.automation || runRecord.automation.organization_id !== organizationId) {
+
+            const runRecord = await getAccessibleRunRecord(runId, organizationId)
+            if (!runRecord) {
                 logger.error(`[agent:chat:message] Run record not found for runId: ${runId} or user does not have access to this run`, { runId, userId, organizationId })
                 return
             }
+            const organizationIdForRun = runRecord.automation.organization_id
+            const prisma = db()
 
             const agent: AgentWithRelations | null = await prisma.automations.findUnique({
                 where: {
                     id: runRecord.automation.id,
-                    organization_id: organizationId
+                    organization_id: organizationIdForRun
                 },
                 include: {
                     prompt: true,
@@ -223,11 +222,7 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
                 return
             }
 
-            if (!organizationId) {
-                logger.error(`[agent:chat:message] No organization context for runId: ${runId}`, { runId, userId })
-                return
-            }
-            const user = await getUserForOrg(userId, organizationId)
+            const user = await getUserForOrg(userId, organizationIdForRun)
             if (!user) {
                 logger.error(`[agent:chat:message] User not found for userId: ${userId}`, { userId })
                 return
@@ -264,7 +259,7 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
                         stepId,
                         approved: false,
                         userId,
-                        organizationId: organizationId ?? "",
+                        organizationId: organizationIdForRun,
                         rejectionReason: userMessage?.trim() || undefined
                     })
 
@@ -298,34 +293,50 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
                     data: { status: RunHistoryStatus.IN_PROGRESS }
                 })
             }
-            if (organizationId) {
-                emitCacheInvalidationWithWildcard(organizationId, "runHistory", agent.id)
-            }
+            invalidateRunAndChatHistory(organizationIdForRun, agent.id, runId)
 
             const runContext: RunContext = { runId }
             const agentRunner = new AgentRunner(session, outputs, agent, runContext)
+            const cancellationController = new AbortController()
+            const cancellationSubscription = listenForRunCancellation(runId, cancellationController)
+            const notificationManager = new NotificationManager(user, agent)
 
             let result
             try {
-                result = await agentRunner.userMessageRun(userMessage, undefined, {
-                    runId,
-                    user: user,
-                    agentId: agent.id
-                })
+                result = await agentRunner.userMessageRun(
+                    userMessage,
+                    undefined,
+                    {
+                        runId,
+                        user: user,
+                        agentId: agent.id
+                    },
+                    {
+                        signal: cancellationController.signal,
+                        clientTurnId: message.client_turn_id
+                    }
+                )
             } catch (error) {
+                const wasCancelledOnError = cancellationSubscription.isCancellationRequested()
+                cancellationSubscription.unsubscribe()
+
+                if (wasCancelledOnError || (error instanceof Error && error.name === "AbortError")) {
+                    await markRunCancelledAndInvalidate(runId, agent.id, organizationIdForRun, userId)
+                    return
+                }
+
                 const classified = classifyAgentError(error)
                 logger.error(`[agent:chat:message] Error running agent: ${classified.message}`, { error, runId, agentId: agent.id, userId })
-                await markRunFailedAndInvalidate(runId, classified, organizationId ?? undefined, agent.id)
-                try {
-                    await new NotificationManager(user, agent).notifyRunFailure(runId, classified.message)
-                } catch (notificationError) {
-                    logger.error("[agent:chat:message] Failed to send run failure notification", {
-                        error: notificationError,
-                        runId,
-                        agentId: agent.id,
-                        userId
-                    })
-                }
+                await markRunFailedAndInvalidate(runId, classified, organizationIdForRun, agent.id)
+                await notifyRunFailure(notificationManager, runId, classified.message, agent.id, userId)
+                return
+            }
+
+            const wasCancelled = cancellationSubscription.isCancellationRequested()
+            cancellationSubscription.unsubscribe()
+
+            if (wasCancelled) {
+                await markRunCancelledAndInvalidate(runId, agent.id, organizationIdForRun, userId)
                 return
             }
 
@@ -334,20 +345,9 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
                 const completion = evaluateCompletedRun(result.result?.finalOutput, result.endedWithToolFailure)
                 try {
                     await finalizeRunStatus(runId, completion.status)
-                    if (organizationId) {
-                        emitCacheInvalidationWithWildcard(organizationId, "runHistory", agent.id)
-                    }
+                    invalidateRunAndChatHistory(organizationIdForRun, agent.id, runId)
                     if (!completion.isSuccessful) {
-                        try {
-                            await new NotificationManager(user, agent).notifyRunFailure(runId, completion.failureReason)
-                        } catch (notificationError) {
-                            logger.error("[agent:chat:message] Failed to send run failure notification", {
-                                error: notificationError,
-                                runId,
-                                agentId: agent.id,
-                                userId
-                            })
-                        }
+                        await notifyRunFailure(notificationManager, runId, completion.failureReason, agent.id, userId)
                     }
                 } catch (e) {
                     logger.error("Failed to finalize run status", { error: e, runId })
@@ -355,6 +355,34 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
             }
 
             directiveTaskQueue.emit(new DirectiveTask(agent.id, runId, user, userMessage))
+        })
+
+        socket.on(SocketEvents.AGENT_CHAT_CANCEL, async (payload: { runId: string | null }, ack: (response: CancelAckResponse) => void) => {
+            const runId = payload?.runId?.trim()
+            if (!runId) {
+                ack({ accepted: false, reason: "missing_run_id" })
+                return
+            }
+
+            const runRecord = await getAccessibleRunRecord(runId, organizationId)
+            if (!runRecord) {
+                ack({ accepted: false, reason: "run_not_found" })
+                return
+            }
+
+            if (runRecord.status === RunHistoryStatus.AWAITING_APPROVAL) {
+                await markRunCancelledAndInvalidate(runId, runRecord.automation.id, runRecord.automation.organization_id, userId)
+                ack({ accepted: true })
+                return
+            }
+
+            if (runRecord.status !== RunHistoryStatus.IN_PROGRESS) {
+                ack({ accepted: false, reason: "no_active_run" })
+                return
+            }
+
+            requestRunCancellation(runId, USER_CANCELLED_REASON)
+            ack({ accepted: true })
         })
 
         // Use centralized approval service - it handles Slack notifications internally
@@ -433,6 +461,36 @@ export function emitCacheInvalidationWithWildcard(organizationId: string, key: s
     })
 }
 
+async function notifyRunFailure(notificationManager: NotificationManager, runId: string, failureReason: string, agentId: string, userId: string): Promise<void> {
+    try {
+        await notificationManager.notifyRunFailure(runId, failureReason)
+    } catch (notificationError) {
+        logger.error("[agent:chat:message] Failed to send run failure notification", {
+            error: notificationError,
+            runId,
+            agentId,
+            userId
+        })
+    }
+}
+
+async function getAccessibleRunRecord(runId: string, organizationId: string | undefined) {
+    if (!organizationId) {
+        return null
+    }
+
+    const runRecord = await db().run_history_records.findUnique({
+        where: { id: runId },
+        include: { automation: true }
+    })
+
+    if (!runRecord || !runRecord.automation || runRecord.automation.organization_id !== organizationId) {
+        return null
+    }
+
+    return runRecord
+}
+
 /**
  * Mark run as failed, append a raw error system event for model memory, emit a live RunError, and invalidate related caches.
  * Logs on failure; does not rethrow.
@@ -446,8 +504,7 @@ export async function markRunFailedAndInvalidate(runId: string, classified: Clas
             const runErrorEvent = buildRunErrorEvent(classified)
             const runHistoryModelEvent: RunHistoryModelEvent = {
                 ...runErrorEvent,
-                id: `run-error-live-${randomString(15)}`,
-                timestamp: Date.now()
+                id: `run-error-live-${randomString(15)}`
             }
             const payload: RunHistoryModelSocketEvent = {
                 runId,
@@ -458,8 +515,7 @@ export async function markRunFailedAndInvalidate(runId: string, classified: Clas
         }
 
         if (organizationId) {
-            emitCacheInvalidationWithWildcard(organizationId, "runHistory", agentId)
-            emitCacheInvalidationWithWildcard(organizationId, "chatHistory", runId)
+            invalidateRunAndChatHistory(organizationId, agentId, runId)
         }
     } catch (e) {
         logger.error("Failed to mark run as failed and invalidate cache", { error: e, runId })

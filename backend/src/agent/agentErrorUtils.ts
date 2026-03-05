@@ -13,6 +13,7 @@ export type ClassifiedError = { message: string; code?: string }
 export function buildRunErrorEvent(classified: ClassifiedError): ModelEvent {
     return {
         type: "RunError",
+        timestamp: Date.now(),
         error: classified.message,
         ...(classified.code && { code: classified.code })
     }
