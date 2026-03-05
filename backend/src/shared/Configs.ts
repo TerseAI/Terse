@@ -274,6 +274,16 @@ export enum GmailEventType {
     EMAIL_RECEIVED = "email.received"
 }
 
+export enum WorkOSEventType {
+    USER_CREATED = "user.created",
+    USER_UPDATED = "user.updated",
+    USER_DELETED = "user.deleted",
+    ORGANIZATION_MEMBERSHIP_CREATED = "organization_membership.created",
+    ORGANIZATION_MEMBERSHIP_UPDATED = "organization_membership.updated",
+    ORGANIZATION_MEMBERSHIP_DELETED = "organization_membership.deleted",
+    INVITATION_ACCEPTED = "invitation.accepted",
+}
+
 export interface ConfigInstance {
     integrationId: string
     integrationType: IntegrationType
@@ -718,7 +728,7 @@ export class WorkOSInputConfig implements ConfigInstance {
 
     constructor(
         public integrationId: string,
-        public eventTypes: string[] = []
+        public eventTypes: WorkOSEventType[] = []
     ) {}
 
     isComplete(): boolean {

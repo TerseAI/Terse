@@ -53,6 +53,7 @@ export {
     JiraEventType,
     FigmaEventType,
     GmailEventType,
+    WorkOSEventType,
 } from "./shared/Configs.js"
 
 export type {

@@ -6,7 +6,7 @@ import { urls } from "../config/settings"
 import logger from "../logger"
 import { db } from "../prismaClient"
 import { Identifiable } from "../rag/Hydrator"
-import { ConfigInstance, ConfigType, WorkOSInputConfig } from "../shared/Configs"
+import { ConfigInstance, ConfigType, WorkOSEventType, WorkOSInputConfig } from "../shared/Configs"
 import { IntegrationType, WorkOSIntegration, WorkOSIntegrationMetadata } from "../shared/Integrations"
 import { RunHistoryTrigger } from "../shared/RunHistoryTypes"
 import { AgentTriggerWithConfigs } from "../types/prisma"
@@ -306,7 +306,7 @@ export interface WorkOSWebhookRequest {
 
 export class WorkOSEvent extends InputEvent implements Identifiable {
     readonly integrationType: IntegrationType = IntegrationType.WORKOS
-    readonly eventType: string
+    readonly eventType: WorkOSEventType
     entityType = HydratorType.WORKOS_EVENT
     entityId: string
     data: WorkOSWebhookPayload
@@ -317,7 +317,7 @@ export class WorkOSEvent extends InputEvent implements Identifiable {
     ) {
         super()
         this.data = payload
-        this.eventType = payload.event
+        this.eventType = payload.event as WorkOSEventType
         this.entityId = `${integrationId}:${payload.id}`
     }
 
