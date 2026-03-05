@@ -90,12 +90,11 @@ export default function AgentImprovementsTab({ agentId, builderChatRef, setBuild
             setBuilderChatOpen(true)
             setTimeout(
                 () => {
-                    builderChatRef.current?.setInput(response.appliedPrompt)
-                    builderChatRef.current?.focus()
+                    builderChatRef.current?.sendMessage(response.appliedPrompt)
                 },
                 builderChatOpen ? 0 : CHAT_OPEN_DELAY_MS
             )
-            toast.success("Improvement applied. Review the prompt in builder chat.")
+            toast.success("Applying improvement via builder chat...")
         } catch (error) {
             console.error("Failed to apply improvement", error)
             toast.error("Failed to apply improvement")
