@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useRef, useState } from "react"
+import { useEffect, useId, useRef, useState } from "react"
 import { useParams, useSearchParams } from "react-router-dom"
 
 import { Tab, TabGroup, TabList } from "@headlessui/react"
@@ -94,11 +94,11 @@ function ResizeHandle({
         onResizeEndRef.current = onResizeEnd
     }, [onResizeEnd])
 
-    const clampFraction = useCallback((fraction: number) => {
+    const clampFraction = (fraction: number) => {
         return Math.max(CHAT_PANEL_WIDTH_MIN, Math.min(CHAT_PANEL_WIDTH_MAX, fraction))
-    }, [])
+    }
 
-    const stopDragging = useCallback(() => {
+    const stopDragging = () => {
         const state = pointerStateRef.current
         const wasDragging = state.pointerId !== null
         if (state.frameId !== null) {
@@ -116,7 +116,7 @@ function ResizeHandle({
         if (wasDragging) {
             onResizeEndRef.current?.()
         }
-    }, [])
+    }
 
     useEffect(() => {
         return () => stopDragging()
@@ -384,17 +384,25 @@ function AgentDetail() {
         }
     }, [agent, agentId, templateId, templateFound, templateHydratedState, templateHydrated])
 
+    const getTabIndex = (queryTab: string | null) => {
+        const resolvedTab = queryTab ?? "setup"
+        return Math.max(
+            0,
+            activeTabs.findIndex(tab => tab === resolvedTab)
+        )
+    }
+
     const tabFromQuery = searchParams.get("tab")
     const [selectedIndex, setSelectedIndex] = useState(() => {
-        return Math.max(0, activeTabs.indexOf((tabFromQuery as (typeof AGENT_DETAIL_TABS)[number]) || "setup"))
+        return getTabIndex(tabFromQuery)
     })
 
     // Update selected index when URL or available tabs change
     useEffect(() => {
         const tabFromQuery = searchParams.get("tab")
-        const newIndex = Math.max(0, activeTabs.indexOf((tabFromQuery as (typeof AGENT_DETAIL_TABS)[number]) || "setup"))
+        const newIndex = getTabIndex(tabFromQuery)
         setSelectedIndex(newIndex)
-    }, [searchParams, activeTabs])
+    }, [searchParams, getTabIndex])
 
     // Determine if we're still loading
     // - For existing agents: wait for agent data
