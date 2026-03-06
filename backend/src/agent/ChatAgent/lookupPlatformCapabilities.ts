@@ -36,7 +36,7 @@ export const lookupPlatformCapabilitiesTool = tool({
         "Look up what triggers or outputs (skills) the platform supports. Use when: a user asks whether agents can do something -- always check this tool instead of guessing; a user asks what an agent can do with a specific integration; you need to know what tools a trigger or output provides; you need to verify what configuration fields a trigger requires; a user asks about platform capabilities in general.",
     parameters: z.object({
         category: z.nativeEnum(CapabilityLookupCategory),
-        integration: z.nativeEnum(IntegrationType).nullable()
+        integration: z.nativeEnum(IntegrationType)
     }),
     execute: async ({ category, integration }: { category: CapabilityLookupCategory; integration: IntegrationType | null }, _runContext?: RunContext<ChatAgentContext>): Promise<string> => {
         const filter = integration ?? undefined
