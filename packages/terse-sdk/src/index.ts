@@ -13,10 +13,18 @@ export {
     GithubInputEvent,
     GithubPRInputEvent,
     GithubPushInputEvent,
+    WorkOSInputEvent,
+    WorkOSUserInputEvent,
+    WorkOSMembershipInputEvent,
+    WorkOSInvitationInputEvent,
     SerializedEventInputEvent,
     isGithubEvent,
     isGithubPREvent,
     isGithubPushEvent,
+    isWorkOSEvent,
+    isWorkOSUserEvent,
+    isWorkOSMembershipEvent,
+    isWorkOSInvitationEvent,
     deserializeInputEvent
 } from "./types.js"
 export type {
@@ -24,7 +32,10 @@ export type {
     GithubUser,
     GithubFileDiff,
     GithubCommit,
-    GithubPRData
+    GithubPRData,
+    WorkOSEventUser,
+    WorkOSEventMembership,
+    WorkOSEventInvitation
 } from "./types.js"
 
 // Mock event for CLI's `terse run` command

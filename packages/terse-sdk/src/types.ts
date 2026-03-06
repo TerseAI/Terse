@@ -1,6 +1,7 @@
 import { IntegrationType } from "./shared/Integrations.js"
 import type { ConfigInstance } from "./shared/Configs.js"
 import type { SerializedEvent } from "./shared/types.js"
+import type { WorkOSEventType } from "./shared/Configs.js"
 
 /**
  * Lightweight interface for input events.
@@ -162,7 +163,140 @@ export function isGithubPushEvent(event: InputEvent): event is GithubPushInputEv
 }
 
 // ---------------------------------------------------------------------------
-// Generic fallback for non-GitHub (or metadata-less) serialized events
+// WorkOS event data interfaces
+// ---------------------------------------------------------------------------
+
+export interface WorkOSEventUser {
+    id: string
+    email: string
+    firstName?: string
+    lastName?: string
+    emailVerified: boolean
+    profilePictureUrl?: string
+}
+
+export interface WorkOSEventMembership {
+    id: string
+    userId: string
+    organizationId: string
+    role: { slug: string }
+    status: string
+}
+
+export interface WorkOSEventInvitation {
+    id: string
+    email: string
+    organizationId: string
+    inviterEmail?: string
+    state: string
+    acceptedAt?: string
+}
+
+// ---------------------------------------------------------------------------
+// WorkOS event classes
+// ---------------------------------------------------------------------------
+
+export class WorkOSInputEvent implements InputEvent {
+    readonly integrationType = IntegrationType.WORKOS
+    readonly eventType: WorkOSEventType | string
+    readonly eventId: string
+    readonly createdAt: string
+    private readonly _formattedContent: string
+    private readonly _debugLog: string
+
+    constructor(opts: {
+        eventType: WorkOSEventType | string
+        eventId: string
+        createdAt: string
+        formattedContent: string
+        debugLog: string
+    }) {
+        this.eventType = opts.eventType
+        this.eventId = opts.eventId
+        this.createdAt = opts.createdAt
+        this._formattedContent = opts.formattedContent
+        this._debugLog = opts.debugLog
+    }
+
+    formatForAgentRunner(): string {
+        return this._formattedContent
+    }
+
+    debugLog(): string {
+        return this._debugLog
+    }
+}
+
+export class WorkOSUserInputEvent extends WorkOSInputEvent {
+    readonly user: WorkOSEventUser
+
+    constructor(opts: {
+        eventType: WorkOSEventType | string
+        eventId: string
+        createdAt: string
+        user: WorkOSEventUser
+        formattedContent: string
+        debugLog: string
+    }) {
+        super(opts)
+        this.user = opts.user
+    }
+}
+
+export class WorkOSMembershipInputEvent extends WorkOSInputEvent {
+    readonly membership: WorkOSEventMembership
+
+    constructor(opts: {
+        eventType: WorkOSEventType | string
+        eventId: string
+        createdAt: string
+        membership: WorkOSEventMembership
+        formattedContent: string
+        debugLog: string
+    }) {
+        super(opts)
+        this.membership = opts.membership
+    }
+}
+
+export class WorkOSInvitationInputEvent extends WorkOSInputEvent {
+    readonly invitation: WorkOSEventInvitation
+
+    constructor(opts: {
+        eventType: WorkOSEventType | string
+        eventId: string
+        createdAt: string
+        invitation: WorkOSEventInvitation
+        formattedContent: string
+        debugLog: string
+    }) {
+        super(opts)
+        this.invitation = opts.invitation
+    }
+}
+
+// ---------------------------------------------------------------------------
+// WorkOS type guards
+// ---------------------------------------------------------------------------
+
+export function isWorkOSEvent(event: InputEvent): event is WorkOSInputEvent {
+    return event instanceof WorkOSInputEvent
+}
+
+export function isWorkOSUserEvent(event: InputEvent): event is WorkOSUserInputEvent {
+    return event instanceof WorkOSUserInputEvent
+}
+
+export function isWorkOSMembershipEvent(event: InputEvent): event is WorkOSMembershipInputEvent {
+    return event instanceof WorkOSMembershipInputEvent
+}
+
+export function isWorkOSInvitationEvent(event: InputEvent): event is WorkOSInvitationInputEvent {
+    return event instanceof WorkOSInvitationInputEvent
+}
+
+// ---------------------------------------------------------------------------
+// Generic fallback for non-typed serialized events
 // ---------------------------------------------------------------------------
 
 export class SerializedEventInputEvent implements InputEvent {
@@ -217,6 +351,35 @@ export function deserializeInputEvent(se: SerializedEvent): InputEvent {
             return new GithubPushInputEvent({ ...base, branch: meta.branch })
         }
         return new GithubInputEvent(base)
+    }
+
+    if (se.integrationType === IntegrationType.WORKOS && se.metadata) {
+        const meta = se.metadata as {
+            eventId?: string
+            createdAt?: string
+            user?: WorkOSEventUser
+            membership?: WorkOSEventMembership
+            invitation?: WorkOSEventInvitation
+        }
+
+        const base = {
+            eventType: se.eventType ?? "unknown",
+            eventId: meta.eventId ?? "",
+            createdAt: meta.createdAt ?? "",
+            formattedContent: se.formattedContent,
+            debugLog: se.debugLog
+        }
+
+        if (meta.user) {
+            return new WorkOSUserInputEvent({ ...base, user: meta.user })
+        }
+        if (meta.membership) {
+            return new WorkOSMembershipInputEvent({ ...base, membership: meta.membership })
+        }
+        if (meta.invitation) {
+            return new WorkOSInvitationInputEvent({ ...base, invitation: meta.invitation })
+        }
+        return new WorkOSInputEvent(base)
     }
 
     return new SerializedEventInputEvent(se)

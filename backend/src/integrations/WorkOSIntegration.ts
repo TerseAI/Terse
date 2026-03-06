@@ -345,6 +345,45 @@ export class WorkOSEvent extends InputEvent implements Identifiable {
         return config.event_types.includes(this.data.event)
     }
 
+    serializeMetadata(): Record<string, unknown> {
+        const d = this.data.data
+        const eventType = this.data.event
+        const meta: Record<string, unknown> = {
+            eventId: this.data.id,
+            createdAt: this.data.created_at
+        }
+
+        if (eventType.startsWith("user.")) {
+            meta.user = {
+                id: d.id,
+                email: d.email,
+                firstName: d.first_name,
+                lastName: d.last_name,
+                emailVerified: d.email_verified ?? false,
+                profilePictureUrl: d.profile_picture_url
+            }
+        } else if (eventType.startsWith("organization_membership.")) {
+            meta.membership = {
+                id: d.id,
+                userId: d.user_id,
+                organizationId: d.organization_id,
+                role: d.role,
+                status: d.status
+            }
+        } else if (eventType === "invitation.accepted") {
+            meta.invitation = {
+                id: d.id,
+                email: d.email,
+                organizationId: d.organization_id,
+                inviterEmail: d.inviter_email,
+                state: d.state,
+                acceptedAt: d.accepted_at
+            }
+        }
+
+        return meta
+    }
+
     createTriggerMetadata(): RunHistoryTrigger {
         const eventType = this.data.event
         const data = this.data.data
