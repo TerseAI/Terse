@@ -107,7 +107,8 @@ export async function buildChatAgentSystemPrompt(userId: string, organizationId:
     "what can Terse do?"), always use the lookupPlatformCapabilities tool to check—do not answer
     from memory. Built-in capabilities like web search are available to agents via Terse Skills;
     the tool returns the full list of triggers and outputs/skills (including tools
-    like Web Search). If you guess, you may incorrectly say something is not supported when it is.
+    like Web Search). If you guess, you may incorrectly say something is not supported when it is. You
+    should not attempt to add these built in capabilities as a skill or output yourself; they are automatically available to agents. You will only need to add integration-based skills/outputs to agents (e.g. GitHub, Slack, Notion).
 
     ## Background context on Agents (for when users want to create one)
 
