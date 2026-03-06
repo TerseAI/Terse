@@ -1,4 +1,6 @@
 import { IntegrationType } from "./shared/Integrations.js"
+import type { ConfigInstance } from "./shared/Configs.js"
+import type { SerializedEvent } from "./shared/types.js"
 
 /**
  * Lightweight interface for input events.
@@ -19,4 +21,203 @@ export interface ToolboxEntry {
     isReadOnly: boolean
     integration: IntegrationType
     displayName: string
+}
+
+// ---------------------------------------------------------------------------
+// TypedTrigger – phantom-typed ConfigInstance for generic event inference
+// ---------------------------------------------------------------------------
+
+export interface TypedTrigger<TEvent extends InputEvent = InputEvent> extends ConfigInstance {
+    readonly __eventType?: TEvent
+}
+
+export type InferEvent<T> = T extends TypedTrigger<infer E> ? E : InputEvent
+export type InferEvents<T extends readonly unknown[]> = InferEvent<T[number]>
+
+// ---------------------------------------------------------------------------
+// GitHub event data interfaces
+// ---------------------------------------------------------------------------
+
+export interface GithubRepository {
+    id: number
+    name: string
+    owner: string
+    defaultBranch: string
+}
+
+export interface GithubUser {
+    login: string
+    email?: string
+}
+
+export interface GithubFileDiff {
+    filename: string
+    diff: string
+}
+
+export interface GithubCommit {
+    sha: string
+    message: string
+    fileDiffs: GithubFileDiff[]
+}
+
+export interface GithubPRData {
+    number: number
+    title: string
+    body?: string
+    state: "open" | "closed"
+    merged: boolean
+    head: { ref: string; sha: string }
+    base: { ref: string; sha: string }
+    author: GithubUser
+    url: string
+}
+
+// ---------------------------------------------------------------------------
+// GitHub event classes
+// ---------------------------------------------------------------------------
+
+export class GithubInputEvent implements InputEvent {
+    readonly integrationType = IntegrationType.GITHUB
+    readonly eventType: string
+    readonly repository: GithubRepository
+    readonly sender: GithubUser
+    readonly commits: GithubCommit[]
+    private readonly _formattedContent: string
+    private readonly _debugLog: string
+
+    constructor(opts: {
+        eventType: string
+        repository: GithubRepository
+        sender: GithubUser
+        commits: GithubCommit[]
+        formattedContent: string
+        debugLog: string
+    }) {
+        this.eventType = opts.eventType
+        this.repository = opts.repository
+        this.sender = opts.sender
+        this.commits = opts.commits
+        this._formattedContent = opts.formattedContent
+        this._debugLog = opts.debugLog
+    }
+
+    formatForAgentRunner(): string {
+        return this._formattedContent
+    }
+
+    debugLog(): string {
+        return this._debugLog
+    }
+}
+
+export class GithubPRInputEvent extends GithubInputEvent {
+    readonly pullRequest: GithubPRData
+
+    constructor(opts: {
+        eventType: string
+        repository: GithubRepository
+        sender: GithubUser
+        commits: GithubCommit[]
+        pullRequest: GithubPRData
+        formattedContent: string
+        debugLog: string
+    }) {
+        super(opts)
+        this.pullRequest = opts.pullRequest
+    }
+}
+
+export class GithubPushInputEvent extends GithubInputEvent {
+    readonly branch: string
+
+    constructor(opts: {
+        eventType: string
+        repository: GithubRepository
+        sender: GithubUser
+        commits: GithubCommit[]
+        branch: string
+        formattedContent: string
+        debugLog: string
+    }) {
+        super(opts)
+        this.branch = opts.branch
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Type guards
+// ---------------------------------------------------------------------------
+
+export function isGithubEvent(event: InputEvent): event is GithubInputEvent {
+    return event instanceof GithubInputEvent
+}
+
+export function isGithubPREvent(event: InputEvent): event is GithubPRInputEvent {
+    return event instanceof GithubPRInputEvent
+}
+
+export function isGithubPushEvent(event: InputEvent): event is GithubPushInputEvent {
+    return event instanceof GithubPushInputEvent
+}
+
+// ---------------------------------------------------------------------------
+// Generic fallback for non-GitHub (or metadata-less) serialized events
+// ---------------------------------------------------------------------------
+
+export class SerializedEventInputEvent implements InputEvent {
+    readonly integrationType: IntegrationType
+    readonly eventType: string
+    private readonly formattedContent: string
+    private readonly debugLogResult: string
+
+    constructor(serializedEvent: SerializedEvent) {
+        this.integrationType = serializedEvent.integrationType
+        this.eventType = serializedEvent.eventType ?? "unknown"
+        this.formattedContent = serializedEvent.formattedContent
+        this.debugLogResult = serializedEvent.debugLog
+    }
+
+    formatForAgentRunner(): string {
+        return this.formattedContent
+    }
+
+    debugLog(): string {
+        return this.debugLogResult
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Deserialization – constructs typed event subclasses from SerializedEvent
+// ---------------------------------------------------------------------------
+
+export function deserializeInputEvent(se: SerializedEvent): InputEvent {
+    if (se.integrationType === IntegrationType.GITHUB && se.metadata) {
+        const meta = se.metadata as {
+            repository?: GithubRepository
+            sender?: GithubUser
+            commits?: GithubCommit[]
+            pullRequest?: GithubPRData
+            branch?: string
+        }
+
+        const base = {
+            eventType: se.eventType ?? "unknown",
+            repository: meta.repository ?? { id: 0, name: "", owner: "", defaultBranch: "main" },
+            sender: meta.sender ?? { login: "" },
+            commits: meta.commits ?? [],
+            formattedContent: se.formattedContent,
+            debugLog: se.debugLog
+        }
+
+        if (meta.pullRequest) {
+            return new GithubPRInputEvent({ ...base, pullRequest: meta.pullRequest })
+        }
+        if (meta.branch) {
+            return new GithubPushInputEvent({ ...base, branch: meta.branch })
+        }
+        return new GithubInputEvent(base)
+    }
+
+    return new SerializedEventInputEvent(se)
 }

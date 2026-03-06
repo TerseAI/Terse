@@ -559,6 +559,37 @@ export class GithubEvent extends InputEvent implements Identifiable {
         return `GitHub Event: ${this.data.eventType} - ${this.data.repositoryName} - ${this.data.username}`
     }
 
+    serializeMetadata(): Record<string, unknown> {
+        const meta: Record<string, unknown> = {
+            repository: this.data.repository,
+            sender: this.data.sender,
+            commits:
+                this.data.commits?.map(c => ({
+                    sha: c.sha,
+                    message: c.name,
+                    fileDiffs: c.fileDiffs
+                })) ?? []
+        }
+        if (this.data.pullRequest) {
+            const pr = this.data.pullRequest
+            meta.pullRequest = {
+                number: pr.number,
+                title: pr.title,
+                body: pr.body,
+                state: pr.state,
+                merged: pr.merged,
+                head: pr.head,
+                base: pr.base,
+                author: pr.user,
+                url: `https://github.com/${this.data.repository.owner}/${this.data.repository.name}/pull/${pr.number}`
+            }
+        }
+        if (this.data.branch) {
+            meta.branch = this.data.branch
+        }
+        return meta
+    }
+
     matchesAgentTrigger(agentTrigger: AgentTriggerWithConfigs): boolean {
         if (agentTrigger.config_type !== InputConfigType.GITHUB) {
             return false

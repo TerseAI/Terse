@@ -1,6 +1,6 @@
 declare const process: { env: Record<string, string | undefined> }
 
-import type { InputEvent } from "./types.js"
+import type { InputEvent, TypedTrigger, InferEvents } from "./types.js"
 import { CONFIG_DETAILS } from "./shared/Configs.js"
 import type { ConfigInstance } from "./shared/Configs.js"
 import type { RunHistoryAction } from "./shared/RunHistoryTypes.js"
@@ -8,7 +8,24 @@ import type { SdkAgentRunRequestBody, SdkAgentRunResponseBody, SdkAgentSkillPayl
 import { IntegrationType } from "./shared/Integrations.js"
 import { ApiRoutes } from "./shared/ApiRoutes.js"
 // Re-export SDK-specific types
-export type { InputEvent, ToolboxEntry } from "./types.js"
+export type { InputEvent, ToolboxEntry, TypedTrigger, InferEvent, InferEvents } from "./types.js"
+export {
+    GithubInputEvent,
+    GithubPRInputEvent,
+    GithubPushInputEvent,
+    SerializedEventInputEvent,
+    isGithubEvent,
+    isGithubPREvent,
+    isGithubPushEvent,
+    deserializeInputEvent
+} from "./types.js"
+export type {
+    GithubRepository,
+    GithubUser,
+    GithubFileDiff,
+    GithubCommit,
+    GithubPRData
+} from "./types.js"
 
 // Mock event for CLI's `terse run` command
 export class MockInputEvent implements InputEvent {
@@ -81,12 +98,12 @@ export {
 
 type Action = RunHistoryAction
 
-export type CreateJobParameters = {
+export type CreateJobParameters<T extends readonly TypedTrigger[] = TypedTrigger[]> = {
     name: string
-    triggers: ConfigInstance[]
+    triggers: [...T]
     skills: ConfigInstance[]
-    filter?: (event: InputEvent) => boolean | Promise<boolean>
-    onTrigger: (event: InputEvent, Agent: TerseAgent) => Promise<void>
+    filter?: (event: InferEvents<T>) => boolean | Promise<boolean>
+    onTrigger: (event: InferEvents<T>, Agent: TerseAgent) => Promise<void>
     webhookURL?: string
 }
 
@@ -100,9 +117,8 @@ export class Terse {
         // fetch api_key from env
     }
 
-    createJob(params: CreateJobParameters) {
-        _jobRegistry.set(params.name, params)
-        // Deploy the job, run code in Modal Sandbox etc...
+    createJob<T extends readonly TypedTrigger[]>(params: CreateJobParameters<T>) {
+        _jobRegistry.set(params.name, params as unknown as CreateJobParameters)
     }
 }
 

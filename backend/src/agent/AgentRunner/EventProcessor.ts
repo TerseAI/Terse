@@ -408,8 +408,10 @@ export class EventProcessor {
 
         const serializedEvent: SerializedEvent = {
             integrationType: this.inputEvent.integrationType,
+            eventType: this.inputEvent.eventType,
             formattedContent: this.inputEvent.formatForAgentRunner(),
-            debugLog: this.inputEvent.debugLog()
+            debugLog: this.inputEvent.debugLog(),
+            metadata: this.inputEvent.serializeMetadata()
         }
         const eventJson = JSON.stringify(serializedEvent)
 

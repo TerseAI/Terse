@@ -57,8 +57,10 @@ export async function handleSampleEvents(req: Request, res: Response) {
             for (const evt of inputEvents) {
                 events.push({
                     integrationType: evt.integrationType,
+                    eventType: evt.eventType,
                     formattedContent: evt.formatForAgentRunner(),
-                    debugLog: evt.debugLog()
+                    debugLog: evt.debugLog(),
+                    metadata: evt.serializeMetadata()
                 })
             }
         } catch (err) {

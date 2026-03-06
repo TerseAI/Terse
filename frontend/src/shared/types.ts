@@ -567,8 +567,10 @@ export interface TriggerPayload {
 
 export interface SerializedEvent {
     integrationType: IntegrationType
+    eventType?: string
     formattedContent: string
     debugLog: string
+    metadata?: Record<string, unknown>
 }
 
 export type SdkAgentRunEventPayload = {

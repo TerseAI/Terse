@@ -73,4 +73,13 @@ export abstract class InputEvent {
         }
         return null
     }
+
+    /**
+     * Serialize structured metadata for SDK consumption.
+     * Subclasses override to provide integration-specific data that SDK event
+     * classes can deserialize into typed properties.
+     */
+    serializeMetadata(): Record<string, unknown> | undefined {
+        return undefined
+    }
 }

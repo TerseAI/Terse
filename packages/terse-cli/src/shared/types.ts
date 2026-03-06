@@ -155,6 +155,17 @@ export type SlackUsersResponse = {
     users: SlackUserResponse[]
 }
 
+export const TERSE_AGENT_MESSAGE_EVENT_TYPE = "terse_agent_message" as const
+
+export type TerseAgentMessageMetadata = {
+    event_type: typeof TERSE_AGENT_MESSAGE_EVENT_TYPE
+    event_payload: {
+        run_id: string
+        automation_id: string
+        organization_id: string
+    }
+}
+
 /**
  * Slack channel type enum
  */
@@ -556,8 +567,10 @@ export interface TriggerPayload {
 
 export interface SerializedEvent {
     integrationType: IntegrationType
+    eventType?: string
     formattedContent: string
     debugLog: string
+    metadata?: Record<string, unknown>
 }
 
 export type SdkAgentRunEventPayload = {
