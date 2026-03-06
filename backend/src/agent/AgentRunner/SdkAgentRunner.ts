@@ -11,6 +11,7 @@ import { RunHistoryAction } from "../../shared/RunHistoryTypes"
 import { SdkAgentSkillPayload, SdkAgentStreamEvent, User } from "../../shared/types"
 import { Session } from "../../types/session"
 import { convertConfigTypeToOutputConfigType, convertPlainObjectToConfigInstance } from "../../utility/typeConverters"
+import { RunHistoryChatMemorySession } from "../CustomMemorySession"
 import { AgentType, runnerFactory } from "../runner"
 
 import { AgentRunnerLoopResult, BaseAgentRunner, PendingApprovalState, SessionWithTracking } from "./BaseAgentRunner"
@@ -28,6 +29,7 @@ type SdkAgentRunnerParams = {
     maxTurns: number
     requireApproval: boolean
     send: (event: SdkAgentStreamEvent) => void
+    persistHistory?: boolean
 }
 
 type SdkAgentRunnerResult = {
@@ -94,7 +96,7 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
         this.maxTurns = params.maxTurns
         this.requireApproval = params.requireApproval
         this.send = params.send
-        this.memorySession = new InMemoryAgentSession(params.runId)
+        this.memorySession = params.persistHistory ? new RunHistoryChatMemorySession({ sessionId: params.runId }) : new InMemoryAgentSession(params.runId)
     }
 
     async run(eventText: string): Promise<SdkAgentRunnerResult> {

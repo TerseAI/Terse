@@ -73,7 +73,8 @@ export async function handleSdkAgentRun(req: Request, res: Response) {
             toolToIntegrationMap,
             maxTurns: normalized.options.maxTurns,
             requireApproval: normalized.options.requireApproval,
-            send
+            send,
+            persistHistory: !!sandboxRunId
         })
         const { loopResult } = await sdkRunner.run(eventText)
 

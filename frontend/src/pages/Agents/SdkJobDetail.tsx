@@ -213,7 +213,14 @@ export default function SdkJobDetail({ agentId }: { agentId: string }) {
             </Dialog>
 
             {/* Sample events picker dialog */}
-            <SampleEventsDialog events={sampleEvents} open={showSamplesDialog} isFetching={isFetchingSamples} isTriggering={isEventTriggering} onSelect={handleSelectEvent} onClose={closeSamplesDialog} />
+            <SampleEventsDialog
+                events={sampleEvents}
+                open={showSamplesDialog}
+                isFetching={isFetchingSamples}
+                isTriggering={isEventTriggering}
+                onSelect={handleSelectEvent}
+                onClose={closeSamplesDialog}
+            />
         </div>
     )
 }
