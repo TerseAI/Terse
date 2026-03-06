@@ -41,8 +41,8 @@ export async function test(jobName?: string): Promise<void> {
             }, "POST")
             events = result.events
             spinner.succeed(`Sample events fetched. Found ${events.length} events.`)
-        } catch {
-            spinner.fail("Failed to fetch sample events.")
+        } catch (err) {
+            spinner.fail(err instanceof Error ? err.message : "Failed to fetch sample events.")
         }
     }
 
