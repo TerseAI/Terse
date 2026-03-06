@@ -120,11 +120,11 @@ function NotificationsPage() {
     }
 
     return (
-        <div className="mx-auto flex h-full w-full max-w-7xl flex-col px-4 pb-4 pt-2 lg:px-6 lg:pb-6 lg:pt-3">
-            <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-2">
-                <div className="flex min-h-0 flex-col gap-4">
+        <div className="mx-auto flex h-full min-h-0 w-full max-w-7xl flex-col overflow-x-auto overflow-y-auto px-4 pb-4 pt-2 lg:px-6 lg:pb-6 lg:pt-3">
+            <div className="grid min-h-0 min-w-0 gap-4 lg:flex-1 lg:min-w-[68rem] lg:grid-cols-2">
+                <div className="flex min-h-0 min-w-0 flex-col gap-4">
                     <div className="flex flex-col gap-2">
-                        <div className="flex items-center justify-between gap-3 px-1">
+                        <div className="flex min-h-8 items-center justify-between gap-3 px-1">
                             <p className="text-base font-semibold text-foreground">Notification Destinations</p>
                             {!isDestinationsValidating && notificationDestinations !== undefined && notificationDestinations.length > 0 && <AddNotificationDestination />}
                         </div>
@@ -180,8 +180,8 @@ function NotificationsPage() {
                     </div>
                 </div>
 
-                <div className="flex h-full min-h-0 flex-col gap-2">
-                    <div className="flex items-center justify-end gap-2 px-1">
+                <div className="flex min-h-0 min-w-0 flex-col gap-2 lg:h-full">
+                    <div className="flex min-h-8 items-center justify-end gap-2 px-1">
                         <span className="text-xs text-muted-foreground">
                             Page {notificationsPage} of {totalNotificationPages}
                         </span>
@@ -202,16 +202,16 @@ function NotificationsPage() {
                             Next
                         </Button>
                     </div>
-                    <Card className="flex h-full min-h-0 flex-col gap-0 overflow-hidden border-border/60 bg-card/35 py-0 backdrop-blur-sm">
+                    <Card className="flex min-h-0 flex-1 flex-col gap-0 overflow-hidden border-border/60 bg-card/35 py-0 backdrop-blur-sm lg:h-full">
                         <CardContent className="flex min-h-0 flex-1 flex-col p-0">
                             <div className="flex min-h-0 flex-1 flex-col">
                                 <ScrollArea className="min-h-0 flex-1">
-                                    <Table>
+                                    <Table className="min-w-[40rem]">
                                         <TableHeader className="bg-muted/35">
                                             <TableRow className="hover:bg-transparent">
-                                                <TableHead className="px-4">Event</TableHead>
-                                                <TableHead>Status</TableHead>
-                                                <TableHead className="pr-4">Timestamp</TableHead>
+                                                <TableHead className="w-full px-4">Event</TableHead>
+                                                <TableHead className="w-[7.5rem]">Status</TableHead>
+                                                <TableHead className="w-[9rem] pr-8 text-right">Timestamp</TableHead>
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>
@@ -365,24 +365,25 @@ function SentNotificationDestinationIcon({ destinationType }: { destinationType:
 }
 
 function SentNotificationRow({ notification }: { notification: SentNotification }) {
-    const agentLabel = notification.agentName ? `Agent: ${notification.agentName}` : "Agent: Unknown"
+    const normalizedAgentName = notification.agentName?.trim()
+    const shouldShowAgent = Boolean(normalizedAgentName && normalizedAgentName.toLowerCase() !== "unknown")
 
     return (
         <TableRow key={notification.id}>
-            <TableCell className="px-4">
+            <TableCell className="px-4 whitespace-normal">
                 <div className="flex flex-col gap-1">
                     <span className="font-medium text-foreground">{formatEventType(notification.eventType)}</span>
                     <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
                         <SentNotificationDestinationIcon destinationType={notification.destinationType} />
                         {notification.destinationLabel}
                     </span>
-                    <span className="text-xs text-muted-foreground">{agentLabel}</span>
+                    {shouldShowAgent && <span className="text-xs text-muted-foreground">Agent: {normalizedAgentName}</span>}
                 </div>
             </TableCell>
             <TableCell>
                 <NotificationStatusBadge status={notification.status} />
             </TableCell>
-            <TableCell className="pr-4 text-muted-foreground">{formatRelativeTime(notification.sentAt)}</TableCell>
+            <TableCell className="pr-8 text-right text-muted-foreground">{formatRelativeTime(notification.sentAt)}</TableCell>
         </TableRow>
     )
 }
@@ -401,7 +402,7 @@ function LoadingSentNotificationsRows() {
                     <TableCell>
                         <Skeleton className="h-6 w-16 rounded-full" />
                     </TableCell>
-                    <TableCell className="pr-4">
+                    <TableCell className="pr-8 text-right">
                         <Skeleton className="h-4 w-20" />
                     </TableCell>
                 </TableRow>
