@@ -93,7 +93,7 @@ export async function evaluateAgent(params: { automationId: string; user: User }
     const agent = new Agent({
         name: "JudgeAgent",
         instructions: buildJudgeSystemPrompt(params.automationId),
-        model: "gpt-5.4",
+        model: "gpt-5.2",
         tools: buildJudgeAgentTools(params.user),
         outputType: JudgeAgentOutput,
         modelSettings: builderProviderDataModelSettings(runConfig)

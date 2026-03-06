@@ -62,7 +62,7 @@ class ChatAgent {
         const agent = new Agent<ChatAgentContext, AgentOutputType>({
             name: "Terse Automation Assistant",
             instructions: await buildChatAgentSystemPrompt(this.user.id, this.user.organizationId, userTimezone, this.uiState),
-            model: "gpt-5.4",
+            model: "gpt-5.2",
             tools: this.options.readOnly ? [] : buildChatAgentTools(this.chatInterface),
             modelSettings: builderProviderDataModelSettings(runConfig)
         })

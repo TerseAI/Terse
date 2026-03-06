@@ -422,7 +422,7 @@ export function buildJudgeAgentTools(user: User): Tool[] {
                         `${instructions}\n\n` +
                         "You are being interviewed about a completed run. Answer using the run's history and execution context. " +
                         "Do not execute external actions, do not propose changes, and if evidence is missing, say so clearly.",
-                    model: "gpt-5.4",
+                    model: "gpt-5.2",
                     tools: [],
                     modelSettings: builderProviderDataModelSettings(runConfig)
                 })

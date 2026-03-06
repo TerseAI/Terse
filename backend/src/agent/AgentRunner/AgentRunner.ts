@@ -296,7 +296,7 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance> exte
     }
 
     private chooseModel(): string {
-        return "gpt-5.4"
+        return "gpt-5.2"
     }
 
     private getModelSettings() {
