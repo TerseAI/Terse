@@ -16,6 +16,7 @@ const notificationModuleDir = path.dirname(fileURLToPath(import.meta.url))
 const inlineLogoCid = "terse-logo"
 const fallbackLogoUrl = "https://app.useterse.ai/terse.png"
 const inlineLogoPath = path.resolve(notificationModuleDir, "../emails/assets/terse-logo.png")
+const fromEmail = settings.resend.fromEmail ? `Terse <${settings.resend.fromEmail}>` : ""
 
 type EmailBranding = {
     logoSrc: string
@@ -51,7 +52,7 @@ export async function sendEmailNotification(notificationDestination: UserNotific
     const branding = await getEmailBranding()
 
     await resend.emails.send({
-        from: settings.resend.fromEmail || "",
+        from: fromEmail,
         to: notificationDestination.email_address || "",
         subject: "Notification from: " + agent.name,
         html: await loadTemplate("notification.html", { runAction, agent, logoSrc: branding.logoSrc }),
@@ -65,7 +66,7 @@ export async function sendEmailApprovalRequest(notificationDestination: UserNoti
     const notificationFor = formatApprovalNotificationFor(runAction.action)
 
     await resend.emails.send({
-        from: settings.resend.fromEmail || "",
+        from: fromEmail,
         to: notificationDestination.email_address || "",
         subject: agent.name + " is requesting your approval",
         html: await loadTemplate("approvalRequest.html", { runId, runAction, agent, user, runUrl, logoSrc: branding.logoSrc, notificationFor }),
@@ -78,7 +79,7 @@ export async function sendEmailRunFailure(notificationDestination: UserNotificat
     const branding = await getEmailBranding()
 
     await resend.emails.send({
-        from: settings.resend.fromEmail || "",
+        from: fromEmail,
         to: notificationDestination.email_address || "",
         subject: "Error with Terse Agent: " + agent.name,
         html: await loadTemplate("runHistoryError.html", { agent, runId, errorMessage, runUrl, logoSrc: branding.logoSrc }),
@@ -97,7 +98,7 @@ export async function sendWeeklyReviewEmail(
     const branding = await getEmailBranding()
 
     await resend.emails.send({
-        from: settings.resend.fromEmail || "",
+        from: fromEmail,
         to: emailAddress,
         subject: "Weekly Agent Review",
         html: await loadTemplate("weeklyReview.html", { agents, logoSrc: branding.logoSrc }),

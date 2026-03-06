@@ -43,18 +43,18 @@ export default function ApprovalRequestItem({ approval, onAction }: ApprovalRequ
     const orderedActions = [...approval.actions].sort((a, b) => actionOrder.indexOf(a.type) - actionOrder.indexOf(b.type))
 
     return (
-        <div className="overflow-hidden rounded-lg border border-border bg-card px-4 py-3">
+        <div className="h-[6.75rem] w-full overflow-hidden rounded-lg border border-border bg-card px-4 py-3">
             <div className="flex items-start gap-3.5">
                 <div className="mt-0.5 size-5 shrink-0 text-muted-foreground">
                     <IconForIntegration integration={approval.icon} />
                 </div>
 
                 <div className="min-w-0 flex-1">
-                    <div className="flex items-start justify-between gap-2">
+                    <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-start gap-2">
                         <p className="truncate text-sm font-medium text-foreground" title={approval.title}>
                             {approval.title}
                         </p>
-                        <span className="shrink-0 text-xs text-muted-foreground">{formatRelativeTime(approval.timestamp)}</span>
+                        <span className="text-xs text-muted-foreground whitespace-nowrap">{formatRelativeTime(approval.timestamp)}</span>
                     </div>
 
                     <p className="mt-0.5 truncate text-xs text-muted-foreground" title={approval.subheader}>

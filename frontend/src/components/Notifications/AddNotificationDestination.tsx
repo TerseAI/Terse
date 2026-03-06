@@ -9,10 +9,22 @@ import { NotificationDestinationForm } from "./NotificationDestinationForm"
 
 interface AddNotificationDestinationProps {
     trigger?: ReactNode
+    externalOpen?: boolean
+    onExternalOpenChange?: (open: boolean) => void
 }
 
-export function AddNotificationDestination({ trigger }: AddNotificationDestinationProps) {
-    const [open, setOpen] = useState(false)
+export function AddNotificationDestination({ trigger, externalOpen, onExternalOpenChange }: AddNotificationDestinationProps) {
+    const [internalOpen, setInternalOpen] = useState(false)
+
+    const open = externalOpen ?? internalOpen
+
+    const handleOpenChange = (nextOpen: boolean) => {
+        if (externalOpen === undefined) {
+            setInternalOpen(nextOpen)
+        }
+
+        onExternalOpenChange?.(nextOpen)
+    }
 
     const defaultTrigger = (
         <Button variant="outline">
@@ -22,7 +34,7 @@ export function AddNotificationDestination({ trigger }: AddNotificationDestinati
     )
 
     return (
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog open={open} onOpenChange={handleOpenChange}>
             <DialogTrigger asChild>{trigger ?? defaultTrigger}</DialogTrigger>
             <DialogContent className="sm:max-w-[760px] p-0 gap-0 overflow-hidden">
                 <DialogHeader className="px-6 py-5 border-b bg-gradient-to-r from-muted/60 via-muted/25 to-background">
@@ -34,7 +46,7 @@ export function AddNotificationDestination({ trigger }: AddNotificationDestinati
                         </div>
                     </div>
                 </DialogHeader>
-                <NotificationDestinationForm onSuccess={() => setOpen(false)} />
+                <NotificationDestinationForm onSuccess={() => handleOpenChange(false)} />
             </DialogContent>
         </Dialog>
     )

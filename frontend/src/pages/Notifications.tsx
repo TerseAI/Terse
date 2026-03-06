@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import { useSearchParams } from "react-router-dom"
 
 import { Mail } from "lucide-react"
 
@@ -9,7 +10,6 @@ import { SlackIcon } from "@/components/icons/IntegrationIcons"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -33,12 +33,16 @@ const APPROVAL_FILTER_OPTIONS: Array<{ value: ApprovalRequestFilter; label: stri
     { value: "in_progress", label: "In progress" },
     { value: "completed", label: "Completed" }
 ]
+const ADD_DESTINATION_QUERY_PARAM = "addDestination"
+const SENT_NOTIFICATION_ROW_HEIGHT_CLASS = "h-[5.5rem]"
 
 function NotificationsPage() {
+    const [searchParams, setSearchParams] = useSearchParams()
     const { notificationDestinations, isError: isDestinationsError, isValidating: isDestinationsValidating, mutate: mutateDestinations } = useNotificationDestinations()
     const [approvalFilter, setApprovalFilter] = useState<ApprovalRequestFilter>("pending")
     const { approvals, isLoading: isApprovalsLoading, isError: isApprovalsError, mutate: mutateApprovals } = usePendingApprovals({ status: approvalFilter })
     const [notificationsPage, setNotificationsPage] = useState(1)
+    const [isAddDestinationDialogOpen, setIsAddDestinationDialogOpen] = useState(false)
     const {
         notifications,
         total,
@@ -52,12 +56,26 @@ function NotificationsPage() {
     const { openDrawer } = useRunHistoryChatDrawer()
 
     const totalNotificationPages = Math.max(1, Math.ceil(total / NOTIFICATIONS_PAGE_SIZE))
+    const hasDestinationData = notificationDestinations !== undefined && notificationDestinations.length > 0
+    const shouldShowDestinationsLoading = isDestinationsValidating && notificationDestinations === undefined
 
     useEffect(() => {
         if (notificationsPage > totalNotificationPages) {
             setNotificationsPage(totalNotificationPages)
         }
     }, [notificationsPage, totalNotificationPages])
+
+    useEffect(() => {
+        if (searchParams.get(ADD_DESTINATION_QUERY_PARAM) !== "true") {
+            return
+        }
+
+        setIsAddDestinationDialogOpen(true)
+
+        const nextSearchParams = new URLSearchParams(searchParams)
+        nextSearchParams.delete(ADD_DESTINATION_QUERY_PARAM)
+        setSearchParams(nextSearchParams, { replace: true })
+    }, [searchParams, setSearchParams])
 
     const handleDeepLinkAction = async (deepLink: string) => {
         const { type, params } = parseDeepLink(deepLink)
@@ -126,14 +144,26 @@ function NotificationsPage() {
                     <div className="flex flex-col gap-2">
                         <div className="flex min-h-8 items-center justify-between gap-3 px-1">
                             <p className="text-base font-semibold text-foreground">Notification Destinations</p>
-                            {!isDestinationsValidating && notificationDestinations !== undefined && notificationDestinations.length > 0 && <AddNotificationDestination />}
+                            {hasDestinationData && (
+                                <AddNotificationDestination
+                                    trigger={<button type="button" className="hidden" aria-hidden="true" tabIndex={-1} />}
+                                    externalOpen={isAddDestinationDialogOpen}
+                                    onExternalOpenChange={setIsAddDestinationDialogOpen}
+                                />
+                            )}
                         </div>
-                        <Card className="gap-0 overflow-hidden border-border/60 bg-card/35 py-0 backdrop-blur-sm">
+                        <Card className="min-h-[8rem] gap-0 overflow-hidden border-border/60 bg-card/35 py-0 backdrop-blur-sm">
                             <CardContent className="p-4">
-                                {isDestinationsValidating && <LoadingNotificationChannelList />}
-                                {!isDestinationsValidating && (isDestinationsError || notificationDestinations === undefined) && <ErrorNotificationChannelList onRetry={() => mutateDestinations()} />}
-                                {!isDestinationsValidating && !isDestinationsError && notificationDestinations !== undefined && (
-                                    <NotificationChannelList notificationDestinations={notificationDestinations} />
+                                {shouldShowDestinationsLoading && <LoadingNotificationChannelList />}
+                                {!shouldShowDestinationsLoading && (isDestinationsError || notificationDestinations === undefined) && (
+                                    <ErrorNotificationChannelList onRetry={() => mutateDestinations()} />
+                                )}
+                                {!shouldShowDestinationsLoading && !isDestinationsError && notificationDestinations !== undefined && (
+                                    <NotificationChannelList
+                                        notificationDestinations={notificationDestinations}
+                                        addDestinationDialogOpen={isAddDestinationDialogOpen}
+                                        onAddDestinationDialogOpenChange={setIsAddDestinationDialogOpen}
+                                    />
                                 )}
                             </CardContent>
                         </Card>
@@ -202,16 +232,21 @@ function NotificationsPage() {
                             Next
                         </Button>
                     </div>
-                    <Card className="flex min-h-0 flex-1 flex-col gap-0 overflow-hidden border-border/60 bg-card/35 py-0 backdrop-blur-sm lg:h-full">
+                    <Card className="flex min-h-0 flex-1 flex-col gap-0 overflow-hidden py-0 lg:h-full">
                         <CardContent className="flex min-h-0 flex-1 flex-col p-0">
                             <div className="flex min-h-0 flex-1 flex-col">
                                 <ScrollArea className="min-h-0 flex-1">
-                                    <Table className="min-w-[40rem]">
-                                        <TableHeader className="bg-muted/35">
+                                    <Table className="w-full table-fixed">
+                                        <colgroup>
+                                            <col />
+                                            <col style={{ width: "7rem" }} />
+                                            <col style={{ width: "9rem" }} />
+                                        </colgroup>
+                                        <TableHeader className="bg-muted/20">
                                             <TableRow className="hover:bg-transparent">
-                                                <TableHead className="w-full px-4">Event</TableHead>
-                                                <TableHead className="w-[7.5rem]">Status</TableHead>
-                                                <TableHead className="w-[9rem] pr-8 text-right">Timestamp</TableHead>
+                                                <TableHead className="px-4">Event</TableHead>
+                                                <TableHead className="px-3 text-center">Status</TableHead>
+                                                <TableHead className="px-4 text-center">Timestamp</TableHead>
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>
@@ -233,20 +268,25 @@ function NotificationsPage() {
     )
 }
 
-function NotificationChannelList({ notificationDestinations }: { notificationDestinations: NotificationDestination[] }) {
+function NotificationChannelList({
+    notificationDestinations,
+    addDestinationDialogOpen,
+    onAddDestinationDialogOpenChange
+}: {
+    notificationDestinations: NotificationDestination[]
+    addDestinationDialogOpen: boolean
+    onAddDestinationDialogOpenChange: (open: boolean) => void
+}) {
     if (notificationDestinations.length === 0) {
         return (
-            <div className="flex flex-col">
-                <Empty>
-                    <EmptyHeader>
-                        <EmptyMedia variant="icon">
-                            <Mail className="text-primary" />
-                        </EmptyMedia>
-                        <EmptyTitle>Notifications are sent to email by default</EmptyTitle>
-                        <EmptyDescription>Send notifications to a Slack channel or direct message.</EmptyDescription>
-                        <AddNotificationDestination />
-                    </EmptyHeader>
-                </Empty>
+            <div className="rounded-lg border border-dashed border-border/60 px-3 py-2">
+                <div className="flex min-h-9 items-center justify-between gap-3">
+                    <div className="min-w-0 flex items-center gap-2 text-sm text-muted-foreground">
+                        <Mail className="h-4 w-4 shrink-0 text-primary" />
+                        <span className="truncate">Notifications are sent to email by default.</span>
+                    </div>
+                    <AddNotificationDestination externalOpen={addDestinationDialogOpen} onExternalOpenChange={onAddDestinationDialogOpenChange} />
+                </div>
             </div>
         )
     }
@@ -254,7 +294,7 @@ function NotificationChannelList({ notificationDestinations }: { notificationDes
     if (notificationDestinations.length > 2) {
         return (
             <ScrollArea className="max-h-[9rem] pr-2">
-                <div className="flex flex-col gap-4">
+                <div className="flex flex-col gap-2">
                     {notificationDestinations.map(channel => (
                         <NotificationDestinationItem key={channel.id} destination={channel} />
                     ))}
@@ -264,7 +304,7 @@ function NotificationChannelList({ notificationDestinations }: { notificationDes
     }
 
     return (
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-2">
             {notificationDestinations.map(channel => (
                 <NotificationDestinationItem key={channel.id} destination={channel} />
             ))}
@@ -297,9 +337,9 @@ function ErrorNotificationChannelList({ onRetry }: { onRetry: () => void }) {
 function LoadingApprovalsList() {
     return (
         <div className="space-y-3 py-2">
-            <Skeleton className="h-[96px] w-full rounded-lg" />
-            <Skeleton className="h-[96px] w-full rounded-lg" />
-            <Skeleton className="h-[96px] w-full rounded-lg" />
+            <Skeleton className="h-[6.75rem] w-full rounded-lg" />
+            <Skeleton className="h-[6.75rem] w-full rounded-lg" />
+            <Skeleton className="h-[6.75rem] w-full rounded-lg" />
         </div>
     )
 }
@@ -369,21 +409,25 @@ function SentNotificationRow({ notification }: { notification: SentNotification 
     const shouldShowAgent = Boolean(normalizedAgentName && normalizedAgentName.toLowerCase() !== "unknown")
 
     return (
-        <TableRow key={notification.id}>
-            <TableCell className="px-4 whitespace-normal">
-                <div className="flex flex-col gap-1">
-                    <span className="font-medium text-foreground">{formatEventType(notification.eventType)}</span>
-                    <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                        <SentNotificationDestinationIcon destinationType={notification.destinationType} />
-                        {notification.destinationLabel}
-                    </span>
-                    {shouldShowAgent && <span className="text-xs text-muted-foreground">Agent: {normalizedAgentName}</span>}
+        <TableRow key={notification.id} className={SENT_NOTIFICATION_ROW_HEIGHT_CLASS}>
+            <TableCell className="px-4 py-3 align-middle">
+                <div className="min-w-0">
+                    <div className="flex min-w-0 flex-col gap-1">
+                        <span className="truncate font-medium text-foreground">{formatEventType(notification.eventType)}</span>
+                        <span className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
+                            <SentNotificationDestinationIcon destinationType={notification.destinationType} />
+                            <span className="truncate">{notification.destinationLabel}</span>
+                        </span>
+                        {shouldShowAgent && <span className="truncate text-xs text-muted-foreground">Agent: {normalizedAgentName}</span>}
+                    </div>
                 </div>
             </TableCell>
-            <TableCell>
-                <NotificationStatusBadge status={notification.status} />
+            <TableCell className="px-3 py-3 align-middle">
+                <div className="flex items-center justify-center">
+                    <NotificationStatusBadge status={notification.status} />
+                </div>
             </TableCell>
-            <TableCell className="pr-8 text-right text-muted-foreground">{formatRelativeTime(notification.sentAt)}</TableCell>
+            <TableCell className="px-4 py-3 text-center align-middle whitespace-nowrap text-muted-foreground">{formatRelativeTime(notification.sentAt)}</TableCell>
         </TableRow>
     )
 }
@@ -392,18 +436,23 @@ function LoadingSentNotificationsRows() {
     return (
         <>
             {Array.from({ length: 6 }).map((_, index) => (
-                <TableRow key={`loading-${index}`}>
-                    <TableCell className="px-4">
+                <TableRow key={`loading-${index}`} className={SENT_NOTIFICATION_ROW_HEIGHT_CLASS}>
+                    <TableCell className="px-4 py-3 align-middle">
                         <div className="space-y-2">
                             <Skeleton className="h-4 w-32" />
                             <Skeleton className="h-3 w-40" />
+                            <Skeleton className="h-3 w-36" />
                         </div>
                     </TableCell>
-                    <TableCell>
-                        <Skeleton className="h-6 w-16 rounded-full" />
+                    <TableCell className="px-3 py-3 align-middle">
+                        <div className="flex items-center justify-center">
+                            <Skeleton className="h-6 w-16 rounded-full" />
+                        </div>
                     </TableCell>
-                    <TableCell className="pr-8 text-right">
-                        <Skeleton className="h-4 w-20" />
+                    <TableCell className="px-4 py-3 text-center align-middle">
+                        <div className="flex items-center justify-center">
+                            <Skeleton className="h-4 w-20" />
+                        </div>
                     </TableCell>
                 </TableRow>
             ))}

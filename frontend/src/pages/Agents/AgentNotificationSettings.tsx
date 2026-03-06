@@ -20,6 +20,7 @@ export type AgentNotificationSettingsProps = {
 
 function AgentNotificationSettings({ settings, agentCreator, onChange }: AgentNotificationSettingsProps) {
     const { notificationDestinations } = useNotificationDestinations()
+    const notificationsSettingsLink = `${FrontendRoutes.NOTIFICATIONS}?addDestination=true`
 
     const activeSlackDestination = useMemo(
         () => (notificationDestinations ?? []).find(destination => destination.type === NotificationDestinationType.SLACK && destination.isActive !== false) as SlackNotificationDestination,
@@ -49,11 +50,12 @@ function AgentNotificationSettings({ settings, agentCreator, onChange }: AgentNo
                         <Mail className="h-4 w-4 text-muted-foreground" /> {agentCreator ? agentCreator.email : "Notifications will be sent to creator's email"}
                     </span>
                 )}
-                <Link to={FrontendRoutes.NOTIFICATIONS} className="text-muted-foreground text-sm underline underline-offset-2 hover:text-foreground">
+                <Link to={notificationsSettingsLink} className="text-muted-foreground text-sm underline underline-offset-2 hover:text-foreground">
                     (update)
                 </Link>
             </div>
             <div className="flex flex-col gap-2">
+                <p className="text-sm text-muted-foreground">Choose which agent actions trigger a notification:</p>
                 <MultiSelect
                     options={EVENT_TYPE_OPTIONS.map(option => ({
                         id: option.value,
@@ -61,10 +63,10 @@ function AgentNotificationSettings({ settings, agentCreator, onChange }: AgentNo
                     }))}
                     selectedIds={settings.actionTypes}
                     onSelect={ids => handleSelectEventTypes(ids as RunHistoryActionType[])}
-                    placeholder="Select event types..."
+                    placeholder="Select actions to be notified about..."
                     searchPlaceholder="Search event types..."
                     emptyMessage="No event types found."
-                    displayText={count => (count > 0 ? `${count} event type${count !== 1 ? "s" : ""} selected` : "Select event types...")}
+                    displayText={count => (count > 0 ? `${count} event type${count !== 1 ? "s" : ""} selected` : "Select actions to be notified about...")}
                     renderItem={option => {
                         const eventOption = EVENT_TYPE_OPTIONS.find(opt => opt.value === option.id)
                         return (
