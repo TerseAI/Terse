@@ -86,7 +86,8 @@ export async function reviewAllAgents(req: Request, res: Response) {
 
                 // Per-user feature flag check (cached by email)
                 if (!featureFlagCache.has(user.email)) {
-                    featureFlagCache.set(user.email, await featureFlagService.isFeatureFlagEnabled(FeatureFlag.WEEKLY_REVIEW_EMAILS, user.email))
+                    const isEnabled = await featureFlagService.isFeatureFlagEnabled(FeatureFlag.WEEKLY_REVIEW_EMAILS, user.email, { email: user.email })
+                    featureFlagCache.set(user.email, isEnabled)
                 }
                 if (!featureFlagCache.get(user.email)) {
                     continue
@@ -171,6 +172,10 @@ export async function reviewAllAgents(req: Request, res: Response) {
         let emailsSent = 0
 
         for (const [userId, group] of emailGroups.entries()) {
+            if (group.agents.length === 0) {
+                continue
+            }
+
             let emailError: unknown
             try {
                 await sendWeeklyReviewEmail(group.emailAddress, group.agents)

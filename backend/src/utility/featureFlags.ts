@@ -56,7 +56,9 @@ export class FeatureFlagService {
         }
 
         try {
-            const isEnabled = await client.isFeatureEnabled(flagKey, distinctId, properties)
+            const isEnabled = await client.isFeatureEnabled(flagKey, distinctId, {
+                personProperties: properties
+            })
             return isEnabled ?? false
         } catch (error) {
             logger.error("Error checking feature flag", {
