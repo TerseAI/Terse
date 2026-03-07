@@ -430,7 +430,6 @@ model automations {
   inputs                     automation_inputs[]
   outputs                    automation_outputs[]
   run_history_records        run_history_records[]
-  directiveRecords           directive_records[]
   notification_settings      automation_notification_settings?
   output_change_attributions output_change_attributions[]
   knowledge_bases            automation_knowledge_bases[]
@@ -962,7 +961,6 @@ model run_history_records {
   pending_approval pending_approvals?
   chat_events      run_history_chat_events[]
   raw_events       run_history_raw_events[]
-  directiveRecords directive_records[]
 
   @@index([automation_id])
   @@index([status])
@@ -1017,22 +1015,6 @@ model pending_approvals {
 
   @@index([created_at])
   @@index([run_history_record_id])
-}
-
-// Chat events from ChannelAgent streaming
-model run_history_chat_events {
-  id                    String                  @id @default(cuid())
-  run_history_record_id String
-  event_type            RunHistoryChatEventType
-  event_json            Json // Full ModelEvent stored as JSON for easy deserialization
-  timestamp             DateTime                @default(now())
-  created_at            DateTime                @default(now())
-
-  run_history_record run_history_records @relation(fields: [run_history_record_id], references: [id], onDelete: Cascade)
-  directiveRecords   directive_records[]
-
-  @@index([run_history_record_id])
-  @@index([timestamp])
 }
 
 // Raw AgentStreamEvent stored as JSON for easy loading into OpenAI agent history
@@ -1215,25 +1197,6 @@ model agent_improvements {
   @@index([review_id])
   @@index([status])
   @@index([automation_id, title])
-}
-
-model directive_records {
-  id                        String   @id @default(cuid())
-  automation_id             String
-  run_history_record_id     String
-  run_history_chat_event_id String? // Deprecated: kept for backwards compatibility; no longer populated for new directives
-  directive_description     String
-  is_active                 Boolean  @default(true)
-  created_at                DateTime @default(now())
-
-  automation             automations              @relation(fields: [automation_id], references: [id], onDelete: Cascade)
-  run_history_record     run_history_records      @relation(fields: [run_history_record_id], references: [id], onDelete: Cascade)
-  run_history_chat_event run_history_chat_events? @relation(fields: [run_history_chat_event_id], references: [id], onDelete: SetNull)
-
-  @@index([automation_id])
-  @@index([run_history_record_id])
-  @@index([run_history_chat_event_id])
-  @@index([is_active])
 }
 
 model identifiable_refs {
