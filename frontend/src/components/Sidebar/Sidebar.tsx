@@ -88,7 +88,7 @@ function ApplicationNavigation({ agents, loading }: ApplicationNavigationProps) 
 function SettingsNavigation() {
     const location = useLocation()
     const { approvals } = usePendingApprovals({ status: "pending" })
-    const hasPendingApprovals = approvals.length > 0
+    const pendingCount = approvals.length
 
     return (
         <SidebarMenu>
@@ -96,11 +96,17 @@ function SettingsNavigation() {
                 <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton asChild isActive={location.pathname === item.url}>
                         <Link to={item.url}>
-                            <item.icon className={item.iconColor} />
-                            <span className="flex items-center gap-2">
-                                <span>{item.title}</span>
-                                {item.title === "Notifications" && hasPendingApprovals && <span className="size-2 shrink-0 rounded-full bg-green-500" />}
-                            </span>
+                            {item.title === "Notifications" && pendingCount > 0 ? (
+                                <span className="relative">
+                                    <item.icon className={item.iconColor} />
+                                    <span className="absolute -top-1.5 -right-1.5 flex size-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-semibold leading-none text-white">
+                                        {pendingCount}
+                                    </span>
+                                </span>
+                            ) : (
+                                <item.icon className={item.iconColor} />
+                            )}
+                            <span>{item.title}</span>
                         </Link>
                     </SidebarMenuButton>
                 </SidebarMenuItem>

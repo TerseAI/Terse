@@ -142,18 +142,16 @@ function NotificationsPage() {
             <div className="grid min-h-0 min-w-0 gap-4 lg:flex-1 lg:min-w-[68rem] lg:grid-cols-2">
                 <div className="flex min-h-0 min-w-0 flex-col gap-4">
                     <div className="flex flex-col gap-2">
-                        <div className="flex min-h-8 items-center justify-between gap-3 px-1">
-                            <p className="text-base font-semibold text-foreground">Notification Destinations</p>
-                            {hasDestinationData && (
-                                <AddNotificationDestination
-                                    trigger={<button type="button" className="hidden" aria-hidden="true" tabIndex={-1} />}
-                                    externalOpen={isAddDestinationDialogOpen}
-                                    onExternalOpenChange={setIsAddDestinationDialogOpen}
-                                />
-                            )}
-                        </div>
+                        {hasDestinationData && (
+                            <AddNotificationDestination
+                                trigger={<button type="button" className="hidden" aria-hidden="true" tabIndex={-1} />}
+                                externalOpen={isAddDestinationDialogOpen}
+                                onExternalOpenChange={setIsAddDestinationDialogOpen}
+                            />
+                        )}
                         <Card className="min-h-[8rem] gap-0 overflow-hidden border-border/60 bg-card/35 py-0 backdrop-blur-sm">
                             <CardContent className="p-4">
+                                <p className="mb-3 text-base font-semibold text-foreground">Delivery Channels</p>
                                 {shouldShowDestinationsLoading && <LoadingNotificationChannelList />}
                                 {!shouldShowDestinationsLoading && (isDestinationsError || notificationDestinations === undefined) && (
                                     <ErrorNotificationChannelList onRetry={() => mutateDestinations()} />
@@ -170,26 +168,26 @@ function NotificationsPage() {
                     </div>
 
                     <div className="flex min-h-0 flex-1 flex-col gap-2">
-                        <div className="flex items-center justify-between gap-3 px-1">
-                            <div className="flex items-center gap-2">
-                                <p className="text-base font-semibold text-foreground">Approvals</p>
-                                <Badge variant="outline">{approvals.length}</Badge>
-                            </div>
-                            <Select value={approvalFilter} onValueChange={value => setApprovalFilter(value as ApprovalRequestFilter)}>
-                                <SelectTrigger className="h-8 w-[140px]">
-                                    <SelectValue placeholder="Filter" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {APPROVAL_FILTER_OPTIONS.map(option => (
-                                        <SelectItem key={option.value} value={option.value}>
-                                            {option.label}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
                         <Card className="flex min-h-0 flex-1 flex-col gap-0 overflow-hidden border-border/60 bg-card/35 py-0 backdrop-blur-sm">
                             <CardContent className="flex min-h-0 flex-1 flex-col p-4">
+                                <div className="mb-3 flex items-center justify-between gap-3">
+                                    <div className="flex items-center gap-2">
+                                        <p className="text-base font-semibold text-foreground">Approvals</p>
+                                        <Badge variant="outline">{approvals.length}</Badge>
+                                    </div>
+                                    <Select value={approvalFilter} onValueChange={value => setApprovalFilter(value as ApprovalRequestFilter)}>
+                                        <SelectTrigger className="h-8 w-[140px]">
+                                            <SelectValue placeholder="Filter" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {APPROVAL_FILTER_OPTIONS.map(option => (
+                                                <SelectItem key={option.value} value={option.value}>
+                                                    {option.label}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
                                 {isApprovalsLoading && <LoadingApprovalsList />}
 
                                 {!isApprovalsLoading && isApprovalsError && <ErrorApprovalsList onRetry={() => mutateApprovals()} />}
@@ -211,29 +209,32 @@ function NotificationsPage() {
                 </div>
 
                 <div className="flex min-h-0 min-w-0 flex-col gap-2 lg:h-full">
-                    <div className="flex min-h-8 items-center justify-end gap-2 px-1">
-                        <span className="text-xs text-muted-foreground">
-                            Page {notificationsPage} of {totalNotificationPages}
-                        </span>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            disabled={notificationsPage === 1 || isNotificationsLoading || isNotificationsValidating}
-                            onClick={() => setNotificationsPage(page => Math.max(1, page - 1))}
-                        >
-                            Previous
-                        </Button>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            disabled={notificationsPage >= totalNotificationPages || isNotificationsLoading || isNotificationsValidating}
-                            onClick={() => setNotificationsPage(page => Math.min(totalNotificationPages, page + 1))}
-                        >
-                            Next
-                        </Button>
-                    </div>
                     <Card className="flex min-h-0 flex-1 flex-col gap-0 overflow-hidden py-0 lg:h-full">
                         <CardContent className="flex min-h-0 flex-1 flex-col p-0">
+                            <div className="flex items-center justify-between gap-2 px-4 py-3">
+                                <p className="text-base font-semibold text-foreground">Sent Notifications</p>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-xs text-muted-foreground">
+                                        Page {notificationsPage} of {totalNotificationPages}
+                                    </span>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        disabled={notificationsPage === 1 || isNotificationsLoading || isNotificationsValidating}
+                                        onClick={() => setNotificationsPage(page => Math.max(1, page - 1))}
+                                    >
+                                        Previous
+                                    </Button>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        disabled={notificationsPage >= totalNotificationPages || isNotificationsLoading || isNotificationsValidating}
+                                        onClick={() => setNotificationsPage(page => Math.min(totalNotificationPages, page + 1))}
+                                    >
+                                        Next
+                                    </Button>
+                                </div>
+                            </div>
                             <div className="flex min-h-0 flex-1 flex-col">
                                 <ScrollArea className="min-h-0 flex-1">
                                     <Table className="w-full table-fixed">
