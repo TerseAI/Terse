@@ -8,7 +8,6 @@ export enum AgentType {
     JUDGE = "judge",
     EVENT_SUMMARY = "event_summary",
     APPROVAL_SUMMARY = "approval_summary",
-    DIRECTIVE = "directive",
     FILTER = "filter",
     GITHUB_SUMMARIZER = "github_summarizer"
 }

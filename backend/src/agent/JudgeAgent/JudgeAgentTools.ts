@@ -40,8 +40,7 @@ export function buildJudgeAgentTools(user: User): Tool[] {
     return [
         tool({
             name: "getAgentConfig",
-            description:
-                "Get the full configuration of the agent being reviewed: name, system prompt, trigger configs, output/skill configs, tool approvals, notification settings, and behavioral directives.",
+            description: "Get the full configuration of the agent being reviewed: name, system prompt, trigger configs, output/skill configs, tool approvals, and notification settings.",
             parameters: z.object({
                 automationId: z.string()
             }),
@@ -64,16 +63,7 @@ export function buildJudgeAgentTools(user: User): Tool[] {
                             include: getOutputConfigInclude()
                         },
                         tool_approvals: true,
-                        notification_settings: true,
-                        directiveRecords: {
-                            where: { is_active: true },
-                            orderBy: { created_at: "asc" },
-                            select: {
-                                id: true,
-                                directive_description: true,
-                                created_at: true
-                            }
-                        }
+                        notification_settings: true
                     }
                 })
 
@@ -86,8 +76,7 @@ export function buildJudgeAgentTools(user: User): Tool[] {
                     automationId,
                     agentName: automation.name,
                     triggerCount: automation.inputs.length,
-                    outputCount: automation.outputs.length,
-                    directiveCount: automation.directiveRecords.length
+                    outputCount: automation.outputs.length
                 })
 
                 const formattedConfig = formatAgentForSystemPrompt(automation)
@@ -103,8 +92,7 @@ export function buildJudgeAgentTools(user: User): Tool[] {
                         inputs: automation.inputs,
                         outputs: automation.outputs,
                         toolApprovals: automation.tool_approvals.map(row => row.tool_name),
-                        notificationSettings: automation.notification_settings,
-                        directives: automation.directiveRecords
+                        notificationSettings: automation.notification_settings
                     }
                 }
 

@@ -28,7 +28,8 @@ export function SlackConnectionOptions({ isBotUser, setIsBotUser, onBack, onConn
                     <Label htmlFor="botUser" className="text-sm font-normal leading-snug">
                         <span className="font-medium">Bot User</span>
                         <span className="text-muted-foreground">
-                            {" "}&mdash; requires <code className="rounded bg-muted px-1 py-0.5 text-xs">/invite @Terse</code> in each channel
+                            {" "}
+                            &mdash; requires <code className="rounded bg-muted px-1 py-0.5 text-xs">/invite @Terse</code> in each channel
                         </span>
                     </Label>
                 </div>

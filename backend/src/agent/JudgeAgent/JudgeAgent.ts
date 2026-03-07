@@ -38,13 +38,11 @@ Prompt: The user's natural-language instructions that tell the agent what to do 
 
 Outputs / Skills: These give the agent tools to act on external systems — update Notion pages, post in Slack, create Linear tickets, edit Confluence pages, etc. The agent can ONLY interact with systems it has output configs for. No output config = no tools for that system.
 
-Directives: Standing rules or policies the user sets that persist across all runs (e.g., "never update the Decisions section", "always include the ticket URL"). These are injected into every run alongside the prompt.
-
 Approvals: When enabled, write actions pause execution and wait for the user to approve or reject before proceeding. Users can configure granular tool-level approvals (e.g., only require approval for Slack posts but not Notion updates). The agent reads rejection reasons and adapts. IMPORTANT: Approval settings can change between runs — you only see the current config, not what it was during past runs.
 
 Manual runs: Users can manually trigger agents for testing at any time. This is completely normal and expected.
 
-How the AgentRunner executes: When a trigger fires and passes filtering, the AgentRunner builds a system prompt (core platform rules + user prompt + directives + output instructions), injects the event as a user message, and lets the agent use its available tools. The agent reads targets first, decides what to change, and makes localized updates. It favors small targeted edits over bulk rewrites. Its text response explains what it did — the actual work happens through tool calls.
+How the AgentRunner executes: When a trigger fires and passes filtering, the AgentRunner builds a system prompt (core platform rules + user prompt + output instructions), injects the event as a user message, and lets the agent use its available tools. The agent reads targets first, decides what to change, and makes localized updates. It favors small targeted edits over bulk rewrites. Its text response explains what it did — the actual work happens through tool calls.
 
 Use lookupPlatformCapabilities if you need to check what triggers/outputs the platform supports, what tools each provides, or what configuration fields they require. This helps you understand whether a recommendation is actually achievable.
 
