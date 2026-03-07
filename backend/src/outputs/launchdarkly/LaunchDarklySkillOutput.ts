@@ -1,7 +1,6 @@
 import { Tool } from "@openai/agents"
 import { OutputConfigType } from "@prisma/client"
 
-import { type CapabilityDescription, CapabilityRole, extractToolMetadata, getConfigMetadata } from "../../capabilityHelpers"
 import { getLaunchDarklyAccessTokenOrThrow, validateLaunchDarklyEnvironmentsExist, validateLaunchDarklyProjectExists } from "../../integrations/LaunchDarklyIntegration"
 import { LaunchDarklyConfig } from "../../shared/Configs"
 import { IntegrationType } from "../../shared/Integrations"
@@ -21,28 +20,6 @@ export class LaunchDarklySkillOutput extends Output<LaunchDarklyConfig> {
         ]
 
         super(OutputConfigType.LAUNCHDARKLY, toolbox)
-    }
-
-    getCapabilityDescription(): CapabilityDescription {
-        const configType = convertOutputConfigTypeToConfigType(OutputConfigType.LAUNCHDARKLY)
-        const meta = getConfigMetadata(configType)
-        const tools = extractToolMetadata(this.toolbox)
-        const systemInstructions = this.getSystemInstructions(true)
-
-        return {
-            name: meta.name,
-            description: meta.description,
-            configType,
-            integrationType: meta.integrationType,
-            role: CapabilityRole.OUTPUT,
-            tools,
-            configFields: {
-                integrationId: "LaunchDarkly integration connection",
-                projectKey: "LaunchDarkly project key",
-                environmentKeys: "Array of LaunchDarkly environment keys"
-            },
-            systemInstructions
-        }
     }
 
     protected getDummyConfigForCapability(): LaunchDarklyConfig {

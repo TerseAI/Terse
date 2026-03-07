@@ -1,7 +1,6 @@
 import { Tool } from "@openai/agents"
 import { OutputConfigType } from "@prisma/client"
 
-import { type CapabilityDescription, CapabilityRole, extractToolMetadata, getConfigMetadata, getContextLabel } from "../../capabilityHelpers"
 import { validateGithubRepositoryIds } from "../../integrations/GithubIntegration"
 import logger from "../../logger"
 import { ConfigType, GitHubConfig } from "../../shared/Configs"
@@ -34,26 +33,6 @@ export class GithubSkillOutput extends Output<GitHubConfig> {
         super(OutputConfigType.GITHUB, toolbox)
     }
 
-    getCapabilityDescription(): CapabilityDescription {
-        const meta = getConfigMetadata(ConfigType.GITHUB)
-        const tools = extractToolMetadata(this.toolbox)
-        const systemInstructions = this.getSystemInstructions(true)
-
-        return {
-            name: meta.name,
-            description: meta.description,
-            configType: ConfigType.GITHUB,
-            integrationType: meta.integrationType,
-            role: CapabilityRole.OUTPUT,
-            tools,
-            configFields: {
-                integrationId: "GitHub integration connection",
-                repositoryIds: "Array of GitHub repository IDs to include"
-            },
-            systemInstructions
-        }
-    }
-
     async validateConfig(output: GitHubConfig, userId: string): Promise<void> {
         GitHubConfigSchema.parse(stripConfigForValidation(output))
         await validateGithubRepositoryIds({
@@ -61,7 +40,7 @@ export class GithubSkillOutput extends Output<GitHubConfig> {
             integrationId: output.integrationId,
             repositoryIds: output.repositoryIds,
             configTypeLabel: "github",
-            contextLabel: getContextLabel(CapabilityRole.OUTPUT)
+            contextLabel: "output"
         })
     }
 
