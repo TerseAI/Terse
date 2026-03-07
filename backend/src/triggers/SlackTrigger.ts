@@ -1,4 +1,3 @@
-import { CapabilityDescription, CapabilityRole, getConfigMetadata } from "../capabilityHelpers"
 import { SlackIntegrationManager, getSlackAccessTokenOrThrow, validateSlackChannelsExist, validateSlackUserIds } from "../integrations/SlackIntegration"
 import { ConfigType, SlackConfig } from "../shared/Configs"
 import { PrismaTransaction } from "../types/prisma"
@@ -12,26 +11,6 @@ export class SlackTrigger implements Trigger<SlackConfig> {
 
     constructor() {
         this.integrationManager = new SlackIntegrationManager()
-    }
-
-    getCapabilityDescription(): CapabilityDescription {
-        const meta = getConfigMetadata(ConfigType.SLACK)
-        return {
-            name: meta.name,
-            description: meta.description,
-            configType: ConfigType.SLACK,
-            integrationType: meta.integrationType,
-            role: CapabilityRole.TRIGGER,
-            tools: [],
-            configFields: {
-                integrationId: "<integrationId>",
-                channelId: "Slack channel ID to monitor (or use listenToUserDms)",
-                channelName: "Channel display name",
-                listenToUserDms: "Set true to trigger on direct messages instead of a channel",
-                userIds: "Optional user IDs to filter which DMs trigger the agent"
-            },
-            systemInstructions: ""
-        }
     }
 
     async validateConfig(trigger: SlackConfig, _userId: string): Promise<void> {

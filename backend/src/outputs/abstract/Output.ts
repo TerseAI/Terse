@@ -1,7 +1,6 @@
 import { Tool } from "@openai/agents"
 import { OutputConfigType } from "@prisma/client"
 
-import { CapabilityDescription } from "../../capabilityHelpers"
 import { ConfigInstance } from "../../shared/Configs"
 import { IntegrationType } from "../../shared/Integrations"
 import { PrismaTransaction } from "../../types/prisma"
@@ -26,8 +25,6 @@ export abstract class Output<TConfig extends ConfigInstance> {
         this.integration = integration
         this.toolbox = toolbox
     }
-
-    abstract getCapabilityDescription(): CapabilityDescription
 
     abstract validateConfig(output: TConfig, userId: string): Promise<void>
 

@@ -1,7 +1,6 @@
 import { Tool } from "@openai/agents"
 import { OutputConfigType } from "@prisma/client"
 
-import { type CapabilityDescription, CapabilityRole, extractToolMetadata, getConfigMetadata } from "../../capabilityHelpers"
 import { validateJiraProjectExists } from "../../integrations/AtlassianIntegration"
 import { JiraConfig } from "../../shared/Configs"
 import { IntegrationType } from "../../shared/Integrations"
@@ -22,28 +21,6 @@ export class JiraTicketOutput extends Output<JiraConfig> {
             { tool: jiraUpdateTicketTool as Tool, isReadOnly: false, integration: IntegrationType.ATLASSIAN, displayName: "Update ticket" }
         ]
         super(OutputConfigType.JIRA_TICKET, toolbox)
-    }
-
-    getCapabilityDescription(): CapabilityDescription {
-        const configType = convertOutputConfigTypeToConfigType(OutputConfigType.JIRA_TICKET)
-        const meta = getConfigMetadata(configType)
-        const tools = extractToolMetadata(this.toolbox)
-        const systemInstructions = this.getSystemInstructions(true)
-
-        return {
-            name: meta.name,
-            description: meta.description,
-            configType,
-            integrationType: meta.integrationType,
-            role: CapabilityRole.OUTPUT,
-            tools,
-            configFields: {
-                integrationId: "Atlassian/Jira integration connection",
-                projectKey: "Jira project key (optional)",
-                projectId: "Jira project ID (optional)"
-            },
-            systemInstructions
-        }
     }
 
     protected getDummyConfigForCapability(): JiraConfig {
