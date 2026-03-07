@@ -39,7 +39,6 @@ export async function generateApprovalSummary(runId: string, user: User, agentId
         return { approvalSummary: "Unable to generate summary: run record not found" }
     }
 
-    // Build ToolCall context from raw events so summaries do not depend on run_history_chat_events.
     const modelEvents = await getRunHistoryModelEventsWithActions(runId)
 
     let toolCallEvent: ToolCall | null = null
