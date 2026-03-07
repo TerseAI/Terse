@@ -3,15 +3,12 @@ import { tool } from "@openai/agents"
 import { Tool } from "@openai/agents-core"
 import { z } from "zod"
 
-import type { CapabilityDescription } from "../../capabilityHelpers"
 import { settings } from "../../config/settings"
 import logger from "../../logger"
 import { OutputFactory } from "../../outputs/abstract/OutputFactory"
 import { db } from "../../prismaClient"
 import { ConfigInstance } from "../../shared/Configs"
-import { IntegrationType } from "../../shared/Integrations"
 import { User } from "../../shared/types"
-import { TRIGGER_REGISTRY } from "../../triggers/TriggerRegistry"
 import { AgentWithRelations } from "../../types/prisma"
 import { Session } from "../../types/session"
 import { getInputConfigInclude, getOutputConfigInclude } from "../../utility/prismaIncludes"
@@ -462,57 +459,6 @@ export function buildJudgeAgentTools(user: User): Tool[] {
                 })
 
                 return output
-            }
-        }),
-        tool({
-            name: "lookupPlatformCapabilities",
-            description:
-                "Look up what triggers and outputs (skills) the Terse platform supports. Returns available integrations, their tools, configuration fields, and descriptions. Use this to verify whether a recommendation is actually achievable on the platform.",
-            parameters: z.object({
-                category: z.enum(["triggers", "outputs", "all"]).describe("Which capabilities to look up"),
-                integration: z.nativeEnum(IntegrationType).nullable().describe("Filter to a specific integration, or null for all")
-            }),
-            execute: async ({ category, integration }) => {
-                logger.info("[JudgeAgent:lookupPlatformCapabilities] Looking up capabilities", { category, integration })
-                const filter = integration ?? undefined
-
-                const gatherTriggers = (f?: IntegrationType): CapabilityDescription[] => TRIGGER_REGISTRY.map(t => t.getCapabilityDescription()).filter(c => !f || c.integrationType === f)
-
-                const gatherOutputs = (f?: IntegrationType): CapabilityDescription[] => {
-                    const results: CapabilityDescription[] = []
-                    for (const [, factory] of OutputFactory.OUTPUT_REGISTRY) {
-                        const output = factory()
-                        const cap = output.getCapabilityDescription()
-                        if (!f || cap.integrationType === f) results.push(cap)
-                    }
-                    return results
-                }
-
-                if (category === "all") {
-                    const triggers = gatherTriggers(filter)
-                    const outputs = gatherOutputs(filter)
-                    logger.info("[JudgeAgent:lookupPlatformCapabilities] Got capabilities", {
-                        category,
-                        integration,
-                        triggerCount: triggers.length,
-                        outputCount: outputs.length
-                    })
-                    return JSON.stringify({ triggers, outputs })
-                }
-                if (category === "triggers") {
-                    const caps = gatherTriggers(filter)
-                    logger.info("[JudgeAgent:lookupPlatformCapabilities] Got trigger capabilities", {
-                        integration,
-                        count: caps.length
-                    })
-                    return JSON.stringify(caps)
-                }
-                const caps = gatherOutputs(filter)
-                logger.info("[JudgeAgent:lookupPlatformCapabilities] Got output capabilities", {
-                    integration,
-                    count: caps.length
-                })
-                return JSON.stringify(caps)
             }
         })
     ]
