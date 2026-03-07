@@ -1,7 +1,6 @@
 import { Tool } from "@openai/agents"
 import { OutputConfigType } from "@prisma/client"
 
-import { type CapabilityDescription, CapabilityRole, extractToolMetadata, getConfigMetadata } from "../../capabilityHelpers"
 import { Output, ToolboxEntry } from "../../outputs/abstract/Output"
 import { ConfigType, WorkOSOutputConfig } from "../../shared/Configs"
 import { IntegrationType } from "../../shared/Integrations"
@@ -19,25 +18,6 @@ export class WorkOSOutput extends Output<WorkOSOutputConfig> {
         ]
 
         super(OutputConfigType.WORKOS, toolbox)
-    }
-
-    getCapabilityDescription(): CapabilityDescription {
-        const meta = getConfigMetadata(ConfigType.WORKOS_OUTPUT)
-        const tools = extractToolMetadata(this.toolbox)
-        const systemInstructions = this.getSystemInstructions(true)
-
-        return {
-            name: meta.name,
-            description: meta.description,
-            configType: ConfigType.WORKOS_OUTPUT,
-            integrationType: meta.integrationType,
-            role: CapabilityRole.OUTPUT,
-            tools,
-            configFields: {
-                integrationId: "WorkOS integration connection"
-            },
-            systemInstructions
-        }
     }
 
     protected getDummyConfigForCapability(): WorkOSOutputConfig {

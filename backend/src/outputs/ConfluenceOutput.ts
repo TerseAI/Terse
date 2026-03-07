@@ -4,7 +4,6 @@ import chalk from "chalk"
 import { z } from "zod"
 
 import { SessionWithTracking } from "../agent/AgentRunner/AgentRunner"
-import { type CapabilityDescription, CapabilityRole, extractToolMetadata, getConfigMetadata } from "../capabilityHelpers"
 import { getAtlassianIntegrationContextForOrganization } from "../integrations/AtlassianClient"
 import { validateConfluencePageExists } from "../integrations/AtlassianIntegration"
 import logger from "../logger"
@@ -15,7 +14,6 @@ import { ToolName } from "../tools/ToolNames"
 import { createNeedsApprovalFunction, formatError } from "../tools/toolUtils"
 import { PrismaTransaction } from "../types/prisma"
 import { Session } from "../types/session"
-import { ConfluenceConfigSchema, stripConfigForValidation } from "../utility/configSchemas"
 import { convertOutputConfigTypeToConfigType } from "../utility/typeConverters"
 
 import { Output, ToolboxEntry } from "./abstract/Output"
@@ -39,30 +37,6 @@ export class ConfluenceOutput extends Output<ConfluenceConfig> {
             }
         ]
         super(OutputConfigType.CONFLUENCE, toolbox)
-    }
-
-    getCapabilityDescription(): CapabilityDescription {
-        const configType = convertOutputConfigTypeToConfigType(OutputConfigType.CONFLUENCE)
-        const meta = getConfigMetadata(configType)
-        const tools = extractToolMetadata(this.toolbox)
-        const systemInstructions = this.getSystemInstructions(true)
-
-        return {
-            name: meta.name,
-            description: meta.description,
-            configType,
-            integrationType: meta.integrationType,
-            role: CapabilityRole.OUTPUT,
-            tools,
-            configFields: {
-                integrationId: "Atlassian/Confluence integration connection",
-                spaceName: "Confluence space name",
-                spaceId: "Confluence space ID",
-                pageId: "Confluence page ID to update",
-                pageName: "Page display name"
-            },
-            systemInstructions
-        }
     }
 
     protected getDummyConfigForCapability(): ConfluenceConfig {

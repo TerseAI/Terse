@@ -1,9 +1,7 @@
 import { Tool } from "@openai/agents"
 import { OutputConfigType } from "@prisma/client"
 
-import { type CapabilityDescription, CapabilityRole, extractToolMetadata, getConfigMetadata } from "../../capabilityHelpers"
 import { validateLinearProjectExists, validateLinearTeamExists } from "../../integrations/LinearIntegration"
-import { db } from "../../prismaClient"
 import { LinearOutputConfig } from "../../shared/Configs"
 import { IntegrationType } from "../../shared/Integrations"
 import { PrismaTransaction } from "../../types/prisma"
@@ -37,30 +35,6 @@ export class LinearTicketOutput extends Output<LinearOutputConfig> {
             { tool: linearReadTicketTool as Tool, isReadOnly: true, integration: IntegrationType.LINEAR, displayName: "Read ticket" }
         ]
         super(OutputConfigType.LINEAR_TICKET, toolbox)
-    }
-
-    getCapabilityDescription(): CapabilityDescription {
-        const configType = convertOutputConfigTypeToConfigType(OutputConfigType.LINEAR_TICKET)
-        const meta = getConfigMetadata(configType)
-        const tools = extractToolMetadata(this.toolbox)
-        const systemInstructions = this.getSystemInstructions(true)
-
-        return {
-            name: meta.name,
-            description: meta.description,
-            configType,
-            integrationType: meta.integrationType,
-            role: CapabilityRole.OUTPUT,
-            tools,
-            configFields: {
-                integrationId: "Linear integration connection",
-                teamId: "Optional Linear team ID",
-                teamName: "Optional team display name",
-                projectId: "Optional Linear project ID",
-                projectName: "Optional project display name"
-            },
-            systemInstructions
-        }
     }
 
     protected getDummyConfigForCapability(): LinearOutputConfig {

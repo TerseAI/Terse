@@ -1,7 +1,6 @@
 import { Tool } from "@openai/agents"
 import { OutputConfigType } from "@prisma/client"
 
-import { type CapabilityDescription, CapabilityRole, extractToolMetadata, getConfigMetadata } from "../../capabilityHelpers"
 import { validateDatadogIndexesExist } from "../../integrations/DatadogIntegration"
 import { DatadogConfig } from "../../shared/Configs"
 import { IntegrationType } from "../../shared/Integrations"
@@ -25,27 +24,6 @@ export class DatadogSkillOutput extends Output<DatadogConfig> {
         ]
 
         super(OutputConfigType.DATADOG, toolbox)
-    }
-
-    getCapabilityDescription(): CapabilityDescription {
-        const configType = convertOutputConfigTypeToConfigType(OutputConfigType.DATADOG)
-        const meta = getConfigMetadata(configType)
-        const tools = extractToolMetadata(this.toolbox)
-        const systemInstructions = this.getSystemInstructions(true)
-
-        return {
-            name: meta.name,
-            description: meta.description,
-            configType,
-            integrationType: meta.integrationType,
-            role: CapabilityRole.OUTPUT,
-            tools,
-            configFields: {
-                integrationId: "Datadog integration connection",
-                defaultIndexes: 'Log indexes to search by default (e.g. ["main"])'
-            },
-            systemInstructions
-        }
     }
 
     protected getDummyConfigForCapability(): DatadogConfig {
