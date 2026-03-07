@@ -959,7 +959,6 @@ model run_history_records {
   automation       automations               @relation(fields: [automation_id], references: [id], onDelete: Cascade)
   actions          run_history_actions[]
   pending_approval pending_approvals?
-  chat_events      run_history_chat_events[]
   raw_events       run_history_raw_events[]
 
   @@index([automation_id])
