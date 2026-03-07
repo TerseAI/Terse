@@ -1,7 +1,6 @@
 import { Tool } from "@openai/agents"
 import { OutputConfigType } from "@prisma/client"
 
-import { type CapabilityDescription, CapabilityRole, extractToolMetadata, getConfigMetadata } from "../../capabilityHelpers"
 import { getSlackAccessTokenOrThrow, validateSlackChannelsExist, validateSlackUserIds } from "../../integrations/SlackIntegration"
 import { SlackOutputConfig } from "../../shared/Configs"
 import { IntegrationType } from "../../shared/Integrations"
@@ -24,30 +23,6 @@ export class SlackOutput extends Output<SlackOutputConfig> {
             { tool: slackReadConversationTool as Tool, isReadOnly: true, integration: IntegrationType.SLACK, displayName: "Read conversation" }
         ]
         super(OutputConfigType.SLACK_CHANNEL, toolbox)
-    }
-
-    getCapabilityDescription(): CapabilityDescription {
-        const configType = convertOutputConfigTypeToConfigType(OutputConfigType.SLACK_CHANNEL)
-        const meta = getConfigMetadata(configType)
-        const tools = extractToolMetadata(this.toolbox)
-        const systemInstructions = this.getSystemInstructions(true)
-
-        return {
-            name: meta.name,
-            description: meta.description,
-            configType,
-            integrationType: meta.integrationType,
-            role: CapabilityRole.OUTPUT,
-            tools,
-            configFields: {
-                integrationId: "Slack integration connection",
-                channelId: "Slack channel or DM channel ID",
-                channelName: "Channel display name",
-                listenToUserDms: "Set true to include DM conversations as readable scope (all DMs if userIds is empty)",
-                userIds: "Slack user IDs for DMs (when sending to DMs instead of channel)"
-            },
-            systemInstructions
-        }
     }
 
     protected getDummyConfigForCapability(): SlackOutputConfig {

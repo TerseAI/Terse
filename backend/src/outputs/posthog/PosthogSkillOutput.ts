@@ -1,7 +1,6 @@
 import { Tool } from "@openai/agents"
 import { OutputConfigType } from "@prisma/client"
 
-import { type CapabilityDescription, CapabilityRole, extractToolMetadata, getConfigMetadata } from "../../capabilityHelpers"
 import { validatePosthogProjectExists } from "../../integrations/PosthogIntegration"
 import { PosthogConfig } from "../../shared/Configs"
 import { IntegrationType } from "../../shared/Integrations"
@@ -25,28 +24,6 @@ export class PosthogSkillOutput extends Output<PosthogConfig> {
         ]
 
         super(OutputConfigType.POSTHOG, toolbox)
-    }
-
-    getCapabilityDescription(): CapabilityDescription {
-        const configType = convertOutputConfigTypeToConfigType(OutputConfigType.POSTHOG)
-        const meta = getConfigMetadata(configType)
-        const tools = extractToolMetadata(this.toolbox)
-        const systemInstructions = this.getSystemInstructions(true)
-
-        return {
-            name: meta.name,
-            description: meta.description,
-            configType,
-            integrationType: meta.integrationType,
-            role: CapabilityRole.OUTPUT,
-            tools,
-            configFields: {
-                integrationId: "PostHog integration connection",
-                projectId: "PostHog project ID",
-                projectName: "Project display name"
-            },
-            systemInstructions
-        }
     }
 
     protected getDummyConfigForCapability(): PosthogConfig {

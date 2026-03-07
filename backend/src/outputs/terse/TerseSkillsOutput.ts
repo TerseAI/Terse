@@ -2,11 +2,9 @@ import { Tool } from "@openai/agents"
 import { webSearchTool } from "@openai/agents"
 import { OutputConfigType } from "@prisma/client"
 
-import { type CapabilityDescription, CapabilityRole, extractToolMetadata, getConfigMetadata } from "../../capabilityHelpers"
 import { ConfigInstance, TerseConfig } from "../../shared/Configs"
 import { IntegrationType } from "../../shared/Integrations"
 import { PrismaTransaction } from "../../types/prisma"
-import { convertOutputConfigTypeToConfigType } from "../../utility/typeConverters"
 import { Output, ToolboxEntry } from "../abstract/Output"
 
 import { imageEditTool } from "./tools/editImage"
@@ -30,22 +28,6 @@ export class TerseSkillsOutput extends Output<ConfigInstance> {
             }
         ]
         super(OutputConfigType.TERSE, toolbox)
-    }
-
-    getCapabilityDescription(): CapabilityDescription {
-        const configType = convertOutputConfigTypeToConfigType(OutputConfigType.TERSE)
-        const meta = getConfigMetadata(configType)
-        const tools = extractToolMetadata(this.toolbox)
-        return {
-            name: meta.name,
-            description: meta.description,
-            configType,
-            integrationType: meta.integrationType,
-            role: CapabilityRole.OUTPUT,
-            tools,
-            configFields: {},
-            systemInstructions: ""
-        }
     }
 
     async validateConfig(_output: ConfigInstance, _userId: string): Promise<void> {
