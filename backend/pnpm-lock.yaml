@@ -14,6 +14,9 @@ importers:
       '@google-cloud/scheduler':
         specifier: ^5.3.1
         version: 5.3.1
+      '@google-cloud/secret-manager':
+        specifier: ^6.1.1
+        version: 6.1.1
       '@google-cloud/storage':
         specifier: ^7.14.0
         version: 7.18.0
@@ -448,6 +451,10 @@ packages:
 
   '@google-cloud/scheduler@5.3.1':
     resolution: {integrity: sha512-EGPTRRjMO4F/52HPVPVmcP4EUaONnISXo6VJP75QOQw9cMhg+yiruj8zb0BM4iUIY8+vOwlFv/VCHqrZ8gj6bw==}
+    engines: {node: '>=18'}
+
+  '@google-cloud/secret-manager@6.1.1':
+    resolution: {integrity: sha512-dwSuxJ9RNmAW46FjK1StiNIeOiSHHQs/XIy4VArJ6bBMR+WsIvR+zhPh2pa40aFa9uTty67j38Rl268TVV62EA==}
     engines: {node: '>=18'}
 
   '@google-cloud/storage@7.18.0':
@@ -3252,6 +3259,12 @@ snapshots:
   '@google-cloud/promisify@4.0.0': {}
 
   '@google-cloud/scheduler@5.3.1':
+    dependencies:
+      google-gax: 5.0.6
+    transitivePeerDependencies:
+      - supports-color
+
+  '@google-cloud/secret-manager@6.1.1':
     dependencies:
       google-gax: 5.0.6
     transitivePeerDependencies:
