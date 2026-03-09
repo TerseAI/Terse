@@ -5,6 +5,7 @@ import { google } from "googleapis"
 import { GmailIntegrationManager, GmailWebhookEvent, getOAuth2Client } from "../integrations/GmailIntegration"
 import logger from "../logger"
 import { db } from "../prismaClient"
+import { getSecret } from "../services/SecretService"
 
 export async function getGmailIntegrations(req: Request, res: Response) {
     if (!req.session?.user) {
@@ -55,11 +56,17 @@ export async function deleteGmailIntegration(req: Request, res: Response) {
             return res.status(404).json({ error: "No active Gmail integration found" })
         }
 
+        const accessToken = await getSecret("gmail_integrations", integration.id, "access_token", integration.access_token)
+        const refreshToken = integration.refresh_token ? await getSecret("gmail_integrations", integration.id, "refresh_token", integration.refresh_token) : null
+        if (!accessToken) {
+            return res.status(400).json({ error: "Gmail integration is missing credentials. Please reconnect." })
+        }
+
         // Set up OAuth client with stored credentials
         const oauth2Client = getOAuth2Client()
         oauth2Client.setCredentials({
-            access_token: integration.access_token,
-            refresh_token: integration.refresh_token,
+            access_token: accessToken,
+            ...(refreshToken ? { refresh_token: refreshToken } : {}),
             expiry_date: integration.token_expiry.getTime()
         })
 

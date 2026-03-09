@@ -18,6 +18,7 @@ import { INTEGRATION_REGISTRY } from "../integrations/abstract/IntegrationRegist
 import logger from "../logger"
 import { db } from "../prismaClient"
 import { ApprovalProcessingStatus, ApprovalService } from "../services/ApprovalService"
+import { getSecret } from "../services/SecretService"
 import { IntegrationType } from "../shared/Integrations"
 import { TERSE_AGENT_MESSAGE_EVENT_TYPE, TerseAgentMessageMetadata, User } from "../shared/types"
 import { OAuthStatePayload, createOAuthStateToken } from "../utility/oauth"
@@ -100,8 +101,13 @@ export async function setupSlackBolt() {
                 throw new Error(`No Slack integration found for team_id: ${teamId}`)
             }
 
+            const botToken = await getSecret("slack_integrations", slackIntegration.id, "access_token", slackIntegration.access_token)
+            if (!botToken) {
+                throw new Error(`No Slack access token found for team_id: ${teamId}`)
+            }
+
             return {
-                botToken: slackIntegration.access_token,
+                botToken,
                 botId: slackIntegration.bot_user_id,
                 botUserId: slackIntegration.bot_user_id,
                 teamId: slackIntegration.team_id,

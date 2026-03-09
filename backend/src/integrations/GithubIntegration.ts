@@ -20,6 +20,7 @@ import {
 } from "../routes/GithubTypes"
 import { fetchGithubRepositoriesForIntegration } from "../routes/github"
 import { FileDownloadResult, StoredFile, buildGithubFileKey, ensureStoredWithMetadata } from "../services/FileStorageService"
+import { getSecret, storeSecret } from "../services/SecretService"
 import { ConfigInstance, ConfigType, GitHubConfig as GitHubConfigClass } from "../shared/Configs"
 import { FrontendRoutes } from "../shared/FrontendRoutes"
 import { AdditionalStateParams, GithubIntegration, GithubIntegrationMetadata, InstallationOptionsFor, IntegrationType } from "../shared/Integrations"
@@ -52,7 +53,12 @@ export class GithubIntegrationManager
         })
         const installations = await Promise.all(
             organizationAccounts.map(async oa => {
-                const appInstallations = await getAppInstallationsForUser(oa.access_token)
+                const accessToken = await getSecret("github_app_tokens", oa.id, "access_token", oa.access_token)
+                if (!accessToken) {
+                    return []
+                }
+
+                const appInstallations = await getAppInstallationsForUser(accessToken)
                 return appInstallations.installations.map(ai => ({
                     id: ai.id.toString(),
                     installation_id: ai.id,
@@ -127,14 +133,23 @@ export class GithubIntegrationManager
         for (const user of users) {
             const token = await db().github_app_tokens.findFirst({
                 where: { user_id: user.id },
-                select: { organization_id: true, access_token: true }
+                select: { id: true, organization_id: true, access_token: true }
             })
             if (!token?.organization_id) continue
             const fullUser = await getUserForOrg(user.id, token.organization_id)
             if (!fullUser) continue
 
+            const accessToken = await getSecret("github_app_tokens", token.id, "access_token", token.access_token)
+            if (!accessToken) {
+                logger.warn("Missing GitHub access token while processing webhook event", {
+                    userId: user.id,
+                    installationId: event.installationId
+                })
+                continue
+            }
+
             // Attach any images or files from the event
-            const storedFiles: StoredFile[] = await getPullRequestFiles(event, token.access_token, event.installationId.toString())
+            const storedFiles: StoredFile[] = await getPullRequestFiles(event, accessToken, event.installationId.toString())
             await runWithUserContext(fullUser, async () => {
                 const githubEvent = new GithubEvent(event, storedFiles)
                 const eventProcessor = new EventProcessor(githubEvent, fullUser)
@@ -228,14 +243,14 @@ export class GithubIntegrationManager
             const authToken = await exchangeCodeForAccessToken(code)
             const githubAppUser = await getGithubAppUser(authToken.access_token)
 
-            const githubInstallation = await db().$transaction(async prisma => {
+            const { githubInstallation, githubTokenId } = await db().$transaction(async prisma => {
                 const installation = await prisma.user_github_installation.upsert({
                     where: { installation_id: installation_id_number },
                     update: { user_id: user_id },
                     create: { user_id: user_id, installation_id: installation_id_number }
                 })
 
-                await prisma.github_app_tokens.upsert({
+                const githubToken = await prisma.github_app_tokens.upsert({
                     where: {
                         user_id_github_username: {
                             user_id: user_id,
@@ -243,18 +258,34 @@ export class GithubIntegrationManager
                         }
                     },
                     update: {
-                        access_token: authToken.access_token,
+                        access_token: "pending",
+                        ...(authToken.refresh_token ? { refresh_token: "pending" } : {}),
                         organization_id: organizationId
                     },
                     create: {
                         user_id: user_id,
                         github_username: githubAppUser.login,
-                        access_token: authToken.access_token,
+                        access_token: "pending",
+                        refresh_token: authToken.refresh_token ? "pending" : null,
                         organization_id: organizationId
                     }
                 })
 
-                return installation
+                return {
+                    githubInstallation: installation,
+                    githubTokenId: githubToken.id
+                }
+            })
+
+            const accessTokenSentinel = await storeSecret("github_app_tokens", githubTokenId, "access_token", authToken.access_token)
+            const refreshTokenSentinel = authToken.refresh_token ? await storeSecret("github_app_tokens", githubTokenId, "refresh_token", authToken.refresh_token) : null
+
+            await db().github_app_tokens.update({
+                where: { id: githubTokenId },
+                data: {
+                    access_token: accessTokenSentinel,
+                    ...(refreshTokenSentinel ? { refresh_token: refreshTokenSentinel } : {})
+                }
             })
 
             logger.info("[GitHub Setup URL Installation] Upsert completed", {
@@ -355,11 +386,14 @@ export class GithubIntegrationManager
         const tokenRow = await db().github_app_tokens.findFirst({
             where: { user_id: users[0].id }
         })
-        if (!tokenRow?.access_token) {
+        if (!tokenRow) {
             throw new Error("No GitHub token found for user. Please connect your GitHub account.")
         }
 
-        const accessToken = tokenRow.access_token
+        const accessToken = await getSecret("github_app_tokens", tokenRow.id, "access_token", tokenRow.access_token)
+        if (!accessToken) {
+            throw new Error("No GitHub token found for user. Please connect your GitHub account.")
+        }
         const userInstallations = await getAppInstallationsForUser(accessToken)
         if (!userInstallations.installations.some(inst => inst.id === installationIdNum)) {
             throw new Error("Installation not found or access denied.")
@@ -701,7 +735,15 @@ export async function resolveUsersForGithubInstallation(installationId: number):
         const githubAppUsers = await tx.github_app_tokens.findMany()
         const installationResults = await Promise.all(
             githubAppUsers.map(async user => {
-                const installations = await getAppInstallationsForUser(user.access_token)
+                const accessToken = await getSecret("github_app_tokens", user.id, "access_token", user.access_token)
+                if (!accessToken) {
+                    return {
+                        userId: user.user_id,
+                        installations: []
+                    }
+                }
+
+                const installations = await getAppInstallationsForUser(accessToken)
                 return {
                     userId: user.user_id,
                     installations: installations.installations
@@ -742,14 +784,19 @@ export async function validateGithubRepositoryIds({ userId, integrationId, repos
 
     const accessToken = await db().github_app_tokens.findFirst({
         where: { user_id: userId },
-        select: { access_token: true }
+        select: { id: true, access_token: true }
     })
 
-    if (!accessToken?.access_token) {
+    if (!accessToken) {
         throw new Error(`Invalid ${contextLabel} config for ${configTypeLabel}: no GitHub access token found for user`)
     }
 
-    const installations = await getAppInstallationsForUser(accessToken.access_token)
+    const resolvedAccessToken = await getSecret("github_app_tokens", accessToken.id, "access_token", accessToken.access_token)
+    if (!resolvedAccessToken) {
+        throw new Error(`Invalid ${contextLabel} config for ${configTypeLabel}: no GitHub access token found for user`)
+    }
+
+    const installations = await getAppInstallationsForUser(resolvedAccessToken)
     const integrationInstallationId = Number(integrationId)
     const targetInstallation = installations.installations.find(installation => (!Number.isNaN(integrationInstallationId) ? installation.id === integrationInstallationId : false))
 
@@ -757,7 +804,7 @@ export async function validateGithubRepositoryIds({ userId, integrationId, repos
         throw new Error(`Invalid ${contextLabel} config for ${configTypeLabel}: installation not found`)
     }
 
-    const repositories = await getAppInstallationRepositories(accessToken.access_token, targetInstallation.id)
+    const repositories = await getAppInstallationRepositories(resolvedAccessToken, targetInstallation.id)
 
     const foundIds = new Set(repositories.map(repo => repo.id))
     const missingIds = repositoryIds.filter(id => !foundIds.has(id))

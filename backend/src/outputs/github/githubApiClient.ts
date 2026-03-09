@@ -3,6 +3,7 @@ import { DateTime } from "luxon"
 
 import logger from "../../logger"
 import { db } from "../../prismaClient"
+import { getSecret } from "../../services/SecretService"
 
 /**
  * Configuration for GitHub KB session
@@ -38,7 +39,7 @@ export async function getGitHubAccessToken(userId: string): Promise<string | nul
         return null
     }
 
-    return githubToken.access_token
+    return await getSecret("github_app_tokens", githubToken.id, "access_token", githubToken.access_token)
 }
 
 /**

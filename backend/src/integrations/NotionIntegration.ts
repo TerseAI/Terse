@@ -6,6 +6,7 @@ import { jwt as jwtSettings, notion as notionConfig, urls } from "../config/sett
 import logger from "../logger"
 import { db } from "../prismaClient"
 import { fetchNotionResources } from "../routes/notion"
+import { getSecret, storeSecret } from "../services/SecretService"
 import { FrontendRoutes } from "../shared/FrontendRoutes"
 import { AdditionalStateParams, InstallationOptionsFor, IntegrationType, NotionIntegration, NotionIntegrationMetadata } from "../shared/Integrations"
 import { NotionResource, OAuthInstallationDetails } from "../shared/types"
@@ -197,16 +198,28 @@ export class NotionIntegrationManager implements Integration<NotionIntegration, 
                         organization_id: decoded.organizationId,
                         workspace_id: workspace_id || null,
                         workspace_name: workspace_name || null,
-                        integration_token: access_token
+                        integration_token: "pending"
                     }
                 })
+
+                const integrationTokenSentinel = await storeSecret("notion_integrations", newIntegration.id, "integration_token", access_token)
+
+                await db().notion_integrations.update({
+                    where: { id: newIntegration.id },
+                    data: {
+                        integration_token: integrationTokenSentinel
+                    }
+                })
+
                 integrationId = newIntegration.id
             } else {
+                const integrationTokenSentinel = await storeSecret("notion_integrations", existing.id, "integration_token", access_token)
+
                 // Update existing connection with new token (in case it was revoked and re-authorized)
                 await db().notion_integrations.update({
                     where: { id: existing.id },
                     data: {
-                        integration_token: access_token,
+                        integration_token: integrationTokenSentinel,
                         organization_id: decoded.organizationId
                     }
                 })
@@ -270,8 +283,7 @@ export class NotionIntegrationManager implements Integration<NotionIntegration, 
                 return null
             }
 
-            // Notion tokens are long-lived and don't expire, so just return the token
-            return integration.integration_token || null
+            return await getSecret("notion_integrations", integrationId, "integration_token", integration.integration_token)
         } catch (error) {
             logger.error(`Error getting Notion access token for integration ${integrationId}`, { error, integrationId })
             return null

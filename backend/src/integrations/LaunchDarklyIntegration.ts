@@ -1,6 +1,7 @@
 import logger from "../logger"
 import { db } from "../prismaClient"
 import { fetchLaunchDarklyEnvironments, fetchLaunchDarklyProjects } from "../routes/launchdarkly"
+import { getSecret, storeSecret } from "../services/SecretService"
 import { IntegrationType, LaunchDarklyIntegration, LaunchDarklyIntegrationMetadata } from "../shared/Integrations"
 import { LaunchDarklyProject } from "../shared/types"
 import { AgentTriggerWithConfigs } from "../types/prisma"
@@ -206,11 +207,13 @@ export class LaunchDarklyIntegrationManager
             })
 
             if (existing) {
+                const apiKeySentinel = await storeSecret("launchdarkly_integrations", existing.id, "api_key", apiKey)
+
                 // Update existing integration
                 await db().launchdarkly_integrations.update({
                     where: { id: existing.id },
                     data: {
-                        api_key: apiKey,
+                        api_key: apiKeySentinel,
                         user_email: userEmail,
                         token_name: tokenName,
                         organization_id: organizationId
@@ -228,11 +231,21 @@ export class LaunchDarklyIntegrationManager
                     data: {
                         user_id: userId,
                         organization_id: organizationId,
-                        api_key: apiKey,
+                        api_key: "pending",
                         user_email: userEmail,
                         token_name: tokenName
                     }
                 })
+
+                const apiKeySentinel = await storeSecret("launchdarkly_integrations", integration.id, "api_key", apiKey)
+
+                await db().launchdarkly_integrations.update({
+                    where: { id: integration.id },
+                    data: {
+                        api_key: apiKeySentinel
+                    }
+                })
+
                 logger.info("✅ Created LaunchDarkly integration", {
                     integrationId: integration.id,
                     userId,
@@ -268,10 +281,14 @@ export async function getLaunchDarklyAccessTokenOrThrow(integrationId: string): 
         where: { id: integrationId },
         select: { api_key: true }
     })
-    if (!integration?.api_key) {
+    if (!integration) {
         throw new Error(`LaunchDarkly integration ${integrationId} not found or missing API key`)
     }
-    return integration.api_key
+    const apiKey = await getSecret("launchdarkly_integrations", integrationId, "api_key", integration.api_key)
+    if (!apiKey) {
+        throw new Error(`LaunchDarkly integration ${integrationId} not found or missing API key`)
+    }
+    return apiKey
 }
 
 /**

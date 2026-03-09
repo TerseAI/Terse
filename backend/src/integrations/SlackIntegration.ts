@@ -13,6 +13,7 @@ import logger, { runWithUserContext } from "../logger"
 import { db } from "../prismaClient"
 import { Identifiable } from "../rag/Hydrator"
 import { FileCategory, FileDownloadResult, StoredFile, buildSlackFileKey, ensureStoredWithMetadata, isSupportedFileType } from "../services/FileStorageService"
+import { getSecret, storeSecret } from "../services/SecretService"
 import { ConfigInstance, ConfigType, SlackConfig as SlackConfigClass } from "../shared/Configs"
 import { FrontendRoutes } from "../shared/FrontendRoutes"
 import { AdditionalStateParams, InstallationOptionsFor, IntegrationType, SlackIntegration, SlackIntegrationMetadata } from "../shared/Integrations"
@@ -27,7 +28,7 @@ import { getUserForOrg } from "../utility/workos"
 
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask"
 import { integrationTaskQueue } from "./IntegrationTaskQueues"
-import { initializeSlackWebClient } from "./SlackClient"
+import { initializeSlackWebClient, resolveSlackAccessToken } from "./SlackClient"
 import { FetchResourcesOptions } from "./abstract/FetchResourcesOptions"
 import { InputEvent } from "./abstract/InputEvent"
 import { ConfigurationFieldDefinition, Integration, IntegrationWithResources, OAuthIntegrationInstallation } from "./abstract/Integration"
@@ -336,6 +337,7 @@ export class SlackIntegrationManager
             // Calculate isUserType outside transaction so we can use it later
             const tokenType = authed_user?.token_type
             const isUserType = tokenType === AuthedUserTokenType.user
+            let userSlackIntegrationId: string | null = null
 
             await db().$transaction(async tx => {
                 if (slackIntegration) {
@@ -350,7 +352,7 @@ export class SlackIntegrationManager
                             bot_user_id: response.data.bot_user_id,
                             team_id: response.data.team.id,
                             team_name: response.data.team.name,
-                            access_token: access_token
+                            access_token: "pending"
                         }
                     })
                 } else {
@@ -364,7 +366,7 @@ export class SlackIntegrationManager
                             bot_user_id: response.data.bot_user_id,
                             team_id: response.data.team.id,
                             team_name: response.data.team.name,
-                            access_token: access_token
+                            access_token: "pending"
                         }
                     })
                     logger.info("Slack integration created", {
@@ -383,7 +385,7 @@ export class SlackIntegrationManager
                 const updatePayload: Partial<UserSlackIntegration> = isUserType
                     ? {
                           authed_user_id: authed_user.id,
-                          authed_user_access_token: authed_user.access_token,
+                          authed_user_access_token: authed_user.access_token ? "pending" : null,
                           organization_id: organizationId
                       }
                     : {
@@ -397,7 +399,7 @@ export class SlackIntegrationManager
                               user_id: user.user.id,
                               slack_team_id: slackIntegration.team_id,
                               authed_user_id: authed_user.id,
-                              authed_user_access_token: authed_user.access_token,
+                              authed_user_access_token: "pending",
                               is_bot_user: false,
                               organization_id: organizationId
                           }
@@ -409,7 +411,7 @@ export class SlackIntegrationManager
                               organization_id: organizationId
                           }
 
-                await tx.user_slack_integrations.upsert({
+                const upsertedUserSlackIntegration = await tx.user_slack_integrations.upsert({
                     where: {
                         user_id_slack_team_id_is_bot_user: {
                             user_id: user.user.id,
@@ -422,16 +424,44 @@ export class SlackIntegrationManager
                     },
                     create: createData
                 })
+
+                userSlackIntegrationId = upsertedUserSlackIntegration.id
             })
 
-            // Get the user_slack_integration ID after upsert
-            const userSlackIntegration = await db().user_slack_integrations.findFirst({
-                where: {
-                    user_id: user.user.id,
-                    slack_team_id: team.id,
-                    is_bot_user: !isUserType
+            if (!slackIntegration) {
+                logger.error("Failed to resolve slack integration after OAuth", {
+                    userId: user.user.id,
+                    teamId: team.id
+                })
+                res.redirect(`${frontendUrl}${FrontendRoutes.OAUTH.ERROR}`)
+                return
+            }
+
+            const slackAccessTokenSentinel = await storeSecret("slack_integrations", slackIntegration.id, "access_token", access_token)
+
+            await db().slack_integrations.update({
+                where: { id: slackIntegration.id },
+                data: {
+                    access_token: slackAccessTokenSentinel
                 }
             })
+
+            if (isUserType && authed_user.access_token && userSlackIntegrationId) {
+                const authedUserAccessTokenSentinel = await storeSecret("user_slack_integrations", userSlackIntegrationId, "authed_user_access_token", authed_user.access_token)
+
+                await db().user_slack_integrations.update({
+                    where: { id: userSlackIntegrationId },
+                    data: {
+                        authed_user_access_token: authedUserAccessTokenSentinel
+                    }
+                })
+            }
+
+            const userSlackIntegration = userSlackIntegrationId
+                ? await db().user_slack_integrations.findUnique({
+                      where: { id: userSlackIntegrationId }
+                  })
+                : null
 
             if (!userSlackIntegration) {
                 logger.error("Failed to find user_slack_integration after OAuth", {
@@ -512,8 +542,7 @@ export class SlackIntegrationManager
                 return null
             }
 
-            // Slack tokens are long-lived and don't expire, so just return the token
-            return userSlackIntegration.slack_integration.access_token || null
+            return await resolveSlackAccessToken(userSlackIntegration)
         } catch (error) {
             logger.error(`Error getting Slack access token for integration ${integrationId}`, { error, integrationId })
             return null
@@ -539,7 +568,7 @@ export class SlackIntegrationManager
         }
 
         // Use user token for DMs when available (user's DMs), otherwise bot token (bot's DMs). Same for channels: bot token.
-        const token = getSlackToken(userSlackIntegration)
+        const token = await getSlackToken(userSlackIntegration)
         if (!token) {
             throw new Error(`Slack access token not found for integration ${integrationId}. Please reconnect your Slack workspace.`)
         }
@@ -695,8 +724,8 @@ function createSlackRouteError(message: string, statusCode: number, details?: st
     return error
 }
 
-const getSlackToken = (integration: UserSlackIntegrationWithUser) => {
-    return integration.authed_user_access_token || integration.slack_integration.access_token
+const getSlackToken = async (integration: UserSlackIntegrationWithUser) => {
+    return await resolveSlackAccessToken(integration)
 }
 
 /**
@@ -726,7 +755,10 @@ export const fetchSlackChannelsForIntegration = async (userId: string, organizat
         throw createSlackRouteError("Slack integration not found", 404)
     }
 
-    const token = getSlackToken(userSlackIntegration)
+    const token = await getSlackToken(userSlackIntegration)
+    if (!token) {
+        throw createSlackRouteError("Slack access token not found", 401, "The Slack integration token is missing. Please reconnect.", "SLACK_TOKEN_MISSING")
+    }
     const isBotUser = userSlackIntegration.is_bot_user
     const teamName = userSlackIntegration.slack_integration.team_name
     const authedUserId = userSlackIntegration.authed_user_id
@@ -849,7 +881,10 @@ export const fetchSlackUsersForIntegration = async (userId: string, organization
         throw createSlackRouteError("Slack integration not found", 404)
     }
 
-    const token = getSlackToken(userSlackIntegration)
+    const token = await getSlackToken(userSlackIntegration)
+    if (!token) {
+        throw createSlackRouteError("Slack access token not found", 401, "The Slack integration token is missing. Please reconnect.", "SLACK_TOKEN_MISSING")
+    }
     const client = new WebClient(token, {
         logLevel: LogLevel.ERROR
     })
@@ -1184,7 +1219,7 @@ async function handleSlackMessage(event: SlackMessageEvent, teamId: string, auth
 
         const isInChannel = async (integration: UserSlackIntegrationWithUser) => {
             try {
-                const botClient = initializeSlackWebClient(integration)
+                const botClient = await initializeSlackWebClient(integration)
 
                 let membersRes: Awaited<ReturnType<typeof botClient.conversations.members>> | undefined
                 try {
@@ -1245,7 +1280,7 @@ async function handleSlackMessage(event: SlackMessageEvent, teamId: string, auth
             return
         }
 
-        const client: WebClient = initializeSlackWebClient(filteredWorkspaceUserIntegrations[0])
+        const client: WebClient = await initializeSlackWebClient(filteredWorkspaceUserIntegrations[0])
 
         logger.debug(`📡 Fetching additional Slack data for channel ${messageEvent.channel}, user ${messageEvent.user}, message ${messageEvent.ts}`, {
             channel: messageEvent.channel,
@@ -1351,8 +1386,20 @@ async function handleSlackMessage(event: SlackMessageEvent, teamId: string, auth
         // Supports: images, PDFs
         let storedFiles: StoredFile[] = []
         if (files && files.length > 0) {
-            const botToken = filteredWorkspaceUserIntegrations[0].slack_integration.access_token
-            storedFiles = await downloadSlackFiles(files, teamId, botToken)
+            const botToken = await getSecret(
+                "slack_integrations",
+                filteredWorkspaceUserIntegrations[0].slack_integration.id,
+                "access_token",
+                filteredWorkspaceUserIntegrations[0].slack_integration.access_token
+            )
+
+            if (botToken) {
+                storedFiles = await downloadSlackFiles(files, teamId, botToken)
+            } else {
+                logger.warn("No Slack bot token available for file download", {
+                    teamId
+                })
+            }
         }
 
         // Build SlackEventData with all available information

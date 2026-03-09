@@ -10,6 +10,7 @@ import { db } from "../prismaClient"
 import { Identifiable } from "../rag/Hydrator"
 import { fetchLinearTeams } from "../routes/linear"
 import { StoredFile } from "../services/FileStorageService"
+import { getSecret, storeSecret } from "../services/SecretService"
 import { ConfigInstance, ConfigType } from "../shared/Configs"
 import { FrontendRoutes } from "../shared/FrontendRoutes"
 import { AdditionalStateParams, InstallationOptionsFor, IntegrationType, LinearIntegration, LinearIntegrationMetadata } from "../shared/Integrations"
@@ -278,23 +279,39 @@ export class LinearIntegrationManager
                         linear_user_id: linearUser.id,
                         workspace_id: linearOrganization.id,
                         workspace_name: linearOrganization.name,
-                        access_token: access_token,
-                        refresh_token: refresh_token,
+                        access_token: "pending",
+                        refresh_token: refresh_token ? "pending" : "",
                         token_expiry: tokenExpiry
                     }
                 })
+
+                const accessTokenSentinel = await storeSecret("linear_integrations", newIntegration.id, "access_token", access_token)
+                const refreshTokenValue = refresh_token || ""
+                const refreshTokenSentinel = refreshTokenValue ? await storeSecret("linear_integrations", newIntegration.id, "refresh_token", refreshTokenValue) : refreshTokenValue
+
+                await db().linear_integrations.update({
+                    where: { id: newIntegration.id },
+                    data: {
+                        access_token: accessTokenSentinel,
+                        refresh_token: refreshTokenSentinel
+                    }
+                })
+
                 integrationId = newIntegration.id
                 logger.info("✅ Created Linear OAuth connection", {
                     workspaceName: linearOrganization.name,
                     userId: decoded.userId
                 })
             } else {
+                const accessTokenSentinel = await storeSecret("linear_integrations", existing.id, "access_token", access_token)
+                const refreshTokenSentinel = refresh_token ? await storeSecret("linear_integrations", existing.id, "refresh_token", refresh_token) : null
+
                 // Update existing connection with new token (in case it was revoked and re-authorized)
                 await db().linear_integrations.update({
                     where: { id: existing.id },
                     data: {
-                        access_token: access_token,
-                        refresh_token: refresh_token || existing.refresh_token, // Preserve existing refresh token if new one not provided
+                        access_token: accessTokenSentinel,
+                        ...(refreshTokenSentinel ? { refresh_token: refreshTokenSentinel } : {}),
                         token_expiry: tokenExpiry
                     }
                 })
@@ -400,19 +417,22 @@ export class LinearIntegrationManager
                 return null
             }
 
+            const existingAccessToken = await getSecret("linear_integrations", integration.id, "access_token", integration.access_token)
+            const refreshToken = integration.refresh_token ? await getSecret("linear_integrations", integration.id, "refresh_token", integration.refresh_token) : null
+
             const now = new Date()
             // Check if token is expired or will expire within the refresh threshold
             if (integration.token_expiry && integration.token_expiry <= new Date(now.getTime() + OAUTH_TOKEN_REFRESH_THRESHOLD_MS)) {
                 logger.info(`Linear access token expiring soon for integration ${integrationId}, refreshing...`, { integrationId })
 
-                if (!integration.refresh_token) {
+                if (!refreshToken) {
                     logger.error(`No refresh token available for Linear integration ${integrationId}`, { integrationId })
-                    return integration.access_token // Return existing token as fallback
+                    return existingAccessToken // Return existing token as fallback
                 }
 
                 // Exchange refresh token for new access token
                 const params = new URLSearchParams()
-                params.append("refresh_token", integration.refresh_token)
+                params.append("refresh_token", refreshToken)
                 params.append("client_id", settings.linear.clientId)
                 params.append("client_secret", settings.linear.clientSecret)
                 params.append("grant_type", "refresh_token")
@@ -429,7 +449,7 @@ export class LinearIntegrationManager
                     const errorText = await tokenResponse.text()
                     logger.error(`Linear token refresh failed for integration ${integrationId}`, { error: errorText, integrationId })
                     // Return existing token as fallback - it might still work
-                    return integration.access_token
+                    return existingAccessToken
                 }
 
                 const tokenData = await tokenResponse.json()
@@ -438,18 +458,21 @@ export class LinearIntegrationManager
                 if (!access_token) {
                     logger.error(`No access token received from Linear refresh for integration ${integrationId}`, { integrationId })
                     // Return existing token as fallback
-                    return integration.access_token
+                    return existingAccessToken
                 }
 
                 // Calculate token expiry
                 const tokenExpiry = new Date(Date.now() + (expires_in || 3600) * 1000)
 
+                const accessTokenSentinel = await storeSecret("linear_integrations", integration.id, "access_token", access_token)
+                const refreshTokenSentinel = refresh_token ? await storeSecret("linear_integrations", integration.id, "refresh_token", refresh_token) : null
+
                 // Update the database with new tokens
                 await db().linear_integrations.update({
                     where: { id: integration.id },
                     data: {
-                        access_token: access_token,
-                        refresh_token: refresh_token || integration.refresh_token, // Preserve existing if new one not provided
+                        access_token: accessTokenSentinel,
+                        ...(refreshTokenSentinel ? { refresh_token: refreshTokenSentinel } : {}),
                         token_expiry: tokenExpiry
                     }
                 })
@@ -459,7 +482,7 @@ export class LinearIntegrationManager
             }
 
             // Token is still valid
-            return integration.access_token
+            return existingAccessToken
         } catch (error) {
             logger.error(`Error getting Linear access token for integration ${integrationId}`, { error, integrationId })
             // Return null on error - caller should handle

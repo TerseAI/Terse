@@ -5,6 +5,7 @@ import { parseFormSubmissionFromRequest } from "../integrations/abstract/Integra
 import { emitIntegrationFormCompletedTaskIfNeeded } from "../integrations/helpers/emitIntegrationFormCompletedTask"
 import logger from "../logger"
 import { db } from "../prismaClient"
+import { getSecret, storeSecret } from "../services/SecretService"
 import { IntegrationType } from "../shared/Integrations"
 import { workos } from "../utility/workos"
 
@@ -72,9 +73,11 @@ export async function updateWorkOSWebhookSecret(req: Request, res: Response) {
             return
         }
 
+        const webhookSecretSentinel = await storeSecret("workos_integrations", integration.id, "webhook_secret", webhookSecret)
+
         await db().workos_integrations.update({
             where: { id: integration.id },
-            data: { webhook_secret: webhookSecret }
+            data: { webhook_secret: webhookSecretSentinel }
         })
 
         logger.info("Updated WorkOS webhook secret", { integrationId: integration.id })
@@ -120,8 +123,12 @@ export async function handleWorkOSTriggerWebhook(req: Request, res: Response) {
         const payload = JSON.parse(rawBody.toString("utf8")) as Record<string, unknown>
         const sigHeader = req.get("workos-signature") ?? req.get("WorkOS-Signature") ?? ""
 
+        const webhookSecret = integration.webhook_secret
+            ? await getSecret("workos_integrations", integration.id, "webhook_secret", integration.webhook_secret)
+            : null
+
         // Verify webhook signature using the WorkOS SDK
-        if (integration.webhook_secret) {
+        if (webhookSecret) {
             if (!sigHeader) {
                 logger.warn("WorkOS trigger webhook missing signature header", { integrationId })
                 res.status(401).json({ error: "Missing signature" })
@@ -130,7 +137,7 @@ export async function handleWorkOSTriggerWebhook(req: Request, res: Response) {
             await workos.webhooks.constructEvent({
                 payload,
                 sigHeader,
-                secret: integration.webhook_secret
+                secret: webhookSecret
             })
         } else {
             logger.warn("WorkOS trigger webhook received without signing secret configured — skipping signature verification", { integrationId })

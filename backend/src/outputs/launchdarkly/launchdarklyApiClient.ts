@@ -1,5 +1,6 @@
 import logger from "../../logger"
 import { db } from "../../prismaClient"
+import { getSecret } from "../../services/SecretService"
 import { User } from "../../shared/types"
 
 /**
@@ -21,5 +22,5 @@ export async function getLaunchDarklyApiKeyByIntegrationId(integrationId: string
         return null
     }
 
-    return integration.api_key
+    return await getSecret("launchdarkly_integrations", integration.id, "api_key", integration.api_key)
 }

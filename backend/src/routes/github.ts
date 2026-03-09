@@ -6,6 +6,7 @@ import logger from "../logger"
 import { db } from "../prismaClient"
 import { GithubAppInstallationDeletedRequest, GithubAppInstallationRepository, GithubAppUnifiedEventRequest } from "../routes/GithubTypes"
 import { emitCacheInvalidationWithKey } from "../services/CacheInvalidationService"
+import { getSecret } from "../services/SecretService"
 import { GetGithubRepositoriesForIntegrationResponse, GithubAppInstallationCallbackRequest, Repository, User as RuntimeUser } from "../shared/types"
 import { GithubRepository } from "../types/prisma"
 import { getUserForOrg } from "../utility/workos"
@@ -185,11 +186,16 @@ export async function fetchGithubRepositoriesForIntegration(organizationId: stri
     let tokenWithAccess: (typeof orgTokens)[0] | null = null
 
     for (const token of orgTokens) {
-        const installations = await getAppInstallationsForUser(token.access_token)
+        const accessToken = await getSecret("github_app_tokens", token.id, "access_token", token.access_token)
+        if (!accessToken) {
+            continue
+        }
+
+        const installations = await getAppInstallationsForUser(accessToken)
         const installation = installations.installations.find(i => i.id === Number(installationId))
         if (installation) {
             targetInstallation = installation
-            tokenWithAccess = token
+            tokenWithAccess = { ...token, access_token: accessToken }
             break
         }
     }
@@ -359,7 +365,15 @@ export async function resolveUsersForGithubInstallation(installationId: number):
         // for each github App user, get their installations they have access to. Return a Map<user_id, installations>
         const installationResults = await Promise.all(
             githubAppUsers.map(async user => {
-                const installations = await getAppInstallationsForUser(user.access_token)
+                const accessToken = await getSecret("github_app_tokens", user.id, "access_token", user.access_token)
+                if (!accessToken) {
+                    return {
+                        userId: user.user_id,
+                        installations: []
+                    }
+                }
+
+                const installations = await getAppInstallationsForUser(accessToken)
                 return {
                     userId: user.user_id,
                     installations: installations.installations

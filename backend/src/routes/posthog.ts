@@ -5,6 +5,7 @@ import { parseFormSubmissionFromRequest } from "../integrations/abstract/Integra
 import { emitIntegrationFormCompletedTaskIfNeeded } from "../integrations/helpers/emitIntegrationFormCompletedTask"
 import logger from "../logger"
 import { db } from "../prismaClient"
+import { getSecret } from "../services/SecretService"
 import { IntegrationType } from "../shared/Integrations"
 import { PosthogProjectsResponse } from "../shared/types"
 
@@ -98,11 +99,16 @@ export const fetchPosthogProjects = async (organizationId: string, integrationId
         throw new Error("Posthog integration not found")
     }
 
+    const apiKey = await getSecret("posthog_integrations", integration.id, "api_key", integration.api_key)
+    if (!apiKey) {
+        throw new Error("Posthog API key not found")
+    }
+
     const apiUrl = "https://us.posthog.com/api/projects/"
     const response = await fetch(apiUrl, {
         method: "GET",
         headers: {
-            Authorization: `Bearer ${integration.api_key}`,
+            Authorization: `Bearer ${apiKey}`,
             "Content-Type": "application/json"
         }
     })

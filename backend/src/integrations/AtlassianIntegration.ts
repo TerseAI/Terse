@@ -8,6 +8,7 @@ import logger, { runWithUserContext } from "../logger"
 import { db } from "../prismaClient"
 import { Identifiable } from "../rag/Hydrator"
 import { StoredFile } from "../services/FileStorageService"
+import { storeSecret } from "../services/SecretService"
 import { ConfigInstance, ConfigType, JiraConfig as JiraConfigClass } from "../shared/Configs"
 import { FrontendRoutes } from "../shared/FrontendRoutes"
 import { AdditionalStateParams, AtlassianIntegration, AtlassianIntegrationMetadata, InstallationOptionsFor, IntegrationType } from "../shared/Integrations"
@@ -276,6 +277,7 @@ export class AtlassianIntegrationManager
 
             let integrationId: string
             if (!existing) {
+                const refreshTokenValue = refreshToken || ""
                 const newIntegration = await db().atlassian_integrations.create({
                     data: {
                         user_id: decoded.userId,
@@ -285,30 +287,48 @@ export class AtlassianIntegrationManager
                         cloud_id: cloudId,
                         site_name: siteName,
                         webhook_id: webhookId,
-                        webhook_secret: webhookSecret,
-                        access_token: access_token,
-                        refresh_token: refreshToken || "",
+                        webhook_secret: webhookSecret ? "pending" : webhookSecret,
+                        access_token: "pending",
+                        refresh_token: refreshTokenValue ? "pending" : refreshTokenValue,
                         token_expiry: tokenExpiry
                     }
                 })
+
+                const accessTokenSentinel = await storeSecret("atlassian_integrations", newIntegration.id, "access_token", access_token)
+                const refreshTokenSentinel = refreshTokenValue ? await storeSecret("atlassian_integrations", newIntegration.id, "refresh_token", refreshTokenValue) : refreshTokenValue
+                const webhookSecretSentinel = webhookSecret ? await storeSecret("atlassian_integrations", newIntegration.id, "webhook_secret", webhookSecret) : webhookSecret
+
+                await db().atlassian_integrations.update({
+                    where: { id: newIntegration.id },
+                    data: {
+                        access_token: accessTokenSentinel,
+                        refresh_token: refreshTokenSentinel,
+                        ...(webhookSecretSentinel !== undefined ? { webhook_secret: webhookSecretSentinel } : {})
+                    }
+                })
+
                 integrationId = newIntegration.id
                 logger.info("✅ Created Atlassian OAuth connection:", {
                     siteName,
                     webhookId: webhookId ? "with webhook" : "no webhook"
                 })
             } else {
+                const accessTokenSentinel = await storeSecret("atlassian_integrations", existing.id, "access_token", access_token)
+                const refreshTokenSentinel = refreshToken ? await storeSecret("atlassian_integrations", existing.id, "refresh_token", refreshToken) : null
+                const webhookSecretSentinel = webhookSecret ? await storeSecret("atlassian_integrations", existing.id, "webhook_secret", webhookSecret) : null
+
                 // Update existing connection with new token (in case it was revoked and re-authorized)
                 await db().atlassian_integrations.update({
                     where: { id: existing.id },
                     data: {
                         organization_id: decoded.organizationId,
                         cloud_id: cloudId, // Update cloud_id in case it changed
-                        access_token: access_token,
-                        refresh_token: refreshToken || existing.refresh_token, // Preserve existing refresh token if new one not provided
+                        access_token: accessTokenSentinel,
+                        ...(refreshTokenSentinel ? { refresh_token: refreshTokenSentinel } : {}),
                         token_expiry: tokenExpiry,
                         jira_user_email: jiraUserEmail || existing.jira_user_email,
                         webhook_id: webhookId || existing.webhook_id, // Update webhook if created, otherwise keep existing
-                        webhook_secret: webhookSecret || existing.webhook_secret
+                        ...(webhookSecretSentinel ? { webhook_secret: webhookSecretSentinel } : {})
                     }
                 })
                 integrationId = existing.id
@@ -512,13 +532,14 @@ export class AtlassianIntegrationManager
 
             // Create the webhook
             const webhook = await this.createJiraWebhook(integration.cloud_id, accessToken, accountId)
+            const webhookSecretSentinel = await storeSecret("atlassian_integrations", integrationId, "webhook_secret", webhook.webhookSecret)
 
             // Update the integration with the webhook ID
             await db().atlassian_integrations.update({
                 where: { id: integrationId },
                 data: {
                     webhook_id: webhook.webhookId,
-                    webhook_secret: webhook.webhookSecret
+                    webhook_secret: webhookSecretSentinel
                 }
             })
 

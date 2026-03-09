@@ -10,6 +10,7 @@ import logger, { runWithUserContext } from "../logger"
 import { db } from "../prismaClient"
 import { Identifiable } from "../rag/Hydrator"
 import { FileDownloadResult, StoredFile, buildGmailFileKey, ensureStoredWithMetadata, isSupportedFileType } from "../services/FileStorageService"
+import { getSecret, storeSecret } from "../services/SecretService"
 import { ConfigInstance, ConfigType } from "../shared/Configs"
 import { FrontendRoutes } from "../shared/FrontendRoutes"
 import { AdditionalStateParams, GmailIntegration, GmailIntegrationMetadata, InstallationOptionsFor, IntegrationType } from "../shared/Integrations"
@@ -116,10 +117,11 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
 
                     // Step 3: Set up Gmail client (fast, non-blocking)
                     const accessToken = await refreshAccessTokenIfNeeded(integration)
+                    const refreshToken = integration.refresh_token ? await getSecret("gmail_integrations", integration.id, "refresh_token", integration.refresh_token) : null
                     const oauth2Client = getOAuth2Client()
                     oauth2Client.setCredentials({
                         access_token: accessToken,
-                        refresh_token: integration.refresh_token
+                        ...(refreshToken ? { refresh_token: refreshToken } : {})
                     })
                     const gmail = google.gmail({ version: "v1", auth: oauth2Client })
 
@@ -359,8 +361,8 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
                     email: emailAddress,
                     history_id: historyId,
                     watch_expiration: new Date(parseInt(expiration)),
-                    access_token: tokens.access_token,
-                    refresh_token: tokens.refresh_token,
+                    access_token: "pending",
+                    refresh_token: "pending",
                     token_expiry: tokenExpiry,
                     is_active: true,
                     last_processed_message_date: new Date() // Set initial date to prevent processing historical messages
@@ -369,10 +371,21 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
                     organization_id: organizationId,
                     history_id: historyId,
                     watch_expiration: new Date(parseInt(expiration)),
-                    access_token: tokens.access_token,
-                    refresh_token: tokens.refresh_token,
+                    access_token: "pending",
+                    refresh_token: "pending",
                     token_expiry: tokenExpiry,
                     is_active: true
+                }
+            })
+
+            const accessTokenSentinel = await storeSecret("gmail_integrations", integration.id, "access_token", tokens.access_token)
+            const refreshTokenSentinel = await storeSecret("gmail_integrations", integration.id, "refresh_token", tokens.refresh_token)
+
+            await db().gmail_integrations.update({
+                where: { id: integration.id },
+                data: {
+                    access_token: accessTokenSentinel,
+                    refresh_token: refreshTokenSentinel
                 }
             })
 
@@ -449,9 +462,11 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
                 // Set up OAuth client with current credentials
                 const oauth2Client = getOAuth2Client()
                 const currentExpiry = updatedIntegration?.token_expiry || integration.token_expiry
+                const refreshTokenDbValue = updatedIntegration?.refresh_token || integration.refresh_token
+                const refreshToken = refreshTokenDbValue ? await getSecret("gmail_integrations", integration.id, "refresh_token", refreshTokenDbValue) : null
                 oauth2Client.setCredentials({
                     access_token: accessToken,
-                    refresh_token: updatedIntegration?.refresh_token || integration.refresh_token,
+                    ...(refreshToken ? { refresh_token: refreshToken } : {}),
                     expiry_date: currentExpiry?.getTime()
                 })
 
@@ -531,10 +546,11 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
         }
 
         const accessToken = await refreshAccessTokenIfNeeded(gmailIntegration)
+        const refreshToken = gmailIntegration.refresh_token ? await getSecret("gmail_integrations", gmailIntegration.id, "refresh_token", gmailIntegration.refresh_token) : null
         const oauth2Client = getOAuth2Client()
         oauth2Client.setCredentials({
             access_token: accessToken,
-            refresh_token: gmailIntegration.refresh_token
+            ...(refreshToken ? { refresh_token: refreshToken } : {})
         })
         const gmail = google.gmail({ version: "v1", auth: oauth2Client })
 
@@ -653,6 +669,11 @@ export function getOAuth2Client(): OAuth2Client {
  */
 async function refreshAccessTokenIfNeeded(integration: PrismaGmailIntegration): Promise<string> {
     const now = new Date()
+    const currentAccessToken = await getSecret("gmail_integrations", integration.id, "access_token", integration.access_token)
+    const refreshToken = integration.refresh_token ? await getSecret("gmail_integrations", integration.id, "refresh_token", integration.refresh_token) : null
+    if (!currentAccessToken) {
+        throw new Error(`Gmail access token not found for integration ${integration.id}`)
+    }
 
     // Check if token is expired or will expire within the refresh threshold
     if (integration.token_expiry && integration.token_expiry <= new Date(now.getTime() + OAUTH_TOKEN_REFRESH_THRESHOLD_MS)) {
@@ -661,20 +682,28 @@ async function refreshAccessTokenIfNeeded(integration: PrismaGmailIntegration): 
             tokenExpiry: integration.token_expiry
         })
 
+        if (!refreshToken) {
+            logger.error("No refresh token available for Gmail integration", { integrationId: integration.id })
+            return currentAccessToken
+        }
+
         const oauth2Client = getOAuth2Client()
         oauth2Client.setCredentials({
-            refresh_token: integration.refresh_token
+            refresh_token: refreshToken
         })
 
         const { credentials } = await oauth2Client.refreshAccessToken()
 
         const newTokenExpiry = credentials.expiry_date ? new Date(credentials.expiry_date) : new Date(Date.now() + 3600 * 1000)
+        const accessTokenSentinel = await storeSecret("gmail_integrations", integration.id, "access_token", credentials.access_token!)
+        const refreshTokenSentinel = credentials.refresh_token ? await storeSecret("gmail_integrations", integration.id, "refresh_token", credentials.refresh_token) : null
 
         // Update the database with new tokens
         await db().gmail_integrations.update({
             where: { id: integration.id },
             data: {
-                access_token: credentials.access_token!,
+                access_token: accessTokenSentinel,
+                ...(refreshTokenSentinel ? { refresh_token: refreshTokenSentinel } : {}),
                 token_expiry: newTokenExpiry
             }
         })
@@ -687,7 +716,7 @@ async function refreshAccessTokenIfNeeded(integration: PrismaGmailIntegration): 
         return credentials.access_token!
     }
 
-    return integration.access_token
+    return currentAccessToken
 }
 
 /**
@@ -806,11 +835,12 @@ async function markMessageAsProcessed(integrationId: string, messageId: string, 
 async function fetchNewMessageIds(integration: PrismaGmailIntegration, oldHistoryId: string): Promise<string[]> {
     // Refresh token if needed
     const accessToken = await refreshAccessTokenIfNeeded(integration)
+    const refreshToken = integration.refresh_token ? await getSecret("gmail_integrations", integration.id, "refresh_token", integration.refresh_token) : null
 
     const oauth2Client = getOAuth2Client()
     oauth2Client.setCredentials({
         access_token: accessToken,
-        refresh_token: integration.refresh_token
+        ...(refreshToken ? { refresh_token: refreshToken } : {})
     })
 
     const gmail = google.gmail({ version: "v1", auth: oauth2Client })

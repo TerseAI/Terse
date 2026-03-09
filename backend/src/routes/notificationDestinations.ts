@@ -439,7 +439,7 @@ async function resolveSlackDestinationTarget(params: { slackIntegration: UserSla
     }
 
     const userId = params.targetSelection.slackUserId
-    const client = initializeSlackWebClient(params.slackIntegration)
+    const client = await initializeSlackWebClient(params.slackIntegration)
     const result = await client.conversations.open({
         users: userId
     })

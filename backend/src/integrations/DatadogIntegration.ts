@@ -1,6 +1,7 @@
 import logger from "../logger"
 import { getDatadogCredentialsByIntegrationId } from "../outputs/datadog/datadogApiClient"
 import { db } from "../prismaClient"
+import { storeSecret } from "../services/SecretService"
 import { DatadogIntegration, DatadogIntegrationMetadata, IntegrationType } from "../shared/Integrations"
 import { AgentTriggerWithConfigs } from "../types/prisma"
 import { getDatadogApiUrl } from "../utility/datadog"
@@ -165,12 +166,15 @@ export class DatadogIntegrationManager implements Integration<DatadogIntegration
             })
 
             if (existing) {
+                const apiKeySentinel = await storeSecret("datadog_integrations", existing.id, "api_key", apiKey)
+                const appKeySentinel = await storeSecret("datadog_integrations", existing.id, "app_key", appKey)
+
                 // Update existing integration with new credentials
                 await db().datadog_integrations.update({
                     where: { id: existing.id },
                     data: {
-                        api_key: apiKey,
-                        app_key: appKey,
+                        api_key: apiKeySentinel,
+                        app_key: appKeySentinel,
                         region: normalizedRegion,
                         organization_id: organizationId
                     }
@@ -186,11 +190,23 @@ export class DatadogIntegrationManager implements Integration<DatadogIntegration
                     data: {
                         user_id: userId,
                         organization_id: organizationId,
-                        api_key: apiKey,
-                        app_key: appKey,
+                        api_key: "pending",
+                        app_key: "pending",
                         region: normalizedRegion
                     }
                 })
+
+                const apiKeySentinel = await storeSecret("datadog_integrations", integration.id, "api_key", apiKey)
+                const appKeySentinel = await storeSecret("datadog_integrations", integration.id, "app_key", appKey)
+
+                await db().datadog_integrations.update({
+                    where: { id: integration.id },
+                    data: {
+                        api_key: apiKeySentinel,
+                        app_key: appKeySentinel
+                    }
+                })
+
                 logger.info("✅ Created Datadog integration", {
                     integrationId: integration.id,
                     userId,

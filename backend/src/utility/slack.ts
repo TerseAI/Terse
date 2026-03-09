@@ -1,7 +1,7 @@
 import { KnownBlock, LogLevel, WebClient } from "@slack/web-api"
 
 import { settings } from "../config/settings"
-import { initializeSlackWebClient } from "../integrations/SlackClient"
+import { initializeSlackWebClient, resolveSlackAccessToken } from "../integrations/SlackClient"
 import logger from "../logger"
 import { db } from "../prismaClient"
 import { FrontendRoutes } from "../shared/FrontendRoutes"
@@ -41,7 +41,7 @@ export async function sendSlackMessage(userSlackIntegrationId: string, channelId
         return false
     }
 
-    const client: WebClient = initializeSlackWebClient(userSlackIntegration)
+    const client: WebClient = await initializeSlackWebClient(userSlackIntegration)
     logger.debug(`[sendSlackMessage] Message`, { message, channelId, userSlackIntegrationId })
 
     try {
@@ -84,7 +84,7 @@ export async function resolveSlackChannelIdForDestination(userSlackIntegrationId
     }
 
     try {
-        const client = initializeSlackWebClient(userSlackIntegration)
+        const client = await initializeSlackWebClient(userSlackIntegration)
         const result = await client.conversations.open({
             users: slackUserId
         })
@@ -124,7 +124,13 @@ export async function getSlackClient(userSlackIntegrationId: string): Promise<We
         return null
     }
 
-    return new WebClient(userSlackIntegration.slack_integration.access_token, {
+    const token = await resolveSlackAccessToken(userSlackIntegration)
+    if (!token) {
+        logger.error(`[getSlackClient] No Slack token found for integration: ${userSlackIntegrationId}`, { userSlackIntegrationId })
+        return null
+    }
+
+    return new WebClient(token, {
         logLevel: LogLevel.ERROR
     })
 }
@@ -191,7 +197,7 @@ export async function sendSlackApprovalMessage(
         return { success: false }
     }
 
-    const client: WebClient = initializeSlackWebClient(userSlackIntegration)
+    const client: WebClient = await initializeSlackWebClient(userSlackIntegration)
 
     // Build deep link to run history if automationId is provided
     let runHistoryLink: string | undefined
@@ -268,7 +274,7 @@ export async function updateSlackApprovalMessage(
         return false
     }
 
-    const client: WebClient = initializeSlackWebClient(userSlackIntegration)
+    const client: WebClient = await initializeSlackWebClient(userSlackIntegration)
 
     let statusEmoji: string
     let statusText: string
