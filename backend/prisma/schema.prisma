@@ -115,14 +115,14 @@ model linear_integrations {
 }
 
 model user_slack_integrations {
-  id                       String   @id @default(cuid())
-  user_id                  String
-  organization_id          String
-  slack_team_id            String
-  authed_user_id           String
-  is_bot_user              Boolean  @default(true) // true for bot token, false for user token
-  created_at               DateTime @default(now())
-  updated_at               DateTime @updatedAt
+  id              String   @id @default(cuid())
+  user_id         String
+  organization_id String
+  slack_team_id   String
+  authed_user_id  String
+  is_bot_user     Boolean  @default(true) // true for bot token, false for user token
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
 
   user                           users                            @relation(fields: [user_id], references: [id], onDelete: Cascade)
   slack_integration              slack_integrations               @relation(fields: [slack_team_id], references: [team_id], onDelete: Cascade)
@@ -221,13 +221,13 @@ model processed_slack_events {
 }
 
 model notion_integrations {
-  id                String   @id @default(cuid())
-  user_id           String
-  organization_id   String
-  workspace_id      String?
-  workspace_name    String?
-  created_at        DateTime @default(now())
-  updated_at        DateTime @updatedAt
+  id              String   @id @default(cuid())
+  user_id         String
+  organization_id String
+  workspace_id    String?
+  workspace_name  String?
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
 
   user users @relation(fields: [user_id], references: [id], onDelete: Cascade)
 

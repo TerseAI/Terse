@@ -1368,11 +1368,7 @@ async function handleSlackMessage(event: SlackMessageEvent, teamId: string, auth
         // Supports: images, PDFs
         let storedFiles: StoredFile[] = []
         if (files && files.length > 0) {
-            const botToken = await getSecret(
-                "slack_integrations",
-                filteredWorkspaceUserIntegrations[0].slack_integration.id,
-                "access_token"
-            )
+            const botToken = await getSecret("slack_integrations", filteredWorkspaceUserIntegrations[0].slack_integration.id, "access_token")
 
             if (botToken) {
                 storedFiles = await downloadSlackFiles(files, teamId, botToken)
