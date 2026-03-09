@@ -56,7 +56,7 @@ export class WorkOSEventHydrator extends Hydrator<WorkOSEvent> {
             return null
         }
 
-        const apiKey = await getSecret("workos_integrations", integration.id, "api_key", integration.api_key)
+        const apiKey = await getSecret("workos_integrations", integration.id, "api_key")
         if (!apiKey) {
             logger.error(`WorkOS integration ${integrationId} not found or missing API key`)
             return null

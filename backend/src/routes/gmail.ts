@@ -56,8 +56,8 @@ export async function deleteGmailIntegration(req: Request, res: Response) {
             return res.status(404).json({ error: "No active Gmail integration found" })
         }
 
-        const accessToken = await getSecret("gmail_integrations", integration.id, "access_token", integration.access_token)
-        const refreshToken = integration.refresh_token ? await getSecret("gmail_integrations", integration.id, "refresh_token", integration.refresh_token) : null
+        const accessToken = await getSecret("gmail_integrations", integration.id, "access_token")
+        const refreshToken = await getSecret("gmail_integrations", integration.id, "refresh_token")
         if (!accessToken) {
             return res.status(400).json({ error: "Gmail integration is missing credentials. Please reconnect." })
         }

@@ -53,7 +53,7 @@ export class GithubIntegrationManager
         })
         const installations = await Promise.all(
             organizationAccounts.map(async oa => {
-                const accessToken = await getSecret("github_app_tokens", oa.id, "access_token", oa.access_token)
+                const accessToken = await getSecret("github_app_tokens", oa.id, "access_token")
                 if (!accessToken) {
                     return []
                 }
@@ -133,13 +133,13 @@ export class GithubIntegrationManager
         for (const user of users) {
             const token = await db().github_app_tokens.findFirst({
                 where: { user_id: user.id },
-                select: { id: true, organization_id: true, access_token: true }
+                select: { id: true, organization_id: true }
             })
             if (!token?.organization_id) continue
             const fullUser = await getUserForOrg(user.id, token.organization_id)
             if (!fullUser) continue
 
-            const accessToken = await getSecret("github_app_tokens", token.id, "access_token", token.access_token)
+            const accessToken = await getSecret("github_app_tokens", token.id, "access_token")
             if (!accessToken) {
                 logger.warn("Missing GitHub access token while processing webhook event", {
                     userId: user.id,
@@ -258,15 +258,11 @@ export class GithubIntegrationManager
                         }
                     },
                     update: {
-                        access_token: "pending",
-                        ...(authToken.refresh_token ? { refresh_token: "pending" } : {}),
                         organization_id: organizationId
                     },
                     create: {
                         user_id: user_id,
                         github_username: githubAppUser.login,
-                        access_token: "pending",
-                        refresh_token: authToken.refresh_token ? "pending" : null,
                         organization_id: organizationId
                     }
                 })
@@ -277,16 +273,10 @@ export class GithubIntegrationManager
                 }
             })
 
-            const accessTokenSentinel = await storeSecret("github_app_tokens", githubTokenId, "access_token", authToken.access_token)
-            const refreshTokenSentinel = authToken.refresh_token ? await storeSecret("github_app_tokens", githubTokenId, "refresh_token", authToken.refresh_token) : null
-
-            await db().github_app_tokens.update({
-                where: { id: githubTokenId },
-                data: {
-                    access_token: accessTokenSentinel,
-                    ...(refreshTokenSentinel ? { refresh_token: refreshTokenSentinel } : {})
-                }
-            })
+            await storeSecret("github_app_tokens", githubTokenId, "access_token", authToken.access_token)
+            if (authToken.refresh_token) {
+                await storeSecret("github_app_tokens", githubTokenId, "refresh_token", authToken.refresh_token)
+            }
 
             logger.info("[GitHub Setup URL Installation] Upsert completed", {
                 installationId: installation_id_number,
@@ -390,7 +380,7 @@ export class GithubIntegrationManager
             throw new Error("No GitHub token found for user. Please connect your GitHub account.")
         }
 
-        const accessToken = await getSecret("github_app_tokens", tokenRow.id, "access_token", tokenRow.access_token)
+        const accessToken = await getSecret("github_app_tokens", tokenRow.id, "access_token")
         if (!accessToken) {
             throw new Error("No GitHub token found for user. Please connect your GitHub account.")
         }
@@ -735,7 +725,7 @@ export async function resolveUsersForGithubInstallation(installationId: number):
         const githubAppUsers = await tx.github_app_tokens.findMany()
         const installationResults = await Promise.all(
             githubAppUsers.map(async user => {
-                const accessToken = await getSecret("github_app_tokens", user.id, "access_token", user.access_token)
+                const accessToken = await getSecret("github_app_tokens", user.id, "access_token")
                 if (!accessToken) {
                     return {
                         userId: user.user_id,
@@ -784,14 +774,14 @@ export async function validateGithubRepositoryIds({ userId, integrationId, repos
 
     const accessToken = await db().github_app_tokens.findFirst({
         where: { user_id: userId },
-        select: { id: true, access_token: true }
+        select: { id: true }
     })
 
     if (!accessToken) {
         throw new Error(`Invalid ${contextLabel} config for ${configTypeLabel}: no GitHub access token found for user`)
     }
 
-    const resolvedAccessToken = await getSecret("github_app_tokens", accessToken.id, "access_token", accessToken.access_token)
+    const resolvedAccessToken = await getSecret("github_app_tokens", accessToken.id, "access_token")
     if (!resolvedAccessToken) {
         throw new Error(`Invalid ${contextLabel} config for ${configTypeLabel}: no GitHub access token found for user`)
     }

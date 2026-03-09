@@ -28,13 +28,12 @@ export class AttioIntegrationManager implements Integration<AttioIntegration, ne
         const integrations = await db().attio_integrations.findMany({
             where: { organization_id: organizationId },
             select: {
-                id: true,
-                access_token: true
+                id: true
             }
         })
         return Promise.all(
             integrations.map(async i => {
-                const accessToken = await getSecret("attio_integrations", i.id, "access_token", i.access_token)
+                const accessToken = await getSecret("attio_integrations", i.id, "access_token")
                 return {
                     id: i.id,
                     workspaceName: accessToken ? await this.fetchWorkspaceName(accessToken) : undefined
@@ -98,13 +97,12 @@ export class AttioIntegrationManager implements Integration<AttioIntegration, ne
     async getAllActiveInstances(): Promise<AttioIntegration[]> {
         const integrations = await db().attio_integrations.findMany({
             select: {
-                id: true,
-                access_token: true
+                id: true
             }
         })
         return Promise.all(
             integrations.map(async i => {
-                const accessToken = await getSecret("attio_integrations", i.id, "access_token", i.access_token)
+                const accessToken = await getSecret("attio_integrations", i.id, "access_token")
                 return {
                     id: i.id,
                     workspaceName: accessToken ? await this.fetchWorkspaceName(accessToken) : undefined
@@ -213,28 +211,19 @@ export class AttioIntegrationManager implements Integration<AttioIntegration, ne
                 const newIntegration = await db().attio_integrations.create({
                     data: {
                         user_id: decoded.userId,
-                        organization_id: decoded.organizationId,
-                        access_token: "pending"
+                        organization_id: decoded.organizationId
                     }
                 })
 
-                const accessTokenSentinel = await storeSecret("attio_integrations", newIntegration.id, "access_token", access_token)
-
-                await db().attio_integrations.update({
-                    where: { id: newIntegration.id },
-                    data: {
-                        access_token: accessTokenSentinel
-                    }
-                })
+                await storeSecret("attio_integrations", newIntegration.id, "access_token", access_token)
 
                 integrationId = newIntegration.id
             } else {
-                const accessTokenSentinel = await storeSecret("attio_integrations", existing.id, "access_token", access_token)
+                await storeSecret("attio_integrations", existing.id, "access_token", access_token)
 
                 await db().attio_integrations.update({
                     where: { id: existing.id },
                     data: {
-                        access_token: accessTokenSentinel,
                         organization_id: decoded.organizationId
                     }
                 })
@@ -295,7 +284,7 @@ export class AttioIntegrationManager implements Integration<AttioIntegration, ne
             const integration = await db().attio_integrations.findUnique({
                 where: { id: integrationId },
                 select: {
-                    access_token: true
+                    id: true
                 }
             })
 
@@ -304,7 +293,7 @@ export class AttioIntegrationManager implements Integration<AttioIntegration, ne
                 return null
             }
 
-            return await getSecret("attio_integrations", integrationId, "access_token", integration.access_token)
+            return await getSecret("attio_integrations", integrationId, "access_token")
         } catch (error) {
             logger.error(`Error getting Attio access token for integration ${integrationId}`, { error, integrationId })
             return null

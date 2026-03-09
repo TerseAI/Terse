@@ -79,15 +79,8 @@ export const slackSendMessageTool = tool({
             }
 
             // Use the selected integration's token (user token if present, else bot token)
-            const userToken = userSlackIntegration.authed_user_access_token
-                ? await getSecret("user_slack_integrations", userSlackIntegration.id, "authed_user_access_token", userSlackIntegration.authed_user_access_token)
-                : null
-            const botToken = await getSecret(
-                "slack_integrations",
-                userSlackIntegration.slack_integration.id,
-                "access_token",
-                userSlackIntegration.slack_integration.access_token
-            )
+            const userToken = await getSecret("user_slack_integrations", userSlackIntegration.id, "authed_user_access_token")
+            const botToken = await getSecret("slack_integrations", userSlackIntegration.slack_integration.id, "access_token")
             const token = userToken || botToken
             if (!token) {
                 throw new Error(`Slack integration has no access token: ${integrationId}`)

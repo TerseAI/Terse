@@ -45,8 +45,8 @@ export class AtlassianClient {
                 return null
             }
 
-            const currentAccessToken = await getSecret("atlassian_integrations", integration.id, "access_token", integration.access_token)
-            const refreshToken = integration.refresh_token ? await getSecret("atlassian_integrations", integration.id, "refresh_token", integration.refresh_token) : null
+            const currentAccessToken = await getSecret("atlassian_integrations", integration.id, "access_token")
+            const refreshToken = await getSecret("atlassian_integrations", integration.id, "refresh_token")
 
             const now = new Date()
             // Check if token is expired or will expire within the refresh threshold
@@ -90,15 +90,15 @@ export class AtlassianClient {
 
                 // Calculate token expiry
                 const tokenExpiry = new Date(Date.now() + (expires_in || 3600) * 1000)
-                const accessTokenSentinel = await storeSecret("atlassian_integrations", integration.id, "access_token", access_token)
-                const refreshTokenSentinel = refresh_token ? await storeSecret("atlassian_integrations", integration.id, "refresh_token", refresh_token) : null
+                await storeSecret("atlassian_integrations", integration.id, "access_token", access_token)
+                if (refresh_token) {
+                    await storeSecret("atlassian_integrations", integration.id, "refresh_token", refresh_token)
+                }
 
                 // Update the database with new tokens
                 await db().atlassian_integrations.update({
                     where: { id: integration.id },
                     data: {
-                        access_token: accessTokenSentinel,
-                        refresh_token: refreshTokenSentinel || integration.refresh_token, // Preserve existing if new one not provided
                         token_expiry: tokenExpiry
                     }
                 })

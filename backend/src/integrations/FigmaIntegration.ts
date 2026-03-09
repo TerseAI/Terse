@@ -268,22 +268,14 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
                         organization_id: decoded.organizationId,
                         figma_user_id: user_id_string,
                         handle: handle,
-                        access_token: "pending",
-                        refresh_token: refresh_token ? "pending" : "",
                         token_expiry: tokenExpiry
                     }
                 })
 
-                const accessTokenSentinel = await storeSecret("figma_integrations", newIntegration.id, "access_token", access_token)
-                const refreshTokenSentinel = refresh_token ? await storeSecret("figma_integrations", newIntegration.id, "refresh_token", refresh_token) : null
-
-                await db().figma_integrations.update({
-                    where: { id: newIntegration.id },
-                    data: {
-                        access_token: accessTokenSentinel,
-                        ...(refreshTokenSentinel ? { refresh_token: refreshTokenSentinel } : {})
-                    }
-                })
+                await storeSecret("figma_integrations", newIntegration.id, "access_token", access_token)
+                if (refresh_token) {
+                    await storeSecret("figma_integrations", newIntegration.id, "refresh_token", refresh_token)
+                }
 
                 integrationId = newIntegration.id
                 logger.info("✅ Created Figma connection for user", {
@@ -292,8 +284,10 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
                     handle
                 })
             } else {
-                const accessTokenSentinel = await storeSecret("figma_integrations", existing.id, "access_token", access_token)
-                const refreshTokenSentinel = refresh_token ? await storeSecret("figma_integrations", existing.id, "refresh_token", refresh_token) : null
+                await storeSecret("figma_integrations", existing.id, "access_token", access_token)
+                if (refresh_token) {
+                    await storeSecret("figma_integrations", existing.id, "refresh_token", refresh_token)
+                }
 
                 // Update existing connection with new token (in case it was revoked and re-authorized)
                 await db().figma_integrations.update({
@@ -302,8 +296,6 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
                         organization_id: decoded.organizationId,
                         handle: handle,
                         figma_user_id: user_id_string,
-                        access_token: accessTokenSentinel,
-                        ...(refreshTokenSentinel ? { refresh_token: refreshTokenSentinel } : {}),
                         token_expiry: tokenExpiry
                     }
                 })
@@ -682,8 +674,8 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
                 return null
             }
 
-            const existingAccessToken = await getSecret("figma_integrations", integration.id, "access_token", integration.access_token)
-            const refreshToken = integration.refresh_token ? await getSecret("figma_integrations", integration.id, "refresh_token", integration.refresh_token) : null
+            const existingAccessToken = await getSecret("figma_integrations", integration.id, "access_token")
+            const refreshToken = await getSecret("figma_integrations", integration.id, "refresh_token")
 
             const now = new Date()
             // Check if token is expired or will expire within the refresh threshold
@@ -729,15 +721,15 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
 
                 // Calculate token expiry
                 const tokenExpiry = new Date(Date.now() + expires_in * 1000)
-                const accessTokenSentinel = await storeSecret("figma_integrations", integration.id, "access_token", access_token)
-                const refreshTokenSentinel = refresh_token ? await storeSecret("figma_integrations", integration.id, "refresh_token", refresh_token) : null
+                await storeSecret("figma_integrations", integration.id, "access_token", access_token)
+                if (refresh_token) {
+                    await storeSecret("figma_integrations", integration.id, "refresh_token", refresh_token)
+                }
 
                 // Update the database with new tokens
                 await db().figma_integrations.update({
                     where: { id: integration.id },
                     data: {
-                        access_token: accessTokenSentinel,
-                        ...(refreshTokenSentinel ? { refresh_token: refreshTokenSentinel } : {}),
                         token_expiry: tokenExpiry
                     }
                 })
@@ -1247,7 +1239,7 @@ export async function getFigmaAccessToken(userId: string): Promise<string> {
         throw new Error("Figma access token has expired. Please re-authenticate.")
     }
 
-    const accessToken = await getSecret("figma_integrations", figmaIntegration.id, "access_token", figmaIntegration.access_token)
+    const accessToken = await getSecret("figma_integrations", figmaIntegration.id, "access_token")
     if (!accessToken) {
         throw new Error("Figma access token not found")
     }

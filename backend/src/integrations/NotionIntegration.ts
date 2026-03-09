@@ -197,29 +197,20 @@ export class NotionIntegrationManager implements Integration<NotionIntegration, 
                         user_id: decoded.userId,
                         organization_id: decoded.organizationId,
                         workspace_id: workspace_id || null,
-                        workspace_name: workspace_name || null,
-                        integration_token: "pending"
+                        workspace_name: workspace_name || null
                     }
                 })
 
-                const integrationTokenSentinel = await storeSecret("notion_integrations", newIntegration.id, "integration_token", access_token)
-
-                await db().notion_integrations.update({
-                    where: { id: newIntegration.id },
-                    data: {
-                        integration_token: integrationTokenSentinel
-                    }
-                })
+                await storeSecret("notion_integrations", newIntegration.id, "integration_token", access_token)
 
                 integrationId = newIntegration.id
             } else {
-                const integrationTokenSentinel = await storeSecret("notion_integrations", existing.id, "integration_token", access_token)
+                await storeSecret("notion_integrations", existing.id, "integration_token", access_token)
 
                 // Update existing connection with new token (in case it was revoked and re-authorized)
                 await db().notion_integrations.update({
                     where: { id: existing.id },
                     data: {
-                        integration_token: integrationTokenSentinel,
                         organization_id: decoded.organizationId
                     }
                 })
@@ -272,7 +263,7 @@ export class NotionIntegrationManager implements Integration<NotionIntegration, 
             const integration = await db().notion_integrations.findUnique({
                 where: { id: integrationId },
                 select: {
-                    integration_token: true
+                    id: true
                 }
             })
 
@@ -283,7 +274,7 @@ export class NotionIntegrationManager implements Integration<NotionIntegration, 
                 return null
             }
 
-            return await getSecret("notion_integrations", integrationId, "integration_token", integration.integration_token)
+            return await getSecret("notion_integrations", integrationId, "integration_token")
         } catch (error) {
             logger.error(`Error getting Notion access token for integration ${integrationId}`, { error, integrationId })
             return null

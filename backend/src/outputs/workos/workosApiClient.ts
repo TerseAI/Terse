@@ -22,7 +22,7 @@ export async function getWorkOSApiKeyByIntegrationId(integrationId: string, user
         return null
     }
 
-    return await getSecret("workos_integrations", integration.id, "api_key", integration.api_key)
+    return await getSecret("workos_integrations", integration.id, "api_key")
 }
 
 export interface WorkOSUserResponse {

@@ -40,13 +40,12 @@ export class WorkOSIntegrationManager implements Integration<WorkOSIntegration, 
         const integrations = await db().workos_integrations.findMany({
             where: { organization_id: organizationId },
             select: {
-                id: true,
-                api_key: true
+                id: true
             }
         })
         return Promise.all(
             integrations.map(async i => {
-                const apiKey = await getSecret("workos_integrations", i.id, "api_key", i.api_key)
+                const apiKey = await getSecret("workos_integrations", i.id, "api_key")
                 return this.enrichInstance(i.id, apiKey || "")
             })
         )
@@ -60,13 +59,12 @@ export class WorkOSIntegrationManager implements Integration<WorkOSIntegration, 
     async getAllActiveInstances(): Promise<WorkOSIntegration[]> {
         const integrations = await db().workos_integrations.findMany({
             select: {
-                id: true,
-                api_key: true
+                id: true
             }
         })
         return Promise.all(
             integrations.map(async i => {
-                const apiKey = await getSecret("workos_integrations", i.id, "api_key", i.api_key)
+                const apiKey = await getSecret("workos_integrations", i.id, "api_key")
                 return this.enrichInstance(i.id, apiKey || "")
             })
         )
@@ -189,14 +187,14 @@ export class WorkOSIntegrationManager implements Integration<WorkOSIntegration, 
             let integrationId: string
 
             if (existing) {
-                const apiKeySentinel = await storeSecret("workos_integrations", existing.id, "api_key", apiKey)
-                const webhookSecretSentinel = secret !== null ? await storeSecret("workos_integrations", existing.id, "webhook_secret", secret) : null
+                await storeSecret("workos_integrations", existing.id, "api_key", apiKey)
+                if (secret !== null) {
+                    await storeSecret("workos_integrations", existing.id, "webhook_secret", secret)
+                }
 
                 await db().workos_integrations.update({
                     where: { id: existing.id },
                     data: {
-                        api_key: apiKeySentinel,
-                        ...(webhookSecretSentinel !== null ? { webhook_secret: webhookSecretSentinel } : {}),
                         organization_id: organizationId
                     }
                 })
@@ -206,22 +204,14 @@ export class WorkOSIntegrationManager implements Integration<WorkOSIntegration, 
                 const integration = await db().workos_integrations.create({
                     data: {
                         user_id: userId,
-                        organization_id: organizationId,
-                        api_key: "pending",
-                        webhook_secret: secret !== null ? "pending" : null
+                        organization_id: organizationId
                     }
                 })
 
-                const apiKeySentinel = await storeSecret("workos_integrations", integration.id, "api_key", apiKey)
-                const webhookSecretSentinel = secret !== null ? await storeSecret("workos_integrations", integration.id, "webhook_secret", secret) : null
-
-                await db().workos_integrations.update({
-                    where: { id: integration.id },
-                    data: {
-                        api_key: apiKeySentinel,
-                        ...(webhookSecretSentinel !== null ? { webhook_secret: webhookSecretSentinel } : {})
-                    }
-                })
+                await storeSecret("workos_integrations", integration.id, "api_key", apiKey)
+                if (secret !== null) {
+                    await storeSecret("workos_integrations", integration.id, "webhook_secret", secret)
+                }
 
                 integrationId = integration.id
                 logger.info("Created WorkOS integration", { integrationId, userId })
@@ -263,7 +253,7 @@ export class WorkOSIntegrationManager implements Integration<WorkOSIntegration, 
             where: { id: integrationId, organization_id: organizationId }
         })
 
-        const apiKey = workosIntegration ? await getSecret("workos_integrations", workosIntegration.id, "api_key", workosIntegration.api_key) : null
+        const apiKey = workosIntegration ? await getSecret("workos_integrations", workosIntegration.id, "api_key") : null
         if (!apiKey) {
             throw new Error(`WorkOS API key not found for integration ${integrationId}`)
         }

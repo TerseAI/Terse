@@ -73,12 +73,7 @@ export async function updateWorkOSWebhookSecret(req: Request, res: Response) {
             return
         }
 
-        const webhookSecretSentinel = await storeSecret("workos_integrations", integration.id, "webhook_secret", webhookSecret)
-
-        await db().workos_integrations.update({
-            where: { id: integration.id },
-            data: { webhook_secret: webhookSecretSentinel }
-        })
+        await storeSecret("workos_integrations", integration.id, "webhook_secret", webhookSecret)
 
         logger.info("Updated WorkOS webhook secret", { integrationId: integration.id })
 
@@ -123,9 +118,7 @@ export async function handleWorkOSTriggerWebhook(req: Request, res: Response) {
         const payload = JSON.parse(rawBody.toString("utf8")) as Record<string, unknown>
         const sigHeader = req.get("workos-signature") ?? req.get("WorkOS-Signature") ?? ""
 
-        const webhookSecret = integration.webhook_secret
-            ? await getSecret("workos_integrations", integration.id, "webhook_secret", integration.webhook_secret)
-            : null
+        const webhookSecret = await getSecret("workos_integrations", integration.id, "webhook_secret")
 
         // Verify webhook signature using the WorkOS SDK
         if (webhookSecret) {

@@ -22,5 +22,5 @@ export async function getPosthogApiKeyByIntegrationId(integrationId: string, use
         return null
     }
 
-    return await getSecret("posthog_integrations", integration.id, "api_key", integration.api_key)
+    return await getSecret("posthog_integrations", integration.id, "api_key")
 }

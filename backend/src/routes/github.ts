@@ -183,10 +183,10 @@ export async function fetchGithubRepositoriesForIntegration(organizationId: stri
     }
 
     let targetInstallation: { id: number } | undefined
-    let tokenWithAccess: (typeof orgTokens)[0] | null = null
+    let tokenWithAccess: string | null = null
 
     for (const token of orgTokens) {
-        const accessToken = await getSecret("github_app_tokens", token.id, "access_token", token.access_token)
+        const accessToken = await getSecret("github_app_tokens", token.id, "access_token")
         if (!accessToken) {
             continue
         }
@@ -195,7 +195,7 @@ export async function fetchGithubRepositoriesForIntegration(organizationId: stri
         const installation = installations.installations.find(i => i.id === Number(installationId))
         if (installation) {
             targetInstallation = installation
-            tokenWithAccess = { ...token, access_token: accessToken }
+            tokenWithAccess = accessToken
             break
         }
     }
@@ -204,7 +204,7 @@ export async function fetchGithubRepositoriesForIntegration(organizationId: stri
         throw createRouteError("Installation not found", 404)
     }
 
-    const installationRepositories: GithubAppInstallationRepository[] = await getAppInstallationRepositories(tokenWithAccess.access_token, targetInstallation.id)
+    const installationRepositories: GithubAppInstallationRepository[] = await getAppInstallationRepositories(tokenWithAccess, targetInstallation.id)
 
     return {
         repositories: installationRepositories.map(r => ({
@@ -365,7 +365,7 @@ export async function resolveUsersForGithubInstallation(installationId: number):
         // for each github App user, get their installations they have access to. Return a Map<user_id, installations>
         const installationResults = await Promise.all(
             githubAppUsers.map(async user => {
-                const accessToken = await getSecret("github_app_tokens", user.id, "access_token", user.access_token)
+                const accessToken = await getSecret("github_app_tokens", user.id, "access_token")
                 if (!accessToken) {
                     return {
                         userId: user.user_id,

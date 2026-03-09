@@ -351,8 +351,7 @@ export class SlackIntegrationManager
                             app_id: response.data.app_id,
                             bot_user_id: response.data.bot_user_id,
                             team_id: response.data.team.id,
-                            team_name: response.data.team.name,
-                            access_token: "pending"
+                            team_name: response.data.team.name
                         }
                     })
                 } else {
@@ -365,8 +364,7 @@ export class SlackIntegrationManager
                             app_id: response.data.app_id,
                             bot_user_id: response.data.bot_user_id,
                             team_id: response.data.team.id,
-                            team_name: response.data.team.name,
-                            access_token: "pending"
+                            team_name: response.data.team.name
                         }
                     })
                     logger.info("Slack integration created", {
@@ -385,7 +383,6 @@ export class SlackIntegrationManager
                 const updatePayload: Partial<UserSlackIntegration> = isUserType
                     ? {
                           authed_user_id: authed_user.id,
-                          authed_user_access_token: authed_user.access_token ? "pending" : null,
                           organization_id: organizationId
                       }
                     : {
@@ -399,7 +396,6 @@ export class SlackIntegrationManager
                               user_id: user.user.id,
                               slack_team_id: slackIntegration.team_id,
                               authed_user_id: authed_user.id,
-                              authed_user_access_token: "pending",
                               is_bot_user: false,
                               organization_id: organizationId
                           }
@@ -437,24 +433,10 @@ export class SlackIntegrationManager
                 return
             }
 
-            const slackAccessTokenSentinel = await storeSecret("slack_integrations", slackIntegration.id, "access_token", access_token)
-
-            await db().slack_integrations.update({
-                where: { id: slackIntegration.id },
-                data: {
-                    access_token: slackAccessTokenSentinel
-                }
-            })
+            await storeSecret("slack_integrations", slackIntegration.id, "access_token", access_token)
 
             if (isUserType && authed_user.access_token && userSlackIntegrationId) {
-                const authedUserAccessTokenSentinel = await storeSecret("user_slack_integrations", userSlackIntegrationId, "authed_user_access_token", authed_user.access_token)
-
-                await db().user_slack_integrations.update({
-                    where: { id: userSlackIntegrationId },
-                    data: {
-                        authed_user_access_token: authedUserAccessTokenSentinel
-                    }
-                })
+                await storeSecret("user_slack_integrations", userSlackIntegrationId, "authed_user_access_token", authed_user.access_token)
             }
 
             const userSlackIntegration = userSlackIntegrationId
@@ -1389,8 +1371,7 @@ async function handleSlackMessage(event: SlackMessageEvent, teamId: string, auth
             const botToken = await getSecret(
                 "slack_integrations",
                 filteredWorkspaceUserIntegrations[0].slack_integration.id,
-                "access_token",
-                filteredWorkspaceUserIntegrations[0].slack_integration.access_token
+                "access_token"
             )
 
             if (botToken) {

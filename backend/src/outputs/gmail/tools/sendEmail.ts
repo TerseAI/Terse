@@ -74,9 +74,7 @@ export const gmailSendEmailTool = tool({
                 throw new Error("Failed to get Gmail access token")
             }
 
-            const refreshToken = gmailIntegration.refresh_token
-                ? await getSecret("gmail_integrations", gmailIntegration.id, "refresh_token", gmailIntegration.refresh_token)
-                : null
+            const refreshToken = await getSecret("gmail_integrations", gmailIntegration.id, "refresh_token")
 
             // Set up OAuth2 client
             const oauth2Client = getOAuth2Client()

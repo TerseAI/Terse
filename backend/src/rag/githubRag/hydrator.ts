@@ -5,9 +5,9 @@ import { GithubEvent } from "../../integrations/GithubIntegration"
 import { getPullRequestFiles } from "../../integrations/GithubIntegration"
 import logger from "../../logger"
 import { db } from "../../prismaClient"
-import { getSecret } from "../../services/SecretService"
 import type { GithubAppUnifiedEventRequest } from "../../routes/GithubTypes"
 import { StoredFile } from "../../services/FileStorageService"
+import { getSecret } from "../../services/SecretService"
 import { HydratorType } from "../../types/rag"
 import { HydrationContext, Hydrator, Identifiable } from "../Hydrator"
 
@@ -68,7 +68,7 @@ export class GithubEventHydrator extends Hydrator<GithubEvent> {
 
         let accessToken: string | null = null
         for (const token of githubTokens) {
-            const tokenAccessValue = await getSecret("github_app_tokens", token.id, "access_token", token.access_token)
+            const tokenAccessValue = await getSecret("github_app_tokens", token.id, "access_token")
             if (!tokenAccessValue) {
                 continue
             }

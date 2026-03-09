@@ -72,7 +72,7 @@ export class GmailEventHydrator extends Hydrator<GmailEvent> {
 
         try {
             const oauth2Client = getOAuth2Client()
-            const refreshToken = integration.refresh_token ? await getSecret("gmail_integrations", integration.id, "refresh_token", integration.refresh_token) : null
+            const refreshToken = await getSecret("gmail_integrations", integration.id, "refresh_token")
             oauth2Client.setCredentials({
                 access_token: accessToken,
                 ...(refreshToken ? { refresh_token: refreshToken } : {})

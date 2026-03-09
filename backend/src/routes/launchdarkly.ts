@@ -98,7 +98,7 @@ export async function fetchLaunchDarklyProjects(organizationId: string, integrat
         throw new Error("LaunchDarkly integration not found")
     }
 
-    const apiKey = await getSecret("launchdarkly_integrations", integration.id, "api_key", integration.api_key)
+    const apiKey = await getSecret("launchdarkly_integrations", integration.id, "api_key")
     if (!apiKey) {
         throw new Error("LaunchDarkly API key not found")
     }
@@ -149,7 +149,7 @@ export async function fetchLaunchDarklyEnvironments(organizationId: string, inte
         throw new Error("LaunchDarkly integration not found")
     }
 
-    const apiKey = await getSecret("launchdarkly_integrations", integration.id, "api_key", integration.api_key)
+    const apiKey = await getSecret("launchdarkly_integrations", integration.id, "api_key")
     if (!apiKey) {
         throw new Error("LaunchDarkly API key not found")
     }
@@ -208,7 +208,7 @@ export async function getLaunchDarklyEnvironments(req: Request, res: Response) {
                 id: integrationId,
                 organization_id: organizationId
             },
-            select: { id: true, api_key: true }
+            select: { id: true }
         })
 
         if (!integration) {
@@ -216,7 +216,7 @@ export async function getLaunchDarklyEnvironments(req: Request, res: Response) {
             return
         }
 
-        const apiKey = await getSecret("launchdarkly_integrations", integration.id, "api_key", integration.api_key)
+        const apiKey = await getSecret("launchdarkly_integrations", integration.id, "api_key")
         if (!apiKey) {
             res.status(404).json({ error: "Integration API key not found" })
             return

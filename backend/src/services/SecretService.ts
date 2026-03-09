@@ -1,8 +1,6 @@
 import { gcp } from "../config/settings"
 import logger from "../logger"
-import { SecretManagerClient, getSecretManagerClient } from "../utility/secretManagerClient"
-
-export const GSM_SENTINEL = "gsm"
+import { SecretManagerClient, getSecretManagerClient, isSecretManagerNotFoundError } from "../utility/secretManagerClient"
 
 const SECRET_CACHE_TTL_MS = 5 * 60 * 1000
 
@@ -15,19 +13,14 @@ export class SecretService {
     private cache = new Map<string, CachedSecret>()
     private secretManagerClient: SecretManagerClient | null = null
     private clientInitializationFailed = false
-    private hasLoggedMissingConfig = false
 
     isGsmAvailable(): boolean {
         return Boolean(gcp.serviceAccountBase64 && gcp.projectId)
     }
 
-    private getClient(): SecretManagerClient | null {
+    private getClient(): SecretManagerClient {
         if (!this.isGsmAvailable()) {
-            if (!this.hasLoggedMissingConfig) {
-                logger.info("GSM is not configured. Falling back to database-backed secrets.")
-                this.hasLoggedMissingConfig = true
-            }
-            return null
+            throw new Error("GSM is not configured. Hard cutover requires GCP_SERVICE_ACCOUNT_BASE64 and GCP_PROJECT_ID.")
         }
 
         if (this.secretManagerClient) {
@@ -35,7 +28,7 @@ export class SecretService {
         }
 
         if (this.clientInitializationFailed) {
-            return null
+            throw new Error("Secret Manager client initialization previously failed")
         }
 
         try {
@@ -43,8 +36,8 @@ export class SecretService {
             return this.secretManagerClient
         } catch (error) {
             this.clientInitializationFailed = true
-            logger.error("Failed to initialize Secret Manager client. Falling back to database-backed secrets.", { error })
-            return null
+            logger.error("Failed to initialize Secret Manager client.", { error })
+            throw error
         }
     }
 
@@ -78,37 +71,15 @@ export class SecretService {
         })
     }
 
-    async storeSecret(table: string, recordId: string, field: string, value: string): Promise<string> {
+    async storeSecret(table: string, recordId: string, field: string, value: string): Promise<void> {
         const client = this.getClient()
-        if (!client) {
-            return value
-        }
-
         const secretId = this.buildSecretId(table, recordId, field)
         await client.createOrUpdateSecret(secretId, value)
         this.cache.delete(secretId)
-        return GSM_SENTINEL
     }
 
-    async getSecret(table: string, recordId: string, field: string, dbValue: string | null): Promise<string | null> {
-        if (dbValue === null) {
-            return null
-        }
-
-        if (dbValue !== GSM_SENTINEL) {
-            return dbValue
-        }
-
+    async getSecret(table: string, recordId: string, field: string): Promise<string | null> {
         const client = this.getClient()
-        if (!client) {
-            logger.warn("Encountered GSM sentinel without Secret Manager availability; returning sentinel value", {
-                table,
-                recordId,
-                field
-            })
-            return dbValue
-        }
-
         const secretId = this.buildSecretId(table, recordId, field)
 
         const cached = this.getCachedSecret(secretId)
@@ -116,9 +87,16 @@ export class SecretService {
             return cached
         }
 
-        const value = await client.getSecret(secretId)
-        this.setCachedSecret(secretId, value)
-        return value
+        try {
+            const value = await client.getSecret(secretId)
+            this.setCachedSecret(secretId, value)
+            return value
+        } catch (error) {
+            if (isSecretManagerNotFoundError(error)) {
+                return null
+            }
+            throw error
+        }
     }
 
     async deleteSecret(table: string, recordId: string, field: string): Promise<void> {
@@ -126,10 +104,6 @@ export class SecretService {
         this.cache.delete(secretId)
 
         const client = this.getClient()
-        if (!client) {
-            return
-        }
-
         await client.deleteSecret(secretId)
     }
 }
@@ -143,12 +117,12 @@ export function getSecretService(): SecretService {
     return secretService
 }
 
-export async function storeSecret(table: string, recordId: string, field: string, value: string): Promise<string> {
+export async function storeSecret(table: string, recordId: string, field: string, value: string): Promise<void> {
     return getSecretService().storeSecret(table, recordId, field, value)
 }
 
-export async function getSecret(table: string, recordId: string, field: string, dbValue: string | null): Promise<string | null> {
-    return getSecretService().getSecret(table, recordId, field, dbValue)
+export async function getSecret(table: string, recordId: string, field: string): Promise<string | null> {
+    return getSecretService().getSecret(table, recordId, field)
 }
 
 export async function deleteSecret(table: string, recordId: string, field: string): Promise<void> {

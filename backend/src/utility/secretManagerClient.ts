@@ -15,6 +15,10 @@ function isGrpcError(error: unknown): error is GrpcError {
     return typeof error === "object" && error !== null && "code" in error
 }
 
+export function isSecretManagerNotFoundError(error: unknown): boolean {
+    return isGrpcError(error) && error.code === GRPC_NOT_FOUND
+}
+
 export class SecretManagerClient {
     private client: SecretManagerServiceClient
     private projectId: string
@@ -135,7 +139,7 @@ export class SecretManagerClient {
 
             return Buffer.from(data).toString("utf-8")
         } catch (error) {
-            if (isGrpcError(error) && error.code === GRPC_NOT_FOUND) {
+            if (isSecretManagerNotFoundError(error)) {
                 logger.debug("Secret not found in Secret Manager", { secretId })
                 throw error
             }

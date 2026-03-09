@@ -39,7 +39,7 @@ export async function getGitHubAccessToken(userId: string): Promise<string | nul
         return null
     }
 
-    return await getSecret("github_app_tokens", githubToken.id, "access_token", githubToken.access_token)
+    return await getSecret("github_app_tokens", githubToken.id, "access_token")
 }
 
 /**
