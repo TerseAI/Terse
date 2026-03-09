@@ -95,14 +95,14 @@ function SettingsNavigation() {
             {SettingsItems.map(item => (
                 <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton asChild isActive={location.pathname === item.url}>
-                        <Link to={item.url}>
+                        <Link to={item.url} className="relative">
                             {item.title === "Notifications" && pendingCount > 0 ? (
-                                <span className="relative">
+                                <>
                                     <item.icon className={item.iconColor} />
-                                    <span className="absolute -top-1.5 -right-1.5 flex size-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-semibold leading-none text-white">
-                                        {pendingCount}
+                                    <span className="absolute top-0 left-5 flex size-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-semibold leading-none text-white">
+                                        {pendingCount > 9 ? "9+" : pendingCount}
                                     </span>
-                                </span>
+                                </>
                             ) : (
                                 <item.icon className={item.iconColor} />
                             )}
