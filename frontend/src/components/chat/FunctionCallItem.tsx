@@ -162,13 +162,13 @@ export default function FunctionCallItem({ call, isTurnFailure = false, onApprov
     const hasExpandableContent = !!(call.parameters || call.result || call.errorContext || (call.changed_items && call.changed_items.length > 0))
 
     const statusIcon = call.isWaitingForApproval ? (
-        <ClockIcon className="w-3.5 h-3.5 text-yellow-500 flex-shrink-0" />
+        <ClockIcon className="w-3.5 h-3.5 text-warning flex-shrink-0" />
     ) : call.isRejected ? (
-        <NoSymbolIcon className="w-3.5 h-3.5 text-orange-500 flex-shrink-0" />
+        <NoSymbolIcon className="w-3.5 h-3.5 text-warning flex-shrink-0" />
     ) : call.isFailure ? (
-        <XMarkIcon className="w-3.5 h-3.5 text-red-500 flex-shrink-0" />
+        <XMarkIcon className="w-3.5 h-3.5 text-failure flex-shrink-0" />
     ) : call.isApproved ? (
-        <CheckCircleIcon className="w-3.5 h-3.5 text-primary flex-shrink-0" />
+        <CheckCircleIcon className="w-3.5 h-3.5 text-success flex-shrink-0" />
     ) : call.isWaitingForUserInput ? (
         <ClockIcon className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />
     ) : (
@@ -184,9 +184,9 @@ export default function FunctionCallItem({ call, isTurnFailure = false, onApprov
                 {statusIcon}
                 <span className="text-left">
                     {displayName}
-                    {call.isWaitingForApproval && !call.isRejected && <span className="text-yellow-500 ml-1">(approval needed)</span>}
-                    {call.isApproved && <span className="text-primary ml-1">(approved)</span>}
-                    {call.isRejected && <span className="text-orange-500 ml-1">(rejected)</span>}
+                    {call.isWaitingForApproval && !call.isRejected && <span className="text-warning ml-1">(approval needed)</span>}
+                    {call.isApproved && <span className="text-success ml-1">(approved)</span>}
+                    {call.isRejected && <span className="text-warning ml-1">(rejected)</span>}
                     {call.isWaitingForUserInput && <span className="text-blue-500 ml-1">(needs input)</span>}
                 </span>
             </button>
@@ -226,14 +226,14 @@ export default function FunctionCallItem({ call, isTurnFailure = false, onApprov
             )}
 
             {call.isApproved && !call.isRunning && (
-                <div className="ml-6 mt-1 flex items-center gap-2 text-sm text-primary">
+                <div className="ml-6 mt-1 flex items-center gap-2 text-sm text-success">
                     <CheckCircleIcon className="w-3.5 h-3.5" />
                     <span>Approved</span>
                 </div>
             )}
 
             {call.isRejected && (
-                <div className="ml-6 mt-1 flex items-center gap-2 text-sm text-orange-500">
+                <div className="ml-6 mt-1 flex items-center gap-2 text-sm text-warning">
                     <NoSymbolIcon className="w-3.5 h-3.5" />
                     <span>Rejected</span>
                 </div>

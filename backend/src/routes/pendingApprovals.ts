@@ -80,28 +80,24 @@ function toApprovalRequest(row: {
                       {
                           type: "open_run_history",
                           label: "Open run",
-                          deepLink: encodeDeepLink("open_run_history", row.automation_id, row.id),
-                          variant: "outline"
+                          deepLink: encodeDeepLink("open_run_history", row.automation_id, row.id)
                       },
                       {
                           type: "approve_action",
                           label: "Approve",
-                          deepLink: encodeDeepLink("approve_action", row.id, stepId!),
-                          variant: "primary"
+                          deepLink: encodeDeepLink("approve_action", row.id, stepId!)
                       },
                       {
                           type: "reject_action",
                           label: "Reject",
-                          deepLink: encodeDeepLink("reject_action", row.id, stepId!),
-                          variant: "destructive"
+                          deepLink: encodeDeepLink("reject_action", row.id, stepId!)
                       }
                   ]
                 : [
                       {
                           type: "open_run_history",
                           label: "Open run",
-                          deepLink: encodeDeepLink("open_run_history", row.automation_id, row.id),
-                          variant: "outline"
+                          deepLink: encodeDeepLink("open_run_history", row.automation_id, row.id)
                       }
                   ],
         runId: row.id,

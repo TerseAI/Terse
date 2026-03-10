@@ -948,11 +948,7 @@ export function getToolDisplayForPhase(
 
     if (!config) {
         // Fallback for unknown tools - use the tool name in a readable format
-        const readableName = toolName
-            .replace(/_/g, " ")
-            .replace(/([A-Z])/g, " $1")
-            .toLowerCase()
-            .trim()
+        const readableName = getReadableFallbackName(toolName)
 
         switch (phase) {
             case "preparing":
@@ -972,6 +968,14 @@ export function getToolDisplayForPhase(
         case "complete":
             return config.complete(params, result)
     }
+}
+
+export function getReadableFallbackName(toolName: string) {
+    return toolName
+        .replace(/_/g, " ")
+        .replace(/([A-Z])/g, " $1")
+        .toLowerCase()
+        .trim()
 }
 
 /**
