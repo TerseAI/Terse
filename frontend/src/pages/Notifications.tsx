@@ -382,7 +382,7 @@ function NotificationStatusBadge({ status }: { status: SentNotificationStatus })
     }
 
     const classNameMap: Record<SentNotificationStatus, string> = {
-        [SentNotificationStatus.SENT]: "border-green-600/40 text-green-600 dark:text-green-400",
+        [SentNotificationStatus.SENT]: "",
         [SentNotificationStatus.FAILED]: "border-destructive/40 text-destructive"
     }
 
