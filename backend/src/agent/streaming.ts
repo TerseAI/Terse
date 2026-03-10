@@ -168,7 +168,8 @@ export function tryExtractToolCallCompleteData(event: RunStreamEvent): ToolCallC
         const rawItem = item.rawItem as FunctionCallResultItem
 
         const rawOutput = (rawItem as any).output ?? (item as any).output
-        const parsed = parseToolExecutionResult(rawOutput, rawItem.status)
+        const status = rawItem.status as ToolCallExecutionStatus
+        const parsed = parseToolExecutionResult(rawOutput, status)
         const outputWithoutActions = {
             ...parsed.output,
             actions: undefined,
@@ -197,7 +198,7 @@ export function tryExtractToolCallCompleteData(event: RunStreamEvent): ToolCallC
                 status: parsed.status,
                 errorContext: parsed.errorContext,
                 actions: parsed.actions,
-                result: parsed.outputString ?? undefined,
+                result: JSON.stringify(outputWithoutActions) ?? undefined,
                 snippets: parsed.snippets
             }
         }
