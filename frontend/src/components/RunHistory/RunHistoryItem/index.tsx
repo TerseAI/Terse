@@ -44,7 +44,7 @@ export default function RunHistoryItem({ run, onViewChat, className, showStatusB
                     <RunHistoryItemHeader run={run} formattedTimestamp={formatTimestamp(run.timestamp)} onCopy={copyToClipboard} />
                 </div>
                 <div className="flex items-center gap-3 md:ml-auto shrink-0">
-                    {showStatusBadge && <RunHistoryStatusBadge status={run.status} filtered={run.filtered} />}
+                    {showStatusBadge && <RunHistoryStatusBadge status={run.status} />}
                     {shouldShowApproveButton && (
                         <Button variant="outline" size="icon-sm" onClick={handleApprove} title="Approve run">
                             <Check className="w-4 h-4" />

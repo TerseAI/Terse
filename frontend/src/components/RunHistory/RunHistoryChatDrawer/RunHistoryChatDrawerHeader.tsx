@@ -62,7 +62,7 @@ export default function RunHistoryChatDrawerHeader({ trigger, runNumber, totalEv
                     </div>
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
-                    <RunHistoryStatusBadge status={status} filtered={filtered} />
+                    <RunHistoryStatusBadge status={status} />
                     {runNumber !== undefined && totalEvents !== undefined && totalEvents > 0 && (
                         <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">
                             {runNumber} of {totalEvents}

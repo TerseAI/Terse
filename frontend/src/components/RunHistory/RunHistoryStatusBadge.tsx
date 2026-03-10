@@ -1,4 +1,4 @@
-import { Ban, CheckCircle2, Clock, Filter, LoaderCircle, XCircle } from "lucide-react"
+import { Ban, CheckCircle2, Clock, Filter, XCircle } from "lucide-react"
 
 import { RunHistoryStatus } from "../../shared/RunHistoryTypes"
 import StatusBadge from "../StatusBadge"
