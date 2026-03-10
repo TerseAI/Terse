@@ -2,43 +2,46 @@ import { ReactNode, useState } from "react"
 
 import { PlusIcon } from "lucide-react"
 
-import { Badge } from "../ui/badge"
 import { Button } from "../ui/button"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "../ui/dialog"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "../ui/dialog"
 
 import { NotificationDestinationForm } from "./NotificationDestinationForm"
 
 interface AddNotificationDestinationProps {
     trigger?: ReactNode
+    externalOpen?: boolean
+    onExternalOpenChange?: (open: boolean) => void
 }
 
-export function AddNotificationDestination({ trigger }: AddNotificationDestinationProps) {
-    const [open, setOpen] = useState(false)
+export function AddNotificationDestination({ trigger, externalOpen, onExternalOpenChange }: AddNotificationDestinationProps) {
+    const [internalOpen, setInternalOpen] = useState(false)
+
+    const open = externalOpen ?? internalOpen
+
+    const handleOpenChange = (nextOpen: boolean) => {
+        if (externalOpen === undefined) {
+            setInternalOpen(nextOpen)
+        }
+
+        onExternalOpenChange?.(nextOpen)
+    }
 
     const defaultTrigger = (
         <Button variant="outline">
             <PlusIcon />
-            Add Destination
+            Edit Destination
         </Button>
     )
 
     return (
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog open={open} onOpenChange={handleOpenChange}>
             <DialogTrigger asChild>{trigger ?? defaultTrigger}</DialogTrigger>
-            <DialogContent className="sm:max-w-[760px] p-0 gap-0 overflow-hidden">
-                <DialogHeader className="px-6 py-5 border-b bg-gradient-to-r from-muted/60 via-muted/25 to-background">
-                    <div className="space-y-1">
-                        <div className="space-y-1">
-                            <div className="flex items-center gap-2">
-                                <DialogTitle className="text-xl">Add Notification Destination</DialogTitle>
-                                <Badge variant="outline" className="hidden sm:inline-flex">
-                                    Slack
-                                </Badge>
-                            </div>
-                        </div>
-                    </div>
+            <DialogContent className="max-w-lg flex flex-col">
+                <DialogHeader>
+                    <DialogTitle className="text-xl font-bold">Edit Notification Destination</DialogTitle>
+                    <DialogDescription>Choose where to deliver notifications for your agents</DialogDescription>
                 </DialogHeader>
-                <NotificationDestinationForm onSuccess={() => setOpen(false)} />
+                <NotificationDestinationForm onSuccess={() => handleOpenChange(false)} onCancel={() => handleOpenChange(false)} />
             </DialogContent>
         </Dialog>
     )

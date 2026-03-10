@@ -4,7 +4,9 @@ import { settings } from "../config/settings"
 import logger from "../logger"
 
 export enum FeatureFlag {
-    BIRDS_EYE_VIEW_HOMEPAGE = "Birds-eye-view-homepage"
+    BIRDS_EYE_VIEW_HOMEPAGE = "Birds-eye-view-homepage",
+    AGENT_IMPROVEMENTS_TAB = "Agent-improvements-tab",
+    WEEKLY_REVIEW_EMAILS = "Weekly-review-emails"
 }
 
 export class FeatureFlagService {
@@ -54,7 +56,9 @@ export class FeatureFlagService {
         }
 
         try {
-            const isEnabled = await client.isFeatureEnabled(flagKey, distinctId, properties)
+            const isEnabled = await client.isFeatureEnabled(flagKey, distinctId, {
+                personProperties: properties
+            })
             return isEnabled ?? false
         } catch (error) {
             logger.error("Error checking feature flag", {

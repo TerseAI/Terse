@@ -435,6 +435,7 @@ export type Agent = {
     prompt: AgentPrompt
     triggers: AgentTrigger[]
     outputs: AgentOutput[]
+    createdByUserId: string
     notificationSettings?: AgentNotificationSettings
     toolApprovals?: string[]
     updatedAt?: string
@@ -443,7 +444,6 @@ export type Agent = {
 export type AgentNotificationSettings = {
     enabled: boolean
     actionTypes: RunHistoryActionType[]
-    notifyOnRunFailure: boolean
 }
 
 export type AgentUpdate = {
@@ -470,6 +470,57 @@ export type AgentsResponse = {
 export type RecentAgent = Agent & {
     updatedAt: string
     lastEventProcessedAt: string | null
+}
+
+export type AgentImprovementStatus = "PENDING" | "APPLIED" | "DISMISSED"
+
+export type AgentImprovementTargetArea = "prompt" | "trigger_config" | "output_config" | "general"
+
+export type AgentReview = {
+    id: string
+    automationId: string
+    title: string
+    summary: string
+    runsAnalyzed: number
+    reviewPeriodStart: string
+    reviewPeriodEnd: string
+    createdAt: string
+}
+
+export type AgentImprovement = {
+    id: string
+    reviewId: string
+    automationId: string
+    title: string
+    description: string
+    targetArea: AgentImprovementTargetArea
+    confidence: number
+    status: AgentImprovementStatus
+    appliedPrompt?: string
+    appliedAt?: string
+    dismissedAt?: string
+    createdAt: string
+    updatedAt: string
+}
+
+export type GetAgentImprovementsResponse = {
+    review: AgentReview | null
+    improvements: AgentImprovement[]
+    improvementsEnabled: boolean
+}
+
+export type ApplyImprovementResponse = {
+    success: boolean
+    appliedPrompt: string
+}
+
+export type DismissImprovementResponse = {
+    success: boolean
+}
+
+export type ToggleImprovementsEnabledResponse = {
+    success: boolean
+    improvementsEnabled: boolean
 }
 
 export type GithubAppInstallationCallbackRequest = {

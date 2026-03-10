@@ -2,6 +2,7 @@ import axios from "axios"
 
 import { POST_LOGIN_REDIRECT_KEY, isSafeRedirectPath } from "../constants/storageKeys"
 import { ApiRoutes } from "../shared/ApiRoutes"
+import { ApprovalRequestFilter, GetPendingApprovalsResponse } from "../shared/ApprovalTypes"
 import {
     AtlassianIntegration,
     AttioIntegration,
@@ -22,15 +23,19 @@ import {
 import { CreateNotificationDestinationRequest, NotificationDestination } from "../shared/Notifications"
 import type { RunHistoryActionWithId, RunHistoryModelEvent } from "../shared/RunHistoryTypes"
 import { GetAllRunHistoryResponse, GetRunHistoryParams, GetRunHistoryResponse, RunHistoryStatus } from "../shared/RunHistoryTypes"
+import { GetSentNotificationsResponse } from "../shared/SentNotifications"
 import { GetToolsThatRequireApprovalsRequest, GetToolsThatRequireApprovalsResponse } from "../shared/ToolsTypes"
 import {
     Agent,
     AgentTemplate,
     AgentUpdate,
     AgentsResponse,
+    ApplyImprovementResponse,
     AttioObject,
     ConfluenceResourcesResponse,
     DatadogIndexesResponse,
+    DismissImprovementResponse,
+    GetAgentImprovementsResponse,
     GetGithubRepositoriesForIntegrationResponse,
     JiraCredentialsValidationResponse,
     JiraResourcesResponse,
@@ -44,7 +49,8 @@ import {
     SlackChannelsResponse,
     SlackUsersResponse,
     StatsInterval,
-    StatsResponse
+    StatsResponse,
+    ToggleImprovementsEnabledResponse
 } from "../shared/types"
 import { User } from "../types/User"
 import { deserializeConfig } from "../utility/ConfigUtils"
@@ -321,6 +327,31 @@ interface BackendService {
     getAgentById(id: string): Promise<Agent>
 
     /**
+     * Gets the latest review and improvements for an agent
+     */
+    getAgentImprovements(agentId: string): Promise<GetAgentImprovementsResponse>
+
+    /**
+     * Marks a pending improvement as applied and returns the prefill prompt
+     */
+    applyImprovement(agentId: string, improvementId: string): Promise<ApplyImprovementResponse>
+
+    /**
+     * Marks a pending improvement as dismissed
+     */
+    dismissImprovement(agentId: string, improvementId: string): Promise<DismissImprovementResponse>
+
+    /**
+     * Reverts a dismissed improvement back to pending
+     */
+    undoDismissImprovement(agentId: string, improvementId: string): Promise<{ success: boolean }>
+
+    /**
+     * Toggles whether weekly improvements are enabled for an agent
+     */
+    toggleImprovementsEnabled(agentId: string, enabled: boolean): Promise<ToggleImprovementsEnabledResponse>
+
+    /**
      * Creates a new agent
      */
     createAgent(data: AgentUpdate): Promise<{ success: boolean; id: string }>
@@ -364,6 +395,16 @@ interface BackendService {
      * Gets all notification destinations for the current user
      */
     getNotificationDestinations(): Promise<NotificationDestination[]>
+
+    /**
+     * Gets sent notifications for the current organization
+     */
+    getSentNotifications(params: { page?: number; pageSize?: number }): Promise<GetSentNotificationsResponse>
+
+    /**
+     * Gets pending approval requests for the current organization
+     */
+    getPendingApprovals(params?: { status?: ApprovalRequestFilter }): Promise<GetPendingApprovalsResponse>
 
     /**
      * Creates a new notification destination
@@ -1038,6 +1079,56 @@ export const BackendProvider: BackendService = {
             })
     },
 
+    getAgentImprovements: (agentId: string) => {
+        return axios
+            .get<GetAgentImprovementsResponse>(`${backendBaseUrl}${ApiRoutes.IMPROVEMENTS.BY_AGENT_ID.build(agentId)}`, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error("Error getting agent improvements:", error)
+                throw error
+            })
+    },
+
+    applyImprovement: (agentId: string, improvementId: string) => {
+        return axios
+            .post<ApplyImprovementResponse>(`${backendBaseUrl}${ApiRoutes.IMPROVEMENTS.APPLY.build(agentId, improvementId)}`, {}, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error("Error applying improvement:", error)
+                throw error
+            })
+    },
+
+    dismissImprovement: (agentId: string, improvementId: string) => {
+        return axios
+            .post<DismissImprovementResponse>(`${backendBaseUrl}${ApiRoutes.IMPROVEMENTS.DISMISS.build(agentId, improvementId)}`, {}, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error("Error dismissing improvement:", error)
+                throw error
+            })
+    },
+
+    undoDismissImprovement: (agentId: string, improvementId: string) => {
+        return axios
+            .post<{ success: boolean }>(`${backendBaseUrl}${ApiRoutes.IMPROVEMENTS.UNDO_DISMISS.build(agentId, improvementId)}`, {}, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error("Error undoing dismiss:", error)
+                throw error
+            })
+    },
+
+    toggleImprovementsEnabled: (agentId: string, enabled: boolean) => {
+        return axios
+            .patch<ToggleImprovementsEnabledResponse>(`${backendBaseUrl}${ApiRoutes.IMPROVEMENTS.TOGGLE_ENABLED.build(agentId)}`, { enabled }, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error("Error toggling improvements setting:", error)
+                throw error
+            })
+    },
+
     createAgent: (data: Agent) => {
         return axios
             .post<{ success: boolean; id: string }>(`${backendBaseUrl}${ApiRoutes.AGENTS.LIST}`, data, { withCredentials: true })
@@ -1145,6 +1236,37 @@ export const BackendProvider: BackendService = {
             .then(response => response.data)
             .catch(error => {
                 console.error("Error getting notification destinations:", error)
+                throw error
+            })
+    },
+
+    getSentNotifications: ({ page = 1, pageSize = 12 }) => {
+        const params = new URLSearchParams()
+        params.append("page", page.toString())
+        params.append("pageSize", pageSize.toString())
+
+        return axios
+            .get<GetSentNotificationsResponse>(`${backendBaseUrl}${ApiRoutes.SENT_NOTIFICATIONS.LIST}?${params.toString()}`, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error("Error getting sent notifications:", error)
+                throw error
+            })
+    },
+
+    getPendingApprovals: (params?: { status?: ApprovalRequestFilter }) => {
+        const queryParams = new URLSearchParams()
+        if (params?.status) {
+            queryParams.append("status", params.status)
+        }
+        const queryString = queryParams.toString()
+        const url = `${backendBaseUrl}${ApiRoutes.PENDING_APPROVALS.LIST}${queryString ? `?${queryString}` : ""}`
+
+        return axios
+            .get<GetPendingApprovalsResponse>(url, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error("Error getting pending approvals:", error)
                 throw error
             })
     },

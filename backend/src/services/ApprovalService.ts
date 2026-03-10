@@ -12,6 +12,7 @@ import { Output } from "../outputs/abstract/Output"
 import { OutputFactory } from "../outputs/abstract/OutputFactory"
 import { db } from "../prismaClient"
 import { ConfigInstance } from "../shared/Configs"
+import { pendingApprovalsKey } from "../shared/InvalidationKeys"
 import { RunHistoryStatus } from "../shared/RunHistoryTypes"
 import { User } from "../shared/types"
 import { SlackApprovalMessageStatus } from "../slack/ApprovalStatus"
@@ -21,7 +22,9 @@ import { getInputConfigInclude, getOutputConfigInclude } from "../utility/prisma
 import { updateSlackApprovalMessage } from "../utility/slack"
 import { getUserForOrg } from "../utility/workos"
 
-import { emitCacheInvalidationWithWildcard, getSocketIO } from "./CacheInvalidationService"
+import { emitCacheInvalidationWithKey, emitCacheInvalidationWithWildcard } from "./CacheInvalidationService"
+
+const PENDING_APPROVALS_INVALIDATION_KEY = pendingApprovalsKey()[0]
 
 export type ApprovalRequest = {
     runId: string
@@ -82,7 +85,8 @@ export class ApprovalService {
                 outputs: {
                     include: getOutputConfigInclude()
                 },
-                tool_approvals: true
+                tool_approvals: true,
+                user: true
             }
         })
 
@@ -259,6 +263,7 @@ export class ApprovalService {
             }
 
             emitCacheInvalidationWithWildcard(channel.organization_id, "runHistory", channel.id)
+            emitCacheInvalidationWithKey(channel.organization_id, PENDING_APPROVALS_INVALIDATION_KEY)
             emitCacheInvalidationWithWildcard(channel.organization_id, "chatHistory", runId)
 
             // Create agent runner and resume from pending approval
@@ -321,6 +326,7 @@ export class ApprovalService {
                 try {
                     await finalizeRunStatus(runId, completion.status)
                     emitCacheInvalidationWithWildcard(channel.organization_id, "runHistory", channel.id)
+                    emitCacheInvalidationWithKey(channel.organization_id, PENDING_APPROVALS_INVALIDATION_KEY)
                     if (!completion.isSuccessful) {
                         try {
                             await new NotificationManager(user, channel).notifyRunFailure(runId, completion.failureReason)
@@ -351,6 +357,7 @@ export class ApprovalService {
                 await this.updateSlackNotification(runId, stepId, finalSlackStatus, user, channel.id)
 
                 emitCacheInvalidationWithWildcard(channel.organization_id, "runHistory", channel.id)
+                emitCacheInvalidationWithKey(channel.organization_id, PENDING_APPROVALS_INVALIDATION_KEY)
                 emitCacheInvalidationWithWildcard(channel.organization_id, "chatHistory", runId)
 
                 logger.info(`[ApprovalService] Processed approval decision; run is now awaiting another approval`, { runId, stepId, approved })
@@ -399,6 +406,7 @@ export class ApprovalService {
                     const automation = await db().automations.findUnique({ where: { id: channelIdForSlack }, select: { organization_id: true } })
                     if (automation?.organization_id) {
                         emitCacheInvalidationWithWildcard(automation.organization_id, "runHistory", channelIdForSlack)
+                        emitCacheInvalidationWithKey(automation.organization_id, PENDING_APPROVALS_INVALIDATION_KEY)
                     }
                 } else {
                     logger.warn("[ApprovalService] Missing channel id; cannot invalidate runHistory cache", {

@@ -340,7 +340,7 @@ class SlackChatInterface extends ChatInterface {
         })
         try {
             const answer = await this.waitForSurveyAnswer(questionId)
-            return `The user answered: ${answer}`
+            return `Answered: ${answer}`
         } catch {
             return "The user did not answer in time. You can ask the question again."
         }
