@@ -1,12 +1,17 @@
-import { NotificationDestinationType } from "@prisma/client"
+import { NotificationDestinationType, SentNotificationEventType, SentNotificationStatus } from "@prisma/client"
 
-import { generateApprovalSummary } from "../agent/ApprovalSummaryAgent/ApprovalSummaryAgent"
 import logger from "../logger"
 import { db } from "../prismaClient"
+import { emitCacheInvalidationWithKey } from "../services/CacheInvalidationService"
+import { sentNotificationsKey } from "../shared/InvalidationKeys"
 import { RunHistoryAction } from "../shared/RunHistoryTypes"
 import { User } from "../shared/types"
 import { Agent, AutomationNotificationSettings, UserNotificationDestination } from "../types/prisma"
-import { formatNotificationMessage, formatRunFailureNotificationMessage, resolveSlackChannelIdForDestination, sendSlackApprovalMessage, sendSlackMessage } from "../utility/slack"
+
+import { sendEmailApprovalRequest, sendEmailNotification, sendEmailRunFailure } from "./channels/emailNotifications"
+import { sendSlackApprovalRequest, sendSlackNotification, sendSlackRunFailure } from "./channels/slackNotifications"
+
+const SENT_NOTIFICATIONS_INVALIDATION_KEY = sentNotificationsKey()[0]
 
 export class NotificationManager {
     private user: User
@@ -35,29 +40,32 @@ export class NotificationManager {
             return
         }
 
-        const notificationDestinations: UserNotificationDestination | null = await db().user_notification_destinations.findFirst({
-            where: {
-                user_id: this.user.id
-            }
-        })
-
-        if (!notificationDestinations) {
-            logger.debug(`No notification destinations found for user ${this.user.email}. Skipping`)
-            return
-        }
-
         if (!notificationSettings.action_types.includes(runAction.type)) {
             logger.debug(`Notification settings for automation ${this.agent.name} do not include action ${runAction.type}. Skipping`)
             return
         }
 
-        switch (notificationDestinations.destination_type) {
-            case NotificationDestinationType.SLACK:
-                await notifySlack(notificationDestinations, runAction, this.agent)
-                break
-            case NotificationDestinationType.EMAIL:
-                await notifyEmail(notificationDestinations, runAction)
-                break
+        const notificationDestination = await resolveNotificationDestination(this.user)
+        let notificationError: unknown
+
+        try {
+            switch (notificationDestination.destination_type) {
+                case NotificationDestinationType.SLACK:
+                    await sendSlackNotification(notificationDestination, runAction, this.agent)
+                    break
+                case NotificationDestinationType.EMAIL:
+                    await sendEmailNotification(notificationDestination, runAction, this.agent)
+                    break
+            }
+        } catch (error) {
+            notificationError = error
+            throw error
+        } finally {
+            await this.trackNotification({
+                eventType: SentNotificationEventType.run_notification,
+                destination: notificationDestination,
+                error: notificationError
+            })
         }
     }
 
@@ -67,137 +75,162 @@ export class NotificationManager {
             return
         }
 
-        const notificationDestinations: UserNotificationDestination | null = await db().user_notification_destinations.findFirst({
-            where: {
-                user_id: this.user.id
+        const notificationDestination = await resolveNotificationDestination(this.user)
+        let notificationError: unknown
+
+        try {
+            switch (notificationDestination.destination_type) {
+                case NotificationDestinationType.SLACK:
+                    await sendSlackApprovalRequest(notificationDestination, runId, runAction, this.agent)
+                    break
+                case NotificationDestinationType.EMAIL:
+                    await sendEmailApprovalRequest(notificationDestination, runId, runAction, this.agent, this.user)
+                    break
             }
-        })
-
-        if (!notificationDestinations) {
-            logger.debug(`No notification destinations found for user ${this.user.email}. Skipping`)
-            return
-        }
-
-        switch (notificationDestinations.destination_type) {
-            case NotificationDestinationType.SLACK:
-                await notifyApprovalRequest(notificationDestinations, runId, runAction, this.agent, this.user)
-                break
-            case NotificationDestinationType.EMAIL:
-                // TODO: Implement email approval notifications
-                logger.debug(`Email approval notifications not yet implemented`)
-                break
+        } catch (error) {
+            notificationError = error
+            throw error
+        } finally {
+            await this.trackNotification({
+                eventType: SentNotificationEventType.approval_request,
+                destination: notificationDestination,
+                runId,
+                error: notificationError
+            })
         }
     }
 
     async notifyRunFailure(runId: string, errorMessage: string) {
-        const notificationSettings: AutomationNotificationSettings | null = await db().automation_notification_settings.findFirst({
-            where: {
-                automation_id: this.agent.id
+        const notificationDestination = await resolveNotificationDestination(this.user)
+        let notificationError: unknown
+
+        try {
+            switch (notificationDestination.destination_type) {
+                case NotificationDestinationType.SLACK:
+                    await sendSlackRunFailure(notificationDestination, this.agent, runId, errorMessage)
+                    break
+                case NotificationDestinationType.EMAIL:
+                    await sendEmailRunFailure(notificationDestination, this.agent, runId, errorMessage)
+                    break
             }
-        })
-
-        if (!notificationSettings) {
-            logger.debug(`No notification settings found for automation ${this.agent.name}. Skipping`)
-            return
+        } catch (error) {
+            notificationError = error
+            throw error
+        } finally {
+            await this.trackNotification({
+                eventType: SentNotificationEventType.run_failure,
+                destination: notificationDestination,
+                runId,
+                error: notificationError
+            })
         }
+    }
 
-        if (!notificationSettings.enabled) {
-            logger.debug(`Notifications disabled for automation ${this.agent.name}. Skipping`)
-            return
-        }
-
-        if (!notificationSettings.notify_on_run_failure) {
-            logger.debug(`Run failure notifications disabled for automation ${this.agent.name}. Skipping`)
-            return
-        }
-
-        const notificationDestinations: UserNotificationDestination | null = await db().user_notification_destinations.findFirst({
-            where: {
-                user_id: this.user.id
+    private async trackNotification({ eventType, destination, runId, error }: { eventType: SentNotificationEventType; destination: UserNotificationDestination; runId?: string; error?: unknown }) {
+        try {
+            if (!this.user.organizationId) {
+                logger.warn("[NotificationManager] Missing organizationId, skipping sent notification tracking", {
+                    userId: this.user.id,
+                    automationId: this.agent.id
+                })
+                return
             }
-        })
 
-        if (!notificationDestinations) {
-            logger.debug(`No notification destinations found for user ${this.user.email}. Skipping`)
-            return
+            const errorMessage = error instanceof Error ? error.message : error ? String(error) : null
+            const status = error ? SentNotificationStatus.failed : SentNotificationStatus.sent
+
+            await db().sent_notifications.create({
+                data: {
+                    organization_id: this.user.organizationId,
+                    user_id: this.user.id,
+                    automation_id: this.agent.id,
+                    run_id: runId ?? null,
+                    event_type: eventType,
+                    destination_type: destination.destination_type,
+                    destination_label: this.getDestinationLabel(destination),
+                    status,
+                    error_message: errorMessage,
+                    agent_name: this.agent.name
+                }
+            })
+
+            emitCacheInvalidationWithKey(this.user.organizationId, SENT_NOTIFICATIONS_INVALIDATION_KEY)
+        } catch (trackingError) {
+            logger.error("[NotificationManager] Failed to track sent notification", {
+                error: trackingError,
+                eventType,
+                runId,
+                userId: this.user.id,
+                automationId: this.agent.id
+            })
+        }
+    }
+
+    private getDestinationLabel(destination: UserNotificationDestination): string {
+        if (destination.destination_type === NotificationDestinationType.SLACK) {
+            if (destination.slack_channel_name) {
+                return `#${destination.slack_channel_name}`
+            }
+
+            if (destination.slack_user_name) {
+                return `DM @${destination.slack_user_name}`
+            }
+
+            if (destination.slack_channel_id) {
+                return `#${destination.slack_channel_id}`
+            }
+
+            if (destination.slack_user_id) {
+                return `DM @${destination.slack_user_id}`
+            }
+
+            return "Slack"
         }
 
-        switch (notificationDestinations.destination_type) {
-            case NotificationDestinationType.SLACK:
-                await notifySlackRunFailure(notificationDestinations, this.agent, runId, errorMessage)
-                break
-            case NotificationDestinationType.EMAIL:
-                logger.debug(`Email run failure notifications not yet implemented`)
-                break
+        return destination.email_address || this.user.email
+    }
+}
+
+async function getActiveNotificationDestinationByType(userId: string, destinationType: NotificationDestinationType): Promise<UserNotificationDestination | null> {
+    return db().user_notification_destinations.findFirst({
+        where: {
+            user_id: userId,
+            is_active: true,
+            destination_type: destinationType
+        },
+        orderBy: {
+            updated_at: "desc"
         }
-    }
-}
-
-async function notifySlack(notificationDestination: UserNotificationDestination, runAction: RunHistoryAction, agent: Agent) {
-    if (!notificationDestination.slack_integration_id) {
-        logger.debug(`[notifySlack] No Slack integration ID found. Skipping.`)
-        return
-    }
-
-    const targetChannelId = await resolveSlackChannelIdForDestination(notificationDestination.slack_integration_id, notificationDestination.slack_channel_id, notificationDestination.slack_user_id)
-
-    if (!targetChannelId) {
-        logger.debug(`[notifySlack] No Slack channel ID configured. Skipping.`)
-        return
-    }
-
-    const message = formatNotificationMessage(runAction, { channelName: agent.name })
-
-    await sendSlackMessage(notificationDestination.slack_integration_id, targetChannelId, message)
-}
-
-async function notifyApprovalRequest(notificationDestination: UserNotificationDestination, runId: string, runAction: RunHistoryAction, agent: Agent, user: User) {
-    if (!notificationDestination.slack_integration_id) {
-        logger.debug(`[notifyApprovalRequest] No Slack integration ID found. Skipping.`)
-        return
-    }
-
-    const targetChannelId = await resolveSlackChannelIdForDestination(notificationDestination.slack_integration_id, notificationDestination.slack_channel_id, notificationDestination.slack_user_id)
-
-    if (!targetChannelId) {
-        logger.debug(`[notifyApprovalRequest] No Slack channel ID configured. Skipping.`)
-        return
-    }
-
-    if (!runAction.step_id) {
-        logger.debug(`[notifyApprovalRequest] No step_id found in runAction. Skipping.`)
-        return
-    }
-
-    const { approvalSummary } = await generateApprovalSummary(runId, user, agent.id, runAction.step_id)
-
-    await sendSlackApprovalMessage(notificationDestination.slack_integration_id, targetChannelId, runId, runAction.step_id, approvalSummary, agent.name, agent.id)
-}
-
-async function notifySlackRunFailure(notificationDestination: UserNotificationDestination, agent: Agent, runId: string, errorMessage: string) {
-    if (!notificationDestination.slack_integration_id) {
-        logger.debug(`[notifySlackRunFailure] No Slack integration ID found. Skipping.`)
-        return
-    }
-
-    const targetChannelId = await resolveSlackChannelIdForDestination(notificationDestination.slack_integration_id, notificationDestination.slack_channel_id, notificationDestination.slack_user_id)
-
-    if (!targetChannelId) {
-        logger.debug(`[notifySlackRunFailure] No Slack channel ID configured. Skipping.`)
-        return
-    }
-
-    const message = formatRunFailureNotificationMessage({
-        agentId: agent.id,
-        agentName: agent.name,
-        runId,
-        errorMessage
     })
-
-    await sendSlackMessage(notificationDestination.slack_integration_id, targetChannelId, message)
 }
 
-// Not supported yet, just wanted to make sure this was built with mulitple notification destinations in mind
-async function notifyEmail(notificationDestinations: UserNotificationDestination, runAction: RunHistoryAction) {
-    logger.info(`Notifying Email for user ${notificationDestinations.user_id} with action ${runAction}`)
+async function resolveNotificationDestination(user: User): Promise<UserNotificationDestination> {
+    const slackDestination = await getActiveNotificationDestinationByType(user.id, NotificationDestinationType.SLACK)
+    if (slackDestination) {
+        return slackDestination
+    }
+
+    const emailDestination = await getActiveNotificationDestinationByType(user.id, NotificationDestinationType.EMAIL)
+    if (emailDestination) {
+        return emailDestination
+    }
+
+    return getDefaultEmailNotificationDestination(user)
+}
+
+function getDefaultEmailNotificationDestination(user: User): UserNotificationDestination {
+    return {
+        id: "",
+        user_id: user.id,
+        is_active: true,
+        created_at: new Date(),
+        updated_at: new Date(),
+        destination_type: NotificationDestinationType.EMAIL,
+        email_address: user.email,
+        slack_integration_id: null,
+        slack_channel_id: null,
+        slack_channel_name: null,
+        slack_user_name: null,
+        slack_user_id: null
+    }
 }

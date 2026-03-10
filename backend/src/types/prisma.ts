@@ -13,7 +13,6 @@ import {
     automation_outputs,
     automation_prompts,
     automations,
-    directive_records,
     github_repositories,
     gmail_integrations,
     identifiable_refs,
@@ -65,8 +64,6 @@ export type AgentPrompt = automation_prompts // Alias for rebranding (formerly C
 
 export type AutomationInput = automation_inputs
 export type AgentTrigger = automation_inputs // Alias for rebranding (formerly ChannelInput)
-
-export type DirectiveRecord = directive_records
 
 export type ApprovalSlackMessage = approval_slack_messages
 

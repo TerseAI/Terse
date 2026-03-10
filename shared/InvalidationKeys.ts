@@ -11,6 +11,10 @@ export const integrationsKey = (): readonly [string] => ["integrations"]
 
 export const notificationDestinationsKey = (): readonly [string] => ["notificationDestinations"]
 
+export const sentNotificationsKey = (): readonly [string] => ["sentNotifications"]
+
+export const pendingApprovalsKey = (): readonly [string] => ["pendingApprovals"]
+
 export const slackChannelsKey = (integrationId: string | null | undefined): readonly [string, string] | null => {
     if (!integrationId) {
         return null
@@ -185,6 +189,11 @@ export const agentDetailKey = (id: string | null): readonly [string, { id: strin
     return ["agent", { id }]
 }
 
+export const agentImprovementsKey = (agentId: string | null): readonly [string, { agentId: string }] | null => {
+    if (!agentId) return null
+    return ["agentImprovements", { agentId }]
+}
+
 export const builderChatHistoryKey = (sessionId: string | null | undefined): readonly [string, string] | null => {
     if (!sessionId) return null
     return ["builderChatHistory", sessionId] as const
@@ -193,4 +202,9 @@ export const builderChatHistoryKey = (sessionId: string | null | undefined): rea
 export const orgLogoKey = (organizationId: string | null | undefined): readonly [string, string] | null => {
     if (!organizationId) return null
     return ["orgLogo", organizationId] as const
+}
+
+export const userByIdKey = (userId: string | null | undefined): readonly [string, string] | null => {
+    if (!userId) return null
+    return ["userById", userId] as const
 }

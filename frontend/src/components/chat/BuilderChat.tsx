@@ -19,6 +19,7 @@ type BuilderChatProps = {
 export type BuilderChatHandle = {
     setInput: (value: string) => void
     focus: () => void
+    sendMessage: (text: string) => void
 }
 
 export const BuilderChat = forwardRef<BuilderChatHandle, BuilderChatProps>(function BuilderChat({ getStateJSON, agentId }, ref) {
@@ -30,7 +31,8 @@ export const BuilderChat = forwardRef<BuilderChatHandle, BuilderChatProps>(funct
 
     useImperativeHandle(ref, () => ({
         setInput: (value: string) => chatRef.current?.setInput(value),
-        focus: () => chatRef.current?.focus()
+        focus: () => chatRef.current?.focus(),
+        sendMessage: (text: string) => chatRef.current?.sendMessage(text)
     }))
 
     // Fetch history only when we have an agentId (existing session)

@@ -1,7 +1,7 @@
 import type { AgentInputItem, AssistantMessageItem, FunctionCallItem, FunctionCallResultItem, ReasoningItem, UserMessageItem } from "@openai/agents-core"
 
 import { IntegrationType } from "../shared/Integrations"
-import { ModelEvent } from "../shared/ModelEvents"
+import { ModelEvent, ToolCallExecutionStatus } from "../shared/ModelEvents"
 
 import { isScaffoldedRunContextUserMessage } from "./AgentRunner/formatContext"
 import { parseCancelledSystemEventItem } from "./systemEvents/cancelledSystemEvent"
@@ -207,7 +207,8 @@ async function convertSingleItem(
     // should load run_history_actions once and attach via attachRunHistoryChangedItems().
     if (isFunctionCallResultItem(item)) {
         const integration = toolToIntegrationMap?.get(item.name || "") || IntegrationType.TERSE
-        const parsed = parseToolExecutionResult(item.output, item.status)
+        const status = item.status as ToolCallExecutionStatus
+        const parsed = parseToolExecutionResult(item.output, status)
 
         const outputWithoutActions = {
             ...parsed.output,

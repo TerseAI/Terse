@@ -1,4 +1,4 @@
-import { getToolDisplayFromCall } from "../../utility/toolDisplayUtils"
+import { getToolDisplayFromCall } from "../../shared/ToolDisplayUtils"
 import ShinyText from "../ShinyText"
 
 import FunctionCallItem from "./FunctionCallItem"

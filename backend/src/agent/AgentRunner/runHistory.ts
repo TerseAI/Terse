@@ -2,6 +2,8 @@ import { RunToolApprovalItem } from "@openai/agents"
 import { Prisma } from "@prisma/client"
 
 import { db } from "../../prismaClient"
+import { emitCacheInvalidationWithKey } from "../../services/CacheInvalidationService"
+import { pendingApprovalsKey } from "../../shared/InvalidationKeys"
 import { type RunHistoryAction, RunHistoryStatus, type RunHistoryTrigger } from "../../shared/RunHistoryTypes"
 import { USER_CANCELLED_REASON } from "../../socketHandlers/activeExecution"
 import { convertIntegrationTypeToPrismaIntegrationTypeForRunHistory } from "../../utility/typeConverters"
@@ -9,6 +11,7 @@ import { convertIntegrationTypeToPrismaIntegrationTypeForRunHistory } from "../.
 export type RunTrigger = RunHistoryTrigger
 
 export type CompletedRunStatus = RunHistoryStatus.SUCCESS | RunHistoryStatus.FAILED
+const PENDING_APPROVALS_INVALIDATION_KEY = pendingApprovalsKey()[0]
 
 export async function createRunRecord(params: { agentId: string; trigger: RunTrigger; isManuallyTriggered?: boolean }): Promise<string> {
     const { agentId, trigger, isManuallyTriggered } = params
@@ -158,7 +161,8 @@ export async function storePendingApprovalState(runId: string, serializedState: 
         include: {
             automation: {
                 select: {
-                    user_id: true
+                    user_id: true,
+                    organization_id: true
                 }
             }
         }
@@ -191,6 +195,10 @@ export async function storePendingApprovalState(runId: string, serializedState: 
             status: RunHistoryStatus.AWAITING_APPROVAL
         }
     })
+
+    if (runRecord.automation.organization_id) {
+        emitCacheInvalidationWithKey(runRecord.automation.organization_id, PENDING_APPROVALS_INVALIDATION_KEY)
+    }
 }
 
 export async function getPendingApprovalState(runId: string): Promise<{
@@ -226,8 +234,24 @@ export async function getPendingApprovalState(runId: string): Promise<{
 
 export async function clearPendingApprovalState(runId: string): Promise<void> {
     const prisma = db()
+
+    const runRecord = await prisma.run_history_records.findUnique({
+        where: { id: runId },
+        select: {
+            automation: {
+                select: {
+                    organization_id: true
+                }
+            }
+        }
+    })
+
     // Delete the pending approval record
     await prisma.pending_approvals.deleteMany({
         where: { run_history_record_id: runId }
     })
+
+    if (runRecord?.automation.organization_id) {
+        emitCacheInvalidationWithKey(runRecord.automation.organization_id, PENDING_APPROVALS_INVALIDATION_KEY)
+    }
 }

@@ -129,11 +129,11 @@ export function NotificationDestinationForm({ existingDestination, onSuccess, on
 
     if (isLoading || isConnecting) {
         return (
-            <div className="space-y-3 px-6 pb-6 pt-5">
-                <Skeleton className="h-24 w-full rounded-xl" />
-                <Skeleton className="h-44 w-full rounded-xl" />
+            <div className="space-y-3">
+                <Skeleton className="h-24 w-full rounded-lg" />
+                <Skeleton className="h-44 w-full rounded-lg" />
                 <div className="flex justify-end">
-                    <Skeleton className="h-10 w-24 rounded-md" />
+                    <Skeleton className="h-9 w-24 rounded-md" />
                 </div>
             </div>
         )
@@ -145,13 +145,11 @@ export function NotificationDestinationForm({ existingDestination, onSuccess, on
 
     if (integrations.length === 0) {
         return (
-            <div className="px-6 pb-6 pt-5">
-                <div className="rounded-xl border border-dashed bg-muted/20 p-6 text-center">
-                    <p className="text-sm text-muted-foreground">No Slack integrations found. Connect a workspace to continue.</p>
-                    <Button className="mt-4" onClick={() => setShowConnectionOptions(true)}>
-                        Connect Slack Workspace
-                    </Button>
-                </div>
+            <div className="rounded-lg border border-dashed bg-muted/20 p-6 text-center">
+                <p className="text-sm text-muted-foreground">No Slack integrations found. Connect a workspace to continue.</p>
+                <Button className="mt-4" size="sm" onClick={() => setShowConnectionOptions(true)}>
+                    Connect Slack Workspace
+                </Button>
             </div>
         )
     }
@@ -164,34 +162,29 @@ export function NotificationDestinationForm({ existingDestination, onSuccess, on
     const selectedOption = options.find(option => option.value === selectedIntegrationId) ?? null
 
     return (
-        <div className="space-y-5 px-6 pb-6 pt-5">
-            <div className="space-y-3 rounded-xl border bg-card/50 p-4 sm:p-5">
-                <div className="space-y-1">
-                    <Label className="text-sm font-medium">Slack Workspace</Label>
-                    <p className="text-xs text-muted-foreground">Choose which workspace should receive notifications.</p>
-                </div>
+        <div className="space-y-4">
+            <div className="space-y-3">
+                <Label className="text-sm font-medium">Slack Workspace</Label>
 
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                    <div className="min-w-0 flex-1">
-                        <DropdownSelect
-                            statusOptions={options}
-                            selectedOption={selectedOption}
-                            setSelected={id => {
-                                setSelectedIntegrationId(id)
-                                if (id !== selectedIntegrationId) {
-                                    setSelectedChannelId(undefined)
-                                    setSelectedChannelName(undefined)
-                                    setSelectedUserId(undefined)
-                                    setSelectedUserName(undefined)
-                                }
-                            }}
-                            modal={false}
-                            triggerClassName="h-11 w-full justify-between rounded-lg border-border/80 bg-background px-3 text-left"
-                            contentClassName="w-[var(--radix-dropdown-menu-trigger-width)]"
-                        />
-                    </div>
-                    <Button variant="outline" className="h-11 shrink-0" onClick={() => setShowConnectionOptions(true)}>
-                        Connect Another Workspace
+                <div className="flex flex-col gap-2">
+                    <DropdownSelect
+                        statusOptions={options}
+                        selectedOption={selectedOption}
+                        setSelected={id => {
+                            setSelectedIntegrationId(id)
+                            if (id !== selectedIntegrationId) {
+                                setSelectedChannelId(undefined)
+                                setSelectedChannelName(undefined)
+                                setSelectedUserId(undefined)
+                                setSelectedUserName(undefined)
+                            }
+                        }}
+                        modal={false}
+                        triggerClassName="h-9 w-full justify-between rounded-lg border-border/80 bg-background px-3 text-left"
+                        contentClassName="w-[var(--radix-dropdown-menu-trigger-width)]"
+                    />
+                    <Button variant="link" size="sm" className="h-auto w-fit p-0 text-xs" onClick={() => setShowConnectionOptions(true)}>
+                        Connect another workspace
                     </Button>
                 </div>
             </div>
@@ -225,13 +218,13 @@ export function NotificationDestinationForm({ existingDestination, onSuccess, on
 
             {validationError && <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">{validationError}</div>}
 
-            <div className="flex flex-col-reverse gap-2 border-t pt-4 sm:flex-row sm:justify-end">
+            <div className="flex justify-end gap-2 pt-2">
                 {onCancel && (
-                    <Button variant="outline" onClick={onCancel}>
+                    <Button variant="outline" size="sm" onClick={onCancel}>
                         Cancel
                     </Button>
                 )}
-                <Button onClick={saveDestination} disabled={isSaving} className="min-w-24">
+                <Button size="sm" onClick={saveDestination} disabled={isSaving} className="min-w-20">
                     {isSaving ? "Saving..." : isEditMode ? "Update" : "Save"}
                 </Button>
             </div>
@@ -273,10 +266,9 @@ function SelectSlackDestinationForm({
     const effectiveChannelName = selectedUserId ? undefined : selectedChannelName
 
     return (
-        <div className="space-y-3 rounded-xl border bg-card/40 p-4 sm:p-5">
+        <div className="space-y-3 rounded-xl">
             <div className="space-y-1">
                 <p className="text-sm font-medium">Destination</p>
-                <p className="text-xs text-muted-foreground">Choose exactly one destination. Selecting one option clears the other automatically.</p>
             </div>
 
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">

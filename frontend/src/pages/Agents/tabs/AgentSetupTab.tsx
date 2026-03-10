@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { useAgentCount } from "@/hooks/api/useAgentCount"
 import { useAgentMutations } from "@/hooks/api/useAgents"
+import { useUser } from "@/hooks/api/useUser"
 import { useBuilderSession } from "@/hooks/useBuilderSession"
 import { FROM_SETUP_CHAT_PARAM } from "@/shared/FrontendRoutes"
 import { FrontendRoutes } from "@/shared/FrontendRoutes"
@@ -53,6 +54,7 @@ export type AgentSetupTabProps = {
     setNotificationSettings: (settings: AgentNotificationSettingsType) => void
     isLoading: boolean
     mutate: KeyedMutator<Agent>
+    agentCreator: string | undefined
     updatedAt?: string
 }
 
@@ -331,11 +333,13 @@ export default function AgentSetupTab({
     setNotificationSettings,
     toolApprovals,
     setToolApprovals,
+    agentCreator,
     mutate
 }: AgentSetupTabProps) {
     const { totalCount } = useAgentCount()
     const { clearSessionId } = useBuilderSession()
     const [searchParams, setSearchParams] = useSearchParams()
+    const { user: agentCreatorUser } = useUser(agentCreator)
     const defaultName = getDefaultAgentName(totalCount)
     void _setRequireApproval
 
@@ -518,11 +522,10 @@ export default function AgentSetupTab({
 
                     <div className={cn(activeSection === "alerts" ? "block" : "hidden", "space-y-6")}>
                         <div>
-                            <h2 className="text-lg font-medium mb-1">Alerts & Approval</h2>
-                            <p className="text-sm text-muted-foreground mb-4">Configure when you want to be notified and whether actions need your approval.</p>
+                            <h2 className="text-lg font-medium mb-1">Alerts</h2>
                         </div>
                         <AgentApprovalSettings outputs={outputs} toolApprovals={toolApprovals} onToolApprovalsChange={setToolApprovals} />
-                        <AgentNotificationSettings settings={notificationSettings} onChange={setNotificationSettings} />
+                        <AgentNotificationSettings settings={notificationSettings} agentCreator={agentCreatorUser ?? undefined} onChange={setNotificationSettings} />
                     </div>
                 </div>
             </div>

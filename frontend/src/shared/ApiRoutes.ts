@@ -188,6 +188,34 @@ export const ApiRoutes = {
         }
     },
 
+    IMPROVEMENTS: {
+        BY_AGENT_ID: {
+            pattern: "/agents/:agentId/improvements",
+            build: (agentId: string) => `/agents/${encodeURIComponent(agentId)}/improvements`,
+            params: { agentId: "string" } as const
+        },
+        APPLY: {
+            pattern: "/agents/:agentId/improvements/:id/apply",
+            build: (agentId: string, id: string) => `/agents/${encodeURIComponent(agentId)}/improvements/${encodeURIComponent(id)}/apply`,
+            params: { agentId: "string", id: "string" } as const
+        },
+        DISMISS: {
+            pattern: "/agents/:agentId/improvements/:id/dismiss",
+            build: (agentId: string, id: string) => `/agents/${encodeURIComponent(agentId)}/improvements/${encodeURIComponent(id)}/dismiss`,
+            params: { agentId: "string", id: "string" } as const
+        },
+        UNDO_DISMISS: {
+            pattern: "/agents/:agentId/improvements/:id/undo-dismiss",
+            build: (agentId: string, id: string) => `/agents/${encodeURIComponent(agentId)}/improvements/${encodeURIComponent(id)}/undo-dismiss`,
+            params: { agentId: "string", id: "string" } as const
+        },
+        TOGGLE_ENABLED: {
+            pattern: "/agents/:agentId/improvements-enabled",
+            build: (agentId: string) => `/agents/${encodeURIComponent(agentId)}/improvements-enabled`,
+            params: { agentId: "string" } as const
+        }
+    },
+
     // Templates routes
     TEMPLATES: "/templates",
     PUBLIC: {
@@ -218,6 +246,14 @@ export const ApiRoutes = {
             build: (id: string) => `/notification-destinations/${encodeURIComponent(id)}`,
             params: { id: "string" } as const
         }
+    },
+
+    SENT_NOTIFICATIONS: {
+        LIST: "/sent-notifications"
+    },
+
+    PENDING_APPROVALS: {
+        LIST: "/pending-approvals"
     },
 
     // Webhooks routes
@@ -258,6 +294,7 @@ export const ApiRoutes = {
 
     // Refresh tokens route
     REFRESH_TOKENS: "/refresh-tokens",
+    REVIEW_AGENTS: "/review-agents",
 
     // Users routes
     USERS: {

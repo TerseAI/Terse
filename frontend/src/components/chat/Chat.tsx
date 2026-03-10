@@ -26,6 +26,7 @@ type ChatProps = {
 export type ChatHandle = ChatLayoutHandle & {
     setInput: (value: string) => void
     focus: () => void
+    sendMessage: (text: string) => void
 }
 
 const Chat = forwardRef<ChatHandle, ChatProps>(function Chat(
@@ -80,7 +81,8 @@ const Chat = forwardRef<ChatHandle, ChatProps>(function Chat(
     useImperativeHandle(ref, () => ({
         scrollToBottom: () => chatLayoutRef.current?.scrollToBottom(),
         focus: () => chatLayoutRef.current?.focus(),
-        setInput
+        setInput,
+        sendMessage: (text: string) => sendUserMessage(text)
     }))
 
     return (

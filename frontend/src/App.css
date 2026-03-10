@@ -42,6 +42,9 @@
     --color-accent-primary: var(--accent-primary);
     --color-accent-secondary: var(--accent-secondary);
     --color-accent-tertiary: var(--accent-tertiary);
+    --color-success: var(--success);
+    --color-danger: var(--danger);
+    --color-warning: var(--warning);
 }
 
 :root {
@@ -80,6 +83,9 @@
     --sidebar-accent-foreground: oklch(0.13 0 0);
     --sidebar-border: oklch(0.91 0 0);
     --sidebar-ring: oklch(0.13 0 0);
+    --success: oklch(0.72 0.18 150);
+    --danger: oklch(0.68 0.2 25);
+    --warning: oklch(0.8 0.18 90);
 }
 
 .dark {
