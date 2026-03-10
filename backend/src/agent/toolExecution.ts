@@ -46,21 +46,17 @@ export function parseToolExecutionResult(rawOutput: unknown, rawStatus: unknown)
 }
 
 function normalizeToolExecutionOutput(rawOutput: unknown): object {
-    let output = rawOutput
-
-    if (output && typeof output === "object") {
-        return output as object
-    }
-
-    if (typeof output === "string") {
+    // There may be a field called text in rawOutput
+    if (typeof rawOutput === "object" && rawOutput && "text" in rawOutput && typeof rawOutput.text === "string") {
         try {
-            return JSON.parse(output)
+            const objectOutput = JSON.parse(rawOutput.text)
+            return objectOutput
         } catch (error) {
-            logger.warn("Failed to parse tool output as JSON, returning raw string", { output, error })
-            return {}
+            logger.warn("Error parsing tool call output")
         }
+    } else if (typeof rawOutput === "object" && rawOutput) {
+        return rawOutput
     }
-
     return {}
 }
 
