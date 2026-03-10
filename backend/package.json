@@ -11,7 +11,7 @@
     "dev:tunnel": "./scripts/dev-with-tunnel.sh",
     "prebuild": "node ../scripts/copy-shared.js",
     "build": "tsc && pnpm run postbuild",
-    "postbuild": "tsc-esm-fix dist",
+    "postbuild": "tsc-esm-fix dist && cp -r src/notifications/emails/templates dist/notifications/emails/templates && cp -r src/notifications/emails/assets dist/notifications/emails/assets",
     "prestart": "node ../scripts/copy-shared.js",
     "start": "node dist/server.js",
     "test": "jest",
