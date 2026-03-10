@@ -1,3 +1,4 @@
+import logger from "../logger"
 import { ChatSnippet, ToolCallExecutionStatus } from "../shared/ModelEvents"
 import { RunHistoryAction } from "../shared/RunHistoryTypes"
 import { ErrorContext, detectSerializedError, parseSerializedError } from "../tools/toolUtils"
@@ -47,11 +48,6 @@ export function parseToolExecutionResult(rawOutput: unknown, rawStatus: unknown)
 function normalizeToolExecutionOutput(rawOutput: unknown): object {
     let output = rawOutput
 
-    // OpenAI tool outputs are commonly wrapped as { type: "text", text: "..." }.
-    if (output && typeof output === "object" && "text" in output && typeof (output as { text?: unknown }).text === "string") {
-        output = (output as { text: string }).text
-    }
-
     if (output && typeof output === "object") {
         return output as object
     }
@@ -59,7 +55,8 @@ function normalizeToolExecutionOutput(rawOutput: unknown): object {
     if (typeof output === "string") {
         try {
             return JSON.parse(output)
-        } catch {
+        } catch (error) {
+            logger.warn("Failed to parse tool output as JSON, returning raw string", { output, error })
             return {}
         }
     }
