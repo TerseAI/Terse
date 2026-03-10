@@ -99,9 +99,7 @@ function SettingsNavigation() {
                             {item.title === "Notifications" && pendingCount > 0 ? (
                                 <>
                                     <item.icon className={item.iconColor} />
-                                    <span className="absolute top-0 left-5 flex size-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-semibold leading-none text-white">
-                                        {pendingCount > 9 ? "9+" : pendingCount}
-                                    </span>
+                                    <span className="absolute top-1.5 left-5.5 flex size-2 items-center justify-center rounded-full bg-red-500 text-xs font-semibold leading-none text-white"></span>
                                 </>
                             ) : (
                                 <item.icon className={item.iconColor} />
