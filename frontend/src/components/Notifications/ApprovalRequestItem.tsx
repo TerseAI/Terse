@@ -1,5 +1,4 @@
 import { Ban, Check, MessageSquare } from "lucide-react"
-import type { LucideIcon } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { IconForIntegration } from "@/pages/Agents/components/Integration"

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react"
 import { useSearchParams } from "react-router-dom"
 
-import { LucideIcon, Mail, Plane, Send, XCircle } from "lucide-react"
+import { Mail, Send, XCircle } from "lucide-react"
 
 import { AddNotificationDestination } from "@/components/Notifications/AddNotificationDestination"
 import ApprovalRequestItem from "@/components/Notifications/ApprovalRequestItem"
