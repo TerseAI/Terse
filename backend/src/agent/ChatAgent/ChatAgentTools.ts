@@ -54,12 +54,10 @@ import { randomString } from "../../utility/strings"
 
 import type { ChatAgentContext } from "./ChatAgentContext"
 import ChatInterface from "./ChatInterfaces/ChatInterface"
-import { lookupPlatformCapabilitiesTool } from "./lookupPlatformCapabilities"
 
 export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgentContext>[] {
     return [
         webSearchTool({ searchContextSize: "medium" }) as Tool<ChatAgentContext>,
-        lookupPlatformCapabilitiesTool,
         tool({
             name: "getToolApprovalOptions",
             description:

@@ -1,9 +1,7 @@
 import { Tool } from "@openai/agents"
 import { OutputConfigType } from "@prisma/client"
 
-import { type CapabilityDescription, CapabilityRole, extractToolMetadata, getConfigMetadata } from "../../capabilityHelpers"
 import { AttioIntegrationManager } from "../../integrations/AttioIntegration"
-import { db } from "../../prismaClient"
 import { AttioOutputConfig } from "../../shared/Configs"
 import { IntegrationType } from "../../shared/Integrations"
 import { PrismaTransaction } from "../../types/prisma"
@@ -23,27 +21,6 @@ export class AttioOutput extends Output<AttioOutputConfig> {
             { tool: attioUpsertRecordTool as Tool, isReadOnly: false, integration: IntegrationType.ATTIO, displayName: "Upsert record" }
         ]
         super(OutputConfigType.ATTIO, toolbox)
-    }
-
-    getCapabilityDescription(): CapabilityDescription {
-        const configType = convertOutputConfigTypeToConfigType(OutputConfigType.ATTIO)
-        const meta = getConfigMetadata(configType)
-        const tools = extractToolMetadata(this.toolbox)
-        const systemInstructions = this.getSystemInstructions(true)
-
-        return {
-            name: meta.name,
-            description: meta.description,
-            configType,
-            integrationType: meta.integrationType,
-            role: CapabilityRole.OUTPUT,
-            tools,
-            configFields: {
-                integrationId: "Attio integration connection",
-                objectSlug: "Attio object type slug (e.g. people, companies)"
-            },
-            systemInstructions
-        }
     }
 
     protected getDummyConfigForCapability(): AttioOutputConfig {

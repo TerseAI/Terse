@@ -1,7 +1,6 @@
 import { Tool } from "@openai/agents"
 import { OutputConfigType } from "@prisma/client"
 
-import { type CapabilityDescription, CapabilityRole, extractToolMetadata, getConfigMetadata } from "../../capabilityHelpers"
 import { GmailDraftOutputConfig } from "../../shared/Configs"
 import { IntegrationType } from "../../shared/Integrations"
 import { PrismaTransaction } from "../../types/prisma"
@@ -15,26 +14,6 @@ export class GmailDraftOutput extends Output<GmailDraftOutputConfig> {
     constructor() {
         const toolbox: ToolboxEntry[] = [{ tool: gmailCreateDraftTool as Tool, isReadOnly: false, integration: IntegrationType.GMAIL, displayName: "Create draft" }]
         super(OutputConfigType.GMAIL_DRAFT, toolbox)
-    }
-
-    getCapabilityDescription(): CapabilityDescription {
-        const configType = convertOutputConfigTypeToConfigType(OutputConfigType.GMAIL_DRAFT)
-        const meta = getConfigMetadata(configType)
-        const tools = extractToolMetadata(this.toolbox)
-        const systemInstructions = this.getSystemInstructions(true)
-
-        return {
-            name: meta.name,
-            description: meta.description,
-            configType,
-            integrationType: meta.integrationType,
-            role: CapabilityRole.OUTPUT,
-            tools,
-            configFields: {
-                integrationId: "Gmail integration connection"
-            },
-            systemInstructions
-        }
     }
 
     protected getDummyConfigForCapability(): GmailDraftOutputConfig {
