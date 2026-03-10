@@ -8,7 +8,6 @@ export type ApprovalAction = {
     type: ApprovalActionType
     label: string
     deepLink: string
-    variant: "primary" | "destructive" | "outline"
 }
 
 export type ApprovalRequest = {

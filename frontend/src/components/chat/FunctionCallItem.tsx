@@ -1,6 +1,7 @@
 import { useState } from "react"
 
 import { CheckCircleIcon, CheckIcon, ClockIcon, NoSymbolIcon, PaperAirplaneIcon, XMarkIcon } from "@heroicons/react/24/outline"
+import { Ban, Check } from "lucide-react"
 
 import { useRunHistoryActions } from "../../hooks/useRunHistoryActions"
 import { EntityType } from "../../shared/Entities"
@@ -207,15 +208,17 @@ export default function FunctionCallItem({ call, isTurnFailure = false, onApprov
             {call.isWaitingForUserInput && <ToolResultInput toolName={displayName} parameters={call.parameters} onSubmit={() => {}} />}
 
             {call.isWaitingForApproval && !call.isRejected && (
-                <div className="ml-6 mt-1.5 bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3">
+                <div className="ml-6 mt-1.5 border border-warning rounded-lg p-3">
                     <div className="text-sm text-muted-foreground mb-2">
                         The bot wants to execute: <span className="font-medium text-foreground">{displayName}</span>
                     </div>
                     <div className="flex gap-2">
-                        <Button onClick={handleApprove} size="sm" variant="default">
+                        <Button onClick={handleApprove} size="sm" variant="outline">
+                            <Check className="w-4 h-4 text-success" />
                             Approve
                         </Button>
-                        <Button onClick={handleReject} size="sm" variant="destructive">
+                        <Button onClick={handleReject} size="sm" variant="outline">
+                            <Ban className="w-4 h-4 text-danger" />
                             Reject
                         </Button>
                     </div>

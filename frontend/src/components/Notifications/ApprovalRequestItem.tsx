@@ -1,44 +1,45 @@
-import { MessageSquare } from "lucide-react"
+import { Ban, Check, MessageSquare } from "lucide-react"
+import type { LucideIcon } from "lucide-react"
 
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { IconForIntegration } from "@/pages/Agents/components/Integration"
-import type { ApprovalAction, ApprovalRequest } from "@/shared/ApprovalTypes"
+import type { ApprovalAction, ApprovalActionType, ApprovalRequest } from "@/shared/ApprovalTypes"
 import { formatRelativeTime } from "@/utility/timeUtils"
+
+import { RunHistoryStatus } from "../../shared/RunHistoryTypes"
+import RunHistoryStatusBadge from "../RunHistory/RunHistoryStatusBadge"
 
 type ApprovalRequestItemProps = {
     approval: ApprovalRequest
     onAction: (deepLink: string) => void
 }
 
-function mapActionVariant(variant: ApprovalAction["variant"]): "default" | "destructive" | "outline" {
-    switch (variant) {
-        case "primary":
-            return "default"
-        case "destructive":
-            return "destructive"
-        case "outline":
-            return "outline"
-        default:
-            throw variant satisfies never
-    }
-}
-
-function getStatusBadgeProps(status: ApprovalRequest["status"]): { label: string; className: string } {
+function convertApprovalStatusToRunHistoryStatus(status: ApprovalRequest["status"]): RunHistoryStatus {
     switch (status) {
         case "pending":
-            return { label: "Pending", className: "border-yellow-600/40 text-yellow-600 dark:text-yellow-400" }
+            return RunHistoryStatus.AWAITING_APPROVAL
         case "in_progress":
-            return { label: "In progress", className: "border-accent/40 text-accent" }
+            return RunHistoryStatus.IN_PROGRESS
         case "completed":
-            return { label: "Completed", className: "border-green-600/40 text-green-600 dark:text-green-400" }
+            return RunHistoryStatus.SUCCESS
         default:
             throw status satisfies never
     }
 }
 
+function getIconForAction(actionType: ApprovalActionType) {
+    switch (actionType) {
+        case "open_run_history":
+            return <MessageSquare className="w-4 h-4" />
+        case "approve_action":
+            return <Check className="w-4 h-4 text-success" />
+        case "reject_action":
+            return <Ban className="w-4 h-4 text-danger" />
+    }
+}
+
 export default function ApprovalRequestItem({ approval, onAction }: ApprovalRequestItemProps) {
-    const statusBadge = getStatusBadgeProps(approval.status)
+    const runHistoryStatus = convertApprovalStatusToRunHistoryStatus(approval.status)
     const actionOrder: ApprovalAction["type"][] = ["approve_action", "reject_action", "open_run_history"]
     const orderedActions = [...approval.actions].sort((a, b) => actionOrder.indexOf(a.type) - actionOrder.indexOf(b.type))
 
@@ -62,25 +63,16 @@ export default function ApprovalRequestItem({ approval, onAction }: ApprovalRequ
                     </p>
 
                     <div className="mt-3 flex items-center justify-between gap-3">
-                        <Badge variant="outline" className={statusBadge.className}>
-                            {statusBadge.label}
-                        </Badge>
-
+                        <RunHistoryStatusBadge status={runHistoryStatus} />
                         <div className="ml-auto flex items-center justify-end gap-2">
                             {orderedActions.map(action =>
                                 action.type === "open_run_history" ? (
-                                    <Button
-                                        key={`${approval.id}-${action.deepLink}`}
-                                        type="button"
-                                        size="icon-sm"
-                                        variant={mapActionVariant(action.variant)}
-                                        onClick={() => onAction(action.deepLink)}
-                                        title="Open run history"
-                                    >
-                                        <MessageSquare className="w-4 h-4" />
+                                    <Button key={`${approval.id}-${action.deepLink}`} type="button" size="icon-sm" variant="outline" onClick={() => onAction(action.deepLink)} title="Open run history">
+                                        {getIconForAction(action.type)}
                                     </Button>
                                 ) : (
-                                    <Button key={`${approval.id}-${action.deepLink}`} type="button" size="sm" variant={mapActionVariant(action.variant)} onClick={() => onAction(action.deepLink)}>
+                                    <Button key={`${approval.id}-${action.deepLink}`} type="button" size="sm" variant="outline" onClick={() => onAction(action.deepLink)}>
+                                        {getIconForAction(action.type)}
                                         {action.label}
                                     </Button>
                                 )

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react"
 import { useSearchParams } from "react-router-dom"
 
-import { Mail } from "lucide-react"
+import { LucideIcon, Mail, Plane, Send, XCircle } from "lucide-react"
 
 import { AddNotificationDestination } from "@/components/Notifications/AddNotificationDestination"
 import ApprovalRequestItem from "@/components/Notifications/ApprovalRequestItem"
@@ -25,6 +25,8 @@ import { RunHistoryStatus } from "@/shared/RunHistoryTypes"
 import { type SentNotification, SentNotificationEventType, SentNotificationStatus } from "@/shared/SentNotifications"
 import { sendToolApprovalResponse } from "@/socket"
 import { formatRelativeTime } from "@/utility/timeUtils"
+
+import StatusBadge from "../components/StatusBadge"
 
 const NOTIFICATIONS_PAGE_SIZE = 12
 const ALL_RUN_STATUSES = Object.values(RunHistoryStatus) as RunHistoryStatus[]
@@ -138,8 +140,8 @@ function NotificationsPage() {
     }
 
     return (
-        <div className="mx-auto flex h-full min-h-0 w-full max-w-7xl flex-col overflow-x-auto overflow-y-auto px-4 pb-4 pt-2 lg:px-6 lg:pb-6 lg:pt-3">
-            <div className="grid min-h-0 min-w-0 gap-4 lg:flex-1 lg:min-w-[68rem] lg:grid-cols-2">
+        <div className="mx-auto flex h-full min-h-0 w-full flex-col overflow-x-auto overflow-y-auto px-2">
+            <div className="grid min-h-0 min-w-0 gap-4 lg:flex-1 lg:min-w-272 lg:grid-cols-2">
                 <div className="flex min-h-0 min-w-0 flex-col gap-4">
                     <div className="flex flex-col gap-2">
                         {hasDestinationData && (
@@ -376,21 +378,12 @@ function formatEventType(eventType: SentNotificationEventType): string {
 }
 
 function NotificationStatusBadge({ status }: { status: SentNotificationStatus }) {
-    const labelMap: Record<SentNotificationStatus, string> = {
-        [SentNotificationStatus.SENT]: "Sent",
-        [SentNotificationStatus.FAILED]: "Failed"
+    switch (status) {
+        case SentNotificationStatus.SENT:
+            return <StatusBadge text="Sent" status="success" icon={Send} />
+        case SentNotificationStatus.FAILED:
+            return <StatusBadge text="Failed" status="error" icon={XCircle} />
     }
-
-    const classNameMap: Record<SentNotificationStatus, string> = {
-        [SentNotificationStatus.SENT]: "",
-        [SentNotificationStatus.FAILED]: "border-destructive/40 text-destructive"
-    }
-
-    return (
-        <Badge variant="outline" className={classNameMap[status]}>
-            {labelMap[status]}
-        </Badge>
-    )
 }
 
 function SentNotificationDestinationIcon({ destinationType }: { destinationType: SentNotification["destinationType"] }) {
