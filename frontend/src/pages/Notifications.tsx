@@ -689,9 +689,7 @@ function NotificationSettings() {
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>Apply to all agents?</DialogTitle>
-                        <DialogDescription>
-                            Do you want to apply these default notification event changes to every agent in your organization?
-                        </DialogDescription>
+                        <DialogDescription>Do you want to apply these default notification event changes to every agent in your organization?</DialogDescription>
                     </DialogHeader>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => handleDialogOpenChange(false)} disabled={isLoading}>

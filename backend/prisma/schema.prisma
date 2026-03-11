@@ -1098,14 +1098,15 @@ model user_notification_destinations {
 }
 
 model user_notification_settings {
-    id               String                      @id @default(cuid())
-  user_id          String @unique
+  id                          String                 @id @default(cuid())
+  user_id                     String                 @unique
   agent_default_notifications RunHistoryActionType[]
-  weekly_agent_improvements Boolean
-    created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
-  user              users                    @relation(fields: [user_id], references: [id], onDelete: Cascade)
-    @@index([user_id])
+  weekly_agent_improvements   Boolean
+  created_at                  DateTime               @default(now())
+  updated_at                  DateTime               @updatedAt
+  user                        users                  @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
 }
 
 enum NotificationDestinationType {
