@@ -11,6 +11,8 @@ export const integrationsKey = (): readonly [string] => ["integrations"]
 
 export const notificationDestinationsKey = (): readonly [string] => ["notificationDestinations"]
 
+export const notificationSettingsKey = (): readonly [string] => ["notificationSettings"]
+
 export const sentNotificationsKey = (): readonly [string] => ["sentNotifications"]
 
 export const pendingApprovalsKey = (): readonly [string] => ["pendingApprovals"]

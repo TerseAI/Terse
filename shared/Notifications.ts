@@ -1,7 +1,15 @@
+import {RunHistoryActionType} from "./RunHistoryTypes"
+
 export interface NotificationDestination {
     id: string
     type: NotificationDestinationType
     isActive?: boolean
+}
+
+export interface NotificationSettings {
+    id: string
+    agentDefaultNotifications: RunHistoryActionType[]
+    weeklyAgentImprovements: boolean
 }
 
 export enum NotificationDestinationType {

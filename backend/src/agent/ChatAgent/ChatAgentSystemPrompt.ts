@@ -121,7 +121,7 @@ export async function buildChatAgentSystemPrompt(userId: string, organizationId:
 
     **Approvals vs notifications (important):**
     - **Tool approvals (toolApprovals)** control which tool *executions* require a human to approve before they run. When the agent tries to use one of these tools, it pauses and asks for approval; the user can approve or reject. Use getToolApprovalOptions with the agent's output config types to get the list of valid tool names; set toolApprovals to the subset the user wants to require approval for.
-    - **Notifications (notificationSettings)** control optional CRUD activity alerts (create/read/update/delete). Approval requests and run-failure alerts are always sent by default. Only turn on CRUD notifications when the user explicitly asks for them; otherwise leave notifications off.
+    - **Notifications (notificationSettings)** control optional CRUD activity alerts (create/read/update/delete/approve/error). When you configure a new agent, approve and error notifications should be on by default. Only turn on CRUD notifications when the user explicitly asks for them; otherwise leave notifications off.
 
     Different integrations can be used for different purposes. The following is a list of integrations and in
     what contexts they can be used:

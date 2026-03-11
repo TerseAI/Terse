@@ -17,6 +17,7 @@ import { useTemplateHydration } from "../../hooks/useTemplateHydration"
 import { safeStorageGet, safeStorageSet } from "../../lib/storage"
 import { cn } from "../../lib/utils"
 import { useModelContext } from "../../services/ModelContextProvider"
+import { RunHistoryActionType } from "../../shared/RunHistoryTypes"
 import { AgentNotificationSettings, AgentPrompt, TransientAgentOutput, TransientAgentTrigger } from "../../shared/types"
 import { AgentInputsDonatedState, AgentNameDonatedState, AgentOutputsDonatedState, AgentPromptDonatedState } from "../../utility/AgentModelDonation"
 import { toTransientAgentOutput, toTransientAgentTrigger } from "../../utility/AgentUtils"
@@ -336,8 +337,8 @@ function AgentDetail() {
     const [requireApproval, setRequireApproval] = useState<boolean>(false)
     const [toolApprovals, setToolApprovals] = useState<string[]>([])
     const [notificationSettings, setNotificationSettings] = useState<AgentNotificationSettings>({
-        enabled: false,
-        actionTypes: []
+        enabled: true,
+        actionTypes: ["approve", "delete"]
     })
 
     // Sync local state with fetched data - convert from AgentTrigger/Output to Transient types

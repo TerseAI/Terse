@@ -60,17 +60,34 @@ export async function validateUserOwnsIntegration(organizationId: string, integr
     return instances.some(instance => instance.id === integrationId)
 }
 
-async function upsertNotificationSettings(tx: PrismaTransaction, automationId: string, settings: AgentNotificationSettings): Promise<void> {
+async function upsertNotificationSettings(tx: PrismaTransaction, automationId: string, userId: string, settings: AgentNotificationSettings | undefined): Promise<void> {
+    let enabled
+    let actionTypes
+    if (!settings) {
+        const defaultSettings = await db().user_notification_settings.findUnique({
+            where: {
+                user_id: userId
+            }
+        })
+        if (!defaultSettings) {
+            throw new Error(`Unable to find matching user notification setting for ${userId}`)
+        }
+        enabled = defaultSettings.agent_default_notifications.length > 0
+        actionTypes = defaultSettings.agent_default_notifications
+    } else {
+        enabled = settings.enabled
+        actionTypes = settings.actionTypes
+    }
     await tx.automation_notification_settings.upsert({
         where: { automation_id: automationId },
         update: {
-            enabled: settings.enabled,
-            action_types: settings.actionTypes
+            enabled: enabled,
+            action_types: actionTypes
         },
         create: {
             automation_id: automationId,
-            enabled: settings.enabled,
-            action_types: settings.actionTypes
+            enabled: enabled,
+            action_types: actionTypes
         }
     })
 }
@@ -204,10 +221,7 @@ export async function applyAgentForUser(userId: string, organizationId: string, 
             await createOutputConfig(tx, newOutput.id, output.config, userId)
         }
 
-        // Create notification settings if provided
-        if (notificationSettings) {
-            await upsertNotificationSettings(tx, newAgent.id, notificationSettings)
-        }
+        await upsertNotificationSettings(tx, newAgent.id, userId, notificationSettings)
 
         // Create tool approvals if provided
         if (toolApprovals && toolApprovals.length > 0) {
@@ -391,10 +405,7 @@ export async function updateAgentForUser(userId: string, organizationId: string,
             }
         }
 
-        // Update notification settings if provided
-        if (notificationSettings) {
-            await upsertNotificationSettings(tx, agentId, notificationSettings)
-        }
+        await upsertNotificationSettings(tx, agentId, userId, notificationSettings)
 
         // Update tool approvals if provided
         if (toolApprovals !== undefined) {

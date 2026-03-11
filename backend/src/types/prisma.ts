@@ -23,6 +23,7 @@ import {
     slack_integrations,
     user_github_repositories,
     user_notification_destinations,
+    user_notification_settings,
     user_slack_integrations,
     users
 } from "@prisma/client"
@@ -57,6 +58,7 @@ export type Automation = automations
 export type Agent = automations // Alias for rebranding (formerly Channel)
 
 export type UserNotificationDestination = user_notification_destinations
+export type UserNotificationSettings = user_notification_settings
 export type AutomationNotificationSettings = automation_notification_settings
 
 export type AutomationPrompt = automation_prompts

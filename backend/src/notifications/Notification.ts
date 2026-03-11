@@ -1,4 +1,4 @@
-import { NotificationDestinationType, SentNotificationEventType, SentNotificationStatus } from "@prisma/client"
+import { NotificationDestinationType, RunHistoryActionType, SentNotificationEventType, SentNotificationStatus } from "@prisma/client"
 
 import logger from "../logger"
 import { db } from "../prismaClient"
@@ -22,8 +22,7 @@ export class NotificationManager {
         this.agent = agent
     }
 
-    async notify(runAction: RunHistoryAction) {
-        // Get the notification settings for the automation
+    private async isNotificationPermitted(runActionType: RunHistoryActionType): Promise<boolean> {
         const notificationSettings: AutomationNotificationSettings | null = await db().automation_notification_settings.findFirst({
             where: {
                 automation_id: this.agent.id
@@ -32,16 +31,24 @@ export class NotificationManager {
 
         if (!notificationSettings) {
             logger.debug(`No notification settings found for automation ${this.agent.name}. Skipping`)
-            return
+            return false
         }
 
         if (!notificationSettings.enabled) {
             logger.debug(`Notifications disabled for automation ${this.agent.name}. Skipping`)
-            return
+            return false
         }
 
-        if (!notificationSettings.action_types.includes(runAction.type)) {
-            logger.debug(`Notification settings for automation ${this.agent.name} do not include action ${runAction.type}. Skipping`)
+        if (!notificationSettings.action_types.includes(runActionType)) {
+            logger.debug(`Notification settings for automation ${this.agent.name} do not include action ${runActionType}. Skipping`)
+            return false
+        }
+        return true
+    }
+
+    async notify(runAction: RunHistoryAction) {
+        const isPermitted = this.isNotificationPermitted(runAction.type)
+        if (!isPermitted) {
             return
         }
 
@@ -75,6 +82,11 @@ export class NotificationManager {
             return
         }
 
+        const isPermitted = this.isNotificationPermitted(RunHistoryActionType.approve)
+        if (!isPermitted) {
+            return
+        }
+
         const notificationDestination = await resolveNotificationDestination(this.user)
         let notificationError: unknown
 
@@ -101,6 +113,11 @@ export class NotificationManager {
     }
 
     async notifyRunFailure(runId: string, errorMessage: string) {
+        const isPermitted = this.isNotificationPermitted(RunHistoryActionType.error)
+        if (!isPermitted) {
+            return
+        }
+
         const notificationDestination = await resolveNotificationDestination(this.user)
         let notificationError: unknown
 
