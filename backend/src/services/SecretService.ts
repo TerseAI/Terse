@@ -132,3 +132,29 @@ export async function deleteSecret(table: string, recordId: string, field: strin
 export function isGsmAvailable(): boolean {
     return getSecretService().isGsmAvailable()
 }
+
+/**
+ * Best-effort secret cleanup for use after DB deletes.
+ * Logs errors instead of throwing so the caller's DB delete is never rolled back
+ * due to a GSM failure. Orphaned GSM secrets are harmless since the DB record
+ * they belonged to no longer exists.
+ */
+export async function deleteSecretsBestEffort(
+    entries: Array<{ table: string; recordId: string; field: string }>
+): Promise<void> {
+    const service = getSecretService()
+    await Promise.allSettled(
+        entries.map(async entry => {
+            try {
+                await service.deleteSecret(entry.table, entry.recordId, entry.field)
+            } catch (error) {
+                logger.error("Best-effort GSM secret cleanup failed (orphaned secret)", {
+                    table: entry.table,
+                    recordId: entry.recordId,
+                    field: entry.field,
+                    error
+                })
+            }
+        })
+    )
+}

@@ -166,10 +166,7 @@ export class DatadogIntegrationManager implements Integration<DatadogIntegration
             })
 
             if (existing) {
-                await storeSecret("datadog_integrations", existing.id, "api_key", apiKey)
-                await storeSecret("datadog_integrations", existing.id, "app_key", appKey)
-
-                // Update existing integration with new credentials
+                // DB-first, then GSM
                 await db().datadog_integrations.update({
                     where: { id: existing.id },
                     data: {
@@ -177,6 +174,10 @@ export class DatadogIntegrationManager implements Integration<DatadogIntegration
                         organization_id: organizationId
                     }
                 })
+
+                await storeSecret("datadog_integrations", existing.id, "api_key", apiKey)
+                await storeSecret("datadog_integrations", existing.id, "app_key", appKey)
+
                 logger.info("✅ Updated Datadog integration", {
                     integrationId: existing.id,
                     userId,

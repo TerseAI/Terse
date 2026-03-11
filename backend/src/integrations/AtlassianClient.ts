@@ -1,7 +1,7 @@
 import { settings, urls } from "../config/settings"
 import logger from "../logger"
 import { db } from "../prismaClient"
-import { getSecret, storeSecret } from "../services/SecretService"
+import { deleteSecretsBestEffort, getSecret, storeSecret } from "../services/SecretService"
 import { ApiRoutes } from "../shared/ApiRoutes"
 import { AtlassianIntegration, IntegrationType } from "../shared/Integrations"
 import type { ConfluencePage, User } from "../shared/types"
@@ -290,10 +290,16 @@ export class AtlassianClient {
                 }
             }
 
-            // Delete the integration record
+            // DB-first, then best-effort GSM cleanup
             await db().atlassian_integrations.delete({
                 where: { id: integrationId }
             })
+
+            await deleteSecretsBestEffort([
+                { table: "atlassian_integrations", recordId: integrationId, field: "access_token" },
+                { table: "atlassian_integrations", recordId: integrationId, field: "refresh_token" },
+                { table: "atlassian_integrations", recordId: integrationId, field: "webhook_secret" }
+            ])
 
             logger.info("✅ [JIRA INTEGRATION MANAGER] Deleted Atlassian integration:", { integrationId })
         } catch (error) {

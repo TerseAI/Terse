@@ -6,7 +6,7 @@ import { urls } from "../config/settings"
 import logger from "../logger"
 import { db } from "../prismaClient"
 import { Identifiable } from "../rag/Hydrator"
-import { getSecret, storeSecret } from "../services/SecretService"
+import { deleteSecretsBestEffort, getSecret, storeSecret } from "../services/SecretService"
 import { ConfigInstance, ConfigType, WorkOSInputConfig } from "../shared/Configs"
 import { IntegrationType, WorkOSIntegration, WorkOSIntegrationMetadata } from "../shared/Integrations"
 import { RunHistoryTrigger } from "../shared/RunHistoryTypes"
@@ -111,7 +111,13 @@ export class WorkOSIntegrationManager implements Integration<WorkOSIntegration, 
     }
 
     async deleteInstallation(integrationId: string): Promise<void> {
+        // DB-first, then best-effort GSM cleanup
         await db().workos_integrations.delete({ where: { id: integrationId } })
+
+        await deleteSecretsBestEffort([
+            { table: "workos_integrations", recordId: integrationId, field: "api_key" },
+            { table: "workos_integrations", recordId: integrationId, field: "webhook_secret" }
+        ])
     }
 
     async setupAgentTrigger(_integrationId: string, _agentTrigger: AgentTriggerWithConfigs): Promise<void> {

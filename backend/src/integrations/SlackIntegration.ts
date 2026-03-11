@@ -13,7 +13,7 @@ import logger, { runWithUserContext } from "../logger"
 import { db } from "../prismaClient"
 import { Identifiable } from "../rag/Hydrator"
 import { FileCategory, FileDownloadResult, StoredFile, buildSlackFileKey, ensureStoredWithMetadata, isSupportedFileType } from "../services/FileStorageService"
-import { getSecret, storeSecret } from "../services/SecretService"
+import { deleteSecretsBestEffort, getSecret, storeSecret } from "../services/SecretService"
 import { ConfigInstance, ConfigType, SlackConfig as SlackConfigClass } from "../shared/Configs"
 import { FrontendRoutes } from "../shared/FrontendRoutes"
 import { AdditionalStateParams, InstallationOptionsFor, IntegrationType, SlackIntegration, SlackIntegrationMetadata } from "../shared/Integrations"
@@ -1021,17 +1021,42 @@ async function markWorkspaceUninstalled(team_id: string) {
     logger.info("Workspace uninstalled. Deleting records from database...", {
         teamId: team_id
     })
-    await db().user_slack_integrations.deleteMany({
-        where: {
-            slack_team_id: team_id
-        }
+
+    // Fetch IDs before deleting so we can clean up GSM secrets afterward
+    const [userSlackIntegrations, slackIntegrations] = await Promise.all([
+        db().user_slack_integrations.findMany({
+            where: { slack_team_id: team_id },
+            select: { id: true }
+        }),
+        db().slack_integrations.findMany({
+            where: { team_id: team_id },
+            select: { id: true }
+        })
+    ])
+
+    // DB-first
+    await db().$transaction(async tx => {
+        await tx.user_slack_integrations.deleteMany({
+            where: { slack_team_id: team_id }
+        })
+        await tx.slack_integrations.deleteMany({
+            where: { team_id: team_id }
+        })
     })
 
-    await db().slack_integrations.deleteMany({
-        where: {
-            team_id: team_id
-        }
-    })
+    // Best-effort GSM cleanup
+    await deleteSecretsBestEffort([
+        ...slackIntegrations.map(i => ({
+            table: "slack_integrations",
+            recordId: i.id,
+            field: "access_token"
+        })),
+        ...userSlackIntegrations.map(i => ({
+            table: "user_slack_integrations",
+            recordId: i.id,
+            field: "authed_user_access_token"
+        }))
+    ])
 
     logger.info("Workspace uninstalled. Records deleted from database.", {
         teamId: team_id
