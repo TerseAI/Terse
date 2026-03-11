@@ -62,7 +62,7 @@ export function PosthogIntegration({ input, variant, setConfig }: InputConfigSel
         if (integrations.length === 0) {
             return (
                 <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <AlertTriangleIcon className="size-3 text-yellow-500" />
+                    <AlertTriangleIcon className="size-3 text-warning" />
                     Connect PostHog
                 </div>
             )

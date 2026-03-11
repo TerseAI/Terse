@@ -297,10 +297,10 @@ function SelectSlackDestinationForm({
                     </Select>
 
                     {showNoChannelsNotice && (
-                        <div className="mt-2 rounded-md border border-amber-500/30 bg-amber-500/10 p-2">
-                            <p className="text-xs font-medium text-amber-700 dark:text-amber-300">No channels available yet</p>
-                            <p className="text-xs text-amber-700/90 dark:text-amber-200/80">
-                                Invite the Terse bot with <code className="rounded bg-amber-500/20 px-1 py-0.5">/invite @Terse</code>, or use Individual (DM) instead.
+                        <div className="mt-2 rounded-md border border-warning/30 bg-warning/10 p-2">
+                            <p className="text-xs font-medium text-warning">No channels available yet</p>
+                            <p className="text-xs text-warning/90">
+                                Invite the Terse bot with <code className="rounded bg-warning/20 px-1 py-0.5">/invite @Terse</code>, or use Individual (DM) instead.
                             </p>
                         </div>
                     )}

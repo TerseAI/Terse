@@ -96,7 +96,7 @@ export function SlackConfigurationSelector({
     if (errorMessage) {
         return (
             <div className="space-y-2">
-                <div className="text-sm text-red-600">{String(errorMessage)}</div>
+                <div className="text-sm text-danger">{String(errorMessage)}</div>
                 <RefreshButton onClick={handleChannelsRefresh} isRefreshing={false} label="Try again" variant="link" size="sm" className="h-auto px-0 text-xs text-[theme(--color-accent)]" />
             </div>
         )
@@ -124,7 +124,7 @@ export function SlackConfigurationSelector({
                 <div className="flex items-center gap-1.5">
                     <label className="text-xs font-medium text-[theme(text-secondary)]">
                         Select Channel or DMs
-                        <span className="text-red-500 ml-1">*</span>
+                        <span className="text-danger ml-1">*</span>
                     </label>
                     {isBotToken && (
                         <Tooltip>

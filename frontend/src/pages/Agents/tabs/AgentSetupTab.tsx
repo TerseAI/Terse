@@ -614,7 +614,7 @@ function InputCard({
     return (
         <>
             <div
-                className={cn("flex items-center gap-4 p-4 border rounded-lg cursor-pointer transition-colors hover:bg-muted/50", needsConfiguration && "border-yellow-500/50")}
+                className={cn("flex items-center gap-4 p-4 border rounded-lg cursor-pointer transition-colors hover:bg-muted/50", needsConfiguration && "border-warning/50")}
                 onClick={handleOpenDialog}
             >
                 <div className="w-10 h-10 shrink-0">
@@ -627,7 +627,7 @@ function InputCard({
                     </div>
                 </div>
                 {needsConfiguration && (
-                    <Badge variant="outline" className="border-yellow-500 text-yellow-600 dark:text-yellow-500 shrink-0">
+                    <Badge variant="outline" className="border-warning text-warning shrink-0">
                         Configure
                     </Badge>
                 )}
@@ -754,7 +754,7 @@ function SkillCard({
     return (
         <>
             <div
-                className={cn("flex items-center gap-4 p-4 border rounded-lg cursor-pointer transition-colors hover:bg-muted/50", needsConfiguration && "border-yellow-500/50")}
+                className={cn("flex items-center gap-4 p-4 border rounded-lg cursor-pointer transition-colors hover:bg-muted/50", needsConfiguration && "border-warning/50")}
                 onClick={handleOpenDialog}
             >
                 <div className="w-10 h-10 shrink-0">
@@ -767,7 +767,7 @@ function SkillCard({
                     </div>
                 </div>
                 {needsConfiguration && (
-                    <Badge variant="outline" className="border-yellow-500 text-yellow-600 dark:text-yellow-500 shrink-0">
+                    <Badge variant="outline" className="border-warning text-warning shrink-0">
                         Configure
                     </Badge>
                 )}
