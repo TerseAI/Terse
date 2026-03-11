@@ -4,7 +4,7 @@ import { useSearchParams } from "react-router-dom"
 
 import { zodResolver } from "@hookform/resolvers/zod"
 import { AxiosError } from "axios"
-import { Loader2, Mail, Send, XCircle } from "lucide-react"
+import { ExternalLink, Loader2, Mail, Send, XCircle } from "lucide-react"
 import { toast } from "sonner"
 import z from "zod"
 
@@ -441,6 +441,11 @@ function SentNotificationRow({ notification }: { notification: SentNotification 
                         <span className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
                             <SentNotificationDestinationIcon destinationType={notification.destinationType} />
                             <span className="truncate">{notification.destinationLabel}</span>
+                            {notification.notificationUrl && (
+                                <a href={notification.notificationUrl} target="_blank" rel="noopener noreferrer" title="View in Slack" className="shrink-0 text-muted-foreground transition-colors hover:text-foreground">
+                                    <ExternalLink className="h-3 w-3" />
+                                </a>
+                            )}
                         </span>
                         {shouldShowAgent && <span className="truncate text-xs text-muted-foreground">Agent: {normalizedAgentName}</span>}
                     </div>

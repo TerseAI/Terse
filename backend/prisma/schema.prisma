@@ -1163,6 +1163,7 @@ model sent_notifications {
   status            SentNotificationStatus
   error_message     String?
   agent_name        String?
+  notification_url  String?
   sent_at           DateTime                    @default(now())
 
   @@index([organization_id, sent_at])

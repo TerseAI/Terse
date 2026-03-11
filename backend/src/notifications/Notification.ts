@@ -54,11 +54,12 @@ export class NotificationManager {
 
         const notificationDestination = await resolveNotificationDestination(this.user)
         let notificationError: unknown
+        let notificationUrl: string | undefined
 
         try {
             switch (notificationDestination.destination_type) {
                 case NotificationDestinationType.SLACK:
-                    await sendSlackNotification(notificationDestination, runAction, this.agent)
+                    notificationUrl = await sendSlackNotification(notificationDestination, runAction, this.agent)
                     break
                 case NotificationDestinationType.EMAIL:
                     await sendEmailNotification(notificationDestination, runAction, this.agent)
@@ -71,6 +72,7 @@ export class NotificationManager {
             await this.trackNotification({
                 eventType: SentNotificationEventType.run_notification,
                 destination: notificationDestination,
+                notificationUrl,
                 error: notificationError
             })
         }
@@ -89,11 +91,12 @@ export class NotificationManager {
 
         const notificationDestination = await resolveNotificationDestination(this.user)
         let notificationError: unknown
+        let notificationUrl: string | undefined
 
         try {
             switch (notificationDestination.destination_type) {
                 case NotificationDestinationType.SLACK:
-                    await sendSlackApprovalRequest(notificationDestination, runId, runAction, this.agent)
+                    notificationUrl = await sendSlackApprovalRequest(notificationDestination, runId, runAction, this.agent)
                     break
                 case NotificationDestinationType.EMAIL:
                     await sendEmailApprovalRequest(notificationDestination, runId, runAction, this.agent, this.user)
@@ -107,6 +110,7 @@ export class NotificationManager {
                 eventType: SentNotificationEventType.approval_request,
                 destination: notificationDestination,
                 runId,
+                notificationUrl,
                 error: notificationError
             })
         }
@@ -120,11 +124,12 @@ export class NotificationManager {
 
         const notificationDestination = await resolveNotificationDestination(this.user)
         let notificationError: unknown
+        let notificationUrl: string | undefined
 
         try {
             switch (notificationDestination.destination_type) {
                 case NotificationDestinationType.SLACK:
-                    await sendSlackRunFailure(notificationDestination, this.agent, runId, errorMessage)
+                    notificationUrl = await sendSlackRunFailure(notificationDestination, this.agent, runId, errorMessage)
                     break
                 case NotificationDestinationType.EMAIL:
                     await sendEmailRunFailure(notificationDestination, this.agent, runId, errorMessage)
@@ -138,12 +143,13 @@ export class NotificationManager {
                 eventType: SentNotificationEventType.run_failure,
                 destination: notificationDestination,
                 runId,
+                notificationUrl,
                 error: notificationError
             })
         }
     }
 
-    private async trackNotification({ eventType, destination, runId, error }: { eventType: SentNotificationEventType; destination: UserNotificationDestination; runId?: string; error?: unknown }) {
+    private async trackNotification({ eventType, destination, runId, notificationUrl, error }: { eventType: SentNotificationEventType; destination: UserNotificationDestination; runId?: string; notificationUrl?: string; error?: unknown }) {
         try {
             if (!this.user.organizationId) {
                 logger.warn("[NotificationManager] Missing organizationId, skipping sent notification tracking", {
@@ -167,7 +173,8 @@ export class NotificationManager {
                     destination_label: this.getDestinationLabel(destination),
                     status,
                     error_message: errorMessage,
-                    agent_name: this.agent.name
+                    agent_name: this.agent.name,
+                    notification_url: notificationUrl ?? null
                 }
             })
 

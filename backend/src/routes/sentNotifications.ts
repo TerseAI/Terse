@@ -85,6 +85,7 @@ export async function getSentNotifications(req: Request, res: Response) {
                 agentName: row.agent_name ?? undefined,
                 agentId: row.automation_id ?? undefined,
                 runId: row.run_id ?? undefined,
+                notificationUrl: row.notification_url ?? undefined,
                 sentAt: row.sent_at.toISOString(),
                 errorMessage: row.error_message ?? undefined
             })),
