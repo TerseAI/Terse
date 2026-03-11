@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useId, useRef, useState } from "react"
+import { useEffect, useId, useRef, useState } from "react"
 import { useParams, useSearchParams } from "react-router-dom"
 
 import { Tab, TabGroup, TabList } from "@headlessui/react"
-import { Clock, MessageSquare, Settings, X } from "lucide-react"
+import { Clock, Lightbulb, MessageSquare, Settings, X } from "lucide-react"
 
 import BreadCrumb from "../../components/BreadCrumb"
 import { BuilderChat, BuilderChatHandle } from "../../components/chat/BuilderChat"
@@ -12,6 +12,7 @@ import { SidebarTrigger } from "../../components/ui/sidebar"
 import { useAgent } from "../../hooks/api/useAgents"
 import { useTemplates } from "../../hooks/api/useTemplates"
 import { useIsMobile } from "../../hooks/use-mobile"
+import { FeatureFlags, useFeatureFlag } from "../../hooks/useFeatureFlag"
 import { useTemplateHydration } from "../../hooks/useTemplateHydration"
 import { safeStorageGet, safeStorageSet } from "../../lib/storage"
 import { cn } from "../../lib/utils"
@@ -21,6 +22,7 @@ import { AgentInputsDonatedState, AgentNameDonatedState, AgentOutputsDonatedStat
 import { toTransientAgentOutput, toTransientAgentTrigger } from "../../utility/AgentUtils"
 
 import SdkJobDetail from "./SdkJobDetail"
+import AgentImprovementsTab, { useAgentPendingCount } from "./tabs/AgentImprovementsTab"
 import AgentRunHistoryTab from "./tabs/AgentRunHistoryTab"
 import AgentSetupTab, { AgentSetupTabProps } from "./tabs/AgentSetupTab"
 
@@ -29,7 +31,7 @@ const CHAT_PANEL_WIDTH_MAX = 0.6
 const CHAT_PANEL_WIDTH_DEFAULT = 0.3
 const CHAT_PANE_TRANSITION_MS = 200
 const CHAT_CONTENT_FADE_MS = 150
-const AGENT_DETAIL_TABS = ["setup", "history"] as const
+const AGENT_DETAIL_TABS = ["setup", "history", "improvements"] as const
 
 function ChatSidebarTrigger({ className, onClick, isOpen, ...props }: React.ComponentProps<typeof Button> & { isOpen: boolean }) {
     return (
@@ -93,11 +95,11 @@ function ResizeHandle({
         onResizeEndRef.current = onResizeEnd
     }, [onResizeEnd])
 
-    const clampFraction = useCallback((fraction: number) => {
+    const clampFraction = (fraction: number) => {
         return Math.max(CHAT_PANEL_WIDTH_MIN, Math.min(CHAT_PANEL_WIDTH_MAX, fraction))
-    }, [])
+    }
 
-    const stopDragging = useCallback(() => {
+    const stopDragging = () => {
         const state = pointerStateRef.current
         const wasDragging = state.pointerId !== null
         if (state.frameId !== null) {
@@ -115,7 +117,7 @@ function ResizeHandle({
         if (wasDragging) {
             onResizeEndRef.current?.()
         }
-    }, [])
+    }
 
     useEffect(() => {
         return () => stopDragging()
@@ -310,6 +312,10 @@ function AgentDetail() {
     // Only pass agentId if it's not "new"
     const agentId: string | null = id && id !== "new" ? id : null
 
+    const showImprovementsTab = useFeatureFlag(FeatureFlags.AGENT_IMPROVEMENTS_TAB)
+    const activeTabs = showImprovementsTab ? AGENT_DETAIL_TABS : AGENT_DETAIL_TABS.filter(t => t !== "improvements")
+    const pendingImprovementCount = useAgentPendingCount(showImprovementsTab ? agentId : null)
+
     // Fetch agent data using useSWR
     const { agent, isLoading: isFetching, mutate } = useAgent(agentId)
 
@@ -332,8 +338,7 @@ function AgentDetail() {
     const [toolApprovals, setToolApprovals] = useState<string[]>([])
     const [notificationSettings, setNotificationSettings] = useState<AgentNotificationSettings>({
         enabled: false,
-        actionTypes: [],
-        notifyOnRunFailure: false
+        actionTypes: []
     })
 
     // Sync local state with fetched data - convert from AgentTrigger/Output to Transient types
@@ -365,7 +370,7 @@ function AgentDetail() {
                     setIsActive(true)
                     setRequireApproval(false)
                     setToolApprovals([])
-                    setNotificationSettings({ enabled: false, actionTypes: [], notifyOnRunFailure: false })
+                    setNotificationSettings({ enabled: false, actionTypes: [] })
                 }
             }
         } else if (agent) {
@@ -376,21 +381,29 @@ function AgentDetail() {
             setIsActive(agent.isActive)
             setRequireApproval(agent.requireApproval ?? false)
             setToolApprovals(agent.toolApprovals || [])
-            setNotificationSettings(agent.notificationSettings ?? { enabled: false, actionTypes: [], notifyOnRunFailure: false })
+            setNotificationSettings(agent.notificationSettings ?? { enabled: false, actionTypes: [] })
         }
     }, [agent, agentId, templateId, templateFound, templateHydratedState, templateHydrated])
 
+    const getTabIndex = (queryTab: string | null) => {
+        const resolvedTab = queryTab ?? "setup"
+        return Math.max(
+            0,
+            activeTabs.findIndex(tab => tab === resolvedTab)
+        )
+    }
+
     const tabFromQuery = searchParams.get("tab")
     const [selectedIndex, setSelectedIndex] = useState(() => {
-        return Math.max(0, AGENT_DETAIL_TABS.indexOf((tabFromQuery as (typeof AGENT_DETAIL_TABS)[number]) || "setup"))
+        return getTabIndex(tabFromQuery)
     })
 
-    // Update selected index when URL changes
+    // Update selected index when URL or available tabs change
     useEffect(() => {
         const tabFromQuery = searchParams.get("tab")
-        const newIndex = Math.max(0, AGENT_DETAIL_TABS.indexOf((tabFromQuery as (typeof AGENT_DETAIL_TABS)[number]) || "setup"))
+        const newIndex = getTabIndex(tabFromQuery)
         setSelectedIndex(newIndex)
-    }, [searchParams])
+    }, [searchParams, getTabIndex])
 
     // Determine if we're still loading
     // - For existing agents: wait for agent data
@@ -418,6 +431,7 @@ function AgentDetail() {
         notificationSettings,
         setNotificationSettings,
         isLoading,
+        agentCreator: agent?.createdByUserId,
         mutate,
         updatedAt: agent?.updatedAt
     }
@@ -485,7 +499,7 @@ function AgentDetail() {
                     selectedIndex={selectedIndex}
                     onChange={index => {
                         setSelectedIndex(index)
-                        const next = AGENT_DETAIL_TABS[index]
+                        const next = activeTabs[index]
                         const nextParams = new URLSearchParams(searchParams)
                         nextParams.set("tab", next)
                         setSearchParams(nextParams, { replace: true })
@@ -509,9 +523,32 @@ function AgentDetail() {
                             <Clock className="h-4 w-4" />
                             <span>Activity</span>
                         </Tab>
+                        {showImprovementsTab && (
+                            <Tab
+                                className={({ selected }) =>
+                                    `px-3 py-2 text-sm font-medium rounded-t-md border-b-2 -mb-px inline-flex items-center gap-2 ${selected ? "text-foreground border-primary" : "text-muted-foreground border-transparent hover:text-foreground"}`
+                                }
+                            >
+                                <Lightbulb className="h-4 w-4" />
+                                <span>Improvements</span>
+                                {pendingImprovementCount > 0 && (
+                                    <span className="inline-flex items-center justify-center h-5 min-w-5 px-1.5 rounded-full bg-primary text-primary-foreground text-xs font-medium">
+                                        {pendingImprovementCount}
+                                    </span>
+                                )}
+                            </Tab>
+                        )}
                     </TabList>
                 </TabGroup>
-                <div className="min-w-0">{selectedIndex === 0 ? <AgentSetupTab {...agentProps} /> : <AgentRunHistoryTab agentId={agentId} onTriggerNow={handleTriggerNow} />}</div>
+                <div className="min-w-0">
+                    {selectedIndex === 0 ? (
+                        <AgentSetupTab {...agentProps} />
+                    ) : selectedIndex === 1 ? (
+                        <AgentRunHistoryTab agentId={agentId} onTriggerNow={handleTriggerNow} />
+                    ) : showImprovementsTab ? (
+                        <AgentImprovementsTab agentId={agentId} builderChatRef={builderChatRef} setBuilderChatOpen={setBuilderChatOpen} builderChatOpen={builderChatOpen} />
+                    ) : null}
+                </div>
             </div>
             {isMobile ? (
                 <Sheet open={builderChatOpen} onOpenChange={setBuilderChatOpen}>

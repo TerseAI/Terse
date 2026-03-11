@@ -158,7 +158,6 @@ export class SystemPromptBuilder<T extends Session, TConfig extends ConfigInstan
         return this.withSection(() => this.buildTimeSection())
             .withSection(() => this.buildCoreInstructions())
             .withSection(() => this.buildRunContextSection())
-            .withSection(() => this.buildDirectivesSection())
             .withSection(() => this.buildDeepLinkingSection())
             .withSection(() => this.buildOutputsSection())
     }
@@ -217,36 +216,81 @@ This is event #${eventPosition} processed by this automation.`
         }
     }
 
-    private async buildDirectivesSection(): Promise<Section | null> {
-        const prisma = db()
-        const directives = (await prisma.directive_records.findMany({
-            where: {
-                automation_id: this.deps.agent.id,
-                is_active: true
-            },
-            orderBy: {
-                created_at: "asc"
-            },
-            select: {
-                directive_description: true
-            }
-        })) as { directive_description: string }[]
-
-        if (directives.length === 0) return null
-
-        const directivesList = directives.map((d: { directive_description: string }, i: number) => `${i + 1}. ${d.directive_description}`).join("\n")
-
+    protected buildCoreInstructions(): Section {
         return {
-            header: "USER DIRECTIVES",
-            content: `The user has established the following standing directives for this automation. These are rules, preferences, or policies that apply to all interactions:
-
-${directivesList}
-
-Follow these directives in addition to the USER INSTRUCTIONS provided in each message. If a directive conflicts with a specific request in a message, the message takes precedence for that interaction only.`
+            header: "CORE INSTRUCTIONS",
+            content: CORE_INSTRUCTIONS
         }
     }
 
-    private async buildSimilarEventsSection(inputEvent: InputEvent): Promise<Section | null> {
+    protected buildDeepLinkingSection(): Section {
+        const frontendUrl = settings.urls.frontend
+        const agentId = this.deps.agent.id
+        const runId = this.runContext.runId
+
+        const channelLink = `${frontendUrl}${FrontendRoutes.AGENTS.DETAIL(agentId)}`
+        const channelHistoryLink = `${frontendUrl}${FrontendRoutes.AGENTS.HISTORY(agentId)}`
+        const specificRunLink = `${frontendUrl}${FrontendRoutes.AGENTS.RUN_HISTORY(agentId, runId)}`
+
+        return {
+            header: "DEEP LINKING TO TERSE APPLICATION",
+            content: `You can create links to specific pages within the Terse application to help users navigate to relevant content.
+
+BASE URL: ${frontendUrl}
+The base URL is automatically determined from the environment (localhost for development, app.useterse.ai for production).
+
+AVAILABLE LINK TYPES:
+
+1. Channel Detail Page:
+   Format: ${frontendUrl}${FrontendRoutes.AGENTS.DETAIL("{agentId}")}
+   Example: ${channelLink}
+   Use when: Referencing a specific automation/channel
+
+2. Run History (Channel Activity Tab):
+   Format: ${frontendUrl}${FrontendRoutes.AGENTS.HISTORY("{agentId}")}
+   Example: ${channelHistoryLink}
+   Use when: Directing users to view all runs for a channel
+
+3. Specific Run History:
+   Format: ${frontendUrl}${FrontendRoutes.AGENTS.RUN_HISTORY("{agentId}", "{runId}")}
+   Example: ${specificRunLink}
+   Use when: Referencing a specific run execution
+
+CURRENT CONTEXT:
+- Channel ID: ${agentId}
+- Current Run ID: ${runId}
+
+When explicitly asked by the user, include these links in your responses to help users navigate to relevant parts of the application. For example, you might include a link to the current run's history when explaining what actions were taken, or link to the channel page when referencing the automation configuration.`
+        }
+    }
+
+    protected async buildOutputsSection(): Promise<Section | null> {
+        if (!this.deps.outputs || this.deps.outputs.length === 0) {
+            return null
+        }
+
+        const outputSections: string[] = []
+
+        for (const output of this.deps.outputs) {
+            if (!output || output.configs.length === 0) {
+                continue
+            }
+
+            const instructions = await output.getRuntimeSystemInstructions({ userId: this.deps.session.user.id })
+            outputSections.push(instructions)
+        }
+
+        if (outputSections.length === 0) {
+            return null
+        }
+
+        return {
+            header: "OUTPUT INSTRUCTIONS",
+            content: outputSections.join("\n\n")
+        }
+    }
+
+    protected async buildSimilarEventsSection(inputEvent: InputEvent): Promise<Section | null> {
         try {
             if (!this.deps.agent.user_id) {
                 return null

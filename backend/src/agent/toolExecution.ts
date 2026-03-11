@@ -1,3 +1,4 @@
+import logger from "../logger"
 import { ChatSnippet, ToolCallExecutionStatus } from "../shared/ModelEvents"
 import { RunHistoryAction } from "../shared/RunHistoryTypes"
 import { ErrorContext, detectSerializedError, parseSerializedError } from "../tools/toolUtils"
@@ -7,75 +8,59 @@ import { chatSnippetPayloadSchema } from "./systemEvents/snippetSystemEvent"
 type ToolExecutionParseResult = {
     status: ToolCallExecutionStatus
     output: object
-    outputString: string | null
     errorContext?: ErrorContext
     actions?: RunHistoryAction[]
     snippets?: ChatSnippet[]
-}
-
-const FALLBACK_FAILURE_MESSAGE = "Tool returned success=false"
-
-export function normalizeToolExecutionStatus(status: unknown): ToolCallExecutionStatus {
-    if (status === ToolCallExecutionStatus.COMPLETED || status === ToolCallExecutionStatus.INCOMPLETE || status === ToolCallExecutionStatus.FAILED) {
-        return status
-    }
-    return ToolCallExecutionStatus.UNKNOWN
 }
 
 export function isFailedToolExecutionStatus(status: ToolCallExecutionStatus): boolean {
     return status === ToolCallExecutionStatus.INCOMPLETE || status === ToolCallExecutionStatus.FAILED
 }
 
-export function parseToolExecutionResult(rawOutput: unknown, rawStatus: unknown): ToolExecutionParseResult {
-    const status = normalizeToolExecutionStatus(rawStatus)
-    const output = normalizeToolExecutionOutput(rawOutput)
-    const outputString = stringifyToolExecutionOutput(output)
-    const errorContext = extractToolExecutionErrorContext(output, outputString, status)
+export function parseToolExecutionResult(rawOutput: unknown, rawStatus: ToolCallExecutionStatus): ToolExecutionParseResult {
+    const output = standardizeToolOutputToObject(rawOutput)
+    const errorContext = extractToolExecutionErrorContext(output, rawStatus)
     const actions = extractToolExecutionActions(output)
     const snippets = extractToolExecutionSnippets(output)
-
     return {
-        status,
+        status: rawStatus,
         output,
-        outputString,
-        ...(errorContext ? { errorContext } : {}),
-        ...(actions ? { actions } : {}),
-        ...(snippets ? { snippets } : {})
+        errorContext,
+        actions,
+        snippets
     }
 }
 
-function normalizeToolExecutionOutput(rawOutput: unknown): object {
-    let output = rawOutput
-
-    // OpenAI tool outputs are commonly wrapped as { type: "text", text: "..." }.
-    if (output && typeof output === "object" && "text" in output && typeof (output as { text?: unknown }).text === "string") {
-        output = (output as { text: string }).text
-    }
-
-    if (output && typeof output === "object") {
-        return output as object
-    }
-
-    if (typeof output === "string") {
-        try {
-            return JSON.parse(output)
-        } catch {
-            return {}
+/**
+ * Attempts to standardize output from tool to object. Based on upstream code, object
+ * can come through as:
+ * 1) String
+ * 2) JSON String representation
+ * 3) void/undefined
+ */
+function standardizeToolOutputToObject(rawOutput: unknown): object {
+    if (!rawOutput) return {}
+    if (typeof rawOutput === "object" && "text" in rawOutput && typeof rawOutput.text === "string") {
+        const trimmed = rawOutput.text.trimStart()
+        if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
+            try {
+                return JSON.parse(rawOutput.text)
+            } catch (error) {
+                logger.warn(`Error parsing tool call output error:${error} output:${rawOutput}`)
+            }
         }
     }
-
-    return {}
-}
-
-function stringifyToolExecutionOutput(output: unknown): string | null {
-    if (typeof output === "string") return output
-    if (output === null || output === undefined) return null
-
-    try {
-        return JSON.stringify(output)
-    } catch {
-        return null
+    if (typeof rawOutput === "object") {
+        return rawOutput
     }
+    if (typeof rawOutput === "string") {
+        try {
+            return JSON.parse(rawOutput)
+        } catch {
+            return { text: rawOutput }
+        }
+    }
+    return {}
 }
 
 function extractToolExecutionActions(output: unknown): RunHistoryAction[] | undefined {
@@ -122,12 +107,12 @@ function extractStructuredFailure(output: unknown): ErrorContext | undefined {
     }
 
     const candidate = output as Record<string, unknown>
-    const explicitlyFailed = candidate.success === false || candidate.ok === false
+    const explicitlyFailed = candidate.success === false
     if (!explicitlyFailed) {
         return undefined
     }
 
-    const rawError = candidate.error ?? candidate.message ?? FALLBACK_FAILURE_MESSAGE
+    const rawError = candidate.text
     if (typeof rawError === "string" && detectSerializedError(rawError)) {
         return parseSerializedError(rawError)
     }
@@ -138,20 +123,27 @@ function extractStructuredFailure(output: unknown): ErrorContext | undefined {
     }
 }
 
-function extractToolExecutionErrorContext(output: unknown, outputString: string | null, status: ToolCallExecutionStatus): ErrorContext | undefined {
+function extractToolExecutionErrorContext(output: unknown, status: ToolCallExecutionStatus): ErrorContext | undefined {
     const structuredFailure = extractStructuredFailure(output)
     if (structuredFailure) {
         return structuredFailure
     }
 
-    if (outputString && detectSerializedError(outputString)) {
-        return parseSerializedError(outputString)
-    }
-
     if (isFailedToolExecutionStatus(status)) {
         return {
             context: {} as any,
-            error: outputString ?? `Tool failed with status: ${status}`
+            error: JSON.stringify(output) ?? `Tool failed with status: ${status}`
+        }
+    }
+
+    // Detect OpenAI SDK-wrapped tool errors: { type: "text", text: "An error occurred..." }
+    if (typeof output === "object" && output !== null && "type" in output && "text" in output) {
+        const candidate = output as { type: unknown; text: unknown }
+        if (candidate.type === "text" && typeof candidate.text === "string" && candidate.text.includes("Error:")) {
+            return {
+                context: {} as any,
+                error: candidate.text
+            }
         }
     }
 

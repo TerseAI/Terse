@@ -1,6 +1,6 @@
 import { useState } from "react"
 
-import { Pencil, Trash2 } from "lucide-react"
+import { Mail, Pencil, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import { mutate } from "swr"
 
@@ -8,7 +8,7 @@ import { BackendProvider } from "../../services/backend"
 import { notificationDestinationsKey } from "../../shared/InvalidationKeys"
 import { EmailNotificationDestination, NotificationDestination, NotificationDestinationType, SlackNotificationDestination } from "../../shared/Notifications"
 import { formatMPIMChannelName } from "../SlackChannelSelector"
-import { GmailIcon, SlackIcon } from "../icons/IntegrationIcons"
+import { SlackIcon } from "../icons/IntegrationIcons"
 import { Button } from "../ui/button"
 import { Item, ItemActions, ItemContent, ItemDescription, ItemMedia, ItemTitle } from "../ui/item"
 
@@ -25,19 +25,22 @@ export function NotificationDestinationItem({ destination }: { destination: Noti
 
     return (
         <>
-            <Item variant="outline" size="sm" className="rounded-lg">
-                <ItemMedia variant="icon" className="size-8 rounded-full bg-primary/10 [&_svg]:text-primary">
+            <Item size="sm" className="px-0 py-2">
+                <ItemMedia
+                    variant="icon"
+                    className="size-8 self-center translate-y-0 rounded-full bg-primary/10 group-has-[[data-slot=item-description]]/item:self-center group-has-[[data-slot=item-description]]/item:translate-y-0 [&_svg]:text-primary"
+                >
                     <NotificationDestinationIcon type={destination.type} />
                 </ItemMedia>
                 <ItemContent>
                     <ItemTitle>
                         <NotificationDestinationName destination={destination} />
                     </ItemTitle>
-                    <ItemDescription>
+                    <ItemDescription className="text-xs leading-tight">
                         {destination.type === NotificationDestinationType.EMAIL ? "Email notifications" : getSlackDestinationDescription(destination as SlackNotificationDestination)}
                     </ItemDescription>
                 </ItemContent>
-                <ItemActions>
+                <ItemActions className="self-center">
                     <Button variant="ghost" size="icon" onClick={() => setIsEditDialogOpen(true)} className="h-8 w-8 text-muted-foreground hover:text-foreground">
                         <Pencil className="h-4 w-4" />
                     </Button>
@@ -56,7 +59,7 @@ export function NotificationDestinationItem({ destination }: { destination: Noti
 function NotificationDestinationIcon({ type }: { type: NotificationDestinationType }) {
     switch (type) {
         case NotificationDestinationType.EMAIL:
-            return <GmailIcon />
+            return <Mail className="h-4 w-4" />
         case NotificationDestinationType.SLACK:
             return <SlackIcon />
     }

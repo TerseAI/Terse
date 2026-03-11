@@ -165,6 +165,12 @@ export const settings = {
         tokenSecret: optionalEnv("MODAL_TOKEN_SECRET")
     },
 
+    // Resend SMTP (for email notifications)
+    resend: {
+        apiKey: requireEnv("RESEND_API_KEY"),
+        fromEmail: optionalEnv("RESEND_FROM_EMAIL", "notifications@updates.useterse.ai")
+    },
+
     // Optional configuration
     optional: {
         redisUrl: optionalEnv("REDIS_URL"),
