@@ -83,13 +83,13 @@ Supports pagination: if the response includes nextCursor and hasMore, pass nextC
             const formatted = (result.channels ?? []).map(formatChannel)
 
             // Resolve user IDs to display names for IM channels
-            const imChannels = formatted.filter((ch) => ch.isIm && ch.userId)
+            const imChannels = formatted.filter(ch => ch.isIm && ch.userId)
             if (imChannels.length > 0) {
-                const userIds = [...new Set(imChannels.map((ch) => ch.userId!))]
+                const userIds = [...new Set(imChannels.map(ch => ch.userId!))]
                 const userNames = new Map<string, string>()
 
                 await Promise.all(
-                    userIds.map(async (userId) => {
+                    userIds.map(async userId => {
                         try {
                             const info = await client.users.info({ user: userId })
                             const name = info.user?.real_name || info.user?.name
@@ -117,13 +117,15 @@ Supports pagination: if the response includes nextCursor and hasMore, pass nextC
                 count: channels.length,
                 nextCursor,
                 hasMore: !!nextCursor,
-                actions: [{
-                    action: "Listed channels",
-                    integration: IntegrationType.SLACK,
-                    target: userSlackIntegration.slack_integration.team_name ?? "Slack workspace",
-                    details: `Found ${channels.length} conversation(s)`,
-                    type: RunHistoryActionType.read
-                }]
+                actions: [
+                    {
+                        action: "Listed channels",
+                        integration: IntegrationType.SLACK,
+                        target: userSlackIntegration.slack_integration.team_name ?? "Slack workspace",
+                        details: `Found ${channels.length} conversation(s)`,
+                        type: RunHistoryActionType.read
+                    }
+                ]
             }
         } catch (error: unknown) {
             const errorMessage = error instanceof Error ? error.message : String(error)
