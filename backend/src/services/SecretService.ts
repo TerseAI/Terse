@@ -139,9 +139,7 @@ export function isGsmAvailable(): boolean {
  * due to a GSM failure. Orphaned GSM secrets are harmless since the DB record
  * they belonged to no longer exists.
  */
-export async function deleteSecretsBestEffort(
-    entries: Array<{ table: string; recordId: string; field: string }>
-): Promise<void> {
+export async function deleteSecretsBestEffort(entries: Array<{ table: string; recordId: string; field: string }>): Promise<void> {
     const service = getSecretService()
     await Promise.allSettled(
         entries.map(async entry => {
