@@ -309,11 +309,7 @@ function FilterResultView({ filterResult }: { filterResult: { isRelevant: boolea
                 <div className="flex-1">
                     <div className="rounded-lg border border-white/10 bg-stone-900/50 p-4">
                         <div className="flex items-start gap-3 mb-3">
-                            {isRelevant ? (
-                                <CheckCircleIcon className="w-5 h-5 text-success flex-shrink-0" />
-                            ) : (
-                                <XCircleIcon className="w-5 h-5 text-warning flex-shrink-0" />
-                            )}
+                            {isRelevant ? <CheckCircleIcon className="w-5 h-5 text-success flex-shrink-0" /> : <XCircleIcon className="w-5 h-5 text-warning flex-shrink-0" />}
                             <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 mb-2">
                                     <div className="text-sm font-semibold text-[#F1F1F1]">{isRelevant ? "Event Approved" : "Event Filtered Out"}</div>

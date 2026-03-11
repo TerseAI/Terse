@@ -20,10 +20,7 @@ function DateRangePicker({ dateRange, onDateRangeChange, open, onOpenChange }: D
     return (
         <Popover open={open} onOpenChange={onOpenChange}>
             <PopoverTrigger asChild>
-                <Button
-                    variant="outline"
-                    className={`justify-start text-left font-normal ${dateRange.from || dateRange.to ? "border-success text-success" : ""}`}
-                >
+                <Button variant="outline" className={`justify-start text-left font-normal ${dateRange.from || dateRange.to ? "border-success text-success" : ""}`}>
                     <CalendarIcon className="w-4 h-4" />
                     {dateRange.from
                         ? dateRange.to
