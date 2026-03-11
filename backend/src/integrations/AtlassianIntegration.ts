@@ -8,7 +8,7 @@ import logger, { runWithUserContext } from "../logger"
 import { db } from "../prismaClient"
 import { Identifiable } from "../rag/Hydrator"
 import { StoredFile } from "../services/FileStorageService"
-import { storeSecret } from "../services/SecretService"
+import { SecretField, SecretTable, storeSecret } from "../services/SecretService"
 import { ConfigInstance, ConfigType, JiraConfig as JiraConfigClass } from "../shared/Configs"
 import { FrontendRoutes } from "../shared/FrontendRoutes"
 import { AdditionalStateParams, AtlassianIntegration, AtlassianIntegrationMetadata, InstallationOptionsFor, IntegrationType } from "../shared/Integrations"
@@ -291,12 +291,12 @@ export class AtlassianIntegrationManager
                     }
                 })
 
-                await storeSecret("atlassian_integrations", newIntegration.id, "access_token", access_token)
+                await storeSecret(SecretTable.AtlassianIntegrations, newIntegration.id, SecretField.AccessToken, access_token)
                 if (refreshTokenValue) {
-                    await storeSecret("atlassian_integrations", newIntegration.id, "refresh_token", refreshTokenValue)
+                    await storeSecret(SecretTable.AtlassianIntegrations, newIntegration.id, SecretField.RefreshToken, refreshTokenValue)
                 }
                 if (webhookSecret) {
-                    await storeSecret("atlassian_integrations", newIntegration.id, "webhook_secret", webhookSecret)
+                    await storeSecret(SecretTable.AtlassianIntegrations, newIntegration.id, SecretField.WebhookSecret, webhookSecret)
                 }
 
                 integrationId = newIntegration.id
@@ -305,12 +305,12 @@ export class AtlassianIntegrationManager
                     webhookId: webhookId ? "with webhook" : "no webhook"
                 })
             } else {
-                await storeSecret("atlassian_integrations", existing.id, "access_token", access_token)
+                await storeSecret(SecretTable.AtlassianIntegrations, existing.id, SecretField.AccessToken, access_token)
                 if (refreshToken) {
-                    await storeSecret("atlassian_integrations", existing.id, "refresh_token", refreshToken)
+                    await storeSecret(SecretTable.AtlassianIntegrations, existing.id, SecretField.RefreshToken, refreshToken)
                 }
                 if (webhookSecret) {
-                    await storeSecret("atlassian_integrations", existing.id, "webhook_secret", webhookSecret)
+                    await storeSecret(SecretTable.AtlassianIntegrations, existing.id, SecretField.WebhookSecret, webhookSecret)
                 }
 
                 // Update existing connection with new token (in case it was revoked and re-authorized)
@@ -525,7 +525,7 @@ export class AtlassianIntegrationManager
 
             // Create the webhook
             const webhook = await this.createJiraWebhook(integration.cloud_id, accessToken, accountId)
-            await storeSecret("atlassian_integrations", integrationId, "webhook_secret", webhook.webhookSecret)
+            await storeSecret(SecretTable.AtlassianIntegrations, integrationId, SecretField.WebhookSecret, webhook.webhookSecret)
 
             // Update the integration with the webhook ID
             await db().atlassian_integrations.update({

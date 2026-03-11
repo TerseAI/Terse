@@ -1,7 +1,7 @@
 import logger from "../logger"
 import { getDatadogCredentialsByIntegrationId } from "../outputs/datadog/datadogApiClient"
 import { db } from "../prismaClient"
-import { storeSecret } from "../services/SecretService"
+import { SecretField, SecretTable, storeSecret } from "../services/SecretService"
 import { DatadogIntegration, DatadogIntegrationMetadata, IntegrationType } from "../shared/Integrations"
 import { AgentTriggerWithConfigs } from "../types/prisma"
 import { getDatadogApiUrl } from "../utility/datadog"
@@ -175,8 +175,8 @@ export class DatadogIntegrationManager implements Integration<DatadogIntegration
                     }
                 })
 
-                await storeSecret("datadog_integrations", existing.id, "api_key", apiKey)
-                await storeSecret("datadog_integrations", existing.id, "app_key", appKey)
+                await storeSecret(SecretTable.DatadogIntegrations, existing.id, SecretField.ApiKey, apiKey)
+                await storeSecret(SecretTable.DatadogIntegrations, existing.id, SecretField.AppKey, appKey)
 
                 logger.info("✅ Updated Datadog integration", {
                     integrationId: existing.id,
@@ -193,8 +193,8 @@ export class DatadogIntegrationManager implements Integration<DatadogIntegration
                     }
                 })
 
-                await storeSecret("datadog_integrations", integration.id, "api_key", apiKey)
-                await storeSecret("datadog_integrations", integration.id, "app_key", appKey)
+                await storeSecret(SecretTable.DatadogIntegrations, integration.id, SecretField.ApiKey, apiKey)
+                await storeSecret(SecretTable.DatadogIntegrations, integration.id, SecretField.AppKey, appKey)
 
                 logger.info("✅ Created Datadog integration", {
                     integrationId: integration.id,

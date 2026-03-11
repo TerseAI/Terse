@@ -10,7 +10,7 @@ import { db } from "../prismaClient"
 import { Identifiable } from "../rag/Hydrator"
 import { fetchLinearTeams } from "../routes/linear"
 import { StoredFile } from "../services/FileStorageService"
-import { getSecret, storeSecret } from "../services/SecretService"
+import { getSecret, SecretField, SecretTable, storeSecret } from "../services/SecretService"
 import { ConfigInstance, ConfigType } from "../shared/Configs"
 import { FrontendRoutes } from "../shared/FrontendRoutes"
 import { AdditionalStateParams, InstallationOptionsFor, IntegrationType, LinearIntegration, LinearIntegrationMetadata } from "../shared/Integrations"
@@ -283,10 +283,10 @@ export class LinearIntegrationManager
                     }
                 })
 
-                await storeSecret("linear_integrations", newIntegration.id, "access_token", access_token)
+                await storeSecret(SecretTable.LinearIntegrations, newIntegration.id, SecretField.AccessToken, access_token)
                 const refreshTokenValue = refresh_token || ""
                 if (refreshTokenValue) {
-                    await storeSecret("linear_integrations", newIntegration.id, "refresh_token", refreshTokenValue)
+                    await storeSecret(SecretTable.LinearIntegrations, newIntegration.id, SecretField.RefreshToken, refreshTokenValue)
                 }
 
                 integrationId = newIntegration.id
@@ -295,9 +295,9 @@ export class LinearIntegrationManager
                     userId: decoded.userId
                 })
             } else {
-                await storeSecret("linear_integrations", existing.id, "access_token", access_token)
+                await storeSecret(SecretTable.LinearIntegrations, existing.id, SecretField.AccessToken, access_token)
                 if (refresh_token) {
-                    await storeSecret("linear_integrations", existing.id, "refresh_token", refresh_token)
+                    await storeSecret(SecretTable.LinearIntegrations, existing.id, SecretField.RefreshToken, refresh_token)
                 }
 
                 // Update existing connection with new token (in case it was revoked and re-authorized)
@@ -409,8 +409,8 @@ export class LinearIntegrationManager
                 return null
             }
 
-            const existingAccessToken = await getSecret("linear_integrations", integration.id, "access_token")
-            const refreshToken = await getSecret("linear_integrations", integration.id, "refresh_token")
+            const existingAccessToken = await getSecret(SecretTable.LinearIntegrations, integration.id, SecretField.AccessToken)
+            const refreshToken = await getSecret(SecretTable.LinearIntegrations, integration.id, SecretField.RefreshToken)
 
             const now = new Date()
             // Check if token is expired or will expire within the refresh threshold
@@ -456,9 +456,9 @@ export class LinearIntegrationManager
                 // Calculate token expiry
                 const tokenExpiry = new Date(Date.now() + (expires_in || 3600) * 1000)
 
-                await storeSecret("linear_integrations", integration.id, "access_token", access_token)
+                await storeSecret(SecretTable.LinearIntegrations, integration.id, SecretField.AccessToken, access_token)
                 if (refresh_token) {
-                    await storeSecret("linear_integrations", integration.id, "refresh_token", refresh_token)
+                    await storeSecret(SecretTable.LinearIntegrations, integration.id, SecretField.RefreshToken, refresh_token)
                 }
 
                 // Update the database with new tokens

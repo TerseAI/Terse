@@ -6,7 +6,7 @@ import { urls } from "../config/settings"
 import logger from "../logger"
 import { db } from "../prismaClient"
 import { Identifiable } from "../rag/Hydrator"
-import { deleteSecretsBestEffort, getSecret, storeSecret } from "../services/SecretService"
+import { deleteSecretsBestEffort, getSecret, SecretField, SecretTable, storeSecret } from "../services/SecretService"
 import { ConfigInstance, ConfigType, WorkOSInputConfig } from "../shared/Configs"
 import { IntegrationType, WorkOSIntegration, WorkOSIntegrationMetadata } from "../shared/Integrations"
 import { RunHistoryTrigger } from "../shared/RunHistoryTypes"
@@ -45,7 +45,7 @@ export class WorkOSIntegrationManager implements Integration<WorkOSIntegration, 
         })
         return Promise.all(
             integrations.map(async i => {
-                const apiKey = await getSecret("workos_integrations", i.id, "api_key")
+                const apiKey = await getSecret(SecretTable.WorkOSIntegrations, i.id, SecretField.ApiKey)
                 return this.enrichInstance(i.id, apiKey || "")
             })
         )
@@ -64,7 +64,7 @@ export class WorkOSIntegrationManager implements Integration<WorkOSIntegration, 
         })
         return Promise.all(
             integrations.map(async i => {
-                const apiKey = await getSecret("workos_integrations", i.id, "api_key")
+                const apiKey = await getSecret(SecretTable.WorkOSIntegrations, i.id, SecretField.ApiKey)
                 return this.enrichInstance(i.id, apiKey || "")
             })
         )
@@ -115,8 +115,8 @@ export class WorkOSIntegrationManager implements Integration<WorkOSIntegration, 
         await db().workos_integrations.delete({ where: { id: integrationId } })
 
         await deleteSecretsBestEffort([
-            { table: "workos_integrations", recordId: integrationId, field: "api_key" },
-            { table: "workos_integrations", recordId: integrationId, field: "webhook_secret" }
+            { table: SecretTable.WorkOSIntegrations, recordId: integrationId, field: SecretField.ApiKey },
+            { table: SecretTable.WorkOSIntegrations, recordId: integrationId, field: SecretField.WebhookSecret }
         ])
     }
 
@@ -193,9 +193,9 @@ export class WorkOSIntegrationManager implements Integration<WorkOSIntegration, 
             let integrationId: string
 
             if (existing) {
-                await storeSecret("workos_integrations", existing.id, "api_key", apiKey)
+                await storeSecret(SecretTable.WorkOSIntegrations, existing.id, SecretField.ApiKey, apiKey)
                 if (secret !== null) {
-                    await storeSecret("workos_integrations", existing.id, "webhook_secret", secret)
+                    await storeSecret(SecretTable.WorkOSIntegrations, existing.id, SecretField.WebhookSecret, secret)
                 }
 
                 await db().workos_integrations.update({
@@ -214,9 +214,9 @@ export class WorkOSIntegrationManager implements Integration<WorkOSIntegration, 
                     }
                 })
 
-                await storeSecret("workos_integrations", integration.id, "api_key", apiKey)
+                await storeSecret(SecretTable.WorkOSIntegrations, integration.id, SecretField.ApiKey, apiKey)
                 if (secret !== null) {
-                    await storeSecret("workos_integrations", integration.id, "webhook_secret", secret)
+                    await storeSecret(SecretTable.WorkOSIntegrations, integration.id, SecretField.WebhookSecret, secret)
                 }
 
                 integrationId = integration.id
@@ -259,7 +259,7 @@ export class WorkOSIntegrationManager implements Integration<WorkOSIntegration, 
             where: { id: integrationId, organization_id: organizationId }
         })
 
-        const apiKey = workosIntegration ? await getSecret("workos_integrations", workosIntegration.id, "api_key") : null
+        const apiKey = workosIntegration ? await getSecret(SecretTable.WorkOSIntegrations, workosIntegration.id, SecretField.ApiKey) : null
         if (!apiKey) {
             throw new Error(`WorkOS API key not found for integration ${integrationId}`)
         }

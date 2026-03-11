@@ -5,7 +5,7 @@ import { parseFormSubmissionFromRequest } from "../integrations/abstract/Integra
 import { emitIntegrationFormCompletedTaskIfNeeded } from "../integrations/helpers/emitIntegrationFormCompletedTask"
 import logger from "../logger"
 import { db } from "../prismaClient"
-import { getSecret } from "../services/SecretService"
+import { getSecret, SecretField, SecretTable } from "../services/SecretService"
 import { IntegrationType } from "../shared/Integrations"
 
 export async function getLaunchDarklyIntegrations(req: Request, res: Response) {
@@ -98,7 +98,7 @@ export async function fetchLaunchDarklyProjects(organizationId: string, integrat
         throw new Error("LaunchDarkly integration not found")
     }
 
-    const apiKey = await getSecret("launchdarkly_integrations", integration.id, "api_key")
+    const apiKey = await getSecret(SecretTable.LaunchDarklyIntegrations, integration.id, SecretField.ApiKey)
     if (!apiKey) {
         throw new Error("LaunchDarkly API key not found")
     }
@@ -149,7 +149,7 @@ export async function fetchLaunchDarklyEnvironments(organizationId: string, inte
         throw new Error("LaunchDarkly integration not found")
     }
 
-    const apiKey = await getSecret("launchdarkly_integrations", integration.id, "api_key")
+    const apiKey = await getSecret(SecretTable.LaunchDarklyIntegrations, integration.id, SecretField.ApiKey)
     if (!apiKey) {
         throw new Error("LaunchDarkly API key not found")
     }
@@ -216,7 +216,7 @@ export async function getLaunchDarklyEnvironments(req: Request, res: Response) {
             return
         }
 
-        const apiKey = await getSecret("launchdarkly_integrations", integration.id, "api_key")
+        const apiKey = await getSecret(SecretTable.LaunchDarklyIntegrations, integration.id, SecretField.ApiKey)
         if (!apiKey) {
             res.status(404).json({ error: "Integration API key not found" })
             return

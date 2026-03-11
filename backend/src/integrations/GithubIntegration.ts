@@ -20,7 +20,7 @@ import {
 } from "../routes/GithubTypes"
 import { fetchGithubRepositoriesForIntegration } from "../routes/github"
 import { FileDownloadResult, StoredFile, buildGithubFileKey, ensureStoredWithMetadata } from "../services/FileStorageService"
-import { getSecret, storeSecret } from "../services/SecretService"
+import { SecretField, SecretTable, getSecret, storeSecret } from "../services/SecretService"
 import { ConfigInstance, ConfigType, GitHubConfig as GitHubConfigClass } from "../shared/Configs"
 import { FrontendRoutes } from "../shared/FrontendRoutes"
 import { AdditionalStateParams, GithubIntegration, GithubIntegrationMetadata, InstallationOptionsFor, IntegrationType } from "../shared/Integrations"
@@ -53,7 +53,7 @@ export class GithubIntegrationManager
         })
         const installations = await Promise.all(
             organizationAccounts.map(async oa => {
-                const accessToken = await getSecret("github_app_tokens", oa.id, "access_token")
+                const accessToken = await getSecret(SecretTable.GithubAppTokens, oa.id, SecretField.AccessToken)
                 if (!accessToken) {
                     return []
                 }
@@ -139,7 +139,7 @@ export class GithubIntegrationManager
             const fullUser = await getUserForOrg(user.id, token.organization_id)
             if (!fullUser) continue
 
-            const accessToken = await getSecret("github_app_tokens", token.id, "access_token")
+            const accessToken = await getSecret(SecretTable.GithubAppTokens, token.id, SecretField.AccessToken)
             if (!accessToken) {
                 logger.warn("Missing GitHub access token while processing webhook event", {
                     userId: user.id,
@@ -273,9 +273,9 @@ export class GithubIntegrationManager
                 }
             })
 
-            await storeSecret("github_app_tokens", githubTokenId, "access_token", authToken.access_token)
+            await storeSecret(SecretTable.GithubAppTokens, githubTokenId, SecretField.AccessToken, authToken.access_token)
             if (authToken.refresh_token) {
-                await storeSecret("github_app_tokens", githubTokenId, "refresh_token", authToken.refresh_token)
+                await storeSecret(SecretTable.GithubAppTokens, githubTokenId, SecretField.RefreshToken, authToken.refresh_token)
             }
 
             logger.info("[GitHub Setup URL Installation] Upsert completed", {
@@ -380,7 +380,7 @@ export class GithubIntegrationManager
             throw new Error("No GitHub token found for user. Please connect your GitHub account.")
         }
 
-        const accessToken = await getSecret("github_app_tokens", tokenRow.id, "access_token")
+        const accessToken = await getSecret(SecretTable.GithubAppTokens, tokenRow.id, SecretField.AccessToken)
         if (!accessToken) {
             throw new Error("No GitHub token found for user. Please connect your GitHub account.")
         }
@@ -725,7 +725,7 @@ export async function resolveUsersForGithubInstallation(installationId: number):
         const githubAppUsers = await tx.github_app_tokens.findMany()
         const installationResults = await Promise.all(
             githubAppUsers.map(async user => {
-                const accessToken = await getSecret("github_app_tokens", user.id, "access_token")
+                const accessToken = await getSecret(SecretTable.GithubAppTokens, user.id, SecretField.AccessToken)
                 if (!accessToken) {
                     return {
                         userId: user.user_id,
@@ -781,7 +781,7 @@ export async function validateGithubRepositoryIds({ userId, integrationId, repos
         throw new Error(`Invalid ${contextLabel} config for ${configTypeLabel}: no GitHub access token found for user`)
     }
 
-    const resolvedAccessToken = await getSecret("github_app_tokens", accessToken.id, "access_token")
+    const resolvedAccessToken = await getSecret(SecretTable.GithubAppTokens, accessToken.id, SecretField.AccessToken)
     if (!resolvedAccessToken) {
         throw new Error(`Invalid ${contextLabel} config for ${configTypeLabel}: no GitHub access token found for user`)
     }

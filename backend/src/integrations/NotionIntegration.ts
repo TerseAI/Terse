@@ -6,7 +6,7 @@ import { jwt as jwtSettings, notion as notionConfig, urls } from "../config/sett
 import logger from "../logger"
 import { db } from "../prismaClient"
 import { fetchNotionResources } from "../routes/notion"
-import { getSecret, storeSecret } from "../services/SecretService"
+import { getSecret, SecretField, SecretTable, storeSecret } from "../services/SecretService"
 import { FrontendRoutes } from "../shared/FrontendRoutes"
 import { AdditionalStateParams, InstallationOptionsFor, IntegrationType, NotionIntegration, NotionIntegrationMetadata } from "../shared/Integrations"
 import { NotionResource, OAuthInstallationDetails } from "../shared/types"
@@ -201,11 +201,11 @@ export class NotionIntegrationManager implements Integration<NotionIntegration, 
                     }
                 })
 
-                await storeSecret("notion_integrations", newIntegration.id, "integration_token", access_token)
+                await storeSecret(SecretTable.NotionIntegrations, newIntegration.id, SecretField.IntegrationToken, access_token)
 
                 integrationId = newIntegration.id
             } else {
-                await storeSecret("notion_integrations", existing.id, "integration_token", access_token)
+                await storeSecret(SecretTable.NotionIntegrations, existing.id, SecretField.IntegrationToken, access_token)
 
                 // Update existing connection with new token (in case it was revoked and re-authorized)
                 await db().notion_integrations.update({
@@ -274,7 +274,7 @@ export class NotionIntegrationManager implements Integration<NotionIntegration, 
                 return null
             }
 
-            return await getSecret("notion_integrations", integrationId, "integration_token")
+            return await getSecret(SecretTable.NotionIntegrations, integrationId, SecretField.IntegrationToken)
         } catch (error) {
             logger.error(`Error getting Notion access token for integration ${integrationId}`, { error, integrationId })
             return null

@@ -1,7 +1,7 @@
 import logger from "../logger"
 import { db } from "../prismaClient"
 import { fetchLaunchDarklyEnvironments, fetchLaunchDarklyProjects } from "../routes/launchdarkly"
-import { getSecret, storeSecret } from "../services/SecretService"
+import { getSecret, SecretField, SecretTable, storeSecret } from "../services/SecretService"
 import { IntegrationType, LaunchDarklyIntegration, LaunchDarklyIntegrationMetadata } from "../shared/Integrations"
 import { LaunchDarklyProject } from "../shared/types"
 import { AgentTriggerWithConfigs } from "../types/prisma"
@@ -207,7 +207,7 @@ export class LaunchDarklyIntegrationManager
             })
 
             if (existing) {
-                await storeSecret("launchdarkly_integrations", existing.id, "api_key", apiKey)
+                await storeSecret(SecretTable.LaunchDarklyIntegrations, existing.id, SecretField.ApiKey, apiKey)
 
                 // Update existing integration
                 await db().launchdarkly_integrations.update({
@@ -235,7 +235,7 @@ export class LaunchDarklyIntegrationManager
                     }
                 })
 
-                await storeSecret("launchdarkly_integrations", integration.id, "api_key", apiKey)
+                await storeSecret(SecretTable.LaunchDarklyIntegrations, integration.id, SecretField.ApiKey, apiKey)
 
                 logger.info("✅ Created LaunchDarkly integration", {
                     integrationId: integration.id,
@@ -275,7 +275,7 @@ export async function getLaunchDarklyAccessTokenOrThrow(integrationId: string): 
     if (!integration) {
         throw new Error(`LaunchDarkly integration ${integrationId} not found or missing API key`)
     }
-    const apiKey = await getSecret("launchdarkly_integrations", integrationId, "api_key")
+    const apiKey = await getSecret(SecretTable.LaunchDarklyIntegrations, integrationId, SecretField.ApiKey)
     if (!apiKey) {
         throw new Error(`LaunchDarkly integration ${integrationId} not found or missing API key`)
     }

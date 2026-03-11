@@ -1,6 +1,6 @@
 import { LogLevel, WebClient } from "@slack/web-api"
 
-import { getSecret } from "../services/SecretService"
+import { SecretField, SecretTable, getSecret } from "../services/SecretService"
 
 type SlackTokenSource = {
     id: string
@@ -14,12 +14,12 @@ type SlackTokenSource = {
  * This is in a separate file to avoid circular dependencies with SlackIntegration.ts
  */
 export async function resolveSlackAccessToken(integration: SlackTokenSource): Promise<string | null> {
-    const userToken = await getSecret("user_slack_integrations", integration.id, "authed_user_access_token")
+    const userToken = await getSecret(SecretTable.UserSlackIntegrations, integration.id, SecretField.AuthedUserAccessToken)
     if (userToken) {
         return userToken
     }
 
-    return await getSecret("slack_integrations", integration.slack_integration.id, "access_token")
+    return await getSecret(SecretTable.SlackIntegrations, integration.slack_integration.id, SecretField.AccessToken)
 }
 
 export async function initializeSlackWebClient(integration: SlackTokenSource): Promise<WebClient> {

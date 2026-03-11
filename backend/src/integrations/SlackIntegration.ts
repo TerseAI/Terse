@@ -13,7 +13,7 @@ import logger, { runWithUserContext } from "../logger"
 import { db } from "../prismaClient"
 import { Identifiable } from "../rag/Hydrator"
 import { FileCategory, FileDownloadResult, StoredFile, buildSlackFileKey, ensureStoredWithMetadata, isSupportedFileType } from "../services/FileStorageService"
-import { deleteSecretsBestEffort, getSecret, storeSecret } from "../services/SecretService"
+import { SecretField, SecretTable, deleteSecretsBestEffort, getSecret, storeSecret } from "../services/SecretService"
 import { ConfigInstance, ConfigType, SlackConfig as SlackConfigClass } from "../shared/Configs"
 import { FrontendRoutes } from "../shared/FrontendRoutes"
 import { AdditionalStateParams, InstallationOptionsFor, IntegrationType, SlackIntegration, SlackIntegrationMetadata } from "../shared/Integrations"
@@ -433,10 +433,10 @@ export class SlackIntegrationManager
                 return
             }
 
-            await storeSecret("slack_integrations", slackIntegration.id, "access_token", access_token)
+            await storeSecret(SecretTable.SlackIntegrations, slackIntegration.id, SecretField.AccessToken, access_token)
 
             if (isUserType && authed_user.access_token && userSlackIntegrationId) {
-                await storeSecret("user_slack_integrations", userSlackIntegrationId, "authed_user_access_token", authed_user.access_token)
+                await storeSecret(SecretTable.UserSlackIntegrations, userSlackIntegrationId, SecretField.AuthedUserAccessToken, authed_user.access_token)
             }
 
             const userSlackIntegration = userSlackIntegrationId
@@ -1047,14 +1047,14 @@ async function markWorkspaceUninstalled(team_id: string) {
     // Best-effort GSM cleanup
     await deleteSecretsBestEffort([
         ...slackIntegrations.map(i => ({
-            table: "slack_integrations",
+            table: SecretTable.SlackIntegrations,
             recordId: i.id,
-            field: "access_token"
+            field: SecretField.AccessToken
         })),
         ...userSlackIntegrations.map(i => ({
-            table: "user_slack_integrations",
+            table: SecretTable.UserSlackIntegrations,
             recordId: i.id,
-            field: "authed_user_access_token"
+            field: SecretField.AuthedUserAccessToken
         }))
     ])
 
@@ -1393,7 +1393,7 @@ async function handleSlackMessage(event: SlackMessageEvent, teamId: string, auth
         // Supports: images, PDFs
         let storedFiles: StoredFile[] = []
         if (files && files.length > 0) {
-            const botToken = await getSecret("slack_integrations", filteredWorkspaceUserIntegrations[0].slack_integration.id, "access_token")
+            const botToken = await getSecret(SecretTable.SlackIntegrations, filteredWorkspaceUserIntegrations[0].slack_integration.id, SecretField.AccessToken)
 
             if (botToken) {
                 storedFiles = await downloadSlackFiles(files, teamId, botToken)

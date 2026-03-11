@@ -2,6 +2,32 @@ import { gcp } from "../config/settings"
 import logger from "../logger"
 import { SecretManagerClient, getSecretManagerClient, isSecretManagerNotFoundError } from "../utility/secretManagerClient"
 
+export enum SecretTable {
+    SlackIntegrations = "slack_integrations",
+    UserSlackIntegrations = "user_slack_integrations",
+    NotionIntegrations = "notion_integrations",
+    LaunchDarklyIntegrations = "launchdarkly_integrations",
+    LinearIntegrations = "linear_integrations",
+    GmailIntegrations = "gmail_integrations",
+    AtlassianIntegrations = "atlassian_integrations",
+    FigmaIntegrations = "figma_integrations",
+    WorkOSIntegrations = "workos_integrations",
+    PosthogIntegrations = "posthog_integrations",
+    DatadogIntegrations = "datadog_integrations",
+    GithubAppTokens = "github_app_tokens",
+    AttioIntegrations = "attio_integrations"
+}
+
+export enum SecretField {
+    AccessToken = "access_token",
+    RefreshToken = "refresh_token",
+    ApiKey = "api_key",
+    AppKey = "app_key",
+    IntegrationToken = "integration_token",
+    WebhookSecret = "webhook_secret",
+    AuthedUserAccessToken = "authed_user_access_token"
+}
+
 const SECRET_CACHE_TTL_MS = 5 * 60 * 1000
 
 interface CachedSecret {
@@ -45,7 +71,7 @@ export class SecretService {
         return component.replace(/[^a-zA-Z0-9_-]/g, "-")
     }
 
-    private buildSecretId(table: string, recordId: string, field: string): string {
+    private buildSecretId(table: SecretTable, recordId: string, field: SecretField): string {
         const secretId = `${this.sanitizeSecretIdComponent(table)}-${this.sanitizeSecretIdComponent(recordId)}-${this.sanitizeSecretIdComponent(field)}`
         return secretId.slice(0, 255)
     }
@@ -71,14 +97,14 @@ export class SecretService {
         })
     }
 
-    async storeSecret(table: string, recordId: string, field: string, value: string): Promise<void> {
+    async storeSecret(table: SecretTable, recordId: string, field: SecretField, value: string): Promise<void> {
         const client = this.getClient()
         const secretId = this.buildSecretId(table, recordId, field)
         await client.createOrUpdateSecret(secretId, value)
         this.cache.delete(secretId)
     }
 
-    async getSecret(table: string, recordId: string, field: string): Promise<string | null> {
+    async getSecret(table: SecretTable, recordId: string, field: SecretField): Promise<string | null> {
         const client = this.getClient()
         const secretId = this.buildSecretId(table, recordId, field)
 
@@ -99,7 +125,7 @@ export class SecretService {
         }
     }
 
-    async deleteSecret(table: string, recordId: string, field: string): Promise<void> {
+    async deleteSecret(table: SecretTable, recordId: string, field: SecretField): Promise<void> {
         const secretId = this.buildSecretId(table, recordId, field)
         this.cache.delete(secretId)
 
@@ -117,15 +143,15 @@ export function getSecretService(): SecretService {
     return secretService
 }
 
-export async function storeSecret(table: string, recordId: string, field: string, value: string): Promise<void> {
+export async function storeSecret(table: SecretTable, recordId: string, field: SecretField, value: string): Promise<void> {
     return getSecretService().storeSecret(table, recordId, field, value)
 }
 
-export async function getSecret(table: string, recordId: string, field: string): Promise<string | null> {
+export async function getSecret(table: SecretTable, recordId: string, field: SecretField): Promise<string | null> {
     return getSecretService().getSecret(table, recordId, field)
 }
 
-export async function deleteSecret(table: string, recordId: string, field: string): Promise<void> {
+export async function deleteSecret(table: SecretTable, recordId: string, field: SecretField): Promise<void> {
     return getSecretService().deleteSecret(table, recordId, field)
 }
 
@@ -139,7 +165,7 @@ export function isGsmAvailable(): boolean {
  * due to a GSM failure. Orphaned GSM secrets are harmless since the DB record
  * they belonged to no longer exists.
  */
-export async function deleteSecretsBestEffort(entries: Array<{ table: string; recordId: string; field: string }>): Promise<void> {
+export async function deleteSecretsBestEffort(entries: Array<{ table: SecretTable; recordId: string; field: SecretField }>): Promise<void> {
     const service = getSecretService()
     await Promise.allSettled(
         entries.map(async entry => {

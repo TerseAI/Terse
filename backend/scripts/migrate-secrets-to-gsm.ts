@@ -1,11 +1,11 @@
 import "dotenv/config"
 
 import { db } from "../src/prismaClient"
-import { isGsmAvailable, storeSecret } from "../src/services/SecretService"
+import { isGsmAvailable, storeSecret, SecretTable, SecretField } from "../src/services/SecretService"
 
 type SecretTableConfig = {
-    table: string
-    fields: string[]
+    table: SecretTable
+    fields: SecretField[]
 }
 
 type MigrationStats = {
@@ -21,19 +21,19 @@ type MigrationStats = {
 }
 
 const SECRET_TABLES: SecretTableConfig[] = [
-    { table: "github_app_tokens", fields: ["access_token", "refresh_token"] },
-    { table: "linear_integrations", fields: ["access_token", "refresh_token"] },
-    { table: "user_slack_integrations", fields: ["authed_user_access_token"] },
-    { table: "slack_integrations", fields: ["access_token"] },
-    { table: "atlassian_integrations", fields: ["access_token", "refresh_token", "webhook_secret"] },
-    { table: "gmail_integrations", fields: ["access_token", "refresh_token"] },
-    { table: "notion_integrations", fields: ["integration_token"] },
-    { table: "figma_integrations", fields: ["access_token", "refresh_token"] },
-    { table: "posthog_integrations", fields: ["api_key"] },
-    { table: "launchdarkly_integrations", fields: ["api_key"] },
-    { table: "datadog_integrations", fields: ["api_key", "app_key"] },
-    { table: "workos_integrations", fields: ["api_key", "webhook_secret"] },
-    { table: "attio_integrations", fields: ["access_token"] }
+    { table: SecretTable.GithubAppTokens, fields: [SecretField.AccessToken, SecretField.RefreshToken] },
+    { table: SecretTable.LinearIntegrations, fields: [SecretField.AccessToken, SecretField.RefreshToken] },
+    { table: SecretTable.UserSlackIntegrations, fields: [SecretField.AuthedUserAccessToken] },
+    { table: SecretTable.SlackIntegrations, fields: [SecretField.AccessToken] },
+    { table: SecretTable.AtlassianIntegrations, fields: [SecretField.AccessToken, SecretField.RefreshToken, SecretField.WebhookSecret] },
+    { table: SecretTable.GmailIntegrations, fields: [SecretField.AccessToken, SecretField.RefreshToken] },
+    { table: SecretTable.NotionIntegrations, fields: [SecretField.IntegrationToken] },
+    { table: SecretTable.FigmaIntegrations, fields: [SecretField.AccessToken, SecretField.RefreshToken] },
+    { table: SecretTable.PosthogIntegrations, fields: [SecretField.ApiKey] },
+    { table: SecretTable.LaunchDarklyIntegrations, fields: [SecretField.ApiKey] },
+    { table: SecretTable.DatadogIntegrations, fields: [SecretField.ApiKey, SecretField.AppKey] },
+    { table: SecretTable.WorkOSIntegrations, fields: [SecretField.ApiKey, SecretField.WebhookSecret] },
+    { table: SecretTable.AttioIntegrations, fields: [SecretField.AccessToken] }
     // Intentionally excluded: figma_webhooks.passcode
 ]
 

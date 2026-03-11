@@ -1,6 +1,6 @@
 import logger from "../../logger"
 import { db } from "../../prismaClient"
-import { getSecret } from "../../services/SecretService"
+import { SecretField, SecretTable, getSecret } from "../../services/SecretService"
 import { User } from "../../shared/types"
 
 /**
@@ -22,5 +22,5 @@ export async function getPosthogApiKeyByIntegrationId(integrationId: string, use
         return null
     }
 
-    return await getSecret("posthog_integrations", integration.id, "api_key")
+    return await getSecret(SecretTable.PosthogIntegrations, integration.id, SecretField.ApiKey)
 }

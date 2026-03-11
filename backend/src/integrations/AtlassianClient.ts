@@ -1,7 +1,7 @@
 import { settings, urls } from "../config/settings"
 import logger from "../logger"
 import { db } from "../prismaClient"
-import { deleteSecretsBestEffort, getSecret, storeSecret } from "../services/SecretService"
+import { deleteSecretsBestEffort, getSecret, SecretField, SecretTable, storeSecret } from "../services/SecretService"
 import { ApiRoutes } from "../shared/ApiRoutes"
 import { AtlassianIntegration, IntegrationType } from "../shared/Integrations"
 import type { ConfluencePage, User } from "../shared/types"
@@ -45,8 +45,8 @@ export class AtlassianClient {
                 return null
             }
 
-            const currentAccessToken = await getSecret("atlassian_integrations", integration.id, "access_token")
-            const refreshToken = await getSecret("atlassian_integrations", integration.id, "refresh_token")
+            const currentAccessToken = await getSecret(SecretTable.AtlassianIntegrations, integration.id, SecretField.AccessToken)
+            const refreshToken = await getSecret(SecretTable.AtlassianIntegrations, integration.id, SecretField.RefreshToken)
 
             const now = new Date()
             // Check if token is expired or will expire within the refresh threshold
@@ -90,9 +90,9 @@ export class AtlassianClient {
 
                 // Calculate token expiry
                 const tokenExpiry = new Date(Date.now() + (expires_in || 3600) * 1000)
-                await storeSecret("atlassian_integrations", integration.id, "access_token", access_token)
+                await storeSecret(SecretTable.AtlassianIntegrations, integration.id, SecretField.AccessToken, access_token)
                 if (refresh_token) {
-                    await storeSecret("atlassian_integrations", integration.id, "refresh_token", refresh_token)
+                    await storeSecret(SecretTable.AtlassianIntegrations, integration.id, SecretField.RefreshToken, refresh_token)
                 }
 
                 // Update the database with new tokens
@@ -296,9 +296,9 @@ export class AtlassianClient {
             })
 
             await deleteSecretsBestEffort([
-                { table: "atlassian_integrations", recordId: integrationId, field: "access_token" },
-                { table: "atlassian_integrations", recordId: integrationId, field: "refresh_token" },
-                { table: "atlassian_integrations", recordId: integrationId, field: "webhook_secret" }
+                { table: SecretTable.AtlassianIntegrations, recordId: integrationId, field: SecretField.AccessToken },
+                { table: SecretTable.AtlassianIntegrations, recordId: integrationId, field: SecretField.RefreshToken },
+                { table: SecretTable.AtlassianIntegrations, recordId: integrationId, field: SecretField.WebhookSecret }
             ])
 
             logger.info("✅ [JIRA INTEGRATION MANAGER] Deleted Atlassian integration:", { integrationId })

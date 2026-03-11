@@ -1,6 +1,6 @@
 import logger from "../../logger"
 import { db } from "../../prismaClient"
-import { getSecret } from "../../services/SecretService"
+import { getSecret, SecretField, SecretTable } from "../../services/SecretService"
 import { User } from "../../shared/types"
 
 /**
@@ -22,7 +22,7 @@ export async function getWorkOSApiKeyByIntegrationId(integrationId: string, user
         return null
     }
 
-    return await getSecret("workos_integrations", integration.id, "api_key")
+    return await getSecret(SecretTable.WorkOSIntegrations, integration.id, SecretField.ApiKey)
 }
 
 export interface WorkOSUserResponse {

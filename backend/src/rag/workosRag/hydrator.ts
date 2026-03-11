@@ -1,7 +1,7 @@
 import { WORKOS_SUPPORTED_EVENT_NAMES, WorkOSEvent, WorkOSWebhookPayload } from "../../integrations/WorkOSIntegration"
 import logger from "../../logger"
 import { db } from "../../prismaClient"
-import { getSecret } from "../../services/SecretService"
+import { getSecret, SecretField, SecretTable } from "../../services/SecretService"
 import { HydratorType } from "../../types/rag"
 import { HydrationContext, Hydrator, Identifiable } from "../Hydrator"
 
@@ -56,7 +56,7 @@ export class WorkOSEventHydrator extends Hydrator<WorkOSEvent> {
             return null
         }
 
-        const apiKey = await getSecret("workos_integrations", integration.id, "api_key")
+        const apiKey = await getSecret(SecretTable.WorkOSIntegrations, integration.id, SecretField.ApiKey)
         if (!apiKey) {
             logger.error(`WorkOS integration ${integrationId} not found or missing API key`)
             return null
