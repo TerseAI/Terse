@@ -13,43 +13,55 @@ export default function RunHistoryItemHeader({ run, formattedTimestamp, onCopy }
     const title = run.trigger.title || run.trigger.source
 
     return (
-        <div className="group min-w-0 no-underline hover:no-underline">
-            <div className="flex items-start gap-3.5">
-                <div className="text-muted-foreground size-5 flex-shrink-0 mt-0.5">
-                    <IconForIntegration integration={run.trigger.integration} />
-                </div>
-                <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                        <span className="text-foreground truncate no-underline hover:no-underline" title={title}>
-                            {title}
-                        </span>
-                        {run.trigger.url && (
-                            <a href={run.trigger.url} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="flex items-center gap-1 text-foreground flex-shrink-0">
-                                <ExternalLink className="w-3 h-3" />
-                            </a>
-                        )}
-                        <button
-                            className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity"
-                            onClick={e => {
-                                e.stopPropagation()
-                                onCopy(title ?? "")
-                            }}
-                            type="button"
+        <div className="flex items-center gap-3">
+            <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-muted/60 flex items-center justify-center text-muted-foreground">
+                <IconForIntegration integration={run.trigger.integration} />
+            </div>
+
+            <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5">
+                    <span className="text-sm font-medium text-foreground truncate" title={title}>
+                        {title}
+                    </span>
+                    {run.trigger.url && (
+                        <a
+                            href={run.trigger.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={e => e.stopPropagation()}
+                            className="flex-shrink-0 text-muted-foreground hover:text-foreground transition-colors"
                         >
-                            <Copy className="w-3 h-3" />
-                        </button>
-                    </div>
-                    <div className="flex items-center gap-2 truncate text-muted-foreground no-underline hover:no-underline">
-                        {run.trigger.subheader && (
-                            <span className="truncate no-underline hover:no-underline" title={run.trigger.subheader}>
+                            <ExternalLink className="w-3 h-3" />
+                        </a>
+                    )}
+                    <button
+                        className="flex-shrink-0 p-0.5 text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={e => {
+                            e.stopPropagation()
+                            onCopy(title ?? "")
+                        }}
+                        type="button"
+                    >
+                        <Copy className="w-3 h-3" />
+                    </button>
+                </div>
+
+                <div className="flex items-center gap-1.5 mt-0.5 text-xs text-muted-foreground">
+                    {run.trigger.subheader && (
+                        <>
+                            <span className="truncate" title={run.trigger.subheader}>
                                 {run.trigger.subheader}
                             </span>
-                        )}
-                        <span className="shrink-0 no-underline hover:no-underline">{formattedTimestamp}</span>
-                        {run.isManuallyTriggered && (
-                            <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-accent-tertiary flex-shrink-0">Manual</span>
-                        )}
-                    </div>
+                            <span className="flex-shrink-0 text-muted-foreground/40">·</span>
+                        </>
+                    )}
+                    <span className="flex-shrink-0">{formattedTimestamp}</span>
+                    {run.isManuallyTriggered && (
+                        <>
+                            <span className="flex-shrink-0 text-muted-foreground/40">·</span>
+                            <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 font-medium text-accent-tertiary flex-shrink-0">Manual</span>
+                        </>
+                    )}
                 </div>
             </div>
         </div>

@@ -380,7 +380,7 @@ function StatsPage() {
 
     return (
         <div className="h-full overflow-y-auto">
-            <div className="mx-auto max-w-5xl w-full px-6 py-8 space-y-6">
+            <div className="mx-auto w-full w-full px-6 py-8 space-y-6">
                 {/* ── Header ──────────────────────────────────────────── */}
                 <div>
                     <h1 className="text-2xl font-semibold tracking-tight text-foreground">Stats</h1>
