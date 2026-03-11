@@ -217,7 +217,7 @@ function WorkOSIntegrationCard({ className, isActive = true, stateToken, compact
                                 >
                                     {copied ? (
                                         <>
-                                            <CheckIcon className="size-3.5 text-green-500" /> Copied
+                                            <CheckIcon className="size-3.5 text-success" /> Copied
                                         </>
                                     ) : (
                                         <>

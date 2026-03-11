@@ -67,14 +67,12 @@ export const BuilderChat = forwardRef<BuilderChatHandle, BuilderChatProps>(funct
     }, [])
 
     const subscribeToEvents = (callback: (payload: ChatEventPayload) => void) => {
-        console.log("[BuilderChat] subscribeToEvents called", { sessionId })
         const unsubscribe = subscribeToBuilderChat(sessionId, payload => {
             console.log("[BuilderChat] Event received", payload.event.type)
             callback({
                 runHistoryModelEvent: payload.event
             })
         })
-        console.log("[BuilderChat] Subscription created")
         return unsubscribe
     }
 

@@ -169,7 +169,7 @@ export default function ActivityPage() {
     const startIndex = (currentPage - 1) * runsPerPage
 
     return (
-        <div className="mx-auto max-w-5xl w-full px-6 py-8">
+        <div className="mx-auto w-full px-6 py-8">
             {/* ── Header ──────────────────────────────────────────── */}
             <div className="mb-8">
                 <h1 className="text-2xl font-semibold text-foreground tracking-tight">Activity</h1>

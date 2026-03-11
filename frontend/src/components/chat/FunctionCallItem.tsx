@@ -94,12 +94,12 @@ function ToolResultInput({ toolName, parameters, onSubmit }: { toolName: string;
     // Show collapsed view if submitted
     if (submitted) {
         return (
-            <div className="bg-card rounded-lg p-3 mt-2 border border-green-500/20">
+            <div className="bg-card rounded-lg p-3 mt-2 border border-success/20">
                 <div className="text-sm text-muted-foreground mb-2">
                     Result provided for <span className="font-medium text-foreground">{toolName}</span>:
                 </div>
                 <div className="flex items-center gap-2">
-                    <CheckIcon className="w-4 h-4 text-green-500 flex-shrink-0" />
+                    <CheckIcon className="w-4 h-4 text-success flex-shrink-0" />
                     <span className="text-sm text-foreground font-mono bg-background px-2 py-1 rounded select-text">{submittedValue}</span>
                 </div>
             </div>
@@ -196,9 +196,9 @@ export default function FunctionCallItem({ call, isTurnFailure = false, onApprov
                     {call.parameters && <ToolCallParameters parameters={call.parameters} label="Input" />}
                     {call.result && <ToolCallParameters parameters={call.result} label="Output" />}
                     {call.errorContext && (
-                        <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3">
-                            <div className="text-sm font-semibold text-red-500 mb-1">Error:</div>
-                            <div className="text-sm text-red-400 font-mono whitespace-pre-wrap select-text">{String(call.errorContext.error)}</div>
+                        <div className="bg-danger/10 border border-danger/20 rounded-lg p-3">
+                            <div className="text-sm font-semibold text-danger mb-1">Error:</div>
+                            <div className="text-sm text-danger font-mono whitespace-pre-wrap select-text">{String(call.errorContext.error)}</div>
                         </div>
                     )}
                     <ToolActionsDisplay changedItems={call.changed_items} isTurnFailure={isTurnFailure} />

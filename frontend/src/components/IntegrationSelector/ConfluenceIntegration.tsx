@@ -40,7 +40,7 @@ export function ConfluenceIntegration({ input, variant, setConfig }: InputConfig
         if (variant === "card") {
             return (
                 <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <AlertTriangleIcon className="size-3 text-yellow-500" />
+                    <AlertTriangleIcon className="size-3 text-warning" />
                     Connect Atlassian
                 </div>
             )
@@ -78,7 +78,7 @@ export function ConfluenceIntegration({ input, variant, setConfig }: InputConfig
         if (!hasPage) {
             return (
                 <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <AlertTriangleIcon className="size-3 text-yellow-500" />
+                    <AlertTriangleIcon className="size-3 text-warning" />
                     Select page
                 </div>
             )

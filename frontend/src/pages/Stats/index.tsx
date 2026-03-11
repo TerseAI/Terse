@@ -92,7 +92,7 @@ function StatCard({ label, value, change }: { label: string; value: string; chan
             <CardContent>
                 <div className="flex items-baseline gap-2.5">
                     <span className="text-3xl font-semibold tracking-tight text-foreground">{value}</span>
-                    <span className={cn("text-sm font-medium", trend === "up" ? "text-emerald-500 dark:text-emerald-400" : "text-red-500 dark:text-red-400")}>{change}</span>
+                    <span className={cn("text-sm font-medium", trend === "up" ? "text-success" : "text-danger")}>{change}</span>
                 </div>
             </CardContent>
         </Card>
@@ -380,7 +380,7 @@ function StatsPage() {
 
     return (
         <div className="h-full overflow-y-auto">
-            <div className="mx-auto max-w-5xl w-full px-6 py-8 space-y-6">
+            <div className="mx-auto w-full w-full px-6 py-8 space-y-6">
                 {/* ── Header ──────────────────────────────────────────── */}
                 <div>
                     <h1 className="text-2xl font-semibold tracking-tight text-foreground">Stats</h1>

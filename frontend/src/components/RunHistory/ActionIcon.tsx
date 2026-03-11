@@ -8,12 +8,12 @@ type Props = {
 }
 
 export default function ActionIcon({ actionType, status }: Props) {
-    if (status === RunHistoryStatus.FAILED) return <XCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
+    if (status === RunHistoryStatus.FAILED) return <XCircle className="w-4 h-4 text-danger flex-shrink-0" />
     if (status === RunHistoryStatus.CANCELLED) return <Ban className="w-4 h-4 text-muted-foreground flex-shrink-0" />
 
     const type = actionType.toLowerCase()
     if (type.includes("database")) return <Database className="w-4 h-4 text-purple-400 flex-shrink-0" />
     if (type.includes("calendar")) return <CalendarIcon className="w-4 h-4 text-blue-400 flex-shrink-0" />
-    if (type.includes("notification")) return <MessageSquare className="w-4 h-4 text-green-400 flex-shrink-0" />
+    if (type.includes("notification")) return <MessageSquare className="w-4 h-4 text-success flex-shrink-0" />
     return <FileText className="w-4 h-4 text-blue-400 flex-shrink-0" />
 }

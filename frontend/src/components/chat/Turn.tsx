@@ -107,7 +107,7 @@ function TurnView({
                             ) : (
                                 <>
                                     {isFailure && (
-                                        <svg className="w-4 h-4 text-red-500 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <svg className="w-4 h-4 text-danger inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                                         </svg>
                                     )}
@@ -156,7 +156,7 @@ function CopyButton({ text }: { text: string }) {
 
     return (
         <button onClick={handleCopy} className="rounded text-gray-500 transition-colors duration-200 hover:cursor-pointer hover:opacity-80 active:scale-95" aria-label="Copy to clipboard">
-            {copied ? <CheckIcon className="w-4 h-4 text-green-500 animate-pop ring-1 ring-green-500/20 ring-opacity-50 rounded" /> : <DocumentDuplicateIcon className="w-4 h-4" />}
+            {copied ? <CheckIcon className="w-4 h-4 text-success animate-pop ring-1 ring-success/20 ring-opacity-50 rounded" /> : <DocumentDuplicateIcon className="w-4 h-4" />}
         </button>
     )
 }
@@ -294,9 +294,9 @@ function FilterResultView({ filterResult }: { filterResult: { isRelevant: boolea
 
     // Determine confidence color for the progress circle
     const getConfidenceColor = (conf: number) => {
-        if (conf >= 0.8) return "text-emerald-600 dark:text-emerald-400"
-        if (conf >= 0.5) return "text-yellow-600 dark:text-yellow-400"
-        return "text-orange-600 dark:text-orange-400"
+        if (conf >= 0.8) return "text-success"
+        if (conf >= 0.5) return "text-warning"
+        return "text-warning"
     }
 
     // Calculate circle circumference for stroke-dasharray
@@ -309,11 +309,7 @@ function FilterResultView({ filterResult }: { filterResult: { isRelevant: boolea
                 <div className="flex-1">
                     <div className="rounded-lg border border-white/10 bg-stone-900/50 p-4">
                         <div className="flex items-start gap-3 mb-3">
-                            {isRelevant ? (
-                                <CheckCircleIcon className="w-5 h-5 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
-                            ) : (
-                                <XCircleIcon className="w-5 h-5 text-orange-600 dark:text-orange-400 flex-shrink-0" />
-                            )}
+                            {isRelevant ? <CheckCircleIcon className="w-5 h-5 text-success flex-shrink-0" /> : <XCircleIcon className="w-5 h-5 text-warning flex-shrink-0" />}
                             <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 mb-2">
                                     <div className="text-sm font-semibold text-[#F1F1F1]">{isRelevant ? "Event Approved" : "Event Filtered Out"}</div>

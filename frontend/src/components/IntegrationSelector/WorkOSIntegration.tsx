@@ -29,7 +29,7 @@ export function WorkOSIntegration({ input, variant, setConfig }: InputConfigSele
         if (!selectedEventTypes.length) {
             return (
                 <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <AlertTriangleIcon className="size-3 text-yellow-500" />
+                    <AlertTriangleIcon className="size-3 text-warning" />
                     Select event types
                 </div>
             )
@@ -81,7 +81,7 @@ export function WorkOSIntegration({ input, variant, setConfig }: InputConfigSele
             </div>
 
             {selectedEventTypes.length > 0 && (
-                <div className="flex items-center gap-1.5 text-xs text-green-600 dark:text-green-500">
+                <div className="flex items-center gap-1.5 text-xs text-success">
                     <CheckIcon className="size-3" />
                     {selectedEventTypes.length} event type{selectedEventTypes.length !== 1 ? "s" : ""} selected
                 </div>
