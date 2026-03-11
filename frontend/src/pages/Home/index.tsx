@@ -288,7 +288,7 @@ function StatPill({ label, value, change }: { label: string; value: string; chan
             <span className="text-xs font-medium tracking-wide text-muted-foreground uppercase">{label}</span>
             <div className="flex items-baseline gap-2.5">
                 <span className="text-2xl font-semibold tracking-tight text-foreground">{value}</span>
-                <span className={cn("text-xs font-medium", trend === "up" ? "text-emerald-500 dark:text-emerald-400" : "text-red-500 dark:text-red-400")}>{change}</span>
+                <span className={cn("text-xs font-medium", trend === "up" ? "text-success" : "text-danger")}>{change}</span>
             </div>
         </div>
     )

@@ -40,7 +40,7 @@ export function FigmaIntegration({ input, variant, setConfig }: InputConfigSelec
         if (variant === "card") {
             return (
                 <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <AlertTriangleIcon className="size-3 text-yellow-500" />
+                    <AlertTriangleIcon className="size-3 text-warning" />
                     Connect Figma
                 </div>
             )
@@ -76,7 +76,7 @@ export function FigmaIntegration({ input, variant, setConfig }: InputConfigSelec
         if (!isComplete) {
             return (
                 <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <AlertTriangleIcon className="size-3 text-yellow-500" />
+                    <AlertTriangleIcon className="size-3 text-warning" />
                     Select file
                 </div>
             )

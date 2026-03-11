@@ -72,7 +72,7 @@ function ActivityRow({ run, onOpenChat }: { run: RunHistoryRecordWithAgent; onOp
             {/* Write actions count */}
             {writeActions.length > 0 && (
                 <div className="hidden md:flex items-center gap-1 text-xs text-muted-foreground">
-                    {run.isManuallyTriggered && <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-accent-tertiary flex-shrink-0">Manual</span>}
+                    {run.isManuallyTriggered && <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-accent-tertiary flex-shrink-0">Manual2</span>}
                     <Zap className="w-3 h-3" />
                     <span>
                         {writeActions.length} action{writeActions.length !== 1 ? "s" : ""}
@@ -169,7 +169,7 @@ export default function ActivityPage() {
     const startIndex = (currentPage - 1) * runsPerPage
 
     return (
-        <div className="mx-auto max-w-5xl w-full px-6 py-8">
+        <div className="mx-auto w-full px-6 py-8">
             {/* ── Header ──────────────────────────────────────────── */}
             <div className="mb-8">
                 <h1 className="text-2xl font-semibold text-foreground tracking-tight">Activity</h1>
