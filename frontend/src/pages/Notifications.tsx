@@ -442,7 +442,13 @@ function SentNotificationRow({ notification }: { notification: SentNotification 
                             <SentNotificationDestinationIcon destinationType={notification.destinationType} />
                             <span className="truncate">{notification.destinationLabel}</span>
                             {notification.notificationUrl && (
-                                <a href={notification.notificationUrl} target="_blank" rel="noopener noreferrer" title="View in Slack" className="shrink-0 text-muted-foreground transition-colors hover:text-foreground">
+                                <a
+                                    href={notification.notificationUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    title="View in Slack"
+                                    className="shrink-0 text-muted-foreground transition-colors hover:text-foreground"
+                                >
                                     <ExternalLink className="h-3 w-3" />
                                 </a>
                             )}

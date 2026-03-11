@@ -149,7 +149,19 @@ export class NotificationManager {
         }
     }
 
-    private async trackNotification({ eventType, destination, runId, notificationUrl, error }: { eventType: SentNotificationEventType; destination: UserNotificationDestination; runId?: string; notificationUrl?: string; error?: unknown }) {
+    private async trackNotification({
+        eventType,
+        destination,
+        runId,
+        notificationUrl,
+        error
+    }: {
+        eventType: SentNotificationEventType
+        destination: UserNotificationDestination
+        runId?: string
+        notificationUrl?: string
+        error?: unknown
+    }) {
         try {
             if (!this.user.organizationId) {
                 logger.warn("[NotificationManager] Missing organizationId, skipping sent notification tracking", {
