@@ -397,11 +397,6 @@ interface BackendService {
     getNotificationDestinations(): Promise<NotificationDestination[]>
 
     /**
-     * Gets all notification settings for the current user
-     */
-    getNotificationSettings(): Promise<NotificationSettings>
-
-    /**
      * Gets sent notifications for the current organization
      */
     getSentNotifications(params: { page?: number; pageSize?: number }): Promise<GetSentNotificationsResponse>
@@ -1248,16 +1243,6 @@ export const BackendProvider: BackendService = {
     getNotificationDestinations: () => {
         return axios
             .get<NotificationDestination[]>(`${backendBaseUrl}${ApiRoutes.NOTIFICATION_DESTINATIONS.LIST}`, { withCredentials: true })
-            .then(response => response.data)
-            .catch(error => {
-                console.error("Error getting notification destinations:", error)
-                throw error
-            })
-    },
-
-    getNotificationSettings: () => {
-        return axios
-            .get<NotificationSettings>(`${backendBaseUrl}${ApiRoutes.NOTIFICATION_SETTINGS}`, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
                 console.error("Error getting notification destinations:", error)

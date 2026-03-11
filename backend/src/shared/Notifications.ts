@@ -1,4 +1,4 @@
-import {RunHistoryActionType} from "./RunHistoryTypes"
+import { RunHistoryActionType } from "./RunHistoryTypes"
 
 export interface NotificationDestination {
     id: string
