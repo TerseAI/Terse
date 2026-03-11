@@ -1,7 +1,7 @@
 import { WORKOS_SUPPORTED_EVENT_NAMES, WorkOSEvent, WorkOSWebhookPayload } from "../../integrations/WorkOSIntegration"
 import logger from "../../logger"
 import { db } from "../../prismaClient"
-import { getSecret, SecretField, SecretTable } from "../../services/SecretService"
+import { SecretField, SecretTable, getSecret } from "../../services/SecretService"
 import { HydratorType } from "../../types/rag"
 import { HydrationContext, Hydrator, Identifiable } from "../Hydrator"
 

@@ -5,7 +5,7 @@ import { parseFormSubmissionFromRequest } from "../integrations/abstract/Integra
 import { emitIntegrationFormCompletedTaskIfNeeded } from "../integrations/helpers/emitIntegrationFormCompletedTask"
 import logger from "../logger"
 import { db } from "../prismaClient"
-import { getSecret, SecretField, SecretTable } from "../services/SecretService"
+import { SecretField, SecretTable, getSecret } from "../services/SecretService"
 import { IntegrationType } from "../shared/Integrations"
 
 export async function getLaunchDarklyIntegrations(req: Request, res: Response) {

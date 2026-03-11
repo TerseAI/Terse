@@ -1,6 +1,6 @@
 import logger from "../../logger"
 import { db } from "../../prismaClient"
-import { getSecret, SecretField, SecretTable } from "../../services/SecretService"
+import { SecretField, SecretTable, getSecret } from "../../services/SecretService"
 import { User } from "../../shared/types"
 
 /**

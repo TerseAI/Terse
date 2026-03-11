@@ -6,7 +6,7 @@ import { jwt as jwtSettings, notion as notionConfig, urls } from "../config/sett
 import logger from "../logger"
 import { db } from "../prismaClient"
 import { fetchNotionResources } from "../routes/notion"
-import { getSecret, SecretField, SecretTable, storeSecret } from "../services/SecretService"
+import { SecretField, SecretTable, getSecret, storeSecret } from "../services/SecretService"
 import { FrontendRoutes } from "../shared/FrontendRoutes"
 import { AdditionalStateParams, InstallationOptionsFor, IntegrationType, NotionIntegration, NotionIntegrationMetadata } from "../shared/Integrations"
 import { NotionResource, OAuthInstallationDetails } from "../shared/types"

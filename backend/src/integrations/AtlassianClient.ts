@@ -1,7 +1,7 @@
 import { settings, urls } from "../config/settings"
 import logger from "../logger"
 import { db } from "../prismaClient"
-import { deleteSecretsBestEffort, getSecret, SecretField, SecretTable, storeSecret } from "../services/SecretService"
+import { SecretField, SecretTable, deleteSecretsBestEffort, getSecret, storeSecret } from "../services/SecretService"
 import { ApiRoutes } from "../shared/ApiRoutes"
 import { AtlassianIntegration, IntegrationType } from "../shared/Integrations"
 import type { ConfluencePage, User } from "../shared/types"

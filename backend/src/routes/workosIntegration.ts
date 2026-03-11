@@ -5,7 +5,7 @@ import { parseFormSubmissionFromRequest } from "../integrations/abstract/Integra
 import { emitIntegrationFormCompletedTaskIfNeeded } from "../integrations/helpers/emitIntegrationFormCompletedTask"
 import logger from "../logger"
 import { db } from "../prismaClient"
-import { getSecret, SecretField, SecretTable, storeSecret } from "../services/SecretService"
+import { SecretField, SecretTable, getSecret, storeSecret } from "../services/SecretService"
 import { IntegrationType } from "../shared/Integrations"
 import { workos } from "../utility/workos"
 

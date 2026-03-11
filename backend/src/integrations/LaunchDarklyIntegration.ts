@@ -1,7 +1,7 @@
 import logger from "../logger"
 import { db } from "../prismaClient"
 import { fetchLaunchDarklyEnvironments, fetchLaunchDarklyProjects } from "../routes/launchdarkly"
-import { getSecret, SecretField, SecretTable, storeSecret } from "../services/SecretService"
+import { SecretField, SecretTable, getSecret, storeSecret } from "../services/SecretService"
 import { IntegrationType, LaunchDarklyIntegration, LaunchDarklyIntegrationMetadata } from "../shared/Integrations"
 import { LaunchDarklyProject } from "../shared/types"
 import { AgentTriggerWithConfigs } from "../types/prisma"

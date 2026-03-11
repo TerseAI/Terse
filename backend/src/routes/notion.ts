@@ -5,7 +5,7 @@ import { Request, Response } from "express"
 import { NotionIntegrationManager } from "../integrations/NotionIntegration"
 import logger from "../logger"
 import { db } from "../prismaClient"
-import { getSecret, SecretField, SecretTable } from "../services/SecretService"
+import { SecretField, SecretTable, getSecret } from "../services/SecretService"
 import { NotionResource, NotionResourcesResponse } from "../shared/types"
 import { extractPageTitle } from "../utility/notion"
 
