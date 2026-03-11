@@ -7,7 +7,6 @@ import { Server, Socket } from "socket.io"
 import { AgentRunResultStatus, AgentRunner } from "./agent/AgentRunner/AgentRunner"
 import { RunContext } from "./agent/AgentRunner/SystemPromptBuilder"
 import { evaluateCompletedRun, finalizeRunStatus, getPendingApprovalState, markRunFailed } from "./agent/AgentRunner/runHistory"
-import { DirectiveTask, directiveTaskQueue } from "./agent/DirectiveAgent/DirectiveAgent"
 import { type ClassifiedError, buildRunErrorEvent, classifyAgentError } from "./agent/agentErrorUtils"
 import { listenForRunCancellation, requestRunCancellation } from "./agent/cancellation/RunCancellationTaskQueue"
 import { markRunCancelledAndInvalidate } from "./agent/cancellation/runCancellationEffects"
@@ -353,8 +352,6 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
                     logger.error("Failed to finalize run status", { error: e, runId })
                 }
             }
-
-            directiveTaskQueue.emit(new DirectiveTask(agent.id, runId, user, userMessage))
         })
 
         socket.on(SocketEvents.AGENT_CHAT_CANCEL, async (payload: { runId: string | null }, ack: (response: CancelAckResponse) => void) => {

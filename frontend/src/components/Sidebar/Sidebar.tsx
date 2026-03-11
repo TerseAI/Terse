@@ -19,6 +19,7 @@ import {
     SidebarMenuSubItem
 } from "@/components/ui/sidebar"
 import { useAgents } from "@/hooks/api/useAgents"
+import { usePendingApprovals } from "@/hooks/api/usePendingApprovals"
 import { FrontendRoutes } from "@/shared/FrontendRoutes"
 import { Agent } from "@/shared/types"
 
@@ -86,14 +87,23 @@ function ApplicationNavigation({ agents, loading }: ApplicationNavigationProps) 
 
 function SettingsNavigation() {
     const location = useLocation()
+    const { approvals } = usePendingApprovals({ status: "pending" })
+    const pendingCount = approvals.length
 
     return (
         <SidebarMenu>
             {SettingsItems.map(item => (
                 <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton asChild isActive={location.pathname === item.url}>
-                        <Link to={item.url}>
-                            <item.icon className={item.iconColor} />
+                        <Link to={item.url} className="relative">
+                            {item.title === "Notifications" && pendingCount > 0 ? (
+                                <>
+                                    <item.icon className={item.iconColor} />
+                                    <span className="absolute top-1.5 left-5.5 flex size-2 items-center justify-center rounded-full bg-red-500 text-xs font-semibold leading-none text-white"></span>
+                                </>
+                            ) : (
+                                <item.icon className={item.iconColor} />
+                            )}
                             <span>{item.title}</span>
                         </Link>
                     </SidebarMenuButton>

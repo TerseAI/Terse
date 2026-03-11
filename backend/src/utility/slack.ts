@@ -15,7 +15,7 @@ export interface SlackMessage {
 }
 
 export interface NotificationContext {
-    channelName: string
+    agentName: string
 }
 
 export interface RunFailureNotificationContext {
@@ -136,21 +136,12 @@ export async function getSlackClient(userSlackIntegrationId: string): Promise<We
 }
 
 export function formatNotificationMessage(runAction: RunHistoryAction, context: NotificationContext): SlackMessage {
-    const actionEmoji =
-        {
-            create: "➕",
-            update: "🔄",
-            delete: "➖",
-            read: "🔍",
-            approval: "⏳"
-        }[runAction.type] || "🔔"
-
-    const text = `${context.channelName} - ${actionEmoji} ${runAction.action} - ${runAction.target}`
+    const notificationFor = `${runAction.action || "New activity"}${runAction.target ? ` on ${runAction.target}` : ""}`
+    const text = `Notification: ${context.agentName} - ${notificationFor}`
 
     const blocks = createNotificationMessage({
-        action: runAction.action,
-        target: runAction.target,
-        emoji: actionEmoji,
+        agentName: context.agentName,
+        notificationFor,
         details: runAction.details,
         url: runAction.url
     })
@@ -165,7 +156,6 @@ export function formatRunFailureNotificationMessage(context: RunFailureNotificat
 
     const blocks = createRunFailureNotificationMessage({
         agentName: context.agentName,
-        runId: context.runId,
         errorSummary,
         runHistoryLink
     })
@@ -178,8 +168,8 @@ export async function sendSlackApprovalMessage(
     channelId: string,
     runId: string,
     stepId: string,
-    summary: string,
-    channelName: string,
+    notificationFor: string,
+    agentName: string,
     automationId?: string
 ): Promise<{ success: boolean; messageTs?: string }> {
     const userSlackIntegration = await db().user_slack_integrations.findFirst({
@@ -207,14 +197,14 @@ export async function sendSlackApprovalMessage(
     }
 
     const blocks = createApprovalMessage({
-        channelName,
-        summary,
+        agentName,
+        notificationFor,
         runId,
         stepId,
         runHistoryLink
     })
 
-    const text = `Approval Request: ${summary} - ${channelName}`
+    const text = `Approval Required: ${agentName} - ${notificationFor}`
 
     try {
         const result = await client.chat.postMessage({
@@ -233,7 +223,7 @@ export async function sendSlackApprovalMessage(
                     slack_message_ts: result.ts,
                     user_slack_integration_id: userSlackIntegrationId,
                     status: "pending",
-                    summary: summary
+                    summary: notificationFor
                 }
             })
             logger.info(`[sendSlackApprovalMessage] Successfully sent approval message to channel ${channelId} with ts ${result.ts}`)
@@ -253,8 +243,8 @@ export async function updateSlackApprovalMessage(
     channelId: string,
     messageTs: string,
     status: SlackApprovalMessageStatus,
-    summary: string, // Human-readable summary instead of toolName
-    channelName: string,
+    notificationFor: string,
+    agentName: string,
     automationId?: string,
     runId?: string,
     stepId?: string
@@ -318,8 +308,8 @@ export async function updateSlackApprovalMessage(
     }
 
     const blocks = createUpdatedApprovalMessage({
-        channelName,
-        summary,
+        agentName,
+        notificationFor,
         status,
         statusEmoji,
         statusText,
@@ -327,7 +317,7 @@ export async function updateSlackApprovalMessage(
         rejectionReason: rejectionReason || undefined
     })
 
-    const text = `${statusText}: ${summary} - ${channelName}`
+    const text = `${statusText}: ${agentName} - ${notificationFor}`
 
     try {
         const result = await client.chat.update({

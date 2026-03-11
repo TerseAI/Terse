@@ -113,11 +113,10 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
             // Result may be a JSON-encoded string (e.g. "\"Option A\"") or a JSON object
             try {
                 const parsed = JSON.parse(result)
-                if (typeof parsed === "string") return `Answered: ${truncate(parsed, 50)}`
+                if (typeof parsed === "string") return truncate(parsed, 50)
                 if (typeof parsed === "object" && parsed !== null) {
-                    // Try to extract a meaningful answer from common field names
-                    const answer = (parsed as Record<string, unknown>).answer ?? (parsed as Record<string, unknown>).value
-                    if (typeof answer === "string") return `Answered: ${truncate(answer, 50)}`
+                    const answer = (parsed as Record<string, unknown>).text
+                    if (typeof answer === "string") return truncate(answer, 50)
                     return "Answered"
                 }
             } catch {
@@ -949,11 +948,7 @@ export function getToolDisplayForPhase(
 
     if (!config) {
         // Fallback for unknown tools - use the tool name in a readable format
-        const readableName = toolName
-            .replace(/_/g, " ")
-            .replace(/([A-Z])/g, " $1")
-            .toLowerCase()
-            .trim()
+        const readableName = getReadableFallbackName(toolName)
 
         switch (phase) {
             case "preparing":
@@ -973,6 +968,14 @@ export function getToolDisplayForPhase(
         case "complete":
             return config.complete(params, result)
     }
+}
+
+export function getReadableFallbackName(toolName: string) {
+    return toolName
+        .replace(/_/g, " ")
+        .replace(/([A-Z])/g, " $1")
+        .toLowerCase()
+        .trim()
 }
 
 /**

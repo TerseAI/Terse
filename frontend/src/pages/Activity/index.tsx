@@ -81,7 +81,7 @@ function ActivityRow({ run, onOpenChat }: { run: RunHistoryRecordWithAgent; onOp
             )}
 
             {/* Status */}
-            <RunHistoryStatusBadge status={run.status} filtered={run.filtered} className="hidden sm:flex" />
+            <RunHistoryStatusBadge status={run.status} className="hidden sm:flex" />
 
             {/* Timestamp */}
             <span className="text-xs text-muted-foreground whitespace-nowrap w-20 text-right">{formatTimestamp(run.timestamp)}</span>
