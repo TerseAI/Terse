@@ -99,7 +99,7 @@ function SettingsNavigation() {
                             {item.title === "Notifications" && pendingCount > 0 ? (
                                 <>
                                     <item.icon className={item.iconColor} />
-                                    <span className="absolute top-1.5 left-5.5 flex size-2 items-center justify-center rounded-full bg-red-500 text-xs font-semibold leading-none text-white"></span>
+                                    <span className="absolute top-1.5 left-5.5 flex size-2 items-center justify-center rounded-full bg-danger text-xs font-semibold leading-none text-white"></span>
                                 </>
                             ) : (
                                 <item.icon className={item.iconColor} />
@@ -165,7 +165,7 @@ function AgentListItem({ agent }: AgentListItemProps) {
         <SidebarMenuSubItem>
             <SidebarMenuSubButton asChild isActive={isActive}>
                 <Link to={FrontendRoutes.AGENTS.DETAIL(agent.id)} className="flex items-center gap-2">
-                    <span className={`size-2 rounded-full shrink-0 ${agent.isActive ? "bg-green-500" : "bg-muted-foreground"}`} />
+                    <span className={`size-2 rounded-full shrink-0 ${agent.isActive ? "bg-success" : "bg-muted-foreground"}`} />
                     <span className="truncate">{agent.name}</span>
                 </Link>
             </SidebarMenuSubButton>

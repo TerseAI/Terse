@@ -27,7 +27,7 @@ export function WorkOSOutputIntegration({ input, variant, setConfig }: InputConf
         if (variant === "card") {
             return (
                 <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <AlertTriangleIcon className="size-3 text-yellow-500" />
+                    <AlertTriangleIcon className="size-3 text-warning" />
                     Connect WorkOS
                 </div>
             )
@@ -50,7 +50,7 @@ export function WorkOSOutputIntegration({ input, variant, setConfig }: InputConf
         if (!currentConfig?.integrationId) {
             return (
                 <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <AlertTriangleIcon className="size-3 text-yellow-500" />
+                    <AlertTriangleIcon className="size-3 text-warning" />
                     Configure
                 </div>
             )

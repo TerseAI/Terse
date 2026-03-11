@@ -54,7 +54,7 @@ export function NotionIntegration({ input, variant, setConfig }: InputConfigSele
         if (variant === "card") {
             return (
                 <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <AlertTriangleIcon className="size-3 text-yellow-500" />
+                    <AlertTriangleIcon className="size-3 text-warning" />
                     Connect Notion
                 </div>
             )
@@ -84,7 +84,7 @@ export function NotionIntegration({ input, variant, setConfig }: InputConfigSele
         if (!isComplete) {
             return (
                 <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <AlertTriangleIcon className="size-3 text-yellow-500" />
+                    <AlertTriangleIcon className="size-3 text-warning" />
                     Select at least one database or page
                 </div>
             )

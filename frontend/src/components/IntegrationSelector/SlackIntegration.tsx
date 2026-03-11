@@ -64,7 +64,7 @@ export function SlackIntegration({ input, variant, setConfig }: InputConfigSelec
         if (variant === "card") {
             return (
                 <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <AlertTriangleIcon className="size-3 text-yellow-500" />
+                    <AlertTriangleIcon className="size-3 text-warning" />
                     Connect Slack
                 </div>
             )
@@ -100,7 +100,7 @@ export function SlackIntegration({ input, variant, setConfig }: InputConfigSelec
         if (!isComplete) {
             return (
                 <div className="flex items-center gap-1 text-xs text-muted-foreground min-w-0 max-w-full">
-                    <AlertTriangleIcon className="size-3 text-yellow-500" />
+                    <AlertTriangleIcon className="size-3 text-warning" />
                     <span className="truncate">Connect Slack</span>
                 </div>
             )

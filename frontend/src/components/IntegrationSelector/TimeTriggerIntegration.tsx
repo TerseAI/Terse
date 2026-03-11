@@ -15,7 +15,7 @@ export function TimeTriggerIntegration({ input, variant, setConfig }: InputConfi
         if (!hasSchedule || !existingConfig) {
             return (
                 <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <AlertTriangleIcon className="size-3 text-yellow-500" />
+                    <AlertTriangleIcon className="size-3 text-warning" />
                     Configure schedule
                 </div>
             )

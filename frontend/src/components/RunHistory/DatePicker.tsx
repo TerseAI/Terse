@@ -22,7 +22,7 @@ function DateRangePicker({ dateRange, onDateRangeChange, open, onOpenChange }: D
             <PopoverTrigger asChild>
                 <Button
                     variant="outline"
-                    className={`justify-start text-left font-normal ${dateRange.from || dateRange.to ? "border-green-600 dark:border-green-400 text-green-600 dark:text-green-400" : ""}`}
+                    className={`justify-start text-left font-normal ${dateRange.from || dateRange.to ? "border-success text-success" : ""}`}
                 >
                     <CalendarIcon className="w-4 h-4" />
                     {dateRange.from

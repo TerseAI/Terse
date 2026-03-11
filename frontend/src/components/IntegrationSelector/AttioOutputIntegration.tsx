@@ -48,7 +48,7 @@ export function AttioOutputIntegration({ input, variant, setConfig }: InputConfi
         if (variant === "card") {
             return (
                 <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <AlertTriangleIcon className="size-3 text-yellow-500" />
+                    <AlertTriangleIcon className="size-3 text-warning" />
                     Connect Attio
                 </div>
             )
@@ -87,7 +87,7 @@ export function AttioOutputIntegration({ input, variant, setConfig }: InputConfi
             if (!hasConfig) {
                 return (
                     <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <AlertTriangleIcon className="size-3 text-yellow-500" />
+                        <AlertTriangleIcon className="size-3 text-warning" />
                         Configure
                     </div>
                 )
@@ -95,7 +95,7 @@ export function AttioOutputIntegration({ input, variant, setConfig }: InputConfi
             if (needsObject) {
                 return (
                     <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <AlertTriangleIcon className="size-3 text-yellow-500" />
+                        <AlertTriangleIcon className="size-3 text-warning" />
                         Select object
                     </div>
                 )

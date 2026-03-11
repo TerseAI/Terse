@@ -69,7 +69,7 @@ export function JiraIntegration({ input, variant, setConfig }: InputConfigSelect
         if (variant === "card") {
             return (
                 <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <AlertTriangleIcon className="size-3 text-yellow-500" />
+                    <AlertTriangleIcon className="size-3 text-warning" />
                     Connect Jira
                 </div>
             )
@@ -103,7 +103,7 @@ export function JiraIntegration({ input, variant, setConfig }: InputConfigSelect
         if (!isComplete) {
             return (
                 <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <AlertTriangleIcon className="size-3 text-yellow-500" />
+                    <AlertTriangleIcon className="size-3 text-warning" />
                     Select site
                 </div>
             )

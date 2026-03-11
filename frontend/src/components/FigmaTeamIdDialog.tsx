@@ -136,7 +136,7 @@ export function FigmaConfigDialog({ open, onClose, onSave, currentFileKey, curre
                     {/* Team URL Input */}
                     <div className="flex flex-col gap-2">
                         <Label htmlFor="team-url" className="text-sm font-medium">
-                            Figma Team URL <span className="text-red-500">*</span>
+                            Figma Team URL <span className="text-danger">*</span>
                         </Label>
                         <Input
                             id="team-url"
@@ -144,13 +144,13 @@ export function FigmaConfigDialog({ open, onClose, onSave, currentFileKey, curre
                             placeholder="Team ID or URL (e.g., 1557541588002670308 or https://www.figma.com/files/team/...)"
                             value={teamUrl}
                             onChange={e => handleTeamUrlChange(e.target.value)}
-                            className={teamError ? "border-red-500" : ""}
+                            className={teamError ? "border-danger" : ""}
                         />
-                        {teamError && <p className="text-sm text-red-600">{teamError}</p>}
+                        {teamError && <p className="text-sm text-danger">{teamError}</p>}
                         {extractedTeamId && (
-                            <div className="flex items-center gap-2 p-2 rounded-lg bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800">
-                                <Check className="w-4 h-4 text-green-600 dark:text-green-400 shrink-0" />
-                                <span className="text-sm text-green-700 dark:text-green-300">
+                            <div className="flex items-center gap-2 p-2 rounded-lg bg-success/10 border border-success/30">
+                                <Check className="w-4 h-4 text-success shrink-0" />
+                                <span className="text-sm text-success">
                                     Team ID extracted: <span className="font-mono font-semibold">{extractedTeamId}</span>
                                 </span>
                             </div>
@@ -180,7 +180,7 @@ export function FigmaConfigDialog({ open, onClose, onSave, currentFileKey, curre
                     {/* File URL Input */}
                     <div className="flex flex-col gap-2">
                         <Label htmlFor="file-url" className="text-sm font-medium">
-                            Figma File URL <span className="text-red-500">*</span>
+                            Figma File URL <span className="text-danger">*</span>
                         </Label>
                         <Input
                             id="file-url"
@@ -188,14 +188,14 @@ export function FigmaConfigDialog({ open, onClose, onSave, currentFileKey, curre
                             placeholder="File ID or URL (e.g., abc123def456... or https://www.figma.com/design/...)"
                             value={fileUrl}
                             onChange={e => handleFileUrlChange(e.target.value)}
-                            className={fileError ? "border-red-500" : ""}
+                            className={fileError ? "border-danger" : ""}
                             disabled={!extractedTeamId}
                         />
-                        {fileError && <p className="text-sm text-red-600">{fileError}</p>}
+                        {fileError && <p className="text-sm text-danger">{fileError}</p>}
                         {extractedFileKey && (
-                            <div className="flex items-center gap-2 p-2 rounded-lg bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800">
-                                <Check className="w-4 h-4 text-green-600 dark:text-green-400 shrink-0" />
-                                <span className="text-sm text-green-700 dark:text-green-300">
+                            <div className="flex items-center gap-2 p-2 rounded-lg bg-success/10 border border-success/30">
+                                <Check className="w-4 h-4 text-success shrink-0" />
+                                <span className="text-sm text-success">
                                     File ID extracted: <span className="font-mono font-semibold">{extractedFileKey}</span>
                                 </span>
                             </div>
