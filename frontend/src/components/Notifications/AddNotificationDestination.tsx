@@ -29,7 +29,7 @@ export function AddNotificationDestination({ trigger, externalOpen, onExternalOp
     const defaultTrigger = (
         <Button variant="outline">
             <PlusIcon />
-            Edit Destination
+            Add Destination
         </Button>
     )
 
@@ -38,8 +38,8 @@ export function AddNotificationDestination({ trigger, externalOpen, onExternalOp
             <DialogTrigger asChild>{trigger ?? defaultTrigger}</DialogTrigger>
             <DialogContent className="max-w-lg flex flex-col">
                 <DialogHeader>
-                    <DialogTitle className="text-xl font-bold">Edit Notification Destination</DialogTitle>
-                    <DialogDescription>Choose where to deliver notifications for your agents</DialogDescription>
+                    <DialogTitle className="text-xl font-bold">Add Notification Destination</DialogTitle>
+                    <DialogDescription>Choose where agent notifications should be sent.</DialogDescription>
                 </DialogHeader>
                 <NotificationDestinationForm onSuccess={() => handleOpenChange(false)} onCancel={() => handleOpenChange(false)} />
             </DialogContent>

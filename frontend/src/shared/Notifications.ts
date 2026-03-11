@@ -12,6 +12,12 @@ export interface NotificationSettings {
     weeklyAgentImprovements: boolean
 }
 
+export interface UpdateNotificationSettingsRequest {
+    agentDefaultNotifications: RunHistoryActionType[]
+    weeklyAgentImprovements: boolean
+    applyToAllAgents?: boolean
+}
+
 export enum NotificationDestinationType {
     EMAIL = "email",
     SLACK = "slack"

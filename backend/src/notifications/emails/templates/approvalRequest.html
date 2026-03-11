@@ -160,11 +160,13 @@
         <table role="presentation" cellpadding="0" cellspacing="0" class="wrapper">
             <tr>
                 <td align="center" style="padding-top: 0">
-                    <p style="margin: 0; font-size: 12px; line-height: 1.5; color: #9ca3af">
-                        You can manage or disable these notifications at any time.
-                    </p>
+                    <p style="margin: 0; font-size: 12px; line-height: 1.5; color: #9ca3af">You can manage or disable these notifications at any time.</p>
                     <p style="margin: 6px 0 0; font-size: 12px; line-height: 1.5; color: #9ca3af">
-                        {{#if agentSettingsUrl}}<a href="{{agentSettingsUrl}}" style="color: #6b7280; text-decoration: underline">Agent</a> | {{/if}}<a href="{{notificationSettingsUrl}}" style="color: #6b7280; text-decoration: underline">Notification Settings</a>
+                        {{#if agentSettingsUrl}}<a href="{{agentSettingsUrl}}" style="color: #6b7280; text-decoration: underline">Agent Settings</a> | {{/if}}<a
+                            href="{{notificationSettingsUrl}}"
+                            style="color: #6b7280; text-decoration: underline"
+                            >Notification Settings</a
+                        >
                     </p>
                 </td>
             </tr>

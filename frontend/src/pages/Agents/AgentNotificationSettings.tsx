@@ -56,7 +56,7 @@ function AgentNotificationSettings({ settings, agentCreator, onChange }: AgentNo
                 </Link>
             </div>
             <div className="flex flex-col gap-2">
-                <p className="text-sm text-muted-foreground">Choose which agent actions trigger a notification:</p>
+                <p className="text-sm text-muted-foreground">Notify me about</p>
                 <MultiSelect
                     options={NOTIFICATION_ACTION_OPTIONS.map(option => ({
                         id: option.value,
@@ -64,10 +64,10 @@ function AgentNotificationSettings({ settings, agentCreator, onChange }: AgentNo
                     }))}
                     selectedIds={settings.actionTypes}
                     onSelect={ids => handleSelectEventTypes(ids as RunHistoryActionType[])}
-                    placeholder="Select actions to be notified about..."
-                    searchPlaceholder="Search event types..."
-                    emptyMessage="No event types found."
-                    displayText={count => (count > 0 ? `${count} event type${count !== 1 ? "s" : ""} selected` : "Select actions to be notified about...")}
+                    placeholder="Select event types..."
+                    searchPlaceholder="Search types..."
+                    emptyMessage="No types found."
+                    displayText={count => (count > 0 ? `${count} selected` : "Select event types...")}
                     renderItem={option => {
                         const eventOption = NOTIFICATION_ACTION_OPTIONS.find(opt => opt.value === option.id)
                         return (

@@ -20,7 +20,7 @@ import {
     SlackIntegration,
     WorkOSIntegration
 } from "../shared/Integrations"
-import { CreateNotificationDestinationRequest, NotificationDestination, NotificationSettings } from "../shared/Notifications"
+import { CreateNotificationDestinationRequest, NotificationDestination, NotificationSettings, UpdateNotificationSettingsRequest } from "../shared/Notifications"
 import type { RunHistoryActionType, RunHistoryActionWithId, RunHistoryModelEvent } from "../shared/RunHistoryTypes"
 import { GetAllRunHistoryResponse, GetRunHistoryParams, GetRunHistoryResponse, RunHistoryStatus } from "../shared/RunHistoryTypes"
 import { GetSentNotificationsResponse } from "../shared/SentNotifications"
@@ -502,7 +502,7 @@ interface BackendService {
     /**
      * Updates user-level notification topic settings
      */
-    updateNotificationSettings(agentDefaultNotifications: RunHistoryActionType[], weeklyAgentImprovements: boolean): Promise<void>
+    updateNotificationSettings(agentDefaultNotifications: RunHistoryActionType[], weeklyAgentImprovements: boolean, applyToAllAgents?: boolean): Promise<void>
 }
 
 export const BackendProvider: BackendService = {
@@ -1504,9 +1504,14 @@ export const BackendProvider: BackendService = {
             })
     },
 
-    updateNotificationSettings: (agentDefaultNotifications: RunHistoryActionType[], weeklyAgentImprovements: boolean) => {
+    updateNotificationSettings: (agentDefaultNotifications: RunHistoryActionType[], weeklyAgentImprovements: boolean, applyToAllAgents?: boolean) => {
+        const payload: UpdateNotificationSettingsRequest = {
+            agentDefaultNotifications,
+            weeklyAgentImprovements,
+            ...(applyToAllAgents !== undefined && { applyToAllAgents })
+        }
         return axios
-            .post(`${backendBaseUrl}${ApiRoutes.NOTIFICATION_SETTINGS}`, { agentDefaultNotifications, weeklyAgentImprovements }, { withCredentials: true })
+            .post(`${backendBaseUrl}${ApiRoutes.NOTIFICATION_SETTINGS}`, payload, { withCredentials: true })
             .then(() => undefined)
             .catch(error => {
                 console.error("Error updating notification settings:", error)
