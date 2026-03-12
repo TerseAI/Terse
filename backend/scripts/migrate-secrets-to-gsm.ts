@@ -2,9 +2,13 @@ import "dotenv/config"
 
 import { db } from "../src/prismaClient"
 import { isGsmAvailable, storeSecret, SecretTable, SecretField } from "../src/services/SecretService"
+import { IntegrationType } from "../src/shared/Integrations"
 
 type SecretTableConfig = {
-    table: SecretTable
+    /** The Prisma model name (matches the DB table) used to read rows. */
+    prismaModel: string
+    /** The IntegrationType used as the secret key prefix in GSM. */
+    secretTable: SecretTable
     fields: SecretField[]
 }
 
@@ -21,19 +25,19 @@ type MigrationStats = {
 }
 
 const SECRET_TABLES: SecretTableConfig[] = [
-    { table: SecretTable.GithubAppTokens, fields: [SecretField.AccessToken, SecretField.RefreshToken] },
-    { table: SecretTable.LinearIntegrations, fields: [SecretField.AccessToken, SecretField.RefreshToken] },
-    { table: SecretTable.UserSlackIntegrations, fields: [SecretField.AuthedUserAccessToken] },
-    { table: SecretTable.SlackIntegrations, fields: [SecretField.AccessToken] },
-    { table: SecretTable.AtlassianIntegrations, fields: [SecretField.AccessToken, SecretField.RefreshToken, SecretField.WebhookSecret] },
-    { table: SecretTable.GmailIntegrations, fields: [SecretField.AccessToken, SecretField.RefreshToken] },
-    { table: SecretTable.NotionIntegrations, fields: [SecretField.IntegrationToken] },
-    { table: SecretTable.FigmaIntegrations, fields: [SecretField.AccessToken, SecretField.RefreshToken] },
-    { table: SecretTable.PosthogIntegrations, fields: [SecretField.ApiKey] },
-    { table: SecretTable.LaunchDarklyIntegrations, fields: [SecretField.ApiKey] },
-    { table: SecretTable.DatadogIntegrations, fields: [SecretField.ApiKey, SecretField.AppKey] },
-    { table: SecretTable.WorkOSIntegrations, fields: [SecretField.ApiKey, SecretField.WebhookSecret] },
-    { table: SecretTable.AttioIntegrations, fields: [SecretField.AccessToken] }
+    { prismaModel: "github_app_tokens", secretTable: IntegrationType.GITHUB, fields: [SecretField.AccessToken, SecretField.RefreshToken] },
+    { prismaModel: "linear_integrations", secretTable: IntegrationType.LINEAR, fields: [SecretField.AccessToken, SecretField.RefreshToken] },
+    { prismaModel: "user_slack_integrations", secretTable: IntegrationType.SLACK, fields: [SecretField.AuthedUserAccessToken] },
+    { prismaModel: "slack_integrations", secretTable: IntegrationType.SLACK, fields: [SecretField.AccessToken] },
+    { prismaModel: "atlassian_integrations", secretTable: IntegrationType.ATLASSIAN, fields: [SecretField.AccessToken, SecretField.RefreshToken, SecretField.WebhookSecret] },
+    { prismaModel: "gmail_integrations", secretTable: IntegrationType.GMAIL, fields: [SecretField.AccessToken, SecretField.RefreshToken] },
+    { prismaModel: "notion_integrations", secretTable: IntegrationType.NOTION, fields: [SecretField.IntegrationToken] },
+    { prismaModel: "figma_integrations", secretTable: IntegrationType.FIGMA, fields: [SecretField.AccessToken, SecretField.RefreshToken] },
+    { prismaModel: "posthog_integrations", secretTable: IntegrationType.POSTHOG, fields: [SecretField.ApiKey] },
+    { prismaModel: "launchdarkly_integrations", secretTable: IntegrationType.LAUNCHDARKLY, fields: [SecretField.ApiKey] },
+    { prismaModel: "datadog_integrations", secretTable: IntegrationType.DATADOG, fields: [SecretField.ApiKey, SecretField.AppKey] },
+    { prismaModel: "workos_integrations", secretTable: IntegrationType.WORKOS, fields: [SecretField.ApiKey, SecretField.WebhookSecret] },
+    { prismaModel: "attio_integrations", secretTable: IntegrationType.ATTIO, fields: [SecretField.AccessToken] }
     // Intentionally excluded: figma_webhooks.passcode
 ]
 

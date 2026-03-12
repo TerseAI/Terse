@@ -1,22 +1,17 @@
 import { gcp } from "../config/settings"
 import logger from "../logger"
+import { IntegrationType } from "../shared/Integrations"
 import { SecretManagerClient, getSecretManagerClient, isSecretManagerNotFoundError } from "../utility/secretManagerClient"
 
-export enum SecretTable {
-    SlackIntegrations = "slack_integrations",
-    UserSlackIntegrations = "user_slack_integrations",
-    NotionIntegrations = "notion_integrations",
-    LaunchDarklyIntegrations = "launchdarkly_integrations",
-    LinearIntegrations = "linear_integrations",
-    GmailIntegrations = "gmail_integrations",
-    AtlassianIntegrations = "atlassian_integrations",
-    FigmaIntegrations = "figma_integrations",
-    WorkOSIntegrations = "workos_integrations",
-    PosthogIntegrations = "posthog_integrations",
-    DatadogIntegrations = "datadog_integrations",
-    GithubAppTokens = "github_app_tokens",
-    AttioIntegrations = "attio_integrations"
-}
+/** System integrations that do not store secrets in GCP Secret Manager. */
+type SystemIntegration = IntegrationType.TERSE | IntegrationType.CRON_JOB
+
+/**
+ * Integration types that store secrets. Derived from IntegrationType via Exclude,
+ * so adding a new IntegrationType automatically includes it here unless it is
+ * added to SystemIntegration.
+ */
+export type SecretTable = Exclude<IntegrationType, SystemIntegration>
 
 export enum SecretField {
     AccessToken = "access_token",
