@@ -12,7 +12,7 @@ import { ToolName } from "../../../tools/ToolNames"
 import { createNeedsApprovalFunction } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
 
-import { buildEmailContentWithAttachments, downloadImageAttachments, encodeSubjectHeader } from "./mime"
+import { buildEmailContentWithAttachments, downloadImageAttachments, encodeSubjectHeader, sanitizeCustomHeaders } from "./mime"
 
 /**
  * Tool for sending emails or replying to email threads via Gmail.
@@ -101,9 +101,12 @@ export const gmailSendEmailTool = tool({
                 headers.push(`Bcc: ${bcc}`)
             }
 
-            // Add custom headers (e.g., List-Unsubscribe)
+            // Add custom headers (e.g., List-Unsubscribe).
+            // sanitizeCustomHeaders drops any keys that would override security-critical
+            // headers (To, From, Cc, Bcc, Subject, …) and rejects values containing
+            // CRLF characters to prevent header injection attacks.
             if (custom_headers) {
-                for (const [key, value] of Object.entries(custom_headers)) {
+                for (const [key, value] of Object.entries(sanitizeCustomHeaders(custom_headers))) {
                     headers.push(`${key}: ${value}`)
                 }
             }
