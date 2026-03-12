@@ -121,13 +121,13 @@ function ResizeHandle({
 
     useEffect(() => {
         return () => stopDragging()
-    }, [stopDragging])
+    }, [])
 
     useEffect(() => {
         if (disabled) {
             stopDragging()
         }
-    }, [disabled, stopDragging])
+    }, [disabled])
 
     return (
         <div

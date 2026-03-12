@@ -7,13 +7,34 @@ import { initializeSlackWebClient } from "../../../integrations/SlackClient"
 import logger from "../../../logger"
 import { db } from "../../../prismaClient"
 import { IntegrationType } from "../../../shared/Integrations"
-import type { ToolOutputByName } from "../../../shared/types"
 import { ToolName } from "../../../tools/ToolNames"
-import { toolOutput } from "../../../tools/toolOutput"
 import { formatError } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
 
-export const slackListChannelsTool = tool<z.ZodObject<any>, SessionWithTracking<Session>, ToolOutputByName["slack_list_channels"]>({
+const SLACK_TYPES_MAP: Record<string, string> = {
+    public: "public_channel",
+    private: "private_channel",
+    im: "im",
+    mpim: "mpim",
+    all: "public_channel,private_channel,im,mpim"
+}
+
+function formatChannel(ch: { id?: string; name?: string; user?: string; is_channel?: boolean; is_im?: boolean; is_mpim?: boolean; is_private?: boolean }) {
+    const isPublicChannel = ch.is_channel && !ch.is_private
+    const rawName = ch.name ?? ch.id ?? ""
+    const name = isPublicChannel && rawName && !rawName.startsWith("#") ? `#${rawName}` : rawName
+
+    return {
+        id: ch.id,
+        name,
+        isPrivate: ch.is_private ?? false,
+        isIm: ch.is_im ?? false,
+        isMpim: ch.is_mpim ?? false,
+        userId: ch.is_im && ch.user ? ch.user : undefined
+    }
+}
+
+export const slackListChannelsTool = tool({
     name: ToolName.SLACK_LIST_CHANNELS,
     description: `List available Slack channels and conversations (public, private, DMs, multi-person DMs) that the integration can access.
 Use this to discover channel IDs before reading conversation history.
@@ -42,72 +63,70 @@ Supports pagination: if the response includes nextCursor and hasMore, pass nextC
 
         try {
             const userSlackIntegration = await db().user_slack_integrations.findFirst({
-                where: {
-                    id: integrationId,
-                    organization_id: organizationId
-                },
-                include: {
-                    slack_integration: true,
-                    user: true
-                }
+                where: { id: integrationId, organization_id: organizationId },
+                include: { slack_integration: true, user: true }
             })
 
             if (!userSlackIntegration) {
-                throw new Error(`Slack integration not found or access denied: ${integrationId}. Ensure the integration ID is correct and belongs to your account.`)
+                throw new Error(`Slack integration not found or access denied: ${integrationId}`)
             }
 
-            const client = initializeSlackWebClient(userSlackIntegration)
-
-            const excludeArchived = true
-            const typesParam =
-                types === "all" || types === null
-                    ? "public_channel,private_channel,im,mpim"
-                    : types === "im"
-                      ? "im"
-                      : types === "mpim"
-                        ? "mpim"
-                        : types === "private"
-                          ? "private_channel"
-                          : "public_channel"
+            const client = await initializeSlackWebClient(userSlackIntegration)
 
             const result = await client.conversations.list({
+                types: SLACK_TYPES_MAP[types ?? "all"],
+                exclude_archived: true,
                 limit: limit ?? undefined,
-                exclude_archived: excludeArchived,
-                types: typesParam,
                 ...(cursor && { cursor })
             })
 
-            const channels = (result.channels ?? []).map((ch: { id?: string; name?: string; is_channel?: boolean; is_im?: boolean; is_mpim?: boolean; is_private?: boolean }) => {
-                let name = ch.name ?? ch.id ?? ""
-                if (ch.is_channel && !ch.is_private && name && !name.startsWith("#")) {
-                    name = `#${name}`
-                }
-                return {
-                    id: ch.id,
-                    name,
-                    isPrivate: ch.is_private ?? false,
-                    isIm: ch.is_im ?? false,
-                    isMpim: ch.is_mpim ?? false
-                }
-            })
+            const formatted = (result.channels ?? []).map(formatChannel)
 
-            const action = {
-                action: "Listed channels",
-                integration: IntegrationType.SLACK,
-                target: userSlackIntegration.slack_integration.team_name ?? "Slack workspace",
-                details: `Found ${channels.length} conversation(s)`,
-                type: RunHistoryActionType.read
+            // Resolve user IDs to display names for IM channels
+            const imChannels = formatted.filter(ch => ch.isIm && ch.userId)
+            if (imChannels.length > 0) {
+                const userIds = [...new Set(imChannels.map(ch => ch.userId!))]
+                const userNames = new Map<string, string>()
+
+                await Promise.all(
+                    userIds.map(async userId => {
+                        try {
+                            const info = await client.users.info({ user: userId })
+                            const name = info.user?.real_name || info.user?.name
+                            if (name) userNames.set(userId, name)
+                        } catch (e) {
+                            logger.warn("Failed to resolve Slack user name", { userId, error: e })
+                        }
+                    })
+                )
+
+                for (const ch of imChannels) {
+                    const name = userNames.get(ch.userId!)
+                    if (name) {
+                        ch.name = name
+                    }
+                }
             }
 
+            const channels = formatted
             const nextCursor = (result as { response_metadata?: { next_cursor?: string } }).response_metadata?.next_cursor ?? null
-            return toolOutput("slack_list_channels", {
+
+            return {
                 success: true,
                 channels,
                 count: channels.length,
                 nextCursor,
                 hasMore: !!nextCursor,
-                actions: [action]
-            })
+                actions: [
+                    {
+                        action: "Listed channels",
+                        integration: IntegrationType.SLACK,
+                        target: userSlackIntegration.slack_integration.team_name ?? "Slack workspace",
+                        details: `Found ${channels.length} conversation(s)`,
+                        type: RunHistoryActionType.read
+                    }
+                ]
+            }
         } catch (error: unknown) {
             const errorMessage = error instanceof Error ? error.message : String(error)
             logger.error("❌ Error listing Slack channels", { error: errorMessage, integrationId })

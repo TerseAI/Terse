@@ -1,6 +1,7 @@
 import { settings, urls } from "../config/settings"
 import logger from "../logger"
 import { db } from "../prismaClient"
+import { SecretField, deleteSecretsBestEffort, getSecret, storeSecret } from "../services/SecretService"
 import { ApiRoutes } from "../shared/ApiRoutes"
 import { AtlassianIntegration, IntegrationType } from "../shared/Integrations"
 import type { ConfluencePage, User } from "../shared/types"
@@ -44,12 +45,15 @@ export class AtlassianClient {
                 return null
             }
 
+            const currentAccessToken = await getSecret(IntegrationType.ATLASSIAN, integration.id, SecretField.AccessToken)
+            const refreshToken = await getSecret(IntegrationType.ATLASSIAN, integration.id, SecretField.RefreshToken)
+
             const now = new Date()
             // Check if token is expired or will expire within the refresh threshold
             if (integration.token_expiry && integration.token_expiry <= new Date(now.getTime() + OAUTH_TOKEN_REFRESH_THRESHOLD_MS)) {
                 logger.info(`Atlassian access token expiring soon for integration ${integrationId}, refreshing...`, { integrationId })
 
-                if (!integration.refresh_token || integration.refresh_token === "") {
+                if (!refreshToken) {
                     logger.error(`No refresh token available for Atlassian integration ${integrationId}`, { integrationId })
                     return null
                 }
@@ -64,7 +68,7 @@ export class AtlassianClient {
                         grant_type: "refresh_token",
                         client_id: settings.atlassian.clientId,
                         client_secret: settings.atlassian.clientSecret,
-                        refresh_token: integration.refresh_token
+                        refresh_token: refreshToken
                     })
                 })
 
@@ -72,7 +76,7 @@ export class AtlassianClient {
                     const errorText = await tokenResponse.text()
                     logger.error(`Atlassian token refresh failed for integration ${integrationId}`, { error: errorText, integrationId })
                     // Return existing token as fallback - it might still work
-                    return integration.access_token
+                    return currentAccessToken
                 }
 
                 const tokenData = await tokenResponse.json()
@@ -81,18 +85,20 @@ export class AtlassianClient {
                 if (!access_token) {
                     logger.error(`No access token received from Atlassian refresh for integration ${integrationId}`, { integrationId })
                     // Return existing token as fallback
-                    return integration.access_token
+                    return currentAccessToken
                 }
 
                 // Calculate token expiry
                 const tokenExpiry = new Date(Date.now() + (expires_in || 3600) * 1000)
+                await storeSecret(IntegrationType.ATLASSIAN, integration.id, SecretField.AccessToken, access_token)
+                if (refresh_token) {
+                    await storeSecret(IntegrationType.ATLASSIAN, integration.id, SecretField.RefreshToken, refresh_token)
+                }
 
                 // Update the database with new tokens
                 await db().atlassian_integrations.update({
                     where: { id: integration.id },
                     data: {
-                        access_token: access_token,
-                        refresh_token: refresh_token || integration.refresh_token, // Preserve existing if new one not provided
                         token_expiry: tokenExpiry
                     }
                 })
@@ -102,7 +108,7 @@ export class AtlassianClient {
             }
 
             // Token is still valid
-            return integration.access_token
+            return currentAccessToken
         } catch (error) {
             logger.error(`Error ensuring valid access token for integration ${integrationId}`, {
                 error,
@@ -284,10 +290,16 @@ export class AtlassianClient {
                 }
             }
 
-            // Delete the integration record
+            // DB-first, then best-effort GSM cleanup
             await db().atlassian_integrations.delete({
                 where: { id: integrationId }
             })
+
+            await deleteSecretsBestEffort([
+                { integrationType: IntegrationType.ATLASSIAN, recordId: integrationId, field: SecretField.AccessToken },
+                { integrationType: IntegrationType.ATLASSIAN, recordId: integrationId, field: SecretField.RefreshToken },
+                { integrationType: IntegrationType.ATLASSIAN, recordId: integrationId, field: SecretField.WebhookSecret }
+            ])
 
             logger.info("✅ [JIRA INTEGRATION MANAGER] Deleted Atlassian integration:", { integrationId })
         } catch (error) {

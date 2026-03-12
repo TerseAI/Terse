@@ -1,6 +1,7 @@
 import logger from "../logger"
 import { db } from "../prismaClient"
 import { fetchPosthogProjects } from "../routes/posthog"
+import { SecretField, getSecret, storeSecret } from "../services/SecretService"
 import { IntegrationType, PosthogIntegration, PosthogIntegrationMetadata } from "../shared/Integrations"
 import { PosthogProject } from "../shared/types"
 import { AgentTriggerWithConfigs } from "../types/prisma"
@@ -153,11 +154,12 @@ export class PosthogIntegrationManager implements Integration<PosthogIntegration
             })
 
             if (existing) {
+                await storeSecret(IntegrationType.POSTHOG, existing.id, SecretField.ApiKey, apiKey)
+
                 // Update existing integration
                 await db().posthog_integrations.update({
                     where: { id: existing.id },
                     data: {
-                        api_key: apiKey,
                         user_email: userEmail,
                         org_name: orgName,
                         organization_id: organizationId
@@ -174,11 +176,13 @@ export class PosthogIntegrationManager implements Integration<PosthogIntegration
                     data: {
                         user_id: userId,
                         organization_id: organizationId,
-                        api_key: apiKey,
                         user_email: userEmail,
                         org_name: orgName
                     }
                 })
+
+                await storeSecret(IntegrationType.POSTHOG, integration.id, SecretField.ApiKey, apiKey)
+
                 logger.info("✅ Created Posthog integration", {
                     integrationId: integration.id,
                     userId,
@@ -211,15 +215,19 @@ export class PosthogIntegrationManager implements Integration<PosthogIntegration
 export async function validatePosthogProjectExists(integrationId: string, projectId: string): Promise<void> {
     const integration = await db().posthog_integrations.findUnique({
         where: { id: integrationId },
-        select: { api_key: true }
+        select: { id: true }
     })
-    if (!integration?.api_key) {
+    if (!integration) {
+        throw new Error(`Posthog integration ${integrationId} not found or missing API key`)
+    }
+    const apiKey = await getSecret(IntegrationType.POSTHOG, integrationId, SecretField.ApiKey)
+    if (!apiKey) {
         throw new Error(`Posthog integration ${integrationId} not found or missing API key`)
     }
     const response = await fetch(`https://us.posthog.com/api/projects/${projectId}/`, {
         method: "GET",
         headers: {
-            Authorization: `Bearer ${integration.api_key}`,
+            Authorization: `Bearer ${apiKey}`,
             "Content-Type": "application/json"
         }
     })

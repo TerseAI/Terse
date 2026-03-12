@@ -86,8 +86,6 @@ model github_app_tokens {
   user_id         String
   organization_id String
   github_username String
-  access_token    String
-  refresh_token   String?
   token_expiry    DateTime?
   created_at      DateTime  @default(now())
   updated_at      DateTime  @updatedAt
@@ -105,8 +103,6 @@ model linear_integrations {
   linear_user_id  String
   workspace_id    String
   workspace_name  String
-  access_token    String
-  refresh_token   String
   token_expiry    DateTime
   created_at      DateTime @default(now())
   updated_at      DateTime @updatedAt
@@ -120,15 +116,14 @@ model linear_integrations {
 }
 
 model user_slack_integrations {
-  id                       String   @id @default(cuid())
-  user_id                  String
-  organization_id          String
-  slack_team_id            String
-  authed_user_id           String
-  authed_user_access_token String?
-  is_bot_user              Boolean  @default(true) // true for bot token, false for user token
-  created_at               DateTime @default(now())
-  updated_at               DateTime @updatedAt
+  id              String   @id @default(cuid())
+  user_id         String
+  organization_id String
+  slack_team_id   String
+  authed_user_id  String
+  is_bot_user     Boolean  @default(true) // true for bot token, false for user token
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
 
   user                           users                            @relation(fields: [user_id], references: [id], onDelete: Cascade)
   slack_integration              slack_integrations               @relation(fields: [slack_team_id], references: [team_id], onDelete: Cascade)
@@ -141,7 +136,6 @@ model user_slack_integrations {
 model slack_integrations {
   id              String   @id @default(cuid())
   app_id          String
-  access_token    String
   bot_user_id     String
   team_id         String   @unique
   team_name       String
@@ -165,9 +159,6 @@ model atlassian_integrations {
   project_key     String? // Connection-level default project key. Can be overridden per automation via automation_jira_configs.project_key
   project_name    String? // Connection-level default project name (display only)
   webhook_id      String? // Webhook ID for Jira events
-  webhook_secret  String? // Webhook secret for verifying webhook payloads
-  access_token    String // OAuth access token
-  refresh_token   String // OAuth refresh token
   token_expiry    DateTime // Token expiration time
   created_at      DateTime @default(now())
   updated_at      DateTime @updatedAt
@@ -187,8 +178,6 @@ model gmail_integrations {
   email                       String
   history_id                  String
   watch_expiration            DateTime
-  access_token                String
-  refresh_token               String
   token_expiry                DateTime
   is_active                   Boolean   @default(true)
   last_processed_message_date DateTime? // Track last processed email date to avoid reprocessing
@@ -233,14 +222,13 @@ model processed_slack_events {
 }
 
 model notion_integrations {
-  id                String   @id @default(cuid())
-  user_id           String
-  organization_id   String
-  workspace_id      String?
-  workspace_name    String?
-  integration_token String
-  created_at        DateTime @default(now())
-  updated_at        DateTime @updatedAt
+  id              String   @id @default(cuid())
+  user_id         String
+  organization_id String
+  workspace_id    String?
+  workspace_name  String?
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
 
   user users @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
@@ -255,8 +243,6 @@ model figma_integrations {
   organization_id String
   handle          String
   figma_user_id   String
-  access_token    String
-  refresh_token   String
   token_expiry    DateTime
   created_at      DateTime @default(now())
   updated_at      DateTime @updatedAt
@@ -339,7 +325,6 @@ model posthog_integrations {
   id              String   @id @default(cuid())
   user_id         String
   organization_id String
-  api_key         String
   user_email      String?
   org_name        String?
   created_at      DateTime @default(now())
@@ -356,7 +341,6 @@ model launchdarkly_integrations {
   id              String   @id @default(cuid())
   user_id         String
   organization_id String
-  api_key         String
   user_email      String?
   token_name      String?
   created_at      DateTime @default(now())
@@ -372,8 +356,6 @@ model datadog_integrations {
   id              String   @id @default(cuid())
   user_id         String
   organization_id String
-  api_key         String
-  app_key         String
   region          String
   created_at      DateTime @default(now())
   updated_at      DateTime @updatedAt
@@ -389,8 +371,6 @@ model workos_integrations {
   id              String   @id @default(cuid())
   user_id         String
   organization_id String
-  api_key         String
-  webhook_secret  String?
   created_at      DateTime @default(now())
   updated_at      DateTime @updatedAt
 
@@ -404,7 +384,6 @@ model attio_integrations {
   id              String   @id @default(cuid())
   user_id         String
   organization_id String
-  access_token    String
   created_at      DateTime @default(now())
   updated_at      DateTime @updatedAt
 

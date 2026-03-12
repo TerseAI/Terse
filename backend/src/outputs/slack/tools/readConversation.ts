@@ -52,7 +52,7 @@ Supports pagination: if the response includes nextCursor and hasMore, pass nextC
                 throw new Error(`Slack integration not found or access denied: ${integrationId}. Ensure the integration ID is correct and belongs to your account.`)
             }
 
-            const client = initializeSlackWebClient(userSlackIntegration)
+            const client = await initializeSlackWebClient(userSlackIntegration)
             const params = {
                 channel: channelId,
                 limit: limit ?? undefined,

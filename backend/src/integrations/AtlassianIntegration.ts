@@ -8,6 +8,7 @@ import logger, { runWithUserContext } from "../logger"
 import { db } from "../prismaClient"
 import { Identifiable } from "../rag/Hydrator"
 import { StoredFile } from "../services/FileStorageService"
+import { SecretField, storeSecret } from "../services/SecretService"
 import { ConfigInstance, ConfigType, JiraConfig as JiraConfigClass, JiraEventType } from "../shared/Configs"
 import { FrontendRoutes } from "../shared/FrontendRoutes"
 import { AdditionalStateParams, AtlassianIntegration, AtlassianIntegrationMetadata, InstallationOptionsFor, IntegrationType } from "../shared/Integrations"
@@ -276,6 +277,7 @@ export class AtlassianIntegrationManager
 
             let integrationId: string
             if (!existing) {
+                const refreshTokenValue = refreshToken || ""
                 const newIntegration = await db().atlassian_integrations.create({
                     data: {
                         user_id: decoded.userId,
@@ -285,30 +287,41 @@ export class AtlassianIntegrationManager
                         cloud_id: cloudId,
                         site_name: siteName,
                         webhook_id: webhookId,
-                        webhook_secret: webhookSecret,
-                        access_token: access_token,
-                        refresh_token: refreshToken || "",
                         token_expiry: tokenExpiry
                     }
                 })
+
+                await storeSecret(IntegrationType.ATLASSIAN, newIntegration.id, SecretField.AccessToken, access_token)
+                if (refreshTokenValue) {
+                    await storeSecret(IntegrationType.ATLASSIAN, newIntegration.id, SecretField.RefreshToken, refreshTokenValue)
+                }
+                if (webhookSecret) {
+                    await storeSecret(IntegrationType.ATLASSIAN, newIntegration.id, SecretField.WebhookSecret, webhookSecret)
+                }
+
                 integrationId = newIntegration.id
                 logger.info("✅ Created Atlassian OAuth connection:", {
                     siteName,
                     webhookId: webhookId ? "with webhook" : "no webhook"
                 })
             } else {
+                await storeSecret(IntegrationType.ATLASSIAN, existing.id, SecretField.AccessToken, access_token)
+                if (refreshToken) {
+                    await storeSecret(IntegrationType.ATLASSIAN, existing.id, SecretField.RefreshToken, refreshToken)
+                }
+                if (webhookSecret) {
+                    await storeSecret(IntegrationType.ATLASSIAN, existing.id, SecretField.WebhookSecret, webhookSecret)
+                }
+
                 // Update existing connection with new token (in case it was revoked and re-authorized)
                 await db().atlassian_integrations.update({
                     where: { id: existing.id },
                     data: {
                         organization_id: decoded.organizationId,
                         cloud_id: cloudId, // Update cloud_id in case it changed
-                        access_token: access_token,
-                        refresh_token: refreshToken || existing.refresh_token, // Preserve existing refresh token if new one not provided
                         token_expiry: tokenExpiry,
                         jira_user_email: jiraUserEmail || existing.jira_user_email,
-                        webhook_id: webhookId || existing.webhook_id, // Update webhook if created, otherwise keep existing
-                        webhook_secret: webhookSecret || existing.webhook_secret
+                        webhook_id: webhookId || existing.webhook_id // Update webhook if created, otherwise keep existing
                     }
                 })
                 integrationId = existing.id
@@ -390,7 +403,7 @@ export class AtlassianIntegrationManager
                     let enrichedEvent = event
                     try {
                         // If this is an issue event, we could fetch additional details
-                        if (event.issue?.id && integration.cloud_id && integration.access_token) {
+                        if (event.issue?.id && integration.cloud_id) {
                             // For now, we'll use the event as-is since it already contains rich information
                             // Future: Could fetch additional context using OAuth token
                             logger.info(`📊 [JIRA INTEGRATION MANAGER] Using webhook payload for issue ${event.issue.key}`)
@@ -512,13 +525,13 @@ export class AtlassianIntegrationManager
 
             // Create the webhook
             const webhook = await this.createJiraWebhook(integration.cloud_id, accessToken, accountId)
+            await storeSecret(IntegrationType.ATLASSIAN, integrationId, SecretField.WebhookSecret, webhook.webhookSecret)
 
             // Update the integration with the webhook ID
             await db().atlassian_integrations.update({
                 where: { id: integrationId },
                 data: {
-                    webhook_id: webhook.webhookId,
-                    webhook_secret: webhook.webhookSecret
+                    webhook_id: webhook.webhookId
                 }
             })
 
@@ -580,8 +593,7 @@ export class AtlassianIntegrationManager
                 await db().atlassian_integrations.update({
                     where: { id: integrationId },
                     data: {
-                        webhook_id: null,
-                        webhook_secret: null
+                        webhook_id: null
                     }
                 })
                 return
@@ -595,8 +607,7 @@ export class AtlassianIntegrationManager
                 await db().atlassian_integrations.update({
                     where: { id: integrationId },
                     data: {
-                        webhook_id: null,
-                        webhook_secret: null
+                        webhook_id: null
                     }
                 })
                 return
@@ -613,8 +624,7 @@ export class AtlassianIntegrationManager
             await db().atlassian_integrations.update({
                 where: { id: integrationId },
                 data: {
-                    webhook_id: null,
-                    webhook_secret: null
+                    webhook_id: null
                 }
             })
 
@@ -640,7 +650,7 @@ export class AtlassianIntegrationManager
         const atlassianIntegration = await db().atlassian_integrations.findUnique({
             where: { id: integrationId, organization_id: organizationId }
         })
-        if (!atlassianIntegration?.cloud_id || !atlassianIntegration.access_token) {
+        if (!atlassianIntegration?.cloud_id) {
             throw new Error(`Atlassian integration ${integrationId} not found or missing credentials`)
         }
 

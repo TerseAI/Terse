@@ -1,13 +1,34 @@
 import { LogLevel, WebClient } from "@slack/web-api"
 
-import { UserSlackIntegrationWithUser } from "../types/prisma"
+import { SecretField, getSecret } from "../services/SecretService"
+import { IntegrationType } from "../shared/Integrations"
+
+type SlackTokenSource = {
+    id: string
+    slack_integration: {
+        id: string
+    }
+}
 
 /**
  * Initializes a Slack WebClient for a user's integration.
  * This is in a separate file to avoid circular dependencies with SlackIntegration.ts
  */
-export function initializeSlackWebClient(integration: UserSlackIntegrationWithUser): WebClient {
-    const token = integration.authed_user_access_token || integration.slack_integration.access_token
+export async function resolveSlackAccessToken(integration: SlackTokenSource): Promise<string | null> {
+    const userToken = await getSecret(IntegrationType.SLACK, integration.id, SecretField.AuthedUserAccessToken)
+    if (userToken) {
+        return userToken
+    }
+
+    return await getSecret(IntegrationType.SLACK, integration.slack_integration.id, SecretField.AccessToken)
+}
+
+export async function initializeSlackWebClient(integration: SlackTokenSource): Promise<WebClient> {
+    const token = await resolveSlackAccessToken(integration)
+    if (!token) {
+        throw new Error(`Slack token not found for integration ${integration.id}`)
+    }
+
     return new WebClient(token, {
         logLevel: LogLevel.INFO
     })
