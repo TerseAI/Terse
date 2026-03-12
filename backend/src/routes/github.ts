@@ -6,7 +6,8 @@ import logger from "../logger"
 import { db } from "../prismaClient"
 import { GithubAppInstallationDeletedRequest, GithubAppInstallationRepository, GithubAppUnifiedEventRequest } from "../routes/GithubTypes"
 import { emitCacheInvalidationWithKey } from "../services/CacheInvalidationService"
-import { SecretField, SecretTable, getSecret } from "../services/SecretService"
+import { SecretField, getSecret } from "../services/SecretService"
+import { IntegrationType } from "../shared/Integrations"
 import { GetGithubRepositoriesForIntegrationResponse, GithubAppInstallationCallbackRequest, Repository, User as RuntimeUser } from "../shared/types"
 import { GithubRepository } from "../types/prisma"
 import { getUserForOrg } from "../utility/workos"
@@ -186,7 +187,7 @@ export async function fetchGithubRepositoriesForIntegration(organizationId: stri
     let tokenWithAccess: string | null = null
 
     for (const token of orgTokens) {
-        const accessToken = await getSecret(SecretTable.GithubAppTokens, token.id, SecretField.AccessToken)
+        const accessToken = await getSecret(IntegrationType.GITHUB, token.id, SecretField.AccessToken)
         if (!accessToken) {
             continue
         }
@@ -365,7 +366,7 @@ export async function resolveUsersForGithubInstallation(installationId: number):
         // for each github App user, get their installations they have access to. Return a Map<user_id, installations>
         const installationResults = await Promise.all(
             githubAppUsers.map(async user => {
-                const accessToken = await getSecret(SecretTable.GithubAppTokens, user.id, SecretField.AccessToken)
+                const accessToken = await getSecret(IntegrationType.GITHUB, user.id, SecretField.AccessToken)
                 if (!accessToken) {
                     return {
                         userId: user.user_id,

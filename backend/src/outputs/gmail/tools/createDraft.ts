@@ -7,7 +7,7 @@ import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
 import { GmailIntegrationManager, getOAuth2Client } from "../../../integrations/GmailIntegration"
 import logger from "../../../logger"
 import { db } from "../../../prismaClient"
-import { SecretField, SecretTable, getSecret } from "../../../services/SecretService"
+import { SecretField, getSecret } from "../../../services/SecretService"
 import { IntegrationType } from "../../../shared/Integrations"
 import { ToolName } from "../../../tools/ToolNames"
 import { createNeedsApprovalFunction } from "../../../tools/toolUtils"
@@ -74,7 +74,7 @@ export const gmailCreateDraftTool = tool({
                 throw new Error("Failed to get Gmail access token")
             }
 
-            const refreshToken = await getSecret(SecretTable.GmailIntegrations, gmailIntegration.id, SecretField.RefreshToken)
+            const refreshToken = await getSecret(IntegrationType.GMAIL, gmailIntegration.id, SecretField.RefreshToken)
 
             // Set up OAuth2 client
             const oauth2Client = getOAuth2Client()

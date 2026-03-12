@@ -11,7 +11,7 @@ type SystemIntegration = IntegrationType.TERSE | IntegrationType.CRON_JOB
  * so adding a new IntegrationType automatically includes it here unless it is
  * added to SystemIntegration.
  */
-export type SecretTable = Exclude<IntegrationType, SystemIntegration>
+export type SecretIntegrationType = Exclude<IntegrationType, SystemIntegration>
 
 export enum SecretField {
     AccessToken = "access_token",
@@ -66,8 +66,8 @@ export class SecretService {
         return component.replace(/[^a-zA-Z0-9_-]/g, "-")
     }
 
-    private buildSecretId(table: SecretTable, recordId: string, field: SecretField): string {
-        const secretId = `${this.sanitizeSecretIdComponent(table)}-${this.sanitizeSecretIdComponent(recordId)}-${this.sanitizeSecretIdComponent(field)}`
+    private buildSecretId(integrationType: SecretIntegrationType, recordId: string, field: SecretField): string {
+        const secretId = `${this.sanitizeSecretIdComponent(integrationType)}-${this.sanitizeSecretIdComponent(recordId)}-${this.sanitizeSecretIdComponent(field)}`
         return secretId.slice(0, 255)
     }
 
@@ -92,16 +92,16 @@ export class SecretService {
         })
     }
 
-    async storeSecret(table: SecretTable, recordId: string, field: SecretField, value: string): Promise<void> {
+    async storeSecret(integrationType: SecretIntegrationType, recordId: string, field: SecretField, value: string): Promise<void> {
         const client = this.getClient()
-        const secretId = this.buildSecretId(table, recordId, field)
+        const secretId = this.buildSecretId(integrationType, recordId, field)
         await client.createOrUpdateSecret(secretId, value)
         this.cache.delete(secretId)
     }
 
-    async getSecret(table: SecretTable, recordId: string, field: SecretField): Promise<string | null> {
+    async getSecret(integrationType: SecretIntegrationType, recordId: string, field: SecretField): Promise<string | null> {
         const client = this.getClient()
-        const secretId = this.buildSecretId(table, recordId, field)
+        const secretId = this.buildSecretId(integrationType, recordId, field)
 
         const cached = this.getCachedSecret(secretId)
         if (cached !== null) {
@@ -120,8 +120,8 @@ export class SecretService {
         }
     }
 
-    async deleteSecret(table: SecretTable, recordId: string, field: SecretField): Promise<void> {
-        const secretId = this.buildSecretId(table, recordId, field)
+    async deleteSecret(integrationType: SecretIntegrationType, recordId: string, field: SecretField): Promise<void> {
+        const secretId = this.buildSecretId(integrationType, recordId, field)
         this.cache.delete(secretId)
 
         const client = this.getClient()
@@ -138,16 +138,16 @@ export function getSecretService(): SecretService {
     return secretService
 }
 
-export async function storeSecret(table: SecretTable, recordId: string, field: SecretField, value: string): Promise<void> {
-    return getSecretService().storeSecret(table, recordId, field, value)
+export async function storeSecret(integrationType: SecretIntegrationType, recordId: string, field: SecretField, value: string): Promise<void> {
+    return getSecretService().storeSecret(integrationType, recordId, field, value)
 }
 
-export async function getSecret(table: SecretTable, recordId: string, field: SecretField): Promise<string | null> {
-    return getSecretService().getSecret(table, recordId, field)
+export async function getSecret(integrationType: SecretIntegrationType, recordId: string, field: SecretField): Promise<string | null> {
+    return getSecretService().getSecret(integrationType, recordId, field)
 }
 
-export async function deleteSecret(table: SecretTable, recordId: string, field: SecretField): Promise<void> {
-    return getSecretService().deleteSecret(table, recordId, field)
+export async function deleteSecret(integrationType: SecretIntegrationType, recordId: string, field: SecretField): Promise<void> {
+    return getSecretService().deleteSecret(integrationType, recordId, field)
 }
 
 export function isGsmAvailable(): boolean {
@@ -160,15 +160,15 @@ export function isGsmAvailable(): boolean {
  * due to a GSM failure. Orphaned GSM secrets are harmless since the DB record
  * they belonged to no longer exists.
  */
-export async function deleteSecretsBestEffort(entries: Array<{ table: SecretTable; recordId: string; field: SecretField }>): Promise<void> {
+export async function deleteSecretsBestEffort(entries: Array<{ integrationType: SecretIntegrationType; recordId: string; field: SecretField }>): Promise<void> {
     const service = getSecretService()
     await Promise.allSettled(
         entries.map(async entry => {
             try {
-                await service.deleteSecret(entry.table, entry.recordId, entry.field)
+                await service.deleteSecret(entry.integrationType, entry.recordId, entry.field)
             } catch (error) {
                 logger.error("Best-effort GSM secret cleanup failed (orphaned secret)", {
-                    table: entry.table,
+                    integrationType: entry.integrationType,
                     recordId: entry.recordId,
                     field: entry.field,
                     error

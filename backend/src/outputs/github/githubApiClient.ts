@@ -3,7 +3,8 @@ import { DateTime } from "luxon"
 
 import logger from "../../logger"
 import { db } from "../../prismaClient"
-import { SecretField, SecretTable, getSecret } from "../../services/SecretService"
+import { SecretField, getSecret } from "../../services/SecretService"
+import { IntegrationType } from "../../shared/Integrations"
 
 /**
  * Configuration for GitHub KB session
@@ -39,7 +40,7 @@ export async function getGitHubAccessToken(userId: string): Promise<string | nul
         return null
     }
 
-    return await getSecret(SecretTable.GithubAppTokens, githubToken.id, SecretField.AccessToken)
+    return await getSecret(IntegrationType.GITHUB, githubToken.id, SecretField.AccessToken)
 }
 
 /**

@@ -8,7 +8,7 @@ import logger, { runWithUserContext } from "../logger"
 import { db } from "../prismaClient"
 import { Identifiable } from "../rag/Hydrator"
 import { FileCategory, StoredFile } from "../services/FileStorageService"
-import { SecretField, SecretTable, getSecret, storeSecret } from "../services/SecretService"
+import { SecretField, getSecret, storeSecret } from "../services/SecretService"
 import { ApiRoutes } from "../shared/ApiRoutes"
 import { ConfigInstance, ConfigType, FigmaConfig as FigmaConfigClass } from "../shared/Configs"
 import { FrontendRoutes } from "../shared/FrontendRoutes"
@@ -272,9 +272,9 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
                     }
                 })
 
-                await storeSecret(SecretTable.FigmaIntegrations, newIntegration.id, SecretField.AccessToken, access_token)
+                await storeSecret(IntegrationType.FIGMA, newIntegration.id, SecretField.AccessToken, access_token)
                 if (refresh_token) {
-                    await storeSecret(SecretTable.FigmaIntegrations, newIntegration.id, SecretField.RefreshToken, refresh_token)
+                    await storeSecret(IntegrationType.FIGMA, newIntegration.id, SecretField.RefreshToken, refresh_token)
                 }
 
                 integrationId = newIntegration.id
@@ -284,9 +284,9 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
                     handle
                 })
             } else {
-                await storeSecret(SecretTable.FigmaIntegrations, existing.id, SecretField.AccessToken, access_token)
+                await storeSecret(IntegrationType.FIGMA, existing.id, SecretField.AccessToken, access_token)
                 if (refresh_token) {
-                    await storeSecret(SecretTable.FigmaIntegrations, existing.id, SecretField.RefreshToken, refresh_token)
+                    await storeSecret(IntegrationType.FIGMA, existing.id, SecretField.RefreshToken, refresh_token)
                 }
 
                 // Update existing connection with new token (in case it was revoked and re-authorized)
@@ -674,8 +674,8 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
                 return null
             }
 
-            const existingAccessToken = await getSecret(SecretTable.FigmaIntegrations, integration.id, SecretField.AccessToken)
-            const refreshToken = await getSecret(SecretTable.FigmaIntegrations, integration.id, SecretField.RefreshToken)
+            const existingAccessToken = await getSecret(IntegrationType.FIGMA, integration.id, SecretField.AccessToken)
+            const refreshToken = await getSecret(IntegrationType.FIGMA, integration.id, SecretField.RefreshToken)
 
             const now = new Date()
             // Check if token is expired or will expire within the refresh threshold
@@ -721,9 +721,9 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
 
                 // Calculate token expiry
                 const tokenExpiry = new Date(Date.now() + expires_in * 1000)
-                await storeSecret(SecretTable.FigmaIntegrations, integration.id, SecretField.AccessToken, access_token)
+                await storeSecret(IntegrationType.FIGMA, integration.id, SecretField.AccessToken, access_token)
                 if (refresh_token) {
-                    await storeSecret(SecretTable.FigmaIntegrations, integration.id, SecretField.RefreshToken, refresh_token)
+                    await storeSecret(IntegrationType.FIGMA, integration.id, SecretField.RefreshToken, refresh_token)
                 }
 
                 // Update the database with new tokens
@@ -1239,7 +1239,7 @@ export async function getFigmaAccessToken(userId: string): Promise<string> {
         throw new Error("Figma access token has expired. Please re-authenticate.")
     }
 
-    const accessToken = await getSecret(SecretTable.FigmaIntegrations, figmaIntegration.id, SecretField.AccessToken)
+    const accessToken = await getSecret(IntegrationType.FIGMA, figmaIntegration.id, SecretField.AccessToken)
     if (!accessToken) {
         throw new Error("Figma access token not found")
     }

@@ -1,7 +1,7 @@
 import logger from "../logger"
 import { db } from "../prismaClient"
 import { fetchPosthogProjects } from "../routes/posthog"
-import { SecretField, SecretTable, getSecret, storeSecret } from "../services/SecretService"
+import { SecretField, getSecret, storeSecret } from "../services/SecretService"
 import { IntegrationType, PosthogIntegration, PosthogIntegrationMetadata } from "../shared/Integrations"
 import { PosthogProject } from "../shared/types"
 import { AgentTriggerWithConfigs } from "../types/prisma"
@@ -154,7 +154,7 @@ export class PosthogIntegrationManager implements Integration<PosthogIntegration
             })
 
             if (existing) {
-                await storeSecret(SecretTable.PosthogIntegrations, existing.id, SecretField.ApiKey, apiKey)
+                await storeSecret(IntegrationType.POSTHOG, existing.id, SecretField.ApiKey, apiKey)
 
                 // Update existing integration
                 await db().posthog_integrations.update({
@@ -181,7 +181,7 @@ export class PosthogIntegrationManager implements Integration<PosthogIntegration
                     }
                 })
 
-                await storeSecret(SecretTable.PosthogIntegrations, integration.id, SecretField.ApiKey, apiKey)
+                await storeSecret(IntegrationType.POSTHOG, integration.id, SecretField.ApiKey, apiKey)
 
                 logger.info("✅ Created Posthog integration", {
                     integrationId: integration.id,
@@ -220,7 +220,7 @@ export async function validatePosthogProjectExists(integrationId: string, projec
     if (!integration) {
         throw new Error(`Posthog integration ${integrationId} not found or missing API key`)
     }
-    const apiKey = await getSecret(SecretTable.PosthogIntegrations, integrationId, SecretField.ApiKey)
+    const apiKey = await getSecret(IntegrationType.POSTHOG, integrationId, SecretField.ApiKey)
     if (!apiKey) {
         throw new Error(`Posthog integration ${integrationId} not found or missing API key`)
     }

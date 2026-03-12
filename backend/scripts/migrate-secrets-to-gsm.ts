@@ -1,14 +1,14 @@
 import "dotenv/config"
 
 import { db } from "../src/prismaClient"
-import { isGsmAvailable, storeSecret, SecretTable, SecretField } from "../src/services/SecretService"
+import { SecretField, SecretIntegrationType, isGsmAvailable, storeSecret } from "../src/services/SecretService"
 import { IntegrationType } from "../src/shared/Integrations"
 
-type SecretTableConfig = {
+type SecretIntegrationTypeConfig = {
     /** The Prisma model name (matches the DB table) used to read rows. */
     prismaModel: string
     /** The IntegrationType used as the secret key prefix in GSM. */
-    secretTable: SecretTable
+    secretTable: SecretIntegrationType
     fields: SecretField[]
 }
 
@@ -24,7 +24,7 @@ type MigrationStats = {
     errors: number
 }
 
-const SECRET_TABLES: SecretTableConfig[] = [
+const SECRET_TABLES: SecretIntegrationTypeConfig[] = [
     { prismaModel: "github_app_tokens", secretTable: IntegrationType.GITHUB, fields: [SecretField.AccessToken, SecretField.RefreshToken] },
     { prismaModel: "linear_integrations", secretTable: IntegrationType.LINEAR, fields: [SecretField.AccessToken, SecretField.RefreshToken] },
     { prismaModel: "user_slack_integrations", secretTable: IntegrationType.SLACK, fields: [SecretField.AuthedUserAccessToken] },
@@ -103,14 +103,14 @@ function makeInitialStats(table: string): MigrationStats {
     }
 }
 
-async function migrateTable(tableConfig: SecretTableConfig, dryRun: boolean): Promise<MigrationStats> {
+async function migrateTable(tableConfig: SecretIntegrationTypeConfig, dryRun: boolean): Promise<MigrationStats> {
     const prisma = db()
-    const model = (prisma as Record<string, any>)[tableConfig.table]
+    const model = (prisma as Record<string, any>)[tableConfig.prismaModel]
     if (!model || typeof model.findMany !== "function" || typeof model.update !== "function") {
-        throw new Error(`Prisma model not found or unsupported for table: ${tableConfig.table}`)
+        throw new Error(`Prisma model not found or unsupported for table: ${tableConfig.prismaModel}`)
     }
 
-    const stats = makeInitialStats(tableConfig.table)
+    const stats = makeInitialStats(tableConfig.prismaModel)
     const select: Record<string, true> = { id: true }
     for (const field of tableConfig.fields) {
         select[field] = true
@@ -141,11 +141,11 @@ async function migrateTable(tableConfig: SecretTableConfig, dryRun: boolean): Pr
             }
 
             try {
-                await storeSecret(tableConfig.table, row.id, field, dbValue)
+                await storeSecret(tableConfig.secretTable, row.id, field, dbValue)
                 stats.migratedColumns += 1
             } catch (error) {
                 stats.errors += 1
-                console.error(`[migrate-secrets] failed table=${tableConfig.table} id=${row.id} field=${field}`, error)
+                console.error(`[migrate-secrets] failed table=${tableConfig.prismaModel} id=${row.id} field=${field}`, error)
             }
         }
     }
@@ -206,19 +206,19 @@ async function main(): Promise<void> {
     }
 
     if (requestedTables) {
-        const knownTables = new Set(SECRET_TABLES.map(config => config.table))
+        const knownTables = new Set(SECRET_TABLES.map(config => config.prismaModel))
         const unknownTables = Array.from(requestedTables).filter(table => !knownTables.has(table))
         if (unknownTables.length > 0) {
             throw new Error(`Unknown table(s): ${unknownTables.join(", ")}`)
         }
     }
 
-    const tableConfigs = requestedTables ? SECRET_TABLES.filter(config => requestedTables.has(config.table)) : SECRET_TABLES
+    const tableConfigs = requestedTables ? SECRET_TABLES.filter(config => requestedTables.has(config.prismaModel)) : SECRET_TABLES
     if (tableConfigs.length === 0) {
         throw new Error("No matching tables selected. Check --table values.")
     }
 
-    console.log(`[migrate-secrets] starting dryRun=${dryRun} tables=${tableConfigs.map(config => config.table).join(",")}`)
+    console.log(`[migrate-secrets] starting dryRun=${dryRun} tables=${tableConfigs.map(config => config.prismaModel).join(",")}`)
 
     const statsByTable: MigrationStats[] = []
     for (const tableConfig of tableConfigs) {

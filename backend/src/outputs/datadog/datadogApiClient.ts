@@ -1,6 +1,7 @@
 import logger from "../../logger"
 import { db } from "../../prismaClient"
-import { SecretField, SecretTable, getSecret } from "../../services/SecretService"
+import { SecretField, getSecret } from "../../services/SecretService"
+import { IntegrationType } from "../../shared/Integrations"
 
 /**
  * Get Datadog credentials by integration ID
@@ -16,8 +17,8 @@ export async function getDatadogCredentialsByIntegrationId(integrationId: string
         return null
     }
 
-    const apiKey = await getSecret(SecretTable.DatadogIntegrations, integration.id, SecretField.ApiKey)
-    const appKey = await getSecret(SecretTable.DatadogIntegrations, integration.id, SecretField.AppKey)
+    const apiKey = await getSecret(IntegrationType.DATADOG, integration.id, SecretField.ApiKey)
+    const appKey = await getSecret(IntegrationType.DATADOG, integration.id, SecretField.AppKey)
 
     if (!apiKey || !appKey) {
         logger.warn("Datadog integration is missing API key or app key", { integrationId })
