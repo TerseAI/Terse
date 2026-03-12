@@ -25,7 +25,7 @@ export interface RunFailureNotificationContext {
     errorMessage: string
 }
 
-export async function sendSlackMessage(userSlackIntegrationId: string, channelId: string, message: SlackMessage): Promise<boolean> {
+export async function sendSlackMessage(userSlackIntegrationId: string, channelId: string, message: SlackMessage): Promise<{ success: boolean; permalink?: string }> {
     const userSlackIntegration = await db().user_slack_integrations.findFirst({
         where: {
             id: userSlackIntegrationId
@@ -38,24 +38,38 @@ export async function sendSlackMessage(userSlackIntegrationId: string, channelId
 
     if (!userSlackIntegration?.slack_integration) {
         logger.error(`[sendSlackMessage] No Slack integration found for ID: ${userSlackIntegrationId}`, { userSlackIntegrationId })
-        return false
+        return { success: false }
     }
 
     const client: WebClient = await initializeSlackWebClient(userSlackIntegration)
     logger.debug(`[sendSlackMessage] Message`, { message, channelId, userSlackIntegrationId })
 
     try {
-        await client.chat.postMessage({
+        const result = await client.chat.postMessage({
             channel: channelId,
             text: message.text,
             blocks: message.blocks
         })
 
         logger.info(`[sendSlackMessage] Successfully sent message to channel ${channelId}`, { channelId, userSlackIntegrationId })
-        return true
+
+        let permalink: string | undefined
+        if (result.ok && result.ts && result.channel) {
+            try {
+                const permalinkResult = await client.chat.getPermalink({
+                    channel: result.channel,
+                    message_ts: result.ts
+                })
+                permalink = permalinkResult.permalink
+            } catch (permalinkError) {
+                logger.warn(`[sendSlackMessage] Failed to get permalink`, { permalinkError, channelId })
+            }
+        }
+
+        return { success: true, permalink }
     } catch (error) {
         logger.error(`[sendSlackMessage] Failed to send message`, { error, channelId, userSlackIntegrationId })
-        return false
+        return { success: false }
     }
 }
 
@@ -171,7 +185,7 @@ export async function sendSlackApprovalMessage(
     notificationFor: string,
     agentName: string,
     automationId?: string
-): Promise<{ success: boolean; messageTs?: string }> {
+): Promise<{ success: boolean; messageTs?: string; permalink?: string }> {
     const userSlackIntegration = await db().user_slack_integrations.findFirst({
         where: {
             id: userSlackIntegrationId
@@ -227,7 +241,21 @@ export async function sendSlackApprovalMessage(
                 }
             })
             logger.info(`[sendSlackApprovalMessage] Successfully sent approval message to channel ${channelId} with ts ${result.ts}`)
-            return { success: true, messageTs: result.ts }
+
+            let permalink: string | undefined
+            if (result.channel) {
+                try {
+                    const permalinkResult = await client.chat.getPermalink({
+                        channel: result.channel,
+                        message_ts: result.ts
+                    })
+                    permalink = permalinkResult.permalink
+                } catch (permalinkError) {
+                    logger.warn(`[sendSlackApprovalMessage] Failed to get permalink`, { permalinkError, channelId })
+                }
+            }
+
+            return { success: true, messageTs: result.ts, permalink }
         } else {
             logger.error(`[sendSlackApprovalMessage] Failed to send message: ${result.error}`)
             return { success: false }

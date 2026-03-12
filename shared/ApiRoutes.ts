@@ -248,6 +248,8 @@ export const ApiRoutes = {
         }
     },
 
+    NOTIFICATION_SETTINGS: "/notification-settings",
+
     SENT_NOTIFICATIONS: {
         LIST: "/sent-notifications"
     },

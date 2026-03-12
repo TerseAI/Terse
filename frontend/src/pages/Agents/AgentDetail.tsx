@@ -336,8 +336,8 @@ function AgentDetail() {
     const [requireApproval, setRequireApproval] = useState<boolean>(false)
     const [toolApprovals, setToolApprovals] = useState<string[]>([])
     const [notificationSettings, setNotificationSettings] = useState<AgentNotificationSettings>({
-        enabled: false,
-        actionTypes: []
+        enabled: true,
+        actionTypes: ["approve", "delete"]
     })
 
     // Sync local state with fetched data - convert from AgentTrigger/Output to Transient types

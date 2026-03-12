@@ -33,6 +33,7 @@ model users {
   user_github_installation  user_github_installation[]
   github_app_tokens         github_app_tokens[]
   notification_destinations user_notification_destinations[]
+  notification_settings     user_notification_settings?
   posthog_integrations      posthog_integrations[]
   launchdarkly_integrations launchdarkly_integrations[]
   datadog_integrations      datadog_integrations[]
@@ -972,6 +973,8 @@ enum RunHistoryActionType {
   update
   delete
   read
+  approve
+  error
 }
 
 // Pending approvals for tools that require human approval
@@ -1073,6 +1076,18 @@ model user_notification_destinations {
   @@index([slack_user_id])
 }
 
+model user_notification_settings {
+  id                          String                 @id @default(cuid())
+  user_id                     String                 @unique
+  agent_default_notifications RunHistoryActionType[]
+  weekly_agent_improvements   Boolean
+  created_at                  DateTime               @default(now())
+  updated_at                  DateTime               @updatedAt
+  user                        users                  @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+}
+
 enum NotificationDestinationType {
   SLACK
   EMAIL
@@ -1127,6 +1142,7 @@ model sent_notifications {
   status            SentNotificationStatus
   error_message     String?
   agent_name        String?
+  notification_url  String?
   sent_at           DateTime                    @default(now())
 
   @@index([organization_id, sent_at])
