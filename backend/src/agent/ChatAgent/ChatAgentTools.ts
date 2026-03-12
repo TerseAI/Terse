@@ -465,13 +465,17 @@ function sleep(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms))
 }
 
+// eventTypes is omitted for ChatAgent because OpenAI structured outputs
+// doesn't support .optional() without .nullable(). eventTypes is SDK-only.
+const ChatAgentGitHubConfigSchema = GitHubConfigSchema.omit({ eventTypes: true })
+
 const InputConfigSchema = z
     .discriminatedUnion("configType", [
         GmailConfigSchema,
         FigmaConfigSchema,
         SlackConfigSchema,
         LinearInputConfigSchema,
-        GitHubConfigSchema,
+        ChatAgentGitHubConfigSchema,
         JiraConfigSchema,
         TimeTriggerConfigSchema,
         WorkOSInputConfigSchema
@@ -500,7 +504,7 @@ const OutputConfigSchema = z
         GmailOutputConfigSchema,
         GmailDraftOutputConfigSchema,
         AttioOutputConfigSchema,
-        GitHubConfigSchema,
+        ChatAgentGitHubConfigSchema,
         PosthogConfigSchema,
         LaunchDarklyConfigSchema,
         DatadogConfigSchema,
