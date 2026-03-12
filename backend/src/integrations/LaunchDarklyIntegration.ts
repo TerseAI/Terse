@@ -1,6 +1,7 @@
 import logger from "../logger"
 import { db } from "../prismaClient"
 import { fetchLaunchDarklyEnvironments, fetchLaunchDarklyProjects } from "../routes/launchdarkly"
+import { SecretField, getSecret, storeSecret } from "../services/SecretService"
 import { IntegrationType, LaunchDarklyIntegration, LaunchDarklyIntegrationMetadata } from "../shared/Integrations"
 import { LaunchDarklyProject } from "../shared/types"
 import { AgentTriggerWithConfigs } from "../types/prisma"
@@ -206,11 +207,12 @@ export class LaunchDarklyIntegrationManager
             })
 
             if (existing) {
+                await storeSecret(IntegrationType.LAUNCHDARKLY, existing.id, SecretField.ApiKey, apiKey)
+
                 // Update existing integration
                 await db().launchdarkly_integrations.update({
                     where: { id: existing.id },
                     data: {
-                        api_key: apiKey,
                         user_email: userEmail,
                         token_name: tokenName,
                         organization_id: organizationId
@@ -228,11 +230,13 @@ export class LaunchDarklyIntegrationManager
                     data: {
                         user_id: userId,
                         organization_id: organizationId,
-                        api_key: apiKey,
                         user_email: userEmail,
                         token_name: tokenName
                     }
                 })
+
+                await storeSecret(IntegrationType.LAUNCHDARKLY, integration.id, SecretField.ApiKey, apiKey)
+
                 logger.info("✅ Created LaunchDarkly integration", {
                     integrationId: integration.id,
                     userId,
@@ -266,12 +270,16 @@ export class LaunchDarklyIntegrationManager
 export async function getLaunchDarklyAccessTokenOrThrow(integrationId: string): Promise<string> {
     const integration = await db().launchdarkly_integrations.findUnique({
         where: { id: integrationId },
-        select: { api_key: true }
+        select: { id: true }
     })
-    if (!integration?.api_key) {
+    if (!integration) {
         throw new Error(`LaunchDarkly integration ${integrationId} not found or missing API key`)
     }
-    return integration.api_key
+    const apiKey = await getSecret(IntegrationType.LAUNCHDARKLY, integrationId, SecretField.ApiKey)
+    if (!apiKey) {
+        throw new Error(`LaunchDarkly integration ${integrationId} not found or missing API key`)
+    }
+    return apiKey
 }
 
 /**

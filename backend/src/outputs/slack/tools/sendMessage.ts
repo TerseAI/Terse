@@ -6,6 +6,7 @@ import { z } from "zod"
 import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
 import logger from "../../../logger"
 import { db } from "../../../prismaClient"
+import { SecretField, getSecret } from "../../../services/SecretService"
 import { IntegrationType } from "../../../shared/Integrations"
 import { TERSE_AGENT_MESSAGE_EVENT_TYPE, TerseAgentMessageMetadata } from "../../../shared/types"
 import { ToolName } from "../../../tools/ToolNames"
@@ -78,7 +79,9 @@ export const slackSendMessageTool = tool({
             }
 
             // Use the selected integration's token (user token if present, else bot token)
-            const token = userSlackIntegration.authed_user_access_token || userSlackIntegration.slack_integration.access_token
+            const userToken = await getSecret(IntegrationType.SLACK, userSlackIntegration.id, SecretField.AuthedUserAccessToken)
+            const botToken = await getSecret(IntegrationType.SLACK, userSlackIntegration.slack_integration.id, SecretField.AccessToken)
+            const token = userToken || botToken
             if (!token) {
                 throw new Error(`Slack integration has no access token: ${integrationId}`)
             }

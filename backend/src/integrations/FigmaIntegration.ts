@@ -8,6 +8,7 @@ import logger, { runWithUserContext } from "../logger"
 import { db } from "../prismaClient"
 import { Identifiable } from "../rag/Hydrator"
 import { FileCategory, StoredFile } from "../services/FileStorageService"
+import { SecretField, getSecret, storeSecret } from "../services/SecretService"
 import { ApiRoutes } from "../shared/ApiRoutes"
 import { ConfigInstance, ConfigType, FigmaConfig as FigmaConfigClass } from "../shared/Configs"
 import { FrontendRoutes } from "../shared/FrontendRoutes"
@@ -267,11 +268,15 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
                         organization_id: decoded.organizationId,
                         figma_user_id: user_id_string,
                         handle: handle,
-                        access_token: access_token,
-                        refresh_token: refresh_token || null,
                         token_expiry: tokenExpiry
                     }
                 })
+
+                await storeSecret(IntegrationType.FIGMA, newIntegration.id, SecretField.AccessToken, access_token)
+                if (refresh_token) {
+                    await storeSecret(IntegrationType.FIGMA, newIntegration.id, SecretField.RefreshToken, refresh_token)
+                }
+
                 integrationId = newIntegration.id
                 logger.info("✅ Created Figma connection for user", {
                     userId: decoded.userId,
@@ -279,6 +284,11 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
                     handle
                 })
             } else {
+                await storeSecret(IntegrationType.FIGMA, existing.id, SecretField.AccessToken, access_token)
+                if (refresh_token) {
+                    await storeSecret(IntegrationType.FIGMA, existing.id, SecretField.RefreshToken, refresh_token)
+                }
+
                 // Update existing connection with new token (in case it was revoked and re-authorized)
                 await db().figma_integrations.update({
                     where: { id: existing.id },
@@ -286,8 +296,6 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
                         organization_id: decoded.organizationId,
                         handle: handle,
                         figma_user_id: user_id_string,
-                        access_token: access_token,
-                        refresh_token: refresh_token || null,
                         token_expiry: tokenExpiry
                     }
                 })
@@ -666,21 +674,24 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
                 return null
             }
 
+            const existingAccessToken = await getSecret(IntegrationType.FIGMA, integration.id, SecretField.AccessToken)
+            const refreshToken = await getSecret(IntegrationType.FIGMA, integration.id, SecretField.RefreshToken)
+
             const now = new Date()
             // Check if token is expired or will expire within the refresh threshold
             if (integration.token_expiry && integration.token_expiry <= new Date(now.getTime() + OAUTH_TOKEN_REFRESH_THRESHOLD_MS)) {
                 logger.info(`Figma access token expiring soon for integration ${integrationId}, refreshing...`, { integrationId })
 
-                if (!integration.refresh_token) {
+                if (!refreshToken) {
                     logger.error(`No refresh token available for Figma integration ${integrationId}`, { integrationId })
-                    return integration.access_token // Return existing token as fallback
+                    return existingAccessToken // Return existing token as fallback
                 }
 
                 // Exchange refresh token for new access token
                 // Figma requires application/x-www-form-urlencoded format
                 const params = new URLSearchParams({
                     grant_type: "refresh_token",
-                    refresh_token: integration.refresh_token
+                    refresh_token: refreshToken
                 })
 
                 const tokenResponse = await fetch("https://api.figma.com/v1/oauth/token", {
@@ -696,7 +707,7 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
                     const errorText = await tokenResponse.text()
                     logger.error(`Figma token refresh failed for integration ${integrationId}`, { error: errorText, integrationId })
                     // Return existing token as fallback - it might still work
-                    return integration.access_token
+                    return existingAccessToken
                 }
 
                 const tokenData = await tokenResponse.json()
@@ -705,18 +716,20 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
                 if (!access_token) {
                     logger.error(`No access token received from Figma refresh for integration ${integrationId}`, { integrationId })
                     // Return existing token as fallback
-                    return integration.access_token
+                    return existingAccessToken
                 }
 
                 // Calculate token expiry
                 const tokenExpiry = new Date(Date.now() + expires_in * 1000)
+                await storeSecret(IntegrationType.FIGMA, integration.id, SecretField.AccessToken, access_token)
+                if (refresh_token) {
+                    await storeSecret(IntegrationType.FIGMA, integration.id, SecretField.RefreshToken, refresh_token)
+                }
 
                 // Update the database with new tokens
                 await db().figma_integrations.update({
                     where: { id: integration.id },
                     data: {
-                        access_token: access_token,
-                        refresh_token: refresh_token || integration.refresh_token, // Preserve existing if new one not provided
                         token_expiry: tokenExpiry
                     }
                 })
@@ -726,7 +739,7 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
             }
 
             // Token is still valid
-            return integration.access_token
+            return existingAccessToken
         } catch (error) {
             logger.error(`Error getting Figma access token for integration ${integrationId}`, { error, integrationId })
             // Return null on error - caller should handle
@@ -1226,7 +1239,12 @@ export async function getFigmaAccessToken(userId: string): Promise<string> {
         throw new Error("Figma access token has expired. Please re-authenticate.")
     }
 
-    return figmaIntegration.access_token
+    const accessToken = await getSecret(IntegrationType.FIGMA, figmaIntegration.id, SecretField.AccessToken)
+    if (!accessToken) {
+        throw new Error("Figma access token not found")
+    }
+
+    return accessToken
 }
 
 /**
