@@ -93,6 +93,58 @@ function buildMultipartAlternativeMime(headers: string[], body: string, htmlBody
     ].join("\r\n")
 }
 
+/**
+ * Headers that must never be overridden via custom_headers because they are
+ * either controlled by explicit tool parameters (to/cc/bcc/subject) or managed
+ * internally (from, threading headers, MIME structure headers). Allowing LLM
+ * input to set these would enable prompt-injection attacks such as silently
+ * adding a Bcc to an attacker-controlled address or spoofing the From.
+ */
+const BLOCKED_CUSTOM_HEADERS = new Set([
+    "to",
+    "from",
+    "cc",
+    "bcc",
+    "subject",
+    "reply-to",
+    "sender",
+    "date",
+    "message-id",
+    "mime-version",
+    "content-type",
+    "content-transfer-encoding",
+    "in-reply-to",
+    "references"
+])
+
+/**
+ * Validates and sanitizes custom headers before they are added to an outgoing
+ * email. Two classes of attack are prevented:
+ *
+ * 1. Security-critical header override – keys that match BLOCKED_CUSTOM_HEADERS
+ *    (case-insensitive) are dropped and a warning is logged.
+ *
+ * 2. Header injection (CRLF injection) – any key or value that contains a
+ *    carriage-return or newline character is dropped entirely, since those
+ *    characters can be used to inject arbitrary extra headers into the raw
+ *    MIME message.
+ */
+export function sanitizeCustomHeaders(customHeaders: Record<string, string>): Record<string, string> {
+    const sanitized: Record<string, string> = {}
+    for (const [key, value] of Object.entries(customHeaders)) {
+        if (/[\r\n]/.test(key) || /[\r\n]/.test(value)) {
+            logger.warn("[gmail] Dropping custom header containing CRLF characters (header injection attempt)", { key })
+            continue
+        }
+        if (BLOCKED_CUSTOM_HEADERS.has(key.toLowerCase())) {
+            logger.warn("[gmail] Dropping blocked custom header that would override a security-critical field", { key })
+            continue
+        }
+        sanitized[key] = value
+    }
+    return sanitized
+}
+
 export function buildEmailContent(headers: string[], body?: string | null, htmlBody?: string | null): string {
     const plainTextBody = body?.trim() ? body : null
     const htmlBodyContent = htmlBody?.trim() ? htmlBody : null

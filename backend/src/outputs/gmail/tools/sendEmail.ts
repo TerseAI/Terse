@@ -12,7 +12,7 @@ import { ToolName } from "../../../tools/ToolNames"
 import { createNeedsApprovalFunction } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
 
-import { buildEmailContentWithAttachments, downloadImageAttachments, encodeSubjectHeader } from "./mime"
+import { buildEmailContentWithAttachments, downloadImageAttachments, encodeSubjectHeader, sanitizeCustomHeaders } from "./mime"
 
 /**
  * Tool for sending emails or replying to email threads via Gmail.
@@ -42,10 +42,17 @@ export const gmailSendEmailTool = tool({
             .optional()
             .describe(
                 'URLs of images to embed in the email. Must be signed URLs from our internal GCS image bucket. Each image is downloaded and base64-encoded as an inline MIME attachment with a Content-ID. Images are assigned sequential filenames: image-1.png, image-2.png, etc. (extension reflects actual MIME type). You MUST reference each one in html_body as <img src="cid:image-1.png">, <img src="cid:image-2.png">, etc. Do NOT put the raw URLs in html_body.'
+            ),
+        custom_headers: z
+            .record(z.string(), z.string())
+            .nullable()
+            .optional()
+            .describe(
+                'Custom email headers as key-value pairs. Useful for adding headers like List-Unsubscribe, List-Unsubscribe-Post, X-Priority, etc. Example: {"List-Unsubscribe": "<mailto:unsubscribe@example.com>", "List-Unsubscribe-Post": "List-Unsubscribe=One-Click"}'
             )
     }),
     needsApproval: createNeedsApprovalFunction(ToolName.GMAIL_SEND_EMAIL),
-    execute: async ({ integrationId, to, subject, body, html_body, thread_id, cc, bcc, image_urls }, runContext?: RunContext<SessionWithTracking<Session>>) => {
+    execute: async ({ integrationId, to, subject, body, html_body, thread_id, cc, bcc, image_urls, custom_headers }, runContext?: RunContext<SessionWithTracking<Session>>) => {
         if (!runContext?.context) {
             throw new Error("No context provided")
         }
@@ -92,6 +99,16 @@ export const gmailSendEmailTool = tool({
 
             if (bcc) {
                 headers.push(`Bcc: ${bcc}`)
+            }
+
+            // Add custom headers (e.g., List-Unsubscribe).
+            // sanitizeCustomHeaders drops any keys that would override security-critical
+            // headers (To, From, Cc, Bcc, Subject, …) and rejects values containing
+            // CRLF characters to prevent header injection attacks.
+            if (custom_headers) {
+                for (const [key, value] of Object.entries(sanitizeCustomHeaders(custom_headers))) {
+                    headers.push(`${key}: ${value}`)
+                }
             }
 
             // If replying, add In-Reply-To and References headers
