@@ -83,7 +83,7 @@ class WebChatInterface extends ChatInterface {
             snippet: {
                 type: "integration_prompt",
                 integration,
-                message: `To connect ${integration}, please use the form or button below.`,
+                message: `To connect ${integration}, please use the form or button above.`,
                 stateToken
             }
         })
