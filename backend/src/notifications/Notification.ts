@@ -1,4 +1,4 @@
-import { NotificationDestinationType, SentNotificationEventType, SentNotificationStatus } from "@prisma/client"
+import { NotificationDestinationType, RunHistoryActionType, SentNotificationEventType, SentNotificationStatus } from "@prisma/client"
 
 import logger from "../logger"
 import { db } from "../prismaClient"
@@ -22,8 +22,7 @@ export class NotificationManager {
         this.agent = agent
     }
 
-    async notify(runAction: RunHistoryAction) {
-        // Get the notification settings for the automation
+    private async isNotificationPermitted(runActionType: RunHistoryActionType): Promise<boolean> {
         const notificationSettings: AutomationNotificationSettings | null = await db().automation_notification_settings.findFirst({
             where: {
                 automation_id: this.agent.id
@@ -32,26 +31,35 @@ export class NotificationManager {
 
         if (!notificationSettings) {
             logger.debug(`No notification settings found for automation ${this.agent.name}. Skipping`)
-            return
+            return false
         }
 
         if (!notificationSettings.enabled) {
             logger.debug(`Notifications disabled for automation ${this.agent.name}. Skipping`)
-            return
+            return false
         }
 
-        if (!notificationSettings.action_types.includes(runAction.type)) {
-            logger.debug(`Notification settings for automation ${this.agent.name} do not include action ${runAction.type}. Skipping`)
+        if (!notificationSettings.action_types.includes(runActionType)) {
+            logger.debug(`Notification settings for automation ${this.agent.name} do not include action ${runActionType}. Skipping`)
+            return false
+        }
+        return true
+    }
+
+    async notify(runAction: RunHistoryAction) {
+        const isPermitted = this.isNotificationPermitted(runAction.type)
+        if (!isPermitted) {
             return
         }
 
         const notificationDestination = await resolveNotificationDestination(this.user)
         let notificationError: unknown
+        let notificationUrl: string | undefined
 
         try {
             switch (notificationDestination.destination_type) {
                 case NotificationDestinationType.SLACK:
-                    await sendSlackNotification(notificationDestination, runAction, this.agent)
+                    notificationUrl = await sendSlackNotification(notificationDestination, runAction, this.agent)
                     break
                 case NotificationDestinationType.EMAIL:
                     await sendEmailNotification(notificationDestination, runAction, this.agent)
@@ -64,6 +72,7 @@ export class NotificationManager {
             await this.trackNotification({
                 eventType: SentNotificationEventType.run_notification,
                 destination: notificationDestination,
+                notificationUrl,
                 error: notificationError
             })
         }
@@ -75,13 +84,19 @@ export class NotificationManager {
             return
         }
 
+        const isPermitted = this.isNotificationPermitted(RunHistoryActionType.approve)
+        if (!isPermitted) {
+            return
+        }
+
         const notificationDestination = await resolveNotificationDestination(this.user)
         let notificationError: unknown
+        let notificationUrl: string | undefined
 
         try {
             switch (notificationDestination.destination_type) {
                 case NotificationDestinationType.SLACK:
-                    await sendSlackApprovalRequest(notificationDestination, runId, runAction, this.agent)
+                    notificationUrl = await sendSlackApprovalRequest(notificationDestination, runId, runAction, this.agent)
                     break
                 case NotificationDestinationType.EMAIL:
                     await sendEmailApprovalRequest(notificationDestination, runId, runAction, this.agent, this.user)
@@ -95,19 +110,26 @@ export class NotificationManager {
                 eventType: SentNotificationEventType.approval_request,
                 destination: notificationDestination,
                 runId,
+                notificationUrl,
                 error: notificationError
             })
         }
     }
 
     async notifyRunFailure(runId: string, errorMessage: string) {
+        const isPermitted = this.isNotificationPermitted(RunHistoryActionType.error)
+        if (!isPermitted) {
+            return
+        }
+
         const notificationDestination = await resolveNotificationDestination(this.user)
         let notificationError: unknown
+        let notificationUrl: string | undefined
 
         try {
             switch (notificationDestination.destination_type) {
                 case NotificationDestinationType.SLACK:
-                    await sendSlackRunFailure(notificationDestination, this.agent, runId, errorMessage)
+                    notificationUrl = await sendSlackRunFailure(notificationDestination, this.agent, runId, errorMessage)
                     break
                 case NotificationDestinationType.EMAIL:
                     await sendEmailRunFailure(notificationDestination, this.agent, runId, errorMessage)
@@ -121,12 +143,25 @@ export class NotificationManager {
                 eventType: SentNotificationEventType.run_failure,
                 destination: notificationDestination,
                 runId,
+                notificationUrl,
                 error: notificationError
             })
         }
     }
 
-    private async trackNotification({ eventType, destination, runId, error }: { eventType: SentNotificationEventType; destination: UserNotificationDestination; runId?: string; error?: unknown }) {
+    private async trackNotification({
+        eventType,
+        destination,
+        runId,
+        notificationUrl,
+        error
+    }: {
+        eventType: SentNotificationEventType
+        destination: UserNotificationDestination
+        runId?: string
+        notificationUrl?: string
+        error?: unknown
+    }) {
         try {
             if (!this.user.organizationId) {
                 logger.warn("[NotificationManager] Missing organizationId, skipping sent notification tracking", {
@@ -150,7 +185,8 @@ export class NotificationManager {
                     destination_label: this.getDestinationLabel(destination),
                     status,
                     error_message: errorMessage,
-                    agent_name: this.agent.name
+                    agent_name: this.agent.name,
+                    notification_url: notificationUrl ?? null
                 }
             })
 

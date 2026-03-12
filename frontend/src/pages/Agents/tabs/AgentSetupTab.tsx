@@ -386,7 +386,10 @@ export default function AgentSetupTab({
             count: outputs.length
         }
     ]
-    const [activeSection, setActiveSection] = useState<SetupSection>("triggers")
+    const sectionFromQuery = searchParams.get("section")
+    const [activeSection, setActiveSection] = useState<SetupSection>(
+        sectionFromQuery && ["triggers", "prompt", "skills", "alerts"].includes(sectionFromQuery) ? (sectionFromQuery as SetupSection) : "triggers"
+    )
 
     donate("Agent Set Up Page Context", new AgentSetUpPageContext(activeSection))
 
