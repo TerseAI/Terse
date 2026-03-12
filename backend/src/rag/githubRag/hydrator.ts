@@ -7,6 +7,8 @@ import logger from "../../logger"
 import { db } from "../../prismaClient"
 import type { GithubAppUnifiedEventRequest } from "../../routes/GithubTypes"
 import { StoredFile } from "../../services/FileStorageService"
+import { SecretField, getSecret } from "../../services/SecretService"
+import { IntegrationType } from "../../shared/Integrations"
 import { HydratorType } from "../../types/rag"
 import { HydrationContext, Hydrator, Identifiable } from "../Hydrator"
 
@@ -67,10 +69,15 @@ export class GithubEventHydrator extends Hydrator<GithubEvent> {
 
         let accessToken: string | null = null
         for (const token of githubTokens) {
-            const installations = await getAppInstallationsForUser(token.access_token)
+            const tokenAccessValue = await getSecret(IntegrationType.GITHUB, token.id, SecretField.AccessToken)
+            if (!tokenAccessValue) {
+                continue
+            }
+
+            const installations = await getAppInstallationsForUser(tokenAccessValue)
             const installation = installations.installations?.find((inst: { id: number }) => inst.id === installationId)
             if (installation) {
-                accessToken = token.access_token
+                accessToken = tokenAccessValue
                 break
             }
         }

@@ -1,6 +1,8 @@
 import { WORKOS_SUPPORTED_EVENT_NAMES, WorkOSEvent, WorkOSWebhookPayload } from "../../integrations/WorkOSIntegration"
 import logger from "../../logger"
 import { db } from "../../prismaClient"
+import { SecretField, getSecret } from "../../services/SecretService"
+import { IntegrationType } from "../../shared/Integrations"
 import { HydratorType } from "../../types/rag"
 import { HydrationContext, Hydrator, Identifiable } from "../Hydrator"
 
@@ -50,7 +52,13 @@ export class WorkOSEventHydrator extends Hydrator<WorkOSEvent> {
                 organization_id: this.ctx.organizationId
             }
         })
-        if (!integration?.api_key) {
+        if (!integration) {
+            logger.error(`WorkOS integration ${integrationId} not found or missing API key`)
+            return null
+        }
+
+        const apiKey = await getSecret(IntegrationType.WORKOS, integration.id, SecretField.ApiKey)
+        if (!apiKey) {
             logger.error(`WorkOS integration ${integrationId} not found or missing API key`)
             return null
         }
@@ -75,7 +83,7 @@ export class WorkOSEventHydrator extends Hydrator<WorkOSEvent> {
                 const response = await fetch(`https://api.workos.com/events?${params.toString()}`, {
                     method: "GET",
                     headers: {
-                        Authorization: `Bearer ${integration.api_key}`,
+                        Authorization: `Bearer ${apiKey}`,
                         "Content-Type": "application/json"
                     }
                 })

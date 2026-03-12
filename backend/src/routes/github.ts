@@ -6,6 +6,8 @@ import logger from "../logger"
 import { db } from "../prismaClient"
 import { GithubAppInstallationDeletedRequest, GithubAppInstallationRepository, GithubAppUnifiedEventRequest } from "../routes/GithubTypes"
 import { emitCacheInvalidationWithKey } from "../services/CacheInvalidationService"
+import { SecretField, getSecret } from "../services/SecretService"
+import { IntegrationType } from "../shared/Integrations"
 import { GetGithubRepositoriesForIntegrationResponse, GithubAppInstallationCallbackRequest, Repository, User as RuntimeUser } from "../shared/types"
 import { GithubRepository } from "../types/prisma"
 import { getUserForOrg } from "../utility/workos"
@@ -182,14 +184,19 @@ export async function fetchGithubRepositoriesForIntegration(organizationId: stri
     }
 
     let targetInstallation: { id: number } | undefined
-    let tokenWithAccess: (typeof orgTokens)[0] | null = null
+    let tokenWithAccess: string | null = null
 
     for (const token of orgTokens) {
-        const installations = await getAppInstallationsForUser(token.access_token)
+        const accessToken = await getSecret(IntegrationType.GITHUB, token.id, SecretField.AccessToken)
+        if (!accessToken) {
+            continue
+        }
+
+        const installations = await getAppInstallationsForUser(accessToken)
         const installation = installations.installations.find(i => i.id === Number(installationId))
         if (installation) {
             targetInstallation = installation
-            tokenWithAccess = token
+            tokenWithAccess = accessToken
             break
         }
     }
@@ -198,7 +205,7 @@ export async function fetchGithubRepositoriesForIntegration(organizationId: stri
         throw createRouteError("Installation not found", 404)
     }
 
-    const installationRepositories: GithubAppInstallationRepository[] = await getAppInstallationRepositories(tokenWithAccess.access_token, targetInstallation.id)
+    const installationRepositories: GithubAppInstallationRepository[] = await getAppInstallationRepositories(tokenWithAccess, targetInstallation.id)
 
     return {
         repositories: installationRepositories.map(r => ({
@@ -359,7 +366,15 @@ export async function resolveUsersForGithubInstallation(installationId: number):
         // for each github App user, get their installations they have access to. Return a Map<user_id, installations>
         const installationResults = await Promise.all(
             githubAppUsers.map(async user => {
-                const installations = await getAppInstallationsForUser(user.access_token)
+                const accessToken = await getSecret(IntegrationType.GITHUB, user.id, SecretField.AccessToken)
+                if (!accessToken) {
+                    return {
+                        userId: user.user_id,
+                        installations: []
+                    }
+                }
+
+                const installations = await getAppInstallationsForUser(accessToken)
                 return {
                     userId: user.user_id,
                     installations: installations.installations

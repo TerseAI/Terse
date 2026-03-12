@@ -4,6 +4,7 @@ import jwt from "jsonwebtoken"
 import { attio as attioConfig, jwt as jwtSettings, urls } from "../config/settings"
 import logger from "../logger"
 import { db } from "../prismaClient"
+import { SecretField, getSecret, storeSecret } from "../services/SecretService"
 import { FrontendRoutes } from "../shared/FrontendRoutes"
 import { AdditionalStateParams, AttioIntegration, AttioIntegrationMetadata, InstallationOptionsFor, IntegrationType } from "../shared/Integrations"
 import { AttioObject, OAuthInstallationDetails } from "../shared/types"
@@ -27,15 +28,17 @@ export class AttioIntegrationManager implements Integration<AttioIntegration, ne
         const integrations = await db().attio_integrations.findMany({
             where: { organization_id: organizationId },
             select: {
-                id: true,
-                access_token: true
+                id: true
             }
         })
         return Promise.all(
-            integrations.map(async i => ({
-                id: i.id,
-                workspaceName: await this.fetchWorkspaceName(i.access_token)
-            }))
+            integrations.map(async i => {
+                const accessToken = await getSecret(IntegrationType.ATTIO, i.id, SecretField.AccessToken)
+                return {
+                    id: i.id,
+                    workspaceName: accessToken ? await this.fetchWorkspaceName(accessToken) : undefined
+                }
+            })
         )
     }
 
@@ -94,15 +97,17 @@ export class AttioIntegrationManager implements Integration<AttioIntegration, ne
     async getAllActiveInstances(): Promise<AttioIntegration[]> {
         const integrations = await db().attio_integrations.findMany({
             select: {
-                id: true,
-                access_token: true
+                id: true
             }
         })
         return Promise.all(
-            integrations.map(async i => ({
-                id: i.id,
-                workspaceName: await this.fetchWorkspaceName(i.access_token)
-            }))
+            integrations.map(async i => {
+                const accessToken = await getSecret(IntegrationType.ATTIO, i.id, SecretField.AccessToken)
+                return {
+                    id: i.id,
+                    workspaceName: accessToken ? await this.fetchWorkspaceName(accessToken) : undefined
+                }
+            })
         )
     }
 
@@ -206,16 +211,19 @@ export class AttioIntegrationManager implements Integration<AttioIntegration, ne
                 const newIntegration = await db().attio_integrations.create({
                     data: {
                         user_id: decoded.userId,
-                        organization_id: decoded.organizationId,
-                        access_token: access_token
+                        organization_id: decoded.organizationId
                     }
                 })
+
+                await storeSecret(IntegrationType.ATTIO, newIntegration.id, SecretField.AccessToken, access_token)
+
                 integrationId = newIntegration.id
             } else {
+                await storeSecret(IntegrationType.ATTIO, existing.id, SecretField.AccessToken, access_token)
+
                 await db().attio_integrations.update({
                     where: { id: existing.id },
                     data: {
-                        access_token: access_token,
                         organization_id: decoded.organizationId
                     }
                 })
@@ -276,7 +284,7 @@ export class AttioIntegrationManager implements Integration<AttioIntegration, ne
             const integration = await db().attio_integrations.findUnique({
                 where: { id: integrationId },
                 select: {
-                    access_token: true
+                    id: true
                 }
             })
 
@@ -285,7 +293,7 @@ export class AttioIntegrationManager implements Integration<AttioIntegration, ne
                 return null
             }
 
-            return integration.access_token || null
+            return await getSecret(IntegrationType.ATTIO, integrationId, SecretField.AccessToken)
         } catch (error) {
             logger.error(`Error getting Attio access token for integration ${integrationId}`, { error, integrationId })
             return null

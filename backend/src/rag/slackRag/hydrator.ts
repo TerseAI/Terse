@@ -109,7 +109,7 @@ export class SlackEventHydrator extends Hydrator<SlackEvent> {
             return null
         }
 
-        const client = initializeSlackWebClient(userSlackIntegration)
+        const client = await initializeSlackWebClient(userSlackIntegration)
 
         try {
             // Fetch the specific message

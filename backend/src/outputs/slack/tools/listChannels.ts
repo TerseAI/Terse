@@ -71,7 +71,7 @@ Supports pagination: if the response includes nextCursor and hasMore, pass nextC
                 throw new Error(`Slack integration not found or access denied: ${integrationId}`)
             }
 
-            const client = initializeSlackWebClient(userSlackIntegration)
+            const client = await initializeSlackWebClient(userSlackIntegration)
 
             const result = await client.conversations.list({
                 types: SLACK_TYPES_MAP[types ?? "all"],

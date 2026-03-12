@@ -1,6 +1,7 @@
 import logger from "../logger"
 import { getDatadogCredentialsByIntegrationId } from "../outputs/datadog/datadogApiClient"
 import { db } from "../prismaClient"
+import { SecretField, storeSecret } from "../services/SecretService"
 import { DatadogIntegration, DatadogIntegrationMetadata, IntegrationType } from "../shared/Integrations"
 import { AgentTriggerWithConfigs } from "../types/prisma"
 import { getDatadogApiUrl } from "../utility/datadog"
@@ -165,16 +166,18 @@ export class DatadogIntegrationManager implements Integration<DatadogIntegration
             })
 
             if (existing) {
-                // Update existing integration with new credentials
+                // DB-first, then GSM
                 await db().datadog_integrations.update({
                     where: { id: existing.id },
                     data: {
-                        api_key: apiKey,
-                        app_key: appKey,
                         region: normalizedRegion,
                         organization_id: organizationId
                     }
                 })
+
+                await storeSecret(IntegrationType.DATADOG, existing.id, SecretField.ApiKey, apiKey)
+                await storeSecret(IntegrationType.DATADOG, existing.id, SecretField.AppKey, appKey)
+
                 logger.info("✅ Updated Datadog integration", {
                     integrationId: existing.id,
                     userId,
@@ -186,11 +189,13 @@ export class DatadogIntegrationManager implements Integration<DatadogIntegration
                     data: {
                         user_id: userId,
                         organization_id: organizationId,
-                        api_key: apiKey,
-                        app_key: appKey,
                         region: normalizedRegion
                     }
                 })
+
+                await storeSecret(IntegrationType.DATADOG, integration.id, SecretField.ApiKey, apiKey)
+                await storeSecret(IntegrationType.DATADOG, integration.id, SecretField.AppKey, appKey)
+
                 logger.info("✅ Created Datadog integration", {
                     integrationId: integration.id,
                     userId,

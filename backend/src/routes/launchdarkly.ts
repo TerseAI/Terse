@@ -5,6 +5,7 @@ import { parseFormSubmissionFromRequest } from "../integrations/abstract/Integra
 import { emitIntegrationFormCompletedTaskIfNeeded } from "../integrations/helpers/emitIntegrationFormCompletedTask"
 import logger from "../logger"
 import { db } from "../prismaClient"
+import { SecretField, getSecret } from "../services/SecretService"
 import { IntegrationType } from "../shared/Integrations"
 
 export async function getLaunchDarklyIntegrations(req: Request, res: Response) {
@@ -97,10 +98,15 @@ export async function fetchLaunchDarklyProjects(organizationId: string, integrat
         throw new Error("LaunchDarkly integration not found")
     }
 
+    const apiKey = await getSecret(IntegrationType.LAUNCHDARKLY, integration.id, SecretField.ApiKey)
+    if (!apiKey) {
+        throw new Error("LaunchDarkly API key not found")
+    }
+
     const response = await fetch("https://app.launchdarkly.com/api/v2/projects", {
         method: "GET",
         headers: {
-            Authorization: integration.api_key,
+            Authorization: apiKey,
             "Content-Type": "application/json"
         }
     })
@@ -143,10 +149,15 @@ export async function fetchLaunchDarklyEnvironments(organizationId: string, inte
         throw new Error("LaunchDarkly integration not found")
     }
 
+    const apiKey = await getSecret(IntegrationType.LAUNCHDARKLY, integration.id, SecretField.ApiKey)
+    if (!apiKey) {
+        throw new Error("LaunchDarkly API key not found")
+    }
+
     const response = await fetch(`https://app.launchdarkly.com/api/v2/projects/${projectKey}/environments`, {
         method: "GET",
         headers: {
-            Authorization: integration.api_key,
+            Authorization: apiKey,
             "Content-Type": "application/json"
         }
     })
@@ -197,7 +208,7 @@ export async function getLaunchDarklyEnvironments(req: Request, res: Response) {
                 id: integrationId,
                 organization_id: organizationId
             },
-            select: { api_key: true }
+            select: { id: true }
         })
 
         if (!integration) {
@@ -205,11 +216,17 @@ export async function getLaunchDarklyEnvironments(req: Request, res: Response) {
             return
         }
 
+        const apiKey = await getSecret(IntegrationType.LAUNCHDARKLY, integration.id, SecretField.ApiKey)
+        if (!apiKey) {
+            res.status(404).json({ error: "Integration API key not found" })
+            return
+        }
+
         // Fetch environments from LaunchDarkly API
         const response = await fetch(`https://app.launchdarkly.com/api/v2/projects/${projectKey}/environments`, {
             method: "GET",
             headers: {
-                Authorization: integration.api_key,
+                Authorization: apiKey,
                 "Content-Type": "application/json"
             }
         })
