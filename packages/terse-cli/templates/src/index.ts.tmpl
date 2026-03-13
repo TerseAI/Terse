@@ -1,28 +1,28 @@
-import {
-    Terse,
-} from "terse-sdk"
-import type { CreateJobParameters } from "terse-sdk"
-import {
-    ScheduleTrigger,
-    TerseSkill,
-    GithubSkill
-} from "./terse.generated"
+import { Terse, TerseAgent, GithubPRInputEvent } from "terse-sdk";
+import { Repos, Slack, GitHub, SlackChannel } from "./terse.generated";
 
-const client = new Terse()
+const client = new Terse();
 
-const job: CreateJobParameters = {
-    name: "{{PROJECT_NAME}}",
-    triggers: [ScheduleTrigger("0 0 * * *")],
-    skills: [GithubSkill()],
-    onTrigger: async (event, agent) => {
-        // Your job logic here
-        const result = agent.run("Summarize the latest changes", event)
+await client.createJob({
+  name: "Summarize PR and send slack message",
+  triggers: [GitHub.onPR({ repo: Repos.TerseAI.LandingPage })],
+  skills: [
+    GitHub.skill({ repos: [Repos.TerseAI.LandingPage, Repos.TerseAI.Terse] }),
+    Slack.skill({ channel: SlackChannel.AllTerseInc }),
+  ],
+  onTrigger: async (event: GithubPRInputEvent, Agent: TerseAgent) => {
+    const message = await Agent.tools.slack.sendMessage({
+      channelId: SlackChannel.AllTerseInc.channelId,
+      message: "New PR from " + event.sender.login + "!",
+      thread_ts: "",
+      blocks: "",
+    });
 
-        for await (const chunk of result) {
-            console.log(chunk)
-        }
-    },
-    webhookURL: "https://example.com/webhook",
-}
+    const prompt =
+      `Summarize this PR ` + event.formatForAgentRunner() + `. Make sure to go and look at the code too and summarize the changes at a high level. I want to know what they changes are and what file I should Look at first. Keep it short and concise. Place into a separate thread reply to the message with ts: ` +
+      message.message_ts +
+      `. Format summaries in Block Kit. Include any images found in the PRs (screenshots, diagrams, etc.) in the Block Kit using image blocks.`;
 
-client.createJob(job)
+    await Agent.runAndWait(prompt);
+  }
+});
