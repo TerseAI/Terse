@@ -73,7 +73,9 @@ function ActivityRow({ run, onOpenChat }: { run: RunHistoryRecordWithAgent; onOp
             <div className="hidden md:flex items-center gap-1 text-xs text-muted-foreground min-w-[90px] justify-end">
                 {writeActions.length > 0 && (
                     <>
-                        {run.isManuallyTriggered && <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-accent-tertiary flex-shrink-0">Manual</span>}
+                        {run.isManuallyTriggered && (
+                            <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-accent-tertiary flex-shrink-0">Manual</span>
+                        )}
                         <Zap className="w-3 h-3" />
                         <span>
                             {writeActions.length} action{writeActions.length !== 1 ? "s" : ""}
@@ -120,14 +122,7 @@ export default function ActivityPage() {
     const [currentPage, setCurrentPage] = useState(1)
     const [runsPerPage, setRunsPerPage] = useState(20)
     const [selectedStatuses, setSelectedStatuses] = useState<Set<RunHistoryStatus>>(
-        new Set([
-            RunHistoryStatus.SUCCESS,
-            RunHistoryStatus.FAILED,
-            RunHistoryStatus.CANCELLED,
-            RunHistoryStatus.SKIPPED,
-            RunHistoryStatus.IN_PROGRESS,
-            RunHistoryStatus.AWAITING_APPROVAL
-        ])
+        new Set([RunHistoryStatus.SUCCESS, RunHistoryStatus.FAILED, RunHistoryStatus.CANCELLED, RunHistoryStatus.SKIPPED, RunHistoryStatus.IN_PROGRESS, RunHistoryStatus.AWAITING_APPROVAL])
     )
     const [searchQuery, setSearchQuery] = useState("")
     const [dateRange, setDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({ from: undefined, to: undefined })
