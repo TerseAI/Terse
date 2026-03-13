@@ -225,13 +225,11 @@ function NotificationsPage() {
                                 {!isApprovalsLoading && !isApprovalsError && approvals.length === 0 && <EmptyApprovalsList />}
 
                                 {!isApprovalsLoading && !isApprovalsError && approvals.length > 0 && (
-                                    <ScrollArea className="min-h-0 flex-1">
-                                        <div className="space-y-3 py-2">
-                                            {approvals.map(approval => (
-                                                <ApprovalRequestItem key={approval.id} approval={approval} onAction={deepLink => void handleDeepLinkAction(deepLink)} />
-                                            ))}
-                                        </div>
-                                    </ScrollArea>
+                                    <div className="min-h-0 flex-1 space-y-3 overflow-y-auto py-2">
+                                        {approvals.map(approval => (
+                                            <ApprovalRequestItem key={approval.id} approval={approval} onAction={deepLink => void handleDeepLinkAction(deepLink)} />
+                                        ))}
+                                    </div>
                                 )}
                             </CardContent>
                         </Card>
