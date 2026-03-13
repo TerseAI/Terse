@@ -590,7 +590,6 @@ async function toAgentDraft(agent: AgentSchemaInput, userId: string): Promise<Ag
             config: toConfigInstance(normalizeConfig(output.config))
         })),
         notificationSettings: notificationSettings ?? undefined,
-        toolApprovals: agent.toolApprovals ?? undefined,
         createdByUserId: userId,
         updatedAt: agent.updatedAt ?? undefined
     }
