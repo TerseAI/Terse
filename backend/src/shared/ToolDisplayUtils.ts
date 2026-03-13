@@ -937,7 +937,7 @@ export function parseToolParams(parametersJson?: string): Record<string, unknown
  */
 export function getToolDisplayForPhase(
     toolName: string,
-    phase: "preparing" | "executing" | "complete",
+    phase: "preparing" | "executing" | "complete" | "approval",
     options?: {
         params?: Record<string, unknown>
         result?: string
@@ -955,6 +955,8 @@ export function getToolDisplayForPhase(
                 return `Getting ready: ${readableName}`
             case "executing":
                 return `Working on ${readableName}`
+            case "approval":
+                return `Needs approval: ${readableName}`
             case "complete":
                 return "Done"
         }
@@ -965,6 +967,8 @@ export function getToolDisplayForPhase(
             return config.preparing
         case "executing":
             return config.executing(params)
+        case "approval":
+            return `Needs approval: ${getReadableFallbackName(toolName)}`
         case "complete":
             return config.complete(params, result)
     }
@@ -981,7 +985,7 @@ export function getReadableFallbackName(toolName: string) {
 /**
  * Convenience function that parses parameters JSON and gets the display string.
  */
-export function getToolDisplayFromCall(toolName: string, phase: "preparing" | "executing" | "complete", parametersJson?: string, result?: string): string {
+export function getToolDisplayFromCall(toolName: string, phase: "preparing" | "executing" | "complete" | "approval", parametersJson?: string, result?: string): string {
     const params = parseToolParams(parametersJson)
     return getToolDisplayForPhase(toolName, phase, { params, result })
 }
