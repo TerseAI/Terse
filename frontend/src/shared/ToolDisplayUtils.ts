@@ -241,10 +241,7 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
             const identifier = issue?.identifier as string | undefined
             return identifier ? `Updated task ${identifier}` : "Task updated"
         },
-        approval: params => {
-            const issueId = params?.issueId as string | undefined
-            return issueId ? `Update task ${issueId}?` : "Update this task?"
-        }
+        approval: () => "Update this task?"
     },
     linear_add_comment: {
         preparing: "Getting your note ready",
@@ -258,10 +255,7 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
             const target = actions?.[0]?.target
             return target ? `Added a note to ${target}` : "Note added"
         },
-        approval: params => {
-            const issueId = params?.issueId as string | undefined
-            return issueId ? `Add comment to ${issueId}?` : "Add this comment?"
-        }
+        approval: () => "Add this comment?"
     },
     linear_search_ticket: {
         preparing: "Looking for tasks",
@@ -385,10 +379,7 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
             const issueKey = params?.issueKey as string | undefined
             return issueKey ? `Updated task ${issueKey}` : "Task updated"
         },
-        approval: params => {
-            const issueKey = params?.issueKey as string | undefined
-            return issueKey ? `Update task ${issueKey}?` : "Update this task?"
-        }
+        approval: () => "Update this task?"
     },
     jira_search_ticket: {
         preparing: "Looking for tasks",

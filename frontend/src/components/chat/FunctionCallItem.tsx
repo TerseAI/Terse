@@ -146,7 +146,7 @@ export default function FunctionCallItem({ call, isTurnFailure = false, onApprov
     const [isExpanded, setIsExpanded] = useState(false)
 
     // Get display name based on current state
-    const phase = call.isWaitingForApproval ? "approval" : call.isRunning ? "executing" : "complete"
+    const phase = (call.isWaitingForApproval || call.isRejected) ? "approval" : call.isRunning ? "executing" : "complete"
     const displayName = getToolDisplayFromCall(call.name, phase, call.parameters, call.result)
 
     const handleApprove = () => {
