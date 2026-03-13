@@ -50,8 +50,8 @@ export default function ApprovalRequestItem({ approval, onAction }: ApprovalRequ
                 </div>
 
                 <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-foreground truncate" title={approval.title}>
+                    <div className="flex min-w-0 items-center gap-2">
+                        <span className="min-w-0 flex-1 text-sm font-medium text-foreground truncate" title={approval.title}>
                             {approval.title}
                         </span>
                         <span className="flex-shrink-0 text-xs text-muted-foreground">{formatRelativeTime(approval.timestamp)}</span>
@@ -67,7 +67,7 @@ export default function ApprovalRequestItem({ approval, onAction }: ApprovalRequ
 
             <div className="mt-2.5 flex items-center gap-3 pl-11">
                 <RunHistoryStatusBadge status={runHistoryStatus} />
-                <div className="ml-auto flex items-center gap-2">
+                <div className="ml-auto flex flex-shrink-0 items-center gap-2">
                     {orderedActions.map(action =>
                         action.type === "open_run_history" ? (
                             <Button key={`${approval.id}-${action.deepLink}`} type="button" size="icon-sm" variant="outline" onClick={() => onAction(action.deepLink)} title="Open run history">
