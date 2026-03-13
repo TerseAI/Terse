@@ -40,7 +40,7 @@ function TokenStream({ text, disableAnimation = false }: { text: string; disable
         let processed = text
 
         // Handle code blocks ```
-        processed = processed.replace(/```([\s\S]*?)```/g, '<pre class="bg-gray-800 rounded p-4 overflow-x-auto my-4 font-mono"><code>$1</code></pre>')
+        processed = processed.replace(/```([\s\S]*?)```/g, '<pre class="rounded p-4 overflow-x-auto my-4 font-mono"><code>$1</code></pre>')
 
         // Handle bold **text**
         processed = processed.replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold">$1</strong>')
@@ -49,7 +49,7 @@ function TokenStream({ text, disableAnimation = false }: { text: string; disable
         processed = processed.replace(/(?<!\*)\*(?!\*)([^*]+?)(?<!\*)\*(?!\*)/g, '<em class="italic">$1</em>')
 
         // Handle inline code `text`
-        processed = processed.replace(/`([^`]+)`/g, '<code class="bg-gray-800 px-1 rounded font-mono text-sm">$1</code>')
+        processed = processed.replace(/`([^`]+)`/g, '<code class="px-1 rounded font-mono text-sm">$1</code>')
 
         // Handle headers
         processed = processed.replace(/^#### (.*$)/gm, '<h3 class="text-lg font-bold mb-2 mt-4">$1</h3>')
