@@ -31,6 +31,7 @@ import { atlassianOAuthCallback, getAtlassianIntegrations, getJiraResources, han
 import { createOrUpdateLaunchDarklyIntegration, getLaunchDarklyEnvironments, getLaunchDarklyIntegrations, getLaunchDarklyProjects } from "./routes/launchdarkly"
 import { getLinearIntegrations, getLinearTeams, handleLinearWebhook, linearOAuthCallback } from "./routes/linear"
 import { createNotificationDestination, deleteNotificationDestination, getNotificationDestinations, updateNotificationDestination } from "./routes/notificationDestinations"
+import { getNotificationSettings, updateNotificationSettings } from "./routes/notificationSettings"
 import { getNotionIntegrations, getNotionResources, notionOAuthCallback } from "./routes/notion"
 import { createOrganization, getCurrentOrganization, getLogoUploadUrl, getLogoUrl, getUserOrganizations, switchOrganization, updateOrganization } from "./routes/organization"
 import { getPendingApprovals } from "./routes/pendingApprovals"
@@ -614,12 +615,20 @@ app.get("/integrations/active", authMiddleware, async (req, res) => {
 
 // MARK: NOTIFICATION DESTINATIONS
 
-app.get("/notification-destinations", authMiddleware, async (req, res) => {
+app.get(ApiRoutes.NOTIFICATION_DESTINATIONS.LIST, authMiddleware, async (req, res) => {
     getNotificationDestinations(req, res)
 })
 
-app.post("/notification-destinations", authMiddleware, async (req, res) => {
+app.post(ApiRoutes.NOTIFICATION_DESTINATIONS.LIST, authMiddleware, async (req, res) => {
     createNotificationDestination(req, res)
+})
+
+app.get(ApiRoutes.NOTIFICATION_SETTINGS, authMiddleware, async (req, res) => {
+    getNotificationSettings(req, res)
+})
+
+app.post(ApiRoutes.NOTIFICATION_SETTINGS, authMiddleware, async (req, res) => {
+    updateNotificationSettings(req, res)
 })
 
 app.put(ApiRoutes.NOTIFICATION_DESTINATIONS.BY_ID.pattern, authMiddleware, async (req, res) => {

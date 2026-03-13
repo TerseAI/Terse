@@ -21,8 +21,7 @@ import { ConfigType } from "../../shared/Configs"
 import { FROM_SETUP_CHAT_PARAM, FrontendRoutes } from "../../shared/FrontendRoutes"
 import { IntegrationType } from "../../shared/Integrations"
 import { RunHistoryStatus, TrackingParams } from "../../shared/RunHistoryTypes"
-import { ToolNameSchema } from "../../tools/ToolNames"
-import { getToolsThatRequireApprovals } from "../../tools/availableTools"
+import { AgentNotificationSettings, User } from "../../shared/types"
 import { formatError } from "../../tools/toolUtils"
 import { AgentWithRelations } from "../../types/prisma"
 import { HydratorType, requireHydratorType } from "../../types/rag"
@@ -55,24 +54,24 @@ import { randomString } from "../../utility/strings"
 import type { ChatAgentContext } from "./ChatAgentContext"
 import ChatInterface from "./ChatInterfaces/ChatInterface"
 
+async function getDefaultNotificationSettings(userId: string): Promise<AgentNotificationSettings> {
+    const userNotificationSettings = await db().user_notification_settings.findUnique({
+        where: {
+            user_id: userId
+        }
+    })
+    if (!userNotificationSettings) {
+        throw new Error("User has no notification settings")
+    }
+    return {
+        enabled: userNotificationSettings.agent_default_notifications.length > 0,
+        actionTypes: userNotificationSettings.agent_default_notifications
+    }
+}
+
 export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgentContext>[] {
     return [
         webSearchTool({ searchContextSize: "medium" }) as Tool<ChatAgentContext>,
-        tool({
-            name: "getToolApprovalOptions",
-            description:
-                "Returns the tools that can require approval for the given outputs (skills). Use this when building an agent to discover which tool names are valid for the toolApprovals field. The returned name values are the only valid choices for toolApprovals when calling applyAgent for an agent with those outputs. skills must be output config types (e.g. slack_output, notion, linear_output).",
-            parameters: z.object({
-                skills: z
-                    .array(z.nativeEnum(ConfigType))
-                    .describe("Output config types for the agent's skills. Only config types with isOutput true (e.g. slack_output, notion, gmail_output, linear_output, jira, confluence).")
-            }),
-            execute: async ({ skills }: { skills: ConfigType[] }, _runContext?: RunContext<ChatAgentContext>): Promise<string> => {
-                const tools = getToolsThatRequireApprovals(skills)
-                return JSON.stringify({ tools })
-            },
-            errorFunction: formatError
-        }),
         tool({
             name: "applyAgent",
             description:
@@ -89,7 +88,7 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
                 }
 
                 try {
-                    const draft = toAgentDraft(agent, user.id)
+                    const draft = await toAgentDraft(agent, user.id)
                     const sessionId = runContext?.context?.sessionId
                     const createWithId = !id && chatInterface.name === "Web" && sessionId && isUuidV4(sessionId) ? { createWithId: sessionId } : undefined
                     const result = id ? await updateAgentForUser(user.id, user.organizationId, id, draft) : await applyAgentForUser(user.id, user.organizationId, draft, createWithId)
@@ -532,15 +531,6 @@ const AgentPromptSchema = z
     })
     .strict()
 
-const RunHistoryActionTypeSchema = z.enum(["create", "update", "delete", "read"])
-
-const AgentNotificationSettingsSchema = z
-    .object({
-        enabled: z.boolean(),
-        actionTypes: z.array(RunHistoryActionTypeSchema)
-    })
-    .strict()
-
 export const AgentSchema = z
     .object({
         name: NonEmptyString,
@@ -549,8 +539,6 @@ export const AgentSchema = z
         prompt: AgentPromptSchema,
         triggers: z.array(AgentTriggerSchema).min(1),
         outputs: z.array(AgentOutputSchema).min(1),
-        notificationSettings: AgentNotificationSettingsSchema.nullable(),
-        toolApprovals: z.array(ToolNameSchema).nullable(),
         updatedAt: z.string().nullable()
     })
     .strict()
@@ -577,7 +565,8 @@ function normalizeConfig<T extends Record<string, any>>(config: T): T {
     return config
 }
 
-function toAgentDraft(agent: AgentSchemaInput, userId: string): AgentDraft {
+async function toAgentDraft(agent: AgentSchemaInput, userId: string): Promise<AgentDraft> {
+    const notificationSettings: AgentNotificationSettings = await getDefaultNotificationSettings(userId)
     return {
         ...agent,
         triggers: agent.triggers.map(trigger => ({
@@ -590,8 +579,7 @@ function toAgentDraft(agent: AgentSchemaInput, userId: string): AgentDraft {
             ...output,
             config: toConfigInstance(normalizeConfig(output.config))
         })),
-        notificationSettings: agent.notificationSettings ?? undefined,
-        toolApprovals: agent.toolApprovals ?? undefined,
+        notificationSettings: notificationSettings ?? undefined,
         createdByUserId: userId,
         updatedAt: agent.updatedAt ?? undefined
     }

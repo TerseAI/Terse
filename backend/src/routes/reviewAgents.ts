@@ -176,6 +176,15 @@ export async function reviewAllAgents(req: Request, res: Response) {
                 continue
             }
 
+            // Check if the user has disabled weekly improvement emails
+            const userSettings = await db().user_notification_settings.findUnique({
+                where: { user_id: userId },
+                select: { weekly_agent_improvements: true }
+            })
+            if (userSettings && !userSettings.weekly_agent_improvements) {
+                continue
+            }
+
             let emailError: unknown
             try {
                 await sendWeeklyReviewEmail(group.emailAddress, group.agents)

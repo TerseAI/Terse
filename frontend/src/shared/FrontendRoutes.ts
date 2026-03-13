@@ -39,6 +39,7 @@ export const FrontendRoutes = {
         DETAIL: (agentId: string) => `/app/agents/${encodeURIComponent(agentId)}`,
         HISTORY: (agentId: string) => `/app/agents/${encodeURIComponent(agentId)}?tab=history`,
         IMPROVEMENTS: (agentId: string) => `/app/agents/${encodeURIComponent(agentId)}?tab=improvements`,
+        ALERTS: (agentId: string) => `/app/agents/${encodeURIComponent(agentId)}?tab=setup&section=alerts`,
         RUN_HISTORY: (agentId: string, runId: string) => `/app/agents/${encodeURIComponent(agentId)}?tab=history&runId=${encodeURIComponent(runId)}`,
         // Relative path for external references (e.g., run history metadata)
         BY_ID_RELATIVE: (agentId: string) => `/agents/${encodeURIComponent(agentId)}`

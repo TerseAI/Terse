@@ -452,7 +452,13 @@ export async function getOrCreateDbUserFromWorkOS(authResult: AuthenticateWithSe
     if (!dbUser) {
         dbUser = await prisma.users.create({
             data: {
-                workos_id: workosUser.id
+                workos_id: workosUser.id,
+                notification_settings: {
+                    create: {
+                        agent_default_notifications: ["error"],
+                        weekly_agent_improvements: true
+                    }
+                }
             }
         })
     }

@@ -1,8 +1,14 @@
 import { useEffect, useState } from "react"
+import { useForm } from "react-hook-form"
 import { useSearchParams } from "react-router-dom"
 
-import { Mail, Send, XCircle } from "lucide-react"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { AxiosError } from "axios"
+import { ExternalLink, Loader2, Mail, Send, XCircle } from "lucide-react"
+import { toast } from "sonner"
+import z from "zod"
 
+import { MultiSelect } from "@/components/MultiSelect"
 import { AddNotificationDestination } from "@/components/Notifications/AddNotificationDestination"
 import ApprovalRequestItem from "@/components/Notifications/ApprovalRequestItem"
 import { NotificationDestinationItem } from "@/components/Notifications/NotificationDestination"
@@ -10,23 +16,30 @@ import { SlackIcon } from "@/components/icons/IntegrationIcons"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { NOTIFICATION_ACTION_OPTIONS } from "@/constants/notificationActions"
 import { useNotificationDestinations } from "@/hooks/api/useNotificationDestinations"
+import { useNotificationSettings } from "@/hooks/api/useNotificationSettings"
 import { usePendingApprovals } from "@/hooks/api/usePendingApprovals"
 import { useSentNotifications } from "@/hooks/api/useSentNotifications"
 import { useRunHistoryChatDrawer } from "@/services/RunHistoryChatDrawerContext"
 import { BackendProvider } from "@/services/backend"
 import { ApprovalRequestFilter, parseDeepLink } from "@/shared/ApprovalTypes"
-import { NotificationDestination } from "@/shared/Notifications"
-import { RunHistoryStatus } from "@/shared/RunHistoryTypes"
+import { NotificationDestination, type NotificationSettings as NotificationSettingsData } from "@/shared/Notifications"
+import { RUN_HISTORY_ACTION_TYPES, type RunHistoryActionType, RunHistoryStatus } from "@/shared/RunHistoryTypes"
 import { type SentNotification, SentNotificationEventType, SentNotificationStatus } from "@/shared/SentNotifications"
 import { sendToolApprovalResponse } from "@/socket"
 import { formatRelativeTime } from "@/utility/timeUtils"
 
 import StatusBadge from "../components/StatusBadge"
+import { Form, FormControl, FormField, FormItem, FormLabel } from "../components/ui/form"
+import { Label } from "../components/ui/label"
+import { Switch } from "../components/ui/switch"
 
 const NOTIFICATIONS_PAGE_SIZE = 12
 const ALL_RUN_STATUSES = Object.values(RunHistoryStatus) as RunHistoryStatus[]
@@ -153,18 +166,33 @@ function NotificationsPage() {
                         )}
                         <Card className="min-h-[8rem] gap-0 overflow-hidden border-border/60 bg-card/35 py-0 backdrop-blur-sm">
                             <CardContent className="p-4">
-                                <p className="mb-3 text-base font-semibold text-foreground">Delivery Channels</p>
-                                {shouldShowDestinationsLoading && <LoadingNotificationChannelList />}
-                                {!shouldShowDestinationsLoading && (isDestinationsError || notificationDestinations === undefined) && (
-                                    <ErrorNotificationChannelList onRetry={() => mutateDestinations()} />
-                                )}
-                                {!shouldShowDestinationsLoading && !isDestinationsError && notificationDestinations !== undefined && (
-                                    <NotificationChannelList
-                                        notificationDestinations={notificationDestinations}
-                                        addDestinationDialogOpen={isAddDestinationDialogOpen}
-                                        onAddDestinationDialogOpenChange={setIsAddDestinationDialogOpen}
-                                    />
-                                )}
+                                <Tabs defaultValue="destinations" className="w-full">
+                                    <div className="mb-3 flex items-center justify-between gap-3">
+                                        <p className="text-base font-semibold text-foreground">Notification Defaults</p>
+                                        <TabsList className="h-auto">
+                                            <TabsTrigger value="destinations">Destination</TabsTrigger>
+                                            <TabsTrigger value="types">Notification Types</TabsTrigger>
+                                        </TabsList>
+                                    </div>
+
+                                    <TabsContent value="destinations" className="mt-0">
+                                        {shouldShowDestinationsLoading && <LoadingNotificationChannelList />}
+                                        {!shouldShowDestinationsLoading && (isDestinationsError || notificationDestinations === undefined) && (
+                                            <ErrorNotificationChannelList onRetry={() => mutateDestinations()} />
+                                        )}
+                                        {!shouldShowDestinationsLoading && !isDestinationsError && notificationDestinations !== undefined && (
+                                            <NotificationChannelList
+                                                notificationDestinations={notificationDestinations}
+                                                addDestinationDialogOpen={isAddDestinationDialogOpen}
+                                                onAddDestinationDialogOpenChange={setIsAddDestinationDialogOpen}
+                                            />
+                                        )}
+                                    </TabsContent>
+
+                                    <TabsContent value="types" className="mt-0">
+                                        <NotificationSettings />
+                                    </TabsContent>
+                                </Tabs>
                             </CardContent>
                         </Card>
                     </div>
@@ -282,13 +310,15 @@ function NotificationChannelList({
 }) {
     if (notificationDestinations.length === 0) {
         return (
-            <div className="rounded-lg border border-dashed border-border/60 px-3 py-2">
-                <div className="flex min-h-9 items-center justify-between gap-3">
-                    <div className="min-w-0 flex items-center gap-2 text-sm text-muted-foreground">
-                        <Mail className="h-4 w-4 shrink-0 text-primary" />
-                        <span className="truncate">Notifications are sent to email by default.</span>
+            <div className="rounded-lg border border-dashed border-border/60 px-3 py-3">
+                <div className="flex flex-col gap-3">
+                    <div className="flex items-start gap-2 text-sm text-muted-foreground">
+                        <Mail className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                        <span className="whitespace-normal break-words">No destination added yet. Notifications go to email by default.</span>
                     </div>
-                    <AddNotificationDestination externalOpen={addDestinationDialogOpen} onExternalOpenChange={onAddDestinationDialogOpenChange} />
+                    <div>
+                        <AddNotificationDestination externalOpen={addDestinationDialogOpen} onExternalOpenChange={onAddDestinationDialogOpenChange} />
+                    </div>
                 </div>
             </div>
         )
@@ -411,6 +441,17 @@ function SentNotificationRow({ notification }: { notification: SentNotification 
                         <span className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
                             <SentNotificationDestinationIcon destinationType={notification.destinationType} />
                             <span className="truncate">{notification.destinationLabel}</span>
+                            {notification.notificationUrl && (
+                                <a
+                                    href={notification.notificationUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    title="View in Slack"
+                                    className="shrink-0 text-muted-foreground transition-colors hover:text-foreground"
+                                >
+                                    <ExternalLink className="h-3 w-3" />
+                                </a>
+                            )}
                         </span>
                         {shouldShowAgent && <span className="truncate text-xs text-muted-foreground">Agent: {normalizedAgentName}</span>}
                     </div>
@@ -471,6 +512,254 @@ function EmptySentNotificationsRow() {
                 No notifications sent yet.
             </TableCell>
         </TableRow>
+    )
+}
+
+const notificationSettingsSchema = z.object({
+    agentDefaultNotifications: z.array(z.enum(RUN_HISTORY_ACTION_TYPES)),
+    weeklyAgentImprovements: z.boolean()
+})
+
+type NotificationSettingsFormValues = z.infer<typeof notificationSettingsSchema>
+
+function normalizeActionTypes(actionTypes: RunHistoryActionType[]): RunHistoryActionType[] {
+    return Array.from(new Set(actionTypes)).sort()
+}
+
+function areActionTypeSetsEqual(left: RunHistoryActionType[], right: RunHistoryActionType[]): boolean {
+    const normalizedLeft = normalizeActionTypes(left)
+    const normalizedRight = normalizeActionTypes(right)
+    if (normalizedLeft.length !== normalizedRight.length) {
+        return false
+    }
+
+    return normalizedLeft.every((value, index) => value === normalizedRight[index])
+}
+
+function NotificationSettings() {
+    const { notificationSettings, isError, isValidating, mutate: mutateSettings } = useNotificationSettings()
+
+    if (isValidating && notificationSettings === undefined) {
+        return <LoadingNotificationSettings />
+    }
+
+    if (isError || notificationSettings === undefined) {
+        return <ErrorNotificationSettings onRetry={() => void mutateSettings()} />
+    }
+
+    return <NotificationSettingsForm notificationSettings={notificationSettings} mutateSettings={() => mutateSettings()} />
+}
+
+type NotificationSettingsFormProps = {
+    notificationSettings: NotificationSettingsData
+    mutateSettings: () => Promise<unknown>
+}
+
+function NotificationSettingsForm({ notificationSettings, mutateSettings }: NotificationSettingsFormProps) {
+    const [isLoading, setIsLoading] = useState(false)
+    const [error, setError] = useState<string | null>(null)
+    const [isApplyToAllDialogOpen, setIsApplyToAllDialogOpen] = useState(false)
+    const [pendingSubmitValues, setPendingSubmitValues] = useState<NotificationSettingsFormValues | null>(null)
+
+    const form = useForm<NotificationSettingsFormValues>({
+        resolver: zodResolver(notificationSettingsSchema),
+        defaultValues: {
+            agentDefaultNotifications: notificationSettings.agentDefaultNotifications,
+            weeklyAgentImprovements: notificationSettings.weeklyAgentImprovements
+        }
+    })
+
+    useEffect(() => {
+        form.reset({
+            agentDefaultNotifications: notificationSettings.agentDefaultNotifications,
+            weeklyAgentImprovements: notificationSettings.weeklyAgentImprovements
+        })
+    }, [notificationSettings, form])
+
+    async function saveNotificationSettings(values: NotificationSettingsFormValues, applyToAllAgents: boolean) {
+        setError(null)
+        setIsLoading(true)
+        try {
+            await BackendProvider.updateNotificationSettings(values.agentDefaultNotifications, values.weeklyAgentImprovements, applyToAllAgents)
+            void mutateSettings()
+            toast.success(applyToAllAgents ? "Notification settings updated for all agents" : "Notification settings updated")
+        } catch (err) {
+            const message = err instanceof AxiosError && typeof err.response?.data?.error === "string" ? err.response.data.error : "Something went wrong. Please try again."
+            setError(message)
+        } finally {
+            setIsLoading(false)
+            setIsApplyToAllDialogOpen(false)
+            setPendingSubmitValues(null)
+        }
+    }
+
+    async function onSubmit(values: NotificationSettingsFormValues) {
+        const currentDefaultNotifications = notificationSettings.agentDefaultNotifications
+        const shouldConfirmApplyToAll = !areActionTypeSetsEqual(values.agentDefaultNotifications, currentDefaultNotifications)
+
+        if (shouldConfirmApplyToAll) {
+            setError(null)
+            setPendingSubmitValues(values)
+            setIsApplyToAllDialogOpen(true)
+            return
+        }
+
+        await saveNotificationSettings(values, false)
+    }
+
+    function handleDialogOpenChange(open: boolean) {
+        if (isLoading) {
+            return
+        }
+
+        setIsApplyToAllDialogOpen(open)
+        if (!open) {
+            setPendingSubmitValues(null)
+        }
+    }
+
+    function handleApplyToAllAgents(): void {
+        if (!pendingSubmitValues || isLoading) {
+            return
+        }
+        void saveNotificationSettings(pendingSubmitValues, true)
+    }
+
+    function handleUpdateDefaultsOnly(): void {
+        if (!pendingSubmitValues || isLoading) {
+            return
+        }
+        void saveNotificationSettings(pendingSubmitValues, false)
+    }
+
+    return (
+        <>
+            <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                    <FormField
+                        control={form.control}
+                        name="agentDefaultNotifications"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Notify me about</FormLabel>
+                                <FormControl>
+                                    <MultiSelect
+                                        options={NOTIFICATION_ACTION_OPTIONS.map(option => ({
+                                            id: option.value,
+                                            label: option.label
+                                        }))}
+                                        selectedIds={field.value}
+                                        onSelect={ids => field.onChange(ids as RunHistoryActionType[])}
+                                        placeholder="Select event types..."
+                                        searchPlaceholder="Search types..."
+                                        emptyMessage="No types found."
+                                        displayText={count => (count > 0 ? `${count} selected` : "Select event types...")}
+                                        renderItem={option => {
+                                            const actionOption = NOTIFICATION_ACTION_OPTIONS.find(opt => opt.value === option.id)
+                                            return (
+                                                <span className="flex items-center gap-2">
+                                                    {actionOption?.icon}
+                                                    {option.label}
+                                                </span>
+                                            )
+                                        }}
+                                        renderBadge={option => {
+                                            const actionOption = NOTIFICATION_ACTION_OPTIONS.find(opt => opt.value === option.id)
+                                            return (
+                                                <span className="flex items-center gap-1">
+                                                    {actionOption?.icon}
+                                                    {option.label}
+                                                </span>
+                                            )
+                                        }}
+                                    />
+                                </FormControl>
+                            </FormItem>
+                        )}
+                    />
+
+                    <FormField
+                        control={form.control}
+                        name="weeklyAgentImprovements"
+                        render={({ field }) => (
+                            <FormItem className="pt-2">
+                                <div className="flex items-center justify-between gap-3">
+                                    <Label htmlFor="weekly-improvements" className="text-sm font-normal">
+                                        Receive weekly agent improvement email
+                                    </Label>
+                                    <FormControl>
+                                        <Switch id="weekly-improvements" checked={field.value} onCheckedChange={field.onChange} disabled={isLoading} />
+                                    </FormControl>
+                                </div>
+                            </FormItem>
+                        )}
+                    />
+
+                    {error && <p className="text-sm text-destructive">{error}</p>}
+
+                    <div className="flex justify-end">
+                        <Button type="submit" size="sm" disabled={isLoading}>
+                            {isLoading ? (
+                                <>
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                    Saving...
+                                </>
+                            ) : (
+                                "Save"
+                            )}
+                        </Button>
+                    </div>
+                </form>
+            </Form>
+
+            <Dialog open={isApplyToAllDialogOpen} onOpenChange={handleDialogOpenChange}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Apply to all agents?</DialogTitle>
+                        <DialogDescription>Do you want to apply these default notification event changes to every agent in your organization?</DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => handleDialogOpenChange(false)} disabled={isLoading}>
+                            Cancel
+                        </Button>
+                        <Button variant="secondary" onClick={handleUpdateDefaultsOnly} disabled={isLoading}>
+                            Only update my defaults
+                        </Button>
+                        <Button onClick={handleApplyToAllAgents} disabled={isLoading}>
+                            {isLoading ? (
+                                <>
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                    Saving...
+                                </>
+                            ) : (
+                                "Apply to all agents"
+                            )}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </>
+    )
+}
+
+function LoadingNotificationSettings() {
+    return (
+        <div className="space-y-4">
+            <Skeleton className="h-10 w-full rounded-lg" />
+            <Skeleton className="h-16 w-2/3 rounded-lg" />
+            <Skeleton className="ml-auto h-9 w-20 rounded-lg" />
+        </div>
+    )
+}
+
+function ErrorNotificationSettings({ onRetry }: { onRetry: () => void }) {
+    return (
+        <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3">
+            <p className="text-sm text-destructive">Unable to load notification types right now.</p>
+            <Button variant="outline" size="sm" className="mt-3" onClick={onRetry}>
+                Retry
+            </Button>
+        </div>
     )
 }
 

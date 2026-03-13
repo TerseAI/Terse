@@ -49,19 +49,23 @@ async function getEmailBranding(): Promise<EmailBranding> {
 }
 
 export async function sendEmailNotification(notificationDestination: UserNotificationDestination, runAction: RunHistoryAction, agent: Agent) {
+    const agentSettingsUrl = settings.urls.frontend ? `${settings.urls.frontend}${FrontendRoutes.AGENTS.ALERTS(agent.id)}` : undefined
+    const notificationSettingsUrl = settings.urls.frontend ? `${settings.urls.frontend}${FrontendRoutes.NOTIFICATIONS}` : undefined
     const branding = await getEmailBranding()
 
     await resend.emails.send({
         from: fromEmail,
         to: notificationDestination.email_address || "",
         subject: "Notification from: " + agent.name,
-        html: await loadTemplate("notification.html", { runAction, agent, logoSrc: branding.logoSrc }),
+        html: await loadTemplate("notification.html", { runAction, agent, logoSrc: branding.logoSrc, agentSettingsUrl, notificationSettingsUrl }),
         attachments: branding.attachments
     })
 }
 
 export async function sendEmailApprovalRequest(notificationDestination: UserNotificationDestination, runId: string, runAction: RunHistoryAction, agent: Agent, user: User) {
     const runUrl = settings.urls.frontend ? `${settings.urls.frontend}${FrontendRoutes.AGENTS.RUN_HISTORY(agent.id, runId)}` : undefined
+    const agentSettingsUrl = settings.urls.frontend ? `${settings.urls.frontend}${FrontendRoutes.AGENTS.ALERTS(agent.id)}` : undefined
+    const notificationSettingsUrl = settings.urls.frontend ? `${settings.urls.frontend}${FrontendRoutes.NOTIFICATIONS}` : undefined
     const branding = await getEmailBranding()
     const notificationFor = formatApprovalNotificationFor(runAction.action)
 
@@ -69,20 +73,22 @@ export async function sendEmailApprovalRequest(notificationDestination: UserNoti
         from: fromEmail,
         to: notificationDestination.email_address || "",
         subject: agent.name + " is requesting your approval",
-        html: await loadTemplate("approvalRequest.html", { runId, runAction, agent, user, runUrl, logoSrc: branding.logoSrc, notificationFor }),
+        html: await loadTemplate("approvalRequest.html", { runId, runAction, agent, user, runUrl, logoSrc: branding.logoSrc, notificationFor, agentSettingsUrl, notificationSettingsUrl }),
         attachments: branding.attachments
     })
 }
 
 export async function sendEmailRunFailure(notificationDestination: UserNotificationDestination, agent: Agent, runId: string, errorMessage: string) {
     const runUrl = settings.urls.frontend ? `${settings.urls.frontend}${FrontendRoutes.AGENTS.RUN_HISTORY(agent.id, runId)}` : undefined
+    const agentSettingsUrl = settings.urls.frontend ? `${settings.urls.frontend}${FrontendRoutes.AGENTS.ALERTS(agent.id)}` : undefined
+    const notificationSettingsUrl = settings.urls.frontend ? `${settings.urls.frontend}${FrontendRoutes.NOTIFICATIONS}` : undefined
     const branding = await getEmailBranding()
 
     await resend.emails.send({
         from: fromEmail,
         to: notificationDestination.email_address || "",
         subject: "Error with Terse Agent: " + agent.name,
-        html: await loadTemplate("runHistoryError.html", { agent, runId, errorMessage, runUrl, logoSrc: branding.logoSrc }),
+        html: await loadTemplate("runHistoryError.html", { agent, runId, errorMessage, runUrl, logoSrc: branding.logoSrc, agentSettingsUrl, notificationSettingsUrl }),
         attachments: branding.attachments
     })
 }
@@ -97,11 +103,13 @@ export async function sendWeeklyReviewEmail(
 ): Promise<void> {
     const branding = await getEmailBranding()
 
+    const notificationSettingsUrl = settings.urls.frontend ? `${settings.urls.frontend}${FrontendRoutes.NOTIFICATIONS}` : undefined
+
     await resend.emails.send({
         from: fromEmail,
         to: emailAddress,
         subject: "Weekly Agent Review",
-        html: await loadTemplate("weeklyReview.html", { agents, logoSrc: branding.logoSrc }),
+        html: await loadTemplate("weeklyReview.html", { agents, logoSrc: branding.logoSrc, notificationSettingsUrl }),
         attachments: branding.attachments
     })
 }

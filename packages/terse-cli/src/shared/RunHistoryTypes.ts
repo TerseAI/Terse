@@ -13,7 +13,8 @@ export enum RunHistoryStatus {
 }
 
 export type RunHistoryDecisionAction = "processed" | "skipped"
-export type RunHistoryActionType = "create" | "update" | "delete" | "read"
+export const RUN_HISTORY_ACTION_TYPES = ["create", "update", "delete", "read", "approve", "error"] as const
+export type RunHistoryActionType = (typeof RUN_HISTORY_ACTION_TYPES)[number]
 
 export type RunHistoryAction = {
     // What action was taken (free-text, e.g. "create database entry", "send notification")

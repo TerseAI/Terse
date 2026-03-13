@@ -20,8 +20,8 @@ import {
     SlackIntegration,
     WorkOSIntegration
 } from "../shared/Integrations"
-import { CreateNotificationDestinationRequest, NotificationDestination } from "../shared/Notifications"
-import type { RunHistoryActionWithId, RunHistoryModelEvent } from "../shared/RunHistoryTypes"
+import { CreateNotificationDestinationRequest, NotificationDestination, NotificationSettings, UpdateNotificationSettingsRequest } from "../shared/Notifications"
+import type { RunHistoryActionType, RunHistoryActionWithId, RunHistoryModelEvent } from "../shared/RunHistoryTypes"
 import { GetAllRunHistoryResponse, GetRunHistoryParams, GetRunHistoryResponse, RunHistoryStatus } from "../shared/RunHistoryTypes"
 import { GetSentNotificationsResponse } from "../shared/SentNotifications"
 import { GetToolsThatRequireApprovalsRequest, GetToolsThatRequireApprovalsResponse } from "../shared/ToolsTypes"
@@ -527,6 +527,16 @@ interface BackendService {
      * Updates organization settings (admin only)
      */
     updateOrganization(name: string): Promise<{ id: string; name: string }>
+
+    /**
+     * Gets user-level notification topic settings
+     */
+    getNotificationSettings(): Promise<NotificationSettings>
+
+    /**
+     * Updates user-level notification topic settings
+     */
+    updateNotificationSettings(agentDefaultNotifications: RunHistoryActionType[], weeklyAgentImprovements: boolean, applyToAllAgents?: boolean): Promise<void>
 }
 
 export const BackendProvider: BackendService = {
@@ -1574,6 +1584,31 @@ export const BackendProvider: BackendService = {
             .then(response => response.data)
             .catch(error => {
                 console.error("Error updating organization:", error)
+                throw error
+            })
+    },
+
+    getNotificationSettings: () => {
+        return axios
+            .get<NotificationSettings>(`${backendBaseUrl}${ApiRoutes.NOTIFICATION_SETTINGS}`, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error("Error fetching notification settings:", error)
+                throw error
+            })
+    },
+
+    updateNotificationSettings: (agentDefaultNotifications: RunHistoryActionType[], weeklyAgentImprovements: boolean, applyToAllAgents?: boolean) => {
+        const payload: UpdateNotificationSettingsRequest = {
+            agentDefaultNotifications,
+            weeklyAgentImprovements,
+            ...(applyToAllAgents !== undefined && { applyToAllAgents })
+        }
+        return axios
+            .post(`${backendBaseUrl}${ApiRoutes.NOTIFICATION_SETTINGS}`, payload, { withCredentials: true })
+            .then(() => undefined)
+            .catch(error => {
+                console.error("Error updating notification settings:", error)
                 throw error
             })
     }

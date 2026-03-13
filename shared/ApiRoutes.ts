@@ -269,6 +269,8 @@ export const ApiRoutes = {
         DEPLOY: "/sdk/deploy"
     },
 
+    NOTIFICATION_SETTINGS: "/notification-settings",
+
     SENT_NOTIFICATIONS: {
         LIST: "/sent-notifications"
     },

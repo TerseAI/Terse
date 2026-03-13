@@ -19,6 +19,7 @@ export type SentNotification = {
     agentName?: string
     agentId?: string
     runId?: string
+    notificationUrl?: string
     sentAt: string
     errorMessage?: string
 }
