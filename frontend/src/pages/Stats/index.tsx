@@ -373,7 +373,7 @@ function StatsPageSkeleton() {
 // ---------------------------------------------------------------------------
 
 function StatsPage() {
-    const [selectedInterval, setSelectedInterval] = useState<StatsInterval>("7d")
+    const [selectedInterval, setSelectedInterval] = useState<StatsInterval>("1mo")
     const { stats, isLoading } = useStats(selectedInterval)
 
     const dailyEvents = useMemo(() => stats?.dailyEvents ?? [], [stats])
