@@ -6,8 +6,16 @@ import { db } from "../prismaClient"
 import { emitCacheInvalidationWithKey } from "../services/CacheInvalidationService"
 import { apiTokensKey } from "../shared/InvalidationKeys"
 import { ApiToken, ApiTokenCreateResponse } from "../shared/types"
+import { FeatureFlag, FeatureFlagService } from "../utility/featureFlags"
 
 const API_TOKENS_INVALIDATION_KEY = apiTokensKey()[0]
+const featureFlagService = FeatureFlagService.getInstance()
+
+async function isSdkInterfaceEnabled(req: Request): Promise<boolean> {
+    const user = req.session?.user
+    if (!user) return false
+    return featureFlagService.isFeatureFlagEnabled(FeatureFlag.SDK_INTERFACE, user.email, { email: user.email })
+}
 
 function hashToken(rawToken: string): string {
     return crypto.createHash("sha256").update(rawToken).digest("hex")
@@ -21,6 +29,11 @@ function generateRawToken(): string {
 export async function getApiTokens(req: Request, res: Response) {
     if (!req.session?.user) {
         res.status(401).json({ error: "Unauthorized" })
+        return
+    }
+
+    if (!(await isSdkInterfaceEnabled(req))) {
+        res.status(403).json({ error: "SDK interface is not enabled for your account" })
         return
     }
 
@@ -52,6 +65,11 @@ export async function getApiTokens(req: Request, res: Response) {
 export async function createApiToken(req: Request, res: Response) {
     if (!req.session?.user) {
         res.status(401).json({ error: "Unauthorized" })
+        return
+    }
+
+    if (!(await isSdkInterfaceEnabled(req))) {
+        res.status(403).json({ error: "SDK interface is not enabled for your account" })
         return
     }
 
@@ -110,6 +128,11 @@ export async function updateApiToken(req: Request, res: Response) {
         return
     }
 
+    if (!(await isSdkInterfaceEnabled(req))) {
+        res.status(403).json({ error: "SDK interface is not enabled for your account" })
+        return
+    }
+
     const userId = req.session.user.id
     const organizationId = req.session.user.organizationId
     const tokenId = req.params.id
@@ -160,6 +183,11 @@ export async function updateApiToken(req: Request, res: Response) {
 export async function deleteApiToken(req: Request, res: Response) {
     if (!req.session?.user) {
         res.status(401).json({ error: "Unauthorized" })
+        return
+    }
+
+    if (!(await isSdkInterfaceEnabled(req))) {
+        res.status(403).json({ error: "SDK interface is not enabled for your account" })
         return
     }
 
