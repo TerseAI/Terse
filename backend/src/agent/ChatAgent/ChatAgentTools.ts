@@ -19,11 +19,8 @@ import type { ConfigInstance } from "../../shared/Configs"
 import { ConfigType } from "../../shared/Configs"
 import { FROM_SETUP_CHAT_PARAM, FrontendRoutes } from "../../shared/FrontendRoutes"
 import { IntegrationType } from "../../shared/Integrations"
-import { NotificationSettings } from "../../shared/Notifications"
 import { RunHistoryStatus, TrackingParams } from "../../shared/RunHistoryTypes"
 import { AgentNotificationSettings, User } from "../../shared/types"
-import { ToolNameSchema } from "../../tools/ToolNames"
-import { getToolsThatRequireApprovals } from "../../tools/availableTools"
 import { formatError } from "../../tools/toolUtils"
 import { AgentWithRelations } from "../../types/prisma"
 import { HydratorType, requireHydratorType } from "../../types/rag"
@@ -74,21 +71,6 @@ async function getDefaultNotificationSettings(userId: string): Promise<AgentNoti
 export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgentContext>[] {
     return [
         webSearchTool({ searchContextSize: "medium" }) as Tool<ChatAgentContext>,
-        tool({
-            name: "getToolApprovalOptions",
-            description:
-                "Returns the tools that can require approval for the given outputs (skills). Use this when building an agent to discover which tool names are valid for the toolApprovals field. The returned name values are the only valid choices for toolApprovals when calling applyAgent for an agent with those outputs. skills must be output config types (e.g. slack_output, notion, linear_output).",
-            parameters: z.object({
-                skills: z
-                    .array(z.nativeEnum(ConfigType))
-                    .describe("Output config types for the agent's skills. Only config types with isOutput true (e.g. slack_output, notion, gmail_output, linear_output, jira, confluence).")
-            }),
-            execute: async ({ skills }: { skills: ConfigType[] }, _runContext?: RunContext<ChatAgentContext>): Promise<string> => {
-                const tools = getToolsThatRequireApprovals(skills)
-                return JSON.stringify({ tools })
-            },
-            errorFunction: formatError
-        }),
         tool({
             name: "applyAgent",
             description:
@@ -567,7 +549,6 @@ export const AgentSchema = z
         prompt: AgentPromptSchema,
         triggers: z.array(AgentTriggerSchema).min(1),
         outputs: z.array(AgentOutputSchema).min(1),
-        toolApprovals: z.array(ToolNameSchema).nullable(),
         updatedAt: z.string().nullable()
     })
     .strict()
