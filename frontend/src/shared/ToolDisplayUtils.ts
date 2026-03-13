@@ -1,6 +1,11 @@
 import { INTEGRATION_METADATA, IntegrationType } from "../shared/Integrations"
 
 /**
+ * The phases a tool call can be in for display purposes.
+ */
+export type ToolDisplayPhase = "preparing" | "executing" | "complete" | "approval"
+
+/**
  * Configuration for displaying tool calls in different phases.
  */
 interface ToolDisplayConfig {
@@ -10,6 +15,8 @@ interface ToolDisplayConfig {
     executing: (params?: Record<string, unknown>) => string
     /** Function that returns display string after completion (can use params and result) */
     complete: (params?: Record<string, unknown>, result?: string) => string
+    /** Optional function that returns a contextual prompt when waiting for user approval. Falls back to executing if not defined. */
+    approval?: (params?: Record<string, unknown>) => string
 }
 
 enum PolledRunStatus {
@@ -160,7 +167,8 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
             const name = parsed?.agentName as string | undefined
             if (name) return `Started "${truncate(name)}"`
             return "Run started"
-        }
+        },
+        approval: () => "Start this run?"
     },
     pollTriggeredRunStatus: {
         preparing: "Getting the latest progress",
@@ -214,6 +222,11 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
             if (identifier) return `Created task ${identifier}`
             if (title) return `Created task "${truncate(title)}"`
             return "Task created"
+        },
+        approval: params => {
+            const ticket = params?.ticket as Record<string, unknown> | undefined
+            const title = ticket?.title as string | undefined
+            return title ? `Create task: "${truncate(title)}"?` : "Create this task?"
         }
     },
     linear_update_ticket: {
@@ -227,6 +240,10 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
             const issue = parsed?.issue as Record<string, unknown> | undefined
             const identifier = issue?.identifier as string | undefined
             return identifier ? `Updated task ${identifier}` : "Task updated"
+        },
+        approval: params => {
+            const issueId = params?.issueId as string | undefined
+            return issueId ? `Update task ${issueId}?` : "Update this task?"
         }
     },
     linear_add_comment: {
@@ -240,6 +257,10 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
             const actions = parsed?.actions as Array<{ target?: string }> | undefined
             const target = actions?.[0]?.target
             return target ? `Added a note to ${target}` : "Note added"
+        },
+        approval: params => {
+            const issueId = params?.issueId as string | undefined
+            return issueId ? `Add comment to ${issueId}?` : "Add this comment?"
         }
     },
     linear_search_ticket: {
@@ -348,6 +369,10 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
             if (key) return `Created task ${key}`
             if (title) return `Created task "${truncate(title)}"`
             return "Task created"
+        },
+        approval: params => {
+            const title = params?.title as string | undefined
+            return title ? `Create Jira ticket: "${truncate(title)}"?` : "Create this Jira ticket?"
         }
     },
     jira_update_ticket: {
@@ -359,6 +384,10 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
         complete: params => {
             const issueKey = params?.issueKey as string | undefined
             return issueKey ? `Updated task ${issueKey}` : "Task updated"
+        },
+        approval: params => {
+            const issueKey = params?.issueKey as string | undefined
+            return issueKey ? `Update task ${issueKey}?` : "Update this task?"
         }
     },
     jira_search_ticket: {
@@ -384,12 +413,14 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
     notion_create_or_update_database_row: {
         preparing: "Getting your update ready",
         executing: () => "Saving your update",
-        complete: () => "Your update was saved"
+        complete: () => "Your update was saved",
+        approval: () => "Save this database update?"
     },
     notion_create_or_update_page: {
         preparing: "Getting page changes ready",
         executing: () => "Saving page changes",
-        complete: () => "Page updated"
+        complete: () => "Page updated",
+        approval: () => "Save page changes?"
     },
     notion_modify_blocks: {
         preparing: "Getting changes ready",
@@ -401,7 +432,8 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
             if (operation === "update") return "Updated page"
             if (operation === "delete") return "Removed from page"
             return "Page updated"
-        }
+        },
+        approval: () => "Modify page content?"
     },
     notion_query_page: {
         preparing: "Finding page",
@@ -462,6 +494,13 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
             if (subject && to) return `Sent "${truncate(subject, 25)}" to ${truncate(to, 20)}`
             if (to) return `Sent email to ${truncate(to, 30)}`
             return "Email sent"
+        },
+        approval: params => {
+            const to = params?.to as string | undefined
+            const subject = params?.subject as string | undefined
+            if (subject && to) return `Send "${truncate(subject, 25)}" to ${truncate(to, 20)}?`
+            if (to) return `Send email to ${truncate(to, 30)}?`
+            return "Send this email?"
         }
     },
     gmail_create_draft: {
@@ -476,6 +515,10 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
             if (subject && to) return `Draft created: "${truncate(subject, 25)}" to ${truncate(to, 20)}`
             if (to) return `Draft created for ${truncate(to, 30)}`
             return "Draft created"
+        },
+        approval: params => {
+            const to = params?.to as string | undefined
+            return to ? `Create draft for ${truncate(to, 30)}?` : "Create this draft?"
         }
     },
 
@@ -489,7 +532,8 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
             const parsed = safeParseResult(result)
             const channel = parsed?.channel as string | undefined
             return channel ? `Sent message to ${channel}` : "Slack message sent"
-        }
+        },
+        approval: () => "Send this Slack message?"
     },
 
     slack_list_channels: {
@@ -545,7 +589,8 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
     confluence_add_comment: {
         preparing: "Getting your note ready",
         executing: () => "Adding your note",
-        complete: () => "Note added"
+        complete: () => "Note added",
+        approval: () => "Add this comment?"
     },
 
     // ===================
@@ -822,6 +867,10 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
             if (target) return `Saved ${objectSlug || "record"}: ${truncate(target, 30)}`
             if (objectSlug) return `Saved ${objectSlug} record`
             return "Record saved"
+        },
+        approval: params => {
+            const objectSlug = params?.objectSlug as string | undefined
+            return objectSlug ? `Save ${objectSlug} record?` : "Save this record?"
         }
     },
     attio_query_records: {
@@ -937,7 +986,7 @@ export function parseToolParams(parametersJson?: string): Record<string, unknown
  */
 export function getToolDisplayForPhase(
     toolName: string,
-    phase: "preparing" | "executing" | "complete",
+    phase: ToolDisplayPhase,
     options?: {
         params?: Record<string, unknown>
         result?: string
@@ -955,6 +1004,8 @@ export function getToolDisplayForPhase(
                 return `Getting ready: ${readableName}`
             case "executing":
                 return `Working on ${readableName}`
+            case "approval":
+                return `Approve: ${readableName}?`
             case "complete":
                 return "Done"
         }
@@ -965,6 +1016,8 @@ export function getToolDisplayForPhase(
             return config.preparing
         case "executing":
             return config.executing(params)
+        case "approval":
+            return config.approval ? config.approval(params) : config.executing(params)
         case "complete":
             return config.complete(params, result)
     }
@@ -981,7 +1034,7 @@ export function getReadableFallbackName(toolName: string) {
 /**
  * Convenience function that parses parameters JSON and gets the display string.
  */
-export function getToolDisplayFromCall(toolName: string, phase: "preparing" | "executing" | "complete", parametersJson?: string, result?: string): string {
+export function getToolDisplayFromCall(toolName: string, phase: ToolDisplayPhase, parametersJson?: string, result?: string): string {
     const params = parseToolParams(parametersJson)
     return getToolDisplayForPhase(toolName, phase, { params, result })
 }
