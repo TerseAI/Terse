@@ -47,7 +47,7 @@ export class NotificationManager {
     }
 
     async notify(runAction: RunHistoryAction) {
-        const isPermitted = this.isNotificationPermitted(runAction.type)
+        const isPermitted = await this.isNotificationPermitted(runAction.type)
         if (!isPermitted) {
             return
         }
@@ -84,7 +84,7 @@ export class NotificationManager {
             return
         }
 
-        const isPermitted = this.isNotificationPermitted(RunHistoryActionType.approve)
+        const isPermitted = await this.isNotificationPermitted(RunHistoryActionType.approve)
         if (!isPermitted) {
             return
         }
@@ -117,7 +117,7 @@ export class NotificationManager {
     }
 
     async notifyRunFailure(runId: string, errorMessage: string) {
-        const isPermitted = this.isNotificationPermitted(RunHistoryActionType.error)
+        const isPermitted = await this.isNotificationPermitted(RunHistoryActionType.error)
         if (!isPermitted) {
             return
         }
