@@ -30,7 +30,7 @@ import { useSentNotifications } from "@/hooks/api/useSentNotifications"
 import { useRunHistoryChatDrawer } from "@/services/RunHistoryChatDrawerContext"
 import { BackendProvider } from "@/services/backend"
 import { ApprovalRequestFilter, parseDeepLink } from "@/shared/ApprovalTypes"
-import { NotificationDestination } from "@/shared/Notifications"
+import { NotificationDestination, type NotificationSettings as NotificationSettingsData } from "@/shared/Notifications"
 import { RUN_HISTORY_ACTION_TYPES, type RunHistoryActionType, RunHistoryStatus } from "@/shared/RunHistoryTypes"
 import { type SentNotification, SentNotificationEventType, SentNotificationStatus } from "@/shared/SentNotifications"
 import { sendToolApprovalResponse } from "@/socket"
@@ -537,7 +537,25 @@ function areActionTypeSetsEqual(left: RunHistoryActionType[], right: RunHistoryA
 }
 
 function NotificationSettings() {
-    const { notificationSettings, mutate: mutateSettings } = useNotificationSettings()
+    const { notificationSettings, isError, isValidating, mutate: mutateSettings } = useNotificationSettings()
+
+    if (isValidating && notificationSettings === undefined) {
+        return <LoadingNotificationSettings />
+    }
+
+    if (isError || notificationSettings === undefined) {
+        return <ErrorNotificationSettings onRetry={() => void mutateSettings()} />
+    }
+
+    return <NotificationSettingsForm notificationSettings={notificationSettings} mutateSettings={() => mutateSettings()} />
+}
+
+type NotificationSettingsFormProps = {
+    notificationSettings: NotificationSettingsData
+    mutateSettings: () => Promise<unknown>
+}
+
+function NotificationSettingsForm({ notificationSettings, mutateSettings }: NotificationSettingsFormProps) {
     const [isLoading, setIsLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [isApplyToAllDialogOpen, setIsApplyToAllDialogOpen] = useState(false)
@@ -546,18 +564,16 @@ function NotificationSettings() {
     const form = useForm<NotificationSettingsFormValues>({
         resolver: zodResolver(notificationSettingsSchema),
         defaultValues: {
-            agentDefaultNotifications: notificationSettings?.agentDefaultNotifications ?? [...RUN_HISTORY_ACTION_TYPES],
-            weeklyAgentImprovements: notificationSettings?.weeklyAgentImprovements ?? true
+            agentDefaultNotifications: notificationSettings.agentDefaultNotifications,
+            weeklyAgentImprovements: notificationSettings.weeklyAgentImprovements
         }
     })
 
     useEffect(() => {
-        if (notificationSettings) {
-            form.reset({
-                agentDefaultNotifications: notificationSettings.agentDefaultNotifications,
-                weeklyAgentImprovements: notificationSettings.weeklyAgentImprovements
-            })
-        }
+        form.reset({
+            agentDefaultNotifications: notificationSettings.agentDefaultNotifications,
+            weeklyAgentImprovements: notificationSettings.weeklyAgentImprovements
+        })
     }, [notificationSettings, form])
 
     async function saveNotificationSettings(values: NotificationSettingsFormValues, applyToAllAgents: boolean) {
@@ -578,7 +594,7 @@ function NotificationSettings() {
     }
 
     async function onSubmit(values: NotificationSettingsFormValues) {
-        const currentDefaultNotifications = notificationSettings?.agentDefaultNotifications ?? [...RUN_HISTORY_ACTION_TYPES]
+        const currentDefaultNotifications = notificationSettings.agentDefaultNotifications
         const shouldConfirmApplyToAll = !areActionTypeSetsEqual(values.agentDefaultNotifications, currentDefaultNotifications)
 
         if (shouldConfirmApplyToAll) {
@@ -723,6 +739,27 @@ function NotificationSettings() {
                 </DialogContent>
             </Dialog>
         </>
+    )
+}
+
+function LoadingNotificationSettings() {
+    return (
+        <div className="space-y-4">
+            <Skeleton className="h-10 w-full rounded-lg" />
+            <Skeleton className="h-16 w-2/3 rounded-lg" />
+            <Skeleton className="ml-auto h-9 w-20 rounded-lg" />
+        </div>
+    )
+}
+
+function ErrorNotificationSettings({ onRetry }: { onRetry: () => void }) {
+    return (
+        <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3">
+            <p className="text-sm text-destructive">Unable to load notification types right now.</p>
+            <Button variant="outline" size="sm" className="mt-3" onClick={onRetry}>
+                Retry
+            </Button>
+        </div>
     )
 }
 
