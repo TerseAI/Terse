@@ -27,7 +27,7 @@ import { HomeEmptyState } from "./components/HomeEmptyState"
 
 function Home() {
     const { agents: allAgents, isLoading: isLoadingAllAgents } = useAgents({ limit: 1 })
-    const { stats, isLoading: isLoadingStats } = useStats()
+    const { stats, isLoading: isLoadingStats } = useStats("1mo")
     const navigate = useNavigate()
     const { openDrawer } = useRunHistoryChatDrawer()
 
@@ -206,7 +206,10 @@ function Home() {
                                 {!isLoadingStats && stats && (
                                     <div>
                                         <div className="flex items-center justify-between mb-3">
-                                            <h2 className="text-sm font-medium text-muted-foreground tracking-wide uppercase">Stats</h2>
+                                            <div className="flex items-center gap-2">
+                                                <h2 className="text-sm font-medium text-muted-foreground tracking-wide uppercase">Stats</h2>
+                                                <span className="text-xs text-muted-foreground/60">Last 30 days</span>
+                                            </div>
                                             <Button variant="ghost" size="sm" className="text-xs text-muted-foreground gap-1" onClick={() => navigate(FrontendRoutes.STATS)}>
                                                 View all stats
                                                 <ArrowUpRight className="w-3 h-3" />
