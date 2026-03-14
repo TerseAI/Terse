@@ -12,11 +12,14 @@ import { workos } from "../utility/workos"
 
 export const WORKOS_SESSION_COOKIE_NAME = "TERSE_WORKOS_SESSION"
 
+const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000
+
 const workosSessionCookieBaseOptions = {
     path: "/",
     httpOnly: true,
     secure: settings.nodeEnv === "production",
-    sameSite: "lax" as const
+    sameSite: "lax" as const,
+    maxAge: SEVEN_DAYS_MS
 }
 
 export const WORKOS_SESSION_COOKIE_OPTIONS = settings.optional.cookieDomain ? { ...workosSessionCookieBaseOptions, domain: settings.optional.cookieDomain } : workosSessionCookieBaseOptions
