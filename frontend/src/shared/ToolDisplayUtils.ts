@@ -936,7 +936,7 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
             const query = (webResult?.query as string) || ""
             const url = (webResult?.url as string) || ""
             if (type === "search") return `Searched for: "${truncate(query)}"`
-            if (type === "open_page") return `Opened page: ${truncate(url, 30)}"`
+            if (type === "open_page") return `Opened page: ${truncate(url, 30)}`
             return "Web search complete"
         }
     },
