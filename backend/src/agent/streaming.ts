@@ -77,6 +77,16 @@ export async function* transformAgentStreamToModelEvents<T extends Session>(
             }
             continue
         }
+
+        // Try hosted tool calls (web_search, etc.) — these arrive as tool_called with status already completed
+        const hostedToolComplete = tryExtractHostedToolCallComplete(event, toolToIntegrationMap)
+        if (hostedToolComplete) {
+            const changedItems = onToolCallComplete ? await onToolCallComplete(hostedToolComplete.complete.step_id, hostedToolComplete.complete.tool_name, hostedToolComplete.actions) : []
+            // Yield a ToolCall first so the UI sees the tool was invoked
+            yield hostedToolComplete.toolCall
+            yield { ...hostedToolComplete.complete, changed_items: changedItems }
+            continue
+        }
     }
 }
 
@@ -177,24 +187,11 @@ export function tryExtractToolCallCompleteData(event: RunStreamEvent): ToolCallC
             snippet: undefined
         }
 
-        // Handle function call results (including hosted tool calls)
+        // Handle function call results
         if (rawItem.type === "function_call_result") {
             return {
                 name: rawItem.name || "unknown",
                 callId: rawItem.callId || "unknown",
-                status: parsed.status,
-                errorContext: parsed.errorContext,
-                actions: parsed.actions,
-                result: JSON.stringify(outputWithoutActions) ?? undefined,
-                snippets: parsed.snippets
-            }
-        }
-
-        // Handle hosted tool calls (check via type assertion as it's not in the union type)
-        if (rawItem.type === "hosted_tool_call_result" || rawItem.type === "hosted_tool_call") {
-            return {
-                name: rawItem.name || "unknown",
-                callId: rawItem.id || rawItem.callId || "unknown",
                 status: parsed.status,
                 errorContext: parsed.errorContext,
                 actions: parsed.actions,
@@ -223,6 +220,63 @@ export function createToolCallCompleteEvent(data: ToolCallCompleteData, changedI
     }
 
     return event
+}
+
+export function tryExtractHostedToolCallComplete(
+    event: RunStreamEvent,
+    toolToIntegrationMap?: Map<string, string>
+): {
+    toolCall: Extract<ModelEvent, { type: "ToolCall" }>
+    complete: Extract<ModelEvent, { type: "ToolCallComplete" }>
+    actions?: RunHistoryAction[]
+} | null {
+    if (event.type === "run_item_stream_event" && event.name === "tool_called") {
+        const item = (event as ToolCalledEvent).item.rawItem
+
+        if (item.type === "hosted_tool_call" && item.status === "completed") {
+            const callId = item.id || "unknown"
+            const name = item.name || "unknown"
+            const integration = toolToIntegrationMap?.get(name) || IntegrationType.TERSE
+            const webAction = item.providerData?.action
+            const ts = Date.now()
+
+            return {
+                toolCall: {
+                    type: "ToolCall",
+                    timestamp: ts,
+                    summary: name,
+                    step_id: callId,
+                    parameters: "{}",
+                    integration
+                },
+                complete: {
+                    type: "ToolCallComplete",
+                    timestamp: ts,
+                    tool_name: name,
+                    status: ToolCallExecutionStatus.COMPLETED,
+                    step_id: callId,
+                    changed_items: [],
+                    integration,
+                    result: JSON.stringify(item.providerData?.action) || undefined
+                },
+                actions:
+                    webAction?.type === "open_page" && webAction.url
+                        ? [
+                              {
+                                  action: "Opened URL",
+                                  integration: IntegrationType.TERSE,
+                                  target: webAction.url,
+                                  details: `Opened page: ${webAction.url}`,
+                                  url: webAction.url,
+                                  type: "read",
+                                  isReadOnly: true
+                              }
+                          ]
+                        : undefined
+            }
+        }
+    }
+    return null
 }
 
 export function createNaturalStopEvent(): ModelEvent {
