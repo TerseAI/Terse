@@ -285,11 +285,13 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
                 return
             }
 
-            // Ensure run status is 'in_progress' so streaming works
-            if (runRecord.status !== RunHistoryStatus.IN_PROGRESS) {
+            // Ensure run status is 'in_progress' so streaming works.
+            // Also clear has_approval_request since the approval cycle is over
+            // (if there were an active pending_approval, we would have returned early above).
+            if (runRecord.status !== RunHistoryStatus.IN_PROGRESS || runRecord.has_approval_request) {
                 await db().run_history_records.update({
                     where: { id: runId },
-                    data: { status: RunHistoryStatus.IN_PROGRESS }
+                    data: { status: RunHistoryStatus.IN_PROGRESS, has_approval_request: false }
                 })
             }
             invalidateRunAndChatHistory(organizationIdForRun, agent.id, runId)

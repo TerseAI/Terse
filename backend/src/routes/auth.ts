@@ -2,16 +2,16 @@ import { users as PrismaUser } from "@prisma/client"
 import { AuthenticateWithSessionCookieSuccessResponse, AuthenticationResponse } from "@workos-inc/node"
 import { NextFunction, Request, Response } from "express"
 
+import { createInMemoryAuthUserCache } from "../cache/AuthUserCache"
 import { settings } from "../config/settings"
 import logger from "../logger"
 import { db } from "../prismaClient"
 import { ApiRoutes } from "../shared/ApiRoutes"
 import { Role, User } from "../shared/types"
-import { createInMemoryAuthUserCache } from "../cache/AuthUserCache"
-
-const authUserCache = createInMemoryAuthUserCache()
 import { Session } from "../types/session"
 import { workos } from "../utility/workos"
+
+const authUserCache = createInMemoryAuthUserCache()
 
 export const WORKOS_SESSION_COOKIE_NAME = "TERSE_WORKOS_SESSION"
 
