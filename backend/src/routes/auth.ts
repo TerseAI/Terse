@@ -7,6 +7,9 @@ import logger from "../logger"
 import { db } from "../prismaClient"
 import { ApiRoutes } from "../shared/ApiRoutes"
 import { Role, User } from "../shared/types"
+import { createInMemoryAuthUserCache } from "../cache/AuthUserCache"
+
+const authUserCache = createInMemoryAuthUserCache()
 import { Session } from "../types/session"
 import { workos } from "../utility/workos"
 
@@ -437,8 +440,13 @@ export async function getWorkOSWidgetToken(req: Request, res: Response) {
 }
 
 export async function getOrCreateDbUserFromWorkOS(authResult: AuthenticateWithSessionCookieSuccessResponse | RefreshSessionSuccessResponse): Promise<User> {
-    const prisma = db()
     const workosUser = authResult.user
+    const cacheKey = `${workosUser.id}:${authResult.organizationId ?? ""}`
+
+    const cached = authUserCache.get(cacheKey)
+    if (cached) return cached
+
+    const prisma = db()
     let dbUser: PrismaUser | null = await prisma.users.findUnique({
         where: {
             workos_id: workosUser.id
@@ -466,7 +474,7 @@ export async function getOrCreateDbUserFromWorkOS(authResult: AuthenticateWithSe
         organizationName = organization.name
     }
 
-    return {
+    const user: User = {
         id: dbUser.id,
         workosId: workosUser.id,
         organizationId: authResult.organizationId ?? "",
@@ -478,6 +486,9 @@ export async function getOrCreateDbUserFromWorkOS(authResult: AuthenticateWithSe
         displayPhotoUrl: workosUser.profilePictureUrl || "",
         roles: roles as Role[]
     }
+
+    authUserCache.set(cacheKey, user)
+    return user
 }
 
 // Library doesn't export this type properly, so we need to define it ourselves
