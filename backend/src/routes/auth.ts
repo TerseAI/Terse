@@ -13,6 +13,23 @@ import { workos } from "../utility/workos"
 
 export const WORKOS_SESSION_COOKIE_NAME = "TERSE_WORKOS_SESSION"
 
+export function setSessionCookie(res: Response, sealedSession: string) {
+    res.cookie(WORKOS_SESSION_COOKIE_NAME, sealedSession, WORKOS_SESSION_COOKIE_OPTIONS)
+}
+
+function setUserMetaCookie(res: Response, user: User) {
+    res.cookie(USER_META_COOKIE_NAME, signUserMeta({ dbId: user.id, orgName: user.organizationName }), USER_META_COOKIE_OPTIONS)
+}
+
+function clearUserMetaCookie(res: Response) {
+    res.clearCookie(USER_META_COOKIE_NAME, USER_META_COOKIE_OPTIONS)
+}
+
+export function clearSessionCookies(res: Response) {
+    res.clearCookie(WORKOS_SESSION_COOKIE_NAME, WORKOS_SESSION_COOKIE_OPTIONS)
+    clearUserMetaCookie(res)
+}
+
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000
 
 const workosSessionCookieBaseOptions = {
@@ -80,8 +97,7 @@ export async function logoutUrl(req: Request, res: Response) {
     const redirectToLogin = shouldRedirectToLogin(req.query.redirectToLogin)
     const postLogoutRedirectUrl = getPostLogoutRedirectUrl(redirectToLogin)
     const sealedSessionData = req.cookies[WORKOS_SESSION_COOKIE_NAME]
-    res.clearCookie(WORKOS_SESSION_COOKIE_NAME, WORKOS_SESSION_COOKIE_OPTIONS)
-    res.clearCookie(USER_META_COOKIE_NAME, USER_META_COOKIE_OPTIONS)
+    clearSessionCookies(res)
 
     try {
         const workosLogoutUrl = await getDirectWorkOSLogoutUrl(sealedSessionData, postLogoutRedirectUrl)
@@ -99,8 +115,7 @@ export async function logout(req: Request, res: Response) {
     const redirectToLogin = shouldRedirectToLogin(req.query.redirectToLogin)
     const postLogoutRedirectUrl = getPostLogoutRedirectUrl(redirectToLogin)
     const sealedSessionData = req.cookies[WORKOS_SESSION_COOKIE_NAME]
-    res.clearCookie(WORKOS_SESSION_COOKIE_NAME, WORKOS_SESSION_COOKIE_OPTIONS)
-    res.clearCookie(USER_META_COOKIE_NAME, USER_META_COOKIE_OPTIONS)
+    clearSessionCookies(res)
 
     try {
         const workosLogoutUrl = await getDirectWorkOSLogoutUrl(sealedSessionData, postLogoutRedirectUrl)
@@ -166,9 +181,7 @@ export async function me(req: Request, res: Response) {
             lastName: workOSUser.lastName || null,
             displayPhotoUrl: workOSUser.profilePictureUrl || ""
         }
-
-        // Update the meta cookie so cached orgName/dbId stay in sync with profile changes
-        res.cookie(USER_META_COOKIE_NAME, signUserMeta({ dbId: refreshedUser.id, orgName: refreshedUser.organizationName }), USER_META_COOKIE_OPTIONS)
+        setUserMetaCookie(res, refreshedUser)
 
         logger.info("[/me] Returning refreshed user", {
             userId: refreshedUser.id,
@@ -201,7 +214,7 @@ function createAuthMiddleware(requireOrganization: boolean) {
                 const cachedMeta = readUserMetaCookie(req)
                 const { user, isNewMeta } = await getOrCreateDbUserFromWorkOS(authResult, cachedMeta)
                 if (isNewMeta) {
-                    res.cookie(USER_META_COOKIE_NAME, signUserMeta({ dbId: user.id, orgName: user.organizationName }), USER_META_COOKIE_OPTIONS)
+                    setUserMetaCookie(res, user)
                 }
                 if (!req.session) {
                     req.session = {
@@ -239,7 +252,7 @@ function createAuthMiddleware(requireOrganization: boolean) {
             logger.info("Session refreshed successfully")
             // After a session refresh, always rebuild the user and write a fresh meta cookie
             const { user } = await getOrCreateDbUserFromWorkOS(refreshedSessionResult)
-            res.cookie(USER_META_COOKIE_NAME, signUserMeta({ dbId: user.id, orgName: user.organizationName }), USER_META_COOKIE_OPTIONS)
+            setUserMetaCookie(res, user)
             if (!req.session) {
                 req.session = {
                     user,
@@ -256,7 +269,7 @@ function createAuthMiddleware(requireOrganization: boolean) {
 
             // update the cookie if we have a sealed session
             if (refreshedSessionResult.sealedSession) {
-                res.cookie(WORKOS_SESSION_COOKIE_NAME, refreshedSessionResult.sealedSession, WORKOS_SESSION_COOKIE_OPTIONS)
+                setSessionCookie(res, refreshedSessionResult.sealedSession)
                 // Keep request-scoped cookie data in sync so downstream handlers in the
                 // same request (e.g. /session/token) read the refreshed sealed session.
                 if (req.cookies) {
@@ -268,8 +281,7 @@ function createAuthMiddleware(requireOrganization: boolean) {
             logger.error("Failed to authorize user", {
                 error
             })
-            res.clearCookie(WORKOS_SESSION_COOKIE_NAME, WORKOS_SESSION_COOKIE_OPTIONS)
-            res.clearCookie(USER_META_COOKIE_NAME, USER_META_COOKIE_OPTIONS)
+            clearSessionCookies(res)
             return sendUnauthorized(req, res)
         }
     }
@@ -390,9 +402,8 @@ export async function callback(req: Request, res: Response) {
             secure: settings.nodeEnv === "production",
             sealedSessionLength: authenticateResponse.sealedSession.length
         })
-        res.cookie(WORKOS_SESSION_COOKIE_NAME, authenticateResponse.sealedSession, WORKOS_SESSION_COOKIE_OPTIONS)
-        // Write the user meta cookie so the first authenticated request after login is a cache hit
-        res.cookie(USER_META_COOKIE_NAME, signUserMeta({ dbId: dbUser.id, orgName: dbUser.organizationName }), USER_META_COOKIE_OPTIONS)
+        setSessionCookie(res, authenticateResponse.sealedSession)
+        setUserMetaCookie(res, dbUser)
 
         // Redirect the user to the homepage
         logger.info("[/callback] Authentication successful, redirecting to frontend", {
@@ -415,8 +426,7 @@ export async function callback(req: Request, res: Response) {
 
         // Don't redirect to /login here as it causes an infinite redirect loop
         // Clear any stale session cookie and show an error
-        res.clearCookie(WORKOS_SESSION_COOKIE_NAME, WORKOS_SESSION_COOKIE_OPTIONS)
-        res.clearCookie(USER_META_COOKIE_NAME, USER_META_COOKIE_OPTIONS)
+        clearSessionCookies(res)
         return res
             .status(500)
             .send(

@@ -25,9 +25,7 @@ const userMetaCookieBaseOptions = {
     maxAge: SEVEN_DAYS_MS
 }
 
-export const USER_META_COOKIE_OPTIONS = settings.optional.cookieDomain
-    ? { ...userMetaCookieBaseOptions, domain: settings.optional.cookieDomain }
-    : userMetaCookieBaseOptions
+export const USER_META_COOKIE_OPTIONS = settings.optional.cookieDomain ? { ...userMetaCookieBaseOptions, domain: settings.optional.cookieDomain } : userMetaCookieBaseOptions
 
 export function signUserMeta(meta: CachedUserMeta): string {
     return jwt.sign({ dbId: meta.dbId, orgName: meta.orgName }, jwtConfig.secret, {

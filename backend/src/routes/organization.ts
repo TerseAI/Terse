@@ -1,13 +1,12 @@
 import { Request, Response } from "express"
 
+import { USER_META_COOKIE_NAME, USER_META_COOKIE_OPTIONS } from "../cache/UserMetaCookie"
 import { settings } from "../config/settings"
 import logger from "../logger"
 import { getOrgLogoDownloadUrl, getOrgLogoUploadUrl } from "../services/FileStorageService"
 import { workos } from "../utility/workos"
 
-import { USER_META_COOKIE_NAME, USER_META_COOKIE_OPTIONS } from "../cache/UserMetaCookie"
-
-import { WORKOS_SESSION_COOKIE_NAME, WORKOS_SESSION_COOKIE_OPTIONS } from "./auth"
+import { WORKOS_SESSION_COOKIE_NAME, setSessionCookie } from "./auth"
 
 export async function createOrganization(req: Request, res: Response) {
     const user = req.session?.user
@@ -70,7 +69,7 @@ export async function createOrganization(req: Request, res: Response) {
             })
         }
 
-        res.cookie(WORKOS_SESSION_COOKIE_NAME, refreshResult.sealedSession, WORKOS_SESSION_COOKIE_OPTIONS)
+        setSessionCookie(res, refreshResult.sealedSession)
         // Clear user meta cookie so next request rebuilds it with the new org name
         res.clearCookie(USER_META_COOKIE_NAME, USER_META_COOKIE_OPTIONS)
 
@@ -193,7 +192,7 @@ export async function switchOrganization(req: Request, res: Response) {
             })
         }
 
-        res.cookie(WORKOS_SESSION_COOKIE_NAME, refreshResult.sealedSession, WORKOS_SESSION_COOKIE_OPTIONS)
+        setSessionCookie(res, refreshResult.sealedSession)
         // Clear user meta cookie so next request rebuilds it with the new org context
         res.clearCookie(USER_META_COOKIE_NAME, USER_META_COOKIE_OPTIONS)
 
