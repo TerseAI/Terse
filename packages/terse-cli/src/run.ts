@@ -1,3 +1,4 @@
+import fs from "fs"
 import chalk from "chalk"
 import { CreateJobParameters, TerseAgent } from "terse-sdk"
 import { readApiKey } from "./api.js"
@@ -57,12 +58,23 @@ export async function executeJob(job: CreateJobParameters, event: SerializedEven
     }
 }
 
-export async function run(jobName?: string, eventJson?: string): Promise<void> {
+export async function run(jobName?: string, eventJson?: string, eventFile?: string): Promise<void> {
     assertProjectRoot()
 
+    if (eventFile && !eventJson) {
+        try {
+            eventJson = fs.readFileSync(eventFile, "utf-8")
+        } catch (err) {
+            console.error(chalk.red(`Error: Could not read event file: ${eventFile}`))
+            console.error(chalk.dim(err instanceof Error ? err.message : String(err)))
+            process.exit(1)
+        }
+    }
+
     if (!eventJson) {
-        console.error(chalk.red("Error: --event <json> is required.\n"))
+        console.error(chalk.red("Error: --event <json> or --event-file <path> is required.\n"))
         console.error(chalk.dim("  Usage: terse run --event '{\"integrationType\":\"...\",\"formattedContent\":\"...\",\"debugLog\":\"...\"}'"))
+        console.error(chalk.dim("         terse run --event-file ./event.json"))
         console.error(chalk.dim("  Tip:   Use `terse test` to interactively pick a sample event.\n"))
         process.exit(1)
     }

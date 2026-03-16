@@ -123,10 +123,15 @@ export class SdkJobExecutionService {
                     return
                 }
 
+                // Write event JSON to a file to avoid ARG_MAX limits
+                const eventHandle = await sb.open("/tmp/event.json", "w")
+                await eventHandle.write(new TextEncoder().encode(eventJson))
+                await eventHandle.close()
+
                 // terse run
                 t = performance.now()
                 const escapedJobName = jobName.replace(/'/g, "'\\''")
-                const runProc = await sb.exec(["sh", "-c", `cd /tmp/project && npx terse run '${escapedJobName}' --event '${eventJson.replace(/'/g, "'\\''")}'`], {
+                const runProc = await sb.exec(["sh", "-c", `cd /tmp/project && npx terse run '${escapedJobName}' --event-file /tmp/event.json`], {
                     stdout: "pipe",
                     stderr: "pipe",
                     env: sandboxEnv

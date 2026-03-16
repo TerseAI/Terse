@@ -42,8 +42,9 @@ program
     .description("Execute a job's onTrigger with a serialized event JSON")
     .argument("[job-name]", "Name of the job to run (auto-selects if only one exists)")
     .option("--event <json>", "Serialized event JSON string")
-    .action(async (jobName?: string, opts?: { event?: string }) => {
-        await run(jobName, opts?.event)
+    .option("--event-file <path>", "Path to a JSON file containing the serialized event")
+    .action(async (jobName?: string, opts?: { event?: string; eventFile?: string }) => {
+        await run(jobName, opts?.event, opts?.eventFile)
     })
 
 program
