@@ -382,7 +382,7 @@ export class GithubIntegrationManager
         let repos: Array<{ id: number; owner: string; name: string; defaultBranch: string }> = []
 
         if (githubConfig.repositoryIds?.length) {
-            for (const repoId of githubConfig.repositoryIds.slice(0, 2)) {
+            for (const repoId of githubConfig.repositoryIds) {
                 const repo = await fetchRepositoryDetailsForSample(accessToken, repoId)
                 if (repo) repos.push(repo)
             }
@@ -398,7 +398,10 @@ export class GithubIntegrationManager
 
         const requestedTypes = githubConfig.eventTypes ?? []
         const wantsPush = requestedTypes.length === 0 || requestedTypes.includes(GitHubEventType.PUSH)
-        const wantsPR = requestedTypes.length === 0 || requestedTypes.some(t => t.startsWith("pull_request."))
+
+        const requestedPRTypes = requestedTypes.filter(t => t.startsWith("pull_request."))
+        const wantsPR = requestedTypes.length === 0 || requestedPRTypes.length > 0
+        const prApiState = derivePRApiState(requestedTypes.length === 0 ? [] : requestedPRTypes)
 
         const events: InputEvent[] = []
         for (const repo of repos) {
@@ -410,20 +413,18 @@ export class GithubIntegrationManager
                 }
             }
             if (wantsPR) {
-                const pullRequests = await fetchRecentPullRequestsForSample(accessToken, repo.owner, repo.name, 5)
+                const pullRequests = await fetchRecentPullRequestsForSample(accessToken, repo.owner, repo.name, 5, prApiState)
                 for (const pr of pullRequests) {
+                    if (!prMatchesRequestedTypes(pr, requestedPRTypes)) continue
                     const eventData = await createPullRequestEventData(pr, repo, installationIdNum, accessToken)
-                    let storedFiles: StoredFile[] = []
-                    if (eventData) storedFiles = await getPullRequestFiles(eventData, accessToken, installationIdNum.toString())
-                    if (eventData) events.push(new GithubEvent(eventData, storedFiles))
+                    if (!eventData) continue
+                    const storedFiles = await getPullRequestFiles(eventData, accessToken, installationIdNum.toString())
+                    events.push(new GithubEvent(eventData, storedFiles))
                 }
             }
             if (events.length >= maxEvents) break
         }
 
-        if (requestedTypes.length > 0) {
-            return events.filter(e => requestedTypes.includes((e as GithubEvent).eventType)).slice(0, maxEvents)
-        }
         return events.slice(0, maxEvents)
     }
 }
@@ -899,13 +900,49 @@ async function fetchCommitDiffForSample(accessToken: string, owner: string, repo
     }
 }
 
-async function fetchRecentPullRequestsForSample(accessToken: string, owner: string, repo: string, count: number): Promise<OctokitPullRequest[]> {
+/**
+ * Map requested PR event types to the GitHub API `state` param to avoid fetching irrelevant PRs.
+ * Returns "all" when both open and closed states are needed.
+ */
+function derivePRApiState(requestedPRTypes: GitHubEventType[]): "open" | "closed" | "all" {
+    if (requestedPRTypes.length === 0) return "all"
+
+    const needsOpen = requestedPRTypes.some(t => t === GitHubEventType.PR_OPENED || t === GitHubEventType.PR_SYNCHRONIZE)
+    const needsClosed = requestedPRTypes.some(t => t === GitHubEventType.PR_MERGED || t === GitHubEventType.PR_CLOSED)
+
+    if (needsOpen && needsClosed) return "all"
+    if (needsClosed) return "closed"
+    return "open"
+}
+
+function prMatchesRequestedTypes(pr: OctokitPullRequest, requestedPRTypes: GitHubEventType[]): boolean {
+    if (requestedPRTypes.length === 0) return true
+
+    const isMerged = pr.merged_at !== null
+    const isOpen = pr.state === "open"
+
+    return requestedPRTypes.some(t => {
+        switch (t) {
+            case GitHubEventType.PR_OPENED:
+            case GitHubEventType.PR_SYNCHRONIZE:
+                return isOpen
+            case GitHubEventType.PR_MERGED:
+                return isMerged
+            case GitHubEventType.PR_CLOSED:
+                return !isOpen && !isMerged
+            default:
+                return false
+        }
+    })
+}
+
+async function fetchRecentPullRequestsForSample(accessToken: string, owner: string, repo: string, count: number, state: "open" | "closed" | "all" = "all"): Promise<OctokitPullRequest[]> {
     try {
         const octokit = createOctokitForSample(accessToken)
         const response = await octokit.rest.pulls.list({
             owner,
             repo,
-            state: "all",
+            state,
             sort: "updated",
             direction: "desc",
             per_page: count
