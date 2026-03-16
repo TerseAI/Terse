@@ -8,8 +8,8 @@ import logger, { runWithUserContext } from "../logger"
 import { db } from "../prismaClient"
 import { IntegrationType } from "../shared/Integrations"
 import { RunHistoryTrigger } from "../shared/RunHistoryTypes"
+import { SerializedEvent } from "../shared/types"
 import { AgentTriggerWithConfigs } from "../types/prisma"
-import { Session } from "../types/session"
 import { getUserForOrg } from "../utility/workos"
 
 export interface ManualTriggerRequest {
@@ -18,15 +18,18 @@ export interface ManualTriggerRequest {
 
 class SyntheticEvent extends InputEvent {
     readonly integrationType: IntegrationType
-    readonly eventType: string = "manual_sample"
+    readonly eventType: string
     private readonly _formattedContent: string
     private readonly _debugLog: string
+    private readonly _metadata?: Record<string, unknown>
 
-    constructor(integrationType: IntegrationType, formattedContent: string, debugLog: string) {
+    constructor(integrationType: IntegrationType, formattedContent: string, debugLog: string, eventType?: string, metadata?: Record<string, unknown>) {
         super()
         this.integrationType = integrationType
         this._formattedContent = formattedContent
         this._debugLog = debugLog
+        this.eventType = eventType ?? "manual_sample"
+        this._metadata = metadata
     }
 
     formatForAgentRunner(): string {
@@ -48,6 +51,10 @@ class SyntheticEvent extends InputEvent {
             source: "Manual trigger with sample event",
             title: this._debugLog
         }
+    }
+
+    serializeMetadata(): Record<string, unknown> | undefined {
+        return this._metadata
     }
 }
 
@@ -131,9 +138,7 @@ export async function handleTriggerWithEvent(req: Request, res: Response) {
         return res.status(401).json({ error: "Unauthorized" })
     }
 
-    const { event } = req.body as {
-        event: { integrationType: string; formattedContent: string; debugLog: string }
-    }
+    const { event } = req.body as { event: SerializedEvent }
 
     if (!automationId || !event?.integrationType || !event?.formattedContent) {
         return res.status(400).json({ error: "Missing automationId or event payload" })
@@ -156,7 +161,7 @@ export async function handleTriggerWithEvent(req: Request, res: Response) {
     res.status(200).json({ received: true, message: "Trigger with event initiated" })
 
     runWithUserContext(user, async () => {
-        const syntheticEvent = new SyntheticEvent(event.integrationType as IntegrationType, event.formattedContent, event.debugLog)
+        const syntheticEvent = new SyntheticEvent(event.integrationType, event.formattedContent, event.debugLog, event.eventType, event.metadata)
         const eventProcessor = new EventProcessor(syntheticEvent, user, { isManuallyTriggered: true })
         await eventProcessor.processSingleAgent(automationId)
     }).catch(error => {

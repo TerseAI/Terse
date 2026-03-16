@@ -8,6 +8,7 @@ import {
     DatadogConfig,
     FigmaConfig,
     GitHubConfig,
+    GitHubEventType,
     GmailConfig,
     GmailDraftOutputConfig,
     GmailOutputConfig,
@@ -233,7 +234,7 @@ export const convertPrismaConfigToConfigInstance = (channelInput: AgentTriggerWi
     }
 
     if (channelInput.github_config) {
-        return new GitHubConfig(integrationId, channelInput.github_config.repository_ids || [])
+        return new GitHubConfig(integrationId, channelInput.github_config.repository_ids || [], (channelInput.github_config.event_types || []) as GitHubEventType[])
     }
 
     if (channelInput.jira_config) {
