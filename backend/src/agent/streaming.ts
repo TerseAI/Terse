@@ -1,4 +1,4 @@
-import { Agent, FunctionCallResultItem, RunStreamEvent, RunToolCallOutputItem, StreamedRunResult } from "@openai/agents"
+import { Agent, RunStreamEvent, RunToolCallOutputItem, StreamedRunResult } from "@openai/agents"
 
 import logger from "../logger"
 import { IntegrationType } from "../shared/Integrations"
@@ -8,7 +8,6 @@ import { ErrorContext } from "../tools/toolUtils"
 import { Session } from "../types/session"
 import { randomString } from "../utility/strings"
 
-import { resolveHostedToolCallStepId, stringifyHostedToolCallResult } from "./hostedToolCallUtils"
 import { parseToolExecutionResult } from "./toolExecution"
 
 export async function* transformAgentStreamToModelEvents<T extends Session>(
@@ -82,9 +81,10 @@ export async function* transformAgentStreamToModelEvents<T extends Session>(
         // Try hosted tool calls (web_search, etc.) — these arrive as tool_called with status already completed
         const hostedToolComplete = tryExtractHostedToolCallComplete(event, toolToIntegrationMap)
         if (hostedToolComplete) {
+            const changedItems = onToolCallComplete ? await onToolCallComplete(hostedToolComplete.complete.step_id, hostedToolComplete.complete.tool_name, hostedToolComplete.actions) : []
             // Yield a ToolCall first so the UI sees the tool was invoked
             yield hostedToolComplete.toolCall
-            yield { ...hostedToolComplete.complete }
+            yield { ...hostedToolComplete.complete, changed_items: changedItems }
             continue
         }
     }
@@ -175,7 +175,7 @@ export function tryExtractToolCall(event: RunStreamEvent, toolToIntegrationMap?:
 export function tryExtractToolCallCompleteData(event: RunStreamEvent): ToolCallCompleteData | null {
     if (event.type === "run_item_stream_event" && event.name === "tool_output") {
         const item = event.item as RunToolCallOutputItem
-        const rawItem = item.rawItem as FunctionCallResultItem
+        const rawItem = item.rawItem as any
 
         const rawOutput = (rawItem as any).output ?? (item as any).output
         const status = rawItem.status as ToolCallExecutionStatus
@@ -225,15 +225,19 @@ export function createToolCallCompleteEvent(data: ToolCallCompleteData, changedI
 export function tryExtractHostedToolCallComplete(
     event: RunStreamEvent,
     toolToIntegrationMap?: Map<string, string>
-): { toolCall: ModelEvent; complete: ModelEvent & { tool_name: string; step_id: string } } | null {
+): {
+    toolCall: Extract<ModelEvent, { type: "ToolCall" }>
+    complete: Extract<ModelEvent, { type: "ToolCallComplete" }>
+    actions?: RunHistoryAction[]
+} | null {
     if (event.type === "run_item_stream_event" && event.name === "tool_called") {
         const item = (event as ToolCalledEvent).item.rawItem
 
         if (item.type === "hosted_tool_call" && item.status === "completed") {
-            const callId = resolveHostedToolCallStepId(item)
+            const callId = item.id || "unknown"
             const name = item.name || "unknown"
             const integration = toolToIntegrationMap?.get(name) || IntegrationType.TERSE
-            const result = stringifyHostedToolCallResult(item)
+            const webAction = item.providerData?.action
             const ts = Date.now()
 
             return {
@@ -242,7 +246,7 @@ export function tryExtractHostedToolCallComplete(
                     timestamp: ts,
                     summary: name,
                     step_id: callId,
-                    parameters: item.arguments || "{}",
+                    parameters: "{}",
                     integration
                 },
                 complete: {
@@ -253,8 +257,22 @@ export function tryExtractHostedToolCallComplete(
                     step_id: callId,
                     changed_items: [],
                     integration,
-                    ...(result ? { result } : {})
-                }
+                    result: JSON.stringify(item.providerData?.action) || undefined
+                },
+                actions:
+                    webAction?.type === "open_page" && webAction.url
+                        ? [
+                              {
+                                  action: "Opened URL",
+                                  integration: IntegrationType.TERSE,
+                                  target: webAction.url,
+                                  details: `Opened page: ${webAction.url}`,
+                                  url: webAction.url,
+                                  type: "read",
+                                  isReadOnly: true
+                              }
+                          ]
+                        : undefined
             }
         }
     }
