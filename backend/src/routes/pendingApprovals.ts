@@ -120,12 +120,7 @@ export async function getPendingApprovals(req: Request, res: Response) {
         const filter = parseApprovalFilter(req.query.status)
         const prisma = db()
 
-        const COMPLETED_STATUSES = [
-            PrismaRunHistoryStatus.success,
-            PrismaRunHistoryStatus.failed,
-            PrismaRunHistoryStatus.skipped,
-            PrismaRunHistoryStatus.cancelled
-        ]
+        const COMPLETED_STATUSES = [PrismaRunHistoryStatus.success, PrismaRunHistoryStatus.failed, PrismaRunHistoryStatus.skipped, PrismaRunHistoryStatus.cancelled]
 
         // Build where clause based on filter — all filtering happens at the DB level
         const orgFilter = { automation: { organization_id: organizationId } }
@@ -145,7 +140,6 @@ export async function getPendingApprovals(req: Request, res: Response) {
         }
 
         const rows = await prisma.run_history_records.findMany({
-            relationLoadStrategy: "join",
             where,
             orderBy: { timestamp: "desc" },
             include: {
