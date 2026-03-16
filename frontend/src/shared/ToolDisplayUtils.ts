@@ -933,8 +933,8 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
         complete: (_params, result) => {
             const webResult = safeParseResult(result)
             const type = webResult?.type as "search" | "open_page"
-            const query = webResult?.query as string || ""
-            const url = webResult?.url as string || ""
+            const query = (webResult?.query as string) || ""
+            const url = (webResult?.url as string) || ""
             if (type === "search") return `Searched for: "${truncate(query)}"`
             if (type === "open_page") return `Opened page: ${truncate(url, 30)}"`
             return "Web search complete"

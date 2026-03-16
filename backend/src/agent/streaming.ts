@@ -1,4 +1,4 @@
-import { Agent, RunStreamEvent, RunToolCallOutputItem, StreamedRunResult } from "@openai/agents"
+import { Agent, FunctionCallResultItem, RunStreamEvent, RunToolCallOutputItem, StreamedRunResult } from "@openai/agents"
 
 import logger from "../logger"
 import { IntegrationType } from "../shared/Integrations"
@@ -175,7 +175,7 @@ export function tryExtractToolCall(event: RunStreamEvent, toolToIntegrationMap?:
 export function tryExtractToolCallCompleteData(event: RunStreamEvent): ToolCallCompleteData | null {
     if (event.type === "run_item_stream_event" && event.name === "tool_output") {
         const item = event.item as RunToolCallOutputItem
-        const rawItem = item.rawItem as any
+        const rawItem = item.rawItem as FunctionCallResultItem
 
         const rawOutput = (rawItem as any).output ?? (item as any).output
         const status = rawItem.status as ToolCallExecutionStatus
