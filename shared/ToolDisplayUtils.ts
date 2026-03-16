@@ -634,11 +634,11 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
         preparing: "Finding folder",
         executing: params => {
             const path = params?.path as string | undefined
-            return path ? `Opening ${truncate(path, 40)}` : "Opening folder"
+            return path ? `Listing files in ${truncate(path, 40)}` : "Opening folder"
         },
         complete: params => {
             const path = params?.path as string | undefined
-            return path ? `Opened ${truncate(path, 40)}` : "Done"
+            return path ? `Listed files in ${truncate(path, 40)}` : "Done"
         }
     },
     listGitHubCommits: {
