@@ -1,4 +1,4 @@
-import type { AgentInputItem, AssistantMessageItem, FunctionCallItem, FunctionCallResultItem, ReasoningItem, UserMessageItem } from "@openai/agents-core"
+import type { AgentInputItem, AssistantMessageItem, FunctionCallItem, FunctionCallResultItem, HostedToolCallItem, ReasoningItem, UserMessageItem } from "@openai/agents-core"
 
 import { IntegrationType } from "../shared/Integrations"
 import { ModelEvent, ToolCallExecutionStatus } from "../shared/ModelEvents"
@@ -238,6 +238,22 @@ async function convertSingleItem(
         return [toolCallCompleteEvent, ...snippetEvents]
     }
 
+    if (isWebSearchResultItem(item)) {
+        const hostedToolCallItem = item as HostedToolCallItem
+        const integration = IntegrationType.TERSE
+        const toolCallCompleteEvent: ModelEvent = {
+            type: "ToolCallComplete",
+            tool_name: hostedToolCallItem.name,
+            timestamp: eventTimestamp,
+            status: (hostedToolCallItem.status as ToolCallExecutionStatus) || ToolCallExecutionStatus.COMPLETED,
+            step_id: item.id || `web-search-${eventTimestamp}`,
+            changed_items: [],
+            integration,
+            result: JSON.stringify(hostedToolCallItem.providerData?.action) || undefined
+        }
+        return [toolCallCompleteEvent]
+    }
+
     return null
 }
 
@@ -269,6 +285,10 @@ function isReasoningItem(event: AgentInputItem): event is ReasoningItem {
     }
 
     return false
+}
+
+function isWebSearchResultItem(event: AgentInputItem): boolean {
+    return typeof event === "object" && event !== null && "type" in event && event.type === "hosted_tool_call" && event.name === "web_search_call"
 }
 
 function resolveUserMessageStepId(item: UserMessageItem, eventTimestamp: number, itemIndex: number): string {
