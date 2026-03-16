@@ -5,6 +5,8 @@ import logger from "../logger"
 import { getOrgLogoDownloadUrl, getOrgLogoUploadUrl } from "../services/FileStorageService"
 import { workos } from "../utility/workos"
 
+import { USER_META_COOKIE_NAME, USER_META_COOKIE_OPTIONS } from "../cache/UserMetaCookie"
+
 import { WORKOS_SESSION_COOKIE_NAME, WORKOS_SESSION_COOKIE_OPTIONS } from "./auth"
 
 export async function createOrganization(req: Request, res: Response) {
@@ -69,6 +71,8 @@ export async function createOrganization(req: Request, res: Response) {
         }
 
         res.cookie(WORKOS_SESSION_COOKIE_NAME, refreshResult.sealedSession, WORKOS_SESSION_COOKIE_OPTIONS)
+        // Clear user meta cookie so next request rebuilds it with the new org name
+        res.clearCookie(USER_META_COOKIE_NAME, USER_META_COOKIE_OPTIONS)
 
         logger.info("Organization created", {
             organizationId: organization.id,
@@ -190,6 +194,8 @@ export async function switchOrganization(req: Request, res: Response) {
         }
 
         res.cookie(WORKOS_SESSION_COOKIE_NAME, refreshResult.sealedSession, WORKOS_SESSION_COOKIE_OPTIONS)
+        // Clear user meta cookie so next request rebuilds it with the new org context
+        res.clearCookie(USER_META_COOKIE_NAME, USER_META_COOKIE_OPTIONS)
 
         return res.json({ success: true })
     } catch (error) {
@@ -290,6 +296,9 @@ export async function updateOrganization(req: Request, res: Response) {
             organization: user.organizationId,
             name: name.trim()
         })
+
+        // Clear user meta cookie so next request rebuilds it with the updated org name
+        res.clearCookie(USER_META_COOKIE_NAME, USER_META_COOKIE_OPTIONS)
 
         logger.info("Organization updated", {
             organizationId: organization.id,
