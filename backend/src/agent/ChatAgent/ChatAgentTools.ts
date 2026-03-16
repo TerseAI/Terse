@@ -201,7 +201,7 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
                 }
 
                 const configInstance = toConfigInstance(normalizeConfig(triggerConfig.config))
-                const inputEvents = await fetchSampleEvents(integrationId, integrationType, configInstance, user.organizationId, { limit })
+                const inputEvents = await fetchSampleEvents(integrationId, integrationType, configInstance, user.organizationId, user.id, { limit })
 
                 if (!agentId) {
                     throw new Error("Agent ID is required to get sample events")

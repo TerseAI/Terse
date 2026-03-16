@@ -52,7 +52,7 @@ export async function handleSampleEvents(req: Request, res: Response) {
                 integrationType
             })
 
-            const inputEvents = await fetchSampleEvents(integrationId, integrationType, configInstance, user.organizationId, { limit: 5 })
+            const inputEvents = await fetchSampleEvents(integrationId, integrationType, configInstance, user.organizationId, user.id, { limit: 5 })
 
             for (const evt of inputEvents) {
                 events.push({

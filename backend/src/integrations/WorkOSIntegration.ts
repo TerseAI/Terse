@@ -231,6 +231,7 @@ export class WorkOSIntegrationManager implements Integration<WorkOSIntegration, 
     async getSampleEvents(
         integrationId: string,
         organizationId: string,
+        _userId: string,
         triggerConfig: ConfigInstance,
         options?: {
             limit?: number

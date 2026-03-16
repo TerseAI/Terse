@@ -8,6 +8,7 @@ import { Request, Response } from "express"
 import { EventProcessor } from "../agent/AgentRunner/EventProcessor"
 import { githubApp, urls } from "../config/settings"
 import logger, { runWithUserContext } from "../logger"
+import { getGitHubAccessToken } from "../outputs/github/githubApiClient"
 import { db } from "../prismaClient"
 import { Identifiable } from "../rag/Hydrator"
 import {
@@ -353,7 +354,7 @@ export class GithubIntegrationManager
         }
     }
 
-    async getSampleEvents(integrationId: string, organizationId: string, triggerConfig: ConfigInstance, options?: { limit?: number }): Promise<InputEvent[]> {
+    async getSampleEvents(integrationId: string, organizationId: string, userId: string, triggerConfig: ConfigInstance, options?: { limit?: number }): Promise<InputEvent[]> {
         if (triggerConfig.configType !== ConfigType.GITHUB) {
             return []
         }
@@ -368,19 +369,8 @@ export class GithubIntegrationManager
         }
 
         const installationIdNum = installation.installation_id
-        const users = await resolveUsersForGithubInstallation(installationIdNum)
-        if (users.length === 0) {
-            throw new Error("No users found with access to this GitHub installation")
-        }
 
-        const tokenRow = await db().github_app_tokens.findFirst({
-            where: { user_id: users[0].id }
-        })
-        if (!tokenRow) {
-            throw new Error("No GitHub token found for user. Please connect your GitHub account.")
-        }
-
-        const accessToken = await getSecret(IntegrationType.GITHUB, tokenRow.id, SecretField.AccessToken)
+        const accessToken = await getGitHubAccessToken(userId)
         if (!accessToken) {
             throw new Error("No GitHub token found for user. Please connect your GitHub account.")
         }
