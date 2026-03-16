@@ -3,6 +3,7 @@ import type { AgentInputItem, AssistantMessageItem, FunctionCallItem, FunctionCa
 import { IntegrationType } from "../shared/Integrations"
 import { ModelEvent, ToolCallExecutionStatus } from "../shared/ModelEvents"
 
+import { resolveHostedToolCallStepId, stringifyHostedToolCallResult } from "./hostedToolCallUtils"
 import { isScaffoldedRunContextUserMessage } from "./AgentRunner/formatContext"
 import { parseCancelledSystemEventItem } from "./systemEvents/cancelledSystemEvent"
 import { parseFilterOutcomeSystemEventItem } from "./systemEvents/filterOutcomeSystemEvent"
@@ -241,17 +242,27 @@ async function convertSingleItem(
     if (isWebSearchResultItem(item)) {
         const hostedToolCallItem = item as HostedToolCallItem
         const integration = IntegrationType.TERSE
+        const stepId = resolveHostedToolCallStepId(item, `web-search-${eventTimestamp}`)
+        const result = stringifyHostedToolCallResult(hostedToolCallItem)
+        const toolCallEvent: ModelEvent = {
+            type: "ToolCall",
+            summary: hostedToolCallItem.name,
+            timestamp: eventTimestamp,
+            step_id: stepId,
+            parameters: hostedToolCallItem.arguments || "{}",
+            integration
+        }
         const toolCallCompleteEvent: ModelEvent = {
             type: "ToolCallComplete",
             tool_name: hostedToolCallItem.name,
             timestamp: eventTimestamp,
             status: (hostedToolCallItem.status as ToolCallExecutionStatus) || ToolCallExecutionStatus.COMPLETED,
-            step_id: item.id || `web-search-${eventTimestamp}`,
+            step_id: stepId,
             changed_items: [],
             integration,
-            result: JSON.stringify(hostedToolCallItem.providerData?.action) || undefined
+            ...(result ? { result } : {})
         }
-        return [toolCallCompleteEvent]
+        return [toolCallEvent, toolCallCompleteEvent]
     }
 
     return null

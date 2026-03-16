@@ -8,6 +8,7 @@ import { ErrorContext } from "../tools/toolUtils"
 import { Session } from "../types/session"
 import { randomString } from "../utility/strings"
 
+import { resolveHostedToolCallStepId, stringifyHostedToolCallResult } from "./hostedToolCallUtils"
 import { parseToolExecutionResult } from "./toolExecution"
 
 export async function* transformAgentStreamToModelEvents<T extends Session>(
@@ -75,6 +76,15 @@ export async function* transformAgentStreamToModelEvents<T extends Session>(
                     }
                 }
             }
+            continue
+        }
+
+        // Try hosted tool calls (web_search, etc.) — these arrive as tool_called with status already completed
+        const hostedToolComplete = tryExtractHostedToolCallComplete(event, toolToIntegrationMap)
+        if (hostedToolComplete) {
+            // Yield a ToolCall first so the UI sees the tool was invoked
+            yield hostedToolComplete.toolCall
+            yield { ...hostedToolComplete.complete }
             continue
         }
     }
@@ -177,24 +187,11 @@ export function tryExtractToolCallCompleteData(event: RunStreamEvent): ToolCallC
             snippet: undefined
         }
 
-        // Handle function call results (including hosted tool calls)
+        // Handle function call results
         if (rawItem.type === "function_call_result") {
             return {
                 name: rawItem.name || "unknown",
                 callId: rawItem.callId || "unknown",
-                status: parsed.status,
-                errorContext: parsed.errorContext,
-                actions: parsed.actions,
-                result: JSON.stringify(outputWithoutActions) ?? undefined,
-                snippets: parsed.snippets
-            }
-        }
-
-        // Handle hosted tool calls (check via type assertion as it's not in the union type)
-        if (rawItem.type === "hosted_tool_call_result" || rawItem.type === "hosted_tool_call") {
-            return {
-                name: rawItem.name || "unknown",
-                callId: rawItem.id || rawItem.callId || "unknown",
                 status: parsed.status,
                 errorContext: parsed.errorContext,
                 actions: parsed.actions,
@@ -223,6 +220,45 @@ export function createToolCallCompleteEvent(data: ToolCallCompleteData, changedI
     }
 
     return event
+}
+
+export function tryExtractHostedToolCallComplete(
+    event: RunStreamEvent,
+    toolToIntegrationMap?: Map<string, string>
+): { toolCall: ModelEvent; complete: ModelEvent & { tool_name: string; step_id: string } } | null {
+    if (event.type === "run_item_stream_event" && event.name === "tool_called") {
+        const item = (event as ToolCalledEvent).item.rawItem
+
+        if (item.type === "hosted_tool_call" && item.status === "completed") {
+            const callId = resolveHostedToolCallStepId(item)
+            const name = item.name || "unknown"
+            const integration = toolToIntegrationMap?.get(name) || IntegrationType.TERSE
+            const result = stringifyHostedToolCallResult(item)
+            const ts = Date.now()
+
+            return {
+                toolCall: {
+                    type: "ToolCall",
+                    timestamp: ts,
+                    summary: name,
+                    step_id: callId,
+                    parameters: item.arguments || "{}",
+                    integration
+                },
+                complete: {
+                    type: "ToolCallComplete",
+                    timestamp: ts,
+                    tool_name: name,
+                    status: ToolCallExecutionStatus.COMPLETED,
+                    step_id: callId,
+                    changed_items: [],
+                    integration,
+                    ...(result ? { result } : {})
+                }
+            }
+        }
+    }
+    return null
 }
 
 export function createNaturalStopEvent(): ModelEvent {
