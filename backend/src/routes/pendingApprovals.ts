@@ -1,4 +1,4 @@
-import { Prisma, IntegrationType as PrismaIntegrationType, RunHistoryStatus as PrismaRunHistoryStatus } from "@prisma/client"
+import { IntegrationType as PrismaIntegrationType, RunHistoryStatus as PrismaRunHistoryStatus } from "@prisma/client"
 import { Request, Response } from "express"
 
 import logger from "../logger"
@@ -120,55 +120,37 @@ export async function getPendingApprovals(req: Request, res: Response) {
         const filter = parseApprovalFilter(req.query.status)
         const prisma = db()
 
-        const historicalApprovalRunIds = await prisma.$queryRaw<Array<{ id: string }>>(Prisma.sql`
-            SELECT rhr.id
-            FROM run_history_records rhr
-            INNER JOIN automations a ON a.id = rhr.automation_id
-            INNER JOIN run_history_raw_events rhre ON rhre.run_history_record_id = rhr.id
-            WHERE a.organization_id = ${organizationId}
-              AND (
-                  (rhre.raw_event_json->>'id') LIKE 'msg_tool_approval_request-%'
-                  OR rhre.raw_event_json::text LIKE '%msg_tool_approval_request-%'
-              )
-            GROUP BY rhr.id, rhr.timestamp
-            ORDER BY rhr.timestamp DESC
-            LIMIT ${MAX_APPROVALS}
-        `)
-        const approvalRunIds = historicalApprovalRunIds.map(record => record.id)
+        const COMPLETED_STATUSES = [
+            PrismaRunHistoryStatus.success,
+            PrismaRunHistoryStatus.failed,
+            PrismaRunHistoryStatus.skipped,
+            PrismaRunHistoryStatus.cancelled
+        ]
+
+        // Build where clause based on filter — all filtering happens at the DB level
+        const orgFilter = { automation: { organization_id: organizationId } }
+        let where
+        switch (filter) {
+            case "pending":
+                where = { ...orgFilter, status: PrismaRunHistoryStatus.awaiting_approval }
+                break
+            case "in_progress":
+                where = { ...orgFilter, has_approval_request: true, status: PrismaRunHistoryStatus.in_progress }
+                break
+            case "completed":
+                where = { ...orgFilter, has_approval_request: true, status: { in: COMPLETED_STATUSES } }
+                break
+            default:
+                where = { ...orgFilter, OR: [{ status: PrismaRunHistoryStatus.awaiting_approval }, { has_approval_request: true }] }
+        }
 
         const rows = await prisma.run_history_records.findMany({
-            where: {
-                automation: {
-                    organization_id: organizationId
-                },
-                OR: [
-                    {
-                        status: PrismaRunHistoryStatus.awaiting_approval
-                    },
-                    ...(approvalRunIds.length > 0
-                        ? [
-                              {
-                                  id: { in: approvalRunIds }
-                              }
-                          ]
-                        : [])
-                ]
-            },
-            orderBy: {
-                timestamp: "desc"
-            },
+            relationLoadStrategy: "join",
+            where,
+            orderBy: { timestamp: "desc" },
             include: {
-                automation: {
-                    select: {
-                        id: true,
-                        name: true
-                    }
-                },
-                pending_approval: {
-                    select: {
-                        interruptions: true
-                    }
-                }
+                automation: { select: { id: true, name: true } },
+                pending_approval: { select: { interruptions: true } }
             },
             take: MAX_APPROVALS
         })
@@ -187,8 +169,7 @@ export async function getPendingApprovals(req: Request, res: Response) {
             items.push(approvalRequest)
         }
 
-        const filteredItems = filter === "all" ? items : items.filter(item => item.status === filter)
-        const response: GetPendingApprovalsResponse = { items: filteredItems }
+        const response: GetPendingApprovalsResponse = { items }
         return res.status(200).json(response)
     } catch (error) {
         logger.error("[PendingApprovals] Failed to fetch pending approvals", {

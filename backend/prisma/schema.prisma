@@ -5,8 +5,9 @@
 // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
   // output   = "../src/generated/prisma"
+  previewFeatures = ["relationJoins"]
 }
 
 datasource db {
@@ -933,6 +934,8 @@ model run_history_records {
   decision_reason       String
   // Run status
   status                RunHistoryStatus
+  // Whether this run ever involved a tool approval request (persists after approval is processed)
+  has_approval_request  Boolean                  @default(false)
   created_at            DateTime                 @default(now())
   updated_at            DateTime                 @updatedAt
 
@@ -945,6 +948,7 @@ model run_history_records {
   @@index([status])
   @@index([timestamp])
   @@index([automation_id, timestamp]) // Composite index for user filtering + time range queries
+  @@index([has_approval_request, automation_id, timestamp]) // For pending approvals endpoint
 }
 
 model run_history_actions {
