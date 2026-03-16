@@ -634,11 +634,11 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
         preparing: "Finding folder",
         executing: params => {
             const path = params?.path as string | undefined
-            return path ? `Opening ${truncate(path, 40)}` : "Opening folder"
+            return path ? `Listing files in ${truncate(path, 40)}` : "Opening folder"
         },
         complete: params => {
             const path = params?.path as string | undefined
-            return path ? `Opened ${truncate(path, 40)}` : "Done"
+            return path ? `Listed files in ${truncate(path, 40)}` : "Done"
         }
     },
     listGitHubCommits: {
@@ -927,15 +927,17 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
     // ===================
     // Terse Tools
     // ===================
-    web_search: {
+    web_search_call: {
         preparing: "Looking on the web",
-        executing: params => {
-            const query = params?.query as string | undefined
-            return query ? `Looking on the web for "${truncate(query)}"` : "Looking on the web"
-        },
-        complete: params => {
-            const query = params?.query as string | undefined
-            return query ? `Found web results for "${truncate(query)}"` : "Web search complete"
+        executing: () => "Searching the web",
+        complete: (_params, result) => {
+            const webResult = safeParseResult(result)
+            const type = webResult?.type as "search" | "open_page"
+            const query = (webResult?.query as string) || ""
+            const url = (webResult?.url as string) || ""
+            if (type === "search") return `Searched for: "${truncate(query)}"`
+            if (type === "open_page") return `Opened page: ${truncate(url, 30)}`
+            return "Web search complete"
         }
     },
     image_edit: {
