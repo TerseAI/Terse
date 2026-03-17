@@ -5,7 +5,7 @@ const client = new Terse();
 
 await client.createJob({
   name: "Summarize PR and send slack message",
-  triggers: [GitHub.onPR({ repo: Repos.TerseAI.LandingPage })],
+  triggers: [GitHub.onPROpened({ repo: Repos.TerseAI.Terse })],
   skills: [
     GitHub.skill({ repos: [Repos.TerseAI.LandingPage, Repos.TerseAI.Terse] }),
     Slack.skill({ channel: SlackChannel.AllTerseInc }),
