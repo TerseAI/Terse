@@ -1,6 +1,5 @@
 import { Request, Response } from "express"
 import { version as uuidVersion, validate as validateUuid } from "uuid"
-import { z } from "zod"
 
 import { INTEGRATION_REGISTRY, isSystemIntegration } from "../integrations/abstract/IntegrationRegistry"
 import logger from "../logger"
@@ -9,7 +8,6 @@ import { db } from "../prismaClient"
 import { emitCacheInvalidationWithKey, emitCacheInvalidationWithWildcard } from "../realtimeSocket"
 import { ConfigInstance } from "../shared/Configs"
 import { IntegrationType } from "../shared/Integrations"
-import { agentDetailKey } from "../shared/InvalidationKeys"
 import { Agent, AgentNotificationSettings, AgentTrigger, AgentUpdate, AgentsResponse } from "../shared/types"
 import { isValidToolName } from "../tools/ToolNames"
 import { TRIGGER_REGISTRY } from "../triggers/TriggerRegistry"
@@ -480,26 +478,28 @@ export async function getUserAgents(req: Request, res: Response) {
         }
 
         // Get total count for pagination
-        const total = await prisma.automations.count({ where })
 
-        // Get paginated results
-        const agents: AgentWithRelations[] = await prisma.automations.findMany({
-            where,
-            include: {
-                prompt: true,
-                inputs: {
-                    include: getInputConfigInclude()
+        const [total, agents] = await Promise.all([
+            prisma.automations.count({ where }),
+            prisma.automations.findMany({
+                where,
+                include: {
+                    prompt: true,
+                    inputs: {
+                        include: getInputConfigInclude()
+                    },
+                    outputs: {
+                        include: getOutputConfigInclude()
+                    },
+                    notification_settings: true,
+                    tool_approvals: true
                 },
-                outputs: {
-                    include: getOutputConfigInclude()
-                },
-                notification_settings: true,
-                tool_approvals: true
-            },
-            orderBy: { created_at: "desc" },
-            skip,
-            take
-        })
+                orderBy: { created_at: "desc" },
+                skip,
+                take
+            })
+        ])
+
         if (agents.length > 0 && !agents.some(agent => agent.outputs && agent.outputs.length > 0)) {
             throw new Error(`Agent outputs not found`)
         }

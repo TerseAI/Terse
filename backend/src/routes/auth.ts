@@ -8,9 +8,18 @@ import { db } from "../prismaClient"
 import { ApiRoutes } from "../shared/ApiRoutes"
 import { Role, User } from "../shared/types"
 import { Session } from "../types/session"
+import { AccessTokenClaims, decodeAccessTokenClaims } from "../utility/accessTokenClaims"
 import { workos } from "../utility/workos"
 
 export const WORKOS_SESSION_COOKIE_NAME = "TERSE_WORKOS_SESSION"
+
+export function setSessionCookie(res: Response, sealedSession: string) {
+    res.cookie(WORKOS_SESSION_COOKIE_NAME, sealedSession, WORKOS_SESSION_COOKIE_OPTIONS)
+}
+
+export function clearSessionCookies(res: Response) {
+    res.clearCookie(WORKOS_SESSION_COOKIE_NAME, WORKOS_SESSION_COOKIE_OPTIONS)
+}
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000
 
@@ -79,7 +88,7 @@ export async function logoutUrl(req: Request, res: Response) {
     const redirectToLogin = shouldRedirectToLogin(req.query.redirectToLogin)
     const postLogoutRedirectUrl = getPostLogoutRedirectUrl(redirectToLogin)
     const sealedSessionData = req.cookies[WORKOS_SESSION_COOKIE_NAME]
-    res.clearCookie(WORKOS_SESSION_COOKIE_NAME, WORKOS_SESSION_COOKIE_OPTIONS)
+    clearSessionCookies(res)
 
     try {
         const workosLogoutUrl = await getDirectWorkOSLogoutUrl(sealedSessionData, postLogoutRedirectUrl)
@@ -97,7 +106,7 @@ export async function logout(req: Request, res: Response) {
     const redirectToLogin = shouldRedirectToLogin(req.query.redirectToLogin)
     const postLogoutRedirectUrl = getPostLogoutRedirectUrl(redirectToLogin)
     const sealedSessionData = req.cookies[WORKOS_SESSION_COOKIE_NAME]
-    res.clearCookie(WORKOS_SESSION_COOKIE_NAME, WORKOS_SESSION_COOKIE_OPTIONS)
+    clearSessionCookies(res)
 
     try {
         const workosLogoutUrl = await getDirectWorkOSLogoutUrl(sealedSessionData, postLogoutRedirectUrl)
@@ -158,7 +167,7 @@ export async function me(req: Request, res: Response) {
         const refreshedUser: User = {
             ...user,
             email: workOSUser.email,
-            displayName: workOSUser.firstName + " " + workOSUser.lastName,
+            displayName: [workOSUser.firstName, workOSUser.lastName].filter(Boolean).join(" ") || "",
             firstName: workOSUser.firstName || null,
             lastName: workOSUser.lastName || null,
             displayPhotoUrl: workOSUser.profilePictureUrl || ""
@@ -192,7 +201,8 @@ function createAuthMiddleware(requireOrganization: boolean) {
             const authResult = await session.authenticate()
 
             if (authResult.authenticated) {
-                const user = await getOrCreateDbUserFromWorkOS(authResult)
+                const claims = decodeAccessTokenClaims(authResult.accessToken)
+                const { user } = await getOrCreateDbUserFromWorkOS(authResult, claims)
                 if (!req.session) {
                     req.session = {
                         user,
@@ -227,7 +237,8 @@ function createAuthMiddleware(requireOrganization: boolean) {
                 return sendUnauthorized(req, res)
             }
             logger.info("Session refreshed successfully")
-            const user = await getOrCreateDbUserFromWorkOS(refreshedSessionResult)
+            // After a session refresh, no access token is available — always do full DB lookup
+            const { user } = await getOrCreateDbUserFromWorkOS(refreshedSessionResult)
             if (!req.session) {
                 req.session = {
                     user,
@@ -244,7 +255,7 @@ function createAuthMiddleware(requireOrganization: boolean) {
 
             // update the cookie if we have a sealed session
             if (refreshedSessionResult.sealedSession) {
-                res.cookie(WORKOS_SESSION_COOKIE_NAME, refreshedSessionResult.sealedSession, WORKOS_SESSION_COOKIE_OPTIONS)
+                setSessionCookie(res, refreshedSessionResult.sealedSession)
                 // Keep request-scoped cookie data in sync so downstream handlers in the
                 // same request (e.g. /session/token) read the refreshed sealed session.
                 if (req.cookies) {
@@ -256,7 +267,7 @@ function createAuthMiddleware(requireOrganization: boolean) {
             logger.error("Failed to authorize user", {
                 error
             })
-            res.clearCookie(WORKOS_SESSION_COOKIE_NAME, WORKOS_SESSION_COOKIE_OPTIONS)
+            clearSessionCookies(res)
             return sendUnauthorized(req, res)
         }
     }
@@ -364,7 +375,8 @@ export async function callback(req: Request, res: Response) {
             workosUserId: authResult.user.id,
             email: authResult.user.email
         })
-        const dbUser = await getOrCreateDbUserFromWorkOS(authResult)
+        const claims = decodeAccessTokenClaims(authResult.accessToken)
+        const { user: dbUser } = await getOrCreateDbUserFromWorkOS(authResult, claims)
         logger.info("[/callback] Database user ready", {
             dbUserId: dbUser.id,
             workosId: dbUser.workosId,
@@ -377,7 +389,7 @@ export async function callback(req: Request, res: Response) {
             secure: settings.nodeEnv === "production",
             sealedSessionLength: authenticateResponse.sealedSession.length
         })
-        res.cookie(WORKOS_SESSION_COOKIE_NAME, authenticateResponse.sealedSession, WORKOS_SESSION_COOKIE_OPTIONS)
+        setSessionCookie(res, authenticateResponse.sealedSession)
 
         // Redirect the user to the homepage
         logger.info("[/callback] Authentication successful, redirecting to frontend", {
@@ -400,7 +412,7 @@ export async function callback(req: Request, res: Response) {
 
         // Don't redirect to /login here as it causes an infinite redirect loop
         // Clear any stale session cookie and show an error
-        res.clearCookie(WORKOS_SESSION_COOKIE_NAME, WORKOS_SESSION_COOKIE_OPTIONS)
+        clearSessionCookies(res)
         return res
             .status(500)
             .send(
@@ -436,14 +448,38 @@ export async function getWorkOSWidgetToken(req: Request, res: Response) {
     return res.json({ token: widgetToken })
 }
 
-export async function getOrCreateDbUserFromWorkOS(authResult: AuthenticateWithSessionCookieSuccessResponse | RefreshSessionSuccessResponse): Promise<User> {
-    const prisma = db()
+export async function getOrCreateDbUserFromWorkOS(
+    authResult: AuthenticateWithSessionCookieSuccessResponse | RefreshSessionSuccessResponse,
+    claims?: AccessTokenClaims | null
+): Promise<{ user: User }> {
     const workosUser = authResult.user
+
+    // Fast path: JWT Template claims have our DB ID and org name — skip DB/WorkOS API calls
+    if (claims) {
+        const user: User = {
+            id: claims.dbId,
+            workosId: workosUser.id,
+            organizationId: authResult.organizationId ?? "",
+            organizationName: claims.orgName,
+            email: workosUser.email,
+            displayName: [workosUser.firstName, workosUser.lastName].filter(Boolean).join(" ") || "",
+            firstName: workosUser.firstName || null,
+            lastName: workosUser.lastName || null,
+            displayPhotoUrl: workosUser.profilePictureUrl || "",
+            roles: (authResult.roles || []) as Role[]
+        }
+        return { user }
+    }
+
+    // Slow path: claims missing (JWT Template not configured, or user metadata not yet backfilled)
+    // Look up the DB user and org name via DB + WorkOS API
+    const prisma = db()
     let dbUser: PrismaUser | null = await prisma.users.findUnique({
         where: {
             workos_id: workosUser.id
         }
     })
+    let isNewUser = false
     if (!dbUser) {
         dbUser = await prisma.users.create({
             data: {
@@ -456,9 +492,25 @@ export async function getOrCreateDbUserFromWorkOS(authResult: AuthenticateWithSe
                 }
             }
         })
+        isNewUser = true
     }
 
-    const roles = authResult.roles || []
+    // Backfill WorkOS user metadata with our DB ID so future requests get it via JWT Template claims
+    if (isNewUser || !workosUser.metadata?.db_id) {
+        try {
+            console.log("Backfilling WorkOS user metadata with db_id", { workosUserId: workosUser.id, dbUserId: dbUser.id })
+            await workos.userManagement.updateUser({
+                userId: workosUser.id,
+                metadata: { db_id: dbUser.id }
+            })
+        } catch (error) {
+            logger.warn("Failed to backfill WorkOS user metadata with db_id", {
+                error,
+                workosUserId: workosUser.id,
+                dbUserId: dbUser.id
+            })
+        }
+    }
 
     let organizationName = undefined
     if (authResult.organizationId) {
@@ -466,18 +518,20 @@ export async function getOrCreateDbUserFromWorkOS(authResult: AuthenticateWithSe
         organizationName = organization.name
     }
 
-    return {
+    const user: User = {
         id: dbUser.id,
         workosId: workosUser.id,
         organizationId: authResult.organizationId ?? "",
         organizationName: organizationName ?? "",
         email: workosUser.email,
-        displayName: workosUser.firstName + " " + workosUser.lastName,
+        displayName: [workosUser.firstName, workosUser.lastName].filter(Boolean).join(" ") || "",
         firstName: workosUser.firstName || null,
         lastName: workosUser.lastName || null,
         displayPhotoUrl: workosUser.profilePictureUrl || "",
-        roles: roles as Role[]
+        roles: (authResult.roles || []) as Role[]
     }
+
+    return { user }
 }
 
 // Library doesn't export this type properly, so we need to define it ourselves

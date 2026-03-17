@@ -188,11 +188,12 @@ export async function storePendingApprovalState(runId: string, serializedState: 
         }
     })
 
-    // Update run status to awaiting_approval
+    // Update run status to awaiting_approval and mark as having an approval request
     await prisma.run_history_records.update({
         where: { id: runId },
         data: {
-            status: RunHistoryStatus.AWAITING_APPROVAL
+            status: RunHistoryStatus.AWAITING_APPROVAL,
+            has_approval_request: true
         }
     })
 
