@@ -65,10 +65,13 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance> exte
                 let tool = entry.tool as Tool<SessionWithTracking<T>>
 
                 if (tool.type === "function") {
-                    const guardrail = createACLGuardrail<SessionWithTracking<T>>((toolName, args) =>
-                        output.checkToolAccess(toolName, args, {
-                            organizationId: this.session.user.organizationId
-                        })
+                    const aclItems = output.configs.flatMap(c => c.getACL())
+                    const guardrail = createACLGuardrail<SessionWithTracking<T>>(
+                        (toolName, args) =>
+                            output.checkToolAccess(toolName, args, {
+                                organizationId: this.session.user.organizationId
+                            }),
+                        aclItems
                     )
 
                     tool = {

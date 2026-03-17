@@ -36,3 +36,13 @@ export interface ACLProvider {
     integrationId: string
     getACL(): ACLItem[]
 }
+
+export function formatACLForFeedback(acl: ACLItem[]): string {
+    if (acl.length === 0) return "No resources are accessible."
+    return acl
+        .map(item => {
+            const id = item.resourceId === ACL_WILDCARD ? "* (all)" : item.resourceId
+            return `- ${item.resourceType}: ${id}`
+        })
+        .join("\n")
+}

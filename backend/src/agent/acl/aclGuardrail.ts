@@ -1,10 +1,10 @@
 import { ToolGuardrailFunctionOutputFactory, defineToolInputGuardrail } from "@openai/agents"
 
-import { ACLCheckResult, ACLItem, ACLProvider, ACL_WILDCARD } from "../../shared/acl"
+import { ACLCheckResult, ACLItem, ACLProvider, ACL_WILDCARD, formatACLForFeedback } from "../../shared/acl"
 
 // MARK: Guardrail
 
-export function createACLGuardrail<TContext = unknown>(checker: (toolName: string, args: Record<string, unknown>) => Promise<ACLCheckResult>) {
+export function createACLGuardrail<TContext = unknown>(checker: (toolName: string, args: Record<string, unknown>) => Promise<ACLCheckResult>, aclItems: ACLItem[]) {
     return defineToolInputGuardrail<TContext>({
         name: "acl_guardrail",
         run: async data => {
@@ -20,7 +20,10 @@ export function createACLGuardrail<TContext = unknown>(checker: (toolName: strin
                 return ToolGuardrailFunctionOutputFactory.allow()
             }
 
-            return ToolGuardrailFunctionOutputFactory.rejectContent(result.reason)
+            const feedback = formatACLForFeedback(aclItems)
+            return ToolGuardrailFunctionOutputFactory.rejectContent(
+                `Policy violated: ${result.reason}\n\nYou are allowed to access the following resources:\n${feedback}`
+            )
         }
     })
 }
