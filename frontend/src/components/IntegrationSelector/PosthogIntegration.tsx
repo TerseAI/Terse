@@ -70,7 +70,7 @@ export function PosthogIntegration({ input, variant, setConfig }: InputConfigSel
         const selectedIntegration = integrations.find(i => i.id === selectedIntegrationId)
         const hasProject = !!posthogConfig.projectId
         const displayText = hasProject ? posthogConfig.projectName || posthogConfig.projectId : selectedIntegration ? "Select project" : "Select integration"
-        return <div className="text-xs text-center">{displayText}</div>
+        return <div className="text-sm">{displayText}</div>
     }
 
     if (integrations.length === 0 && !showConnectForm) {

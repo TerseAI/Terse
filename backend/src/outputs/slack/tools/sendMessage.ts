@@ -150,9 +150,22 @@ export const slackSendMessageTool = tool<z.ZodObject<any>, SessionWithTracking<S
             const messagePreview = message.length > 100 ? message.substring(0, 100) + "..." : message
             const messageType = blocks ? "Block Kit" : "text"
 
-            // Build Slack message permalink URL
-            const messageTs = result.ts?.replace(".", "") || ""
-            const slackPermalink = `https://${userSlackIntegration.slack_integration.team_name || "slack"}.slack.com/archives/${channelId}/p${messageTs}`
+            let slackPermalink: string | undefined
+            if (result.ts && result.channel) {
+                try {
+                    const permalinkResult = await client.chat.getPermalink({
+                        channel: result.channel,
+                        message_ts: result.ts
+                    })
+                    slackPermalink = permalinkResult.permalink
+                } catch (permalinkError) {
+                    logger.warn("[Slack Output] Failed to fetch Slack permalink for sent message", {
+                        permalinkError,
+                        channelId,
+                        messageTs: result.ts
+                    })
+                }
+            }
 
             // Return action as part of the result
             const action = {

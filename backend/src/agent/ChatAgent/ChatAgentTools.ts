@@ -92,9 +92,11 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
                     const sessionId = runContext?.context?.sessionId
                     const createWithId = !id && chatInterface.name === "Web" && sessionId && isUuidV4(sessionId) ? { createWithId: sessionId } : undefined
                     const result = id ? await updateAgentForUser(user.id, user.organizationId, id, draft) : await applyAgentForUser(user.id, user.organizationId, draft, createWithId)
-
-                    const path = FrontendRoutes.AGENTS.DETAIL(result.id)
-                    await chatInterface.navigate(`${path}?${FROM_SETUP_CHAT_PARAM}=1`)
+                    const isCreate = !id
+                    if (isCreate) {
+                        const path = FrontendRoutes.AGENTS.DETAIL(result.id)
+                        await chatInterface.navigate(`${path}?${FROM_SETUP_CHAT_PARAM}=1`)
+                    }
                     return `Agent applied successfully (${result.id})`
                 } catch (error) {
                     logger.error("applyAgent failed", { error, user, agent })

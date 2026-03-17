@@ -1,6 +1,6 @@
 # terse-cli
 
-CLI tool for scaffolding, developing, testing, and deploying [Terse](https://terse.ai) jobs.
+CLI tool for scaffolding, developing, testing, and deploying [Terse](https://useterse.ai) jobs.
 
 ## Installation
 
