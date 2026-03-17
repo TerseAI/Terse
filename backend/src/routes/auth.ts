@@ -2,13 +2,13 @@ import { users as PrismaUser } from "@prisma/client"
 import { AuthenticateWithSessionCookieSuccessResponse, AuthenticationResponse } from "@workos-inc/node"
 import { NextFunction, Request, Response } from "express"
 
-import { CachedUserMeta, USER_META_COOKIE_NAME, USER_META_COOKIE_OPTIONS, signUserMeta, verifyUserMeta } from "../cache/UserMetaCookie"
 import { settings } from "../config/settings"
 import logger from "../logger"
 import { db } from "../prismaClient"
 import { ApiRoutes } from "../shared/ApiRoutes"
 import { Role, User } from "../shared/types"
 import { Session } from "../types/session"
+import { AccessTokenClaims, decodeAccessTokenClaims } from "../utility/accessTokenClaims"
 import { workos } from "../utility/workos"
 
 export const WORKOS_SESSION_COOKIE_NAME = "TERSE_WORKOS_SESSION"
@@ -17,17 +17,8 @@ export function setSessionCookie(res: Response, sealedSession: string) {
     res.cookie(WORKOS_SESSION_COOKIE_NAME, sealedSession, WORKOS_SESSION_COOKIE_OPTIONS)
 }
 
-function setUserMetaCookie(res: Response, user: User) {
-    res.cookie(USER_META_COOKIE_NAME, signUserMeta({ dbId: user.id, orgName: user.organizationName }), USER_META_COOKIE_OPTIONS)
-}
-
-function clearUserMetaCookie(res: Response) {
-    res.clearCookie(USER_META_COOKIE_NAME, USER_META_COOKIE_OPTIONS)
-}
-
 export function clearSessionCookies(res: Response) {
     res.clearCookie(WORKOS_SESSION_COOKIE_NAME, WORKOS_SESSION_COOKIE_OPTIONS)
-    clearUserMetaCookie(res)
 }
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000
@@ -181,7 +172,6 @@ export async function me(req: Request, res: Response) {
             lastName: workOSUser.lastName || null,
             displayPhotoUrl: workOSUser.profilePictureUrl || ""
         }
-        setUserMetaCookie(res, refreshedUser)
 
         logger.info("[/me] Returning refreshed user", {
             userId: refreshedUser.id,
@@ -211,11 +201,8 @@ function createAuthMiddleware(requireOrganization: boolean) {
             const authResult = await session.authenticate()
 
             if (authResult.authenticated) {
-                const cachedMeta = readUserMetaCookie(req)
-                const { user, isNewMeta } = await getOrCreateDbUserFromWorkOS(authResult, cachedMeta)
-                if (isNewMeta) {
-                    setUserMetaCookie(res, user)
-                }
+                const claims = decodeAccessTokenClaims(authResult.accessToken)
+                const { user } = await getOrCreateDbUserFromWorkOS(authResult, claims)
                 if (!req.session) {
                     req.session = {
                         user,
@@ -250,9 +237,8 @@ function createAuthMiddleware(requireOrganization: boolean) {
                 return sendUnauthorized(req, res)
             }
             logger.info("Session refreshed successfully")
-            // After a session refresh, always rebuild the user and write a fresh meta cookie
+            // After a session refresh, no access token is available — always do full DB lookup
             const { user } = await getOrCreateDbUserFromWorkOS(refreshedSessionResult)
-            setUserMetaCookie(res, user)
             if (!req.session) {
                 req.session = {
                     user,
@@ -389,7 +375,8 @@ export async function callback(req: Request, res: Response) {
             workosUserId: authResult.user.id,
             email: authResult.user.email
         })
-        const { user: dbUser } = await getOrCreateDbUserFromWorkOS(authResult)
+        const claims = decodeAccessTokenClaims(authResult.accessToken)
+        const { user: dbUser } = await getOrCreateDbUserFromWorkOS(authResult, claims)
         logger.info("[/callback] Database user ready", {
             dbUserId: dbUser.id,
             workosId: dbUser.workosId,
@@ -403,7 +390,6 @@ export async function callback(req: Request, res: Response) {
             sealedSessionLength: authenticateResponse.sealedSession.length
         })
         setSessionCookie(res, authenticateResponse.sealedSession)
-        setUserMetaCookie(res, dbUser)
 
         // Redirect the user to the homepage
         logger.info("[/callback] Authentication successful, redirecting to frontend", {
@@ -462,26 +448,19 @@ export async function getWorkOSWidgetToken(req: Request, res: Response) {
     return res.json({ token: widgetToken })
 }
 
-function readUserMetaCookie(req: Request): CachedUserMeta | null {
-    const token = req.cookies[USER_META_COOKIE_NAME]
-    if (!token) return null
-    return verifyUserMeta(token)
-}
-
 export async function getOrCreateDbUserFromWorkOS(
     authResult: AuthenticateWithSessionCookieSuccessResponse | RefreshSessionSuccessResponse,
-    cachedMeta?: CachedUserMeta | null
-): Promise<{ user: User; isNewMeta: boolean }> {
+    claims?: AccessTokenClaims | null
+): Promise<{ user: User }> {
     const workosUser = authResult.user
 
-    // Cache hit: the meta cookie has the fields we can't get directly from workos to recreate
-    // user record
-    if (cachedMeta) {
+    // Fast path: JWT Template claims have our DB ID and org name — skip DB/WorkOS API calls
+    if (claims) {
         const user: User = {
-            id: cachedMeta.dbId,
+            id: claims.dbId,
             workosId: workosUser.id,
             organizationId: authResult.organizationId ?? "",
-            organizationName: cachedMeta.orgName,
+            organizationName: claims.orgName,
             email: workosUser.email,
             displayName: [workosUser.firstName, workosUser.lastName].filter(Boolean).join(" ") || "",
             firstName: workosUser.firstName || null,
@@ -489,16 +468,18 @@ export async function getOrCreateDbUserFromWorkOS(
             displayPhotoUrl: workosUser.profilePictureUrl || "",
             roles: (authResult.roles || []) as Role[]
         }
-        return { user, isNewMeta: false }
+        return { user }
     }
 
-    // Cache miss: look up the DB user and org name the expensive way
+    // Slow path: claims missing (JWT Template not configured, or user metadata not yet backfilled)
+    // Look up the DB user and org name via DB + WorkOS API
     const prisma = db()
     let dbUser: PrismaUser | null = await prisma.users.findUnique({
         where: {
             workos_id: workosUser.id
         }
     })
+    let isNewUser = false
     if (!dbUser) {
         dbUser = await prisma.users.create({
             data: {
@@ -511,6 +492,24 @@ export async function getOrCreateDbUserFromWorkOS(
                 }
             }
         })
+        isNewUser = true
+    }
+
+    // Backfill WorkOS user metadata with our DB ID so future requests get it via JWT Template claims
+    if (isNewUser || !workosUser.metadata?.db_id) {
+        try {
+            console.log("Backfilling WorkOS user metadata with db_id", { workosUserId: workosUser.id, dbUserId: dbUser.id })
+            await workos.userManagement.updateUser({
+                userId: workosUser.id,
+                metadata: { db_id: dbUser.id }
+            })
+        } catch (error) {
+            logger.warn("Failed to backfill WorkOS user metadata with db_id", {
+                error,
+                workosUserId: workosUser.id,
+                dbUserId: dbUser.id
+            })
+        }
     }
 
     let organizationName = undefined
@@ -532,7 +531,7 @@ export async function getOrCreateDbUserFromWorkOS(
         roles: (authResult.roles || []) as Role[]
     }
 
-    return { user, isNewMeta: true }
+    return { user }
 }
 
 // Library doesn't export this type properly, so we need to define it ourselves
