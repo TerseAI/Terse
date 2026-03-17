@@ -5,7 +5,7 @@ import logger from "../logger"
 import { getOrgLogoDownloadUrl, getOrgLogoUploadUrl } from "../services/FileStorageService"
 import { workos } from "../utility/workos"
 
-import { WORKOS_SESSION_COOKIE_NAME, WORKOS_SESSION_COOKIE_OPTIONS } from "./auth"
+import { WORKOS_SESSION_COOKIE_NAME, setSessionCookie } from "./auth"
 
 export async function createOrganization(req: Request, res: Response) {
     const user = req.session?.user
@@ -68,7 +68,7 @@ export async function createOrganization(req: Request, res: Response) {
             })
         }
 
-        res.cookie(WORKOS_SESSION_COOKIE_NAME, refreshResult.sealedSession, WORKOS_SESSION_COOKIE_OPTIONS)
+        setSessionCookie(res, refreshResult.sealedSession)
 
         logger.info("Organization created", {
             organizationId: organization.id,
@@ -189,7 +189,7 @@ export async function switchOrganization(req: Request, res: Response) {
             })
         }
 
-        res.cookie(WORKOS_SESSION_COOKIE_NAME, refreshResult.sealedSession, WORKOS_SESSION_COOKIE_OPTIONS)
+        setSessionCookie(res, refreshResult.sealedSession)
 
         return res.json({ success: true })
     } catch (error) {
