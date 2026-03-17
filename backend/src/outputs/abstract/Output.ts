@@ -16,6 +16,12 @@ export interface RuntimeSystemInstructionsContext {
     userId: string
 }
 
+export type ACLCheckResult = { allowed: true } | { allowed: false; reason: string }
+
+export interface ACLCheckContext {
+    organizationId: string
+}
+
 export abstract class Output<TConfig extends ConfigInstance> {
     integration: OutputConfigType
     readonly toolbox: readonly ToolboxEntry[]
@@ -52,5 +58,9 @@ export abstract class Output<TConfig extends ConfigInstance> {
      */
     async getRuntimeSystemInstructions(_context: RuntimeSystemInstructionsContext): Promise<string> {
         return this.getSystemInstructions()
+    }
+
+    async checkToolAccess(_toolName: string, _args: Record<string, unknown>, _configs: TConfig[], _context: ACLCheckContext): Promise<ACLCheckResult> {
+        return { allowed: true }
     }
 }

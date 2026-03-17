@@ -20,6 +20,7 @@ import { RunHistoryChatMemorySession, recentHistoryCallback } from "../CustomMem
 import { AgentType, builderProviderDataModelSettings, runnerFactory } from "../runner"
 import { appendToolApprovalRequestSystemEvent } from "../systemEvents/toolApprovalSystemEvent"
 import { buildUserMessage, buildUserMessageFromContent } from "../userMessage"
+import { createACLGuardrail } from "../acl/aclGuardrail"
 
 import { AgentRunnerLoopResult, BaseAgentRunner, SessionWithTracking } from "./BaseAgentRunner"
 import { persistRunAction } from "./EventProcessor"
@@ -61,7 +62,22 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance> exte
 
         outputs.forEach(output => {
             output.toolbox.forEach(entry => {
-                toolsMap.set(entry.tool.name, entry.tool)
+                let tool = entry.tool as Tool<SessionWithTracking<T>>
+
+                if (tool.type === "function") {
+                    const guardrail = createACLGuardrail<SessionWithTracking<T>>((toolName, args) =>
+                        output.checkToolAccess(toolName, args, output.configs, {
+                            organizationId: this.session.user.organizationId
+                        })
+                    )
+
+                    tool = {
+                        ...tool,
+                        inputGuardrails: [...(tool.inputGuardrails ?? []), guardrail]
+                    }
+                }
+
+                toolsMap.set(tool.name, tool)
             })
         })
 
@@ -311,6 +327,7 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance> exte
 
     private getToolContext(): SessionWithTracking<T> {
         const toolApprovals = this.agentConfig.tool_approvals.map((ta: any) => ta.tool_name)
+        const configs: ConfigInstance[] = this.outputs.flatMap(output => output.configs)
 
         return {
             ...this.session,
@@ -318,6 +335,7 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance> exte
                 requireApproval: this.agentConfig.require_approval ?? false,
                 toolApprovals: toolApprovals
             },
+            configs,
             runId: this.runContext.runId,
             agentId: this.agentConfig.id
         }

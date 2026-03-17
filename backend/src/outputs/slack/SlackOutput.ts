@@ -1,18 +1,31 @@
 import { Tool } from "@openai/agents"
 import { OutputConfigType } from "@prisma/client"
+import { WebClient } from "@slack/web-api"
 
+import { getACLForIntegration, getConfigsForIntegration, isPermitted } from "../../agent/acl/aclGuardrail"
 import { getSlackAccessTokenOrThrow, validateSlackChannelsExist, validateSlackUserIds } from "../../integrations/SlackIntegration"
-import { SlackOutputConfig } from "../../shared/Configs"
+import { ACLItem, ResourceType, SlackOutputConfig } from "../../shared/Configs"
 import { IntegrationType } from "../../shared/Integrations"
+import { ToolName } from "../../tools/ToolNames"
 import { PrismaTransaction } from "../../types/prisma"
 import { SlackOutputConfigSchema, stripConfigForValidation } from "../../utility/configSchemas"
 import { convertOutputConfigTypeToConfigType } from "../../utility/typeConverters"
-import { Output, ToolboxEntry } from "../abstract/Output"
+import { ACLCheckContext, ACLCheckResult, Output, ToolboxEntry } from "../abstract/Output"
 
 import { slackListChannelsTool } from "./tools/listChannels"
 import { slackListUsersTool } from "./tools/listUsers"
 import { slackReadConversationTool } from "./tools/readConversation"
 import { slackSendMessageTool } from "./tools/sendMessage"
+
+function getStringArg(args: Record<string, unknown>, key: string): string | undefined {
+    const value = args[key]
+    if (typeof value !== "string") {
+        return undefined
+    }
+
+    const trimmed = value.trim()
+    return trimmed.length > 0 ? trimmed : undefined
+}
 
 export class SlackOutput extends Output<SlackOutputConfig> {
     constructor() {
@@ -54,6 +67,19 @@ export class SlackOutput extends Output<SlackOutputConfig> {
         })
     }
 
+    async checkToolAccess(toolName: string, args: Record<string, unknown>, configs: SlackOutputConfig[], _context: ACLCheckContext): Promise<ACLCheckResult> {
+        switch (toolName) {
+            case ToolName.SLACK_LIST_CHANNELS:
+            case ToolName.SLACK_LIST_USERS:
+                return { allowed: true }
+            case ToolName.SLACK_SEND_MESSAGE:
+            case ToolName.SLACK_READ_CONVERSATION:
+                return this.checkConversationToolAccess(args, configs)
+            default:
+                return { allowed: true }
+        }
+    }
+
     protected getSystemInstructionsForConfigs(configs: SlackOutputConfig[]): string {
         if (configs.length === 0) {
             throw new Error("No Slack configs provided")
@@ -90,6 +116,60 @@ export class SlackOutput extends Output<SlackOutputConfig> {
         sections.push("\nUse slack_list_users to resolve Slack user IDs to names when needed.")
         sections.push("\n" + SLACK_OUTPUT_INSTRUCTIONS)
         return sections.join("\n")
+    }
+
+    private async checkConversationToolAccess(args: Record<string, unknown>, configs: SlackOutputConfig[]): Promise<ACLCheckResult> {
+        const integrationId = getStringArg(args, "integrationId")
+        const channelId = getStringArg(args, "channelId")
+
+        if (!integrationId || !channelId) {
+            return { allowed: false, reason: "Slack tool calls must include integrationId and channelId." }
+        }
+
+        if (getConfigsForIntegration(configs, integrationId).length === 0) {
+            return { allowed: false, reason: `Slack integration ${integrationId} is not configured for this agent.` }
+        }
+
+        const allowed = getACLForIntegration(configs, integrationId)
+        const requestedChannel: ACLItem = {
+            integration: IntegrationType.SLACK,
+            resourceType: ResourceType.CHANNEL,
+            resourceId: channelId
+        }
+
+        if (isPermitted(requestedChannel, allowed)) {
+            return { allowed: true }
+        }
+
+        try {
+            const token = await getSlackAccessTokenOrThrow(integrationId)
+            const client = new WebClient(token)
+            const result = await client.conversations.info({ channel: channelId })
+            const channel = result.channel as { is_im?: boolean; is_mpim?: boolean; user?: string } | undefined
+
+            if (channel?.is_im && channel.user) {
+                const requestedUser: ACLItem = {
+                    integration: IntegrationType.SLACK,
+                    resourceType: ResourceType.USER,
+                    resourceId: channel.user
+                }
+
+                if (isPermitted(requestedUser, allowed)) {
+                    return { allowed: true }
+                }
+
+                return { allowed: false, reason: `Slack DM target ${channel.user} is outside the configured ACL for integration ${integrationId}.` }
+            }
+
+            if (channel?.is_mpim) {
+                return { allowed: false, reason: `Slack group DM ${channelId} is not allowed unless it is explicitly channel-scoped in the config.` }
+            }
+
+            return { allowed: false, reason: `Slack channel ${channelId} is outside the configured ACL for integration ${integrationId}.` }
+        } catch (error) {
+            const reason = error instanceof Error ? error.message : String(error)
+            return { allowed: false, reason: `Unable to verify Slack ACL for channel ${channelId}: ${reason}` }
+        }
     }
 }
 

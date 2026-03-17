@@ -18,6 +18,7 @@ export type SessionWithTracking<T extends AppSession> = T & {
         requireApproval: boolean
         toolApprovals?: string[]
     }
+    configs: ConfigInstance[]
     runId: string
     agentId: string
 }
