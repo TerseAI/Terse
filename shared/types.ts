@@ -1,8 +1,8 @@
-import { ResourceType } from "./acl"
 import { ConfigInstance, ConfigType } from "./Configs"
 import { IntegrationType } from "./Integrations"
 import { RunHistoryActionType, RunHistoryRecordWithAgent } from "./RunHistoryTypes"
 import { Project, Ticket } from "./TicketSystem"
+import { ResourceType } from "./acl"
 
 export type Role = "admin" | "user"
 

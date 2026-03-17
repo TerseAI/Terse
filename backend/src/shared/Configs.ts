@@ -1,5 +1,5 @@
-import { ACL_WILDCARD, ACLItem, ResourceType, createACLItem } from "./acl"
 import { IntegrationType } from "./Integrations"
+import { ACLItem, ACL_WILDCARD, ResourceType, createACLItem } from "./acl"
 
 export enum ConfigType {
     GMAIL = "gmail",

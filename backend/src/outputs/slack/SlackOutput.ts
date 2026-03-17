@@ -109,10 +109,6 @@ export class SlackOutput extends Output<SlackOutputConfig> {
         return sections.join("\n")
     }
 
-    /**
-     * Phase 1: Deterministic check — matches channelId against static ACL from config.
-     * Phase 2: Non-deterministic fallback — calls Slack API to resolve DM channels to user IDs.
-     */
     private async checkConversationToolAccess(args: Record<string, unknown>): Promise<ACLCheckResult> {
         const integrationId = getStringArg(args, "integrationId")
         const channelId = getStringArg(args, "channelId")

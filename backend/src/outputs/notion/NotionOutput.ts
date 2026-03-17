@@ -223,11 +223,6 @@ PEOPLE & RELATION PROPERTIES:
         return this.checkPageAccess(args, context, pageId)
     }
 
-    /**
-     * Phase 1: Deterministic check — matches pageId against static ACL from config.
-     * Phase 2: Non-deterministic fallback — traverses Notion parent hierarchy via API
-     *          to check if page is a descendant of an allowed page/database.
-     */
     private async checkPageAccess(args: Record<string, unknown>, context: ACLCheckContext, pageId: string): Promise<ACLCheckResult> {
         const integrationId = getStringArg(args, "integrationId")
 
