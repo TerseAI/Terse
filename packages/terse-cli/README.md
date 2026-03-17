@@ -8,6 +8,16 @@ CLI tool for scaffolding, developing, testing, and deploying [Terse](https://use
 npm install -g terse-cli
 ```
 
+## Local Development
+
+From the repo root, use the npm workspace so `terse-cli` resolves the local `terse-sdk` automatically:
+
+```bash
+npm install
+npm run build:packages
+npm run link:cli
+```
+
 ## Commands
 
 ### `terse init [project-name]`

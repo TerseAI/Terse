@@ -11,7 +11,7 @@
   ],
   "scripts": {
     "build": "tsc",
-    "install-global": "pnpm run build && npm link"
+    "install-global": "npm run build && npm link"
   },
   "dependencies": {
     "@inquirer/prompts": "^7.0.0",

@@ -1,10 +1,13 @@
 #!/usr/bin/env zsh
 set -e
 
-echo "Installing terse-sdk globally..."
-pnpm --prefix packages/terse-sdk run install-global
+echo "Installing workspace dependencies..."
+npm install
 
-echo "Installing terse-cli globally..."
-pnpm --prefix packages/terse-cli run install-global
+echo "Linking terse-sdk globally..."
+npm run install-global -w terse-sdk
+
+echo "Linking terse-cli globally..."
+npm run install-global -w terse-cli
 
 echo "Done!"

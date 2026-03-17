@@ -26,12 +26,12 @@ export async function loadJobRegistry(): Promise<Map<string, CreateJobParameters
             const pkg = extractMissingPackage(err)
             console.error(chalk.red(`Error: Cannot find package '${pkg}' imported from src/index.ts`))
             if (pkg === "terse-sdk") {
-                console.error(chalk.dim("\nMake sure terse-sdk is linked or installed in your project:"))
-                console.error(chalk.dim("  pnpm link terse-sdk"))
-                console.error(chalk.dim("  # or"))
+                console.error(chalk.dim("\nMake sure terse-sdk is installed in your project:"))
                 console.error(chalk.dim("  npm install terse-sdk"))
+                console.error(chalk.dim("  # or, for local SDK development"))
+                console.error(chalk.dim("  npm link terse-sdk"))
             } else {
-                console.error(chalk.dim(`\nInstall the missing package: pnpm add ${pkg}`))
+                console.error(chalk.dim(`\nInstall the missing package: npm install ${pkg}`))
             }
         } else {
             console.error(chalk.red("Error importing src/index.ts:\n"))

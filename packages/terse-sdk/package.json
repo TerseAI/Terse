@@ -10,7 +10,7 @@
   "scripts": {
     "prebuild": "node ../../scripts/copy-shared.js",
     "build": "tsc",
-    "install-global": "pnpm run build && npm link"
+    "install-global": "npm run build && npm link"
   },
   "devDependencies": {
     "typescript": "^5.0.0"
