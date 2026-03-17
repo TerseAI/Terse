@@ -4,6 +4,7 @@ import { DatabaseIcon, FileIcon, LayoutGrid, Loader2, Search, X } from "lucide-r
 
 import { useNotionResources } from "@/hooks/api/useNotionResources"
 import { cn } from "@/lib/utils"
+import { ResourceType } from "@/shared/Configs"
 import type { NotionResource, NotionResourceType } from "@/shared/types"
 
 import { Checkbox } from "./ui/checkbox"
@@ -23,10 +24,10 @@ export interface NotionScopePickerProps {
     onConfirm: (databases: NotionScopeItem[], pages: NotionScopeItem[]) => void
 }
 
-const TAB_TYPE_MAP = {
+const TAB_TYPE_MAP: Record<"all" | "databases" | "pages", NotionResourceType | undefined> = {
     all: undefined as NotionResourceType | undefined,
-    databases: "database" as const,
-    pages: "page" as const
+    databases: ResourceType.DATABASE,
+    pages: ResourceType.PAGE
 }
 
 export function NotionScopePicker({ integrationId, selectedDatabaseIds, selectedDatabaseNames, selectedPageIds, selectedPageNames, onConfirm }: NotionScopePickerProps) {
@@ -69,7 +70,7 @@ export function NotionScopePicker({ integrationId, selectedDatabaseIds, selected
     }
 
     const toggleResource = (resource: NotionResource) => {
-        if (resource.type === "database") {
+        if (resource.type === ResourceType.DATABASE) {
             const next = localDatabases.some(d => d.id === resource.id) ? localDatabases.filter(d => d.id !== resource.id) : [...localDatabases, { id: resource.id, name: resource.title }]
             setLocalDatabases(next)
             applySelection(next, localPages)
@@ -118,7 +119,7 @@ export function NotionScopePicker({ integrationId, selectedDatabaseIds, selected
                     <div className="min-w-0 overflow-hidden p-1">
                         {resources.map(resource => {
                             const checked = isSelected(resource)
-                            const isDb = resource.type === "database"
+                            const isDb = resource.type === ResourceType.DATABASE
                             return (
                                 <label
                                     key={resource.id}

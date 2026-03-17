@@ -239,12 +239,42 @@ export const CONFIG_DETAILS: ConfigDetailsMap = {
     [ConfigType.ATTIO_OUTPUT]: AttioOutputConfigMetadata
 } as const satisfies ConfigDetailsMap
 
+export enum ResourceType {
+    CHANNEL = "channel",
+    USER = "user",
+    DATABASE = "database",
+    PAGE = "page",
+    TEAM = "team",
+    PROJECT = "project",
+    SPACE = "space",
+    FILE = "file",
+    ENVIRONMENT = "environment",
+    REPOSITORY = "repository"
+}
+
+export type ACLItem = {
+    integration: IntegrationType
+    resourceType: ResourceType
+    resourceId: string
+}
+
+export const ACL_WILDCARD = "*"
+
+function createACLItem(integration: IntegrationType, resourceType: ResourceType, resourceId: string | number): ACLItem {
+    return {
+        integration,
+        resourceType,
+        resourceId: String(resourceId)
+    }
+}
+
 export interface ConfigInstance {
     integrationId: string
     integrationType: IntegrationType
     configType: ConfigType
     isComplete(): boolean
     formatForAgent(): string
+    getACL(): ACLItem[]
 }
 
 export class GmailConfig implements ConfigInstance {
@@ -260,6 +290,10 @@ export class GmailConfig implements ConfigInstance {
 
     formatForAgent(): string {
         return `Type: Gmail\nIntegration ID: ${this.integrationId}`
+    }
+
+    getACL(): ACLItem[] {
+        return []
     }
 }
 
@@ -288,6 +322,17 @@ export class FigmaConfig implements ConfigInstance {
             parts.push(`File Key: ${this.fileKey}`)
         }
         return parts.join("\n")
+    }
+
+    getACL(): ACLItem[] {
+        const acl: ACLItem[] = []
+        if (this.fileKey) {
+            acl.push(createACLItem(this.integrationType, ResourceType.FILE, this.fileKey))
+        }
+        if (this.teamId) {
+            acl.push(createACLItem(this.integrationType, ResourceType.TEAM, this.teamId))
+        }
+        return acl
     }
 }
 // Typed config per integration type
@@ -325,6 +370,19 @@ export class SlackConfig implements ConfigInstance {
 
         return parts.join("\n")
     }
+
+    getACL(): ACLItem[] {
+        const acl: ACLItem[] = []
+        if (this.channelId) {
+            acl.push(createACLItem(this.integrationType, ResourceType.CHANNEL, this.channelId))
+        }
+        if ((this.userIds?.length ?? 0) > 0) {
+            acl.push(...(this.userIds ?? []).map(userId => createACLItem(this.integrationType, ResourceType.USER, userId)))
+        } else if (this.listenToUserDms) {
+            acl.push(createACLItem(this.integrationType, ResourceType.USER, ACL_WILDCARD))
+        }
+        return acl
+    }
 }
 
 export class SlackOutputConfig implements ConfigInstance {
@@ -358,6 +416,19 @@ export class SlackOutputConfig implements ConfigInstance {
         }
         return parts.join("\n")
     }
+
+    getACL(): ACLItem[] {
+        const acl: ACLItem[] = []
+        if (this.channelId) {
+            acl.push(createACLItem(this.integrationType, ResourceType.CHANNEL, this.channelId))
+        }
+        if ((this.userIds?.length ?? 0) > 0) {
+            acl.push(...(this.userIds ?? []).map(userId => createACLItem(this.integrationType, ResourceType.USER, userId)))
+        } else if (this.listenToUserDms) {
+            acl.push(createACLItem(this.integrationType, ResourceType.USER, ACL_WILDCARD))
+        }
+        return acl
+    }
 }
 
 export class GmailOutputConfig implements ConfigInstance {
@@ -374,6 +445,10 @@ export class GmailOutputConfig implements ConfigInstance {
     formatForAgent(): string {
         return `Type: Gmail Output\nIntegration ID: ${this.integrationId}`
     }
+
+    getACL(): ACLItem[] {
+        return []
+    }
 }
 
 export class GmailDraftOutputConfig implements ConfigInstance {
@@ -388,6 +463,10 @@ export class GmailDraftOutputConfig implements ConfigInstance {
 
     formatForAgent(): string {
         return `Type: Gmail Draft Output\nIntegration ID: ${this.integrationId}`
+    }
+
+    getACL(): ACLItem[] {
+        return []
     }
 }
 
@@ -421,6 +500,13 @@ export class NotionConfig implements ConfigInstance {
         }
         return parts.join("\n")
     }
+
+    getACL(): ACLItem[] {
+        return [
+            ...(this.databaseIds ?? []).map(databaseId => createACLItem(this.integrationType, ResourceType.DATABASE, databaseId)),
+            ...(this.pageIds ?? []).map(pageId => createACLItem(this.integrationType, ResourceType.PAGE, pageId))
+        ]
+    }
 }
 
 export class LinearInputConfig implements ConfigInstance {
@@ -445,6 +531,10 @@ export class LinearInputConfig implements ConfigInstance {
             parts.push(`Project ID: ${this.projectId}`)
         }
         return parts.join("\n")
+    }
+
+    getACL(): ACLItem[] {
+        return this.projectId ? [createACLItem(this.integrationType, ResourceType.PROJECT, this.projectId)] : []
     }
 }
 
@@ -478,6 +568,17 @@ export class LinearOutputConfig implements ConfigInstance {
         }
         return parts.join("\n")
     }
+
+    getACL(): ACLItem[] {
+        const acl: ACLItem[] = []
+        if (this.teamId) {
+            acl.push(createACLItem(this.integrationType, ResourceType.TEAM, this.teamId))
+        }
+        if (this.projectId) {
+            acl.push(createACLItem(this.integrationType, ResourceType.PROJECT, this.projectId))
+        }
+        return acl
+    }
 }
 
 export class GitHubConfig implements ConfigInstance {
@@ -499,6 +600,10 @@ export class GitHubConfig implements ConfigInstance {
             parts.push(`Repositories: ${this.repositoryIds.join(", ")}`)
         }
         return parts.join("\n")
+    }
+
+    getACL(): ACLItem[] {
+        return (this.repositoryIds ?? []).map(repositoryId => createACLItem(this.integrationType, ResourceType.REPOSITORY, repositoryId))
     }
 }
 
@@ -525,6 +630,10 @@ export class JiraConfig implements ConfigInstance {
             parts.push(`Project ID: ${this.projectId}`)
         }
         return parts.join("\n")
+    }
+
+    getACL(): ACLItem[] {
+        return this.projectKey ? [createACLItem(this.integrationType, ResourceType.PROJECT, this.projectKey)] : []
     }
 }
 
@@ -557,6 +666,17 @@ export class ConfluenceConfig implements ConfigInstance {
         }
         return parts.join("\n")
     }
+
+    getACL(): ACLItem[] {
+        const acl: ACLItem[] = []
+        if (this.spaceId) {
+            acl.push(createACLItem(this.integrationType, ResourceType.SPACE, this.spaceId))
+        }
+        if (this.pageId) {
+            acl.push(createACLItem(this.integrationType, ResourceType.PAGE, this.pageId))
+        }
+        return acl
+    }
 }
 
 export class PosthogConfig implements ConfigInstance {
@@ -583,6 +703,10 @@ export class PosthogConfig implements ConfigInstance {
         }
         return parts.join("\n")
     }
+
+    getACL(): ACLItem[] {
+        return this.projectId ? [createACLItem(this.integrationType, ResourceType.PROJECT, this.projectId)] : []
+    }
 }
 
 export class DatadogConfig implements ConfigInstance {
@@ -605,6 +729,10 @@ export class DatadogConfig implements ConfigInstance {
         }
         return parts.join("\n")
     }
+
+    getACL(): ACLItem[] {
+        return []
+    }
 }
 
 export class TimeTriggerConfig implements ConfigInstance {
@@ -625,6 +753,10 @@ export class TimeTriggerConfig implements ConfigInstance {
             parts.push(`Schedule (UTC): ${this.cronExpression}`)
         }
         return parts.join("\n")
+    }
+
+    getACL(): ACLItem[] {
+        return []
     }
 }
 
@@ -652,6 +784,15 @@ export class LaunchDarklyConfig implements ConfigInstance {
         }
         return parts.join("\n")
     }
+
+    getACL(): ACLItem[] {
+        const acl: ACLItem[] = []
+        if (this.projectKey) {
+            acl.push(createACLItem(this.integrationType, ResourceType.PROJECT, this.projectKey))
+        }
+        acl.push(...(this.environmentKeys ?? []).map(environmentKey => createACLItem(this.integrationType, ResourceType.ENVIRONMENT, environmentKey)))
+        return acl
+    }
 }
 
 export class TerseConfig implements ConfigInstance {
@@ -667,6 +808,10 @@ export class TerseConfig implements ConfigInstance {
 
     formatForAgent(): string {
         return "Type: Terse Skills"
+    }
+
+    getACL(): ACLItem[] {
+        return []
     }
 }
 
@@ -686,6 +831,10 @@ export class WorkOSInputConfig implements ConfigInstance {
     formatForAgent(): string {
         return `Type: WorkOS Events\nListening for: ${this.eventTypes.join(", ")}`
     }
+
+    getACL(): ACLItem[] {
+        return []
+    }
 }
 
 export class WorkOSOutputConfig implements ConfigInstance {
@@ -700,6 +849,10 @@ export class WorkOSOutputConfig implements ConfigInstance {
 
     formatForAgent(): string {
         return `Type: WorkOS Skill\nIntegration ID: ${this.integrationId}`
+    }
+
+    getACL(): ACLItem[] {
+        return []
     }
 }
 
@@ -722,6 +875,10 @@ export class AttioOutputConfig implements ConfigInstance {
             parts.push(`Object: ${this.objectSlug}`)
         }
         return parts.join("\n")
+    }
+
+    getACL(): ACLItem[] {
+        return []
     }
 }
 

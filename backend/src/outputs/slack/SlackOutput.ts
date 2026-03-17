@@ -9,7 +9,6 @@ import { IntegrationType } from "../../shared/Integrations"
 import { ToolName } from "../../tools/ToolNames"
 import { PrismaTransaction } from "../../types/prisma"
 import { SlackOutputConfigSchema, stripConfigForValidation } from "../../utility/configSchemas"
-import { convertOutputConfigTypeToConfigType } from "../../utility/typeConverters"
 import { ACLCheckContext, ACLCheckResult, Output, ToolboxEntry } from "../abstract/Output"
 
 import { slackListChannelsTool } from "./tools/listChannels"

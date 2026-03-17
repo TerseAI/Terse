@@ -1,4 +1,4 @@
-import { ConfigInstance, ConfigType } from "./Configs"
+import { ConfigInstance, ConfigType, ResourceType } from "./Configs"
 import { IntegrationType } from "./Integrations"
 import { RunHistoryActionType, RunHistoryRecordWithAgent } from "./RunHistoryTypes"
 import { Project, Ticket } from "./TicketSystem"
@@ -81,7 +81,8 @@ export type JiraCredentialsValidationResponse = {
     error?: string
 }
 
-export type NotionResourceType = "database" | "page"
+export const NOTION_RESOURCE_TYPES = [ResourceType.DATABASE, ResourceType.PAGE] as const
+export type NotionResourceType = (typeof NOTION_RESOURCE_TYPES)[number]
 export type NotionResource = {
     id: string
     title: string

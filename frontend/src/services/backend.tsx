@@ -42,6 +42,7 @@ import {
     LaunchDarklyEnvironmentsResponse,
     LaunchDarklyProjectsResponse,
     LinearTeam,
+    NotionResourceType,
     NotionResourcesResponse,
     OAuthInstallationDetails,
     PosthogProjectsResponse,
@@ -216,7 +217,7 @@ interface BackendService {
      * @param search - optional search term, empty returns all
      * @param type - optional filter: "page" or "database"
      */
-    getNotionResources(integrationId: string, search?: string, type?: "page" | "database"): Promise<NotionResourcesResponse>
+    getNotionResources(integrationId: string, search?: string, type?: NotionResourceType): Promise<NotionResourcesResponse>
 
     /**
      * Gets all Posthog integrations for the current user
@@ -981,7 +982,7 @@ export const BackendProvider: BackendService = {
             })
     },
 
-    getNotionResources: (integrationId: string, search?: string, type?: "page" | "database") => {
+    getNotionResources: (integrationId: string, search?: string, type?: NotionResourceType) => {
         const params = new URLSearchParams({ integrationId })
         if (search) {
             params.append("search", search)

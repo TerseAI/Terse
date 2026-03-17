@@ -6,6 +6,7 @@ import { NotionIntegrationManager } from "../integrations/NotionIntegration"
 import logger from "../logger"
 import { db } from "../prismaClient"
 import { SecretField, getSecret } from "../services/SecretService"
+import { ResourceType } from "../shared/Configs"
 import { IntegrationType } from "../shared/Integrations"
 import { NotionResource, NotionResourcesResponse } from "../shared/types"
 import { extractPageTitle } from "../utility/notion"
@@ -62,9 +63,9 @@ export const fetchNotionResources = async (organizationId: string, integrationId
         page_size: 100
     }
 
-    if (typeFilter === "page") {
+    if (typeFilter === ResourceType.PAGE) {
         searchOptions.filter = { property: "object", value: "page" }
-    } else if (typeFilter === "database") {
+    } else if (typeFilter === ResourceType.DATABASE) {
         searchOptions.filter = { property: "object", value: "data_source" }
     }
 
@@ -77,14 +78,14 @@ export const fetchNotionResources = async (organizationId: string, integrationId
                     id: result.id,
                     title: result.title?.[0]?.plain_text || "Untitled Database",
                     url: result.url,
-                    type: "database" as const
+                    type: ResourceType.DATABASE
                 }
             } else if (result.object === "page") {
                 return {
                     id: result.id,
                     title: extractPageTitle(result),
                     url: "url" in result ? result.url : "",
-                    type: "page" as const
+                    type: ResourceType.PAGE
                 }
             }
             return null

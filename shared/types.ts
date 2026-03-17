@@ -1,11 +1,9 @@
-import { ConfigInstance, ConfigType } from "./Configs"
+import { ConfigInstance, ConfigType, ResourceType } from "./Configs"
 import { IntegrationType } from "./Integrations"
 import { RunHistoryActionType, RunHistoryRecordWithAgent } from "./RunHistoryTypes"
 import { Project, Ticket } from "./TicketSystem"
 
 export type Role = "admin" | "user"
-
-import { ResourceType } from "./Configs"
 
 export type User = {
     id: string
