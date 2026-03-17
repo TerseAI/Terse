@@ -27,8 +27,8 @@ importers:
         specifier: ^8.0.0
         version: 8.2.0
       terse-sdk:
-        specifier: file:../terse-sdk
-        version: file:../terse-sdk
+        specifier: ^0.1.2
+        version: 0.1.2
       tsx:
         specifier: ^4.0.0
         version: 4.21.0
@@ -640,8 +640,8 @@ packages:
     resolution: {integrity: sha512-gmBGslpoQJtgnMAvOVqGZpEz9dyoKTCzy2nfz/n8aIFhN/jCE/rCmcxabB6jOOHV+0WNnylOxaxBQPSvcWklhA==}
     engines: {node: '>=12'}
 
-  terse-sdk@file:../terse-sdk:
-    resolution: {directory: ../terse-sdk, type: directory}
+  terse-sdk@0.1.2:
+    resolution: {integrity: sha512-mI0rFiVoUEKeLuNGqVo4sOavVLmJH+o8daNV66r56bzDPSv1X1DlmYC3XKXleT/uVwjFCKRToHZi2/GW97vlwQ==}
 
   tslib@2.8.1:
     resolution: {integrity: sha512-oJFu94HQb+KVduSUQL7wnpmqnfmLsOA/nAh6b6EH0wCEoK0/mPeXU6c3wKDV83MkOuHPRHtSXKKU99IBazS/2w==}
@@ -1167,7 +1167,7 @@ snapshots:
     dependencies:
       ansi-regex: 6.2.2
 
-  terse-sdk@file:../terse-sdk: {}
+  terse-sdk@0.1.2: {}
 
   tslib@2.8.1: {}
 

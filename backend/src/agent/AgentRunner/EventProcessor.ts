@@ -415,7 +415,10 @@ export class EventProcessor {
         }
         const eventJson = JSON.stringify(serializedEvent)
 
-        const gcsKey = agent.prompt!.source_code_gcs_key!
+        const gcsKey = agent.prompt?.source_code_gcs_key
+        if (!gcsKey) {
+            throw new Error(`SDK agent "${agent.name}" is missing source_code_gcs_key`)
+        }
 
         logger.info(`Starting SDK sandbox execution for agent "${agent.name}"`, { runId, agentId: agent.id, gcsKey })
 
