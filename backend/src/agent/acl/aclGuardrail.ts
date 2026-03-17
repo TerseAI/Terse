@@ -1,6 +1,6 @@
-import { defineToolInputGuardrail, ToolGuardrailFunctionOutputFactory } from "@openai/agents"
+import { ToolGuardrailFunctionOutputFactory, defineToolInputGuardrail } from "@openai/agents"
 
-import { ACL_WILDCARD, ACLCheckResult, ACLItem, ACLProvider } from "../../shared/acl"
+import { ACLCheckResult, ACLItem, ACLProvider, ACL_WILDCARD } from "../../shared/acl"
 
 // MARK: Guardrail
 
@@ -29,10 +29,7 @@ export function createACLGuardrail<TContext = unknown>(checker: (toolName: strin
 
 export function isPermitted(requested: ACLItem, allowed: ACLItem[]): boolean {
     return allowed.some(
-        item =>
-            item.integration === requested.integration &&
-            item.resourceType === requested.resourceType &&
-            (item.resourceId === ACL_WILDCARD || item.resourceId === requested.resourceId)
+        item => item.integration === requested.integration && item.resourceType === requested.resourceType && (item.resourceId === ACL_WILDCARD || item.resourceId === requested.resourceId)
     )
 }
 

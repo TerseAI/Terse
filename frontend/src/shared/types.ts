@@ -1,4 +1,5 @@
-import { ConfigInstance, ConfigType, ResourceType } from "./Configs"
+import { ResourceType } from "./acl"
+import { ConfigInstance, ConfigType } from "./Configs"
 import { IntegrationType } from "./Integrations"
 import { RunHistoryActionType, RunHistoryRecordWithAgent } from "./RunHistoryTypes"
 import { Project, Ticket } from "./TicketSystem"

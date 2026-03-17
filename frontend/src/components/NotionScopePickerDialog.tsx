@@ -4,7 +4,7 @@ import { DatabaseIcon, FileIcon, LayoutGrid, Loader2, Search, X } from "lucide-r
 
 import { useNotionResources } from "@/hooks/api/useNotionResources"
 import { cn } from "@/lib/utils"
-import { ResourceType } from "@/shared/Configs"
+import { ResourceType } from "@/shared/acl"
 import type { NotionResource, NotionResourceType } from "@/shared/types"
 
 import { Checkbox } from "./ui/checkbox"

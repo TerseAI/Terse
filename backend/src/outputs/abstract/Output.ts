@@ -1,11 +1,10 @@
 import { Tool } from "@openai/agents"
 import { OutputConfigType } from "@prisma/client"
 
-import { ACLCheckContext, ACLCheckResult } from "../../shared/acl"
 import { ConfigInstance } from "../../shared/Configs"
 import { IntegrationType } from "../../shared/Integrations"
+import { ACLCheckContext, ACLCheckResult } from "../../shared/acl"
 import { PrismaTransaction } from "../../types/prisma"
-
 
 export interface ToolboxEntry {
     tool: Tool

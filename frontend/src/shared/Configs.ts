@@ -1,3 +1,4 @@
+import { ACL_WILDCARD, ACLItem, ResourceType, createACLItem } from "./acl"
 import { IntegrationType } from "./Integrations"
 
 export enum ConfigType {
@@ -238,35 +239,6 @@ export const CONFIG_DETAILS: ConfigDetailsMap = {
     [ConfigType.WORKOS_OUTPUT]: WorkOSOutputConfigMetadata,
     [ConfigType.ATTIO_OUTPUT]: AttioOutputConfigMetadata
 } as const satisfies ConfigDetailsMap
-
-export enum ResourceType {
-    CHANNEL = "channel",
-    USER = "user",
-    DATABASE = "database",
-    PAGE = "page",
-    TEAM = "team",
-    PROJECT = "project",
-    SPACE = "space",
-    FILE = "file",
-    ENVIRONMENT = "environment",
-    REPOSITORY = "repository"
-}
-
-export type ACLItem = {
-    integration: IntegrationType
-    resourceType: ResourceType
-    resourceId: string
-}
-
-export const ACL_WILDCARD = "*"
-
-function createACLItem(integration: IntegrationType, resourceType: ResourceType, resourceId: string | number): ACLItem {
-    return {
-        integration,
-        resourceType,
-        resourceId: String(resourceId)
-    }
-}
 
 export interface ConfigInstance {
     integrationId: string

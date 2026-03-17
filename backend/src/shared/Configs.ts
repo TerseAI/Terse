@@ -1,9 +1,6 @@
 import { ACL_WILDCARD, ACLItem, ResourceType, createACLItem } from "./acl"
 import { IntegrationType } from "./Integrations"
 
-/** @deprecated Import from './acl' instead */
-export { ACL_WILDCARD, ACLItem, ResourceType, createACLItem }
-
 export enum ConfigType {
     GMAIL = "gmail",
     GMAIL_OUTPUT = "gmail_output",
@@ -857,6 +854,7 @@ export class AttioOutputConfig implements ConfigInstance {
     }
 }
 
+// To be studied Later!!
 type EnsureExhaustiveMetadata<T extends Record<ConfigType, new (...args: any[]) => ConfigInstance>> = T
 
 export type ConfigMetadataMap = EnsureExhaustiveMetadata<{
