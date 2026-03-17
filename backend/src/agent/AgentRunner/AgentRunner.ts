@@ -66,7 +66,7 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance> exte
 
                 if (tool.type === "function") {
                     const guardrail = createACLGuardrail<SessionWithTracking<T>>((toolName, args) =>
-                        output.checkToolAccess(toolName, args, output.configs, {
+                        output.checkToolAccess(toolName, args, {
                             organizationId: this.session.user.organizationId
                         })
                     )
@@ -327,7 +327,6 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance> exte
 
     private getToolContext(): SessionWithTracking<T> {
         const toolApprovals = this.agentConfig.tool_approvals.map((ta: any) => ta.tool_name)
-        const configs: ConfigInstance[] = this.outputs.flatMap(output => output.configs)
 
         return {
             ...this.session,
@@ -335,7 +334,6 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance> exte
                 requireApproval: this.agentConfig.require_approval ?? false,
                 toolApprovals: toolApprovals
             },
-            configs,
             runId: this.runContext.runId,
             agentId: this.agentConfig.id
         }

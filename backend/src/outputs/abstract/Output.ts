@@ -1,9 +1,11 @@
 import { Tool } from "@openai/agents"
 import { OutputConfigType } from "@prisma/client"
 
+import { ACLCheckContext, ACLCheckResult } from "../../shared/acl"
 import { ConfigInstance } from "../../shared/Configs"
 import { IntegrationType } from "../../shared/Integrations"
 import { PrismaTransaction } from "../../types/prisma"
+
 
 export interface ToolboxEntry {
     tool: Tool
@@ -14,12 +16,6 @@ export interface ToolboxEntry {
 
 export interface RuntimeSystemInstructionsContext {
     userId: string
-}
-
-export type ACLCheckResult = { allowed: true } | { allowed: false; reason: string }
-
-export interface ACLCheckContext {
-    organizationId: string
 }
 
 export abstract class Output<TConfig extends ConfigInstance> {
@@ -60,7 +56,7 @@ export abstract class Output<TConfig extends ConfigInstance> {
         return this.getSystemInstructions()
     }
 
-    async checkToolAccess(_toolName: string, _args: Record<string, unknown>, _configs: TConfig[], _context: ACLCheckContext): Promise<ACLCheckResult> {
+    async checkToolAccess(_toolName: string, _args: Record<string, unknown>, _context: ACLCheckContext): Promise<ACLCheckResult> {
         return { allowed: true }
     }
 }

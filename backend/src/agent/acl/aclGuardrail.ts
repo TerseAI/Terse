@@ -1,7 +1,8 @@
 import { defineToolInputGuardrail, ToolGuardrailFunctionOutputFactory } from "@openai/agents"
 
-import { ACLItem, ACL_WILDCARD, ConfigInstance } from "../../shared/Configs"
-import { ACLCheckResult } from "../../outputs/abstract/Output"
+import { ACL_WILDCARD, ACLCheckResult, ACLItem, ACLProvider } from "../../shared/acl"
+
+// MARK: Guardrail
 
 export function createACLGuardrail<TContext = unknown>(checker: (toolName: string, args: Record<string, unknown>) => Promise<ACLCheckResult>) {
     return defineToolInputGuardrail<TContext>({
@@ -11,7 +12,7 @@ export function createACLGuardrail<TContext = unknown>(checker: (toolName: strin
             try {
                 args = JSON.parse(data.toolCall.arguments || "{}")
             } catch {
-                return ToolGuardrailFunctionOutputFactory.allow()
+                return ToolGuardrailFunctionOutputFactory.rejectContent("Invalid tool arguments: could not parse JSON.")
             }
 
             const result = await checker(data.toolCall.name, args)
@@ -24,24 +25,20 @@ export function createACLGuardrail<TContext = unknown>(checker: (toolName: strin
     })
 }
 
+// MARK: ACL helpers
+
 export function isPermitted(requested: ACLItem, allowed: ACLItem[]): boolean {
-    return allowed.some(item => {
-        return (
+    return allowed.some(
+        item =>
             item.integration === requested.integration &&
             item.resourceType === requested.resourceType &&
             (item.resourceId === ACL_WILDCARD || item.resourceId === requested.resourceId)
-        )
-    })
+    )
 }
 
-export function getConfigsForIntegration<TConfig extends ConfigInstance>(configs: TConfig[], integrationId: string | undefined): TConfig[] {
-    if (!integrationId) {
-        return []
-    }
-
-    return configs.filter(config => config.integrationId === integrationId)
-}
-
-export function getACLForIntegration<TConfig extends ConfigInstance>(configs: TConfig[], integrationId: string | undefined): ACLItem[] {
-    return getConfigsForIntegration(configs, integrationId).flatMap(config => config.getACL())
+/** Returns the ACL for an integration, or null if the integration is not configured for this agent. */
+export function getACLOrNull<T extends ACLProvider>(configs: T[], integrationId: string): ACLItem[] | null {
+    const matching = configs.filter(c => c.integrationId === integrationId)
+    if (matching.length === 0) return null
+    return matching.flatMap(c => c.getACL())
 }
