@@ -1,12 +1,6 @@
 import { ToolGuardrailFunctionOutputFactory, defineToolInputGuardrail } from "@openai/agents"
 
-import { ConfigInstance } from "../../shared/Configs"
-
-export function collectConfiguredIntegrationIds(configs: ConfigInstance[]): Set<string> {
-    return new Set(configs.map(c => c.integrationId))
-}
-
-export function createIntegrationOwnershipGuardrail<TContext = unknown>(validatedIds: Set<string>) {
+export function createSelectedIntegrationGuardrail<TContext = unknown>(validatedIds: Set<string>) {
     return defineToolInputGuardrail<TContext>({
         name: "integration_ownership_guardrail",
         run: async data => {

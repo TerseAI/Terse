@@ -17,7 +17,6 @@ import { AgentWithRelations } from "../../types/prisma"
 import { Session } from "../../types/session"
 import { UserFormatter } from "../../utility/UserFormatter"
 import { RunHistoryChatMemorySession, recentHistoryCallback } from "../CustomMemorySession"
-import { collectConfiguredIntegrationIds } from "../acl/integrationOwnership"
 import { AgentType, builderProviderDataModelSettings, runnerFactory } from "../runner"
 import { appendToolApprovalRequestSystemEvent } from "../systemEvents/toolApprovalSystemEvent"
 import { buildUserMessage, buildUserMessageFromContent } from "../userMessage"
@@ -59,12 +58,8 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance> exte
         this.outputs = outputs
         this.agentConfig = agent
         const toolsMap = new Map<string, Tool<SessionWithTracking<T>>>()
-
-        const allConfigs = outputs.flatMap(output => output.configs)
-        const validatedIntegrationIds = collectConfiguredIntegrationIds(allConfigs)
         const guardrailContext = {
-            organizationId: this.session.user.organizationId,
-            validatedIntegrationIds
+            organizationId: this.session.user.organizationId
         }
 
         outputs.forEach(output => {
@@ -74,7 +69,7 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance> exte
                 if (tool.type === "function") {
                     tool = {
                         ...tool,
-                        inputGuardrails: [...(tool.inputGuardrails ?? []), ...guardrails]
+                        inputGuardrails: guardrails
                     }
                 }
                 toolsMap.set(tool.name, tool)

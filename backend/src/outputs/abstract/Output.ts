@@ -2,7 +2,7 @@ import { Tool, ToolInputGuardrailDefinition } from "@openai/agents"
 import { OutputConfigType } from "@prisma/client"
 
 import { createACLGuardrail } from "../../agent/acl/aclGuardrail"
-import { createIntegrationOwnershipGuardrail } from "../../agent/acl/integrationOwnership"
+import { createSelectedIntegrationGuardrail } from "../../agent/acl/integrationOwnership"
 import { ConfigInstance } from "../../shared/Configs"
 import { IntegrationType } from "../../shared/Integrations"
 import { ACLCheckContext, ACLCheckResult } from "../../shared/acl"
@@ -17,7 +17,6 @@ export interface ToolboxEntry {
 
 export interface GuardrailContext {
     organizationId: string
-    validatedIntegrationIds: Set<string>
 }
 
 export interface RuntimeSystemInstructionsContext {
@@ -67,7 +66,8 @@ export abstract class Output<TConfig extends ConfigInstance> {
     }
 
     getToolGuardrails<TContext>(context: GuardrailContext): ToolInputGuardrailDefinition<TContext>[] {
-        const ownershipGuardrail = createIntegrationOwnershipGuardrail<TContext>(context.validatedIntegrationIds)
+        const validatedIds = new Set(this.configs.map(c => c.integrationId))
+        const ownershipGuardrail = createSelectedIntegrationGuardrail<TContext>(validatedIds)
         const aclItems = this.configs.flatMap(c => c.getACL())
         const aclGuardrail = createACLGuardrail<TContext>((toolName, args) => this.checkToolAccess(toolName, args, { organizationId: context.organizationId }), aclItems)
         return [ownershipGuardrail, aclGuardrail]
