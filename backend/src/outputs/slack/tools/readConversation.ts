@@ -29,17 +29,9 @@ Supports pagination: if the response includes nextCursor and hasMore, pass nextC
             throw new Error("No context provided")
         }
 
-        const organizationId = runContext.context.user?.organizationId
-        if (!organizationId) {
-            throw new Error("Organization context required")
-        }
-
         try {
             const userSlackIntegration = await db().user_slack_integrations.findFirst({
-                where: {
-                    id: integrationId,
-                    organization_id: organizationId
-                },
+                where: { id: integrationId },
                 include: {
                     slack_integration: true,
                     user: true
@@ -47,7 +39,7 @@ Supports pagination: if the response includes nextCursor and hasMore, pass nextC
             })
 
             if (!userSlackIntegration) {
-                throw new Error(`Slack integration not found or access denied: ${integrationId}. Ensure the integration ID is correct and belongs to your account.`)
+                throw new Error(`Slack integration not found: ${integrationId}`)
             }
 
             const client = await initializeSlackWebClient(userSlackIntegration)

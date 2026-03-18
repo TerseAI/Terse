@@ -17,7 +17,7 @@ import { AgentWithRelations } from "../../types/prisma"
 import { Session } from "../../types/session"
 import { UserFormatter } from "../../utility/UserFormatter"
 import { RunHistoryChatMemorySession, recentHistoryCallback } from "../CustomMemorySession"
-import { createACLGuardrail } from "../acl/aclGuardrail"
+import { collectConfiguredIntegrationIds } from "../acl/integrationOwnership"
 import { AgentType, builderProviderDataModelSettings, runnerFactory } from "../runner"
 import { appendToolApprovalRequestSystemEvent } from "../systemEvents/toolApprovalSystemEvent"
 import { buildUserMessage, buildUserMessageFromContent } from "../userMessage"
@@ -60,26 +60,23 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance> exte
         this.agentConfig = agent
         const toolsMap = new Map<string, Tool<SessionWithTracking<T>>>()
 
+        const allConfigs = outputs.flatMap(output => output.configs)
+        const validatedIntegrationIds = collectConfiguredIntegrationIds(allConfigs)
+        const guardrailContext = {
+            organizationId: this.session.user.organizationId,
+            validatedIntegrationIds
+        }
+
         outputs.forEach(output => {
+            const guardrails = output.getToolGuardrails<SessionWithTracking<T>>(guardrailContext)
             output.toolbox.forEach(entry => {
                 let tool = entry.tool as Tool<SessionWithTracking<T>>
-
                 if (tool.type === "function") {
-                    const aclItems = output.configs.flatMap(c => c.getACL())
-                    const guardrail = createACLGuardrail<SessionWithTracking<T>>(
-                        (toolName, args) =>
-                            output.checkToolAccess(toolName, args, {
-                                organizationId: this.session.user.organizationId
-                            }),
-                        aclItems
-                    )
-
                     tool = {
                         ...tool,
-                        inputGuardrails: [...(tool.inputGuardrails ?? []), guardrail]
+                        inputGuardrails: [...(tool.inputGuardrails ?? []), ...guardrails]
                     }
                 }
-
                 toolsMap.set(tool.name, tool)
             })
         })

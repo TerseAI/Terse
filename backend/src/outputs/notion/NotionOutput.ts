@@ -3,7 +3,7 @@ import { Tool } from "@openai/agents"
 import { OutputConfigType } from "@prisma/client"
 
 import { getACLOrNull, isPermitted } from "../../agent/acl/aclGuardrail"
-import { getNotionAccessTokenForOrganization, getNotionAccessTokenOrThrow, validateNotionDatabasesExist, validateNotionPagesExist } from "../../integrations/NotionIntegration"
+import { getNotionAccessTokenOrThrow, validateNotionDatabasesExist, validateNotionPagesExist } from "../../integrations/NotionIntegration"
 import logger from "../../logger"
 import { NotionConfig } from "../../shared/Configs"
 import { IntegrationType } from "../../shared/Integrations"
@@ -183,7 +183,7 @@ PEOPLE & RELATION PROPERTIES:
         if (!pageId) return { allowed: true }
 
         try {
-            const notion = await this.createNotionClient(integrationId, context.organizationId)
+            const notion = await this.createNotionClient(integrationId)
             const parentDatabaseId = await this.resolvePageDatabaseId(pageId, notion)
 
             if (!parentDatabaseId) {
@@ -240,7 +240,7 @@ PEOPLE & RELATION PROPERTIES:
         }
 
         try {
-            const notion = await this.createNotionClient(integrationId, context.organizationId)
+            const notion = await this.createNotionClient(integrationId)
             const resolved = await this.resolvePageAccess(pageId, acl, notion)
             if (resolved.allowed) return { allowed: true }
 
@@ -252,8 +252,8 @@ PEOPLE & RELATION PROPERTIES:
         }
     }
 
-    private async createNotionClient(integrationId: string, organizationId: string): Promise<Client> {
-        const accessToken = await getNotionAccessTokenForOrganization(integrationId, organizationId)
+    private async createNotionClient(integrationId: string): Promise<Client> {
+        const accessToken = await getNotionAccessTokenOrThrow(integrationId)
         return new Client({ auth: accessToken })
     }
 

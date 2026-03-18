@@ -65,10 +65,9 @@ export const slackSendMessageTool = tool({
         }
 
         try {
-            // Get user slack integration to find team_id
             const organizationId = runContext.context.user.organizationId
             const userSlackIntegration = await db().user_slack_integrations.findUnique({
-                where: { id: integrationId, organization_id: organizationId },
+                where: { id: integrationId },
                 include: {
                     slack_integration: true
                 }

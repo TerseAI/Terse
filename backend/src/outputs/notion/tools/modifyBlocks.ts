@@ -3,7 +3,7 @@ import { RunContext, tool } from "@openai/agents"
 import { z } from "zod"
 
 import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
-import { getNotionAccessTokenForOrganization } from "../../../integrations/NotionIntegration"
+import { getNotionAccessTokenOrThrow } from "../../../integrations/NotionIntegration"
 import logger from "../../../logger"
 import { ConfigType } from "../../../shared/Configs"
 import { IntegrationType } from "../../../shared/Integrations"
@@ -88,7 +88,7 @@ Append with after_block_id inserts after that block; omit for end of page/parent
         if (!runContext?.context) {
             throw new Error("No context provided")
         }
-        const accessToken = await getNotionAccessTokenForOrganization(integrationId, runContext.context.user.organizationId)
+        const accessToken = await getNotionAccessTokenOrThrow(integrationId)
 
         const notion = new Client({
             auth: accessToken

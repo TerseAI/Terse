@@ -4,7 +4,7 @@ import { RunHistoryActionType } from "@prisma/client"
 import { z } from "zod"
 
 import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
-import { getNotionAccessTokenForOrganization } from "../../../integrations/NotionIntegration"
+import { getNotionAccessTokenOrThrow } from "../../../integrations/NotionIntegration"
 import logger from "../../../logger"
 import { IntegrationType } from "../../../shared/Integrations"
 import { ToolName } from "../../../tools/ToolNames"
@@ -32,7 +32,7 @@ Use the returned user IDs in people property format:
         }
 
         try {
-            const accessToken = await getNotionAccessTokenForOrganization(integrationId, runContext.context.user.organizationId)
+            const accessToken = await getNotionAccessTokenOrThrow(integrationId)
 
             const notion = new Client({ auth: accessToken })
 

@@ -4,7 +4,7 @@ import { RunContext, tool } from "@openai/agents"
 import { z } from "zod"
 
 import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
-import { getNotionAccessTokenForOrganization } from "../../../integrations/NotionIntegration"
+import { getNotionAccessTokenOrThrow } from "../../../integrations/NotionIntegration"
 import logger from "../../../logger"
 import { IntegrationType } from "../../../shared/Integrations"
 import { ToolName } from "../../../tools/ToolNames"
@@ -82,7 +82,7 @@ The schema information returned by this tool should be used to properly format p
         if (!runContext?.context) {
             throw new Error("No context provided")
         }
-        const accessToken = await getNotionAccessTokenForOrganization(integrationId, runContext.context.user.organizationId)
+        const accessToken = await getNotionAccessTokenOrThrow(integrationId)
 
         const notion = new Client({
             auth: accessToken
