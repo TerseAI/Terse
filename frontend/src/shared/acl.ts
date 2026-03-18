@@ -31,7 +31,6 @@ export interface ACLCheckContext {
     organizationId: string
 }
 
-/** Minimal structural interface for ACL-bearing configs. ConfigInstance satisfies this. */
 export interface ACLProvider {
     integrationId: string
     getACL(): ACLItem[]

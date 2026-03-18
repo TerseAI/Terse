@@ -2,21 +2,10 @@ import { ToolGuardrailFunctionOutputFactory, defineToolInputGuardrail } from "@o
 
 import { ConfigInstance } from "../../shared/Configs"
 
-/**
- * Builds a Set of all integrationIds from the given configs.
- * These are already validated as belonging to the org at agent creation time.
- */
 export function collectConfiguredIntegrationIds(configs: ConfigInstance[]): Set<string> {
     return new Set(configs.map(c => c.integrationId))
 }
 
-/**
- * Guardrail that rejects tool calls whose `integrationId` argument
- * is not one of the agent's configured integrations.
- *
- * This centralises the "integration belongs to this org" check so
- * individual tools no longer need to query with organization_id.
- */
 export function createIntegrationOwnershipGuardrail<TContext = unknown>(validatedIds: Set<string>) {
     return defineToolInputGuardrail<TContext>({
         name: "integration_ownership_guardrail",
@@ -40,8 +29,7 @@ export function createIntegrationOwnershipGuardrail<TContext = unknown>(validate
             }
 
             return ToolGuardrailFunctionOutputFactory.rejectContent(
-                `Integration ${integrationId} is not configured for this agent. ` +
-                    `The agent only has access to integrations that were configured by its owner.`
+                `Integration ${integrationId} is not configured for this agent. ` + `The agent only has access to integrations that were configured by its owner.`
             )
         }
     })
