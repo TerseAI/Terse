@@ -940,7 +940,7 @@ model run_history_records {
   created_at            DateTime                 @default(now())
   updated_at            DateTime                 @updatedAt
 
-  automation              automations              @relation(fields: [automation_id], references: [id], onDelete: Cascade)
+  automation              automations               @relation(fields: [automation_id], references: [id], onDelete: Cascade)
   actions                 run_history_actions[]
   pending_approval        pending_approvals?
   raw_events              run_history_raw_events[]

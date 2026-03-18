@@ -736,13 +736,12 @@ export async function deleteAgent(req: Request, res: Response) {
         await tearDownAgentTriggers(existingAgent)
 
         // Clean up orphaned records and delete agent in a single transaction
-        await prisma.$transaction(async (tx) => {
+        await prisma.$transaction(async tx => {
             // Delete chat_raw_events for the builder chat session (no FK exists, chat_session_id is polymorphic)
             await tx.chat_raw_events.deleteMany({
                 where: { chat_session_id: agentId }
             })
 
-            // Delete the agent (cascade handles run_history_records, approval_slack_messages, sent_notifications, etc.)
             const deleteResult = await tx.automations.deleteMany({
                 where: {
                     id: agentId,
