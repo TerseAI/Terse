@@ -758,10 +758,6 @@ export async function deleteAgent(req: Request, res: Response) {
 
         res.status(200).json({ success: true, message: "Agent deleted successfully" })
     } catch (error) {
-        if (error instanceof Error && error.message === "Agent not found during delete") {
-            res.status(404).json({ error: "Agent not found" })
-            return
-        }
         logger.error("Error deleting agent", { error, userId, agentId })
         res.status(500).json({
             error: "Failed to delete agent",
