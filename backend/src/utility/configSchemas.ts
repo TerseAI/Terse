@@ -54,9 +54,9 @@ export const FigmaConfigSchema = BaseConfigSchema.extend({
 export const SlackConfigSchema = BaseConfigSchema.extend({
     configType: z.literal(ConfigType.SLACK),
     integrationType: z.literal(IntegrationType.SLACK),
-    channelId: NonEmptyString.nullable().optional().describe(
-        'The Slack channel ID (starts with "C" like "C12345"). From fetchResourcesForIntegration, use "resources[].id". Required unless listenToUserDms is true.'
-    ),
+    channelId: NonEmptyString.nullable()
+        .optional()
+        .describe('The Slack channel ID (starts with "C" like "C12345"). From fetchResourcesForIntegration, use "resources[].id". Required unless listenToUserDms is true.'),
     channelName: NonEmptyString.nullable().optional().describe('The channel display name (e.g., "general"). From fetchResourcesForIntegration, use "resources[].name".'),
     listenToUserDms: z.boolean().nullable().describe("Set to true to listen to direct messages. If true, channelId is not required."),
     userIds: z

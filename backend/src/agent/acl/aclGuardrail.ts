@@ -21,9 +21,7 @@ export function createACLGuardrail<TContext = unknown>(checker: (toolName: strin
             }
 
             const feedback = formatACLForFeedback(aclItems)
-            return ToolGuardrailFunctionOutputFactory.rejectContent(
-                `Policy violated: ${result.reason}\n\nYou are allowed to access the following resources:\n${feedback}`
-            )
+            return ToolGuardrailFunctionOutputFactory.rejectContent(`Policy violated: ${result.reason}\n\nYou are allowed to access the following resources:\n${feedback}`)
         }
     })
 }
