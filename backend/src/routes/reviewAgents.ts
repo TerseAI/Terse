@@ -1,7 +1,7 @@
 import { NotificationDestinationType, SentNotificationEventType, SentNotificationStatus } from "@prisma/client"
 import { Request, Response } from "express"
 
-import { evaluateAgent, MAX_IMPROVEMENTS_PER_AGENT } from "../agent/JudgeAgent/JudgeAgent"
+import { MAX_IMPROVEMENTS_PER_AGENT, evaluateAgent } from "../agent/JudgeAgent/JudgeAgent"
 import { cloudScheduler, settings } from "../config/settings"
 import logger from "../logger"
 import { sendWeeklyReviewEmail } from "../notifications/channels/emailNotifications"
