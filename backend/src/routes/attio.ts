@@ -2,6 +2,7 @@ import { Request, Response } from "express"
 
 import { AttioIntegrationManager } from "../integrations/AttioIntegration"
 import logger from "../logger"
+import type { AttioAttribute, AttioObject, AttioObjectWithAttributes } from "../shared/types"
 
 export async function getAttioIntegrations(req: Request, res: Response) {
     if (!req.session?.user) {
@@ -50,8 +51,20 @@ export async function getAttioObjects(req: Request, res: Response) {
             return
         }
 
-        const data = await response.json()
-        res.status(200).json(data?.data || [])
+        const data = (await response.json()) as { data?: AttioObject[] }
+        const objects = data?.data || []
+
+        const objectsWithAttributes = await Promise.all(
+            objects.map(async (obj): Promise<AttioObjectWithAttributes> => {
+                const attrResponse = await fetch(`https://api.attio.com/v2/objects/${encodeURIComponent(obj.api_slug)}/attributes`, {
+                    headers: { Authorization: `Bearer ${accessToken}` }
+                })
+                const attributes = attrResponse.ok ? ((await attrResponse.json()) as { data?: AttioAttribute[] })?.data || [] : []
+                return { ...obj, attributes }
+            })
+        )
+
+        res.status(200).json(objectsWithAttributes)
     } catch (error) {
         logger.error("Error fetching Attio objects:", { error })
         res.status(500).json({ error: "Failed to fetch Attio objects" })

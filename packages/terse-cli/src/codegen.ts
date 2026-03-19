@@ -21,7 +21,14 @@ export interface ConfluencePageData { id: string; title: string; spaceId: string
 export interface PosthogProjectData { id: string; name: string }
 export interface DatadogIndexData { name: string }
 export interface LaunchDarklyProjectData { key: string; name: string }
-export interface AttioObjectData { api_slug: string; singular_noun: string }
+export interface AttioAttributeData {
+    api_slug?: string
+    title?: string
+    type?: string
+    is_required?: boolean
+    is_unique?: boolean
+}
+export interface AttioObjectData { api_slug: string; singular_noun: string; plural_noun?: string; attributes?: AttioAttributeData[] }
 
 // Instance data types with resources
 export interface SlackInstanceData extends IntegrationInstanceData { channels: SlackChannelData[] }
@@ -98,6 +105,74 @@ function sectionHeader(name: string): string {
 
 function escapeString(s: string): string {
     return s.replace(/\\/g, "\\\\").replace(/"/g, '\\"')
+}
+
+function toGeneratedIdentifier(raw: string, fallback: string): string {
+    let name = toPascalCase(raw || fallback)
+    if (!name) name = fallback
+    if (/^\d/.test(name)) name = `_${name}`
+    return name
+}
+
+function isProbablyAttioMultiValue(attr: AttioAttributeData): boolean {
+    const slug = (attr.api_slug || "").toLowerCase()
+    const type = (attr.type || "").toLowerCase()
+
+    return (
+        type.includes("multi") ||
+        type.includes("array") ||
+        type.includes("list") ||
+        slug === "email_addresses" ||
+        slug === "domains" ||
+        slug === "phone_numbers" ||
+        slug === "social_profiles" ||
+        slug === "links" ||
+        slug === "tags" ||
+        slug.endsWith("_addresses") ||
+        slug.endsWith("_ids")
+    )
+}
+
+function attioAttributeBaseType(attr: AttioAttributeData): string {
+    const slug = (attr.api_slug || "").toLowerCase()
+    const type = (attr.type || "").toLowerCase()
+
+    if (type.includes("checkbox") || type.includes("boolean")) return "boolean"
+    if (type.includes("number") || type.includes("currency") || type.includes("rating") || type.includes("percent")) return "number"
+    if (type.includes("date") || type.includes("time")) return "string"
+    if (
+        type.includes("email") ||
+        type.includes("domain") ||
+        type.includes("phone") ||
+        type.includes("url") ||
+        type.includes("select") ||
+        type.includes("status") ||
+        type.includes("text") ||
+        type.includes("string") ||
+        type.includes("name")
+    ) {
+        return "string"
+    }
+    if (
+        type.includes("location") ||
+        type.includes("address") ||
+        type.includes("reference") ||
+        type.includes("record") ||
+        type.includes("actor")
+    ) {
+        return "Record<string, unknown>"
+    }
+    if (slug === "email_addresses" || slug === "domains" || slug === "phone_numbers" || slug === "name") {
+        return "string"
+    }
+    return "unknown"
+}
+
+function attioAttributeTsType(attr: AttioAttributeData): string {
+    const baseType = attioAttributeBaseType(attr)
+    if (!isProbablyAttioMultiValue(attr)) return baseType
+    const arrayType = baseType.includes("|") ? `(${baseType})[]` : `${baseType}[]`
+    return `${baseType} | ${arrayType}`
 }
 
 /** Map a tool's integration key back to the IntegrationType enum value used by ConfigInstance. */
@@ -652,15 +727,55 @@ function generateAttioSection(instances: AttioInstanceData[]): SectionResult {
     const parts: string[] = [sectionHeader("Attio"), ""]
     const id = inst.id
 
-    parts.push(generateResourceClass("AttioObject", [
-        { classField: "apiSlug", type: "string", sourceField: "api_slug" },
-        { classField: "name", type: "string", sourceField: "singular_noun" },
-    ], "singular_noun", inst.objects))
+    parts.push("export type AttioAttributeDefinition<TSlug extends string = string, TType extends string = string> = {")
+    parts.push("    apiSlug: TSlug")
+    parts.push("    title?: string")
+    parts.push("    type?: TType")
+    parts.push("    isRequired?: boolean")
+    parts.push("    isUnique?: boolean")
+    parts.push("}")
+    parts.push("")
+    parts.push("export class AttioObject<TSlug extends string = string> {")
+    parts.push("    constructor(")
+    parts.push("        public readonly apiSlug: TSlug,")
+    parts.push("        public readonly name: string,")
+    parts.push("        public readonly attributes: readonly AttioAttributeDefinition[] = []")
+    parts.push("    ) {}")
+
+    if (inst.objects.length > 0) {
+        parts.push("")
+        const usedNames = new Set<string>()
+        for (const object of inst.objects) {
+            let staticName = toGeneratedIdentifier(object.singular_noun || object.api_slug || "Object", "AttioObject")
+            while (usedNames.has(staticName)) staticName += "_"
+            usedNames.add(staticName)
+
+            const attributes = (object.attributes || []).filter((attr): attr is AttioAttributeData & { api_slug: string } => !!attr.api_slug)
+            const attributeSource = attributes.length === 0
+                ? "[]"
+                : `[\n${attributes.map(attr => {
+                    const fields = [
+                        `apiSlug: "${escapeString(attr.api_slug)}"`,
+                        attr.title ? `title: "${escapeString(attr.title)}"` : undefined,
+                        attr.type ? `type: "${escapeString(attr.type)}"` : undefined,
+                        attr.is_required !== undefined ? `isRequired: ${attr.is_required ? "true" : "false"}` : undefined,
+                        attr.is_unique !== undefined ? `isUnique: ${attr.is_unique ? "true" : "false"}` : undefined,
+                    ].filter(Boolean).join(", ")
+                    return `        { ${fields} }`
+                }).join(",\n")}\n    ]`
+
+            parts.push(
+                `    static ${staticName} = new AttioObject("${escapeString(object.api_slug)}", "${escapeString(object.singular_noun)}", ${attributeSource})`
+            )
+        }
+    }
+
+    parts.push("}")
     parts.push("")
 
     parts.push("export const Attio = {")
     parts.push(`    /** Use in \`skills[]\` */`)
-    parts.push(`    skill(opts?: { object?: AttioObject }): AttioOutputConfig {`)
+    parts.push(`    skill(opts?: { object?: AttioObject<any> }): AttioOutputConfig {`)
     parts.push(`        return new AttioOutputConfig("${id}", opts?.object?.apiSlug)`)
     parts.push("    },")
     parts.push("}")
@@ -814,8 +929,116 @@ function generateToolsSection(tools: ToolDefinition[], input: CodegenInput): Sec
         }
     }
 
+    const isAttioTool = (tool: ToolDefinition): boolean => tool.integration.toLowerCase() === "attio"
+    const attioObjects = input.attio[0]?.objects ?? []
+    const attioGeneratedObjects = (() => {
+        const usedNames = new Set<string>()
+        return attioObjects.map(object => {
+            let staticName = toGeneratedIdentifier(object.singular_noun || object.api_slug || "Object", "AttioObject")
+            while (usedNames.has(staticName)) staticName += "_"
+            usedNames.add(staticName)
+            return {
+                ...object,
+                staticName,
+                attributes: (object.attributes || []).filter((attr): attr is AttioAttributeData & { api_slug: string } => !!attr.api_slug),
+            }
+        })
+    })()
+
+    if (tools.some(isAttioTool)) {
+        parts.push("type __AttioPrimitive = string | number | boolean | null")
+        parts.push("type __AttioStructuredValue = Record<string, unknown>")
+        parts.push("type __AttioValue = __AttioPrimitive | __AttioStructuredValue | (__AttioPrimitive | __AttioStructuredValue)[]")
+        parts.push("type __AttioFilterShorthand<T> = T extends (infer U)[] ? U | T : T")
+        parts.push('type __AttioFilterValue<T> = __AttioFilterShorthand<T> | { $eq?: __AttioFilterShorthand<T>; $contains?: string; $starts_with?: string; $ends_with?: string } | Record<string, unknown>')
+        parts.push('type __AttioFilterExpression<TValues extends Record<string, unknown>> = Partial<{ [K in keyof TValues]: __AttioFilterValue<TValues[K]> }> & { $and?: Array<__AttioFilterExpression<TValues>>; $or?: Array<__AttioFilterExpression<TValues>> }')
+        parts.push('type __AttioRecordBase = NonNullable<ToolOutputByName["attio_upsert_record"]["record"]>')
+        parts.push('type __AttioRecordWithValues<TValues extends Record<string, unknown>> = Omit<__AttioRecordBase, "values"> & { values?: TValues }')
+        parts.push("")
+
+        if (attioGeneratedObjects.length > 0) {
+            parts.push("export type GeneratedAttioObject =")
+            for (const object of attioGeneratedObjects) {
+                parts.push(`    | typeof AttioObject.${object.staticName}`)
+            }
+            parts.push("")
+
+            parts.push("export type AttioAttributeSlugsByObject = {")
+            for (const object of attioGeneratedObjects) {
+                const slugUnion = object.attributes.length === 0
+                    ? "string"
+                    : object.attributes.map(attr => `"${escapeString(attr.api_slug)}"`).join(" | ")
+                parts.push(`    "${escapeString(object.api_slug)}": ${slugUnion}`)
+            }
+            parts.push("}")
+            parts.push("")
+
+            parts.push("export type AttioValuesByObject = {")
+            for (const object of attioGeneratedObjects) {
+                parts.push(`    "${escapeString(object.api_slug)}": ${object.attributes.length === 0 ? "Record<string, __AttioValue>" : "{"}`)
+                if (object.attributes.length > 0) {
+                    for (const attr of object.attributes) {
+                        parts.push(`        "${escapeString(attr.api_slug)}"?: ${attioAttributeTsType(attr)}`)
+                    }
+                    parts.push("    }")
+                }
+            }
+            parts.push("}")
+            parts.push("")
+
+            parts.push("export type AttioFilterByObject = {")
+            for (const object of attioGeneratedObjects) {
+                parts.push(`    "${escapeString(object.api_slug)}": __AttioFilterExpression<AttioValuesByObject["${escapeString(object.api_slug)}"]>`)
+            }
+            parts.push("}")
+            parts.push("")
+
+            parts.push("export type AttioRecordByObject = {")
+            for (const object of attioGeneratedObjects) {
+                parts.push(`    "${escapeString(object.api_slug)}": __AttioRecordWithValues<AttioValuesByObject["${escapeString(object.api_slug)}"]>`)
+            }
+            parts.push("}")
+        } else {
+            parts.push("export type GeneratedAttioObject = AttioObject<string>")
+            parts.push('export type AttioAttributeSlugsByObject = Record<string, string>')
+            parts.push('export type AttioValuesByObject = Record<string, Record<string, __AttioValue>>')
+            parts.push('export type AttioFilterByObject = Record<string, __AttioFilterExpression<Record<string, __AttioValue>>>')
+            parts.push('export type AttioRecordByObject = Record<string, __AttioRecordWithValues<Record<string, __AttioValue>>>')
+        }
+
+        parts.push("")
+        parts.push('export type AttioAttributeSlug<TObject extends GeneratedAttioObject = GeneratedAttioObject> = AttioAttributeSlugsByObject[TObject["apiSlug"]]')
+        parts.push('export type AttioValuesFor<TObject extends GeneratedAttioObject = GeneratedAttioObject> = AttioValuesByObject[TObject["apiSlug"]]')
+        parts.push('export type AttioFilterFor<TObject extends GeneratedAttioObject = GeneratedAttioObject> = AttioFilterByObject[TObject["apiSlug"]]')
+        parts.push('export type AttioRecordFor<TObject extends GeneratedAttioObject = GeneratedAttioObject> = AttioRecordByObject[TObject["apiSlug"]]')
+        parts.push('export type AttioQueryRecordsParams<TObject extends GeneratedAttioObject = GeneratedAttioObject> = { object: TObject; filter?: AttioFilterFor<TObject> | null; limit?: number | null }')
+        parts.push('export type AttioUpsertRecordParams<TObject extends GeneratedAttioObject = GeneratedAttioObject> = { object: TObject; matchingAttribute: AttioAttributeSlug<TObject>; values: AttioValuesFor<TObject> }')
+        parts.push("export type AttioListObjectsParams = Record<string, never>")
+        parts.push('export type AttioQueryRecordsResult<TObject extends GeneratedAttioObject = GeneratedAttioObject> = Omit<ToolOutputByName["attio_query_records"], "records"> & { records: Array<AttioRecordFor<TObject>> }')
+        parts.push('export type AttioUpsertRecordResult<TObject extends GeneratedAttioObject = GeneratedAttioObject> = Omit<ToolOutputByName["attio_upsert_record"], "record"> & { record?: AttioRecordFor<TObject> }')
+        parts.push("")
+        parts.push("function __normalizeAttioObjectSlug(object: unknown): string {")
+        parts.push('    if (object && typeof object === "object" && "apiSlug" in (object as Record<string, unknown>)) {')
+        parts.push('        const apiSlug = (object as { apiSlug?: unknown }).apiSlug')
+        parts.push('        if (typeof apiSlug === "string" && apiSlug.length > 0) return apiSlug')
+        parts.push("    }")
+        parts.push('    return typeof object === "string" ? object : ""')
+        parts.push("}")
+        parts.push("")
+        parts.push("function __serializeAttioFilter(filter: unknown): string | null {")
+        parts.push("    if (filter === undefined || filter === null) return null")
+        parts.push("    return JSON.stringify(filter)")
+        parts.push("}")
+        parts.push("")
+        parts.push("function __serializeAttioValues(values: unknown): string {")
+        parts.push("    return JSON.stringify(values ?? {})")
+        parts.push("}")
+        parts.push("")
+    }
+
     // Generate per-tool param types (with integrationId omitted where applicable)
     for (const tool of tools) {
+        if (isAttioTool(tool)) continue
         const typeName = toolNameToInterfaceName(tool.name)
         const schema = hasAutoFillId(tool) ? omitIntegrationId(tool.parameters) : tool.parameters
         const tsType = jsonSchemaToTs(schema, 0)
@@ -899,7 +1122,15 @@ function generateToolsSection(tools: ToolDefinition[], input: CodegenInput): Sec
             if (tool.description) {
                 parts.push(`        /** ${tool.description} */`)
             }
-            parts.push(`        ${methodName}(params: ${paramsType}): Promise<ToolOutputByName["${escapeString(tool.name)}"]>`)
+            if (group.integration === "attio" && tool.name === "attio_query_records") {
+                parts.push(`        ${methodName}<TObject extends GeneratedAttioObject>(params: AttioQueryRecordsParams<TObject>): Promise<AttioQueryRecordsResult<TObject>>`)
+            } else if (group.integration === "attio" && tool.name === "attio_upsert_record") {
+                parts.push(`        ${methodName}<TObject extends GeneratedAttioObject>(params: AttioUpsertRecordParams<TObject>): Promise<AttioUpsertRecordResult<TObject>>`)
+            } else if (group.integration === "attio" && tool.name === "attio_list_objects") {
+                parts.push(`        ${methodName}(params?: AttioListObjectsParams): Promise<ToolOutputByName["${escapeString(tool.name)}"]>`)
+            } else {
+                parts.push(`        ${methodName}(params: ${paramsType}): Promise<ToolOutputByName["${escapeString(tool.name)}"]>`)
+            }
         }
         parts.push("    }")
     }
@@ -927,7 +1158,22 @@ function generateToolsSection(tools: ToolDefinition[], input: CodegenInput): Sec
             const methodName = toCamelCase(tool.displayName)
             const paramsType = toolNameToInterfaceName(tool.name)
             const normalizedParamsExpr = group.integration === "github" ? normalizeGitHubReposParams(tool.name) : "params"
-            if (group.integrationId && hasAutoFillId(tool)) {
+            if (group.integration === "attio" && tool.name === "attio_query_records" && group.integrationId) {
+                parts.push(`            ${methodName}: <TObject extends GeneratedAttioObject>(params: AttioQueryRecordsParams<TObject>) =>`)
+                parts.push(
+                    `                agent.executeTool<ToolOutputByName["${escapeString(tool.name)}"]>("${escapeString(tool.name)}", { objectSlug: __normalizeAttioObjectSlug(params.object), filter: __serializeAttioFilter(params.filter), limit: params.limit ?? null, integrationId: "${escapeString(group.integrationId)}" }) as Promise<AttioQueryRecordsResult<TObject>>,`
+                )
+            } else if (group.integration === "attio" && tool.name === "attio_upsert_record" && group.integrationId) {
+                parts.push(`            ${methodName}: <TObject extends GeneratedAttioObject>(params: AttioUpsertRecordParams<TObject>) =>`)
+                parts.push(
+                    `                agent.executeTool<ToolOutputByName["${escapeString(tool.name)}"]>("${escapeString(tool.name)}", { objectSlug: __normalizeAttioObjectSlug(params.object), matchingAttribute: params.matchingAttribute, values: __serializeAttioValues(params.values), integrationId: "${escapeString(group.integrationId)}" }) as Promise<AttioUpsertRecordResult<TObject>>,`
+                )
+            } else if (group.integration === "attio" && tool.name === "attio_list_objects" && group.integrationId) {
+                parts.push(`            ${methodName}: (params: AttioListObjectsParams = {}) =>`)
+                parts.push(
+                    `                agent.executeTool<ToolOutputByName["${escapeString(tool.name)}"]>("${escapeString(tool.name)}", { ...params, integrationId: "${escapeString(group.integrationId)}" }),`
+                )
+            } else if (group.integrationId && hasAutoFillId(tool)) {
                 parts.push(`            ${methodName}: (params: ${paramsType}) =>`)
                 parts.push(
                     `                agent.executeTool<ToolOutputByName["${escapeString(tool.name)}"]>("${escapeString(tool.name)}", { ...(${normalizedParamsExpr}), integrationId: "${escapeString(group.integrationId)}" }),`

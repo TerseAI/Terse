@@ -73,6 +73,10 @@ export type AttioAttribute = {
     [key: string]: unknown
 }
 
+export type AttioObjectWithAttributes = AttioObject & {
+    attributes?: AttioAttribute[]
+}
+
 export type AttioRecordIdentifier = {
     workspace_id?: string
     object_id?: string
@@ -734,7 +738,7 @@ export type ToolOutputBase = {
 export type ToolOutputByName = {
     [toolName: string]: unknown
     attio_list_objects: ToolOutputBase & {
-        objects: Array<AttioObject & { attributes?: AttioAttribute[] }>
+        objects: AttioObjectWithAttributes[]
         count: number
     }
     attio_query_records: ToolOutputBase & {
