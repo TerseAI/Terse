@@ -14,6 +14,8 @@ import "./integrations/IntegrationTaskHandler"
 import logger from "./logger"
 import { getRealtimeSocket, initializeRealtimeSocket } from "./realtimeSocket"
 import { createAgent, deleteAgent, getRecentAgents, getUserAgent, getUserAgents, updateAgent } from "./routes/agents"
+import { apiTokenAuthMiddleware } from "./routes/apiTokenAuth"
+import { createApiToken, deleteApiToken, getApiTokens, updateApiToken } from "./routes/apiTokens"
 import { attioOAuthCallback, getAttioIntegrations, getAttioObjects } from "./routes/attio"
 import { authMiddleware, authMiddlewareAllowNoOrg, callback, getWorkOSWidgetToken, login, loginUrl, logout, logoutUrl, me } from "./routes/auth"
 import { githubAppCallbackIntegrate } from "./routes/auth/githubAuth"
@@ -37,7 +39,13 @@ import { createOrUpdatePosthogIntegration, getPosthogIntegrations, getPosthogPro
 import { refreshAllTokens } from "./routes/refreshTokens"
 import { reviewAllAgents } from "./routes/reviewAgents"
 import { getAllRunHistory, getChatHistory, getRunHistory, getRunHistoryActions } from "./routes/runHistory"
-import { handleManualTrigger, handleScheduleWebhook } from "./routes/schedule"
+import { handleSampleEvents } from "./routes/sampleEvents"
+import { handleManualTrigger, handleScheduleWebhook, handleTriggerWithEvent } from "./routes/schedule"
+import { handleSdkAgentRun } from "./routes/sdkAgentRun"
+import { handleSdkDeploy } from "./routes/sdkDeploy"
+import { handleSessionEvents } from "./routes/sdkSession"
+import { handleToolDefinitions } from "./routes/sdkToolDefinitions"
+import { handleToolExecute } from "./routes/sdkToolExecute"
 import { getSentNotifications } from "./routes/sentNotifications"
 import { getCurrentSlackIntegration, getSlackChannels, getSlackIntegrations, getSlackUsers, slackOAuthCallback } from "./routes/slack"
 import { getStats } from "./routes/stats"
@@ -52,6 +60,7 @@ import { User } from "./shared/types"
 import { setupSlackBolt } from "./slack/boltApp"
 import { runStartupValidations } from "./tools/validateToolNames"
 import { analytics } from "./utility/analytics"
+import { workos } from "./utility/workos"
 
 export type Session = {
     user: User
@@ -140,7 +149,7 @@ if (slackReceiver?.receiver) {
 }
 
 // Routes that need larger body limits for webhooks with potentially large payloads
-const LARGE_BODY_LIMIT_ROUTES: string[] = [ApiRoutes.GITHUB.UNIFIED_EVENT]
+const LARGE_BODY_LIMIT_ROUTES: string[] = [ApiRoutes.GITHUB.UNIFIED_EVENT, ApiRoutes.SDK.DEPLOY]
 const LARGE_BODY_LIMIT = "10mb"
 const DEFAULT_BODY_LIMIT = "1mb"
 
@@ -192,6 +201,7 @@ app.use((err: Error & { type?: string; statusCode?: number }, req: Request, res:
     next(err)
 })
 app.use(cookieParser())
+app.use(apiTokenAuthMiddleware)
 
 // MARK: AUTH
 
@@ -444,6 +454,11 @@ app.post(ApiRoutes.SCHEDULE.TRIGGER_BY_INPUT_ID.pattern, authMiddleware, async (
     handleManualTrigger(req, res)
 })
 
+// Trigger with a specific event payload (authenticated)
+app.post(ApiRoutes.SCHEDULE.TRIGGER_WITH_EVENT.pattern, authMiddleware, async (req, res) => {
+    handleTriggerWithEvent(req, res)
+})
+
 // MARK: SLACK
 
 app.get(ApiRoutes.SLACK.INTEGRATIONS, authMiddleware, async (req, res) => {
@@ -622,6 +637,72 @@ app.put(ApiRoutes.NOTIFICATION_DESTINATIONS.BY_ID.pattern, authMiddleware, async
 
 app.delete(ApiRoutes.NOTIFICATION_DESTINATIONS.BY_ID.pattern, authMiddleware, async (req, res) => {
     deleteNotificationDestination(req, res)
+})
+
+// MARK: API TOKENS
+
+app.get(ApiRoutes.API_TOKENS.LIST, authMiddleware, async (req, res) => {
+    getApiTokens(req, res)
+})
+
+app.post(ApiRoutes.API_TOKENS.LIST, authMiddleware, async (req, res) => {
+    createApiToken(req, res)
+})
+
+app.patch(ApiRoutes.API_TOKENS.BY_ID.pattern, authMiddleware, async (req, res) => {
+    updateApiToken(req, res)
+})
+
+app.delete(ApiRoutes.API_TOKENS.BY_ID.pattern, authMiddleware, async (req, res) => {
+    deleteApiToken(req, res)
+})
+
+// MARK: SDK
+
+app.get(ApiRoutes.SDK.ME, authMiddleware, async (req: Request, res: Response) => {
+    const user = req.session?.user
+    if (!user) {
+        return res.status(401).json({ error: "Unauthorized" })
+    }
+
+    try {
+        const workOSUser = await workos.userManagement.getUser(user.workosId)
+        return res.json({
+            id: user.id,
+            email: workOSUser.email,
+            firstName: workOSUser.firstName || null,
+            lastName: workOSUser.lastName || null,
+            displayName: [workOSUser.firstName, workOSUser.lastName].filter(Boolean).join(" ") || null,
+            organizationId: user.organizationId
+        })
+    } catch (error) {
+        logger.error("[/sdk/me] Failed to fetch user from WorkOS", { error })
+        return res.status(500).json({ error: "Failed to fetch user" })
+    }
+})
+
+app.post(ApiRoutes.SDK.SAMPLE_EVENTS, authMiddleware, async (req, res) => {
+    handleSampleEvents(req, res)
+})
+
+app.post(ApiRoutes.SDK.TOOL_EXECUTE, authMiddleware, async (req, res) => {
+    handleToolExecute(req, res)
+})
+
+app.get(ApiRoutes.SDK.TOOL_DEFINITIONS, authMiddleware, async (req, res) => {
+    handleToolDefinitions(req, res)
+})
+
+app.post(ApiRoutes.SDK.AGENT_RUN, authMiddleware, async (req, res) => {
+    handleSdkAgentRun(req, res)
+})
+
+app.get(ApiRoutes.SDK.SESSION_EVENTS, authMiddleware, async (req, res) => {
+    handleSessionEvents(req, res)
+})
+
+app.post(ApiRoutes.SDK.DEPLOY, authMiddleware, async (req, res) => {
+    handleSdkDeploy(req, res)
 })
 
 app.get(ApiRoutes.SENT_NOTIFICATIONS.LIST, authMiddleware, async (req, res) => {

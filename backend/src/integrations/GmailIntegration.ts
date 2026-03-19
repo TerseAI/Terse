@@ -11,7 +11,7 @@ import { db } from "../prismaClient"
 import { Identifiable } from "../rag/Hydrator"
 import { FileDownloadResult, StoredFile, buildGmailFileKey, ensureStoredWithMetadata, isSupportedFileType } from "../services/FileStorageService"
 import { SecretField, getSecret, storeSecret } from "../services/SecretService"
-import { ConfigInstance, ConfigType } from "../shared/Configs"
+import { ConfigInstance, ConfigType, GmailEventType } from "../shared/Configs"
 import { FrontendRoutes } from "../shared/FrontendRoutes"
 import { AdditionalStateParams, GmailIntegration, GmailIntegrationMetadata, InstallationOptionsFor, IntegrationType } from "../shared/Integrations"
 import { RunHistoryTrigger } from "../shared/RunHistoryTypes"
@@ -519,7 +519,7 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
         }
     }
 
-    async getSampleEvents(integrationId: string, organizationId: string, triggerConfig: ConfigInstance, options?: { limit?: number }): Promise<InputEvent[]> {
+    async getSampleEvents(integrationId: string, organizationId: string, _userId: string, triggerConfig: ConfigInstance, options?: { limit?: number }): Promise<InputEvent[]> {
         if (triggerConfig.configType !== ConfigType.GMAIL) {
             return []
         }
@@ -560,6 +560,7 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
 
 export class GmailEvent extends InputEvent implements Identifiable {
     readonly integrationType: IntegrationType = IntegrationType.GMAIL
+    readonly eventType: GmailEventType = GmailEventType.EMAIL_RECEIVED
     entityType = HydratorType.GMAIL_EVENT
     entityId: string
     data: GmailEventData

@@ -6,7 +6,8 @@ import logger from "../logger"
 export enum FeatureFlag {
     BIRDS_EYE_VIEW_HOMEPAGE = "Birds-eye-view-homepage",
     AGENT_IMPROVEMENTS_TAB = "Agent-improvements-tab",
-    WEEKLY_REVIEW_EMAILS = "Weekly-review-emails"
+    WEEKLY_REVIEW_EMAILS = "Weekly-review-emails",
+    SDK_INTERFACE = "SDK-Interface"
 }
 
 export class FeatureFlagService {
