@@ -500,10 +500,6 @@ export async function getUserAgents(req: Request, res: Response) {
             })
         ])
 
-        if (agents.length > 0 && !agents.some(agent => agent.outputs && agent.outputs.length > 0)) {
-            throw new Error(`Agent outputs not found`)
-        }
-
         // Transform the data to match frontend format
         const response: AgentsResponse = {
             agents: agents.map(agent => transformAgentToFrontendFormat(agent)),
