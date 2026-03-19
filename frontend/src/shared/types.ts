@@ -1,6 +1,6 @@
 import { ConfigInstance, ConfigType } from "./Configs"
 import { IntegrationType } from "./Integrations"
-import { RunHistoryActionType, RunHistoryRecordWithAgent } from "./RunHistoryTypes"
+import { RunHistoryAction, RunHistoryActionType, RunHistoryRecordWithAgent } from "./RunHistoryTypes"
 import { Project, Ticket } from "./TicketSystem"
 import { ResourceType } from "./acl"
 
@@ -370,6 +370,19 @@ export interface FigmaCommentEventData {
     imageUrls?: FigmaCommentImageUrls
 }
 
+export type ApiToken = {
+    id: string
+    name: string
+    tokenPrefix: string
+    createdAt: string
+    lastUsedAt: string | null
+}
+
+export type ApiTokenCreateResponse = {
+    token: ApiToken
+    rawToken: string
+}
+
 export type AgentTrigger = {
     id: string
     config: ConfigInstance
@@ -441,6 +454,7 @@ export type Agent = {
     notificationSettings?: AgentNotificationSettings
     toolApprovals?: string[]
     updatedAt?: string
+    source?: "WEB_UI" | "SDK"
 }
 
 export type AgentNotificationSettings = {
@@ -596,4 +610,228 @@ export interface StatsResponse {
     triggerIntegrations: CountByString[] // Run counts grouped by trigger integration (current period)
     actionIntegrations: CountByString[] // Action counts grouped by integration (current period, write-only)
     actionTypes: CountByString[] // Action counts grouped by type (current period, write-only)
+}
+
+export interface TriggerPayload {
+    integrationId: string
+    integrationType: IntegrationType
+    config: Record<string, unknown>
+}
+
+export interface SerializedEvent {
+    integrationType: IntegrationType
+    eventType?: string
+    formattedContent: string
+    debugLog: string
+    metadata?: Record<string, unknown>
+}
+
+export type SdkAgentRunEventPayload = {
+    integrationType: IntegrationType
+    formattedContent: string
+    debugLog: string
+}
+
+export type SdkAgentSkillPayload = {
+    configType: ConfigType
+    config: Record<string, unknown>
+}
+
+export type SdkAgentRunOptionsPayload = {
+    maxTurns?: number
+    requireApproval?: boolean
+}
+
+export type SdkAgentRunRequestBody = {
+    prompt?: string
+    event?: Partial<SdkAgentRunEventPayload>
+    skills?: SdkAgentSkillPayload[]
+    options?: SdkAgentRunOptionsPayload
+}
+
+export type SdkAgentRunResponseBody = {
+    success: boolean
+    error?: string
+    details?: string[]
+    contract?: {
+        responseMode: "streaming"
+        supportsInterruptions: boolean
+    }
+    normalizedRequest?: {
+        prompt: string
+        event: SdkAgentRunEventPayload
+        skills: SdkAgentSkillPayload[]
+        options: {
+            maxTurns: number
+            requireApproval: boolean
+        }
+    }
+}
+
+export type SdkAgentStreamEvent =
+    | { type: "text"; text: string }
+    | { type: "final_output"; finalOutput: string }
+    | { type: "tool_call_params"; toolCallParams: string }
+    | { type: "tool_call_started"; toolCallStarted: string }
+    | { type: "tool_call_completed"; toolCallCompleted: string }
+    | { type: "action"; action: RunHistoryAction }
+    | { type: "error"; message: string }
+    | { type: "done" }
+
+export type SdkDeployTrigger = {
+    configType: string
+    integrationType: string
+    integrationId: string
+    config: Record<string, unknown>
+}
+
+export type SdkDeployJob = {
+    jobName: string
+    triggers: SdkDeployTrigger[]
+    webhookURL?: string
+}
+
+export type SdkDeployRequestBody = {
+    jobs: SdkDeployJob[]
+    sourceZipBase64: string
+}
+
+export type SdkDeployResponseBody = {
+    success: boolean
+    results: { jobName: string; automationId: string; isUpdate: boolean }[]
+    removed: { id: string; name: string }[]
+    error?: string
+    details?: string
+}
+
+export type ToolOutputBase = {
+    success: boolean
+    actions?: RunHistoryAction[]
+}
+
+export type ToolOutputByName = {
+    [toolName: string]: unknown
+    slack_send_message: ToolOutputBase & {
+        message_ts: string | undefined
+        channel: string
+        thread_ts: string | undefined
+        summary: string
+        has_blocks: boolean
+    }
+    slack_list_channels: ToolOutputBase & {
+        channels: Array<{ id?: string; name: string; isPrivate: boolean; isIm: boolean; isMpim: boolean }>
+        count: number
+        nextCursor: string | null
+        hasMore: boolean
+    }
+    slack_list_users: ToolOutputBase & {
+        users: Array<{ id: string; name: string }>
+        count: number
+    }
+    slack_read_conversation: ToolOutputBase & {
+        channelId: string
+        channelName?: string
+        messages: Array<{ userId?: string; userName?: string; text: string; timestamp?: string; threadTs?: string }>
+        count: number
+        hasMore: boolean
+        nextCursor: string | null
+    }
+    searchGitHubCode: ToolOutputBase & {
+        totalCount: number
+        resultsReturned: number
+        query: string
+        repositories: string[]
+        pagination: { page: number; perPage: number; hasMore: boolean }
+        results: Array<{ index: number; repository: string; path: string; url: string; snippets: string }>
+        message: string
+        tip: string
+    }
+    readGitHubFile: ToolOutputBase & {
+        repository: string
+        path: string
+        url: string
+        totalLines: number
+        displayedLines: string
+        size: number
+        content: string
+        warning?: string
+    }
+    listGitHubPullRequests: ToolOutputBase & {
+        repository: string
+        timeWindow: string
+        summary: { total: number; merged: number; open: number; closed: number }
+        pagination: { page: number; perPage: number; hasMore: boolean }
+        pullRequests: Array<{
+            number: number
+            title: string
+            description: string
+            author: string
+            state: string
+            merged: boolean
+            mergedAt?: string
+            createdAt: string
+            closedAt?: string
+            labels: string[]
+            baseBranch: string
+            headBranch: string
+            url: string
+        }>
+        message: string
+    }
+    listGitHubDirectory: ToolOutputBase & {
+        repository: string
+        path: string
+        recursive: boolean
+        totalItems: number
+        directories: Array<{ name?: string; path?: string; type?: "directory" } | string>
+        files: Array<{ name?: string; path: string; type?: "file"; size?: number }>
+        warning?: string
+        tip?: string
+        truncated?: boolean
+        other?: Array<{ name: string; type: string }>
+    }
+    listGitHubCommits: ToolOutputBase & {
+        repository: string
+        timeWindow: string
+        filters: string
+        summary: { total: number; byAuthor: Record<string, number> }
+        commits: Array<{
+            sha: string
+            fullSha: string
+            message: string
+            fullMessage: string
+            author: string
+            date: string
+            url: string
+        }>
+        message: string
+        tip: string
+    }
+    grepGitHubCode: ToolOutputBase & {
+        totalCount: number
+        resultsReturned: number
+        pattern: string
+        query: string
+        repositories: string[]
+        pagination: { page: number; perPage: number; hasMore: boolean }
+        results: Array<{ index: number; repository: string; file: string; url: string; matches: string }>
+        message: string
+        tip: string
+    }
+    summarizeGitHubPullRequestDiff: ToolOutputBase & {
+        repository: string
+        pullRequest: {
+            number: number
+            title: string
+            state: string
+            merged: boolean
+            baseBranch: string
+            headBranch: string
+            url: string
+        }
+        summary: Record<string, unknown>
+        pagination: { page: number; perPage: number; hasMore: boolean }
+        analysis: string
+        message: string
+    }
 }

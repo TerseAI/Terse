@@ -5,7 +5,9 @@ import { z } from "zod"
 import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
 import logger from "../../../logger"
 import { IntegrationType } from "../../../shared/Integrations"
+import type { ToolOutputByName } from "../../../shared/types"
 import { ToolName } from "../../../tools/ToolNames"
+import { toolOutput } from "../../../tools/toolOutput"
 import { Session } from "../../../types/session"
 import { createGitHubClient, getFileContents, getGitHubAccessToken, parseRepoFullName } from "../githubApiClient"
 
@@ -13,7 +15,7 @@ import { createGitHubClient, getFileContents, getGitHubAccessToken, parseRepoFul
  * Tool for reading file contents from GitHub repositories.
  * Uses GitHub's Contents API to fetch file contents from the default branch.
  */
-export const readGitHubFileTool = tool({
+export const readGitHubFileTool = tool<z.ZodObject<any>, SessionWithTracking<Session>, ToolOutputByName["readGitHubFile"]>({
     name: ToolName.GITHUB_READ_FILE,
     description: `Read the full contents of a file from a GitHub repository. Use this after finding relevant files via search to:
 - Understand the complete implementation of a function or class
@@ -141,10 +143,10 @@ Note: This reads from the default branch (main/master). Large files may be trunc
                 isReadOnly: true
             }
 
-            return {
+            return toolOutput("readGitHubFile", {
                 ...response,
                 actions: [action]
-            }
+            })
         } catch (error: any) {
             const errorMessage = error instanceof Error ? error.message : String(error)
             logger.error("[GitHub KB] readGitHubFile - Failed", {

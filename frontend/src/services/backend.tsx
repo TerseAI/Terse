@@ -30,6 +30,8 @@ import {
     AgentTemplate,
     AgentUpdate,
     AgentsResponse,
+    ApiToken,
+    ApiTokenCreateResponse,
     ApplyImprovementResponse,
     AttioObject,
     ConfluenceResourcesResponse,
@@ -47,11 +49,13 @@ import {
     OAuthInstallationDetails,
     PosthogProjectsResponse,
     RecentAgent,
+    SerializedEvent,
     SlackChannelsResponse,
     SlackUsersResponse,
     StatsInterval,
     StatsResponse,
-    ToggleImprovementsEnabledResponse
+    ToggleImprovementsEnabledResponse,
+    TriggerPayload
 } from "../shared/types"
 import { User } from "../types/User"
 import { deserializeConfig } from "../utility/ConfigUtils"
@@ -423,9 +427,39 @@ interface BackendService {
     deleteNotificationDestination(destination: NotificationDestination): Promise<void>
 
     /**
+     * Gets all API tokens for the current user
+     */
+    getApiTokens(): Promise<ApiToken[]>
+
+    /**
+     * Creates a new API token
+     */
+    createApiToken(name: string): Promise<ApiTokenCreateResponse>
+
+    /**
+     * Updates an API token name
+     */
+    updateApiToken(id: string, name: string): Promise<ApiToken>
+
+    /**
+     * Deletes an API token
+     */
+    deleteApiToken(id: string): Promise<void>
+
+    /**
      * Gets all available agent templates
      */
     getTemplates(): Promise<AgentTemplate[]>
+
+    /**
+     * Fetches sample events for the given triggers (e.g. GitHub push/PR events)
+     */
+    fetchSampleEvents(triggers: TriggerPayload[]): Promise<{ events: SerializedEvent[] }>
+
+    /**
+     * Triggers an automation with a specific event payload (e.g. a sample event)
+     */
+    triggerWithEvent(automationId: string, event: SerializedEvent): Promise<{ received: boolean; message: string }>
 
     /**
      * Manually triggers a scheduled automation trigger
@@ -1312,12 +1346,72 @@ export const BackendProvider: BackendService = {
             })
     },
 
+    getApiTokens: () => {
+        return axios
+            .get<ApiToken[]>(`${backendBaseUrl}${ApiRoutes.API_TOKENS.LIST}`, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error("Error getting API tokens:", error)
+                throw error
+            })
+    },
+
+    createApiToken: (name: string) => {
+        return axios
+            .post<ApiTokenCreateResponse>(`${backendBaseUrl}${ApiRoutes.API_TOKENS.LIST}`, { name }, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error("Error creating API token:", error)
+                throw error
+            })
+    },
+
+    updateApiToken: (id: string, name: string) => {
+        return axios
+            .patch<ApiToken>(`${backendBaseUrl}${ApiRoutes.API_TOKENS.BY_ID.build(id)}`, { name }, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error("Error updating API token:", error)
+                throw error
+            })
+    },
+
+    deleteApiToken: (id: string) => {
+        return axios
+            .delete<void>(`${backendBaseUrl}${ApiRoutes.API_TOKENS.BY_ID.build(id)}`, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error("Error deleting API token:", error)
+                throw error
+            })
+    },
+
     getTemplates: () => {
         return axios
             .get<AgentTemplate[]>(`${backendBaseUrl}${ApiRoutes.TEMPLATES}`, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
                 console.error("Error getting templates:", error)
+                throw error
+            })
+    },
+
+    fetchSampleEvents: (triggers: TriggerPayload[]) => {
+        return axios
+            .post<{ events: SerializedEvent[] }>(`${backendBaseUrl}${ApiRoutes.SDK.SAMPLE_EVENTS}`, { triggers }, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error("Error fetching sample events:", error)
+                throw error
+            })
+    },
+
+    triggerWithEvent: (automationId: string, event: SerializedEvent) => {
+        return axios
+            .post<{ received: boolean; message: string }>(`${backendBaseUrl}${ApiRoutes.SCHEDULE.TRIGGER_WITH_EVENT.build(automationId)}`, { event }, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error("Error triggering with event:", error)
                 throw error
             })
     },

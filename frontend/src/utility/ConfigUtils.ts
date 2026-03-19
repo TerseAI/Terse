@@ -19,6 +19,7 @@ import {
     SlackOutputConfig,
     TerseConfig,
     TimeTriggerConfig,
+    WorkOSEventType,
     WorkOSInputConfig,
     WorkOSOutputConfig
 } from "@/shared/Configs"
@@ -65,7 +66,7 @@ export function deserializeConfig(jsonConfig: any): ConfigInstance {
             return new LinearOutputConfig(integrationId, linearOutputConfig.teamId, linearOutputConfig.teamName, linearOutputConfig.projectId, linearOutputConfig.projectName)
         case ConfigType.GITHUB:
             const githubConfig = jsonConfig as GitHubConfig
-            return new GitHubConfig(integrationId, githubConfig.repositoryIds)
+            return new GitHubConfig(integrationId, githubConfig.repositoryIds, githubConfig.eventTypes)
         case ConfigType.JIRA:
             const jiraConfig = jsonConfig as JiraConfig
             return new JiraConfig(integrationId, jiraConfig.projectKey, jiraConfig.projectId)
@@ -102,7 +103,7 @@ export function deserializeConfig(jsonConfig: any): ConfigInstance {
             return new TerseConfig()
         case ConfigType.WORKOS_INPUT:
             const workosConfig = jsonConfig as WorkOSInputConfig
-            return new WorkOSInputConfig(integrationId, workosConfig.eventTypes || [])
+            return new WorkOSInputConfig(integrationId, (workosConfig.eventTypes || []) as WorkOSEventType[])
         case ConfigType.WORKOS_OUTPUT:
             return new WorkOSOutputConfig(integrationId)
         case ConfigType.ATTIO_OUTPUT:

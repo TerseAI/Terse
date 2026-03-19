@@ -1,7 +1,7 @@
 import { NotificationDestinationType, SentNotificationEventType, SentNotificationStatus } from "@prisma/client"
 import { Request, Response } from "express"
 
-import { evaluateAgent } from "../agent/JudgeAgent/JudgeAgent"
+import { MAX_IMPROVEMENTS_PER_AGENT, evaluateAgent } from "../agent/JudgeAgent/JudgeAgent"
 import { cloudScheduler, settings } from "../config/settings"
 import logger from "../logger"
 import { sendWeeklyReviewEmail } from "../notifications/channels/emailNotifications"
@@ -70,6 +70,7 @@ export async function reviewAllAgents(req: Request, res: Response) {
 
         let reviewedAgents = 0
         let skippedNoRuns = 0
+        let skippedTooManyImprovements = 0
         let improvementsCreated = 0
 
         for (const automation of automations) {
@@ -109,6 +110,22 @@ export async function reviewAllAgents(req: Request, res: Response) {
 
                 if (runCount === 0) {
                     skippedNoRuns += 1
+                    continue
+                }
+
+                const improvementCount = await db().agent_improvements.count({
+                    where: {
+                        automation_id: automation.id
+                    }
+                })
+
+                if (improvementCount >= MAX_IMPROVEMENTS_PER_AGENT) {
+                    skippedTooManyImprovements += 1
+                    logger.info("[ReviewAgents] Skipping automation with too many total improvements", {
+                        automationId: automation.id,
+                        improvementCount,
+                        maxImprovementsPerAgent: MAX_IMPROVEMENTS_PER_AGENT
+                    })
                     continue
                 }
 
@@ -230,6 +247,7 @@ export async function reviewAllAgents(req: Request, res: Response) {
                 scannedAgents: automations.length,
                 reviewedAgents,
                 skippedNoRuns,
+                skippedTooManyImprovements,
                 improvementsCreated,
                 emailsSent,
                 failures: failures.length

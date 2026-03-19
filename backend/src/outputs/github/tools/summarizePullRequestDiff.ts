@@ -8,7 +8,9 @@ import { buildUserMessage } from "../../../agent/userMessage"
 import { settings } from "../../../config/settings"
 import logger from "../../../logger"
 import { IntegrationType } from "../../../shared/Integrations"
+import type { ToolOutputByName } from "../../../shared/types"
 import { ToolName } from "../../../tools/ToolNames"
+import { toolOutput } from "../../../tools/toolOutput"
 import { Session } from "../../../types/session"
 import { createGitHubClient, getGitHubAccessToken, getPullRequestDiff, parseRepoFullName } from "../githubApiClient"
 
@@ -18,7 +20,7 @@ import { createGitHubClient, getGitHubAccessToken, getPullRequestDiff, parseRepo
  * launches a sub-agent with a compact model (gpt-4o-mini) that reads the diff
  * and provides a concise summary.
  */
-export const summarizeGitHubPullRequestDiffTool = tool({
+export const summarizeGitHubPullRequestDiffTool = tool<z.ZodObject<any>, SessionWithTracking<Session>, ToolOutputByName["summarizeGitHubPullRequestDiff"]>({
     name: ToolName.GITHUB_SUMMARIZE_PULL_REQUEST_DIFF,
     description: `Summarize the diff of a pull request from a GitHub repository using an intelligent sub-agent. Use this to:
 - Understand what changes were made in a specific PR without loading the full diff into context
@@ -268,10 +270,10 @@ You can optionally provide high-level context about what you're looking for in t
                 isReadOnly: true
             }
 
-            return {
+            return toolOutput("summarizeGitHubPullRequestDiff", {
                 ...response,
                 actions: [action]
-            }
+            })
         } catch (error: any) {
             const errorMessage = error instanceof Error ? error.message : String(error)
             logger.error("[GitHub KB] summarizeGitHubPullRequestDiff - Failed", {

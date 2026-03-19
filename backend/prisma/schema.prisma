@@ -34,6 +34,7 @@ model users {
   user_github_installation  user_github_installation[]
   github_app_tokens         github_app_tokens[]
   notification_destinations user_notification_destinations[]
+  api_tokens                api_tokens[]
   notification_settings     user_notification_settings?
   posthog_integrations      posthog_integrations[]
   launchdarkly_integrations launchdarkly_integrations[]
@@ -396,15 +397,16 @@ model attio_integrations {
 
 // Automation tables
 model automations {
-  id                   String   @id @default(cuid())
+  id                   String           @id @default(cuid())
   user_id              String
   organization_id      String
   name                 String
-  is_active            Boolean  @default(true)
-  improvements_enabled Boolean  @default(true)
-  require_approval     Boolean  @default(false)
-  created_at           DateTime @default(now())
-  updated_at           DateTime @updatedAt
+  is_active            Boolean          @default(true)
+  improvements_enabled Boolean          @default(true)
+  require_approval     Boolean          @default(false)
+  source               AutomationSource @default(WEB_UI)
+  created_at           DateTime         @default(now())
+  updated_at           DateTime         @updatedAt
 
   user                       users                             @relation(fields: [user_id], references: [id], onDelete: Cascade)
   prompt                     automation_prompts?
@@ -417,19 +419,22 @@ model automations {
   tool_approvals             automation_tool_approvals[]
   agent_reviews              agent_reviews[]
   agent_improvements         agent_improvements[]
+  sent_notifications         sent_notifications[]
 
   @@index([user_id])
   @@index([organization_id])
   @@index([is_active])
+  @@index([name, organization_id, source])
 }
 
 // Separate table for prompts (future-proof for versioning, templates, etc.)
 model automation_prompts {
-  id            String   @id @default(cuid())
-  automation_id String   @unique
-  content       String   @db.Text
-  created_at    DateTime @default(now())
-  updated_at    DateTime @updatedAt
+  id                  String   @id @default(cuid())
+  automation_id       String   @unique
+  content             String   @db.Text
+  source_code_gcs_key String?
+  created_at          DateTime @default(now())
+  updated_at          DateTime @updatedAt
 
   automation automations @relation(fields: [automation_id], references: [id], onDelete: Cascade)
 }
@@ -715,13 +720,13 @@ model automation_github_configs {
   automation_output_id String? @unique // FK to automation_outputs (unique constraint)
 
   repository_ids Int[]
+  event_types    String[] @default([])
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
   automation_input  automation_inputs?  @relation(fields: [automation_input_id], references: [id], onDelete: Cascade)
   automation_output automation_outputs? @relation(fields: [automation_output_id], references: [id], onDelete: Cascade)
-  // Future: could add branch, path filters for more granular control
 
   @@index([repository_ids])
 }
@@ -871,6 +876,11 @@ enum OutputConfigType {
   WORKOS
 }
 
+enum AutomationSource {
+  WEB_UI
+  SDK
+}
+
 enum KnowledgeBaseConfigType {
   POSTHOG
   GITHUB
@@ -939,10 +949,12 @@ model run_history_records {
   created_at            DateTime                 @default(now())
   updated_at            DateTime                 @updatedAt
 
-  automation       automations              @relation(fields: [automation_id], references: [id], onDelete: Cascade)
-  actions          run_history_actions[]
-  pending_approval pending_approvals?
-  raw_events       run_history_raw_events[]
+  automation              automations               @relation(fields: [automation_id], references: [id], onDelete: Cascade)
+  actions                 run_history_actions[]
+  pending_approval        pending_approvals?
+  raw_events              run_history_raw_events[]
+  approval_slack_messages approval_slack_messages[]
+  sent_notifications      sent_notifications[]
 
   @@index([automation_id])
   @@index([status])
@@ -1080,6 +1092,24 @@ model user_notification_destinations {
   @@index([slack_user_id])
 }
 
+model api_tokens {
+  id              String    @id @default(cuid())
+  user_id         String
+  organization_id String
+  name            String
+  token_hash      String    @unique
+  token_prefix    String
+  last_used_at    DateTime?
+  created_at      DateTime  @default(now())
+  updated_at      DateTime  @updatedAt
+
+  user users @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([organization_id])
+  @@index([token_hash])
+}
+
 model user_notification_settings {
   id                          String                 @id @default(cuid())
   user_id                     String                 @unique
@@ -1109,6 +1139,8 @@ model approval_slack_messages {
   rejection_reason          String? // Reason provided when rejecting the approval
   created_at                DateTime @default(now())
   updated_at                DateTime @updatedAt
+
+  run_history_record run_history_records @relation(fields: [run_id], references: [id], onDelete: Cascade)
 
   @@unique([run_id, step_id])
   @@index([run_id])
@@ -1148,6 +1180,9 @@ model sent_notifications {
   agent_name        String?
   notification_url  String?
   sent_at           DateTime                    @default(now())
+
+  automation         automations?         @relation(fields: [automation_id], references: [id], onDelete: Cascade)
+  run_history_record run_history_records? @relation(fields: [run_id], references: [id], onDelete: Cascade)
 
   @@index([organization_id, sent_at])
   @@index([automation_id])

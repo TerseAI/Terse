@@ -1,8 +1,14 @@
 import { WorkOS } from "@workos-inc/node"
+import type { EventName } from "@workos-inc/node"
 
 import { settings } from "../config/settings"
 import { db } from "../prismaClient"
+import { WorkOSEventType } from "../shared/Configs"
 import { Role, User } from "../shared/types"
+
+// Compile-time check: every WorkOSEventType must be a valid @workos-inc/node EventName
+const _assertValidEventNames: readonly EventName[] = Object.values(WorkOSEventType)
+void _assertValidEventNames
 
 /**
  * WorkOS client instance - used for authentication, user management, and organization management.

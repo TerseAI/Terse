@@ -8,8 +8,10 @@ import logger from "../../../logger"
 import { db } from "../../../prismaClient"
 import { SecretField, getSecret } from "../../../services/SecretService"
 import { IntegrationType } from "../../../shared/Integrations"
+import type { ToolOutputByName } from "../../../shared/types"
 import { TERSE_AGENT_MESSAGE_EVENT_TYPE, TerseAgentMessageMetadata } from "../../../shared/types"
 import { ToolName } from "../../../tools/ToolNames"
+import { toolOutput } from "../../../tools/toolOutput"
 import { createNeedsApprovalFunction } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
 import { isValidEpochTimestamp } from "../../../utility/strings"
@@ -18,7 +20,7 @@ import { isValidEpochTimestamp } from "../../../utility/strings"
  * Tool for sending messages to Slack channels or DMs.
  * Messages are sent as the bot or as the connected user depending on workspace token type.
  */
-export const slackSendMessageTool = tool({
+export const slackSendMessageTool = tool<z.ZodObject<any>, SessionWithTracking<Session>, ToolOutputByName["slack_send_message"]>({
     name: ToolName.SLACK_SEND_MESSAGE,
     description: `Send message to a Slack channel or DM. Supports plain text (mrkdwn) or Block Kit (JSON blocks). Use a channel ID from the configured output destinations (channels and DM channel IDs for configured users).`,
     parameters: z.object({
@@ -187,7 +189,7 @@ export const slackSendMessageTool = tool({
                 blocksCount: blocks?.length
             })
 
-            return {
+            return toolOutput("slack_send_message", {
                 success: true,
                 message_ts: result.ts,
                 channel: channelName,
@@ -195,7 +197,7 @@ export const slackSendMessageTool = tool({
                 summary: `${messageType} message sent to ${channelName}: "${messagePreview}"`,
                 has_blocks: !!blocks,
                 actions: [action]
-            }
+            })
         } catch (error: any) {
             logger.error(`[Slack Output] Failed to send message`, {
                 error,
