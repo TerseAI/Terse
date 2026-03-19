@@ -154,12 +154,7 @@ function Home() {
             </div>
 
             {/* ── Chat Input / Full Chat ────────────────────────────── */}
-            <motion.div
-                className="flex flex-col mx-auto max-w-3xl w-full px-6 pb-3"
-                initial={{}}
-                animate={hasStartedChat ? { flexGrow: 1, minHeight: 0 } : {}}
-                transition={{ duration: ANIMATION_DURATION, ease: ANIMATION_EASE }}
-            >
+            <div className={cn("flex flex-col mx-auto max-w-3xl w-full px-6 pb-3 min-h-0", hasStartedChat && "flex-1")}>
                 {hasStartedChat && (
                     <div className="flex justify-end px-2 pt-2 pb-3">
                         <button onClick={handleClearChat} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
@@ -182,7 +177,7 @@ function Home() {
                         placeholders={hasStartedChat ? [] : HOME_PLACEHOLDERS}
                     />
                 </div>
-            </motion.div>
+            </div>
 
             {/* ── Dashboard (stats + runs) — collapses when chatting ── */}
             <div
@@ -236,7 +231,7 @@ function Home() {
                                             )}
                                         </div>
 
-                                        <div className="rounded-2xl border border-border/60 bg-card/30 backdrop-blur-sm overflow-hidden divide-y divide-border/40">
+                                        <div className="rounded-2xl border border-border/60 bg-card overflow-hidden divide-y divide-border/40">
                                             {recentRuns.map(run => (
                                                 <RunRow key={run.id} run={run} onOpenChat={handleOpenChat} />
                                             ))}
@@ -287,7 +282,7 @@ function formatNumber(num: number): string {
 function StatPill({ label, value, change }: { label: string; value: string; change: string }) {
     const trend = getTrend(change)
     return (
-        <div className="group relative flex flex-col gap-1.5 rounded-2xl border border-border/60 bg-card/50 backdrop-blur-sm px-5 py-4 transition-all duration-300 hover:border-border hover:bg-card hover:shadow-sm">
+        <div className="group relative flex flex-col gap-1.5 rounded-2xl border border-border/60 bg-card px-5 py-4 transition-all duration-300 hover:border-border hover:shadow-sm">
             <span className="text-xs font-medium tracking-wide text-muted-foreground uppercase">{label}</span>
             <div className="flex items-baseline gap-2.5">
                 <span className="text-2xl font-semibold tracking-tight text-foreground">{value}</span>

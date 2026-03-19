@@ -82,9 +82,9 @@ function TurnView({
                 {filter_result && <FilterResultView filterResult={filter_result} />}
 
                 {isThinking && (
-                    <div className="text-[#F1F1F1] text-md py-2 rounded-8xl">
+                    <div className="text-foreground text-md py-2 rounded-8xl">
                         <div className="prose prose-invert">
-                            <div className="flex items-center gap-2 text-gray-400 italic">
+                            <div className="flex items-center gap-2 text-muted-foreground italic">
                                 <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                     <path
@@ -100,7 +100,7 @@ function TurnView({
                 )}
 
                 {(text || isFailure) && (
-                    <div className="text-[#F1F1F1] text-md py-2 rounded-8xl select-text">
+                    <div className="text-foreground text-md py-2 rounded-8xl select-text">
                         <div className={`prose prose-invert ${isUser ? "bg-stone-900/80 rounded-lg p-3" : ""}`}>
                             {isFailure && errorCode ? (
                                 <RunErrorView error={text} errorCode={errorCode} />
@@ -155,7 +155,7 @@ function CopyButton({ text }: { text: string }) {
     }
 
     return (
-        <button onClick={handleCopy} className="rounded text-gray-500 transition-colors duration-200 hover:cursor-pointer hover:opacity-80 active:scale-95" aria-label="Copy to clipboard">
+        <button onClick={handleCopy} className="rounded text-muted-foreground transition-colors duration-200 hover:cursor-pointer hover:opacity-80 active:scale-95" aria-label="Copy to clipboard">
             {copied ? <CheckIcon className="w-4 h-4 text-success animate-pop ring-1 ring-success/20 ring-opacity-50 rounded" /> : <DocumentDuplicateIcon className="w-4 h-4" />}
         </button>
     )
@@ -177,10 +177,10 @@ function FeedbackButtons({}: {}) {
     if (feedback === FeedbackState.None) {
         return (
             <>
-                <button className="rounded text-gray-500 transition-colors duration-200 hover:cursor-pointer hover:opacity-80 active:scale-95" onClick={() => handleFeedback(FeedbackState.Good)}>
+                <button className="rounded text-muted-foreground transition-colors duration-200 hover:cursor-pointer hover:opacity-80 active:scale-95" onClick={() => handleFeedback(FeedbackState.Good)}>
                     <HandThumbUpIcon className="h-4 w-4" />
                 </button>
-                <button className="rounded text-gray-500 transition-colors duration-200 hover:cursor-pointer hover:opacity-80 active:scale-95" onClick={() => handleFeedback(FeedbackState.Bad)}>
+                <button className="rounded text-muted-foreground transition-colors duration-200 hover:cursor-pointer hover:opacity-80 active:scale-95" onClick={() => handleFeedback(FeedbackState.Bad)}>
                     <HandThumbDownIcon className="h-4 w-4" />
                 </button>
             </>
@@ -190,7 +190,7 @@ function FeedbackButtons({}: {}) {
     if (feedback === FeedbackState.Good) {
         return (
             <div className="flex gap-2">
-                <button className="rounded text-gray-500 transition-colors animate-pop">
+                <button className="rounded text-muted-foreground transition-colors animate-pop">
                     <HandThumbUpFilledIcon className="h-4 w-4" />
                 </button>
             </div>
@@ -199,7 +199,7 @@ function FeedbackButtons({}: {}) {
 
     return (
         <div className="flex gap-2">
-            <button className="rounded text-gray-500 transition-colors animate-pop">
+            <button className="rounded text-muted-foreground transition-colors animate-pop">
                 <HandThumbDownFilledIcon className="h-4 w-4" />
             </button>
         </div>

@@ -216,7 +216,7 @@ export default function ActivityPage() {
             </div>
 
             {/* ── Content ─────────────────────────────────────────── */}
-            <div className="rounded-2xl border border-border/60 bg-card/30 backdrop-blur-sm overflow-hidden">
+            <div className="rounded-2xl border border-border/60 bg-card overflow-hidden">
                 {isLoading ? (
                     <LoadingSkeleton />
                 ) : runs.length === 0 ? (
