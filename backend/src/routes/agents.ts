@@ -735,17 +735,23 @@ export async function deleteAgent(req: Request, res: Response) {
         // Tear down agent triggers (e.g., delete webhooks for Figma)
         await tearDownAgentTriggers(existingAgent)
 
-        // Delete agent (cascade will delete related records) - use organization_id for defense in depth
-        const deleteResult = await prisma.automations.deleteMany({
-            where: {
-                id: agentId,
-                organization_id: organizationId
+        // Clean up orphaned records and delete agent in a single transaction
+        await prisma.$transaction(async tx => {
+            // Delete chat_raw_events for the builder chat session (no FK exists, chat_session_id is polymorphic)
+            await tx.chat_raw_events.deleteMany({
+                where: { chat_session_id: agentId }
+            })
+
+            const deleteResult = await tx.automations.deleteMany({
+                where: {
+                    id: agentId,
+                    organization_id: organizationId
+                }
+            })
+            if (deleteResult.count !== 1) {
+                throw new Error("Agent not found during delete")
             }
         })
-        if (deleteResult.count !== 1) {
-            res.status(404).json({ error: "Agent not found" })
-            return
-        }
 
         // Invalidate recent agents cache
         emitCacheInvalidationWithKey(organizationId, "recentAgents")
