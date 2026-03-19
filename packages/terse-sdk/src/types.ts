@@ -192,6 +192,11 @@ export interface WorkOSEventInvitation {
     acceptedAt?: string
 }
 
+export interface WorkOSEventOrganization {
+    id: string
+    name: string
+}
+
 // ---------------------------------------------------------------------------
 // WorkOS event classes
 // ---------------------------------------------------------------------------
@@ -275,6 +280,22 @@ export class WorkOSInvitationInputEvent extends WorkOSInputEvent {
     }
 }
 
+export class WorkOSOrganizationInputEvent extends WorkOSInputEvent {
+    readonly organization: WorkOSEventOrganization
+
+    constructor(opts: {
+        eventType: WorkOSEventType | string
+        eventId: string
+        createdAt: string
+        organization: WorkOSEventOrganization
+        formattedContent: string
+        debugLog: string
+    }) {
+        super(opts)
+        this.organization = opts.organization
+    }
+}
+
 // ---------------------------------------------------------------------------
 // WorkOS type guards
 // ---------------------------------------------------------------------------
@@ -293,6 +314,10 @@ export function isWorkOSMembershipEvent(event: InputEvent): event is WorkOSMembe
 
 export function isWorkOSInvitationEvent(event: InputEvent): event is WorkOSInvitationInputEvent {
     return event instanceof WorkOSInvitationInputEvent
+}
+
+export function isWorkOSOrganizationEvent(event: InputEvent): event is WorkOSOrganizationInputEvent {
+    return event instanceof WorkOSOrganizationInputEvent
 }
 
 // ---------------------------------------------------------------------------
@@ -360,6 +385,7 @@ export function deserializeInputEvent(se: SerializedEvent): InputEvent {
             user?: WorkOSEventUser
             membership?: WorkOSEventMembership
             invitation?: WorkOSEventInvitation
+            organization?: WorkOSEventOrganization
         }
 
         const base = {
@@ -378,6 +404,9 @@ export function deserializeInputEvent(se: SerializedEvent): InputEvent {
         }
         if (meta.invitation) {
             return new WorkOSInvitationInputEvent({ ...base, invitation: meta.invitation })
+        }
+        if (meta.organization) {
+            return new WorkOSOrganizationInputEvent({ ...base, organization: meta.organization })
         }
         return new WorkOSInputEvent(base)
     }

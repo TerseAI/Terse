@@ -393,7 +393,7 @@ export class WorkOSEvent extends InputEvent implements Identifiable {
                 role: d.role,
                 status: d.status
             }
-        } else if (eventType === "invitation.accepted") {
+        } else if (eventType === "invitation.accepted" || eventType === "invitation.created") {
             meta.invitation = {
                 id: d.id,
                 email: d.email,
@@ -401,6 +401,11 @@ export class WorkOSEvent extends InputEvent implements Identifiable {
                 inviterEmail: d.inviter_email,
                 state: d.state,
                 acceptedAt: d.accepted_at
+            }
+        } else if (eventType === "organization.created") {
+            meta.organization = {
+                id: d.id,
+                name: d.name
             }
         }
 
