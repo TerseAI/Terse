@@ -277,7 +277,10 @@ interface WorkOSEventsResponse {
 }
 
 async function fetchWorkOSEvents(apiKey: string, eventTypes: string[], limit: number): Promise<WorkOSWebhookPayload[]> {
-    const params = new URLSearchParams({ limit: String(limit) })
+    const params = new URLSearchParams({
+        limit: String(limit),
+        order: "desc"
+    })
     for (const eventType of eventTypes) {
         params.append("events", eventType)
     }
@@ -393,7 +396,7 @@ export class WorkOSEvent extends InputEvent implements Identifiable {
                 role: d.role,
                 status: d.status
             }
-        } else if (eventType === "invitation.accepted" || eventType === "invitation.created") {
+        } else if (eventType === "invitation.accepted" || eventType === "invitation.created" || eventType === "invitation.resent" || eventType === "invitation.revoked") {
             meta.invitation = {
                 id: d.id,
                 email: d.email,
