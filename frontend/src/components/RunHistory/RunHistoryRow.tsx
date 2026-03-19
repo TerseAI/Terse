@@ -3,10 +3,10 @@ import { useNavigate } from "react-router-dom"
 import { ExternalLink, MessageSquare, Zap } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
 import { IconForIntegration } from "@/pages/Agents/components/Integration"
 import { FrontendRoutes } from "@/shared/FrontendRoutes"
 import { RunHistoryRecordWithAgent } from "@/shared/RunHistoryTypes"
-import { cn } from "@/lib/utils"
 import { formatTimestamp } from "@/utility/timeUtils"
 
 import RunHistoryStatusBadge from "./RunHistoryStatusBadge"
@@ -66,11 +66,11 @@ export function RunHistoryRow({ run, onOpenChat, className }: RunHistoryRowProps
             {/* Write actions count */}
             {writeActions.length > 0 && (
                 <div className="hidden md:flex items-center gap-1 text-xs text-muted-foreground">
-                    {run.isManuallyTriggered && (
-                        <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-accent-tertiary shrink-0">Manual</span>
-                    )}
+                    {run.isManuallyTriggered && <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-accent-tertiary shrink-0">Manual</span>}
                     <Zap className="w-3 h-3" />
-                    <span>{writeActions.length} action{writeActions.length !== 1 ? "s" : ""}</span>
+                    <span>
+                        {writeActions.length} action{writeActions.length !== 1 ? "s" : ""}
+                    </span>
                 </div>
             )}
 

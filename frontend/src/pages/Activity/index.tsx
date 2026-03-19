@@ -17,7 +17,6 @@ import { useRunHistoryChatDrawer } from "../../services/RunHistoryChatDrawerCont
 // Sub-components
 // ---------------------------------------------------------------------------
 
-
 function LoadingSkeleton() {
     return (
         <div className="divide-y divide-border/40">

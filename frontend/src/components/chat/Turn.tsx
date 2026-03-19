@@ -177,10 +177,16 @@ function FeedbackButtons({}: {}) {
     if (feedback === FeedbackState.None) {
         return (
             <>
-                <button className="rounded text-muted-foreground transition-colors duration-200 hover:cursor-pointer hover:opacity-80 active:scale-95" onClick={() => handleFeedback(FeedbackState.Good)}>
+                <button
+                    className="rounded text-muted-foreground transition-colors duration-200 hover:cursor-pointer hover:opacity-80 active:scale-95"
+                    onClick={() => handleFeedback(FeedbackState.Good)}
+                >
                     <HandThumbUpIcon className="h-4 w-4" />
                 </button>
-                <button className="rounded text-muted-foreground transition-colors duration-200 hover:cursor-pointer hover:opacity-80 active:scale-95" onClick={() => handleFeedback(FeedbackState.Bad)}>
+                <button
+                    className="rounded text-muted-foreground transition-colors duration-200 hover:cursor-pointer hover:opacity-80 active:scale-95"
+                    onClick={() => handleFeedback(FeedbackState.Bad)}
+                >
                     <HandThumbDownIcon className="h-4 w-4" />
                 </button>
             </>
