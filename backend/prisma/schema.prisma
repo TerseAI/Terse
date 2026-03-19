@@ -417,6 +417,7 @@ model automations {
   tool_approvals             automation_tool_approvals[]
   agent_reviews              agent_reviews[]
   agent_improvements         agent_improvements[]
+  sent_notifications         sent_notifications[]
 
   @@index([user_id])
   @@index([organization_id])
@@ -939,10 +940,12 @@ model run_history_records {
   created_at            DateTime                 @default(now())
   updated_at            DateTime                 @updatedAt
 
-  automation       automations              @relation(fields: [automation_id], references: [id], onDelete: Cascade)
-  actions          run_history_actions[]
-  pending_approval pending_approvals?
-  raw_events       run_history_raw_events[]
+  automation              automations               @relation(fields: [automation_id], references: [id], onDelete: Cascade)
+  actions                 run_history_actions[]
+  pending_approval        pending_approvals?
+  raw_events              run_history_raw_events[]
+  approval_slack_messages approval_slack_messages[]
+  sent_notifications      sent_notifications[]
 
   @@index([automation_id])
   @@index([status])
@@ -1110,6 +1113,8 @@ model approval_slack_messages {
   created_at                DateTime @default(now())
   updated_at                DateTime @updatedAt
 
+  run_history_record run_history_records @relation(fields: [run_id], references: [id], onDelete: Cascade)
+
   @@unique([run_id, step_id])
   @@index([run_id])
   @@index([step_id])
@@ -1148,6 +1153,9 @@ model sent_notifications {
   agent_name        String?
   notification_url  String?
   sent_at           DateTime                    @default(now())
+
+  automation         automations?         @relation(fields: [automation_id], references: [id], onDelete: Cascade)
+  run_history_record run_history_records? @relation(fields: [run_id], references: [id], onDelete: Cascade)
 
   @@index([organization_id, sent_at])
   @@index([automation_id])
