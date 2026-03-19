@@ -1,13 +1,14 @@
 import { Tool } from "@openai/agents"
 import { OutputConfigType } from "@prisma/client"
+
 import { getSlackAccessTokenOrThrow, validateSlackChannelsExist, validateSlackUserIds } from "../../integrations/SlackIntegration"
 import { SlackOutputConfig } from "../../shared/Configs"
 import { IntegrationType } from "../../shared/Integrations"
 import { PrismaTransaction } from "../../types/prisma"
 import { SlackOutputConfigSchema, stripConfigForValidation } from "../../utility/configSchemas"
 import { Output, ToolboxEntry } from "../abstract/Output"
-import { checkConversationToolAccess } from "./slackAclCheckers"
 
+import { checkConversationToolAccess } from "./slackAclCheckers"
 import { slackListChannelsTool } from "./tools/listChannels"
 import { slackListUsersTool } from "./tools/listUsers"
 import { slackReadConversationTool } from "./tools/readConversation"

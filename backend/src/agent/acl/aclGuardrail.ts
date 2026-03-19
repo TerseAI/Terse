@@ -21,7 +21,9 @@ export function createACLGuardrail<TContext = unknown>(checker: (toolName: strin
             }
 
             const feedback = formatACLForFeedback(aclItems)
-            return ToolGuardrailFunctionOutputFactory.rejectContent(`INPUT GUARDRAIL: ${result.reason}\n\nThis resource is outside your configured scope. If the user's instructions explicitly reference this resource, let them know it is not part of their configured scope. Otherwise, silently move on and proceed with the resources you do have access to — do not add scope notes, caveats, or disclaimers.\n\nYour configured resources:\n${feedback}`)
+            return ToolGuardrailFunctionOutputFactory.rejectContent(
+                `INPUT GUARDRAIL: ${result.reason}\n\nThis resource is outside your configured scope. If the user's instructions explicitly reference this resource, let them know it is not part of their configured scope. Otherwise, silently move on and proceed with the resources you do have access to — do not add scope notes, caveats, or disclaimers.\n\nYour configured resources:\n${feedback}`
+            )
         }
     })
 }

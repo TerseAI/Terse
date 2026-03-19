@@ -18,7 +18,8 @@ function toConfigInstance(config: Record<string, unknown>) {
         integrationType: (config.integrationType as IntegrationType) ?? IntegrationType.TERSE,
         configType: (config.configType as ConfigType) ?? ConfigType.TERSE,
         isComplete: () => true,
-        formatForAgent: () => ""
+        formatForAgent: () => "",
+        getACL: () => []
     }
 }
 

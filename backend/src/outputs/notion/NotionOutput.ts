@@ -8,8 +8,8 @@ import { ToolName } from "../../tools/ToolNames"
 import { PrismaTransaction } from "../../types/prisma"
 import { NotionConfigSchema, stripConfigForValidation } from "../../utility/configSchemas"
 import { Output, ToolboxEntry } from "../abstract/Output"
-import { checkDatabaseAccess, checkDatabaseRowAccess, checkPageCreateOrUpdateAccess, checkPageScopedAccess } from "./notionAclCheckers"
 
+import { checkDatabaseAccess, checkDatabaseRowAccess, checkPageCreateOrUpdateAccess, checkPageScopedAccess } from "./notionAclCheckers"
 import {
     fetchRelatedEventsTool,
     notionCreateOrUpdateDatabaseRowTool,
