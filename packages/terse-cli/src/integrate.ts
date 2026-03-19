@@ -1,7 +1,6 @@
 import { spawn } from "node:child_process"
 import chalk from "chalk"
-
-const FRONTEND_URL = "http://localhost:5173"
+import { FRONTEND_URL } from "./config.js"
 const INTEGRATIONS_URL = `${FRONTEND_URL}/app/integrations`
 
 export async function integrate(): Promise<void> {

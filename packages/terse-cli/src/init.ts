@@ -7,14 +7,12 @@ import ora from "ora"
 import chalk from "chalk"
 import { input } from "@inquirer/prompts"
 import { generate } from "./generate.js"
+import { FRONTEND_URL, BACKEND_URL } from "./config.js"
 
 const execAsync = promisify(exec)
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
-
-const FRONTEND_URL = process.env.TERSE_FRONTEND_URL || "http://localhost:5173"
-const BACKEND_URL = process.env.TERSE_BACKEND_URL || "http://localhost:3001"
 
 export async function init(projectName?: string): Promise<void> {
     const targetDir = projectName ? path.resolve(process.cwd(), projectName) : process.cwd()
