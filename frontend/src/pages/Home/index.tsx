@@ -2,23 +2,23 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { useNavigate } from "react-router-dom"
 
 import { AnimatePresence, motion } from "framer-motion"
-import { ArrowRight, ArrowUpRight, ExternalLink, MessageSquare, RotateCcw, Zap } from "lucide-react"
+import { ArrowRight, ArrowUpRight, RotateCcw } from "lucide-react"
 
 import { convertRunHistoryEventsToTurns } from "@/components/RunHistory/RunHistoryChatDrawer/runHistoryEventsToTurns"
-import RunHistoryStatusBadge from "@/components/RunHistory/RunHistoryStatusBadge"
+import { RunHistoryRow } from "@/components/RunHistory/RunHistoryRow"
 import { Chat, ChatHandle } from "@/components/chat/Chat"
 import { ChatEventPayload } from "@/components/chat/hooks/useCompletionSocket"
 import { Button } from "@/components/ui/button"
 import { useAgents } from "@/hooks/api/useAgents"
 import { useStats } from "@/hooks/api/useStats"
 import { cn } from "@/lib/utils"
-import { IconForIntegration } from "@/pages/Agents/components/Integration"
 import { FrontendRoutes } from "@/shared/FrontendRoutes"
 import { ModelRequest, SendModelRequest } from "@/shared/ModelEvents"
 import { RunHistoryRecordWithAgent } from "@/shared/RunHistoryTypes"
 import { cancelBuilderChatSession, sendBuilderMessage, subscribeToBuilderChat } from "@/socket"
-import { formatTimestamp } from "@/utility/timeUtils"
+import { formatNumber, getTrend } from "@/utility/timeUtils"
 
+import { Skeleton } from "@/components/ui/skeleton"
 import { useBuilderChatHistory } from "../../hooks/api/useBuilderChatHistory"
 import { useBuilderSession } from "../../hooks/useBuilderSession"
 import { useRunHistoryChatDrawer } from "../../services/RunHistoryChatDrawerContext"
@@ -99,9 +99,39 @@ function Home() {
         setHasStartedChat(false)
     }
 
-    // Show nothing (empty container) while initial data is loading
+    // Show skeleton while initial data is loading
     if (isInitialLoading) {
-        return <div className="flex flex-col h-full w-full" />
+        return (
+            <div className="flex flex-col h-full w-full" aria-busy="true">
+                <div className="mx-auto max-w-3xl w-full px-6 mt-8 mb-4">
+                    <Skeleton className="h-8 w-64 mx-auto mb-2" />
+                    <Skeleton className="h-4 w-80 mx-auto" />
+                </div>
+                <div className="mx-auto max-w-3xl w-full px-6 pb-3">
+                    <Skeleton className="h-16 w-full rounded-2xl" />
+                </div>
+                <div className="mx-auto max-w-4xl w-full px-6 pb-8 space-y-6 mt-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <Skeleton className="h-20 rounded-2xl" />
+                        <Skeleton className="h-20 rounded-2xl" />
+                        <Skeleton className="h-20 rounded-2xl" />
+                    </div>
+                    <div className="rounded-2xl border border-border/60 overflow-hidden divide-y divide-border/40">
+                        {Array.from({ length: 4 }).map((_, i) => (
+                            <div key={i} className="flex items-center gap-4 px-4 py-3">
+                                <Skeleton className="w-8 h-8 rounded-lg flex-shrink-0" />
+                                <div className="flex-1 min-w-0 space-y-1.5">
+                                    <Skeleton className="h-4 w-3/4" />
+                                    <Skeleton className="h-3 w-1/2" />
+                                </div>
+                                <Skeleton className="h-5 w-16 rounded-full hidden sm:block" />
+                                <Skeleton className="h-3 w-12" />
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </div>
+        )
     }
 
     // Show empty state if user has no agents
@@ -157,8 +187,8 @@ function Home() {
             <div className={cn("flex flex-col mx-auto max-w-3xl w-full px-6 pb-3 min-h-0", hasStartedChat && "flex-1")}>
                 {hasStartedChat && (
                     <div className="flex justify-end px-2 pt-2 pb-3">
-                        <button onClick={handleClearChat} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
-                            <RotateCcw className="h-3 w-3" />
+                        <button onClick={handleClearChat} aria-label="Reset chat" className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
+                            <RotateCcw className="h-3 w-3" aria-hidden="true" />
                             Reset chat
                         </button>
                     </div>
@@ -233,7 +263,7 @@ function Home() {
 
                                         <div className="rounded-2xl border border-border/60 bg-card overflow-hidden divide-y divide-border/40">
                                             {recentRuns.map(run => (
-                                                <RunRow key={run.id} run={run} onOpenChat={handleOpenChat} />
+                                                <RunHistoryRow key={run.id} run={run} onOpenChat={handleOpenChat} className="rounded-xl" />
                                             ))}
                                         </div>
                                     </div>
@@ -262,20 +292,6 @@ const HOME_PLACEHOLDERS = [
 ]
 
 // ---------------------------------------------------------------------------
-// Stat Helpers
-// ---------------------------------------------------------------------------
-
-function getTrend(change: string): "up" | "down" {
-    return change.startsWith("+") || (!change.startsWith("-") && change !== "0%") ? "up" : "down"
-}
-
-function formatNumber(num: number): string {
-    if (num >= 1_000_000) return `${(num / 1_000_000).toFixed(1)}M`
-    if (num >= 1_000) return `${(num / 1_000).toFixed(1)}K`
-    return num.toLocaleString()
-}
-
-// ---------------------------------------------------------------------------
 // Sub-components
 // ---------------------------------------------------------------------------
 
@@ -292,73 +308,4 @@ function StatPill({ label, value, change }: { label: string; value: string; chan
     )
 }
 
-function RunRow({ run, onOpenChat }: { run: RunHistoryRecordWithAgent; onOpenChat: (run: RunHistoryRecordWithAgent) => void }) {
-    const navigate = useNavigate()
-
-    const title = run.trigger.title || run.trigger.source
-    const writeActions = (run.actions ?? []).filter(a => a.type !== "read")
-
-    return (
-        <div className="group flex items-center gap-4 px-4 py-3 rounded-xl transition-colors duration-150 hover:bg-muted/40">
-            {/* Integration icon */}
-            <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-muted/60 flex items-center justify-center text-muted-foreground">
-                <IconForIntegration integration={run.trigger.integration} />
-            </div>
-
-            {/* Main content */}
-            <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-foreground truncate">{title}</span>
-                    {run.trigger.url && (
-                        <a
-                            href={run.trigger.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            onClick={e => e.stopPropagation()}
-                            className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground"
-                        >
-                            <ExternalLink className="w-3 h-3" />
-                        </a>
-                    )}
-                </div>
-                <div className="flex items-center gap-1.5 mt-0.5">
-                    <button
-                        onClick={() => navigate(FrontendRoutes.AGENTS.DETAIL(run.agentId))}
-                        className="text-xs text-muted-foreground hover:text-foreground transition-colors truncate max-w-[120px]"
-                        title={run.agentName}
-                    >
-                        {run.agentName}
-                    </button>
-                    {run.trigger.subheader && (
-                        <>
-                            <span className="text-muted-foreground/40">·</span>
-                            <span className="text-xs text-muted-foreground truncate">{run.trigger.subheader}</span>
-                        </>
-                    )}
-                </div>
-            </div>
-
-            {/* Write actions count */}
-            {writeActions.length > 0 && (
-                <div className="hidden sm:flex items-center gap-1 text-xs text-muted-foreground">
-                    <Zap className="w-3 h-3" />
-                    <span>
-                        {writeActions.length} action{writeActions.length !== 1 ? "s" : ""}
-                    </span>
-                </div>
-            )}
-
-            {/* Status */}
-            <RunHistoryStatusBadge status={run.status} className="hidden sm:flex" />
-
-            {/* Timestamp */}
-            <span className="text-xs text-muted-foreground whitespace-nowrap w-16 text-right">{formatTimestamp(run.timestamp)}</span>
-
-            {/* Chat button */}
-            <Button variant="ghost" size="icon-sm" onClick={() => onOpenChat(run)} className="opacity-0 group-hover:opacity-100 transition-opacity" title="View run details">
-                <MessageSquare className="w-3.5 h-3.5" />
-            </Button>
-        </div>
-    )
-}
 export default Home

@@ -13,6 +13,7 @@ import { useStats } from "@/hooks/api/useStats"
 import { cn } from "@/lib/utils"
 import { FrontendRoutes } from "@/shared/FrontendRoutes"
 import type { AgentActivityItem, CountByString, StatsInterval } from "@/shared/types"
+import { formatNumber, getTrend } from "@/utility/timeUtils"
 
 // ---------------------------------------------------------------------------
 // Palette
@@ -24,11 +25,11 @@ const CHART_COLORS = [
     "var(--chart-3)",
     "var(--chart-4)",
     "var(--chart-5)",
-    "hsl(210 60% 55%)",
-    "hsl(280 60% 55%)",
-    "hsl(30 80% 55%)",
-    "hsl(160 50% 45%)",
-    "hsl(350 60% 55%)"
+    "var(--chart-6)",
+    "var(--chart-7)",
+    "var(--chart-8)",
+    "var(--chart-9)",
+    "var(--chart-10)"
 ]
 
 const STATS_INTERVAL_OPTIONS: Array<{ value: StatsInterval; label: string; longLabel: string }> = [
@@ -43,16 +44,6 @@ const STATS_INTERVAL_OPTIONS: Array<{ value: StatsInterval; label: string; longL
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-function getTrend(change: string): "up" | "down" {
-    return change.startsWith("+") || (!change.startsWith("-") && change !== "0%") ? "up" : "down"
-}
-
-function formatNumber(num: number): string {
-    if (num >= 1_000_000) return `${(num / 1_000_000).toFixed(1)}M`
-    if (num >= 1_000) return `${(num / 1_000).toFixed(1)}K`
-    return num.toLocaleString()
-}
 
 function formatTimezone(tz: string): string {
     const dt = DateTime.now().setZone(tz)

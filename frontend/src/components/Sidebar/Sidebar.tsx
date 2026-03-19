@@ -140,8 +140,9 @@ function SettingsNavigation() {
                         <Link to={item.url} className="relative">
                             {item.title === "Notifications" && pendingCount > 0 ? (
                                 <>
-                                    <item.icon className={item.iconColor} />
-                                    <span className="absolute top-1.5 left-5.5 flex size-2 items-center justify-center rounded-full bg-danger text-xs font-semibold leading-none text-white"></span>
+                                    <item.icon className={item.iconColor} aria-hidden="true" />
+                                    <span className="absolute top-1.5 left-5.5 flex size-2 items-center justify-center rounded-full bg-danger text-xs font-semibold leading-none text-white" aria-hidden="true" />
+                                    <span className="sr-only">{pendingCount} pending approval{pendingCount !== 1 ? "s" : ""}</span>
                                 </>
                             ) : (
                                 <item.icon className={item.iconColor} />
