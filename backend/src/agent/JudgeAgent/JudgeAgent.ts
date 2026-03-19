@@ -8,6 +8,8 @@ import { AgentType, builderProviderDataModelSettings, runnerFactory } from "../r
 
 import { buildJudgeAgentTools } from "./JudgeAgentTools"
 
+export const MAX_IMPROVEMENTS_PER_AGENT = 4
+
 export const JudgeAgentOutput = z.object({
     title: z.string(),
     summary: z.string(),
