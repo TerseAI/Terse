@@ -13,6 +13,7 @@ export interface ToolboxEntry {
     isReadOnly: boolean
     integration: IntegrationType
     displayName: string
+    checkAccess?: (args: Record<string, unknown>, context: ACLCheckContext) => Promise<ACLCheckResult>
 }
 
 export interface GuardrailContext {
@@ -61,8 +62,10 @@ export abstract class Output<TConfig extends ConfigInstance> {
         return this.getSystemInstructions()
     }
 
-    async checkToolAccess(_toolName: string, _args: Record<string, unknown>, _context: ACLCheckContext): Promise<ACLCheckResult> {
-        return { allowed: true }
+    async checkToolAccess(toolName: string, args: Record<string, unknown>, context: ACLCheckContext): Promise<ACLCheckResult> {
+        const entry = this.toolbox.find(e => e.tool.name === toolName)
+        if (!entry?.checkAccess) return { allowed: true }
+        return entry.checkAccess(args, context)
     }
 
     getToolGuardrails<TContext>(context: GuardrailContext): ToolInputGuardrailDefinition<TContext>[] {

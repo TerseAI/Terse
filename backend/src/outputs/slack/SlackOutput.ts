@@ -1,17 +1,12 @@
 import { Tool } from "@openai/agents"
 import { OutputConfigType } from "@prisma/client"
-import { WebClient } from "@slack/web-api"
-
-import { getACLOrNull, isPermitted } from "../../agent/acl/aclGuardrail"
 import { getSlackAccessTokenOrThrow, validateSlackChannelsExist, validateSlackUserIds } from "../../integrations/SlackIntegration"
 import { SlackOutputConfig } from "../../shared/Configs"
 import { IntegrationType } from "../../shared/Integrations"
-import { ACLCheckContext, ACLCheckResult, ACLItem, ResourceType, createACLItem } from "../../shared/acl"
-import { ToolName } from "../../tools/ToolNames"
 import { PrismaTransaction } from "../../types/prisma"
-import { getStringArg } from "../../utility/args"
 import { SlackOutputConfigSchema, stripConfigForValidation } from "../../utility/configSchemas"
 import { Output, ToolboxEntry } from "../abstract/Output"
+import { checkConversationToolAccess } from "./slackAclCheckers"
 
 import { slackListChannelsTool } from "./tools/listChannels"
 import { slackListUsersTool } from "./tools/listUsers"
@@ -21,10 +16,22 @@ import { slackSendMessageTool } from "./tools/sendMessage"
 export class SlackOutput extends Output<SlackOutputConfig> {
     constructor() {
         const toolbox: ToolboxEntry[] = [
-            { tool: slackSendMessageTool as Tool, isReadOnly: false, integration: IntegrationType.SLACK, displayName: "Send message" },
+            {
+                tool: slackSendMessageTool as Tool,
+                isReadOnly: false,
+                integration: IntegrationType.SLACK,
+                displayName: "Send message",
+                checkAccess: async (args, _context) => checkConversationToolAccess(this.configs, args)
+            },
             { tool: slackListUsersTool as Tool, isReadOnly: true, integration: IntegrationType.SLACK, displayName: "List users" },
             { tool: slackListChannelsTool as Tool, isReadOnly: true, integration: IntegrationType.SLACK, displayName: "List channels" },
-            { tool: slackReadConversationTool as Tool, isReadOnly: true, integration: IntegrationType.SLACK, displayName: "Read conversation" }
+            {
+                tool: slackReadConversationTool as Tool,
+                isReadOnly: true,
+                integration: IntegrationType.SLACK,
+                displayName: "Read conversation",
+                checkAccess: async (args, _context) => checkConversationToolAccess(this.configs, args)
+            }
         ]
         super(OutputConfigType.SLACK_CHANNEL, toolbox)
     }
@@ -56,19 +63,6 @@ export class SlackOutput extends Output<SlackOutputConfig> {
                 user_ids: output.userIds ?? []
             }
         })
-    }
-
-    async checkToolAccess(toolName: string, args: Record<string, unknown>, _context: ACLCheckContext): Promise<ACLCheckResult> {
-        switch (toolName) {
-            case ToolName.SLACK_LIST_CHANNELS:
-            case ToolName.SLACK_LIST_USERS:
-                return { allowed: true }
-            case ToolName.SLACK_SEND_MESSAGE:
-            case ToolName.SLACK_READ_CONVERSATION:
-                return this.checkConversationToolAccess(args)
-            default:
-                return { allowed: true }
-        }
     }
 
     protected getSystemInstructionsForConfigs(configs: SlackOutputConfig[]): string {
@@ -107,52 +101,6 @@ export class SlackOutput extends Output<SlackOutputConfig> {
         sections.push("\nUse slack_list_users to resolve Slack user IDs to names when needed.")
         sections.push("\n" + SLACK_OUTPUT_INSTRUCTIONS)
         return sections.join("\n")
-    }
-
-    private async checkConversationToolAccess(args: Record<string, unknown>): Promise<ACLCheckResult> {
-        const integrationId = getStringArg(args, "integrationId")
-        const channelId = getStringArg(args, "channelId")
-
-        if (!integrationId || !channelId) {
-            return { allowed: false, reason: "Slack tool calls must include integrationId and channelId." }
-        }
-
-        const allowed = getACLOrNull(this.configs, integrationId)
-        if (!allowed) {
-            return { allowed: false, reason: `Slack integration ${integrationId} is not configured for this agent.` }
-        }
-
-        const requestedChannel = createACLItem(IntegrationType.SLACK, ResourceType.CHANNEL, channelId)
-
-        if (isPermitted(requestedChannel, allowed)) {
-            return { allowed: true }
-        }
-
-        try {
-            const token = await getSlackAccessTokenOrThrow(integrationId)
-            const client = new WebClient(token)
-            const result = await client.conversations.info({ channel: channelId })
-            const channel = result.channel as { is_im?: boolean; is_mpim?: boolean; user?: string } | undefined
-
-            if (channel?.is_im && channel.user) {
-                const requestedUser = createACLItem(IntegrationType.SLACK, ResourceType.USER, channel.user)
-
-                if (isPermitted(requestedUser, allowed)) {
-                    return { allowed: true }
-                }
-
-                return { allowed: false, reason: `Slack DM target ${channel.user} is outside the configured ACL for integration ${integrationId}.` }
-            }
-
-            if (channel?.is_mpim) {
-                return { allowed: false, reason: `Slack group DM ${channelId} is not allowed unless it is explicitly channel-scoped in the config.` }
-            }
-
-            return { allowed: false, reason: `Slack channel ${channelId} is outside the configured ACL for integration ${integrationId}.` }
-        } catch (error) {
-            const reason = error instanceof Error ? error.message : String(error)
-            return { allowed: false, reason: `Unable to verify Slack ACL for channel ${channelId}: ${reason}` }
-        }
     }
 }
 

@@ -1,19 +1,14 @@
-import { Client } from "@notionhq/client"
 import { Tool } from "@openai/agents"
 import { OutputConfigType } from "@prisma/client"
 
-import { getACLOrNull, isPermitted } from "../../agent/acl/aclGuardrail"
 import { getNotionAccessTokenOrThrow, validateNotionDatabasesExist, validateNotionPagesExist } from "../../integrations/NotionIntegration"
-import logger from "../../logger"
 import { NotionConfig } from "../../shared/Configs"
 import { IntegrationType } from "../../shared/Integrations"
-import { ACLCheckContext, ACLCheckResult, ACLItem, ResourceType, createACLItem } from "../../shared/acl"
 import { ToolName } from "../../tools/ToolNames"
 import { PrismaTransaction } from "../../types/prisma"
-import { getStringArg } from "../../utility/args"
 import { NotionConfigSchema, stripConfigForValidation } from "../../utility/configSchemas"
-import { convertOutputConfigTypeToConfigType } from "../../utility/typeConverters"
 import { Output, ToolboxEntry } from "../abstract/Output"
+import { checkDatabaseAccess, checkDatabaseRowAccess, checkPageCreateOrUpdateAccess, checkPageScopedAccess } from "./notionAclCheckers"
 
 import {
     fetchRelatedEventsTool,
@@ -26,20 +21,58 @@ import {
     notionQueryPageTool
 } from "./tools"
 
-const MAX_PARENT_TRAVERSAL_DEPTH = 10
-
-type PageParent = { type?: string; data_source_id?: string; database_id?: string; page_id?: string }
-
 export class NotionOutput extends Output<NotionConfig> {
     constructor() {
         const toolbox: ToolboxEntry[] = [
-            { tool: notionGetSchemaTool as Tool, isReadOnly: true, integration: IntegrationType.NOTION, displayName: "Get datasource schema" },
-            { tool: notionQueryDatabaseTool as Tool, isReadOnly: true, integration: IntegrationType.NOTION, displayName: "Query database" },
-            { tool: notionCreateOrUpdateDatabaseRowTool as Tool, isReadOnly: false, integration: IntegrationType.NOTION, displayName: "Create or update database row" },
-            { tool: notionCreateOrUpdatePageTool as Tool, isReadOnly: false, integration: IntegrationType.NOTION, displayName: "Create or update page (standalone)" },
-            { tool: notionQueryPageTool as Tool, isReadOnly: true, integration: IntegrationType.NOTION, displayName: "Query page" },
-            { tool: notionModifyBlocksTool as Tool, isReadOnly: false, integration: IntegrationType.NOTION, displayName: "Modify blocks" },
-            { tool: fetchRelatedEventsTool as Tool, isReadOnly: true, integration: IntegrationType.NOTION, displayName: "Fetch related events" },
+            {
+                tool: notionGetSchemaTool as Tool,
+                isReadOnly: true,
+                integration: IntegrationType.NOTION,
+                displayName: "Get datasource schema",
+                checkAccess: async (args, _context) => checkDatabaseAccess(this.configs, args)
+            },
+            {
+                tool: notionQueryDatabaseTool as Tool,
+                isReadOnly: true,
+                integration: IntegrationType.NOTION,
+                displayName: "Query database",
+                checkAccess: async (args, _context) => checkDatabaseAccess(this.configs, args)
+            },
+            {
+                tool: notionCreateOrUpdateDatabaseRowTool as Tool,
+                isReadOnly: false,
+                integration: IntegrationType.NOTION,
+                displayName: "Create or update database row",
+                checkAccess: async (args, _context) => checkDatabaseRowAccess(this.configs, args)
+            },
+            {
+                tool: notionCreateOrUpdatePageTool as Tool,
+                isReadOnly: false,
+                integration: IntegrationType.NOTION,
+                displayName: "Create or update page (standalone)",
+                checkAccess: async (args, _context) => checkPageCreateOrUpdateAccess(this.configs, args)
+            },
+            {
+                tool: notionQueryPageTool as Tool,
+                isReadOnly: true,
+                integration: IntegrationType.NOTION,
+                displayName: "Query page",
+                checkAccess: async (args, _context) => checkPageScopedAccess(this.configs, args, ToolName.NOTION_QUERY_PAGE)
+            },
+            {
+                tool: notionModifyBlocksTool as Tool,
+                isReadOnly: false,
+                integration: IntegrationType.NOTION,
+                displayName: "Modify blocks",
+                checkAccess: async (args, _context) => checkPageScopedAccess(this.configs, args, ToolName.NOTION_MODIFY_BLOCKS)
+            },
+            {
+                tool: fetchRelatedEventsTool as Tool,
+                isReadOnly: true,
+                integration: IntegrationType.NOTION,
+                displayName: "Fetch related events",
+                checkAccess: async (args, _context) => checkPageScopedAccess(this.configs, args, ToolName.NOTION_FETCH_RELATED_EVENTS)
+            },
             { tool: notionListUsersTool as Tool, isReadOnly: true, integration: IntegrationType.NOTION, displayName: "List workspace users" }
         ]
         super(OutputConfigType.NOTION, toolbox)
@@ -71,26 +104,6 @@ export class NotionOutput extends Output<NotionConfig> {
                 page_names: output.pageNames ?? []
             }
         })
-    }
-
-    async checkToolAccess(toolName: string, args: Record<string, unknown>, context: ACLCheckContext): Promise<ACLCheckResult> {
-        switch (toolName) {
-            case ToolName.NOTION_LIST_USERS:
-                return { allowed: true }
-            case ToolName.NOTION_QUERY_DATABASE:
-            case ToolName.NOTION_GET_SCHEMA:
-                return this.checkDatabaseAccess(args)
-            case ToolName.NOTION_CREATE_OR_UPDATE_DATABASE_ROW:
-                return this.checkDatabaseRowAccess(args, context)
-            case ToolName.NOTION_CREATE_OR_UPDATE_PAGE:
-                return this.checkPageCreateOrUpdateAccess(args, context)
-            case ToolName.NOTION_QUERY_PAGE:
-            case ToolName.NOTION_MODIFY_BLOCKS:
-            case ToolName.NOTION_FETCH_RELATED_EVENTS:
-                return this.checkPageScopedAccess(args, context, toolName)
-            default:
-                return { allowed: true }
-        }
     }
 
     protected getSystemInstructionsForConfigs(configs: NotionConfig[]): string {
@@ -151,149 +164,6 @@ PEOPLE & RELATION PROPERTIES:
         sections.push("\n" + NOTION_FOOTER_INSTRUCTIONS)
 
         return sections.join("\n")
-    }
-
-    private checkDatabaseAccess(args: Record<string, unknown>): ACLCheckResult {
-        const integrationId = getStringArg(args, "integrationId")
-        const databaseId = getStringArg(args, "databaseId")
-
-        if (!integrationId || !databaseId) {
-            return { allowed: false, reason: "Notion database tools must include integrationId and databaseId." }
-        }
-
-        const acl = getACLOrNull(this.configs, integrationId)
-        if (!acl) {
-            return { allowed: false, reason: `Notion integration ${integrationId} is not configured for this agent.` }
-        }
-
-        if (isPermitted(createACLItem(IntegrationType.NOTION, ResourceType.DATABASE, databaseId), acl)) {
-            return { allowed: true }
-        }
-
-        return { allowed: false, reason: `Notion database ${databaseId} is outside the configured ACL for integration ${integrationId}.` }
-    }
-
-    private async checkDatabaseRowAccess(args: Record<string, unknown>, context: ACLCheckContext): Promise<ACLCheckResult> {
-        const dbCheck = this.checkDatabaseAccess(args)
-        if (!dbCheck.allowed) return dbCheck
-
-        const integrationId = getStringArg(args, "integrationId")!
-        const databaseId = getStringArg(args, "databaseId")!
-        const pageId = getStringArg(args, "page_id")
-        if (!pageId) return { allowed: true }
-
-        try {
-            const notion = await this.createNotionClient(integrationId)
-            const parentDatabaseId = await this.resolvePageDatabaseId(pageId, notion)
-
-            if (!parentDatabaseId) {
-                return { allowed: false, reason: `Notion page ${pageId} is not a database row and cannot be updated with notion_create_or_update_database_row.` }
-            }
-
-            if (parentDatabaseId !== databaseId) {
-                return { allowed: false, reason: `Notion page ${pageId} belongs to database ${parentDatabaseId}, but the tool call requested database ${databaseId}.` }
-            }
-
-            return { allowed: true }
-        } catch (error) {
-            const reason = error instanceof Error ? error.message : String(error)
-            logger.error("Failed to resolve Notion row ACL", { integrationId, databaseId, pageId, reason })
-            return { allowed: false, reason: `Unable to verify Notion row ACL for page ${pageId}: ${reason}` }
-        }
-    }
-
-    private async checkPageCreateOrUpdateAccess(args: Record<string, unknown>, context: ACLCheckContext): Promise<ACLCheckResult> {
-        const pageId = getStringArg(args, "page_id")
-        if (pageId) return this.checkPageAccess(args, context, pageId)
-
-        const parentPageId = getStringArg(args, "parentPageId")
-        if (!parentPageId) {
-            return { allowed: false, reason: "notion_create_or_update_page create calls must include parentPageId." }
-        }
-
-        return this.checkPageAccess(args, context, parentPageId)
-    }
-
-    private async checkPageScopedAccess(args: Record<string, unknown>, context: ACLCheckContext, toolName: string): Promise<ACLCheckResult> {
-        const pageId = getStringArg(args, "pageId")
-        if (!pageId) {
-            return { allowed: false, reason: `${toolName} must include pageId.` }
-        }
-
-        return this.checkPageAccess(args, context, pageId)
-    }
-
-    private async checkPageAccess(args: Record<string, unknown>, context: ACLCheckContext, pageId: string): Promise<ACLCheckResult> {
-        const integrationId = getStringArg(args, "integrationId")
-
-        if (!integrationId) {
-            return { allowed: false, reason: "Notion page tools must include integrationId." }
-        }
-
-        const acl = getACLOrNull(this.configs, integrationId)
-        if (!acl) {
-            return { allowed: false, reason: `Notion integration ${integrationId} is not configured for this agent.` }
-        }
-
-        if (isPermitted(createACLItem(IntegrationType.NOTION, ResourceType.PAGE, pageId), acl)) {
-            return { allowed: true }
-        }
-
-        try {
-            const notion = await this.createNotionClient(integrationId)
-            const resolved = await this.resolvePageAccess(pageId, acl, notion)
-            if (resolved.allowed) return { allowed: true }
-
-            return { allowed: false, reason: `Notion page ${pageId} is outside the configured ACL for integration ${integrationId}.` }
-        } catch (error) {
-            const reason = error instanceof Error ? error.message : String(error)
-            logger.error("Failed to resolve Notion page ACL", { integrationId, pageId, reason })
-            return { allowed: false, reason: `Unable to verify Notion ACL for page ${pageId}: ${reason}` }
-        }
-    }
-
-    private async createNotionClient(integrationId: string): Promise<Client> {
-        const accessToken = await getNotionAccessTokenOrThrow(integrationId)
-        return new Client({ auth: accessToken })
-    }
-
-    private async getPageParent(pageId: string, notion: Client): Promise<PageParent | undefined> {
-        const page = await notion.pages.retrieve({ page_id: pageId })
-        return (page as { parent?: PageParent }).parent
-    }
-
-    private async resolvePageAccess(pageId: string, allowed: ACLItem[], notion: Client, depth = 0): Promise<{ allowed: boolean }> {
-        if (depth >= MAX_PARENT_TRAVERSAL_DEPTH) return { allowed: false }
-
-        const parent = await this.getPageParent(pageId, notion)
-        if (!parent?.type) return { allowed: false }
-
-        if ((parent.type === "data_source_id" && parent.data_source_id) || (parent.type === "database_id" && parent.database_id)) {
-            const dbId = (parent.data_source_id ?? parent.database_id)!
-            return { allowed: isPermitted(createACLItem(IntegrationType.NOTION, ResourceType.DATABASE, dbId), allowed) }
-        }
-
-        if (parent.type === "page_id" && parent.page_id) {
-            if (isPermitted(createACLItem(IntegrationType.NOTION, ResourceType.PAGE, parent.page_id), allowed)) {
-                return { allowed: true }
-            }
-            return this.resolvePageAccess(parent.page_id, allowed, notion, depth + 1)
-        }
-
-        return { allowed: false }
-    }
-
-    private async resolvePageDatabaseId(pageId: string, notion: Client, depth = 0): Promise<string | undefined> {
-        if (depth >= MAX_PARENT_TRAVERSAL_DEPTH) return undefined
-
-        const parent = await this.getPageParent(pageId, notion)
-        if (!parent?.type) return undefined
-
-        if (parent.type === "data_source_id") return parent.data_source_id
-        if (parent.type === "database_id") return parent.database_id
-        if (parent.type === "page_id" && parent.page_id) return this.resolvePageDatabaseId(parent.page_id, notion, depth + 1)
-
-        return undefined
     }
 }
 
