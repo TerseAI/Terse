@@ -6,11 +6,13 @@ import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
 import { AttioIntegrationManager } from "../../../integrations/AttioIntegration"
 import logger from "../../../logger"
 import { IntegrationType } from "../../../shared/Integrations"
+import type { AttioRecord, ToolOutputByName } from "../../../shared/types"
 import { ToolName } from "../../../tools/ToolNames"
+import { toolOutput } from "../../../tools/toolOutput"
 import { formatError } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
 
-export const attioQueryRecordsTool = tool({
+export const attioQueryRecordsTool = tool<z.ZodObject<any>, SessionWithTracking<Session>, ToolOutputByName["attio_query_records"]>({
     name: ToolName.ATTIO_QUERY_RECORDS,
     description: `Query records from an Attio object. Use this to search for existing records before creating or updating them. Supports optional filtering.
 
@@ -72,7 +74,7 @@ Filter syntax uses shorthand or verbose form:
                 throw new Error(`Attio API error (${response.status}): ${errorText}`)
             }
 
-            const data = await response.json()
+            const data = (await response.json()) as { data?: AttioRecord[] }
             const records = data?.data || []
 
             const action = {
@@ -83,7 +85,7 @@ Filter syntax uses shorthand or verbose form:
                 type: RunHistoryActionType.read
             }
 
-            return { success: true, records, count: records.length, actions: [action] }
+            return toolOutput("attio_query_records", { success: true, records, count: records.length, actions: [action] })
         } catch (error: unknown) {
             const errorMessage = await formatError(runContext, error)
             logger.error("Error querying Attio records", { error: errorMessage, integrationId })

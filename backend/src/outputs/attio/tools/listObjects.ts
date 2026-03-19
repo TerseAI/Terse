@@ -6,11 +6,13 @@ import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
 import { AttioIntegrationManager } from "../../../integrations/AttioIntegration"
 import logger from "../../../logger"
 import { IntegrationType } from "../../../shared/Integrations"
+import type { AttioAttribute, AttioObject, ToolOutputByName } from "../../../shared/types"
 import { ToolName } from "../../../tools/ToolNames"
+import { toolOutput } from "../../../tools/toolOutput"
 import { formatError } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
 
-export const attioListObjectsTool = tool({
+export const attioListObjectsTool = tool<z.ZodObject<any>, SessionWithTracking<Session>, ToolOutputByName["attio_list_objects"]>({
     name: ToolName.ATTIO_LIST_OBJECTS,
     description: `List all available object types in the Attio workspace, including their attributes and field definitions. Use this to discover what object types (e.g. people, companies, deals) exist and what attributes are available before creating or updating records.`,
     parameters: z.object({
@@ -48,15 +50,15 @@ export const attioListObjectsTool = tool({
                 throw new Error(`Attio API error (${response.status}): ${errorText}`)
             }
 
-            const data = await response.json()
+            const data = (await response.json()) as { data?: AttioObject[] }
             const objects = data?.data || []
 
             const objectsWithAttributes = await Promise.all(
-                objects.map(async (obj: any) => {
+                objects.map(async (obj: AttioObject) => {
                     const attrResponse = await fetch(`https://api.attio.com/v2/objects/${encodeURIComponent(obj.api_slug)}/attributes`, {
                         headers: { Authorization: `Bearer ${accessToken}` }
                     })
-                    const attributes = attrResponse.ok ? (await attrResponse.json())?.data || [] : []
+                    const attributes = attrResponse.ok ? ((await attrResponse.json()) as { data?: AttioAttribute[] })?.data || [] : []
                     return { ...obj, attributes }
                 })
             )
@@ -69,7 +71,7 @@ export const attioListObjectsTool = tool({
                 type: RunHistoryActionType.read
             }
 
-            return { success: true, objects: objectsWithAttributes, count: objectsWithAttributes.length, actions: [action] }
+            return toolOutput("attio_list_objects", { success: true, objects: objectsWithAttributes, count: objectsWithAttributes.length, actions: [action] })
         } catch (error: unknown) {
             const errorMessage = await formatError(runContext, error)
             logger.error("Error listing Attio objects", { error: errorMessage, integrationId })

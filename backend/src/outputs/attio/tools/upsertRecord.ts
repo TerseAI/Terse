@@ -6,11 +6,13 @@ import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
 import { AttioIntegrationManager } from "../../../integrations/AttioIntegration"
 import logger from "../../../logger"
 import { IntegrationType } from "../../../shared/Integrations"
+import type { AttioRecord, ToolOutputByName } from "../../../shared/types"
 import { ToolName } from "../../../tools/ToolNames"
+import { toolOutput } from "../../../tools/toolOutput"
 import { createNeedsApprovalFunction, formatError } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
 
-export const attioUpsertRecordTool = tool({
+export const attioUpsertRecordTool = tool<z.ZodObject<any>, SessionWithTracking<Session>, ToolOutputByName["attio_upsert_record"]>({
     name: ToolName.ATTIO_UPSERT_RECORD,
     description: `Create or update (upsert) a record in Attio. Uses a matching attribute to find existing records — if a match is found the record is updated, otherwise a new one is created. Use attio_list_objects first to discover available attributes for the object.`,
     parameters: z.object({
@@ -59,7 +61,7 @@ export const attioUpsertRecordTool = tool({
                 throw new Error(`Attio API error (${response.status}): ${errorText}`)
             }
 
-            const data = await response.json()
+            const data = (await response.json()) as { data?: AttioRecord }
             const record = data?.data
             const recordId = record?.id?.record_id
 
@@ -72,7 +74,7 @@ export const attioUpsertRecordTool = tool({
                 url: recordId ? `https://app.attio.com/objects/${objectSlug}/${recordId}` : undefined
             }
 
-            return { success: true, record, actions: [action] }
+            return toolOutput("attio_upsert_record", { success: true, record, actions: [action] })
         } catch (error: unknown) {
             const errorMessage = await formatError(runContext, error)
             logger.error("Error upserting Attio record", { error: errorMessage, integrationId })
