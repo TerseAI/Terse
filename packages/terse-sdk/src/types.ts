@@ -266,17 +266,20 @@ export class WorkOSMembershipInputEvent extends WorkOSInputEvent {
 
 export class WorkOSInvitationInputEvent extends WorkOSInputEvent {
     readonly invitation: WorkOSEventInvitation
+    readonly user?: WorkOSEventUser
 
     constructor(opts: {
         eventType: WorkOSEventType | string
         eventId: string
         createdAt: string
         invitation: WorkOSEventInvitation
+        user?: WorkOSEventUser
         formattedContent: string
         debugLog: string
     }) {
         super(opts)
         this.invitation = opts.invitation
+        this.user = opts.user
     }
 }
 
@@ -396,14 +399,14 @@ export function deserializeInputEvent(se: SerializedEvent): InputEvent {
             debugLog: se.debugLog
         }
 
+        if (meta.invitation) {
+            return new WorkOSInvitationInputEvent({ ...base, invitation: meta.invitation, user: meta.user })
+        }
         if (meta.user) {
             return new WorkOSUserInputEvent({ ...base, user: meta.user })
         }
         if (meta.membership) {
             return new WorkOSMembershipInputEvent({ ...base, membership: meta.membership })
-        }
-        if (meta.invitation) {
-            return new WorkOSInvitationInputEvent({ ...base, invitation: meta.invitation })
         }
         if (meta.organization) {
             return new WorkOSOrganizationInputEvent({ ...base, organization: meta.organization })

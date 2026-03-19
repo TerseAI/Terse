@@ -1,4 +1,4 @@
-import { WORKOS_SUPPORTED_EVENT_NAMES, WorkOSEvent, WorkOSWebhookPayload } from "../../integrations/WorkOSIntegration"
+import { enrichWorkOSEventPayload, WORKOS_SUPPORTED_EVENT_NAMES, WorkOSEvent, WorkOSWebhookPayload } from "../../integrations/WorkOSIntegration"
 import logger from "../../logger"
 import { db } from "../../prismaClient"
 import { SecretField, getSecret } from "../../services/SecretService"
@@ -100,7 +100,8 @@ export class WorkOSEventHydrator extends Hydrator<WorkOSEvent> {
 
                 const match = json.data.find(evt => evt.id === eventId)
                 if (match) {
-                    return new WorkOSEvent(match, integrationId)
+                    const enrichedMatch = await enrichWorkOSEventPayload(match, apiKey)
+                    return new WorkOSEvent(enrichedMatch, integrationId)
                 }
 
                 // No more pages
