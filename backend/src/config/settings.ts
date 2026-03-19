@@ -141,7 +141,9 @@ export const settings = {
     // Google Cloud Storage
     gcs: {
         imageBucket: optionalEnv("GCS_IMAGE_BUCKET", "terse-documents"),
-        imagePrefix: optionalEnv("GCS_IMAGE_PREFIX", "events/images")
+        imagePrefix: optionalEnv("GCS_IMAGE_PREFIX", "events/images"),
+        codeBucket: optionalEnv("GCS_CODE_BUCKET", "terse-sdk-zips"),
+        codePrefix: optionalEnv("GCS_CODE_PREFIX", "sdk-zips")
     },
 
     // Cloud Scheduler (for cron jobs)
@@ -155,6 +157,12 @@ export const settings = {
         serviceName: optionalEnv("POSTHOG_SERVICE_NAME", "terse-backend"),
         enableInDevelopment: optionalEnv("POSTHOG_ENABLE_IN_DEV", "false") === "true",
         host: optionalEnv("POSTHOG_HOST", "https://us.i.posthog.com")
+    },
+
+    // Modal (sandbox execution for SDK jobs)
+    modal: {
+        tokenId: optionalEnv("MODAL_TOKEN_ID"),
+        tokenSecret: optionalEnv("MODAL_TOKEN_SECRET")
     },
 
     // Resend SMTP (for email notifications)

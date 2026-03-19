@@ -1,5 +1,4 @@
 import { InputConfigType } from "@prisma/client"
-import type { EventName } from "@workos-inc/node"
 
 import { EventProcessor } from "../agent/AgentRunner/EventProcessor"
 import { urls } from "../config/settings"
@@ -7,7 +6,7 @@ import logger from "../logger"
 import { db } from "../prismaClient"
 import { Identifiable } from "../rag/Hydrator"
 import { SecretField, deleteSecretsBestEffort, getSecret, storeSecret } from "../services/SecretService"
-import { ConfigInstance, ConfigType, WorkOSInputConfig } from "../shared/Configs"
+import { ConfigInstance, ConfigType, WorkOSEventType, WorkOSInputConfig } from "../shared/Configs"
 import { IntegrationType, WorkOSIntegration, WorkOSIntegrationMetadata } from "../shared/Integrations"
 import { RunHistoryTrigger } from "../shared/RunHistoryTypes"
 import { AgentTriggerWithConfigs } from "../types/prisma"
@@ -17,21 +16,9 @@ import { getUserForOrg } from "../utility/workos"
 import { InputEvent } from "./abstract/InputEvent"
 import { FormFieldDefinition, FormIntegrationInstallation, FormSubmissionInput, FormSubmissionResult, Integration } from "./abstract/Integration"
 
-/**
- * Supported WorkOS event names, typed against the SDK's EventName union
- * for compile-time safety. Add more from the SDK as needed.
- */
-export const WORKOS_SUPPORTED_EVENT_NAMES = [
-    "user.created",
-    "user.updated",
-    "user.deleted",
-    "organization_membership.created",
-    "organization_membership.updated",
-    "organization_membership.deleted",
-    "invitation.accepted"
-] as const satisfies readonly EventName[]
+export const WORKOS_SUPPORTED_EVENT_NAMES = Object.values(WorkOSEventType) as [WorkOSEventType, ...WorkOSEventType[]]
 
-export type WorkOSEventName = (typeof WORKOS_SUPPORTED_EVENT_NAMES)[number]
+export type WorkOSEventName = WorkOSEventType
 
 export class WorkOSIntegrationManager implements Integration<WorkOSIntegration, WorkOSWebhookRequest, typeof WorkOSIntegrationMetadata, never>, FormIntegrationInstallation<IntegrationType.WORKOS> {
     integrationType: IntegrationType = IntegrationType.WORKOS
@@ -244,6 +231,7 @@ export class WorkOSIntegrationManager implements Integration<WorkOSIntegration, 
     async getSampleEvents(
         integrationId: string,
         organizationId: string,
+        _userId: string,
         triggerConfig: ConfigInstance,
         options?: {
             limit?: number
@@ -328,6 +316,7 @@ export interface WorkOSWebhookRequest {
 
 export class WorkOSEvent extends InputEvent implements Identifiable {
     readonly integrationType: IntegrationType = IntegrationType.WORKOS
+    readonly eventType: WorkOSEventType
     entityType = HydratorType.WORKOS_EVENT
     entityId: string
     data: WorkOSWebhookPayload
@@ -338,6 +327,7 @@ export class WorkOSEvent extends InputEvent implements Identifiable {
     ) {
         super()
         this.data = payload
+        this.eventType = payload.event as WorkOSEventType
         this.entityId = `${integrationId}:${payload.id}`
     }
 
@@ -376,6 +366,45 @@ export class WorkOSEvent extends InputEvent implements Identifiable {
             return false
         }
         return config.event_types.includes(this.data.event)
+    }
+
+    serializeMetadata(): Record<string, unknown> {
+        const d = this.data.data
+        const eventType = this.data.event
+        const meta: Record<string, unknown> = {
+            eventId: this.data.id,
+            createdAt: this.data.created_at
+        }
+
+        if (eventType.startsWith("user.")) {
+            meta.user = {
+                id: d.id,
+                email: d.email,
+                firstName: d.first_name,
+                lastName: d.last_name,
+                emailVerified: d.email_verified ?? false,
+                profilePictureUrl: d.profile_picture_url
+            }
+        } else if (eventType.startsWith("organization_membership.")) {
+            meta.membership = {
+                id: d.id,
+                userId: d.user_id,
+                organizationId: d.organization_id,
+                role: d.role,
+                status: d.status
+            }
+        } else if (eventType === "invitation.accepted") {
+            meta.invitation = {
+                id: d.id,
+                email: d.email,
+                organizationId: d.organization_id,
+                inviterEmail: d.inviter_email,
+                state: d.state,
+                acceptedAt: d.accepted_at
+            }
+        }
+
+        return meta
     }
 
     createTriggerMetadata(): RunHistoryTrigger {

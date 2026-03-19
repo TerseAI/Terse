@@ -29,6 +29,7 @@ export interface Integration<T extends IntegrationInstance, W, M extends Integra
     getSampleEvents?(
         integrationId: string,
         organizationId: string,
+        userId: string,
         triggerConfig: ConfigInstance,
         options?: {
             limit?: number

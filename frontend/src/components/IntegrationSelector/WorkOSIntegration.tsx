@@ -2,21 +2,21 @@ import { AlertTriangleIcon, CheckIcon } from "lucide-react"
 
 import { WorkOSIcon } from "@/components/icons/IntegrationIcons"
 import { useWorkOSIntegrations } from "@/hooks/api/useWorkOSIntegrations"
-import { WorkOSInputConfig } from "@/shared/Configs"
+import { WorkOSEventType, WorkOSInputConfig } from "@/shared/Configs"
 
 import { Checkbox } from "../ui/checkbox"
 import { Label } from "../ui/label"
 
 import { InputConfigSelectorProps } from "./types"
 
-const WORKOS_EVENT_TYPES = [
-    { value: "user.created", label: "User Created", description: "A new user signs up to your app" },
-    { value: "user.updated", label: "User Updated", description: "A user's profile is changed" },
-    { value: "user.deleted", label: "User Deleted", description: "A user is removed" },
-    { value: "organization_membership.created", label: "Membership Created", description: "A user joins an organization" },
-    { value: "organization_membership.updated", label: "Membership Updated", description: "A user's role or membership changes" },
-    { value: "organization_membership.deleted", label: "Membership Deleted", description: "A user leaves an organization" },
-    { value: "invitation.accepted", label: "Invitation Accepted", description: "A user accepts an invitation to join" }
+const WORKOS_EVENT_TYPES: { value: WorkOSEventType; label: string; description: string }[] = [
+    { value: WorkOSEventType.USER_CREATED, label: "User Created", description: "A new user signs up to your app" },
+    { value: WorkOSEventType.USER_UPDATED, label: "User Updated", description: "A user's profile is changed" },
+    { value: WorkOSEventType.USER_DELETED, label: "User Deleted", description: "A user is removed" },
+    { value: WorkOSEventType.ORGANIZATION_MEMBERSHIP_CREATED, label: "Membership Created", description: "A user joins an organization" },
+    { value: WorkOSEventType.ORGANIZATION_MEMBERSHIP_UPDATED, label: "Membership Updated", description: "A user's role or membership changes" },
+    { value: WorkOSEventType.ORGANIZATION_MEMBERSHIP_DELETED, label: "Membership Deleted", description: "A user leaves an organization" },
+    { value: WorkOSEventType.INVITATION_ACCEPTED, label: "Invitation Accepted", description: "A user accepts an invitation to join" }
 ]
 
 export function WorkOSIntegration({ input, variant, setConfig }: InputConfigSelectorProps) {
@@ -56,7 +56,7 @@ export function WorkOSIntegration({ input, variant, setConfig }: InputConfigSele
         )
     }
 
-    const handleToggleEvent = (eventType: string, checked: boolean) => {
+    const handleToggleEvent = (eventType: WorkOSEventType, checked: boolean) => {
         const newEventTypes = checked ? [...selectedEventTypes, eventType] : selectedEventTypes.filter(e => e !== eventType)
         setConfig(new WorkOSInputConfig(integrationId, newEventTypes))
     }

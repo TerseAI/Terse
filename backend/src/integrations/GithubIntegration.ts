@@ -8,6 +8,7 @@ import { Request, Response } from "express"
 import { EventProcessor } from "../agent/AgentRunner/EventProcessor"
 import { githubApp, urls } from "../config/settings"
 import logger, { runWithUserContext } from "../logger"
+import { getGitHubAccessToken } from "../outputs/github/githubApiClient"
 import { db } from "../prismaClient"
 import { Identifiable } from "../rag/Hydrator"
 import {
@@ -21,7 +22,7 @@ import {
 import { fetchGithubRepositoriesForIntegration } from "../routes/github"
 import { FileDownloadResult, StoredFile, buildGithubFileKey, ensureStoredWithMetadata } from "../services/FileStorageService"
 import { SecretField, getSecret, storeSecret } from "../services/SecretService"
-import { ConfigInstance, ConfigType, GitHubConfig as GitHubConfigClass } from "../shared/Configs"
+import { ConfigInstance, ConfigType, GitHubConfig as GitHubConfigClass, GitHubEventType } from "../shared/Configs"
 import { FrontendRoutes } from "../shared/FrontendRoutes"
 import { AdditionalStateParams, GithubIntegration, GithubIntegrationMetadata, InstallationOptionsFor, IntegrationType } from "../shared/Integrations"
 import { RunHistoryTrigger } from "../shared/RunHistoryTypes"
@@ -353,7 +354,7 @@ export class GithubIntegrationManager
         }
     }
 
-    async getSampleEvents(integrationId: string, organizationId: string, triggerConfig: ConfigInstance, options?: { limit?: number }): Promise<InputEvent[]> {
+    async getSampleEvents(integrationId: string, organizationId: string, userId: string, triggerConfig: ConfigInstance, options?: { limit?: number }): Promise<InputEvent[]> {
         if (triggerConfig.configType !== ConfigType.GITHUB) {
             return []
         }
@@ -368,19 +369,8 @@ export class GithubIntegrationManager
         }
 
         const installationIdNum = installation.installation_id
-        const users = await resolveUsersForGithubInstallation(installationIdNum)
-        if (users.length === 0) {
-            throw new Error("No users found with access to this GitHub installation")
-        }
 
-        const tokenRow = await db().github_app_tokens.findFirst({
-            where: { user_id: users[0].id }
-        })
-        if (!tokenRow) {
-            throw new Error("No GitHub token found for user. Please connect your GitHub account.")
-        }
-
-        const accessToken = await getSecret(IntegrationType.GITHUB, tokenRow.id, SecretField.AccessToken)
+        const accessToken = await getGitHubAccessToken(userId)
         if (!accessToken) {
             throw new Error("No GitHub token found for user. Please connect your GitHub account.")
         }
@@ -392,7 +382,7 @@ export class GithubIntegrationManager
         let repos: Array<{ id: number; owner: string; name: string; defaultBranch: string }> = []
 
         if (githubConfig.repositoryIds?.length) {
-            for (const repoId of githubConfig.repositoryIds.slice(0, 2)) {
+            for (const repoId of githubConfig.repositoryIds) {
                 const repo = await fetchRepositoryDetailsForSample(accessToken, repoId)
                 if (repo) repos.push(repo)
             }
@@ -406,22 +396,35 @@ export class GithubIntegrationManager
             }))
         }
 
+        const requestedTypes = githubConfig.eventTypes ?? []
+        const wantsPush = requestedTypes.length === 0 || requestedTypes.includes(GitHubEventType.PUSH)
+
+        const requestedPRTypes = requestedTypes.filter(t => t.startsWith("pull_request."))
+        const wantsPR = requestedTypes.length === 0 || requestedPRTypes.length > 0
+        const prApiState = derivePRApiState(requestedTypes.length === 0 ? [] : requestedPRTypes)
+
         const events: InputEvent[] = []
         for (const repo of repos) {
-            const commits = await fetchRecentCommitsForSample(accessToken, repo.owner, repo.name, 5)
-            for (const commit of commits) {
-                const eventData = await createPushEventData(commit, repo, installationIdNum, accessToken)
-                if (eventData) events.push(new GithubEvent(eventData, []))
+            if (wantsPush) {
+                const commits = await fetchRecentCommitsForSample(accessToken, repo.owner, repo.name, 5)
+                for (const commit of commits) {
+                    const eventData = await createPushEventData(commit, repo, installationIdNum, accessToken)
+                    if (eventData) events.push(new GithubEvent(eventData, []))
+                }
             }
-            const pullRequests = await fetchRecentPullRequestsForSample(accessToken, repo.owner, repo.name, 5)
-            for (const pr of pullRequests) {
-                const eventData = await createPullRequestEventData(pr, repo, installationIdNum, accessToken)
-                let storedFiles: StoredFile[] = []
-                if (eventData) storedFiles = await getPullRequestFiles(eventData, accessToken, installationIdNum.toString())
-                if (eventData) events.push(new GithubEvent(eventData, storedFiles))
+            if (wantsPR) {
+                const pullRequests = await fetchRecentPullRequestsForSample(accessToken, repo.owner, repo.name, 5, prApiState)
+                for (const pr of pullRequests) {
+                    if (!prMatchesRequestedTypes(pr, requestedPRTypes)) continue
+                    const eventData = await createPullRequestEventData(pr, repo, installationIdNum, accessToken)
+                    if (!eventData) continue
+                    const storedFiles = await getPullRequestFiles(eventData, accessToken, installationIdNum.toString())
+                    events.push(new GithubEvent(eventData, storedFiles))
+                }
             }
             if (events.length >= maxEvents) break
         }
+
         return events.slice(0, maxEvents)
     }
 }
@@ -430,6 +433,7 @@ export class GithubIntegrationManager
 
 export class GithubEvent extends InputEvent implements Identifiable {
     readonly integrationType: IntegrationType = IntegrationType.GITHUB
+    readonly eventType: GitHubEventType
     entityType = HydratorType.GITHUB_EVENT
     entityId: string
     data: GithubAppUnifiedEventRequest
@@ -439,6 +443,7 @@ export class GithubEvent extends InputEvent implements Identifiable {
         super()
         this.data = data
         this.storedFiles = storedFiles
+        this.eventType = data.eventType as GitHubEventType
         if (data.pullRequest) {
             this.entityId = `${data.installationId}:${data.repository.id}:pr/${data.pullRequest.number}`
         } else if (data.commits?.length) {
@@ -567,6 +572,37 @@ export class GithubEvent extends InputEvent implements Identifiable {
 
     debugLog(): string {
         return `GitHub Event: ${this.data.eventType} - ${this.data.repositoryName} - ${this.data.username}`
+    }
+
+    serializeMetadata(): Record<string, unknown> {
+        const meta: Record<string, unknown> = {
+            repository: this.data.repository,
+            sender: this.data.sender,
+            commits:
+                this.data.commits?.map(c => ({
+                    sha: c.sha,
+                    message: c.name,
+                    fileDiffs: c.fileDiffs
+                })) ?? []
+        }
+        if (this.data.pullRequest) {
+            const pr = this.data.pullRequest
+            meta.pullRequest = {
+                number: pr.number,
+                title: pr.title,
+                body: pr.body,
+                state: pr.state,
+                merged: pr.merged,
+                head: pr.head,
+                base: pr.base,
+                author: pr.user,
+                url: `https://github.com/${this.data.repository.owner}/${this.data.repository.name}/pull/${pr.number}`
+            }
+        }
+        if (this.data.branch) {
+            meta.branch = this.data.branch
+        }
+        return meta
     }
 
     matchesAgentTrigger(agentTrigger: AgentTriggerWithConfigs): boolean {
@@ -864,13 +900,49 @@ async function fetchCommitDiffForSample(accessToken: string, owner: string, repo
     }
 }
 
-async function fetchRecentPullRequestsForSample(accessToken: string, owner: string, repo: string, count: number): Promise<OctokitPullRequest[]> {
+/**
+ * Map requested PR event types to the GitHub API `state` param to avoid fetching irrelevant PRs.
+ * Returns "all" when both open and closed states are needed.
+ */
+function derivePRApiState(requestedPRTypes: GitHubEventType[]): "open" | "closed" | "all" {
+    if (requestedPRTypes.length === 0) return "all"
+
+    const needsOpen = requestedPRTypes.some(t => t === GitHubEventType.PR_OPENED || t === GitHubEventType.PR_SYNCHRONIZE)
+    const needsClosed = requestedPRTypes.some(t => t === GitHubEventType.PR_MERGED || t === GitHubEventType.PR_CLOSED)
+
+    if (needsOpen && needsClosed) return "all"
+    if (needsClosed) return "closed"
+    return "open"
+}
+
+function prMatchesRequestedTypes(pr: OctokitPullRequest, requestedPRTypes: GitHubEventType[]): boolean {
+    if (requestedPRTypes.length === 0) return true
+
+    const isMerged = pr.merged_at !== null
+    const isOpen = pr.state === "open"
+
+    return requestedPRTypes.some(t => {
+        switch (t) {
+            case GitHubEventType.PR_OPENED:
+            case GitHubEventType.PR_SYNCHRONIZE:
+                return isOpen
+            case GitHubEventType.PR_MERGED:
+                return isMerged
+            case GitHubEventType.PR_CLOSED:
+                return !isOpen && !isMerged
+            default:
+                return false
+        }
+    })
+}
+
+async function fetchRecentPullRequestsForSample(accessToken: string, owner: string, repo: string, count: number, state: "open" | "closed" | "all" = "all"): Promise<OctokitPullRequest[]> {
     try {
         const octokit = createOctokitForSample(accessToken)
         const response = await octokit.rest.pulls.list({
             owner,
             repo,
-            state: "all",
+            state,
             sort: "updated",
             direction: "desc",
             per_page: count

@@ -1,19 +1,31 @@
 import { z } from "zod"
 
 import { WORKOS_SUPPORTED_EVENT_NAMES } from "../integrations/WorkOSIntegration"
-import { ConfigType } from "../shared/Configs"
+import { ConfigType, GitHubEventType } from "../shared/Configs"
 import { IntegrationType } from "../shared/Integrations"
 
 /**
- * Removes ConfigInstance runtime-only keys (isComplete, formatForAgent) so Zod .strict() schemas
- * do not reject config objects that are class instances.
+ * Removes ConfigInstance runtime-only keys (isComplete, formatForAgent) so Zod
+ * .strict() schemas do not reject config objects that are class instances.
+ * eventTypes is also stripped for integrations that don't persist it — GitHub
+ * and WorkOS keep it because their schemas and DB models store event types.
  */
 export function stripConfigForValidation<T extends object>(config: T): T {
-    const { isComplete, formatForAgent, ...rest } = { ...config } as T & {
+    const copy = { ...config } as T & {
         isComplete?: unknown
         formatForAgent?: unknown
+        eventTypes?: unknown
+        configType?: string
     }
-    return rest as T
+    delete copy.isComplete
+    delete copy.formatForAgent
+
+    const persistsEventTypes = copy.configType === ConfigType.GITHUB || copy.configType === ConfigType.WORKOS_INPUT
+    if (!persistsEventTypes) {
+        delete copy.eventTypes
+    }
+
+    return copy as T
 }
 
 export const NonEmptyString = z.string().min(1)
@@ -112,7 +124,8 @@ export const LinearOutputConfigSchema = BaseConfigSchema.extend({
 export const GitHubConfigSchema = BaseConfigSchema.extend({
     configType: z.literal(ConfigType.GITHUB),
     integrationType: z.literal(IntegrationType.GITHUB),
-    repositoryIds: z.array(z.number()).min(1).describe("Array of GitHub repository IDs (numeric). From fetchResourcesForIntegration, use the repo's id from resources[].")
+    repositoryIds: z.array(z.number()).min(1).describe("Array of GitHub repository IDs (numeric). From fetchResourcesForIntegration, use the repo's id from resources[]."),
+    eventTypes: z.array(z.nativeEnum(GitHubEventType)).optional().describe("GitHub event types to trigger on. If omitted, all events for the selected repositories will trigger the agent.")
 })
 
 export const JiraConfigSchema = BaseConfigSchema.extend({

@@ -29,7 +29,8 @@ export class GithubTrigger implements Trigger<GitHubConfig> {
         await tx.automation_github_configs.create({
             data: {
                 automation_input_id: agentTriggerId,
-                repository_ids: trigger.repositoryIds
+                repository_ids: trigger.repositoryIds,
+                event_types: trigger.eventTypes ?? []
             }
         })
     }

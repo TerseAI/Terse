@@ -9,7 +9,7 @@ import { db } from "../prismaClient"
 import { Identifiable } from "../rag/Hydrator"
 import { StoredFile } from "../services/FileStorageService"
 import { SecretField, storeSecret } from "../services/SecretService"
-import { ConfigInstance, ConfigType, JiraConfig as JiraConfigClass } from "../shared/Configs"
+import { ConfigInstance, ConfigType, JiraConfig as JiraConfigClass, JiraEventType } from "../shared/Configs"
 import { FrontendRoutes } from "../shared/FrontendRoutes"
 import { AdditionalStateParams, AtlassianIntegration, AtlassianIntegrationMetadata, InstallationOptionsFor, IntegrationType } from "../shared/Integrations"
 import { RunHistoryTrigger } from "../shared/RunHistoryTypes"
@@ -638,7 +638,7 @@ export class AtlassianIntegrationManager
         }
     }
 
-    async getSampleEvents(integrationId: string, organizationId: string, triggerConfig: ConfigInstance, options?: { limit?: number }): Promise<InputEvent[]> {
+    async getSampleEvents(integrationId: string, organizationId: string, _userId: string, triggerConfig: ConfigInstance, options?: { limit?: number }): Promise<InputEvent[]> {
         if (triggerConfig.configType !== ConfigType.JIRA) {
             return []
         }
@@ -889,6 +889,7 @@ function jiraDescriptionToPlainText(description: unknown): string {
 
 export class JiraEvent extends InputEvent implements Identifiable {
     readonly integrationType: IntegrationType = IntegrationType.ATLASSIAN
+    readonly eventType: JiraEventType
     entityType = HydratorType.JIRA_EVENT
     entityId: string
     data: JiraWebhookPayload
@@ -900,6 +901,8 @@ export class JiraEvent extends InputEvent implements Identifiable {
         this.data = data
         this.integrationId = integrationId
         this.storedFiles = storedFiles
+        // Normalize "jira:issue_created" → "issue.created"
+        this.eventType = data.webhookEvent.replace(/^jira:/, "").replace(/_/g, ".") as JiraEventType
         const issue = data.issue
         this.entityId = `${integrationId}:${issue?.key ?? issue?.id ?? "unknown"}`
     }

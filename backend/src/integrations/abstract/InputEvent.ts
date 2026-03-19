@@ -7,6 +7,13 @@ import { AgentTriggerWithConfigs } from "../../types/prisma"
 export abstract class InputEvent {
     abstract readonly integrationType: IntegrationType
 
+    /**
+     * The specific event type within this integration.
+     * Used by SDK triggers to filter on specific events (e.g. "pull_request.opened", "message").
+     * Values must match the corresponding SDK event type enum values.
+     */
+    abstract readonly eventType: string
+
     constructor() {
         // No initialization needed - integrationType is set by subclasses
     }
@@ -65,5 +72,14 @@ export abstract class InputEvent {
             }
         }
         return null
+    }
+
+    /**
+     * Serialize structured metadata for SDK consumption.
+     * Subclasses override to provide integration-specific data that SDK event
+     * classes can deserialize into typed properties.
+     */
+    serializeMetadata(): Record<string, unknown> | undefined {
+        return undefined
     }
 }

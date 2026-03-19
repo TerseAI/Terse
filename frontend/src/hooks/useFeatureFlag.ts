@@ -5,13 +5,13 @@ import { useFeatureFlagEnabled } from "posthog-js/react"
  * Keep in sync with backend FeatureFlag enum in utility/featureFlags.ts.
  */
 export const FeatureFlags = {
-    AGENT_IMPROVEMENTS_TAB: "Agent-improvements-tab"
+    AGENT_IMPROVEMENTS_TAB: "Agent-improvements-tab",
+    SDK_INTERFACE: "SDK-Interface"
 } as const
 
 /**
- * Hook to check if a feature flag is enabled
- * @param flagKey - The key of the feature flag in PostHog
- * @returns boolean indicating if the feature flag is enabled
+ * Hook to check if a feature flag is enabled.
+ * Waits for flags to be loaded via posthog.onFeatureFlags before evaluating.
  */
 export function useFeatureFlag(flagKey: string): boolean {
     return useFeatureFlagEnabled(flagKey) ?? false
