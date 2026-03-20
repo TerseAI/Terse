@@ -602,7 +602,7 @@ function AgentDetail() {
                         className={cn(
                             "h-full min-h-0 flex flex-col overflow-hidden min-w-0",
                             desktopChatPaneOpen ? "pl-2" : "pl-0",
-                            !isChatPaneResizing && "transition-[flex-basis,opacity,padding] duration-200 ease-in-out"
+                            !isChatPaneResizing && "transition-[flex-basis,min-width,opacity,padding] duration-200 ease-in-out"
                         )}
                         style={{
                             flexGrow: 0,
