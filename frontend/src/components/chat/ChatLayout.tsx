@@ -1,16 +1,16 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react"
 
-export type CTAChip = { label: string; prompt: string }
-
 import { AnimatePresence, motion } from "framer-motion"
 import { ChevronDown } from "lucide-react"
 
 import { type ModelRequest } from "../../shared/ModelEvents"
-
 import { Button } from "../ui/button"
+
 import { AwaitingResponseAnimation } from "./AwaitingResponseAnimation"
 import ChatInput, { type ChatInputHandle } from "./ChatInput"
 import { type Turn, TurnView } from "./Turn"
+
+export type CTAChip = { label: string; prompt: string }
 
 interface ChatLayoutProps {
     turns: Turn[]

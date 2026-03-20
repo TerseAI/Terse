@@ -15,10 +15,10 @@ import { useTemplates } from "../../hooks/api/useTemplates"
 import { useIsMobile } from "../../hooks/use-mobile"
 import { FeatureFlags, useFeatureFlag } from "../../hooks/useFeatureFlag"
 import { useTemplateHydration } from "../../hooks/useTemplateHydration"
-import { FROM_SETUP_CHAT_PARAM } from "../../shared/FrontendRoutes"
 import { safeStorageGet, safeStorageSet } from "../../lib/storage"
 import { cn } from "../../lib/utils"
 import { useModelContext } from "../../services/ModelContextProvider"
+import { FROM_SETUP_CHAT_PARAM } from "../../shared/FrontendRoutes"
 import { AgentNotificationSettings, AgentPrompt, TransientAgentOutput, TransientAgentTrigger } from "../../shared/types"
 import { AgentInputsDonatedState, AgentNameDonatedState, AgentOutputsDonatedState, AgentPromptDonatedState } from "../../utility/AgentModelDonation"
 import { toTransientAgentOutput, toTransientAgentTrigger } from "../../utility/AgentUtils"
@@ -613,7 +613,9 @@ function AgentDetail() {
                     >
                         {(desktopChatPaneOpen || renderBuilderChatContent) && (
                             <div className={cn("flex-1 min-w-0 min-h-0 w-full transition-opacity duration-150", showBuilderChatContent ? "opacity-100" : "opacity-0")}>
-                                {renderBuilderChatContent && <BuilderChat ref={builderChatRef} getStateJSON={() => getStateJSON()} agentId={agentId} ctaChips={ctaChips} onCtaChipClick={handleCtaChipClick} />}
+                                {renderBuilderChatContent && (
+                                    <BuilderChat ref={builderChatRef} getStateJSON={() => getStateJSON()} agentId={agentId} ctaChips={ctaChips} onCtaChipClick={handleCtaChipClick} />
+                                )}
                             </div>
                         )}
                     </div>
