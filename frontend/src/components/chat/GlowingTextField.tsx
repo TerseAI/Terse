@@ -1,4 +1,6 @@
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react"
+
+import { AnimatePresence, motion } from "framer-motion"
 import TextareaAutosize from "react-textarea-autosize"
 
 import { Button } from "@headlessui/react"
@@ -194,7 +196,7 @@ const GlowingTextField = forwardRef<GlowingTextFieldHandle, GlowingTextFieldProp
                 {isLoading && (
                     <div className="absolute inset-0 pointer-events-none overflow-visible">
                         <div className="absolute left-1/2 top-1/2 w-full h-full animate-rect-orbit overflow-visible">
-                            <div className={`absolute w-3 h-3 rounded-full bg-purple-500/60 blur-sm shadow-[0_0_10px_rgba(168,85,247,0.6)] -translate-x-1/2 -translate-y-1/2 overflow-visible`} />
+                            <div className={`absolute w-3 h-3 rounded-full bg-accent-primary/60 blur-sm [box-shadow:0_0_10px_color-mix(in_oklch,var(--color-accent-primary)_60%,transparent)] -translate-x-1/2 -translate-y-1/2 overflow-visible`} />
                         </div>
                     </div>
                 )}
@@ -270,21 +272,29 @@ const GlowingTextField = forwardRef<GlowingTextFieldHandle, GlowingTextFieldProp
             </div>
 
             {/* Placeholder suggestion chips */}
-            {showPlaceholderChips && inputValue.length === 0 && chipPlaceholders.length > 0 && (
-                <div className="flex flex-wrap gap-2 px-1">
-                    {chipPlaceholders.slice(0, 3).map((placeholder, idx) => (
-                        <button
-                            key={idx}
-                            type="button"
-                            onClick={() => handlePlaceholderClick(placeholder)}
-                            className="px-3 py-1.5 text-sm text-muted-foreground bg-secondary/50 hover:bg-secondary hover:text-foreground border border-border/50 hover:border-border rounded-full transition-all duration-200 truncate max-w-[200px]"
-                            title={placeholder}
-                        >
-                            {placeholder}
-                        </button>
-                    ))}
-                </div>
-            )}
+            <AnimatePresence>
+                {showPlaceholderChips && inputValue.length === 0 && chipPlaceholders.length > 0 && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 4 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 4 }}
+                        transition={{ duration: 0.15 }}
+                        className="flex flex-wrap gap-2 px-1"
+                    >
+                        {chipPlaceholders.slice(0, 3).map(placeholder => (
+                            <button
+                                key={placeholder}
+                                type="button"
+                                onClick={() => handlePlaceholderClick(placeholder)}
+                                className="min-h-11 flex items-center px-3 py-2 text-sm text-muted-foreground bg-secondary/50 hover:bg-secondary hover:text-foreground border border-border/50 hover:border-border rounded-full transition-all duration-200 truncate max-w-[200px] focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                                title={placeholder}
+                            >
+                                {placeholder}
+                            </button>
+                        ))}
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     )
 })

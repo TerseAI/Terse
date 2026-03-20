@@ -1,10 +1,13 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react"
 
+export type CTAChip = { label: string; prompt: string }
+
 import { AnimatePresence, motion } from "framer-motion"
 import { ChevronDown } from "lucide-react"
 
 import { type ModelRequest } from "../../shared/ModelEvents"
 
+import { Button } from "../ui/button"
 import { AwaitingResponseAnimation } from "./AwaitingResponseAnimation"
 import ChatInput, { type ChatInputHandle } from "./ChatInput"
 import { type Turn, TurnView } from "./Turn"
@@ -25,6 +28,8 @@ interface ChatLayoutProps {
     onMultipleChoiceAnswer?: (questionId: string, value: string) => void
     inputSize?: "small" | "medium" | "large"
     showPlaceholderChips?: boolean
+    ctaChips?: CTAChip[]
+    onCtaChipClick?: (chip: CTAChip) => void
 }
 
 export interface ChatLayoutHandle {
@@ -47,11 +52,15 @@ export const ChatLayout = forwardRef<ChatLayoutHandle, ChatLayoutProps>(function
         onCancel,
         onMultipleChoiceAnswer,
         inputSize = "small",
-        showPlaceholderChips = false
+        showPlaceholderChips = false,
+        ctaChips,
+        onCtaChipClick
     },
     ref
 ) {
     const [showScrollIndicator, setShowScrollIndicator] = useState(false)
+    const [isLatestTextComplete, setIsLatestTextComplete] = useState(false)
+    const [ctaChipsDismissed, setCtaChipsDismissed] = useState(false)
     const scrollContainerRef = useRef<HTMLDivElement>(null)
     const contentRef = useRef<HTMLDivElement>(null)
     const isNearBottomRef = useRef(true)
@@ -85,6 +94,14 @@ export const ChatLayout = forwardRef<ChatLayoutHandle, ChatLayoutProps>(function
         }
     }, [])
 
+    useEffect(() => {
+        if (isPendingAssistantResponse) setIsLatestTextComplete(false)
+    }, [isPendingAssistantResponse])
+
+    useEffect(() => {
+        setCtaChipsDismissed(false)
+    }, [ctaChips])
+
     // Expose scrollToBottom and focus to parent via ref
     useImperativeHandle(ref, () => ({
         scrollToBottom: () => {
@@ -105,13 +122,24 @@ export const ChatLayout = forwardRef<ChatLayoutHandle, ChatLayoutProps>(function
             container.scrollTo({ top: 0, behavior: "smooth" })
         }
     }
+    const lastAssistantTurnIndex = turns.reduce((last, turn, i) => (turn.role === "assistant" && turn.text.length > 0 ? i : last), -1)
+    const showCtaChips = (ctaChips?.length ?? 0) > 0 && !ctaChipsDismissed && isLatestTextComplete && !isPendingAssistantResponse
+
     return (
         <div className={`h-full w-full bg-background backdrop-blur-sm shadow-lg transition-opacity duration-300 opacity-100 rounded-lg flex flex-col relative`}>
             <div ref={scrollContainerRef} className="flex-1 flex flex-col-reverse overflow-y-auto p-4 select-text">
                 <div className="flex-grow" />
                 <div ref={contentRef} className="space-y-1">
                     {turns.map((turn, index) => (
-                        <TurnView key={index} {...turn} onApprove={onApprove} onReject={onReject} onMultipleChoiceAnswer={onMultipleChoiceAnswer} />
+                        <TurnView
+                            key={index}
+                            {...turn}
+                            isLatestAssistantTurn={index === lastAssistantTurnIndex}
+                            onAssistantTextDisplayComplete={() => setIsLatestTextComplete(true)}
+                            onApprove={onApprove}
+                            onReject={onReject}
+                            onMultipleChoiceAnswer={onMultipleChoiceAnswer}
+                        />
                     ))}
 
                     {isPendingAssistantResponse && <AwaitingResponseAnimation />}
@@ -143,6 +171,34 @@ export const ChatLayout = forwardRef<ChatLayoutHandle, ChatLayoutProps>(function
                     >
                         <ChevronDown className="w-5 h-5 text-muted-foreground" />
                     </motion.button>
+                )}
+            </AnimatePresence>
+
+            <AnimatePresence>
+                {showCtaChips && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 8 }}
+                        transition={{ duration: 0.2 }}
+                        className="flex flex-wrap gap-2 px-4 pt-3 pb-2"
+                    >
+                        {ctaChips!.map(chip => (
+                            <Button
+                                key={chip.label}
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                    onSendMessage(chip.prompt)
+                                    setCtaChipsDismissed(true)
+                                    onCtaChipClick?.(chip)
+                                }}
+                                className="rounded-full px-4 h-11 text-sm font-normal text-muted-foreground hover:text-foreground border-border/60 hover:border-border bg-secondary/40 hover:bg-secondary/80 transition-all duration-200 shadow-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                            >
+                                {chip.label}
+                            </Button>
+                        ))}
+                    </motion.div>
                 )}
             </AnimatePresence>
 

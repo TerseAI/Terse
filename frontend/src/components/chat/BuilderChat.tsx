@@ -9,11 +9,14 @@ import { ModelRequest, SendModelRequest } from "@/shared/ModelEvents"
 import { cancelBuilderChatSession, sendBuilderMessage, sendBuilderMultipleChoiceAnswer, subscribeToBuilderChat } from "@/socket"
 
 import { Chat, ChatHandle } from "./Chat"
+import { type CTAChip } from "./ChatLayout"
 import { ChatEventPayload } from "./hooks/useCompletionSocket"
 
 type BuilderChatProps = {
     getStateJSON: () => string
     agentId?: string | null
+    ctaChips?: CTAChip[]
+    onCtaChipClick?: (chip: CTAChip) => void
 }
 
 export type BuilderChatHandle = {
@@ -22,7 +25,7 @@ export type BuilderChatHandle = {
     sendMessage: (text: string) => void
 }
 
-export const BuilderChat = forwardRef<BuilderChatHandle, BuilderChatProps>(function BuilderChat({ getStateJSON, agentId }, ref) {
+export const BuilderChat = forwardRef<BuilderChatHandle, BuilderChatProps>(function BuilderChat({ getStateJSON, agentId, ctaChips, onCtaChipClick }, ref) {
     const generatedId = useMemo(() => uuidv4(), [])
     const sessionId = agentId ?? generatedId
     const previousAgentIdRef = useRef<string | null | undefined>(agentId)
@@ -124,6 +127,8 @@ export const BuilderChat = forwardRef<BuilderChatHandle, BuilderChatProps>(funct
                 initialTurns={initialTurns}
                 EmptyContentPlaceholder={<BuilderChatEmptyState />}
                 onMultipleChoiceAnswer={handleMultipleChoiceAnswer}
+                ctaChips={ctaChips}
+                onCtaChipClick={onCtaChipClick}
             />
         </div>
     )
