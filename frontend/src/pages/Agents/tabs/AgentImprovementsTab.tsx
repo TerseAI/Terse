@@ -189,7 +189,7 @@ export default function AgentImprovementsTab({ agentId, builderChatRef, setBuild
                             />
                         ))}
                     </div>
-                    <span className="text-xs text-muted-foreground/60 mt-auto">Reviewed {formatRelativeTime(review.createdAt)}</span>
+                    <span className="text-xs text-muted-foreground mt-auto">Reviewed {formatRelativeTime(review.createdAt)}</span>
                 </>
             )}
         </div>

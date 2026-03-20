@@ -40,7 +40,7 @@ export function ApiTokensWidget() {
                 <p className="text-muted-foreground text-sm">Loading...</p>
             ) : apiTokens.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 text-center">
-                    <Key className="h-10 w-10 text-muted-foreground/50 mb-3" />
+                    <Key className="h-10 w-10 text-muted-foreground mb-3" />
                     <p className="text-sm text-muted-foreground">No API tokens yet</p>
                     <p className="text-xs text-muted-foreground mt-1">Create a token to start using the Terse API.</p>
                 </div>

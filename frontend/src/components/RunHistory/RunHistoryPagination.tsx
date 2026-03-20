@@ -42,22 +42,29 @@ export default function RunHistoryPagination({ currentPage, totalPages, onPageCh
     }
 
     return (
-        <div className="flex items-center gap-1">
-            {pages.map((page, index) => (
-                <button
-                    key={index}
-                    className={`h-9 px-3 rounded-md border text-sm transition-colors ${
-                        page === currentPage
-                            ? "border-[var(--color-primary)] text-primary-foreground]"
-                            : "border-[theme(border)] text-accent-foreground hover:text-[theme(text-primary)] hover:bg-[theme(background-hover)]"
-                    } ${page === "..." ? "cursor-default hover:bg-transparent hover:text-[theme(text-secondary)]" : ""}`}
-                    onClick={() => typeof page === "number" && onPageChange(page)}
-                    disabled={page === "..." || page === currentPage}
-                    type="button"
-                >
-                    {page}
-                </button>
-            ))}
-        </div>
+        <nav aria-label="Pagination" className="flex items-center gap-1">
+            {pages.map((page, index) => {
+                const isEllipsis = page === "..."
+                const isCurrent = page === currentPage
+
+                return (
+                    <button
+                        key={index}
+                        className={`h-9 px-3 rounded-md border text-sm transition-colors ${
+                            isCurrent
+                                ? "border-primary bg-primary text-primary-foreground"
+                                : "border-border text-accent-foreground hover:text-foreground hover:bg-accent"
+                        } ${isEllipsis ? "cursor-default hover:bg-transparent" : ""}`}
+                        onClick={() => typeof page === "number" && onPageChange(page)}
+                        disabled={isEllipsis || isCurrent}
+                        type="button"
+                        aria-label={isEllipsis ? "More pages" : `Page ${page}`}
+                        aria-current={isCurrent ? "page" : undefined}
+                    >
+                        {page}
+                    </button>
+                )
+            })}
+        </nav>
     )
 }

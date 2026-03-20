@@ -17,7 +17,7 @@ import { FrontendRoutes } from "@/shared/FrontendRoutes"
 import { ModelRequest, SendModelRequest } from "@/shared/ModelEvents"
 import { RunHistoryRecordWithAgent } from "@/shared/RunHistoryTypes"
 import { cancelBuilderChatSession, sendBuilderMessage, subscribeToBuilderChat } from "@/socket"
-import { formatNumber, getTrend } from "@/utility/timeUtils"
+import { formatNumber } from "@/utility/timeUtils"
 
 import { useBuilderChatHistory } from "../../hooks/api/useBuilderChatHistory"
 import { useBuilderSession } from "../../hooks/useBuilderSession"
@@ -229,23 +229,29 @@ function Home() {
 
                                 {/* ── Stats Row ──────────────────────────── */}
                                 {!isLoadingStats && stats && (
-                                    <div>
-                                        <div className="flex items-center justify-between mb-3">
-                                            <div className="flex items-center gap-2">
-                                                <h2 className="text-sm font-medium text-muted-foreground tracking-wide uppercase">Stats</h2>
-                                                <span className="text-xs text-muted-foreground/60">Last 30 days</span>
-                                            </div>
-                                            <Button variant="ghost" size="sm" className="text-xs text-muted-foreground gap-1" onClick={() => navigate(FrontendRoutes.STATS)}>
-                                                View all stats
-                                                <ArrowUpRight className="w-3 h-3" />
-                                            </Button>
+                                    <button
+                                        onClick={() => navigate(FrontendRoutes.STATS)}
+                                        className="w-full flex items-center justify-between rounded-xl border border-border/60 bg-card px-5 py-3 text-left transition-colors hover:bg-accent/50 group"
+                                    >
+                                        <div className="flex items-center gap-6 text-sm">
+                                            <span className="text-muted-foreground">Last 30 days</span>
+                                            <span>
+                                                <span className="font-semibold text-foreground">{formatNumber(totalEvents)}</span>{" "}
+                                                <span className="text-muted-foreground">events</span>
+                                            </span>
+                                            <span className="text-border">|</span>
+                                            <span>
+                                                <span className="font-semibold text-foreground">{formatNumber(actionsTaken)}</span>{" "}
+                                                <span className="text-muted-foreground">actions</span>
+                                            </span>
+                                            <span className="text-border">|</span>
+                                            <span>
+                                                <span className="font-semibold text-foreground">{formatNumber(numberOfAgents)}</span>{" "}
+                                                <span className="text-muted-foreground">agents</span>
+                                            </span>
                                         </div>
-                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                                            <StatPill label="Events processed" value={formatNumber(totalEvents)} change={stats.totalEventsProcessedChange} />
-                                            <StatPill label="Actions taken" value={formatNumber(actionsTaken)} change={stats.actionsTakenChange} />
-                                            <StatPill label="Active Agents" value={formatNumber(numberOfAgents)} change={stats.numberOfAgentsChange} />
-                                        </div>
-                                    </div>
+                                        <ArrowUpRight className="w-3.5 h-3.5 text-muted-foreground group-hover:text-foreground transition-colors" />
+                                    </button>
                                 )}
 
                                 {/* ── Recent Runs ────────────────────────── */}
@@ -290,22 +296,5 @@ const HOME_PLACEHOLDERS = [
     "Automatically update Linear and post in Slack when my PRs get merged",
     "Draft weekly release notes from merged PRs and commits"
 ]
-
-// ---------------------------------------------------------------------------
-// Sub-components
-// ---------------------------------------------------------------------------
-
-function StatPill({ label, value, change }: { label: string; value: string; change: string }) {
-    const trend = getTrend(change)
-    return (
-        <div className="group relative flex flex-col gap-1.5 rounded-2xl border border-border/60 bg-card px-5 py-4 transition-all duration-300 hover:border-border hover:shadow-sm">
-            <span className="text-xs font-medium tracking-wide text-muted-foreground uppercase">{label}</span>
-            <div className="flex items-baseline gap-2.5">
-                <span className="text-2xl font-semibold tracking-tight text-foreground">{value}</span>
-                <span className={cn("text-xs font-medium", trend === "up" ? "text-success" : "text-danger")}>{change}</span>
-            </div>
-        </div>
-    )
-}
 
 export default Home
