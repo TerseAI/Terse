@@ -51,9 +51,7 @@ export default function RunHistoryPagination({ currentPage, totalPages, onPageCh
                     <button
                         key={index}
                         className={`h-9 px-3 rounded-md border text-sm transition-colors ${
-                            isCurrent
-                                ? "border-primary bg-primary text-primary-foreground"
-                                : "border-border text-accent-foreground hover:text-foreground hover:bg-accent"
+                            isCurrent ? "border-primary bg-primary text-primary-foreground" : "border-border text-accent-foreground hover:text-foreground hover:bg-accent"
                         } ${isEllipsis ? "cursor-default hover:bg-transparent" : ""}`}
                         onClick={() => typeof page === "number" && onPageChange(page)}
                         disabled={isEllipsis || isCurrent}

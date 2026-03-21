@@ -147,7 +147,7 @@ function Home() {
     const numberOfAgents = stats?.numberOfAgents ?? 0
 
     return (
-        <div className="flex flex-col h-full w-full">
+        <div className="flex flex-col h-full w-full" role="main" aria-label="Home">
             {/* ── Hero + Prompt ─────────────────────────────────────── */}
             <div
                 style={{
@@ -171,7 +171,7 @@ function Home() {
                                     Describe an agent and I'll set it up for you, or{" "}
                                     <button
                                         onClick={() => navigate(FrontendRoutes.AGENTS.SETUP)}
-                                        className="inline-flex items-center gap-1 text-foreground font-medium hover:underline underline-offset-4 transition-colors"
+                                        className="inline-flex items-center gap-1 text-foreground font-medium hover:underline underline-offset-4 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-sm"
                                     >
                                         browse templates
                                         <ArrowRight className="w-3.5 h-3.5" />
@@ -187,7 +187,11 @@ function Home() {
             <div className={cn("flex flex-col mx-auto max-w-3xl w-full px-6 pb-3 min-h-0", hasStartedChat && "flex-1")}>
                 {hasStartedChat && (
                     <div className="flex justify-end px-2 pt-2 pb-3">
-                        <button onClick={handleClearChat} aria-label="Reset chat" className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
+                        <button
+                            onClick={handleClearChat}
+                            aria-label="Reset chat"
+                            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-sm"
+                        >
                             <RotateCcw className="h-3 w-3" aria-hidden="true" />
                             Reset chat
                         </button>
@@ -231,23 +235,20 @@ function Home() {
                                 {!isLoadingStats && stats && (
                                     <button
                                         onClick={() => navigate(FrontendRoutes.STATS)}
-                                        className="w-full flex items-center justify-between rounded-xl border border-border/60 bg-card px-5 py-3 text-left transition-colors hover:bg-accent/50 group"
+                                        className="w-full flex items-center justify-between rounded-xl border border-border/60 bg-card px-5 py-3 text-left transition-colors hover:bg-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 group"
                                     >
-                                        <div className="flex items-center gap-6 text-sm">
+                                        <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-sm">
                                             <span className="text-muted-foreground">Last 30 days</span>
                                             <span>
-                                                <span className="font-semibold text-foreground">{formatNumber(totalEvents)}</span>{" "}
-                                                <span className="text-muted-foreground">events</span>
+                                                <span className="font-semibold text-foreground">{formatNumber(totalEvents)}</span> <span className="text-muted-foreground">events</span>
                                             </span>
-                                            <span className="text-border">|</span>
+                                            <span className="hidden sm:inline text-border">|</span>
                                             <span>
-                                                <span className="font-semibold text-foreground">{formatNumber(actionsTaken)}</span>{" "}
-                                                <span className="text-muted-foreground">actions</span>
+                                                <span className="font-semibold text-foreground">{formatNumber(actionsTaken)}</span> <span className="text-muted-foreground">actions</span>
                                             </span>
-                                            <span className="text-border">|</span>
+                                            <span className="hidden sm:inline text-border">|</span>
                                             <span>
-                                                <span className="font-semibold text-foreground">{formatNumber(numberOfAgents)}</span>{" "}
-                                                <span className="text-muted-foreground">agents</span>
+                                                <span className="font-semibold text-foreground">{formatNumber(numberOfAgents)}</span> <span className="text-muted-foreground">agents</span>
                                             </span>
                                         </div>
                                         <ArrowUpRight className="w-3.5 h-3.5 text-muted-foreground group-hover:text-foreground transition-colors" />
@@ -267,7 +268,7 @@ function Home() {
                                             )}
                                         </div>
 
-                                        <div className="rounded-2xl border border-border/60 bg-card overflow-hidden divide-y divide-border/40">
+                                        <div className="rounded-2xl border border-border/60 bg-card overflow-hidden divide-y divide-border/40" role="list" aria-label="Recent agent runs">
                                             {recentRuns.map(run => (
                                                 <RunHistoryRow key={run.id} run={run} onOpenChat={handleOpenChat} className="rounded-xl" />
                                             ))}

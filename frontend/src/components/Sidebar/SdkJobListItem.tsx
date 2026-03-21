@@ -16,7 +16,7 @@ export function SdkJobListItem({ agent }: SdkJobListItemProps) {
         <SidebarMenuSubItem>
             <SidebarMenuSubButton asChild isActive={isActive}>
                 <Link to={FrontendRoutes.AGENTS.DETAIL(agent.id)} className="flex items-center gap-2">
-                    <span className="size-2 rounded-full shrink-0 bg-success" />
+                    <span className={`size-2 rounded-full shrink-0 ${agent.isActive ? "bg-success" : "bg-muted-foreground"}`} />
                     <span className="truncate">{agent.name}</span>
                 </Link>
             </SidebarMenuSubButton>

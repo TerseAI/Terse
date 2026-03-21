@@ -23,7 +23,7 @@ export function RunHistoryRow({ run, onOpenChat, className }: RunHistoryRowProps
     const writeActions = (run.actions ?? []).filter(a => a.type !== "read")
 
     return (
-        <div className={cn("group flex items-center gap-4 px-4 py-3 transition-colors duration-150 hover:bg-muted/40", className)}>
+        <div role="listitem" className={cn("group flex items-center gap-4 px-4 py-3 transition-colors duration-150 hover:bg-muted/40", className)}>
             {/* Integration icon */}
             <div className="shrink-0 w-8 h-8 rounded-lg bg-muted/60 flex items-center justify-center text-muted-foreground">
                 <IconForIntegration integration={run.trigger.integration} />
@@ -40,7 +40,7 @@ export function RunHistoryRow({ run, onOpenChat, className }: RunHistoryRowProps
                             rel="noopener noreferrer"
                             onClick={e => e.stopPropagation()}
                             aria-label={`Open ${title} in new tab`}
-                            className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground"
+                            className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded-sm"
                         >
                             <ExternalLink className="w-3 h-3" aria-hidden="true" />
                         </a>
@@ -49,7 +49,7 @@ export function RunHistoryRow({ run, onOpenChat, className }: RunHistoryRowProps
                 <div className="flex items-center gap-1.5 mt-0.5">
                     <button
                         onClick={() => navigate(FrontendRoutes.AGENTS.DETAIL(run.agentId))}
-                        className="text-xs text-muted-foreground hover:text-foreground transition-colors truncate max-w-[160px]"
+                        className="text-xs text-muted-foreground hover:text-foreground transition-colors truncate max-w-[160px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded-sm"
                         title={run.agentName}
                     >
                         {run.agentName}
@@ -81,7 +81,13 @@ export function RunHistoryRow({ run, onOpenChat, className }: RunHistoryRowProps
             <span className="text-xs text-muted-foreground whitespace-nowrap w-20 text-right">{formatTimestamp(run.timestamp)}</span>
 
             {/* Chat button */}
-            <Button variant="ghost" size="icon-sm" onClick={() => onOpenChat(run)} className="opacity-0 group-hover:opacity-100 transition-opacity" aria-label="View run details">
+            <Button
+                variant="ghost"
+                size="icon-sm"
+                onClick={() => onOpenChat(run)}
+                className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity"
+                aria-label="View run details"
+            >
                 <MessageSquare className="w-3.5 h-3.5" aria-hidden="true" />
             </Button>
         </div>

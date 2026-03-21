@@ -105,8 +105,10 @@ export default function SdkJobDetail({ agentId }: { agentId: string }) {
 
     if (isLoading || !agent) {
         return (
-            <div className="flex h-full items-center justify-center">
-                <div className="text-muted-foreground text-sm">Loading...</div>
+            <div className="flex h-full items-center justify-center" aria-busy="true">
+                <div className="text-muted-foreground text-sm" role="status">
+                    Loading...
+                </div>
             </div>
         )
     }

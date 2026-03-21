@@ -468,7 +468,10 @@ function AgentDetail() {
             <div className="flex h-full items-center justify-center">
                 <div className="text-center space-y-2">
                     <div className="text-muted-foreground text-sm">Failed to load agent.</div>
-                    <button onClick={() => mutate()} className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground transition-colors">
+                    <button
+                        onClick={() => mutate()}
+                        className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-sm"
+                    >
                         Try again
                     </button>
                 </div>
@@ -479,8 +482,10 @@ function AgentDetail() {
     // Show loading state while determining agent source for existing agents
     if (agentId && isFetching && !agent) {
         return (
-            <div className="flex h-full items-center justify-center">
-                <div className="text-muted-foreground text-sm">Loading...</div>
+            <div className="flex h-full items-center justify-center" aria-busy="true">
+                <div className="text-muted-foreground text-sm" role="status">
+                    Loading...
+                </div>
             </div>
         )
     }
