@@ -184,7 +184,7 @@ function Home() {
             </div>
 
             {/* ── Chat Input / Full Chat ────────────────────────────── */}
-            <div className={cn("flex flex-col mx-auto max-w-3xl w-full px-6 pb-3 min-h-0", hasStartedChat && "flex-1")}>
+            <div className={cn("flex flex-col mx-auto max-w-3xl w-full px-6 pb-3", hasStartedChat ? "flex-1 min-h-0" : "shrink-0")}>
                 {hasStartedChat && (
                     <div className="flex justify-end px-2 pt-2 pb-3">
                         <button
@@ -197,7 +197,7 @@ function Home() {
                         </button>
                     </div>
                 )}
-                <div className="flex-1 min-h-0 w-full">
+                <div className={cn("w-full", hasStartedChat ? "flex-1 min-h-0" : "shrink-0")}>
                     <Chat
                         ref={chatRef}
                         key={sessionId}
