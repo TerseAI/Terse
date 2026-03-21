@@ -21,8 +21,8 @@ const ShinyText: React.FC<ShinyTextProps> = ({
     disabled = false,
     speed = 2,
     className = "",
-    color = "#b5b5b5",
-    shineColor = "#ffffff",
+    color = "var(--muted-foreground)",
+    shineColor = "var(--foreground)",
     spread = 120,
     yoyo = false,
     pauseOnHover = false,
@@ -125,5 +125,3 @@ const ShinyText: React.FC<ShinyTextProps> = ({
 }
 
 export default ShinyText
-//   plugins: [],
-// };

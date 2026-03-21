@@ -302,7 +302,7 @@ function SaveAgentButton({
             }, 1000)
         } catch (error) {
             console.error("Error saving agent:", error)
-            alert("Failed to save agent. Please try again.")
+            toast.error("Failed to save agent. Please try again.")
         } finally {
             setIsSaving(false)
         }
@@ -441,7 +441,7 @@ export default function AgentSetupTab({
 
                 {/* Builder Steps - Horizontal flow */}
                 <div className="border-b border-border px-6 py-4 bg-muted/30">
-                    <div className="flex w-full max-w-7xl flex-col gap-2 @xl/agent-setup:flex-row @xl/agent-setup:flex-wrap @xl/agent-setup:items-center @[50rem]/agent-setup:flex-nowrap">
+                    <div className="flex w-full max-w-7xl mx-auto flex-col gap-2 @xl/agent-setup:flex-row @xl/agent-setup:flex-wrap @xl/agent-setup:items-center @[50rem]/agent-setup:flex-nowrap">
                         {steps.map((step, index) => {
                             const isActive = activeSection === step.id
                             const StepIcon = step.icon
