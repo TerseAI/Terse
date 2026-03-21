@@ -40,7 +40,7 @@ export function TemplateAppsList({ template }: TemplateAppsListProps) {
                     <div className="relative w-7 h-7 flex items-center justify-center rounded bg-card p-1" title={capitalize(integration)}>
                         <IconForIntegration integration={integration} />
                         {count > 1 && (
-                            <sup className="absolute -top-1.5 -right-1.5 text-[9px] font-mono tabular-nums leading-none z-10 text-primary-foreground rounded-full w-4 h-4 flex items-center justify-center shadow-md backdrop-blur-sm">
+                            <sup className="absolute -top-1.5 -right-1.5 text-[9px] font-mono tabular-nums leading-none z-10 bg-foreground text-background rounded-full w-4 h-4 flex items-center justify-center">
                                 {count}
                             </sup>
                         )}
@@ -57,7 +57,7 @@ export function TemplateAppsList({ template }: TemplateAppsListProps) {
                     <div className="relative w-7 h-7 flex items-center justify-center rounded bg-card p-1" title={capitalize(integration)}>
                         <IconForIntegration integration={integration} />
                         {count > 1 && (
-                            <sup className="absolute -top-1.5 -right-1.5 text-[9px] font-mono tabular-nums leading-none z-10 text-primary-foreground rounded-full w-4 h-4 flex items-center justify-center shadow-md backdrop-blur-sm">
+                            <sup className="absolute -top-1.5 -right-1.5 text-[9px] font-mono tabular-nums leading-none z-10 bg-foreground text-background rounded-full w-4 h-4 flex items-center justify-center">
                                 {count}
                             </sup>
                         )}

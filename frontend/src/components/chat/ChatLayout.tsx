@@ -106,7 +106,7 @@ export const ChatLayout = forwardRef<ChatLayoutHandle, ChatLayoutProps>(function
         }
     }
     return (
-        <div className={`h-full w-full bg-background backdrop-blur-sm shadow-lg transition-opacity duration-300 opacity-100 rounded-lg flex flex-col relative`}>
+        <div className="h-full w-full bg-background rounded-lg flex flex-col relative">
             <div ref={scrollContainerRef} className="flex-1 flex flex-col-reverse overflow-y-auto p-4 select-text">
                 <div className="flex-grow" />
                 <div ref={contentRef} className="space-y-1">
@@ -137,7 +137,7 @@ export const ChatLayout = forwardRef<ChatLayoutHandle, ChatLayoutProps>(function
                             shadow-lg shadow-black/20
                             hover:bg-accent 
                             hover:scale-105
-                            transition-all duration-200 ease-out
+                            transition-colors duration-200 ease-out
                             cursor-pointer"
                         aria-label="Scroll to bottom"
                     >

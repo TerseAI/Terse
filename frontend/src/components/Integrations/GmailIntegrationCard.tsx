@@ -48,7 +48,7 @@ function GmailCardContent({ integrations, isLoading }: { integrations: Array<{ i
     if (integrations.length === 0) {
         return (
             <div className="flex flex-col items-center justify-center py-8 px-4 text-center">
-                <Mail className="w-10 h-10 text-muted-foreground/50 mb-3" />
+                <Mail className="w-10 h-10 text-muted-foreground mb-3" />
                 <p className="text-sm text-muted-foreground">No Gmail integrations connected</p>
                 <p className="text-xs text-muted-foreground/70 mt-1">Connect your Gmail account to get started</p>
             </div>

@@ -82,9 +82,9 @@ function TurnView({
                 {filter_result && <FilterResultView filterResult={filter_result} />}
 
                 {isThinking && (
-                    <div className="text-[#F1F1F1] text-md py-2 rounded-8xl">
+                    <div className="text-foreground text-md py-2 rounded-8xl">
                         <div className="prose prose-invert">
-                            <div className="flex items-center gap-2 text-gray-400 italic">
+                            <div className="flex items-center gap-2 text-muted-foreground italic">
                                 <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                     <path
@@ -100,8 +100,8 @@ function TurnView({
                 )}
 
                 {(text || isFailure) && (
-                    <div className="text-[#F1F1F1] text-md py-2 rounded-8xl select-text">
-                        <div className={`prose prose-invert ${isUser ? "bg-stone-900/80 rounded-lg p-3" : ""}`}>
+                    <div className="text-foreground text-md py-2 rounded-8xl select-text">
+                        <div className={`prose prose-invert ${isUser ? "bg-muted rounded-lg p-3" : ""}`}>
                             {isFailure && errorCode ? (
                                 <RunErrorView error={text} errorCode={errorCode} />
                             ) : (
@@ -155,7 +155,7 @@ function CopyButton({ text }: { text: string }) {
     }
 
     return (
-        <button onClick={handleCopy} className="rounded text-gray-500 transition-colors duration-200 hover:cursor-pointer hover:opacity-80 active:scale-95" aria-label="Copy to clipboard">
+        <button onClick={handleCopy} className="rounded text-muted-foreground transition-colors duration-200 hover:cursor-pointer hover:opacity-80 active:scale-95" aria-label="Copy to clipboard">
             {copied ? <CheckIcon className="w-4 h-4 text-success animate-pop ring-1 ring-success/20 ring-opacity-50 rounded" /> : <DocumentDuplicateIcon className="w-4 h-4" />}
         </button>
     )
@@ -177,10 +177,16 @@ function FeedbackButtons({}: {}) {
     if (feedback === FeedbackState.None) {
         return (
             <>
-                <button className="rounded text-gray-500 transition-colors duration-200 hover:cursor-pointer hover:opacity-80 active:scale-95" onClick={() => handleFeedback(FeedbackState.Good)}>
+                <button
+                    className="rounded text-muted-foreground transition-colors duration-200 hover:cursor-pointer hover:opacity-80 active:scale-95"
+                    onClick={() => handleFeedback(FeedbackState.Good)}
+                >
                     <HandThumbUpIcon className="h-4 w-4" />
                 </button>
-                <button className="rounded text-gray-500 transition-colors duration-200 hover:cursor-pointer hover:opacity-80 active:scale-95" onClick={() => handleFeedback(FeedbackState.Bad)}>
+                <button
+                    className="rounded text-muted-foreground transition-colors duration-200 hover:cursor-pointer hover:opacity-80 active:scale-95"
+                    onClick={() => handleFeedback(FeedbackState.Bad)}
+                >
                     <HandThumbDownIcon className="h-4 w-4" />
                 </button>
             </>
@@ -190,7 +196,7 @@ function FeedbackButtons({}: {}) {
     if (feedback === FeedbackState.Good) {
         return (
             <div className="flex gap-2">
-                <button className="rounded text-gray-500 transition-colors animate-pop">
+                <button className="rounded text-muted-foreground transition-colors animate-pop">
                     <HandThumbUpFilledIcon className="h-4 w-4" />
                 </button>
             </div>
@@ -199,7 +205,7 @@ function FeedbackButtons({}: {}) {
 
     return (
         <div className="flex gap-2">
-            <button className="rounded text-gray-500 transition-colors animate-pop">
+            <button className="rounded text-muted-foreground transition-colors animate-pop">
                 <HandThumbDownFilledIcon className="h-4 w-4" />
             </button>
         </div>
@@ -307,16 +313,16 @@ function FilterResultView({ filterResult }: { filterResult: { isRelevant: boolea
         <div className="select-text">
             <div className="flex items-start justify-between gap-2">
                 <div className="flex-1">
-                    <div className="rounded-lg border border-white/10 bg-stone-900/50 p-4">
+                    <div className="rounded-lg border border-border bg-muted p-4">
                         <div className="flex items-start gap-3 mb-3">
                             {isRelevant ? <CheckCircleIcon className="w-5 h-5 text-success flex-shrink-0" /> : <XCircleIcon className="w-5 h-5 text-warning flex-shrink-0" />}
                             <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 mb-2">
-                                    <div className="text-sm font-semibold text-[#F1F1F1]">{isRelevant ? "Event Approved" : "Event Filtered Out"}</div>
+                                    <div className="text-sm font-semibold text-foreground">{isRelevant ? "Event Approved" : "Event Filtered Out"}</div>
                                     <div className="relative w-4 h-4 flex-shrink-0" title={`Confidence: ${Math.round(confidence * 100)}%`}>
                                         <svg className="w-4 h-4 transform -rotate-90" viewBox="0 0 16 16">
                                             {/* Background circle */}
-                                            <circle cx="8" cy="8" r={radius} fill="none" stroke="currentColor" strokeWidth="2" className="text-white/20" />
+                                            <circle cx="8" cy="8" r={radius} fill="none" stroke="currentColor" strokeWidth="2" className="text-muted-foreground/30" />
                                             {/* Progress circle */}
                                             <circle
                                                 cx="8"
@@ -333,7 +339,7 @@ function FilterResultView({ filterResult }: { filterResult: { isRelevant: boolea
                                         </svg>
                                     </div>
                                 </div>
-                                <div className="text-sm text-gray-300 whitespace-pre-wrap">{reason}</div>
+                                <div className="text-sm text-muted-foreground whitespace-pre-wrap">{reason}</div>
                             </div>
                         </div>
                     </div>

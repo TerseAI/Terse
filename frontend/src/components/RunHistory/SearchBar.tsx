@@ -19,8 +19,8 @@ export function SearchBar({ searchQuery, placeholder, className, onSearchChange 
                 </InputGroupAddon>
                 {searchQuery && (
                     <InputGroupAddon align="inline-end">
-                        <InputGroupButton onClick={() => onSearchChange("")}>
-                            <X />
+                        <InputGroupButton onClick={() => onSearchChange("")} aria-label="Clear search">
+                            <X aria-hidden="true" />
                         </InputGroupButton>
                     </InputGroupAddon>
                 )}

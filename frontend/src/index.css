@@ -75,7 +75,7 @@
 }
 
 .react-markdown code {
-  background-color: hsl(var(--muted));
+  background-color: var(--muted);
   padding: 0.125rem 0.25rem;
   border-radius: 0.25rem;
   font-size: 0.875em;
@@ -84,7 +84,7 @@
 }
 
 .react-markdown pre {
-  background-color: hsl(var(--muted));
+  background-color: var(--muted);
   padding: 1rem;
   border-radius: 0.5rem;
   overflow-x: auto;
@@ -99,15 +99,15 @@
 
 .react-markdown strong { font-weight: 600; }
 .react-markdown em { font-style: italic; }
-.react-markdown a { color: hsl(var(--primary)); text-decoration: underline; }
+.react-markdown a { color: var(--primary); text-decoration: underline; }
 .react-markdown blockquote {
-  border-left: 4px solid hsl(var(--border));
+  border-left: 4px solid var(--border);
   padding-left: 1em;
   margin: 1em 0;
   font-style: italic;
 }
 .react-markdown hr {
-  border-top: 1px solid hsl(var(--border));
+  border-top: 1px solid var(--border);
   margin: 2em 0;
 }
 .react-markdown table {
@@ -116,10 +116,10 @@
   margin: 1em 0;
 }
 .react-markdown th, .react-markdown td {
-  border: 1px solid hsl(var(--border));
+  border: 1px solid var(--border);
   padding: 0.5em;
 }
 .react-markdown th {
   font-weight: 600;
-  background-color: hsl(var(--muted));
+  background-color: var(--muted);
 }

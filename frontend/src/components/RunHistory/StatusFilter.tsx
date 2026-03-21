@@ -24,32 +24,33 @@ function StatusFilter({ selectedStatuses, onToggleStatus, open, onOpenChange }: 
                 </Button>
             </PopoverTrigger>
             <PopoverContent className="w-56" align="end">
-                <div className="space-y-3">
-                    <div className="flex items-center gap-3 cursor-pointer" onClick={() => onToggleStatus(RunHistoryStatus.SUCCESS)}>
+                <fieldset className="space-y-3">
+                    <legend className="sr-only">Filter by status</legend>
+                    <label className="flex items-center gap-3 cursor-pointer">
                         <Checkbox checked={selectedStatuses.has(RunHistoryStatus.SUCCESS)} onCheckedChange={() => onToggleStatus(RunHistoryStatus.SUCCESS)} />
                         <StatusBadge text="Success" icon={CheckCircle2} iconClassName="w-16 h-16" status="success" />
-                    </div>
-                    <div className="flex items-center gap-3 cursor-pointer" onClick={() => onToggleStatus(RunHistoryStatus.FAILED)}>
+                    </label>
+                    <label className="flex items-center gap-3 cursor-pointer">
                         <Checkbox checked={selectedStatuses.has(RunHistoryStatus.FAILED)} onCheckedChange={() => onToggleStatus(RunHistoryStatus.FAILED)} />
                         <StatusBadge text="Failed" icon={XCircle} iconClassName="w-16 h-16" status="error" />
-                    </div>
-                    <div className="flex items-center gap-3 cursor-pointer" onClick={() => onToggleStatus(RunHistoryStatus.CANCELLED)}>
+                    </label>
+                    <label className="flex items-center gap-3 cursor-pointer">
                         <Checkbox checked={selectedStatuses.has(RunHistoryStatus.CANCELLED)} onCheckedChange={() => onToggleStatus(RunHistoryStatus.CANCELLED)} />
                         <StatusBadge text="Cancelled" icon={Ban} iconClassName="size-16" />
-                    </div>
-                    <div className="flex items-center gap-3 cursor-pointer" onClick={() => onToggleStatus(RunHistoryStatus.IN_PROGRESS)}>
+                    </label>
+                    <label className="flex items-center gap-3 cursor-pointer">
                         <Checkbox checked={selectedStatuses.has(RunHistoryStatus.IN_PROGRESS)} onCheckedChange={() => onToggleStatus(RunHistoryStatus.IN_PROGRESS)} />
                         <StatusBadge text="In Progress" icon={Loader2} iconClassName="w-16 h-16" />
-                    </div>
-                    <div className="flex items-center gap-3 cursor-pointer" onClick={() => onToggleStatus(RunHistoryStatus.SKIPPED)}>
+                    </label>
+                    <label className="flex items-center gap-3 cursor-pointer">
                         <Checkbox checked={selectedStatuses.has(RunHistoryStatus.SKIPPED)} onCheckedChange={() => onToggleStatus(RunHistoryStatus.SKIPPED)} />
                         <StatusBadge text="Filtered" icon={FilterIcon} iconClassName="size-16" />
-                    </div>
-                    <div className="flex items-center gap-3 cursor-pointer" onClick={() => onToggleStatus(RunHistoryStatus.AWAITING_APPROVAL)}>
+                    </label>
+                    <label className="flex items-center gap-3 cursor-pointer">
                         <Checkbox checked={selectedStatuses.has(RunHistoryStatus.AWAITING_APPROVAL)} onCheckedChange={() => onToggleStatus(RunHistoryStatus.AWAITING_APPROVAL)} />
                         <StatusBadge text="Awaiting Approval" icon={Clock} status="warning" iconClassName="w-16 h-16" />
-                    </div>
-                </div>
+                    </label>
+                </fieldset>
             </PopoverContent>
         </Popover>
     )

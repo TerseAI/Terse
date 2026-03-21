@@ -42,7 +42,8 @@ export function ScheduleEditor({ value, onChange, className }: ScheduleEditorPro
     return (
         <div className={cn("space-y-5", className)}>
             {/* Frequency Selection */}
-            <div className="flex gap-2">
+            <fieldset className="flex gap-2">
+                <legend className="sr-only">Schedule frequency</legend>
                 {[
                     { value: "daily", label: "Daily", icon: Repeat },
                     { value: "weekly", label: "Weekly", icon: Calendar },
@@ -50,34 +51,39 @@ export function ScheduleEditor({ value, onChange, className }: ScheduleEditorPro
                 ].map(({ value: freq, label, icon: Icon }) => (
                     <button
                         key={freq}
+                        type="button"
                         onClick={() => setFrequency(freq as Frequency)}
+                        aria-pressed={frequency === freq}
                         className={cn(
                             "flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all",
                             frequency === freq ? "bg-primary text-primary-foreground shadow-md" : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground"
                         )}
                     >
-                        <Icon className="size-4" />
+                        <Icon className="size-4" aria-hidden="true" />
                         {label}
                     </button>
                 ))}
-            </div>
+            </fieldset>
 
             {/* Weekly Day Selection */}
             {frequency === "weekly" && (
-                <div className="flex gap-1.5">
+                <fieldset className="flex gap-1.5">
+                    <legend className="sr-only">Days of week</legend>
                     {DAYS_OF_WEEK.map(day => (
                         <button
                             key={day.value}
+                            type="button"
                             onClick={() => toggleDay(day.value)}
+                            aria-pressed={daysOfWeek.includes(day.value)}
                             className={cn(
-                                "size-10 rounded-lg text-sm font-medium transition-all",
+                                "size-11 rounded-lg text-sm font-medium transition-all",
                                 daysOfWeek.includes(day.value) ? "bg-primary text-primary-foreground shadow-sm" : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground"
                             )}
                         >
                             {day.label}
                         </button>
                     ))}
-                </div>
+                </fieldset>
             )}
 
             {/* Configuration Row - only show when frequency is selected */}
@@ -89,7 +95,7 @@ export function ScheduleEditor({ value, onChange, className }: ScheduleEditorPro
                         <>
                             <span className="text-sm text-muted-foreground">on the</span>
                             <Select value={dayOfMonth} onValueChange={setDayOfMonth}>
-                                <SelectTrigger className="w-[80px]">
+                                <SelectTrigger className="w-20" aria-label="Day of month">
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -108,7 +114,7 @@ export function ScheduleEditor({ value, onChange, className }: ScheduleEditorPro
 
                     <div className="flex items-center gap-1">
                         <Select value={hour} onValueChange={setHour}>
-                            <SelectTrigger className="w-[90px]">
+                            <SelectTrigger className="w-[90px]" aria-label="Hour">
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -121,7 +127,7 @@ export function ScheduleEditor({ value, onChange, className }: ScheduleEditorPro
                         </Select>
 
                         <Select value={minute} onValueChange={setMinute}>
-                            <SelectTrigger className="w-[71px]">
+                            <SelectTrigger className="w-[71px]" aria-label="Minute">
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
