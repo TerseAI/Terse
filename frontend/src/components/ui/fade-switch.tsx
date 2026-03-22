@@ -28,14 +28,7 @@ interface FadeSwitchProps {
 export function FadeSwitch({ activeKey, transition = DEFAULT_TRANSITION, className, children }: FadeSwitchProps) {
     return (
         <AnimatePresence mode="wait" initial={false}>
-            <motion.div
-                key={activeKey}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={transition}
-                className={cn(className)}
-            >
+            <motion.div key={activeKey} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={transition} className={cn(className)}>
                 {children}
             </motion.div>
         </AnimatePresence>

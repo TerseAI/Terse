@@ -647,19 +647,9 @@ function InputLayout({ inputs, setInputs }: { inputs: TransientAgentTrigger[]; s
             </div>
 
             <div className="space-y-2">
-                <AnimatePresence initial={false}>
-                    {inputs.map((input, index) => (
-                        <motion.div
-                            key={input.id}
-                            layout
-                            animate={{ opacity: 1, scale: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.95, x: -20, transition: { duration: 0.15 } }}
-                            transition={{ duration: 0.25, delay: index * 0.03, ease: [0.25, 1, 0.5, 1] }}
-                        >
-                            <InputCard input={input} inputs={inputs} setInputs={setInputs} handleRemove={handleRemove} />
-                        </motion.div>
-                    ))}
-                </AnimatePresence>
+                {inputs.map(input => (
+                    <InputCard key={input.id} input={input} inputs={inputs} setInputs={setInputs} handleRemove={handleRemove} />
+                ))}
                 <Button variant="outline" onClick={() => setShowAddModal(true)} className="w-full h-14 border-dashed hover:border-solid hover:bg-muted/50">
                     <PlusIcon className="size-4 mr-2" />
                     Add trigger
@@ -797,19 +787,9 @@ function OutputLayout({ outputs, setOutputs }: { outputs: TransientAgentOutput[]
             </div>
 
             <div className="space-y-2">
-                <AnimatePresence initial={false}>
-                    {outputs.map((output, index) => (
-                        <motion.div
-                            key={output.id}
-                            layout
-                            animate={{ opacity: 1, scale: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.95, x: -20, transition: { duration: 0.15 } }}
-                            transition={{ duration: 0.25, delay: index * 0.03, ease: [0.25, 1, 0.5, 1] }}
-                        >
-                            <SkillCard output={output} outputs={outputs} setOutputs={setOutputs} handleRemove={handleRemove} />
-                        </motion.div>
-                    ))}
-                </AnimatePresence>
+                {outputs.map(output => (
+                    <SkillCard key={output.id} output={output} outputs={outputs} setOutputs={setOutputs} handleRemove={handleRemove} />
+                ))}
                 <Button variant="outline" onClick={() => setShowAddModal(true)} className="w-full h-14 border-dashed hover:border-solid hover:bg-muted/50">
                     <PlusIcon className="size-4 mr-2" />
                     Add skill
