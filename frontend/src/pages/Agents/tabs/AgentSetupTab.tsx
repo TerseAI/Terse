@@ -652,7 +652,6 @@ function InputLayout({ inputs, setInputs }: { inputs: TransientAgentTrigger[]; s
                         <motion.div
                             key={input.id}
                             layout
-                            initial={{ opacity: 0, scale: 0.95, y: -8 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}
                             exit={{ opacity: 0, scale: 0.95, x: -20, transition: { duration: 0.15 } }}
                             transition={{ duration: 0.25, delay: index * 0.03, ease: [0.25, 1, 0.5, 1] }}
@@ -803,7 +802,6 @@ function OutputLayout({ outputs, setOutputs }: { outputs: TransientAgentOutput[]
                         <motion.div
                             key={output.id}
                             layout
-                            initial={{ opacity: 0, scale: 0.95, y: -8 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}
                             exit={{ opacity: 0, scale: 0.95, x: -20, transition: { duration: 0.15 } }}
                             transition={{ duration: 0.25, delay: index * 0.03, ease: [0.25, 1, 0.5, 1] }}

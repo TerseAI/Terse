@@ -111,13 +111,27 @@ function GithubCardContent({ repositories, isLoading, onViewAll }: { repositorie
                     <Skeleton className="h-12 w-full" />
                 </motion.div>
             ) : repositories.length === 0 ? (
-                <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={CONTENT_TRANSITION} className="flex flex-col items-center justify-center py-8 px-4 text-center">
+                <motion.div
+                    key="empty"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={CONTENT_TRANSITION}
+                    className="flex flex-col items-center justify-center py-8 px-4 text-center"
+                >
                     <Github className="w-10 h-10 text-muted-foreground mb-3" />
                     <p className="text-sm text-muted-foreground">No GitHub repositories connected</p>
                     <p className="text-xs text-muted-foreground/70 mt-1">Connect your GitHub repositories to get started</p>
                 </motion.div>
             ) : (
-                <motion.div key="repos" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={CONTENT_TRANSITION} className="flex flex-col gap-2 text-sm text-muted-foreground min-w-50">
+                <motion.div
+                    key="repos"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={CONTENT_TRANSITION}
+                    className="flex flex-col gap-2 text-sm text-muted-foreground min-w-50"
+                >
                     <div className="font-semibold text-foreground">
                         {repositories.length} {repositories.length === 1 ? "repository" : "repositories"} connected
                     </div>
