@@ -1,10 +1,10 @@
 import useSWR from "swr"
 
 import { BackendProvider } from "@/services/backend"
-import { IntegrationWithStatus } from "@/shared/Integrations"
+import { IntegrationType, IntegrationWithStatus } from "@/shared/Integrations"
 import { integrationsKey } from "@/shared/InvalidationKeys"
 
-export function useIntegrations() {
+export function useIntegrations({ showOnlyForUI = false }: { showOnlyForUI?: boolean }) {
     const key = integrationsKey()
 
     const { data, error, isValidating, mutate } = useSWR<IntegrationWithStatus[]>(key, async () => {
@@ -12,9 +12,15 @@ export function useIntegrations() {
     })
 
     const allIntegrations = data
-    const activeIntegrations = allIntegrations?.filter(integration => integration.isActive).map(integration => integration.integrationType) ?? []
-    const inactiveIntegrations = allIntegrations?.filter(integration => !integration.isActive).map(integration => integration.integrationType) ?? []
+    let activeIntegrations = allIntegrations?.filter(integration => integration.isActive).map(integration => integration.integrationType) ?? []
+    let inactiveIntegrations = allIntegrations?.filter(integration => !integration.isActive).map(integration => integration.integrationType) ?? []
     const isLoading = !data && !error
+
+    // Don't show TERSE and CRON_JOB integrations in the UI
+    if (showOnlyForUI) {
+        activeIntegrations = activeIntegrations.filter(integration => integration !== IntegrationType.TERSE && integration !== IntegrationType.CRON_JOB)
+        inactiveIntegrations = inactiveIntegrations.filter(integration => integration !== IntegrationType.TERSE && integration !== IntegrationType.CRON_JOB)
+    }
 
     return {
         integrations: activeIntegrations,

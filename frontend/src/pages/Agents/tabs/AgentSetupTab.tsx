@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
 
+import { AnimatePresence, motion } from "framer-motion"
 import { Bell, Check, ChevronRight, Copy, FileText, MoreVertical, Pause, Play, PlusIcon, Trash2, Wrench, XIcon, Zap } from "lucide-react"
 import { toast } from "sonner"
 import { type KeyedMutator } from "swr"
@@ -309,9 +310,35 @@ function SaveAgentButton({
     }
 
     return (
-        <Button onClick={handleSave} disabled={!isComplete || isSaving} className="min-w-24 w-fit">
-            {isSaving ? "Saving..." : saveSuccess ? "Saved!" : isComplete ? "Save" : "Complete All Steps"}
-        </Button>
+        <motion.div whileTap={isComplete && !isSaving ? { scale: 0.97 } : undefined}>
+            <Button onClick={handleSave} disabled={!isComplete || isSaving} className="min-w-24 w-fit">
+                <AnimatePresence mode="wait" initial={false}>
+                    {isSaving ? (
+                        <motion.span key="saving" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.15 }}>
+                            Saving...
+                        </motion.span>
+                    ) : saveSuccess ? (
+                        <motion.span
+                            key="saved"
+                            className="flex items-center gap-1.5"
+                            initial={{ opacity: 0, scale: 0.8 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.8 }}
+                            transition={{ duration: 0.2, ease: [0.25, 1, 0.5, 1] }}
+                        >
+                            <motion.span initial={{ scale: 0, rotate: -90 }} animate={{ scale: 1, rotate: 0 }} transition={{ duration: 0.3, ease: [0.25, 1, 0.5, 1] }}>
+                                <Check className="w-4 h-4" />
+                            </motion.span>
+                            Saved!
+                        </motion.span>
+                    ) : (
+                        <motion.span key="default" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.15 }}>
+                            {isComplete ? "Save" : "Complete All Steps"}
+                        </motion.span>
+                    )}
+                </AnimatePresence>
+            </Button>
+        </motion.div>
     )
 }
 
@@ -441,7 +468,7 @@ export default function AgentSetupTab({
 
                 {/* Builder Steps - Horizontal flow */}
                 <div className="border-b border-border px-6 py-4 bg-muted/30">
-                    <div className="flex w-full max-w-7xl mx-auto flex-col gap-2 @xl/agent-setup:flex-row @xl/agent-setup:flex-wrap @xl/agent-setup:items-center @[50rem]/agent-setup:flex-nowrap">
+                    <div className="flex w-full max-w-7xl flex-col gap-2 @xl/agent-setup:flex-row @xl/agent-setup:flex-wrap @xl/agent-setup:items-center @[50rem]/agent-setup:flex-nowrap">
                         {steps.map((step, index) => {
                             const isActive = activeSection === step.id
                             const StepIcon = step.icon
@@ -465,12 +492,38 @@ export default function AgentSetupTab({
                                                       : "bg-muted text-muted-foreground"
                                             )}
                                         >
-                                            {step.isComplete ? <Check className="w-4 h-4" /> : <StepIcon className="w-4 h-4" />}
+                                            <AnimatePresence mode="wait" initial={false}>
+                                                {step.isComplete ? (
+                                                    <motion.span
+                                                        key="check"
+                                                        initial={{ scale: 0, rotate: -90 }}
+                                                        animate={{ scale: 1, rotate: 0 }}
+                                                        exit={{ scale: 0 }}
+                                                        transition={{ duration: 0.25, ease: [0.25, 1, 0.5, 1] }}
+                                                    >
+                                                        <Check className="w-4 h-4" />
+                                                    </motion.span>
+                                                ) : (
+                                                    <motion.span key="icon" initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} transition={{ duration: 0.2 }}>
+                                                        <StepIcon className="w-4 h-4" />
+                                                    </motion.span>
+                                                )}
+                                            </AnimatePresence>
                                         </div>
                                         <div className="min-w-0">
                                             <div className={cn("text-sm font-medium", isActive ? "text-foreground" : "text-muted-foreground")}>
                                                 {step.label}
-                                                {step.count !== undefined && step.count > 0 && <span className="ml-1.5 text-xs text-muted-foreground">({step.count})</span>}
+                                                {step.count !== undefined && step.count > 0 && (
+                                                    <motion.span
+                                                        key={step.count}
+                                                        className="ml-1.5 text-xs text-muted-foreground inline-block"
+                                                        initial={{ scale: 0.5, opacity: 0 }}
+                                                        animate={{ scale: 1, opacity: 1 }}
+                                                        transition={{ duration: 0.2, ease: [0.25, 1, 0.5, 1] }}
+                                                    >
+                                                        ({step.count})
+                                                    </motion.span>
+                                                )}
                                             </div>
                                             <div className="text-xs leading-snug text-muted-foreground whitespace-normal">{step.subheader}</div>
                                         </div>
@@ -502,34 +555,69 @@ export default function AgentSetupTab({
                 </div>
 
                 {/* Main Content */}
-                <div className="p-6 max-w-7xl">
-                    <div className={activeSection === "triggers" ? "block" : "hidden"}>
-                        <InputLayout inputs={inputs} setInputs={setInputs} isIncomplete={triggersIncomplete} />
-                    </div>
+                <div className="p-6 max-w-7xl overflow-hidden">
+                    <AnimatePresence mode="wait" initial={false}>
+                        {activeSection === "triggers" && (
+                            <motion.div
+                                key="triggers"
+                                initial={{ opacity: 0, y: 12 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -8 }}
+                                transition={{ duration: 0.2, ease: [0.25, 1, 0.5, 1] }}
+                            >
+                                <InputLayout inputs={inputs} setInputs={setInputs} isIncomplete={triggersIncomplete} />
+                            </motion.div>
+                        )}
 
-                    <div className={activeSection === "prompt" ? "block" : "hidden"}>
-                        <div className="space-y-4">
-                            <div>
-                                <h2 className="text-lg font-medium mb-1">Instructions</h2>
-                                <p className="text-sm text-muted-foreground">Tell the agent what to do and how to respond. Include goals, guardrails, and the style of the output.</p>
-                            </div>
-                            <div className="h-[calc(100vh-19rem)] min-h-[360px] md:h-[calc(100vh-16rem)] md:min-h-[420px]">
-                                <InstructionsEditor prompt={prompt} setPrompt={setPrompt} />
-                            </div>
-                        </div>
-                    </div>
+                        {activeSection === "prompt" && (
+                            <motion.div
+                                key="prompt"
+                                initial={{ opacity: 0, y: 12 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -8 }}
+                                transition={{ duration: 0.2, ease: [0.25, 1, 0.5, 1] }}
+                            >
+                                <div className="space-y-4">
+                                    <div>
+                                        <h2 className="text-lg font-medium mb-1">Instructions</h2>
+                                        <p className="text-sm text-muted-foreground">Tell the agent what to do and how to respond. Include goals, guardrails, and the style of the output.</p>
+                                    </div>
+                                    <div className="h-[calc(100vh-19rem)] min-h-[360px] md:h-[calc(100vh-16rem)] md:min-h-[420px]">
+                                        <InstructionsEditor prompt={prompt} setPrompt={setPrompt} />
+                                    </div>
+                                </div>
+                            </motion.div>
+                        )}
 
-                    <div className={activeSection === "skills" ? "block" : "hidden"}>
-                        <OutputLayout outputs={outputs} setOutputs={setOutputs} isIncomplete={skillsIncomplete} />
-                    </div>
+                        {activeSection === "skills" && (
+                            <motion.div
+                                key="skills"
+                                initial={{ opacity: 0, y: 12 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -8 }}
+                                transition={{ duration: 0.2, ease: [0.25, 1, 0.5, 1] }}
+                            >
+                                <OutputLayout outputs={outputs} setOutputs={setOutputs} isIncomplete={skillsIncomplete} />
+                            </motion.div>
+                        )}
 
-                    <div className={cn(activeSection === "alerts" ? "block" : "hidden", "space-y-6")}>
-                        <div>
-                            <h2 className="text-lg font-medium mb-1">Alerts</h2>
-                        </div>
-                        <AgentApprovalSettings outputs={outputs} toolApprovals={toolApprovals} onToolApprovalsChange={setToolApprovals} />
-                        <AgentNotificationSettings settings={notificationSettings} agentCreator={agentCreatorUser ?? undefined} onChange={setNotificationSettings} />
-                    </div>
+                        {activeSection === "alerts" && (
+                            <motion.div
+                                key="alerts"
+                                className="space-y-6"
+                                initial={{ opacity: 0, y: 12 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -8 }}
+                                transition={{ duration: 0.2, ease: [0.25, 1, 0.5, 1] }}
+                            >
+                                <div>
+                                    <h2 className="text-lg font-medium mb-1">Alerts</h2>
+                                </div>
+                                <AgentApprovalSettings outputs={outputs} toolApprovals={toolApprovals} onToolApprovalsChange={setToolApprovals} />
+                                <AgentNotificationSettings settings={notificationSettings} agentCreator={agentCreatorUser ?? undefined} onChange={setNotificationSettings} />
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
                 </div>
             </div>
         </div>
