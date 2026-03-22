@@ -13,6 +13,7 @@ import DropdownSelect from "../ui/DropdownSelect"
 import { Button } from "../ui/button"
 import { Card, CardContent } from "../ui/card"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog"
+import { FadeSwitch } from "../ui/fade-switch"
 import { Skeleton } from "../ui/skeleton"
 
 import { CompactIntegrationRow } from "./CompactIntegrationRow"
@@ -93,45 +94,41 @@ function GithubIntegrationCard({ className, isActive = true, stateToken, compact
 }
 
 function GithubCardContent({ repositories, isLoading, onViewAll }: { repositories: Repository[]; isLoading: boolean; onViewAll: () => void }) {
-    if (isLoading) {
-        return (
-            <div className="space-y-3">
-                <Skeleton className="h-12 w-full" />
-                <Skeleton className="h-12 w-full" />
-            </div>
-        )
-    }
-
-    if (repositories.length === 0) {
-        return (
-            <div className="flex flex-col items-center justify-center py-8 px-4 text-center">
-                <Github className="w-10 h-10 text-muted-foreground mb-3" />
-                <p className="text-sm text-muted-foreground">No GitHub repositories connected</p>
-                <p className="text-xs text-muted-foreground/70 mt-1">Connect your GitHub repositories to get started</p>
-            </div>
-        )
-    }
-
-    // Show first N repos on the card, with a button to view all if there are more
     const displayRepos = repositories.slice(0, REPOSITORY_DISPLAY_THRESHOLD)
     const hasMore = repositories.length > REPOSITORY_DISPLAY_THRESHOLD
+    const stateKey = isLoading ? "loading" : repositories.length === 0 ? "empty" : "repos"
 
     return (
-        <div className="flex flex-col gap-2 text-sm text-muted-foreground min-w-50">
-            <div className="font-semibold text-foreground">
-                {repositories.length} {repositories.length === 1 ? "repository" : "repositories"} connected
-            </div>
-            <ul className="list-disc list-inside space-y-1 ml-2">
-                {displayRepos.map(repo => (
-                    <li key={repo.id}>{repo.owner && repo.name ? `${repo.owner}/${repo.name}` : repo.name || "Unknown Repository"}</li>
-                ))}
-            </ul>
-            {hasMore && (
-                <Button variant="ghost" size="sm" onClick={onViewAll} className="w-fit h-auto p-0 text-xs text-muted-foreground hover:text-foreground">
-                    View all {repositories.length} repositories
-                </Button>
+        <FadeSwitch activeKey={stateKey}>
+            {isLoading ? (
+                <div className="space-y-3">
+                    <Skeleton className="h-12 w-full" />
+                    <Skeleton className="h-12 w-full" />
+                </div>
+            ) : repositories.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-8 px-4 text-center">
+                    <Github className="w-10 h-10 text-muted-foreground mb-3" />
+                    <p className="text-sm text-muted-foreground">No GitHub repositories connected</p>
+                    <p className="text-xs text-muted-foreground/70 mt-1">Connect your GitHub repositories to get started</p>
+                </div>
+            ) : (
+                <div className="flex flex-col gap-2 text-sm text-muted-foreground min-w-50">
+                    <div className="font-semibold text-foreground">
+                        {repositories.length} {repositories.length === 1 ? "repository" : "repositories"} connected
+                    </div>
+                    <ul className="list-disc list-inside space-y-1 ml-2">
+                        {displayRepos.map(repo => (
+                            <li key={repo.id}>{repo.owner && repo.name ? `${repo.owner}/${repo.name}` : repo.name || "Unknown Repository"}</li>
+                        ))}
+                    </ul>
+                    {hasMore && (
+                        <Button variant="ghost" size="sm" onClick={onViewAll} className="w-fit h-auto p-0 text-xs text-muted-foreground hover:text-foreground">
+                            View all {repositories.length} repositories
+                        </Button>
+                    )}
+                </div>
             )}
-        </div>
+        </FadeSwitch>
     )
 }
 

@@ -1,5 +1,6 @@
 import { RefObject, useMemo, useState } from "react"
 
+import { AnimatePresence, motion } from "framer-motion"
 import { ChevronRight } from "lucide-react"
 import { toast } from "sonner"
 
@@ -8,7 +9,6 @@ import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { Switch } from "@/components/ui/switch"
 import { useAgentImprovements } from "@/hooks/api/useAgentImprovements"
-import { cn } from "@/lib/utils"
 import { BackendProvider } from "@/services/backend"
 import { AgentImprovement } from "@/shared/types"
 import { formatRelativeTime } from "@/utility/timeUtils"
@@ -176,18 +176,28 @@ export default function AgentImprovementsTab({ agentId, builderChatRef, setBuild
                                 </Button>
                             </div>
                         )}
-                        {pendingImprovements.map(improvement => (
-                            <ImprovementRow
-                                key={improvement.id}
-                                improvement={improvement}
-                                isApplying={isApplyingId === improvement.id}
-                                isDismissing={isDismissingId === improvement.id}
-                                disabled={isBusy}
-                                onApply={() => handleApply(improvement)}
-                                onDismiss={() => handleDismiss(improvement.id)}
-                                defaultExpanded={pendingImprovements.length === 1}
-                            />
-                        ))}
+                        <AnimatePresence initial={false}>
+                            {pendingImprovements.map((improvement, index) => (
+                                <motion.div
+                                    key={improvement.id}
+                                    layout
+                                    initial={{ opacity: 0, y: 12, filter: "blur(4px)" }}
+                                    animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+                                    exit={{ opacity: 0, x: -20, filter: "blur(4px)", transition: { duration: 0.15 } }}
+                                    transition={{ duration: 0.25, delay: index * 0.05, ease: [0.25, 1, 0.5, 1] }}
+                                >
+                                    <ImprovementRow
+                                        improvement={improvement}
+                                        isApplying={isApplyingId === improvement.id}
+                                        isDismissing={isDismissingId === improvement.id}
+                                        disabled={isBusy}
+                                        onApply={() => handleApply(improvement)}
+                                        onDismiss={() => handleDismiss(improvement.id)}
+                                        defaultExpanded={pendingImprovements.length === 1}
+                                    />
+                                </motion.div>
+                            ))}
+                        </AnimatePresence>
                     </div>
                     <span className="text-xs text-muted-foreground mt-auto">Reviewed {formatRelativeTime(review.createdAt)}</span>
                 </>
@@ -216,10 +226,12 @@ function ImprovementRow({
     const [expanded, setExpanded] = useState(defaultExpanded)
 
     return (
-        <div className="rounded-lg border border-border bg-card/50 px-4 py-3 space-y-0">
+        <div className="rounded-lg border border-border bg-card/50 px-4 py-3">
             <div className="flex items-center gap-2">
                 <button type="button" onClick={() => setExpanded(e => !e)} className="flex items-center gap-2 flex-1 text-left min-w-0">
-                    <ChevronRight className={cn("h-3.5 w-3.5 text-muted-foreground shrink-0 transition-transform", expanded && "rotate-90")} />
+                    <motion.span animate={{ rotate: expanded ? 90 : 0 }} transition={{ duration: 0.2, ease: [0.25, 1, 0.5, 1] }}>
+                        <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                    </motion.span>
                     <span className="font-medium text-sm truncate">{improvement.title}</span>
                 </button>
                 <div className="flex items-center gap-1.5 shrink-0">
@@ -231,11 +243,21 @@ function ImprovementRow({
                     </Button>
                 </div>
             </div>
-            {expanded && (
-                <div className="pl-[22px] pt-2">
-                    <p className="text-sm text-muted-foreground">{improvement.description}</p>
-                </div>
-            )}
+            <AnimatePresence initial={false}>
+                {expanded && (
+                    <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.2, ease: [0.25, 1, 0.5, 1] }}
+                        className="overflow-hidden"
+                    >
+                        <div className="pl-[22px] pt-2">
+                            <p className="text-sm text-muted-foreground">{improvement.description}</p>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     )
 }
