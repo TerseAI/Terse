@@ -233,7 +233,11 @@ function AgentDetail() {
     const [isChatPaneResizing, setIsChatPaneResizing] = useState(false)
     const [renderBuilderChatContent, setRenderBuilderChatContent] = useState(false)
     const [showBuilderChatContent, setShowBuilderChatContent] = useState(false)
-    const [ctaChips, setCtaChips] = useState<CTAChip[] | undefined>()
+    const [ctaChips, setCtaChips] = useState<CTAChip[] | undefined>([
+        { label: "Test chip one", description: "See the border animation", prompt: "test one" },
+        { label: "Test chip two", description: "Staggered entrance", prompt: "test two" },
+        { label: "Test chip three", description: "Hue sweep demo", prompt: "test three" },
+    ])
     const layoutContainerRef = useRef<HTMLDivElement>(null)
     const builderChatRef = useRef<BuilderChatHandle>(null)
     const hasProcessedSetupParamRef = useRef(false)
