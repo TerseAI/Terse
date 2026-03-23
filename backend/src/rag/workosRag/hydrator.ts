@@ -1,4 +1,4 @@
-import { enrichWorkOSEventPayload, WORKOS_SUPPORTED_EVENT_NAMES, WorkOSEvent, WorkOSWebhookPayload } from "../../integrations/WorkOSIntegration"
+import { WORKOS_SUPPORTED_EVENT_NAMES, WorkOSEvent, WorkOSWebhookPayload, enrichWorkOSEventPayload } from "../../integrations/WorkOSIntegration"
 import logger from "../../logger"
 import { db } from "../../prismaClient"
 import { SecretField, getSecret } from "../../services/SecretService"

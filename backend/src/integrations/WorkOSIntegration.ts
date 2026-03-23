@@ -3,7 +3,7 @@ import { InputConfigType } from "@prisma/client"
 import { EventProcessor } from "../agent/AgentRunner/EventProcessor"
 import { urls } from "../config/settings"
 import logger from "../logger"
-import { getWorkOSUser, WorkOSUserResponse } from "../outputs/workos/workosApiClient"
+import { WorkOSUserResponse, getWorkOSUser } from "../outputs/workos/workosApiClient"
 import { db } from "../prismaClient"
 import { Identifiable } from "../rag/Hydrator"
 import { SecretField, deleteSecretsBestEffort, getSecret, storeSecret } from "../services/SecretService"
@@ -441,12 +441,7 @@ function getString(value: unknown): string | undefined {
 }
 
 function getWorkOSUserIdFromPayload(data: Record<string, any>, eventType: string): string | undefined {
-    return (
-        getString(data.user_id) ||
-        getString(data.userId) ||
-        getString(getNestedRecord(data.user)?.id) ||
-        (eventType.startsWith("user.") ? getString(data.id) : undefined)
-    )
+    return getString(data.user_id) || getString(data.userId) || getString(getNestedRecord(data.user)?.id) || (eventType.startsWith("user.") ? getString(data.id) : undefined)
 }
 
 function extractWorkOSUserFromPayload(data: Record<string, any>, eventType: string) {
@@ -464,11 +459,7 @@ function extractWorkOSUserFromPayload(data: Record<string, any>, eventType: stri
         firstName: getString(data.first_name) || getString(data.firstName) || getString(nestedUser?.first_name) || getString(nestedUser?.firstName),
         lastName: getString(data.last_name) || getString(data.lastName) || getString(nestedUser?.last_name) || getString(nestedUser?.lastName),
         emailVerified: Boolean(data.email_verified ?? data.emailVerified ?? nestedUser?.email_verified ?? nestedUser?.emailVerified),
-        profilePictureUrl:
-            getString(data.profile_picture_url) ||
-            getString(data.profilePictureUrl) ||
-            getString(nestedUser?.profile_picture_url) ||
-            getString(nestedUser?.profilePictureUrl)
+        profilePictureUrl: getString(data.profile_picture_url) || getString(data.profilePictureUrl) || getString(nestedUser?.profile_picture_url) || getString(nestedUser?.profilePictureUrl)
     }
 }
 
