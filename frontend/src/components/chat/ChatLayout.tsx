@@ -231,14 +231,13 @@ export const ChatLayout = forwardRef<ChatLayoutHandle, ChatLayoutProps>(function
                                         <motion.button
                                             key={chip.label}
                                             variants={chipItemVariants}
-                                            whileHover={{ y: -2, scale: 1.02, transition: { duration: 0.15, ease: [0.25, 1, 0.5, 1] } }}
                                             whileTap={{ scale: 0.97, transition: { duration: 0.1 } }}
                                             onClick={() => {
                                                 onSendMessage(chip.prompt)
                                                 setCtaChipsDismissed(true)
                                                 onCtaChipClick?.(chip)
                                             }}
-                                            className="flex flex-col items-start text-left px-4 py-3 rounded-xl border border-border bg-secondary/50 hover:bg-secondary hover:shadow-md transition-colors transition-shadow cursor-pointer"
+                                            className="flex flex-col items-start text-left px-4 py-3 rounded-xl border border-border bg-secondary/50 hover:bg-secondary transition-colors cursor-pointer"
                                         >
                                             <span className="text-sm font-semibold text-foreground leading-snug">{chip.label}</span>
                                             {chip.description && <span className="text-sm text-muted-foreground leading-snug mt-0.5">{chip.description}</span>}
