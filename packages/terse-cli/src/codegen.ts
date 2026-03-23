@@ -181,10 +181,6 @@ function attioAttributeRecordTsType(attr: AttioAttributeData): string {
     return baseType.includes("|") ? `(${baseType})[]` : `${baseType}[]`
 }
 
-function renderAttioAttributeSlugUnion(attributes: AttioAttributeData[]): string {
-    return attributes.length === 0 ? "string" : attributes.map(attr => `"${escapeString(attr.api_slug || "")}"`).join(" | ")
-}
-
 function renderAttioObjectValueShape(attributes: AttioAttributeData[], mode: "input" | "record"): string {
     if (attributes.length === 0) return "Record<string, unknown>"
 
@@ -771,18 +767,16 @@ function generateAttioSection(instances: AttioInstanceData[]): SectionResult {
     parts.push("export class AttioObject<")
     parts.push("    TSlug extends string = string,")
     parts.push("    TRecordValues extends Record<string, unknown> = Record<string, unknown>,")
-    parts.push("    TInputValues extends Record<string, unknown> = TRecordValues,")
-    parts.push("    TAttributeSlug extends string = string")
+    parts.push("    TInputValues extends Record<string, unknown> = TRecordValues")
     parts.push("> {")
     parts.push("    constructor(")
     parts.push("        public readonly apiSlug: TSlug,")
     parts.push("        public readonly name: string,")
-    parts.push("        public readonly attributes: readonly AttioAttributeDefinition<TAttributeSlug>[] = []")
+    parts.push("        public readonly attributes: readonly AttioAttributeDefinition[] = []")
     parts.push("    ) {}")
     parts.push("")
     parts.push("    declare readonly __recordValues: TRecordValues")
     parts.push("    declare readonly __inputValues: TInputValues")
-    parts.push("    declare readonly __attributeSlug: TAttributeSlug")
 
     if (inst.objects.length > 0) {
         parts.push("")
@@ -805,12 +799,11 @@ function generateAttioSection(instances: AttioInstanceData[]): SectionResult {
                     ].filter(Boolean).join(", ")
                     return `        { ${fields} }`
                 }).join(",\n")}\n    ]`
-            const attributeSlugType = renderAttioAttributeSlugUnion(attributes)
             const recordValuesType = renderAttioObjectValueShape(attributes, "record")
             const inputValuesType = renderAttioObjectValueShape(attributes, "input")
 
             parts.push(
-                `    static ${staticName} = new AttioObject<"${escapeString(object.api_slug)}", ${recordValuesType}, ${inputValuesType}, ${attributeSlugType}>("${escapeString(object.api_slug)}", "${escapeString(object.singular_noun)}", ${attributeSource})`
+                `    static ${staticName} = new AttioObject<"${escapeString(object.api_slug)}", ${recordValuesType}, ${inputValuesType}>("${escapeString(object.api_slug)}", "${escapeString(object.singular_noun)}", ${attributeSource})`
             )
         }
     }
@@ -1008,13 +1001,6 @@ function generateToolsSection(tools: ToolDefinition[], input: CodegenInput): Sec
             }
             parts.push("")
 
-            parts.push("export type AttioAttributeSlugsByObject = {")
-            for (const object of attioGeneratedObjects) {
-                parts.push(`    "${escapeString(object.api_slug)}": ${renderAttioAttributeSlugUnion(object.attributes)}`)
-            }
-            parts.push("}")
-            parts.push("")
-
             parts.push("export type AttioInputValuesByObject = {")
             for (const object of attioGeneratedObjects) {
                 const inputShape = object.attributes.length === 0 ? "Record<string, __AttioValue>" : renderAttioObjectValueShape(object.attributes, "input")
@@ -1044,8 +1030,7 @@ function generateToolsSection(tools: ToolDefinition[], input: CodegenInput): Sec
             }
             parts.push("}")
         } else {
-            parts.push("export type GeneratedAttioObject = AttioObject<string, Record<string, __AttioValue>, Record<string, __AttioValue>, string>")
-            parts.push('export type AttioAttributeSlugsByObject = Record<string, string>')
+            parts.push("export type GeneratedAttioObject = AttioObject<string, Record<string, __AttioValue>, Record<string, __AttioValue>>")
             parts.push('export type AttioInputValuesByObject = Record<string, Record<string, __AttioValue>>')
             parts.push('export type AttioRecordValuesByObject = Record<string, Record<string, __AttioValue>>')
             parts.push('export type AttioFilterByObject = Record<string, __AttioFilterExpression<Record<string, __AttioValue>>>')
@@ -1053,9 +1038,9 @@ function generateToolsSection(tools: ToolDefinition[], input: CodegenInput): Sec
         }
 
         parts.push("")
-        parts.push('export type AttioAttributeSlug<TObject extends GeneratedAttioObject = GeneratedAttioObject> = TObject extends { __attributeSlug: infer TAttributeSlug } ? TAttributeSlug : AttioAttributeSlugsByObject[TObject["apiSlug"]]')
         parts.push('export type AttioValuesFor<TObject extends GeneratedAttioObject = GeneratedAttioObject> = TObject extends { __inputValues: infer TInputValues } ? TInputValues : AttioInputValuesByObject[TObject["apiSlug"]]')
         parts.push('export type AttioRecordValuesFor<TObject extends GeneratedAttioObject = GeneratedAttioObject> = TObject extends { __recordValues: infer TRecordValues } ? TRecordValues : AttioRecordValuesByObject[TObject["apiSlug"]]')
+        parts.push('export type AttioAttributeSlug<TObject extends GeneratedAttioObject = GeneratedAttioObject> = Extract<keyof AttioValuesFor<TObject>, string>')
         parts.push('export type AttioFilterFor<TObject extends GeneratedAttioObject = GeneratedAttioObject> = __AttioFilterExpression<AttioRecordValuesFor<TObject>>')
         parts.push('export type AttioRecordFor<TObject extends GeneratedAttioObject = GeneratedAttioObject> = __AttioRecordWithValues<AttioRecordValuesFor<TObject>>')
         parts.push('export type AttioQueryRecordsParams<TObject extends GeneratedAttioObject = GeneratedAttioObject> = { object: TObject; filter?: AttioFilterFor<TObject> | null; limit?: number | null }')
