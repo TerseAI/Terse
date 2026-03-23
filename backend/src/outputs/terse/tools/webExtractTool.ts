@@ -1,0 +1,23 @@
+import { tool } from "@openai/agents"
+import { z } from "zod"
+
+import { getWebSearchService } from "../../../services/webSearch"
+import { ToolName } from "../../../tools/ToolNames"
+
+export const webExtractTool = tool({
+    name: ToolName.WEB_EXTRACT,
+    description: "Extract the full text content from one or more web page URLs. Use this when you need to read the complete contents of a specific page.",
+    parameters: z.object({
+        urls: z.union([z.string(), z.array(z.string())]).describe("URL or list of URLs to extract content from"),
+        extract_depth: z.enum(["basic", "advanced"]).nullable().describe("'advanced' handles JavaScript-heavy pages but is slower")
+    }),
+    execute: async ({ urls, extract_depth }) => {
+        const service = getWebSearchService()
+        const urlList = Array.isArray(urls) ? urls : [urls]
+        const extractDepth = extract_depth ?? "basic"
+        return service.extract({
+            urls: urlList,
+            extractDepth
+        })
+    }
+})
