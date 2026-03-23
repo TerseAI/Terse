@@ -320,7 +320,7 @@ function AgentDetail() {
         if (hasProcessedSetupParamRef.current) return
         if (!agentId || !searchParams.has(FROM_SETUP_CHAT_PARAM)) return
         hasProcessedSetupParamRef.current = true
-        setCtaChips([{ label: "Test the agent", prompt: "I'd like to test this out right away" }])
+        setCtaChips([{ label: "Try now", description: "Test your agent out end to end", prompt: "I'd like to test this out right away" }])
         setBuilderChatOpen(true)
     }, [agentId, searchParams])
 

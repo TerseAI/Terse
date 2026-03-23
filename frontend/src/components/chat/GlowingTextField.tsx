@@ -3,7 +3,7 @@ import TextareaAutosize from "react-textarea-autosize"
 
 import { Button } from "@headlessui/react"
 import { AnimatePresence, motion } from "framer-motion"
-import { CircleStop, Send } from "lucide-react"
+import { CircleStop, Send, Sparkles } from "lucide-react"
 
 interface GlowingTextFieldProps {
     isLoading: boolean
@@ -239,6 +239,7 @@ const GlowingTextField = forwardRef<GlowingTextFieldHandle, GlowingTextFieldProp
                     {/* Tab hint - shows when placeholder is fully typed and input is empty */}
                     {isFullyTyped && inputValue.length === 0 && onPlaceholderSelect && (
                         <div
+                            aria-hidden="true"
                             className={`absolute flex items-center gap-1.5 text-xs text-muted-foreground/70 pointer-events-none animate-in fade-in duration-300 ${hasActionButton ? "right-14" : "right-4"} ${isLarge ? "bottom-4" : "top-1/2 -translate-y-1/2"}`}
                         >
                             <kbd className="px-1.5 py-0.5 bg-muted/30 border border-border/30 rounded text-[10px] font-mono">Tab</kbd>
@@ -275,18 +276,32 @@ const GlowingTextField = forwardRef<GlowingTextFieldHandle, GlowingTextFieldProp
             {/* Placeholder suggestion chips */}
             <AnimatePresence>
                 {showPlaceholderChips && inputValue.length === 0 && chipPlaceholders.length > 0 && (
-                    <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 4 }} transition={{ duration: 0.15 }} className="flex flex-wrap gap-2 px-1">
-                        {chipPlaceholders.slice(0, 3).map(placeholder => (
-                            <button
-                                key={placeholder}
-                                type="button"
-                                onClick={() => handlePlaceholderClick(placeholder)}
-                                className="min-h-11 flex items-center px-3 py-2 text-sm text-muted-foreground bg-secondary/50 hover:bg-secondary hover:text-foreground border border-border/50 hover:border-border rounded-full transition-all duration-200 truncate max-w-[200px] focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-                                title={placeholder}
-                            >
-                                {placeholder}
-                            </button>
-                        ))}
+                    <motion.div
+                        initial={{ opacity: 0, y: 4 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 4 }}
+                        transition={{ duration: 0.15 }}
+                        role="group"
+                        aria-label="Suggested prompts"
+                        className="flex flex-col gap-2 px-1 pt-1"
+                    >
+                        <div className="flex items-center gap-1.5 px-0.5" aria-hidden="true">
+                            <Sparkles className="h-3 w-3 text-muted-foreground/40" />
+                            <span className="text-xs text-muted-foreground/50">Try asking</span>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                            {chipPlaceholders.slice(0, 3).map(placeholder => (
+                                <button
+                                    key={placeholder}
+                                    type="button"
+                                    onClick={() => handlePlaceholderClick(placeholder)}
+                                    aria-label={placeholder}
+                                    className="min-h-11 flex items-center px-3 py-2 text-sm text-muted-foreground bg-secondary/50 hover:bg-secondary hover:text-foreground border border-border/50 hover:border-border rounded-full transition-all duration-200 truncate max-w-[200px] focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                                >
+                                    {placeholder}
+                                </button>
+                            ))}
+                        </div>
                     </motion.div>
                 )}
             </AnimatePresence>
