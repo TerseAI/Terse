@@ -30,6 +30,8 @@ interface Turn {
     }
     snippets?: ChatSnippet[]
     disableAnimation?: boolean
+    isLatestAssistantTurn?: boolean
+    onAssistantTextDisplayComplete?: () => void
     onApprove?: (stepId: string) => void
     onReject?: (stepId: string) => void
     onMultipleChoiceAnswer?: (questionId: string, value: string) => void
@@ -65,6 +67,8 @@ function TurnView({
     filter_result,
     snippets = [],
     disableAnimation = false,
+    isLatestAssistantTurn = false,
+    onAssistantTextDisplayComplete,
     onApprove,
     onReject,
     onMultipleChoiceAnswer
@@ -115,7 +119,7 @@ function TurnView({
                                         <span className="select-text">{text}</span>
                                     ) : (
                                         <div className="select-text">
-                                            <TokenStream text={text} disableAnimation={disableAnimation} />
+                                            <TokenStream text={text} disableAnimation={disableAnimation} onComplete={isLatestAssistantTurn ? onAssistantTextDisplayComplete : undefined} />
                                         </div>
                                     )}
                                 </>

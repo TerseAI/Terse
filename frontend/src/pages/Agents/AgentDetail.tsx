@@ -6,6 +6,7 @@ import { Clock, Lightbulb, MessageSquare, Settings, X } from "lucide-react"
 
 import BreadCrumb from "../../components/BreadCrumb"
 import { BuilderChat, BuilderChatHandle } from "../../components/chat/BuilderChat"
+import { type CTAChip } from "../../components/chat/ChatLayout"
 import { Button } from "../../components/ui/button"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "../../components/ui/sheet"
 import { SidebarTrigger } from "../../components/ui/sidebar"
@@ -17,6 +18,7 @@ import { useTemplateHydration } from "../../hooks/useTemplateHydration"
 import { safeStorageGet, safeStorageSet } from "../../lib/storage"
 import { cn } from "../../lib/utils"
 import { useModelContext } from "../../services/ModelContextProvider"
+import { FROM_SETUP_CHAT_PARAM } from "../../shared/FrontendRoutes"
 import { AgentNotificationSettings, AgentPrompt, TransientAgentOutput, TransientAgentTrigger } from "../../shared/types"
 import { AgentInputsDonatedState, AgentNameDonatedState, AgentOutputsDonatedState, AgentPromptDonatedState } from "../../utility/AgentModelDonation"
 import { toTransientAgentOutput, toTransientAgentTrigger } from "../../utility/AgentUtils"
@@ -231,8 +233,10 @@ function AgentDetail() {
     const [isChatPaneResizing, setIsChatPaneResizing] = useState(false)
     const [renderBuilderChatContent, setRenderBuilderChatContent] = useState(false)
     const [showBuilderChatContent, setShowBuilderChatContent] = useState(false)
+    const [ctaChips, setCtaChips] = useState<CTAChip[] | undefined>()
     const layoutContainerRef = useRef<HTMLDivElement>(null)
     const builderChatRef = useRef<BuilderChatHandle>(null)
+    const hasProcessedSetupParamRef = useRef(false)
     const chatPaneId = useId()
     const isMobile = useIsMobile()
 
@@ -311,6 +315,18 @@ function AgentDetail() {
 
     // Only pass agentId if it's not "new"
     const agentId: string | null = id && id !== "new" ? id : null
+
+    useEffect(() => {
+        if (hasProcessedSetupParamRef.current) return
+        if (!agentId || !searchParams.has(FROM_SETUP_CHAT_PARAM)) return
+        hasProcessedSetupParamRef.current = true
+        setCtaChips([{ label: "Try now", description: "Test your agent out end to end", prompt: "I'd like to test this out right away" }])
+        setBuilderChatOpen(true)
+    }, [agentId, searchParams])
+
+    function handleCtaChipClick() {
+        setCtaChips(undefined)
+    }
 
     const showImprovementsTab = useFeatureFlag(FeatureFlags.AGENT_IMPROVEMENTS_TAB)
     const activeTabs = showImprovementsTab ? AGENT_DETAIL_TABS : AGENT_DETAIL_TABS.filter(t => t !== "improvements")
@@ -577,7 +593,7 @@ function AgentDetail() {
                             <SheetDescription>Build and edit this agent with chat.</SheetDescription>
                         </SheetHeader>
                         <div className="h-full min-h-0 w-full">
-                            <BuilderChat ref={builderChatRef} getStateJSON={() => getStateJSON()} agentId={agentId} />
+                            <BuilderChat ref={builderChatRef} getStateJSON={() => getStateJSON()} agentId={agentId} ctaChips={ctaChips} onCtaChipClick={handleCtaChipClick} />
                         </div>
                     </SheetContent>
                 </Sheet>
@@ -620,7 +636,9 @@ function AgentDetail() {
                     >
                         {(desktopChatPaneOpen || renderBuilderChatContent) && (
                             <div className={cn("flex-1 min-w-0 min-h-0 w-full transition-opacity duration-150", showBuilderChatContent ? "opacity-100" : "opacity-0")}>
-                                {renderBuilderChatContent && <BuilderChat ref={builderChatRef} getStateJSON={() => getStateJSON()} agentId={agentId} />}
+                                {renderBuilderChatContent && (
+                                    <BuilderChat ref={builderChatRef} getStateJSON={() => getStateJSON()} agentId={agentId} ctaChips={ctaChips} onCtaChipClick={handleCtaChipClick} />
+                                )}
                             </div>
                         )}
                     </div>

@@ -97,6 +97,14 @@
   word-break: normal;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
 .react-markdown strong { font-weight: 600; }
 .react-markdown em { font-style: italic; }
 .react-markdown a { color: var(--primary); text-decoration: underline; }
