@@ -48,6 +48,10 @@ export const settings = {
         apiKey: requireEnv("OPENAI_API_KEY")
     },
 
+    tavily: {
+        apiKey: requireEnv("TAVILY_API_KEY")
+    },
+
     gemini: {
         apiKey: requireEnv("GEMINI_API_KEY")
     },
@@ -179,7 +183,7 @@ export const settings = {
 } as const
 
 // Export individual settings for convenience
-export const { jwt, database, openai, gemini, urls, nodeEnv, gmail, githubApp, notion, figma, slack, attio, gcp, gcs, cloudScheduler, optional } = settings
+export const { jwt, database, openai, tavily, gemini, urls, nodeEnv, gmail, githubApp, notion, figma, slack, attio, gcp, gcs, cloudScheduler, optional } = settings
 
 // Type exports
 export type Settings = typeof settings
