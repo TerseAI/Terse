@@ -170,7 +170,7 @@ export default function FunctionCallItem({ call, isTurnFailure = false, onApprov
     ) : call.isApproved ? (
         <CheckCircleIcon className="w-3.5 h-3.5 text-success flex-shrink-0" />
     ) : call.isWaitingForUserInput ? (
-        <ClockIcon className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />
+        <ClockIcon className="w-3.5 h-3.5 text-accent-primary flex-shrink-0" />
     ) : (
         <CheckIcon className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
     )
@@ -187,7 +187,7 @@ export default function FunctionCallItem({ call, isTurnFailure = false, onApprov
                     {call.isWaitingForApproval && !call.isRejected && <span className="text-warning ml-1">(approval needed)</span>}
                     {call.isApproved && <span className="text-success ml-1">(approved)</span>}
                     {call.isRejected && <span className="text-warning ml-1">(rejected)</span>}
-                    {call.isWaitingForUserInput && <span className="text-blue-500 ml-1">(needs input)</span>}
+                    {call.isWaitingForUserInput && <span className="text-accent-primary ml-1">(needs input)</span>}
                 </span>
             </button>
 

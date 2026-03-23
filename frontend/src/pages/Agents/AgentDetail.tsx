@@ -40,7 +40,7 @@ function ChatSidebarTrigger({ className, onClick, isOpen, ...props }: React.Comp
         <Button
             variant="outline"
             size="icon"
-            className={cn("h-7 w-7 shrink-0 border-border shadow-sm", className)}
+            className={cn("h-9 w-9 shrink-0 border-border shadow-sm", className)}
             onClick={event => {
                 onClick?.(event)
                 event.currentTarget.blur()
@@ -333,7 +333,7 @@ function AgentDetail() {
     const pendingImprovementCount = useAgentPendingCount(showImprovementsTab ? agentId : null)
 
     // Fetch agent data using useSWR
-    const { agent, isLoading: isFetching, mutate } = useAgent(agentId)
+    const { agent, isLoading: isFetching, isError: agentFetchError, mutate } = useAgent(agentId)
 
     // Fetch templates for template hydration
     const { templates, isLoading: isLoadingTemplates } = useTemplates()
@@ -478,11 +478,30 @@ function AgentDetail() {
         return <SdkJobDetail agentId={agentId} />
     }
 
+    // Show error state if agent fetch failed
+    if (agentId && agentFetchError && !agent) {
+        return (
+            <div className="flex h-full items-center justify-center">
+                <div className="text-center space-y-2">
+                    <div className="text-muted-foreground text-sm">Failed to load agent.</div>
+                    <button
+                        onClick={() => mutate()}
+                        className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-sm"
+                    >
+                        Try again
+                    </button>
+                </div>
+            </div>
+        )
+    }
+
     // Show loading state while determining agent source for existing agents
     if (agentId && isFetching && !agent) {
         return (
-            <div className="flex h-full items-center justify-center">
-                <div className="text-muted-foreground text-sm">Loading...</div>
+            <div className="flex h-full items-center justify-center" aria-busy="true">
+                <div className="text-muted-foreground text-sm" role="status">
+                    Loading...
+                </div>
             </div>
         )
     }
@@ -490,7 +509,7 @@ function AgentDetail() {
     return (
         <div ref={layoutContainerRef} className="flex h-full min-w-0">
             <div
-                className={cn("h-full min-h-0 min-w-0 overflow-y-auto @container/agent-detail-pane", !isChatPaneResizing && "transition-all duration-200 ease-in-out")}
+                className={cn("h-full min-h-0 min-w-0 overflow-y-auto @container/agent-detail-pane", !isChatPaneResizing && "transition-[flex-basis] duration-200 ease-in-out")}
                 style={{
                     flexGrow: 1,
                     flexShrink: 1,
@@ -581,7 +600,7 @@ function AgentDetail() {
             ) : (
                 <>
                     <div
-                        className={cn("shrink-0 overflow-hidden", !isChatPaneResizing && "transition-all duration-200 ease-in-out")}
+                        className={cn("shrink-0 overflow-hidden", !isChatPaneResizing && "transition-[width,opacity] duration-200 ease-in-out")}
                         style={{
                             width: desktopChatPaneOpen ? 4 : 0,
                             opacity: desktopChatPaneOpen ? 1 : 0,
@@ -601,7 +620,11 @@ function AgentDetail() {
                     <div
                         id={chatPaneId}
                         data-chat-pane
-                        className={cn("h-full min-h-0 flex flex-col overflow-hidden min-w-0", desktopChatPaneOpen ? "pl-2" : "pl-0", !isChatPaneResizing && "transition-all duration-200 ease-in-out")}
+                        className={cn(
+                            "h-full min-h-0 flex flex-col overflow-hidden min-w-0",
+                            desktopChatPaneOpen ? "pl-2" : "pl-0",
+                            !isChatPaneResizing && "transition-[flex-basis,min-width,opacity,padding] duration-200 ease-in-out"
+                        )}
                         style={{
                             flexGrow: 0,
                             flexShrink: 0,

@@ -51,8 +51,7 @@ export default function SdkJobDetail({ agentId }: { agentId: string }) {
                 mutateAgent: mutate
             })
             toast.success(agent.isActive ? "Job paused" : "Job resumed")
-        } catch (error) {
-            console.error("Failed to toggle job status:", error)
+        } catch {
             toast.error("Failed to update job status")
         }
     }
@@ -63,8 +62,7 @@ export default function SdkJobDetail({ agentId }: { agentId: string }) {
             await deleteAgent(agentId)
             toast.success("Job deleted")
             navigate(FrontendRoutes.AGENTS.SETUP)
-        } catch (error) {
-            console.error("Failed to delete job:", error)
+        } catch {
             toast.error("Failed to delete job")
         } finally {
             setIsDeleting(false)
@@ -91,8 +89,7 @@ export default function SdkJobDetail({ agentId }: { agentId: string }) {
             await BackendProvider.triggerManually(triggerId, "Manual trigger from SDK job detail page")
             toast.success("Job triggered")
             setSelectedTab(1)
-        } catch (error) {
-            console.error("Failed to trigger job:", error)
+        } catch {
             toast.error("Failed to trigger job")
         } finally {
             setIsManualTriggering(false)
@@ -108,8 +105,10 @@ export default function SdkJobDetail({ agentId }: { agentId: string }) {
 
     if (isLoading || !agent) {
         return (
-            <div className="flex h-full items-center justify-center">
-                <div className="text-muted-foreground text-sm">Loading...</div>
+            <div className="flex h-full items-center justify-center" aria-busy="true">
+                <div className="text-muted-foreground text-sm" role="status">
+                    Loading...
+                </div>
             </div>
         )
     }
@@ -128,7 +127,7 @@ export default function SdkJobDetail({ agentId }: { agentId: string }) {
 
             <div className="flex items-center gap-3 px-4 pb-2">
                 <h1 className="text-lg font-semibold truncate">{agent.name}</h1>
-                <Badge variant="outline" className={agent.isActive ? "text-green-600 border-green-500" : "text-muted-foreground"}>
+                <Badge variant="outline" className={agent.isActive ? "text-success border-success" : "text-muted-foreground"}>
                     {agent.isActive ? "Active" : "Paused"}
                 </Badge>
                 <div className="ml-auto flex items-center gap-2">

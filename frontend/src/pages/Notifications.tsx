@@ -164,7 +164,7 @@ function NotificationsPage() {
                                 onExternalOpenChange={setIsAddDestinationDialogOpen}
                             />
                         )}
-                        <Card className="min-h-[8rem] gap-0 overflow-hidden border-border/60 bg-card/35 py-0 backdrop-blur-sm">
+                        <Card className="min-h-[8rem] gap-0 overflow-hidden border-border/60 bg-card py-0">
                             <CardContent className="p-4">
                                 <Tabs defaultValue="destinations" className="w-full">
                                     <div className="mb-3 flex items-center justify-between gap-3">

@@ -45,11 +45,16 @@
     --color-success: var(--success);
     --color-danger: var(--danger);
     --color-warning: var(--warning);
+    --color-chart-6: var(--chart-6);
+    --color-chart-7: var(--chart-7);
+    --color-chart-8: var(--chart-8);
+    --color-chart-9: var(--chart-9);
+    --color-chart-10: var(--chart-10);
 }
 
 :root {
     --radius: 0.5rem;
-    --background: oklch(0.99 0 0);
+    --background: oklch(0.98 0 0);
     --foreground: oklch(0.13 0 0);
     --card: oklch(1 0 0);
     --card-foreground: oklch(0.13 0 0);
@@ -86,6 +91,11 @@
     --success: oklch(0.72 0.18 150);
     --danger: oklch(0.68 0.2 25);
     --warning: oklch(0.8 0.18 90);
+    --chart-6: oklch(0.55 0.15 210);
+    --chart-7: oklch(0.55 0.15 280);
+    --chart-8: oklch(0.55 0.15 30);
+    --chart-9: oklch(0.55 0.14 160);
+    --chart-10: oklch(0.55 0.15 350);
 }
 
 .dark {
@@ -123,6 +133,14 @@
     --sidebar-accent-foreground: oklch(0.93 0 0);
     --sidebar-border: oklch(1 0 0 / 8%);
     --sidebar-ring: oklch(0.93 0 0);
+    --success: oklch(0.82 0.18 150);
+    --danger: oklch(0.75 0.2 25);
+    --warning: oklch(0.88 0.18 90);
+    --chart-6: oklch(0.65 0.15 210);
+    --chart-7: oklch(0.65 0.15 280);
+    --chart-8: oklch(0.65 0.15 30);
+    --chart-9: oklch(0.65 0.14 160);
+    --chart-10: oklch(0.65 0.15 350);
 }
 
 @layer base {

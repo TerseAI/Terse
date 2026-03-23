@@ -195,9 +195,7 @@ const GlowingTextField = forwardRef<GlowingTextFieldHandle, GlowingTextFieldProp
                 {isLoading && (
                     <div className="absolute inset-0 pointer-events-none overflow-visible">
                         <div className="absolute left-1/2 top-1/2 w-full h-full animate-rect-orbit overflow-visible">
-                            <div
-                                className={`absolute w-3 h-3 rounded-full bg-accent-primary/60 blur-sm [box-shadow:0_0_10px_color-mix(in_oklch,var(--color-accent-primary)_60%,transparent)] -translate-x-1/2 -translate-y-1/2 overflow-visible`}
-                            />
+                            <div className="absolute w-3 h-3 rounded-full bg-accent-primary/60 blur-sm -translate-x-1/2 -translate-y-1/2 overflow-visible" />
                         </div>
                     </div>
                 )}
@@ -207,7 +205,7 @@ const GlowingTextField = forwardRef<GlowingTextFieldHandle, GlowingTextFieldProp
                             relative
                             w-full
                             rounded-lg
-                            transition-all
+                            transition-[border-color]
                             duration-400
                             bg-card
                             ${showBorder ? "border-2 border-border focus-within:border-primary/50" : ""}

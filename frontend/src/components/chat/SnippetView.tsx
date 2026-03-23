@@ -55,9 +55,9 @@ export function SnippetView({ snippet, onMultipleChoiceAnswer }: { snippet: Chat
             // Fallback if integration type is not recognized
             const integrationName = snippet.integration.charAt(0).toUpperCase() + snippet.integration.slice(1)
             return (
-                <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3">
-                    <div className="text-sm font-semibold text-blue-500 mb-1">Connect {integrationName}</div>
-                    <div className="text-sm text-gray-300">{snippet.message}</div>
+                <div className="bg-accent-primary/10 border border-accent-primary/20 rounded-lg p-3">
+                    <div className="text-sm font-semibold text-accent-primary mb-1">Connect {integrationName}</div>
+                    <div className="text-sm text-muted-foreground">{snippet.message}</div>
                 </div>
             )
         }

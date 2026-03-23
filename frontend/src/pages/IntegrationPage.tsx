@@ -1,53 +1,62 @@
+import { AnimatePresence, motion } from "framer-motion"
 import { FileText } from "lucide-react"
 
 import IntegrationCard, { IntegrationCardSkeleton } from "@/components/Integrations/IntegrationCard"
 import { EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty"
 import { Empty } from "@/components/ui/empty"
+import { FadeSwitch } from "@/components/ui/fade-switch"
 import { useIntegrations } from "@/hooks/api/useIntegrations"
-import { IntegrationType } from "@/shared/Integrations"
+
+const TRANSITION = {
+    duration: 0.3,
+    ease: [0.25, 1, 0.5, 1]
+} as const
 
 function IntegrationPage() {
-    const { integrations: activeIntegrations, inactiveIntegrations, isLoading } = useIntegrations()
+    const { integrations: activeIntegrations, inactiveIntegrations, isLoading } = useIntegrations({ showOnlyForUI: true })
 
     const hasActive = activeIntegrations && activeIntegrations.length > 0
     const hasInactive = inactiveIntegrations && inactiveIntegrations.length > 0
+    const activeKey = isLoading ? "skeleton" : hasActive ? "cards" : "empty"
 
     return (
         <div className="flex flex-col h-full p-4">
             <h1 className="text-xl font-bold text-foreground mb-10">Active Integrations</h1>
-            <div className="flex flex-row flex-wrap gap-12 mb-12">
-                {isLoading || hasActive ? <IntegrationContent integrations={activeIntegrations ?? []} isLoading={isLoading} /> : <NoIntegrations />}
-            </div>
-
-            {hasInactive && (
-                <>
-                    <h1 className="text-xl font-bold text-foreground mb-10">Inactive Integrations</h1>
-                    <div className="flex flex-row flex-wrap gap-12">
-                        <IntegrationContent integrations={inactiveIntegrations ?? []} isLoading={isLoading} isActive={false} />
+            <FadeSwitch activeKey={activeKey} transition={TRANSITION} className="mb-12">
+                {isLoading ? (
+                    <div className="flex flex-row flex-wrap items-stretch gap-12">
+                        {Array.from({ length: 3 }).map((_, index) => (
+                            <IntegrationCardSkeleton key={index} />
+                        ))}
                     </div>
-                </>
-            )}
+                ) : hasActive ? (
+                    <div className="flex flex-row flex-wrap items-stretch gap-12">
+                        {activeIntegrations.map((integration, i) => (
+                            <motion.div key={integration} className="flex" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ ...TRANSITION, delay: i * 0.06 }}>
+                                <IntegrationCard integration={integration} isActive />
+                            </motion.div>
+                        ))}
+                    </div>
+                ) : (
+                    <NoIntegrations />
+                )}
+            </FadeSwitch>
+
+            <AnimatePresence>
+                {hasInactive && (
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ ...TRANSITION, delay: 0.15 }}>
+                        <h1 className="text-xl font-bold text-foreground mb-10">Inactive Integrations</h1>
+                        <div className="flex flex-row flex-wrap items-stretch gap-12">
+                            {inactiveIntegrations.map((integration, i) => (
+                                <motion.div key={integration} className="flex" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ ...TRANSITION, delay: 0.15 + i * 0.06 }}>
+                                    <IntegrationCard integration={integration} isActive={false} />
+                                </motion.div>
+                            ))}
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
-    )
-}
-
-function IntegrationContent({ integrations, isLoading, isActive = true }: { integrations: IntegrationType[]; isLoading: boolean; isActive?: boolean }) {
-    if (isLoading || !integrations) {
-        return (
-            <>
-                {Array.from({ length: 3 }).map((_, index) => (
-                    <IntegrationCardSkeleton key={index} />
-                ))}
-            </>
-        )
-    }
-
-    return (
-        <>
-            {integrations.map(integration => (
-                <IntegrationCard key={integration} integration={integration} isActive={isActive} />
-            ))}
-        </>
     )
 }
 

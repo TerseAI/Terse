@@ -20,8 +20,8 @@ export function ActionItem({ action }: ActionItemProps) {
                     <div className="flex items-center gap-2">
                         <p className="text-sm font-medium">{action.action}</p>
                         {action.url && (
-                            <a href={action.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:opacity-80 transition-opacity">
-                                <ExternalLink className="w-3 h-3" />
+                            <a href={action.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:opacity-80 transition-opacity" aria-label={`Open ${action.action} in new tab`}>
+                                <ExternalLink className="w-3 h-3" aria-hidden="true" />
                             </a>
                         )}
                     </div>

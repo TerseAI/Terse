@@ -13,7 +13,7 @@ export function EditNotificationDestinationDialog({ destination, open, onOpenCha
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-[760px] p-0 gap-0 overflow-hidden">
-                <DialogHeader className="px-6 py-5 border-b bg-gradient-to-r from-muted/60 via-muted/25 to-background">
+                <DialogHeader className="px-6 py-5 border-b">
                     <div className="space-y-1">
                         <div className="space-y-1">
                             <div className="flex items-center gap-2">

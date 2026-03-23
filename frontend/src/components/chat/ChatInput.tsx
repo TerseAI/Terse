@@ -65,26 +65,9 @@ const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function ChatInput
     }
 
     const sanitizeAndSendMessage = (message: string) => {
-        // Trim whitespace and check if message is empty
-        const sanitizedMessage = message.trim()
-
-        if (!sanitizedMessage || sanitizedMessage.length === 0) {
-            return // Don't send empty messages
-        }
-
-        // Basic sanitization for LLM input
-        // Remove any potential script tags or dangerous content
-        const cleanMessage = sanitizedMessage
-            .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "") // Remove script tags
-            .replace(/javascript:/gi, "") // Remove javascript: protocol
-            .replace(/on\w+\s*=/gi, "") // Remove event handlers
-            .trim()
-
-        if (!cleanMessage) {
-            return // Don't send if sanitization resulted in empty message
-        }
-
-        sendMessage(cleanMessage)
+        const trimmed = message.trim()
+        if (!trimmed) return
+        sendMessage(trimmed)
     }
 
     const handlePlaceholderSelect = useCallback(
