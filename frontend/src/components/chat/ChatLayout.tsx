@@ -177,68 +177,63 @@ export const ChatLayout = forwardRef<ChatLayoutHandle, ChatLayoutProps>(function
 
             <div aria-live="polite" aria-atomic="true">
                 <AnimatePresence>
-                    {showCtaChips && (() => {
-                        const CHIPS_PER_PAGE = 3
-                        const totalPages = Math.ceil(ctaChips!.length / CHIPS_PER_PAGE)
-                        const visibleChips = ctaChips!.slice(ctaChipPage * CHIPS_PER_PAGE, (ctaChipPage + 1) * CHIPS_PER_PAGE)
-                        return (
-                            <motion.div
-                                initial={{ opacity: 0, y: 8 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: 8 }}
-                                transition={{ duration: 0.2 }}
-                                role="group"
-                                aria-label="Suggested next steps"
-                                className="flex flex-col gap-2 px-0 pb-2"
-                            >
-                                {totalPages > 1 && (
-                                    <div className="flex items-center justify-end gap-1">
-                                        <span className="text-xs text-muted-foreground/60 mr-1">
-                                            {ctaChipPage + 1}/{totalPages}
-                                        </span>
-                                        <button
-                                            onClick={() => setCtaChipPage(p => Math.max(0, p - 1))}
-                                            disabled={ctaChipPage === 0}
-                                            className="p-0.5 rounded hover:bg-secondary disabled:opacity-30 transition-colors"
-                                            aria-label="Previous suggestions"
-                                        >
-                                            <ChevronLeft className="w-4 h-4 text-muted-foreground" />
-                                        </button>
-                                        <button
-                                            onClick={() => setCtaChipPage(p => Math.min(totalPages - 1, p + 1))}
-                                            disabled={ctaChipPage === totalPages - 1}
-                                            className="p-0.5 rounded hover:bg-secondary disabled:opacity-30 transition-colors"
-                                            aria-label="Next suggestions"
-                                        >
-                                            <ChevronRight className="w-4 h-4 text-muted-foreground" />
-                                        </button>
-                                    </div>
-                                )}
-                                <div className="grid grid-cols-3 gap-2">
-                                    {visibleChips.map(chip => (
-                                        <button
-                                            key={chip.label}
-                                            onClick={() => {
-                                                onSendMessage(chip.prompt)
-                                                setCtaChipsDismissed(true)
-                                                onCtaChipClick?.(chip)
-                                            }}
-                                            className="flex flex-col items-start text-left px-4 py-3 rounded-xl border border-border bg-secondary/50 hover:bg-secondary transition-colors cursor-pointer"
-                                        >
-                                            <span className="text-sm font-semibold text-foreground leading-snug">
-                                                {chip.label}
+                    {showCtaChips &&
+                        (() => {
+                            const CHIPS_PER_PAGE = 3
+                            const totalPages = Math.ceil(ctaChips!.length / CHIPS_PER_PAGE)
+                            const visibleChips = ctaChips!.slice(ctaChipPage * CHIPS_PER_PAGE, (ctaChipPage + 1) * CHIPS_PER_PAGE)
+                            return (
+                                <motion.div
+                                    initial={{ opacity: 0, y: 8 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, y: 8 }}
+                                    transition={{ duration: 0.2 }}
+                                    role="group"
+                                    aria-label="Suggested next steps"
+                                    className="flex flex-col gap-2 px-0 pb-2"
+                                >
+                                    {totalPages > 1 && (
+                                        <div className="flex items-center justify-end gap-1">
+                                            <span className="text-xs text-muted-foreground/60 mr-1">
+                                                {ctaChipPage + 1}/{totalPages}
                                             </span>
-                                            {chip.description && (
-                                                <span className="text-sm text-muted-foreground leading-snug mt-0.5">
-                                                    {chip.description}
-                                                </span>
-                                            )}
-                                        </button>
-                                    ))}
-                                </div>
-                            </motion.div>
-                        )
-                    })()}
+                                            <button
+                                                onClick={() => setCtaChipPage(p => Math.max(0, p - 1))}
+                                                disabled={ctaChipPage === 0}
+                                                className="p-0.5 rounded hover:bg-secondary disabled:opacity-30 transition-colors"
+                                                aria-label="Previous suggestions"
+                                            >
+                                                <ChevronLeft className="w-4 h-4 text-muted-foreground" />
+                                            </button>
+                                            <button
+                                                onClick={() => setCtaChipPage(p => Math.min(totalPages - 1, p + 1))}
+                                                disabled={ctaChipPage === totalPages - 1}
+                                                className="p-0.5 rounded hover:bg-secondary disabled:opacity-30 transition-colors"
+                                                aria-label="Next suggestions"
+                                            >
+                                                <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                                            </button>
+                                        </div>
+                                    )}
+                                    <div className="grid grid-cols-3 gap-2">
+                                        {visibleChips.map(chip => (
+                                            <button
+                                                key={chip.label}
+                                                onClick={() => {
+                                                    onSendMessage(chip.prompt)
+                                                    setCtaChipsDismissed(true)
+                                                    onCtaChipClick?.(chip)
+                                                }}
+                                                className="flex flex-col items-start text-left px-4 py-3 rounded-xl border border-border bg-secondary/50 hover:bg-secondary transition-colors cursor-pointer"
+                                            >
+                                                <span className="text-sm font-semibold text-foreground leading-snug">{chip.label}</span>
+                                                {chip.description && <span className="text-sm text-muted-foreground leading-snug mt-0.5">{chip.description}</span>}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </motion.div>
+                            )
+                        })()}
                 </AnimatePresence>
             </div>
 
