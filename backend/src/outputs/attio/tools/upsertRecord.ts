@@ -12,19 +12,21 @@ import { toolOutput } from "../../../tools/toolOutput"
 import { createNeedsApprovalFunction, formatError } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
 
-export const attioUpsertRecordTool = tool<z.ZodObject<any>, SessionWithTracking<Session>, ToolOutputByName["attio_upsert_record"]>({
+const attioUpsertRecordParams = z.object({
+    integrationId: z.string().describe("The integration ID of the Attio workspace to use."),
+    objectSlug: z.string().describe("The Attio object type slug (e.g. 'people', 'companies')."),
+    matchingAttribute: z.string().describe("The attribute slug to match on for upsert (e.g. 'email_addresses' for people, 'domains' for companies)."),
+    values: z
+        .string()
+        .describe(
+            'A JSON string mapping attribute slugs to their values. For multi-value attributes like email_addresses, pass an array of strings. Example: \'{"email_addresses":["test@example.com"],"name":"John"}\'.'
+        )
+})
+
+export const attioUpsertRecordTool = tool<typeof attioUpsertRecordParams, SessionWithTracking<Session>, ToolOutputByName["attio_upsert_record"]>({
     name: ToolName.ATTIO_UPSERT_RECORD,
     description: `Create or update (upsert) a record in Attio. Uses a matching attribute to find existing records — if a match is found the record is updated, otherwise a new one is created. Use attio_list_objects first to discover available attributes for the object.`,
-    parameters: z.object({
-        integrationId: z.string().describe("The integration ID of the Attio workspace to use."),
-        objectSlug: z.string().describe("The Attio object type slug (e.g. 'people', 'companies')."),
-        matchingAttribute: z.string().describe("The attribute slug to match on for upsert (e.g. 'email_addresses' for people, 'domains' for companies)."),
-        values: z
-            .string()
-            .describe(
-                'A JSON string mapping attribute slugs to their values. For multi-value attributes like email_addresses, pass an array of strings. Example: \'{"email_addresses":["test@example.com"],"name":"John"}\'.'
-            )
-    }),
+    parameters: attioUpsertRecordParams,
     needsApproval: createNeedsApprovalFunction(ToolName.ATTIO_UPSERT_RECORD),
     execute: async ({ integrationId, objectSlug, matchingAttribute, values }, runContext?: RunContext<SessionWithTracking<Session>>) => {
         logger.debug("Executing attio_upsert_record tool", { integrationId, objectSlug, matchingAttribute })

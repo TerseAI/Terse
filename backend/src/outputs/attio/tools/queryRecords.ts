@@ -12,7 +12,17 @@ import { toolOutput } from "../../../tools/toolOutput"
 import { formatError } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
 
-export const attioQueryRecordsTool = tool<z.ZodObject<any>, SessionWithTracking<Session>, ToolOutputByName["attio_query_records"]>({
+const attioQueryRecordsParams = z.object({
+    integrationId: z.string().describe("The integration ID of the Attio workspace to use."),
+    objectSlug: z.string().describe("The Attio object type slug (e.g. 'people', 'companies')."),
+    filter: z
+        .string()
+        .nullable()
+        .describe('Optional Attio filter as a JSON string. Pass null for no filtering. Use shorthand (e.g. \'{"email_addresses":"test@example.com"}\') or verbose syntax with operators.'),
+    limit: z.number().nullable().describe("Maximum number of records to return. Pass null to use the default of 20.")
+})
+
+export const attioQueryRecordsTool = tool<typeof attioQueryRecordsParams, SessionWithTracking<Session>, ToolOutputByName["attio_query_records"]>({
     name: ToolName.ATTIO_QUERY_RECORDS,
     description: `Query records from an Attio object. Use this to search for existing records before creating or updating them. Supports optional filtering.
 
@@ -23,15 +33,7 @@ Filter syntax uses shorthand or verbose form:
 - Domains: {"domains": "example.com"} or {"domains": {"domain": {"$contains": "example"}}}
 - Operators: $eq, $contains, $starts_with, $ends_with
 - Combine with $and/$or: {"$and": [{"name": "John"}, {"email_addresses": "john@example.com"}]}`,
-    parameters: z.object({
-        integrationId: z.string().describe("The integration ID of the Attio workspace to use."),
-        objectSlug: z.string().describe("The Attio object type slug (e.g. 'people', 'companies')."),
-        filter: z
-            .string()
-            .nullable()
-            .describe('Optional Attio filter as a JSON string. Pass null for no filtering. Use shorthand (e.g. \'{"email_addresses":"test@example.com"}\') or verbose syntax with operators.'),
-        limit: z.number().nullable().describe("Maximum number of records to return. Pass null to use the default of 20.")
-    }),
+    parameters: attioQueryRecordsParams,
     execute: async ({ integrationId, objectSlug, filter, limit }, runContext?: RunContext<SessionWithTracking<Session>>) => {
         logger.debug("Executing attio_query_records tool", { integrationId, objectSlug })
 

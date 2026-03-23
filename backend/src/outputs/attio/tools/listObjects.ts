@@ -12,12 +12,14 @@ import { toolOutput } from "../../../tools/toolOutput"
 import { formatError } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
 
-export const attioListObjectsTool = tool<z.ZodObject<any>, SessionWithTracking<Session>, ToolOutputByName["attio_list_objects"]>({
+const attioListObjectsParams = z.object({
+    integrationId: z.string().describe("The integration ID of the Attio workspace to use.")
+})
+
+export const attioListObjectsTool = tool<typeof attioListObjectsParams, SessionWithTracking<Session>, ToolOutputByName["attio_list_objects"]>({
     name: ToolName.ATTIO_LIST_OBJECTS,
     description: `List all available object types in the Attio workspace, including their attributes and field definitions. Use this to discover what object types (e.g. people, companies, deals) exist and what attributes are available before creating or updating records.`,
-    parameters: z.object({
-        integrationId: z.string().describe("The integration ID of the Attio workspace to use.")
-    }),
+    parameters: attioListObjectsParams,
     execute: async ({ integrationId }, runContext?: RunContext<SessionWithTracking<Session>>) => {
         logger.debug("Executing attio_list_objects tool", { integrationId })
 
