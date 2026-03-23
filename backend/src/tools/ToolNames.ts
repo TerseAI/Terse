@@ -86,6 +86,8 @@ export const ToolName = {
 
     // Terse
     WEB_SEARCH: "web_search",
+    WEB_EXTRACT: "web_extract",
+    WEB_RESEARCH: "web_research",
     IMAGE_EDIT: "image_edit"
 } as const
 

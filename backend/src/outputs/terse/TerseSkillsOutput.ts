@@ -1,5 +1,4 @@
 import { Tool } from "@openai/agents"
-import { webSearchTool } from "@openai/agents"
 import { OutputConfigType } from "@prisma/client"
 
 import { ConfigInstance, TerseConfig } from "../../shared/Configs"
@@ -8,20 +7,33 @@ import { PrismaTransaction } from "../../types/prisma"
 import { Output, ToolboxEntry } from "../abstract/Output"
 
 import { imageEditTool } from "./tools/editImage"
+import { webExtractTool } from "./tools/webExtractTool"
+import { webResearchTool } from "./tools/webResearchTool"
+import { webSearchTool } from "./tools/webSearchTool"
 
 export class TerseSkillsOutput extends Output<ConfigInstance> {
     constructor() {
         const toolbox: ToolboxEntry[] = [
             {
-                tool: webSearchTool({
-                    searchContextSize: "medium"
-                }) as Tool,
+                tool: webSearchTool,
                 isReadOnly: true,
                 integration: IntegrationType.TERSE,
                 displayName: "Web Search"
             },
             {
-                tool: imageEditTool as Tool,
+                tool: webExtractTool,
+                isReadOnly: true,
+                integration: IntegrationType.TERSE,
+                displayName: "Extract Page"
+            },
+            {
+                tool: webResearchTool,
+                isReadOnly: true,
+                integration: IntegrationType.TERSE,
+                displayName: "Research"
+            },
+            {
+                tool: imageEditTool,
                 isReadOnly: true,
                 integration: IntegrationType.TERSE,
                 displayName: "Edit Image"

@@ -64,9 +64,11 @@ export function NotificationDestinationForm({ existingDestination, onSuccess, on
                 setShowConnectionOptions(false)
             } else {
                 console.error("OAuth URL not available for this integration type")
+                toast.error("Could not start Slack connection. Please try again.")
             }
         } catch (error) {
             console.error("Error initiating OAuth:", error)
+            toast.error("Failed to connect Slack workspace. Please try again.")
         } finally {
             setIsConnecting(false)
         }

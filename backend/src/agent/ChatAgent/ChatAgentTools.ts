@@ -1,4 +1,4 @@
-import { RunContext, tool, webSearchTool } from "@openai/agents"
+import { RunContext, tool } from "@openai/agents"
 import { Tool } from "@openai/agents-core"
 import { z } from "zod"
 import { uuidv4 } from "zod/v4"
@@ -12,6 +12,8 @@ import { InputEvent } from "../../integrations/abstract/InputEvent"
 import { INTEGRATION_REGISTRY } from "../../integrations/abstract/IntegrationRegistry"
 import { fetchSampleEvents } from "../../integrations/abstract/sampleEvents"
 import logger from "../../logger"
+import { webExtractTool } from "../../outputs/terse/tools/webExtractTool"
+import { webSearchTool } from "../../outputs/terse/tools/webSearchTool"
 import { db } from "../../prismaClient"
 import { requireHydrator } from "../../rag/HydratorRegistry"
 import type { AgentDraft } from "../../routes/agents"
@@ -71,7 +73,8 @@ async function getDefaultNotificationSettings(userId: string): Promise<AgentNoti
 
 export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgentContext>[] {
     return [
-        webSearchTool({ searchContextSize: "medium" }) as Tool<ChatAgentContext>,
+        webSearchTool,
+        webExtractTool,
         tool({
             name: "applyAgent",
             description:

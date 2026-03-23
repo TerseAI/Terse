@@ -2,22 +2,22 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { useNavigate } from "react-router-dom"
 
 import { AnimatePresence, motion } from "framer-motion"
-import { ArrowRight, ArrowUpRight, ExternalLink, MessageSquare, RotateCcw, Zap } from "lucide-react"
+import { ArrowRight, ArrowUpRight, RotateCcw } from "lucide-react"
 
 import { convertRunHistoryEventsToTurns } from "@/components/RunHistory/RunHistoryChatDrawer/runHistoryEventsToTurns"
-import RunHistoryStatusBadge from "@/components/RunHistory/RunHistoryStatusBadge"
+import { RunHistoryRow } from "@/components/RunHistory/RunHistoryRow"
 import { Chat, ChatHandle } from "@/components/chat/Chat"
 import { ChatEventPayload } from "@/components/chat/hooks/useCompletionSocket"
 import { Button } from "@/components/ui/button"
+import { Skeleton } from "@/components/ui/skeleton"
 import { useAgents } from "@/hooks/api/useAgents"
 import { useStats } from "@/hooks/api/useStats"
 import { cn } from "@/lib/utils"
-import { IconForIntegration } from "@/pages/Agents/components/Integration"
 import { FrontendRoutes } from "@/shared/FrontendRoutes"
 import { ModelRequest, SendModelRequest } from "@/shared/ModelEvents"
 import { RunHistoryRecordWithAgent } from "@/shared/RunHistoryTypes"
 import { cancelBuilderChatSession, sendBuilderMessage, subscribeToBuilderChat } from "@/socket"
-import { formatTimestamp } from "@/utility/timeUtils"
+import { formatNumber } from "@/utility/timeUtils"
 
 import { useBuilderChatHistory } from "../../hooks/api/useBuilderChatHistory"
 import { useBuilderSession } from "../../hooks/useBuilderSession"
@@ -99,9 +99,39 @@ function Home() {
         setHasStartedChat(false)
     }
 
-    // Show nothing (empty container) while initial data is loading
+    // Show skeleton while initial data is loading
     if (isInitialLoading) {
-        return <div className="flex flex-col h-full w-full" />
+        return (
+            <div className="flex flex-col h-full w-full" aria-busy="true">
+                <div className="mx-auto max-w-3xl w-full px-6 mt-8 mb-4">
+                    <Skeleton className="h-8 w-64 mx-auto mb-2" />
+                    <Skeleton className="h-4 w-80 mx-auto" />
+                </div>
+                <div className="mx-auto max-w-3xl w-full px-6 pb-3">
+                    <Skeleton className="h-16 w-full rounded-2xl" />
+                </div>
+                <div className="mx-auto max-w-4xl w-full px-6 pb-8 space-y-6 mt-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <Skeleton className="h-20 rounded-2xl" />
+                        <Skeleton className="h-20 rounded-2xl" />
+                        <Skeleton className="h-20 rounded-2xl" />
+                    </div>
+                    <div className="rounded-2xl border border-border/60 overflow-hidden divide-y divide-border/40">
+                        {Array.from({ length: 4 }).map((_, i) => (
+                            <div key={i} className="flex items-center gap-4 px-4 py-3">
+                                <Skeleton className="w-8 h-8 rounded-lg flex-shrink-0" />
+                                <div className="flex-1 min-w-0 space-y-1.5">
+                                    <Skeleton className="h-4 w-3/4" />
+                                    <Skeleton className="h-3 w-1/2" />
+                                </div>
+                                <Skeleton className="h-5 w-16 rounded-full hidden sm:block" />
+                                <Skeleton className="h-3 w-12" />
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </div>
+        )
     }
 
     // Show empty state if user has no agents
@@ -117,7 +147,7 @@ function Home() {
     const numberOfAgents = stats?.numberOfAgents ?? 0
 
     return (
-        <div className="flex flex-col h-full w-full">
+        <div className="flex flex-col h-full w-full" role="main" aria-label="Home">
             {/* ── Hero + Prompt ─────────────────────────────────────── */}
             <div
                 style={{
@@ -141,7 +171,7 @@ function Home() {
                                     Describe an agent and I'll set it up for you, or{" "}
                                     <button
                                         onClick={() => navigate(FrontendRoutes.AGENTS.SETUP)}
-                                        className="inline-flex items-center gap-1 text-foreground font-medium hover:underline underline-offset-4 transition-colors"
+                                        className="inline-flex items-center gap-1 text-foreground font-medium hover:underline underline-offset-4 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-sm"
                                     >
                                         browse templates
                                         <ArrowRight className="w-3.5 h-3.5" />
@@ -154,21 +184,20 @@ function Home() {
             </div>
 
             {/* ── Chat Input / Full Chat ────────────────────────────── */}
-            <motion.div
-                className="flex flex-col mx-auto max-w-3xl w-full px-6 pb-3"
-                initial={{}}
-                animate={hasStartedChat ? { flexGrow: 1, minHeight: 0 } : {}}
-                transition={{ duration: ANIMATION_DURATION, ease: ANIMATION_EASE }}
-            >
+            <div className={cn("flex flex-col mx-auto max-w-3xl w-full px-6 pb-3", hasStartedChat ? "flex-1 min-h-0" : "shrink-0")}>
                 {hasStartedChat && (
                     <div className="flex justify-end px-2 pt-2 pb-3">
-                        <button onClick={handleClearChat} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
-                            <RotateCcw className="h-3 w-3" />
+                        <button
+                            onClick={handleClearChat}
+                            aria-label="Reset chat"
+                            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-sm"
+                        >
+                            <RotateCcw className="h-3 w-3" aria-hidden="true" />
                             Reset chat
                         </button>
                     </div>
                 )}
-                <div className="flex-1 min-h-0 w-full">
+                <div className={cn("w-full", hasStartedChat ? "flex-1 min-h-0" : "shrink-0")}>
                     <Chat
                         ref={chatRef}
                         key={sessionId}
@@ -182,7 +211,7 @@ function Home() {
                         placeholders={hasStartedChat ? [] : HOME_PLACEHOLDERS}
                     />
                 </div>
-            </motion.div>
+            </div>
 
             {/* ── Dashboard (stats + runs) — collapses when chatting ── */}
             <div
@@ -204,23 +233,26 @@ function Home() {
 
                                 {/* ── Stats Row ──────────────────────────── */}
                                 {!isLoadingStats && stats && (
-                                    <div>
-                                        <div className="flex items-center justify-between mb-3">
-                                            <div className="flex items-center gap-2">
-                                                <h2 className="text-sm font-medium text-muted-foreground tracking-wide uppercase">Stats</h2>
-                                                <span className="text-xs text-muted-foreground/60">Last 30 days</span>
-                                            </div>
-                                            <Button variant="ghost" size="sm" className="text-xs text-muted-foreground gap-1" onClick={() => navigate(FrontendRoutes.STATS)}>
-                                                View all stats
-                                                <ArrowUpRight className="w-3 h-3" />
-                                            </Button>
+                                    <button
+                                        onClick={() => navigate(FrontendRoutes.STATS)}
+                                        className="w-full flex items-center justify-between rounded-xl border border-border/60 bg-card px-5 py-3 text-left transition-colors hover:bg-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 group"
+                                    >
+                                        <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-sm">
+                                            <span className="text-muted-foreground">Last 30 days</span>
+                                            <span>
+                                                <span className="font-semibold text-foreground">{formatNumber(totalEvents)}</span> <span className="text-muted-foreground">events</span>
+                                            </span>
+                                            <span className="hidden sm:inline text-border">|</span>
+                                            <span>
+                                                <span className="font-semibold text-foreground">{formatNumber(actionsTaken)}</span> <span className="text-muted-foreground">actions</span>
+                                            </span>
+                                            <span className="hidden sm:inline text-border">|</span>
+                                            <span>
+                                                <span className="font-semibold text-foreground">{formatNumber(numberOfAgents)}</span> <span className="text-muted-foreground">agents</span>
+                                            </span>
                                         </div>
-                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                                            <StatPill label="Events processed" value={formatNumber(totalEvents)} change={stats.totalEventsProcessedChange} />
-                                            <StatPill label="Actions taken" value={formatNumber(actionsTaken)} change={stats.actionsTakenChange} />
-                                            <StatPill label="Active Agents" value={formatNumber(numberOfAgents)} change={stats.numberOfAgentsChange} />
-                                        </div>
-                                    </div>
+                                        <ArrowUpRight className="w-3.5 h-3.5 text-muted-foreground group-hover:text-foreground transition-colors" />
+                                    </button>
                                 )}
 
                                 {/* ── Recent Runs ────────────────────────── */}
@@ -236,9 +268,9 @@ function Home() {
                                             )}
                                         </div>
 
-                                        <div className="rounded-2xl border border-border/60 bg-card/30 backdrop-blur-sm overflow-hidden divide-y divide-border/40">
+                                        <div className="rounded-2xl border border-border/60 bg-card overflow-hidden divide-y divide-border/40" role="list" aria-label="Recent agent runs">
                                             {recentRuns.map(run => (
-                                                <RunRow key={run.id} run={run} onOpenChat={handleOpenChat} />
+                                                <RunHistoryRow key={run.id} run={run} onOpenChat={handleOpenChat} className="rounded-xl" />
                                             ))}
                                         </div>
                                     </div>
@@ -266,104 +298,4 @@ const HOME_PLACEHOLDERS = [
     "Draft weekly release notes from merged PRs and commits"
 ]
 
-// ---------------------------------------------------------------------------
-// Stat Helpers
-// ---------------------------------------------------------------------------
-
-function getTrend(change: string): "up" | "down" {
-    return change.startsWith("+") || (!change.startsWith("-") && change !== "0%") ? "up" : "down"
-}
-
-function formatNumber(num: number): string {
-    if (num >= 1_000_000) return `${(num / 1_000_000).toFixed(1)}M`
-    if (num >= 1_000) return `${(num / 1_000).toFixed(1)}K`
-    return num.toLocaleString()
-}
-
-// ---------------------------------------------------------------------------
-// Sub-components
-// ---------------------------------------------------------------------------
-
-function StatPill({ label, value, change }: { label: string; value: string; change: string }) {
-    const trend = getTrend(change)
-    return (
-        <div className="group relative flex flex-col gap-1.5 rounded-2xl border border-border/60 bg-card/50 backdrop-blur-sm px-5 py-4 transition-all duration-300 hover:border-border hover:bg-card hover:shadow-sm">
-            <span className="text-xs font-medium tracking-wide text-muted-foreground uppercase">{label}</span>
-            <div className="flex items-baseline gap-2.5">
-                <span className="text-2xl font-semibold tracking-tight text-foreground">{value}</span>
-                <span className={cn("text-xs font-medium", trend === "up" ? "text-success" : "text-danger")}>{change}</span>
-            </div>
-        </div>
-    )
-}
-
-function RunRow({ run, onOpenChat }: { run: RunHistoryRecordWithAgent; onOpenChat: (run: RunHistoryRecordWithAgent) => void }) {
-    const navigate = useNavigate()
-
-    const title = run.trigger.title || run.trigger.source
-    const writeActions = (run.actions ?? []).filter(a => a.type !== "read")
-
-    return (
-        <div className="group flex items-center gap-4 px-4 py-3 rounded-xl transition-colors duration-150 hover:bg-muted/40">
-            {/* Integration icon */}
-            <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-muted/60 flex items-center justify-center text-muted-foreground">
-                <IconForIntegration integration={run.trigger.integration} />
-            </div>
-
-            {/* Main content */}
-            <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-foreground truncate">{title}</span>
-                    {run.trigger.url && (
-                        <a
-                            href={run.trigger.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            onClick={e => e.stopPropagation()}
-                            className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground"
-                        >
-                            <ExternalLink className="w-3 h-3" />
-                        </a>
-                    )}
-                </div>
-                <div className="flex items-center gap-1.5 mt-0.5">
-                    <button
-                        onClick={() => navigate(FrontendRoutes.AGENTS.DETAIL(run.agentId))}
-                        className="text-xs text-muted-foreground hover:text-foreground transition-colors truncate max-w-[120px]"
-                        title={run.agentName}
-                    >
-                        {run.agentName}
-                    </button>
-                    {run.trigger.subheader && (
-                        <>
-                            <span className="text-muted-foreground/40">·</span>
-                            <span className="text-xs text-muted-foreground truncate">{run.trigger.subheader}</span>
-                        </>
-                    )}
-                </div>
-            </div>
-
-            {/* Write actions count */}
-            {writeActions.length > 0 && (
-                <div className="hidden sm:flex items-center gap-1 text-xs text-muted-foreground">
-                    <Zap className="w-3 h-3" />
-                    <span>
-                        {writeActions.length} action{writeActions.length !== 1 ? "s" : ""}
-                    </span>
-                </div>
-            )}
-
-            {/* Status */}
-            <RunHistoryStatusBadge status={run.status} className="hidden sm:flex" />
-
-            {/* Timestamp */}
-            <span className="text-xs text-muted-foreground whitespace-nowrap w-16 text-right">{formatTimestamp(run.timestamp)}</span>
-
-            {/* Chat button */}
-            <Button variant="ghost" size="icon-sm" onClick={() => onOpenChat(run)} className="opacity-0 group-hover:opacity-100 transition-opacity" title="View run details">
-                <MessageSquare className="w-3.5 h-3.5" />
-            </Button>
-        </div>
-    )
-}
 export default Home

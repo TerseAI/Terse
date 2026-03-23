@@ -2,7 +2,7 @@ import { forwardRef, useEffect, useImperativeHandle, useRef } from "react"
 
 import { type ModelRequest } from "../../shared/ModelEvents"
 
-import { ChatLayout, type ChatLayoutHandle } from "./ChatLayout"
+import { type CTAChip, ChatLayout, type ChatLayoutHandle } from "./ChatLayout"
 import { Turn } from "./Turn"
 import { useChat } from "./hooks/useChat"
 import { type ChatEventSubscription } from "./hooks/useCompletionSocket"
@@ -21,6 +21,8 @@ type ChatProps = {
     inputSize?: "small" | "medium" | "large"
     placeholders?: string[]
     showPlaceholderChips?: boolean
+    ctaChips?: CTAChip[]
+    onCtaChipClick?: (chip: CTAChip) => void
 }
 
 export type ChatHandle = ChatLayoutHandle & {
@@ -43,7 +45,9 @@ const Chat = forwardRef<ChatHandle, ChatProps>(function Chat(
         addUserTurnsLocally,
         inputSize = "small",
         placeholders = [],
-        showPlaceholderChips = false
+        showPlaceholderChips = false,
+        ctaChips,
+        onCtaChipClick
     },
     ref
 ) {
@@ -102,6 +106,8 @@ const Chat = forwardRef<ChatHandle, ChatProps>(function Chat(
             onMultipleChoiceAnswer={handleMultipleChoiceAnswer}
             inputSize={inputSize}
             showPlaceholderChips={showPlaceholderChips}
+            ctaChips={ctaChips}
+            onCtaChipClick={onCtaChipClick}
         />
     )
 })

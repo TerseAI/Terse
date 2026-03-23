@@ -122,8 +122,10 @@ export function MultiSelect({
                             <button
                                 onClick={() => handleRemove(option.id)}
                                 className="ml-1 rounded-full hover:bg-secondary-foreground/20 p-0.5"
+                                aria-label={`Remove ${option.label}`}
                                 onKeyDown={e => {
-                                    if (e.key === "Enter") {
+                                    if (e.key === "Enter" || e.key === " ") {
+                                        e.preventDefault()
                                         handleRemove(option.id)
                                     }
                                 }}
@@ -132,7 +134,7 @@ export function MultiSelect({
                                     e.stopPropagation()
                                 }}
                             >
-                                <X className="h-3 w-3" />
+                                <X className="h-3 w-3" aria-hidden="true" />
                             </button>
                         </Badge>
                     ))}

@@ -5,7 +5,7 @@ interface Token {
     value: string
 }
 
-function TokenStream({ text, disableAnimation = false }: { text: string; disableAnimation?: boolean }) {
+function TokenStream({ text, disableAnimation = false, onComplete }: { text: string; disableAnimation?: boolean; onComplete?: () => void }) {
     const previousTextRef = useRef<string>("")
     const [tokens, setTokens] = useState<Token[]>([])
     const [buffer, setBuffer] = useState<string[]>([])
@@ -14,6 +14,7 @@ function TokenStream({ text, disableAnimation = false }: { text: string; disable
     const lastTextChangeRef = useRef<number>(Date.now())
     const completionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
     const bufferRef = useRef<string[]>([])
+    const lastCompletedTextRef = useRef<string>("")
 
     // If animation is disabled, immediately show formatted text
     useEffect(() => {
@@ -141,6 +142,14 @@ function TokenStream({ text, disableAnimation = false }: { text: string; disable
             }
         }
     }, [tokens, text, buffer.length, disableAnimation])
+
+    // Fire onComplete when animation settles on the current text
+    useEffect(() => {
+        if (showFormatted && finalText === text && text.length > 0 && lastCompletedTextRef.current !== text) {
+            lastCompletedTextRef.current = text
+            onComplete?.()
+        }
+    }, [showFormatted, finalText, text, onComplete])
 
     // Show formatted version (only if finalText matches current text to avoid stale content)
     if (showFormatted && finalText === text) {

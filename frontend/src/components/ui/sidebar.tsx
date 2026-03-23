@@ -202,7 +202,7 @@ function SidebarTrigger({ className, onClick, ...props }: React.ComponentProps<t
         <Button
             variant="ghost"
             size="icon"
-            className={cn("h-7 w-7", className)}
+            className={cn("h-8 w-8", className)}
             onClick={event => {
                 onClick?.(event)
                 toggleSidebar()
@@ -270,7 +270,7 @@ function SidebarGroupAction({ className, asChild = false, ...props }: React.Comp
     return (
         <Comp
             className={cn(
-                "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent absolute top-2 right-2 flex h-6 w-6 items-center justify-center rounded transition-colors",
+                "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent absolute top-2 right-2 flex h-8 w-8 items-center justify-center rounded transition-colors",
                 className
             )}
             {...props}
@@ -339,7 +339,7 @@ function SidebarMenuAction({
     return (
         <Comp
             className={cn(
-                "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent absolute right-2 top-1/2 -translate-y-1/2 flex h-6 w-6 items-center justify-center rounded transition-all",
+                "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent absolute right-2 top-1/2 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded transition-all",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring",
                 "[&>svg]:h-3.5 [&>svg]:w-3.5",
                 showOnHover && "opacity-0 group-hover:opacity-100",

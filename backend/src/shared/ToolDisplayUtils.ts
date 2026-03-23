@@ -927,18 +927,38 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
     // ===================
     // Terse Tools
     // ===================
-    web_search_call: {
+    web_search: {
         preparing: "Looking on the web",
-        executing: () => "Searching the web",
+        executing: params => {
+            const query = params?.query as string | undefined
+            return query ? `Searching the web for "${truncate(query)}"` : "Searching the web"
+        },
         complete: (_params, result) => {
-            const webResult = safeParseResult(result)
-            const type = webResult?.type as "search" | "open_page"
-            const query = (webResult?.query as string) || ""
-            const url = (webResult?.url as string) || ""
-            if (type === "search") return `Searched for: "${truncate(query)}"`
-            if (type === "open_page") return `Opened page: ${truncate(url, 30)}`
-            return "Web search complete"
+            const res = safeParseResult(result)
+            const count = (res?.results as unknown[])?.length ?? 0
+            return count ? `Found ${count} result${count !== 1 ? "s" : ""}` : "Web search complete"
         }
+    },
+    web_extract: {
+        preparing: "Preparing to read page",
+        executing: params => {
+            const urls = params?.urls as string | string[] | undefined
+            const firstUrl = Array.isArray(urls) ? urls[0] : urls
+            return firstUrl ? `Reading ${truncate(firstUrl, 40)}` : "Reading page"
+        },
+        complete: (_params, result) => {
+            const res = safeParseResult(result)
+            const count = (res?.results as unknown[])?.length ?? 0
+            return count ? `Read ${count} page${count !== 1 ? "s" : ""}` : "Page read complete"
+        }
+    },
+    web_research: {
+        preparing: "Starting research",
+        executing: params => {
+            const input = params?.input as string | undefined
+            return input ? `Researching: "${truncate(input)}"` : "Conducting research"
+        },
+        complete: () => "Research complete"
     },
     image_edit: {
         preparing: "Getting image ready",

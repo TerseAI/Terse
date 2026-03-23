@@ -40,7 +40,7 @@ export function ApiTokensWidget() {
                 <p className="text-muted-foreground text-sm">Loading...</p>
             ) : apiTokens.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 text-center">
-                    <Key className="h-10 w-10 text-muted-foreground/50 mb-3" />
+                    <Key className="h-10 w-10 text-muted-foreground mb-3" />
                     <p className="text-sm text-muted-foreground">No API tokens yet</p>
                     <p className="text-xs text-muted-foreground mt-1">Create a token to start using the Terse API.</p>
                 </div>
@@ -66,10 +66,10 @@ export function ApiTokensWidget() {
                                 <TableCell className="text-muted-foreground text-xs">{token.lastUsedAt ? new Date(token.lastUsedAt).toLocaleDateString() : "Never"}</TableCell>
                                 <TableCell>
                                     <div className="flex gap-1">
-                                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditingToken(token)}>
+                                        <Button variant="ghost" size="icon-sm" onClick={() => setEditingToken(token)}>
                                             <Pencil className="h-3.5 w-3.5" />
                                         </Button>
-                                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => setDeletingToken(token)}>
+                                        <Button variant="ghost" size="icon-sm" className="text-destructive hover:text-destructive" onClick={() => setDeletingToken(token)}>
                                             <Trash2 className="h-3.5 w-3.5" />
                                         </Button>
                                     </div>
@@ -158,7 +158,7 @@ function CreateTokenDialog({
                         <div className="flex items-center gap-2">
                             <code className="flex-1 text-xs bg-muted p-2.5 rounded break-all select-all">{createdRawToken}</code>
                             <Button variant="outline" size="icon" className="shrink-0" onClick={handleCopy}>
-                                {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                                {copied ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}
                             </Button>
                         </div>
                     </div>

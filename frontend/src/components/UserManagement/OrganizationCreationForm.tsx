@@ -209,8 +209,8 @@ export default function OrganizationCreationForm() {
                                     {logoPreview ? (
                                         <div className="relative">
                                             <img src={logoPreview} alt="Logo preview" className="h-16 w-16 rounded-lg object-cover border" />
-                                            <Button type="button" variant="destructive" size="icon" onClick={clearLogo} disabled={isLoading} className="absolute -top-2 -right-2 h-5 w-5 rounded-full">
-                                                <X className="h-3 w-3" />
+                                            <Button type="button" variant="destructive" size="icon" onClick={clearLogo} disabled={isLoading} className="absolute -top-3 -right-3 h-7 w-7 rounded-full">
+                                                <X className="h-3.5 w-3.5" />
                                             </Button>
                                         </div>
                                     ) : (

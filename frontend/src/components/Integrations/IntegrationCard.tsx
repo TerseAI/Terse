@@ -62,18 +62,39 @@ function IntegrationCard({ integration, isActive = true, stateToken, compact = f
 
 export function IntegrationCardSkeleton() {
     return (
-        <Card className="min-w-sm">
+        <Card className="min-w-sm max-w-sm">
+            {/* Header: matches IntegrationCardHeader with lg icon + title + badge */}
             <CardHeader>
                 <CardTitle>
-                    <Skeleton className="w-10 h-10" />
+                    <div className="flex justify-between items-center">
+                        <div className="flex items-center gap-2">
+                            <Skeleton className="w-8 h-8 rounded-md" />
+                            <Skeleton className="w-24 h-5 rounded" />
+                        </div>
+                        <Skeleton className="w-24 h-6 rounded-full" />
+                    </div>
                 </CardTitle>
             </CardHeader>
-            <CardContent>
-                <Skeleton className="w-xs h-4 pb-2" />
-                <Skeleton className="w-xs h-4 mt-2" />
+            {/* Content: matches 2 IntegrationItem rows (Item size="sm" variant="outline") */}
+            <CardContent className="space-y-2">
+                <div className="flex items-center gap-2.5 rounded-lg border border-border py-3 px-4">
+                    <Skeleton className="w-8 h-8 rounded-full shrink-0" />
+                    <div className="flex-1 space-y-1.5">
+                        <Skeleton className="h-4 w-3/4 rounded" />
+                        <Skeleton className="h-3.5 w-1/2 rounded" />
+                    </div>
+                </div>
+                <div className="flex items-center gap-2.5 rounded-lg border border-border py-3 px-4">
+                    <Skeleton className="w-8 h-8 rounded-full shrink-0" />
+                    <div className="flex-1 space-y-1.5">
+                        <Skeleton className="h-4 w-2/3 rounded" />
+                        <Skeleton className="h-3.5 w-2/5 rounded" />
+                    </div>
+                </div>
             </CardContent>
+            {/* Footer: matches IntegrationCardFooter button */}
             <CardFooter>
-                <Skeleton className="w-xs h-8" />
+                <Skeleton className="h-9 w-40 rounded-md" />
             </CardFooter>
         </Card>
     )
