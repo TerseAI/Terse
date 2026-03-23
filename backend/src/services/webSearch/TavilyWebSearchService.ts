@@ -3,14 +3,7 @@ import { tavily } from "@tavily/core"
 import logger from "../../logger"
 
 import type { WebSearchService } from "./WebSearchService"
-import type {
-    WebExtractRequest,
-    WebExtractResponse,
-    WebResearchRequest,
-    WebResearchResponse,
-    WebSearchRequest,
-    WebSearchResponse
-} from "./types"
+import type { WebExtractRequest, WebExtractResponse, WebResearchRequest, WebResearchResponse, WebSearchRequest, WebSearchResponse } from "./types"
 
 const POLL_INTERVAL_MS = 5000
 const MAX_WAIT_MS = 120_000

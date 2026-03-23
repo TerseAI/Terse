@@ -1,7 +1,7 @@
 import { settings } from "../../config/settings"
 
-import type { WebSearchService } from "./WebSearchService"
 import { TavilyWebSearchService } from "./TavilyWebSearchService"
+import type { WebSearchService } from "./WebSearchService"
 
 let instance: WebSearchService | undefined
 
