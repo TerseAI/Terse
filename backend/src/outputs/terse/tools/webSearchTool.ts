@@ -1,11 +1,10 @@
 import { tool } from "@openai/agents"
-import { tavily } from "@tavily/core"
 import { z } from "zod"
 
-import { settings } from "../../../config/settings"
+import { getWebSearchService } from "../../../services/webSearch"
 import { ToolName } from "../../../tools/ToolNames"
 
-export const tavilySearchTool = tool({
+export const webSearchTool = tool({
     name: ToolName.WEB_SEARCH,
     description:
         "Search the web for up-to-date information. Returns ranked results with titles, URLs, and content snippets. Use for questions about current events, facts, or topics requiring web sources.",
@@ -18,23 +17,14 @@ export const tavilySearchTool = tool({
         time_range: z.enum(["day", "week", "month", "year"]).nullable().describe("Filter results by recency")
     }),
     execute: async ({ query, max_results, search_depth, include_answer, topic, time_range }) => {
-        const client = tavily({ apiKey: settings.tavily.apiKey })
-        const response = await client.search(query, {
+        const service = getWebSearchService()
+        return service.search({
+            query,
             maxResults: max_results ?? 5,
             searchDepth: search_depth ?? "basic",
             includeAnswer: include_answer ?? false,
             topic: topic ?? "general",
             timeRange: time_range ?? undefined
         })
-        return {
-            query: response.query,
-            answer: response.answer,
-            results: response.results.map(r => ({
-                title: r.title,
-                url: r.url,
-                content: r.content,
-                score: r.score
-            }))
-        }
     }
 })

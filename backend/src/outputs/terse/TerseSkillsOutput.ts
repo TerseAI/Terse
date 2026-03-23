@@ -7,27 +7,27 @@ import { PrismaTransaction } from "../../types/prisma"
 import { Output, ToolboxEntry } from "../abstract/Output"
 
 import { imageEditTool } from "./tools/editImage"
-import { tavilyExtractTool } from "./tools/tavilyExtract"
-import { tavilyResearchTool } from "./tools/tavilyResearch"
-import { tavilySearchTool } from "./tools/tavilySearch"
+import { webExtractTool } from "./tools/webExtractTool"
+import { webResearchTool } from "./tools/webResearchTool"
+import { webSearchTool } from "./tools/webSearchTool"
 
 export class TerseSkillsOutput extends Output<ConfigInstance> {
     constructor() {
         const toolbox: ToolboxEntry[] = [
             {
-                tool: tavilySearchTool,
+                tool: webSearchTool,
                 isReadOnly: true,
                 integration: IntegrationType.TERSE,
                 displayName: "Web Search"
             },
             {
-                tool: tavilyExtractTool,
+                tool: webExtractTool,
                 isReadOnly: true,
                 integration: IntegrationType.TERSE,
                 displayName: "Extract Page"
             },
             {
-                tool: tavilyResearchTool,
+                tool: webResearchTool,
                 isReadOnly: true,
                 integration: IntegrationType.TERSE,
                 displayName: "Research"

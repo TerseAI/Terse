@@ -12,8 +12,8 @@ import { InputEvent } from "../../integrations/abstract/InputEvent"
 import { INTEGRATION_REGISTRY } from "../../integrations/abstract/IntegrationRegistry"
 import { fetchSampleEvents } from "../../integrations/abstract/sampleEvents"
 import logger from "../../logger"
-import { tavilyExtractTool } from "../../outputs/terse/tools/tavilyExtract"
-import { tavilySearchTool } from "../../outputs/terse/tools/tavilySearch"
+import { webExtractTool } from "../../outputs/terse/tools/webExtractTool"
+import { webSearchTool } from "../../outputs/terse/tools/webSearchTool"
 import { db } from "../../prismaClient"
 import { requireHydrator } from "../../rag/HydratorRegistry"
 import type { AgentDraft } from "../../routes/agents"
@@ -73,8 +73,8 @@ async function getDefaultNotificationSettings(userId: string): Promise<AgentNoti
 
 export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgentContext>[] {
     return [
-        tavilySearchTool,
-        tavilyExtractTool,
+        webSearchTool,
+        webExtractTool,
         tool({
             name: "applyAgent",
             description:
