@@ -226,14 +226,7 @@ export const ChatLayout = forwardRef<ChatLayoutHandle, ChatLayoutProps>(function
                                 </div>
                             )}
                             <AnimatePresence mode="wait">
-                                <motion.div
-                                    key={ctaChipPage}
-                                    variants={chipsContainerVariants}
-                                    initial="hidden"
-                                    animate="visible"
-                                    exit="exit"
-                                    className="grid grid-cols-3 gap-2"
-                                >
+                                <motion.div key={ctaChipPage} variants={chipsContainerVariants} initial="hidden" animate="visible" exit="exit" className="grid grid-cols-3 gap-2">
                                     {visibleChips.map(chip => (
                                         <motion.button
                                             key={chip.label}
