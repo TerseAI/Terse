@@ -10,6 +10,7 @@ from ._base import TerseModel
 
 
 class TriggerConfig(TerseModel):
+    integration_id: str
     integration_type: str
     event_type: str | None = None
     config_type: str | None = None
@@ -17,6 +18,7 @@ class TriggerConfig(TerseModel):
 
 
 class SkillConfig(TerseModel):
+    integration_id: str
     integration_type: str
     config_type: str
     config: dict[str, Any] = Field(default_factory=dict)
