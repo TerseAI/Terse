@@ -5,9 +5,19 @@ from __future__ import annotations
 import os
 import subprocess
 import tempfile
+from collections.abc import Mapping
 from dataclasses import dataclass
 from importlib import resources
 from pathlib import Path
+
+from dotenv import dotenv_values, load_dotenv, set_key
+from jinja2 import Environment, StrictUndefined
+
+_TEMPLATE_ENV = Environment(
+    autoescape=False,
+    keep_trailing_newline=True,
+    undefined=StrictUndefined,
+)
 
 
 class ProjectRootError(RuntimeError):
@@ -46,13 +56,10 @@ def load_template_text(template_path: str) -> str:
     return template.read_text(encoding="utf-8")
 
 
-def render_template(content: str, replacements: dict[str, str]) -> str:
-    """Apply ``{{TOKEN}}`` replacements to a template string."""
+def render_template(content: str, context: Mapping[str, object]) -> str:
+    """Render a scaffold template using Jinja."""
 
-    rendered = content
-    for token, value in replacements.items():
-        rendered = rendered.replace(f"{{{{{token}}}}}", value)
-    return rendered
+    return _TEMPLATE_ENV.from_string(content).render(**dict(context))
 
 
 def write_scaffold_file(target_path: Path, content: str) -> None:
@@ -69,29 +76,31 @@ def read_api_key(project_dir: Path | None = None) -> str | None:
     if not env_path.exists():
         return None
 
-    for line in env_path.read_text(encoding="utf-8").splitlines():
-        trimmed = line.strip()
-        if not trimmed or trimmed.startswith("#") or "=" not in trimmed:
-            continue
-
-        key, value = trimmed.split("=", 1)
-        if key.strip() != "TERSE_API_KEY":
-            continue
-
-        api_key = value.strip()
-        if api_key:
-            os.environ["TERSE_API_KEY"] = api_key
-            return api_key
-        return None
-
+    api_key = _normalize_env_value(str(dotenv_values(env_path).get("TERSE_API_KEY") or ""))
+    if api_key:
+        os.environ["TERSE_API_KEY"] = api_key
+        return api_key
     return None
 
 
 def write_api_key(project_dir: Path, api_key: str) -> None:
-    """Write the project ``.env`` file with a single API key entry."""
+    """Write or update ``TERSE_API_KEY`` in the project's ``.env`` file."""
 
     env_path = project_dir / ".env"
-    env_path.write_text(f"TERSE_API_KEY={api_key}\n", encoding="utf-8")
+    if not env_path.exists():
+        env_path.write_text("", encoding="utf-8")
+
+    set_key(env_path, "TERSE_API_KEY", api_key, quote_mode="never")
+    os.environ["TERSE_API_KEY"] = api_key
+
+
+def load_project_env(project_dir: Path | None = None, *, override: bool = False) -> Path:
+    """Load the project's ``.env`` file into ``os.environ`` when present."""
+
+    env_path = (project_dir or Path.cwd()).resolve() / ".env"
+    if env_path.exists():
+        load_dotenv(env_path, override=override)
+    return env_path
 
 
 def run_uv_sync(project_dir: Path) -> DependencyInstallResult:
@@ -115,3 +124,7 @@ def run_uv_sync(project_dir: Path) -> DependencyInstallResult:
 
     details = "\n".join(part for part in (completed.stderr.strip(), completed.stdout.strip()) if part).strip()
     return DependencyInstallResult(succeeded=completed.returncode == 0, command=command, details=details)
+
+
+def _normalize_env_value(value: str) -> str:
+    return value.strip()

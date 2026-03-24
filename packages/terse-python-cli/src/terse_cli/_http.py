@@ -2,12 +2,9 @@
 
 from __future__ import annotations
 
-import json
 from typing import Any, cast
-from urllib.error import HTTPError, URLError
-from urllib.parse import urlencode
-from urllib.request import Request, urlopen
 
+import httpx
 from terse_sdk import TerseSettings
 
 
@@ -41,35 +38,42 @@ def request_json(
     """Send an authenticated JSON request to the backend."""
 
     url = f"{backend_url()}{path}"
-    body: bytes | None = None
     headers = {
         "Authorization": f"Bearer {api_key}",
         "Accept": "application/json",
     }
-
-    if method == "GET" and params:
-        url = f"{url}?{urlencode({key: value for key, value in params.items() if value is not None})}"
-    elif params is not None:
-        body = json.dumps(params).encode("utf-8")
-        headers["Content-Type"] = "application/json"
-
-    request = Request(url, data=body, headers=headers, method=method)
+    request_method = method.upper()
 
     try:
-        with urlopen(request, timeout=20) as response:
-            content_type = response.headers.get("Content-Type", "")
-            raw_body = response.read().decode("utf-8")
-    except HTTPError as exc:
-        detail = _read_error_detail(exc)
-        message = f"{exc.code} {exc.reason} — {path}"
-        if detail:
-            message = f"{message}\n  {detail}"
-        if exc.code in {401, 403}:
-            raise AuthenticationError(message) from exc
-        raise ApiRequestError(message) from exc
-    except (URLError, OSError) as exc:
+        with httpx.Client(timeout=20.0) as client:
+            if request_method == "GET":
+                query_params = _build_query_params(params)
+                response = client.request(
+                    request_method,
+                    url,
+                    headers=headers,
+                    params=query_params,
+                )
+            else:
+                response = client.request(request_method, url, headers=headers, json=params)
+    except httpx.RequestError as exc:
         raise ApiRequestError(f"Could not connect to {backend_url()} — is the backend running?\n  {exc}") from exc
 
+    if response.status_code in {401, 403}:
+        detail = _read_error_detail(response)
+        message = f"{response.status_code} {response.reason_phrase} — {path}"
+        if detail:
+            message = f"{message}\n  {detail}"
+        raise AuthenticationError(message)
+
+    if response.is_error:
+        detail = _read_error_detail(response)
+        message = f"{response.status_code} {response.reason_phrase} — {path}"
+        if detail:
+            message = f"{message}\n  {detail}"
+        raise ApiRequestError(message)
+
+    content_type = response.headers.get("Content-Type", "")
     if "application/json" not in content_type:
         raise ApiRequestError(
             f"Expected JSON from {path} but got {content_type or 'unknown content-type'}.\n"
@@ -77,8 +81,8 @@ def request_json(
         )
 
     try:
-        return json.loads(raw_body)
-    except json.JSONDecodeError as exc:
+        return cast(object, response.json())
+    except ValueError as exc:
         raise ApiRequestError(f"Received invalid JSON from {path}.") from exc
 
 
@@ -90,19 +94,32 @@ def verify_api_key(api_key: str) -> str:
     return str(data.get("firstName") or data.get("displayName") or data.get("email") or "there")
 
 
-def _read_error_detail(error: HTTPError) -> str:
+def _read_error_detail(response: httpx.Response) -> str:
     try:
-        raw_body = error.read().decode("utf-8")
-    except OSError:
-        return ""
-
-    try:
-        parsed = json.loads(raw_body)
-    except json.JSONDecodeError:
-        return raw_body.strip()
+        parsed = response.json()
+    except ValueError:
+        return response.text.strip()
 
     if isinstance(parsed, dict):
         detail = parsed.get("error")
         if detail is not None:
             return str(detail)
-    return raw_body.strip()
+    return response.text.strip()
+
+
+def _build_query_params(
+    params: dict[str, object] | None,
+) -> dict[str, str | int | float | None] | None:
+    if not params:
+        return None
+
+    query_params: dict[str, str | int | float | None] = {}
+    for key, value in params.items():
+        if value is None:
+            continue
+        if isinstance(value, str | int | float):
+            query_params[key] = value
+        else:
+            query_params[key] = str(value)
+
+    return query_params or None

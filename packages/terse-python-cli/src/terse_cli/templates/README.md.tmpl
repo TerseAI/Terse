@@ -1,4 +1,4 @@
-# {{PROJECT_NAME}}
+# {{ PROJECT_NAME }}
 
 Project scaffolded by `terse-python-cli`.
 
@@ -7,5 +7,11 @@ Project scaffolded by `terse-python-cli`.
 ```bash
 uv sync
 uv run python src/main.py
+terse test
+terse deploy
 terse generate
 ```
+
+Edit `src/main.py` to register jobs with `@app.job(...)`.
+
+Connect Attio or Snowflake in Terse, then rerun `terse generate` to refresh `src/terse_generated.py`.

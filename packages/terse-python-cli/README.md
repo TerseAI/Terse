@@ -4,7 +4,20 @@ Python CLI for scaffolding, developing, testing, and deploying [Terse](https://u
 
 ## Status
 
-This package is currently a skeleton. The command tree, entrypoint wiring, options, and package linking are in place, but the command bodies still return `Not yet implemented`.
+The Python CLI now supports the full current command set:
+
+- `terse init`
+- `terse generate`
+- `terse integrate`
+- `terse run`
+- `terse test`
+- `terse deploy`
+
+The supported generated trigger/skill surface remains intentionally small:
+
+- `Schedule.cron(...)`
+- `Attio.skill(...)`
+- `Snowflake.skill(...)`
 
 ## Complete Local Dev Setup
 
@@ -71,24 +84,26 @@ uv run --package terse-python-cli terse deploy --help
 
 ### Current end-to-end manual test flow
 
-Since the commands are still stubs, the current E2E test is about validating the package wiring and CLI interface:
+From the repo root, scaffold and exercise a local Python project:
 
 ```bash
 uv run --package terse-python-cli terse init demo-project
-uv run --package terse-python-cli terse generate
-uv run --package terse-python-cli terse integrate
-uv run --package terse-python-cli terse test demo-job
+cd demo-project
+uv run python src/main.py
+uv run --package terse-python-cli terse run --event '{"integrationType":"cron_job","eventType":"manual","formattedContent":"Manual trigger","debugLog":"Manual trigger"}'
+uv run --package terse-python-cli terse test
 uv run --package terse-python-cli terse deploy
-uv run --package terse-python-cli terse run demo-job --event '{"integrationType":"terse","eventType":"manual","formattedContent":"Manual trigger","debugLog":"Manual trigger"}'
+uv run --package terse-python-cli terse integrate
+uv run --package terse-python-cli terse generate
 ```
 
 What this verifies today:
 
 - the `terse` console script is installed
 - Click command registration is correct
-- argument and option parsing is correct
-- the CLI can resolve the local `terse-python-sdk` package
-- command execution reaches the stub implementation
+- project scaffolding works
+- the CLI can import the project runtime registry from `src/main.py`
+- local run/test/deploy paths execute against the Python SDK runtime
 
 If you want to use the synced virtualenv directly:
 

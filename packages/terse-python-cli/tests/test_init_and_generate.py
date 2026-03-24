@@ -31,7 +31,7 @@ def _fake_generate_project(project_dir: Path | None = None) -> GenerateResult:
     return GenerateResult(
         project_dir=resolved_dir,
         output_path=output_path,
-        summary_lines=["Schedule trigger", "Terse skills (web search)"],
+        summary_lines=["Schedule trigger"],
     )
 
 
@@ -60,10 +60,12 @@ class InitAndGenerateCommandTests(unittest.TestCase):
             self.assertTrue((project_dir / "src" / "terse_generated.py").exists())
             self.assertEqual((project_dir / ".env").read_text(encoding="utf-8"), "TERSE_API_KEY=terse_test_key\n")
             self.assertIn("package = false", (project_dir / "pyproject.toml").read_text(encoding="utf-8"))
-            self.assertIn(
-                "from terse_generated import Schedule, Terse",
-                (project_dir / "src" / "main.py").read_text(encoding="utf-8"),
-            )
+            main_source = (project_dir / "src" / "main.py").read_text(encoding="utf-8")
+            self.assertIn("from terse_sdk import CronJobInputEvent, Terse, TerseAgent", main_source)
+            self.assertIn("from terse_generated import Schedule", main_source)
+            self.assertIn("app = Terse()", main_source)
+            self.assertIn("@app.job(", main_source)
+            self.assertNotIn("JobDefinition", main_source)
             self.assertIn("Hello, Ada! API key verified.", result.output)
 
     def test_init_in_place_is_supported(self) -> None:
@@ -98,7 +100,7 @@ class InitAndGenerateCommandTests(unittest.TestCase):
             self.assertEqual((project_dir / ".env").read_text(encoding="utf-8"), "TERSE_API_KEY=\n")
             generated = (project_dir / "src" / "terse_generated.py").read_text(encoding="utf-8")
             self.assertIn("class Schedule:", generated)
-            self.assertIn("class Terse:", generated)
+            self.assertNotIn("class Terse:", generated)
             self.assertIn("Warning: Could not fetch integration helpers during init.", result.output)
 
     def test_init_warns_when_api_key_verification_fails(self) -> None:
@@ -138,6 +140,7 @@ class InitAndGenerateCommandTests(unittest.TestCase):
             self.assertEqual(result.exit_code, 0, result.output)
             generated = Path("demo-project/src/terse_generated.py").read_text(encoding="utf-8")
             self.assertIn("class Schedule:", generated)
+            self.assertNotIn("class Terse:", generated)
             self.assertIn("backend unavailable", result.output)
 
     def test_generate_writes_integration_helpers(self) -> None:
@@ -152,17 +155,13 @@ class InitAndGenerateCommandTests(unittest.TestCase):
             ) -> object:
                 self.assertEqual(api_key, "terse_test_key")
                 if path == "/integrations/active":
-                    return ["github", "slack"]
-                if path == "/github/integrations":
-                    return [{"id": "github_1", "account_name": "TerseAI", "installation_id": "install_1"}]
-                if path == "/github/get-repositories-for-integration":
-                    self.assertEqual(params, {"installation_id": "install_1"})
-                    return {"repositories": [{"id": 42, "name": "terse", "owner": "TerseAI"}]}
-                if path == "/slack/integrations":
-                    return [{"id": "slack_1", "teamName": "Terse"}]
-                if path == "/slack/channels":
-                    self.assertEqual(params, {"integrationId": "slack_1"})
-                    return {"channels": [{"id": "C123", "name": "alerts"}]}
+                    return ["attio", "snowflake"]
+                if path == "/attio/integrations":
+                    return [{"id": "attio_1", "workspaceName": "Terse CRM"}]
+                if path == "/attio/integrations/attio_1/objects":
+                    return [{"api_slug": "companies", "singular_noun": "Company"}]
+                if path == "/snowflake/integrations":
+                    return [{"id": "snowflake_1", "accountIdentifier": "acme-prod"}]
                 raise AssertionError(f"Unexpected path: {path}")
 
             with patch("terse_cli._generate.request_json", side_effect=fake_request_json):
@@ -170,12 +169,14 @@ class InitAndGenerateCommandTests(unittest.TestCase):
 
             self.assertEqual(result.exit_code, 0, result.output)
             generated = Path("src/terse_generated.py").read_text(encoding="utf-8")
-            self.assertIn("class GitHub:", generated)
-            self.assertIn("Repos = SimpleNamespace(", generated)
-            self.assertIn("class Slack:", generated)
-            self.assertIn("SlackChannel = SimpleNamespace(", generated)
+            self.assertIn("class Attio:", generated)
+            self.assertIn("AttioObject = SimpleNamespace(", generated)
+            self.assertIn("Company=AttioObjectResource(", generated)
+            self.assertIn("class Snowflake:", generated)
             self.assertIn("class Schedule:", generated)
-            self.assertIn("class Terse:", generated)
+            self.assertNotIn("class Terse:", generated)
+            self.assertIn("Attio (Terse CRM) — 1 objects", result.output)
+            self.assertIn("Snowflake (acme-prod)", result.output)
 
     def test_generate_reports_auth_failure(self) -> None:
         with self.runner.isolated_filesystem():

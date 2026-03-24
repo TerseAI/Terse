@@ -1,18 +1,28 @@
-from terse_sdk import JobDefinition
-from terse_generated import Schedule, Terse
+from terse_sdk import CronJobInputEvent, Terse, TerseAgent
+from terse_generated import Schedule
+
+app = Terse()
 
 
-# After you connect integrations in Terse, rerun `terse generate` and
-# import helpers like `GitHub`, `Slack`, or `Linear` from terse_generated.
-job = JobDefinition(
-    name="{{PROJECT_NAME}}",
+# After you connect Attio or Snowflake in Terse, rerun `terse generate` and
+# import helpers like `Attio`, `AttioObject`, or `Snowflake` from terse_generated.
+@app.job(
+    name="{{ PROJECT_NAME }}",
     triggers=[Schedule.cron("0 9 * * 1")],
-    skills=[Terse.skill()],
+    skills=[],
 )
+def run_job(event: CronJobInputEvent, agent: TerseAgent) -> None:
+    _ = agent
+    print(f"{event.integration_type}: {event.formatted_content}")
 
 
 def main() -> None:
-    print(job.model_dump())
+    demo_event = CronJobInputEvent(
+        event_type="manual",
+        formatted_content="Manual scaffold run for local development.",
+        debug_log="Scaffold example",
+    )
+    run_job(demo_event, TerseAgent())
 
 
 if __name__ == "__main__":

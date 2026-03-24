@@ -1,4 +1,3 @@
-# ruff: noqa: E501
 """`terse init` command."""
 
 from __future__ import annotations
@@ -27,9 +26,7 @@ from .._project import (
 @click.command("init", help="Scaffold a new Terse project.")
 @click.argument("project_name", required=False)
 def init_command(project_name: str | None) -> None:
-    target_dir = (
-        (Path.cwd() / project_name).resolve() if project_name else Path.cwd().resolve()
-    )
+    target_dir = (Path.cwd() / project_name).resolve() if project_name else Path.cwd().resolve()
     resolved_name = project_name or target_dir.name
 
     click.echo(f"\n  Creating Terse project {resolved_name}\n")
@@ -71,20 +68,12 @@ def _install_dependencies(target_dir: Path) -> None:
         click.echo(f"\n  Installed dependencies with {command}")
         return
 
-    click.secho(
-        f"\n  Warning: Failed to install dependencies with {command}.", fg="yellow"
-    )
+    click.secho(f"\n  Warning: Failed to install dependencies with {command}.", fg="yellow")
     if result.details:
-        detail_lines = [
-            line.strip() for line in result.details.splitlines() if line.strip()
-        ]
+        detail_lines = [line.strip() for line in result.details.splitlines() if line.strip()]
         if detail_lines:
             preferred_line = next(
-                (
-                    line
-                    for line in detail_lines
-                    if "error" in line.lower() or "failed" in line.lower()
-                ),
+                (line for line in detail_lines if "error" in line.lower() or "failed" in line.lower()),
                 detail_lines[-1],
             )
             click.echo(click.style(f"  {preferred_line}", dim=True))
@@ -92,9 +81,7 @@ def _install_dependencies(target_dir: Path) -> None:
 
 
 def _prompt_for_api_key(target_dir: Path) -> None:
-    click.echo(
-        f"\n  Create an API key at: {frontend_url()}/app/profile?tab=api-tokens\n"
-    )
+    click.echo(f"\n  Create an API key at: {frontend_url()}/app/profile?tab=api-tokens\n")
 
     try:
         api_key = click.prompt(
@@ -108,9 +95,7 @@ def _prompt_for_api_key(target_dir: Path) -> None:
 
     if not api_key:
         write_api_key(target_dir, "")
-        click.echo(
-            click.style("  Skipped; you can add TERSE_API_KEY to .env later.", dim=True)
-        )
+        click.echo(click.style("  Skipped; you can add TERSE_API_KEY to .env later.", dim=True))
         return
 
     try:
@@ -134,12 +119,8 @@ def _generate_helpers(target_dir: Path) -> None:
     try:
         result = generate_project(target_dir)
     except (MissingApiKeyError, AuthenticationError, ApiRequestError) as exc:
-        fallback_path = write_generated_module(
-            target_dir, render_generated_module(CodegenInput())
-        )
-        click.secho(
-            "\n  Warning: Could not fetch integration helpers during init.", fg="yellow"
-        )
+        fallback_path = write_generated_module(target_dir, render_generated_module(CodegenInput()))
+        click.secho("\n  Warning: Could not fetch integration helpers during init.", fg="yellow")
         click.echo(click.style(f"  {str(exc).splitlines()[0]}", dim=True))
         click.echo(
             click.style(
@@ -149,7 +130,7 @@ def _generate_helpers(target_dir: Path) -> None:
         )
         click.echo(
             click.style(
-                "  Rerun `terse generate` after adding a valid TERSE_API_KEY and connecting integrations.",
+                "  Rerun `terse generate` after adding a valid TERSE_API_KEY and connecting Attio or Snowflake.",
                 dim=True,
             )
         )
@@ -173,8 +154,8 @@ def _print_next_steps(target_dir: Path, project_name: str | None) -> None:
         click.echo(f"  {step}. cd {project_name}")
         step += 1
 
-    click.echo(f"  {step}. Edit src/main.py to define your job")
+    click.echo(f"  {step}. Edit src/main.py to register your job")
     step += 1
     click.echo(f"  {step}. uv run python src/main.py")
     step += 1
-    click.echo(f"  {step}. Run `terse generate` again after you connect integrations\n")
+    click.echo(f"  {step}. Run `terse generate` again after you connect Attio or Snowflake\n")

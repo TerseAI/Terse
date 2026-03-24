@@ -37,6 +37,18 @@ from .models import (
     WorkOSEventUser,
     WorkOSInputEvent,
 )
+from .runtime import (
+    MissingApiKeyError,
+    RegisteredJob,
+    Terse,
+    TerseAgent,
+    TerseApiError,
+    TerseRuntimeError,
+    clear_job_registry,
+    deserialize_input_event,
+    execute_registered_job,
+    get_job_registry,
+)
 
 __version__ = "0.1.0"
 
@@ -69,11 +81,21 @@ __all__ = [
     "SlackInputEvent",
     "SnowflakeInputEvent",
     "TerseInputEvent",
+    "Terse",
+    "TerseAgent",
+    "TerseApiError",
+    "TerseRuntimeError",
     "TerseSettings",
     "TriggerConfig",
+    "MissingApiKeyError",
+    "RegisteredJob",
     "WorkOSEventInvitation",
     "WorkOSEventMembership",
     "WorkOSEventMetadata",
     "WorkOSEventUser",
     "WorkOSInputEvent",
+    "clear_job_registry",
+    "deserialize_input_event",
+    "execute_registered_job",
+    "get_job_registry",
 ]

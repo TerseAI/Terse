@@ -50,30 +50,61 @@ npm run python:refresh-types
 
 - Generated Pydantic models under `terse_sdk.generated.models`
 - Typed settings in `terse_sdk.models.config`
-- Event and job skeleton models in `terse_sdk.models`
+- Event and job config models in `terse_sdk.models`
+- A runtime registration API with `Terse`, `@app.job(...)`, and `TerseAgent`
 - A local uv workspace link so the CLI can consume the SDK without publishing it first
 
 ## Quick Start
 
 ```python
-from terse_sdk import JobDefinition, TerseSettings
+from terse_sdk import CronJobInputEvent, Terse, TerseAgent
+from terse_generated import Schedule
 
-settings = TerseSettings()
+app = Terse()
 
-job = JobDefinition(
+@app.job(
     name="example-job",
-    triggers=[],
+    triggers=[Schedule.cron("0 9 * * 1")],
     skills=[],
 )
+def example(event: CronJobInputEvent, agent: TerseAgent) -> None:
+    _ = agent
+    print(event.formatted_content)
 
-print(settings.frontend_url)
-print(job.model_dump())
+example(
+    CronJobInputEvent(
+        event_type="manual",
+        formatted_content="Manual local run",
+        debug_log="README example",
+    ),
+    TerseAgent(),
+)
 ```
+
+`TriggerConfig` and `SkillConfig` are low-level transport models. In normal project code, use the generated helpers in `terse_generated.py` instead of constructing those DTOs by hand.
 
 You can also smoke-test the installed SDK from the repo root:
 
 ```bash
-uv run --package terse-python-sdk python -c "from terse_sdk import JobDefinition, TerseSettings; print(TerseSettings().frontend_url); print(JobDefinition(name='demo').model_dump())"
+uv run --package terse-python-sdk python - <<'PY'
+from terse_sdk import CronJobInputEvent, Terse, TerseAgent
+
+app = Terse()
+
+@app.job(name="demo-job")
+def demo(event: CronJobInputEvent, agent: TerseAgent) -> None:
+    _ = agent
+    print(event.formatted_content)
+
+demo(
+    CronJobInputEvent(
+        event_type="manual",
+        formatted_content="hello",
+        debug_log="demo",
+    ),
+    TerseAgent(),
+)
+PY
 ```
 
 ## Shared Type Codegen
