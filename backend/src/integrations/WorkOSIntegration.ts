@@ -3,6 +3,7 @@ import { InputConfigType } from "@prisma/client"
 import { EventProcessor } from "../agent/AgentRunner/EventProcessor"
 import { urls } from "../config/settings"
 import logger from "../logger"
+import { WorkOSUserResponse, getWorkOSUser } from "../outputs/workos/workosApiClient"
 import { db } from "../prismaClient"
 import { Identifiable } from "../rag/Hydrator"
 import { SecretField, deleteSecretsBestEffort, getSecret, storeSecret } from "../services/SecretService"
@@ -82,7 +83,9 @@ export class WorkOSIntegrationManager implements Integration<WorkOSIntegration, 
             return
         }
 
-        const event = new WorkOSEvent(payload, integrationId)
+        const apiKey = await getSecret(IntegrationType.WORKOS, integrationId, SecretField.ApiKey)
+        const enrichedPayload = apiKey ? await enrichWorkOSEventPayload(payload, apiKey) : payload
+        const event = new WorkOSEvent(enrichedPayload, integrationId)
         const processor = new EventProcessor(event, user)
         const results = await processor.process()
 
@@ -253,8 +256,9 @@ export class WorkOSIntegrationManager implements Integration<WorkOSIntegration, 
         }
 
         const events = await fetchWorkOSEvents(apiKey, workosConfig.eventTypes, limit)
+        const enrichedEvents = await Promise.all(events.map(event => enrichWorkOSEventPayload(event, apiKey)))
 
-        return events.map(evt => new WorkOSEvent(evt, integrationId))
+        return enrichedEvents.map(evt => new WorkOSEvent(evt, integrationId))
     }
 }
 
@@ -277,7 +281,10 @@ interface WorkOSEventsResponse {
 }
 
 async function fetchWorkOSEvents(apiKey: string, eventTypes: string[], limit: number): Promise<WorkOSWebhookPayload[]> {
-    const params = new URLSearchParams({ limit: String(limit) })
+    const params = new URLSearchParams({
+        limit: String(limit),
+        order: "desc"
+    })
     for (const eventType of eventTypes) {
         params.append("events", eventType)
     }
@@ -371,20 +378,14 @@ export class WorkOSEvent extends InputEvent implements Identifiable {
     serializeMetadata(): Record<string, unknown> {
         const d = this.data.data
         const eventType = this.data.event
+        const user = extractWorkOSUserFromPayload(d, eventType)
         const meta: Record<string, unknown> = {
             eventId: this.data.id,
             createdAt: this.data.created_at
         }
 
-        if (eventType.startsWith("user.")) {
-            meta.user = {
-                id: d.id,
-                email: d.email,
-                firstName: d.first_name,
-                lastName: d.last_name,
-                emailVerified: d.email_verified ?? false,
-                profilePictureUrl: d.profile_picture_url
-            }
+        if (eventType.startsWith("user.") && user) {
+            meta.user = user
         } else if (eventType.startsWith("organization_membership.")) {
             meta.membership = {
                 id: d.id,
@@ -393,7 +394,7 @@ export class WorkOSEvent extends InputEvent implements Identifiable {
                 role: d.role,
                 status: d.status
             }
-        } else if (eventType === "invitation.accepted") {
+        } else if (eventType === "invitation.accepted" || eventType === "invitation.created" || eventType === "invitation.resent" || eventType === "invitation.revoked") {
             meta.invitation = {
                 id: d.id,
                 email: d.email,
@@ -401,6 +402,14 @@ export class WorkOSEvent extends InputEvent implements Identifiable {
                 inviterEmail: d.inviter_email,
                 state: d.state,
                 acceptedAt: d.accepted_at
+            }
+            if (user) {
+                meta.user = user
+            }
+        } else if (eventType === "organization.created") {
+            meta.organization = {
+                id: d.id,
+                name: d.name
             }
         }
 
@@ -420,5 +429,79 @@ export class WorkOSEvent extends InputEvent implements Identifiable {
             title: eventType.replace(/[._]/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase()),
             subheader: userName
         }
+    }
+}
+
+function getNestedRecord(value: unknown): Record<string, any> | null {
+    return value && typeof value === "object" ? (value as Record<string, any>) : null
+}
+
+function getString(value: unknown): string | undefined {
+    return typeof value === "string" && value.length > 0 ? value : undefined
+}
+
+function getWorkOSUserIdFromPayload(data: Record<string, any>, eventType: string): string | undefined {
+    return getString(data.user_id) || getString(data.userId) || getString(getNestedRecord(data.user)?.id) || (eventType.startsWith("user.") ? getString(data.id) : undefined)
+}
+
+function extractWorkOSUserFromPayload(data: Record<string, any>, eventType: string) {
+    const nestedUser = getNestedRecord(data.user)
+    const id = getWorkOSUserIdFromPayload(data, eventType)
+    const email = getString(data.email) || getString(nestedUser?.email)
+
+    if (!id || !email) {
+        return null
+    }
+
+    return {
+        id,
+        email,
+        firstName: getString(data.first_name) || getString(data.firstName) || getString(nestedUser?.first_name) || getString(nestedUser?.firstName),
+        lastName: getString(data.last_name) || getString(data.lastName) || getString(nestedUser?.last_name) || getString(nestedUser?.lastName),
+        emailVerified: Boolean(data.email_verified ?? data.emailVerified ?? nestedUser?.email_verified ?? nestedUser?.emailVerified),
+        profilePictureUrl: getString(data.profile_picture_url) || getString(data.profilePictureUrl) || getString(nestedUser?.profile_picture_url) || getString(nestedUser?.profilePictureUrl)
+    }
+}
+
+function mergeWorkOSUserIntoPayload(payload: WorkOSWebhookPayload, workosUser: WorkOSUserResponse): WorkOSWebhookPayload {
+    return {
+        ...payload,
+        data: {
+            ...payload.data,
+            email: workosUser.email,
+            first_name: workosUser.first_name,
+            last_name: workosUser.last_name,
+            email_verified: workosUser.email_verified,
+            profile_picture_url: workosUser.profile_picture_url,
+            user: {
+                ...(getNestedRecord(payload.data.user) || {}),
+                id: workosUser.id,
+                email: workosUser.email,
+                first_name: workosUser.first_name,
+                last_name: workosUser.last_name,
+                email_verified: workosUser.email_verified,
+                profile_picture_url: workosUser.profile_picture_url
+            }
+        }
+    }
+}
+
+export async function enrichWorkOSEventPayload(payload: WorkOSWebhookPayload, apiKey: string): Promise<WorkOSWebhookPayload> {
+    const userId = getWorkOSUserIdFromPayload(payload.data, payload.event)
+    if (!userId) {
+        return payload
+    }
+
+    try {
+        const workosUser = await getWorkOSUser(apiKey, userId)
+        return mergeWorkOSUserIntoPayload(payload, workosUser)
+    } catch (error) {
+        logger.warn("Failed to enrich WorkOS event payload with user data", {
+            eventId: payload.id,
+            eventType: payload.event,
+            userId,
+            error
+        })
+        return payload
     }
 }
