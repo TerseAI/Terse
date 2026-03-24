@@ -6,9 +6,9 @@ import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
 import logger from "../../../logger"
 import { IntegrationType } from "../../../shared/Integrations"
 import { ToolName } from "../../../tools/ToolNames"
+import { toolOutput } from "../../../tools/toolOutput"
 import { Session } from "../../../types/session"
 import { getSnowflakeCredentials, runSnowflakeQuery } from "../snowflakeClient"
-import { toolOutput } from "../../../tools/toolOutput"
 
 export const snowflakeExplainQueryTool = tool({
     name: ToolName.SNOWFLAKE_EXPLAIN_QUERY,
