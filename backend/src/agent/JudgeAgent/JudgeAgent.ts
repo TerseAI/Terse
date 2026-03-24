@@ -77,7 +77,9 @@ Use lookupPlatformCapabilities if you need to check what triggers/outputs the pl
 - Map each to a targetArea: ${isSdk ? "code | trigger_config | output_config | general" : "prompt | trigger_config | output_config | general"}
 - Don't repeat past recommendations (pending, applied, or dismissed)
 - If everything looks good, return an empty improvements array
-${isSdk ? `
+${
+    isSdk
+        ? `
 == SDK Job specifics ==
 
 This is an SDK job — a code-based automation written and deployed by a developer via the Terse CLI/SDK, not built through the web UI.
@@ -86,7 +88,9 @@ This is an SDK job — a code-based automation written and deployed by a develop
 - Use targetArea "code" for improvements about the source code itself. You can still use "trigger_config", "output_config", or "general" for non-code concerns.
 - For "code" improvements, you MUST include a suggestedPatch field — a unified diff showing the exact change you're recommending. Use standard diff format (--- a/file, +++ b/file, @@ hunks). The description should explain what the patch does and why.
 - The developer will read your suggestions and apply them in their own codebase, so make them actionable.
-` : ""}
+`
+        : ""
+}
 `
 }
 

@@ -283,9 +283,7 @@ function ImprovementRow({
                         <div className="pl-[22px] pt-2 space-y-2">
                             <p className="text-sm text-muted-foreground">{improvement.description}</p>
                             {isSdk && improvement.suggestedPatch && (
-                                <pre className="text-xs bg-muted/50 rounded p-3 overflow-x-auto whitespace-pre-wrap break-words border border-border">
-                                    {improvement.suggestedPatch}
-                                </pre>
+                                <pre className="text-xs bg-muted/50 rounded p-3 overflow-x-auto whitespace-pre-wrap break-words border border-border">{improvement.suggestedPatch}</pre>
                             )}
                         </div>
                     </motion.div>

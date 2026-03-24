@@ -194,9 +194,7 @@ export default function SdkJobDetail({ agentId }: { agentId: string }) {
                         <Lightbulb className="h-4 w-4" />
                         <span>Improvements</span>
                         {pendingCount > 0 && (
-                            <span className="inline-flex items-center justify-center h-5 min-w-5 px-1 rounded-full bg-primary text-primary-foreground text-xs font-medium">
-                                {pendingCount}
-                            </span>
+                            <span className="inline-flex items-center justify-center h-5 min-w-5 px-1 rounded-full bg-primary text-primary-foreground text-xs font-medium">{pendingCount}</span>
                         )}
                     </Tab>
                 </TabList>
