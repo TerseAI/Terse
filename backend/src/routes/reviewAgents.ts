@@ -14,6 +14,20 @@ import { sentNotificationsKey } from "../shared/InvalidationKeys"
 import { FeatureFlag, FeatureFlagService } from "../utility/featureFlags"
 import { getUserForOrg } from "../utility/workos"
 
+import { AutomationSource } from "@prisma/client"
+
+import { User } from "../shared/types"
+
+type EligibleAutomation = {
+    id: string
+    name: string
+    user_id: string
+    organization_id: string
+    source: AutomationSource
+    user: User
+    runCount: number
+}
+
 type EmailAgentSummary = {
     name: string
     improvements: Array<{ title: string }>
@@ -24,20 +38,6 @@ type EmailGroup = {
     emailAddress: string
     organizationId: string
     agents: EmailAgentSummary[]
-}
-
-function validateCloudSchedulerRequest(req: Request): boolean {
-    const authHeader = req.headers["authorization"]
-    if (!authHeader) {
-        logger.warn("[ReviewAgents] Missing Authorization header")
-        return false
-    }
-    const token = authHeader.startsWith("Bearer ") ? authHeader.substring(7) : authHeader
-    if (token !== cloudScheduler.secret) {
-        logger.warn("[ReviewAgents] Invalid cron secret token")
-        return false
-    }
-    return true
 }
 
 export async function reviewAllAgents(req: Request, res: Response) {
@@ -76,6 +76,9 @@ export async function reviewAllAgents(req: Request, res: Response) {
         let skippedTooManyImprovements = 0
         let improvementsCreated = 0
 
+        // Phase 1: Pre-check — determine which automations are eligible (sequential for caching)
+        const eligible: EligibleAutomation[] = []
+
         for (const automation of automations) {
             try {
                 const userCacheKey = `${automation.user_id}:${automation.organization_id}`
@@ -88,7 +91,6 @@ export async function reviewAllAgents(req: Request, res: Response) {
                     continue
                 }
 
-                // Per-user feature flag check (cached by email)
                 if (!featureFlagCache.has(user.email)) {
                     const isEnabled = await featureFlagService.isFeatureFlagEnabled(FeatureFlag.WEEKLY_REVIEW_EMAILS, user.email, { email: user.email })
                     featureFlagCache.set(user.email, isEnabled)
@@ -104,10 +106,7 @@ export async function reviewAllAgents(req: Request, res: Response) {
                 const runCount = await db().run_history_records.count({
                     where: {
                         automation_id: automation.id,
-                        timestamp: {
-                            gte: periodStart,
-                            lte: periodEnd
-                        }
+                        timestamp: { gte: periodStart, lte: periodEnd }
                     }
                 })
 
@@ -117,9 +116,7 @@ export async function reviewAllAgents(req: Request, res: Response) {
                 }
 
                 const improvementCount = await db().agent_improvements.count({
-                    where: {
-                        automation_id: automation.id
-                    }
+                    where: { automation_id: automation.id }
                 })
 
                 if (improvementCount >= MAX_IMPROVEMENTS_PER_AGENT) {
@@ -132,6 +129,17 @@ export async function reviewAllAgents(req: Request, res: Response) {
                     continue
                 }
 
+                eligible.push({ ...automation, user, runCount })
+            } catch (error) {
+                const message = error instanceof Error ? error.message : String(error)
+                failures.push({ automationId: automation.id, error: message })
+                logger.error("[ReviewAgents] Failed pre-check for automation", { automationId: automation.id, error })
+            }
+        }
+
+        // Phase 2: Evaluate all eligible automations concurrently
+        const results = await Promise.allSettled(
+            eligible.map(async automation => {
                 let evaluation
                 if (automation.source === "SDK") {
                     const context = await fetchFullJudgeContext(automation.id, automation.organization_id)
@@ -140,7 +148,7 @@ export async function reviewAllAgents(req: Request, res: Response) {
                 } else {
                     evaluation = await evaluateAgent({
                         automationId: automation.id,
-                        user,
+                        user: automation.user,
                         source: automation.source
                     })
                 }
@@ -154,7 +162,7 @@ export async function reviewAllAgents(req: Request, res: Response) {
                             organization_id: automation.organization_id,
                             title: evaluation.title,
                             summary: evaluation.summary,
-                            runs_analyzed: runCount,
+                            runs_analyzed: automation.runCount,
                             review_period_start: periodStart,
                             review_period_end: periodEnd
                         }
@@ -181,20 +189,25 @@ export async function reviewAllAgents(req: Request, res: Response) {
                 if (improvementRecords.length > 0) {
                     const improvementsPath = FrontendRoutes.AGENTS.IMPROVEMENTS(automation.id)
                     const improvementsUrl = settings.urls.frontend ? `${settings.urls.frontend}${improvementsPath}` : improvementsPath
-                    const group = emailGroups.get(user.id)!
+                    const group = emailGroups.get(automation.user.id)!
                     group.agents.push({
                         name: automation.name,
                         improvements: improvementRecords.map(item => ({ title: item.title })),
                         improvementsUrl
                     })
                 }
-            } catch (error) {
-                const message = error instanceof Error ? error.message : String(error)
+
+                return { automationId: automation.id, improvementCount: improvementRecords.length }
+            })
+        )
+
+        for (let i = 0; i < results.length; i++) {
+            const result = results[i]
+            if (result.status === "rejected") {
+                const automation = eligible[i]
+                const message = result.reason instanceof Error ? result.reason.message : String(result.reason)
                 failures.push({ automationId: automation.id, error: message })
-                logger.error("[ReviewAgents] Failed to review automation", {
-                    automationId: automation.id,
-                    error
-                })
+                logger.error("[ReviewAgents] Failed to review automation", { automationId: automation.id, error: result.reason })
             }
         }
 

@@ -13,7 +13,10 @@ type CopyPatchDialogProps = {
 }
 
 function toFileName(title?: string): string {
-    return `${(title ?? "improvement").replace(/[^a-zA-Z0-9-_ ]/g, "").replace(/\s+/g, "-").toLowerCase()}.patch`
+    return `${(title ?? "improvement")
+        .replace(/[^a-zA-Z0-9-_ ]/g, "")
+        .replace(/\s+/g, "-")
+        .toLowerCase()}.patch`
 }
 
 function downloadPatchFile(patch: string, fileName: string) {
