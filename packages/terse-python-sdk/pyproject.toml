@@ -4,12 +4,29 @@ version = "0.1.0"
 description = "Python SDK for building jobs on the Terse platform."
 readme = "README.md"
 requires-python = ">=3.11"
+authors = [{ name = "Terse" }]
+keywords = ["terse", "ai", "agents", "automation", "sdk"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Typing :: Typed",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
 dependencies = [
     "httpx>=0.28.1",
     "httpx-sse>=0.4,<0.5",
     "pydantic>=2.12.5",
     "pydantic-settings>=2.13.1",
 ]
+
+[project.urls]
+Homepage = "https://useterse.ai"
+Repository = "https://github.com/TerseAI/Terse"
+Issues = "https://github.com/TerseAI/Terse/issues"
 
 [build-system]
 requires = ["hatchling>=1.29.0"]

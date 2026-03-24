@@ -1630,10 +1630,14 @@
         "user.created",
         "user.updated",
         "user.deleted",
+        "organization.created",
         "organization_membership.created",
         "organization_membership.updated",
         "organization_membership.deleted",
-        "invitation.accepted"
+        "invitation.created",
+        "invitation.accepted",
+        "invitation.resent",
+        "invitation.revoked"
       ],
       "type": "string"
     },

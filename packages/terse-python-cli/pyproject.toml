@@ -4,6 +4,19 @@ version = "0.1.0"
 description = "Python CLI for scaffolding and managing Terse projects."
 readme = "README.md"
 requires-python = ">=3.11"
+authors = [{ name = "Terse" }]
+keywords = ["terse", "ai", "agents", "automation", "cli"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Build Tools",
+    "Topic :: Software Development :: Code Generators",
+]
 dependencies = [
     "click>=8.3.1",
     "httpx>=0.28.1",
@@ -12,8 +25,13 @@ dependencies = [
     "python-dotenv>=1.2.2",
     "questionary>=2.1.1",
     "rich>=14.3.3",
-    "terse-python-sdk",
+    "terse-python-sdk>=0.1.0,<0.2.0",
 ]
+
+[project.urls]
+Homepage = "https://useterse.ai"
+Repository = "https://github.com/TerseAI/Terse"
+Issues = "https://github.com/TerseAI/Terse/issues"
 
 [project.scripts]
 terse = "terse_cli.cli:cli"

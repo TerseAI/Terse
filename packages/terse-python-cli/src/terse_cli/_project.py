@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import json
 import os
+import re
 import subprocess
 import tempfile
 from collections.abc import Mapping
 from dataclasses import dataclass
-from importlib import resources
+from importlib import metadata, resources
 from pathlib import Path
 
 from dotenv import dotenv_values, load_dotenv, set_key
@@ -54,6 +56,18 @@ def load_template_text(template_path: str) -> str:
 
     template = resources.files("terse_cli").joinpath("templates", *template_path.split("/"))
     return template.read_text(encoding="utf-8")
+
+
+def scaffold_template_context(project_name: str) -> dict[str, object]:
+    """Build the shared template context for scaffolded project files."""
+
+    local_sdk_path = detect_local_sdk_source_path()
+    return {
+        "PROJECT_NAME": project_name,
+        "SDK_DEPENDENCY": build_sdk_dependency_requirement(),
+        "USE_LOCAL_SDK_SOURCE": local_sdk_path is not None,
+        "SDK_SOURCE_PATH": json.dumps(str(local_sdk_path)) if local_sdk_path is not None else '""',
+    }
 
 
 def render_template(content: str, context: Mapping[str, object]) -> str:
@@ -128,3 +142,45 @@ def run_uv_sync(project_dir: Path) -> DependencyInstallResult:
 
 def _normalize_env_value(value: str) -> str:
     return value.strip()
+
+
+def build_sdk_dependency_requirement() -> str:
+    """Return the published SDK requirement used in scaffolded projects."""
+
+    version = _installed_version("terse-python-sdk") or "0.1.0"
+    normalized = _normalize_release_version(version)
+    major, minor, patch = normalized
+    return f"terse-python-sdk>={major}.{minor}.{patch},<{major}.{minor + 1}.0"
+
+
+def detect_local_sdk_source_path() -> Path | None:
+    """Detect a local SDK checkout when the CLI is running from the monorepo."""
+
+    package_dir = Path(__file__).resolve()
+    packages_dir = package_dir.parents[3]
+    candidate = packages_dir / "terse-python-sdk"
+
+    if packages_dir.name != "packages":
+        return None
+    if not (candidate / "pyproject.toml").exists():
+        return None
+
+    pyproject = (candidate / "pyproject.toml").read_text(encoding="utf-8")
+    if 'name = "terse-python-sdk"' not in pyproject:
+        return None
+
+    return candidate
+
+
+def _installed_version(package_name: str) -> str | None:
+    try:
+        return metadata.version(package_name)
+    except metadata.PackageNotFoundError:
+        return None
+
+
+def _normalize_release_version(version: str) -> tuple[int, int, int]:
+    match = re.search(r"(\d+)\.(\d+)\.(\d+)", version)
+    if match is None:
+        return (0, 1, 0)
+    return tuple(int(group) for group in match.groups())

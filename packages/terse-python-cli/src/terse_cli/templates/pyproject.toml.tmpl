@@ -3,8 +3,13 @@ name = "{{ PROJECT_NAME }}"
 version = "0.1.0"
 requires-python = ">=3.11"
 dependencies = [
-    "terse-python-sdk>=0.1.0",
+    "{{ SDK_DEPENDENCY }}",
 ]
 
 [tool.uv]
 package = false
+{% if USE_LOCAL_SDK_SOURCE %}
+
+[tool.uv.sources]
+terse-python-sdk = { path = {{ SDK_SOURCE_PATH }}, editable = true }
+{% endif %}

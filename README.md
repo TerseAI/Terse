@@ -116,6 +116,7 @@ npm run python:setup
 npm run python:refresh-types
 npm run python:check
 npm run python:test
+npm run python:dist:check
 npm run python:smoke
 npm run python:build
 ```
@@ -170,6 +171,7 @@ Build packages:
 
 ```bash
 npm run python:build
+npm run python:dist:check
 ```
 
 Inspect resolved dependencies:
@@ -218,6 +220,18 @@ For day-to-day Python development:
 4. Run `npm run python:check`.
 5. Manually exercise the CLI with `uv run --package terse-python-cli terse ...` or `npm run python:smoke`.
 6. Build the package artifacts with `npm run python:build` before publishing or release work.
+
+### Publishing Python Packages
+
+Before publishing, build and validate the distributions from the repo root:
+
+```bash
+npm run python:dist:check
+```
+
+This builds both Python packages and runs `twine check` against the wheel and sdist artifacts in `dist/`.
+
+There is also a manual GitHub Actions workflow at [`.github/workflows/publish-python.yml`](/Users/olimorissette/Desktop/projects/Terse/.github/workflows/publish-python.yml) for PyPI Trusted Publishing. Before using it, configure both PyPI projects to trust this repository and workflow.
 
 ## Code Formatting
 

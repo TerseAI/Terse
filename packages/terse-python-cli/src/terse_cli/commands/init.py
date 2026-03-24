@@ -18,6 +18,7 @@ from .._project import (
     load_template_text,
     render_template,
     run_uv_sync,
+    scaffold_template_context,
     write_api_key,
     write_scaffold_file,
 )
@@ -44,7 +45,7 @@ def init_command(project_name: str | None) -> None:
 
 
 def _scaffold_project(target_dir: Path, project_name: str) -> None:
-    replacements = {"PROJECT_NAME": project_name}
+    replacements = scaffold_template_context(project_name)
     files = [
         ("pyproject.toml.tmpl", "pyproject.toml"),
         ("README.md.tmpl", "README.md"),

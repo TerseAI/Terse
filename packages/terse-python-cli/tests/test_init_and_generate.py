@@ -82,6 +82,32 @@ class InitAndGenerateCommandTests(unittest.TestCase):
             self.assertTrue(Path("src/main.py").exists())
             self.assertTrue(Path("src/terse_generated.py").exists())
 
+    def test_init_dev_mode_writes_local_sdk_source_override(self) -> None:
+        with self.runner.isolated_filesystem():
+            with (
+                patch(
+                    "terse_cli.commands.init.scaffold_template_context",
+                    return_value={
+                        "PROJECT_NAME": "demo-project",
+                        "SDK_DEPENDENCY": "terse-python-sdk>=0.1.0,<0.2.0",
+                        "USE_LOCAL_SDK_SOURCE": True,
+                        "SDK_SOURCE_PATH": '"/tmp/local sdk/packages/terse-python-sdk"',
+                    },
+                ),
+                patch("terse_cli.commands.init.run_uv_sync", return_value=_successful_install()),
+                patch("terse_cli.commands.init.verify_api_key", return_value="Ada"),
+                patch("terse_cli.commands.init.generate_project", side_effect=_fake_generate_project),
+            ):
+                result = self.runner.invoke(cli, ["init", "demo-project"], input="terse_test_key\n")
+
+            self.assertEqual(result.exit_code, 0, result.output)
+            pyproject = Path("demo-project/pyproject.toml").read_text(encoding="utf-8")
+            self.assertIn('[tool.uv.sources]', pyproject)
+            self.assertIn(
+                'terse-python-sdk = { path = "/tmp/local sdk/packages/terse-python-sdk", editable = true }',
+                pyproject,
+            )
+
     def test_init_rejects_existing_named_directory(self) -> None:
         with self.runner.isolated_filesystem():
             Path("demo-project").mkdir()
