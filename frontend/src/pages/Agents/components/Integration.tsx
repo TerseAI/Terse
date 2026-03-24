@@ -13,6 +13,7 @@ import {
     NotionIcon,
     PosthogIcon,
     SlackIcon,
+    SnowflakeIcon,
     TerseIcon,
     WorkOSIcon
 } from "@/components/icons/IntegrationIcons"
@@ -56,6 +57,8 @@ export function IconForConfigType({ type }: { type: ConfigType }) {
             return <WorkOSIcon />
         case ConfigType.ATTIO_OUTPUT:
             return <AttioIcon />
+        case ConfigType.SNOWFLAKE_OUTPUT:
+            return <SnowflakeIcon />
         default:
             // Exhaustive check: TypeScript will error if any IntegrationType case is missing
             throw type satisfies never
@@ -91,6 +94,8 @@ export function IconForIntegration({ integration }: { integration: IntegrationTy
             return <WorkOSIcon />
         case IntegrationType.ATTIO:
             return <AttioIcon />
+        case IntegrationType.SNOWFLAKE:
+            return <SnowflakeIcon />
         default:
             throw integration satisfies never
     }

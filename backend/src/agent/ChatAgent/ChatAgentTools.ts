@@ -45,6 +45,7 @@ import {
     PosthogConfigSchema,
     SlackConfigSchema,
     SlackOutputConfigSchema,
+    SnowflakeOutputConfigSchema,
     TimeTriggerConfigSchema,
     WorkOSInputConfigSchema,
     WorkOSOutputConfigSchema,
@@ -512,7 +513,8 @@ const OutputConfigSchema = z
         PosthogConfigSchema,
         LaunchDarklyConfigSchema,
         DatadogConfigSchema,
-        WorkOSOutputConfigSchema
+        WorkOSOutputConfigSchema,
+        SnowflakeOutputConfigSchema
     ])
     .superRefine((value, ctx) => {
         enforceNonSystemIntegrationId(value, ctx)

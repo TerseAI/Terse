@@ -13,7 +13,8 @@ export enum IntegrationType {
     CRON_JOB = "cron_job",
     LAUNCHDARKLY = "launchdarkly",
     WORKOS = "workos",
-    ATTIO = "attio"
+    ATTIO = "attio",
+    SNOWFLAKE = "snowflake"
 }
 
 // MARK: Integration Metadata
@@ -138,6 +139,14 @@ export const AttioIntegrationMetadata = {
     isOutput: true
 } as const satisfies IntegrationDetails
 
+export const SnowflakeIntegrationMetadata = {
+    type: IntegrationType.SNOWFLAKE,
+    name: "Snowflake",
+    description: "Run read-only queries against Snowflake data warehouses",
+    isInput: false,
+    isOutput: true
+} as const satisfies IntegrationDetails
+
 export type IntegrationMetadataMap = Record<IntegrationType, IntegrationDetails> // Allow indexing with any IntegrationType
 
 export const INTEGRATION_METADATA: IntegrationMetadataMap = {
@@ -154,7 +163,8 @@ export const INTEGRATION_METADATA: IntegrationMetadataMap = {
     [IntegrationType.CRON_JOB]: CronJobIntegrationMetadata,
     [IntegrationType.LAUNCHDARKLY]: LaunchDarklyIntegrationMetadata,
     [IntegrationType.WORKOS]: WorkOSIntegrationMetadata,
-    [IntegrationType.ATTIO]: AttioIntegrationMetadata
+    [IntegrationType.ATTIO]: AttioIntegrationMetadata,
+    [IntegrationType.SNOWFLAKE]: SnowflakeIntegrationMetadata
 } as const satisfies IntegrationMetadataMap
 
 // MARK: Integration Details
@@ -187,6 +197,7 @@ export type IntegrationInstallationOptions = EnsureExhaustiveInstallationOptions
     [IntegrationType.LAUNCHDARKLY]: NoInstallationOptions
     [IntegrationType.WORKOS]: NoInstallationOptions
     [IntegrationType.ATTIO]: NoInstallationOptions
+    [IntegrationType.SNOWFLAKE]: NoInstallationOptions
 }>
 
 export type InstallationOptionsFor<T extends IntegrationType> = IntegrationInstallationOptions[T]
@@ -263,6 +274,15 @@ export interface WorkOSIntegration extends IntegrationInstance {
 export interface AttioIntegration extends IntegrationInstance {
     id: string
     workspaceName?: string
+}
+
+export interface SnowflakeIntegration extends IntegrationInstance {
+    id: string
+    accountIdentifier: string
+    username: string
+    warehouse: string
+    databaseName?: string | null
+    schemaName?: string | null
 }
 
 export interface IntegrationWithStatus {

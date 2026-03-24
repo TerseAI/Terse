@@ -120,6 +120,10 @@ export function AttioIcon() {
     return <img src="/Attio.svg" alt="Attio" className="w-full h-full object-contain dark:invert" />
 }
 
+export function SnowflakeIcon() {
+    return <img src="/snowflake.png" alt="Snowflake" className="w-full h-full object-contain" />
+}
+
 export function WorkOSIcon() {
     return (
         <svg className="w-full h-full" viewBox="0 0 256 222" fill="none" xmlns="http://www.w3.org/2000/svg">

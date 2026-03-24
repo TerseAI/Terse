@@ -190,6 +190,11 @@ export const AttioOutputConfigSchema = BaseConfigSchema.extend({
     objectSlug: z.string().nullable().describe("The Attio object type slug (e.g. 'people', 'companies').")
 })
 
+export const SnowflakeOutputConfigSchema = BaseConfigSchema.extend({
+    configType: z.literal(ConfigType.SNOWFLAKE_OUTPUT).describe("Use for Snowflake read-only query skills."),
+    integrationType: z.literal(IntegrationType.SNOWFLAKE)
+})
+
 export function enforceNonSystemIntegrationId(config: { configType: ConfigType; integrationId?: string }, ctx: z.RefinementCtx): void {
     if (config.configType !== ConfigType.TIME_TRIGGER && config.integrationId === "system") {
         ctx.addIssue({

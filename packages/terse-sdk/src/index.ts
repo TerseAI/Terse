@@ -79,6 +79,7 @@ export {
     WorkOSInputConfig,
     WorkOSOutputConfig,
     AttioOutputConfig,
+    SnowflakeOutputConfig,
     SlackEventType,
     GitHubEventType,
     LinearEventType,

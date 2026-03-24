@@ -11,6 +11,7 @@ import { LinearIntegrationManager } from "../LinearIntegration"
 import { NotionIntegrationManager } from "../NotionIntegration"
 import { PosthogIntegrationManager } from "../PosthogIntegration"
 import { SlackIntegrationManager } from "../SlackIntegration"
+import { SnowflakeIntegrationManager } from "../SnowflakeIntegration"
 import { WorkOSIntegrationManager } from "../WorkOSIntegration"
 
 import { FormIntegrationInstallation, Integration, OAuthIntegrationInstallation } from "./Integration"
@@ -37,5 +38,6 @@ export const INTEGRATION_REGISTRY: Array<IntegrationWithInstallation> = [
     new LaunchDarklyIntegrationManager(),
     new DatadogIntegrationManager(),
     new WorkOSIntegrationManager(),
-    new AttioIntegrationManager()
+    new AttioIntegrationManager(),
+    new SnowflakeIntegrationManager()
 ]

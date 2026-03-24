@@ -15,6 +15,7 @@ import { NotionIntegration } from "./NotionIntegration"
 import { PosthogIntegration } from "./PosthogIntegration"
 import { SlackIntegration } from "./SlackIntegration"
 import { SlackOutputIntegration } from "./SlackOutputIntegration"
+import { SnowflakeOutputIntegration } from "./SnowflakeOutputIntegration"
 import { TimeTriggerIntegration } from "./TimeTriggerIntegration"
 import { WorkOSIntegration } from "./WorkOSIntegration"
 import { WorkOSOutputIntegration } from "./WorkOSOutputIntegration"
@@ -75,6 +76,9 @@ export function IntegrationSelector(props: InputConfigSelectorProps) {
 
         case ConfigType.ATTIO_OUTPUT:
             return <AttioOutputIntegration input={props.input} variant={props.variant} setConfig={props.setConfig} />
+
+        case ConfigType.SNOWFLAKE_OUTPUT:
+            return <SnowflakeOutputIntegration input={props.input} variant={props.variant} setConfig={props.setConfig} />
 
         default:
             throw new Error(`Unsupported config type: ${props.input.configType}`)
