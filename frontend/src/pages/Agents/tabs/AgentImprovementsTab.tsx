@@ -1,7 +1,7 @@
 import { RefObject, useMemo, useState } from "react"
 
 import { AnimatePresence, motion } from "framer-motion"
-import { ChevronRight, Copy } from "lucide-react"
+import { ChevronRight, Download } from "lucide-react"
 import { toast } from "sonner"
 
 import { BuilderChatHandle } from "@/components/chat/BuilderChat"
@@ -254,11 +254,11 @@ function ImprovementRow({
                 </button>
                 <div className="flex items-center gap-1.5 shrink-0">
                     {isSdk && improvement.suggestedPatch && (
-                        <CopyPatchDialog patch={improvement.suggestedPatch}>
+                        <CopyPatchDialog patch={improvement.suggestedPatch} title={improvement.title}>
                             {openDialog => (
                                 <Button size="sm" variant="outline" onClick={openDialog}>
-                                    <Copy className="h-3.5 w-3.5 mr-1" />
-                                    Copy Patch
+                                    <Download className="h-3.5 w-3.5 mr-1" />
+                                    Download Patch
                                 </Button>
                             )}
                         </CopyPatchDialog>
