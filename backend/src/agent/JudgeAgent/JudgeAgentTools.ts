@@ -7,13 +7,11 @@ import { settings } from "../../config/settings"
 import logger from "../../logger"
 import { OutputFactory } from "../../outputs/abstract/OutputFactory"
 import { db } from "../../prismaClient"
-import { downloadSdkDeployZip } from "../../services/FileStorageService"
 import { ConfigInstance } from "../../shared/Configs"
 import { User } from "../../shared/types"
 import { AgentWithRelations } from "../../types/prisma"
 import { Session } from "../../types/session"
 import { getInputConfigInclude, getOutputConfigInclude } from "../../utility/prismaIncludes"
-import { extractSourceFilesFromZip } from "../../utility/zipExtractor"
 import { SessionWithTracking } from "../AgentRunner/AgentRunner"
 import { SystemPromptBuilder } from "../AgentRunner/SystemPromptBuilder"
 import { formatAgentForSystemPrompt } from "../AgentRunner/formatContext"
@@ -83,22 +81,6 @@ export function buildJudgeAgentTools(user: User): Tool[] {
 
                 const formattedConfig = formatAgentForSystemPrompt(automation)
 
-                let sourceFiles: Array<{ path: string; content: string }> | undefined
-                if (automation.source === "SDK" && automation.prompt?.source_code_gcs_key) {
-                    try {
-                        const zipBuffer = await downloadSdkDeployZip(automation.prompt.source_code_gcs_key)
-                        if (zipBuffer) {
-                            sourceFiles = extractSourceFilesFromZip(zipBuffer)
-                            logger.info("[JudgeAgent:getAgentConfig] Extracted SDK source files", {
-                                automationId,
-                                fileCount: sourceFiles.length
-                            })
-                        }
-                    } catch (error) {
-                        logger.warn("[JudgeAgent:getAgentConfig] Failed to extract SDK source code", { automationId, error })
-                    }
-                }
-
                 const response = {
                     formattedConfig,
                     rawConfig: {
@@ -113,8 +95,7 @@ export function buildJudgeAgentTools(user: User): Tool[] {
                         outputs: automation.outputs,
                         toolApprovals: automation.tool_approvals.map(row => row.tool_name),
                         notificationSettings: automation.notification_settings
-                    },
-                    ...(sourceFiles && { sourceFiles })
+                    }
                 }
 
                 return JSON.stringify(response)
