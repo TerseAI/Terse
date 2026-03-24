@@ -16,7 +16,10 @@ const WORKOS_EVENT_TYPES: { value: WorkOSEventType; label: string; description: 
     { value: WorkOSEventType.ORGANIZATION_MEMBERSHIP_CREATED, label: "Membership Created", description: "A user joins an organization" },
     { value: WorkOSEventType.ORGANIZATION_MEMBERSHIP_UPDATED, label: "Membership Updated", description: "A user's role or membership changes" },
     { value: WorkOSEventType.ORGANIZATION_MEMBERSHIP_DELETED, label: "Membership Deleted", description: "A user leaves an organization" },
-    { value: WorkOSEventType.INVITATION_ACCEPTED, label: "Invitation Accepted", description: "A user accepts an invitation to join" }
+    { value: WorkOSEventType.INVITATION_CREATED, label: "Invitation Sent", description: "A user is invited to sign up or join an organization" },
+    { value: WorkOSEventType.INVITATION_RESENT, label: "Invitation Resent", description: "An existing invitation email is resent" },
+    { value: WorkOSEventType.INVITATION_ACCEPTED, label: "Invitation Accepted", description: "A user accepts an invitation to join" },
+    { value: WorkOSEventType.INVITATION_REVOKED, label: "Invitation Revoked", description: "An invitation is revoked before it is accepted" }
 ]
 
 export function WorkOSIntegration({ input, variant, setConfig }: InputConfigSelectorProps) {
