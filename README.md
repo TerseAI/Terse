@@ -281,3 +281,13 @@ Production URL can be found on Render.com dashboard. (Or you can ask me)
 ```bash
 DATABASE_URL="your_production_url" pnpm exec prisma migrate deploy
 ```
+
+## The NPM Packages
+
+To work with terse-cli locally, you need to point backend URL to localhost with:
+
+```bash
+export TERSE_BACKEND_URL="http://localhost:3001"
+```
+
+then run the terse commands right after

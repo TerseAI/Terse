@@ -17,6 +17,7 @@ export {
     WorkOSUserInputEvent,
     WorkOSMembershipInputEvent,
     WorkOSInvitationInputEvent,
+    WorkOSOrganizationInputEvent,
     SerializedEventInputEvent,
     isGithubEvent,
     isGithubPREvent,
@@ -25,6 +26,7 @@ export {
     isWorkOSUserEvent,
     isWorkOSMembershipEvent,
     isWorkOSInvitationEvent,
+    isWorkOSOrganizationEvent,
     deserializeInputEvent
 } from "./types.js"
 export type {
@@ -35,7 +37,8 @@ export type {
     GithubPRData,
     WorkOSEventUser,
     WorkOSEventMembership,
-    WorkOSEventInvitation
+    WorkOSEventInvitation,
+    WorkOSEventOrganization
 } from "./types.js"
 
 // Mock event for CLI's `terse run` command
@@ -76,6 +79,7 @@ export {
     WorkOSInputConfig,
     WorkOSOutputConfig,
     AttioOutputConfig,
+    SnowflakeOutputConfig,
     SlackEventType,
     GitHubEventType,
     LinearEventType,
