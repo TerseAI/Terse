@@ -10,7 +10,7 @@ export interface ToolboxEntry {
     isReadOnly: boolean
     integration: IntegrationType
     displayName: string
-    /** If true, this tool can be selected for approval even though it is read-only. */
+    /** If true, this tool can be selected for approval even though it is read-only. TODO: extend approval tool support for all tools  */
     supportsApproval?: boolean
 }
 
