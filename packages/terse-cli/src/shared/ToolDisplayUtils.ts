@@ -970,6 +970,42 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
             const prompt = params?.prompt as string | undefined
             return prompt ? `Image edited: "${truncate(prompt)}"` : "Image edited"
         }
+    },
+
+    // ===================
+    // Snowflake Tools
+    // ===================
+    snowflakeExecuteQuery: {
+        preparing: "Preparing Snowflake query",
+        executing: params => {
+            const query = params?.query as string | undefined
+            return query ? `Querying Snowflake: "${truncate(query, 40)}"` : "Querying Snowflake"
+        },
+        complete: (params, result) => {
+            const parsed = safeParseResult(result)
+            const rowCount = parsed?.rowCount as number | undefined
+            const query = params?.query as string | undefined
+            if (rowCount !== undefined) return `Query returned ${rowCount} row${rowCount !== 1 ? "s" : ""}`
+            if (query) return `Queried Snowflake: "${truncate(query, 35)}"`
+            return "Query complete"
+        },
+        approval: params => {
+            const query = params?.query as string | undefined
+            return query ? `Run query: "${truncate(query, 40)}"?` : "Run this Snowflake query?"
+        }
+    },
+    snowflakeExplainQuery: {
+        preparing: "Preparing query plan",
+        executing: params => {
+            const query = params?.query as string | undefined
+            return query ? `Explaining query: "${truncate(query, 40)}"` : "Explaining Snowflake query"
+        },
+        complete: (_params, result) => {
+            const parsed = safeParseResult(result)
+            const rowCount = parsed?.rowCount as number | undefined
+            if (rowCount !== undefined) return `Query plan retrieved (${rowCount} step${rowCount !== 1 ? "s" : ""})`
+            return "Query plan retrieved"
+        }
     }
 }
 

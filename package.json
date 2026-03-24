@@ -8,6 +8,10 @@
   "scripts": {
     "build:packages": "npm run build -w terse-sdk && npm run build -w terse-cli",
     "link:cli": "npm run build:packages && npm link --workspace terse-cli",
-    "link:packages": "npm run build:packages && npm link --workspace terse-sdk && npm link --workspace terse-cli"
+    "link:packages": "npm run build:packages && npm link --workspace terse-sdk && npm link --workspace terse-cli",
+    "generate:pydantic": "node scripts/codegen/generate-pydantic.mjs"
+  },
+  "devDependencies": {
+    "ts-json-schema-generator": "^2.9.0"
   }
 }

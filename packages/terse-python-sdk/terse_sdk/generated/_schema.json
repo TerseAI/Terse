@@ -1,0 +1,2164 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "definitions": {
+    "Agent": {
+      "additionalProperties": false,
+      "properties": {
+        "createdByUserId": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "isActive": {
+          "type": "boolean"
+        },
+        "name": {
+          "type": "string"
+        },
+        "notificationSettings": {
+          "$ref": "#/definitions/AgentNotificationSettings"
+        },
+        "outputs": {
+          "items": {
+            "$ref": "#/definitions/AgentOutput"
+          },
+          "type": "array"
+        },
+        "prompt": {
+          "$ref": "#/definitions/AgentPrompt"
+        },
+        "requireApproval": {
+          "type": "boolean"
+        },
+        "source": {
+          "enum": [
+            "WEB_UI",
+            "SDK"
+          ],
+          "type": "string"
+        },
+        "toolApprovals": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "triggers": {
+          "items": {
+            "$ref": "#/definitions/AgentTrigger"
+          },
+          "type": "array"
+        },
+        "updatedAt": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "isActive",
+        "requireApproval",
+        "prompt",
+        "triggers",
+        "outputs",
+        "createdByUserId"
+      ],
+      "type": "object"
+    },
+    "AgentNotificationSettings": {
+      "additionalProperties": false,
+      "properties": {
+        "actionTypes": {
+          "items": {
+            "$ref": "#/definitions/RunHistoryActionType"
+          },
+          "type": "array"
+        },
+        "enabled": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "enabled",
+        "actionTypes"
+      ],
+      "type": "object"
+    },
+    "AgentOutput": {
+      "additionalProperties": false,
+      "properties": {
+        "config": {
+          "$ref": "#/definitions/ConfigInstance"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "config"
+      ],
+      "type": "object"
+    },
+    "AgentPrompt": {
+      "additionalProperties": false,
+      "properties": {
+        "text": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "type": "object"
+    },
+    "AgentTrigger": {
+      "additionalProperties": false,
+      "properties": {
+        "config": {
+          "$ref": "#/definitions/ConfigInstance"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "config"
+      ],
+      "type": "object"
+    },
+    "AgentUpdate": {
+      "additionalProperties": false,
+      "properties": {
+        "isActive": {
+          "type": "boolean"
+        },
+        "name": {
+          "type": "string"
+        },
+        "notificationSettings": {
+          "$ref": "#/definitions/AgentNotificationSettings"
+        },
+        "outputs": {
+          "items": {
+            "$ref": "#/definitions/AgentOutput"
+          },
+          "type": "array"
+        },
+        "prompt": {
+          "$ref": "#/definitions/AgentPrompt"
+        },
+        "requireApproval": {
+          "type": "boolean"
+        },
+        "toolApprovals": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "triggers": {
+          "items": {
+            "$ref": "#/definitions/AgentTrigger"
+          },
+          "type": "array"
+        }
+      },
+      "type": "object"
+    },
+    "ApiToken": {
+      "additionalProperties": false,
+      "properties": {
+        "createdAt": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "lastUsedAt": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "name": {
+          "type": "string"
+        },
+        "tokenPrefix": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "tokenPrefix",
+        "createdAt",
+        "lastUsedAt"
+      ],
+      "type": "object"
+    },
+    "ApiTokenCreateResponse": {
+      "additionalProperties": false,
+      "properties": {
+        "rawToken": {
+          "type": "string"
+        },
+        "token": {
+          "$ref": "#/definitions/ApiToken"
+        }
+      },
+      "required": [
+        "token",
+        "rawToken"
+      ],
+      "type": "object"
+    },
+    "ApprovalAction": {
+      "additionalProperties": false,
+      "properties": {
+        "deepLink": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "type": {
+          "$ref": "#/definitions/ApprovalActionType"
+        }
+      },
+      "required": [
+        "type",
+        "label",
+        "deepLink"
+      ],
+      "type": "object"
+    },
+    "ApprovalActionType": {
+      "enum": [
+        "open_run_history",
+        "approve_action",
+        "reject_action"
+      ],
+      "type": "string"
+    },
+    "ApprovalRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "actions": {
+          "items": {
+            "$ref": "#/definitions/ApprovalAction"
+          },
+          "type": "array"
+        },
+        "agentId": {
+          "type": "string"
+        },
+        "icon": {
+          "$ref": "#/definitions/IntegrationType"
+        },
+        "id": {
+          "type": "string"
+        },
+        "runId": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/definitions/ApprovalRequestStatus"
+        },
+        "subheader": {
+          "type": "string"
+        },
+        "timestamp": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "icon",
+        "title",
+        "subheader",
+        "timestamp",
+        "status",
+        "actions",
+        "runId",
+        "agentId"
+      ],
+      "type": "object"
+    },
+    "ApprovalRequestStatus": {
+      "enum": [
+        "pending",
+        "in_progress",
+        "completed"
+      ],
+      "type": "string"
+    },
+    "ChangeEventType": {
+      "enum": [
+        "CREATED",
+        "UPDATED",
+        "ACTION_EXECUTED"
+      ],
+      "type": "string"
+    },
+    "ChangedItem": {
+      "additionalProperties": false,
+      "properties": {
+        "change_event_type": {
+          "$ref": "#/definitions/ChangeEventType"
+        },
+        "id": {
+          "type": "string"
+        },
+        "type_name": {
+          "$ref": "#/definitions/EntityType"
+        }
+      },
+      "required": [
+        "type_name",
+        "id",
+        "change_event_type"
+      ],
+      "type": "object"
+    },
+    "ChatSnippet": {
+      "anyOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "label": {
+              "type": "string"
+            },
+            "selectedValue": {
+              "type": "string"
+            },
+            "step_id": {
+              "type": "string"
+            },
+            "type": {
+              "const": "button",
+              "type": "string"
+            },
+            "url": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "label",
+            "type",
+            "url"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "integration": {
+              "type": "string"
+            },
+            "message": {
+              "type": "string"
+            },
+            "selectedValue": {
+              "type": "string"
+            },
+            "stateToken": {
+              "type": "string"
+            },
+            "step_id": {
+              "type": "string"
+            },
+            "type": {
+              "const": "integration_prompt",
+              "type": "string"
+            }
+          },
+          "required": [
+            "integration",
+            "message",
+            "type"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "path": {
+              "type": "string"
+            },
+            "selectedValue": {
+              "type": "string"
+            },
+            "step_id": {
+              "type": "string"
+            },
+            "type": {
+              "const": "navigate",
+              "type": "string"
+            }
+          },
+          "required": [
+            "path",
+            "type"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "allowMultiple": {
+              "type": "boolean"
+            },
+            "id": {
+              "type": "string"
+            },
+            "options": {
+              "items": {
+                "$ref": "#/definitions/MultipleChoiceOption"
+              },
+              "type": "array"
+            },
+            "question": {
+              "type": "string"
+            },
+            "questionId": {
+              "type": "string"
+            },
+            "selectedValue": {
+              "type": "string"
+            },
+            "step_id": {
+              "type": "string"
+            },
+            "type": {
+              "const": "multiple_choice",
+              "type": "string"
+            }
+          },
+          "required": [
+            "options",
+            "question",
+            "questionId",
+            "type"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "selectedValue": {
+              "type": "string"
+            },
+            "step_id": {
+              "type": "string"
+            },
+            "type": {
+              "const": "image",
+              "type": "string"
+            },
+            "url": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "url"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "ConfigDetails": {
+      "additionalProperties": false,
+      "properties": {
+        "configType": {
+          "$ref": "#/definitions/ConfigType"
+        },
+        "description": {
+          "type": "string"
+        },
+        "integrationType": {
+          "$ref": "#/definitions/IntegrationType"
+        },
+        "isInput": {
+          "type": "boolean"
+        },
+        "isOutput": {
+          "type": "boolean"
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "configType",
+        "name",
+        "description",
+        "integrationType",
+        "isInput",
+        "isOutput"
+      ],
+      "type": "object"
+    },
+    "ConfigInstance": {
+      "additionalProperties": false,
+      "properties": {
+        "configType": {
+          "$ref": "#/definitions/ConfigType"
+        },
+        "integrationId": {
+          "type": "string"
+        },
+        "integrationType": {
+          "$ref": "#/definitions/IntegrationType"
+        }
+      },
+      "required": [
+        "integrationId",
+        "integrationType",
+        "configType"
+      ],
+      "type": "object"
+    },
+    "ConfigType": {
+      "enum": [
+        "gmail",
+        "gmail_output",
+        "gmail_draft_output",
+        "figma",
+        "slack",
+        "slack_output",
+        "notion",
+        "linear_input",
+        "linear_output",
+        "github",
+        "jira",
+        "confluence",
+        "POSTHOG",
+        "DATADOG",
+        "time_trigger",
+        "launchdarkly",
+        "terse",
+        "workos_input",
+        "workos_output",
+        "attio_output",
+        "snowflake_output"
+      ],
+      "type": "string"
+    },
+    "EntityType": {
+      "enum": [
+        "ticket",
+        "comment",
+        "user",
+        "action_event",
+        "run_history_action"
+      ],
+      "type": "string"
+    },
+    "Error": {
+      "additionalProperties": false,
+      "properties": {
+        "message": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "stack": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "message"
+      ],
+      "type": "object"
+    },
+    "FigmaEventType": {
+      "const": "file_comment",
+      "type": "string"
+    },
+    "GitHubEventType": {
+      "enum": [
+        "push",
+        "pull_request.opened",
+        "pull_request.merged",
+        "pull_request.closed",
+        "pull_request.synchronize"
+      ],
+      "type": "string"
+    },
+    "GmailEventType": {
+      "const": "email.received",
+      "type": "string"
+    },
+    "IntegrationDetails": {
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "type": "string"
+        },
+        "isInput": {
+          "type": "boolean"
+        },
+        "isOutput": {
+          "type": "boolean"
+        },
+        "name": {
+          "type": "string"
+        },
+        "type": {
+          "$ref": "#/definitions/IntegrationType"
+        }
+      },
+      "required": [
+        "type",
+        "name",
+        "description"
+      ],
+      "type": "object"
+    },
+    "IntegrationType": {
+      "enum": [
+        "github",
+        "gmail",
+        "linear",
+        "atlassian",
+        "slack",
+        "notion",
+        "figma",
+        "terse",
+        "posthog",
+        "datadog",
+        "cron_job",
+        "launchdarkly",
+        "workos",
+        "attio",
+        "snowflake"
+      ],
+      "type": "string"
+    },
+    "JiraEventType": {
+      "enum": [
+        "issue.created",
+        "issue.updated"
+      ],
+      "type": "string"
+    },
+    "LinearEventType": {
+      "enum": [
+        "issue.created",
+        "issue.updated",
+        "comment.created"
+      ],
+      "type": "string"
+    },
+    "ModelEvent": {
+      "anyOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "approved": {
+              "type": "boolean"
+            },
+            "step_id": {
+              "type": "string"
+            },
+            "timestamp": {
+              "type": "number"
+            },
+            "type": {
+              "const": "ToolApprovalResponse",
+              "type": "string"
+            }
+          },
+          "required": [
+            "approved",
+            "step_id",
+            "timestamp",
+            "type"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "arguments": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            },
+            "step_id": {
+              "type": "string"
+            },
+            "timestamp": {
+              "type": "number"
+            },
+            "type": {
+              "const": "ToolApprovalRequest",
+              "type": "string"
+            }
+          },
+          "required": [
+            "arguments",
+            "name",
+            "step_id",
+            "timestamp",
+            "type"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "step_id": {
+              "type": "string"
+            },
+            "timestamp": {
+              "type": "number"
+            },
+            "tool_name": {
+              "type": "string"
+            },
+            "type": {
+              "const": "ToolCallGenerating",
+              "type": "string"
+            }
+          },
+          "required": [
+            "step_id",
+            "timestamp",
+            "tool_name",
+            "type"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "integration": {
+              "type": "string"
+            },
+            "parameters": {
+              "type": "string"
+            },
+            "step_id": {
+              "type": "string"
+            },
+            "summary": {
+              "type": "string"
+            },
+            "timestamp": {
+              "type": "number"
+            },
+            "type": {
+              "const": "ToolCall",
+              "type": "string"
+            }
+          },
+          "required": [
+            "integration",
+            "parameters",
+            "step_id",
+            "summary",
+            "timestamp",
+            "type"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "changed_items": {
+              "items": {
+                "$ref": "#/definitions/ChangedItem"
+              },
+              "type": "array"
+            },
+            "errorContext": {
+              "$ref": "#/definitions/SharedErrorContext"
+            },
+            "integration": {
+              "type": "string"
+            },
+            "result": {
+              "type": "string"
+            },
+            "status": {
+              "$ref": "#/definitions/ToolCallExecutionStatus"
+            },
+            "step_id": {
+              "type": "string"
+            },
+            "timestamp": {
+              "type": "number"
+            },
+            "tool_name": {
+              "type": "string"
+            },
+            "type": {
+              "const": "ToolCallComplete",
+              "type": "string"
+            },
+            "url": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "changed_items",
+            "integration",
+            "status",
+            "step_id",
+            "timestamp",
+            "tool_name",
+            "type"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "delta": {
+              "type": "string"
+            },
+            "step_id": {
+              "type": "string"
+            },
+            "timestamp": {
+              "type": "number"
+            },
+            "type": {
+              "const": "TextDelta",
+              "type": "string"
+            }
+          },
+          "required": [
+            "delta",
+            "step_id",
+            "timestamp",
+            "type"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "code": {
+              "type": "string"
+            },
+            "error": {
+              "type": "string"
+            },
+            "timestamp": {
+              "type": "number"
+            },
+            "type": {
+              "const": "RunError",
+              "type": "string"
+            }
+          },
+          "required": [
+            "error",
+            "timestamp",
+            "type"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "reason": {
+              "type": "string"
+            },
+            "timestamp": {
+              "type": "number"
+            },
+            "type": {
+              "const": "Cancelled",
+              "type": "string"
+            }
+          },
+          "required": [
+            "timestamp",
+            "type"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "step_id": {
+              "type": "string"
+            },
+            "timestamp": {
+              "type": "number"
+            },
+            "type": {
+              "const": "NaturalStop",
+              "type": "string"
+            }
+          },
+          "required": [
+            "step_id",
+            "timestamp",
+            "type"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "confidence": {
+              "type": "number"
+            },
+            "isRelevant": {
+              "type": "boolean"
+            },
+            "reason": {
+              "type": "string"
+            },
+            "step_id": {
+              "type": "string"
+            },
+            "timestamp": {
+              "type": "number"
+            },
+            "type": {
+              "const": "FilterResult",
+              "type": "string"
+            }
+          },
+          "required": [
+            "confidence",
+            "isRelevant",
+            "reason",
+            "step_id",
+            "timestamp",
+            "type"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "client_turn_id": {
+              "type": "string"
+            },
+            "message": {
+              "type": "string"
+            },
+            "step_id": {
+              "type": "string"
+            },
+            "timestamp": {
+              "type": "number"
+            },
+            "type": {
+              "const": "UserMessage",
+              "type": "string"
+            }
+          },
+          "required": [
+            "client_turn_id",
+            "message",
+            "step_id",
+            "timestamp",
+            "type"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "step_id": {
+              "type": "string"
+            },
+            "timestamp": {
+              "type": "number"
+            },
+            "type": {
+              "const": "Thinking",
+              "type": "string"
+            }
+          },
+          "required": [
+            "step_id",
+            "timestamp",
+            "type"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "snippet": {
+              "$ref": "#/definitions/ChatSnippet"
+            },
+            "timestamp": {
+              "type": "number"
+            },
+            "type": {
+              "const": "Snippet",
+              "type": "string"
+            }
+          },
+          "required": [
+            "snippet",
+            "timestamp",
+            "type"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "MultipleChoiceOption": {
+      "additionalProperties": false,
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "label",
+        "value"
+      ],
+      "type": "object"
+    },
+    "NotificationDestinationType": {
+      "enum": [
+        "email",
+        "slack"
+      ],
+      "type": "string"
+    },
+    "NotificationSettings": {
+      "additionalProperties": false,
+      "properties": {
+        "agentDefaultNotifications": {
+          "items": {
+            "$ref": "#/definitions/RunHistoryActionType"
+          },
+          "type": "array"
+        },
+        "id": {
+          "type": "string"
+        },
+        "weeklyAgentImprovements": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "agentDefaultNotifications",
+        "weeklyAgentImprovements"
+      ],
+      "type": "object"
+    },
+    "Omit<User,(\"organizationId\"|\"organizationName\"|\"roles\")>": {
+      "$ref": "#/definitions/Pick%3CUser%2CExclude%3C(%22id%22%7C%22workosId%22%7C%22organizationId%22%7C%22organizationName%22%7C%22email%22%7C%22displayName%22%7C%22firstName%22%7C%22lastName%22%7C%22displayPhotoUrl%22%7C%22roles%22)%2C(%22organizationId%22%7C%22organizationName%22%7C%22roles%22)%3E%3E"
+    },
+    "Partial<SdkAgentRunEventPayload>": {
+      "additionalProperties": false,
+      "properties": {
+        "debugLog": {
+          "type": "string"
+        },
+        "formattedContent": {
+          "type": "string"
+        },
+        "integrationType": {
+          "$ref": "#/definitions/IntegrationType"
+        }
+      },
+      "type": "object"
+    },
+    "Pick<User,Exclude<(\"id\"|\"workosId\"|\"organizationId\"|\"organizationName\"|\"email\"|\"displayName\"|\"firstName\"|\"lastName\"|\"displayPhotoUrl\"|\"roles\"),(\"organizationId\"|\"organizationName\"|\"roles\")>>": {
+      "additionalProperties": false,
+      "properties": {
+        "displayName": {
+          "type": "string"
+        },
+        "displayPhotoUrl": {
+          "type": "string"
+        },
+        "email": {
+          "type": "string"
+        },
+        "firstName": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "id": {
+          "type": "string"
+        },
+        "lastName": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "workosId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "workosId",
+        "email",
+        "displayName",
+        "firstName",
+        "lastName",
+        "displayPhotoUrl"
+      ],
+      "type": "object"
+    },
+    "Record<string,unknown>": {
+      "additionalProperties": {},
+      "type": "object"
+    },
+    "Repository": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "number"
+        },
+        "name": {
+          "type": "string"
+        },
+        "owner": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "owner",
+        "id"
+      ],
+      "type": "object"
+    },
+    "Role": {
+      "enum": [
+        "admin",
+        "user"
+      ],
+      "type": "string"
+    },
+    "RunError": {
+      "additionalProperties": false,
+      "description": "Run-level / agent-level error (e.g. context window exceeded). Use optional code for specific UI handling.",
+      "properties": {
+        "code": {
+          "type": "string"
+        },
+        "error": {
+          "type": "string"
+        },
+        "timestamp": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "error",
+        "timestamp"
+      ],
+      "type": "object"
+    },
+    "RunHistoryAction": {
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "type": "string"
+        },
+        "details": {
+          "type": "string"
+        },
+        "integration": {
+          "$ref": "#/definitions/IntegrationType"
+        },
+        "isReadOnly": {
+          "type": "boolean"
+        },
+        "output_items": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "output_item_id": {
+                "type": "string"
+              },
+              "output_item_type": {
+                "$ref": "#/definitions/ConfigType"
+              }
+            },
+            "required": [
+              "output_item_id",
+              "output_item_type"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "step_id": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        },
+        "type": {
+          "$ref": "#/definitions/RunHistoryActionType"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "action",
+        "integration",
+        "target",
+        "details",
+        "type"
+      ],
+      "type": "object"
+    },
+    "RunHistoryActionType": {
+      "enum": [
+        "create",
+        "update",
+        "delete",
+        "read",
+        "approve",
+        "error"
+      ],
+      "type": "string"
+    },
+    "RunHistoryDecision": {
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "$ref": "#/definitions/RunHistoryDecisionAction"
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "action",
+        "reasoning"
+      ],
+      "type": "object"
+    },
+    "RunHistoryDecisionAction": {
+      "enum": [
+        "processed",
+        "skipped"
+      ],
+      "type": "string"
+    },
+    "RunHistoryRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "actions": {
+          "items": {
+            "$ref": "#/definitions/RunHistoryAction"
+          },
+          "type": "array"
+        },
+        "agentId": {
+          "type": "string"
+        },
+        "decision": {
+          "$ref": "#/definitions/RunHistoryDecision"
+        },
+        "filtered": {
+          "type": "boolean"
+        },
+        "id": {
+          "type": "string"
+        },
+        "isManuallyTriggered": {
+          "type": "boolean"
+        },
+        "status": {
+          "$ref": "#/definitions/RunHistoryStatus"
+        },
+        "timestamp": {
+          "type": "string"
+        },
+        "trigger": {
+          "$ref": "#/definitions/RunHistoryTrigger"
+        }
+      },
+      "required": [
+        "id",
+        "agentId",
+        "timestamp",
+        "trigger",
+        "filtered",
+        "decision",
+        "status",
+        "isManuallyTriggered"
+      ],
+      "type": "object"
+    },
+    "RunHistoryStatus": {
+      "enum": [
+        "success",
+        "failed",
+        "cancelled",
+        "skipped",
+        "in_progress",
+        "awaiting_approval"
+      ],
+      "type": "string"
+    },
+    "RunHistoryTrigger": {
+      "additionalProperties": false,
+      "properties": {
+        "event": {
+          "type": "string"
+        },
+        "integration": {
+          "$ref": "#/definitions/IntegrationType"
+        },
+        "source": {
+          "type": "string"
+        },
+        "subheader": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "event",
+        "integration",
+        "source"
+      ],
+      "type": "object"
+    },
+    "SdkAgentRunEventPayload": {
+      "additionalProperties": false,
+      "properties": {
+        "debugLog": {
+          "type": "string"
+        },
+        "formattedContent": {
+          "type": "string"
+        },
+        "integrationType": {
+          "$ref": "#/definitions/IntegrationType"
+        }
+      },
+      "required": [
+        "integrationType",
+        "formattedContent",
+        "debugLog"
+      ],
+      "type": "object"
+    },
+    "SdkAgentRunOptionsPayload": {
+      "additionalProperties": false,
+      "properties": {
+        "maxTurns": {
+          "type": "number"
+        },
+        "requireApproval": {
+          "type": "boolean"
+        }
+      },
+      "type": "object"
+    },
+    "SdkAgentRunRequestBody": {
+      "additionalProperties": false,
+      "properties": {
+        "event": {
+          "$ref": "#/definitions/Partial%3CSdkAgentRunEventPayload%3E"
+        },
+        "options": {
+          "$ref": "#/definitions/SdkAgentRunOptionsPayload"
+        },
+        "prompt": {
+          "type": "string"
+        },
+        "skills": {
+          "items": {
+            "$ref": "#/definitions/SdkAgentSkillPayload"
+          },
+          "type": "array"
+        }
+      },
+      "type": "object"
+    },
+    "SdkAgentRunResponseBody": {
+      "additionalProperties": false,
+      "properties": {
+        "contract": {
+          "additionalProperties": false,
+          "properties": {
+            "responseMode": {
+              "const": "streaming",
+              "type": "string"
+            },
+            "supportsInterruptions": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "responseMode",
+            "supportsInterruptions"
+          ],
+          "type": "object"
+        },
+        "details": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "error": {
+          "type": "string"
+        },
+        "normalizedRequest": {
+          "additionalProperties": false,
+          "properties": {
+            "event": {
+              "$ref": "#/definitions/SdkAgentRunEventPayload"
+            },
+            "options": {
+              "additionalProperties": false,
+              "properties": {
+                "maxTurns": {
+                  "type": "number"
+                },
+                "requireApproval": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "maxTurns",
+                "requireApproval"
+              ],
+              "type": "object"
+            },
+            "prompt": {
+              "type": "string"
+            },
+            "skills": {
+              "items": {
+                "$ref": "#/definitions/SdkAgentSkillPayload"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "prompt",
+            "event",
+            "skills",
+            "options"
+          ],
+          "type": "object"
+        },
+        "success": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "success"
+      ],
+      "type": "object"
+    },
+    "SdkAgentSkillPayload": {
+      "additionalProperties": false,
+      "properties": {
+        "config": {
+          "$ref": "#/definitions/Record%3Cstring%2Cunknown%3E"
+        },
+        "configType": {
+          "$ref": "#/definitions/ConfigType"
+        }
+      },
+      "required": [
+        "configType",
+        "config"
+      ],
+      "type": "object"
+    },
+    "SdkAgentStreamEvent": {
+      "anyOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "text": {
+              "type": "string"
+            },
+            "type": {
+              "const": "text",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "text"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "finalOutput": {
+              "type": "string"
+            },
+            "type": {
+              "const": "final_output",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "finalOutput"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "toolCallParams": {
+              "type": "string"
+            },
+            "type": {
+              "const": "tool_call_params",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "toolCallParams"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "toolCallStarted": {
+              "type": "string"
+            },
+            "type": {
+              "const": "tool_call_started",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "toolCallStarted"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "toolCallCompleted": {
+              "type": "string"
+            },
+            "type": {
+              "const": "tool_call_completed",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "toolCallCompleted"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "$ref": "#/definitions/RunHistoryAction"
+            },
+            "type": {
+              "const": "action",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "action"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "message": {
+              "type": "string"
+            },
+            "type": {
+              "const": "error",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "message"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "const": "done",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "SdkDeployJob": {
+      "additionalProperties": false,
+      "properties": {
+        "jobName": {
+          "type": "string"
+        },
+        "triggers": {
+          "items": {
+            "$ref": "#/definitions/SdkDeployTrigger"
+          },
+          "type": "array"
+        },
+        "webhookURL": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "jobName",
+        "triggers"
+      ],
+      "type": "object"
+    },
+    "SdkDeployRequestBody": {
+      "additionalProperties": false,
+      "properties": {
+        "jobs": {
+          "items": {
+            "$ref": "#/definitions/SdkDeployJob"
+          },
+          "type": "array"
+        },
+        "sourceZipBase64": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "jobs",
+        "sourceZipBase64"
+      ],
+      "type": "object"
+    },
+    "SdkDeployResponseBody": {
+      "additionalProperties": false,
+      "properties": {
+        "details": {
+          "type": "string"
+        },
+        "error": {
+          "type": "string"
+        },
+        "removed": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "name"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "results": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "automationId": {
+                "type": "string"
+              },
+              "isUpdate": {
+                "type": "boolean"
+              },
+              "jobName": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "jobName",
+              "automationId",
+              "isUpdate"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "success": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "success",
+        "results",
+        "removed"
+      ],
+      "type": "object"
+    },
+    "SdkDeployTrigger": {
+      "additionalProperties": false,
+      "properties": {
+        "config": {
+          "$ref": "#/definitions/Record%3Cstring%2Cunknown%3E"
+        },
+        "configType": {
+          "type": "string"
+        },
+        "integrationId": {
+          "type": "string"
+        },
+        "integrationType": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "configType",
+        "integrationType",
+        "integrationId",
+        "config"
+      ],
+      "type": "object"
+    },
+    "SerializedEvent": {
+      "additionalProperties": false,
+      "properties": {
+        "debugLog": {
+          "type": "string"
+        },
+        "eventType": {
+          "type": "string"
+        },
+        "formattedContent": {
+          "type": "string"
+        },
+        "integrationType": {
+          "$ref": "#/definitions/IntegrationType"
+        },
+        "metadata": {
+          "$ref": "#/definitions/Record%3Cstring%2Cunknown%3E"
+        }
+      },
+      "required": [
+        "integrationType",
+        "formattedContent",
+        "debugLog"
+      ],
+      "type": "object"
+    },
+    "SharedErrorContext": {
+      "additionalProperties": false,
+      "properties": {
+        "error": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Error"
+            },
+            {}
+          ]
+        }
+      },
+      "required": [
+        "error"
+      ],
+      "type": "object"
+    },
+    "SlackEventType": {
+      "enum": [
+        "message",
+        "app_mention",
+        "reaction_added"
+      ],
+      "type": "string"
+    },
+    "TextDelta": {
+      "additionalProperties": false,
+      "properties": {
+        "delta": {
+          "type": "string"
+        },
+        "step_id": {
+          "type": "string"
+        },
+        "timestamp": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "delta",
+        "step_id",
+        "timestamp"
+      ],
+      "type": "object"
+    },
+    "Ticket": {
+      "additionalProperties": false,
+      "properties": {
+        "assignee": {
+          "anyOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "name"
+              ],
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "dueDate": {
+          "type": "string"
+        },
+        "estimate": {
+          "type": "number"
+        },
+        "id": {
+          "type": "string"
+        },
+        "identifier": {
+          "type": "string"
+        },
+        "labels": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "color": {
+                "type": "string"
+              },
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "color"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "priority": {
+          "type": "number"
+        },
+        "project": {
+          "anyOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "name"
+              ],
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "state": {
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "name"
+          ],
+          "type": "object"
+        },
+        "team": {
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "key": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "name",
+            "key"
+          ],
+          "type": "object"
+        },
+        "title": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "identifier",
+        "title",
+        "state",
+        "createdAt",
+        "updatedAt"
+      ],
+      "type": "object"
+    },
+    "TicketState": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name"
+      ],
+      "type": "object"
+    },
+    "TicketSystemType": {
+      "enum": [
+        "jira",
+        "linear"
+      ],
+      "type": "string"
+    },
+    "ToolCall": {
+      "additionalProperties": false,
+      "properties": {
+        "integration": {
+          "type": "string"
+        },
+        "parameters": {
+          "type": "string"
+        },
+        "step_id": {
+          "type": "string"
+        },
+        "summary": {
+          "type": "string"
+        },
+        "timestamp": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "summary",
+        "step_id",
+        "parameters",
+        "integration",
+        "timestamp"
+      ],
+      "type": "object"
+    },
+    "ToolCallExecutionStatus": {
+      "enum": [
+        "completed",
+        "incomplete",
+        "failed",
+        "unknown"
+      ],
+      "type": "string"
+    },
+    "ToolOutputBase": {
+      "additionalProperties": false,
+      "properties": {
+        "actions": {
+          "items": {
+            "$ref": "#/definitions/RunHistoryAction"
+          },
+          "type": "array"
+        },
+        "success": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "success"
+      ],
+      "type": "object"
+    },
+    "TriggerPayload": {
+      "additionalProperties": false,
+      "properties": {
+        "config": {
+          "$ref": "#/definitions/Record%3Cstring%2Cunknown%3E"
+        },
+        "integrationId": {
+          "type": "string"
+        },
+        "integrationType": {
+          "$ref": "#/definitions/IntegrationType"
+        }
+      },
+      "required": [
+        "integrationId",
+        "integrationType",
+        "config"
+      ],
+      "type": "object"
+    },
+    "User": {
+      "additionalProperties": false,
+      "properties": {
+        "displayName": {
+          "type": "string"
+        },
+        "displayPhotoUrl": {
+          "type": "string"
+        },
+        "email": {
+          "type": "string"
+        },
+        "firstName": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "id": {
+          "type": "string"
+        },
+        "lastName": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "organizationId": {
+          "type": "string"
+        },
+        "organizationName": {
+          "type": "string"
+        },
+        "roles": {
+          "items": {
+            "$ref": "#/definitions/Role"
+          },
+          "type": "array"
+        },
+        "workosId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "workosId",
+        "organizationId",
+        "organizationName",
+        "email",
+        "displayName",
+        "firstName",
+        "lastName",
+        "displayPhotoUrl",
+        "roles"
+      ],
+      "type": "object"
+    },
+    "UserNoOrganization": {
+      "$ref": "#/definitions/Omit%3CUser%2C(%22organizationId%22%7C%22organizationName%22%7C%22roles%22)%3E"
+    },
+    "WorkOSEventType": {
+      "enum": [
+        "user.created",
+        "user.updated",
+        "user.deleted",
+        "organization_membership.created",
+        "organization_membership.updated",
+        "organization_membership.deleted",
+        "invitation.accepted"
+      ],
+      "type": "string"
+    }
+  }
+}
