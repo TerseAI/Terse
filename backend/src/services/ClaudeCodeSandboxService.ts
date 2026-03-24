@@ -18,6 +18,8 @@ export interface ClaudeCodeSandboxParams {
     timeoutMs?: number
     /** Additional env vars to pass to the Claude Code process */
     env?: Record<string, string>
+    /** JSON Schema to enforce structured output from Claude Code */
+    jsonSchema?: Record<string, unknown>
     /** Paths of files to read back from the sandbox after execution */
     outputFiles?: string[]
 }
@@ -39,7 +41,7 @@ export class ClaudeCodeSandboxService {
     }
 
     async run(params: ClaudeCodeSandboxParams): Promise<ClaudeCodeSandboxResult> {
-        const { label, prompt, sourceZip, gitInit = true, maxTurns = 30, timeoutMs = 10 * 60 * 1000, env: extraEnv = {}, outputFiles: outputFilePaths = [] } = params
+        const { label, prompt, sourceZip, gitInit = true, maxTurns = 30, timeoutMs = 10 * 60 * 1000, env: extraEnv = {}, jsonSchema, outputFiles: outputFilePaths = [] } = params
 
         const executionStart = performance.now()
 
@@ -88,6 +90,15 @@ export class ClaudeCodeSandboxService {
                 logger.info(`[ClaudeCodeSandbox:${label}] Git baseline created`, { duration: this.elapsed(t) })
             }
 
+            // Create non-root user (Claude Code refuses --dangerously-skip-permissions as root)
+            t = performance.now()
+            const userProc = await sb.exec(
+                ["sh", "-c", "useradd -m -s /bin/bash coder && chown -R coder:coder /tmp/project"],
+                { stdout: "pipe", stderr: "pipe" }
+            )
+            await userProc.wait()
+            logger.info(`[ClaudeCodeSandbox:${label}] Created non-root user`, { duration: this.elapsed(t) })
+
             // Install Claude Code CLI
             t = performance.now()
             const installProc = await sb.exec(["sh", "-c", "npm install -g @anthropic-ai/claude-code 2>&1"], { stdout: "pipe", stderr: "pipe" })
@@ -107,22 +118,46 @@ export class ClaudeCodeSandboxService {
 
             // Run Claude Code
             t = performance.now()
-            const claudeProc = await sb.exec(["sh", "-c", "cd /tmp/project && cat /tmp/prompt.txt | claude -p --output-format json --max-turns " + maxTurns], {
+            // Build Claude Code command args
+            const claudeArgs = ["claude", "-p", "--output-format", "json", "--max-turns", String(maxTurns), "--dangerously-skip-permissions"]
+            if (jsonSchema) {
+                claudeArgs.push("--json-schema", JSON.stringify(jsonSchema))
+            }
+
+            // Write a run script and execute as non-root user
+            const claudeEnv = { ANTHROPIC_API_KEY: settings.anthropic.apiKey, ...extraEnv }
+            const envExports = Object.entries(claudeEnv).map(([k, v]) => `export ${k}='${v.replace(/'/g, "'\\''")}'`).join("\n")
+            const escapedArgs = claudeArgs.map(a => `'${a.replace(/'/g, "'\\''")}'`).join(" ")
+            const runScript = `#!/bin/bash\n${envExports}\ncd /tmp/project && cat /tmp/prompt.txt | ${escapedArgs} > /tmp/claude-output.json\n`
+            const scriptHandle = await sb.open("/tmp/run-claude.sh", "w")
+            await scriptHandle.write(new TextEncoder().encode(runScript))
+            await scriptHandle.close()
+            const chmodProc = await sb.exec(["chmod", "+x", "/tmp/run-claude.sh"], { stdout: "pipe", stderr: "pipe" })
+            await chmodProc.wait()
+
+            const claudeProc = await sb.exec(["su", "coder", "-c", "/tmp/run-claude.sh"], {
                 stdout: "pipe",
-                stderr: "pipe",
-                env: {
-                    ANTHROPIC_API_KEY: settings.anthropic.apiKey,
-                    ...extraEnv
-                }
+                stderr: "pipe"
             })
 
-            const [stdout, stderr] = await Promise.all([claudeProc.stdout.readText(), claudeProc.stderr.readText()])
+            const stderr = await claudeProc.stderr.readText()
             const exitCode = await claudeProc.wait()
+
+            // Read Claude Code output from file (more reliable than stdout pipe)
+            let stdout = ""
+            const catProc = await sb.exec(["cat", "/tmp/claude-output.json"], { stdout: "pipe", stderr: "pipe" })
+            const catStdout = await catProc.stdout.readText()
+            const catExit = await catProc.wait()
+            if (catExit === 0) {
+                stdout = catStdout
+            }
+
             logger.info(`[ClaudeCodeSandbox:${label}] Claude Code finished`, {
                 duration: this.elapsed(t),
                 exitCode,
                 stdoutLength: stdout.length,
-                stderrLength: stderr.length
+                stderrLength: stderr.length,
+                stderrPreview: stderr.slice(0, 500)
             })
 
             if (stderr) {

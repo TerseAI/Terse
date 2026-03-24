@@ -80,23 +80,12 @@ For EACH code improvement, follow these steps in order:
 4. Run: git checkout .
    (This resets the files so the next improvement starts clean.)
 
-After processing all improvements, write a JSON file to /tmp/results.json with this exact structure:
+After processing all improvements, return your structured response. The output schema is enforced automatically — just populate the fields:
+- title: Short headline for the review (under 8 words)
+- summary: 1-2 casual sentences, like a helpful teammate
+- improvements: array of improvements, each with title, description, targetArea, confidence, and suggestedPatch
 
-{
-  "title": "Short headline for the review (under 8 words, e.g. 'Running smoothly', 'A couple things to tighten up')",
-  "summary": "1-2 casual sentences. Talk like a helpful teammate.",
-  "improvements": [
-    {
-      "title": "Short punchy title",
-      "description": "1-2 plain sentences. Say what's wrong and what to do. No markdown.",
-      "targetArea": "code | trigger_config | output_config | general",
-      "confidence": 0.85,
-      "suggestedPatch": "the exact output of git diff for this improvement"
-    }
-  ]
-}
-
-For non-code improvements (trigger_config, output_config, general), skip the edit/diff workflow — just include them in the JSON with no suggestedPatch.
+For non-code improvements (trigger_config, output_config, general), skip the edit/diff workflow and omit suggestedPatch.
 
 If everything looks good, return an empty improvements array.
 
