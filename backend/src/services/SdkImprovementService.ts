@@ -75,8 +75,7 @@ function parseResults(fileContent: string, automationId: string): JudgeAgentOutp
         // Claude Code --output-format json writes: { type, result, structured_output, ... }
         // With --json-schema, the validated object is in structured_output
         const claudeOutput = JSON.parse(fileContent)
-        const parsed = claudeOutput.structured_output
-            ?? (typeof claudeOutput.result === "string" && claudeOutput.result ? JSON.parse(claudeOutput.result) : claudeOutput.result)
+        const parsed = claudeOutput.structured_output ?? (typeof claudeOutput.result === "string" && claudeOutput.result ? JSON.parse(claudeOutput.result) : claudeOutput.result)
 
         if (!parsed || !parsed.title) {
             logger.error("[SdkImprovementService] No parseable result in Claude Code output", { automationId, keys: Object.keys(claudeOutput) })

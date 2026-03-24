@@ -92,10 +92,7 @@ export class ClaudeCodeSandboxService {
 
             // Create non-root user (Claude Code refuses --dangerously-skip-permissions as root)
             t = performance.now()
-            const userProc = await sb.exec(
-                ["sh", "-c", "useradd -m -s /bin/bash coder && chown -R coder:coder /tmp/project"],
-                { stdout: "pipe", stderr: "pipe" }
-            )
+            const userProc = await sb.exec(["sh", "-c", "useradd -m -s /bin/bash coder && chown -R coder:coder /tmp/project"], { stdout: "pipe", stderr: "pipe" })
             await userProc.wait()
             logger.info(`[ClaudeCodeSandbox:${label}] Created non-root user`, { duration: this.elapsed(t) })
 
@@ -126,7 +123,9 @@ export class ClaudeCodeSandboxService {
 
             // Write a run script and execute as non-root user
             const claudeEnv = { ANTHROPIC_API_KEY: settings.anthropic.apiKey, ...extraEnv }
-            const envExports = Object.entries(claudeEnv).map(([k, v]) => `export ${k}='${v.replace(/'/g, "'\\''")}'`).join("\n")
+            const envExports = Object.entries(claudeEnv)
+                .map(([k, v]) => `export ${k}='${v.replace(/'/g, "'\\''")}'`)
+                .join("\n")
             const escapedArgs = claudeArgs.map(a => `'${a.replace(/'/g, "'\\''")}'`).join(" ")
             const runScript = `#!/bin/bash\n${envExports}\ncd /tmp/project && cat /tmp/prompt.txt | ${escapedArgs} > /tmp/claude-output.json\n`
             const scriptHandle = await sb.open("/tmp/run-claude.sh", "w")
