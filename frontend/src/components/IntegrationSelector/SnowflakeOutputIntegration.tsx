@@ -1,10 +1,11 @@
-import { AlertTriangleIcon, ArrowUpRight } from "lucide-react"
 import { useNavigate } from "react-router-dom"
+
+import { AlertTriangleIcon, ArrowUpRight } from "lucide-react"
 
 import { useSnowflakeIntegrations } from "@/hooks/api/useSnowflakeIntegrations"
 import { useIntegrationId } from "@/hooks/useIntegrationId"
-import { FrontendRoutes } from "@/shared/FrontendRoutes"
 import { ConfigType, SnowflakeOutputConfig } from "@/shared/Configs"
+import { FrontendRoutes } from "@/shared/FrontendRoutes"
 import { SnowflakeIntegration as SnowflakeIntegrationType } from "@/shared/Integrations"
 
 import { IconForConfigType } from "../../pages/Agents/components/Integration"

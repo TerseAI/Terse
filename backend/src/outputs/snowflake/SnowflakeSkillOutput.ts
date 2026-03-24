@@ -7,14 +7,14 @@ import { PrismaTransaction } from "../../types/prisma"
 import { SnowflakeOutputConfigSchema, stripConfigForValidation } from "../../utility/configSchemas"
 import { Output, ToolboxEntry } from "../abstract/Output"
 
-import { snowflakeExplainQueryTool } from "./tools/explainQuery"
 import { snowflakeExecuteQueryTool } from "./tools/executeQuery"
+import { snowflakeExplainQueryTool } from "./tools/explainQuery"
 
 export class SnowflakeSkillOutput extends Output<SnowflakeOutputConfig> {
     constructor() {
         const toolbox: ToolboxEntry[] = [
             { tool: snowflakeExplainQueryTool as Tool, isReadOnly: true, integration: IntegrationType.SNOWFLAKE, displayName: "Explain query" },
-            { tool: snowflakeExecuteQueryTool as Tool, isReadOnly: true, integration: IntegrationType.SNOWFLAKE, displayName: "Execute query" }
+            { tool: snowflakeExecuteQueryTool as Tool, isReadOnly: true, supportsApproval: true, integration: IntegrationType.SNOWFLAKE, displayName: "Execute query" }
         ]
 
         super(OutputConfigType.SNOWFLAKE, toolbox)

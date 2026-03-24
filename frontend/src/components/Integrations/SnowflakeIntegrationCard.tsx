@@ -101,16 +101,7 @@ function SnowflakeIntegrationCard({ className, isActive = true, stateToken, comp
 
                     <div className="space-y-2">
                         <Label htmlFor="username">Username *</Label>
-                        <Input
-                            id="username"
-                            type="text"
-                            value={username}
-                            onChange={e => setUsername(e.target.value)}
-                            placeholder="TERSE_USER"
-                            disabled={isSubmitting}
-                            required
-                            autoComplete="off"
-                        />
+                        <Input id="username" type="text" value={username} onChange={e => setUsername(e.target.value)} placeholder="TERSE_USER" disabled={isSubmitting} required autoComplete="off" />
                     </div>
 
                     <div className="space-y-2">
@@ -130,29 +121,13 @@ function SnowflakeIntegrationCard({ className, isActive = true, stateToken, comp
 
                     <div className="space-y-2">
                         <Label htmlFor="passphrase">Private Key Passphrase</Label>
-                        <Input
-                            id="passphrase"
-                            type="password"
-                            value={passphrase}
-                            onChange={e => setPassphrase(e.target.value)}
-                            disabled={isSubmitting}
-                            autoComplete="off"
-                        />
+                        <Input id="passphrase" type="password" value={passphrase} onChange={e => setPassphrase(e.target.value)} disabled={isSubmitting} autoComplete="off" />
                         <p className="text-xs text-muted-foreground">Only needed for `ENCRYPTED PRIVATE KEY` PEMs. This is not your Snowflake user password.</p>
                     </div>
 
                     <div className="space-y-2">
                         <Label htmlFor="warehouse">Warehouse *</Label>
-                        <Input
-                            id="warehouse"
-                            type="text"
-                            value={warehouse}
-                            onChange={e => setWarehouse(e.target.value)}
-                            placeholder="COMPUTE_WH"
-                            disabled={isSubmitting}
-                            required
-                            autoComplete="off"
-                        />
+                        <Input id="warehouse" type="text" value={warehouse} onChange={e => setWarehouse(e.target.value)} placeholder="COMPUTE_WH" disabled={isSubmitting} required autoComplete="off" />
                     </div>
 
                     {error && <p className="text-sm text-destructive">{error}</p>}

@@ -10,6 +10,8 @@ export interface ToolboxEntry {
     isReadOnly: boolean
     integration: IntegrationType
     displayName: string
+    /** If true, this tool can be selected for approval even though it is read-only. */
+    supportsApproval?: boolean
 }
 
 export interface RuntimeSystemInstructionsContext {

@@ -40,7 +40,7 @@ export function getToolsThatRequireApprovals(skills: ConfigType[]): TerseTool[] 
     })
 
     return Array.from(map.values())
-        .filter(({ entry }) => !entry.isReadOnly)
+        .filter(({ entry }) => !entry.isReadOnly || entry.supportsApproval)
         .map(({ entry, source, configType }) => {
             const t = entry.tool as { name: string; description?: string }
             return {

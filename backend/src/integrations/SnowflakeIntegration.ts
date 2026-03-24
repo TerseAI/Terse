@@ -1,7 +1,7 @@
 import logger from "../logger"
-import { normalizeSnowflakePrivateKey, SnowflakePrivateKeyValidationError, validateSnowflakeCredentials } from "../outputs/snowflake/snowflakeClient"
+import { SnowflakePrivateKeyValidationError, normalizeSnowflakePrivateKey, validateSnowflakeCredentials } from "../outputs/snowflake/snowflakeClient"
 import { db } from "../prismaClient"
-import { deleteSecretsBestEffort, SecretField, storeSecret } from "../services/SecretService"
+import { SecretField, deleteSecretsBestEffort, storeSecret } from "../services/SecretService"
 import { IntegrationType, SnowflakeIntegration, SnowflakeIntegrationMetadata } from "../shared/Integrations"
 import { AgentTriggerWithConfigs } from "../types/prisma"
 
