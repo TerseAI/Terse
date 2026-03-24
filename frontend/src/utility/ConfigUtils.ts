@@ -17,6 +17,7 @@ import {
     PosthogConfig,
     SlackConfig,
     SlackOutputConfig,
+    SnowflakeOutputConfig,
     TerseConfig,
     TimeTriggerConfig,
     WorkOSEventType,
@@ -109,6 +110,9 @@ export function deserializeConfig(jsonConfig: any): ConfigInstance {
         case ConfigType.ATTIO_OUTPUT:
             const attioOutputConfig = jsonConfig as AttioOutputConfig
             return new AttioOutputConfig(integrationId, attioOutputConfig.objectSlug)
+        case ConfigType.SNOWFLAKE_OUTPUT:
+            const snowflakeOutputConfig = jsonConfig as SnowflakeOutputConfig
+            return new SnowflakeOutputConfig(integrationId, snowflakeOutputConfig.warehouse, snowflakeOutputConfig.databaseName, snowflakeOutputConfig.schemaName)
         default:
             const _exhaustive: never = configType
             throw new Error(`Unknown config type: ${_exhaustive}`)

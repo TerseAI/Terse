@@ -6,6 +6,7 @@ import { Skeleton } from "../ui/skeleton"
 import AtlassianIntegrationCard from "./AtlassianIntegrationCard"
 import AttioIntegrationCard from "./AttioIntegrationCard"
 import DatadogIntegrationCard from "./DatadogIntegrationCard"
+import SnowflakeIntegrationCard from "./SnowflakeIntegrationCard"
 import FigmaIntegrationCard from "./FigmaIntegrationCard"
 import GithubIntegrationCard from "./GithubIntegrationCard"
 import GmailIntegrationCard from "./GmailIntegrationCard"
@@ -54,6 +55,8 @@ function IntegrationCard({ integration, isActive = true, stateToken, compact = f
             return <WorkOSIntegrationCard className={cardClassName} isActive={isActive} stateToken={stateToken} compact={compact} />
         case IntegrationType.ATTIO:
             return <AttioIntegrationCard className={cardClassName} isActive={isActive} stateToken={stateToken} compact={compact} />
+        case IntegrationType.SNOWFLAKE:
+            return <SnowflakeIntegrationCard className={cardClassName} isActive={isActive} stateToken={stateToken} compact={compact} />
         default:
             // Exhaustive check: TypeScript will error if any IntegrationType case is missing
             throw integration satisfies never

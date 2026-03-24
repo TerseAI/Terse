@@ -20,7 +20,8 @@ export enum ConfigType {
     TERSE = "terse",
     WORKOS_INPUT = "workos_input",
     WORKOS_OUTPUT = "workos_output",
-    ATTIO_OUTPUT = "attio_output"
+    ATTIO_OUTPUT = "attio_output",
+    SNOWFLAKE_OUTPUT = "snowflake_output"
 }
 
 // MARK: Config Metadata
@@ -214,6 +215,15 @@ export const AttioOutputConfigMetadata = {
     isOutput: true
 } as const satisfies ConfigDetails
 
+export const SnowflakeOutputConfigMetadata = {
+    configType: ConfigType.SNOWFLAKE_OUTPUT,
+    name: "Snowflake",
+    description: "Run read-only queries against Snowflake data warehouses",
+    integrationType: IntegrationType.SNOWFLAKE,
+    isInput: false,
+    isOutput: true
+} as const satisfies ConfigDetails
+
 export type ConfigDetailsMap = Record<ConfigType, ConfigDetails>
 
 export const CONFIG_DETAILS: ConfigDetailsMap = {
@@ -236,7 +246,8 @@ export const CONFIG_DETAILS: ConfigDetailsMap = {
     [ConfigType.TERSE]: TerseConfigMetadata,
     [ConfigType.WORKOS_INPUT]: WorkOSInputConfigMetadata,
     [ConfigType.WORKOS_OUTPUT]: WorkOSOutputConfigMetadata,
-    [ConfigType.ATTIO_OUTPUT]: AttioOutputConfigMetadata
+    [ConfigType.ATTIO_OUTPUT]: AttioOutputConfigMetadata,
+    [ConfigType.SNOWFLAKE_OUTPUT]: SnowflakeOutputConfigMetadata
 } as const satisfies ConfigDetailsMap
 
 // MARK: Event Types — specific events within each integration trigger
@@ -777,6 +788,36 @@ export class AttioOutputConfig implements ConfigInstance {
     }
 }
 
+export class SnowflakeOutputConfig implements ConfigInstance {
+    integrationType: IntegrationType = IntegrationType.SNOWFLAKE
+    configType: ConfigType = ConfigType.SNOWFLAKE_OUTPUT
+
+    constructor(
+        public integrationId: string,
+        public warehouse?: string,
+        public databaseName?: string,
+        public schemaName?: string
+    ) {}
+
+    isComplete(): boolean {
+        return !!this.integrationId
+    }
+
+    formatForAgent(): string {
+        const parts = [`Type: Snowflake Output`, `Integration ID: ${this.integrationId}`]
+        if (this.warehouse) {
+            parts.push(`Warehouse: ${this.warehouse}`)
+        }
+        if (this.databaseName) {
+            parts.push(`Database: ${this.databaseName}`)
+        }
+        if (this.schemaName) {
+            parts.push(`Schema: ${this.schemaName}`)
+        }
+        return parts.join("\n")
+    }
+}
+
 // To be studied Later!!
 type EnsureExhaustiveMetadata<T extends Record<ConfigType, new (...args: any[]) => ConfigInstance>> = T
 
@@ -801,6 +842,7 @@ export type ConfigMetadataMap = EnsureExhaustiveMetadata<{
     [ConfigType.WORKOS_INPUT]: typeof WorkOSInputConfig
     [ConfigType.WORKOS_OUTPUT]: typeof WorkOSOutputConfig
     [ConfigType.ATTIO_OUTPUT]: typeof AttioOutputConfig
+    [ConfigType.SNOWFLAKE_OUTPUT]: typeof SnowflakeOutputConfig
 }>
 
 export const CONFIG_METADATA: ConfigMetadataMap = {
@@ -823,5 +865,6 @@ export const CONFIG_METADATA: ConfigMetadataMap = {
     [ConfigType.TERSE]: TerseConfig,
     [ConfigType.WORKOS_INPUT]: WorkOSInputConfig,
     [ConfigType.WORKOS_OUTPUT]: WorkOSOutputConfig,
-    [ConfigType.ATTIO_OUTPUT]: AttioOutputConfig
+    [ConfigType.ATTIO_OUTPUT]: AttioOutputConfig,
+    [ConfigType.SNOWFLAKE_OUTPUT]: SnowflakeOutputConfig
 } as const satisfies ConfigMetadataMap

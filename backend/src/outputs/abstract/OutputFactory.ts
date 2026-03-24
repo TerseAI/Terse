@@ -14,6 +14,7 @@ import {
     NotionConfig,
     PosthogConfig,
     SlackOutputConfig,
+    SnowflakeOutputConfig,
     TerseConfig,
     WorkOSOutputConfig
 } from "../../shared/Configs"
@@ -32,6 +33,7 @@ import { NotionOutput } from "../notion/NotionOutput"
 import { PosthogSkillOutput } from "../posthog/PosthogSkillOutput"
 import { SlackOutput } from "../slack/SlackOutput"
 import { TerseSkillsOutput } from "../terse/TerseSkillsOutput"
+import { SnowflakeSkillOutput } from "../snowflake/SnowflakeSkillOutput"
 import { WorkOSOutput } from "../workos/WorkOSOutput"
 
 import { Output } from "./Output"
@@ -56,8 +58,8 @@ export class OutputFactory {
         [OutputConfigType.POSTHOG, () => new PosthogSkillOutput()],
         [OutputConfigType.DATADOG, () => new DatadogSkillOutput()],
         [OutputConfigType.LAUNCHDARKLY, () => new LaunchDarklySkillOutput()],
-        [OutputConfigType.WORKOS, () => new WorkOSOutput()]
-        // Where is workOS?
+        [OutputConfigType.WORKOS, () => new WorkOSOutput()],
+        [OutputConfigType.SNOWFLAKE, () => new SnowflakeSkillOutput()]
     ])
 
     static createOutput(integrationType: OutputConfigType): Output<ConfigInstance> | null {
@@ -115,6 +117,9 @@ export class OutputFactory {
                 break
             case OutputConfigType.TERSE:
                 ;(output as Output<TerseConfig>).configs = configs as TerseConfig[]
+                break
+            case OutputConfigType.SNOWFLAKE:
+                ;(output as Output<SnowflakeOutputConfig>).configs = configs as SnowflakeOutputConfig[]
                 break
             default:
                 throw configType satisfies never

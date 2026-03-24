@@ -22,6 +22,7 @@ import { githubAppCallbackIntegrate } from "./routes/auth/githubAuth"
 import { getBuilderChatHistory } from "./routes/builderChat"
 import { getConfluenceIntegrations, getConfluenceResources } from "./routes/confluence"
 import { createOrUpdateDatadogIntegration, getDatadogIndexes, getDatadogIntegrations } from "./routes/datadog"
+import { createOrUpdateSnowflakeIntegration, getSnowflakeIntegrations } from "./routes/snowflake"
 import { figmaOAuthCallback, getFigmaIntegrations, handleFigmaWebhook } from "./routes/figma"
 import { getGithubIntegrations, getGithubRepositoriesForIntegration, getInstallationUrl, githubAppUnifiedEvent } from "./routes/github"
 import { deleteGmailIntegration, getGmailIntegrations, gmailCallback, handleGmailWebhook } from "./routes/gmail"
@@ -525,6 +526,16 @@ app.post(ApiRoutes.DATADOG.INTEGRATIONS, authMiddleware, async (req, res) => {
 
 app.get(ApiRoutes.DATADOG.INDEXES, authMiddleware, async (req, res) => {
     getDatadogIndexes(req, res)
+})
+
+// MARK: SNOWFLAKE
+
+app.get(ApiRoutes.SNOWFLAKE.INTEGRATIONS, authMiddleware, async (req, res) => {
+    getSnowflakeIntegrations(req, res)
+})
+
+app.post(ApiRoutes.SNOWFLAKE.INTEGRATIONS, authMiddleware, async (req, res) => {
+    createOrUpdateSnowflakeIntegration(req, res)
 })
 
 // MARK: WORKOS INTEGRATION (customer's own WorkOS account)

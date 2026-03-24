@@ -3,6 +3,7 @@ import { AtlassianIntegrationManager } from "../AtlassianIntegration"
 import { AttioIntegrationManager } from "../AttioIntegration"
 import { CronJobIntegrationManager } from "../CronJobIntegration"
 import { DatadogIntegrationManager } from "../DatadogIntegration"
+import { SnowflakeIntegrationManager } from "../SnowflakeIntegration"
 import { FigmaIntegrationManager } from "../FigmaIntegration"
 import { GithubIntegrationManager } from "../GithubIntegration"
 import { GmailIntegrationManager } from "../GmailIntegration"
@@ -37,5 +38,6 @@ export const INTEGRATION_REGISTRY: Array<IntegrationWithInstallation> = [
     new LaunchDarklyIntegrationManager(),
     new DatadogIntegrationManager(),
     new WorkOSIntegrationManager(),
-    new AttioIntegrationManager()
+    new AttioIntegrationManager(),
+    new SnowflakeIntegrationManager()
 ]

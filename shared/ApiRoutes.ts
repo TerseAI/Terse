@@ -166,6 +166,11 @@ export const ApiRoutes = {
         WEBHOOK_SECRET: "/workos-integration/webhook-secret"
     },
 
+    // Snowflake routes
+    SNOWFLAKE: {
+        INTEGRATIONS: "/snowflake/integrations"
+    },
+
     // Attio routes
     ATTIO: {
         INTEGRATIONS: "/attio/integrations",
