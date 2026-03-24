@@ -165,8 +165,8 @@ export const settings = {
 
     // Modal (sandbox execution for SDK jobs)
     modal: {
-        tokenId: optionalEnv("MODAL_TOKEN_ID"),
-        tokenSecret: optionalEnv("MODAL_TOKEN_SECRET")
+        tokenId: requireEnv("MODAL_TOKEN_ID"),
+        tokenSecret: requireEnv("MODAL_TOKEN_SECRET")
     },
 
     // Resend SMTP (for email notifications)
