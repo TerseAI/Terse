@@ -193,11 +193,7 @@ export interface JudgeContext {
 }
 
 export async function fetchFullJudgeContext(automationId: string, orgId: string): Promise<JudgeContext> {
-    const [agentConfig, runHistory, pastImprovements] = await Promise.all([
-        fetchAgentConfig(automationId, orgId),
-        fetchRunHistory(automationId, orgId),
-        fetchPastImprovements(automationId, orgId)
-    ])
+    const [agentConfig, runHistory, pastImprovements] = await Promise.all([fetchAgentConfig(automationId, orgId), fetchRunHistory(automationId, orgId), fetchPastImprovements(automationId, orgId)])
 
     // Fetch details for failed runs (most interesting for improvements)
     const failedRuns = runHistory.runs.filter(r => r.status === "failed").slice(0, 5)

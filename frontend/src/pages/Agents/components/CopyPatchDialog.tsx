@@ -27,9 +27,7 @@ export function CopyPatchDialog({ patch, children }: CopyPatchDialogProps) {
                 <DialogContent className="max-w-md">
                     <DialogHeader>
                         <DialogTitle>Apply this patch</DialogTitle>
-                        <DialogDescription>
-                            The patch has been copied to your clipboard. Run the following command in your project directory to apply it:
-                        </DialogDescription>
+                        <DialogDescription>The patch has been copied to your clipboard. Run the following command in your project directory to apply it:</DialogDescription>
                     </DialogHeader>
                     <div className="flex items-center gap-2 rounded-md bg-muted px-3 py-2.5 font-mono text-sm">
                         <Terminal className="h-4 w-4 text-muted-foreground shrink-0" />

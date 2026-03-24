@@ -15,26 +15,22 @@ Average duration: ${runHistory.stats.avgDurationMs}ms
 Runs:
 ${runHistory.runs
     .slice(0, 20)
-    .map(r => `- [${r.status}] ${r.timestamp} | trigger: ${r.triggerSource} | ${r.triggerTitle ?? ""} ${r.filtered ? "(filtered)" : ""} ${r.decisionAction ? `| decision: ${r.decisionAction} - ${r.decisionReason}` : ""}`)
+    .map(
+        r =>
+            `- [${r.status}] ${r.timestamp} | trigger: ${r.triggerSource} | ${r.triggerTitle ?? ""} ${r.filtered ? "(filtered)" : ""} ${r.decisionAction ? `| decision: ${r.decisionAction} - ${r.decisionReason}` : ""}`
+    )
     .join("\n")}
 
 ${
     runDetails.length > 0
         ? `== Failed Run Details ==\n${runDetails
-              .map(
-                  rd =>
-                      `--- Run ${rd.runId} ---\nActions: ${JSON.stringify(rd.details.actions.slice(0, 10), null, 2)}\nEvents: ${JSON.stringify(rd.details.rawEvents.slice(0, 5), null, 2)}`
-              )
+              .map(rd => `--- Run ${rd.runId} ---\nActions: ${JSON.stringify(rd.details.actions.slice(0, 10), null, 2)}\nEvents: ${JSON.stringify(rd.details.rawEvents.slice(0, 5), null, 2)}`)
               .join("\n\n")}`
         : ""
 }
 
 == Past Improvements (do NOT repeat these) ==
-${
-    pastImprovements.length > 0
-        ? pastImprovements.map(i => `- [${i.status}] "${i.title}" (${i.targetArea}): ${i.description}`).join("\n")
-        : "No past improvements."
-}
+${pastImprovements.length > 0 ? pastImprovements.map(i => `- [${i.status}] "${i.title}" (${i.targetArea}): ${i.description}`).join("\n") : "No past improvements."}
 `.trim()
 
     return `You are reviewing SDK automation "${automationId}" for the Terse platform.

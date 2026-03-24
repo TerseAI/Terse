@@ -7,14 +7,14 @@ import { toast } from "sonner"
 import { BuilderChatHandle } from "@/components/chat/BuilderChat"
 import { Button } from "@/components/ui/button"
 import { DiffViewer } from "@/components/ui/diff-viewer"
-
-import { CopyPatchDialog } from "../components/CopyPatchDialog"
 import { Separator } from "@/components/ui/separator"
 import { Switch } from "@/components/ui/switch"
 import { useAgentImprovements } from "@/hooks/api/useAgentImprovements"
 import { BackendProvider } from "@/services/backend"
 import { Agent, AgentImprovement } from "@/shared/types"
 import { formatRelativeTime } from "@/utility/timeUtils"
+
+import { CopyPatchDialog } from "../components/CopyPatchDialog"
 
 const CHAT_OPEN_DELAY_MS = 300
 
