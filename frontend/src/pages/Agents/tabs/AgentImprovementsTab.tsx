@@ -1,7 +1,7 @@
 import { RefObject, useMemo, useState } from "react"
 
 import { AnimatePresence, motion } from "framer-motion"
-import { ChevronRight } from "lucide-react"
+import { ChevronRight, Copy } from "lucide-react"
 import { toast } from "sonner"
 
 import { BuilderChatHandle } from "@/components/chat/BuilderChat"
@@ -17,9 +17,10 @@ const CHAT_OPEN_DELAY_MS = 300
 
 type AgentImprovementsTabProps = {
     agentId: string | null
-    builderChatRef: RefObject<BuilderChatHandle | null>
-    setBuilderChatOpen: (open: boolean) => void
-    builderChatOpen: boolean
+    mode?: "web" | "sdk"
+    builderChatRef?: RefObject<BuilderChatHandle | null>
+    setBuilderChatOpen?: (open: boolean) => void
+    builderChatOpen?: boolean
 }
 
 /** Lightweight hook for the tab badge — reuses the same SWR cache as the full hook. */
@@ -31,7 +32,8 @@ export function useAgentPendingCount(agentId: string | null): number {
     }, [improvements, improvementsEnabled])
 }
 
-export default function AgentImprovementsTab({ agentId, builderChatRef, setBuilderChatOpen, builderChatOpen }: AgentImprovementsTabProps) {
+export default function AgentImprovementsTab({ agentId, mode = "web", builderChatRef, setBuilderChatOpen, builderChatOpen }: AgentImprovementsTabProps) {
+    const isSdk = mode === "sdk"
     const { review, improvements, improvementsEnabled, isLoading, mutate } = useAgentImprovements(agentId)
     const [isToggling, setIsToggling] = useState(false)
     const [isApplyingId, setIsApplyingId] = useState<string | null>(null)
@@ -61,14 +63,19 @@ export default function AgentImprovementsTab({ agentId, builderChatRef, setBuild
         try {
             const response = await BackendProvider.applyImprovement(agentId, improvement.id)
             await mutate()
-            setBuilderChatOpen(true)
-            setTimeout(
-                () => {
-                    builderChatRef.current?.sendMessage(response.appliedPrompt)
-                },
-                builderChatOpen ? 0 : CHAT_OPEN_DELAY_MS
-            )
-            toast.success("Applying improvement via builder chat...")
+
+            if (isSdk) {
+                toast.success("Improvement acknowledged")
+            } else {
+                setBuilderChatOpen?.(true)
+                setTimeout(
+                    () => {
+                        builderChatRef?.current?.sendMessage(response.appliedPrompt!)
+                    },
+                    builderChatOpen ? 0 : CHAT_OPEN_DELAY_MS
+                )
+                toast.success("Applying improvement via builder chat...")
+            }
         } catch (error) {
             console.error("Failed to apply improvement", error)
             toast.error("Failed to apply improvement")
@@ -110,15 +117,20 @@ export default function AgentImprovementsTab({ agentId, builderChatRef, setBuild
             const prompts: string[] = []
             for (const improvement of pendingImprovements) {
                 const response = await BackendProvider.applyImprovement(agentId, improvement.id)
-                prompts.push(response.appliedPrompt)
+                if (response.appliedPrompt) {
+                    prompts.push(response.appliedPrompt)
+                }
             }
             await mutate()
-            if (prompts.length > 0) {
+
+            if (isSdk) {
+                toast.success(`${pendingImprovements.length} improvements acknowledged`)
+            } else if (prompts.length > 0) {
                 const combined = prompts.join("\n\n---\n\n")
-                setBuilderChatOpen(true)
+                setBuilderChatOpen?.(true)
                 setTimeout(
                     () => {
-                        builderChatRef.current?.sendMessage(combined)
+                        builderChatRef?.current?.sendMessage(combined)
                     },
                     builderChatOpen ? 0 : CHAT_OPEN_DELAY_MS
                 )
@@ -188,6 +200,7 @@ export default function AgentImprovementsTab({ agentId, builderChatRef, setBuild
                                 >
                                     <ImprovementRow
                                         improvement={improvement}
+                                        isSdk={isSdk}
                                         isApplying={isApplyingId === improvement.id}
                                         isDismissing={isDismissingId === improvement.id}
                                         disabled={isBusy}
@@ -208,6 +221,7 @@ export default function AgentImprovementsTab({ agentId, builderChatRef, setBuild
 
 function ImprovementRow({
     improvement,
+    isSdk = false,
     isApplying,
     isDismissing,
     disabled,
@@ -216,6 +230,7 @@ function ImprovementRow({
     defaultExpanded = false
 }: {
     improvement: AgentImprovement
+    isSdk?: boolean
     isApplying: boolean
     isDismissing: boolean
     disabled: boolean
@@ -224,6 +239,13 @@ function ImprovementRow({
     defaultExpanded?: boolean
 }) {
     const [expanded, setExpanded] = useState(defaultExpanded)
+
+    const handleCopyPatch = () => {
+        if (improvement.suggestedPatch) {
+            navigator.clipboard.writeText(improvement.suggestedPatch)
+            toast.success("Patch copied to clipboard")
+        }
+    }
 
     return (
         <div className="rounded-lg border border-border bg-card/50 px-4 py-3">
@@ -235,8 +257,14 @@ function ImprovementRow({
                     <span className="font-medium text-sm truncate">{improvement.title}</span>
                 </button>
                 <div className="flex items-center gap-1.5 shrink-0">
+                    {isSdk && improvement.suggestedPatch && (
+                        <Button size="sm" variant="outline" onClick={handleCopyPatch}>
+                            <Copy className="h-3.5 w-3.5 mr-1" />
+                            Copy Patch
+                        </Button>
+                    )}
                     <Button size="sm" onClick={onApply} disabled={disabled}>
-                        {isApplying ? "Applying..." : "Apply"}
+                        {isApplying ? "Acknowledging..." : isSdk ? "Acknowledge" : "Apply"}
                     </Button>
                     <Button size="sm" variant="ghost" onClick={onDismiss} disabled={disabled}>
                         {isDismissing ? "Dismissing..." : "Dismiss"}
@@ -252,8 +280,13 @@ function ImprovementRow({
                         transition={{ duration: 0.2, ease: [0.25, 1, 0.5, 1] }}
                         className="overflow-hidden"
                     >
-                        <div className="pl-[22px] pt-2">
+                        <div className="pl-[22px] pt-2 space-y-2">
                             <p className="text-sm text-muted-foreground">{improvement.description}</p>
+                            {isSdk && improvement.suggestedPatch && (
+                                <pre className="text-xs bg-muted/50 rounded p-3 overflow-x-auto whitespace-pre-wrap break-words border border-border">
+                                    {improvement.suggestedPatch}
+                                </pre>
+                            )}
                         </div>
                     </motion.div>
                 )}

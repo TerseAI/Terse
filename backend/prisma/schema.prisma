@@ -1216,9 +1216,10 @@ model agent_improvements {
   description    String                 @db.Text
   target_area    String
   confidence     Float
-  status         AgentImprovementStatus @default(PENDING)
-  applied_prompt String?                @db.Text
-  applied_at     DateTime?
+  status          AgentImprovementStatus @default(PENDING)
+  suggested_patch String?                @db.Text
+  applied_prompt  String?                @db.Text
+  applied_at      DateTime?
   dismissed_at   DateTime?
   created_at     DateTime               @default(now())
   updated_at     DateTime               @updatedAt
