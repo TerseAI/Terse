@@ -1,4 +1,5 @@
 import { NotificationDestinationType, SentNotificationEventType, SentNotificationStatus } from "@prisma/client"
+import { AutomationSource } from "@prisma/client"
 import { Request, Response } from "express"
 
 import { MAX_IMPROVEMENTS_PER_AGENT, evaluateAgent } from "../agent/JudgeAgent/JudgeAgent"
@@ -11,12 +12,9 @@ import { emitCacheInvalidationWithKey } from "../services/CacheInvalidationServi
 import { SdkImprovementService } from "../services/SdkImprovementService"
 import { FrontendRoutes } from "../shared/FrontendRoutes"
 import { sentNotificationsKey } from "../shared/InvalidationKeys"
+import { User } from "../shared/types"
 import { FeatureFlag, FeatureFlagService } from "../utility/featureFlags"
 import { getUserForOrg } from "../utility/workos"
-
-import { AutomationSource } from "@prisma/client"
-
-import { User } from "../shared/types"
 
 type EligibleAutomation = {
     id: string
