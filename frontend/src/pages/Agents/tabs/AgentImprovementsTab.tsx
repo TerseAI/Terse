@@ -182,40 +182,32 @@ export default function AgentImprovementsTab({ agentId, source, builderChatRef, 
                     <Separator />
 
                     {/* Improvements */}
-                    <div className="space-y-3 flex-1 min-h-0">
+                    <div className="space-y-3 flex-1 min-h-0 overflow-y-auto pr-1">
                         {pendingImprovements.length > 1 && (
                             <div className="flex items-center justify-between">
                                 <span className="text-sm font-medium text-muted-foreground">{pendingImprovements.length} recommendations</span>
-                                <Button size="sm" variant="outline" onClick={handleApplyAll} disabled={isBusy}>
-                                    {isApplyingAll ? "Applying all..." : "Apply all"}
-                                </Button>
+                                {!isSdk && (
+                                    <Button size="sm" variant="outline" onClick={handleApplyAll} disabled={isBusy}>
+                                        {isApplyingAll ? "Applying all..." : "Apply all"}
+                                    </Button>
+                                )}
                             </div>
                         )}
-                        <AnimatePresence initial={false}>
-                            {pendingImprovements.map((improvement, index) => (
-                                <motion.div
-                                    key={improvement.id}
-                                    layout
-                                    initial={{ opacity: 0, y: 12, filter: "blur(4px)" }}
-                                    animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-                                    exit={{ opacity: 0, x: -20, filter: "blur(4px)", transition: { duration: 0.15 } }}
-                                    transition={{ duration: 0.25, delay: index * 0.05, ease: [0.25, 1, 0.5, 1] }}
-                                >
-                                    <ImprovementRow
-                                        improvement={improvement}
-                                        isSdk={isSdk}
-                                        isApplying={isApplyingId === improvement.id}
-                                        isDismissing={isDismissingId === improvement.id}
-                                        disabled={isBusy}
-                                        onApply={() => handleApply(improvement)}
-                                        onDismiss={() => handleDismiss(improvement.id)}
-                                        defaultExpanded={pendingImprovements.length === 1}
-                                    />
-                                </motion.div>
-                            ))}
-                        </AnimatePresence>
+                        {pendingImprovements.map(improvement => (
+                            <ImprovementRow
+                                key={improvement.id}
+                                improvement={improvement}
+                                isSdk={isSdk}
+                                isApplying={isApplyingId === improvement.id}
+                                isDismissing={isDismissingId === improvement.id}
+                                disabled={isBusy}
+                                onApply={() => handleApply(improvement)}
+                                onDismiss={() => handleDismiss(improvement.id)}
+                                defaultExpanded={pendingImprovements.length === 1}
+                            />
+                        ))}
                     </div>
-                    <span className="text-xs text-muted-foreground mt-auto">Reviewed {formatRelativeTime(review.createdAt)}</span>
+                    <span className="shrink-0 pt-2 text-xs text-muted-foreground">Reviewed {formatRelativeTime(review.createdAt)}</span>
                 </>
             )}
         </div>
