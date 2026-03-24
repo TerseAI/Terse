@@ -6,10 +6,16 @@
     "packages/terse-cli"
   ],
   "scripts": {
+    "sync:shared": "node scripts/copy-shared.js",
     "build:packages": "npm run build -w terse-sdk && npm run build -w terse-cli",
     "link:cli": "npm run build:packages && npm link --workspace terse-cli",
     "link:packages": "npm run build:packages && npm link --workspace terse-sdk && npm link --workspace terse-cli",
-    "generate:pydantic": "node scripts/codegen/generate-pydantic.mjs"
+    "generate:pydantic": "node scripts/codegen/generate-pydantic.mjs",
+    "python:refresh-types": "npm run sync:shared && npm run generate:pydantic",
+    "python:setup": "uv sync --all-packages && npm run python:refresh-types",
+    "python:check": "npm run python:refresh-types && ./.venv/bin/ruff check packages/terse-python-cli/src packages/terse-python-sdk/src && ./.venv/bin/ruff format --check packages/terse-python-cli/src packages/terse-python-sdk/src && ./.venv/bin/ty check packages/terse-python-cli/src packages/terse-python-sdk/src",
+    "python:build": "npm run python:refresh-types && uv build --package terse-python-cli && uv build --package terse-python-sdk",
+    "python:smoke": "npm run python:refresh-types && ./.venv/bin/terse --help && ./.venv/bin/terse --version && ./.venv/bin/terse run --help"
   },
   "devDependencies": {
     "ts-json-schema-generator": "^2.9.0"

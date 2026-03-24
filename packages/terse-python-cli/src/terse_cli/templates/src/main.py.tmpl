@@ -1,0 +1,12 @@
+from terse_sdk import JobDefinition
+
+
+job = JobDefinition(
+    name="{{PROJECT_NAME}}",
+    triggers=[],
+    skills=[],
+)
+
+
+def main() -> None:
+    print(job.model_dump())

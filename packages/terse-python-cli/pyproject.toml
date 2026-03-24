@@ -1,0 +1,23 @@
+[project]
+name = "terse-python-cli"
+version = "0.1.0"
+description = "Python CLI for scaffolding and managing Terse projects."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "click>=8.3.1",
+    "terse-python-sdk",
+]
+
+[project.scripts]
+terse = "terse_cli.cli:cli"
+
+[build-system]
+requires = ["hatchling>=1.29.0"]
+build-backend = "hatchling.build"
+
+[tool.uv.sources]
+terse-python-sdk = { workspace = true }
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/terse_cli"]

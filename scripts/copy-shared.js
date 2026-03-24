@@ -16,6 +16,13 @@ const esmTargets = [
   path.join(root, 'packages', 'terse-sdk', 'src', 'shared'),
 ];
 
+// Python packages keep a mirrored copy of the TypeScript shared definitions
+// for local reference, codegen context, and packaging workflow parity.
+const pythonTargets = [
+  path.join(root, 'packages', 'terse-python-cli', 'shared'),
+  path.join(root, 'packages', 'terse-python-sdk', 'shared'),
+];
+
 /**
  * Rewrite relative imports in .ts files to include .js extensions,
  * so the compiled output works under Node's native ESM loader.
@@ -50,4 +57,12 @@ for (const dest of esmTargets) {
   }
 }
 
-console.log('Copied shared folder to backend/src/shared, frontend/src/shared, packages/terse-sdk/src/shared, and packages/terse-cli/src/shared');
+for (const dest of pythonTargets) {
+  fs.rmSync(dest, { recursive: true, force: true });
+  fs.mkdirSync(dest, { recursive: true });
+  fs.cpSync(srcDir, dest, { recursive: true });
+}
+
+console.log(
+  'Copied shared folder to backend/src/shared, frontend/src/shared, packages/terse-sdk/src/shared, packages/terse-cli/src/shared, packages/terse-python-cli/shared, and packages/terse-python-sdk/shared'
+);

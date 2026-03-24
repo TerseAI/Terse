@@ -10,7 +10,7 @@
  *
  * Prerequisites:
  *   - ts-json-schema-generator  (installed as a devDependency, runs via npx)
- *   - datamodel-code-generator  (pip install datamodel-code-generator)
+ *   - datamodel-code-generator  (managed by the repo's uv workspace)
  */
 
 import { execSync, spawnSync } from "child_process"
@@ -21,7 +21,7 @@ import { fileURLToPath } from "url"
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const ROOT = resolve(__dirname, "../..")
 const CODEGEN_DIR = __dirname
-const OUTPUT_DIR = resolve(ROOT, "packages/terse-python-sdk/terse_sdk/generated")
+const OUTPUT_DIR = resolve(ROOT, "packages/terse-python-sdk/src/terse_sdk/generated")
 const SCHEMA_OUT = resolve(OUTPUT_DIR, "_schema.json")
 const MODELS_OUT = resolve(OUTPUT_DIR, "models.py")
 
@@ -32,18 +32,34 @@ function run(cmd, opts = {}) {
     execSync(cmd, { stdio: "inherit", cwd: CODEGEN_DIR, ...opts })
 }
 
+function getDatamodelCodegenCommand() {
+    const localBinary =
+        process.platform === "win32"
+            ? resolve(ROOT, ".venv", "Scripts", "datamodel-codegen.exe")
+            : resolve(ROOT, ".venv", "bin", "datamodel-codegen")
+
+    if (existsSync(localBinary)) {
+        return `"${localBinary}"`
+    }
+
+    return "uv run datamodel-codegen"
+}
+
 function checkPrerequisites() {
-    const result = spawnSync("datamodel-codegen", ["--version"], { encoding: "utf8" })
+    const result = spawnSync(getDatamodelCodegenCommand(), ["--version"], {
+        shell: true,
+        cwd: ROOT,
+        encoding: "utf8",
+    })
     if (result.error || result.status !== 0) {
         console.error(`
-ERROR: datamodel-codegen is not installed or not on PATH.
+ERROR: datamodel-codegen is not available via the repo's uv workspace.
 
-Install it with one of:
-  pip install datamodel-code-generator
-  pipx install datamodel-code-generator
+Run:
+  npm run python:setup
 
-Then re-run:
-  npm run generate:pydantic
+Or, if the workspace is already set up:
+  uv sync --all-packages
 `)
         process.exit(1)
     }
@@ -215,9 +231,10 @@ function normalizeTaggedUnions() {
 }
 
 function generatePydanticModels() {
+    const datamodelCodegen = getDatamodelCodegenCommand()
     run(
         [
-            "datamodel-codegen",
+            datamodelCodegen,
             `--input "${SCHEMA_OUT}"`,
             `--input-file-type jsonschema`,
             `--output "${MODELS_OUT}"`,
@@ -228,6 +245,7 @@ function generatePydanticModels() {
             `--enum-field-as-literal all`,
             `--use-default`,
             `--field-constraints`,
+            `--formatters ruff-check ruff-format`,
         ].join(" "),
         { cwd: CODEGEN_DIR }
     )

@@ -1,0 +1,28 @@
+[tool.uv.workspace]
+members = [
+    "packages/terse-python-cli",
+    "packages/terse-python-sdk",
+]
+
+[tool.uv]
+default-groups = ["dev"]
+
+[dependency-groups]
+dev = [
+    "datamodel-code-generator>=0.55.0",
+    "ruff>=0.15.7",
+    "ty>=0.0.24",
+]
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+extend-exclude = [
+    "packages/terse-python-sdk/src/terse_sdk/generated",
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.ty.environment]
+python-version = "3.11"

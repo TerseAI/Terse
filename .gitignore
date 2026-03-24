@@ -24,3 +24,7 @@ venv/
 pip-wheel-metadata/
 /packages/terse-python-sdk/build/
 /packages/terse-python-sdk/dist/
+/packages/terse-python-sdk/shared/
+/packages/terse-python-cli/build/
+/packages/terse-python-cli/dist/
+/packages/terse-python-cli/shared/
