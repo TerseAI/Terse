@@ -115,6 +115,7 @@ Recommended wrapper scripts:
 npm run python:setup
 npm run python:refresh-types
 npm run python:check
+npm run python:test
 npm run python:smoke
 npm run python:build
 ```
@@ -156,6 +157,13 @@ Type check:
 
 ```bash
 uv run ty check packages/terse-python-cli/src packages/terse-python-sdk/src
+```
+
+Run Python unit tests:
+
+```bash
+uv run python -m unittest discover -s packages/terse-python-cli/tests
+uv run python -m unittest discover -s packages/terse-python-sdk/tests
 ```
 
 Build packages:

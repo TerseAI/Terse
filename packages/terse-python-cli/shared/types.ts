@@ -64,6 +64,34 @@ export type AttioObject = {
     plural_noun: string
 }
 
+export type AttioAttribute = {
+    api_slug?: string
+    title?: string
+    type?: string
+    is_required?: boolean
+    is_unique?: boolean
+    [key: string]: unknown
+}
+
+export type AttioObjectWithAttributes = AttioObject & {
+    attributes?: AttioAttribute[]
+}
+
+export type AttioRecordIdentifier = {
+    workspace_id?: string
+    object_id?: string
+    record_id?: string
+    [key: string]: unknown
+}
+
+export type AttioRecord = {
+    id?: AttioRecordIdentifier
+    values?: Record<string, unknown>
+    web_url?: string
+    created_at?: string
+    [key: string]: unknown
+}
+
 export type LinearWorkspace = {
     id: string
     name: string
@@ -709,6 +737,17 @@ export type ToolOutputBase = {
 
 export type ToolOutputByName = {
     [toolName: string]: unknown
+    attio_list_objects: ToolOutputBase & {
+        objects: AttioObjectWithAttributes[]
+        count: number
+    }
+    attio_query_records: ToolOutputBase & {
+        records: AttioRecord[]
+        count: number
+    }
+    attio_upsert_record: ToolOutputBase & {
+        record?: AttioRecord
+    }
     slack_send_message: ToolOutputBase & {
         message_ts: string | undefined
         channel: string
@@ -831,5 +870,15 @@ export type ToolOutputByName = {
         pagination: { page: number; perPage: number; hasMore: boolean }
         analysis: string
         message: string
+    }
+    snowflakeExecuteQuery: ToolOutputBase & {
+        rows: Record<string, unknown>[]
+        columns: string[]
+        rowCount: number
+    }
+    snowflakeExplainQuery: ToolOutputBase & {
+        explainPlan: Record<string, unknown>[]
+        columns: string[]
+        rowCount: number
     }
 }
