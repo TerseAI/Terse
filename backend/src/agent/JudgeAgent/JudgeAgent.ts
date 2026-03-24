@@ -1,4 +1,5 @@
 import { Agent } from "@openai/agents"
+import { AutomationSource } from "@prisma/client"
 import { z } from "zod"
 
 import { settings } from "../../config/settings"
@@ -26,8 +27,8 @@ export const JudgeAgentOutput = z.object({
 
 export type JudgeAgentOutputType = z.infer<typeof JudgeAgentOutput>
 
-function buildJudgeSystemPrompt(automationId: string, source: "WEB_UI" | "SDK" = "WEB_UI"): string {
-    const isSdk = source === "SDK"
+function buildJudgeSystemPrompt(automationId: string, source: AutomationSource): string {
+    const isSdk = source === AutomationSource.SDK
 
     return `You're reviewing automation ${automationId}. Be friendly and straight to the point — no fluff.
 
@@ -94,7 +95,7 @@ This is an SDK job — a code-based automation written and deployed by a develop
 `
 }
 
-export async function evaluateAgent(params: { automationId: string; user: User; source: "WEB_UI" | "SDK" }): Promise<JudgeAgentOutputType> {
+export async function evaluateAgent(params: { automationId: string; user: User; source: AutomationSource }): Promise<JudgeAgentOutputType> {
     const runId = `judge-review-${params.automationId}-${Date.now()}`
     logger.info("[JudgeAgent] Starting evaluation", { automationId: params.automationId, runId, source: params.source })
 

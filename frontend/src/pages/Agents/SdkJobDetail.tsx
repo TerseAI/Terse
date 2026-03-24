@@ -205,7 +205,7 @@ export default function SdkJobDetail({ agentId }: { agentId: string }) {
                     ) : selectedTab === 1 ? (
                         <AgentRunHistoryTab agentId={agentId} />
                     ) : (
-                        <AgentImprovementsTab agentId={agentId} mode="sdk" />
+                        <AgentImprovementsTab agentId={agentId} source="SDK" />
                     )}
                 </div>
             </TabGroup>

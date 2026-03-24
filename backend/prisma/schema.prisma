@@ -1209,20 +1209,20 @@ model agent_reviews {
 }
 
 model agent_improvements {
-  id             String                 @id @default(cuid())
-  review_id      String
-  automation_id  String
-  title          String
-  description    String                 @db.Text
-  target_area    String
-  confidence     Float
+  id              String                 @id @default(cuid())
+  review_id       String
+  automation_id   String
+  title           String
+  description     String                 @db.Text
+  target_area     String
+  confidence      Float
   status          AgentImprovementStatus @default(PENDING)
   suggested_patch String?                @db.Text
   applied_prompt  String?                @db.Text
   applied_at      DateTime?
-  dismissed_at   DateTime?
-  created_at     DateTime               @default(now())
-  updated_at     DateTime               @updatedAt
+  dismissed_at    DateTime?
+  created_at      DateTime               @default(now())
+  updated_at      DateTime               @updatedAt
 
   review     agent_reviews @relation(fields: [review_id], references: [id], onDelete: Cascade)
   automation automations   @relation(fields: [automation_id], references: [id], onDelete: Cascade)

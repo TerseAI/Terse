@@ -10,14 +10,14 @@ import { Separator } from "@/components/ui/separator"
 import { Switch } from "@/components/ui/switch"
 import { useAgentImprovements } from "@/hooks/api/useAgentImprovements"
 import { BackendProvider } from "@/services/backend"
-import { AgentImprovement } from "@/shared/types"
+import { Agent, AgentImprovement } from "@/shared/types"
 import { formatRelativeTime } from "@/utility/timeUtils"
 
 const CHAT_OPEN_DELAY_MS = 300
 
 type AgentImprovementsTabProps = {
     agentId: string | null
-    mode?: "web" | "sdk"
+    source?: Agent["source"]
     builderChatRef?: RefObject<BuilderChatHandle | null>
     setBuilderChatOpen?: (open: boolean) => void
     builderChatOpen?: boolean
@@ -32,8 +32,8 @@ export function useAgentPendingCount(agentId: string | null): number {
     }, [improvements, improvementsEnabled])
 }
 
-export default function AgentImprovementsTab({ agentId, mode = "web", builderChatRef, setBuilderChatOpen, builderChatOpen }: AgentImprovementsTabProps) {
-    const isSdk = mode === "sdk"
+export default function AgentImprovementsTab({ agentId, source, builderChatRef, setBuilderChatOpen, builderChatOpen }: AgentImprovementsTabProps) {
+    const isSdk = source === "SDK"
     const { review, improvements, improvementsEnabled, isLoading, mutate } = useAgentImprovements(agentId)
     const [isToggling, setIsToggling] = useState(false)
     const [isApplyingId, setIsApplyingId] = useState<string | null>(null)
