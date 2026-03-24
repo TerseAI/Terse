@@ -48,6 +48,7 @@ import { handleToolDefinitions } from "./routes/sdkToolDefinitions"
 import { handleToolExecute } from "./routes/sdkToolExecute"
 import { getSentNotifications } from "./routes/sentNotifications"
 import { getCurrentSlackIntegration, getSlackChannels, getSlackIntegrations, getSlackUsers, slackOAuthCallback } from "./routes/slack"
+import { createOrUpdateSnowflakeIntegration, getSnowflakeIntegrations } from "./routes/snowflake"
 import { getStats } from "./routes/stats"
 import { getPublicTemplates, getTemplates } from "./routes/templates"
 import { toolsThatRequireApprovalsRoute } from "./routes/tools"
@@ -525,6 +526,16 @@ app.post(ApiRoutes.DATADOG.INTEGRATIONS, authMiddleware, async (req, res) => {
 
 app.get(ApiRoutes.DATADOG.INDEXES, authMiddleware, async (req, res) => {
     getDatadogIndexes(req, res)
+})
+
+// MARK: SNOWFLAKE
+
+app.get(ApiRoutes.SNOWFLAKE.INTEGRATIONS, authMiddleware, async (req, res) => {
+    getSnowflakeIntegrations(req, res)
+})
+
+app.post(ApiRoutes.SNOWFLAKE.INTEGRATIONS, authMiddleware, async (req, res) => {
+    createOrUpdateSnowflakeIntegration(req, res)
 })
 
 // MARK: WORKOS INTEGRATION (customer's own WorkOS account)

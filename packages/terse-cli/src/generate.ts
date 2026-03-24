@@ -32,6 +32,7 @@ import type {
     LaunchDarklyIntegration,
     WorkOSIntegration,
     AttioIntegration,
+    SnowflakeIntegration,
 } from "./shared/Integrations.js"
 import { IntegrationType } from "./shared/Integrations.js"
 import { ApiRoutes } from "./shared/ApiRoutes.js"
@@ -101,7 +102,7 @@ export async function generate(): Promise<void> {
         github: [], slack: [], gmail: [], figma: [],
         linear: [], atlassian: [], notion: [],
         posthog: [], datadog: [], launchdarkly: [],
-        workos: [], attio: [],
+        workos: [], attio: [], snowflake: [],
         tools: toolDefs,
     }
 
@@ -273,6 +274,13 @@ export async function generate(): Promise<void> {
                 }>)
                 return { id: inst.id, displayName: inst.workspaceName || inst.id, objects: Array.isArray(objects) ? objects : [] }
             }))
+        }))
+    }
+
+    if(has(IntegrationType.SNOWFLAKE)) {
+        promises.push(safely(async () => {
+            const instances = await fetchWithAuth<SnowflakeIntegration[]>(ApiRoutes.SNOWFLAKE.INTEGRATIONS, apiKey)
+            input.snowflake = instances.map(inst => ({ id: inst.id, name: inst.accountIdentifier }))
         }))
     }
 

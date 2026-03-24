@@ -871,4 +871,14 @@ export type ToolOutputByName = {
         analysis: string
         message: string
     }
+    snowflakeExecuteQuery: ToolOutputBase & {
+        rows: Record<string, unknown>[]
+        columns: string[]
+        rowCount: number
+    }
+    snowflakeExplainQuery: ToolOutputBase & {
+        explainPlan: Record<string, unknown>[]
+        columns: string[]
+        rowCount: number
+    }
 }

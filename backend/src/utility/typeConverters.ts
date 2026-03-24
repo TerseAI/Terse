@@ -20,6 +20,7 @@ import {
     PosthogConfig,
     SlackConfig,
     SlackOutputConfig,
+    SnowflakeOutputConfig,
     TerseConfig,
     TimeTriggerConfig,
     WorkOSEventType,
@@ -60,6 +61,8 @@ export const convertIntegrationTypeToPrismaIntegrationType = (integrationType: I
             return PrismaIntegrationType.WORKOS
         case IntegrationType.ATTIO:
             return PrismaIntegrationType.ATTIO
+        case IntegrationType.SNOWFLAKE:
+            return PrismaIntegrationType.SNOWFLAKE
         default:
             throw integrationType satisfies never
     }
@@ -99,6 +102,8 @@ export const convertPrismaIntegrationTypeToIntegrationType = (prismaIntegrationT
             return IntegrationType.WORKOS
         case PrismaIntegrationType.ATTIO:
             return IntegrationType.ATTIO
+        case PrismaIntegrationType.SNOWFLAKE:
+            return IntegrationType.SNOWFLAKE
         default:
             throw prismaIntegrationType satisfies never
     }
@@ -138,6 +143,8 @@ export const convertIntegrationTypeToPrismaIntegrationTypeForRunHistory = (integ
             return PrismaIntegrationType.WORKOS
         case IntegrationType.ATTIO:
             return PrismaIntegrationType.ATTIO
+        case IntegrationType.SNOWFLAKE:
+            return PrismaIntegrationType.SNOWFLAKE
         default:
             throw integrationType satisfies never
     }
@@ -178,6 +185,8 @@ export const convertPrismaIntegrationTypeToIntegrationTypeFromRunHistory = (pris
             return IntegrationType.WORKOS
         case PrismaIntegrationType.ATTIO:
             return IntegrationType.ATTIO
+        case PrismaIntegrationType.SNOWFLAKE:
+            return IntegrationType.SNOWFLAKE
         default:
             throw prismaIntegrationType satisfies never
     }
@@ -360,6 +369,19 @@ export const convertPrismaOutputConfigToConfigInstance = (channelOutput: AgentOu
         return new WorkOSOutputConfig(integrationId)
     }
 
+    if (channelOutput.snowflake_config) {
+        return new SnowflakeOutputConfig(
+            integrationId,
+            channelOutput.snowflake_config.warehouse || undefined,
+            channelOutput.snowflake_config.database_name || undefined,
+            channelOutput.snowflake_config.schema_name || undefined
+        )
+    }
+
+    if (channelOutput.config_type === OutputConfigType.SNOWFLAKE) {
+        return new SnowflakeOutputConfig(integrationId)
+    }
+
     // Type guard to ensure we implement conversion here
     switch (channelOutput.config_type) {
         case OutputConfigType.NOTION:
@@ -428,6 +450,8 @@ export const convertConfigTypeToInputConfigType = (configType: ConfigType): Inpu
             throw new Error("WORKOS_OUTPUT is an output type, not an input type")
         case ConfigType.ATTIO_OUTPUT:
             throw new Error("ATTIO_OUTPUT is an output type, not an input type")
+        case ConfigType.SNOWFLAKE_OUTPUT:
+            throw new Error("SNOWFLAKE_OUTPUT is an output type, not an input type")
         default:
             throw configType satisfies never
     }
@@ -496,6 +520,8 @@ export const convertConfigTypeToOutputConfigType = (configType: ConfigType): Out
             return OutputConfigType.ATTIO
         case ConfigType.WORKOS_OUTPUT:
             return OutputConfigType.WORKOS
+        case ConfigType.SNOWFLAKE_OUTPUT:
+            return OutputConfigType.SNOWFLAKE
         default:
             throw new Error(`ConfigType ${configType} is not a valid output config type.`)
     }
@@ -534,6 +560,8 @@ export const convertOutputConfigTypeToConfigType = (outputConfigType: OutputConf
             return ConfigType.ATTIO_OUTPUT
         case OutputConfigType.WORKOS:
             return ConfigType.WORKOS_OUTPUT
+        case OutputConfigType.SNOWFLAKE:
+            return ConfigType.SNOWFLAKE_OUTPUT
         default:
             throw outputConfigType satisfies never
     }
@@ -573,6 +601,8 @@ export const convertOutputConfigTypeToIntegrationType = (outputConfigType: Outpu
             return IntegrationType.ATTIO
         case OutputConfigType.WORKOS:
             return IntegrationType.WORKOS
+        case OutputConfigType.SNOWFLAKE:
+            return IntegrationType.SNOWFLAKE
         default:
             throw outputConfigType satisfies never
     }
@@ -659,6 +689,8 @@ export const convertPlainObjectToConfigInstance = (config: any): ConfigInstance 
             return new WorkOSOutputConfig(config.integrationId)
         case ConfigType.ATTIO_OUTPUT:
             return new AttioOutputConfig(config.integrationId, config.objectSlug)
+        case ConfigType.SNOWFLAKE_OUTPUT:
+            return new SnowflakeOutputConfig(config.integrationId, config.warehouse, config.databaseName, config.schemaName)
         default:
             throw new Error(`Unsupported config type: ${config.configType}`)
     }

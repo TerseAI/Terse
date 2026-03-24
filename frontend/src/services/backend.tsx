@@ -18,6 +18,7 @@ import {
     NotionIntegration,
     PosthogIntegration,
     SlackIntegration,
+    SnowflakeIntegration,
     WorkOSIntegration
 } from "../shared/Integrations"
 import { CreateNotificationDestinationRequest, NotificationDestination, NotificationSettings, UpdateNotificationSettingsRequest } from "../shared/Notifications"
@@ -537,6 +538,23 @@ interface BackendService {
      * Updates user-level notification topic settings
      */
     updateNotificationSettings(agentDefaultNotifications: RunHistoryActionType[], weeklyAgentImprovements: boolean, applyToAllAgents?: boolean): Promise<void>
+
+    /**
+     * Gets all Snowflake integrations for the current user
+     */
+    getSnowflakeIntegrations(): Promise<SnowflakeIntegration[]>
+
+    /**
+     * Creates or updates a Snowflake integration
+     */
+    createOrUpdateSnowflakeIntegration(
+        accountIdentifier: string,
+        username: string,
+        privateKey: string,
+        passphrase: string,
+        warehouse: string,
+        stateToken?: string
+    ): Promise<{ success: boolean; accountIdentifier: string; warehouse: string }>
 }
 
 export const BackendProvider: BackendService = {
@@ -967,6 +985,30 @@ export const BackendProvider: BackendService = {
             .then(response => response.data)
             .catch(error => {
                 console.error("Error getting Datadog indexes:", error)
+                throw error
+            })
+    },
+
+    getSnowflakeIntegrations: () => {
+        return axios
+            .get<SnowflakeIntegration[]>(`${backendBaseUrl}${ApiRoutes.SNOWFLAKE.INTEGRATIONS}`, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error("Error getting Snowflake integrations:", error)
+                throw error
+            })
+    },
+
+    createOrUpdateSnowflakeIntegration: (accountIdentifier: string, username: string, privateKey: string, passphrase: string, warehouse: string, stateToken?: string) => {
+        const body: any = { accountIdentifier, username, privateKey, passphrase, warehouse }
+        if (stateToken) {
+            body.state = stateToken
+        }
+        return axios
+            .post<{ success: boolean; accountIdentifier: string; warehouse: string }>(`${backendBaseUrl}${ApiRoutes.SNOWFLAKE.INTEGRATIONS}`, body, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error("Error creating/updating Snowflake integration:", error)
                 throw error
             })
     },

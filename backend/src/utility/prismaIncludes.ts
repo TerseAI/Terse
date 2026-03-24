@@ -35,7 +35,8 @@ export function getOutputConfigInclude() {
         launchdarkly_config: true,
         figma_config: true,
         workos_output_config: true,
-        attio_config: true
+        attio_config: true,
+        snowflake_config: true
     } as const
 }
 

@@ -21,6 +21,7 @@ export interface ConfluencePageData { id: string; title: string; spaceId: string
 export interface PosthogProjectData { id: string; name: string }
 export interface DatadogIndexData { name: string }
 export interface LaunchDarklyProjectData { key: string; name: string }
+export interface SnowflakeInstanceData {id: string; name: string}
 export interface AttioAttributeData {
     api_slug?: string
     title?: string
@@ -73,6 +74,7 @@ export interface CodegenInput {
     launchdarkly: LaunchDarklyInstanceData[]
     workos: IntegrationInstanceData[]
     attio: AttioInstanceData[]
+    snowflake: SnowflakeInstanceData[]
     tools: ToolDefinition[]
 }
 
@@ -822,6 +824,27 @@ function generateAttioSection(instances: AttioInstanceData[]): SectionResult {
     return { code: parts.join("\n"), imports }
 }
 
+// ── Snowflake ─────────────────────────────────────────────────────────
+
+function generateSnowflakeSection(instances: SnowflakeInstanceData[]): SectionResult {
+    if (instances.length === 0) return EMPTY_SECTION
+
+    const inst = instances[0]
+    const imports = new Set(["SnowflakeOutputConfig"])
+    const parts: string[] = [sectionHeader("Snowflake"), ""]
+    const id = inst.id
+
+    parts.push("export const Snowflake = {")
+    parts.push(`    /** Use in \`skills[]\` */`)
+    parts.push(`    skill(opts?: { warehouse?: string; databaseName?: string; schemaName?: string }): SnowflakeOutputConfig {`)
+    parts.push(`        return new SnowflakeOutputConfig("${id}", opts?.warehouse, opts?.databaseName, opts?.schemaName)`)
+    parts.push("    },")
+    parts.push("}")
+    parts.push("")
+
+    return { code: parts.join("\n"), imports }
+}
+
 // ── Typed Tools ───────────────────────────────────────────────────────
 
 /**
@@ -919,6 +942,7 @@ function generateToolsSection(tools: ToolDefinition[], input: CodegenInput): Sec
     instanceMap.set("launchdarkly", input.launchdarkly.map(l => ({ id: l.id, displayName: l.displayName })))
     instanceMap.set("workos", input.workos.map(w => ({ id: w.id, displayName: w.displayName })))
     instanceMap.set("attio", input.attio.map(a => ({ id: a.id, displayName: a.displayName })))
+    instanceMap.set("snowflake", input.snowflake.map(s => ({ id: s.id, displayName: s.name })))
 
     // Group tools by integration
     const byIntegration = new Map<string, ToolDefinition[]>()
@@ -1349,6 +1373,7 @@ export function generateCode(input: CodegenInput): string {
         generateLaunchDarklySection(input.launchdarkly),
         generateWorkOSSection(input.workos),
         generateAttioSection(input.attio),
+        generateSnowflakeSection(input.snowflake),
         generateToolsSection(input.tools, input),
         generateSystemSection(),
     ]

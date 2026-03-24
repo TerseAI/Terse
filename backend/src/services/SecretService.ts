@@ -20,7 +20,9 @@ export enum SecretField {
     AppKey = "app_key",
     IntegrationToken = "integration_token",
     WebhookSecret = "webhook_secret",
-    AuthedUserAccessToken = "authed_user_access_token"
+    AuthedUserAccessToken = "authed_user_access_token",
+    PrivateKey = "private_key",
+    PrivateKeyPassphrase = "private_key_passphrase"
 }
 
 const SECRET_CACHE_TTL_MS = 5 * 60 * 1000
