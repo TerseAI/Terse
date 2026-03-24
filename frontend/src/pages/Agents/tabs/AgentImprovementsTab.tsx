@@ -7,6 +7,8 @@ import { toast } from "sonner"
 import { BuilderChatHandle } from "@/components/chat/BuilderChat"
 import { Button } from "@/components/ui/button"
 import { DiffViewer } from "@/components/ui/diff-viewer"
+
+import { CopyPatchDialog } from "../components/CopyPatchDialog"
 import { Separator } from "@/components/ui/separator"
 import { Switch } from "@/components/ui/switch"
 import { useAgentImprovements } from "@/hooks/api/useAgentImprovements"
@@ -241,13 +243,6 @@ function ImprovementRow({
 }) {
     const [expanded, setExpanded] = useState(defaultExpanded)
 
-    const handleCopyPatch = () => {
-        if (improvement.suggestedPatch) {
-            navigator.clipboard.writeText(improvement.suggestedPatch)
-            toast.success("Patch copied to clipboard")
-        }
-    }
-
     return (
         <div className="rounded-lg border border-border bg-card/50 px-4 py-3">
             <div className="flex items-center gap-2">
@@ -259,10 +254,14 @@ function ImprovementRow({
                 </button>
                 <div className="flex items-center gap-1.5 shrink-0">
                     {isSdk && improvement.suggestedPatch && (
-                        <Button size="sm" variant="outline" onClick={handleCopyPatch}>
-                            <Copy className="h-3.5 w-3.5 mr-1" />
-                            Copy Patch
-                        </Button>
+                        <CopyPatchDialog patch={improvement.suggestedPatch}>
+                            {openDialog => (
+                                <Button size="sm" variant="outline" onClick={openDialog}>
+                                    <Copy className="h-3.5 w-3.5 mr-1" />
+                                    Copy Patch
+                                </Button>
+                            )}
+                        </CopyPatchDialog>
                     )}
                     <Button size="sm" onClick={onApply} disabled={disabled}>
                         {isApplying ? "Acknowledging..." : isSdk ? "Acknowledge" : "Apply"}

@@ -2,11 +2,13 @@ import { NotificationDestinationType, SentNotificationEventType, SentNotificatio
 import { Request, Response } from "express"
 
 import { MAX_IMPROVEMENTS_PER_AGENT, evaluateAgent } from "../agent/JudgeAgent/JudgeAgent"
+import { fetchFullJudgeContext } from "../agent/JudgeAgent/fetchJudgeContext"
 import { cloudScheduler, settings } from "../config/settings"
 import logger from "../logger"
 import { sendWeeklyReviewEmail } from "../notifications/channels/emailNotifications"
 import { db } from "../prismaClient"
 import { emitCacheInvalidationWithKey } from "../services/CacheInvalidationService"
+import { SdkImprovementService } from "../services/SdkImprovementService"
 import { FrontendRoutes } from "../shared/FrontendRoutes"
 import { sentNotificationsKey } from "../shared/InvalidationKeys"
 import { FeatureFlag, FeatureFlagService } from "../utility/featureFlags"
@@ -130,11 +132,18 @@ export async function reviewAllAgents(req: Request, res: Response) {
                     continue
                 }
 
-                const evaluation = await evaluateAgent({
-                    automationId: automation.id,
-                    user,
-                    source: automation.source
-                })
+                let evaluation
+                if (automation.source === "SDK") {
+                    const context = await fetchFullJudgeContext(automation.id, automation.organization_id)
+                    const sdkService = new SdkImprovementService()
+                    evaluation = await sdkService.evaluate(automation.id, context)
+                } else {
+                    evaluation = await evaluateAgent({
+                        automationId: automation.id,
+                        user,
+                        source: automation.source
+                    })
+                }
 
                 const improvementRecords = evaluation.improvements
 

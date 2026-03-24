@@ -1,5 +1,4 @@
 import { useMemo } from "react"
-
 import { Diff, Hunk, parseDiff } from "react-diff-view"
 
 import { cn } from "@/lib/utils"
@@ -23,11 +22,7 @@ export function DiffViewer({ patch, className }: DiffViewerProps) {
 
     if (!files || files.length === 0) {
         // Fallback: render as plain preformatted text
-        return (
-            <pre className={cn("text-xs rounded-md border border-border bg-muted/50 p-3 overflow-x-auto whitespace-pre-wrap break-words", className)}>
-                {patch}
-            </pre>
-        )
+        return <pre className={cn("text-xs rounded-md border border-border bg-muted/50 p-3 overflow-x-auto whitespace-pre-wrap break-words", className)}>{patch}</pre>
     }
 
     return (
