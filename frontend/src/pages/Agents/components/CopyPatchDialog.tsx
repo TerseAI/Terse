@@ -1,6 +1,6 @@
 import { useState } from "react"
 
-import { AlertTriangle, Copy, Terminal } from "lucide-react"
+import { AlertTriangle, Terminal } from "lucide-react"
 import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
