@@ -84,6 +84,10 @@ export const ToolName = {
     WORKOS_LIST_USERS: "listWorkOSUsers",
     WORKOS_GET_USER: "getWorkOSUser",
 
+    // Snowflake Tools
+    SNOWFLAKE_EXPLAIN_QUERY: "snowflakeExplainQuery",
+    SNOWFLAKE_EXECUTE_QUERY: "snowflakeExecuteQuery",
+
     // Terse
     WEB_SEARCH: "web_search",
     WEB_EXTRACT: "web_extract",

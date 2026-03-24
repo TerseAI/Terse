@@ -107,6 +107,7 @@ export type AutomationOutputWithConfigs = Prisma.automation_outputsGetPayload<{
         figma_config: true
         workos_output_config: true
         attio_config: true
+        snowflake_config: true
     }
 }>
 export type AgentOutputWithConfigs = AutomationOutputWithConfigs // Alias for rebranding (formerly ChannelOutputWithConfigs)
@@ -161,6 +162,7 @@ export type AutomationWithOutputRelations = Prisma.automationsGetPayload<{
                 figma_config: true
                 workos_output_config: true
                 attio_config: true
+                snowflake_config: true
             }
         }
     }

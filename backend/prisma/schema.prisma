@@ -41,6 +41,7 @@ model users {
   datadog_integrations      datadog_integrations[]
   workos_integrations       workos_integrations[]
   attio_integrations        attio_integrations[]
+  snowflake_integrations    snowflake_integrations[]
 
   @@index([workos_id])
 }
@@ -395,6 +396,25 @@ model attio_integrations {
   @@index([organization_id])
 }
 
+model snowflake_integrations {
+  id                 String   @id @default(cuid())
+  user_id            String
+  organization_id    String
+  account_identifier String
+  username           String
+  warehouse          String
+  database_name      String?
+  schema_name        String?
+  role_name          String?
+  created_at         DateTime @default(now())
+  updated_at         DateTime @updatedAt
+
+  user users @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([organization_id])
+}
+
 // Automation tables
 model automations {
   id                   String           @id @default(cuid())
@@ -492,6 +512,7 @@ model automation_outputs {
   figma_config         automation_figma_configs?
   workos_output_config automation_workos_output_configs?
   attio_config         automation_attio_configs?
+  snowflake_config     automation_snowflake_configs?
 
   @@index([automation_id])
   @@index([config_type, integration_id])
@@ -577,6 +598,16 @@ model automation_datadog_configs {
   automation_output         automation_outputs?         @relation(fields: [automation_output_id], references: [id], onDelete: Cascade)
 
   @@index([default_indexes])
+}
+
+model automation_snowflake_configs {
+  id                   String  @id @default(cuid())
+  automation_output_id String  @unique // FK to automation_outputs
+  warehouse            String? // Override warehouse for this automation
+  database_name        String? // Override database for this automation
+  schema_name          String? // Override schema for this automation
+
+  automation_output automation_outputs @relation(fields: [automation_output_id], references: [id], onDelete: Cascade)
 }
 
 // Linear Knowledge Base Configuration
@@ -842,6 +873,7 @@ enum IntegrationType {
   DATADOG
   WORKOS
   ATTIO
+  SNOWFLAKE
 }
 
 enum InputConfigType {
@@ -874,6 +906,7 @@ enum OutputConfigType {
   LAUNCHDARKLY
   DATADOG
   WORKOS
+  SNOWFLAKE
 }
 
 enum AutomationSource {
