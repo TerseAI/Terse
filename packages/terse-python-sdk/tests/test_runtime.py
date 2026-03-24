@@ -3,13 +3,17 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 import unittest
+from types import ModuleType, SimpleNamespace
 from typing import Any
 from unittest.mock import patch
 
 import httpx
+import terse_sdk.runtime as runtime_module
 from terse_sdk import (
     CronJobInputEvent,
+    EventType,
     MissingApiKeyError,
     SerializedEventInputEvent,
     Terse,
@@ -199,6 +203,31 @@ class RuntimeTests(unittest.TestCase):
         with patch.dict(os.environ, {"TERSE_API_KEY": ""}, clear=False), self.assertRaises(MissingApiKeyError):
             TerseAgent().execute_tool("demo_tool")
 
+    def test_agent_tools_lazy_attach_from_generated_module(self) -> None:
+        created_agents: list[TerseAgent] = []
+        fake_tools = SimpleNamespace(snowflake="snowflake-tools")
+        generated_module = ModuleType("terse_generated")
+
+        def create_tools(agent: TerseAgent) -> object:
+            created_agents.append(agent)
+            return fake_tools
+
+        generated_module.create_tools = create_tools  # type: ignore[attr-defined]
+
+        with patch.dict(sys.modules, {"terse_generated": generated_module}, clear=False):
+            agent = TerseAgent()
+            self.assertIs(agent.tools, fake_tools)
+            self.assertIs(agent.tools, fake_tools)
+
+        self.assertEqual(created_agents, [agent])
+
+    def test_agent_tools_raise_clear_error_when_generated_module_is_missing(self) -> None:
+        with (
+            patch("terse_sdk.runtime._resolve_generated_tools_factory", return_value=None),
+            self.assertRaises(AttributeError),
+        ):
+            _ = TerseAgent().tools
+
     def test_agent_run_streams_events_and_serializes_event_payload(self) -> None:
         captured: dict[str, object] = {}
         stream = _FakeEventSource(
@@ -240,6 +269,8 @@ class RuntimeTests(unittest.TestCase):
             )
 
         self.assertEqual(len(events), 3)
+        self.assertEqual(events[-1].type, EventType.FINAL_OUTPUT)
+        self.assertEqual(events[-1].finalOutput, "done")
         self.assertEqual(captured["method"], "POST")
         self.assertEqual(captured["headers"]["Authorization"], "Bearer terse_test_key")
         self.assertEqual(captured["json"]["event"]["integrationType"], "cron_job")
@@ -263,13 +294,54 @@ class RuntimeTests(unittest.TestCase):
         ):
             list(TerseAgent().run("hello"))
 
-    def test_agent_run_and_wait_succeeds_when_stream_completes(self) -> None:
+    def test_agent_run_and_wait_returns_final_output(self) -> None:
+        with patch.object(
+            TerseAgent,
+            "run",
+            return_value=iter(
+                [
+                    SdkAgentStreamEventText(type="text", text="thinking"),
+                    SdkAgentStreamEventFinalOutput(type="final_output", finalOutput="done"),
+                ]
+            ),
+        ):
+            result = TerseAgent().run_and_wait("hello")
+
+        self.assertEqual(result, "done")
+
+    def test_agent_run_and_wait_returns_none_when_no_final_output_arrives(self) -> None:
         with patch.object(TerseAgent, "run", return_value=iter([])):
-            TerseAgent().run_and_wait("hello")
+            result = TerseAgent().run_and_wait("hello")
+
+        self.assertIsNone(result)
 
     def test_agent_run_and_wait_propagates_errors(self) -> None:
         with patch.object(TerseAgent, "run", side_effect=TerseApiError("boom")), self.assertRaises(TerseApiError):
             TerseAgent().run_and_wait("hello")
+
+    def test_assert_sse_response_reads_streaming_json_error_payload(self) -> None:
+        response = _streaming_json_response(
+            200,
+            {"success": False, "error": "backend unavailable"},
+            path="/sdk/agent-run",
+        )
+
+        with self.assertRaises(TerseApiError) as exc_info:
+            runtime_module._assert_sse_response(response, "/sdk/agent-run")
+
+        self.assertIn("backend unavailable", str(exc_info.exception))
+
+    def test_assert_sse_response_reads_streaming_error_detail_on_http_error(self) -> None:
+        response = _streaming_json_response(
+            401,
+            {"error": "unauthorized"},
+            path="/sdk/agent-run",
+        )
+
+        with self.assertRaises(TerseApiError) as exc_info:
+            runtime_module._assert_sse_response(response, "/sdk/agent-run")
+
+        self.assertIn("unauthorized", str(exc_info.exception))
 
 
 def _json_response(
@@ -283,6 +355,21 @@ def _json_response(
         status_code,
         headers={"Content-Type": "application/json", **(headers or {})},
         content=json.dumps(payload).encode("utf-8"),
+        request=httpx.Request("POST", f"https://example.com{path}"),
+    )
+
+
+def _streaming_json_response(
+    status_code: int,
+    payload: object,
+    *,
+    headers: dict[str, str] | None = None,
+    path: str,
+) -> httpx.Response:
+    return httpx.Response(
+        status_code,
+        headers={"Content-Type": "application/json", **(headers or {})},
+        stream=httpx.ByteStream(json.dumps(payload).encode("utf-8")),
         request=httpx.Request("POST", f"https://example.com{path}"),
     )
 

@@ -4,6 +4,8 @@
  * This controls exactly what enters the JSON Schema and therefore the generated Pydantic models.
  */
 
+import type { ToolOutputByName as ToolOutputByNameMap } from "../../shared/types"
+
 // --- types.ts ---
 export type {
     Role,
@@ -31,6 +33,11 @@ export type {
     Repository,
     ToolOutputBase,
 } from "../../shared/types"
+export type AttioListObjectsToolOutput = ToolOutputByNameMap["attio_list_objects"]
+export type AttioQueryRecordsToolOutput = ToolOutputByNameMap["attio_query_records"]
+export type AttioUpsertRecordToolOutput = ToolOutputByNameMap["attio_upsert_record"]
+export type SnowflakeExecuteQueryToolOutput = ToolOutputByNameMap["snowflakeExecuteQuery"]
+export type SnowflakeExplainQueryToolOutput = ToolOutputByNameMap["snowflakeExplainQuery"]
 
 // --- Integrations.ts ---
 export { IntegrationType } from "../../shared/Integrations"

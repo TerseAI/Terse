@@ -6,12 +6,20 @@ Project scaffolded by `terse-python-cli`.
 
 ```bash
 uv sync
-uv run python src/main.py
 terse test
 terse deploy
-terse generate
 ```
 
 Edit `src/main.py` to register jobs with `@app.job(...)`.
 
-Connect Attio or Snowflake in Terse, then rerun `terse generate` to refresh `src/terse_generated.py`.
+## Generated Helpers
+
+If you connect Attio or Snowflake in Terse, rerun `terse generate` to refresh `src/terse_generated.py`.
+
+Import helpers like `Attio`, `AttioObject`, `Schedule`, `Snowflake`, and `TerseAgent` from `terse_generated`.
+
+If a job registers `skills=[Snowflake.skill()]`, it can call deterministic wrappers like:
+
+```python
+agent.tools.snowflake.execute_query(query="select 1")
+```

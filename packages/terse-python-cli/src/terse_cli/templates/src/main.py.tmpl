@@ -1,29 +1,18 @@
-from terse_sdk import CronJobInputEvent, Terse, TerseAgent
-from terse_generated import Schedule
+from terse_generated import Schedule, TerseAgent
+from terse_sdk import CronJobInputEvent, EventType, Terse
 
 app = Terse()
 
-
-# After you connect Attio or Snowflake in Terse, rerun `terse generate` and
-# import helpers like `Attio`, `AttioObject`, or `Snowflake` from terse_generated.
 @app.job(
     name="{{ PROJECT_NAME }}",
     triggers=[Schedule.cron("0 9 * * 1")],
     skills=[],
 )
 def run_job(event: CronJobInputEvent, agent: TerseAgent) -> None:
-    _ = agent
-    print(f"{event.integration_type}: {event.formatted_content}")
-
-
-def main() -> None:
-    demo_event = CronJobInputEvent(
-        event_type="manual",
-        formatted_content="Manual scaffold run for local development.",
-        debug_log="Scaffold example",
+    prompt = (
+        "Answer with one short, cute sentence about this cron job. "
+        f"Context: {event.formatted_content}"
     )
-    run_job(demo_event, TerseAgent())
-
-
-if __name__ == "__main__":
-    main()
+    for stream_event in agent.run(prompt, event):
+        if stream_event.type == EventType.FINAL_OUTPUT:
+            print(stream_event.finalOutput)

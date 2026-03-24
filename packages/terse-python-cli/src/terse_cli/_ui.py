@@ -41,8 +41,7 @@ def prompt_select(message: str, choices: Sequence[tuple[str, ChoiceT]]) -> Choic
 def log_stream_event(event: object) -> None:
     """Render agent/session stream events in a compact terminal format."""
 
-    if isinstance(event, SdkAgentStreamEventText) and event.text.strip():
-        console.print(f"  [dim]{event.text}[/dim]")
+    if isinstance(event, SdkAgentStreamEventText):
         return
 
     if isinstance(event, SdkAgentStreamEventToolCallParams) and event.toolCallParams.strip():

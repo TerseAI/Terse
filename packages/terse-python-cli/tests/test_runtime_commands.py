@@ -11,8 +11,9 @@ from pathlib import Path
 from unittest.mock import patch
 from zipfile import ZipFile
 
+import httpx
 from click.testing import CliRunner
-from terse_cli._generate import CodegenInput, render_generated_module
+from terse_cli._generate import CodegenInput, SnowflakeInstanceData, ToolDefinition, render_generated_module
 from terse_cli._package import PackagingError
 from terse_cli.cli import cli
 
@@ -37,13 +38,15 @@ def _runtime_main_source(
     job_name: str = "demo-job",
     trigger_block: str | None = None,
     filter_name: str | None = None,
+    generated_imports: str = "from terse_generated import Schedule",
+    skills_block: str = "[]",
 ) -> str:
     trigger_lines = trigger_block or '[Schedule.cron("0 9 * * 1")]'
     lines = [
         "from pathlib import Path",
         "",
         "from terse_sdk import CronJobInputEvent, Terse, TerseAgent",
-        "from terse_generated import Schedule",
+        generated_imports,
     ]
     if extra:
         lines.extend(["", textwrap.dedent(extra).strip()])
@@ -57,7 +60,7 @@ def _runtime_main_source(
             "@app.job(",
             f"    name={job_name!r},",
             f"    triggers={trigger_lines},",
-            "    skills=[],",
+            f"    skills={skills_block},",
         ]
     )
     if filter_name:
@@ -77,15 +80,28 @@ def _plain_output(output: str) -> str:
     return _ANSI_ESCAPE_RE.sub("", output)
 
 
+def _streaming_json_response(status_code: int, payload: object, *, path: str) -> httpx.Response:
+    return httpx.Response(
+        status_code,
+        headers={"Content-Type": "application/json"},
+        stream=httpx.ByteStream(json.dumps(payload).encode("utf-8")),
+        request=httpx.Request("POST", f"https://example.com{path}"),
+    )
+
+
 def _write_runtime_project(
     main_source: str,
     *,
     api_key: str | None = "terse_test_key",
     gitignore: str = "",
+    codegen_input: CodegenInput | None = None,
 ) -> None:
     Path("src").mkdir(parents=True, exist_ok=True)
     Path("pyproject.toml").write_text("[project]\nname = 'demo'\nversion = '0.1.0'\n", encoding="utf-8")
-    Path("src/terse_generated.py").write_text(render_generated_module(CodegenInput()), encoding="utf-8")
+    Path("src/terse_generated.py").write_text(
+        render_generated_module(codegen_input or CodegenInput()),
+        encoding="utf-8",
+    )
     Path("src/main.py").write_text(main_source, encoding="utf-8")
     if api_key is not None:
         Path(".env").write_text(f"TERSE_API_KEY={api_key}\n", encoding="utf-8")
@@ -100,6 +116,20 @@ class _FakeSession:
 
     def close(self) -> None:
         self.closed = True
+
+
+class _FakeEventSource:
+    def __init__(self, response: httpx.Response) -> None:
+        self.response = response
+
+    def __enter__(self) -> _FakeEventSource:
+        return self
+
+    def __exit__(self, exc_type: object, exc: object, tb: object) -> bool:
+        return False
+
+    def iter_sse(self):
+        return iter(())
 
 
 class RuntimeCommandTests(unittest.TestCase):
@@ -234,6 +264,45 @@ class RuntimeCommandTests(unittest.TestCase):
             self.assertFalse(Path("ran.txt").exists())
             self.assertIn('Job "demo-job" skipped (filter returned false).', output)
 
+    def test_run_attaches_generated_tools_before_handler_execution(self) -> None:
+        with self.runner.isolated_filesystem():
+            _write_runtime_project(
+                _runtime_main_source(
+                    "Path('tool.json').write_text(json.dumps(agent.tools.snowflake.execute_query(query='select 1').model_dump()), encoding='utf-8')",
+                    extra="import json",
+                    generated_imports="from terse_generated import Schedule, Snowflake",
+                    skills_block="[Snowflake.skill()]",
+                ),
+                codegen_input=CodegenInput(
+                    snowflake=[SnowflakeInstanceData(id="snowflake_1", display_name="acme-prod")],
+                    tools=[
+                        ToolDefinition(
+                            name="snowflakeExecuteQuery",
+                            display_name="Execute query",
+                            description="Execute Snowflake query.",
+                            integration="snowflake",
+                            is_read_only=True,
+                        )
+                    ],
+                ),
+            )
+
+            with patch(
+                "terse_sdk.runtime.TerseAgent.execute_tool",
+                return_value={"success": True, "rowCount": 1, "columns": ["value"], "rows": [{"value": 1}]},
+            ) as execute_tool:
+                result = self.runner.invoke(cli, ["run", "--event", _event_json()])
+
+            self.assertEqual(result.exit_code, 0, result.output)
+            self.assertEqual(
+                json.loads(Path("tool.json").read_text(encoding="utf-8")),
+                {"actions": None, "columns": ["value"], "rowCount": 1.0, "rows": [{"value": 1}], "success": True},
+            )
+            execute_tool.assert_called_once_with(
+                "snowflakeExecuteQuery",
+                {"integrationId": "snowflake_1", "query": "select 1"},
+            )
+
     def test_test_command_runs_single_cron_trigger_without_api_key(self) -> None:
         with self.runner.isolated_filesystem():
             _write_runtime_project(
@@ -265,6 +334,92 @@ class RuntimeCommandTests(unittest.TestCase):
             self.assertEqual(result.exit_code, 0, result.output)
             self.assertEqual(Path("session.txt").read_text(encoding="utf-8"), "session_123")
             self.assertTrue(session.closed)
+
+    def test_test_command_debug_logs_agent_run_request_details_on_backend_error(self) -> None:
+        with self.runner.isolated_filesystem():
+            _write_runtime_project(
+                _runtime_main_source(
+                    """
+                    for _chunk in agent.run("hello from debug mode", event):
+                        pass
+                    """
+                )
+            )
+            session = _FakeSession("session_123")
+            event_source = _FakeEventSource(
+                _streaming_json_response(
+                    400,
+                    {"error": "Invalid request body"},
+                    path="/sdk/agent-run",
+                )
+            )
+
+            with (
+                patch("terse_cli.commands.test.open_session_stream", return_value=session),
+                patch("terse_sdk.runtime.connect_sse", return_value=event_source),
+            ):
+                result = self.runner.invoke(cli, ["--debug", "test"])
+                output = _plain_output(result.output)
+
+            self.assertNotEqual(result.exit_code, 0)
+            self.assertIn("Debug logging enabled.", output)
+            self.assertIn("HTTP POST", output)
+            self.assertIn("/sdk/agent-run", output)
+            self.assertIn('"integrationType": "cron_job"', output)
+            self.assertIn('"formattedContent": "This is a manually triggered event for a cron trigger', output)
+            self.assertIn("Response 400 Bad Request for /sdk/agent-run", output)
+            self.assertIn("Invalid request body", output)
+
+    def test_test_command_attaches_generated_tools_before_handler_execution(self) -> None:
+        with self.runner.isolated_filesystem():
+            _write_runtime_project(
+                _runtime_main_source(
+                    "Path('tool.json').write_text(json.dumps(agent.tools.snowflake.explain_query(query='select 1').model_dump()), encoding='utf-8')",
+                    extra="import json",
+                    generated_imports="from terse_generated import Schedule, Snowflake",
+                    skills_block="[Snowflake.skill()]",
+                ),
+                api_key=None,
+                codegen_input=CodegenInput(
+                    snowflake=[SnowflakeInstanceData(id="snowflake_1", display_name="acme-prod")],
+                    tools=[
+                        ToolDefinition(
+                            name="snowflakeExplainQuery",
+                            display_name="Explain query",
+                            description="Explain Snowflake query.",
+                            integration="snowflake",
+                            is_read_only=True,
+                        )
+                    ],
+                ),
+            )
+
+            with patch(
+                "terse_sdk.runtime.TerseAgent.execute_tool",
+                return_value={
+                    "success": True,
+                    "rowCount": 1,
+                    "columns": ["operation"],
+                    "explainPlan": [{"operation": "scan"}],
+                },
+            ) as execute_tool:
+                result = self.runner.invoke(cli, ["test"])
+
+            self.assertEqual(result.exit_code, 0, result.output)
+            self.assertEqual(
+                json.loads(Path("tool.json").read_text(encoding="utf-8")),
+                {
+                    "actions": None,
+                    "columns": ["operation"],
+                    "explainPlan": [{"operation": "scan"}],
+                    "rowCount": 1.0,
+                    "success": True,
+                },
+            )
+            execute_tool.assert_called_once_with(
+                "snowflakeExplainQuery",
+                {"integrationId": "snowflake_1", "query": "select 1"},
+            )
 
     def test_test_command_prompts_for_multiple_cron_triggers(self) -> None:
         with self.runner.isolated_filesystem():

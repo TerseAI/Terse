@@ -104,6 +104,9 @@ def _temporary_sys_path(paths: list[Path]) -> Iterator[None]:
 
 def _purge_project_modules(project_dir: Path) -> None:
     for module_name, module in list(sys.modules.items()):
+        if module_name == "terse_generated" or module_name.startswith("_terse_project_main_"):
+            sys.modules.pop(module_name, None)
+            continue
         module_file = getattr(module, "__file__", None)
         if not module_file:
             continue

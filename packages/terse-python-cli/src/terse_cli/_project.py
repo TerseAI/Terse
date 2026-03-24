@@ -183,4 +183,5 @@ def _normalize_release_version(version: str) -> tuple[int, int, int]:
     match = re.search(r"(\d+)\.(\d+)\.(\d+)", version)
     if match is None:
         return (0, 1, 0)
-    return tuple(int(group) for group in match.groups())
+    major, minor, patch = (int(group) for group in match.groups())
+    return (major, minor, patch)

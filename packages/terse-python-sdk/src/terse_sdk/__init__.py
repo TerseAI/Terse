@@ -38,6 +38,7 @@ from .models import (
     WorkOSInputEvent,
 )
 from .runtime import (
+    EventType,
     MissingApiKeyError,
     RegisteredJob,
     Terse,
@@ -59,6 +60,7 @@ __all__ = [
     "AttioInputEvent",
     "CronJobInputEvent",
     "DatadogInputEvent",
+    "EventType",
     "FigmaInputEvent",
     "GithubCommit",
     "GithubEventMetadata",

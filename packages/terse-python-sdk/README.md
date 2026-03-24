@@ -23,7 +23,7 @@ The SDK provides:
 ## Quick Start
 
 ```python
-from terse_sdk import CronJobInputEvent, Terse, TerseAgent
+from terse_sdk import CronJobInputEvent, EventType, Terse, TerseAgent
 
 app = Terse()
 
@@ -33,8 +33,12 @@ app = Terse()
     skills=[],
 )
 def example(event: CronJobInputEvent, agent: TerseAgent) -> None:
-    _ = agent
-    print(event.formatted_content)
+    for stream_event in agent.run(
+        "Answer with one short, cute sentence about this cron job.",
+        event,
+    ):
+        if stream_event.type == EventType.FINAL_OUTPUT:
+            print(stream_event.finalOutput)
 
 example(
     CronJobInputEvent(
@@ -57,6 +61,25 @@ If you scaffold a project with `terse init` and then run `terse generate`, your 
 - `Schedule.cron(...)`
 - `Attio.skill(...)`
 - `Snowflake.skill(...)`
+- deterministic wrappers on `agent.tools.attio` and `agent.tools.snowflake`
+
+Example inside a generated project:
+
+```python
+from terse_generated import Schedule, Snowflake, TerseAgent
+from terse_sdk import CronJobInputEvent, Terse
+
+app = Terse()
+
+@app.job(
+    name="snowflake-job",
+    triggers=[Schedule.cron("0 9 * * 1")],
+    skills=[Snowflake.skill()],
+)
+def example(event: CronJobInputEvent, agent: TerseAgent) -> None:
+    result = agent.tools.snowflake.execute_query(query="select current_date()")
+    print(result)
+```
 
 ## Environment Variables
 

@@ -298,6 +298,165 @@
       ],
       "type": "string"
     },
+    "AttioAttribute": {
+      "additionalProperties": {},
+      "properties": {
+        "api_slug": {
+          "type": "string"
+        },
+        "is_required": {
+          "type": "boolean"
+        },
+        "is_unique": {
+          "type": "boolean"
+        },
+        "title": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "AttioListObjectsToolOutput": {
+      "additionalProperties": false,
+      "properties": {
+        "actions": {
+          "items": {
+            "$ref": "#/definitions/RunHistoryAction"
+          },
+          "type": "array"
+        },
+        "count": {
+          "type": "number"
+        },
+        "objects": {
+          "items": {
+            "$ref": "#/definitions/AttioObjectWithAttributes"
+          },
+          "type": "array"
+        },
+        "success": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "count",
+        "objects",
+        "success"
+      ],
+      "type": "object"
+    },
+    "AttioObjectWithAttributes": {
+      "additionalProperties": false,
+      "properties": {
+        "api_slug": {
+          "type": "string"
+        },
+        "attributes": {
+          "items": {
+            "$ref": "#/definitions/AttioAttribute"
+          },
+          "type": "array"
+        },
+        "plural_noun": {
+          "type": "string"
+        },
+        "singular_noun": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "api_slug",
+        "plural_noun",
+        "singular_noun"
+      ],
+      "type": "object"
+    },
+    "AttioQueryRecordsToolOutput": {
+      "additionalProperties": false,
+      "properties": {
+        "actions": {
+          "items": {
+            "$ref": "#/definitions/RunHistoryAction"
+          },
+          "type": "array"
+        },
+        "count": {
+          "type": "number"
+        },
+        "records": {
+          "items": {
+            "$ref": "#/definitions/AttioRecord"
+          },
+          "type": "array"
+        },
+        "success": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "count",
+        "records",
+        "success"
+      ],
+      "type": "object"
+    },
+    "AttioRecord": {
+      "additionalProperties": {},
+      "properties": {
+        "created_at": {
+          "type": "string"
+        },
+        "id": {
+          "$ref": "#/definitions/AttioRecordIdentifier"
+        },
+        "values": {
+          "$ref": "#/definitions/Record%3Cstring%2Cunknown%3E"
+        },
+        "web_url": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "AttioRecordIdentifier": {
+      "additionalProperties": {},
+      "properties": {
+        "object_id": {
+          "type": "string"
+        },
+        "record_id": {
+          "type": "string"
+        },
+        "workspace_id": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "AttioUpsertRecordToolOutput": {
+      "additionalProperties": false,
+      "properties": {
+        "actions": {
+          "items": {
+            "$ref": "#/definitions/RunHistoryAction"
+          },
+          "type": "array"
+        },
+        "record": {
+          "$ref": "#/definitions/AttioRecord"
+        },
+        "success": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "success"
+      ],
+      "type": "object"
+    },
     "ChangeEventType": {
       "enum": [
         "CREATED",
@@ -1300,6 +1459,78 @@
         "reaction_added"
       ],
       "type": "string"
+    },
+    "SnowflakeExecuteQueryToolOutput": {
+      "additionalProperties": false,
+      "properties": {
+        "actions": {
+          "items": {
+            "$ref": "#/definitions/RunHistoryAction"
+          },
+          "type": "array"
+        },
+        "columns": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "rowCount": {
+          "type": "number"
+        },
+        "rows": {
+          "items": {
+            "$ref": "#/definitions/Record%3Cstring%2Cunknown%3E"
+          },
+          "type": "array"
+        },
+        "success": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "columns",
+        "rowCount",
+        "rows",
+        "success"
+      ],
+      "type": "object"
+    },
+    "SnowflakeExplainQueryToolOutput": {
+      "additionalProperties": false,
+      "properties": {
+        "actions": {
+          "items": {
+            "$ref": "#/definitions/RunHistoryAction"
+          },
+          "type": "array"
+        },
+        "columns": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "explainPlan": {
+          "items": {
+            "$ref": "#/definitions/Record%3Cstring%2Cunknown%3E"
+          },
+          "type": "array"
+        },
+        "rowCount": {
+          "type": "number"
+        },
+        "success": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "columns",
+        "explainPlan",
+        "rowCount",
+        "success"
+      ],
+      "type": "object"
     },
     "TextDelta": {
       "additionalProperties": false,

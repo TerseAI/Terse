@@ -23,7 +23,7 @@ The CLI itself can be installed with `pip`, but the generated project scaffold u
 terse init my-terse-job
 cd my-terse-job
 uv sync
-uv run python src/main.py
+terse test
 ```
 
 If you connect integrations later, regenerate the project helpers:
@@ -48,8 +48,20 @@ The current Python codegen surface is intentionally small:
 - `Schedule.cron(...)`
 - `Attio.skill(...)`
 - `Snowflake.skill(...)`
+- deterministic wrappers on `agent.tools.attio` and `agent.tools.snowflake`
 
 `terse generate` writes these helpers into `src/terse_generated.py` inside your project.
+
+For example, after generating Snowflake helpers and registering `skills=[Snowflake.skill()]`, a job can call:
+
+```python
+from terse_sdk import CronJobInputEvent
+from terse_generated import TerseAgent
+
+def handle(event: CronJobInputEvent, agent: TerseAgent) -> None:
+    result = agent.tools.snowflake.execute_query(query="select current_date()")
+    print(result.rowCount)
+```
 
 ## Environment Variables
 
@@ -63,7 +75,6 @@ The current Python codegen surface is intentionally small:
 terse init my-terse-job
 cd my-terse-job
 uv sync
-uv run python src/main.py
 terse test
 terse deploy
 ```

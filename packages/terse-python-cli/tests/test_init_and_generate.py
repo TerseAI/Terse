@@ -9,6 +9,8 @@ from click.testing import CliRunner
 from terse_cli._generate import (
     CodegenInput,
     GenerateResult,
+    SnowflakeInstanceData,
+    ToolDefinition,
     render_generated_module,
     write_generated_module,
 )
@@ -61,12 +63,22 @@ class InitAndGenerateCommandTests(unittest.TestCase):
             self.assertEqual((project_dir / ".env").read_text(encoding="utf-8"), "TERSE_API_KEY=terse_test_key\n")
             self.assertIn("package = false", (project_dir / "pyproject.toml").read_text(encoding="utf-8"))
             main_source = (project_dir / "src" / "main.py").read_text(encoding="utf-8")
-            self.assertIn("from terse_sdk import CronJobInputEvent, Terse, TerseAgent", main_source)
-            self.assertIn("from terse_generated import Schedule", main_source)
+            readme_source = (project_dir / "README.md").read_text(encoding="utf-8")
+            self.assertIn("from terse_sdk import CronJobInputEvent, EventType, Terse", main_source)
+            self.assertIn("from terse_generated import Schedule, TerseAgent", main_source)
             self.assertIn("app = Terse()", main_source)
             self.assertIn("@app.job(", main_source)
+            self.assertIn("for stream_event in agent.run(prompt, event):", main_source)
+            self.assertIn("if stream_event.type == EventType.FINAL_OUTPUT:", main_source)
+            self.assertIn("print(stream_event.finalOutput)", main_source)
+            self.assertNotIn("_ = agent", main_source)
+            self.assertNotIn("def main()", main_source)
+            self.assertNotIn('__name__ == "__main__"', main_source)
             self.assertNotIn("JobDefinition", main_source)
+            self.assertIn("If you connect Attio or Snowflake in Terse, rerun `terse generate`", readme_source)
+            self.assertIn("agent.tools.snowflake.execute_query(query=\"select 1\")", readme_source)
             self.assertIn("Hello, Ada! API key verified.", result.output)
+            self.assertIn("Run `terse test` to execute it locally", result.output)
 
     def test_init_in_place_is_supported(self) -> None:
         with self.runner.isolated_filesystem():
@@ -102,7 +114,7 @@ class InitAndGenerateCommandTests(unittest.TestCase):
 
             self.assertEqual(result.exit_code, 0, result.output)
             pyproject = Path("demo-project/pyproject.toml").read_text(encoding="utf-8")
-            self.assertIn('[tool.uv.sources]', pyproject)
+            self.assertIn("[tool.uv.sources]", pyproject)
             self.assertIn(
                 'terse-python-sdk = { path = "/tmp/local sdk/packages/terse-python-sdk", editable = true }',
                 pyproject,
@@ -188,6 +200,51 @@ class InitAndGenerateCommandTests(unittest.TestCase):
                     return [{"api_slug": "companies", "singular_noun": "Company"}]
                 if path == "/snowflake/integrations":
                     return [{"id": "snowflake_1", "accountIdentifier": "acme-prod"}]
+                if path == "/sdk/tool-definitions":
+                    return {
+                        "tools": [
+                            {
+                                "name": "attio_list_objects",
+                                "displayName": "List objects",
+                                "description": "List Attio objects.",
+                                "integration": "attio",
+                                "isReadOnly": True,
+                                "parameters": {},
+                            },
+                            {
+                                "name": "attio_query_records",
+                                "displayName": "Query records",
+                                "description": "Query Attio records.",
+                                "integration": "attio",
+                                "isReadOnly": True,
+                                "parameters": {},
+                            },
+                            {
+                                "name": "attio_upsert_record",
+                                "displayName": "Upsert record",
+                                "description": "Upsert Attio record.",
+                                "integration": "attio",
+                                "isReadOnly": False,
+                                "parameters": {},
+                            },
+                            {
+                                "name": "snowflakeExecuteQuery",
+                                "displayName": "Execute query",
+                                "description": "Execute Snowflake query.",
+                                "integration": "snowflake",
+                                "isReadOnly": True,
+                                "parameters": {},
+                            },
+                            {
+                                "name": "snowflakeExplainQuery",
+                                "displayName": "Explain query",
+                                "description": "Explain Snowflake query.",
+                                "integration": "snowflake",
+                                "isReadOnly": True,
+                                "parameters": {},
+                            },
+                        ]
+                    }
                 raise AssertionError(f"Unexpected path: {path}")
 
             with patch("terse_cli._generate.request_json", side_effect=fake_request_json):
@@ -200,6 +257,19 @@ class InitAndGenerateCommandTests(unittest.TestCase):
             self.assertIn("Company=AttioObjectResource(", generated)
             self.assertIn("class Snowflake:", generated)
             self.assertIn("class Schedule:", generated)
+            self.assertIn("class GeneratedTools:", generated)
+            self.assertIn("class TerseAgent(_SdkTerseAgent):", generated)
+            self.assertIn("def create_tools(agent: _SdkTerseAgent)", generated)
+            self.assertIn("class _AttioTools:", generated)
+            self.assertIn("def list_objects(self)", generated)
+            self.assertIn("def query_records(", generated)
+            self.assertIn("def upsert_record(", generated)
+            self.assertIn("class _SnowflakeTools:", generated)
+            self.assertIn("def execute_query(self, *, query: str) -> SnowflakeExecuteQueryToolOutput:", generated)
+            self.assertIn("def explain_query(self, *, query: str) -> SnowflakeExplainQueryToolOutput:", generated)
+            self.assertIn("from terse_sdk.generated.models import (", generated)
+            self.assertIn("AttioQueryRecordsToolOutput", generated)
+            self.assertIn("SnowflakeExecuteQueryToolOutput", generated)
             self.assertNotIn("class Terse:", generated)
             self.assertIn("Attio (Terse CRM) — 1 objects", result.output)
             self.assertIn("Snowflake (acme-prod)", result.output)
@@ -216,6 +286,29 @@ class InitAndGenerateCommandTests(unittest.TestCase):
 
             self.assertNotEqual(result.exit_code, 0)
             self.assertIn("Authentication failed: your TERSE_API_KEY was rejected.", result.output)
+
+    def test_render_generated_module_auto_fills_snowflake_integration_id(self) -> None:
+        generated = render_generated_module(
+            CodegenInput(
+                snowflake=[SnowflakeInstanceData(id="snowflake_1", display_name="acme-prod")],
+                tools=[
+                    ToolDefinition(
+                        name="snowflakeExecuteQuery",
+                        display_name="Execute query",
+                        description="Execute Snowflake query.",
+                        integration="snowflake",
+                        is_read_only=True,
+                    )
+                ],
+            )
+        )
+
+        self.assertIn("class GeneratedTools:", generated)
+        self.assertIn("class _SnowflakeTools:", generated)
+        self.assertIn("class TerseAgent(_SdkTerseAgent):", generated)
+        self.assertIn("'integrationId': 'snowflake_1'", generated)
+        self.assertIn("'query': query", generated)
+        self.assertIn("SnowflakeExecuteQueryToolOutput", generated)
 
 
 if __name__ == "__main__":

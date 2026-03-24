@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+
 import click
 from terse_sdk import CronJobInputEvent, TerseAgent, TriggerConfig, execute_registered_job
 
@@ -9,6 +11,8 @@ from .._loader import JobSelectionError, NoJobsFoundError, ProjectImportError, l
 from .._project import ProjectRootError, read_api_key
 from .._session import SessionStreamError, open_session_stream
 from .._ui import PromptCancelledError, console, log_stream_event, prompt_select
+
+LOGGER = logging.getLogger("terse.cli.test")
 
 
 @click.command("test", help="Run a job locally against a synthetic cron event.")
@@ -26,6 +30,7 @@ def test_command(job_name: str | None) -> None:
     console.print("")
     console.print(f"  [cyan]Testing job:[/cyan] {job.name}")
     console.print("")
+    LOGGER.debug("Testing job %s", job.name)
 
     api_key = read_api_key(project_dir)
     if api_key:
@@ -37,9 +42,11 @@ def test_command(job_name: str | None) -> None:
         console.print("  [dim]No TERSE_API_KEY found; running locally without session logging.[/dim]")
 
     try:
+        synthetic_event = _build_synthetic_cron_event(cron_trigger)
+        LOGGER.debug("Synthetic cron event:\n%s", synthetic_event.model_dump_json(indent=2))
         skipped = execute_registered_job(
             job,
-            _build_synthetic_cron_event(cron_trigger),
+            synthetic_event,
             agent=TerseAgent(job.skills, session_id=session.session_id if session else None),
         )
     except Exception as exc:

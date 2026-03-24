@@ -157,6 +157,8 @@ def _print_next_steps(target_dir: Path, project_name: str | None) -> None:
 
     click.echo(f"  {step}. Edit src/main.py to register your job")
     step += 1
-    click.echo(f"  {step}. uv run python src/main.py")
+    click.echo(f"  {step}. Run `terse test` to execute it locally")
+    step += 1
+    click.echo(f"  {step}. Use `terse run --event ...` when you want to pass a serialized event")
     step += 1
     click.echo(f"  {step}. Run `terse generate` again after you connect Attio or Snowflake\n")
