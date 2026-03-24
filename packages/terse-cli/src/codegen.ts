@@ -656,6 +656,27 @@ function generateAttioSection(instances: AttioInstanceData[]): SectionResult {
     return { code: parts.join("\n"), imports }
 }
 
+// ── Snowflake ─────────────────────────────────────────────────────────
+
+function generateSnowflakeSection(instances: SnowflakeInstanceData[]): SectionResult {
+    if (instances.length === 0) return EMPTY_SECTION
+
+    const inst = instances[0]
+    const imports = new Set(["SnowflakeOutputConfig"])
+    const parts: string[] = [sectionHeader("Snowflake"), ""]
+    const id = inst.id
+
+    parts.push("export const Snowflake = {")
+    parts.push(`    /** Use in \`skills[]\` */`)
+    parts.push(`    skill(opts?: { warehouse?: string; databaseName?: string; schemaName?: string }): SnowflakeOutputConfig {`)
+    parts.push(`        return new SnowflakeOutputConfig("${id}", opts?.warehouse, opts?.databaseName, opts?.schemaName)`)
+    parts.push("    },")
+    parts.push("}")
+    parts.push("")
+
+    return { code: parts.join("\n"), imports }
+}
+
 // ── Typed Tools ───────────────────────────────────────────────────────
 
 /**
@@ -987,6 +1008,7 @@ export function generateCode(input: CodegenInput): string {
         generateLaunchDarklySection(input.launchdarkly),
         generateWorkOSSection(input.workos),
         generateAttioSection(input.attio),
+        generateSnowflakeSection(input.snowflake),
         generateToolsSection(input.tools, input),
         generateSystemSection(),
     ]
