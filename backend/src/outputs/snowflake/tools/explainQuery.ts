@@ -8,6 +8,7 @@ import { IntegrationType } from "../../../shared/Integrations"
 import { ToolName } from "../../../tools/ToolNames"
 import { Session } from "../../../types/session"
 import { getSnowflakeCredentials, runSnowflakeQuery } from "../snowflakeClient"
+import { toolOutput } from "../../../tools/toolOutput"
 
 export const snowflakeExplainQueryTool = tool({
     name: ToolName.SNOWFLAKE_EXPLAIN_QUERY,
@@ -40,13 +41,13 @@ export const snowflakeExplainQueryTool = tool({
                 isReadOnly: true
             }
 
-            return {
+            return toolOutput(ToolName.SNOWFLAKE_EXPLAIN_QUERY, {
                 success: true,
                 explainPlan: result.rows,
                 columns: result.columns,
                 rowCount: result.rowCount,
                 actions: [action]
-            }
+            })
         } catch (error: any) {
             logger.error("Snowflake EXPLAIN query failed", { error: error.message, integrationId })
             throw new Error(`Failed to explain Snowflake query: ${error.message}`)

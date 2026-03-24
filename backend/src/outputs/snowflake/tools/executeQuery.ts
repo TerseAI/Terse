@@ -9,6 +9,7 @@ import { ToolName } from "../../../tools/ToolNames"
 import { createNeedsApprovalFunction } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
 import { getSnowflakeCredentials, runSnowflakeQuery } from "../snowflakeClient"
+import { toolOutput } from "../../../tools/toolOutput"
 
 export const snowflakeExecuteQueryTool = tool({
     name: ToolName.SNOWFLAKE_EXECUTE_QUERY,
@@ -41,13 +42,13 @@ export const snowflakeExecuteQueryTool = tool({
                 isReadOnly: true
             }
 
-            return {
+            return toolOutput(ToolName.SNOWFLAKE_EXECUTE_QUERY, {
                 success: true,
                 rows: result.rows,
                 columns: result.columns,
                 rowCount: result.rowCount,
                 actions: [action]
-            }
+            })
         } catch (error: any) {
             logger.error("Snowflake query execution failed", { error: error.message, integrationId })
             throw new Error(`Failed to execute Snowflake query: ${error.message}`)
