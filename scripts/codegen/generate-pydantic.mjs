@@ -60,7 +60,7 @@ function ensureOutputDir() {
 function generateJsonSchema() {
     run(
         [
-            "npx ts-json-schema-generator",
+            "npx --no-install ts-json-schema-generator",
             `--tsconfig tsconfig.codegen.json`,
             `--path codegen-entry.ts`,
             `--type "*"`,
@@ -73,11 +73,153 @@ function generateJsonSchema() {
     console.log(`✓ JSON Schema written to ${SCHEMA_OUT}`)
 }
 
+function getDefinitionsRoot(schema) {
+    if (schema && typeof schema === "object") {
+        if (schema.$defs && typeof schema.$defs === "object") {
+            return { defs: schema.$defs, refPrefix: "#/$defs/" }
+        }
+        if (schema.definitions && typeof schema.definitions === "object") {
+            return { defs: schema.definitions, refPrefix: "#/definitions/" }
+        }
+    }
+    return null
+}
+
+function resolveDefinitionRef(ref, defs, refPrefix) {
+    if (typeof ref !== "string" || !ref.startsWith(refPrefix)) {
+        return null
+    }
+
+    const definitionName = decodeURIComponent(ref.slice(refPrefix.length))
+    const schema = defs[definitionName]
+    if (!schema || typeof schema !== "object") {
+        return null
+    }
+
+    return { definitionName, schema }
+}
+
+function getDiscriminatorLiteralValue(schemaNode, defs, refPrefix) {
+    const resolvedSchema = schemaNode?.$ref ? resolveDefinitionRef(schemaNode.$ref, defs, refPrefix)?.schema : schemaNode
+    const typeProperty = resolvedSchema?.properties?.type
+
+    if (typeof typeProperty?.const === "string") {
+        return typeProperty.const
+    }
+
+    if (Array.isArray(typeProperty?.enum) && typeProperty.enum.length === 1 && typeof typeProperty.enum[0] === "string") {
+        return typeProperty.enum[0]
+    }
+
+    return null
+}
+
+function toPascalCase(value) {
+    const normalized = String(value)
+        .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+        .replace(/[^a-zA-Z0-9]+/g, " ")
+        .trim()
+
+    const parts = normalized ? normalized.split(/\s+/) : []
+    const pascalCase = parts.map(part => part.charAt(0).toUpperCase() + part.slice(1)).join("")
+
+    if (!pascalCase) {
+        return "Variant"
+    }
+
+    return /^[0-9]/.test(pascalCase) ? `Variant${pascalCase}` : pascalCase
+}
+
+function getUniqueDefinitionName(baseName, defs) {
+    if (!(baseName in defs)) {
+        return baseName
+    }
+
+    let index = 2
+    while (`${baseName}${index}` in defs) {
+        index += 1
+    }
+    return `${baseName}${index}`
+}
+
+function normalizeTaggedUnions() {
+    const schema = JSON.parse(readFileSync(SCHEMA_OUT, "utf8"))
+    const root = getDefinitionsRoot(schema)
+
+    if (!root) {
+        console.warn(`⚠  WARNING: Could not find schema definitions in ${SCHEMA_OUT}; skipping tagged-union normalization.`)
+        return
+    }
+
+    const { defs, refPrefix } = root
+    const transformedUnions = []
+
+    for (const [unionName, definition] of Object.entries(defs)) {
+        if (!definition || typeof definition !== "object" || definition.discriminator) {
+            continue
+        }
+
+        const unionKey = Array.isArray(definition.anyOf) ? "anyOf" : Array.isArray(definition.oneOf) ? "oneOf" : null
+        if (!unionKey) {
+            continue
+        }
+
+        const variants = []
+        const seenTags = new Set()
+        let isTaggedUnion = true
+
+        for (const variant of definition[unionKey]) {
+            const tag = getDiscriminatorLiteralValue(variant, defs, refPrefix)
+            if (!tag || seenTags.has(tag)) {
+                isTaggedUnion = false
+                break
+            }
+
+            seenTags.add(tag)
+            variants.push({ tag, variant })
+        }
+
+        if (!isTaggedUnion || variants.length < 2) {
+            continue
+        }
+
+        const mapping = {}
+
+        definition[unionKey] = variants.map(({ tag, variant }) => {
+            if (variant.$ref) {
+                mapping[tag] = variant.$ref
+                return variant
+            }
+
+            const definitionName = getUniqueDefinitionName(`${unionName}${toPascalCase(tag)}`, defs)
+            const ref = `${refPrefix}${encodeURIComponent(definitionName)}`
+
+            defs[definitionName] = variant
+            mapping[tag] = ref
+
+            return { $ref: ref }
+        })
+
+        definition.discriminator = {
+            propertyName: "type",
+            mapping,
+        }
+
+        transformedUnions.push(unionName)
+    }
+
+    if (transformedUnions.length > 0) {
+        writeFileSync(SCHEMA_OUT, `${JSON.stringify(schema, null, 2)}\n`, "utf8")
+        console.log(`✓ Normalized tagged unions: ${transformedUnions.join(", ")}`)
+    }
+}
+
 function generatePydanticModels() {
     run(
         [
             "datamodel-codegen",
             `--input "${SCHEMA_OUT}"`,
+            `--input-file-type jsonschema`,
             `--output "${MODELS_OUT}"`,
             `--output-model-type pydantic_v2.BaseModel`,
             `--use-annotated`,
@@ -115,7 +257,7 @@ function postProcess() {
     }
 
     // 3. Warn if discriminated unions are missing Field(discriminator=...)
-    const discriminatedUnions = ["SdkAgentStreamEvent", "ModelEvent"]
+    const discriminatedUnions = ["ChatSnippet", "SdkAgentStreamEvent", "ModelEvent"]
     for (const name of discriminatedUnions) {
         if (src.includes(`class ${name}`) && !src.includes("discriminator=")) {
             console.warn(
@@ -150,6 +292,7 @@ console.log("=== Terse Python SDK — Pydantic codegen ===\n")
 checkPrerequisites()
 ensureOutputDir()
 generateJsonSchema()
+normalizeTaggedUnions()
 generatePydanticModels()
 postProcess()
 writeGeneratedInit()

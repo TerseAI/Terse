@@ -329,161 +329,31 @@
     "ChatSnippet": {
       "anyOf": [
         {
-          "additionalProperties": false,
-          "properties": {
-            "id": {
-              "type": "string"
-            },
-            "label": {
-              "type": "string"
-            },
-            "selectedValue": {
-              "type": "string"
-            },
-            "step_id": {
-              "type": "string"
-            },
-            "type": {
-              "const": "button",
-              "type": "string"
-            },
-            "url": {
-              "type": "string"
-            }
-          },
-          "required": [
-            "label",
-            "type",
-            "url"
-          ],
-          "type": "object"
+          "$ref": "#/definitions/ChatSnippetButton"
         },
         {
-          "additionalProperties": false,
-          "properties": {
-            "id": {
-              "type": "string"
-            },
-            "integration": {
-              "type": "string"
-            },
-            "message": {
-              "type": "string"
-            },
-            "selectedValue": {
-              "type": "string"
-            },
-            "stateToken": {
-              "type": "string"
-            },
-            "step_id": {
-              "type": "string"
-            },
-            "type": {
-              "const": "integration_prompt",
-              "type": "string"
-            }
-          },
-          "required": [
-            "integration",
-            "message",
-            "type"
-          ],
-          "type": "object"
+          "$ref": "#/definitions/ChatSnippetIntegrationPrompt"
         },
         {
-          "additionalProperties": false,
-          "properties": {
-            "id": {
-              "type": "string"
-            },
-            "path": {
-              "type": "string"
-            },
-            "selectedValue": {
-              "type": "string"
-            },
-            "step_id": {
-              "type": "string"
-            },
-            "type": {
-              "const": "navigate",
-              "type": "string"
-            }
-          },
-          "required": [
-            "path",
-            "type"
-          ],
-          "type": "object"
+          "$ref": "#/definitions/ChatSnippetNavigate"
         },
         {
-          "additionalProperties": false,
-          "properties": {
-            "allowMultiple": {
-              "type": "boolean"
-            },
-            "id": {
-              "type": "string"
-            },
-            "options": {
-              "items": {
-                "$ref": "#/definitions/MultipleChoiceOption"
-              },
-              "type": "array"
-            },
-            "question": {
-              "type": "string"
-            },
-            "questionId": {
-              "type": "string"
-            },
-            "selectedValue": {
-              "type": "string"
-            },
-            "step_id": {
-              "type": "string"
-            },
-            "type": {
-              "const": "multiple_choice",
-              "type": "string"
-            }
-          },
-          "required": [
-            "options",
-            "question",
-            "questionId",
-            "type"
-          ],
-          "type": "object"
+          "$ref": "#/definitions/ChatSnippetMultipleChoice"
         },
         {
-          "additionalProperties": false,
-          "properties": {
-            "id": {
-              "type": "string"
-            },
-            "selectedValue": {
-              "type": "string"
-            },
-            "step_id": {
-              "type": "string"
-            },
-            "type": {
-              "const": "image",
-              "type": "string"
-            },
-            "url": {
-              "type": "string"
-            }
-          },
-          "required": [
-            "type",
-            "url"
-          ],
-          "type": "object"
+          "$ref": "#/definitions/ChatSnippetImage"
         }
-      ]
+      ],
+      "discriminator": {
+        "propertyName": "type",
+        "mapping": {
+          "button": "#/definitions/ChatSnippetButton",
+          "integration_prompt": "#/definitions/ChatSnippetIntegrationPrompt",
+          "navigate": "#/definitions/ChatSnippetNavigate",
+          "multiple_choice": "#/definitions/ChatSnippetMultipleChoice",
+          "image": "#/definitions/ChatSnippetImage"
+        }
+      }
     },
     "ConfigDetails": {
       "additionalProperties": false,
@@ -674,361 +544,63 @@
     "ModelEvent": {
       "anyOf": [
         {
-          "additionalProperties": false,
-          "properties": {
-            "approved": {
-              "type": "boolean"
-            },
-            "step_id": {
-              "type": "string"
-            },
-            "timestamp": {
-              "type": "number"
-            },
-            "type": {
-              "const": "ToolApprovalResponse",
-              "type": "string"
-            }
-          },
-          "required": [
-            "approved",
-            "step_id",
-            "timestamp",
-            "type"
-          ],
-          "type": "object"
+          "$ref": "#/definitions/ModelEventToolApprovalResponse"
         },
         {
-          "additionalProperties": false,
-          "properties": {
-            "arguments": {
-              "type": "string"
-            },
-            "name": {
-              "type": "string"
-            },
-            "step_id": {
-              "type": "string"
-            },
-            "timestamp": {
-              "type": "number"
-            },
-            "type": {
-              "const": "ToolApprovalRequest",
-              "type": "string"
-            }
-          },
-          "required": [
-            "arguments",
-            "name",
-            "step_id",
-            "timestamp",
-            "type"
-          ],
-          "type": "object"
+          "$ref": "#/definitions/ModelEventToolApprovalRequest"
         },
         {
-          "additionalProperties": false,
-          "properties": {
-            "step_id": {
-              "type": "string"
-            },
-            "timestamp": {
-              "type": "number"
-            },
-            "tool_name": {
-              "type": "string"
-            },
-            "type": {
-              "const": "ToolCallGenerating",
-              "type": "string"
-            }
-          },
-          "required": [
-            "step_id",
-            "timestamp",
-            "tool_name",
-            "type"
-          ],
-          "type": "object"
+          "$ref": "#/definitions/ModelEventToolCallGenerating"
         },
         {
-          "additionalProperties": false,
-          "properties": {
-            "integration": {
-              "type": "string"
-            },
-            "parameters": {
-              "type": "string"
-            },
-            "step_id": {
-              "type": "string"
-            },
-            "summary": {
-              "type": "string"
-            },
-            "timestamp": {
-              "type": "number"
-            },
-            "type": {
-              "const": "ToolCall",
-              "type": "string"
-            }
-          },
-          "required": [
-            "integration",
-            "parameters",
-            "step_id",
-            "summary",
-            "timestamp",
-            "type"
-          ],
-          "type": "object"
+          "$ref": "#/definitions/ModelEventToolCall"
         },
         {
-          "additionalProperties": false,
-          "properties": {
-            "changed_items": {
-              "items": {
-                "$ref": "#/definitions/ChangedItem"
-              },
-              "type": "array"
-            },
-            "errorContext": {
-              "$ref": "#/definitions/SharedErrorContext"
-            },
-            "integration": {
-              "type": "string"
-            },
-            "result": {
-              "type": "string"
-            },
-            "status": {
-              "$ref": "#/definitions/ToolCallExecutionStatus"
-            },
-            "step_id": {
-              "type": "string"
-            },
-            "timestamp": {
-              "type": "number"
-            },
-            "tool_name": {
-              "type": "string"
-            },
-            "type": {
-              "const": "ToolCallComplete",
-              "type": "string"
-            },
-            "url": {
-              "type": "string"
-            }
-          },
-          "required": [
-            "changed_items",
-            "integration",
-            "status",
-            "step_id",
-            "timestamp",
-            "tool_name",
-            "type"
-          ],
-          "type": "object"
+          "$ref": "#/definitions/ModelEventToolCallComplete"
         },
         {
-          "additionalProperties": false,
-          "properties": {
-            "delta": {
-              "type": "string"
-            },
-            "step_id": {
-              "type": "string"
-            },
-            "timestamp": {
-              "type": "number"
-            },
-            "type": {
-              "const": "TextDelta",
-              "type": "string"
-            }
-          },
-          "required": [
-            "delta",
-            "step_id",
-            "timestamp",
-            "type"
-          ],
-          "type": "object"
+          "$ref": "#/definitions/ModelEventTextDelta"
         },
         {
-          "additionalProperties": false,
-          "properties": {
-            "code": {
-              "type": "string"
-            },
-            "error": {
-              "type": "string"
-            },
-            "timestamp": {
-              "type": "number"
-            },
-            "type": {
-              "const": "RunError",
-              "type": "string"
-            }
-          },
-          "required": [
-            "error",
-            "timestamp",
-            "type"
-          ],
-          "type": "object"
+          "$ref": "#/definitions/ModelEventRunError"
         },
         {
-          "additionalProperties": false,
-          "properties": {
-            "reason": {
-              "type": "string"
-            },
-            "timestamp": {
-              "type": "number"
-            },
-            "type": {
-              "const": "Cancelled",
-              "type": "string"
-            }
-          },
-          "required": [
-            "timestamp",
-            "type"
-          ],
-          "type": "object"
+          "$ref": "#/definitions/ModelEventCancelled"
         },
         {
-          "additionalProperties": false,
-          "properties": {
-            "step_id": {
-              "type": "string"
-            },
-            "timestamp": {
-              "type": "number"
-            },
-            "type": {
-              "const": "NaturalStop",
-              "type": "string"
-            }
-          },
-          "required": [
-            "step_id",
-            "timestamp",
-            "type"
-          ],
-          "type": "object"
+          "$ref": "#/definitions/ModelEventNaturalStop"
         },
         {
-          "additionalProperties": false,
-          "properties": {
-            "confidence": {
-              "type": "number"
-            },
-            "isRelevant": {
-              "type": "boolean"
-            },
-            "reason": {
-              "type": "string"
-            },
-            "step_id": {
-              "type": "string"
-            },
-            "timestamp": {
-              "type": "number"
-            },
-            "type": {
-              "const": "FilterResult",
-              "type": "string"
-            }
-          },
-          "required": [
-            "confidence",
-            "isRelevant",
-            "reason",
-            "step_id",
-            "timestamp",
-            "type"
-          ],
-          "type": "object"
+          "$ref": "#/definitions/ModelEventFilterResult"
         },
         {
-          "additionalProperties": false,
-          "properties": {
-            "client_turn_id": {
-              "type": "string"
-            },
-            "message": {
-              "type": "string"
-            },
-            "step_id": {
-              "type": "string"
-            },
-            "timestamp": {
-              "type": "number"
-            },
-            "type": {
-              "const": "UserMessage",
-              "type": "string"
-            }
-          },
-          "required": [
-            "client_turn_id",
-            "message",
-            "step_id",
-            "timestamp",
-            "type"
-          ],
-          "type": "object"
+          "$ref": "#/definitions/ModelEventUserMessage"
         },
         {
-          "additionalProperties": false,
-          "properties": {
-            "step_id": {
-              "type": "string"
-            },
-            "timestamp": {
-              "type": "number"
-            },
-            "type": {
-              "const": "Thinking",
-              "type": "string"
-            }
-          },
-          "required": [
-            "step_id",
-            "timestamp",
-            "type"
-          ],
-          "type": "object"
+          "$ref": "#/definitions/ModelEventThinking"
         },
         {
-          "additionalProperties": false,
-          "properties": {
-            "snippet": {
-              "$ref": "#/definitions/ChatSnippet"
-            },
-            "timestamp": {
-              "type": "number"
-            },
-            "type": {
-              "const": "Snippet",
-              "type": "string"
-            }
-          },
-          "required": [
-            "snippet",
-            "timestamp",
-            "type"
-          ],
-          "type": "object"
+          "$ref": "#/definitions/ModelEventSnippet"
         }
-      ]
+      ],
+      "discriminator": {
+        "propertyName": "type",
+        "mapping": {
+          "ToolApprovalResponse": "#/definitions/ModelEventToolApprovalResponse",
+          "ToolApprovalRequest": "#/definitions/ModelEventToolApprovalRequest",
+          "ToolCallGenerating": "#/definitions/ModelEventToolCallGenerating",
+          "ToolCall": "#/definitions/ModelEventToolCall",
+          "ToolCallComplete": "#/definitions/ModelEventToolCallComplete",
+          "TextDelta": "#/definitions/ModelEventTextDelta",
+          "RunError": "#/definitions/ModelEventRunError",
+          "Cancelled": "#/definitions/ModelEventCancelled",
+          "NaturalStop": "#/definitions/ModelEventNaturalStop",
+          "FilterResult": "#/definitions/ModelEventFilterResult",
+          "UserMessage": "#/definitions/ModelEventUserMessage",
+          "Thinking": "#/definitions/ModelEventThinking",
+          "Snippet": "#/definitions/ModelEventSnippet"
+        }
+      }
     },
     "MultipleChoiceOption": {
       "additionalProperties": false,
@@ -1513,138 +1085,43 @@
     "SdkAgentStreamEvent": {
       "anyOf": [
         {
-          "additionalProperties": false,
-          "properties": {
-            "text": {
-              "type": "string"
-            },
-            "type": {
-              "const": "text",
-              "type": "string"
-            }
-          },
-          "required": [
-            "type",
-            "text"
-          ],
-          "type": "object"
+          "$ref": "#/definitions/SdkAgentStreamEventText"
         },
         {
-          "additionalProperties": false,
-          "properties": {
-            "finalOutput": {
-              "type": "string"
-            },
-            "type": {
-              "const": "final_output",
-              "type": "string"
-            }
-          },
-          "required": [
-            "type",
-            "finalOutput"
-          ],
-          "type": "object"
+          "$ref": "#/definitions/SdkAgentStreamEventFinalOutput"
         },
         {
-          "additionalProperties": false,
-          "properties": {
-            "toolCallParams": {
-              "type": "string"
-            },
-            "type": {
-              "const": "tool_call_params",
-              "type": "string"
-            }
-          },
-          "required": [
-            "type",
-            "toolCallParams"
-          ],
-          "type": "object"
+          "$ref": "#/definitions/SdkAgentStreamEventToolCallParams"
         },
         {
-          "additionalProperties": false,
-          "properties": {
-            "toolCallStarted": {
-              "type": "string"
-            },
-            "type": {
-              "const": "tool_call_started",
-              "type": "string"
-            }
-          },
-          "required": [
-            "type",
-            "toolCallStarted"
-          ],
-          "type": "object"
+          "$ref": "#/definitions/SdkAgentStreamEventToolCallStarted"
         },
         {
-          "additionalProperties": false,
-          "properties": {
-            "toolCallCompleted": {
-              "type": "string"
-            },
-            "type": {
-              "const": "tool_call_completed",
-              "type": "string"
-            }
-          },
-          "required": [
-            "type",
-            "toolCallCompleted"
-          ],
-          "type": "object"
+          "$ref": "#/definitions/SdkAgentStreamEventToolCallCompleted"
         },
         {
-          "additionalProperties": false,
-          "properties": {
-            "action": {
-              "$ref": "#/definitions/RunHistoryAction"
-            },
-            "type": {
-              "const": "action",
-              "type": "string"
-            }
-          },
-          "required": [
-            "type",
-            "action"
-          ],
-          "type": "object"
+          "$ref": "#/definitions/SdkAgentStreamEventAction"
         },
         {
-          "additionalProperties": false,
-          "properties": {
-            "message": {
-              "type": "string"
-            },
-            "type": {
-              "const": "error",
-              "type": "string"
-            }
-          },
-          "required": [
-            "type",
-            "message"
-          ],
-          "type": "object"
+          "$ref": "#/definitions/SdkAgentStreamEventError"
         },
         {
-          "additionalProperties": false,
-          "properties": {
-            "type": {
-              "const": "done",
-              "type": "string"
-            }
-          },
-          "required": [
-            "type"
-          ],
-          "type": "object"
+          "$ref": "#/definitions/SdkAgentStreamEventDone"
         }
-      ]
+      ],
+      "discriminator": {
+        "propertyName": "type",
+        "mapping": {
+          "text": "#/definitions/SdkAgentStreamEventText",
+          "final_output": "#/definitions/SdkAgentStreamEventFinalOutput",
+          "tool_call_params": "#/definitions/SdkAgentStreamEventToolCallParams",
+          "tool_call_started": "#/definitions/SdkAgentStreamEventToolCallStarted",
+          "tool_call_completed": "#/definitions/SdkAgentStreamEventToolCallCompleted",
+          "action": "#/definitions/SdkAgentStreamEventAction",
+          "error": "#/definitions/SdkAgentStreamEventError",
+          "done": "#/definitions/SdkAgentStreamEventDone"
+        }
+      }
     },
     "SdkDeployJob": {
       "additionalProperties": false,
@@ -2159,6 +1636,648 @@
         "invitation.accepted"
       ],
       "type": "string"
+    },
+    "ChatSnippetButton": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "selectedValue": {
+          "type": "string"
+        },
+        "step_id": {
+          "type": "string"
+        },
+        "type": {
+          "const": "button",
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "label",
+        "type",
+        "url"
+      ],
+      "type": "object"
+    },
+    "ChatSnippetIntegrationPrompt": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "integration": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        },
+        "selectedValue": {
+          "type": "string"
+        },
+        "stateToken": {
+          "type": "string"
+        },
+        "step_id": {
+          "type": "string"
+        },
+        "type": {
+          "const": "integration_prompt",
+          "type": "string"
+        }
+      },
+      "required": [
+        "integration",
+        "message",
+        "type"
+      ],
+      "type": "object"
+    },
+    "ChatSnippetNavigate": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "selectedValue": {
+          "type": "string"
+        },
+        "step_id": {
+          "type": "string"
+        },
+        "type": {
+          "const": "navigate",
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "type"
+      ],
+      "type": "object"
+    },
+    "ChatSnippetMultipleChoice": {
+      "additionalProperties": false,
+      "properties": {
+        "allowMultiple": {
+          "type": "boolean"
+        },
+        "id": {
+          "type": "string"
+        },
+        "options": {
+          "items": {
+            "$ref": "#/definitions/MultipleChoiceOption"
+          },
+          "type": "array"
+        },
+        "question": {
+          "type": "string"
+        },
+        "questionId": {
+          "type": "string"
+        },
+        "selectedValue": {
+          "type": "string"
+        },
+        "step_id": {
+          "type": "string"
+        },
+        "type": {
+          "const": "multiple_choice",
+          "type": "string"
+        }
+      },
+      "required": [
+        "options",
+        "question",
+        "questionId",
+        "type"
+      ],
+      "type": "object"
+    },
+    "ChatSnippetImage": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "selectedValue": {
+          "type": "string"
+        },
+        "step_id": {
+          "type": "string"
+        },
+        "type": {
+          "const": "image",
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "url"
+      ],
+      "type": "object"
+    },
+    "ModelEventToolApprovalResponse": {
+      "additionalProperties": false,
+      "properties": {
+        "approved": {
+          "type": "boolean"
+        },
+        "step_id": {
+          "type": "string"
+        },
+        "timestamp": {
+          "type": "number"
+        },
+        "type": {
+          "const": "ToolApprovalResponse",
+          "type": "string"
+        }
+      },
+      "required": [
+        "approved",
+        "step_id",
+        "timestamp",
+        "type"
+      ],
+      "type": "object"
+    },
+    "ModelEventToolApprovalRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "arguments": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "step_id": {
+          "type": "string"
+        },
+        "timestamp": {
+          "type": "number"
+        },
+        "type": {
+          "const": "ToolApprovalRequest",
+          "type": "string"
+        }
+      },
+      "required": [
+        "arguments",
+        "name",
+        "step_id",
+        "timestamp",
+        "type"
+      ],
+      "type": "object"
+    },
+    "ModelEventToolCallGenerating": {
+      "additionalProperties": false,
+      "properties": {
+        "step_id": {
+          "type": "string"
+        },
+        "timestamp": {
+          "type": "number"
+        },
+        "tool_name": {
+          "type": "string"
+        },
+        "type": {
+          "const": "ToolCallGenerating",
+          "type": "string"
+        }
+      },
+      "required": [
+        "step_id",
+        "timestamp",
+        "tool_name",
+        "type"
+      ],
+      "type": "object"
+    },
+    "ModelEventToolCall": {
+      "additionalProperties": false,
+      "properties": {
+        "integration": {
+          "type": "string"
+        },
+        "parameters": {
+          "type": "string"
+        },
+        "step_id": {
+          "type": "string"
+        },
+        "summary": {
+          "type": "string"
+        },
+        "timestamp": {
+          "type": "number"
+        },
+        "type": {
+          "const": "ToolCall",
+          "type": "string"
+        }
+      },
+      "required": [
+        "integration",
+        "parameters",
+        "step_id",
+        "summary",
+        "timestamp",
+        "type"
+      ],
+      "type": "object"
+    },
+    "ModelEventToolCallComplete": {
+      "additionalProperties": false,
+      "properties": {
+        "changed_items": {
+          "items": {
+            "$ref": "#/definitions/ChangedItem"
+          },
+          "type": "array"
+        },
+        "errorContext": {
+          "$ref": "#/definitions/SharedErrorContext"
+        },
+        "integration": {
+          "type": "string"
+        },
+        "result": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/definitions/ToolCallExecutionStatus"
+        },
+        "step_id": {
+          "type": "string"
+        },
+        "timestamp": {
+          "type": "number"
+        },
+        "tool_name": {
+          "type": "string"
+        },
+        "type": {
+          "const": "ToolCallComplete",
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "changed_items",
+        "integration",
+        "status",
+        "step_id",
+        "timestamp",
+        "tool_name",
+        "type"
+      ],
+      "type": "object"
+    },
+    "ModelEventTextDelta": {
+      "additionalProperties": false,
+      "properties": {
+        "delta": {
+          "type": "string"
+        },
+        "step_id": {
+          "type": "string"
+        },
+        "timestamp": {
+          "type": "number"
+        },
+        "type": {
+          "const": "TextDelta",
+          "type": "string"
+        }
+      },
+      "required": [
+        "delta",
+        "step_id",
+        "timestamp",
+        "type"
+      ],
+      "type": "object"
+    },
+    "ModelEventRunError": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "type": "string"
+        },
+        "error": {
+          "type": "string"
+        },
+        "timestamp": {
+          "type": "number"
+        },
+        "type": {
+          "const": "RunError",
+          "type": "string"
+        }
+      },
+      "required": [
+        "error",
+        "timestamp",
+        "type"
+      ],
+      "type": "object"
+    },
+    "ModelEventCancelled": {
+      "additionalProperties": false,
+      "properties": {
+        "reason": {
+          "type": "string"
+        },
+        "timestamp": {
+          "type": "number"
+        },
+        "type": {
+          "const": "Cancelled",
+          "type": "string"
+        }
+      },
+      "required": [
+        "timestamp",
+        "type"
+      ],
+      "type": "object"
+    },
+    "ModelEventNaturalStop": {
+      "additionalProperties": false,
+      "properties": {
+        "step_id": {
+          "type": "string"
+        },
+        "timestamp": {
+          "type": "number"
+        },
+        "type": {
+          "const": "NaturalStop",
+          "type": "string"
+        }
+      },
+      "required": [
+        "step_id",
+        "timestamp",
+        "type"
+      ],
+      "type": "object"
+    },
+    "ModelEventFilterResult": {
+      "additionalProperties": false,
+      "properties": {
+        "confidence": {
+          "type": "number"
+        },
+        "isRelevant": {
+          "type": "boolean"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "step_id": {
+          "type": "string"
+        },
+        "timestamp": {
+          "type": "number"
+        },
+        "type": {
+          "const": "FilterResult",
+          "type": "string"
+        }
+      },
+      "required": [
+        "confidence",
+        "isRelevant",
+        "reason",
+        "step_id",
+        "timestamp",
+        "type"
+      ],
+      "type": "object"
+    },
+    "ModelEventUserMessage": {
+      "additionalProperties": false,
+      "properties": {
+        "client_turn_id": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        },
+        "step_id": {
+          "type": "string"
+        },
+        "timestamp": {
+          "type": "number"
+        },
+        "type": {
+          "const": "UserMessage",
+          "type": "string"
+        }
+      },
+      "required": [
+        "client_turn_id",
+        "message",
+        "step_id",
+        "timestamp",
+        "type"
+      ],
+      "type": "object"
+    },
+    "ModelEventThinking": {
+      "additionalProperties": false,
+      "properties": {
+        "step_id": {
+          "type": "string"
+        },
+        "timestamp": {
+          "type": "number"
+        },
+        "type": {
+          "const": "Thinking",
+          "type": "string"
+        }
+      },
+      "required": [
+        "step_id",
+        "timestamp",
+        "type"
+      ],
+      "type": "object"
+    },
+    "ModelEventSnippet": {
+      "additionalProperties": false,
+      "properties": {
+        "snippet": {
+          "$ref": "#/definitions/ChatSnippet"
+        },
+        "timestamp": {
+          "type": "number"
+        },
+        "type": {
+          "const": "Snippet",
+          "type": "string"
+        }
+      },
+      "required": [
+        "snippet",
+        "timestamp",
+        "type"
+      ],
+      "type": "object"
+    },
+    "SdkAgentStreamEventText": {
+      "additionalProperties": false,
+      "properties": {
+        "text": {
+          "type": "string"
+        },
+        "type": {
+          "const": "text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "text"
+      ],
+      "type": "object"
+    },
+    "SdkAgentStreamEventFinalOutput": {
+      "additionalProperties": false,
+      "properties": {
+        "finalOutput": {
+          "type": "string"
+        },
+        "type": {
+          "const": "final_output",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "finalOutput"
+      ],
+      "type": "object"
+    },
+    "SdkAgentStreamEventToolCallParams": {
+      "additionalProperties": false,
+      "properties": {
+        "toolCallParams": {
+          "type": "string"
+        },
+        "type": {
+          "const": "tool_call_params",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "toolCallParams"
+      ],
+      "type": "object"
+    },
+    "SdkAgentStreamEventToolCallStarted": {
+      "additionalProperties": false,
+      "properties": {
+        "toolCallStarted": {
+          "type": "string"
+        },
+        "type": {
+          "const": "tool_call_started",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "toolCallStarted"
+      ],
+      "type": "object"
+    },
+    "SdkAgentStreamEventToolCallCompleted": {
+      "additionalProperties": false,
+      "properties": {
+        "toolCallCompleted": {
+          "type": "string"
+        },
+        "type": {
+          "const": "tool_call_completed",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "toolCallCompleted"
+      ],
+      "type": "object"
+    },
+    "SdkAgentStreamEventAction": {
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "$ref": "#/definitions/RunHistoryAction"
+        },
+        "type": {
+          "const": "action",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "action"
+      ],
+      "type": "object"
+    },
+    "SdkAgentStreamEventError": {
+      "additionalProperties": false,
+      "properties": {
+        "message": {
+          "type": "string"
+        },
+        "type": {
+          "const": "error",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "message"
+      ],
+      "type": "object"
+    },
+    "SdkAgentStreamEventDone": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "done",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "type": "object"
     }
   }
 }

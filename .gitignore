@@ -7,3 +7,20 @@
 /packages/terse-cli/node_modules
 /packages/terse-cli/dist
 .pnpm-store/
+
+# Python SDK artifacts
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+.coverage
+.coverage.*
+htmlcov/
+.venv/
+venv/
+*.egg-info/
+pip-wheel-metadata/
+/packages/terse-python-sdk/build/
+/packages/terse-python-sdk/dist/
