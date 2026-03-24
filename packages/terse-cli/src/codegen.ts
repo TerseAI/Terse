@@ -22,6 +22,7 @@ export interface PosthogProjectData { id: string; name: string }
 export interface DatadogIndexData { name: string }
 export interface LaunchDarklyProjectData { key: string; name: string }
 export interface AttioObjectData { api_slug: string; singular_noun: string }
+export interface SnowflakeInstanceData {id: string; name: string}
 
 // Instance data types with resources
 export interface SlackInstanceData extends IntegrationInstanceData { channels: SlackChannelData[] }
@@ -66,6 +67,7 @@ export interface CodegenInput {
     launchdarkly: LaunchDarklyInstanceData[]
     workos: IntegrationInstanceData[]
     attio: AttioInstanceData[]
+    snowflake: SnowflakeInstanceData[]
     tools: ToolDefinition[]
 }
 
@@ -751,6 +753,7 @@ function generateToolsSection(tools: ToolDefinition[], input: CodegenInput): Sec
     instanceMap.set("launchdarkly", input.launchdarkly.map(l => ({ id: l.id, displayName: l.displayName })))
     instanceMap.set("workos", input.workos.map(w => ({ id: w.id, displayName: w.displayName })))
     instanceMap.set("attio", input.attio.map(a => ({ id: a.id, displayName: a.displayName })))
+    instanceMap.set("snowflake", input.snowflake.map(s => ({ id: s.id, displayName: s.name })))
 
     // Group tools by integration
     const byIntegration = new Map<string, ToolDefinition[]>()
