@@ -9,6 +9,7 @@ default-groups = ["dev"]
 
 [dependency-groups]
 dev = [
+    "bump-my-version>=1.2.7",
     "pytest>=8.4.2",
     "ruff>=0.15.7",
     "ty>=0.0.24",

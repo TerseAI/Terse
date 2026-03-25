@@ -150,7 +150,7 @@ def build_sdk_dependency_requirement() -> str:
     version = _installed_version("terse-sdk") or "0.1.0"
     normalized = _normalize_release_version(version)
     major, minor, patch = normalized
-    return f"terse-sdk>={major}.{minor}.{patch},<{major}.{minor + 1}.0"
+    return f"terse-sdk~={major}.{minor}.{patch}"
 
 
 def detect_local_sdk_source_path() -> Path | None:

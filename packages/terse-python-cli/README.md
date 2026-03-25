@@ -88,15 +88,3 @@ terse run --event '{"integrationType":"cron_job","eventType":"manual","formatted
 ## Source
 
 - Homepage: [useterse.ai](https://useterse.ai)
-- Repository: [github.com/TerseAI/Terse](https://github.com/TerseAI/Terse)
-- Issues: [github.com/TerseAI/Terse/issues](https://github.com/TerseAI/Terse/issues)
-
-## Development
-
-If you are working on the CLI itself from the monorepo:
-
-```bash
-npm run python:setup
-npm run python:check
-npm run python:build
-```

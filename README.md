@@ -194,20 +194,33 @@ For day-to-day Python development:
 
 ### Publishing Python Packages
 
-Prepare the next release version from the repo root:
+Prepare the next SDK release version from the repo root:
 
 ```bash
-npm run python:release:prep
+npm run python:release:prep:sdk -- patch
 ```
 
-That command defaults to a patch bump for both Python packages, updates the CLI's `terse-sdk` dependency floor, refreshes `uv.lock`, and does not publish anything.
-
-You can also choose the bump type or set an explicit version:
+Then prepare the CLI release version:
 
 ```bash
-npm run python:release:prep -- minor
-npm run python:release:prep -- major
-npm run python:release:prep -- 0.2.0
+npm run python:release:prep:cli -- patch
+```
+
+Both commands call `bump-my-version` directly with separate configs, so the SDK and CLI stay on separate version lines. The SDK bump updates the SDK package version, SDK `__version__`, the CLI's published `terse-sdk~=...` dependency, the scaffolded SDK dependency fixture, and the CLI fallback SDK version string.
+
+You can also choose a different bump type or set an explicit version:
+
+```bash
+npm run python:release:prep:sdk -- minor
+npm run python:release:prep:cli -- major
+npm run python:release:prep:sdk -- --new-version 0.2.0
+npm run python:release:prep:cli -- --new-version 0.2.0
+```
+
+After both bumps, refresh the workspace lockfile:
+
+```bash
+uv lock
 ```
 
 Before publishing, build and validate the distributions from the repo root:
