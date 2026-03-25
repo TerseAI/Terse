@@ -8,7 +8,7 @@ import { NotificationManager } from "../../notifications/Notification"
 import { Output } from "../../outputs/abstract/Output"
 import { OutputFactory } from "../../outputs/abstract/OutputFactory"
 import { db } from "../../prismaClient"
-import { emitCacheInvalidationWithWildcard } from "../../services/CacheInvalidationService"
+import { emitCacheInvalidationWithWildcard, getSocketIO } from "../../services/CacheInvalidationService"
 import { CONFIG_DETAILS, ConfigInstance } from "../../shared/Configs"
 import { IntegrationType } from "../../shared/Integrations"
 import { ChangedItem, ModelEvent, ToolCallExecutionStatus } from "../../shared/ModelEvents"
@@ -21,6 +21,7 @@ import { AgentType, runnerFactory } from "../runner"
 import { appendToolApprovalRequestSystemEvent } from "../systemEvents/toolApprovalSystemEvent"
 
 import { AgentRunnerLoopResult, BaseAgentRunner, PendingApprovalState, SessionWithTracking } from "./BaseAgentRunner"
+import { StreamEventEmitter } from "./StreamProcessor"
 import { BaseSystemPromptBuilder, RunContext, SystemPromptBuilderDependencies } from "./SystemPromptBuilder"
 import { clearPendingApprovalState as clearPendingApprovalStateDb, markRunInProgress as markRunInProgressDb, storePendingApprovalState } from "./runHistory"
 
@@ -42,6 +43,8 @@ type SdkAgentRunnerParams = {
 type SdkAgentRunnerResult = {
     loopResult: AgentRunnerLoopResult<SdkRunnerSession, Agent<SdkRunnerSession, AgentOutputType>>
 }
+
+const SDK_AGENT_ID = "sdk-agent-run"
 
 class InMemoryAgentSession implements AgentMemorySession {
     private readonly sessionId: string
@@ -87,6 +90,7 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
     private readonly send: (event: SdkAgentStreamEvent) => void
     private readonly memorySession: AgentMemorySession
     private readonly isProductionRun: boolean
+    private readonly streamEventEmitter: StreamEventEmitter
     private pendingApprovalState: PendingApprovalState | null = null
     private readonly failedToolCalls: Array<{ tool: string; status: ToolCallExecutionStatus; error?: string }> = []
 
@@ -106,11 +110,16 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
         this.send = params.send
         this.isProductionRun = !!params.isProductionRun
         this.memorySession = params.isProductionRun ? new RunHistoryChatMemorySession({ sessionId: params.runId }) : new InMemoryAgentSession(params.runId)
+        this.streamEventEmitter = new StreamEventEmitter(getSocketIO(), {
+            runId: params.runId,
+            agentId: SDK_AGENT_ID,
+            user: params.user
+        })
     }
 
     private createRunner() {
         return runnerFactory({
-            agentId: "sdk-agent-run",
+            agentId: SDK_AGENT_ID,
             agentType: AgentType.AGENT_RUNNER,
             runId: this.sdkRunId,
             user: this.user,
@@ -152,7 +161,8 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
         return { loopResult }
     }
 
-    protected async onModelEvent(event: ModelEvent, _timestamp: number): Promise<void> {
+    protected async onModelEvent(event: ModelEvent, timestamp: number): Promise<void> {
+        this.streamEventEmitter.emit(event, timestamp)
         if (event.type === "TextDelta" && event.delta) {
             this.send({ type: "text", text: event.delta })
             return
@@ -302,7 +312,7 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
         const deps: SystemPromptBuilderDependencies<SdkRunnerSession, ConfigInstance> = {
             session: this.getToolContext(),
             agent: {
-                id: "sdk-agent-run",
+                id: SDK_AGENT_ID,
                 user_id: this.user.id
             },
             outputs: this.outputs
@@ -325,7 +335,7 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
                 requireApproval: this.requireApproval
             },
             runId: this.sdkRunId,
-            agentId: "sdk-agent-run"
+            agentId: SDK_AGENT_ID
         }
     }
 
