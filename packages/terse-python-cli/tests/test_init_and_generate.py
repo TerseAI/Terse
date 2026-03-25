@@ -29,16 +29,12 @@ def _successful_install() -> DependencyInstallResult:
 
 
 def _failed_install() -> DependencyInstallResult:
-    return DependencyInstallResult(
-        succeeded=False, command=("uv", "sync"), details="uv failed"
-    )
+    return DependencyInstallResult(succeeded=False, command=("uv", "sync"), details="uv failed")
 
 
 def _fake_generate_project(project_dir: Path | None = None) -> GenerateResult:
     resolved_dir = (project_dir or Path.cwd()).resolve()
-    output_path = write_generated_module(
-        resolved_dir, render_generated_module(CodegenInput())
-    )
+    output_path = write_generated_module(resolved_dir, render_generated_module(CodegenInput()))
     return GenerateResult(
         project_dir=resolved_dir,
         output_path=output_path,
@@ -59,9 +55,7 @@ def test_init_new_project_scaffolds_files(runner: CliRunner) -> None:
                 side_effect=_fake_generate_project,
             ),
         ):
-            result = runner.invoke(
-                cli, ["init", "demo-project"], input="terse_test_key\n"
-            )
+            result = runner.invoke(cli, ["init", "demo-project"], input="terse_test_key\n")
 
         assert result.exit_code == 0, result.output
         project_dir = Path("demo-project")
@@ -73,17 +67,11 @@ def test_init_new_project_scaffolds_files(runner: CliRunner) -> None:
         assert (project_dir / ".python-version").exists()
         assert (project_dir / "src" / "main.py").exists()
         assert (project_dir / "src" / "terse_generated.py").exists()
-        assert (project_dir / ".env").read_text(
-            encoding="utf-8"
-        ) == "TERSE_API_KEY=terse_test_key\n"
-        assert "package = false" in (project_dir / "pyproject.toml").read_text(
-            encoding="utf-8"
-        )
+        assert (project_dir / ".env").read_text(encoding="utf-8") == "TERSE_API_KEY=terse_test_key\n"
+        assert "package = false" in (project_dir / "pyproject.toml").read_text(encoding="utf-8")
         main_source = (project_dir / "src" / "main.py").read_text(encoding="utf-8")
         readme_source = (project_dir / "README.md").read_text(encoding="utf-8")
-        assert (
-            "from terse_sdk import CronJobInputEvent, EventType, Terse" in main_source
-        )
+        assert "from terse_sdk import CronJobInputEvent, EventType, Terse" in main_source
         assert "from terse_generated import Schedule, TerseAgent" in main_source
         assert "app = Terse()" in main_source
         assert "@app.job(" in main_source
@@ -94,10 +82,7 @@ def test_init_new_project_scaffolds_files(runner: CliRunner) -> None:
         assert "def main()" not in main_source
         assert '__name__ == "__main__"' not in main_source
         assert "JobDefinition" not in main_source
-        assert (
-            "If you connect Attio or Snowflake in Terse, rerun `terse generate`"
-            in readme_source
-        )
+        assert "If you connect Attio or Snowflake in Terse, rerun `terse generate`" in readme_source
         assert 'agent.tools.snowflake.execute_query(query="select 1")' in readme_source
         assert "Hello, Ada! API key verified." in result.output
         assert "Run `terse test` to execute it locally" in result.output
@@ -147,21 +132,13 @@ def test_init_dev_mode_writes_local_sdk_source_override(runner: CliRunner) -> No
                 side_effect=_fake_generate_project,
             ),
         ):
-            result = runner.invoke(
-                cli, ["init", "demo-project"], input="terse_test_key\n"
-            )
+            result = runner.invoke(cli, ["init", "demo-project"], input="terse_test_key\n")
 
         assert result.exit_code == 0, result.output
         pyproject = Path("demo-project/pyproject.toml").read_text(encoding="utf-8")
         assert "[tool.uv.sources]" in pyproject
-        assert (
-            'terse-sdk = { path = "/tmp/local sdk/packages/terse-python-sdk", editable = true }'
-            in pyproject
-        )
-        assert (
-            'extra-paths = ["/tmp/local sdk/packages/terse-python-sdk/src"]'
-            in pyproject
-        )
+        assert 'terse-sdk = { path = "/tmp/local sdk/packages/terse-python-sdk", editable = true }' in pyproject
+        assert 'extra-paths = ["/tmp/local sdk/packages/terse-python-sdk/src"]' in pyproject
 
 
 def test_init_rejects_existing_named_directory(runner: CliRunner) -> None:
@@ -177,22 +154,16 @@ def test_init_skip_api_key_writes_empty_env_and_fallback_helpers(
     runner: CliRunner,
 ) -> None:
     with runner.isolated_filesystem():
-        with patch(
-            "terse_cli.commands.init.run_uv_sync", return_value=_successful_install()
-        ):
+        with patch("terse_cli.commands.init.run_uv_sync", return_value=_successful_install()):
             result = runner.invoke(cli, ["init", "demo-project"], input="\n")
 
         assert result.exit_code == 0, result.output
         project_dir = Path("demo-project")
         assert (project_dir / ".env").read_text(encoding="utf-8") == "TERSE_API_KEY=\n"
-        generated = (project_dir / "src" / "terse_generated.py").read_text(
-            encoding="utf-8"
-        )
+        generated = (project_dir / "src" / "terse_generated.py").read_text(encoding="utf-8")
         assert "class Schedule:" in generated
         assert "class Terse:" not in generated
-        assert (
-            "Warning: Could not fetch integration helpers during init." in result.output
-        )
+        assert "Warning: Could not fetch integration helpers during init." in result.output
 
 
 def test_init_warns_when_api_key_verification_fails(runner: CliRunner) -> None:
@@ -215,27 +186,20 @@ def test_init_warns_when_api_key_verification_fails(runner: CliRunner) -> None:
 
         assert result.exit_code == 0, result.output
         assert "Could not verify API key" in result.output
-        assert (
-            Path("demo-project/.env").read_text(encoding="utf-8")
-            == "TERSE_API_KEY=bad_key\n"
-        )
+        assert Path("demo-project/.env").read_text(encoding="utf-8") == "TERSE_API_KEY=bad_key\n"
 
 
 def test_init_warns_when_dependency_install_fails(runner: CliRunner) -> None:
     with runner.isolated_filesystem():
         with (
-            patch(
-                "terse_cli.commands.init.run_uv_sync", return_value=_failed_install()
-            ),
+            patch("terse_cli.commands.init.run_uv_sync", return_value=_failed_install()),
             patch("terse_cli.commands.init.verify_api_key", return_value="Ada"),
             patch(
                 "terse_cli.commands.init.generate_project",
                 side_effect=_fake_generate_project,
             ),
         ):
-            result = runner.invoke(
-                cli, ["init", "demo-project"], input="terse_test_key\n"
-            )
+            result = runner.invoke(cli, ["init", "demo-project"], input="terse_test_key\n")
 
         assert result.exit_code == 0, result.output
         assert "Warning: Failed to install dependencies with uv sync." in result.output
@@ -254,14 +218,10 @@ def test_init_warns_when_generate_fails(runner: CliRunner) -> None:
                 side_effect=ApiRequestError("backend unavailable"),
             ),
         ):
-            result = runner.invoke(
-                cli, ["init", "demo-project"], input="terse_test_key\n"
-            )
+            result = runner.invoke(cli, ["init", "demo-project"], input="terse_test_key\n")
 
         assert result.exit_code == 0, result.output
-        generated = Path("demo-project/src/terse_generated.py").read_text(
-            encoding="utf-8"
-        )
+        generated = Path("demo-project/src/terse_generated.py").read_text(encoding="utf-8")
         assert "class Schedule:" in generated
         assert "class Terse:" not in generated
         assert "backend unavailable" in result.output
@@ -270,9 +230,7 @@ def test_init_warns_when_generate_fails(runner: CliRunner) -> None:
 def test_generate_writes_integration_helpers(runner: CliRunner) -> None:
     with runner.isolated_filesystem():
         Path("src").mkdir()
-        Path("pyproject.toml").write_text(
-            "[project]\nname = 'demo'\nversion = '0.1.0'\n", encoding="utf-8"
-        )
+        Path("pyproject.toml").write_text("[project]\nname = 'demo'\nversion = '0.1.0'\n", encoding="utf-8")
         Path("src/main.py").write_text("print('hello')\n", encoding="utf-8")
         Path(".env").write_text("TERSE_API_KEY=terse_test_key\n", encoding="utf-8")
 
@@ -357,14 +315,8 @@ def test_generate_writes_integration_helpers(runner: CliRunner) -> None:
         assert "def query_records(" in generated
         assert "def upsert_record(" in generated
         assert "class _SnowflakeTools:" in generated
-        assert (
-            "def execute_query(self, query: str) -> SnowflakeExecuteQueryToolOutput:"
-            in generated
-        )
-        assert (
-            "def explain_query(self, query: str) -> SnowflakeExplainQueryToolOutput:"
-            in generated
-        )
+        assert "def execute_query(self, query: str) -> SnowflakeExecuteQueryToolOutput:" in generated
+        assert "def explain_query(self, query: str) -> SnowflakeExplainQueryToolOutput:" in generated
         assert "from terse_sdk import (" in generated
         assert "AttioQueryRecordsToolOutput" in generated
         assert "SnowflakeExecuteQueryToolOutput" in generated
@@ -381,9 +333,7 @@ def test_generate_writes_integration_helpers(runner: CliRunner) -> None:
 def test_generate_reports_auth_failure(runner: CliRunner) -> None:
     with runner.isolated_filesystem():
         Path("src").mkdir()
-        Path("pyproject.toml").write_text(
-            "[project]\nname = 'demo'\nversion = '0.1.0'\n", encoding="utf-8"
-        )
+        Path("pyproject.toml").write_text("[project]\nname = 'demo'\nversion = '0.1.0'\n", encoding="utf-8")
         Path("src/main.py").write_text("print('hello')\n", encoding="utf-8")
         Path(".env").write_text("TERSE_API_KEY=terse_test_key\n", encoding="utf-8")
 
@@ -394,17 +344,13 @@ def test_generate_reports_auth_failure(runner: CliRunner) -> None:
             result = runner.invoke(cli, ["generate"])
 
         assert result.exit_code != 0
-        assert (
-            "Authentication failed: your TERSE_API_KEY was rejected." in result.output
-        )
+        assert "Authentication failed: your TERSE_API_KEY was rejected." in result.output
 
 
 def test_render_generated_module_auto_fills_snowflake_integration_id() -> None:
     generated = render_generated_module(
         CodegenInput(
-            snowflake=[
-                SnowflakeInstanceData(id="snowflake_1", display_name="acme-prod")
-            ],
+            snowflake=[SnowflakeInstanceData(id="snowflake_1", display_name="acme-prod")],
             tools=[
                 ToolDefinition(
                     name="snowflakeExecuteQuery",

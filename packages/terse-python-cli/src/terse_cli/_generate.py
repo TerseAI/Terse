@@ -69,9 +69,7 @@ _SUPPORTED_TOOL_SPECS: tuple[tuple[str, str, str], ...] = (
     ("snowflake", "snowflakeExplainQuery", "explain_query"),
 )
 _SUPPORTED_TOOL_NAMES = {tool_name for _, tool_name, _ in _SUPPORTED_TOOL_SPECS}
-_TOOL_METHOD_NAME_BY_TOOL = {
-    tool_name: method_name for _, tool_name, method_name in _SUPPORTED_TOOL_SPECS
-}
+_TOOL_METHOD_NAME_BY_TOOL = {tool_name: method_name for _, tool_name, method_name in _SUPPORTED_TOOL_SPECS}
 _TOOL_NAME_ALIASES = {
     "snowflake_execute_query": "snowflakeExecuteQuery",
     "snowflake_explain_query": "snowflakeExplainQuery",
@@ -96,16 +94,10 @@ def generate_project(project_dir: Path | None = None) -> GenerateResult:
         )
 
     active_types = request_json("/integrations/active", api_key)
-    active_set = (
-        {str(item).lower() for item in active_types}
-        if isinstance(active_types, list)
-        else set()
-    )
+    active_set = {str(item).lower() for item in active_types} if isinstance(active_types, list) else set()
 
     codegen_input = _build_codegen_input(active_set, api_key)
-    output_path = write_generated_module(
-        resolved_dir, render_generated_module(codegen_input)
-    )
+    output_path = write_generated_module(resolved_dir, render_generated_module(codegen_input))
 
     return GenerateResult(
         project_dir=resolved_dir,
@@ -205,16 +197,8 @@ def write_generated_module(project_dir: Path, content: str) -> Path:
 
 def _build_codegen_input(active_set: set[str], api_key: str) -> CodegenInput:
     return CodegenInput(
-        attio=(
-            _safe_fetch(lambda: _fetch_attio_instances(api_key))
-            if "attio" in active_set
-            else []
-        ),
-        snowflake=(
-            _safe_fetch(lambda: _fetch_snowflake_instances(api_key))
-            if "snowflake" in active_set
-            else []
-        ),
+        attio=(_safe_fetch(lambda: _fetch_attio_instances(api_key)) if "attio" in active_set else []),
+        snowflake=(_safe_fetch(lambda: _fetch_snowflake_instances(api_key)) if "snowflake" in active_set else []),
         tools=_safe_fetch(lambda: _fetch_tool_definitions(api_key, active_set)),
     )
 
@@ -255,20 +239,15 @@ def _fetch_attio_instances(api_key: str) -> list[AttioInstanceData]:
         objects = [
             AttioObjectData(
                 api_slug=str((_as_dict(raw_object) or {}).get("api_slug", "")),
-                singular_noun=str(
-                    (_as_dict(raw_object) or {}).get("singular_noun", "")
-                ),
+                singular_noun=str((_as_dict(raw_object) or {}).get("singular_noun", "")),
             )
             for raw_object in _as_list(raw_objects)
-            if _as_dict(raw_object) is not None
-            and str((_as_dict(raw_object) or {}).get("api_slug", ""))
+            if _as_dict(raw_object) is not None and str((_as_dict(raw_object) or {}).get("api_slug", ""))
         ]
         instances.append(
             AttioInstanceData(
                 id=integration_id,
-                display_name=str(
-                    integration_data.get("workspaceName") or integration_id
-                ),
+                display_name=str(integration_data.get("workspaceName") or integration_id),
                 objects=objects,
             )
         )
@@ -282,9 +261,7 @@ def _fetch_snowflake_instances(api_key: str) -> list[SnowflakeInstanceData]:
         SnowflakeInstanceData(
             id=str((_as_dict(integration) or {}).get("id", "")),
             display_name=str(
-                (_as_dict(integration) or {}).get("accountIdentifier")
-                or (_as_dict(integration) or {}).get("id")
-                or ""
+                (_as_dict(integration) or {}).get("accountIdentifier") or (_as_dict(integration) or {}).get("id") or ""
             ),
         )
         for integration in raw_instances
@@ -329,13 +306,8 @@ def _safe_request_json(path: str, api_key: str) -> object | None:
 
 
 def _build_summary_lines(codegen_input: CodegenInput) -> list[str]:
-    lines = [
-        f"Attio ({instance.display_name}) — {len(instance.objects)} objects"
-        for instance in codegen_input.attio
-    ]
-    lines.extend(
-        f"Snowflake ({instance.display_name})" for instance in codegen_input.snowflake
-    )
+    lines = [f"Attio ({instance.display_name}) — {len(instance.objects)} objects" for instance in codegen_input.attio]
+    lines.extend(f"Snowflake ({instance.display_name})" for instance in codegen_input.snowflake)
     lines.append("Schedule trigger")
     return lines
 
@@ -382,9 +354,7 @@ def _generate_attio_namespace(objects: list[AttioObjectData]) -> list[str]:
     lines.append("class AttioObject:")
     used_names: set[str] = set()
     for obj in objects:
-        static_name = _unique_name(
-            _to_pascal_case(obj.singular_noun or obj.api_slug) or "Object", used_names
-        )
+        static_name = _unique_name(_to_pascal_case(obj.singular_noun or obj.api_slug) or "Object", used_names)
         lines.append(
             f"    {static_name}: AttioObjectResource = AttioObjectResource(api_slug={obj.api_slug!r}, "
             f"name={obj.singular_noun!r})"
@@ -448,9 +418,7 @@ def _generate_tools_section(
         lines.extend(["", ""])
 
     if codegen_input.snowflake and snowflake_tools:
-        lines.extend(
-            _generate_snowflake_tools_class(codegen_input.snowflake[0], snowflake_tools)
-        )
+        lines.extend(_generate_snowflake_tools_class(codegen_input.snowflake[0], snowflake_tools))
         lines.extend(["", ""])
 
     lines.extend(
@@ -480,9 +448,7 @@ def _generate_tool_json_helpers() -> list[str]:
     ]
 
 
-def _generate_attio_tools_class(
-    instance: AttioInstanceData, tools: list[ToolDefinition]
-) -> list[str]:
+def _generate_attio_tools_class(instance: AttioInstanceData, tools: list[ToolDefinition]) -> list[str]:
     lines = [
         "class _AttioTools:",
         "    def __init__(self, agent: _SdkTerseAgent) -> None:",
@@ -548,9 +514,7 @@ def _generate_attio_tools_class(
     return lines
 
 
-def _generate_snowflake_tools_class(
-    instance: SnowflakeInstanceData, tools: list[ToolDefinition]
-) -> list[str]:
+def _generate_snowflake_tools_class(instance: SnowflakeInstanceData, tools: list[ToolDefinition]) -> list[str]:
     lines = [
         "class _SnowflakeTools:",
         "    def __init__(self, agent: _SdkTerseAgent) -> None:",
@@ -575,9 +539,7 @@ def _generate_snowflake_tools_class(
     return lines
 
 
-def _generate_generated_tools_class(
-    *, has_attio_tools: bool, has_snowflake_tools: bool
-) -> list[str]:
+def _generate_generated_tools_class(*, has_attio_tools: bool, has_snowflake_tools: bool) -> list[str]:
     if not has_attio_tools and not has_snowflake_tools:
         return [
             "class GeneratedTools:",
@@ -599,9 +561,7 @@ def _generate_generated_tools_class(
     lines.extend(["    ) -> None:"])
 
     if has_attio_tools:
-        lines.extend(
-            ["        if attio is not None:", "            self.attio = attio"]
-        )
+        lines.extend(["        if attio is not None:", "            self.attio = attio"])
     if has_snowflake_tools:
         lines.extend(
             [
@@ -614,9 +574,7 @@ def _generate_generated_tools_class(
     return lines
 
 
-def _generate_create_tools_functions(
-    *, has_attio_tools: bool, has_snowflake_tools: bool
-) -> list[str]:
+def _generate_create_tools_functions(*, has_attio_tools: bool, has_snowflake_tools: bool) -> list[str]:
     lines = [
         "def create_tools(agent: _SdkTerseAgent) -> GeneratedTools:",
         "    allowed = {skill.integration_type for skill in agent.skills}",
@@ -627,13 +585,9 @@ def _generate_create_tools_functions(
     else:
         lines.append("    return GeneratedTools(")
         if has_attio_tools:
-            lines.append(
-                "        attio=_AttioTools(agent) if 'attio' in allowed else None,"
-            )
+            lines.append("        attio=_AttioTools(agent) if 'attio' in allowed else None,")
         if has_snowflake_tools:
-            lines.append(
-                "        snowflake=_SnowflakeTools(agent) if 'snowflake' in allowed else None,"
-            )
+            lines.append("        snowflake=_SnowflakeTools(agent) if 'snowflake' in allowed else None,")
         lines.append("    )")
 
     lines.extend(
@@ -648,9 +602,7 @@ def _generate_create_tools_functions(
     return lines
 
 
-def _select_supported_tools(
-    tools: list[ToolDefinition], integration: str
-) -> list[ToolDefinition]:
+def _select_supported_tools(tools: list[ToolDefinition], integration: str) -> list[ToolDefinition]:
     ordered: list[ToolDefinition] = []
     available = {
         _canonical_tool_name(tool.name): ToolDefinition(
