@@ -36,6 +36,17 @@ export type InferEvent<T> = T extends TypedTrigger<infer E> ? E : InputEvent
 export type InferEvents<T extends readonly unknown[]> = InferEvent<T[number]>
 
 // ---------------------------------------------------------------------------
+// TypedSkill – phantom-typed ConfigInstance for skill tool inference
+// ---------------------------------------------------------------------------
+
+export interface TypedSkill<TToolName extends string = never> extends ConfigInstance {
+    readonly __toolApprovalNames?: TToolName
+}
+
+export type InferToolApproval<T> = T extends TypedSkill<infer TToolName> ? TToolName : never
+export type InferToolApprovals<T extends readonly unknown[]> = InferToolApproval<T[number]>
+
+// ---------------------------------------------------------------------------
 // GitHub event data interfaces
 // ---------------------------------------------------------------------------
 

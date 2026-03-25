@@ -1,6 +1,6 @@
 declare const process: { env: Record<string, string | undefined> }
 
-import type { InputEvent, TypedTrigger, InferEvents } from "./types.js"
+import type { InputEvent, TypedTrigger, TypedSkill, InferEvents, InferToolApprovals } from "./types.js"
 import { CONFIG_DETAILS } from "./shared/Configs.js"
 import type { ConfigInstance } from "./shared/Configs.js"
 import type { RunHistoryAction } from "./shared/RunHistoryTypes.js"
@@ -8,7 +8,7 @@ import type { SdkAgentRunRequestBody, SdkAgentRunResponseBody, SdkAgentSkillPayl
 import { IntegrationType } from "./shared/Integrations.js"
 import { ApiRoutes } from "./shared/ApiRoutes.js"
 // Re-export SDK-specific types
-export type { InputEvent, ToolboxEntry, TypedTrigger, InferEvent, InferEvents } from "./types.js"
+export type { InputEvent, ToolboxEntry, TypedTrigger, TypedSkill, InferEvent, InferEvents, InferToolApproval, InferToolApprovals } from "./types.js"
 export {
     GithubInputEvent,
     GithubPRInputEvent,
@@ -113,12 +113,16 @@ export {
 
 type Action = RunHistoryAction
 
-export type CreateJobParameters<T extends readonly TypedTrigger[] = TypedTrigger[]> = {
+export type CreateJobParameters<
+    TTriggers extends readonly TypedTrigger[] = TypedTrigger[],
+    TSkills extends readonly TypedSkill<string>[] = readonly TypedSkill<string>[]
+> = {
     name: string
-    triggers: [...T]
-    skills: ConfigInstance[]
-    filter?: (event: InferEvents<T>) => boolean | Promise<boolean>
-    onTrigger: (event: InferEvents<T>, Agent: TerseAgent) => Promise<void>
+    triggers: [...TTriggers]
+    skills: [...TSkills]
+    toolApprovals?: InferToolApprovals<TSkills>[]
+    filter?: (event: InferEvents<TTriggers>) => boolean | Promise<boolean>
+    onTrigger: (event: InferEvents<TTriggers>, Agent: TerseAgent) => Promise<void>
     webhookURL?: string
 }
 
@@ -132,17 +136,17 @@ export class Terse {
         // fetch api_key from env
     }
 
-    createJob<T extends readonly TypedTrigger[]>(params: CreateJobParameters<T>) {
+    createJob<TTriggers extends readonly TypedTrigger[], TSkills extends readonly TypedSkill<string>[]>(params: CreateJobParameters<TTriggers, TSkills>) {
         _jobRegistry.set(params.name, params as unknown as CreateJobParameters)
     }
 }
 
 export class TerseAgent {
-    readonly skills: ConfigInstance[]
+    readonly skills: readonly ConfigInstance[]
     private readonly apiBaseUrl: string
     private readonly sessionId?: string
 
-    constructor(skills: ConfigInstance[] = [], apiBaseUrl: string = "http://localhost:3001", sessionId?: string) {
+    constructor(skills: readonly ConfigInstance[] = [], apiBaseUrl: string = "http://localhost:3001", sessionId?: string) {
         this.skills = skills
         this.apiBaseUrl = apiBaseUrl
         this.sessionId = sessionId
