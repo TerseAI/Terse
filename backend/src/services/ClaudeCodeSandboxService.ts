@@ -24,6 +24,10 @@ export interface ClaudeCodeSandboxParams {
     outputFiles?: string[]
     /** Additional files to write into /tmp/project before running Claude Code (written after zip extraction, before git init) */
     additionalFiles?: Record<string, string>
+    /** Additional files to write into the sandbox at absolute paths (e.g. for plugins). Keys are absolute paths, values are file contents. */
+    sandboxFiles?: Record<string, string>
+    /** Directories to pass as --plugin-dir to Claude Code CLI */
+    pluginDirs?: string[]
 }
 
 export interface ClaudeCodeSandboxResult {
@@ -43,7 +47,20 @@ export class ClaudeCodeSandboxService {
     }
 
     async run(params: ClaudeCodeSandboxParams): Promise<ClaudeCodeSandboxResult> {
-        const { label, prompt, sourceZip, gitInit = true, maxTurns = 30, timeoutMs = 10 * 60 * 1000, env: extraEnv = {}, jsonSchema, outputFiles: outputFilePaths = [], additionalFiles = {} } = params
+        const {
+            label,
+            prompt,
+            sourceZip,
+            gitInit = true,
+            maxTurns = 30,
+            timeoutMs = 10 * 60 * 1000,
+            env: extraEnv = {},
+            jsonSchema,
+            outputFiles: outputFilePaths = [],
+            additionalFiles = {},
+            sandboxFiles = {},
+            pluginDirs = []
+        } = params
 
         const executionStart = performance.now()
 
@@ -79,6 +96,21 @@ export class ClaudeCodeSandboxService {
                 // Create empty project dir
                 const mkdirProc = await sb.exec(["mkdir", "-p", "/tmp/project"], { stdout: "pipe", stderr: "pipe" })
                 await mkdirProc.wait()
+            }
+
+            // Write sandbox-level files (e.g. plugin directories)
+            for (const [filePath, content] of Object.entries(sandboxFiles)) {
+                const dirPath = filePath.substring(0, filePath.lastIndexOf("/"))
+                if (dirPath) {
+                    const mkdirProc = await sb.exec(["mkdir", "-p", dirPath], { stdout: "pipe", stderr: "pipe" })
+                    await mkdirProc.wait()
+                }
+                const fileHandle = await sb.open(filePath, "w")
+                await fileHandle.write(new TextEncoder().encode(content))
+                await fileHandle.close()
+            }
+            if (Object.keys(sandboxFiles).length > 0) {
+                logger.info(`[ClaudeCodeSandbox:${label}] Wrote ${Object.keys(sandboxFiles).length} sandbox file(s)`)
             }
 
             // Write additional files into the project directory
@@ -130,6 +162,9 @@ export class ClaudeCodeSandboxService {
             t = performance.now()
             // Build Claude Code command args
             const claudeArgs = ["claude", "-p", "--output-format", "json", "--max-turns", String(maxTurns), "--dangerously-skip-permissions"]
+            for (const dir of pluginDirs) {
+                claudeArgs.push("--plugin-dir", dir)
+            }
             if (jsonSchema) {
                 claudeArgs.push("--json-schema", JSON.stringify(jsonSchema))
             }

@@ -13,14 +13,40 @@ import { downloadSdkDeployZip } from "./FileStorageService"
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
-function loadSkillFileContent(): string {
-    const assetPath = path.resolve(__dirname, "..", "assets", "sdk-skill-file.md")
-    try {
-        return fs.readFileSync(assetPath, "utf-8")
-    } catch {
-        logger.warn("[SdkImprovementService] Could not load SDK skill file from assets, sandbox will run without it")
-        return ""
+const PLUGIN_SANDBOX_DIR = "/tmp/terse-plugin"
+
+function resolvePluginRoot(): string | null {
+    // Production: plugin copied into dist/ by postbuild
+    const fromDist = path.resolve(__dirname, "..", "terse-claude-plugin")
+    if (fs.existsSync(fromDist)) return fromDist
+
+    // Development: plugin lives in packages/ relative to repo root
+    const fromSrc = path.resolve(__dirname, "..", "..", "packages", "terse-claude-plugin")
+    if (fs.existsSync(fromSrc)) return fromSrc
+
+    return null
+}
+
+function loadPluginFiles(): Record<string, string> {
+    const pluginRoot = resolvePluginRoot()
+    if (!pluginRoot) return {}
+
+    const files: Record<string, string> = {}
+
+    function walk(dir: string, prefix: string) {
+        for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+            const fullPath = path.join(dir, entry.name)
+            const sandboxPath = `${PLUGIN_SANDBOX_DIR}/${prefix}${entry.name}`
+            if (entry.isDirectory()) {
+                walk(fullPath, `${prefix}${entry.name}/`)
+            } else if (entry.isFile()) {
+                files[sandboxPath] = fs.readFileSync(fullPath, "utf-8")
+            }
+        }
     }
+
+    walk(pluginRoot, "")
+    return files
 }
 
 const IMPROVEMENTS_SCHEMA = {
@@ -65,10 +91,10 @@ export class SdkImprovementService {
 
         const prompt = buildClaudeCodePrompt(automationId, context)
 
-        const skillFileContent = loadSkillFileContent()
-        const additionalFiles: Record<string, string> = {}
-        if (skillFileContent) {
-            additionalFiles["CLAUDE.md"] = skillFileContent
+        const pluginFiles = loadPluginFiles()
+        const hasPlugin = Object.keys(pluginFiles).length > 0
+        if (!hasPlugin) {
+            logger.warn("[SdkImprovementService] Terse plugin files not found, running without plugin", { automationId })
         }
 
         try {
@@ -78,7 +104,8 @@ export class SdkImprovementService {
                 sourceZip: zipBuffer,
                 gitInit: true,
                 jsonSchema: IMPROVEMENTS_SCHEMA,
-                additionalFiles
+                sandboxFiles: pluginFiles,
+                pluginDirs: hasPlugin ? [PLUGIN_SANDBOX_DIR] : []
             })
 
             if (!result.stdout) {
