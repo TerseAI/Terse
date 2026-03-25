@@ -218,10 +218,14 @@ export class TerseAgent {
      * Runs the agent to completion and discards streamed output.
      * Useful when you only care that the run finished (or threw).
      */
-    async runAndWait(prompt: string, event?: InputEvent): Promise<void> {
-        for await (const _chunk of this.run(prompt, event)) {
-            // Intentionally drain the stream without returning output.
+    async runAndWait(prompt: string, event?: InputEvent): Promise<string> {
+        for await (const chunk of this.run(prompt, event)) {
+            if (chunk.type === EventType.FINAL_OUTPUT) {
+                return (chunk as FinalOutputResult).finalOutput
+            }
         }
+
+        throw new Error("Run completed without final output")
     }
 
     async executeTool<TOutput = unknown>(toolName: string, params: Record<string, unknown> = {}): Promise<TOutput> {
