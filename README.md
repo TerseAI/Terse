@@ -237,8 +237,6 @@ Before publishing, build and validate the distributions from the repo root:
 npm run python:dist:check
 ```
 
-This builds both Python packages and runs `twine check` against the wheel and sdist artifacts in `dist/`.
-
 If you want to publish locally with a PyPI API token instead of using GitHub Actions:
 
 ```bash
