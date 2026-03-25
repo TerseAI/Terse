@@ -177,7 +177,7 @@ function createSdkRunner(params: {
         maxTurns: params.options?.maxTurns ?? 50,
         requireApproval: params.options?.requireApproval ?? true,
         send: params.send,
-        persistHistory: !!params.sandboxRunId
+        isProductionRun: !!params.sandboxRunId
     })
 }
 

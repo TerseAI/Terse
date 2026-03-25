@@ -1,11 +1,16 @@
 import { Agent, AgentInputItem, AgentOutputType, RunResult, RunToolApprovalItem, Tool } from "@openai/agents"
 import type { Session as AgentMemorySession, ModelSettings } from "@openai/agents-core"
-import { OutputConfigType } from "@prisma/client"
+import { OutputConfigType, RunHistoryActionType } from "@prisma/client"
 
 import { settings } from "../../config/settings"
+import logger from "../../logger"
+import { NotificationManager } from "../../notifications/Notification"
 import { Output } from "../../outputs/abstract/Output"
 import { OutputFactory } from "../../outputs/abstract/OutputFactory"
+import { db } from "../../prismaClient"
+import { emitCacheInvalidationWithWildcard } from "../../services/CacheInvalidationService"
 import { CONFIG_DETAILS, ConfigInstance } from "../../shared/Configs"
+import { IntegrationType } from "../../shared/Integrations"
 import { ChangedItem, ModelEvent, ToolCallExecutionStatus } from "../../shared/ModelEvents"
 import { RunHistoryAction } from "../../shared/RunHistoryTypes"
 import { SdkAgentSkillPayload, SdkAgentStreamEvent, User } from "../../shared/types"
@@ -13,9 +18,11 @@ import { Session } from "../../types/session"
 import { convertConfigTypeToOutputConfigType, convertPlainObjectToConfigInstance } from "../../utility/typeConverters"
 import { RunHistoryChatMemorySession } from "../CustomMemorySession"
 import { AgentType, runnerFactory } from "../runner"
+import { appendToolApprovalRequestSystemEvent } from "../systemEvents/toolApprovalSystemEvent"
 
 import { AgentRunnerLoopResult, BaseAgentRunner, PendingApprovalState, SessionWithTracking } from "./BaseAgentRunner"
 import { BaseSystemPromptBuilder, RunContext, SystemPromptBuilderDependencies } from "./SystemPromptBuilder"
+import { clearPendingApprovalState as clearPendingApprovalStateDb, markRunInProgress as markRunInProgressDb, storePendingApprovalState } from "./runHistory"
 
 type SdkRunnerSession = SessionWithTracking<Session>
 
@@ -29,7 +36,7 @@ type SdkAgentRunnerParams = {
     maxTurns: number
     requireApproval: boolean
     send: (event: SdkAgentStreamEvent) => void
-    persistHistory?: boolean
+    isProductionRun?: boolean
 }
 
 type SdkAgentRunnerResult = {
@@ -79,6 +86,7 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
     private readonly requireApproval: boolean
     private readonly send: (event: SdkAgentStreamEvent) => void
     private readonly memorySession: AgentMemorySession
+    private readonly isProductionRun: boolean
     private pendingApprovalState: PendingApprovalState | null = null
     private readonly failedToolCalls: Array<{ tool: string; status: ToolCallExecutionStatus; error?: string }> = []
 
@@ -96,7 +104,8 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
         this.maxTurns = params.maxTurns
         this.requireApproval = params.requireApproval
         this.send = params.send
-        this.memorySession = params.persistHistory ? new RunHistoryChatMemorySession({ sessionId: params.runId }) : new InMemoryAgentSession(params.runId)
+        this.isProductionRun = !!params.isProductionRun
+        this.memorySession = params.isProductionRun ? new RunHistoryChatMemorySession({ sessionId: params.runId }) : new InMemoryAgentSession(params.runId)
     }
 
     private createRunner() {
@@ -190,14 +199,59 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
         return []
     }
 
-    protected async onApprovalRequest(_params: { runId: string; stepId: string; name: string; arguments: string; interruption: RunToolApprovalItem }): Promise<void> {
-        // sdk/agent-run currently streams a one-shot run and does not expose approval resume APIs.
+    protected async onApprovalRequest(params: { runId: string; stepId: string; name: string; arguments: string; interruption: RunToolApprovalItem }): Promise<void> {
+        if (!this.isProductionRun) return
+
+        const { runId, stepId, name, arguments: toolArgs } = params
+
+        // Load automation for notifications
+        const prisma = db()
+        const runRecord = await prisma.run_history_records.findUnique({
+            where: { id: runId },
+            include: { automation: true }
+        })
+        if (!runRecord?.automation) {
+            logger.warn("[SdkAgentRunner] No automation found for approval notification", { runId })
+            return
+        }
+
+        const automation = runRecord.automation
+
+        // Emit cache invalidation
+        if (automation.organization_id) {
+            emitCacheInvalidationWithWildcard(automation.organization_id, "runHistory", automation.id)
+            emitCacheInvalidationWithWildcard(automation.organization_id, "chatHistory", runId)
+        }
+
+        // Persist system event
+        try {
+            await appendToolApprovalRequestSystemEvent(runId, { step_id: stepId, name, arguments: toolArgs })
+        } catch (error) {
+            logger.warn("[SdkAgentRunner] Failed to append tool approval system event", { runId, stepId, error })
+        }
+
+        // Send notification
+        try {
+            const integration = (this.toolToIntegrationMap?.get(name) as IntegrationType) ?? IntegrationType.TERSE
+            const approvalAction: RunHistoryAction = {
+                action: `Approval requested for ${name}`,
+                integration,
+                target: name,
+                details: `The bot is requesting approval to execute: ${name} with arguments: ${JSON.stringify(toolArgs)}`,
+                step_id: stepId,
+                type: RunHistoryActionType.update,
+                isReadOnly: false
+            }
+            await new NotificationManager(this.user, automation).notifyApprovalRequest(runId, approvalAction)
+        } catch (error) {
+            logger.error("[SdkAgentRunner] Failed to send approval request notification", { error, runId, stepId })
+        }
     }
 
-    protected async savePendingApprovalState(_runId: string, serializedState: string, interruptions: RunToolApprovalItem[]): Promise<void> {
-        this.pendingApprovalState = {
-            serializedState,
-            interruptions
+    protected async savePendingApprovalState(runId: string, serializedState: string, interruptions: RunToolApprovalItem[]): Promise<void> {
+        this.pendingApprovalState = { serializedState, interruptions }
+        if (this.isProductionRun) {
+            await storePendingApprovalState(runId, serializedState, interruptions)
         }
     }
 
@@ -205,12 +259,17 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
         return this.pendingApprovalState
     }
 
-    protected async clearPendingApprovalState(_runId: string): Promise<void> {
+    protected async clearPendingApprovalState(runId: string): Promise<void> {
         this.pendingApprovalState = null
+        if (this.isProductionRun) {
+            await clearPendingApprovalStateDb(runId)
+        }
     }
 
-    protected async markRunInProgress(_runId: string): Promise<void> {
-        return
+    protected async markRunInProgress(runId: string): Promise<void> {
+        if (this.isProductionRun) {
+            await markRunInProgressDb(runId)
+        }
     }
 
     override async buildAgent(_params: {

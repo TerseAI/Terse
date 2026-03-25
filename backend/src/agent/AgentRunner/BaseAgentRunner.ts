@@ -24,7 +24,7 @@ export type SessionWithTracking<T extends AppSession> = T & {
 
 export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSession>, TAgent extends Agent<TSession, AgentOutputType>> {
     private runId: string
-    private toolToIntegrationMap?: Map<string, string>
+    protected toolToIntegrationMap?: Map<string, string>
     private endedWithToolFailure = false
     protected agent?: TAgent
     // Protect lazy initialization from double-build races when run/resume are called concurrently.

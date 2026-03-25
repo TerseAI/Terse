@@ -35,7 +35,8 @@ export async function executeJob(job: CreateJobParameters, event: SerializedEven
         Object.defineProperty(agent, "tools", { value: createTools(agent) })
     }
 
-    agent.onApprovalRequired = async (info: ApprovalRequestInfo) => {
+    const isSandbox = !!process.env.TERSE_RUN_ID
+    if (!isSandbox) agent.onApprovalRequired = async (info: ApprovalRequestInfo) => {
         sessionPaused = true
         try {
             console.log("")

@@ -66,7 +66,7 @@ export class SdkJobExecutionService {
             t = performance.now()
             const app = await modal.apps.fromName("terse-sdk-sandbox", { createIfMissing: true })
             const image = modal.images.fromRegistry("node:22-slim")
-            const sb = await modal.sandboxes.create(app, image, { timeoutMs: 5 * 60 * 1000 })
+            const sb = await modal.sandboxes.create(app, image, { timeoutMs: 30 * 60 * 1000 })
             logger.info("SDK sandbox: created Modal sandbox", { runId, agentId, sandboxId: sb.sandboxId, duration: this.elapsed(t) })
 
             const sandboxEnv = {
