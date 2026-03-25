@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import base64
+import re
 from dataclasses import dataclass
 from io import BytesIO
 from pathlib import Path
@@ -32,6 +33,7 @@ MANDATORY_EXCLUDED_SUFFIXES = {
     ".pyc",
     ".pyo",
 }
+SDK_SOURCE_LINE_RE = re.compile(r'^\s*terse-sdk\s*=\s*\{.*\bpath\s*=\s*["\']([^"\']+)["\'].*\}\s*$')
 
 
 class PackagingError(RuntimeError):
@@ -58,7 +60,8 @@ def build_deploy_archive(project_dir: Path) -> DeployArchive:
     buffer = BytesIO()
     with ZipFile(buffer, "w", compression=ZIP_DEFLATED, compresslevel=6) as archive:
         for file_path in file_paths:
-            archive.writestr(file_path.relative_to(project_dir).as_posix(), file_path.read_bytes())
+            relative_path = file_path.relative_to(project_dir).as_posix()
+            archive.writestr(relative_path, _read_archive_bytes(file_path, project_dir, relative_path))
 
     zip_data = buffer.getvalue()
     return DeployArchive(
@@ -88,6 +91,61 @@ def _iter_project_files(project_dir: Path, ignore_spec: pathspec.PathSpec) -> li
                 files.append(entry)
 
     return files
+
+
+def _read_archive_bytes(file_path: Path, project_dir: Path, relative_path: str) -> bytes:
+    file_bytes = file_path.read_bytes()
+    if relative_path != "pyproject.toml":
+        return file_bytes
+
+    return _rewrite_pyproject_for_deploy(file_bytes.decode("utf-8"), project_dir).encode("utf-8")
+
+
+def _rewrite_pyproject_for_deploy(source: str, project_dir: Path) -> str:
+    lines = source.splitlines(keepends=True)
+    rewritten: list[str] = []
+    index = 0
+
+    while index < len(lines):
+        line = lines[index]
+        if line.strip() != "[tool.uv.sources]":
+            rewritten.append(line)
+            index += 1
+            continue
+
+        block_header = line
+        index += 1
+        block_lines: list[str] = []
+
+        while index < len(lines):
+            current_line = lines[index]
+            if current_line.startswith("[") and current_line.strip().endswith("]"):
+                break
+            if _should_strip_local_sdk_source(current_line, project_dir):
+                index += 1
+                continue
+            block_lines.append(current_line)
+            index += 1
+
+        if any(block_line.strip() for block_line in block_lines):
+            rewritten.append(block_header)
+            rewritten.extend(block_lines)
+
+    return "".join(rewritten)
+
+
+def _should_strip_local_sdk_source(line: str, project_dir: Path) -> bool:
+    match = SDK_SOURCE_LINE_RE.match(line)
+    if match is None:
+        return False
+
+    source_path = Path(match.group(1)).expanduser()
+    if not source_path.is_absolute():
+        return False
+
+    resolved_project_dir = project_dir.resolve()
+    resolved_source_path = source_path.resolve(strict=False)
+    return not _is_within_project(resolved_source_path, resolved_project_dir)
 
 
 def _load_gitignore_spec(project_dir: Path) -> pathspec.PathSpec:

@@ -147,10 +147,10 @@ def _normalize_env_value(value: str) -> str:
 def build_sdk_dependency_requirement() -> str:
     """Return the published SDK requirement used in scaffolded projects."""
 
-    version = _installed_version("terse-python-sdk") or "0.1.0"
+    version = _installed_version("terse-sdk") or "0.1.0"
     normalized = _normalize_release_version(version)
     major, minor, patch = normalized
-    return f"terse-python-sdk>={major}.{minor}.{patch},<{major}.{minor + 1}.0"
+    return f"terse-sdk>={major}.{minor}.{patch},<{major}.{minor + 1}.0"
 
 
 def detect_local_sdk_source_path() -> Path | None:
@@ -166,7 +166,7 @@ def detect_local_sdk_source_path() -> Path | None:
         return None
 
     pyproject = (candidate / "pyproject.toml").read_text(encoding="utf-8")
-    if 'name = "terse-python-sdk"' not in pyproject:
+    if 'name = "terse-sdk"' not in pyproject:
         return None
 
     return candidate

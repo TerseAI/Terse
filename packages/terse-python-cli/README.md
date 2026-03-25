@@ -1,14 +1,14 @@
-# terse-python-cli
+# terse-cli
 
 Python CLI for scaffolding, generating, testing, and deploying [Terse](https://useterse.ai) jobs.
 
 ## Installation
 
 ```bash
-python -m pip install terse-python-cli
+python -m pip install terse-cli
 ```
 
-The CLI installs the published `terse-python-sdk` automatically.
+The CLI installs the published `terse-sdk` automatically.
 
 ## Requirements
 

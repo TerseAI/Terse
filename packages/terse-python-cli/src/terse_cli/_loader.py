@@ -34,7 +34,6 @@ def load_job_registry(project_dir: Path | None = None) -> tuple[Path, dict[str, 
     resolved_dir = assert_project_root(project_dir)
     load_project_env(resolved_dir)
     clear_job_registry()
-    _purge_project_modules(resolved_dir)
     _import_project_main(resolved_dir)
 
     registry = get_job_registry()
@@ -102,33 +101,10 @@ def _temporary_sys_path(paths: list[Path]) -> Iterator[None]:
                 continue
 
 
-def _purge_project_modules(project_dir: Path) -> None:
-    for module_name, module in list(sys.modules.items()):
-        if module_name == "terse_generated" or module_name.startswith("_terse_project_main_"):
-            sys.modules.pop(module_name, None)
-            continue
-        module_file = getattr(module, "__file__", None)
-        if not module_file:
-            continue
-        try:
-            module_path = Path(module_file).resolve()
-        except OSError:
-            continue
-        if _is_within_project(module_path, project_dir):
-            sys.modules.pop(module_name, None)
-
-
-def _is_within_project(path: Path, project_dir: Path) -> bool:
-    try:
-        path.relative_to(project_dir)
-        return True
-    except ValueError:
-        return False
-
 
 def _format_missing_module_message(error: ModuleNotFoundError) -> str:
     package = error.name or "unknown"
     message = f"Cannot find package '{package}' imported from src/main.py."
     if package == "terse_sdk":
-        return f"{message}\n\nMake sure terse-python-sdk is installed in your project:\n  uv sync"
+        return f"{message}\n\nMake sure terse-sdk is installed in your project:\n  uv sync"
     return f"{message}\n\nInstall the missing package in your project:\n  uv add {package}"

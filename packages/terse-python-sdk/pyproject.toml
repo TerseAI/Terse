@@ -1,5 +1,5 @@
 [project]
-name = "terse-python-sdk"
+name = "terse-sdk"
 version = "0.1.0"
 description = "Python SDK for building jobs on the Terse platform."
 readme = "README.md"
@@ -25,8 +25,6 @@ dependencies = [
 
 [project.urls]
 Homepage = "https://useterse.ai"
-Repository = "https://github.com/TerseAI/Terse"
-Issues = "https://github.com/TerseAI/Terse/issues"
 
 [build-system]
 requires = ["hatchling>=1.29.0"]

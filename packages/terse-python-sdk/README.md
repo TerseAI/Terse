@@ -1,13 +1,13 @@
-# terse-python-sdk
+# terse-sdk
 
 Python SDK for building jobs on the [Terse](https://useterse.ai) platform.
 
-Most users should start with `terse-python-cli`, which scaffolds a project and generates `terse_generated.py` helpers for the currently supported trigger and skill surface.
+Most users should start with `terse-cli`, which scaffolds a project and generates `terse_generated.py` helpers for the currently supported trigger and skill surface.
 
 ## Installation
 
 ```bash
-python -m pip install terse-python-sdk
+python -m pip install terse-sdk
 ```
 
 ## Runtime API
@@ -92,7 +92,7 @@ def example(event: CronJobInputEvent, agent: TerseAgent) -> None:
 If you want the full project workflow, install the CLI instead:
 
 ```bash
-python -m pip install terse-python-cli
+python -m pip install terse-cli
 terse init my-terse-job
 ```
 

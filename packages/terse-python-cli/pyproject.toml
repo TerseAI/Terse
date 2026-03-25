@@ -1,6 +1,6 @@
 [project]
-name = "terse-python-cli"
-version = "0.1.0"
+name = "terse-cli"
+version = "0.1.1"
 description = "Python CLI for scaffolding and managing Terse projects."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -25,13 +25,11 @@ dependencies = [
     "python-dotenv>=1.2.2",
     "questionary>=2.1.1",
     "rich>=14.3.3",
-    "terse-python-sdk>=0.1.0,<0.2.0",
+    "terse-sdk>=0.1.0,<0.2.0",
 ]
 
 [project.urls]
 Homepage = "https://useterse.ai"
-Repository = "https://github.com/TerseAI/Terse"
-Issues = "https://github.com/TerseAI/Terse/issues"
 
 [project.scripts]
 terse = "terse_cli.cli:cli"
@@ -41,7 +39,7 @@ requires = ["hatchling>=1.29.0"]
 build-backend = "hatchling.build"
 
 [tool.uv.sources]
-terse-python-sdk = { workspace = true }
+terse-sdk = { workspace = true }
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/terse_cli"]

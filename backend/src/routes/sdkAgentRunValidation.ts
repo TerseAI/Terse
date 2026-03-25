@@ -50,39 +50,38 @@ export function validateAndNormalizeSdkAgentRunBody(body: SdkAgentRunRequestBody
     }
 
     const normalizedSkills: NonNullable<NormalizedSdkAgentRunRequest["skills"]> = []
-    const skills = Array.isArray(body.skills) ? body.skills : null
-    if (!skills || skills.length === 0) {
-        validationErrors.push("`skills` is required and must be a non-empty array")
-    } else {
-        for (let i = 0; i < skills.length; i++) {
-            const skill = skills[i]
-            if (!skill || typeof skill !== "object" || Array.isArray(skill)) {
-                validationErrors.push(`\`skills[${i}]\` must be an object`)
+    if (body.skills !== undefined && !Array.isArray(body.skills)) {
+        validationErrors.push("`skills` must be an array when provided")
+    }
+    const skills = Array.isArray(body.skills) ? body.skills : []
+    for (let i = 0; i < skills.length; i++) {
+        const skill = skills[i]
+        if (!skill || typeof skill !== "object" || Array.isArray(skill)) {
+            validationErrors.push(`\`skills[${i}]\` must be an object`)
+            continue
+        }
+        if (typeof skill.configType !== "string" || !isConfigType(skill.configType.trim())) {
+            validationErrors.push(`\`skills[${i}].configType\` is required and must be a valid ConfigType`)
+        }
+        if (!skill.config || typeof skill.config !== "object" || Array.isArray(skill.config)) {
+            validationErrors.push(`\`skills[${i}].config\` is required and must be an object`)
+        }
+
+        const trimmedConfigType = typeof skill.configType === "string" ? skill.configType.trim() : ""
+        if (trimmedConfigType && isConfigType(trimmedConfigType)) {
+            const integrationType = CONFIG_DETAILS[trimmedConfigType].integrationType
+            if (!isIntegrationType(integrationType)) {
+                validationErrors.push(`\`skills[${i}].configType\` maps to an unsupported integration type`)
                 continue
             }
-            if (typeof skill.configType !== "string" || !isConfigType(skill.configType.trim())) {
-                validationErrors.push(`\`skills[${i}].configType\` is required and must be a valid ConfigType`)
-            }
-            if (!skill.config || typeof skill.config !== "object" || Array.isArray(skill.config)) {
-                validationErrors.push(`\`skills[${i}].config\` is required and must be an object`)
-            }
-
-            const trimmedConfigType = typeof skill.configType === "string" ? skill.configType.trim() : ""
-            if (trimmedConfigType && isConfigType(trimmedConfigType)) {
-                const integrationType = CONFIG_DETAILS[trimmedConfigType].integrationType
-                if (!isIntegrationType(integrationType)) {
-                    validationErrors.push(`\`skills[${i}].configType\` maps to an unsupported integration type`)
-                    continue
+            normalizedSkills.push({
+                configType: trimmedConfigType,
+                config: {
+                    ...(skill.config as Record<string, unknown>),
+                    integrationType,
+                    configType: trimmedConfigType
                 }
-                normalizedSkills.push({
-                    configType: trimmedConfigType,
-                    config: {
-                        ...(skill.config as Record<string, unknown>),
-                        integrationType,
-                        configType: trimmedConfigType
-                    }
-                })
-            }
+            })
         }
     }
 

@@ -4,12 +4,12 @@ from __future__ import annotations
 import json
 import os
 import sys
-import unittest
 from types import ModuleType, SimpleNamespace
 from typing import Any
 from unittest.mock import patch
 
 import httpx
+import pytest
 import terse_sdk.runtime as runtime_module
 from terse_sdk import (
     CronJobInputEvent,
@@ -30,6 +30,13 @@ from terse_sdk.generated.models import (
     SdkAgentStreamEventText,
     SdkAgentStreamEventToolCallCompleted,
 )
+
+
+@pytest.fixture(autouse=True)
+def clear_registry() -> None:
+    clear_job_registry()
+    yield
+    clear_job_registry()
 
 
 class _FakeSSEEvent:
@@ -76,272 +83,280 @@ class _FakeClient:
         return self.response
 
 
-class RuntimeTests(unittest.TestCase):
-    def setUp(self) -> None:
-        clear_job_registry()
+def test_job_registration_and_registry_clear() -> None:
+    app = Terse()
 
-    def tearDown(self) -> None:
-        clear_job_registry()
+    @app.job(name="demo-job")
+    def demo(event: CronJobInputEvent, agent: TerseAgent) -> None:
+        _ = (event, agent)
 
-    def test_job_registration_and_registry_clear(self) -> None:
-        app = Terse()
+    registry = get_job_registry()
+    assert "demo-job" in registry
+    assert registry["demo-job"].handler is demo
 
-        @app.job(name="demo-job")
-        def demo(event: CronJobInputEvent, agent: TerseAgent) -> None:
-            _ = (event, agent)
+    clear_job_registry()
+    assert get_job_registry() == {}
 
-        registry = get_job_registry()
-        self.assertIn("demo-job", registry)
-        self.assertIs(registry["demo-job"].handler, demo)
 
-        clear_job_registry()
-        self.assertEqual(get_job_registry(), {})
+def test_execute_registered_job_supports_sync_and_async_callables() -> None:
+    sync_calls: list[str] = []
+    async_calls: list[str] = []
+    app = Terse()
 
-    def test_execute_registered_job_supports_sync_and_async_callables(self) -> None:
-        sync_calls: list[str] = []
-        async_calls: list[str] = []
-        app = Terse()
+    @app.job(name="sync-job")
+    def sync_handler(event: CronJobInputEvent, agent: TerseAgent) -> None:
+        _ = agent
+        sync_calls.append(event.formatted_content)
 
-        @app.job(name="sync-job")
-        def sync_handler(event: CronJobInputEvent, agent: TerseAgent) -> None:
-            _ = agent
-            sync_calls.append(event.formatted_content)
+    async def allow_async(event: CronJobInputEvent) -> bool:
+        return event.event_type == "manual"
 
-        async def allow_async(event: CronJobInputEvent) -> bool:
-            return event.event_type == "manual"
+    @app.job(name="async-job", filter=allow_async)
+    async def async_handler(event: CronJobInputEvent, agent: TerseAgent) -> None:
+        _ = agent
+        async_calls.append(event.debug_log)
 
-        @app.job(name="async-job", filter=allow_async)
-        async def async_handler(event: CronJobInputEvent, agent: TerseAgent) -> None:
-            _ = agent
-            async_calls.append(event.debug_log)
+    event = CronJobInputEvent(
+        event_type="manual",
+        formatted_content="hello",
+        debug_log="world",
+    )
 
-        event = CronJobInputEvent(
-            event_type="manual",
-            formatted_content="hello",
-            debug_log="world",
-        )
+    sync_job = get_job_registry()["sync-job"]
+    async_job = get_job_registry()["async-job"]
 
-        sync_job = get_job_registry()["sync-job"]
-        async_job = get_job_registry()["async-job"]
+    assert not execute_registered_job(sync_job, event, agent=TerseAgent())
+    assert sync_calls == ["hello"]
 
-        self.assertFalse(execute_registered_job(sync_job, event, agent=TerseAgent()))
-        self.assertEqual(sync_calls, ["hello"])
+    assert not execute_registered_job(async_job, event, agent=TerseAgent())
+    assert async_calls == ["world"]
 
-        self.assertFalse(execute_registered_job(async_job, event, agent=TerseAgent()))
-        self.assertEqual(async_calls, ["world"])
 
-    def test_execute_registered_job_returns_true_when_filter_skips(self) -> None:
-        calls: list[str] = []
-        app = Terse()
+def test_execute_registered_job_returns_true_when_filter_skips() -> None:
+    calls: list[str] = []
+    app = Terse()
 
-        def never(event: CronJobInputEvent) -> bool:
-            _ = event
-            return False
+    def never(event: CronJobInputEvent) -> bool:
+        _ = event
+        return False
 
-        @app.job(name="demo-job", filter=never)
-        def demo(event: CronJobInputEvent, agent: TerseAgent) -> None:
-            _ = (event, agent)
-            calls.append("ran")
+    @app.job(name="demo-job", filter=never)
+    def demo(event: CronJobInputEvent, agent: TerseAgent) -> None:
+        _ = (event, agent)
+        calls.append("ran")
 
-        skipped = execute_registered_job(
-            get_job_registry()["demo-job"],
-            CronJobInputEvent(event_type="manual", formatted_content="demo", debug_log="demo"),
-            agent=TerseAgent(),
-        )
+    skipped = execute_registered_job(
+        get_job_registry()["demo-job"],
+        CronJobInputEvent(event_type="manual", formatted_content="demo", debug_log="demo"),
+        agent=TerseAgent(),
+    )
 
-        self.assertTrue(skipped)
-        self.assertEqual(calls, [])
+    assert skipped
+    assert calls == []
 
-    def test_deserialize_input_event_supports_camel_case_payloads(self) -> None:
-        event = deserialize_input_event(
-            {
-                "integrationType": "cron_job",
-                "eventType": "manual",
-                "formattedContent": "Scheduled job",
-                "debugLog": "cron",
-            }
-        )
 
-        self.assertIsInstance(event, CronJobInputEvent)
-        self.assertEqual(event.integration_type, "cron_job")
-        self.assertEqual(event.formatted_content, "Scheduled job")
+def test_deserialize_input_event_supports_camel_case_payloads() -> None:
+    event = deserialize_input_event(
+        {
+            "integrationType": "cron_job",
+            "eventType": "manual",
+            "formattedContent": "Scheduled job",
+            "debugLog": "cron",
+        }
+    )
 
-    def test_deserialize_input_event_falls_back_for_unknown_integrations(self) -> None:
-        event = deserialize_input_event(
-            {
-                "integrationType": "unknown_service",
-                "eventType": "manual",
-                "formattedContent": "Unknown",
-                "debugLog": "unknown",
-            }
-        )
+    assert isinstance(event, CronJobInputEvent)
+    assert event.integration_type == "cron_job"
+    assert event.formatted_content == "Scheduled job"
 
-        self.assertIsInstance(event, SerializedEventInputEvent)
-        self.assertEqual(event.integration_type, "unknown_service")
 
-    def test_agent_execute_tool_includes_session_and_run_headers(self) -> None:
-        fake_client = _FakeClient(
-            _json_response(
-                200,
-                {"success": True, "result": {"ok": True}},
-                path="/sdk/tool-execute",
-            )
-        )
+def test_deserialize_input_event_falls_back_for_unknown_integrations() -> None:
+    event = deserialize_input_event(
+        {
+            "integrationType": "unknown_service",
+            "eventType": "manual",
+            "formattedContent": "Unknown",
+            "debugLog": "unknown",
+        }
+    )
 
-        with (
-            patch.dict(os.environ, {"TERSE_API_KEY": "terse_test_key", "TERSE_RUN_ID": "run_123"}, clear=False),
-            patch("terse_sdk.runtime.httpx.Client", return_value=fake_client),
-        ):
-            result = TerseAgent(session_id="session_123").execute_tool("demo_tool", {"value": 1})
+    assert isinstance(event, SerializedEventInputEvent)
+    assert event.integration_type == "unknown_service"
 
-        self.assertEqual(result, {"ok": True})
-        self.assertEqual(fake_client.calls[0]["headers"]["X-Terse-Session-Id"], "session_123")
-        self.assertEqual(fake_client.calls[0]["headers"]["X-Terse-Run-Id"], "run_123")
-        self.assertEqual(fake_client.calls[0]["json"]["toolName"], "demo_tool")
 
-    def test_agent_execute_tool_requires_api_key(self) -> None:
-        with patch.dict(os.environ, {"TERSE_API_KEY": ""}, clear=False), self.assertRaises(MissingApiKeyError):
-            TerseAgent().execute_tool("demo_tool")
-
-    def test_agent_tools_lazy_attach_from_generated_module(self) -> None:
-        created_agents: list[TerseAgent] = []
-        fake_tools = SimpleNamespace(snowflake="snowflake-tools")
-        generated_module = ModuleType("terse_generated")
-
-        def create_tools(agent: TerseAgent) -> object:
-            created_agents.append(agent)
-            return fake_tools
-
-        generated_module.create_tools = create_tools  # type: ignore[attr-defined]
-
-        with patch.dict(sys.modules, {"terse_generated": generated_module}, clear=False):
-            agent = TerseAgent()
-            self.assertIs(agent.tools, fake_tools)
-            self.assertIs(agent.tools, fake_tools)
-
-        self.assertEqual(created_agents, [agent])
-
-    def test_agent_tools_raise_clear_error_when_generated_module_is_missing(self) -> None:
-        with (
-            patch("terse_sdk.runtime._resolve_generated_tools_factory", return_value=None),
-            self.assertRaises(AttributeError),
-        ):
-            _ = TerseAgent().tools
-
-    def test_agent_run_streams_events_and_serializes_event_payload(self) -> None:
-        captured: dict[str, object] = {}
-        stream = _FakeEventSource(
-            [
-                SdkAgentStreamEventText(type="text", text="hello").model_dump_json(),
-                SdkAgentStreamEventToolCallCompleted(
-                    type="tool_call_completed",
-                    toolCallCompleted=json.dumps({"tool": "demo_tool", "status": "completed"}),
-                ).model_dump_json(),
-                SdkAgentStreamEventFinalOutput(type="final_output", finalOutput="done").model_dump_json(),
-                SdkAgentStreamEventDone(type="done").model_dump_json(),
-            ]
-        )
-
-        def fake_connect_sse(
-            client: object,
-            method: str,
-            url: str,
-            *,
-            headers: dict[str, str],
-            json: dict[str, object],
-        ) -> _FakeEventSource:
-            captured.update({"method": method, "url": url, "headers": headers, "json": json})
-            return stream
-
-        with (
-            patch.dict(os.environ, {"TERSE_API_KEY": "terse_test_key"}, clear=False),
-            patch("terse_sdk.runtime.connect_sse", side_effect=fake_connect_sse),
-        ):
-            events = list(
-                TerseAgent().run(
-                    "hello",
-                    CronJobInputEvent(
-                        event_type="manual",
-                        formatted_content="Scheduled event",
-                        debug_log="cron",
-                    ),
-                )
-            )
-
-        self.assertEqual(len(events), 3)
-        self.assertEqual(events[-1].type, EventType.FINAL_OUTPUT)
-        self.assertEqual(events[-1].finalOutput, "done")
-        self.assertEqual(captured["method"], "POST")
-        self.assertEqual(captured["headers"]["Authorization"], "Bearer terse_test_key")
-        self.assertEqual(captured["json"]["event"]["integrationType"], "cron_job")
-        self.assertEqual(captured["json"]["event"]["formattedContent"], "Scheduled event")
-
-    def test_agent_run_raises_on_failed_tool_call(self) -> None:
-        stream = _FakeEventSource(
-            [
-                SdkAgentStreamEventToolCallCompleted(
-                    type="tool_call_completed",
-                    toolCallCompleted=json.dumps({"tool": "demo_tool", "status": "failed"}),
-                ).model_dump_json(),
-                SdkAgentStreamEventDone(type="done").model_dump_json(),
-            ]
-        )
-
-        with (
-            patch.dict(os.environ, {"TERSE_API_KEY": "terse_test_key"}, clear=False),
-            patch("terse_sdk.runtime.connect_sse", return_value=stream),
-            self.assertRaises(TerseApiError),
-        ):
-            list(TerseAgent().run("hello"))
-
-    def test_agent_run_and_wait_returns_final_output(self) -> None:
-        with patch.object(
-            TerseAgent,
-            "run",
-            return_value=iter(
-                [
-                    SdkAgentStreamEventText(type="text", text="thinking"),
-                    SdkAgentStreamEventFinalOutput(type="final_output", finalOutput="done"),
-                ]
-            ),
-        ):
-            result = TerseAgent().run_and_wait("hello")
-
-        self.assertEqual(result, "done")
-
-    def test_agent_run_and_wait_returns_none_when_no_final_output_arrives(self) -> None:
-        with patch.object(TerseAgent, "run", return_value=iter([])):
-            result = TerseAgent().run_and_wait("hello")
-
-        self.assertIsNone(result)
-
-    def test_agent_run_and_wait_propagates_errors(self) -> None:
-        with patch.object(TerseAgent, "run", side_effect=TerseApiError("boom")), self.assertRaises(TerseApiError):
-            TerseAgent().run_and_wait("hello")
-
-    def test_assert_sse_response_reads_streaming_json_error_payload(self) -> None:
-        response = _streaming_json_response(
+def test_agent_execute_tool_includes_session_and_run_headers() -> None:
+    fake_client = _FakeClient(
+        _json_response(
             200,
-            {"success": False, "error": "backend unavailable"},
-            path="/sdk/agent-run",
+            {"success": True, "result": {"ok": True}},
+            path="/sdk/tool-execute",
+        )
+    )
+
+    with (
+        patch.dict(os.environ, {"TERSE_API_KEY": "terse_test_key", "TERSE_RUN_ID": "run_123"}, clear=False),
+        patch("terse_sdk.runtime.httpx.Client", return_value=fake_client),
+    ):
+        result = TerseAgent(session_id="session_123").execute_tool("demo_tool", {"value": 1})
+
+    assert result == {"ok": True}
+    assert fake_client.calls[0]["headers"]["X-Terse-Session-Id"] == "session_123"
+    assert fake_client.calls[0]["headers"]["X-Terse-Run-Id"] == "run_123"
+    assert fake_client.calls[0]["json"]["toolName"] == "demo_tool"
+
+
+def test_agent_execute_tool_requires_api_key() -> None:
+    with patch.dict(os.environ, {"TERSE_API_KEY": ""}, clear=False), pytest.raises(MissingApiKeyError):
+        TerseAgent().execute_tool("demo_tool")
+
+
+def test_agent_tools_lazy_attach_from_generated_module() -> None:
+    created_agents: list[TerseAgent] = []
+    fake_tools = SimpleNamespace(snowflake="snowflake-tools")
+    generated_module = ModuleType("terse_generated")
+
+    def create_tools(agent: TerseAgent) -> object:
+        created_agents.append(agent)
+        return fake_tools
+
+    generated_module.create_tools = create_tools  # type: ignore[attr-defined]
+
+    with patch.dict(sys.modules, {"terse_generated": generated_module}, clear=False):
+        agent = TerseAgent()
+        assert agent.tools is fake_tools
+        assert agent.tools is fake_tools
+
+    assert created_agents == [agent]
+
+
+def test_agent_tools_raise_clear_error_when_generated_module_is_missing() -> None:
+    with (
+        patch("terse_sdk.runtime._resolve_generated_tools_factory", return_value=None),
+        pytest.raises(AttributeError),
+    ):
+        _ = TerseAgent().tools
+
+
+def test_agent_run_streams_events_and_serializes_event_payload() -> None:
+    captured: dict[str, object] = {}
+    stream = _FakeEventSource(
+        [
+            SdkAgentStreamEventText(type="text", text="hello").model_dump_json(),
+            SdkAgentStreamEventToolCallCompleted(
+                type="tool_call_completed",
+                toolCallCompleted=json.dumps({"tool": "demo_tool", "status": "completed"}),
+            ).model_dump_json(),
+            SdkAgentStreamEventFinalOutput(type="final_output", finalOutput="done").model_dump_json(),
+            SdkAgentStreamEventDone(type="done").model_dump_json(),
+        ]
+    )
+
+    def fake_connect_sse(
+        client: object,
+        method: str,
+        url: str,
+        *,
+        headers: dict[str, str],
+        json: dict[str, object],
+    ) -> _FakeEventSource:
+        captured.update({"method": method, "url": url, "headers": headers, "json": json})
+        return stream
+
+    with (
+        patch.dict(os.environ, {"TERSE_API_KEY": "terse_test_key"}, clear=False),
+        patch("terse_sdk.runtime.connect_sse", side_effect=fake_connect_sse),
+    ):
+        events = list(
+            TerseAgent().run(
+                "hello",
+                CronJobInputEvent(
+                    event_type="manual",
+                    formatted_content="Scheduled event",
+                    debug_log="cron",
+                ),
+            )
         )
 
-        with self.assertRaises(TerseApiError) as exc_info:
-            runtime_module._assert_sse_response(response, "/sdk/agent-run")
+    assert len(events) == 3
+    assert events[-1].type == EventType.FINAL_OUTPUT
+    assert events[-1].finalOutput == "done"
+    assert captured["method"] == "POST"
+    assert captured["headers"]["Authorization"] == "Bearer terse_test_key"
+    assert captured["json"]["event"]["integrationType"] == "cron_job"
+    assert captured["json"]["event"]["formattedContent"] == "Scheduled event"
 
-        self.assertIn("backend unavailable", str(exc_info.exception))
 
-    def test_assert_sse_response_reads_streaming_error_detail_on_http_error(self) -> None:
-        response = _streaming_json_response(
-            401,
-            {"error": "unauthorized"},
-            path="/sdk/agent-run",
-        )
+def test_agent_run_raises_on_failed_tool_call() -> None:
+    stream = _FakeEventSource(
+        [
+            SdkAgentStreamEventToolCallCompleted(
+                type="tool_call_completed",
+                toolCallCompleted=json.dumps({"tool": "demo_tool", "status": "failed"}),
+            ).model_dump_json(),
+            SdkAgentStreamEventDone(type="done").model_dump_json(),
+        ]
+    )
 
-        with self.assertRaises(TerseApiError) as exc_info:
-            runtime_module._assert_sse_response(response, "/sdk/agent-run")
+    with (
+        patch.dict(os.environ, {"TERSE_API_KEY": "terse_test_key"}, clear=False),
+        patch("terse_sdk.runtime.connect_sse", return_value=stream),
+        pytest.raises(TerseApiError),
+    ):
+        list(TerseAgent().run("hello"))
 
-        self.assertIn("unauthorized", str(exc_info.exception))
+
+def test_agent_run_and_wait_returns_final_output() -> None:
+    with patch.object(
+        TerseAgent,
+        "run",
+        return_value=iter(
+            [
+                SdkAgentStreamEventText(type="text", text="thinking"),
+                SdkAgentStreamEventFinalOutput(type="final_output", finalOutput="done"),
+            ]
+        ),
+    ):
+        result = TerseAgent().run_and_wait("hello")
+
+    assert result == "done"
+
+
+def test_agent_run_and_wait_returns_none_when_no_final_output_arrives() -> None:
+    with patch.object(TerseAgent, "run", return_value=iter([])):
+        result = TerseAgent().run_and_wait("hello")
+
+    assert result is None
+
+
+def test_agent_run_and_wait_propagates_errors() -> None:
+    with patch.object(TerseAgent, "run", side_effect=TerseApiError("boom")), pytest.raises(TerseApiError):
+        TerseAgent().run_and_wait("hello")
+
+
+def test_assert_sse_response_reads_streaming_json_error_payload() -> None:
+    response = _streaming_json_response(
+        200,
+        {"success": False, "error": "backend unavailable"},
+        path="/sdk/agent-run",
+    )
+
+    with pytest.raises(TerseApiError) as exc_info:
+        runtime_module._assert_sse_response(response, "/sdk/agent-run")
+
+    assert "backend unavailable" in str(exc_info.value)
+
+
+def test_assert_sse_response_reads_streaming_error_detail_on_http_error() -> None:
+    response = _streaming_json_response(
+        401,
+        {"error": "unauthorized"},
+        path="/sdk/agent-run",
+    )
+
+    with pytest.raises(TerseApiError) as exc_info:
+        runtime_module._assert_sse_response(response, "/sdk/agent-run")
+
+    assert "unauthorized" in str(exc_info.value)
 
 
 def _json_response(
@@ -372,7 +387,3 @@ def _streaming_json_response(
         stream=httpx.ByteStream(json.dumps(payload).encode("utf-8")),
         request=httpx.Request("POST", f"https://example.com{path}"),
     )
-
-
-if __name__ == "__main__":
-    unittest.main()

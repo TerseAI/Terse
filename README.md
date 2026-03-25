@@ -75,10 +75,10 @@ npm run python:refresh-types
 From the repo root, run the Python CLI through uv:
 
 ```bash
-uv run --package terse-python-cli terse --help
-uv run --package terse-python-cli terse --version
-uv run --package terse-python-cli terse init --help
-uv run --package terse-python-cli terse run --help
+uv run --package terse-cli terse --help
+uv run --package terse-cli terse --version
+uv run --package terse-cli terse init --help
+uv run --package terse-cli terse run --help
 ```
 
 The CLI is still a skeleton right now, so end-to-end manual testing means verifying:
@@ -91,12 +91,12 @@ The CLI is still a skeleton right now, so end-to-end manual testing means verify
 Example manual invocations:
 
 ```bash
-uv run --package terse-python-cli terse init demo-project
-uv run --package terse-python-cli terse generate
-uv run --package terse-python-cli terse integrate
-uv run --package terse-python-cli terse test demo-job
-uv run --package terse-python-cli terse deploy
-uv run --package terse-python-cli terse run demo-job --event '{"integrationType":"terse","eventType":"manual","formattedContent":"Manual trigger","debugLog":"Manual trigger"}'
+uv run --package terse-cli terse init demo-project
+uv run --package terse-cli terse generate
+uv run --package terse-cli terse integrate
+uv run --package terse-cli terse test demo-job
+uv run --package terse-cli terse deploy
+uv run --package terse-cli terse run demo-job --event '{"integrationType":"terse","eventType":"manual","formattedContent":"Manual trigger","debugLog":"Manual trigger"}'
 ```
 
 If you want to bypass `uv run` and use the synced environment directly, you can also invoke the installed binary:
@@ -160,11 +160,10 @@ Type check:
 uv run ty check packages/terse-python-cli/src packages/terse-python-sdk/src
 ```
 
-Run Python unit tests:
+Run Python tests:
 
 ```bash
-uv run python -m unittest discover -s packages/terse-python-cli/tests
-uv run python -m unittest discover -s packages/terse-python-sdk/tests
+uv run pytest packages/terse-python-cli/tests packages/terse-python-sdk/tests
 ```
 
 Build packages:
@@ -178,8 +177,8 @@ Inspect resolved dependencies:
 
 ```bash
 uv tree
-uv tree --package terse-python-cli
-uv tree --package terse-python-sdk
+uv tree --package terse-cli
+uv tree --package terse-sdk
 ```
 
 Shared-type sync only:
@@ -218,7 +217,7 @@ For day-to-day Python development:
 2. Make changes in `packages/terse-python-cli` and/or `packages/terse-python-sdk`.
 3. If shared TS types changed, run `npm run python:refresh-types`.
 4. Run `npm run python:check`.
-5. Manually exercise the CLI with `uv run --package terse-python-cli terse ...` or `npm run python:smoke`.
+5. Manually exercise the CLI with `uv run --package terse-cli terse ...` or `npm run python:smoke`.
 6. Build the package artifacts with `npm run python:build` before publishing or release work.
 
 ### Publishing Python Packages

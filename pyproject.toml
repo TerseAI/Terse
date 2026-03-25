@@ -10,6 +10,7 @@ default-groups = ["dev"]
 [dependency-groups]
 dev = [
     "datamodel-code-generator>=0.55.0",
+    "pytest>=8.4.2",
     "ruff>=0.15.7",
     "ty>=0.0.24",
 ]
@@ -26,3 +27,10 @@ select = ["E", "F", "I", "UP", "B", "SIM"]
 
 [tool.ty.environment]
 python-version = "3.11"
+
+[tool.pytest.ini_options]
+addopts = "-ra"
+testpaths = [
+    "packages/terse-python-cli/tests",
+    "packages/terse-python-sdk/tests",
+]
