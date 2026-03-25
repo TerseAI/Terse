@@ -1,37 +1,30 @@
-/**
- * In-process gate for SDK agent runs that are awaiting approval.
- *
- * When the SSE handler hits `awaiting_approval`, it registers a pending gate
- * and awaits its resolution. The POST /sdk/approval-decision endpoint resolves
- * the gate, allowing the handler to resume the agent on the same SSE stream.
- */
+import { EventEmitterTaskQueue } from "../tasks/abstract/eventEmitterTasks"
+import { Task } from "../tasks/abstract/tasks"
+
+const APPROVAL_DECISION_TASK_NAME = "SDK_APPROVAL_DECISION" as const
 
 export type ApprovalDecision = {
     approved: boolean
 }
 
-type PendingGate = {
-    resolve: (decision: ApprovalDecision) => void
+class ApprovalDecisionTask implements Task {
+    readonly taskName = APPROVAL_DECISION_TASK_NAME
+
+    constructor(
+        public runId: string,
+        public stepId: string,
+        public decision: ApprovalDecision
+    ) {}
 }
 
-const pendingGates = new Map<string, PendingGate>()
-
-function gateKey(runId: string, stepId: string): string {
-    return `${runId}:${stepId}`
-}
+const approvalTaskQueue = new EventEmitterTaskQueue<ApprovalDecisionTask>()
 
 export function waitForApprovalDecision(runId: string, stepId: string): Promise<ApprovalDecision> {
-    const key = gateKey(runId, stepId)
-    return new Promise<ApprovalDecision>(resolve => {
-        pendingGates.set(key, { resolve })
-    })
+    return approvalTaskQueue
+        .waitFor(APPROVAL_DECISION_TASK_NAME, task => task.runId === runId && task.stepId === stepId)
+        .then(task => task.decision)
 }
 
-export function resolveApprovalDecision(runId: string, stepId: string, decision: ApprovalDecision): boolean {
-    const key = gateKey(runId, stepId)
-    const gate = pendingGates.get(key)
-    if (!gate) return false
-    pendingGates.delete(key)
-    gate.resolve(decision)
-    return true
+export function resolveApprovalDecision(runId: string, stepId: string, decision: ApprovalDecision): void {
+    approvalTaskQueue.emit(new ApprovalDecisionTask(runId, stepId, decision))
 }

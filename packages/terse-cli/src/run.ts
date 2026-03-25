@@ -36,32 +36,37 @@ export async function executeJob(job: CreateJobParameters, event: SerializedEven
     }
 
     agent.onApprovalRequired = async (info: ApprovalRequestInfo) => {
-        console.log("")
-        console.log(chalk.yellow.bold(`  Approval required: ${info.toolName}`))
-        if (info.arguments) {
-            try {
-                const parsed = JSON.parse(info.arguments)
-                const formatted = JSON.stringify(parsed, null, 2)
-                    .split("\n")
-                    .map(line => `    ${chalk.dim(line)}`)
-                    .join("\n")
-                console.log(formatted)
-            } catch {
-                console.log(`    ${chalk.dim(info.arguments)}`)
+        sessionPaused = true
+        try {
+            console.log("")
+            console.log(chalk.yellow.bold(`  Approval required: ${info.toolName}`))
+            if (info.arguments) {
+                try {
+                    const parsed = JSON.parse(info.arguments)
+                    const formatted = JSON.stringify(parsed, null, 2)
+                        .split("\n")
+                        .map(line => `    ${chalk.dim(line)}`)
+                        .join("\n")
+                    console.log(formatted)
+                } catch {
+                    console.log(`    ${chalk.dim(info.arguments)}`)
+                }
             }
+            console.log("")
+
+            const approved = await confirm({
+                message: `Approve ${info.toolName}?`,
+                default: true
+            })
+
+            console.log(approved
+                ? chalk.green(`  Approved. Resuming...\n`)
+                : chalk.red(`  Rejected.\n`))
+
+            return approved
+        } finally {
+            sessionPaused = false
         }
-        console.log("")
-
-        const approved = await confirm({
-            message: `Approve ${info.toolName}?`,
-            default: true
-        })
-
-        console.log(approved
-            ? chalk.green(`  Approved. Resuming...\n`)
-            : chalk.red(`  Rejected.\n`))
-
-        return approved
     }
 
     try {
@@ -124,6 +129,8 @@ export async function run(jobName?: string, eventJson?: string, eventFile?: stri
 }
 
 // -- Session SSE lifecycle --------------------------------------------------
+
+let sessionPaused = false
 
 type SessionHandle = { sessionId: string; close: () => void }
 
@@ -203,6 +210,11 @@ function startEventConsumer(
 }
 
 function logSessionEvent(event: Record<string, unknown>): void {
+    // Skip session logging while an approval prompt is active
+    if (sessionPaused) return
+    // tool_approval_requested is handled by the SDK's onApprovalRequired callback
+    if (event.type === "tool_approval_requested") return
+
     switch (event.type) {
         case "tool_call_started":
             console.log(chalk.blue(`  [tool:start] ${event.toolCallStarted}`))
@@ -213,12 +225,6 @@ function logSessionEvent(event: Record<string, unknown>): void {
             const status = parsed?.status || "unknown"
             const symbol = status === "completed" ? chalk.green("ok") : chalk.red("failed")
             console.log(`  [tool:done] ${toolName} (${symbol})`)
-            break
-        }
-        case "tool_approval_requested": {
-            const approval = event.toolApprovalRequested as Record<string, unknown> | undefined
-            const toolName = (approval?.toolName as string) || "unknown_tool"
-            console.log(chalk.yellow(`  [tool:approval] ${toolName}`))
             break
         }
         case "action": {

@@ -101,10 +101,7 @@ export async function handleSdkApprovalDecision(req: Request, res: Response) {
         return res.status(400).json({ success: false, error: "Missing required fields: runId, stepId, approved" })
     }
 
-    const resolved = resolveApprovalDecision(body.runId, body.stepId, { approved: body.approved })
-    if (!resolved) {
-        return res.status(404).json({ success: false, error: "No pending approval found for this runId/stepId" })
-    }
+    resolveApprovalDecision(body.runId, body.stepId, { approved: body.approved })
 
     return res.status(200).json({ success: true })
 }
