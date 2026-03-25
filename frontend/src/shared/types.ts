@@ -516,7 +516,7 @@ export type RecentAgent = Agent & {
 
 export type AgentImprovementStatus = "PENDING" | "APPLIED" | "DISMISSED"
 
-export type AgentImprovementTargetArea = "prompt" | "trigger_config" | "output_config" | "general"
+export type AgentImprovementTargetArea = "prompt" | "trigger_config" | "output_config" | "general" | "code"
 
 export type AgentReview = {
     id: string
@@ -538,6 +538,7 @@ export type AgentImprovement = {
     targetArea: AgentImprovementTargetArea
     confidence: number
     status: AgentImprovementStatus
+    suggestedPatch?: string
     appliedPrompt?: string
     appliedAt?: string
     dismissedAt?: string
