@@ -207,11 +207,6 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
                 return
             }
 
-            if (!agent.outputs || agent.outputs.length === 0) {
-                logger.error(`[agent:chat:message] No output integrations found for agent: ${agent.id}`, { agentId: agent.id, userId })
-                return
-            }
-
             // Create outputs from agent configuration
             let outputs: Output<ConfigInstance>[]
             try {

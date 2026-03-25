@@ -128,10 +128,6 @@ export class OutputFactory {
     }
 
     static createOutputsFromAgent(agent: AgentWithRelations): Output<ConfigInstance>[] {
-        if (!agent.outputs || agent.outputs.length === 0) {
-            throw new Error(`No output integrations found for agent: ${agent.id}`)
-        }
-
         // Group configs by type
         const configsByType = new Map<OutputConfigType, ConfigInstance[]>()
         for (const outputIntegration of agent.outputs) {
