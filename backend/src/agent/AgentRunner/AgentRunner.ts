@@ -48,6 +48,7 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance> exte
     private maxTurns: number
     private notificationManager: NotificationManager
     private activeStreamingParams?: TrackingParams
+    private activeStreamEventEmitter?: StreamEventEmitter
 
     constructor(session: T, outputs: Output<TConfig>[], agent: AgentWithRelations, runContext: RunContext, maxTurns: number = 50) {
         super({
@@ -98,7 +99,7 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance> exte
 
         logger.info("User history build to be sent to agent", { userHistory: JSON.stringify(userHistory, null, 2) })
 
-        this.activeStreamingParams = streamingParams
+        this.setActiveStreamingParams(streamingParams)
         let loopResult: AgentRunnerLoopResult<SessionWithTracking<T>, Agent<SessionWithTracking<T>, AgentOutputType>>
         try {
             loopResult = await super.runAgent(userHistory, {
@@ -110,7 +111,7 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance> exte
                 signal: options?.signal
             })
         } finally {
-            this.activeStreamingParams = undefined
+            this.clearActiveStreamingParams()
         }
         return this.mapLoopResult(loopResult)
     }
@@ -130,7 +131,7 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance> exte
             user: this.session.user,
             env: settings.nodeEnv
         })
-        this.activeStreamingParams = streamingParams
+        this.setActiveStreamingParams(streamingParams)
         let loopResult: AgentRunnerLoopResult<SessionWithTracking<T>, Agent<SessionWithTracking<T>, AgentOutputType>>
         try {
             loopResult = await super.runAgent(userHistory, {
@@ -142,7 +143,7 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance> exte
                 signal: options?.signal
             })
         } finally {
-            this.activeStreamingParams = undefined
+            this.clearActiveStreamingParams()
         }
         return this.mapLoopResult(loopResult)
     }
@@ -169,7 +170,7 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance> exte
             env: settings.nodeEnv
         })
         const toolContext = this.getToolContext()
-        this.activeStreamingParams = streamingParams
+        this.setActiveStreamingParams(streamingParams)
         let loopResult: AgentRunnerLoopResult<SessionWithTracking<T>, Agent<SessionWithTracking<T>, AgentOutputType>>
         try {
             loopResult = await super.resumeAgent({
@@ -230,9 +231,25 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance> exte
                 }
             })
         } finally {
-            this.activeStreamingParams = undefined
+            this.clearActiveStreamingParams()
         }
         return this.mapLoopResult(loopResult)
+    }
+
+    private setActiveStreamingParams(streamingParams?: TrackingParams): void {
+        this.activeStreamingParams = streamingParams
+        this.activeStreamEventEmitter = streamingParams
+            ? new StreamEventEmitter(getSocketIO(), {
+                  runId: streamingParams.runId!,
+                  agentId: streamingParams.agentId!,
+                  user: streamingParams.user
+              })
+            : undefined
+    }
+
+    private clearActiveStreamingParams(): void {
+        this.activeStreamingParams = undefined
+        this.activeStreamEventEmitter = undefined
     }
 
     setInputEvent(event: InputEvent): void {
@@ -403,15 +420,8 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance> exte
     }
 
     protected async onModelEvent(event: ModelEvent, timestamp: number): Promise<void> {
-        const streamingParams = this.activeStreamingParams
-        if (!streamingParams) return
-        const io = getSocketIO()
-        const emitter = new StreamEventEmitter(io, {
-            runId: streamingParams.runId!,
-            agentId: streamingParams.agentId!,
-            user: streamingParams.user
-        })
-        emitter.emit(event, timestamp)
+        if (!this.activeStreamingParams || !this.activeStreamEventEmitter) return
+        this.activeStreamEventEmitter.emit(event, timestamp)
     }
 
     protected async onToolCallComplete(callId: string, toolName: string, actions?: RunHistoryAction[]): Promise<ChangedItem[]> {
