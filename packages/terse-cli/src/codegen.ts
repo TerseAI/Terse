@@ -863,8 +863,8 @@ function generateSnowflakeSection(instances: SnowflakeInstanceData[], tools: Too
 
     parts.push("export const Snowflake = {")
     parts.push(`    /** Use in \`skills[]\` */`)
-    parts.push(`    skill(opts?: { warehouse?: string; databaseName?: string; schemaName?: string }): TypedSkill<${skillToolType}> {`)
-    parts.push(`        return new SnowflakeOutputConfig("${id}", opts?.warehouse, opts?.databaseName, opts?.schemaName) as TypedSkill<${skillToolType}>`)
+    parts.push(`    skill(): TypedSkill<${skillToolType}> {`)
+    parts.push(`        return new SnowflakeOutputConfig("${id}") as TypedSkill<${skillToolType}>`)
     parts.push("    },")
     parts.push("}")
     parts.push("")
