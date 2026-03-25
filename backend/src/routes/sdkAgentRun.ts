@@ -1,4 +1,4 @@
-import { Tool } from "@openai/agents"
+import { RunToolApprovalItem, Tool } from "@openai/agents"
 import { Request, Response } from "express"
 
 import { SessionWithTracking } from "../agent/AgentRunner/AgentRunner"
@@ -10,16 +10,18 @@ import { OutputFactory } from "../outputs/abstract/OutputFactory"
 import { CONFIG_DETAILS } from "../shared/Configs"
 import { IntegrationType } from "../shared/Integrations"
 import { RunHistoryAction } from "../shared/RunHistoryTypes"
-import { SdkAgentRunRequestBody, SdkAgentRunResponseBody, SdkAgentSkillPayload, SdkAgentStreamEvent, User } from "../shared/types"
+import { SdkAgentRunRequestBody, SdkAgentRunResponseBody, SdkAgentSkillPayload, SdkAgentStreamEvent, SdkApprovalDecisionRequestBody, User } from "../shared/types"
 import { Session } from "../types/session"
 
 import { validateAndNormalizeSdkAgentRunBody } from "./sdkAgentRunValidation"
+import { resolveApprovalDecision, waitForApprovalDecision } from "./sdkApprovalGate"
 
 /**
  * POST /sdk/agent-run
  *
- * Placeholder route for SDK-driven full agent loop execution.
- * We wire this endpoint first, then implement execution in follow-up chunks.
+ * Streams the agent run over SSE. If the agent requests tool approval,
+ * the stream stays open while we wait for a decision via POST /sdk/approval-decision.
+ * On receiving the decision, the agent resumes and continues streaming.
  */
 export async function handleSdkAgentRun(req: Request, res: Response) {
     const user = req.session?.user as User | undefined
@@ -39,7 +41,84 @@ export async function handleSdkAgentRun(req: Request, res: Response) {
     }
 
     const normalized = validation.normalized
+    const { send, sandboxRunId } = initSseStream(req, res)
 
+    try {
+        const runId = sandboxRunId ?? `sdk-run-${Date.now()}`
+        const sdkRunner = createSdkRunner({
+            runId,
+            user,
+            prompt: normalized.prompt,
+            skills: normalized.skills,
+            send,
+            sandboxRunId,
+            options: normalized.options
+        })
+
+        send({ type: "run_started", runId })
+
+        const eventText = ["", `Integration Type: ${normalized.event.integrationType}`, `Event Content:`, normalized.event.formattedContent, ``, `Debug Log: ${normalized.event.debugLog}`].join("\n")
+
+        let result = await sdkRunner.run(eventText)
+
+        // Approval loop: keep the stream open while awaiting decisions
+        while (result.loopResult.status === "awaiting_approval") {
+            const interruptions = result.loopResult.interruptions ?? []
+            const stepId = (interruptions[0]?.rawItem as any)?.callId as string | undefined
+            if (!stepId) {
+                send({ type: "error", message: "Approval requested but no stepId found in interruption" })
+                break
+            }
+
+            const decision = await waitForApprovalDecision(runId, stepId)
+            const resumeDecision = decision.approved ? ("approve" as const) : ("reject" as const)
+            result = await sdkRunner.resume(resumeDecision, stepId, JSON.stringify(result.loopResult.state), interruptions)
+        }
+
+        finishSseStream(res, send, result, sdkRunner)
+    } catch (error) {
+        const message = error instanceof Error ? error.message : String(error)
+        send({ type: "error", message })
+        send({ type: "done" })
+        res.end()
+    }
+}
+
+/**
+ * POST /sdk/approval-decision
+ *
+ * Lightweight endpoint that resolves the in-process approval gate.
+ * The SSE handler (handleSdkAgentRun) is awaiting this signal to resume.
+ */
+export async function handleSdkApprovalDecision(req: Request, res: Response) {
+    const user = req.session?.user as User | undefined
+    if (!user) {
+        return res.status(401).json({ success: false, error: "Unauthorized" })
+    }
+
+    const body = req.body as SdkApprovalDecisionRequestBody
+    if (!body.runId || !body.stepId || typeof body.approved !== "boolean") {
+        return res.status(400).json({ success: false, error: "Missing required fields: runId, stepId, approved" })
+    }
+
+    const resolved = resolveApprovalDecision(body.runId, body.stepId, { approved: body.approved })
+    if (!resolved) {
+        return res.status(404).json({ success: false, error: "No pending approval found for this runId/stepId" })
+    }
+
+    return res.status(200).json({ success: true })
+}
+
+// Helpers
+
+function initSseStream(
+    req: Request,
+    res: Response
+): {
+    send: (event: SdkAgentStreamEvent) => void
+    sessionId: string | undefined
+    sandboxRunId: string | undefined
+} {
     res.setHeader("Content-Type", "text/event-stream")
     res.setHeader("Cache-Control", "no-cache")
     res.setHeader("Connection", "keep-alive")
@@ -52,7 +131,6 @@ export async function handleSdkAgentRun(req: Request, res: Response) {
         res.write(`data: ${JSON.stringify(event)}\n\n`)
         if (sessionId) emitSessionEvent(sessionId, event)
 
-        // Persist actions to run history when running inside a sandbox
         if (sandboxRunId && event.type === "action") {
             void appendRunAction(sandboxRunId, event.action as RunHistoryAction).catch(err => {
                 logger.warn("Failed to append run action for sandbox run", { error: err, runId: sandboxRunId })
@@ -60,64 +138,51 @@ export async function handleSdkAgentRun(req: Request, res: Response) {
         }
     }
 
-    try {
-        const { tools, toolToIntegrationMap } = buildToolsForSkills(normalized.skills.map(s => CONFIG_DETAILS[s.configType].integrationType))
-        const runId = sandboxRunId ?? `sdk-run-${Date.now()}`
-        const eventText = ["", `Integration Type: ${normalized.event.integrationType}`, `Event Content:`, normalized.event.formattedContent, ``, `Debug Log: ${normalized.event.debugLog}`].join("\n")
-        const sdkRunner = new SdkAgentRunner({
-            runId,
-            user,
-            prompt: normalized.prompt,
-            skills: normalized.skills,
-            tools,
-            toolToIntegrationMap,
-            maxTurns: normalized.options.maxTurns,
-            requireApproval: normalized.options.requireApproval,
-            send,
-            persistHistory: !!sandboxRunId
-        })
-        const { loopResult } = await sdkRunner.run(eventText)
-
-        if (loopResult.status === "awaiting_approval") {
-            console.log("#WTF awaiting_approval", loopResult)
-            send({
-                type: "error",
-                message: "This SDK run is waiting for tool approval. The approval request was streamed, but approval resume is not supported in /sdk/agent-run yet."
-            })
-            send({ type: "done" })
-            return res.end()
-        }
-
-        if (loopResult.endedWithToolFailure || sdkRunner.hasToolFailures()) {
-            send({ type: "error", message: sdkRunner.getToolFailureSummary() })
-            send({ type: "done" })
-            return res.end()
-        }
-
-        const finalOutput = SdkAgentRunner.getFinalOutput(loopResult.result)
-        if (finalOutput) {
-            send({ type: "final_output", finalOutput })
-        }
-        send({ type: "done" })
-        return res.end()
-    } catch (error) {
-        const message = error instanceof Error ? error.message : String(error)
-        send({ type: "error", message })
-        send({ type: "done" })
-        return res.end()
-    }
+    return { send, sessionId, sandboxRunId }
 }
 
-// function buildSkillContextLines(skills: SdkAgentSkillPayload[]): string[] {
-//     const lines = ["<SDK_SKILLS>", "Configured skill configs (use the integration IDs from each config when a tool requires integrationId):"]
-//     for (const skill of skills) {
-//         const integration = CONFIG_DETAILS[skill.configType].integrationType
-//         const integrationId = typeof skill.config.integrationId === "string" ? skill.config.integrationId : "<missing>"
-//         lines.push(`- ${skill.configType} (${integration}): ${integrationId}`)
-//     }
-//     lines.push("If the required integrationId is missing, ask for it or avoid write actions that require a bound integration.", "</SDK_SKILLS>")
-//     return lines
-// }
+type SdkAgentRunnerResult = Awaited<ReturnType<SdkAgentRunner["run"]>>
+
+function finishSseStream(res: Response, send: (event: SdkAgentStreamEvent) => void, { loopResult }: SdkAgentRunnerResult, sdkRunner: SdkAgentRunner): void {
+    if (loopResult.status === "completed") {
+        if (loopResult.endedWithToolFailure || sdkRunner.hasToolFailures()) {
+            send({ type: "error", message: sdkRunner.getToolFailureSummary() })
+        } else {
+            const finalOutput = SdkAgentRunner.getFinalOutput(loopResult.result)
+            if (finalOutput) {
+                send({ type: "final_output", finalOutput })
+            }
+        }
+    }
+
+    send({ type: "done" })
+    res.end()
+}
+
+function createSdkRunner(params: {
+    runId: string
+    user: User
+    prompt: string
+    skills: SdkAgentSkillPayload[]
+    send: (event: SdkAgentStreamEvent) => void
+    sandboxRunId: string | undefined
+    options?: { maxTurns?: number; requireApproval?: boolean }
+}): SdkAgentRunner {
+    const { tools, toolToIntegrationMap } = buildToolsForSkills(params.skills.map(s => CONFIG_DETAILS[s.configType].integrationType))
+
+    return new SdkAgentRunner({
+        runId: params.runId,
+        user: params.user,
+        prompt: params.prompt,
+        skills: params.skills,
+        tools,
+        toolToIntegrationMap,
+        maxTurns: params.options?.maxTurns ?? 50,
+        requireApproval: params.options?.requireApproval ?? true,
+        send: params.send,
+        persistHistory: !!params.sandboxRunId
+    })
+}
 
 function buildToolsForSkills(skillIntegrationTypes: IntegrationType[]): {
     tools: Tool<SessionWithTracking<Session>>[]

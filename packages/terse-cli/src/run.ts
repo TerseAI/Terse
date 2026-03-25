@@ -1,6 +1,7 @@
 import fs from "fs"
 import chalk from "chalk"
-import { CreateJobParameters, TerseAgent } from "terse-sdk"
+import { confirm } from "@inquirer/prompts"
+import { CreateJobParameters, TerseAgent, ApprovalRequestInfo } from "terse-sdk"
 import { readApiKey } from "./api.js"
 import { assertProjectRoot } from "./assertProjectRoot.js"
 import { loadJob } from "./loadJob.js"
@@ -32,6 +33,35 @@ export async function executeJob(job: CreateJobParameters, event: SerializedEven
     const createTools = (globalThis as any).__terse_createTools as ((agent: TerseAgent) => unknown) | undefined
     if (createTools) {
         Object.defineProperty(agent, "tools", { value: createTools(agent) })
+    }
+
+    agent.onApprovalRequired = async (info: ApprovalRequestInfo) => {
+        console.log("")
+        console.log(chalk.yellow.bold(`  Approval required: ${info.toolName}`))
+        if (info.arguments) {
+            try {
+                const parsed = JSON.parse(info.arguments)
+                const formatted = JSON.stringify(parsed, null, 2)
+                    .split("\n")
+                    .map(line => `    ${chalk.dim(line)}`)
+                    .join("\n")
+                console.log(formatted)
+            } catch {
+                console.log(`    ${chalk.dim(info.arguments)}`)
+            }
+        }
+        console.log("")
+
+        const approved = await confirm({
+            message: `Approve ${info.toolName}?`,
+            default: true
+        })
+
+        console.log(approved
+            ? chalk.green(`  Approved. Resuming...\n`)
+            : chalk.red(`  Rejected.\n`))
+
+        return approved
     }
 
     try {

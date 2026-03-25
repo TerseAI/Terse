@@ -99,14 +99,17 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
         this.memorySession = params.persistHistory ? new RunHistoryChatMemorySession({ sessionId: params.runId }) : new InMemoryAgentSession(params.runId)
     }
 
-    async run(eventText: string): Promise<SdkAgentRunnerResult> {
-        const runner = runnerFactory({
+    private createRunner() {
+        return runnerFactory({
             agentId: "sdk-agent-run",
             agentType: AgentType.AGENT_RUNNER,
             runId: this.sdkRunId,
             user: this.user,
             env: settings.nodeEnv
         })
+    }
+
+    async run(eventText: string): Promise<SdkAgentRunnerResult> {
         const loopResult = await super.runAgent(
             [
                 {
@@ -115,12 +118,28 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
                 }
             ],
             {
-                runner,
+                runner: this.createRunner(),
                 context: this.getToolContext(),
                 memorySession: this.memorySession,
                 maxTurns: this.maxTurns
             }
         )
+        return { loopResult }
+    }
+
+    async resume(decision: "approve" | "reject", stepId: string, serializedState: string, interruptions: RunToolApprovalItem[]): Promise<SdkAgentRunnerResult> {
+        this.pendingApprovalState = { serializedState, interruptions }
+
+        const loopResult = await super.resumeAgent({
+            decision,
+            stepId,
+            settings: {
+                runner: this.createRunner(),
+                context: this.getToolContext(),
+                memorySession: this.memorySession,
+                maxTurns: this.maxTurns
+            }
+        })
         return { loopResult }
     }
 
@@ -153,7 +172,6 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
             return
         }
         if (event.type === "ToolApprovalRequest") {
-            console.log("#WTF ToolApprovalRequest", event)
             this.send({
                 type: "tool_approval_requested",
                 toolApprovalRequested: {

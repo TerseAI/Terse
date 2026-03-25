@@ -696,6 +696,7 @@ export type SdkAgentRunResponseBody = {
 }
 
 export type SdkAgentStreamEvent =
+    | { type: "run_started"; runId: string }
     | { type: "text"; text: string }
     | { type: "final_output"; finalOutput: string }
     | { type: "tool_call_params"; toolCallParams: string }
@@ -712,6 +713,12 @@ export type SdkAgentStreamEvent =
     | { type: "action"; action: RunHistoryAction }
     | { type: "error"; message: string }
     | { type: "done" }
+
+export type SdkApprovalDecisionRequestBody = {
+    runId: string
+    stepId: string
+    approved: boolean
+}
 
 export type SdkDeployTrigger = {
     configType: string

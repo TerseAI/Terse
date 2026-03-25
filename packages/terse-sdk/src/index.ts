@@ -4,7 +4,8 @@ import type { InputEvent, TypedTrigger, TypedSkill, InferEvents, InferToolApprov
 import { CONFIG_DETAILS } from "./shared/Configs.js"
 import type { ConfigInstance } from "./shared/Configs.js"
 import type { RunHistoryAction } from "./shared/RunHistoryTypes.js"
-import type { SdkAgentRunRequestBody, SdkAgentRunResponseBody, SdkAgentSkillPayload, SdkAgentStreamEvent } from "./shared/types.js"
+import type { SdkAgentRunRequestBody, SdkAgentRunResponseBody, SdkApprovalDecisionRequestBody, SdkAgentSkillPayload, SdkAgentStreamEvent } from "./shared/types.js"
+
 import { IntegrationType } from "./shared/Integrations.js"
 import { ApiRoutes } from "./shared/ApiRoutes.js"
 // Re-export SDK-specific types
@@ -141,10 +142,24 @@ export class Terse {
     }
 }
 
+export type ApprovalRequestInfo = {
+    stepId: string
+    toolName: string
+    arguments: string
+}
+
 export class TerseAgent {
     readonly skills: readonly ConfigInstance[]
     private readonly apiBaseUrl: string
     private readonly sessionId?: string
+
+    /**
+     * Optional callback invoked when the agent requires tool approval.
+     * Return `true` to approve, `false` to reject.
+     * If not set, approval events are yielded as ToolApprovalRequestedResult
+     * but no decision is submitted (the stream will hang waiting).
+     */
+    onApprovalRequired?: (info: ApprovalRequestInfo) => Promise<boolean>
 
     constructor(skills: readonly ConfigInstance[] = [], apiBaseUrl: string = "http://localhost:3001", sessionId?: string) {
         this.skills = skills
@@ -153,16 +168,7 @@ export class TerseAgent {
     }
 
     async *run(prompt: string, event?: InputEvent): AsyncGenerator<TerseAgentResult> {
-        const apiKey = process.env.TERSE_API_KEY
-        if (!apiKey) {
-            throw new Error("TERSE_API_KEY environment variable is not set. Cannot run agent without authentication.")
-        }
-
         const resolvedEvent = event ?? new MockInputEvent()
-        const skills: SdkAgentSkillPayload[] = this.skills.map(skill => ({
-            configType: skill.configType,
-            config: serializeSkillConfig(skill)
-        }))
 
         const requestBody: SdkAgentRunRequestBody = {
             prompt,
@@ -171,50 +177,18 @@ export class TerseAgent {
                 formattedContent: resolvedEvent.formatForAgentRunner(),
                 debugLog: resolvedEvent.debugLog()
             },
-            skills
+            skills: this.serializeSkills()
         }
-
-        const headers: Record<string, string> = {
-            Authorization: `Bearer ${apiKey}`,
-            "Content-Type": "application/json",
-            Accept: "text/event-stream"
-        }
-        if (this.sessionId) headers["X-Terse-Session-Id"] = this.sessionId
-        const runId = process.env.TERSE_RUN_ID
-        if (runId) headers["X-Terse-Run-Id"] = runId
 
         const res = await fetch(`${this.apiBaseUrl}${ApiRoutes.SDK.AGENT_RUN}`, {
             method: "POST",
-            headers,
+            headers: this.buildHeaders(),
             body: JSON.stringify(requestBody)
         })
 
         const contentType = res.headers.get("content-type") ?? ""
         if (contentType.includes("text/event-stream")) {
-            if (!res.body) {
-                throw new Error("Agent run stream did not provide a response body.")
-            }
-            const failedToolCalls: string[] = []
-            for await (const eventData of iterateSseDataLines(res.body)) {
-                const parsed = safeParseStreamEvent(eventData)
-                if (!parsed) continue
-                if (parsed.type === "done") {
-                    if (failedToolCalls.length > 0) {
-                        throw new Error(`Run completed with failed tool calls: ${failedToolCalls.join("; ")}`)
-                    }
-                    return
-                }
-                if (parsed.type === "error") {
-                    throw new Error(parsed.message)
-                }
-                if (parsed.type === "tool_call_completed") {
-                    const parsedTool = parseToolCallCompleted(parsed.toolCallCompleted)
-                    if (parsedTool && parsedTool.status && parsedTool.status !== "completed") {
-                        failedToolCalls.push(`${parsedTool.tool}: ${parsedTool.status}`)
-                    }
-                }
-                yield mapStreamEventToResult(parsed)
-            }
+            yield* this.consumeSseStream(res)
             return
         }
 
@@ -225,7 +199,19 @@ export class TerseAgent {
         }
 
         yield new TextResult("Agent run request accepted.")
-        return
+    }
+
+    async submitApprovalDecision(params: { runId: string; stepId: string; approved: boolean }): Promise<void> {
+        const res = await fetch(`${this.apiBaseUrl}${ApiRoutes.SDK.APPROVAL_DECISION}`, {
+            method: "POST",
+            headers: this.buildHeaders(),
+            body: JSON.stringify(params satisfies SdkApprovalDecisionRequestBody)
+        })
+
+        if (!res.ok) {
+            const data = (await res.json().catch(() => ({}))) as Record<string, unknown>
+            throw new Error(`Approval decision failed: ${data.error ?? res.statusText}`)
+        }
     }
 
     /**
@@ -239,21 +225,9 @@ export class TerseAgent {
     }
 
     async executeTool<TOutput = unknown>(toolName: string, params: Record<string, unknown> = {}): Promise<TOutput> {
-        const apiKey = process.env.TERSE_API_KEY
-        if (!apiKey) {
-            throw new Error("TERSE_API_KEY environment variable is not set. Cannot execute tools without authentication.")
-        }
-        const headers: Record<string, string> = {
-            Authorization: `Bearer ${apiKey}`,
-            "Content-Type": "application/json"
-        }
-        if (this.sessionId) headers["X-Terse-Session-Id"] = this.sessionId
-        const toolRunId = process.env.TERSE_RUN_ID
-        if (toolRunId) headers["X-Terse-Run-Id"] = toolRunId
-
         const res = await fetch(`${this.apiBaseUrl}${ApiRoutes.SDK.TOOL_EXECUTE}`, {
             method: "POST",
-            headers,
+            headers: this.buildHeaders(),
             body: JSON.stringify({ toolName, params })
         })
         const data = (await res.json()) as { success: boolean; result?: unknown; error?: string }
@@ -261,6 +235,68 @@ export class TerseAgent {
             throw new Error(data.error ?? "Tool execution failed")
         }
         return data.result as TOutput
+    }
+
+    private buildHeaders(): Record<string, string> {
+        const apiKey = process.env.TERSE_API_KEY
+        if (!apiKey) {
+            throw new Error("TERSE_API_KEY environment variable is not set.")
+        }
+        const headers: Record<string, string> = {
+            Authorization: `Bearer ${apiKey}`,
+            "Content-Type": "application/json",
+            Accept: "text/event-stream"
+        }
+        if (this.sessionId) headers["X-Terse-Session-Id"] = this.sessionId
+        const runId = process.env.TERSE_RUN_ID
+        if (runId) headers["X-Terse-Run-Id"] = runId
+        return headers
+    }
+
+    private serializeSkills(): SdkAgentSkillPayload[] {
+        return this.skills.map(skill => ({
+            configType: skill.configType,
+            config: serializeSkillConfig(skill)
+        }))
+    }
+
+    private async *consumeSseStream(res: Response): AsyncGenerator<TerseAgentResult> {
+        if (!res.body) {
+            throw new Error("Stream did not provide a response body.")
+        }
+        let runId = ""
+        const failedToolCalls: string[] = []
+        for await (const eventData of iterateSseDataLines(res.body)) {
+            const parsed = safeParseStreamEvent(eventData)
+            if (!parsed) continue
+            if (parsed.type === "run_started") {
+                runId = parsed.runId
+                continue
+            }
+            if (parsed.type === "done") {
+                if (failedToolCalls.length > 0) {
+                    throw new Error(`Run completed with failed tool calls: ${failedToolCalls.join("; ")}`)
+                }
+                return
+            }
+            if (parsed.type === "error") {
+                throw new Error(parsed.message)
+            }
+            if (parsed.type === "tool_call_completed") {
+                const parsedTool = parseToolCallCompleted(parsed.toolCallCompleted)
+                if (parsedTool && parsedTool.status && parsedTool.status !== "completed") {
+                    failedToolCalls.push(`${parsedTool.tool}: ${parsedTool.status}`)
+                }
+            }
+            if (parsed.type === "tool_approval_requested" && this.onApprovalRequired) {
+                const info = parsed.toolApprovalRequested
+                yield mapStreamEventToResult(parsed)
+                const approved = await this.onApprovalRequired(info)
+                await this.submitApprovalDecision({ runId, stepId: info.stepId, approved })
+                continue
+            }
+            yield mapStreamEventToResult(parsed)
+        }
     }
 }
 
