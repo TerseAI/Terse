@@ -57,18 +57,10 @@ npm run python:setup
 
 This will:
 
-- copy the repo-level TypeScript shared definitions into both Python packages
-- regenerate the Python SDK Pydantic models from the TypeScript source of truth
 - create `.venv/` at the repo root
 - install the workspace packages in editable mode
 - install shared dev tools like `ruff` and `ty`
 - generate/update `uv.lock` when dependencies change
-
-If you only want to refresh the mirrored shared types and generated Python models without syncing dependencies:
-
-```bash
-npm run python:refresh-types
-```
 
 ### Manual CLI Runs
 
@@ -113,7 +105,6 @@ Recommended wrapper scripts:
 
 ```bash
 npm run python:setup
-npm run python:refresh-types
 npm run python:check
 npm run python:test
 npm run python:dist:check
@@ -132,12 +123,6 @@ Refresh the lockfile after dependency changes:
 ```bash
 uv lock
 uv sync --all-packages
-```
-
-Refresh mirrored TypeScript shared types plus generated Python models:
-
-```bash
-npm run python:refresh-types
 ```
 
 Lint:
@@ -187,26 +172,14 @@ Shared-type sync only:
 npm run sync:shared
 ```
 
-### Python Shared Type Codegen
+### Python SDK Models
 
-The Python SDK includes generated Pydantic models derived from the shared TypeScript definitions.
+The Python SDK request/response models are maintained by hand under `packages/terse-python-sdk/src/terse_sdk/types/`.
 
-When the shared TypeScript source changes, regenerate the Python models from the repo root:
-
-```bash
-npm run python:refresh-types
-```
-
-Generated output is written into:
-
-- `packages/terse-python-sdk/src/terse_sdk/generated/`
-- `packages/terse-python-cli/shared/`
-- `packages/terse-python-sdk/shared/`
-
-After regenerating, run:
+If you only need to sync the repo-level shared TypeScript definitions for the JavaScript/TypeScript packages and the Python CLI helper generator, run:
 
 ```bash
-npm run python:check
+npm run sync:shared
 ```
 
 ### Recommended Python Dev Loop
@@ -215,10 +188,9 @@ For day-to-day Python development:
 
 1. Run `npm run python:setup` the first time.
 2. Make changes in `packages/terse-python-cli` and/or `packages/terse-python-sdk`.
-3. If shared TS types changed, run `npm run python:refresh-types`.
-4. Run `npm run python:check`.
-5. Manually exercise the CLI with `uv run --package terse-cli terse ...` or `npm run python:smoke`.
-6. Build the package artifacts with `npm run python:build` before publishing or release work.
+3. Run `npm run python:check`.
+4. Manually exercise the CLI with `uv run --package terse-cli terse ...` or `npm run python:smoke`.
+5. Build the package artifacts with `npm run python:build` before publishing or release work.
 
 ### Publishing Python Packages
 

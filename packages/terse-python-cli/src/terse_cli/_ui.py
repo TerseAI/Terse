@@ -8,7 +8,7 @@ from typing import TypeVar
 
 import questionary
 from rich.console import Console
-from terse_sdk.generated.models import (
+from terse_sdk import (
     SdkAgentStreamEventAction,
     SdkAgentStreamEventFinalOutput,
     SdkAgentStreamEventText,

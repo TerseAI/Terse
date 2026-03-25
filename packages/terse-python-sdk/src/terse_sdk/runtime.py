@@ -17,23 +17,8 @@ import httpx
 from httpx_sse import connect_sse
 from pydantic import ValidationError
 
-from .generated.models import (
-    SdkAgentRunRequestBody,
-    SdkAgentRunResponseBody,
-    SdkAgentSkillPayload,
-    SdkAgentStreamEvent,
-    SdkAgentStreamEventAction,
-    SdkAgentStreamEventDone,
-    SdkAgentStreamEventError,
-    SdkAgentStreamEventFinalOutput,
-    SdkAgentStreamEventText,
-    SdkAgentStreamEventToolCallCompleted,
-    SdkAgentStreamEventToolCallParams,
-    SdkAgentStreamEventToolCallStarted,
-    SerializedEvent,
-)
-from .models.config import TerseSettings
-from .models.events import (
+from .types.config import TerseSettings
+from .types.events import (
     AnyInputEvent,
     AtlassianInputEvent,
     AttioInputEvent,
@@ -53,7 +38,24 @@ from .models.events import (
     TerseInputEvent,
     WorkOSInputEvent,
 )
-from .models.jobs import SkillConfig, TriggerConfig
+from .types.jobs import SkillConfig, TriggerConfig
+from .types.sdk_types import (
+    SdkAgentRunRequestBody,
+    SdkAgentRunResponseBody,
+    SdkAgentSkillPayload,
+    SerializedEvent,
+)
+from .types.stream_events import (
+    SdkAgentStreamEvent,
+    SdkAgentStreamEventAction,
+    SdkAgentStreamEventDone,
+    SdkAgentStreamEventError,
+    SdkAgentStreamEventFinalOutput,
+    SdkAgentStreamEventText,
+    SdkAgentStreamEventToolCallCompleted,
+    SdkAgentStreamEventToolCallParams,
+    SdkAgentStreamEventToolCallStarted,
+)
 
 JobEvent = AnyInputEvent
 JobHandler = Callable[[JobEvent, "TerseAgent"], None | Awaitable[None]]

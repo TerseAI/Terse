@@ -18,7 +18,7 @@ The SDK provides:
 - `@app.job(...)` for declaring jobs
 - `TerseAgent` for agent runs and deterministic tool execution
 - typed event models such as `CronJobInputEvent`
-- generated backend models under `terse_sdk.generated.models`
+- hand-written request/response models exported from `terse_sdk`
 
 ## Quick Start
 

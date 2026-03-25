@@ -273,7 +273,7 @@ def test_generate_writes_integration_helpers(runner: CliRunner) -> None:
         assert "class _SnowflakeTools:" in generated
         assert "def execute_query(self, *, query: str) -> SnowflakeExecuteQueryToolOutput:" in generated
         assert "def explain_query(self, *, query: str) -> SnowflakeExplainQueryToolOutput:" in generated
-        assert "from terse_sdk.generated.models import (" in generated
+        assert "from terse_sdk import (" in generated
         assert "AttioQueryRecordsToolOutput" in generated
         assert "SnowflakeExecuteQueryToolOutput" in generated
         assert "class Terse:" not in generated

@@ -14,26 +14,20 @@ export class SdkRuntimeExecutorRegistry {
         const knownEntries = this.getKnownDetectionEntries()
 
         if (matches.length > 1) {
-            const matchedEntries = Array.from(
-                new Set(matches.flatMap(executor => executor.detectionEntries.filter(entry => entries.has(entry))))
-            ).sort()
+            const matchedEntries = Array.from(new Set(matches.flatMap(executor => executor.detectionEntries.filter(entry => entries.has(entry))))).sort()
 
             if (matchedEntries.length === 2) {
                 throw new Error(`SDK archive is ambiguous: found both "${matchedEntries[0]}" and "${matchedEntries[1]}" at the project root`)
             }
 
-            throw new Error(
-                `SDK archive is ambiguous: found multiple runtime entrypoints at the project root (${matchedEntries.map(entry => `"${entry}"`).join(", ")})`
-            )
+            throw new Error(`SDK archive is ambiguous: found multiple runtime entrypoints at the project root (${matchedEntries.map(entry => `"${entry}"`).join(", ")})`)
         }
 
         if (knownEntries.length === 2) {
             throw new Error(`SDK archive is invalid: expected either "${knownEntries[0]}" or "${knownEntries[1]}" at the project root`)
         }
 
-        throw new Error(
-            `SDK archive is invalid: expected one of ${knownEntries.map(entry => `"${entry}"`).join(", ")} at the project root`
-        )
+        throw new Error(`SDK archive is invalid: expected one of ${knownEntries.map(entry => `"${entry}"`).join(", ")} at the project root`)
     }
 
     private getKnownDetectionEntries(): string[] {
@@ -41,7 +35,4 @@ export class SdkRuntimeExecutorRegistry {
     }
 }
 
-export const sdkRuntimeExecutorRegistry = new SdkRuntimeExecutorRegistry([
-    new TypescriptSdkRuntimeExecutor(),
-    new PythonSdkRuntimeExecutor()
-])
+export const sdkRuntimeExecutorRegistry = new SdkRuntimeExecutorRegistry([new TypescriptSdkRuntimeExecutor(), new PythonSdkRuntimeExecutor()])

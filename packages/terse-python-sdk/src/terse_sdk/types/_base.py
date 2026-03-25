@@ -10,3 +10,7 @@ def to_camel(value: str) -> str:
 
 class TerseModel(BaseModel):
     model_config = ConfigDict(alias_generator=to_camel, extra="forbid", populate_by_name=True)
+
+
+class _CamelModel(BaseModel):
+    model_config = ConfigDict(extra="forbid")

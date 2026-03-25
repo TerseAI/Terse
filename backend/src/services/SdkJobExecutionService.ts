@@ -11,13 +11,7 @@ import { RunHistoryStatus } from "../shared/RunHistoryTypes"
 
 import { downloadSdkDeployZip } from "./FileStorageService"
 import { sdkRuntimeExecutorRegistry } from "./sdkRuntimeExecutors/SdkRuntimeExecutorRegistry"
-import {
-    SDK_SANDBOX_CODE_ZIP_PATH,
-    SDK_SANDBOX_EVENT_FILE_PATH,
-    SDK_SANDBOX_PROJECT_DIR,
-    type SandboxCommandResult,
-    type SdkRuntimeExecutorContext,
-} from "./sdkRuntimeExecutors/types"
+import { SDK_SANDBOX_CODE_ZIP_PATH, SDK_SANDBOX_EVENT_FILE_PATH, SDK_SANDBOX_PROJECT_DIR, type SandboxCommandResult, type SdkRuntimeExecutorContext } from "./sdkRuntimeExecutors/types"
 
 export interface SdkJobExecutionParams {
     gcsKey: string
@@ -158,13 +152,7 @@ export class SdkJobExecutionService {
         await eventHandle.close()
     }
 
-    private createRuntimeExecutorContext(
-        sb: Sandbox,
-        sandboxEnv: Record<string, string>,
-        runId: string,
-        agentId: string,
-        jobName: string
-    ): SdkRuntimeExecutorContext {
+    private createRuntimeExecutorContext(sb: Sandbox, sandboxEnv: Record<string, string>, runId: string, agentId: string, jobName: string): SdkRuntimeExecutorContext {
         return {
             sb,
             sandboxEnv,
@@ -183,28 +171,14 @@ export class SdkJobExecutionService {
         }
     }
 
-    private async ensureSandboxCommand(
-        sb: Sandbox,
-        label: string,
-        command: string,
-        sandboxEnv: Record<string, string>,
-        runId: string,
-        agentId: string
-    ): Promise<void> {
+    private async ensureSandboxCommand(sb: Sandbox, label: string, command: string, sandboxEnv: Record<string, string>, runId: string, agentId: string): Promise<void> {
         const result = await this.runSandboxCommand(sb, label, command, sandboxEnv, runId, agentId)
         if (result.exitCode !== 0) {
             throw new Error(this.buildFailureMessage(label, result))
         }
     }
 
-    private async runSandboxCommand(
-        sb: Sandbox,
-        label: string,
-        command: string,
-        sandboxEnv: Record<string, string>,
-        runId: string,
-        agentId: string
-    ): Promise<SandboxCommandResult> {
+    private async runSandboxCommand(sb: Sandbox, label: string, command: string, sandboxEnv: Record<string, string>, runId: string, agentId: string): Promise<SandboxCommandResult> {
         const t = performance.now()
         logger.info("SDK sandbox: starting command", { runId, agentId, label, command })
 

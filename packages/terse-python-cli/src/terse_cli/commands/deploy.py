@@ -4,8 +4,14 @@ from __future__ import annotations
 
 import click
 from pydantic import ValidationError
-from terse_sdk import RegisteredJob, TriggerConfig
-from terse_sdk.generated.models import SdkDeployJob, SdkDeployRequestBody, SdkDeployResponseBody, SdkDeployTrigger
+from terse_sdk import (
+    RegisteredJob,
+    SdkDeployJob,
+    SdkDeployRequestBody,
+    SdkDeployResponseBody,
+    SdkDeployTrigger,
+    TriggerConfig,
+)
 
 from .._http import ApiRequestError, AuthenticationError, request_json
 from .._loader import NoJobsFoundError, ProjectImportError, load_job_registry

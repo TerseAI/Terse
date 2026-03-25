@@ -12,8 +12,7 @@ from dataclasses import dataclass
 import httpx
 from httpx_sse import connect_sse
 from pydantic import ValidationError
-from terse_sdk import TerseSettings
-from terse_sdk.generated.models import SdkAgentStreamEvent
+from terse_sdk import SdkAgentStreamEvent, TerseSettings
 
 LOGGER = logging.getLogger("terse.cli.session")
 

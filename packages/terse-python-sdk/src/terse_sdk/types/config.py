@@ -9,3 +9,6 @@ class TerseSettings(BaseSettings):
     backend_url: str = "https://cursor-for-tickets.onrender.com"
 
     model_config = SettingsConfigDict(env_prefix="TERSE_", extra="ignore")
+
+
+__all__ = ["TerseSettings"]

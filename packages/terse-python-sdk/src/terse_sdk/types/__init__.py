@@ -1,25 +1,12 @@
 # ruff: noqa: F401
 
-"""Terse Python SDK."""
+"""Hand-written SDK types."""
 
-from .runtime import (
-    EventType,
-    MissingApiKeyError,
-    RegisteredJob,
-    Terse,
-    TerseAgent,
-    TerseApiError,
-    TerseRuntimeError,
-    clear_job_registry,
-    deserialize_input_event,
-    execute_registered_job,
-    get_job_registry,
-)
-from .types.agents import Agent, AgentNotificationSettings, AgentOutput, AgentPrompt, AgentTrigger, AgentUpdate
-from .types.agents import __all__ as _agents_all
-from .types.attio import AttioAttribute, AttioObjectWithAttributes, AttioRecord, AttioRecordIdentifier, Repository
-from .types.attio import __all__ as _attio_all
-from .types.chat_snippets import (
+from .agents import Agent, AgentNotificationSettings, AgentOutput, AgentPrompt, AgentTrigger, AgentUpdate
+from .agents import __all__ as _agents_all
+from .attio import AttioAttribute, AttioObjectWithAttributes, AttioRecord, AttioRecordIdentifier, Repository
+from .attio import __all__ as _attio_all
+from .chat_snippets import (
     ChatSnippet,
     ChatSnippetButton,
     ChatSnippetImage,
@@ -28,10 +15,10 @@ from .types.chat_snippets import (
     ChatSnippetNavigate,
     MultipleChoiceOption,
 )
-from .types.chat_snippets import __all__ as _chat_snippets_all
-from .types.config import TerseSettings
-from .types.config import __all__ as _config_all
-from .types.enums import (
+from .chat_snippets import __all__ as _chat_snippets_all
+from .config import TerseSettings
+from .config import __all__ as _config_all
+from .enums import (
     ApprovalActionType,
     ApprovalRequestStatus,
     ChangeEventType,
@@ -52,8 +39,8 @@ from .types.enums import (
     ToolCallExecutionStatus,
     WorkOSEventType,
 )
-from .types.enums import __all__ as _enums_all
-from .types.events import (
+from .enums import __all__ as _enums_all
+from .events import (
     AnyInputEvent,
     AtlassianInputEvent,
     AttioInputEvent,
@@ -85,12 +72,12 @@ from .types.events import (
     WorkOSEventUser,
     WorkOSInputEvent,
 )
-from .types.events import __all__ as _events_all
-from .types.integrations import ConfigDetails, ConfigInstance, IntegrationDetails, NotificationSettings
-from .types.integrations import __all__ as _integrations_all
-from .types.jobs import JobDefinition, SkillConfig, TriggerConfig
-from .types.jobs import __all__ as _jobs_all
-from .types.model_events import (
+from .events import __all__ as _events_all
+from .integrations import ConfigDetails, ConfigInstance, IntegrationDetails, NotificationSettings
+from .integrations import __all__ as _integrations_all
+from .jobs import JobDefinition, SkillConfig, TriggerConfig
+from .jobs import __all__ as _jobs_all
+from .model_events import (
     Error,
     ModelEvent,
     ModelEventCancelled,
@@ -111,8 +98,8 @@ from .types.model_events import (
     TextDelta,
     ToolCall,
 )
-from .types.model_events import __all__ as _model_events_all
-from .types.run_history import (
+from .model_events import __all__ as _model_events_all
+from .run_history import (
     ApprovalAction,
     ApprovalRequest,
     ChangedItem,
@@ -122,8 +109,8 @@ from .types.run_history import (
     RunHistoryRecord,
     RunHistoryTrigger,
 )
-from .types.run_history import __all__ as _run_history_all
-from .types.sdk_types import (
+from .run_history import __all__ as _run_history_all
+from .sdk_types import (
     ApiToken,
     ApiTokenCreateResponse,
     Contract,
@@ -144,8 +131,8 @@ from .types.sdk_types import (
     SerializedEvent,
     TriggerPayload,
 )
-from .types.sdk_types import __all__ as _sdk_types_all
-from .types.stream_events import (
+from .sdk_types import __all__ as _sdk_types_all
+from .stream_events import (
     SdkAgentStreamEvent,
     SdkAgentStreamEventAction,
     SdkAgentStreamEventDone,
@@ -156,10 +143,10 @@ from .types.stream_events import (
     SdkAgentStreamEventToolCallParams,
     SdkAgentStreamEventToolCallStarted,
 )
-from .types.stream_events import __all__ as _stream_events_all
-from .types.tickets import Assignee, Label, Project, State, Team, Ticket, TicketState
-from .types.tickets import __all__ as _tickets_all
-from .types.tools import (
+from .stream_events import __all__ as _stream_events_all
+from .tickets import Assignee, Label, Project, State, Team, Ticket, TicketState
+from .tickets import __all__ as _tickets_all
+from .tools import (
     AttioListObjectsToolOutput,
     AttioQueryRecordsToolOutput,
     AttioUpsertRecordToolOutput,
@@ -167,14 +154,11 @@ from .types.tools import (
     SnowflakeExplainQueryToolOutput,
     ToolOutputBase,
 )
-from .types.tools import __all__ as _tools_all
-from .types.users import Role, User, UserNoOrganization
-from .types.users import __all__ as _users_all
-
-__version__ = "0.1.0"
+from .tools import __all__ as _tools_all
+from .users import Role, User, UserNoOrganization
+from .users import __all__ as _users_all
 
 __all__ = [
-    "__version__",
     *_agents_all,
     *_attio_all,
     *_chat_snippets_all,
@@ -190,15 +174,4 @@ __all__ = [
     *_tickets_all,
     *_tools_all,
     *_users_all,
-    "EventType",
-    "MissingApiKeyError",
-    "RegisteredJob",
-    "Terse",
-    "TerseAgent",
-    "TerseApiError",
-    "TerseRuntimeError",
-    "clear_job_registry",
-    "deserialize_input_event",
-    "execute_registered_job",
-    "get_job_registry",
 ]

@@ -15,6 +15,10 @@ from terse_sdk import (
     CronJobInputEvent,
     EventType,
     MissingApiKeyError,
+    SdkAgentStreamEventDone,
+    SdkAgentStreamEventFinalOutput,
+    SdkAgentStreamEventText,
+    SdkAgentStreamEventToolCallCompleted,
     SerializedEventInputEvent,
     Terse,
     TerseAgent,
@@ -23,12 +27,6 @@ from terse_sdk import (
     deserialize_input_event,
     execute_registered_job,
     get_job_registry,
-)
-from terse_sdk.generated.models import (
-    SdkAgentStreamEventDone,
-    SdkAgentStreamEventFinalOutput,
-    SdkAgentStreamEventText,
-    SdkAgentStreamEventToolCallCompleted,
 )
 
 

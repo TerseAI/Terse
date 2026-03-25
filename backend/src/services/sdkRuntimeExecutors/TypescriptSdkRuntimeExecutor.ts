@@ -10,18 +10,9 @@ export class TypescriptSdkRuntimeExecutor implements SdkRuntimeExecutor {
     }
 
     async execute(context: SdkRuntimeExecutorContext): Promise<SandboxCommandResult> {
-        await context.ensureSandboxCommand(
-            "npm install",
-            `cd ${context.projectDir} && npm install --omit=dev`
-        )
-        await context.ensureSandboxCommand(
-            "npm install terse-cli",
-            `cd ${context.projectDir} && npm install terse-cli@latest`
-        )
+        await context.ensureSandboxCommand("npm install", `cd ${context.projectDir} && npm install --omit=dev`)
+        await context.ensureSandboxCommand("npm install terse-cli", `cd ${context.projectDir} && npm install terse-cli@latest`)
 
-        return context.runSandboxCommand(
-            "terse run",
-            `cd ${context.projectDir} && npx terse run ${context.escapeShellArg(context.jobName)} --event-file ${context.eventFilePath}`
-        )
+        return context.runSandboxCommand("terse run", `cd ${context.projectDir} && npx terse run ${context.escapeShellArg(context.jobName)} --event-file ${context.eventFilePath}`)
     }
 }

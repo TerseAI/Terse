@@ -141,7 +141,7 @@ def render_generated_module(codegen_input: CodegenInput | None = None) -> str:
         lines.extend(
             [
                 "",
-                "from terse_sdk.generated.models import (",
+                "from terse_sdk import (",
                 *[f"    {model_name}," for model_name in tool_output_models],
                 ")",
             ]

@@ -10,18 +10,9 @@ export class PythonSdkRuntimeExecutor implements SdkRuntimeExecutor {
     }
 
     async execute(context: SdkRuntimeExecutorContext): Promise<SandboxCommandResult> {
-        await context.ensureSandboxCommand(
-            "install uv",
-            "python -m pip install --no-cache-dir uv"
-        )
-        await context.ensureSandboxCommand(
-            "uv sync",
-            `cd ${context.projectDir} && uv sync`
-        )
-        await context.ensureSandboxCommand(
-            "install terse-cli",
-            `cd ${context.projectDir} && uv pip install --python .venv/bin/python terse-cli`
-        )
+        await context.ensureSandboxCommand("install uv", "python -m pip install --no-cache-dir uv")
+        await context.ensureSandboxCommand("uv sync", `cd ${context.projectDir} && uv sync`)
+        await context.ensureSandboxCommand("install terse-cli", `cd ${context.projectDir} && uv pip install --python .venv/bin/python terse-cli`)
         return context.runSandboxCommand(
             "terse run",
             `cd ${context.projectDir} && TERSE_DEBUG=1 uv run --no-sync --python .venv/bin/python terse --debug run ${context.escapeShellArg(context.jobName)} --event-file ${context.eventFilePath}`

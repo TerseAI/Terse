@@ -28,3 +28,6 @@ class JobDefinition(TerseModel):
     name: str
     triggers: list[TriggerConfig] = Field(default_factory=list)
     skills: list[SkillConfig] = Field(default_factory=list)
+
+
+__all__ = ["JobDefinition", "SkillConfig", "TriggerConfig"]
