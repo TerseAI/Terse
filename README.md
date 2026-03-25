@@ -194,6 +194,22 @@ For day-to-day Python development:
 
 ### Publishing Python Packages
 
+Prepare the next release version from the repo root:
+
+```bash
+npm run python:release:prep
+```
+
+That command defaults to a patch bump for both Python packages, updates the CLI's `terse-sdk` dependency floor, refreshes `uv.lock`, and does not publish anything.
+
+You can also choose the bump type or set an explicit version:
+
+```bash
+npm run python:release:prep -- minor
+npm run python:release:prep -- major
+npm run python:release:prep -- 0.2.0
+```
+
 Before publishing, build and validate the distributions from the repo root:
 
 ```bash
@@ -201,6 +217,16 @@ npm run python:dist:check
 ```
 
 This builds both Python packages and runs `twine check` against the wheel and sdist artifacts in `dist/`.
+
+If you want to publish locally with a PyPI API token instead of using GitHub Actions:
+
+```bash
+export TWINE_USERNAME=__token__
+export TWINE_PASSWORD=pypi-...
+npm run python:publish
+```
+
+The `python:publish` script first runs `npm run python:dist:check` and then uploads both packages from `dist/` with `twine`.
 
 There is also a manual GitHub Actions workflow at [`.github/workflows/publish-python.yml`](/Users/olimorissette/Desktop/projects/Terse/.github/workflows/publish-python.yml) for PyPI Trusted Publishing. Before using it, configure both PyPI projects to trust this repository and workflow.
 

@@ -13,8 +13,10 @@
     "python:setup": "uv sync --all-packages",
     "python:test": "./.venv/bin/pytest packages/terse-python-cli/tests packages/terse-python-sdk/tests",
     "python:check": "./.venv/bin/ruff check packages/terse-python-cli/src packages/terse-python-cli/tests packages/terse-python-sdk/src packages/terse-python-sdk/tests && ./.venv/bin/ruff format --check packages/terse-python-cli/src packages/terse-python-cli/tests packages/terse-python-sdk/src packages/terse-python-sdk/tests && ./.venv/bin/ty check packages/terse-python-cli/src packages/terse-python-sdk/src && npm run python:test",
+    "python:release:prep": "node scripts/python-release-prep.js",
     "python:build": "uv build --package terse-cli && uv build --package terse-sdk",
     "python:dist:check": "npm run python:build && uvx twine check dist/terse_cli-* dist/terse_sdk-*",
+    "python:publish": "npm run python:dist:check && uvx twine upload dist/terse_cli-* dist/terse_sdk-*",
     "python:smoke": "./.venv/bin/terse --help && ./.venv/bin/terse --version && ./.venv/bin/terse run --help"
   }
 }
