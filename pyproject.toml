@@ -24,6 +24,7 @@ select = ["E", "F", "I", "UP", "B", "SIM"]
 
 [tool.ty.environment]
 python-version = "3.11"
+extra-paths = ["packages/terse-python-sdk/src"]
 
 [tool.pytest.ini_options]
 addopts = "-ra"

@@ -133,7 +133,6 @@ class Terse:
 
     def job(
         self,
-        *,
         name: str,
         triggers: Sequence[TriggerConfig] | None = None,
         skills: Sequence[SkillConfig] | None = None,
@@ -206,7 +205,9 @@ class TerseAgent:
         self._tools = factory(self)
         return self._tools
 
-    def run(self, prompt: str, event: InputEvent | None = None) -> Generator[AgentStreamEvent, None, None]:
+    def run(
+        self, prompt: str, event: InputEvent | None = None
+    ) -> Generator[AgentStreamEvent, None, None]:
         """Stream parsed agent-run events from the backend."""
 
         api_key = _require_api_key()
@@ -214,12 +215,19 @@ class TerseAgent:
             {
                 "prompt": prompt,
                 "event": _serialize_run_event(event or _manual_event()),
-                "skills": [_serialize_skill_config(skill).model_dump(exclude_none=True) for skill in self.skills],
+                "skills": [
+                    _serialize_skill_config(skill).model_dump(exclude_none=True)
+                    for skill in self.skills
+                ],
             }
         )
         request_payload = request_body.model_dump(exclude_none=True)
-        headers = _build_auth_headers(api_key, accept="text/event-stream", session_id=self.session_id)
-        _debug_log_request("POST", f"{self.backend_url}/sdk/agent-run", headers, request_payload)
+        headers = _build_auth_headers(
+            api_key, accept="text/event-stream", session_id=self.session_id
+        )
+        _debug_log_request(
+            "POST", f"{self.backend_url}/sdk/agent-run", headers, request_payload
+        )
         failed_tool_calls: list[str] = []
 
         try:
@@ -239,22 +247,34 @@ class TerseAgent:
                     if not sse.data:
                         continue
 
-                    stream_event = SdkAgentStreamEvent.model_validate_json(sse.data).root
+                    stream_event = SdkAgentStreamEvent.model_validate_json(
+                        sse.data
+                    ).root
                     if isinstance(stream_event, SdkAgentStreamEventDone):
                         if failed_tool_calls:
-                            raise TerseApiError(f"Run completed with failed tool calls: {'; '.join(failed_tool_calls)}")
+                            raise TerseApiError(
+                                f"Run completed with failed tool calls: {'; '.join(failed_tool_calls)}"
+                            )
                         return
                     if isinstance(stream_event, SdkAgentStreamEventError):
                         raise TerseApiError(stream_event.message)
                     if isinstance(stream_event, SdkAgentStreamEventToolCallCompleted):
-                        parsed = _parse_tool_call_completed(stream_event.toolCallCompleted)
+                        parsed = _parse_tool_call_completed(
+                            stream_event.toolCallCompleted
+                        )
                         if parsed.get("status") and parsed["status"] != "completed":
-                            failed_tool_calls.append(f"{parsed.get('tool', 'unknown_tool')}: {parsed['status']}")
+                            failed_tool_calls.append(
+                                f"{parsed.get('tool', 'unknown_tool')}: {parsed['status']}"
+                            )
                     yield cast(AgentStreamEvent, stream_event)
         except httpx.RequestError as exc:
-            raise TerseApiError(f"Could not connect to {self.backend_url} — is the backend running?\n  {exc}") from exc
+            raise TerseApiError(
+                f"Could not connect to {self.backend_url} — is the backend running?\n  {exc}"
+            ) from exc
         except ValidationError as exc:
-            raise TerseApiError(f"Received invalid agent stream payload.\n  {exc}") from exc
+            raise TerseApiError(
+                f"Received invalid agent stream payload.\n  {exc}"
+            ) from exc
 
     def run_and_wait(self, prompt: str, event: InputEvent | None = None) -> str | None:
         """Run the agent to completion and return the final output, if any."""
@@ -265,13 +285,17 @@ class TerseAgent:
                 final_output = chunk.finalOutput
         return final_output
 
-    def execute_tool(self, tool_name: str, params: Mapping[str, object] | None = None) -> object:
+    def execute_tool(
+        self, tool_name: str, params: Mapping[str, object] | None = None
+    ) -> object:
         """Execute a deterministic tool via the backend."""
 
         api_key = _require_api_key()
         headers = _build_auth_headers(api_key, session_id=self.session_id)
         request_payload = {"toolName": tool_name, "params": dict(params or {})}
-        _debug_log_request("POST", f"{self.backend_url}/sdk/tool-execute", headers, request_payload)
+        _debug_log_request(
+            "POST", f"{self.backend_url}/sdk/tool-execute", headers, request_payload
+        )
 
         try:
             with httpx.Client(timeout=20.0) as client:
@@ -281,7 +305,9 @@ class TerseAgent:
                     json=request_payload,
                 )
         except httpx.RequestError as exc:
-            raise TerseApiError(f"Could not connect to {self.backend_url} — is the backend running?\n  {exc}") from exc
+            raise TerseApiError(
+                f"Could not connect to {self.backend_url} — is the backend running?\n  {exc}"
+            ) from exc
 
         payload = _read_json_response(response, "/sdk/tool-execute")
         _debug_log_response_payload("/sdk/tool-execute", payload)
@@ -312,7 +338,9 @@ def get_job_registry() -> dict[str, RegisteredJob]:
     return dict(_JOB_REGISTRY)
 
 
-def deserialize_input_event(value: SerializedEvent | Mapping[str, object] | str) -> AnyInputEvent:
+def deserialize_input_event(
+    value: SerializedEvent | Mapping[str, object] | str,
+) -> AnyInputEvent:
     """Convert a serialized backend event into the best matching SDK event model."""
 
     if isinstance(value, SerializedEvent):
@@ -337,7 +365,6 @@ def deserialize_input_event(value: SerializedEvent | Mapping[str, object] | str)
 def execute_registered_job(
     job: RegisteredJob,
     event: AnyInputEvent,
-    *,
     agent: TerseAgent | None = None,
 ) -> bool:
     """Execute a registered job and return ``True`` when it was skipped by the filter."""
@@ -359,7 +386,9 @@ def _serialize_skill_config(skill: SkillConfig) -> SdkAgentSkillPayload:
     config["integrationId"] = skill.integration_id
     config["integrationType"] = skill.integration_type
     config["configType"] = skill.config_type
-    return SdkAgentSkillPayload.model_validate({"configType": skill.config_type, "config": config})
+    return SdkAgentSkillPayload.model_validate(
+        {"configType": skill.config_type, "config": config}
+    )
 
 
 def _resolve_generated_tools_factory() -> Callable[[TerseAgent], object] | None:
@@ -370,7 +399,9 @@ def _resolve_generated_tools_factory() -> Callable[[TerseAgent], object] | None:
 
     for loaded_module in list(sys.modules.values()):
         module_file = getattr(loaded_module, "__file__", None)
-        if not isinstance(module_file, str) or not module_file.endswith("/terse_generated.py"):
+        if not isinstance(module_file, str) or not module_file.endswith(
+            "/terse_generated.py"
+        ):
             continue
         factory = getattr(loaded_module, "create_tools", None)
         if callable(factory):
@@ -397,7 +428,6 @@ def _manual_event() -> TerseInputEvent:
 
 def _build_auth_headers(
     api_key: str,
-    *,
     accept: str = "application/json",
     session_id: str | None = None,
 ) -> dict[str, str]:
@@ -422,7 +452,8 @@ def _assert_sse_response(response: httpx.Response, path: str) -> None:
         if detail:
             LOGGER.debug("Response detail from %s:\n%s", path, detail)
         raise TerseApiError(
-            f"{response.status_code} {response.reason_phrase} — {path}" + (f"\n  {detail}" if detail else "")
+            f"{response.status_code} {response.reason_phrase} — {path}"
+            + (f"\n  {detail}" if detail else "")
         )
 
     content_type = response.headers.get("Content-Type", "")
@@ -434,10 +465,16 @@ def _assert_sse_response(response: httpx.Response, path: str) -> None:
     if isinstance(payload, dict):
         response_body = SdkAgentRunResponseBody.model_validate(payload)
         if response_body.error:
-            details = f" ({'; '.join(response_body.details)})" if response_body.details else ""
+            details = (
+                f" ({'; '.join(response_body.details)})"
+                if response_body.details
+                else ""
+            )
             raise TerseApiError(f"{response_body.error}{details}")
 
-    raise TerseApiError(f"Expected text/event-stream from {path} but got {content_type or 'unknown content-type'}.")
+    raise TerseApiError(
+        f"Expected text/event-stream from {path} but got {content_type or 'unknown content-type'}."
+    )
 
 
 def _read_json_response(response: httpx.Response, path: str) -> object:
@@ -466,7 +503,9 @@ def _buffer_response_content(response: httpx.Response) -> None:
     response.read()
 
 
-def _debug_log_request(method: str, url: str, headers: Mapping[str, str], payload: object | None) -> None:
+def _debug_log_request(
+    method: str, url: str, headers: Mapping[str, str], payload: object | None
+) -> None:
     if not LOGGER.isEnabledFor(logging.DEBUG):
         return
 
@@ -480,7 +519,9 @@ def _debug_log_response_metadata(response: httpx.Response, path: str) -> None:
     if not LOGGER.isEnabledFor(logging.DEBUG):
         return
 
-    LOGGER.debug("Response %s %s for %s", response.status_code, response.reason_phrase, path)
+    LOGGER.debug(
+        "Response %s %s for %s", response.status_code, response.reason_phrase, path
+    )
     LOGGER.debug("Response headers:\n%s", _format_debug_value(dict(response.headers)))
 
 
@@ -526,7 +567,9 @@ def _parse_tool_call_completed(raw: str) -> dict[str, str]:
         return {}
 
     if isinstance(payload, dict):
-        return {str(key): str(value) for key, value in payload.items() if value is not None}
+        return {
+            str(key): str(value) for key, value in payload.items() if value is not None
+        }
     return {}
 
 
@@ -540,7 +583,9 @@ def _require_api_key() -> str:
     return api_key
 
 
-def _run_callable(func: Callable[..., ResultT | Awaitable[ResultT]], *args: object) -> ResultT:
+def _run_callable(
+    func: Callable[..., ResultT | Awaitable[ResultT]], *args: object
+) -> ResultT:
     result = func(*args)
     if inspect.isawaitable(result):
         return _await_result(cast(Awaitable[ResultT], result))
@@ -552,4 +597,6 @@ def _await_result(awaitable: Awaitable[ResultT]) -> ResultT:
         asyncio.get_running_loop()
     except RuntimeError:
         return asyncio.run(cast(Coroutine[Any, Any, ResultT], awaitable))
-    raise TerseRuntimeError("Cannot synchronously await a coroutine while another event loop is running.")
+    raise TerseRuntimeError(
+        "Cannot synchronously await a coroutine while another event loop is running."
+    )

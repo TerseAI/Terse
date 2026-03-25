@@ -67,6 +67,7 @@ def scaffold_template_context(project_name: str) -> dict[str, object]:
         "SDK_DEPENDENCY": build_sdk_dependency_requirement(),
         "USE_LOCAL_SDK_SOURCE": local_sdk_path is not None,
         "SDK_SOURCE_PATH": json.dumps(str(local_sdk_path)) if local_sdk_path is not None else '""',
+        "SDK_SRC_PATH": json.dumps(str(local_sdk_path / "src")) if local_sdk_path is not None else '""',
     }
 
 
