@@ -24,7 +24,6 @@ export interface SdkRuntimeExecutorContext {
 export interface SdkRuntimeExecutor {
     runtime: SdkProjectRuntime
     sandboxImage: string
-    detectionEntries: readonly string[]
     matchesArchive(entries: Set<string>): boolean
     execute(context: SdkRuntimeExecutorContext): Promise<SandboxCommandResult>
 }

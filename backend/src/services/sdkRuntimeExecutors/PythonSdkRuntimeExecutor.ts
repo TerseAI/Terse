@@ -3,7 +3,6 @@ import type { SandboxCommandResult, SdkRuntimeExecutor, SdkRuntimeExecutorContex
 export class PythonSdkRuntimeExecutor implements SdkRuntimeExecutor {
     readonly runtime = "python" as const
     readonly sandboxImage = "python:3.11-slim"
-    readonly detectionEntries = ["pyproject.toml"] as const
 
     matchesArchive(entries: Set<string>): boolean {
         return entries.has("pyproject.toml")

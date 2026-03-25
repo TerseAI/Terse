@@ -3,7 +3,6 @@ import type { SandboxCommandResult, SdkRuntimeExecutor, SdkRuntimeExecutorContex
 export class TypescriptSdkRuntimeExecutor implements SdkRuntimeExecutor {
     readonly runtime = "typescript" as const
     readonly sandboxImage = "node:22-slim"
-    readonly detectionEntries = ["package.json"] as const
 
     matchesArchive(entries: Set<string>): boolean {
         return entries.has("package.json")

@@ -6,32 +6,25 @@ export class SdkRuntimeExecutorRegistry {
     constructor(private readonly executors: readonly SdkRuntimeExecutor[]) {}
 
     resolve(entries: Set<string>): SdkRuntimeExecutor {
-        const matches = this.executors.filter(executor => executor.matchesArchive(entries))
-        if (matches.length === 1) {
-            return matches[0]
-        }
+        let match: SdkRuntimeExecutor | undefined
 
-        const knownEntries = this.getKnownDetectionEntries()
-
-        if (matches.length > 1) {
-            const matchedEntries = Array.from(new Set(matches.flatMap(executor => executor.detectionEntries.filter(entry => entries.has(entry))))).sort()
-
-            if (matchedEntries.length === 2) {
-                throw new Error(`SDK archive is ambiguous: found both "${matchedEntries[0]}" and "${matchedEntries[1]}" at the project root`)
+        for (const executor of this.executors) {
+            if (!executor.matchesArchive(entries)) {
+                continue
             }
 
-            throw new Error(`SDK archive is ambiguous: found multiple runtime entrypoints at the project root (${matchedEntries.map(entry => `"${entry}"`).join(", ")})`)
+            if (match) {
+                throw new Error("Ambiguous SDK runtime")
+            }
+
+            match = executor
         }
 
-        if (knownEntries.length === 2) {
-            throw new Error(`SDK archive is invalid: expected either "${knownEntries[0]}" or "${knownEntries[1]}" at the project root`)
+        if (!match) {
+            throw new Error("Could not determine SDK runtime")
         }
 
-        throw new Error(`SDK archive is invalid: expected one of ${knownEntries.map(entry => `"${entry}"`).join(", ")} at the project root`)
-    }
-
-    private getKnownDetectionEntries(): string[] {
-        return Array.from(new Set(this.executors.flatMap(executor => [...executor.detectionEntries]))).sort()
+        return match
     }
 }
 
