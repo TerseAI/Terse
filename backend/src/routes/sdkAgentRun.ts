@@ -79,7 +79,11 @@ export async function handleSdkAgentRun(req: Request, res: Response) {
         const { loopResult } = await sdkRunner.run(eventText)
 
         if (loopResult.status === "awaiting_approval") {
-            send({ type: "error", message: "This SDK run is waiting for tool approval, but approval resume is not supported in this route yet." })
+            console.log("#WTF awaiting_approval", loopResult)
+            send({
+                type: "error",
+                message: "This SDK run is waiting for tool approval. The approval request was streamed, but approval resume is not supported in /sdk/agent-run yet."
+            })
             send({ type: "done" })
             return res.end()
         }

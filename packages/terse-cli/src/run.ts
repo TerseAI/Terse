@@ -185,6 +185,12 @@ function logSessionEvent(event: Record<string, unknown>): void {
             console.log(`  [tool:done] ${toolName} (${symbol})`)
             break
         }
+        case "tool_approval_requested": {
+            const approval = event.toolApprovalRequested as Record<string, unknown> | undefined
+            const toolName = (approval?.toolName as string) || "unknown_tool"
+            console.log(chalk.yellow(`  [tool:approval] ${toolName}`))
+            break
+        }
         case "action": {
             const action = event.action as Record<string, unknown> | undefined
             const actionName = (action?.action as string) || "action"

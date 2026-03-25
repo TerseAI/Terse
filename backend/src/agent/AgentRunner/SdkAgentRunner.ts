@@ -150,6 +150,18 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
                     result: event.result
                 })
             })
+            return
+        }
+        if (event.type === "ToolApprovalRequest") {
+            console.log("#WTF ToolApprovalRequest", event)
+            this.send({
+                type: "tool_approval_requested",
+                toolApprovalRequested: {
+                    stepId: event.step_id,
+                    toolName: event.name,
+                    arguments: event.arguments
+                }
+            })
         }
     }
 
@@ -233,8 +245,7 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
             user: this.user,
             isUserInitiated: true,
             agent: {
-                requireApproval: this.requireApproval,
-                toolApprovals: []
+                requireApproval: this.requireApproval
             },
             runId: this.sdkRunId,
             agentId: "sdk-agent-run"

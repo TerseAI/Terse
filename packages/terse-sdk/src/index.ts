@@ -282,6 +282,7 @@ export enum EventType {
     TOOL_CALL_PARAMS = "tool_call_params",
     TOOL_CALL_STARTED = "tool_call_started",
     TOOL_CALL_COMPLETED = "tool_call_completed",
+    TOOL_APPROVAL_REQUESTED = "tool_approval_requested",
     ACTION = "action"
 }
 
@@ -336,6 +337,20 @@ export class ToolCallCompletedResult implements TerseAgentResult {
     constructor(toolCallCompleted: string) {
         this.type = EventType.TOOL_CALL_COMPLETED
         this.toolCallCompleted = toolCallCompleted
+    }
+}
+
+export class ToolApprovalRequestedResult implements TerseAgentResult {
+    type: EventType.TOOL_APPROVAL_REQUESTED
+    toolApprovalRequested: {
+        stepId: string
+        toolName: string
+        arguments: string
+    }
+
+    constructor(toolApprovalRequested: { stepId: string; toolName: string; arguments: string }) {
+        this.type = EventType.TOOL_APPROVAL_REQUESTED
+        this.toolApprovalRequested = toolApprovalRequested
     }
 }
 
@@ -403,6 +418,8 @@ function mapStreamEventToResult(event: SdkAgentStreamEvent): TerseAgentResult {
             return new ToolCallStartedResult(event.toolCallStarted)
         case "tool_call_completed":
             return new ToolCallCompletedResult(event.toolCallCompleted)
+        case "tool_approval_requested":
+            return new ToolApprovalRequestedResult(event.toolApprovalRequested)
         case "action":
             return new ActionResult(event.action)
         case "done":

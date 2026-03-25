@@ -47,6 +47,7 @@ export interface ToolDefinition {
     description: string
     integration: string
     isReadOnly: boolean
+    supportsApproval: boolean
     parameters: JsonSchema
 }
 
@@ -213,6 +214,7 @@ function renderStringLiteralUnion(values: string[]): string {
 function buildSkillToolTypeForIntegration(tools: ToolDefinition[], integrationType: string): string {
     const toolNames = tools
         .filter(tool => toolIntegrationToIntegrationType(tool.integration.toLowerCase()) === integrationType)
+        .filter(tool => !tool.isReadOnly || tool.supportsApproval)
         .map(tool => tool.name)
         .sort()
 

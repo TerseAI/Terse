@@ -701,6 +701,14 @@ export type SdkAgentStreamEvent =
     | { type: "tool_call_params"; toolCallParams: string }
     | { type: "tool_call_started"; toolCallStarted: string }
     | { type: "tool_call_completed"; toolCallCompleted: string }
+    | {
+          type: "tool_approval_requested"
+          toolApprovalRequested: {
+              stepId: string
+              toolName: string
+              arguments: string
+          }
+      }
     | { type: "action"; action: RunHistoryAction }
     | { type: "error"; message: string }
     | { type: "done" }
