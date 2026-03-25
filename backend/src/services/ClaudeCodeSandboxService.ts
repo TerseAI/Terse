@@ -98,7 +98,7 @@ export class ClaudeCodeSandboxService {
 
             // Install Claude Code CLI
             t = performance.now()
-            const installProc = await sb.exec(["sh", "-c", "npm install -g @anthropic-ai/claude-code 2>&1"], { stdout: "pipe", stderr: "pipe" })
+            const installProc = await sb.exec(["sh", "-c", "npm install -g @anthropic-ai/claude-code@2.1.81 2>&1"], { stdout: "pipe", stderr: "pipe" })
             const installExit = await installProc.wait()
             if (installExit !== 0) {
                 const installStderr = await installProc.stderr.readText()
