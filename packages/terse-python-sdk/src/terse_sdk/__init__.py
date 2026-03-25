@@ -187,7 +187,7 @@ from .types.tools import __all__ as _tools_all
 from .types.users import Role, User, UserNoOrganization
 from .types.users import __all__ as _users_all
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 
 __all__ = [
     "__version__",

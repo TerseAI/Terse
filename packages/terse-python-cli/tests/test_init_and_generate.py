@@ -104,7 +104,7 @@ def test_init_dev_mode_writes_local_sdk_source_override(runner: CliRunner) -> No
                 "terse_cli.commands.init.scaffold_template_context",
                 return_value={
                     "PROJECT_NAME": "demo-project",
-                    "SDK_DEPENDENCY": "terse-sdk~=0.1.0",
+                    "SDK_DEPENDENCY": "terse-sdk~=0.1.1",
                     "USE_LOCAL_SDK_SOURCE": True,
                     "SDK_SOURCE_PATH": '"/tmp/local sdk/packages/terse-python-sdk"',
                 },
