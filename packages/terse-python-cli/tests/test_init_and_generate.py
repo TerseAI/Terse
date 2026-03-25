@@ -7,8 +7,6 @@ from unittest.mock import patch
 import pytest
 from click.testing import CliRunner
 from terse_cli._generate import (
-    AttioInstanceData,
-    AttioObjectData,
     CodegenInput,
     GenerateResult,
     SnowflakeInstanceData,
