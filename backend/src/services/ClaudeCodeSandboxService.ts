@@ -22,6 +22,8 @@ export interface ClaudeCodeSandboxParams {
     jsonSchema?: Record<string, unknown>
     /** Paths of files to read back from the sandbox after execution */
     outputFiles?: string[]
+    /** Additional files to write into /tmp/project before running Claude Code (written after zip extraction, before git init) */
+    additionalFiles?: Record<string, string>
 }
 
 export interface ClaudeCodeSandboxResult {
@@ -41,7 +43,7 @@ export class ClaudeCodeSandboxService {
     }
 
     async run(params: ClaudeCodeSandboxParams): Promise<ClaudeCodeSandboxResult> {
-        const { label, prompt, sourceZip, gitInit = true, maxTurns = 30, timeoutMs = 10 * 60 * 1000, env: extraEnv = {}, jsonSchema, outputFiles: outputFilePaths = [] } = params
+        const { label, prompt, sourceZip, gitInit = true, maxTurns = 30, timeoutMs = 10 * 60 * 1000, env: extraEnv = {}, jsonSchema, outputFiles: outputFilePaths = [], additionalFiles = {} } = params
 
         const executionStart = performance.now()
 
@@ -77,6 +79,17 @@ export class ClaudeCodeSandboxService {
                 // Create empty project dir
                 const mkdirProc = await sb.exec(["mkdir", "-p", "/tmp/project"], { stdout: "pipe", stderr: "pipe" })
                 await mkdirProc.wait()
+            }
+
+            // Write additional files into the project directory
+            for (const [filePath, content] of Object.entries(additionalFiles)) {
+                const fullPath = filePath.startsWith("/") ? filePath : `/tmp/project/${filePath}`
+                const fileHandle = await sb.open(fullPath, "w")
+                await fileHandle.write(new TextEncoder().encode(content))
+                await fileHandle.close()
+            }
+            if (Object.keys(additionalFiles).length > 0) {
+                logger.info(`[ClaudeCodeSandbox:${label}] Wrote ${Object.keys(additionalFiles).length} additional file(s)`)
             }
 
             // Git init + baseline commit

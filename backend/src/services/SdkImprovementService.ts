@@ -1,3 +1,7 @@
+import fs from "node:fs"
+import path from "node:path"
+import { fileURLToPath } from "node:url"
+
 import { JudgeAgentOutputType } from "../agent/JudgeAgent/JudgeAgent"
 import { buildClaudeCodePrompt } from "../agent/JudgeAgent/buildClaudeCodePrompt"
 import { JudgeContext } from "../agent/JudgeAgent/fetchJudgeContext"
@@ -5,6 +9,19 @@ import logger from "../logger"
 
 import { ClaudeCodeSandboxService } from "./ClaudeCodeSandboxService"
 import { downloadSdkDeployZip } from "./FileStorageService"
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
+
+function loadSkillFileContent(): string {
+    const assetPath = path.resolve(__dirname, "..", "assets", "sdk-skill-file.md")
+    try {
+        return fs.readFileSync(assetPath, "utf-8")
+    } catch {
+        logger.warn("[SdkImprovementService] Could not load SDK skill file from assets, sandbox will run without it")
+        return ""
+    }
+}
 
 const IMPROVEMENTS_SCHEMA = {
     type: "object",
@@ -48,13 +65,20 @@ export class SdkImprovementService {
 
         const prompt = buildClaudeCodePrompt(automationId, context)
 
+        const skillFileContent = loadSkillFileContent()
+        const additionalFiles: Record<string, string> = {}
+        if (skillFileContent) {
+            additionalFiles["CLAUDE.md"] = skillFileContent
+        }
+
         try {
             const result = await this.sandbox.run({
                 label: `sdk-improvement-${automationId}`,
                 prompt,
                 sourceZip: zipBuffer,
                 gitInit: true,
-                jsonSchema: IMPROVEMENTS_SCHEMA
+                jsonSchema: IMPROVEMENTS_SCHEMA,
+                additionalFiles
             })
 
             if (!result.stdout) {

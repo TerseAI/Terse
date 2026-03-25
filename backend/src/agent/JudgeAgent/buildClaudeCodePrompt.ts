@@ -41,7 +41,9 @@ Analyze this agent's source code, configuration, and recent run history to ident
 
 == How Terse agents work ==
 
-Terse is an automation platform. Users build agents that react to events and take actions on external tools.
+Read /tmp/project/CLAUDE.md for full documentation on how Terse, the CLI, and the SDK work — including the job API, triggers, skills, event types, and best practices.
+
+In short: Terse is an automation platform. Users build agents that react to events and take actions on external tools.
 
 Triggers: Define what events an agent listens to — Slack messages, GitHub PRs, Jira ticket updates, Linear issues, Gmail emails, Figma comments, cron schedules, etc. An agent can have multiple triggers. Each trigger is configured to watch a specific source.
 
