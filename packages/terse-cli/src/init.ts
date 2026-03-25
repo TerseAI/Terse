@@ -42,6 +42,7 @@ export async function init(projectName?: string): Promise<void> {
         { template: "src/index.ts.tmpl", output: "src/index.ts" },
         { template: "env.example.tmpl", output: ".env.example" },
         { template: "gitignore.tmpl", output: ".gitignore" },
+        { template: "CLAUDE.md.tmpl", output: "CLAUDE.md" },
     ]
 
     for (const file of files) {
