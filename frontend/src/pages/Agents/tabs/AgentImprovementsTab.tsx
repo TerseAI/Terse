@@ -246,18 +246,24 @@ function ImprovementRow({
                 </button>
                 <div className="flex items-center gap-1.5 shrink-0">
                     {isSdk && improvement.suggestedPatch && (
-                        <CopyPatchDialog patch={improvement.suggestedPatch} title={improvement.title}>
+                        <CopyPatchDialog
+                            patch={improvement.suggestedPatch}
+                            title={improvement.title}
+                            onDownload={onApply}
+                        >
                             {openDialog => (
-                                <Button size="sm" variant="outline" onClick={openDialog}>
+                                <Button size="sm" variant="outline" onClick={openDialog} disabled={disabled}>
                                     <Download className="h-3.5 w-3.5 mr-1" />
                                     Download Patch
                                 </Button>
                             )}
                         </CopyPatchDialog>
                     )}
-                    <Button size="sm" onClick={onApply} disabled={disabled}>
-                        {isApplying ? "Acknowledging..." : isSdk ? "Acknowledge" : "Apply"}
-                    </Button>
+                    {!isSdk && (
+                        <Button size="sm" onClick={onApply} disabled={disabled}>
+                            {isApplying ? "Applying..." : "Apply"}
+                        </Button>
+                    )}
                     <Button size="sm" variant="ghost" onClick={onDismiss} disabled={disabled}>
                         {isDismissing ? "Dismissing..." : "Dismiss"}
                     </Button>

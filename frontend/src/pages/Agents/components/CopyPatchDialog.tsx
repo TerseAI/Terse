@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 type CopyPatchDialogProps = {
     patch: string
     title?: string
+    onDownload?: () => void
     children: (openDialog: () => void) => React.ReactNode
 }
 
@@ -31,13 +32,14 @@ function downloadPatchFile(patch: string, fileName: string) {
     URL.revokeObjectURL(url)
 }
 
-export function CopyPatchDialog({ patch, title, children }: CopyPatchDialogProps) {
+export function CopyPatchDialog({ patch, title, onDownload, children }: CopyPatchDialogProps) {
     const [open, setOpen] = useState(false)
     const fileName = toFileName(title)
 
     const handleOpen = () => {
         downloadPatchFile(patch, fileName)
         toast.success("Patch file downloaded")
+        onDownload?.()
         setOpen(true)
     }
 
