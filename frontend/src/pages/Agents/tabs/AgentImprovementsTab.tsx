@@ -246,11 +246,7 @@ function ImprovementRow({
                 </button>
                 <div className="flex items-center gap-1.5 shrink-0">
                     {isSdk && improvement.suggestedPatch && (
-                        <CopyPatchDialog
-                            patch={improvement.suggestedPatch}
-                            title={improvement.title}
-                            onDownload={onApply}
-                        >
+                        <CopyPatchDialog patch={improvement.suggestedPatch} title={improvement.title} onDownload={onApply}>
                             {openDialog => (
                                 <Button size="sm" variant="outline" onClick={openDialog} disabled={disabled}>
                                     <Download className="h-3.5 w-3.5 mr-1" />
