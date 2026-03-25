@@ -37,6 +37,7 @@ export async function deploy() {
                 jobs: jobs.map(job => ({
                     jobName: job.name,
                     triggers: job.triggers.map(serializeTrigger),
+                    toolApprovals: job.toolApprovals,
                     webhookURL: job.webhookURL
                 })),
                 sourceZipBase64

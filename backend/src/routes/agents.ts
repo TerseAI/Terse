@@ -90,7 +90,7 @@ async function upsertNotificationSettings(tx: PrismaTransaction, automationId: s
     })
 }
 
-function validateAndDeduplicateToolApprovals(toolApprovals: string[]): string[] {
+export function validateAndDeduplicateToolApprovals(toolApprovals: string[]): string[] {
     // Deduplicate tool approvals to prevent unique constraint violations
     const uniqueToolApprovals = Array.from(new Set(toolApprovals))
 
@@ -101,6 +101,29 @@ function validateAndDeduplicateToolApprovals(toolApprovals: string[]): string[] 
     }
 
     return uniqueToolApprovals
+}
+
+export async function persistToolApprovals(tx: PrismaTransaction, automationId: string, toolApprovals: string[] | undefined, options?: { replaceExisting?: boolean }): Promise<void> {
+    if (toolApprovals === undefined) {
+        return
+    }
+
+    const uniqueToolApprovals = validateAndDeduplicateToolApprovals(toolApprovals)
+
+    if (options?.replaceExisting) {
+        await tx.automation_tool_approvals.deleteMany({
+            where: { automation_id: automationId }
+        })
+    }
+
+    if (uniqueToolApprovals.length > 0) {
+        await tx.automation_tool_approvals.createMany({
+            data: uniqueToolApprovals.map(toolName => ({
+                automation_id: automationId,
+                tool_name: toolName
+            }))
+        })
+    }
 }
 
 export type ApplyAgentOptions = { createWithId?: string }
@@ -222,16 +245,7 @@ export async function applyAgentForUser(userId: string, organizationId: string, 
         await upsertNotificationSettings(tx, newAgent.id, userId, notificationSettings)
 
         // Create tool approvals if provided
-        if (toolApprovals && toolApprovals.length > 0) {
-            const uniqueToolApprovals = validateAndDeduplicateToolApprovals(toolApprovals)
-
-            await tx.automation_tool_approvals.createMany({
-                data: uniqueToolApprovals.map(toolName => ({
-                    automation_id: newAgent.id,
-                    tool_name: toolName
-                }))
-            })
-        }
+        await persistToolApprovals(tx, newAgent.id, toolApprovals)
 
         return newAgent
     })
@@ -407,22 +421,7 @@ export async function updateAgentForUser(userId: string, organizationId: string,
 
         // Update tool approvals if provided
         if (toolApprovals !== undefined) {
-            const uniqueToolApprovals = validateAndDeduplicateToolApprovals(toolApprovals)
-
-            // Delete all existing tool approvals
-            await tx.automation_tool_approvals.deleteMany({
-                where: { automation_id: agentId }
-            })
-
-            // Insert new tool approvals if provided
-            if (uniqueToolApprovals.length > 0) {
-                await tx.automation_tool_approvals.createMany({
-                    data: uniqueToolApprovals.map(toolName => ({
-                        automation_id: agentId,
-                        tool_name: toolName
-                    }))
-                })
-            }
+            await persistToolApprovals(tx, agentId, toolApprovals, { replaceExisting: true })
         }
     })
 

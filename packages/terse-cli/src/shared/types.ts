@@ -715,6 +715,7 @@ export type SdkDeployTrigger = {
 export type SdkDeployJob = {
     jobName: string
     triggers: SdkDeployTrigger[]
+    toolApprovals?: string[]
     webhookURL?: string
 }
 
