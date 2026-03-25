@@ -194,6 +194,14 @@ For day-to-day Python development:
 
 ### Publishing Python Packages
 
+Start from a clean working tree:
+
+```bash
+git status --short
+```
+
+The release-prep configs allow dirty trees so the second bump can run after the first one edits files, but you should still verify the tree is clean before starting the sequence.
+
 Prepare the next SDK release version from the repo root:
 
 ```bash
