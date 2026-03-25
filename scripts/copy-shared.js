@@ -16,12 +16,6 @@ const esmTargets = [
   path.join(root, 'packages', 'terse-sdk', 'src', 'shared'),
 ];
 
-// The Python CLI keeps a mirrored copy of the shared TypeScript definitions
-// for local reference while generating project helpers.
-const pythonTargets = [
-  path.join(root, 'packages', 'terse-python-cli', 'shared'),
-];
-
 /**
  * Rewrite relative imports in .ts files to include .js extensions,
  * so the compiled output works under Node's native ESM loader.
@@ -56,12 +50,8 @@ for (const dest of esmTargets) {
   }
 }
 
-for (const dest of pythonTargets) {
-  fs.rmSync(dest, { recursive: true, force: true });
-  fs.mkdirSync(dest, { recursive: true });
-  fs.cpSync(srcDir, dest, { recursive: true });
-}
+
 
 console.log(
-  'Copied shared folder to backend/src/shared, frontend/src/shared, packages/terse-sdk/src/shared, packages/terse-cli/src/shared, and packages/terse-python-cli/shared'
+  'Copied shared folder to backend/src/shared, frontend/src/shared, packages/terse-sdk/src/shared, packages/terse-cli/src/shared'
 );

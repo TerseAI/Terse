@@ -516,8 +516,6 @@ def _as_object_dict(value: object) -> dict[str, object] | None:
 
 def _read_integration_type(payload: Mapping[str, object]) -> str:
     raw_value = payload.get("integrationType", payload.get("integration_type"))
-    if hasattr(raw_value, "root"):
-        raw_value = raw_value.root
     return str(raw_value or "")
 
 

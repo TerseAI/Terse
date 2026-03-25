@@ -2,15 +2,11 @@
 
 from __future__ import annotations
 
-from typing import Literal
-
-from pydantic import RootModel
+from typing import Literal, TypeAlias
 
 from ._base import _CamelModel
 
-
-class Role(RootModel[Literal["admin", "user"]]):
-    root: Literal["admin", "user"]
+Role: TypeAlias = Literal["admin", "user"]
 
 
 class User(_CamelModel):
