@@ -131,3 +131,75 @@
   font-weight: 600;
   background-color: var(--muted);
 }
+
+/* react-diff-view: unified diff viewer */
+.diff-viewer table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  table-layout: fixed;
+}
+
+.diff-viewer .diff-hunk {
+  border: none;
+}
+
+.diff-viewer .diff-hunk-header {
+  display: none;
+}
+
+.diff-viewer .diff-line {
+  border: none;
+}
+
+.diff-viewer .diff-code {
+  padding: 1px 12px;
+  white-space: pre-wrap;
+  word-break: break-all;
+  color: hsl(0, 0%, 15%);
+  background: hsl(0, 0%, 98%);
+}
+
+.diff-viewer .diff-code-insert,
+.diff-viewer .diff-line-new-only .diff-code {
+  background: hsla(130, 60%, 50%, 0.12);
+  color: hsl(130, 40%, 20%);
+}
+
+.diff-viewer .diff-code-delete,
+.diff-viewer .diff-line-old-only .diff-code {
+  background: hsla(0, 70%, 55%, 0.12);
+  color: hsl(0, 40%, 25%);
+}
+
+.diff-viewer .diff-gutter {
+  display: none;
+}
+
+.diff-viewer .diff-code-edit {
+  background: hsla(45, 80%, 55%, 0.15);
+}
+
+/* Dark mode */
+.dark .diff-viewer .diff-code {
+  color: hsl(0, 0%, 82%);
+  background: hsl(220, 10%, 10%);
+}
+
+.dark .diff-viewer .diff-code-insert,
+.dark .diff-viewer .diff-line-new-only .diff-code {
+  background: hsla(140, 70%, 28%, 0.3);
+  color: hsl(135, 55%, 75%);
+}
+
+.dark .diff-viewer .diff-code-delete,
+.dark .diff-viewer .diff-line-old-only .diff-code {
+  background: hsla(0, 70%, 38%, 0.3);
+  color: hsl(0, 55%, 78%);
+}
+
+.dark .diff-viewer .diff-code-edit {
+  background: hsla(40, 60%, 35%, 0.25);
+}

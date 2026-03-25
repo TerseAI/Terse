@@ -2,7 +2,7 @@ import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 
 import { Tab, TabGroup, TabList } from "@headlessui/react"
-import { Clock, Info, Loader2, MoreVertical, Pause, Play, Trash2, Zap } from "lucide-react"
+import { Clock, Info, Lightbulb, Loader2, MoreVertical, Pause, Play, Trash2, Zap } from "lucide-react"
 import { toast } from "sonner"
 
 import BreadCrumb from "../../components/BreadCrumb"
@@ -19,6 +19,7 @@ import { FrontendRoutes } from "../../shared/FrontendRoutes"
 import type { SerializedEvent } from "../../shared/types"
 
 import { IconForConfigType } from "./components/Integration"
+import AgentImprovementsTab, { useAgentPendingCount } from "./tabs/AgentImprovementsTab"
 import AgentRunHistoryTab from "./tabs/AgentRunHistoryTab"
 
 export default function SdkJobDetail({ agentId }: { agentId: string }) {
@@ -26,6 +27,7 @@ export default function SdkJobDetail({ agentId }: { agentId: string }) {
     const { agent, isLoading, mutate } = useAgent(agentId)
     const { deleteAgent, updateAgent } = useAgentMutations()
 
+    const pendingCount = useAgentPendingCount(agentId)
     const [selectedTab, setSelectedTab] = useState(0)
     const [showDeleteDialog, setShowDeleteDialog] = useState(false)
     const [isDeleting, setIsDeleting] = useState(false)
@@ -184,10 +186,27 @@ export default function SdkJobDetail({ agentId }: { agentId: string }) {
                         <Clock className="h-4 w-4" />
                         <span>Activity</span>
                     </Tab>
+                    <Tab
+                        className={({ selected }) =>
+                            `px-3 py-2 text-sm font-medium rounded-t-md border-b-2 -mb-px inline-flex items-center gap-2 ${selected ? "text-foreground border-primary" : "text-muted-foreground border-transparent hover:text-foreground"}`
+                        }
+                    >
+                        <Lightbulb className="h-4 w-4" />
+                        <span>Improvements</span>
+                        {pendingCount > 0 && (
+                            <span className="inline-flex items-center justify-center h-5 min-w-5 px-1 rounded-full bg-primary text-primary-foreground text-xs font-medium">{pendingCount}</span>
+                        )}
+                    </Tab>
                 </TabList>
 
                 <div className="flex-1 min-h-0 overflow-y-auto">
-                    {selectedTab === 0 ? <OverviewTab triggers={triggers} updatedAt={agent.updatedAt} isActive={agent.isActive} /> : <AgentRunHistoryTab agentId={agentId} />}
+                    {selectedTab === 0 ? (
+                        <OverviewTab triggers={triggers} updatedAt={agent.updatedAt} isActive={agent.isActive} />
+                    ) : selectedTab === 1 ? (
+                        <AgentRunHistoryTab agentId={agentId} />
+                    ) : (
+                        <AgentImprovementsTab agentId={agentId} source="SDK" />
+                    )}
                 </div>
             </TabGroup>
 
