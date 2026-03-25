@@ -29,8 +29,9 @@ export async function init(projectName?: string): Promise<void> {
         fs.mkdirSync(targetDir, { recursive: true })
     }
 
-    // Create src directory
+    // Create src and .claude directories
     fs.mkdirSync(path.join(targetDir, "src"), { recursive: true })
+    fs.mkdirSync(path.join(targetDir, ".claude"), { recursive: true })
 
     const templatesDir = getTemplatesDir()
     const replacements = { PROJECT_NAME: resolvedName }
@@ -42,7 +43,7 @@ export async function init(projectName?: string): Promise<void> {
         { template: "src/index.ts.tmpl", output: "src/index.ts" },
         { template: "env.example.tmpl", output: ".env.example" },
         { template: "gitignore.tmpl", output: ".gitignore" },
-        { template: "CLAUDE.md.tmpl", output: "CLAUDE.md" },
+        { template: ".claude/settings.json.tmpl", output: ".claude/settings.json" },
     ]
 
     for (const file of files) {
