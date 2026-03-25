@@ -79,6 +79,7 @@ def _import_project_main(project_dir: Path) -> ModuleType:
         with _temporary_sys_path([project_dir, project_dir / "src"]):
             spec.loader.exec_module(module)
     except ModuleNotFoundError as exc:
+        sys.modules.pop(module_name, None)
         raise ProjectImportError(_format_missing_module_message(exc)) from exc
     except Exception:
         sys.modules.pop(module_name, None)
@@ -99,7 +100,6 @@ def _temporary_sys_path(paths: list[Path]) -> Iterator[None]:
                 sys.path.remove(path)
             except ValueError:
                 continue
-
 
 
 def _format_missing_module_message(error: ModuleNotFoundError) -> str:

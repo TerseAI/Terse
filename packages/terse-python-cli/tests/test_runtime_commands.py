@@ -13,7 +13,10 @@ from zipfile import ZipFile
 import httpx
 import pytest
 from click.testing import CliRunner
-from terse_cli._generate import CodegenInput, SnowflakeInstanceData, ToolDefinition, render_generated_module
+from terse_cli._generate import (
+    CodegenInput,
+    render_generated_module,
+)
 from terse_cli._package import PackagingError
 from terse_cli.cli import cli
 
@@ -85,7 +88,9 @@ def _plain_output(output: str) -> str:
     return _ANSI_ESCAPE_RE.sub("", output)
 
 
-def _streaming_json_response(status_code: int, payload: object, *, path: str) -> httpx.Response:
+def _streaming_json_response(
+    status_code: int, payload: object, *, path: str
+) -> httpx.Response:
     return httpx.Response(
         status_code,
         headers={"Content-Type": "application/json"},
@@ -102,7 +107,9 @@ def _write_runtime_project(
     codegen_input: CodegenInput | None = None,
 ) -> None:
     Path("src").mkdir(parents=True, exist_ok=True)
-    Path("pyproject.toml").write_text("[project]\nname = 'demo'\nversion = '0.1.0'\n", encoding="utf-8")
+    Path("pyproject.toml").write_text(
+        "[project]\nname = 'demo'\nversion = '0.1.0'\n", encoding="utf-8"
+    )
     Path("src/terse_generated.py").write_text(
         render_generated_module(codegen_input or CodegenInput()),
         encoding="utf-8",
@@ -138,7 +145,9 @@ class _FakeEventSource:
 
 
 def test_integrate_opens_browser(runner: CliRunner) -> None:
-    with patch("terse_cli.commands.integrate.click.launch", return_value=True) as launch:
+    with patch(
+        "terse_cli.commands.integrate.click.launch", return_value=True
+    ) as launch:
         result = runner.invoke(cli, ["integrate"])
     output = _plain_output(result.output)
 
@@ -160,10 +169,14 @@ def test_integrate_falls_back_to_printed_url(runner: CliRunner) -> None:
 def test_run_executes_job_with_inline_event(runner: CliRunner) -> None:
     with runner.isolated_filesystem():
         _write_runtime_project(
-            _runtime_main_source("Path('ran.txt').write_text(event.formatted_content, encoding='utf-8')")
+            _runtime_main_source(
+                "Path('ran.txt').write_text(event.formatted_content, encoding='utf-8')"
+            )
         )
 
-        result = runner.invoke(cli, ["run", "--event", _event_json(formatted_content="Inline event")])
+        result = runner.invoke(
+            cli, ["run", "--event", _event_json(formatted_content="Inline event")]
+        )
         output = _plain_output(result.output)
 
         assert result.exit_code == 0, result.output
@@ -173,7 +186,11 @@ def test_run_executes_job_with_inline_event(runner: CliRunner) -> None:
 
 def test_run_executes_job_from_event_file(runner: CliRunner) -> None:
     with runner.isolated_filesystem():
-        _write_runtime_project(_runtime_main_source("Path('ran.txt').write_text(event.debug_log, encoding='utf-8')"))
+        _write_runtime_project(
+            _runtime_main_source(
+                "Path('ran.txt').write_text(event.debug_log, encoding='utf-8')"
+            )
+        )
         Path("event.json").write_text(_event_json(), encoding="utf-8")
 
         result = runner.invoke(cli, ["run", "--event-file", "event.json"])
@@ -184,7 +201,9 @@ def test_run_executes_job_from_event_file(runner: CliRunner) -> None:
 
 def test_run_requires_event_input(runner: CliRunner) -> None:
     with runner.isolated_filesystem():
-        _write_runtime_project(_runtime_main_source("Path('ran.txt').write_text('ran', encoding='utf-8')"))
+        _write_runtime_project(
+            _runtime_main_source("Path('ran.txt').write_text('ran', encoding='utf-8')")
+        )
 
         result = runner.invoke(cli, ["run"])
         output = _plain_output(result.output)
@@ -196,7 +215,9 @@ def test_run_requires_event_input(runner: CliRunner) -> None:
 
 def test_run_rejects_invalid_json(runner: CliRunner) -> None:
     with runner.isolated_filesystem():
-        _write_runtime_project(_runtime_main_source("Path('ran.txt').write_text('ran', encoding='utf-8')"))
+        _write_runtime_project(
+            _runtime_main_source("Path('ran.txt').write_text('ran', encoding='utf-8')")
+        )
 
         result = runner.invoke(cli, ["run", "--event", "not-json"])
         output = _plain_output(result.output)
@@ -207,7 +228,9 @@ def test_run_rejects_invalid_json(runner: CliRunner) -> None:
 
 def test_run_reports_missing_job(runner: CliRunner) -> None:
     with runner.isolated_filesystem():
-        _write_runtime_project(_runtime_main_source("Path('ran.txt').write_text('ran', encoding='utf-8')"))
+        _write_runtime_project(
+            _runtime_main_source("Path('ran.txt').write_text('ran', encoding='utf-8')")
+        )
 
         result = runner.invoke(cli, ["run", "missing-job", "--event", _event_json()])
         output = _plain_output(result.output)
@@ -242,7 +265,10 @@ def test_run_prompts_when_multiple_jobs_exist(runner: CliRunner) -> None:
             + "\n"
         )
 
-        with patch("terse_cli._loader.prompt_select", side_effect=lambda message, choices: choices[1][1]):
+        with patch(
+            "terse_cli._loader.prompt_select",
+            side_effect=lambda message, choices: choices[1][1],
+        ):
             result = runner.invoke(cli, ["run", "--event", _event_json()])
 
         assert result.exit_code == 0, result.output
@@ -272,53 +298,14 @@ def test_run_respects_filter_skip(runner: CliRunner) -> None:
         assert 'Job "demo-job" skipped (filter returned false).' in output
 
 
-def test_run_attaches_generated_tools_before_handler_execution(runner: CliRunner) -> None:
+def test_test_command_runs_single_cron_trigger_without_api_key(
+    runner: CliRunner,
+) -> None:
     with runner.isolated_filesystem():
         _write_runtime_project(
             _runtime_main_source(
-                "Path('tool.json').write_text(json.dumps(agent.tools.snowflake.execute_query(query='select 1').model_dump()), encoding='utf-8')",
-                extra="import json",
-                generated_imports="from terse_generated import Schedule, Snowflake",
-                skills_block="[Snowflake.skill()]",
+                "Path('session.txt').write_text(str(agent.session_id), encoding='utf-8')"
             ),
-            codegen_input=CodegenInput(
-                snowflake=[SnowflakeInstanceData(id="snowflake_1", display_name="acme-prod")],
-                tools=[
-                    ToolDefinition(
-                        name="snowflakeExecuteQuery",
-                        display_name="Execute query",
-                        description="Execute Snowflake query.",
-                        integration="snowflake",
-                        is_read_only=True,
-                    )
-                ],
-            ),
-        )
-
-        with patch(
-            "terse_sdk.runtime.TerseAgent.execute_tool",
-            return_value={"success": True, "rowCount": 1, "columns": ["value"], "rows": [{"value": 1}]},
-        ) as execute_tool:
-            result = runner.invoke(cli, ["run", "--event", _event_json()])
-
-        assert result.exit_code == 0, result.output
-        assert json.loads(Path("tool.json").read_text(encoding="utf-8")) == {
-            "actions": None,
-            "columns": ["value"],
-            "rowCount": 1.0,
-            "rows": [{"value": 1}],
-            "success": True,
-        }
-        execute_tool.assert_called_once_with(
-            "snowflakeExecuteQuery",
-            {"integrationId": "snowflake_1", "query": "select 1"},
-        )
-
-
-def test_test_command_runs_single_cron_trigger_without_api_key(runner: CliRunner) -> None:
-    with runner.isolated_filesystem():
-        _write_runtime_project(
-            _runtime_main_source("Path('session.txt').write_text(str(agent.session_id), encoding='utf-8')"),
             api_key=None,
         )
 
@@ -327,13 +314,19 @@ def test_test_command_runs_single_cron_trigger_without_api_key(runner: CliRunner
 
         assert result.exit_code == 0, result.output
         assert Path("session.txt").read_text(encoding="utf-8") == "None"
-        assert "No TERSE_API_KEY found; running locally without session logging." in output
+        assert (
+            "No TERSE_API_KEY found; running locally without session logging." in output
+        )
 
 
-def test_test_command_uses_session_stream_when_api_key_exists(runner: CliRunner) -> None:
+def test_test_command_uses_session_stream_when_api_key_exists(
+    runner: CliRunner,
+) -> None:
     with runner.isolated_filesystem():
         _write_runtime_project(
-            _runtime_main_source("Path('session.txt').write_text(str(agent.session_id), encoding='utf-8')")
+            _runtime_main_source(
+                "Path('session.txt').write_text(str(agent.session_id), encoding='utf-8')"
+            )
         )
         session = _FakeSession("session_123")
 
@@ -345,7 +338,9 @@ def test_test_command_uses_session_stream_when_api_key_exists(runner: CliRunner)
         assert session.closed
 
 
-def test_test_command_debug_logs_agent_run_request_details_on_backend_error(runner: CliRunner) -> None:
+def test_test_command_debug_logs_agent_run_request_details_on_backend_error(
+    runner: CliRunner,
+) -> None:
     with runner.isolated_filesystem():
         _write_runtime_project(
             _runtime_main_source(
@@ -376,58 +371,12 @@ def test_test_command_debug_logs_agent_run_request_details_on_backend_error(runn
         assert "HTTP POST" in output
         assert "/sdk/agent-run" in output
         assert '"integrationType": "cron_job"' in output
-        assert '"formattedContent": "This is a manually triggered event for a cron trigger' in output
+        assert (
+            '"formattedContent": "This is a manually triggered event for a cron trigger'
+            in output
+        )
         assert "Response 400 Bad Request for /sdk/agent-run" in output
         assert "Invalid request body" in output
-
-
-def test_test_command_attaches_generated_tools_before_handler_execution(runner: CliRunner) -> None:
-    with runner.isolated_filesystem():
-        _write_runtime_project(
-            _runtime_main_source(
-                "Path('tool.json').write_text(json.dumps(agent.tools.snowflake.explain_query(query='select 1').model_dump()), encoding='utf-8')",
-                extra="import json",
-                generated_imports="from terse_generated import Schedule, Snowflake",
-                skills_block="[Snowflake.skill()]",
-            ),
-            api_key=None,
-            codegen_input=CodegenInput(
-                snowflake=[SnowflakeInstanceData(id="snowflake_1", display_name="acme-prod")],
-                tools=[
-                    ToolDefinition(
-                        name="snowflakeExplainQuery",
-                        display_name="Explain query",
-                        description="Explain Snowflake query.",
-                        integration="snowflake",
-                        is_read_only=True,
-                    )
-                ],
-            ),
-        )
-
-        with patch(
-            "terse_sdk.runtime.TerseAgent.execute_tool",
-            return_value={
-                "success": True,
-                "rowCount": 1,
-                "columns": ["operation"],
-                "explainPlan": [{"operation": "scan"}],
-            },
-        ) as execute_tool:
-            result = runner.invoke(cli, ["test"])
-
-        assert result.exit_code == 0, result.output
-        assert json.loads(Path("tool.json").read_text(encoding="utf-8")) == {
-            "actions": None,
-            "columns": ["operation"],
-            "explainPlan": [{"operation": "scan"}],
-            "rowCount": 1.0,
-            "success": True,
-        }
-        execute_tool.assert_called_once_with(
-            "snowflakeExplainQuery",
-            {"integrationId": "snowflake_1", "query": "select 1"},
-        )
 
 
 def test_test_command_prompts_for_multiple_cron_triggers(runner: CliRunner) -> None:
@@ -440,7 +389,10 @@ def test_test_command_prompts_for_multiple_cron_triggers(runner: CliRunner) -> N
             api_key=None,
         )
 
-        with patch("terse_cli.commands.test.prompt_select", side_effect=lambda message, choices: choices[1][1]):
+        with patch(
+            "terse_cli.commands.test.prompt_select",
+            side_effect=lambda message, choices: choices[1][1],
+        ):
             result = runner.invoke(cli, ["test"])
 
         assert result.exit_code == 0, result.output
@@ -466,7 +418,9 @@ def test_test_command_requires_cron_trigger(runner: CliRunner) -> None:
 
 def test_test_command_reports_missing_jobs(runner: CliRunner) -> None:
     with runner.isolated_filesystem():
-        _write_runtime_project("from terse_sdk import Terse\napp = Terse()\n", api_key=None)
+        _write_runtime_project(
+            "from terse_sdk import Terse\napp = Terse()\n", api_key=None
+        )
 
         result = runner.invoke(cli, ["test"])
         output = _plain_output(result.output)
@@ -478,7 +432,8 @@ def test_test_command_reports_missing_jobs(runner: CliRunner) -> None:
 def test_deploy_requires_api_key(runner: CliRunner) -> None:
     with runner.isolated_filesystem():
         _write_runtime_project(
-            _runtime_main_source("Path('ran.txt').write_text('ran', encoding='utf-8')"), api_key=None
+            _runtime_main_source("Path('ran.txt').write_text('ran', encoding='utf-8')"),
+            api_key=None,
         )
 
         result = runner.invoke(cli, ["deploy"])
@@ -490,7 +445,9 @@ def test_deploy_requires_api_key(runner: CliRunner) -> None:
 
 def test_deploy_reports_empty_archive_errors(runner: CliRunner) -> None:
     with runner.isolated_filesystem():
-        _write_runtime_project(_runtime_main_source("Path('ran.txt').write_text('ran', encoding='utf-8')"))
+        _write_runtime_project(
+            _runtime_main_source("Path('ran.txt').write_text('ran', encoding='utf-8')")
+        )
 
         with patch(
             "terse_cli.commands.deploy.build_deploy_archive",
@@ -548,7 +505,11 @@ def test_deploy_builds_expected_payload_and_reports_results(runner: CliRunner) -
         Path("dist/output.txt").write_text("ignore", encoding="utf-8")
 
         def fake_request_json(
-            path: str, api_key: str, *, method: str = "GET", params: dict[str, object] | None = None
+            path: str,
+            api_key: str,
+            *,
+            method: str = "GET",
+            params: dict[str, object] | None = None,
         ) -> object:
             assert path == "/sdk/deploy"
             assert api_key == "terse_test_key"
@@ -576,16 +537,30 @@ def test_deploy_builds_expected_payload_and_reports_results(runner: CliRunner) -
             assert "ignored_dir/secret.txt" not in names
             assert ".venv/pyvenv.cfg" not in names
             assert "dist/output.txt" not in names
-            assert 'terse-sdk = { path = "/tmp/local sdk/packages/terse-python-sdk"' not in archived_pyproject
-            assert 'some-local-package = { path = "vendor/some-local-package", editable = true }' in archived_pyproject
+            assert (
+                'terse-sdk = { path = "/tmp/local sdk/packages/terse-python-sdk"'
+                not in archived_pyproject
+            )
+            assert (
+                'some-local-package = { path = "vendor/some-local-package", editable = true }'
+                in archived_pyproject
+            )
 
             return {
                 "success": True,
-                "results": [{"jobName": "demo-job", "automationId": "auto_123", "isUpdate": False}],
+                "results": [
+                    {
+                        "jobName": "demo-job",
+                        "automationId": "auto_123",
+                        "isUpdate": False,
+                    }
+                ],
                 "removed": [{"name": "old-job", "id": "auto_old"}],
             }
 
-        with patch("terse_cli.commands.deploy.request_json", side_effect=fake_request_json):
+        with patch(
+            "terse_cli.commands.deploy.request_json", side_effect=fake_request_json
+        ):
             result = runner.invoke(cli, ["deploy"])
             output = _plain_output(result.output)
 

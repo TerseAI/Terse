@@ -1,3 +1,5 @@
+import type { Sandbox } from "modal"
+
 export type SdkProjectRuntime = "typescript" | "python"
 
 export interface SandboxCommandResult {
@@ -7,7 +9,7 @@ export interface SandboxCommandResult {
 }
 
 export interface SdkRuntimeExecutorContext {
-    sb: any
+    sb: Sandbox
     sandboxEnv: Record<string, string>
     runId: string
     agentId: string

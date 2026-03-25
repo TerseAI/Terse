@@ -1,6 +1,6 @@
 import crypto from "crypto"
 import { unzipSync } from "fflate"
-import { ModalClient } from "modal"
+import { ModalClient, Sandbox } from "modal"
 
 import { finalizeRunStatus, markRunFailed } from "../agent/AgentRunner/runHistory"
 import { settings } from "../config/settings"
@@ -137,7 +137,7 @@ export class SdkJobExecutionService {
         }
     }
 
-    private async uploadZipToSandbox(sb: any, zipBuffer: Buffer, runId: string, agentId: string): Promise<void> {
+    private async uploadZipToSandbox(sb: Sandbox, zipBuffer: Buffer, runId: string, agentId: string): Promise<void> {
         const t = performance.now()
         const writeHandle = await sb.open(SDK_SANDBOX_CODE_ZIP_PATH, "w")
         await writeHandle.write(new Uint8Array(zipBuffer))
@@ -152,14 +152,14 @@ export class SdkJobExecutionService {
         )
     }
 
-    private async writeEventFile(sb: any, eventJson: string): Promise<void> {
+    private async writeEventFile(sb: Sandbox, eventJson: string): Promise<void> {
         const eventHandle = await sb.open(SDK_SANDBOX_EVENT_FILE_PATH, "w")
         await eventHandle.write(new TextEncoder().encode(eventJson))
         await eventHandle.close()
     }
 
     private createRuntimeExecutorContext(
-        sb: any,
+        sb: Sandbox,
         sandboxEnv: Record<string, string>,
         runId: string,
         agentId: string,
@@ -184,7 +184,7 @@ export class SdkJobExecutionService {
     }
 
     private async ensureSandboxCommand(
-        sb: any,
+        sb: Sandbox,
         label: string,
         command: string,
         sandboxEnv: Record<string, string>,
@@ -198,7 +198,7 @@ export class SdkJobExecutionService {
     }
 
     private async runSandboxCommand(
-        sb: any,
+        sb: Sandbox,
         label: string,
         command: string,
         sandboxEnv: Record<string, string>,
