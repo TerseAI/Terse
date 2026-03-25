@@ -21,20 +21,9 @@ import { RunHistoryChatMemorySession, identityHistoryCallback } from "../CustomM
 import { AgentType, builderProviderDataModelSettings, runnerFactory } from "../runner"
 
 import HeadlessChatInterface from "./HeadlessChatInterface"
+import { computeAverageRunDurationMs } from "./runMetrics"
 
 const PERIOD_DAYS_DEFAULT = 7
-
-function computeAverageRunDurationMs(runs: Array<{ timestamp: Date; updated_at: Date }>): number {
-    if (runs.length === 0) {
-        return 0
-    }
-
-    const totalDurationMs = runs.reduce((sum, run) => {
-        const duration = run.updated_at.getTime() - run.timestamp.getTime()
-        return sum + Math.max(0, duration)
-    }, 0)
-    return Math.round(totalDurationMs / runs.length)
-}
 
 export function buildJudgeAgentTools(user: User): Tool[] {
     return [
@@ -80,15 +69,17 @@ export function buildJudgeAgentTools(user: User): Tool[] {
                 })
 
                 const formattedConfig = formatAgentForSystemPrompt(automation)
+
                 const response = {
                     formattedConfig,
                     rawConfig: {
                         id: automation.id,
                         name: automation.name,
+                        source: automation.source,
                         isActive: automation.is_active,
                         requireApproval: automation.require_approval,
                         improvementsEnabled: automation.improvements_enabled,
-                        prompt: automation.prompt?.content ?? "",
+                        prompt: automation.source === "SDK" ? "[SDK]" : (automation.prompt?.content ?? ""),
                         inputs: automation.inputs,
                         outputs: automation.outputs,
                         toolApprovals: automation.tool_approvals.map(row => row.tool_name),

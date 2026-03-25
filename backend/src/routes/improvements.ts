@@ -39,6 +39,7 @@ function mapImprovement(improvement: {
     target_area: string
     confidence: number
     status: AgentImprovementStatus
+    suggested_patch: string | null
     applied_prompt: string | null
     applied_at: Date | null
     dismissed_at: Date | null
@@ -54,6 +55,7 @@ function mapImprovement(improvement: {
         targetArea: improvement.target_area as AgentImprovement["targetArea"],
         confidence: improvement.confidence,
         status: improvement.status,
+        suggestedPatch: improvement.suggested_patch ?? undefined,
         appliedPrompt: improvement.applied_prompt ?? undefined,
         appliedAt: improvement.applied_at?.toISOString(),
         dismissedAt: improvement.dismissed_at?.toISOString(),

@@ -1,4 +1,5 @@
 import { Agent } from "@openai/agents"
+import { AutomationSource } from "@prisma/client"
 import { z } from "zod"
 
 import { settings } from "../../config/settings"
@@ -17,15 +18,18 @@ export const JudgeAgentOutput = z.object({
         z.object({
             title: z.string(),
             description: z.string(),
-            targetArea: z.enum(["prompt", "trigger_config", "output_config", "general"]),
-            confidence: z.number().min(0).max(1)
+            targetArea: z.enum(["prompt", "trigger_config", "output_config", "general", "code"]),
+            confidence: z.number().min(0).max(1),
+            suggestedPatch: z.string().optional()
         })
     )
 })
 
 export type JudgeAgentOutputType = z.infer<typeof JudgeAgentOutput>
 
-function buildJudgeSystemPrompt(automationId: string): string {
+function buildJudgeSystemPrompt(automationId: string, source: AutomationSource): string {
+    const isSdk = source === AutomationSource.SDK
+
     return `You're reviewing automation ${automationId}. Be friendly and straight to the point — no fluff.
 
 == How Terse agents work ==
@@ -71,15 +75,29 @@ Use lookupPlatformCapabilities if you need to check what triggers/outputs the pl
 - Each improvement title: short and punchy (e.g. "Tighten the trigger filter")
 - Each improvement description: 1-2 plain sentences. Say what's wrong and what to do about it. No bullet points, no markdown, no lists — just a brief plain-text explanation.
 - Only flag things with confidence >= 0.7
-- Map each to a targetArea: prompt | trigger_config | output_config | general
+- Map each to a targetArea: ${isSdk ? "code | trigger_config | output_config | general" : "prompt | trigger_config | output_config | general"}
 - Don't repeat past recommendations (pending, applied, or dismissed)
 - If everything looks good, return an empty improvements array
+${
+    isSdk
+        ? `
+== SDK Job specifics ==
+
+This is an SDK job — a code-based automation written and deployed by a developer via the Terse CLI/SDK, not built through the web UI.
+
+- The agent's behavior is defined by source code (TypeScript/JavaScript), not a natural-language prompt. The source code is included in the getAgentConfig response.
+- Use targetArea "code" for improvements about the source code itself. You can still use "trigger_config", "output_config", or "general" for non-code concerns.
+- For "code" improvements, you MUST include a suggestedPatch field — a unified diff showing the exact change you're recommending. Use standard diff format (--- a/file, +++ b/file, @@ hunks). The description should explain what the patch does and why.
+- The developer will read your suggestions and apply them in their own codebase, so make them actionable.
+`
+        : ""
+}
 `
 }
 
-export async function evaluateAgent(params: { automationId: string; user: User }): Promise<JudgeAgentOutputType> {
+export async function evaluateAgent(params: { automationId: string; user: User; source: AutomationSource }): Promise<JudgeAgentOutputType> {
     const runId = `judge-review-${params.automationId}-${Date.now()}`
-    logger.info("[JudgeAgent] Starting evaluation", { automationId: params.automationId, runId })
+    logger.info("[JudgeAgent] Starting evaluation", { automationId: params.automationId, runId, source: params.source })
 
     const runConfig = {
         agentId: params.automationId,
@@ -92,7 +110,7 @@ export async function evaluateAgent(params: { automationId: string; user: User }
     const runner = runnerFactory(runConfig)
     const agent = new Agent({
         name: "JudgeAgent",
-        instructions: buildJudgeSystemPrompt(params.automationId),
+        instructions: buildJudgeSystemPrompt(params.automationId, params.source),
         model: "gpt-5.2",
         tools: buildJudgeAgentTools(params.user),
         outputType: JudgeAgentOutput,

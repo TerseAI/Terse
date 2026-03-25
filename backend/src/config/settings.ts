@@ -163,6 +163,11 @@ export const settings = {
         host: optionalEnv("POSTHOG_HOST", "https://us.i.posthog.com")
     },
 
+    // Anthropic (Claude Code CLI in sandboxes)
+    anthropic: {
+        apiKey: requireEnv("ANTHROPIC_API_KEY")
+    },
+
     // Modal (sandbox execution for SDK jobs)
     modal: {
         tokenId: requireEnv("MODAL_TOKEN_ID"),
