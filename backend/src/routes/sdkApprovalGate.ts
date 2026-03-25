@@ -20,9 +20,7 @@ class ApprovalDecisionTask implements Task {
 const approvalTaskQueue = new EventEmitterTaskQueue<ApprovalDecisionTask>()
 
 export function waitForApprovalDecision(runId: string, stepId: string): Promise<ApprovalDecision> {
-    return approvalTaskQueue
-        .waitFor(APPROVAL_DECISION_TASK_NAME, task => task.runId === runId && task.stepId === stepId)
-        .then(task => task.decision)
+    return approvalTaskQueue.waitFor(APPROVAL_DECISION_TASK_NAME, task => task.runId === runId && task.stepId === stepId).then(task => task.decision)
 }
 
 export function resolveApprovalDecision(runId: string, stepId: string, decision: ApprovalDecision): void {
