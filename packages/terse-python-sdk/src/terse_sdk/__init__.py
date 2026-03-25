@@ -15,9 +15,22 @@ from .runtime import (
     execute_registered_job,
     get_job_registry,
 )
-from .types.agents import Agent, AgentNotificationSettings, AgentOutput, AgentPrompt, AgentTrigger, AgentUpdate
+from .types.agents import (
+    Agent,
+    AgentNotificationSettings,
+    AgentOutput,
+    AgentPrompt,
+    AgentTrigger,
+    AgentUpdate,
+)
 from .types.agents import __all__ as _agents_all
-from .types.attio import AttioAttribute, AttioObjectWithAttributes, AttioRecord, AttioRecordIdentifier, Repository
+from .types.attio import (
+    AttioAttribute,
+    AttioObjectWithAttributes,
+    AttioRecord,
+    AttioRecordIdentifier,
+    Repository,
+)
 from .types.attio import __all__ as _attio_all
 from .types.chat_snippets import (
     ChatSnippet,
@@ -86,7 +99,12 @@ from .types.events import (
     WorkOSInputEvent,
 )
 from .types.events import __all__ as _events_all
-from .types.integrations import ConfigDetails, ConfigInstance, IntegrationDetails, NotificationSettings
+from .types.integrations import (
+    ConfigDetails,
+    ConfigInstance,
+    IntegrationDetails,
+    NotificationSettings,
+)
 from .types.integrations import __all__ as _integrations_all
 from .types.jobs import JobDefinition, SkillConfig, TriggerConfig
 from .types.jobs import __all__ as _jobs_all
@@ -157,8 +175,6 @@ from .types.stream_events import (
     SdkAgentStreamEventToolCallStarted,
 )
 from .types.stream_events import __all__ as _stream_events_all
-from .types.tickets import Assignee, Label, Project, State, Team, Ticket, TicketState
-from .types.tickets import __all__ as _tickets_all
 from .types.tools import (
     AttioListObjectsToolOutput,
     AttioQueryRecordsToolOutput,
@@ -187,7 +203,6 @@ __all__ = [
     *_run_history_all,
     *_sdk_types_all,
     *_stream_events_all,
-    *_tickets_all,
     *_tools_all,
     *_users_all,
     "EventType",
