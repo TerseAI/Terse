@@ -3,15 +3,9 @@ import { db } from "../../prismaClient"
 import { getInputConfigInclude, getOutputConfigInclude } from "../../utility/prismaIncludes"
 import { formatAgentForSystemPrompt } from "../AgentRunner/formatContext"
 
-const PERIOD_DAYS_DEFAULT = 7
+import { computeAverageRunDurationMs } from "./runMetrics"
 
-function computeAverageRunDurationMs(runs: Array<{ timestamp: Date; updated_at: Date }>): number {
-    if (runs.length === 0) return 0
-    const totalDurationMs = runs.reduce((sum, run) => {
-        return sum + Math.max(0, run.updated_at.getTime() - run.timestamp.getTime())
-    }, 0)
-    return Math.round(totalDurationMs / runs.length)
-}
+const PERIOD_DAYS_DEFAULT = 7
 
 export async function fetchAgentConfig(automationId: string, orgId: string) {
     logger.info("[fetchJudgeContext:agentConfig] Fetching", { automationId })
