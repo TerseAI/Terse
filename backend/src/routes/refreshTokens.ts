@@ -1,36 +1,10 @@
 import { Request, Response } from "express"
 
-import { cloudScheduler } from "../config/settings"
 import { isOAuthIntegrationInstallation } from "../integrations/abstract/Integration"
 import { INTEGRATION_REGISTRY } from "../integrations/abstract/IntegrationRegistry"
 import logger from "../logger"
 import { IntegrationType } from "../shared/Integrations"
-
-/**
- * Validate that the request comes from Google Cloud Scheduler
- * Validates the secret token in the Authorization header
- */
-function validateCloudSchedulerRequest(req: Request): boolean {
-    const authHeader = req.headers["authorization"]
-
-    // Cloud Scheduler should send the secret token in the Authorization header
-    // Format: "Bearer <token>" or just the token value
-    if (!authHeader) {
-        logger.warn("Missing Authorization header")
-        return false
-    }
-
-    // Extract token from "Bearer <token>" or just check the header value
-    const token = authHeader.startsWith("Bearer ") ? authHeader.substring(7) : authHeader
-
-    // Validate against configured secret
-    if (token !== cloudScheduler.secret) {
-        logger.warn("Invalid cron secret token")
-        return false
-    }
-
-    return true
-}
+import { validateCloudSchedulerRequest } from "../utility/cloudScheduler"
 
 /**
  * Refresh tokens for all OAuth integrations
@@ -40,7 +14,7 @@ export async function refreshAllTokens(req: Request, res: Response) {
     logger.info("Token refresh cron job triggered")
 
     // Validate request comes from Google Cloud Scheduler
-    if (!validateCloudSchedulerRequest(req)) {
+    if (!validateCloudSchedulerRequest(req, "RefreshTokens")) {
         logger.error("Unauthorized: Request did not pass Cloud Scheduler validation")
         return res.status(401).json({ error: "Unauthorized" })
     }

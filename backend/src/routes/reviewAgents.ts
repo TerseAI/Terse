@@ -4,7 +4,7 @@ import { Request, Response } from "express"
 
 import { MAX_IMPROVEMENTS_PER_AGENT, evaluateAgent } from "../agent/JudgeAgent/JudgeAgent"
 import { fetchFullJudgeContext } from "../agent/JudgeAgent/fetchJudgeContext"
-import { cloudScheduler, settings } from "../config/settings"
+import { settings } from "../config/settings"
 import logger from "../logger"
 import { sendWeeklyReviewEmail } from "../notifications/channels/emailNotifications"
 import { db } from "../prismaClient"
@@ -13,6 +13,7 @@ import { SdkImprovementService } from "../services/SdkImprovementService"
 import { FrontendRoutes } from "../shared/FrontendRoutes"
 import { sentNotificationsKey } from "../shared/InvalidationKeys"
 import { User } from "../shared/types"
+import { validateCloudSchedulerRequest } from "../utility/cloudScheduler"
 import { FeatureFlag, FeatureFlagService } from "../utility/featureFlags"
 import { getUserForOrg } from "../utility/workos"
 
@@ -41,9 +42,9 @@ type EmailGroup = {
 export async function reviewAllAgents(req: Request, res: Response) {
     logger.info("[ReviewAgents] Weekly review job triggered")
 
-    // if (!validateCloudSchedulerRequest(req)) {
-    //     return res.status(401).json({ error: "Unauthorized" })
-    // }
+    if (!validateCloudSchedulerRequest(req, "ReviewAgents")) {
+        return res.status(401).json({ error: "Unauthorized" })
+    }
 
     const featureFlagService = FeatureFlagService.getInstance()
     const periodEnd = new Date()
