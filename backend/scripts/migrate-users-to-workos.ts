@@ -9,8 +9,8 @@ import * as fs from "fs";
 import * as path from "path";
 import { fileURLToPath } from "url";
 
-const currentFilePath = fileURLToPath(import.meta.url);
-const currentDir = path.dirname(currentFilePath);
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const prisma = new PrismaClient();
 
@@ -20,7 +20,7 @@ const workos = new WorkOS(process.env.WORKOS_API_KEY!, {
 
 const ORG_NAME_DICTIONARY_PATH =
   process.env.ORG_NAME_DICTIONARY_PATH ||
-  path.join(currentDir, "org-name-dictionary.json");
+  path.join(__dirname, "org-name-dictionary.json");
 
 function parseDisplayName(displayName: string): {
   firstName: string;
