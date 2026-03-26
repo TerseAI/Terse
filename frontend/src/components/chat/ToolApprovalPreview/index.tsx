@@ -2,6 +2,8 @@ import AttioUpsertRecordPreview from "./AttioUpsertRecordPreview"
 
 export interface ToolPreviewProps {
     parameters: string
+    editedArguments?: string
+    onEditedArgumentsChange?: (editedArguments?: string) => void
     onSendMessage?: (message: string) => void
 }
 
@@ -12,16 +14,18 @@ const TOOL_PREVIEW_REGISTRY: Record<string, React.ComponentType<ToolPreviewProps
 interface ToolApprovalPreviewProps {
     toolName: string
     parameters?: string
+    editedArguments?: string
+    onEditedArgumentsChange?: (editedArguments?: string) => void
     onSendMessage?: (message: string) => void
 }
 
-export default function ToolApprovalPreview({ toolName, parameters, onSendMessage }: ToolApprovalPreviewProps) {
+export default function ToolApprovalPreview({ toolName, parameters, editedArguments, onEditedArgumentsChange, onSendMessage }: ToolApprovalPreviewProps) {
     if (!parameters) return null
 
     const PreviewComponent = TOOL_PREVIEW_REGISTRY[toolName]
     if (!PreviewComponent) return null
 
-    return <PreviewComponent parameters={parameters} onSendMessage={onSendMessage} />
+    return <PreviewComponent parameters={parameters} editedArguments={editedArguments} onEditedArgumentsChange={onEditedArgumentsChange} onSendMessage={onSendMessage} />
 }
 
 export function hasCustomPreview(toolName: string): boolean {

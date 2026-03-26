@@ -1,4 +1,5 @@
 import { getToolDisplayFromCall } from "../../shared/ToolDisplayUtils"
+import type { ToolApprovalResponseOptions } from "../../socket"
 import ShinyText from "../ShinyText"
 
 import FunctionCallItem from "./FunctionCallItem"
@@ -7,8 +8,8 @@ import { FunctionCallEvent } from "./Turn"
 interface ToolCallsSummaryProps {
     calls: FunctionCallEvent[]
     isTurnFailure?: boolean
-    onApprove?: (stepId: string) => void
-    onReject?: (stepId: string) => void
+    onApprove?: (stepId: string, options?: ToolApprovalResponseOptions) => void
+    onReject?: (stepId: string, options?: ToolApprovalResponseOptions) => void
     onSendMessage?: (message: string) => void
 }
 

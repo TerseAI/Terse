@@ -98,6 +98,7 @@ export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSe
         stepId: string
         settings: RunExecutionSettings<TSession, TAgent>
         rejectionReason?: string
+        editedArguments?: string
         prepareResumeState?: (state: RunState<TSession, TAgent>) => Promise<void> | void
     }): Promise<AgentRunnerLoopResult<TSession, TAgent>> {
         await this.initializeLoopIfNeeded()
@@ -118,6 +119,9 @@ export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSe
         }
 
         if (params.decision === "approve") {
+            if (params.editedArguments) {
+                applyEditedArgumentsToInterruption(interruption, params.editedArguments)
+            }
             state.approve(interruption)
         } else {
             state.reject(interruption, { message: params.rejectionReason })
@@ -227,6 +231,14 @@ export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSe
             throw new Error("Agent not initialized. Call initializeAgent() before running the loop.")
         }
         return this.agent
+    }
+}
+
+function applyEditedArgumentsToInterruption(interruption: RunToolApprovalItem, editedArguments: string): void {
+    ;(interruption as { arguments: string }).arguments = editedArguments
+
+    if (interruption.rawItem && typeof interruption.rawItem === "object") {
+        ;(interruption.rawItem as Record<string, unknown>).arguments = editedArguments
     }
 }
 

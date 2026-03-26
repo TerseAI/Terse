@@ -34,6 +34,7 @@ export type ApprovalRequest = {
     userId: string
     organizationId: string
     rejectionReason?: string
+    editedArguments?: string
     /** When true, stops the run completely without resuming the agent */
     hardReject?: boolean
 }
@@ -198,7 +199,7 @@ export class ApprovalService {
     }
 
     static async processApproval(request: ApprovalRequest): Promise<ApprovalResult> {
-        const { runId, stepId, approved, userId, organizationId, rejectionReason, hardReject } = request
+        const { runId, stepId, approved, userId, organizationId, rejectionReason, editedArguments, hardReject } = request
 
         logger.info(`[ApprovalService] Processing approval for runId: ${runId}, stepId: ${stepId}, approved: ${approved}, hardReject: ${hardReject}`)
 
@@ -258,7 +259,8 @@ export class ApprovalService {
                 await appendToolApprovalResponseSystemEvent(runId, {
                     step_id: stepId,
                     approved,
-                    rejection_reason: rejectionReason?.trim() || undefined
+                    rejection_reason: rejectionReason?.trim() || undefined,
+                    edited_arguments: editedArguments?.trim() || undefined
                 })
             } catch (error) {
                 logger.warn("[ApprovalService] Failed to append tool approval response system event to raw history", { runId, stepId, error })
@@ -279,7 +281,7 @@ export class ApprovalService {
                         ? SlackApprovalMessageStatus.CHANGES_REQUESTED
                         : SlackApprovalMessageStatus.REJECTED
 
-                resolveApprovalDecision(runId, stepId, { approved: !hardReject && approved, rejectionReason })
+                resolveApprovalDecision(runId, stepId, { approved: !hardReject && approved, rejectionReason, editedArguments })
 
                 await this.updateSlackNotification(runId, stepId, finalSlackStatus, user, channel.id)
 
@@ -318,6 +320,7 @@ export class ApprovalService {
                     },
                     rejectionReason,
                     hardReject,
+                    editedArguments,
                     {
                         signal: cancellationController.signal
                     }

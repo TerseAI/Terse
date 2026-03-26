@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 
 import { CheckCircleIcon, CheckIcon, ClockIcon, NoSymbolIcon, PaperAirplaneIcon, XMarkIcon } from "@heroicons/react/24/outline"
 import { Ban, Check } from "lucide-react"
@@ -8,6 +8,7 @@ import { EntityType } from "../../shared/Entities"
 import { ChangedItem } from "../../shared/ModelEvents"
 import { RunHistoryStatus } from "../../shared/RunHistoryTypes"
 import { getToolDisplayFromCall } from "../../shared/ToolDisplayUtils"
+import type { ToolApprovalResponseOptions } from "../../socket"
 import RunHistoryActionItem from "../RunHistory/RunHistoryActionItem"
 import ToolCallParameters from "../ToolCallParameters"
 import { Button } from "../ui/button"
@@ -19,8 +20,8 @@ interface FunctionCallItemProps {
     call: FunctionCallEvent
     isTurnFailure?: boolean
     index: number
-    onApprove?: (stepId: string) => void
-    onReject?: (stepId: string) => void
+    onApprove?: (stepId: string, options?: ToolApprovalResponseOptions) => void
+    onReject?: (stepId: string, options?: ToolApprovalResponseOptions) => void
     onSendMessage?: (message: string) => void
 }
 
@@ -146,6 +147,13 @@ function ToolResultInput({ toolName, parameters, onSubmit }: { toolName: string;
 
 export default function FunctionCallItem({ call, isTurnFailure = false, onApprove, onReject, onSendMessage }: FunctionCallItemProps) {
     const [isExpanded, setIsExpanded] = useState(false)
+    const [editedArguments, setEditedArguments] = useState<string | undefined>(undefined)
+
+    useEffect(() => {
+        if (!call.isWaitingForApproval) {
+            setEditedArguments(undefined)
+        }
+    }, [call.isWaitingForApproval, call.id])
 
     // Get display name based on current state
     const phase = call.isWaitingForApproval || call.isRejected ? "approval" : call.isRunning ? "executing" : "complete"
@@ -153,7 +161,7 @@ export default function FunctionCallItem({ call, isTurnFailure = false, onApprov
 
     const handleApprove = () => {
         if (!onApprove) return
-        onApprove(call.id)
+        onApprove(call.id, editedArguments ? { editedArguments } : undefined)
     }
 
     const handleReject = () => {
@@ -212,16 +220,23 @@ export default function FunctionCallItem({ call, isTurnFailure = false, onApprov
             {call.isWaitingForApproval && !call.isRejected && (
                 <div className="ml-6 mt-1.5 border border-warning rounded-lg p-3">
                     {hasCustomPreview(call.name) ? (
-                        <ToolApprovalPreview toolName={call.name} parameters={call.parameters} onSendMessage={onSendMessage} />
+                        <ToolApprovalPreview
+                            toolName={call.name}
+                            parameters={call.parameters}
+                            editedArguments={editedArguments}
+                            onEditedArgumentsChange={setEditedArguments}
+                            onSendMessage={onSendMessage}
+                        />
                     ) : (
                         <div className="text-sm text-muted-foreground mb-2">
                             The bot wants to execute: <span className="font-medium text-foreground">{displayName}</span>
                         </div>
                     )}
+                    {editedArguments && <div className="mt-3 text-xs text-accent-primary">Draft edits will be applied when you approve this tool call.</div>}
                     <div className="flex gap-2 mt-3">
                         <Button onClick={handleApprove} size="sm" variant="outline">
                             <Check className="w-4 h-4 text-success" />
-                            Approve
+                            {editedArguments ? "Approve Edited" : "Approve"}
                         </Button>
                         <Button onClick={handleReject} size="sm" variant="outline">
                             <Ban className="w-4 h-4 text-danger" />

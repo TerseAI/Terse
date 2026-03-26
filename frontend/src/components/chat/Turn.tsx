@@ -4,6 +4,7 @@ import { CheckCircleIcon, CheckIcon, DocumentDuplicateIcon, HandThumbDownIcon, H
 import { HandThumbDownIcon as HandThumbDownFilledIcon, HandThumbUpIcon as HandThumbUpFilledIcon } from "@heroicons/react/24/solid"
 
 import { ChangedItem, type ChatSnippet, SharedErrorContext } from "../../shared/ModelEvents"
+import type { ToolApprovalResponseOptions } from "../../socket"
 
 import FunctionCallItem from "./FunctionCallItem"
 import { RunErrorView } from "./RunErrorView"
@@ -32,8 +33,8 @@ interface Turn {
     disableAnimation?: boolean
     isLatestAssistantTurn?: boolean
     onAssistantTextDisplayComplete?: () => void
-    onApprove?: (stepId: string) => void
-    onReject?: (stepId: string) => void
+    onApprove?: (stepId: string, options?: ToolApprovalResponseOptions) => void
+    onReject?: (stepId: string, options?: ToolApprovalResponseOptions) => void
     onSendMessage?: (message: string) => void
     onMultipleChoiceAnswer?: (questionId: string, value: string) => void
 }
@@ -245,8 +246,8 @@ function TurnTimeline({
     functionCalls: FunctionCallEvent[]
     snippets: ChatSnippet[]
     isTurnFailure: boolean
-    onApprove?: (stepId: string) => void
-    onReject?: (stepId: string) => void
+    onApprove?: (stepId: string, options?: ToolApprovalResponseOptions) => void
+    onReject?: (stepId: string, options?: ToolApprovalResponseOptions) => void
     onSendMessage?: (message: string) => void
     onMultipleChoiceAnswer?: (questionId: string, value: string) => void
 }) {

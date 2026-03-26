@@ -158,6 +158,7 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance> exte
         streamingParams?: TrackingParams,
         rejectionReason?: string,
         hardReject?: boolean,
+        editedArguments?: string,
         options?: { signal?: AbortSignal }
     ): Promise<ApprovalResult<SessionWithTracking<T>, Agent<SessionWithTracking<T>, AgentOutputType>>> {
         logger.info("[ApprovalFlow] Resuming from pending approval", { runId: this.runContext.runId, stepId, decision })
@@ -176,6 +177,7 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance> exte
             loopResult = await super.resumeAgent({
                 decision,
                 stepId,
+                editedArguments,
                 settings: {
                     runner,
                     context: toolContext,

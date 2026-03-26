@@ -147,13 +147,21 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
         return { loopResult }
     }
 
-    async resume(decision: "approve" | "reject", stepId: string, serializedState: string, interruptions: RunToolApprovalItem[], rejectionReason?: string): Promise<SdkAgentRunnerResult> {
+    async resume(
+        decision: "approve" | "reject",
+        stepId: string,
+        serializedState: string,
+        interruptions: RunToolApprovalItem[],
+        rejectionReason?: string,
+        editedArguments?: string
+    ): Promise<SdkAgentRunnerResult> {
         this.pendingApprovalState = { serializedState, interruptions }
 
         const loopResult = await super.resumeAgent({
             decision,
             stepId,
             rejectionReason,
+            editedArguments,
             settings: {
                 runner: this.createRunner(),
                 context: this.getToolContext(),

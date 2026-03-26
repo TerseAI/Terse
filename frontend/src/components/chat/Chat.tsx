@@ -1,6 +1,7 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef } from "react"
 
 import { type ModelRequest } from "../../shared/ModelEvents"
+import type { ToolApprovalResponseOptions } from "../../socket"
 
 import { type CTAChip, ChatLayout, type ChatLayoutHandle } from "./ChatLayout"
 import { Turn } from "./Turn"
@@ -13,8 +14,8 @@ type ChatProps = {
     subscribeToEvents?: ChatEventSubscription | null
     sendMessage: (message: ModelRequest) => void
     onUserMessage?: (message: string) => void
-    onHandleApprove?: (stepId: string) => void
-    onHandleReject?: (stepId: string) => void
+    onHandleApprove?: (stepId: string, options?: ToolApprovalResponseOptions) => void
+    onHandleReject?: (stepId: string, options?: ToolApprovalResponseOptions) => void
     onHandleCancellation?: () => void
     onMultipleChoiceAnswer?: (questionId: string, value: string) => void
     addUserTurnsLocally?: boolean
