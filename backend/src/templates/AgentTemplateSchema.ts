@@ -38,7 +38,7 @@ function asTemplateConfigSchema<T extends z.ZodObject<any>>(schema: T) {
 }
 
 // Union of all config schemas
-export const ConfigTemplateSchema = z.discriminatedUnion("configType", [
+export const ConfigTemplateSchema = z.union([
     asTemplateConfigSchema(GmailConfigSchema),
     asTemplateConfigSchema(GmailOutputConfigSchema),
     asTemplateConfigSchema(GmailDraftOutputConfigSchema),

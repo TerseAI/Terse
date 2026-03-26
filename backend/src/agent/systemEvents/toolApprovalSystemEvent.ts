@@ -21,7 +21,7 @@ const toolApprovalResponseSystemEventPayloadSchema = z.object({
     edited_arguments: z.string().trim().min(1).optional()
 })
 
-const toolApprovalSystemEventPayloadSchema = z.discriminatedUnion("kind", [toolApprovalRequestSystemEventPayloadSchema, toolApprovalResponseSystemEventPayloadSchema])
+const toolApprovalSystemEventPayloadSchema = z.union([toolApprovalRequestSystemEventPayloadSchema, toolApprovalResponseSystemEventPayloadSchema])
 
 type ToolApprovalRequestSystemEventPayload = z.infer<typeof toolApprovalRequestSystemEventPayloadSchema>
 type ToolApprovalResponseSystemEventPayload = z.infer<typeof toolApprovalResponseSystemEventPayloadSchema>

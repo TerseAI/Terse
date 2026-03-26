@@ -475,16 +475,7 @@ function sleep(ms: number): Promise<void> {
 const ChatAgentGitHubConfigSchema = GitHubConfigSchema.omit({ eventTypes: true })
 
 const InputConfigSchema = z
-    .discriminatedUnion("configType", [
-        GmailConfigSchema,
-        FigmaConfigSchema,
-        SlackConfigSchema,
-        LinearInputConfigSchema,
-        ChatAgentGitHubConfigSchema,
-        JiraConfigSchema,
-        TimeTriggerConfigSchema,
-        WorkOSInputConfigSchema
-    ])
+    .union([GmailConfigSchema, FigmaConfigSchema, SlackConfigSchema, LinearInputConfigSchema, ChatAgentGitHubConfigSchema, JiraConfigSchema, TimeTriggerConfigSchema, WorkOSInputConfigSchema])
     .superRefine((value, ctx) => {
         enforceNonSystemIntegrationId(value, ctx)
         if (value.configType === ConfigType.SLACK) {
@@ -500,7 +491,7 @@ const InputConfigSchema = z
     })
 
 const OutputConfigSchema = z
-    .discriminatedUnion("configType", [
+    .union([
         SlackOutputConfigSchema,
         NotionConfigSchema,
         LinearOutputConfigSchema,
