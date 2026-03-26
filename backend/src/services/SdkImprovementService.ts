@@ -1,3 +1,7 @@
+import fs from "node:fs"
+import path from "node:path"
+import { fileURLToPath } from "node:url"
+
 import { JudgeAgentOutputType } from "../agent/JudgeAgent/JudgeAgent"
 import { buildClaudeCodePrompt } from "../agent/JudgeAgent/buildClaudeCodePrompt"
 import { JudgeContext } from "../agent/JudgeAgent/fetchJudgeContext"
@@ -5,6 +9,45 @@ import logger from "../logger"
 
 import { ClaudeCodeSandboxService } from "./ClaudeCodeSandboxService"
 import { downloadSdkDeployZip } from "./FileStorageService"
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
+
+const PLUGIN_SANDBOX_DIR = "/tmp/terse-plugin"
+
+function resolvePluginRoot(): string | null {
+    // Production: plugin copied into dist/ by postbuild
+    const fromDist = path.resolve(__dirname, "..", "terse-claude-plugin")
+    if (fs.existsSync(fromDist)) return fromDist
+
+    // Development: plugin lives in packages/ relative to repo root
+    const fromSrc = path.resolve(__dirname, "..", "..", "packages", "terse-claude-plugin")
+    if (fs.existsSync(fromSrc)) return fromSrc
+
+    return null
+}
+
+function loadPluginFiles(): Record<string, string> {
+    const pluginRoot = resolvePluginRoot()
+    if (!pluginRoot) return {}
+
+    const files: Record<string, string> = {}
+
+    function walk(dir: string, prefix: string) {
+        for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+            const fullPath = path.join(dir, entry.name)
+            const sandboxPath = `${PLUGIN_SANDBOX_DIR}/${prefix}${entry.name}`
+            if (entry.isDirectory()) {
+                walk(fullPath, `${prefix}${entry.name}/`)
+            } else if (entry.isFile()) {
+                files[sandboxPath] = fs.readFileSync(fullPath, "utf-8")
+            }
+        }
+    }
+
+    walk(pluginRoot, "")
+    return files
+}
 
 const IMPROVEMENTS_SCHEMA = {
     type: "object",
@@ -48,13 +91,20 @@ export class SdkImprovementService {
 
         const prompt = buildClaudeCodePrompt(automationId, context)
 
+        const pluginFiles = loadPluginFiles()
+        const hasPlugin = Object.keys(pluginFiles).length > 0
+        if (!hasPlugin) {
+            logger.warn("[SdkImprovementService] Terse plugin files not found, running without plugin", { automationId })
+        }
+
         try {
             const result = await this.sandbox.run({
                 label: `sdk-improvement-${automationId}`,
                 prompt,
                 sourceZip: zipBuffer,
                 gitInit: true,
-                jsonSchema: IMPROVEMENTS_SCHEMA
+                jsonSchema: IMPROVEMENTS_SCHEMA,
+                plugin: hasPlugin ? { files: pluginFiles, dir: PLUGIN_SANDBOX_DIR } : undefined
             })
 
             if (!result.stdout) {

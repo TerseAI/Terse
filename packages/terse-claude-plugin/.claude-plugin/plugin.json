@@ -1,0 +1,13 @@
+{
+    "name": "terse",
+    "description": "Create and improve Terse SDK jobs — background AI agents that react to events and take actions across GitHub, Slack, Linear, and more",
+    "version": "0.1.0",
+    "author": {
+        "name": "Terse AI",
+        "email": "support@useterse.ai"
+    },
+    "homepage": "https://useterse.ai",
+    "repository": "https://github.com/TerseAI/Terse",
+    "license": "MIT",
+    "keywords": ["terse", "automation", "agents", "sdk", "github", "slack", "linear"]
+}

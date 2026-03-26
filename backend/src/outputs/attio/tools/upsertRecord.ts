@@ -16,20 +16,21 @@ const attioUpsertRecordParams = z.object({
     integrationId: z.string().describe("The integration ID of the Attio workspace to use."),
     objectSlug: z.string().describe("The Attio object type slug (e.g. 'people', 'companies')."),
     matchingAttribute: z.string().describe("The attribute slug to match on for upsert (e.g. 'email_addresses' for people, 'domains' for companies)."),
-    values: z
-        .string()
+    records: z
+        .array(z.record(z.string(), z.unknown()))
+        .min(1)
         .describe(
-            'A JSON string mapping attribute slugs to their values. For multi-value attributes like email_addresses, pass an array of strings. Example: \'{"email_addresses":["test@example.com"],"name":"John"}\'.'
+            'A list of Attio records to upsert. Each record should map attribute slugs to their values. For multi-value attributes like email_addresses, pass an array of strings. Example: [{"email_addresses":["test@example.com"],"name":"John"}].'
         )
 })
 
 export const attioUpsertRecordTool = tool<typeof attioUpsertRecordParams, SessionWithTracking<Session>, ToolOutputByName["attio_upsert_record"]>({
     name: ToolName.ATTIO_UPSERT_RECORD,
-    description: `Create or update (upsert) a record in Attio. Uses a matching attribute to find existing records — if a match is found the record is updated, otherwise a new one is created. Use attio_list_objects first to discover available attributes for the object.`,
+    description: `Create or update (upsert) one or more records in Attio. Uses a matching attribute to find existing records — if a match is found the record is updated, otherwise a new one is created. Use attio_list_objects first to discover available attributes for the object.`,
     parameters: attioUpsertRecordParams,
     needsApproval: createNeedsApprovalFunction(ToolName.ATTIO_UPSERT_RECORD),
-    execute: async ({ integrationId, objectSlug, matchingAttribute, values }, runContext?: RunContext<SessionWithTracking<Session>>) => {
-        logger.debug("Executing attio_upsert_record tool", { integrationId, objectSlug, matchingAttribute })
+    execute: async ({ integrationId, objectSlug, matchingAttribute, records }, runContext?: RunContext<SessionWithTracking<Session>>) => {
+        logger.debug("Executing attio_upsert_record tool", { integrationId, objectSlug, matchingAttribute, recordCount: records.length })
 
         if (!runContext?.context) {
             throw new Error("No context provided")
@@ -47,37 +48,69 @@ export const attioUpsertRecordTool = tool<typeof attioUpsertRecordParams, Sessio
         }
 
         try {
-            const parsedValues = JSON.parse(values)
-            const response = await fetch(`https://api.attio.com/v2/objects/${encodeURIComponent(objectSlug)}/records?matching_attribute=${encodeURIComponent(matchingAttribute)}`, {
-                method: "PUT",
-                headers: {
-                    Authorization: `Bearer ${accessToken}`,
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({ data: { values: parsedValues } })
+            const successfulRecords: AttioRecord[] = []
+            const actions = []
+            const errors: Array<{ index: number; message: string }> = []
+
+            for (const [index, recordValues] of records.entries()) {
+                const response = await fetch(`https://api.attio.com/v2/objects/${encodeURIComponent(objectSlug)}/records?matching_attribute=${encodeURIComponent(matchingAttribute)}`, {
+                    method: "PUT",
+                    headers: {
+                        Authorization: `Bearer ${accessToken}`,
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({ data: { values: recordValues } })
+                })
+
+                if (!response.ok) {
+                    const rawErrorText = await response.text()
+                    const errorMessage = await normalizeAttioErrorMessage(rawErrorText, response.status, accessToken, objectSlug)
+                    logger.error("Attio upsert record failed", {
+                        status: response.status,
+                        error: rawErrorText,
+                        normalizedError: errorMessage,
+                        integrationId,
+                        objectSlug,
+                        matchingAttribute,
+                        recordIndex: index
+                    })
+                    errors.push({ index, message: errorMessage })
+                    continue
+                }
+
+                const data = (await response.json()) as { data?: AttioRecord }
+                const record = data?.data
+                const recordId = record?.id?.record_id
+
+                if (record) {
+                    successfulRecords.push(record)
+                }
+
+                actions.push({
+                    action: "Upserted record",
+                    integration: IntegrationType.ATTIO,
+                    target: `${objectSlug}/${recordId || "unknown"}`,
+                    details: `Upserted ${objectSlug} record via matching attribute "${matchingAttribute}"`,
+                    type: RunHistoryActionType.create,
+                    url: recordId ? `https://app.attio.com/objects/${objectSlug}/${recordId}` : undefined
+                })
+            }
+
+            const successCount = successfulRecords.length
+            const failureCount = errors.length
+            const partial = successCount > 0 && failureCount > 0
+
+            return toolOutput("attio_upsert_record", {
+                success: successCount > 0 || failureCount === 0,
+                records: successfulRecords,
+                count: successCount,
+                requestedCount: records.length,
+                successCount,
+                failureCount,
+                partial,
+                errors,
+                actions
             })
-
-            if (!response.ok) {
-                const rawErrorText = await response.text()
-                const errorMessage = await normalizeAttioErrorMessage(rawErrorText, response.status, accessToken, objectSlug)
-                logger.error("Attio upsert record failed", { status: response.status, error: rawErrorText, normalizedError: errorMessage })
-                throw new Error(errorMessage)
-            }
-
-            const data = (await response.json()) as { data?: AttioRecord }
-            const record = data?.data
-            const recordId = record?.id?.record_id
-
-            const action = {
-                action: "Upserted record",
-                integration: IntegrationType.ATTIO,
-                target: `${objectSlug}/${recordId || "unknown"}`,
-                details: `Upserted ${objectSlug} record via matching attribute "${matchingAttribute}"`,
-                type: RunHistoryActionType.create,
-                url: recordId ? `https://app.attio.com/objects/${objectSlug}/${recordId}` : undefined
-            }
-
-            return toolOutput("attio_upsert_record", { success: true, record, actions: [action] })
         } catch (error: unknown) {
             logger.error("Error upserting Attio record", { error: error instanceof Error ? error.message : error, integrationId })
             throw error instanceof Error ? error : new Error(String(error))
