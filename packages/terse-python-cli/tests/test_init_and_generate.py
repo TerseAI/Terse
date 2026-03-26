@@ -320,8 +320,14 @@ def test_generate_writes_integration_helpers(runner: CliRunner) -> None:
         assert "class CompanyInputValues(TypedDict, total=False):" in generated
         assert "CompanyAttributeSlug = Literal['name', 'domains', 'founded_at']" in generated
         assert "class CompanyFilter(TypedDict, total=False):" in generated
-        assert "Company: AttioObjectResource[CompanyAttributeSlug, CompanyRecordValues, CompanyInputValues, CompanyFilter]" in generated
-        assert "def skill(obj: AttioObjectResource[Any, Any, Any, Any] | None = None) -> SkillConfig[AttioToolNames]:" in generated
+        assert (
+            "Company: AttioObjectResource[CompanyAttributeSlug, CompanyRecordValues, CompanyInputValues, CompanyFilter]"
+            in generated
+        )
+        assert (
+            "def skill(obj: AttioObjectResource[Any, Any, Any, Any] | None = None) -> SkillConfig[AttioToolNames]:"
+            in generated
+        )
         assert "class Snowflake:" in generated
         assert "def skill() -> SkillConfig[SnowflakeToolNames]:" in generated
         assert "class Schedule:" in generated
@@ -346,7 +352,10 @@ def test_generate_writes_integration_helpers(runner: CliRunner) -> None:
         assert "AttioToolNames = Literal['attio_upsert_record']" in generated
         assert "SnowflakeToolNames = Literal['snowflakeExecuteQuery']" in generated
         assert "AllToolNames = Literal['attio_upsert_record', 'snowflakeExecuteQuery']" in generated
-        assert "class AttioObjectResource(BaseModel, Generic[_TSlug, _TRecordValues, _TInputValues, _TFilterValues]):" in generated
+        assert (
+            "class AttioObjectResource(BaseModel, Generic[_TSlug, _TRecordValues, _TInputValues, _TFilterValues]):"
+            in generated
+        )
         assert "model_config = ConfigDict(frozen=True)" in generated
         assert "from pydantic import" in generated
         assert "uv run ty check src/" in generated

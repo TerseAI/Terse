@@ -176,13 +176,19 @@ def render_generated_module(codegen_input: CodegenInput | None = None) -> str:
         lines.extend(["", "import json"])
 
     # --- SDK imports ---
-    sdk_imports: list[str] = ["SkillConfig", "TerseAgent as _SdkTerseAgent", "TriggerConfig"]
+    sdk_imports: list[str] = [
+        "SkillConfig",
+        "TerseAgent as _SdkTerseAgent",
+        "TriggerConfig",
+    ]
     if has_attio_attrs and attio_tools:
-        sdk_imports.extend([
-            "AttioTypedQueryResult",
-            "AttioTypedRecord",
-            "AttioTypedUpsertResult",
-        ])
+        sdk_imports.extend(
+            [
+                "AttioTypedQueryResult",
+                "AttioTypedRecord",
+                "AttioTypedUpsertResult",
+            ]
+        )
     if tool_output_models:
         sdk_imports.extend(tool_output_models)
 
@@ -210,7 +216,9 @@ def render_generated_module(codegen_input: CodegenInput | None = None) -> str:
 
     # --- Tool name Literals ---
     tool_literals_section = _generate_tool_name_literals(
-        attio_approvable, snowflake_approvable, all_approvable,
+        attio_approvable,
+        snowflake_approvable,
+        all_approvable,
     )
     if tool_literals_section:
         sections.append(tool_literals_section)
@@ -233,12 +241,14 @@ def render_generated_module(codegen_input: CodegenInput | None = None) -> str:
             for obj in input_data.attio[0].objects:
                 if obj.attributes:
                     pascal = _to_pascal_case(obj.singular_noun or obj.api_slug) or "Object"
-                    exported_names.extend([
-                        f"{pascal}RecordValues",
-                        f"{pascal}InputValues",
-                        f"{pascal}Filter",
-                        f"{pascal}AttributeSlug",
-                    ])
+                    exported_names.extend(
+                        [
+                            f"{pascal}RecordValues",
+                            f"{pascal}InputValues",
+                            f"{pascal}Filter",
+                            f"{pascal}AttributeSlug",
+                        ]
+                    )
 
     snowflake_section = _generate_snowflake_section(
         input_data.snowflake,
@@ -404,7 +414,15 @@ def _is_attio_multi_value(attr: AttioAttributeData) -> bool:
         "multi" in type_
         or "array" in type_
         or "list" in type_
-        or slug in ("email_addresses", "domains", "phone_numbers", "social_profiles", "links", "tags")
+        or slug
+        in (
+            "email_addresses",
+            "domains",
+            "phone_numbers",
+            "social_profiles",
+            "links",
+            "tags",
+        )
         or slug.endswith("_addresses")
         or slug.endswith("_ids")
     )
@@ -420,7 +438,19 @@ def _attio_base_python_type(attr: AttioAttributeData) -> str:
         return "float"
     if any(
         k in type_
-        for k in ("date", "time", "email", "domain", "phone", "url", "select", "status", "text", "string", "name")
+        for k in (
+            "date",
+            "time",
+            "email",
+            "domain",
+            "phone",
+            "url",
+            "select",
+            "status",
+            "text",
+            "string",
+            "name",
+        )
     ):
         return "str"
     if any(k in type_ for k in ("location", "address", "reference", "record", "actor")):
@@ -492,20 +522,22 @@ def _generate_attio_section(instances: list[AttioInstanceData], tool_names_type:
     # --- Attio skill ---
     obj_type = "AttioObjectResource[Any, Any, Any, Any]" if has_attrs else "AttioObjectResource"
     skill_return_type = f"SkillConfig[{tool_names_type}]" if tool_names_type else "SkillConfig[str]"
-    lines.extend([
-        "",
-        "class Attio:",
-        "    @staticmethod",
-        f"    def skill(obj: {obj_type} | None = None) -> {skill_return_type}:",
-        (
-            "        return SkillConfig("
-            f"integration_id={instance.id!r}, "
-            "integration_type='attio', "
-            "config_type='attio_output', "
-            "config=_compact_dict(objectSlug=obj.api_slug if obj else None)"
-            ")"
-        ),
-    ])
+    lines.extend(
+        [
+            "",
+            "class Attio:",
+            "    @staticmethod",
+            f"    def skill(obj: {obj_type} | None = None) -> {skill_return_type}:",
+            (
+                "        return SkillConfig("
+                f"integration_id={instance.id!r}, "
+                "integration_type='attio', "
+                "config_type='attio_output', "
+                "config=_compact_dict(objectSlug=obj.api_slug if obj else None)"
+                ")"
+            ),
+        ]
+    )
 
     # --- Multi-value registry + flattening ---
     if has_attrs:
@@ -581,28 +613,32 @@ def _generate_attio_namespace(objects: list[AttioObjectData], has_attrs: bool) -
     ]
 
     if has_attrs:
-        lines.extend([
-            "_TSlug = TypeVar('_TSlug', bound=str)",
-            "_TRecordValues = TypeVar('_TRecordValues')",
-            "_TInputValues = TypeVar('_TInputValues')",
-            "_TFilterValues = TypeVar('_TFilterValues')",
-            "",
-            "class AttioObjectResource(BaseModel, Generic[_TSlug, _TRecordValues, _TInputValues, _TFilterValues]):",
-            "    model_config = ConfigDict(frozen=True)",
-            "    api_slug: str",
-            "    name: str",
-            "    attributes: tuple[AttioAttributeDefinition, ...] = ()",
-            "",
-        ])
+        lines.extend(
+            [
+                "_TSlug = TypeVar('_TSlug', bound=str)",
+                "_TRecordValues = TypeVar('_TRecordValues')",
+                "_TInputValues = TypeVar('_TInputValues')",
+                "_TFilterValues = TypeVar('_TFilterValues')",
+                "",
+                "class AttioObjectResource(BaseModel, Generic[_TSlug, _TRecordValues, _TInputValues, _TFilterValues]):",
+                "    model_config = ConfigDict(frozen=True)",
+                "    api_slug: str",
+                "    name: str",
+                "    attributes: tuple[AttioAttributeDefinition, ...] = ()",
+                "",
+            ]
+        )
     else:
-        lines.extend([
-            "class AttioObjectResource(BaseModel):",
-            "    model_config = ConfigDict(frozen=True)",
-            "    api_slug: str",
-            "    name: str",
-            "    attributes: tuple[AttioAttributeDefinition, ...] = ()",
-            "",
-        ])
+        lines.extend(
+            [
+                "class AttioObjectResource(BaseModel):",
+                "    model_config = ConfigDict(frozen=True)",
+                "    api_slug: str",
+                "    name: str",
+                "    attributes: tuple[AttioAttributeDefinition, ...] = ()",
+                "",
+            ]
+        )
 
     if not objects:
         lines.extend(["class AttioObject:", "    pass"])
@@ -615,8 +651,7 @@ def _generate_attio_namespace(objects: list[AttioObjectData], has_attrs: bool) -
         if has_attrs and obj.attributes:
             pascal = _to_pascal_case(obj.singular_noun or obj.api_slug) or "Object"
             type_annotation = (
-                f"AttioObjectResource[{pascal}AttributeSlug, {pascal}RecordValues, "
-                f"{pascal}InputValues, {pascal}Filter]"
+                f"AttioObjectResource[{pascal}AttributeSlug, {pascal}RecordValues, {pascal}InputValues, {pascal}Filter]"
             )
             attr_tuple = _render_attribute_tuple(obj.attributes)
             lines.append(
@@ -626,8 +661,7 @@ def _generate_attio_namespace(objects: list[AttioObjectData], has_attrs: bool) -
             )
         else:
             lines.append(
-                f"    {static_name} = AttioObjectResource(api_slug={obj.api_slug!r}, "
-                f"name={obj.singular_noun!r})"
+                f"    {static_name} = AttioObjectResource(api_slug={obj.api_slug!r}, name={obj.singular_noun!r})"
             )
     return lines
 
@@ -648,45 +682,47 @@ def _generate_attio_flattening(objects: list[AttioObjectData]) -> list[str]:
 
     # Metadata keys to skip
     lines.append(
-        "_ATTIO_METADATA_KEYS = frozenset({"
-        "'active_from', 'active_until', 'attribute_type', 'created_by_actor'"
-        "})"
+        "_ATTIO_METADATA_KEYS = frozenset({'active_from', 'active_until', 'attribute_type', 'created_by_actor'})"
     )
     lines.append("")
 
     # Leaf value extraction
-    lines.extend([
-        "def _flatten_attio_leaf(value: Any) -> Any:",
-        "    if isinstance(value, dict):",
-        "        for key in ('value', 'domain', 'email_address', 'phone_number',",
-        "                     'original_phone_number', 'full_name', 'first_name', 'url'):",
-        "            if key in value:",
-        "                return value[key]",
-        "    return value",
-        "",
-    ])
+    lines.extend(
+        [
+            "def _flatten_attio_leaf(value: Any) -> Any:",
+            "    if isinstance(value, dict):",
+            "        for key in ('value', 'domain', 'email_address', 'phone_number',",
+            "                     'original_phone_number', 'full_name', 'first_name', 'url'):",
+            "            if key in value:",
+            "                return value[key]",
+            "    return value",
+            "",
+        ]
+    )
 
     # Record flattening
-    lines.extend([
-        "def _flatten_attio_record(obj_slug: str, raw: object) -> AttioTypedRecord[Any]:",
-        "    multi = _ATTIO_MULTI_VALUE_ATTRS.get(obj_slug, frozenset())",
-        "    flat: dict[str, Any] = {}",
-        "    raw_values = getattr(raw, 'values', None) or {}",
-        "    for key, val in raw_values.items():",
-        "        if key in _ATTIO_METADATA_KEYS:",
-        "            continue",
-        "        if isinstance(val, list):",
-        "            leaves = [_flatten_attio_leaf(item) for item in val]",
-        "            flat[key] = leaves if key in multi else (leaves[0] if leaves else None)",
-        "        else:",
-        "            flat[key] = _flatten_attio_leaf(val)",
-        "    return AttioTypedRecord(",
-        "        values=flat,",
-        "        id=getattr(raw, 'id', None),",
-        "        created_at=getattr(raw, 'created_at', None),",
-        "        web_url=getattr(raw, 'web_url', None),",
-        "    )",
-    ])
+    lines.extend(
+        [
+            "def _flatten_attio_record(obj_slug: str, raw: object) -> AttioTypedRecord[Any]:",
+            "    multi = _ATTIO_MULTI_VALUE_ATTRS.get(obj_slug, frozenset())",
+            "    flat: dict[str, Any] = {}",
+            "    raw_values = getattr(raw, 'values', None) or {}",
+            "    for key, val in raw_values.items():",
+            "        if key in _ATTIO_METADATA_KEYS:",
+            "            continue",
+            "        if isinstance(val, list):",
+            "            leaves = [_flatten_attio_leaf(item) for item in val]",
+            "            flat[key] = leaves if key in multi else (leaves[0] if leaves else None)",
+            "        else:",
+            "            flat[key] = _flatten_attio_leaf(val)",
+            "    return AttioTypedRecord(",
+            "        values=flat,",
+            "        id=getattr(raw, 'id', None),",
+            "        created_at=getattr(raw, 'created_at', None),",
+            "        web_url=getattr(raw, 'web_url', None),",
+            "    )",
+        ]
+    )
 
     return lines
 
@@ -711,7 +747,9 @@ def _render_attribute_tuple(attributes: list[AttioAttributeData]) -> str:
 
 
 def _generate_tool_name_literals(
-    attio_names: list[str], snowflake_names: list[str], all_names: list[str],
+    attio_names: list[str],
+    snowflake_names: list[str],
+    all_names: list[str],
 ) -> list[str]:
     """Generate Literal type aliases for approvable tool names."""
     if not all_names:
@@ -862,7 +900,9 @@ def _generate_attio_tools_class(instance: AttioInstanceData, tools: list[ToolDef
                         "        )",
                         "        return AttioTypedQueryResult(",
                         "            success=raw.success, count=raw.count,",
-                        "            records=[cast(AttioTypedRecord[_TRecordValues], _flatten_attio_record(obj.api_slug, r)) for r in raw.records],",
+                        "            records=[cast(AttioTypedRecord[_TRecordValues], ",
+                        "            _flatten_attio_record(obj.api_slug, r)) ",
+                        "            for r in raw.records],",
                         "        )",
                     ]
                 )
@@ -911,7 +951,9 @@ def _generate_attio_tools_class(instance: AttioInstanceData, tools: list[ToolDef
                         "        )",
                         "        return AttioTypedUpsertResult(",
                         "            success=raw.success,",
-                        "            records=[cast(AttioTypedRecord[_TRecordValues], _flatten_attio_record(obj.api_slug, r)) for r in (raw.records or [])],",
+                        "            records=[cast(AttioTypedRecord[_TRecordValues], ",
+                        "            _flatten_attio_record(obj.api_slug, r)) ",
+                        "            for r in (raw.records or [])],",
                         "            count=int(raw.count or 0),",
                         "            requested_count=int(raw.requestedCount or 0),",
                         "            success_count=int(raw.successCount or 0),",
