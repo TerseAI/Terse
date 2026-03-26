@@ -431,6 +431,7 @@ export class EventProcessor {
                 agentId: agent.id,
                 orgId: this.user.organizationId,
                 userId: agent.user_id,
+                user: this.user,
                 eventJson,
                 jobName: agent.name
             })

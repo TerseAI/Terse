@@ -74,6 +74,22 @@ export type ToolCallComplete = {
 
 export type FilterResult = { isRelevant: boolean; reason: string; confidence: number; step_id: string; timestamp: number }
 
+export enum SandboxStage {
+    DOWNLOADING_SOURCE = "downloading_source",
+    BOOTING = "booting",
+    INSTALLING_DEPENDENCIES = "installing_dependencies",
+    INSTALLING_CLI = "installing_cli",
+    RUNNING = "running"
+}
+
+export const SANDBOX_STAGE_LABELS: Record<SandboxStage, string> = {
+    [SandboxStage.DOWNLOADING_SOURCE]: "Downloading source code",
+    [SandboxStage.BOOTING]: "Booting sandbox",
+    [SandboxStage.INSTALLING_DEPENDENCIES]: "Installing dependencies",
+    [SandboxStage.INSTALLING_CLI]: "Installing CLI",
+    [SandboxStage.RUNNING]: "Running agent"
+}
+
 export type UserMessage = { message: string; step_id: string; client_turn_id: string; timestamp: number }
 
 // Shared variant union – the payload shapes used by every snippet type.
