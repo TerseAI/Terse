@@ -248,7 +248,17 @@ def test_generate_writes_integration_helpers(runner: CliRunner) -> None:
             if path == "/attio/integrations":
                 return [{"id": "attio_1", "workspaceName": "Terse CRM"}]
             if path == "/attio/integrations/attio_1/objects":
-                return [{"api_slug": "companies", "singular_noun": "Company"}]
+                return [
+                    {
+                        "api_slug": "companies",
+                        "singular_noun": "Company",
+                        "attributes": [
+                            {"api_slug": "name", "title": "Name", "type": "text", "is_required": True},
+                            {"api_slug": "domains", "title": "Domains", "type": "domain", "is_unique": True},
+                            {"api_slug": "founded_at", "title": "Founded at", "type": "date"},
+                        ],
+                    }
+                ]
             if path == "/snowflake/integrations":
                 return [{"id": "snowflake_1", "accountIdentifier": "acme-prod"}]
             if path == "/sdk/tool-definitions":
@@ -284,6 +294,7 @@ def test_generate_writes_integration_helpers(runner: CliRunner) -> None:
                             "description": "Execute Snowflake query.",
                             "integration": "snowflake",
                             "isReadOnly": True,
+                            "supportsApproval": True,
                             "parameters": {},
                         },
                         {
@@ -305,8 +316,14 @@ def test_generate_writes_integration_helpers(runner: CliRunner) -> None:
         generated = Path("src/terse_generated.py").read_text(encoding="utf-8")
         assert "class Attio:" in generated
         assert "class AttioObject:" in generated
-        assert "Company: AttioObjectResource = AttioObjectResource(" in generated
+        assert "class CompanyRecordValues(TypedDict, total=False):" in generated
+        assert "class CompanyInputValues(TypedDict, total=False):" in generated
+        assert "CompanyAttributeSlug = Literal['name', 'domains', 'founded_at']" in generated
+        assert "class CompanyFilter(TypedDict, total=False):" in generated
+        assert "Company: AttioObjectResource[CompanyAttributeSlug, CompanyRecordValues, CompanyInputValues, CompanyFilter]" in generated
+        assert "def skill(obj: AttioObjectResource[Any, Any, Any, Any] | None = None) -> SkillConfig[AttioToolNames]:" in generated
         assert "class Snowflake:" in generated
+        assert "def skill() -> SkillConfig[SnowflakeToolNames]:" in generated
         assert "class Schedule:" in generated
         assert "class GeneratedTools:" in generated
         assert "class TerseAgent(_SdkTerseAgent):" in generated
@@ -314,14 +331,22 @@ def test_generate_writes_integration_helpers(runner: CliRunner) -> None:
         assert "class _AttioTools:" in generated
         assert "def list_objects(self)" in generated
         assert "def query_records(" in generated
+        assert "filter: _TFilterValues | None = None," in generated
         assert "def upsert_record(" in generated
+        assert "records: list[_TInputValues]," in generated
+        assert "'records': records," in generated
         assert "class _SnowflakeTools:" in generated
         assert "def execute_query(self, query: str) -> SnowflakeExecuteQueryToolOutput:" in generated
         assert "def explain_query(self, query: str) -> SnowflakeExplainQueryToolOutput:" in generated
         assert "from terse_sdk import (" in generated
+        assert "AttioTypedQueryResult" in generated
+        assert "AttioTypedUpsertResult" in generated
         assert "AttioQueryRecordsToolOutput" in generated
         assert "SnowflakeExecuteQueryToolOutput" in generated
-        assert "class AttioObjectResource(BaseModel):" in generated
+        assert "AttioToolNames = Literal['attio_upsert_record']" in generated
+        assert "SnowflakeToolNames = Literal['snowflakeExecuteQuery']" in generated
+        assert "AllToolNames = Literal['attio_upsert_record', 'snowflakeExecuteQuery']" in generated
+        assert "class AttioObjectResource(BaseModel, Generic[_TSlug, _TRecordValues, _TInputValues, _TFilterValues]):" in generated
         assert "model_config = ConfigDict(frozen=True)" in generated
         assert "from pydantic import" in generated
         assert "uv run ty check src/" in generated

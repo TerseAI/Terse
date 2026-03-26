@@ -96,6 +96,16 @@ def test_job_registration_and_registry_clear() -> None:
     assert get_job_registry() == {}
 
 
+def test_job_registration_preserves_tool_approvals() -> None:
+    app = Terse()
+
+    @app.job(name="demo-job", tool_approvals=["attio_upsert_record"])
+    def demo(event: CronJobInputEvent, agent: TerseAgent) -> None:
+        _ = (event, agent)
+
+    assert get_job_registry()["demo-job"].tool_approvals == ["attio_upsert_record"]
+
+
 def test_execute_registered_job_supports_sync_and_async_callables() -> None:
     sync_calls: list[str] = []
     async_calls: list[str] = []

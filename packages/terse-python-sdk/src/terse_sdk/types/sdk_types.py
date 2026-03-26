@@ -80,6 +80,7 @@ class SdkDeployTrigger(_CamelModel):
 class SdkDeployJob(_CamelModel):
     jobName: str
     triggers: list[SdkDeployTrigger]
+    toolApprovals: list[str] | None = None
     webhookURL: str | None = None
 
 

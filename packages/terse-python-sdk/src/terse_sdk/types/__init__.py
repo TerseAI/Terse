@@ -165,6 +165,10 @@ from .stream_events import __all__ as _stream_events_all
 from .tools import (
     AttioListObjectsToolOutput,
     AttioQueryRecordsToolOutput,
+    AttioTypedQueryResult,
+    AttioTypedRecord,
+    AttioTypedUpsertResult,
+    AttioUpsertError,
     AttioUpsertRecordToolOutput,
     SnowflakeExecuteQueryToolOutput,
     SnowflakeExplainQueryToolOutput,

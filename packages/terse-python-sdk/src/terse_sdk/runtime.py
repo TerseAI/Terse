@@ -71,6 +71,7 @@ AgentStreamEvent = (
 
 HandlerT = TypeVar("HandlerT", bound=Callable[..., object])
 ResultT = TypeVar("ResultT")
+ToolApprovalT = TypeVar("ToolApprovalT", bound=str)
 
 _JOB_REGISTRY: dict[str, RegisteredJob] = {}
 LOGGER = logging.getLogger("terse.sdk.runtime")
@@ -123,9 +124,10 @@ class RegisteredJob:
     name: str
     handler: Callable[..., object] = field(repr=False, compare=False)
     triggers: list[TriggerConfig] = field(default_factory=list)
-    skills: list[SkillConfig] = field(default_factory=list)
+    skills: list[SkillConfig[Any]] = field(default_factory=list)
     filter: JobFilter | None = field(default=None, repr=False, compare=False)
     webhook_url: str | None = None
+    tool_approvals: list[str] | None = None
 
 
 class Terse:
@@ -135,9 +137,10 @@ class Terse:
         self,
         name: str,
         triggers: Sequence[TriggerConfig] | None = None,
-        skills: Sequence[SkillConfig] | None = None,
+        skills: Sequence[SkillConfig[ToolApprovalT]] | None = None,
         filter: JobFilter | None = None,
         webhook_url: str | None = None,
+        tool_approvals: Sequence[ToolApprovalT] | None = None,
     ) -> Callable[[HandlerT], HandlerT]:
         """Register a job and return the original handler."""
 
@@ -149,6 +152,7 @@ class Terse:
                 skills=list(skills or []),
                 filter=filter,
                 webhook_url=webhook_url,
+                tool_approvals=list(tool_approvals) if tool_approvals else None,
             )
             return handler
 
@@ -160,7 +164,7 @@ class TerseAgent:
 
     def __init__(
         self,
-        skills: Sequence[SkillConfig] | None = None,
+        skills: Sequence[SkillConfig[Any]] | None = None,
         backend_url: str | None = None,
         session_id: str | None = None,
     ) -> None:
@@ -354,7 +358,7 @@ def execute_registered_job(
     return False
 
 
-def _serialize_skill_config(skill: SkillConfig) -> SdkAgentSkillPayload:
+def _serialize_skill_config(skill: SkillConfig[Any]) -> SdkAgentSkillPayload:
     config = dict(skill.config)
     config["integrationId"] = skill.integration_id
     config["integrationType"] = skill.integration_type

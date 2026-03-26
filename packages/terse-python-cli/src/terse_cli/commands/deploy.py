@@ -84,6 +84,7 @@ def _serialize_job(job: RegisteredJob) -> SdkDeployJob:
         {
             "jobName": job.name,
             "triggers": [_serialize_trigger(trigger).model_dump(exclude_none=True) for trigger in job.triggers],
+            "toolApprovals": job.tool_approvals,
             "webhookURL": job.webhook_url,
         }
     )

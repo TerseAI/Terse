@@ -537,7 +537,7 @@ wheels = [
 
 [[package]]
 name = "terse-cli"
-version = "0.1.4"
+version = "0.1.5"
 source = { editable = "packages/terse-python-cli" }
 dependencies = [
     { name = "click" },

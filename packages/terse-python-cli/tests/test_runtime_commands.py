@@ -56,6 +56,7 @@ def _runtime_main_source(
     filter_name: str | None = None,
     generated_imports: str = "from terse_generated import Schedule",
     skills_block: str = "[]",
+    tool_approvals_block: str | None = None,
 ) -> str:
     trigger_lines = trigger_block or '[Schedule.cron("0 9 * * 1")]'
     lines = [
@@ -81,6 +82,8 @@ def _runtime_main_source(
     )
     if filter_name:
         lines.append(f"    filter={filter_name},")
+    if tool_approvals_block is not None:
+        lines.append(f"    tool_approvals={tool_approvals_block},")
     lines.extend(
         [
             ")",
@@ -449,7 +452,10 @@ def test_deploy_reports_missing_jobs(runner: CliRunner) -> None:
 def test_deploy_builds_expected_payload_and_reports_results(runner: CliRunner) -> None:
     with runner.isolated_filesystem():
         _write_runtime_project(
-            _runtime_main_source("Path('ran.txt').write_text('ran', encoding='utf-8')"),
+            _runtime_main_source(
+                "Path('ran.txt').write_text('ran', encoding='utf-8')",
+                tool_approvals_block='["attio_upsert_record"]',
+            ),
             gitignore="ignored.txt\nignored_dir/\n",
         )
         Path("pyproject.toml").write_text(
@@ -497,6 +503,7 @@ def test_deploy_builds_expected_payload_and_reports_results(runner: CliRunner) -
             assert jobs[0]["jobName"] == "demo-job"
             assert jobs[0]["triggers"][0]["integrationType"] == "cron_job"
             assert jobs[0]["triggers"][0]["configType"] == "time_trigger"
+            assert jobs[0]["toolApprovals"] == ["attio_upsert_record"]
 
             encoded = str(params["sourceZipBase64"])
             with ZipFile(BytesIO(base64.b64decode(encoded))) as archive:
