@@ -5,17 +5,32 @@ Python CLI for scaffolding, generating, testing, and deploying [Terse](https://u
 ## Installation
 
 ```bash
-python -m pip install terse-cli
+pipx install terse-cli
 ```
 
 The CLI installs the published `terse-sdk` automatically.
+
+> Don't have pipx? Install it first:
+>
+> ```bash
+> # macOS
+> brew install pipx && pipx ensurepath
+>
+> # Ubuntu/Debian
+> sudo apt install pipx && pipx ensurepath
+>
+> # Generic
+> python3 -m pip install --user pipx && python3 -m pipx ensurepath
+> ```
+>
+> Then restart your shell.
 
 ## Requirements
 
 - Python `>=3.11`
 - [`uv`](https://docs.astral.sh/uv/) for working with scaffolded projects
 
-The CLI itself can be installed with `pip`, but the generated project scaffold uses `uv sync` and `uv run`.
+The CLI is installed via pipx, but the generated project scaffold uses `uv sync` and `uv run`.
 
 ## Quick Start
 

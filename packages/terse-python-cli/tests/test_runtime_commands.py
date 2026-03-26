@@ -18,6 +18,7 @@ from terse_cli._generate import (
     render_generated_module,
 )
 from terse_cli._package import PackagingError
+from terse_cli._project import DependencyInstallResult
 from terse_cli.cli import cli
 
 _ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-9;]*m")
@@ -26,6 +27,13 @@ _ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-9;]*m")
 @pytest.fixture
 def runner() -> CliRunner:
     return CliRunner()
+
+
+@pytest.fixture(autouse=True)
+def mock_ty_check():
+    result = DependencyInstallResult(succeeded=True, command=("uv", "run", "ty", "check"))
+    with patch("terse_cli.commands.test.run_ty_check", return_value=result):
+        yield
 
 
 def _event_json(*, formatted_content: str = "Manual trigger") -> str:

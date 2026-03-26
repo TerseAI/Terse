@@ -14,6 +14,9 @@ package = false
 terse-sdk = { path = {{ SDK_SOURCE_PATH }}, editable = true }
 {% endif %}
 
+[dependency-groups]
+dev = ["ty"]
+
 [tool.ty.environment]
 python = ".venv"
 {% if USE_LOCAL_SDK_SOURCE %}

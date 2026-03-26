@@ -141,6 +141,26 @@ def run_uv_sync(project_dir: Path) -> DependencyInstallResult:
     return DependencyInstallResult(succeeded=completed.returncode == 0, command=command, details=details)
 
 
+def run_ty_check(project_dir: Path) -> DependencyInstallResult:
+    """Run ``ty check`` for a scaffolded project."""
+
+    command = ("uv", "run", "ty", "check")
+
+    try:
+        completed = subprocess.run(
+            command,
+            cwd=project_dir,
+            capture_output=True,
+            check=False,
+            text=True,
+        )
+    except OSError as exc:
+        return DependencyInstallResult(succeeded=False, command=command, details=str(exc))
+
+    details = "\n".join(part for part in (completed.stderr.strip(), completed.stdout.strip()) if part).strip()
+    return DependencyInstallResult(succeeded=completed.returncode == 0, command=command, details=details)
+
+
 def _normalize_env_value(value: str) -> str:
     return value.strip()
 

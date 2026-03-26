@@ -8,7 +8,7 @@ import click
 from terse_sdk import CronJobInputEvent, TerseAgent, TriggerConfig, execute_registered_job
 
 from .._loader import JobSelectionError, NoJobsFoundError, ProjectImportError, load_job_registry, resolve_job
-from .._project import ProjectRootError, read_api_key
+from .._project import ProjectRootError, read_api_key, run_ty_check
 from .._session import SessionStreamError, open_session_stream
 from .._ui import PromptCancelledError, console, log_stream_event, prompt_select
 
@@ -17,7 +17,8 @@ LOGGER = logging.getLogger("terse.cli.test")
 
 @click.command("test", help="Run a job locally against a synthetic cron event.")
 @click.argument("job_name", required=False)
-def test_command(job_name: str | None) -> None:
+@click.option("--skip-type-check", is_flag=True, default=False, help="Skip ty type checking before running.")
+def test_command(job_name: str | None, skip_type_check: bool) -> None:
     session = None
 
     try:
@@ -31,6 +32,15 @@ def test_command(job_name: str | None) -> None:
     console.print(f"  [cyan]Testing job:[/cyan] {job.name}")
     console.print("")
     LOGGER.debug("Testing job %s", job.name)
+
+    if not skip_type_check:
+        console.print("  [dim]Running ty check...[/dim]")
+        ty_result = run_ty_check(project_dir)
+        if not ty_result.succeeded:
+            if ty_result.details:
+                console.print(ty_result.details)
+            raise click.ClickException("Type check failed. Fix the errors above before running.")
+        console.print("")
 
     api_key = read_api_key(project_dir)
     if api_key:

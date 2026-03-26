@@ -1,5 +1,6 @@
+from terse_sdk import CronJobInputEvent, ToolCallExecutionStatus, Terse
+from terse_sdk.types.stream_events import SdkAgentStreamEventFinalOutput
 from terse_generated import Schedule, TerseAgent
-from terse_sdk import CronJobInputEvent, EventType, Terse
 
 app = Terse()
 
@@ -14,5 +15,5 @@ def run_job(event: CronJobInputEvent, agent: TerseAgent) -> None:
         f"Context: {event.formatted_content}"
     )
     for stream_event in agent.run(prompt, event):
-        if stream_event.type == EventType.FINAL_OUTPUT:
+        if isinstance(stream_event, SdkAgentStreamEventFinalOutput):
             print(stream_event.finalOutput)
