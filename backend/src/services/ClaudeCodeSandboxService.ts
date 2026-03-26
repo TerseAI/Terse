@@ -43,18 +43,7 @@ export class ClaudeCodeSandboxService {
     }
 
     async run(params: ClaudeCodeSandboxParams): Promise<ClaudeCodeSandboxResult> {
-        const {
-            label,
-            prompt,
-            sourceZip,
-            gitInit = true,
-            maxTurns = 30,
-            timeoutMs = 10 * 60 * 1000,
-            env: extraEnv = {},
-            jsonSchema,
-            outputFiles: outputFilePaths = [],
-            plugin
-        } = params
+        const { label, prompt, sourceZip, gitInit = true, maxTurns = 30, timeoutMs = 10 * 60 * 1000, env: extraEnv = {}, jsonSchema, outputFiles: outputFilePaths = [], plugin } = params
 
         const executionStart = performance.now()
 
