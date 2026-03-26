@@ -16,7 +16,7 @@ const skillSchema = z
         configType: z.enum(configTypeValues, { message: "`skills[i].configType` must be a valid ConfigType" }),
         config: z.record(z.unknown())
     })
-    .transform((skill) => {
+    .transform(skill => {
         const integrationType = CONFIG_DETAILS[skill.configType].integrationType
         return {
             configType: skill.configType,
@@ -48,7 +48,7 @@ export function validateAndNormalizeSdkAgentRunBody(body: SdkAgentRunRequestBody
     const result = sdkAgentRunSchema.safeParse(body)
 
     if (!result.success) {
-        return { ok: false, errors: result.error.errors.map((e) => e.message) }
+        return { ok: false, errors: result.error.errors.map(e => e.message) }
     }
 
     const { data } = result
