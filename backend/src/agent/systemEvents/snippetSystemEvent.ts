@@ -16,7 +16,7 @@ const snippetBaseSchema = z.object({
     step_id: z.string().optional()
 })
 
-export const chatSnippetPayloadSchema = z.discriminatedUnion("type", [
+export const chatSnippetPayloadSchema = z.union([
     snippetBaseSchema.extend({
         type: z.literal("button"),
         label: z.string(),
