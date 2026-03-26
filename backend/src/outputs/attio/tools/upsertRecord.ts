@@ -12,15 +12,18 @@ import { toolOutput } from "../../../tools/toolOutput"
 import { createNeedsApprovalFunction, formatError } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
 
+const attioScalarValue = z.union([z.string(), z.number(), z.boolean(), z.null()])
+const attioStructuredValue = z.object({}).catchall(z.union([attioScalarValue, z.array(attioScalarValue)]))
+const attioRecordValue = z.union([attioScalarValue, attioStructuredValue, z.array(z.union([attioScalarValue, attioStructuredValue]))])
+
 const attioUpsertRecordParams = z.object({
     integrationId: z.string().describe("The integration ID of the Attio workspace to use."),
     objectSlug: z.string().describe("The Attio object type slug (e.g. 'people', 'companies')."),
     matchingAttribute: z.string().describe("The attribute slug to match on for upsert (e.g. 'email_addresses' for people, 'domains' for companies)."),
     records: z
-        .array(z.record(z.string(), z.unknown()))
-        .min(1)
+        .string()
         .describe(
-            'A list of Attio records to upsert. Each record should map attribute slugs to their values. For multi-value attributes like email_addresses, pass an array of strings. Example: [{"email_addresses":["test@example.com"],"name":"John"}].'
+            'A JSON string representing a list of Attio records to upsert. Each record should map attribute slugs to their values. For multi-value attributes like email_addresses, pass an array of strings. Example: \'[{"email_addresses":["test@example.com"],"name":"John"}]\'.'
         )
 })
 
@@ -30,8 +33,6 @@ export const attioUpsertRecordTool = tool<typeof attioUpsertRecordParams, Sessio
     parameters: attioUpsertRecordParams,
     needsApproval: createNeedsApprovalFunction(ToolName.ATTIO_UPSERT_RECORD),
     execute: async ({ integrationId, objectSlug, matchingAttribute, records }, runContext?: RunContext<SessionWithTracking<Session>>) => {
-        logger.debug("Executing attio_upsert_record tool", { integrationId, objectSlug, matchingAttribute, recordCount: records.length })
-
         if (!runContext?.context) {
             throw new Error("No context provided")
         }
@@ -48,11 +49,15 @@ export const attioUpsertRecordTool = tool<typeof attioUpsertRecordParams, Sessio
         }
 
         try {
+            const parsedRecords = z.array(z.record(z.string(), attioRecordValue)).min(1).parse(JSON.parse(records))
+
+            logger.debug("Executing attio_upsert_record tool", { integrationId, objectSlug, matchingAttribute, recordCount: parsedRecords.length })
+
             const successfulRecords: AttioRecord[] = []
             const actions = []
             const errors: Array<{ index: number; message: string }> = []
 
-            for (const [index, recordValues] of records.entries()) {
+            for (const [index, recordValues] of parsedRecords.entries()) {
                 const response = await fetch(`https://api.attio.com/v2/objects/${encodeURIComponent(objectSlug)}/records?matching_attribute=${encodeURIComponent(matchingAttribute)}`, {
                     method: "PUT",
                     headers: {
@@ -104,7 +109,7 @@ export const attioUpsertRecordTool = tool<typeof attioUpsertRecordParams, Sessio
                 success: successCount > 0 || failureCount === 0,
                 records: successfulRecords,
                 count: successCount,
-                requestedCount: records.length,
+                requestedCount: parsedRecords.length,
                 successCount,
                 failureCount,
                 partial,
