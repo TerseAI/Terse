@@ -202,6 +202,17 @@ app.use((err: Error & { type?: string; statusCode?: number }, req: Request, res:
     next(err)
 })
 app.use(cookieParser())
+
+// MARK: CRON JOBS (before apiTokenAuthMiddleware — these use their own auth via validateCloudSchedulerRequest)
+
+app.post(ApiRoutes.REFRESH_TOKENS, async (req, res) => {
+    refreshAllTokens(req, res)
+})
+
+app.post(ApiRoutes.REVIEW_AGENTS, async (req, res) => {
+    reviewAllAgents(req, res)
+})
+
 app.use(apiTokenAuthMiddleware)
 
 // MARK: AUTH
@@ -351,16 +362,6 @@ app.delete(ApiRoutes.GMAIL.DELETE_INTEGRATION, authMiddleware, async (req, res) 
 app.post(ApiRoutes.WEBHOOKS.GMAIL, async (req, res) => {
     handleGmailWebhook(req, res)
 })
-// MARK: REFRESH TOKENS
-
-app.post(ApiRoutes.REFRESH_TOKENS, async (req, res) => {
-    refreshAllTokens(req, res)
-})
-
-app.post(ApiRoutes.REVIEW_AGENTS, async (req, res) => {
-    reviewAllAgents(req, res)
-})
-
 // MARK: NOTION
 
 app.get(ApiRoutes.NOTION.INTEGRATIONS, authMiddleware, async (req, res) => {
