@@ -23,34 +23,28 @@ The SDK provides:
 ## Quick Start
 
 ```python
-from terse_sdk import CronJobInputEvent, EventType, Terse, TerseAgent
+from terse_sdk import CronJobInputEvent, Terse
+from terse_sdk.types.stream_events import SdkAgentStreamEventFinalOutput
+from terse_generated import Schedule, TerseAgent
 
 app = Terse()
 
 @app.job(
     name="example-job",
-    triggers=[],
+    triggers=[Schedule.cron("0 9 * * 1")],
     skills=[],
 )
-def example(event: CronJobInputEvent, agent: TerseAgent) -> None:
-    for stream_event in agent.run(
-        "Answer with one short, cute sentence about this cron job.",
-        event,
-    ):
-        if stream_event.type == EventType.FINAL_OUTPUT:
+def run_job(event: CronJobInputEvent, agent: TerseAgent) -> None:
+    prompt = (
+        "Answer with one short, cute sentence about this cron job. "
+        f"Context: {event.formatted_content}"
+    )
+    for stream_event in agent.run(prompt, event):
+        if isinstance(stream_event, SdkAgentStreamEventFinalOutput):
             print(stream_event.finalOutput)
-
-example(
-    CronJobInputEvent(
-        event_type="manual",
-        formatted_content="Manual local run",
-        debug_log="README example",
-    ),
-    TerseAgent(),
-)
 ```
 
-That example is intentionally self-contained. In a real Terse project, trigger and skill configs normally come from the generated helpers in `terse_generated.py`, not from manually constructing low-level DTOs.
+Trigger and skill configs come from the generated helpers in `terse_generated.py`. Run `terse init` and `terse generate` to scaffold a project.
 
 ## Generated Helpers
 
@@ -84,8 +78,6 @@ def example(event: CronJobInputEvent, agent: TerseAgent) -> None:
 ## Environment Variables
 
 - `TERSE_API_KEY`: required for agent runs and deterministic tool execution
-- `TERSE_BACKEND_URL`: optional backend override for local development
-- `TERSE_FRONTEND_URL`: optional frontend override for local development
 
 ## Recommended Path
 
