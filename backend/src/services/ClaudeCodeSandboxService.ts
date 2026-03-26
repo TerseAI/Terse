@@ -22,6 +22,8 @@ export interface ClaudeCodeSandboxParams {
     jsonSchema?: Record<string, unknown>
     /** Paths of files to read back from the sandbox after execution */
     outputFiles?: string[]
+    /** Optional plugin to install in the sandbox. Files are written at absolute paths, dir is passed as --plugin-dir. */
+    plugin?: { files: Record<string, string>; dir: string }
 }
 
 export interface ClaudeCodeSandboxResult {
@@ -41,7 +43,7 @@ export class ClaudeCodeSandboxService {
     }
 
     async run(params: ClaudeCodeSandboxParams): Promise<ClaudeCodeSandboxResult> {
-        const { label, prompt, sourceZip, gitInit = true, maxTurns = 30, timeoutMs = 10 * 60 * 1000, env: extraEnv = {}, jsonSchema, outputFiles: outputFilePaths = [] } = params
+        const { label, prompt, sourceZip, gitInit = true, maxTurns = 30, timeoutMs = 10 * 60 * 1000, env: extraEnv = {}, jsonSchema, outputFiles: outputFilePaths = [], plugin } = params
 
         const executionStart = performance.now()
 
@@ -77,6 +79,21 @@ export class ClaudeCodeSandboxService {
                 // Create empty project dir
                 const mkdirProc = await sb.exec(["mkdir", "-p", "/tmp/project"], { stdout: "pipe", stderr: "pipe" })
                 await mkdirProc.wait()
+            }
+
+            // Write plugin files into the sandbox
+            if (plugin) {
+                for (const [filePath, content] of Object.entries(plugin.files)) {
+                    const dirPath = filePath.substring(0, filePath.lastIndexOf("/"))
+                    if (dirPath) {
+                        const mkdirProc = await sb.exec(["mkdir", "-p", dirPath], { stdout: "pipe", stderr: "pipe" })
+                        await mkdirProc.wait()
+                    }
+                    const fileHandle = await sb.open(filePath, "w")
+                    await fileHandle.write(new TextEncoder().encode(content))
+                    await fileHandle.close()
+                }
+                logger.info(`[ClaudeCodeSandbox:${label}] Wrote ${Object.keys(plugin.files).length} plugin file(s)`)
             }
 
             // Git init + baseline commit
@@ -117,6 +134,9 @@ export class ClaudeCodeSandboxService {
             t = performance.now()
             // Build Claude Code command args
             const claudeArgs = ["claude", "-p", "--output-format", "json", "--max-turns", String(maxTurns), "--dangerously-skip-permissions"]
+            if (plugin) {
+                claudeArgs.push("--plugin-dir", plugin.dir)
+            }
             if (jsonSchema) {
                 claudeArgs.push("--json-schema", JSON.stringify(jsonSchema))
             }
