@@ -52,13 +52,12 @@ terse generate
 - `terse init [PROJECT_NAME]`
 - `terse generate`
 - `terse integrate`
-- `terse run [JOB_NAME] --event ... --event-file ...`
 - `terse test [JOB_NAME]`
 - `terse deploy`
 
 ## Supported Generated Helpers
 
-The current Python codegen surface is intentionally small:
+The current Python codegen surface is:
 
 - `Schedule.cron(...)`
 - `Attio.skill(...)`
@@ -81,8 +80,6 @@ def handle(event: CronJobInputEvent, agent: TerseAgent) -> None:
 ## Environment Variables
 
 - `TERSE_API_KEY`: required for `terse generate`, `terse deploy`, and any agent/tool calls made by your job
-- `TERSE_BACKEND_URL`: optional backend override for local development
-- `TERSE_FRONTEND_URL`: optional frontend override for local development
 
 ## Typical Workflow
 
@@ -92,12 +89,6 @@ cd my-terse-job
 uv sync
 terse test
 terse deploy
-```
-
-To run a job against a serialized event:
-
-```bash
-terse run --event '{"integrationType":"cron_job","eventType":"manual","formattedContent":"Manual trigger","debugLog":"Manual trigger"}'
 ```
 
 ## Source
