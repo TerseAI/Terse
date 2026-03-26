@@ -22,12 +22,8 @@ export interface ClaudeCodeSandboxParams {
     jsonSchema?: Record<string, unknown>
     /** Paths of files to read back from the sandbox after execution */
     outputFiles?: string[]
-    /** Additional files to write into /tmp/project before running Claude Code (written after zip extraction, before git init) */
-    additionalFiles?: Record<string, string>
-    /** Additional files to write into the sandbox at absolute paths (e.g. for plugins). Keys are absolute paths, values are file contents. */
-    sandboxFiles?: Record<string, string>
-    /** Directories to pass as --plugin-dir to Claude Code CLI */
-    pluginDirs?: string[]
+    /** Optional plugin to install in the sandbox. Files are written at absolute paths, dir is passed as --plugin-dir. */
+    plugin?: { files: Record<string, string>; dir: string }
 }
 
 export interface ClaudeCodeSandboxResult {
@@ -57,9 +53,7 @@ export class ClaudeCodeSandboxService {
             env: extraEnv = {},
             jsonSchema,
             outputFiles: outputFilePaths = [],
-            additionalFiles = {},
-            sandboxFiles = {},
-            pluginDirs = []
+            plugin
         } = params
 
         const executionStart = performance.now()
@@ -98,30 +92,19 @@ export class ClaudeCodeSandboxService {
                 await mkdirProc.wait()
             }
 
-            // Write sandbox-level files (e.g. plugin directories)
-            for (const [filePath, content] of Object.entries(sandboxFiles)) {
-                const dirPath = filePath.substring(0, filePath.lastIndexOf("/"))
-                if (dirPath) {
-                    const mkdirProc = await sb.exec(["mkdir", "-p", dirPath], { stdout: "pipe", stderr: "pipe" })
-                    await mkdirProc.wait()
+            // Write plugin files into the sandbox
+            if (plugin) {
+                for (const [filePath, content] of Object.entries(plugin.files)) {
+                    const dirPath = filePath.substring(0, filePath.lastIndexOf("/"))
+                    if (dirPath) {
+                        const mkdirProc = await sb.exec(["mkdir", "-p", dirPath], { stdout: "pipe", stderr: "pipe" })
+                        await mkdirProc.wait()
+                    }
+                    const fileHandle = await sb.open(filePath, "w")
+                    await fileHandle.write(new TextEncoder().encode(content))
+                    await fileHandle.close()
                 }
-                const fileHandle = await sb.open(filePath, "w")
-                await fileHandle.write(new TextEncoder().encode(content))
-                await fileHandle.close()
-            }
-            if (Object.keys(sandboxFiles).length > 0) {
-                logger.info(`[ClaudeCodeSandbox:${label}] Wrote ${Object.keys(sandboxFiles).length} sandbox file(s)`)
-            }
-
-            // Write additional files into the project directory
-            for (const [filePath, content] of Object.entries(additionalFiles)) {
-                const fullPath = filePath.startsWith("/") ? filePath : `/tmp/project/${filePath}`
-                const fileHandle = await sb.open(fullPath, "w")
-                await fileHandle.write(new TextEncoder().encode(content))
-                await fileHandle.close()
-            }
-            if (Object.keys(additionalFiles).length > 0) {
-                logger.info(`[ClaudeCodeSandbox:${label}] Wrote ${Object.keys(additionalFiles).length} additional file(s)`)
+                logger.info(`[ClaudeCodeSandbox:${label}] Wrote ${Object.keys(plugin.files).length} plugin file(s)`)
             }
 
             // Git init + baseline commit
@@ -162,8 +145,8 @@ export class ClaudeCodeSandboxService {
             t = performance.now()
             // Build Claude Code command args
             const claudeArgs = ["claude", "-p", "--output-format", "json", "--max-turns", String(maxTurns), "--dangerously-skip-permissions"]
-            for (const dir of pluginDirs) {
-                claudeArgs.push("--plugin-dir", dir)
+            if (plugin) {
+                claudeArgs.push("--plugin-dir", plugin.dir)
             }
             if (jsonSchema) {
                 claudeArgs.push("--json-schema", JSON.stringify(jsonSchema))

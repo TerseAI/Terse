@@ -104,8 +104,7 @@ export class SdkImprovementService {
                 sourceZip: zipBuffer,
                 gitInit: true,
                 jsonSchema: IMPROVEMENTS_SCHEMA,
-                sandboxFiles: pluginFiles,
-                pluginDirs: hasPlugin ? [PLUGIN_SANDBOX_DIR] : []
+                plugin: hasPlugin ? { files: pluginFiles, dir: PLUGIN_SANDBOX_DIR } : undefined
             })
 
             if (!result.stdout) {
