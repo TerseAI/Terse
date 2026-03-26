@@ -4,6 +4,7 @@ import { CheckCircleIcon, CheckIcon, ClockIcon, NoSymbolIcon, PaperAirplaneIcon,
 import { Ban, Check } from "lucide-react"
 
 import { useRunHistoryActions } from "../../hooks/useRunHistoryActions"
+import ToolApprovalPreview, { hasCustomPreview } from "./ToolApprovalPreview"
 import { EntityType } from "../../shared/Entities"
 import { ChangedItem } from "../../shared/ModelEvents"
 import { RunHistoryStatus } from "../../shared/RunHistoryTypes"
@@ -209,10 +210,14 @@ export default function FunctionCallItem({ call, isTurnFailure = false, onApprov
 
             {call.isWaitingForApproval && !call.isRejected && (
                 <div className="ml-6 mt-1.5 border border-warning rounded-lg p-3">
-                    <div className="text-sm text-muted-foreground mb-2">
-                        The bot wants to execute: <span className="font-medium text-foreground">{displayName}</span>
-                    </div>
-                    <div className="flex gap-2">
+                    {hasCustomPreview(call.name) ? (
+                        <ToolApprovalPreview toolName={call.name} parameters={call.parameters} />
+                    ) : (
+                        <div className="text-sm text-muted-foreground mb-2">
+                            The bot wants to execute: <span className="font-medium text-foreground">{displayName}</span>
+                        </div>
+                    )}
+                    <div className="flex gap-2 mt-3">
                         <Button onClick={handleApprove} size="sm" variant="outline">
                             <Check className="w-4 h-4 text-success" />
                             Approve
