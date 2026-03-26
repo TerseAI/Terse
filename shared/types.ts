@@ -747,7 +747,16 @@ export type ToolOutputByName = {
         count: number
     }
     attio_upsert_record: ToolOutputBase & {
-        record?: AttioRecord
+        records?: AttioRecord[]
+        count?: number
+        requestedCount?: number
+        successCount?: number
+        failureCount?: number
+        partial?: boolean
+        errors?: Array<{
+            index: number
+            message: string
+        }>
     }
     slack_send_message: ToolOutputBase & {
         message_ts: string | undefined
