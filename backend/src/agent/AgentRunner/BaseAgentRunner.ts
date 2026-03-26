@@ -97,7 +97,7 @@ export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSe
         decision: "approve" | "reject"
         stepId: string
         settings: RunExecutionSettings<TSession, TAgent>
-        onRejected?: (state: RunState<TSession, TAgent>, interruption: RunToolApprovalItem) => Promise<void>
+        rejectionReason?: string
         prepareResumeState?: (state: RunState<TSession, TAgent>) => Promise<void> | void
     }): Promise<AgentRunnerLoopResult<TSession, TAgent>> {
         await this.initializeLoopIfNeeded()
@@ -120,8 +120,7 @@ export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSe
         if (params.decision === "approve") {
             state.approve(interruption)
         } else {
-            state.reject(interruption)
-            await params.onRejected?.(state, interruption)
+            state.reject(interruption, { message: params.rejectionReason })
         }
 
         await this.markRunInProgress(this.runId)

@@ -16,9 +16,10 @@ import { RunHistoryAction } from "../../shared/RunHistoryTypes"
 import { SdkAgentSkillPayload, SdkAgentStreamEvent, User } from "../../shared/types"
 import { Session } from "../../types/session"
 import { convertConfigTypeToOutputConfigType, convertPlainObjectToConfigInstance } from "../../utility/typeConverters"
-import { RunHistoryChatMemorySession } from "../CustomMemorySession"
+import { RunHistoryChatMemorySession, recentHistoryCallback } from "../CustomMemorySession"
 import { AgentType, runnerFactory } from "../runner"
 import { appendToolApprovalRequestSystemEvent } from "../systemEvents/toolApprovalSystemEvent"
+import { buildUserMessage } from "../userMessage"
 
 import { AgentRunnerLoopResult, BaseAgentRunner, PendingApprovalState, SessionWithTracking } from "./BaseAgentRunner"
 import { StreamEventEmitter } from "./StreamProcessor"
@@ -139,22 +140,25 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
                 runner: this.createRunner(),
                 context: this.getToolContext(),
                 memorySession: this.memorySession,
+                sessionInputCallback: recentHistoryCallback,
                 maxTurns: this.maxTurns
             }
         )
         return { loopResult }
     }
 
-    async resume(decision: "approve" | "reject", stepId: string, serializedState: string, interruptions: RunToolApprovalItem[]): Promise<SdkAgentRunnerResult> {
+    async resume(decision: "approve" | "reject", stepId: string, serializedState: string, interruptions: RunToolApprovalItem[], rejectionReason?: string): Promise<SdkAgentRunnerResult> {
         this.pendingApprovalState = { serializedState, interruptions }
 
         const loopResult = await super.resumeAgent({
             decision,
             stepId,
+            rejectionReason,
             settings: {
                 runner: this.createRunner(),
                 context: this.getToolContext(),
                 memorySession: this.memorySession,
+                sessionInputCallback: recentHistoryCallback,
                 maxTurns: this.maxTurns
             }
         })

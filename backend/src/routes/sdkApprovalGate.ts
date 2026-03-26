@@ -5,6 +5,7 @@ const APPROVAL_DECISION_TASK_NAME = "SDK_APPROVAL_DECISION" as const
 
 export type ApprovalDecision = {
     approved: boolean
+    rejectionReason?: string
 }
 
 class ApprovalDecisionTask implements Task {

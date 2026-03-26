@@ -257,7 +257,8 @@ export class ApprovalService {
             try {
                 await appendToolApprovalResponseSystemEvent(runId, {
                     step_id: stepId,
-                    approved
+                    approved,
+                    rejection_reason: rejectionReason?.trim() || undefined
                 })
             } catch (error) {
                 logger.warn("[ApprovalService] Failed to append tool approval response system event to raw history", { runId, stepId, error })
@@ -278,7 +279,7 @@ export class ApprovalService {
                         ? SlackApprovalMessageStatus.CHANGES_REQUESTED
                         : SlackApprovalMessageStatus.REJECTED
 
-                resolveApprovalDecision(runId, stepId, { approved: !hardReject && approved })
+                resolveApprovalDecision(runId, stepId, { approved: !hardReject && approved, rejectionReason })
 
                 await this.updateSlackNotification(runId, stepId, finalSlackStatus, user, channel.id)
 

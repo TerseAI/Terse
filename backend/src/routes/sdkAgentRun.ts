@@ -72,7 +72,7 @@ export async function handleSdkAgentRun(req: Request, res: Response) {
 
             const decision = await waitForApprovalDecision(runId, stepId)
             const resumeDecision = decision.approved ? ("approve" as const) : ("reject" as const)
-            result = await sdkRunner.resume(resumeDecision, stepId, JSON.stringify(result.loopResult.state), interruptions)
+            result = await sdkRunner.resume(resumeDecision, stepId, JSON.stringify(result.loopResult.state), interruptions, decision.rejectionReason)
         }
 
         finishSseStream(res, send, result, sdkRunner)

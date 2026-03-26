@@ -9,9 +9,10 @@ interface ToolCallsSummaryProps {
     isTurnFailure?: boolean
     onApprove?: (stepId: string) => void
     onReject?: (stepId: string) => void
+    onSendMessage?: (message: string) => void
 }
 
-export default function ToolCallsSummary({ calls, isTurnFailure = false, onApprove, onReject }: ToolCallsSummaryProps) {
+export default function ToolCallsSummary({ calls, isTurnFailure = false, onApprove, onReject, onSendMessage }: ToolCallsSummaryProps) {
     if (calls.length === 0) return null
 
     const generatingCalls = calls.filter(c => c.isGeneratingParams)
@@ -42,7 +43,7 @@ export default function ToolCallsSummary({ calls, isTurnFailure = false, onAppro
             {completedCalls.length > 0 && (
                 <div className="space-y-0.5">
                     {completedCalls.map((call, index) => (
-                        <FunctionCallItem key={`${call.id}-${index}`} call={call} index={index} isTurnFailure={isTurnFailure} onApprove={onApprove} onReject={onReject} />
+                        <FunctionCallItem key={`${call.id}-${index}`} call={call} index={index} isTurnFailure={isTurnFailure} onApprove={onApprove} onReject={onReject} onSendMessage={onSendMessage} />
                     ))}
                 </div>
             )}

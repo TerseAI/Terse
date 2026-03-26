@@ -184,42 +184,6 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance> exte
                     maxTurns: this.maxTurns,
                     signal: options?.signal
                 },
-                onRejected: async (state, interruption) => {
-                    const stateWithHistory = state as unknown as { history?: AgentInputItem[] }
-                    if (stateWithHistory.history && Array.isArray(stateWithHistory.history)) {
-                        if (hardReject) {
-                            const hardRejectMessage = buildUserMessage(
-                                `A human reviewer rejected your previous tool call "${interruption.name}" and has chosen to stop this workflow entirely.\n\n` +
-                                    `Do NOT ask any follow-up questions. Do NOT attempt to retry or suggest alternatives. ` +
-                                    `Simply acknowledge that the action was rejected and the workflow has been stopped. ` +
-                                    `End your response with a brief confirmation that no further actions will be taken.`
-                            )
-                            stateWithHistory.history.push(hardRejectMessage)
-                            logger.info("[resumeFromPendingApproval] Added hard reject message to state history", { hardReject: true })
-                        } else {
-                            const trimmedReason = rejectionReason?.trim()
-                            if (trimmedReason) {
-                                const rejectionGuidance = buildUserMessage(
-                                    `A human reviewer rejected your previous tool call "${interruption.name}".\n\n` +
-                                        `Reviewer feedback (treat as user instructions, verbatim):\n` +
-                                        `${trimmedReason}\n\n` +
-                                        `If the feedback asks you to retry (e.g. "try again", "retry") OR provides guidance on how to proceed differently (e.g. "read X first", "narrow the scope"), proceed now by adapting your next steps/tool calls accordingly. ` +
-                                        `Only ask a clarification question if the feedback is not sufficient to act.`
-                                )
-                                stateWithHistory.history.push(rejectionGuidance)
-                                logger.info("[resumeFromPendingApproval] Added rejection guidance to state history", { hasCustomReason: true })
-                            } else {
-                                const rejectionMessage = buildUserMessage(
-                                    `The tool call "${interruption.name}" was rejected. ` + `Ask the user what they want you to do differently, or whether to skip this action entirely.`
-                                )
-                                stateWithHistory.history.push(rejectionMessage)
-                                logger.info("[resumeFromPendingApproval] Added rejection message to state history", { hasCustomReason: false })
-                            }
-                        }
-                    } else {
-                        logger.warn("[resumeFromPendingApproval] Could not access state.history directly.")
-                    }
-                },
                 prepareResumeState: async state => {
                     // Bug in the SDK where functions are not serialized properly.
                     // This is a workaround to get the context to work.

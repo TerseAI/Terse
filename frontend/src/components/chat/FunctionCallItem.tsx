@@ -21,6 +21,7 @@ interface FunctionCallItemProps {
     index: number
     onApprove?: (stepId: string) => void
     onReject?: (stepId: string) => void
+    onSendMessage?: (message: string) => void
 }
 
 function ToolActionsDisplay({ changedItems, isTurnFailure }: { changedItems?: ChangedItem[]; isTurnFailure?: boolean }) {
@@ -143,7 +144,7 @@ function ToolResultInput({ toolName, parameters, onSubmit }: { toolName: string;
     )
 }
 
-export default function FunctionCallItem({ call, isTurnFailure = false, onApprove, onReject }: FunctionCallItemProps) {
+export default function FunctionCallItem({ call, isTurnFailure = false, onApprove, onReject, onSendMessage }: FunctionCallItemProps) {
     const [isExpanded, setIsExpanded] = useState(false)
 
     // Get display name based on current state
@@ -211,7 +212,7 @@ export default function FunctionCallItem({ call, isTurnFailure = false, onApprov
             {call.isWaitingForApproval && !call.isRejected && (
                 <div className="ml-6 mt-1.5 border border-warning rounded-lg p-3">
                     {hasCustomPreview(call.name) ? (
-                        <ToolApprovalPreview toolName={call.name} parameters={call.parameters} />
+                        <ToolApprovalPreview toolName={call.name} parameters={call.parameters} onSendMessage={onSendMessage} />
                     ) : (
                         <div className="text-sm text-muted-foreground mb-2">
                             The bot wants to execute: <span className="font-medium text-foreground">{displayName}</span>

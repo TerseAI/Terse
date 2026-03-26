@@ -154,6 +154,7 @@ export const ChatLayout = forwardRef<ChatLayoutHandle, ChatLayoutProps>(function
                             onAssistantTextDisplayComplete={() => setIsLatestTextComplete(true)}
                             onApprove={onApprove}
                             onReject={onReject}
+                            onSendMessage={onSendMessage}
                             onMultipleChoiceAnswer={onMultipleChoiceAnswer}
                         />
                     ))}
