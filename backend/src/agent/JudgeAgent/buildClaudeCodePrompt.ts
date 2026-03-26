@@ -35,21 +35,7 @@ ${pastImprovements.length > 0 ? pastImprovements.map(i => `- [${i.status}] "${i.
 
     return `You are reviewing SDK automation "${automationId}" for the Terse platform.
 
-== Your task ==
-
-Analyze this agent's source code, configuration, and recent run history to identify concrete improvements. The agent's source code is at /tmp/project — explore it yourself.
-
-== How Terse agents work ==
-
-Terse is an automation platform. Users build agents that react to events and take actions on external tools.
-
-Triggers: Define what events an agent listens to — Slack messages, GitHub PRs, Jira ticket updates, Linear issues, Gmail emails, Figma comments, cron schedules, etc. An agent can have multiple triggers. Each trigger is configured to watch a specific source.
-
-Event filtering: Before the agent runs, an EventFilter checks if the incoming event is relevant. Events that don't pass the filter show as "filtered" in run history — this is normal.
-
-Outputs / Skills: Give the agent tools to act on external systems. The agent can ONLY interact with systems it has output configs for.
-
-This is an SDK job — a code-based automation written and deployed by a developer via the Terse CLI/SDK.
+Use the /terse:improve skill to guide your analysis. It contains full documentation on the Terse SDK, best practices, and a structured improvement checklist.
 
 == Things to ignore — do NOT flag these ==
 
@@ -64,11 +50,10 @@ ${contextSection}
 
 == Instructions ==
 
-1. Explore the source code in /tmp/project yourself. Read the files, understand the structure.
-2. Based on the run history and code, identify up to ${MAX_IMPROVEMENTS_PER_AGENT} improvements.
-3. Only flag things you're confident about (confidence >= 0.7).
-4. Don't repeat past improvements listed above.
-5. For each code improvement, you MUST implement the change by editing the actual files.
+1. Run /terse:improve to analyze all jobs in this project. The skill will guide you through the improvement checklist.
+2. Identify up to ${MAX_IMPROVEMENTS_PER_AGENT} improvements. Only flag things you're confident about (confidence >= 0.7).
+3. Don't repeat past improvements listed above.
+4. For each code improvement, you MUST implement the change by editing the actual files.
 
 == Workflow for each improvement ==
 
