@@ -106,23 +106,19 @@ def test_job_registration_preserves_tool_approvals() -> None:
     assert get_job_registry()["demo-job"].tool_approvals == ["attio_upsert_record"]
 
 
-def test_execute_registered_job_supports_sync_and_async_callables() -> None:
-    sync_calls: list[str] = []
-    async_calls: list[str] = []
+def test_execute_registered_job_supports_sync_callables() -> None:
+    handler_calls: list[str] = []
+    filter_calls: list[str] = []
     app = Terse()
 
-    @app.job(name="sync-job")
-    def sync_handler(event: CronJobInputEvent, agent: TerseAgent) -> None:
-        _ = agent
-        sync_calls.append(event.formatted_content)
-
-    async def allow_async(event: CronJobInputEvent) -> bool:
+    def allow_sync(event: CronJobInputEvent) -> bool:
+        filter_calls.append(event.event_type)
         return event.event_type == "manual"
 
-    @app.job(name="async-job", filter=allow_async)
-    async def async_handler(event: CronJobInputEvent, agent: TerseAgent) -> None:
+    @app.job(name="sync-job", filter=allow_sync)
+    def sync_handler(event: CronJobInputEvent, agent: TerseAgent) -> None:
         _ = agent
-        async_calls.append(event.debug_log)
+        handler_calls.append(event.formatted_content)
 
     event = CronJobInputEvent(
         event_type="manual",
@@ -131,13 +127,10 @@ def test_execute_registered_job_supports_sync_and_async_callables() -> None:
     )
 
     sync_job = get_job_registry()["sync-job"]
-    async_job = get_job_registry()["async-job"]
 
     assert not execute_registered_job(sync_job, event, agent=TerseAgent())
-    assert sync_calls == ["hello"]
-
-    assert not execute_registered_job(async_job, event, agent=TerseAgent())
-    assert async_calls == ["world"]
+    assert filter_calls == ["manual"]
+    assert handler_calls == ["hello"]
 
 
 def test_execute_registered_job_returns_true_when_filter_skips() -> None:

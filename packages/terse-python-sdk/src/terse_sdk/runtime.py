@@ -2,13 +2,11 @@
 
 from __future__ import annotations
 
-import asyncio
-import inspect
 import json
 import logging
 import os
 import sys
-from collections.abc import Awaitable, Callable, Coroutine, Generator, Mapping, Sequence
+from collections.abc import Callable, Generator, Mapping, Sequence
 from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Any, TypeVar, cast
@@ -58,8 +56,8 @@ from .types.stream_events import (
 )
 
 JobEvent = AnyInputEvent
-JobHandler = Callable[[JobEvent, "TerseAgent"], None | Awaitable[None]]
-JobFilter = Callable[[JobEvent], bool | Awaitable[bool]]
+JobHandler = Callable[[JobEvent, "TerseAgent"], None]
+JobFilter = Callable[[JobEvent], bool]
 AgentStreamEvent = (
     SdkAgentStreamEventText
     | SdkAgentStreamEventFinalOutput
@@ -543,16 +541,5 @@ def _require_api_key() -> str:
     return api_key
 
 
-def _run_callable(func: Callable[..., ResultT | Awaitable[ResultT]], *args: object) -> ResultT:
-    result = func(*args)
-    if inspect.isawaitable(result):
-        return _await_result(cast(Awaitable[ResultT], result))
-    return cast(ResultT, result)
-
-
-def _await_result(awaitable: Awaitable[ResultT]) -> ResultT:
-    try:
-        asyncio.get_running_loop()
-    except RuntimeError:
-        return asyncio.run(cast(Coroutine[Any, Any, ResultT], awaitable))
-    raise TerseRuntimeError("Cannot synchronously await a coroutine while another event loop is running.")
+def _run_callable(func: Callable[..., ResultT], *args: object) -> ResultT:
+    return func(*args)
