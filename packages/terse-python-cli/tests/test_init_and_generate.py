@@ -71,7 +71,7 @@ def test_init_new_project_scaffolds_files(runner: CliRunner) -> None:
         assert "package = false" in (project_dir / "pyproject.toml").read_text(encoding="utf-8")
         main_source = (project_dir / "src" / "main.py").read_text(encoding="utf-8")
         readme_source = (project_dir / "README.md").read_text(encoding="utf-8")
-        assert "from terse_sdk import CronJobInputEvent, ToolCallExecutionStatus, Terse" in main_source
+        assert "from terse_sdk import CronJobInputEvent, Terse" in main_source
         assert "from terse_sdk.types.stream_events import SdkAgentStreamEventFinalOutput" in main_source
         assert "from terse_generated import Schedule, TerseAgent" in main_source
         assert "app = Terse()" in main_source
