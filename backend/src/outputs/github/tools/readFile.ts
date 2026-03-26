@@ -15,7 +15,14 @@ import { createGitHubClient, getFileContents, getGitHubAccessToken, parseRepoFul
  * Tool for reading file contents from GitHub repositories.
  * Uses GitHub's Contents API to fetch file contents from the default branch.
  */
-export const readGitHubFileTool = tool<z.ZodObject<any>, SessionWithTracking<Session>, ToolOutputByName["readGitHubFile"]>({
+const readGitHubFileParameters = z.object({
+    repository: z.string().describe('The repository in "owner/repo" format (e.g., "facebook/react"). Must be one of the configured repositories.'),
+    path: z.string().describe('The file path within the repository (e.g., "src/components/Button.tsx" or "README.md")'),
+    startLine: z.union([z.number(), z.null()]).describe("Start reading from this line number (1-indexed). Use with endLine for partial file reads. Use null to start from beginning."),
+    endLine: z.union([z.number(), z.null()]).describe("Stop reading at this line number (1-indexed, inclusive). Use with startLine for partial file reads. Use null to read to end.")
+})
+
+export const readGitHubFileTool = tool<typeof readGitHubFileParameters, SessionWithTracking<Session>, ToolOutputByName["readGitHubFile"]>({
     name: ToolName.GITHUB_READ_FILE,
     description: `Read the full contents of a file from a GitHub repository. Use this after finding relevant files via search to:
 - Understand the complete implementation of a function or class
@@ -24,12 +31,8 @@ export const readGitHubFileTool = tool<z.ZodObject<any>, SessionWithTracking<Ses
 - Understand file structure and organization
 
 Note: This reads from the default branch (main/master). Large files may be truncated.`,
-    parameters: z.object({
-        repository: z.string().describe('The repository in "owner/repo" format (e.g., "facebook/react"). Must be one of the configured repositories.'),
-        path: z.string().describe('The file path within the repository (e.g., "src/components/Button.tsx" or "README.md")'),
-        startLine: z.union([z.number(), z.null()]).describe("Start reading from this line number (1-indexed). Use with endLine for partial file reads. Use null to start from beginning."),
-        endLine: z.union([z.number(), z.null()]).describe("Stop reading at this line number (1-indexed, inclusive). Use with startLine for partial file reads. Use null to read to end.")
-    }),
+    strict: true,
+    parameters: readGitHubFileParameters,
     execute: async ({ repository, path, startLine, endLine }, runContext?: RunContext<SessionWithTracking<Session>>) => {
         if (!runContext?.context) {
             throw new Error("No context provided")

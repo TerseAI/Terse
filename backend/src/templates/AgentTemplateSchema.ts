@@ -20,7 +20,7 @@ import {
     WorkOSInputConfigSchema
 } from "../utility/configSchemas"
 
-function asTemplateConfigSchema<T extends z.AnyZodObject>(schema: T): z.ZodDiscriminatedUnionOption<"configType"> {
+function asTemplateConfigSchema<T extends z.ZodObject<any>>(schema: T) {
     const shape = schema.shape as Record<string, z.ZodTypeAny>
     const configTypeSchema = shape.configType
     const integrationTypeSchema = shape.integrationType
@@ -34,7 +34,7 @@ function asTemplateConfigSchema<T extends z.AnyZodObject>(schema: T): z.ZodDiscr
         configType: configTypeSchema,
         integrationType: integrationTypeSchema,
         integrationId: z.string().optional()
-    }) as z.ZodDiscriminatedUnionOption<"configType">
+    })
 }
 
 // Union of all config schemas
@@ -129,9 +129,9 @@ export function parseTemplates(templates: unknown): AgentTemplates {
     const result = AgentTemplatesSchema.safeParse(templates)
 
     if (!result.success) {
-        const errors = result.error.errors
+        const errors = result.error.issues
         const errorMessages = errors
-            .map((error, index) => {
+            .map((error: z.ZodIssue, index: number) => {
                 const path = error.path.join(".")
                 const templateIndex = error.path[0] as number | undefined
                 const templateName =
