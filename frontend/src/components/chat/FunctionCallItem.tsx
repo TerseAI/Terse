@@ -4,7 +4,6 @@ import { CheckCircleIcon, CheckIcon, ClockIcon, NoSymbolIcon, PaperAirplaneIcon,
 import { Ban, Check } from "lucide-react"
 
 import { useRunHistoryActions } from "../../hooks/useRunHistoryActions"
-import ToolApprovalPreview, { hasCustomPreview } from "./ToolApprovalPreview"
 import { EntityType } from "../../shared/Entities"
 import { ChangedItem } from "../../shared/ModelEvents"
 import { RunHistoryStatus } from "../../shared/RunHistoryTypes"
@@ -13,6 +12,7 @@ import RunHistoryActionItem from "../RunHistory/RunHistoryActionItem"
 import ToolCallParameters from "../ToolCallParameters"
 import { Button } from "../ui/button"
 
+import ToolApprovalPreview, { hasCustomPreview } from "./ToolApprovalPreview"
 import { FunctionCallEvent } from "./Turn"
 
 interface FunctionCallItemProps {
