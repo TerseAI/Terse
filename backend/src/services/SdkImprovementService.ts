@@ -10,18 +10,18 @@ import logger from "../logger"
 import { ClaudeCodeSandboxService } from "./ClaudeCodeSandboxService"
 import { downloadSdkDeployZip } from "./FileStorageService"
 
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
+const currentFilePath = fileURLToPath(import.meta.url)
+const currentDir = path.dirname(currentFilePath)
 
 const PLUGIN_SANDBOX_DIR = "/tmp/terse-plugin"
 
 function resolvePluginRoot(): string | null {
     // Production: plugin copied into dist/ by postbuild
-    const fromDist = path.resolve(__dirname, "..", "terse-claude-plugin")
+    const fromDist = path.resolve(currentDir, "..", "terse-claude-plugin")
     if (fs.existsSync(fromDist)) return fromDist
 
     // Development: plugin lives in packages/ relative to repo root
-    const fromSrc = path.resolve(__dirname, "..", "..", "packages", "terse-claude-plugin")
+    const fromSrc = path.resolve(currentDir, "..", "..", "packages", "terse-claude-plugin")
     if (fs.existsSync(fromSrc)) return fromSrc
 
     return null
