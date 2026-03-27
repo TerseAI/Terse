@@ -37,6 +37,7 @@ type SdkAgentRunnerParams = {
     toolToIntegrationMap: Map<string, string>
     maxTurns: number
     requireApproval: boolean
+    toolApprovals?: string[]
     send: (event: SdkAgentStreamEvent) => void
     isProductionRun?: boolean
 }
@@ -88,6 +89,7 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
     private readonly tools: Tool<SdkRunnerSession>[]
     private readonly maxTurns: number
     private readonly requireApproval: boolean
+    private readonly toolApprovals?: string[]
     private readonly send: (event: SdkAgentStreamEvent) => void
     private readonly memorySession: AgentMemorySession
     private readonly isProductionRun: boolean
@@ -108,6 +110,7 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
         this.tools = params.tools
         this.maxTurns = params.maxTurns
         this.requireApproval = params.requireApproval
+        this.toolApprovals = params.toolApprovals
         this.send = params.send
         this.isProductionRun = !!params.isProductionRun
         this.memorySession = params.isProductionRun ? new RunHistoryChatMemorySession({ sessionId: params.runId }) : new InMemoryAgentSession(params.runId)
@@ -336,7 +339,8 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
             user: this.user,
             isUserInitiated: true,
             agent: {
-                requireApproval: this.requireApproval
+                requireApproval: this.requireApproval,
+                toolApprovals: this.toolApprovals
             },
             runId: this.sdkRunId,
             agentId: SDK_AGENT_ID

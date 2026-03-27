@@ -7,6 +7,7 @@ import { appendRunAction } from "../agent/AgentRunner/runHistory"
 import { emitSessionEvent } from "../agent/SessionEventBus"
 import logger from "../logger"
 import { OutputFactory } from "../outputs/abstract/OutputFactory"
+import { db } from "../prismaClient"
 import { CONFIG_DETAILS } from "../shared/Configs"
 import { IntegrationType } from "../shared/Integrations"
 import { RunHistoryAction } from "../shared/RunHistoryTypes"
@@ -45,6 +46,12 @@ export async function handleSdkAgentRun(req: Request, res: Response) {
 
     try {
         const runId = sandboxRunId ?? `sdk-run-${Date.now()}`
+
+        let toolApprovals: string[] | undefined
+        if (sandboxRunId) {
+            toolApprovals = await loadToolApprovalsForRun(sandboxRunId)
+        }
+
         const sdkRunner = createSdkRunner({
             runId,
             user,
@@ -52,7 +59,8 @@ export async function handleSdkAgentRun(req: Request, res: Response) {
             skills: normalized.skills,
             send,
             sandboxRunId,
-            options: normalized.options
+            options: normalized.options,
+            toolApprovals
         })
 
         send({ type: "run_started", runId })
@@ -164,8 +172,14 @@ function createSdkRunner(params: {
     send: (event: SdkAgentStreamEvent) => void
     sandboxRunId: string | undefined
     options?: { maxTurns?: number; requireApproval?: boolean }
+    toolApprovals?: string[]
 }): SdkAgentRunner {
     const { tools, toolToIntegrationMap } = buildToolsForSkills(params.skills.map(s => CONFIG_DETAILS[s.configType].integrationType))
+
+    const hasGranularApprovals = params.toolApprovals !== undefined
+    const requireApproval = hasGranularApprovals
+        ? params.toolApprovals!.length > 0
+        : params.options?.requireApproval ?? false
 
     return new SdkAgentRunner({
         runId: params.runId,
@@ -175,10 +189,25 @@ function createSdkRunner(params: {
         tools,
         toolToIntegrationMap,
         maxTurns: params.options?.maxTurns ?? 50,
-        requireApproval: params.options?.requireApproval ?? true,
+        requireApproval,
+        toolApprovals: params.toolApprovals,
         send: params.send,
         isProductionRun: !!params.sandboxRunId
     })
+}
+
+async function loadToolApprovalsForRun(runId: string): Promise<string[] | undefined> {
+    try {
+        const runRecord = await db().run_history_records.findUnique({
+            where: { id: runId },
+            include: { automation: { include: { tool_approvals: true } } }
+        })
+        if (!runRecord?.automation?.tool_approvals) return undefined
+        return runRecord.automation.tool_approvals.map((ta: any) => ta.tool_name)
+    } catch (error) {
+        logger.warn("Failed to load tool approvals for SDK run", { runId, error })
+        return undefined
+    }
 }
 
 function buildToolsForSkills(skillIntegrationTypes: IntegrationType[]): {
