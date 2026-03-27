@@ -7,7 +7,7 @@ import re
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, TypeVar, cast
+from typing import Any, Self, TypeVar, cast
 from urllib.parse import quote
 
 import jinja2
@@ -171,110 +171,141 @@ def generate_project(project_dir: Path | None = None) -> GenerateResult:
     )
 
 
+class TemplateContextBuilder:
+    """Builds the Jinja2 template context for terse_generated.py."""
+
+    def __init__(self, codegen_input: CodegenInput | None = None) -> None:
+        self._input = codegen_input or CodegenInput()
+        self._context: dict[str, Any] = {}
+
+        self._attio_tools = _select_supported_tools(self._input.tools, "attio")
+        self._snowflake_tools = _select_supported_tools(self._input.tools, "snowflake")
+        self._tool_output_models = _selected_tool_output_models(self._attio_tools + self._snowflake_tools)
+
+        self._attio_approvable = _build_approvable_tool_names(self._input.tools, "attio")
+        self._snowflake_approvable = _build_approvable_tool_names(self._input.tools, "snowflake")
+        self._all_approvable = sorted(self._attio_approvable + self._snowflake_approvable)
+
+        self._has_attio = bool(self._input.attio)
+        self._has_attio_attrs = self._has_attio and any(
+            obj.attributes for inst in self._input.attio for obj in inst.objects
+        )
+        self._has_attio_tools = bool(self._input.attio and self._attio_tools)
+        self._has_snowflake_tools = bool(self._input.snowflake and self._snowflake_tools)
+
+        self._attio_ctx = (
+            _build_attio_ctx(self._input.attio[0], self._attio_approvable) if self._input.attio else None
+        )
+        self._snowflake_ctx = (
+            _build_snowflake_ctx(self._input.snowflake[0], self._snowflake_approvable)
+            if self._input.snowflake
+            else None
+        )
+
+    def with_imports(self) -> Self:
+        typing_names: list[str] = []
+        if self._has_attio_attrs:
+            typing_names.extend(["Any", "Generic", "TypeVar", "TypedDict", "cast"])
+        if self._all_approvable or self._has_attio_attrs:
+            typing_names.append("Literal")
+
+        pydantic_names: list[str] = []
+        if self._has_attio:
+            pydantic_names = ["BaseModel", "ConfigDict"]
+            if self._attio_tools or self._snowflake_tools:
+                pydantic_names.append("validate_call")
+        elif self._attio_tools or self._snowflake_tools:
+            pydantic_names = ["validate_call"]
+
+        sdk_imports: list[str] = [
+            "SkillConfig",
+            "TerseAgent as _SdkTerseAgent",
+            "TriggerConfig",
+        ]
+        if self._has_attio_attrs and self._attio_tools:
+            sdk_imports.extend(["AttioTypedQueryResult", "AttioTypedRecord", "AttioTypedUpsertResult"])
+        if self._tool_output_models:
+            sdk_imports.extend(self._tool_output_models)
+
+        self._context.update(
+            {
+                "typing_names": sorted(set(typing_names)),
+                "pydantic_names": pydantic_names,
+                "json_import": bool(self._attio_tools),
+                "sdk_imports": sdk_imports,
+            }
+        )
+        return self
+
+    def with_tool_name_literals(self) -> Self:
+        self._context.update(
+            {
+                "attio_tool_names_literal": ", ".join(repr(name) for name in self._attio_approvable),
+                "snowflake_tool_names_literal": ", ".join(repr(name) for name in self._snowflake_approvable),
+                "all_tool_names_literal": ", ".join(repr(name) for name in self._all_approvable),
+            }
+        )
+        return self
+
+    def with_integrations(self) -> Self:
+        self._context.update(
+            {
+                "attio": self._attio_ctx,
+                "snowflake": self._snowflake_ctx,
+                "attio_tools": [_build_tool_ctx(tool) for tool in self._attio_tools],
+                "snowflake_tools": [_build_tool_ctx(tool) for tool in self._snowflake_tools],
+                "has_attio_tools": self._has_attio_tools,
+                "has_snowflake_tools": self._has_snowflake_tools,
+            }
+        )
+        return self
+
+    def with_exported_names(self) -> Self:
+        exported_names: list[str] = [
+            "Schedule",
+            "GeneratedTools",
+            "create_tools",
+            "attach_tools",
+            "TerseAgent",
+        ]
+        exported_names.extend(self._tool_output_models)
+        if self._attio_approvable:
+            exported_names.append("AttioToolNames")
+        if self._snowflake_approvable:
+            exported_names.append("SnowflakeToolNames")
+        if self._all_approvable:
+            exported_names.append("AllToolNames")
+        if self._attio_ctx:
+            exported_names.extend(["AttioAttributeDefinition", "AttioObjectType", "AttioObjects", "Attio"])
+            if self._has_attio_attrs:
+                for obj in self._attio_ctx.objects:
+                    if obj.attributes:
+                        exported_names.extend(
+                            [
+                                f"{obj.pascal}RecordValues",
+                                f"{obj.pascal}InputValues",
+                                f"{obj.pascal}Filter",
+                                f"{obj.pascal}AttributeSlug",
+                            ]
+                        )
+        if self._snowflake_ctx:
+            exported_names.append("Snowflake")
+
+        self._context["exported_names_repr"] = repr(exported_names)
+        return self
+
+    def with_all(self) -> Self:
+        return self.with_imports().with_tool_name_literals().with_integrations().with_exported_names()
+
+    def build(self) -> dict[str, Any]:
+        return dict(self._context)
+
+
 def render_generated_module(codegen_input: CodegenInput | None = None) -> str:
     """Render the generated Python helper module."""
 
-    input_data = codegen_input or CodegenInput()
-    attio_tools = _select_supported_tools(input_data.tools, "attio")
-    snowflake_tools = _select_supported_tools(input_data.tools, "snowflake")
-    tool_output_models = _selected_tool_output_models(attio_tools + snowflake_tools)
-
-    attio_approvable = _build_approvable_tool_names(input_data.tools, "attio")
-    snowflake_approvable = _build_approvable_tool_names(input_data.tools, "snowflake")
-    all_approvable = sorted(attio_approvable + snowflake_approvable)
-
-    has_attio = bool(input_data.attio)
-    has_attio_attrs = has_attio and any(obj.attributes for inst in input_data.attio for obj in inst.objects)
-    has_attio_tools = bool(input_data.attio and attio_tools)
-    has_snowflake_tools = bool(input_data.snowflake and snowflake_tools)
-
-    # --- Build attio/snowflake context objects ---
-    attio_ctx: _AttioCtx | None = None
-    if input_data.attio:
-        attio_ctx = _build_attio_ctx(input_data.attio[0], attio_approvable)
-
-    snowflake_ctx: _SnowflakeCtx | None = None
-    if input_data.snowflake:
-        snowflake_ctx = _build_snowflake_ctx(input_data.snowflake[0], snowflake_approvable)
-
-    # --- Typing imports ---
-    typing_names: list[str] = []
-    if has_attio_attrs:
-        typing_names.extend(["Any", "Generic", "TypeVar", "TypedDict", "cast"])
-    if all_approvable or has_attio_attrs:
-        typing_names.append("Literal")
-    typing_names = sorted(set(typing_names))
-
-    # --- Pydantic imports ---
-    pydantic_names: list[str] = []
-    if has_attio:
-        pydantic_names = ["BaseModel", "ConfigDict"]
-        if attio_tools or snowflake_tools:
-            pydantic_names.append("validate_call")
-    elif attio_tools or snowflake_tools:
-        pydantic_names = ["validate_call"]
-
-    # --- SDK imports ---
-    sdk_imports: list[str] = [
-        "SkillConfig",
-        "TerseAgent as _SdkTerseAgent",
-        "TriggerConfig",
-    ]
-    if has_attio_attrs and attio_tools:
-        sdk_imports.extend(["AttioTypedQueryResult", "AttioTypedRecord", "AttioTypedUpsertResult"])
-    if tool_output_models:
-        sdk_imports.extend(tool_output_models)
-
-    # --- Exported names ---
-    exported_names: list[str] = [
-        "Schedule",
-        "GeneratedTools",
-        "create_tools",
-        "attach_tools",
-        "TerseAgent",
-    ]
-    exported_names.extend(tool_output_models)
-    if attio_approvable:
-        exported_names.append("AttioToolNames")
-    if snowflake_approvable:
-        exported_names.append("SnowflakeToolNames")
-    if all_approvable:
-        exported_names.append("AllToolNames")
-    if attio_ctx:
-        exported_names.extend(["AttioAttributeDefinition", "AttioObjectType", "AttioObjects", "Attio"])
-        if has_attio_attrs:
-            for obj in attio_ctx.objects:
-                if obj.attributes:
-                    exported_names.extend(
-                        [
-                            f"{obj.pascal}RecordValues",
-                            f"{obj.pascal}InputValues",
-                            f"{obj.pascal}Filter",
-                            f"{obj.pascal}AttributeSlug",
-                        ]
-                    )
-    if snowflake_ctx:
-        exported_names.append("Snowflake")
-
-    context = {
-        "typing_names": typing_names,
-        "pydantic_names": pydantic_names,
-        "json_import": bool(attio_tools),
-        "sdk_imports": sdk_imports,
-        "attio_tool_names_literal": ", ".join(repr(n) for n in attio_approvable),
-        "snowflake_tool_names_literal": ", ".join(repr(n) for n in snowflake_approvable),
-        "all_tool_names_literal": ", ".join(repr(n) for n in all_approvable),
-        "attio": attio_ctx,
-        "snowflake": snowflake_ctx,
-        "attio_tools": [_build_tool_ctx(t) for t in attio_tools],
-        "snowflake_tools": [_build_tool_ctx(t) for t in snowflake_tools],
-        "has_attio_tools": has_attio_tools,
-        "has_snowflake_tools": has_snowflake_tools,
-        "exported_names_repr": repr(exported_names),
-    }
-
-    env = _get_jinja_env()
-    template = env.get_template("terse_generated.py.jinja2")
+    context = TemplateContextBuilder(codegen_input).with_all().build()
+    template = _get_jinja_env().get_template("terse_generated.py.jinja2")
     return template.render(**context)
 
 
