@@ -1,17 +1,19 @@
 import { FunctionTool, type RunContext } from "@openai/agents"
-import type { AgentInputItem } from "@openai/agents-core"
 import { Request, Response } from "express"
 import { z } from "zod"
 
 import { SessionWithTracking } from "../agent/AgentRunner/AgentRunner"
-import { appendRunAction } from "../agent/AgentRunner/runHistory"
-import { RunHistoryChatMemorySession } from "../agent/CustomMemorySession"
 import { emitSessionEvent } from "../agent/SessionEventBus"
+import {
+    type DeterministicToolCallRunContext,
+    extractRunHistoryActions,
+    persistDeterministicToolCallComplete,
+    persistDeterministicToolCallFailure,
+    persistDeterministicToolCallStart
+} from "../agent/toolCallHistory"
 import logger from "../logger"
 import { OutputFactory } from "../outputs/abstract/OutputFactory"
 import { db } from "../prismaClient"
-import { emitCacheInvalidationWithWildcard } from "../services/CacheInvalidationService"
-import { RunHistoryAction } from "../shared/RunHistoryTypes"
 import { User } from "../shared/types"
 import { Session } from "../types/session"
 import { randomString } from "../utility/strings"
@@ -20,11 +22,6 @@ type SdkFunctionTool = FunctionTool<SessionWithTracking<Session>, z.ZodObject<an
 type SdkToolDescriptor = {
     tool: SdkFunctionTool
     isReadOnly: boolean
-}
-type PersistedRunContext = {
-    runId: string
-    agentId: string
-    organizationId: string
 }
 
 /**
@@ -68,15 +65,7 @@ function normalizeInvokedToolResult(rawResult: unknown): unknown {
     return rawResult
 }
 
-function extractActions(result: unknown): RunHistoryAction[] {
-    if (!result || typeof result !== "object" || !("actions" in result)) {
-        return []
-    }
-    const actions = (result as { actions?: unknown }).actions
-    return Array.isArray(actions) ? (actions as RunHistoryAction[]) : []
-}
-
-async function resolvePersistedRunContext(runIdHeader: string | undefined, user: User): Promise<PersistedRunContext | null> {
+async function resolvePersistedRunContext(runIdHeader: string | undefined, user: User): Promise<DeterministicToolCallRunContext | null> {
     const runId = runIdHeader?.trim()
     if (!runId || !user.organizationId) {
         return null
@@ -114,71 +103,6 @@ async function resolvePersistedRunContext(runIdHeader: string | undefined, user:
         agentId: runRecord.automation_id,
         organizationId: runRecord.automation.organization_id
     }
-}
-
-function buildToolCallItem(toolName: string, toolParams: Record<string, unknown>, callId: string): AgentInputItem {
-    return {
-        type: "function_call",
-        callId,
-        name: toolName,
-        arguments: JSON.stringify(toolParams)
-    } as AgentInputItem
-}
-
-function buildToolCallResultItem(toolName: string, callId: string, status: "completed" | "failed", output: unknown): AgentInputItem {
-    return {
-        type: "function_call_result",
-        callId,
-        name: toolName,
-        status,
-        output
-    } as AgentInputItem
-}
-
-async function persistDeterministicToolCallStart(runContext: PersistedRunContext, toolName: string, toolParams: Record<string, unknown>, callId: string): Promise<void> {
-    const session = new RunHistoryChatMemorySession({ sessionId: runContext.runId })
-    await session.addItems([buildToolCallItem(toolName, toolParams, callId)])
-    emitCacheInvalidationWithWildcard(runContext.organizationId, "chatHistory", runContext.runId)
-}
-
-async function persistDeterministicToolCallComplete(
-    runContext: PersistedRunContext,
-    toolDescriptor: Pick<SdkToolDescriptor, "isReadOnly">,
-    toolName: string,
-    result: unknown,
-    callId: string
-): Promise<void> {
-    const session = new RunHistoryChatMemorySession({ sessionId: runContext.runId })
-    await session.addItems([buildToolCallResultItem(toolName, callId, "completed", result)])
-
-    const actions = extractActions(result)
-    for (const action of actions) {
-        await appendRunAction(
-            runContext.runId,
-            {
-                ...action,
-                step_id: action.step_id || callId,
-                isReadOnly: action.isReadOnly ?? toolDescriptor.isReadOnly
-            },
-            callId
-        )
-    }
-
-    emitCacheInvalidationWithWildcard(runContext.organizationId, "chatHistory", runContext.runId)
-    emitCacheInvalidationWithWildcard(runContext.organizationId, "runHistory", runContext.agentId)
-}
-
-async function persistDeterministicToolCallFailure(runContext: PersistedRunContext, toolName: string, errorMessage: string, callId: string): Promise<void> {
-    const session = new RunHistoryChatMemorySession({ sessionId: runContext.runId })
-    await session.addItems([
-        buildToolCallResultItem(toolName, callId, "failed", {
-            success: false,
-            text: errorMessage
-        })
-    ])
-
-    emitCacheInvalidationWithWildcard(runContext.organizationId, "chatHistory", runContext.runId)
-    emitCacheInvalidationWithWildcard(runContext.organizationId, "runHistory", runContext.agentId)
 }
 
 /**
@@ -239,7 +163,7 @@ export async function handleToolExecute(req: Request, res: Response) {
         const invokeContext = runContextPayload as unknown as RunContext<SessionWithTracking<Session>>
         const rawResult = await toolDescriptor.tool.invoke(invokeContext, JSON.stringify(toolParams))
         const result = normalizeInvokedToolResult(rawResult)
-        const actions = extractActions(result)
+        const actions = extractRunHistoryActions(result)
 
         if (persistedRunContext) {
             await persistDeterministicToolCallComplete(persistedRunContext, toolDescriptor, toolName, result, callId)
