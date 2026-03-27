@@ -4,6 +4,7 @@ import { CheckCircleIcon, CheckIcon, DocumentDuplicateIcon, HandThumbDownIcon, H
 import { HandThumbDownIcon as HandThumbDownFilledIcon, HandThumbUpIcon as HandThumbUpFilledIcon } from "@heroicons/react/24/solid"
 
 import { ChangedItem, type ChatSnippet, SharedErrorContext } from "../../shared/ModelEvents"
+import type { ToolApprovalResponseOptions } from "../../socket"
 
 import FunctionCallItem from "./FunctionCallItem"
 import { RunErrorView } from "./RunErrorView"
@@ -32,8 +33,9 @@ interface Turn {
     disableAnimation?: boolean
     isLatestAssistantTurn?: boolean
     onAssistantTextDisplayComplete?: () => void
-    onApprove?: (stepId: string) => void
-    onReject?: (stepId: string) => void
+    onApprove?: (stepId: string, options?: ToolApprovalResponseOptions) => void
+    onReject?: (stepId: string, options?: ToolApprovalResponseOptions) => void
+    onSendMessage?: (message: string) => void
     onMultipleChoiceAnswer?: (questionId: string, value: string) => void
 }
 
@@ -71,6 +73,7 @@ function TurnView({
     onAssistantTextDisplayComplete,
     onApprove,
     onReject,
+    onSendMessage,
     onMultipleChoiceAnswer
 }: Turn) {
     const isUser = role === "user"
@@ -127,7 +130,15 @@ function TurnView({
                         </div>
                     </div>
                 )}
-                <TurnTimeline functionCalls={function_calls} snippets={snippets} isTurnFailure={isFailure} onApprove={onApprove} onReject={onReject} onMultipleChoiceAnswer={onMultipleChoiceAnswer} />
+                <TurnTimeline
+                    functionCalls={function_calls}
+                    snippets={snippets}
+                    isTurnFailure={isFailure}
+                    onApprove={onApprove}
+                    onReject={onReject}
+                    onSendMessage={onSendMessage}
+                    onMultipleChoiceAnswer={onMultipleChoiceAnswer}
+                />
 
                 {isAssistantFinishedGenerating && (
                     <div className="flex gap-2">
@@ -229,13 +240,15 @@ function TurnTimeline({
     isTurnFailure,
     onApprove,
     onReject,
+    onSendMessage,
     onMultipleChoiceAnswer
 }: {
     functionCalls: FunctionCallEvent[]
     snippets: ChatSnippet[]
     isTurnFailure: boolean
-    onApprove?: (stepId: string) => void
-    onReject?: (stepId: string) => void
+    onApprove?: (stepId: string, options?: ToolApprovalResponseOptions) => void
+    onReject?: (stepId: string, options?: ToolApprovalResponseOptions) => void
+    onSendMessage?: (message: string) => void
     onMultipleChoiceAnswer?: (questionId: string, value: string) => void
 }) {
     // Separate in-progress calls (still generating or running) from completed ones
@@ -282,7 +295,17 @@ function TurnTimeline({
                 <div className="space-y-0.5">
                     {timeline.map((item, index) => {
                         if (item.kind === "function_call") {
-                            return <FunctionCallItem key={`fc-${item.call.id}`} call={item.call} index={index} isTurnFailure={isTurnFailure} onApprove={onApprove} onReject={onReject} />
+                            return (
+                                <FunctionCallItem
+                                    key={`fc-${item.call.id}`}
+                                    call={item.call}
+                                    index={index}
+                                    isTurnFailure={isTurnFailure}
+                                    onApprove={onApprove}
+                                    onReject={onReject}
+                                    onSendMessage={onSendMessage}
+                                />
+                            )
                         }
                         return (
                             <div key={`sn-${item.snippet.id ?? index}`} className="py-1">
@@ -294,7 +317,7 @@ function TurnTimeline({
             )}
 
             {/* In-progress tool calls (generating / running) — always at the bottom */}
-            {hasInProgress && <ToolCallsSummary calls={inProgressCalls} isTurnFailure={isTurnFailure} onApprove={onApprove} onReject={onReject} />}
+            {hasInProgress && <ToolCallsSummary calls={inProgressCalls} isTurnFailure={isTurnFailure} onApprove={onApprove} onReject={onReject} onSendMessage={onSendMessage} />}
         </>
     )
 }

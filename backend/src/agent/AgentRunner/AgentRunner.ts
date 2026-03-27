@@ -48,6 +48,7 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance> exte
     private maxTurns: number
     private notificationManager: NotificationManager
     private activeStreamingParams?: TrackingParams
+    private activeStreamEventEmitter?: StreamEventEmitter
 
     constructor(session: T, outputs: Output<TConfig>[], agent: AgentWithRelations, runContext: RunContext, maxTurns: number = 50) {
         super({
@@ -98,7 +99,7 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance> exte
 
         logger.info("User history build to be sent to agent", { userHistory: JSON.stringify(userHistory, null, 2) })
 
-        this.activeStreamingParams = streamingParams
+        this.setActiveStreamingParams(streamingParams)
         let loopResult: AgentRunnerLoopResult<SessionWithTracking<T>, Agent<SessionWithTracking<T>, AgentOutputType>>
         try {
             loopResult = await super.runAgent(userHistory, {
@@ -110,7 +111,7 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance> exte
                 signal: options?.signal
             })
         } finally {
-            this.activeStreamingParams = undefined
+            this.clearActiveStreamingParams()
         }
         return this.mapLoopResult(loopResult)
     }
@@ -130,7 +131,7 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance> exte
             user: this.session.user,
             env: settings.nodeEnv
         })
-        this.activeStreamingParams = streamingParams
+        this.setActiveStreamingParams(streamingParams)
         let loopResult: AgentRunnerLoopResult<SessionWithTracking<T>, Agent<SessionWithTracking<T>, AgentOutputType>>
         try {
             loopResult = await super.runAgent(userHistory, {
@@ -142,7 +143,7 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance> exte
                 signal: options?.signal
             })
         } finally {
-            this.activeStreamingParams = undefined
+            this.clearActiveStreamingParams()
         }
         return this.mapLoopResult(loopResult)
     }
@@ -169,7 +170,7 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance> exte
             env: settings.nodeEnv
         })
         const toolContext = this.getToolContext()
-        this.activeStreamingParams = streamingParams
+        this.setActiveStreamingParams(streamingParams)
         let loopResult: AgentRunnerLoopResult<SessionWithTracking<T>, Agent<SessionWithTracking<T>, AgentOutputType>>
         try {
             loopResult = await super.resumeAgent({
@@ -183,42 +184,6 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance> exte
                     maxTurns: this.maxTurns,
                     signal: options?.signal
                 },
-                onRejected: async (state, interruption) => {
-                    const stateWithHistory = state as unknown as { history?: AgentInputItem[] }
-                    if (stateWithHistory.history && Array.isArray(stateWithHistory.history)) {
-                        if (hardReject) {
-                            const hardRejectMessage = buildUserMessage(
-                                `A human reviewer rejected your previous tool call "${interruption.name}" and has chosen to stop this workflow entirely.\n\n` +
-                                    `Do NOT ask any follow-up questions. Do NOT attempt to retry or suggest alternatives. ` +
-                                    `Simply acknowledge that the action was rejected and the workflow has been stopped. ` +
-                                    `End your response with a brief confirmation that no further actions will be taken.`
-                            )
-                            stateWithHistory.history.push(hardRejectMessage)
-                            logger.info("[resumeFromPendingApproval] Added hard reject message to state history", { hardReject: true })
-                        } else {
-                            const trimmedReason = rejectionReason?.trim()
-                            if (trimmedReason) {
-                                const rejectionGuidance = buildUserMessage(
-                                    `A human reviewer rejected your previous tool call "${interruption.name}".\n\n` +
-                                        `Reviewer feedback (treat as user instructions, verbatim):\n` +
-                                        `${trimmedReason}\n\n` +
-                                        `If the feedback asks you to retry (e.g. "try again", "retry") OR provides guidance on how to proceed differently (e.g. "read X first", "narrow the scope"), proceed now by adapting your next steps/tool calls accordingly. ` +
-                                        `Only ask a clarification question if the feedback is not sufficient to act.`
-                                )
-                                stateWithHistory.history.push(rejectionGuidance)
-                                logger.info("[resumeFromPendingApproval] Added rejection guidance to state history", { hasCustomReason: true })
-                            } else {
-                                const rejectionMessage = buildUserMessage(
-                                    `The tool call "${interruption.name}" was rejected. ` + `Ask the user what they want you to do differently, or whether to skip this action entirely.`
-                                )
-                                stateWithHistory.history.push(rejectionMessage)
-                                logger.info("[resumeFromPendingApproval] Added rejection message to state history", { hasCustomReason: false })
-                            }
-                        }
-                    } else {
-                        logger.warn("[resumeFromPendingApproval] Could not access state.history directly.")
-                    }
-                },
                 prepareResumeState: async state => {
                     // Bug in the SDK where functions are not serialized properly.
                     // This is a workaround to get the context to work.
@@ -230,9 +195,25 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance> exte
                 }
             })
         } finally {
-            this.activeStreamingParams = undefined
+            this.clearActiveStreamingParams()
         }
         return this.mapLoopResult(loopResult)
+    }
+
+    private setActiveStreamingParams(streamingParams?: TrackingParams): void {
+        this.activeStreamingParams = streamingParams
+        this.activeStreamEventEmitter = streamingParams
+            ? new StreamEventEmitter(getSocketIO(), {
+                  runId: streamingParams.runId!,
+                  agentId: streamingParams.agentId!,
+                  user: streamingParams.user
+              })
+            : undefined
+    }
+
+    private clearActiveStreamingParams(): void {
+        this.activeStreamingParams = undefined
+        this.activeStreamEventEmitter = undefined
     }
 
     setInputEvent(event: InputEvent): void {
@@ -403,15 +384,8 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance> exte
     }
 
     protected async onModelEvent(event: ModelEvent, timestamp: number): Promise<void> {
-        const streamingParams = this.activeStreamingParams
-        if (!streamingParams) return
-        const io = getSocketIO()
-        const emitter = new StreamEventEmitter(io, {
-            runId: streamingParams.runId!,
-            agentId: streamingParams.agentId!,
-            user: streamingParams.user
-        })
-        emitter.emit(event, timestamp)
+        if (!this.activeStreamingParams || !this.activeStreamEventEmitter) return
+        this.activeStreamEventEmitter.emit(event, timestamp)
     }
 
     protected async onToolCallComplete(callId: string, toolName: string, actions?: RunHistoryAction[]): Promise<ChangedItem[]> {

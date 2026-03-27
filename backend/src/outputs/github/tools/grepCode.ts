@@ -15,7 +15,18 @@ import { createGitHubClient, getGitHubAccessToken, searchCode } from "../githubA
  * Tool for grep-style exact text search in GitHub repositories.
  * Uses GitHub's Code Search API with exact match patterns.
  */
-export const grepGitHubCodeTool = tool<z.ZodObject<any>, SessionWithTracking<Session>, ToolOutputByName["grepGitHubCode"]>({
+const grepGitHubCodeParameters = z.object({
+    repositoryNames: z.array(z.string()).describe("Array of repository full names (owner/repo format) to search in."),
+    pattern: z.string().describe('The exact text pattern to search for. For function calls, include the opening parenthesis (e.g., "fetchUser("). For strings, include quotes if needed.'),
+    fileExtension: z.union([z.string(), z.null()]).describe('Filter by file extension (e.g., "ts", "js", "py"). Do not include the dot. Use null to search all file types.'),
+    path: z.union([z.string(), z.null()]).describe('Filter by directory path (e.g., "src/services" to only search in that directory). Use null to search everywhere.'),
+    perPage: z.number().describe("Number of results to return (default: 20, max: 100)"),
+    page: z
+        .union([z.number().int().min(1), z.null()])
+        .describe("Page number for pagination (default: 1). Use this to fetch additional results if there are more than perPage results. Use null for page 1. Must be a positive integer >= 1.")
+})
+
+export const grepGitHubCodeTool = tool<typeof grepGitHubCodeParameters, SessionWithTracking<Session>, ToolOutputByName["grepGitHubCode"]>({
     name: ToolName.GITHUB_GREP_CODE,
     description: `Search GitHub repositories for EXACT TEXT MATCHES (like grep). Use this when you KNOW the exact string you're looking for.
 
@@ -35,16 +46,7 @@ Examples:
 - ❌ "state management" → Use searchGitHubCode for concepts
 
 This is more precise than semantic search - use it when you know exactly what text to find.`,
-    parameters: z.object({
-        repositoryNames: z.array(z.string()).describe("Array of repository full names (owner/repo format) to search in."),
-        pattern: z.string().describe('The exact text pattern to search for. For function calls, include the opening parenthesis (e.g., "fetchUser("). For strings, include quotes if needed.'),
-        fileExtension: z.union([z.string(), z.null()]).describe('Filter by file extension (e.g., "ts", "js", "py"). Do not include the dot. Use null to search all file types.'),
-        path: z.union([z.string(), z.null()]).describe('Filter by directory path (e.g., "src/services" to only search in that directory). Use null to search everywhere.'),
-        perPage: z.number().describe("Number of results to return (default: 20, max: 100)"),
-        page: z
-            .union([z.number().int().min(1), z.null()])
-            .describe("Page number for pagination (default: 1). Use this to fetch additional results if there are more than perPage results. Use null for page 1. Must be a positive integer >= 1.")
-    }),
+    parameters: grepGitHubCodeParameters,
     execute: async ({ repositoryNames, pattern, fileExtension, path, perPage = 20, page }, runContext?: RunContext<SessionWithTracking<Session>>) => {
         if (!runContext?.context) {
             throw new Error("No context provided")

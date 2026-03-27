@@ -31,10 +31,7 @@ export class SnowflakeSkillOutput extends Output<SnowflakeOutputConfig> {
     async addOutputToAgent(tx: PrismaTransaction, agentOutputId: string, output: SnowflakeOutputConfig): Promise<void> {
         await tx.automation_snowflake_configs.create({
             data: {
-                automation_output_id: agentOutputId,
-                warehouse: output.warehouse || null,
-                database_name: output.databaseName || null,
-                schema_name: output.schemaName || null
+                automation_output_id: agentOutputId
             }
         })
     }
@@ -50,9 +47,6 @@ export class SnowflakeSkillOutput extends Output<SnowflakeOutputConfig> {
 
         for (const config of configs) {
             const parts = [`  • Integration ID: ${config.integrationId}`]
-            if (config.warehouse) parts.push(`Warehouse: ${config.warehouse}`)
-            if (config.databaseName) parts.push(`Database: ${config.databaseName}`)
-            if (config.schemaName) parts.push(`Schema: ${config.schemaName}`)
             sections.push(parts.join(", "))
         }
 

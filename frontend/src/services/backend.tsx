@@ -34,7 +34,7 @@ import {
     ApiToken,
     ApiTokenCreateResponse,
     ApplyImprovementResponse,
-    AttioObject,
+    AttioObjectWithAttributes,
     ConfluenceResourcesResponse,
     DatadogIndexesResponse,
     DismissImprovementResponse,
@@ -264,7 +264,7 @@ interface BackendService {
     /**
      * Gets available Attio objects for a specific integration
      */
-    getAttioObjects(integrationId: string): Promise<AttioObject[]>
+    getAttioObjects(integrationId: string): Promise<AttioObjectWithAttributes[]>
 
     getWorkOSIntegrations(): Promise<WorkOSIntegration[]>
 
@@ -869,7 +869,7 @@ export const BackendProvider: BackendService = {
 
     getAttioObjects: (integrationId: string) => {
         return axios
-            .get<AttioObject[]>(`${backendBaseUrl}${ApiRoutes.ATTIO.OBJECTS.build(integrationId)}`, { withCredentials: true })
+            .get<AttioObjectWithAttributes[]>(`${backendBaseUrl}${ApiRoutes.ATTIO.OBJECTS.build(integrationId)}`, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
                 console.error("Error getting Attio objects:", error)

@@ -34,6 +34,14 @@ function isReasoningItem(event: AgentInputItem): event is ReasoningItem {
     return false
 }
 
+function isTextMessagePart(part: unknown): part is { type: "input_text" | "output_text"; text: string } {
+    return typeof part === "object" && part !== null && "type" in part && (part.type === "input_text" || part.type === "output_text") && "text" in part && typeof part.text === "string"
+}
+
+function isReasoningTextPart(part: unknown): part is { type: "input_text"; text: string } {
+    return typeof part === "object" && part !== null && "type" in part && part.type === "input_text" && "text" in part && typeof part.text === "string"
+}
+
 // Helper function to extract text from message content
 function extractTextFromMessageContent(content: UserMessageItem["content"] | AssistantMessageItem["content"] | SystemMessageItem["content"]): string {
     if (typeof content === "string") {
@@ -42,7 +50,7 @@ function extractTextFromMessageContent(content: UserMessageItem["content"] | Ass
 
     if (Array.isArray(content)) {
         return content
-            .filter((part): part is { type: "input_text" | "output_text"; text: string } => (part.type === "input_text" || part.type === "output_text") && "text" in part)
+            .filter(isTextMessagePart)
             .map(part => part.text)
             .join(" ")
     }
@@ -53,7 +61,7 @@ function extractTextFromMessageContent(content: UserMessageItem["content"] | Ass
 // Helper function to extract text from reasoning content
 function extractTextFromReasoningContent(content: ReasoningItem["content"]): string {
     return content
-        .filter((part): part is { type: "input_text"; text: string } => part.type === "input_text" && "text" in part)
+        .filter(isReasoningTextPart)
         .map(part => part.text)
         .join(" ")
 }
@@ -65,7 +73,7 @@ function extractTextFromFunctionResultOutput(output: FunctionCallResultItem["out
     }
 
     if (typeof output === "object" && output !== null) {
-        if ("type" in output && output.type === "text" && "text" in output) {
+        if ("type" in output && output.type === "text" && "text" in output && typeof output.text === "string") {
             return output.text
         }
         return JSON.stringify(output)

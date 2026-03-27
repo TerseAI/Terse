@@ -24,7 +24,7 @@ export type SessionWithTracking<T extends AppSession> = T & {
 
 export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSession>, TAgent extends Agent<TSession, AgentOutputType>> {
     private runId: string
-    private toolToIntegrationMap?: Map<string, string>
+    protected toolToIntegrationMap?: Map<string, string>
     private endedWithToolFailure = false
     protected agent?: TAgent
     // Protect lazy initialization from double-build races when run/resume are called concurrently.
@@ -97,7 +97,7 @@ export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSe
         decision: "approve" | "reject"
         stepId: string
         settings: RunExecutionSettings<TSession, TAgent>
-        onRejected?: (state: RunState<TSession, TAgent>, interruption: RunToolApprovalItem) => Promise<void>
+        rejectionReason?: string
         prepareResumeState?: (state: RunState<TSession, TAgent>) => Promise<void> | void
     }): Promise<AgentRunnerLoopResult<TSession, TAgent>> {
         await this.initializeLoopIfNeeded()
@@ -118,10 +118,10 @@ export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSe
         }
 
         if (params.decision === "approve") {
+            // https://github.com/openai/openai-agents-js/pull/1098 Once this gets in, we should support it
             state.approve(interruption)
         } else {
-            state.reject(interruption)
-            await params.onRejected?.(state, interruption)
+            state.reject(interruption, { message: params.rejectionReason })
         }
 
         await this.markRunInProgress(this.runId)

@@ -129,7 +129,8 @@ async function convertSingleItem(
                 type: "ToolApprovalResponse",
                 timestamp: eventTimestamp,
                 step_id: toolApprovalSystemEvent.step_id,
-                approved: toolApprovalSystemEvent.approved
+                approved: toolApprovalSystemEvent.approved,
+                rejection_reason: toolApprovalSystemEvent.rejection_reason || undefined
             }
         ]
     }
@@ -301,6 +302,10 @@ function resolveUserMessageStepId(item: UserMessageItem, eventTimestamp: number,
     return `legacy-user-msg-${eventTimestamp}-${itemIndex}`
 }
 
+function isTextMessagePart(part: unknown): part is { type: "input_text" | "output_text"; text: string } {
+    return typeof part === "object" && part !== null && "type" in part && (part.type === "input_text" || part.type === "output_text") && "text" in part && typeof part.text === "string"
+}
+
 // Content extraction helpers
 function extractTextFromMessageContent(content: UserMessageItem["content"] | AssistantMessageItem["content"]): string {
     if (typeof content === "string") {
@@ -309,7 +314,7 @@ function extractTextFromMessageContent(content: UserMessageItem["content"] | Ass
 
     if (Array.isArray(content)) {
         return content
-            .filter((part): part is { type: "input_text" | "output_text"; text: string } => (part.type === "input_text" || part.type === "output_text") && "text" in part)
+            .filter(isTextMessagePart)
             .map(part => part.text)
             .join(" ")
     }

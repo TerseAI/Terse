@@ -6,10 +6,11 @@ import { db } from "../prismaClient"
 import { emitCacheInvalidationWithKey } from "../realtimeSocket"
 import { uploadSdkDeployZip } from "../services/FileStorageService"
 import { SdkDeployRequestBody, SdkDeployTrigger, User } from "../shared/types"
+import { AgentWithTriggerRelations } from "../types/prisma"
 import { getInputConfigInclude } from "../utility/prismaIncludes"
 import { convertConfigTypeToInputConfigType } from "../utility/typeConverters"
 
-import { createTriggerConfig, setupAgentTriggers, tearDownAgentTriggers, validateUserOwnsIntegration } from "./agents"
+import { createTriggerConfig, persistToolApprovals, setupAgentTriggers, tearDownAgentTriggers, validateUserOwnsIntegration } from "./agents"
 
 export async function handleSdkDeploy(req: Request, res: Response) {
     const user = req.session?.user as User | undefined
@@ -51,7 +52,7 @@ export async function handleSdkDeploy(req: Request, res: Response) {
                 })
             }
 
-            const existing = await prisma.automations.findFirst({
+            const existing: AgentWithTriggerRelations | null = await prisma.automations.findFirst({
                 where: {
                     name: job.jobName,
                     organization_id: organizationId,
@@ -62,8 +63,8 @@ export async function handleSdkDeploy(req: Request, res: Response) {
 
             const isUpdate = !!existing
             const automationId = isUpdate
-                ? await updateExistingAutomation(prisma, existing, job.jobName, job.triggers, organizationId, userId, gcsKey)
-                : await createNewAutomation(prisma, job.jobName, job.triggers, organizationId, userId, gcsKey)
+                ? await updateExistingAutomation(prisma, existing, job.jobName, job.triggers, job.toolApprovals, organizationId, userId, gcsKey)
+                : await createNewAutomation(prisma, job.jobName, job.triggers, job.toolApprovals, organizationId, userId, gcsKey)
 
             await finalizeDeployment(prisma, automationId, organizationId)
 
@@ -94,9 +95,10 @@ export async function handleSdkDeploy(req: Request, res: Response) {
 
 async function updateExistingAutomation(
     prisma: ReturnType<typeof db>,
-    existing: any,
+    existing: AgentWithTriggerRelations,
     jobName: string,
     triggers: SdkDeployTrigger[],
+    toolApprovals: string[] | undefined,
     organizationId: string,
     userId: string,
     gcsKey: string
@@ -128,13 +130,23 @@ async function updateExistingAutomation(
             }
         })
 
+        await persistToolApprovals(tx, automationId, toolApprovals ?? [], { replaceExisting: true })
+
         await createTriggersForAutomation(tx, automationId, triggers, organizationId, userId)
     })
 
     return automationId
 }
 
-async function createNewAutomation(prisma: ReturnType<typeof db>, jobName: string, triggers: SdkDeployTrigger[], organizationId: string, userId: string, gcsKey: string): Promise<string> {
+async function createNewAutomation(
+    prisma: ReturnType<typeof db>,
+    jobName: string,
+    triggers: SdkDeployTrigger[],
+    toolApprovals: string[] | undefined,
+    organizationId: string,
+    userId: string,
+    gcsKey: string
+): Promise<string> {
     const result = await prisma.$transaction(async tx => {
         const newAgent = await tx.automations.create({
             data: {
@@ -154,6 +166,8 @@ async function createNewAutomation(prisma: ReturnType<typeof db>, jobName: strin
                 source_code_gcs_key: gcsKey
             }
         })
+
+        await persistToolApprovals(tx, newAgent.id, toolApprovals)
 
         await createTriggersForAutomation(tx, newAgent.id, triggers, organizationId, userId)
 

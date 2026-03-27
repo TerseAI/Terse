@@ -12,14 +12,16 @@ import { toolOutput } from "../../../tools/toolOutput"
 import { formatError } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
 
-export const slackListUsersTool = tool<z.ZodObject<any>, SessionWithTracking<Session>, ToolOutputByName["slack_list_users"]>({
+const slackListUsersParameters = z.object({
+    integrationId: z.string().describe("The integration ID of the Slack workspace (user_slack_integrations id)."),
+    query: z.string().nullable().optional().describe("Optional search query to filter users by name. Case-insensitive partial match.")
+})
+
+export const slackListUsersTool = tool<typeof slackListUsersParameters, SessionWithTracking<Session>, ToolOutputByName["slack_list_users"]>({
     name: ToolName.SLACK_LIST_USERS,
     description: `List Slack workspace users (id and name). Use this to resolve user IDs to names when needed.
 Returns non-bot members. Optionally filter by name with the query parameter.`,
-    parameters: z.object({
-        integrationId: z.string().describe("The integration ID of the Slack workspace (user_slack_integrations id)."),
-        query: z.string().nullable().optional().describe("Optional search query to filter users by name. Case-insensitive partial match.")
-    }),
+    parameters: slackListUsersParameters,
     execute: async ({ integrationId, query }, runContext?: RunContext<SessionWithTracking<Session>>) => {
         logger.debug("🛠️ Executing slack_list_users tool", { integrationId, query })
 
