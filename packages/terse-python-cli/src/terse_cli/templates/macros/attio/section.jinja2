@@ -5,6 +5,7 @@
    Emits nothing when Attio is not configured. #}
 {% macro attio_section(attio) %}
 {% if attio %}
+{% set attio_approvable_tools = attio.tools | selectattr('approvable') | list %}
 
 
 # === Attio ===
@@ -60,7 +61,7 @@ class AttioObjects:
 
 class Attio:
     @staticmethod
-    def skill(obj: {{ attio.obj_type }} | None = None) -> {{ attio.skill_return_type }}:
+    def skill(obj: {{ "AttioObjectType[Any, Any, Any, Any]" if attio.has_attrs else "AttioObjectType" }} | None = None) -> SkillConfig[{% if attio_approvable_tools %}AttioToolNames{% else %}str{% endif %}]:
         return SkillConfig(integration_id={{ attio.instance_id_repr }}, integration_type='attio', config_type='attio_output', config=_compact_dict(objectSlug=obj.api_slug if obj else None))
 {% if attio.has_attrs %}
 

@@ -7,9 +7,13 @@ from unittest.mock import patch
 import pytest
 from click.testing import CliRunner
 from terse_cli._generate import (
+    AttioAttributeData,
+    AttioInstanceData,
+    AttioObjectData,
     CodegenInput,
     GenerateResult,
     SnowflakeInstanceData,
+    TemplateContextBuilder,
     ToolDefinition,
     render_generated_module,
     write_generated_module,
@@ -379,6 +383,56 @@ def test_generate_reports_auth_failure(runner: CliRunner) -> None:
 
         assert result.exit_code != 0
         assert "Authentication failed: your TERSE_API_KEY was rejected." in result.output
+
+
+def test_template_context_builder_groups_content_by_integration() -> None:
+    context = TemplateContextBuilder(
+        CodegenInput(
+            attio=[
+                AttioInstanceData(
+                    id="attio_1",
+                    display_name="Terse CRM",
+                    objects=[
+                        AttioObjectData(
+                            api_slug="companies",
+                            singular_noun="Company",
+                            attributes=[AttioAttributeData(api_slug="name", title="Name", type="text")],
+                        )
+                    ],
+                )
+            ],
+            snowflake=[SnowflakeInstanceData(id="snowflake_1", display_name="acme-prod")],
+            tools=[
+                ToolDefinition(
+                    name="attio_upsert_record",
+                    display_name="Upsert record",
+                    description="Upsert Attio record.",
+                    integration="attio",
+                    is_read_only=False,
+                ),
+                ToolDefinition(
+                    name="snowflakeExecuteQuery",
+                    display_name="Execute query",
+                    description="Execute Snowflake query.",
+                    integration="snowflake",
+                    is_read_only=True,
+                    supports_approval=True,
+                ),
+            ],
+        )
+    ).with_all().build()
+
+    assert set(context) == {"attio", "snowflake"}
+    assert "typing_names" not in context
+    assert "attio_tool_names_literal" not in context
+    assert "exported_names_repr" not in context
+
+    assert context["attio"] is not None
+    assert context["snowflake"] is not None
+    assert [tool.name for tool in context["attio"].tools] == ["attio_upsert_record"]
+    assert context["attio"].tools[0].approvable is True
+    assert [tool.name for tool in context["snowflake"].tools] == ["snowflakeExecuteQuery"]
+    assert context["snowflake"].tools[0].approvable is True
 
 
 def test_render_generated_module_auto_fills_snowflake_integration_id() -> None:

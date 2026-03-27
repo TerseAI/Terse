@@ -4,9 +4,9 @@
 {% from "macros/snowflake_section.jinja2" import snowflake_section %}
 {% from "macros/schedule_section.jinja2" import schedule_section %}
 {% from "macros/deterministic_tools_section.jinja2" import deterministic_tools_section %}
-{{ file_header(typing_names, pydantic_names, json_import, sdk_imports) -}}
-{{- tool_name_types(attio_tool_names_literal, snowflake_tool_names_literal, all_tool_names_literal) -}}
+{{ file_header(attio, snowflake) -}}
+{{- tool_name_types(attio, snowflake) -}}
 {{- attio_section(attio) -}}
 {{- snowflake_section(snowflake) -}}
 {{- schedule_section() -}}
-{{- deterministic_tools_section(attio_tools, attio, snowflake_tools, snowflake, has_attio_tools, has_snowflake_tools, exported_names_repr) }}
+{{- deterministic_tools_section(attio, snowflake) }}

@@ -2,6 +2,7 @@
    Emits nothing when Snowflake is not configured. #}
 {% macro snowflake_section(snowflake) %}
 {% if snowflake %}
+{% set snowflake_approvable_tools = snowflake.tools | selectattr('approvable') | list %}
 
 
 # === Snowflake ===
@@ -9,7 +10,7 @@
 
 class Snowflake:
     @staticmethod
-    def skill() -> {{ snowflake.skill_return_type }}:
+    def skill() -> SkillConfig[{% if snowflake_approvable_tools %}SnowflakeToolNames{% else %}str{% endif %}]:
         return SkillConfig(integration_id={{ snowflake.instance_id_repr }}, integration_type='snowflake', config_type='snowflake_output', config=_compact_dict())
 {% endif %}
 {% endmacro %}

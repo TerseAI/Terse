@@ -85,7 +85,9 @@ _SUPPORTED_TOOL_SPECS: tuple[tuple[str, str, str], ...] = (
     ("snowflake", "snowflakeExplainQuery", "explain_query"),
 )
 _SUPPORTED_TOOL_NAMES = {tool_name for _, tool_name, _ in _SUPPORTED_TOOL_SPECS}
-_TOOL_METHOD_NAME_BY_TOOL = {tool_name: method_name for _, tool_name, method_name in _SUPPORTED_TOOL_SPECS}
+_TOOL_METHOD_NAME_BY_TOOL = {
+    tool_name: method_name for _, tool_name, method_name in _SUPPORTED_TOOL_SPECS
+}
 _TOOL_NAME_ALIASES = {
     "snowflake_execute_query": "snowflakeExecuteQuery",
     "snowflake_explain_query": "snowflakeExplainQuery",
@@ -130,14 +132,13 @@ class _AttioCtx:
     instance_id_repr: str
     has_attrs: bool
     objects: list[_AttioObjectCtx]
-    obj_type: str
-    skill_return_type: str
+    tools: list[_ToolCtx]
 
 
 @dataclass(frozen=True)
 class _SnowflakeCtx:
     instance_id_repr: str
-    skill_return_type: str
+    tools: list[_ToolCtx]
 
 
 @dataclass(frozen=True)
@@ -146,6 +147,7 @@ class _ToolCtx:
     name_repr: str
     method_name: str
     output_model: str
+    approvable: bool
 
 
 def generate_project(project_dir: Path | None = None) -> GenerateResult:
@@ -159,10 +161,16 @@ def generate_project(project_dir: Path | None = None) -> GenerateResult:
         )
 
     active_types = request_json("/integrations/active", api_key)
-    active_set = {str(item).lower() for item in active_types} if isinstance(active_types, list) else set()
+    active_set = (
+        {str(item).lower() for item in active_types}
+        if isinstance(active_types, list)
+        else set()
+    )
 
     codegen_input = _build_codegen_input(active_set, api_key)
-    output_path = write_generated_module(resolved_dir, render_generated_module(codegen_input))
+    output_path = write_generated_module(
+        resolved_dir, render_generated_module(codegen_input)
+    )
 
     return GenerateResult(
         project_dir=resolved_dir,
@@ -172,128 +180,32 @@ def generate_project(project_dir: Path | None = None) -> GenerateResult:
 
 
 class TemplateContextBuilder:
-    """Builds the Jinja2 template context for terse_generated.py."""
+    """Build the integration-scoped Jinja2 context for terse_generated.py."""
 
     def __init__(self, codegen_input: CodegenInput | None = None) -> None:
         self._input = codegen_input or CodegenInput()
         self._context: dict[str, Any] = {}
 
-        self._attio_tools = _select_supported_tools(self._input.tools, "attio")
-        self._snowflake_tools = _select_supported_tools(self._input.tools, "snowflake")
-        self._tool_output_models = _selected_tool_output_models(self._attio_tools + self._snowflake_tools)
-
-        self._attio_approvable = _build_approvable_tool_names(self._input.tools, "attio")
-        self._snowflake_approvable = _build_approvable_tool_names(self._input.tools, "snowflake")
-        self._all_approvable = sorted(self._attio_approvable + self._snowflake_approvable)
-
-        self._has_attio = bool(self._input.attio)
-        self._has_attio_attrs = self._has_attio and any(
-            obj.attributes for inst in self._input.attio for obj in inst.objects
+    def with_attio(self) -> Self:
+        attio_tools = _select_supported_tools(self._input.tools, "attio")
+        self._context["attio"] = (
+            _build_attio_ctx(self._input.attio[0], attio_tools)
+            if self._input.attio
+            else None
         )
-        self._has_attio_tools = bool(self._input.attio and self._attio_tools)
-        self._has_snowflake_tools = bool(self._input.snowflake and self._snowflake_tools)
+        return self
 
-        self._attio_ctx = _build_attio_ctx(self._input.attio[0], self._attio_approvable) if self._input.attio else None
-        self._snowflake_ctx = (
-            _build_snowflake_ctx(self._input.snowflake[0], self._snowflake_approvable)
+    def with_snowflake(self) -> Self:
+        snowflake_tools = _select_supported_tools(self._input.tools, "snowflake")
+        self._context["snowflake"] = (
+            _build_snowflake_ctx(self._input.snowflake[0], snowflake_tools)
             if self._input.snowflake
             else None
         )
-
-    def with_imports(self) -> Self:
-        typing_names: list[str] = []
-        if self._has_attio_attrs:
-            typing_names.extend(["Any", "Generic", "TypeVar", "TypedDict", "cast"])
-        if self._all_approvable or self._has_attio_attrs:
-            typing_names.append("Literal")
-
-        pydantic_names: list[str] = []
-        if self._has_attio:
-            pydantic_names = ["BaseModel", "ConfigDict"]
-            if self._attio_tools or self._snowflake_tools:
-                pydantic_names.append("validate_call")
-        elif self._attio_tools or self._snowflake_tools:
-            pydantic_names = ["validate_call"]
-
-        sdk_imports: list[str] = [
-            "SkillConfig",
-            "TerseAgent as _SdkTerseAgent",
-            "TriggerConfig",
-        ]
-        if self._has_attio_attrs and self._attio_tools:
-            sdk_imports.extend(["AttioTypedQueryResult", "AttioTypedRecord", "AttioTypedUpsertResult"])
-        if self._tool_output_models:
-            sdk_imports.extend(self._tool_output_models)
-
-        self._context.update(
-            {
-                "typing_names": sorted(set(typing_names)),
-                "pydantic_names": pydantic_names,
-                "json_import": bool(self._attio_tools),
-                "sdk_imports": sdk_imports,
-            }
-        )
-        return self
-
-    def with_tool_name_literals(self) -> Self:
-        self._context.update(
-            {
-                "attio_tool_names_literal": ", ".join(repr(name) for name in self._attio_approvable),
-                "snowflake_tool_names_literal": ", ".join(repr(name) for name in self._snowflake_approvable),
-                "all_tool_names_literal": ", ".join(repr(name) for name in self._all_approvable),
-            }
-        )
-        return self
-
-    def with_integrations(self) -> Self:
-        self._context.update(
-            {
-                "attio": self._attio_ctx,
-                "snowflake": self._snowflake_ctx,
-                "attio_tools": [_build_tool_ctx(tool) for tool in self._attio_tools],
-                "snowflake_tools": [_build_tool_ctx(tool) for tool in self._snowflake_tools],
-                "has_attio_tools": self._has_attio_tools,
-                "has_snowflake_tools": self._has_snowflake_tools,
-            }
-        )
-        return self
-
-    def with_exported_names(self) -> Self:
-        exported_names: list[str] = [
-            "Schedule",
-            "GeneratedTools",
-            "create_tools",
-            "attach_tools",
-            "TerseAgent",
-        ]
-        exported_names.extend(self._tool_output_models)
-        if self._attio_approvable:
-            exported_names.append("AttioToolNames")
-        if self._snowflake_approvable:
-            exported_names.append("SnowflakeToolNames")
-        if self._all_approvable:
-            exported_names.append("AllToolNames")
-        if self._attio_ctx:
-            exported_names.extend(["AttioAttributeDefinition", "AttioObjectType", "AttioObjects", "Attio"])
-            if self._has_attio_attrs:
-                for obj in self._attio_ctx.objects:
-                    if obj.attributes:
-                        exported_names.extend(
-                            [
-                                f"{obj.pascal}RecordValues",
-                                f"{obj.pascal}InputValues",
-                                f"{obj.pascal}Filter",
-                                f"{obj.pascal}AttributeSlug",
-                            ]
-                        )
-        if self._snowflake_ctx:
-            exported_names.append("Snowflake")
-
-        self._context["exported_names_repr"] = repr(exported_names)
         return self
 
     def with_all(self) -> Self:
-        return self.with_imports().with_tool_name_literals().with_integrations().with_exported_names()
+        return self.with_attio().with_snowflake()
 
     def build(self) -> dict[str, Any]:
         return dict(self._context)
@@ -313,7 +225,9 @@ def write_generated_module(project_dir: Path, content: str) -> Path:
     try:
         compile(content, "terse_generated.py", "exec")
     except SyntaxError as exc:
-        raise RuntimeError(f"Generated module contains invalid Python syntax: {exc}") from exc
+        raise RuntimeError(
+            f"Generated module contains invalid Python syntax: {exc}"
+        ) from exc
 
     output_path = project_dir / "src" / "terse_generated.py"
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -323,8 +237,16 @@ def write_generated_module(project_dir: Path, content: str) -> Path:
 
 def _build_codegen_input(active_set: set[str], api_key: str) -> CodegenInput:
     return CodegenInput(
-        attio=(_safe_fetch(lambda: _fetch_attio_instances(api_key)) if "attio" in active_set else []),
-        snowflake=(_safe_fetch(lambda: _fetch_snowflake_instances(api_key)) if "snowflake" in active_set else []),
+        attio=(
+            _safe_fetch(lambda: _fetch_attio_instances(api_key))
+            if "attio" in active_set
+            else []
+        ),
+        snowflake=(
+            _safe_fetch(lambda: _fetch_snowflake_instances(api_key))
+            if "snowflake" in active_set
+            else []
+        ),
         tools=_safe_fetch(lambda: _fetch_tool_definitions(api_key, active_set)),
     )
 
@@ -333,7 +255,11 @@ def _safe_fetch(fetcher: Callable[[], list[T]]) -> list[T]:
     try:
         return fetcher()
     except Exception as exc:
-        LOGGER.warning("Failed to fetch data for codegen (%s): %s", getattr(fetcher, "__name__", repr(fetcher)), exc)
+        LOGGER.warning(
+            "Failed to fetch data for codegen (%s): %s",
+            getattr(fetcher, "__name__", repr(fetcher)),
+            exc,
+        )
         return []
 
 
@@ -380,7 +306,8 @@ def _fetch_attio_instances(api_key: str) -> list[AttioInstanceData]:
                     is_unique=bool(attr_dict.get("is_unique")),
                 )
                 for raw_attr in _as_list(obj_data.get("attributes"))
-                if (attr_dict := _as_dict(raw_attr)) is not None and str(attr_dict.get("api_slug", ""))
+                if (attr_dict := _as_dict(raw_attr)) is not None
+                and str(attr_dict.get("api_slug", ""))
             ]
             objects.append(
                 AttioObjectData(
@@ -392,7 +319,9 @@ def _fetch_attio_instances(api_key: str) -> list[AttioInstanceData]:
         instances.append(
             AttioInstanceData(
                 id=integration_id,
-                display_name=str(integration_data.get("workspaceName") or integration_id),
+                display_name=str(
+                    integration_data.get("workspaceName") or integration_id
+                ),
                 objects=objects,
             )
         )
@@ -406,7 +335,9 @@ def _fetch_snowflake_instances(api_key: str) -> list[SnowflakeInstanceData]:
         SnowflakeInstanceData(
             id=str((_as_dict(integration) or {}).get("id", "")),
             display_name=str(
-                (_as_dict(integration) or {}).get("accountIdentifier") or (_as_dict(integration) or {}).get("id") or ""
+                (_as_dict(integration) or {}).get("accountIdentifier")
+                or (_as_dict(integration) or {}).get("id")
+                or ""
             ),
         )
         for integration in raw_instances
@@ -530,23 +461,21 @@ def _attio_filter_python_type(attr: AttioAttributeData) -> str:
     return f"{value_type} | dict[str, Any]"
 
 
-def _build_approvable_tool_names(tools: list[ToolDefinition], integration: str) -> list[str]:
-    """Return sorted tool names that are approvable for a given integration."""
-    return sorted(
-        tool.name
-        for tool in tools
-        if tool.integration == integration and (not tool.is_read_only or tool.supports_approval)
-    )
-
-
 def _build_summary_lines(codegen_input: CodegenInput) -> list[str]:
-    lines = [f"Attio ({instance.display_name}) — {len(instance.objects)} objects" for instance in codegen_input.attio]
-    lines.extend(f"Snowflake ({instance.display_name})" for instance in codegen_input.snowflake)
+    lines = [
+        f"Attio ({instance.display_name}) — {len(instance.objects)} objects"
+        for instance in codegen_input.attio
+    ]
+    lines.extend(
+        f"Snowflake ({instance.display_name})" for instance in codegen_input.snowflake
+    )
     lines.append("Schedule trigger")
     return lines
 
 
-def _build_attio_object_ctx(obj: AttioObjectData, used_names: set[str], has_attrs: bool) -> _AttioObjectCtx:
+def _build_attio_object_ctx(
+    obj: AttioObjectData, used_names: set[str], has_attrs: bool
+) -> _AttioObjectCtx:
     pascal = _to_pascal_case(obj.singular_noun or obj.api_slug) or "Object"
     static_name = _unique_name(pascal, used_names)
     attrs = [
@@ -558,8 +487,14 @@ def _build_attio_object_ctx(obj: AttioObjectData, used_names: set[str], has_attr
         )
         for attr in obj.attributes
     ]
-    multi_slugs = [attr.api_slug for attr in obj.attributes if _is_attio_multi_value(attr)]
-    multi_frozenset = f"frozenset({{{', '.join(repr(s) for s in multi_slugs)}}})" if multi_slugs else ""
+    multi_slugs = [
+        attr.api_slug for attr in obj.attributes if _is_attio_multi_value(attr)
+    ]
+    multi_frozenset = (
+        f"frozenset({{{', '.join(repr(s) for s in multi_slugs)}}})"
+        if multi_slugs
+        else ""
+    )
     return _AttioObjectCtx(
         api_slug=obj.api_slug,
         api_slug_repr=repr(obj.api_slug),
@@ -568,7 +503,9 @@ def _build_attio_object_ctx(obj: AttioObjectData, used_names: set[str], has_attr
         pascal=pascal,
         static_name=static_name,
         attributes=attrs,
-        attr_slugs_literal=(", ".join(repr(a.api_slug) for a in attrs) if attrs else "''"),
+        attr_slugs_literal=(
+            ", ".join(repr(a.api_slug) for a in attrs) if attrs else "''"
+        ),
         multi_value_slugs=multi_slugs,
         multi_value_frozenset_repr=multi_frozenset,
         attribute_tuple_repr=_render_attribute_tuple(obj.attributes),
@@ -577,29 +514,28 @@ def _build_attio_object_ctx(obj: AttioObjectData, used_names: set[str], has_attr
 
 def _build_attio_ctx(
     instance: AttioInstanceData,
-    attio_approvable: list[str],
+    tools: list[ToolDefinition],
 ) -> _AttioCtx:
     has_attrs = any(obj.attributes for obj in instance.objects)
     used_names: set[str] = set()
-    objects = [_build_attio_object_ctx(obj, used_names, has_attrs) for obj in instance.objects]
-    obj_type = "AttioObjectType[Any, Any, Any, Any]" if has_attrs else "AttioObjectType"
-    skill_return_type = "SkillConfig[AttioToolNames]" if attio_approvable else "SkillConfig[str]"
+    objects = [
+        _build_attio_object_ctx(obj, used_names, has_attrs) for obj in instance.objects
+    ]
     return _AttioCtx(
         instance_id_repr=repr(instance.id),
         has_attrs=has_attrs,
         objects=objects,
-        obj_type=obj_type,
-        skill_return_type=skill_return_type,
+        tools=[_build_tool_ctx(tool) for tool in tools],
     )
 
 
 def _build_snowflake_ctx(
     instance: SnowflakeInstanceData,
-    snowflake_approvable: list[str],
+    tools: list[ToolDefinition],
 ) -> _SnowflakeCtx:
     return _SnowflakeCtx(
         instance_id_repr=repr(instance.id),
-        skill_return_type=("SkillConfig[SnowflakeToolNames]" if snowflake_approvable else "SkillConfig[str]"),
+        tools=[_build_tool_ctx(tool) for tool in tools],
     )
 
 
@@ -609,18 +545,21 @@ def _build_tool_ctx(tool: ToolDefinition) -> _ToolCtx:
         name_repr=repr(tool.name),
         method_name=_TOOL_METHOD_NAME_BY_TOOL[tool.name],
         output_model=_TOOL_OUTPUT_MODEL_BY_TOOL[tool.name],
+        approvable=(not tool.is_read_only or tool.supports_approval),
     )
 
 
 def _get_jinja_env() -> jinja2.Environment:
     templates_dir = Path(__file__).parent / "templates"
-    return jinja2.Environment(
+    env = jinja2.Environment(
         loader=jinja2.FileSystemLoader(str(templates_dir)),
         trim_blocks=True,
         lstrip_blocks=True,
         keep_trailing_newline=True,
         undefined=jinja2.StrictUndefined,
     )
+    env.filters["pyrepr"] = repr
+    return env
 
 
 def _render_attribute_tuple(attributes: list[AttioAttributeData]) -> str:
@@ -642,7 +581,9 @@ def _render_attribute_tuple(attributes: list[AttioAttributeData]) -> str:
     return f"({', '.join(parts)},)"
 
 
-def _select_supported_tools(tools: list[ToolDefinition], integration: str) -> list[ToolDefinition]:
+def _select_supported_tools(
+    tools: list[ToolDefinition], integration: str
+) -> list[ToolDefinition]:
     ordered: list[ToolDefinition] = []
     available = {
         _canonical_tool_name(tool.name): ToolDefinition(
@@ -664,18 +605,6 @@ def _select_supported_tools(tools: list[ToolDefinition], integration: str) -> li
         if tool is not None:
             ordered.append(tool)
     return ordered
-
-
-def _selected_tool_output_models(tools: list[ToolDefinition]) -> list[str]:
-    selected: list[str] = []
-    seen: set[str] = set()
-    for tool in tools:
-        model_name = _TOOL_OUTPUT_MODEL_BY_TOOL.get(tool.name)
-        if model_name is None or model_name in seen:
-            continue
-        selected.append(model_name)
-        seen.add(model_name)
-    return selected
 
 
 def _canonical_tool_name(tool_name: str) -> str:

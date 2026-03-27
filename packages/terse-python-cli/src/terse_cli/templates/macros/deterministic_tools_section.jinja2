@@ -4,7 +4,41 @@
 
 {# _AttioTools, _SnowflakeTools, GeneratedTools, TerseAgent, create_tools,
    attach_tools, and __all__. Always emitted. #}
-{% macro deterministic_tools_section(attio_tools, attio, snowflake_tools, snowflake, has_attio_tools, has_snowflake_tools, exported_names_repr) %}
+{% macro deterministic_tools_section(attio, snowflake) %}
+{% set attio_tools = attio.tools if attio else [] %}
+{% set snowflake_tools = snowflake.tools if snowflake else [] %}
+{% set has_attio_tools = attio_tools | length > 0 %}
+{% set has_snowflake_tools = snowflake_tools | length > 0 %}
+{% set attio_approvable_tools = attio_tools | selectattr('approvable') | list %}
+{% set snowflake_approvable_tools = snowflake_tools | selectattr('approvable') | list %}
+{% set ns = namespace(exported_names=['Schedule', 'GeneratedTools', 'create_tools', 'attach_tools', 'TerseAgent']) %}
+{% for tool in attio_tools + snowflake_tools %}
+{% if tool.output_model not in ns.exported_names %}
+{% set ns.exported_names = ns.exported_names + [tool.output_model] %}
+{% endif %}
+{% endfor %}
+{% if attio_approvable_tools %}
+{% set ns.exported_names = ns.exported_names + ['AttioToolNames'] %}
+{% endif %}
+{% if snowflake_approvable_tools %}
+{% set ns.exported_names = ns.exported_names + ['SnowflakeToolNames'] %}
+{% endif %}
+{% if attio_approvable_tools or snowflake_approvable_tools %}
+{% set ns.exported_names = ns.exported_names + ['AllToolNames'] %}
+{% endif %}
+{% if attio %}
+{% set ns.exported_names = ns.exported_names + ['AttioAttributeDefinition', 'AttioObjectType', 'AttioObjects', 'Attio'] %}
+{% if attio.has_attrs %}
+{% for obj in attio.objects %}
+{% if obj.attributes %}
+{% set ns.exported_names = ns.exported_names + [obj.pascal ~ 'RecordValues', obj.pascal ~ 'InputValues', obj.pascal ~ 'Filter', obj.pascal ~ 'AttributeSlug'] %}
+{% endif %}
+{% endfor %}
+{% endif %}
+{% endif %}
+{% if snowflake %}
+{% set ns.exported_names = ns.exported_names + ['Snowflake'] %}
+{% endif %}
 
 
 # === Deterministic tools ===
@@ -104,5 +138,5 @@ def attach_tools(agent: _SdkTerseAgent) -> GeneratedTools:
     return tools
 
 
-__all__ = {{ exported_names_repr }}
+__all__ = {{ ns.exported_names | pyrepr }}
 {% endmacro %}

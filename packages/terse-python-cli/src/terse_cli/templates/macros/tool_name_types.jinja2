@@ -1,19 +1,27 @@
 {# Literal type aliases for each integration's tool names, plus AllToolNames.
    Emits nothing when no tools are configured. #}
-{% macro tool_name_types(attio_tool_names_literal, snowflake_tool_names_literal, all_tool_names_literal) %}
-{% if attio_tool_names_literal or snowflake_tool_names_literal or all_tool_names_literal %}
+{% macro tool_names_literal(tools) -%}
+{%- for tool in tools -%}
+{{ tool.name_repr }}{% if not loop.last %}, {% endif %}
+{%- endfor -%}
+{%- endmacro %}
+
+{% macro tool_name_types(attio, snowflake) %}
+{% set attio_approvable_tools = attio.tools | selectattr('approvable') | list if attio else [] %}
+{% set snowflake_approvable_tools = snowflake.tools | selectattr('approvable') | list if snowflake else [] %}
+{% if attio_approvable_tools or snowflake_approvable_tools %}
 
 
 # === Tool name types ===
 
-{% if attio_tool_names_literal %}
-AttioToolNames = Literal[{{ attio_tool_names_literal }}]
+{% if attio_approvable_tools %}
+AttioToolNames = Literal[{{ tool_names_literal(attio_approvable_tools) }}]
 {% endif %}
-{% if snowflake_tool_names_literal %}
-SnowflakeToolNames = Literal[{{ snowflake_tool_names_literal }}]
+{% if snowflake_approvable_tools %}
+SnowflakeToolNames = Literal[{{ tool_names_literal(snowflake_approvable_tools) }}]
 {% endif %}
-{% if all_tool_names_literal %}
-AllToolNames = Literal[{{ all_tool_names_literal }}]
+{% if attio_approvable_tools or snowflake_approvable_tools %}
+AllToolNames = Literal[{{ tool_names_literal(attio_approvable_tools + snowflake_approvable_tools) }}]
 {% endif %}
 {% endif %}
 {% endmacro %}
