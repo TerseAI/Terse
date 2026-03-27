@@ -1,8 +1,11 @@
 # ruff: noqa: E501
 from __future__ import annotations
 
+import json
+import sys
 from collections.abc import Callable
 from pathlib import Path
+from types import ModuleType, SimpleNamespace
 from unittest.mock import patch
 
 import pytest
@@ -58,6 +61,56 @@ def _fake_generate_project(
         output_path=output_path,
         summary_lines=["Schedule trigger"],
     )
+
+
+def _attio_query_codegen_input() -> CodegenInput:
+    return CodegenInput(
+        attio=[
+            AttioInstanceData(
+                id="attio_1",
+                display_name="Terse CRM",
+                objects=[
+                    AttioObjectData(
+                        api_slug="companies",
+                        singular_noun="Company",
+                        attributes=[
+                            AttioAttributeData(api_slug="name", title="Name", type="text", is_required=True),
+                            AttioAttributeData(api_slug="domains", title="Domains", type="domain", is_unique=True),
+                            AttioAttributeData(api_slug="founded_at", title="Founded at", type="date"),
+                        ],
+                    )
+                ],
+            )
+        ],
+        tools=[
+            ToolDefinition(
+                name="attio_query_records",
+                display_name="Query records",
+                description="Query Attio records.",
+                integration="attio",
+                is_read_only=True,
+            )
+        ],
+    )
+
+
+class _FakeGeneratedAttioAgent:
+    def __init__(self) -> None:
+        self.skills = [SimpleNamespace(integration_type="attio")]
+        self.calls: list[dict[str, object]] = []
+
+    def execute_tool(self, tool_name: str, params: dict[str, object]) -> object:
+        self.calls.append({"tool_name": tool_name, "params": params})
+        return {"success": True, "count": 0, "records": []}
+
+
+def _load_generated_namespace(codegen_input: CodegenInput) -> dict[str, object]:
+    generated = render_generated_module(codegen_input)
+    module = ModuleType("terse_generated")
+    module.__file__ = "terse_generated.py"
+    sys.modules[module.__name__] = module
+    exec(generated, module.__dict__)
+    return module.__dict__
 
 
 def test_init_new_project_scaffolds_files(runner: CliRunner) -> None:
@@ -404,7 +457,8 @@ def test_generate_writes_integration_helpers(runner: CliRunner) -> None:
         assert "filter: _TFilterValues | None = None," in generated
         assert "def upsert_record(" in generated
         assert "records: list[_TInputValues]," in generated
-        assert "'records': records," in generated
+        assert "_serialize_attio_records(" in generated
+        assert "'records': _serialize_attio_records(records)," in generated
         assert "class _SnowflakeTools:" in generated
         assert "def execute_query(self, query: str) -> SnowflakeExecuteQueryToolOutput:" in generated
         assert "def explain_query(self, query: str) -> SnowflakeExplainQueryToolOutput:" in generated
@@ -427,6 +481,109 @@ def test_generate_writes_integration_helpers(runner: CliRunner) -> None:
         assert "class Terse:" not in generated
         assert "Attio (Terse CRM) — 1 objects" in result.output
         assert "Snowflake (acme-prod)" in result.output
+
+
+def test_generated_attio_filter_types_match_api_contract() -> None:
+    generated = render_generated_module(_attio_query_codegen_input())
+
+    assert "domains: str | dict[str, Any]" in generated
+    assert "domains: str | list[str] | dict[str, Any]" not in generated
+    assert "path: list[tuple[str, str]]" in generated
+    assert "constraints: dict[str, Any]" in generated
+    assert "CompanyFilter.__annotations__['$not'] = 'CompanyFilter'" in generated
+
+
+def test_generated_attio_query_records_serializes_supported_filters() -> None:
+    namespace = _load_generated_namespace(_attio_query_codegen_input())
+    agent = _FakeGeneratedAttioAgent()
+    tools = namespace["create_tools"](agent)
+    company = namespace["AttioObjects"].Company
+
+    tools.attio.query_records(company, filter={"domains": "useterse.ai"}, limit=1)
+    assert agent.calls[-1]["tool_name"] == "attio_query_records"
+    assert agent.calls[-1]["params"]["limit"] == 1
+    assert agent.calls[-1]["params"]["filter"] == '{"domains":"useterse.ai"}'
+
+    explicit_filter = {"domains": {"domain": {"$eq": "useterse.ai"}}}
+    tools.attio.query_records(company, filter=explicit_filter)
+    assert json.loads(agent.calls[-1]["params"]["filter"]) == explicit_filter
+
+    logical_filter = {
+        "$and": [
+            {"name": {"$in": ["Acme", "Terse"]}},
+            {"$not": {"domains": {"domain": {"$eq": "blocked.example"}}}},
+        ]
+    }
+    tools.attio.query_records(company, filter=logical_filter)
+    assert json.loads(agent.calls[-1]["params"]["filter"]) == logical_filter
+
+    path_filter = {
+        "path": [("candidates", "parent_record"), ("people", "record_id")],
+        "constraints": {"value": "person_123"},
+    }
+    tools.attio.query_records(company, filter=path_filter)
+    assert json.loads(agent.calls[-1]["params"]["filter"]) == {
+        "path": [["candidates", "parent_record"], ["people", "record_id"]],
+        "constraints": {"value": "person_123"},
+    }
+
+
+def test_generated_attio_query_records_rejects_legacy_list_filter_shorthand() -> None:
+    namespace = _load_generated_namespace(_attio_query_codegen_input())
+    agent = _FakeGeneratedAttioAgent()
+    tools = namespace["create_tools"](agent)
+    company = namespace["AttioObjects"].Company
+
+    with pytest.raises(
+        ValueError,
+        match=r'Invalid Attio filter for object \'companies\' on attribute \'domains\'.*scalar shorthand "useterse.ai".*explicit Attio syntax',
+    ):
+        tools.attio.query_records(company, filter={"domains": ["useterse.ai"]})
+
+    assert agent.calls == []
+
+
+def test_generated_attio_upsert_records_are_serialized_as_json_string() -> None:
+    namespace = _load_generated_namespace(
+        CodegenInput(
+            attio=[
+                AttioInstanceData(
+                    id="attio_1",
+                    display_name="Terse CRM",
+                    objects=[
+                        AttioObjectData(
+                            api_slug="companies",
+                            singular_noun="Company",
+                            attributes=[
+                                AttioAttributeData(api_slug="name", title="Name", type="text"),
+                                AttioAttributeData(api_slug="domains", title="Domains", type="domain", is_unique=True),
+                            ],
+                        )
+                    ],
+                )
+            ],
+            tools=[
+                ToolDefinition(
+                    name="attio_upsert_record",
+                    display_name="Upsert record",
+                    description="Upsert Attio record.",
+                    integration="attio",
+                    is_read_only=False,
+                )
+            ],
+        )
+    )
+    agent = _FakeGeneratedAttioAgent()
+    tools = namespace["create_tools"](agent)
+    company = namespace["AttioObjects"].Company
+
+    records = [{"domains": ["useterse.ai"], "name": "Terse"}]
+    tools.attio.upsert_record(company, "domains", records)
+
+    assert agent.calls[-1]["tool_name"] == "attio_upsert_record"
+    assert agent.calls[-1]["params"]["matchingAttribute"] == "domains"
+    assert isinstance(agent.calls[-1]["params"]["records"], str)
+    assert json.loads(agent.calls[-1]["params"]["records"]) == records
 
 
 def test_generate_reports_full_phase_progress(runner: CliRunner) -> None:
