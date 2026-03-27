@@ -52,6 +52,9 @@ export async function handleSdkDeploy(req: Request, res: Response) {
                 })
             }
 
+            const outputs = job.outputs ?? []
+            const toolApprovals = job.toolApprovals ?? []
+
             const existing: AgentWithTriggerRelations | null = await prisma.automations.findFirst({
                 where: {
                     name: job.jobName,
@@ -63,8 +66,8 @@ export async function handleSdkDeploy(req: Request, res: Response) {
 
             const isUpdate = !!existing
             const automationId = isUpdate
-                ? await updateExistingAutomation(prisma, existing, job.jobName, job.triggers, job.outputs ?? [], job.toolApprovals, organizationId, userId, gcsKey)
-                : await createNewAutomation(prisma, job.jobName, job.triggers, job.outputs ?? [], job.toolApprovals, organizationId, userId, gcsKey)
+                ? await updateExistingAutomation(prisma, existing, job.jobName, job.triggers, outputs, toolApprovals, organizationId, userId, gcsKey)
+                : await createNewAutomation(prisma, job.jobName, job.triggers, outputs, toolApprovals, organizationId, userId, gcsKey)
 
             await finalizeDeployment(prisma, automationId, organizationId)
 
@@ -99,7 +102,7 @@ async function updateExistingAutomation(
     jobName: string,
     triggers: AgentTrigger[],
     outputs: AgentOutput[],
-    toolApprovals: string[] | undefined,
+    toolApprovals: string[],
     organizationId: string,
     userId: string,
     gcsKey: string
@@ -135,7 +138,7 @@ async function updateExistingAutomation(
             }
         })
 
-        await persistToolApprovals(tx, automationId, toolApprovals ?? [], { replaceExisting: true })
+        await persistToolApprovals(tx, automationId, toolApprovals, { replaceExisting: true })
 
         await createTriggersForAutomation(tx, automationId, triggers, organizationId, userId)
         await createOutputsForAutomation(tx, automationId, outputs, organizationId, userId)
@@ -149,7 +152,7 @@ async function createNewAutomation(
     jobName: string,
     triggers: AgentTrigger[],
     outputs: AgentOutput[],
-    toolApprovals: string[] | undefined,
+    toolApprovals: string[],
     organizationId: string,
     userId: string,
     gcsKey: string

@@ -723,8 +723,8 @@ export type SdkApprovalDecisionRequestBody = {
 export type SdkDeployJob = {
     jobName: string
     triggers: AgentTrigger[]
-    outputs?: AgentOutput[]
-    toolApprovals?: string[]
+    outputs: AgentOutput[]
+    toolApprovals: string[]
     webhookURL?: string
 }
 

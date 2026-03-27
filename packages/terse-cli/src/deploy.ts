@@ -38,8 +38,8 @@ export async function deploy() {
                 jobs: jobs.map(job => ({
                     jobName: job.name,
                     triggers: job.triggers.map(serializeConfig),
-                    outputs: job.skills?.map(serializeConfig),
-                    toolApprovals: job.toolApprovals,
+                    outputs: job.skills?.map(serializeConfig) ?? [],
+                    toolApprovals: job.toolApprovals ?? [],
                     webhookURL: job.webhookURL
                 })),
                 sourceZipBase64
