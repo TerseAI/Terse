@@ -304,7 +304,7 @@ def _safe_fetch(fetcher: Callable[[], list[T]]) -> list[T]:
     try:
         return fetcher()
     except Exception as exc:
-        LOGGER.warning("Failed to fetch data for codegen (%s): %s", fetcher.__name__, exc)
+        LOGGER.warning("Failed to fetch data for codegen (%s): %s", getattr(fetcher, "__name__", repr(fetcher)), exc)
         return []
 
 
