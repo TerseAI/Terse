@@ -33,6 +33,8 @@ export const attioUpsertRecordTool = tool<typeof attioUpsertRecordParams, Sessio
     parameters: attioUpsertRecordParams,
     needsApproval: createNeedsApprovalFunction(ToolName.ATTIO_UPSERT_RECORD),
     execute: async ({ integrationId, objectSlug, matchingAttribute, records }, runContext?: RunContext<SessionWithTracking<Session>>) => {
+        logger.debug("Executing attio_upsert_record tool", { integrationId, objectSlug, matchingAttribute, recordCount: records.length })
+
         if (!runContext?.context) {
             throw new Error("No context provided")
         }

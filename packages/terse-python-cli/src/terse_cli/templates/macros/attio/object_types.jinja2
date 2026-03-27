@@ -1,0 +1,25 @@
+{# Renders the four per-object type definitions (RecordValues,
+   InputValues, AttributeSlug, Filter) for one Attio object.
+   Only called for objects that have attributes. #}
+{% macro attio_object_types(obj) %}
+class {{ obj.pascal }}RecordValues(TypedDict, total=False):
+{% for attr in obj.attributes %}
+    {{ attr.api_slug }}: {{ attr.record_type }}
+{% endfor %}
+
+class {{ obj.pascal }}InputValues(TypedDict, total=False):
+{% for attr in obj.attributes %}
+    {{ attr.api_slug }}: {{ attr.input_type }}
+{% endfor %}
+
+
+{{ obj.pascal }}AttributeSlug = Literal[{{ obj.attr_slugs_literal }}]
+
+
+class {{ obj.pascal }}Filter(TypedDict, total=False):
+{% for attr in obj.attributes %}
+    {{ attr.api_slug }}: {{ attr.filter_type }}
+{% endfor %}
+{{ obj.pascal }}Filter.__annotations__['$and'] = list['{{ obj.pascal }}Filter']
+{{ obj.pascal }}Filter.__annotations__['$or'] = list['{{ obj.pascal }}Filter']
+{% endmacro %}
