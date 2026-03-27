@@ -10,7 +10,7 @@ app = Terse()
 )
 def run_job(event: CronJobInputEvent, agent: TerseAgent) -> None:
     prompt = (
-        "Answer with one short, cute sentence about this cron job. "
+        "Tell a joke"
         f"Context: {event.formatted_content}"
     )
     for stream_event in agent.run(prompt, event):
