@@ -495,4 +495,7 @@ def test_render_generated_module_without_integrations_emits_placeholder_skills()
     assert "class Snowflake:" in generated
     assert "def skill() -> SkillConfig[str]:" in generated
     assert "integration_id='snowflake_placeholder'" in generated
-    assert "__all__ = ['Schedule', 'GeneratedTools', 'create_tools', 'attach_tools', 'TerseAgent', 'Attio', 'Snowflake']" in generated
+    assert (
+        "__all__ = ['Schedule', 'GeneratedTools', 'create_tools', 'attach_tools', 'TerseAgent', 'Attio', 'Snowflake']"
+        in generated
+    )
