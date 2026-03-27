@@ -71,14 +71,13 @@ def test_init_new_project_scaffolds_files(runner: CliRunner) -> None:
         assert "package = false" in (project_dir / "pyproject.toml").read_text(encoding="utf-8")
         main_source = (project_dir / "src" / "main.py").read_text(encoding="utf-8")
         readme_source = (project_dir / "README.md").read_text(encoding="utf-8")
-        assert "from terse_sdk import CronJobInputEvent, Terse" in main_source
-        assert "from terse_sdk.types.stream_events import SdkAgentStreamEventFinalOutput" in main_source
+        assert "from terse_sdk import CronJobInputEvent, SdkAgentStreamEventFinalOutput, Terse" in main_source
         assert "from terse_generated import Schedule, TerseAgent" in main_source
         assert "app = Terse()" in main_source
         assert "@app.job(" in main_source
         assert "for stream_event in agent.run(prompt, event):" in main_source
         assert "if isinstance(stream_event, SdkAgentStreamEventFinalOutput):" in main_source
-        assert "print(stream_event.finalOutput)" in main_source
+        assert "print(stream_event.final_output)" in main_source
         assert "_ = agent" not in main_source
         assert "def main()" not in main_source
         assert '__name__ == "__main__"' not in main_source
@@ -315,17 +314,17 @@ def test_generate_writes_integration_helpers(runner: CliRunner) -> None:
         assert result.exit_code == 0, result.output
         generated = Path("src/terse_generated.py").read_text(encoding="utf-8")
         assert "class Attio:" in generated
-        assert "class AttioObject:" in generated
+        assert "class AttioObjects:" in generated
         assert "class CompanyRecordValues(TypedDict, total=False):" in generated
         assert "class CompanyInputValues(TypedDict, total=False):" in generated
         assert "CompanyAttributeSlug = Literal['name', 'domains', 'founded_at']" in generated
         assert "class CompanyFilter(TypedDict, total=False):" in generated
         assert (
-            "Company: AttioObjectResource[CompanyAttributeSlug, CompanyRecordValues, CompanyInputValues, CompanyFilter]"
+            "Company: AttioObjectType[CompanyAttributeSlug, CompanyRecordValues, CompanyInputValues, CompanyFilter]"
             in generated
         )
         assert (
-            "def skill(obj: AttioObjectResource[Any, Any, Any, Any] | None = None) -> SkillConfig[AttioToolNames]:"
+            "def skill(obj: AttioObjectType[Any, Any, Any, Any] | None = None) -> SkillConfig[AttioToolNames]:"
             in generated
         )
         assert "class Snowflake:" in generated
@@ -353,7 +352,7 @@ def test_generate_writes_integration_helpers(runner: CliRunner) -> None:
         assert "SnowflakeToolNames = Literal['snowflakeExecuteQuery']" in generated
         assert "AllToolNames = Literal['attio_upsert_record', 'snowflakeExecuteQuery']" in generated
         assert (
-            "class AttioObjectResource(BaseModel, Generic[_TSlug, _TRecordValues, _TInputValues, _TFilterValues]):"
+            "class AttioObjectType(BaseModel, Generic[_TSlug, _TRecordValues, _TInputValues, _TFilterValues]):"
             in generated
         )
         assert "model_config = ConfigDict(frozen=True)" in generated

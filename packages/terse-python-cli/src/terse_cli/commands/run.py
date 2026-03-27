@@ -7,7 +7,7 @@ from pathlib import Path
 
 import click
 from pydantic import ValidationError
-from terse_sdk import TerseAgent, deserialize_input_event, execute_registered_job
+from terse_sdk import AnyInputEvent, TerseAgent, deserialize_input_event, execute_registered_job
 
 from .._loader import JobSelectionError, NoJobsFoundError, ProjectImportError, load_job_registry, resolve_job
 from .._project import ProjectRootError, assert_project_root
@@ -49,7 +49,7 @@ def run_command(job_name: str | None, event_json: str | None, event_file: Path |
     console.print("")
 
 
-def _load_input_event(event_json: str | None, event_file: Path | None):
+def _load_input_event(event_json: str | None, event_file: Path | None) -> AnyInputEvent:
     raw_event_json = _resolve_event_json(event_json, event_file)
     try:
         payload = json.loads(raw_event_json)

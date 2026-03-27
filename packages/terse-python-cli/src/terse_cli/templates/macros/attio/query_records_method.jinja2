@@ -1,0 +1,48 @@
+{# query_records: typed when schema attributes are known, plain otherwise. #}
+{% macro attio_query_records_method(tool, attio) %}
+{% if attio.has_attrs %}
+
+    def query_records(
+        self,
+        obj: AttioObjectType[Any, _TRecordValues, Any, _TFilterValues],
+        filter: _TFilterValues | None = None,
+        limit: int | None = None,
+    ) -> AttioTypedQueryResult[_TRecordValues]:
+        raw = AttioQueryRecordsToolOutput.model_validate(
+            self._agent.execute_tool(
+                {{ tool.name_repr }},
+                _compact_dict(
+                    integrationId={{ attio.instance_id_repr }},
+                    objectSlug=obj.api_slug,
+                    filter=_json_string(filter),
+                    limit=limit,
+                ),
+            )
+        )
+        return AttioTypedQueryResult(
+            success=raw.success, count=raw.count,
+            records=[cast(AttioTypedRecord[_TRecordValues],
+            _flatten_attio_record(obj.api_slug, r))
+            for r in raw.records],
+        )
+{% else %}
+
+    def query_records(
+        self,
+        obj: AttioObjectType,
+        filter: object | None = None,
+        limit: int | None = None,
+    ) -> {{ tool.output_model }}:
+        return AttioQueryRecordsToolOutput.model_validate(
+            self._agent.execute_tool(
+                {{ tool.name_repr }},
+                _compact_dict(
+                    integrationId={{ attio.instance_id_repr }},
+                    objectSlug=obj.api_slug,
+                    filter=_json_string(filter),
+                    limit=limit,
+                ),
+            )
+        )
+{% endif %}
+{% endmacro %}

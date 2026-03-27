@@ -14,6 +14,12 @@ from httpx_sse import connect_sse
 from pydantic import ValidationError
 from terse_sdk import SdkAgentStreamEvent, TerseSettings
 
+from ._debug import (
+    _debug_log_request,
+    _debug_log_response_metadata,
+    _read_error_detail,
+)
+
 LOGGER = logging.getLogger("terse.cli.session")
 
 
@@ -50,7 +56,7 @@ def open_session_stream(
             "Authorization": f"Bearer {api_key}",
             "Accept": "text/event-stream",
         }
-        _debug_log_request("GET", url, headers)
+        _debug_log_request(LOGGER, "GET", url, headers)
         event_source = exit_stack.enter_context(
             connect_sse(
                 client,
@@ -76,7 +82,7 @@ def open_session_stream(
 
 
 def _assert_session_response(response: httpx.Response) -> None:
-    _debug_log_response_metadata(response, "/sdk/session-events")
+    _debug_log_response_metadata(LOGGER, response, "/sdk/session-events")
     if response.is_error:
         detail = _read_error_detail(response)
         if detail:
@@ -123,56 +129,7 @@ def _consume_session_events(iterator: Iterator[object], on_event: Callable[[obje
             except ValidationError:
                 continue
             on_event(event)
-    except Exception:
-        return
+    except Exception as exc:
+        LOGGER.debug("Session event consumer stopped unexpectedly: %s", exc)
 
 
-def _read_error_detail(response: httpx.Response) -> str:
-    _buffer_response_content(response)
-    try:
-        payload = response.json()
-    except ValueError:
-        return response.text.strip()
-
-    if isinstance(payload, dict):
-        detail = payload.get("error")
-        if detail is not None:
-            return str(detail)
-    return response.text.strip()
-
-
-def _buffer_response_content(response: httpx.Response) -> None:
-    response.read()
-
-
-def _debug_log_request(method: str, url: str, headers: dict[str, str]) -> None:
-    if not LOGGER.isEnabledFor(logging.DEBUG):
-        return
-
-    LOGGER.debug("HTTP %s %s", method, url)
-    LOGGER.debug("Request headers:\n%s", _format_debug_value(_redact_headers(headers)))
-
-
-def _debug_log_response_metadata(response: httpx.Response, path: str) -> None:
-    if not LOGGER.isEnabledFor(logging.DEBUG):
-        return
-
-    LOGGER.debug("Response %s %s for %s", response.status_code, response.reason_phrase, path)
-    LOGGER.debug("Response headers:\n%s", _format_debug_value(dict(response.headers)))
-
-
-def _redact_headers(headers: dict[str, str]) -> dict[str, str]:
-    redacted: dict[str, str] = {}
-    for key, value in headers.items():
-        if key.lower() == "authorization":
-            redacted[key] = "Bearer ***"
-            continue
-        redacted[key] = value
-    return redacted
-
-
-def _format_debug_value(value: object) -> str:
-    try:
-        return json.dumps(value, indent=2, sort_keys=True, default=str)
-    except TypeError:
-        return str(value)

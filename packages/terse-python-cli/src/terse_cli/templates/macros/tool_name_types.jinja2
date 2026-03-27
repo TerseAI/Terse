@@ -1,0 +1,19 @@
+{# Literal type aliases for each integration's tool names, plus AllToolNames.
+   Emits nothing when no tools are configured. #}
+{% macro tool_name_types(attio_tool_names_literal, snowflake_tool_names_literal, all_tool_names_literal) %}
+{% if attio_tool_names_literal or snowflake_tool_names_literal or all_tool_names_literal %}
+
+
+# === Tool name types ===
+
+{% if attio_tool_names_literal %}
+AttioToolNames = Literal[{{ attio_tool_names_literal }}]
+{% endif %}
+{% if snowflake_tool_names_literal %}
+SnowflakeToolNames = Literal[{{ snowflake_tool_names_literal }}]
+{% endif %}
+{% if all_tool_names_literal %}
+AllToolNames = Literal[{{ all_tool_names_literal }}]
+{% endif %}
+{% endif %}
+{% endmacro %}

@@ -44,16 +44,16 @@ def log_stream_event(event: object) -> None:
     if isinstance(event, SdkAgentStreamEventText):
         return
 
-    if isinstance(event, SdkAgentStreamEventToolCallParams) and event.toolCallParams.strip():
-        console.print(f"  [cyan][tool:params][/cyan] {event.toolCallParams}")
+    if isinstance(event, SdkAgentStreamEventToolCallParams) and event.tool_call_params.strip():
+        console.print(f"  [cyan][tool:params][/cyan] {event.tool_call_params}")
         return
 
     if isinstance(event, SdkAgentStreamEventToolCallStarted):
-        console.print(f"  [blue][tool:start][/blue] {event.toolCallStarted}")
+        console.print(f"  [blue][tool:start][/blue] {event.tool_call_started}")
         return
 
     if isinstance(event, SdkAgentStreamEventToolCallCompleted):
-        payload = _parse_tool_completion(event.toolCallCompleted)
+        payload = _parse_tool_completion(event.tool_call_completed)
         tool_name = payload.get("tool", "unknown_tool")
         status = payload.get("status", "unknown")
         color = "green" if status == "completed" else "red"
@@ -70,7 +70,7 @@ def log_stream_event(event: object) -> None:
     if isinstance(event, SdkAgentStreamEventFinalOutput):
         console.print("")
         console.print("[green][final_output][/green]")
-        console.print(event.finalOutput)
+        console.print(event.final_output)
         console.print("")
 
 

@@ -11,6 +11,16 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Any, TypeVar, cast
 
+from ._http_utils import (
+    _buffer_response_content,
+    _debug_log_request,
+    _debug_log_response_metadata,
+    _debug_log_response_payload,
+    _format_debug_value,
+    _read_response_detail,
+    _redact_headers,
+)
+
 import httpx
 from httpx_sse import connect_sse
 from pydantic import ValidationError
@@ -49,7 +59,9 @@ from .types.stream_events import (
     SdkAgentStreamEventDone,
     SdkAgentStreamEventError,
     SdkAgentStreamEventFinalOutput,
+    SdkAgentStreamEventRunStarted,
     SdkAgentStreamEventText,
+    SdkAgentStreamEventToolApprovalRequested,
     SdkAgentStreamEventToolCallCompleted,
     SdkAgentStreamEventToolCallParams,
     SdkAgentStreamEventToolCallStarted,
@@ -65,6 +77,8 @@ AgentStreamEvent = (
     | SdkAgentStreamEventToolCallStarted
     | SdkAgentStreamEventToolCallCompleted
     | SdkAgentStreamEventAction
+    | SdkAgentStreamEventRunStarted
+    | SdkAgentStreamEventToolApprovalRequested
 )
 
 HandlerT = TypeVar("HandlerT", bound=Callable[..., object])
@@ -179,14 +193,10 @@ class TerseAgent:
         if self._tools is None:
             self.ensure_generated_tools()
         if self._tools is None:
-            raise AttributeError(
+            raise TerseRuntimeError(
                 "No generated tools are attached. Run `terse generate` and import `terse_generated` in your project."
             )
         return self._tools
-
-    @tools.setter
-    def tools(self, value: object) -> None:
-        self._tools = value
 
     def attach_tools(self, tools: object) -> object:
         """Attach generated tool wrappers to the agent and return them."""
@@ -220,7 +230,7 @@ class TerseAgent:
         )
         request_payload = request_body.model_dump(exclude_none=True)
         headers = _build_auth_headers(api_key, accept="text/event-stream", session_id=self.session_id)
-        _debug_log_request("POST", f"{self.backend_url}/sdk/agent-run", headers, request_payload)
+        _debug_log_request(LOGGER, "POST", f"{self.backend_url}/sdk/agent-run", headers, request_payload)
         failed_tool_calls: list[str] = []
 
         try:
@@ -248,7 +258,7 @@ class TerseAgent:
                     if isinstance(stream_event, SdkAgentStreamEventError):
                         raise TerseApiError(stream_event.message)
                     if isinstance(stream_event, SdkAgentStreamEventToolCallCompleted):
-                        parsed = _parse_tool_call_completed(stream_event.toolCallCompleted)
+                        parsed = _parse_tool_call_completed(stream_event.tool_call_completed)
                         if parsed.get("status") and parsed["status"] != "completed":
                             failed_tool_calls.append(f"{parsed.get('tool', 'unknown_tool')}: {parsed['status']}")
                     yield cast(AgentStreamEvent, stream_event)
@@ -258,12 +268,12 @@ class TerseAgent:
             raise TerseApiError(f"Received invalid agent stream payload.\n  {exc}") from exc
 
     def run_and_wait(self, prompt: str, event: InputEvent | None = None) -> str | None:
-        """Run the agent to completion and return the final output, if any."""
+        """Run the agent to completion and return the final output, or ``None`` if no final_output event was received."""
 
         final_output: str | None = None
         for chunk in self.run(prompt, event):
             if isinstance(chunk, SdkAgentStreamEventFinalOutput):
-                final_output = chunk.finalOutput
+                final_output = chunk.final_output
         return final_output
 
     def execute_tool(self, tool_name: str, params: Mapping[str, object] | None = None) -> object:
@@ -272,7 +282,7 @@ class TerseAgent:
         api_key = _require_api_key()
         headers = _build_auth_headers(api_key, session_id=self.session_id)
         request_payload = {"toolName": tool_name, "params": dict(params or {})}
-        _debug_log_request("POST", f"{self.backend_url}/sdk/tool-execute", headers, request_payload)
+        _debug_log_request(LOGGER, "POST", f"{self.backend_url}/sdk/tool-execute", headers, request_payload)
 
         try:
             with httpx.Client(timeout=20.0) as client:
@@ -285,7 +295,7 @@ class TerseAgent:
             raise TerseApiError(f"Could not connect to {self.backend_url} — is the backend running?\n  {exc}") from exc
 
         payload = _read_json_response(response, "/sdk/tool-execute")
-        _debug_log_response_payload("/sdk/tool-execute", payload)
+        _debug_log_response_payload(LOGGER, "/sdk/tool-execute", payload)
         payload_dict = _as_object_dict(payload)
         if response.is_error:
             detail = payload_dict.get("error") if payload_dict is not None else None
@@ -417,7 +427,7 @@ def _build_auth_headers(
 
 
 def _assert_sse_response(response: httpx.Response, path: str) -> None:
-    _debug_log_response_metadata(response, path)
+    _debug_log_response_metadata(LOGGER, response, path)
     if response.is_error:
         detail = _read_response_detail(response)
         if detail:
@@ -431,7 +441,7 @@ def _assert_sse_response(response: httpx.Response, path: str) -> None:
         return
 
     payload = _read_json_response(response, path)
-    _debug_log_response_payload(path, payload)
+    _debug_log_response_payload(LOGGER, path, payload)
     if isinstance(payload, dict):
         response_body = SdkAgentRunResponseBody.model_validate(payload)
         if response_body.error:
@@ -447,66 +457,6 @@ def _read_json_response(response: httpx.Response, path: str) -> object:
         return response.json()
     except ValueError as exc:
         raise TerseApiError(f"Received invalid JSON from {path}.") from exc
-
-
-def _read_response_detail(response: httpx.Response) -> str:
-    _buffer_response_content(response)
-    try:
-        payload = response.json()
-    except ValueError:
-        return response.text.strip()
-
-    if isinstance(payload, dict):
-        detail = payload.get("error")
-        if detail is not None:
-            return str(detail)
-    return response.text.strip()
-
-
-def _buffer_response_content(response: httpx.Response) -> None:
-    response.read()
-
-
-def _debug_log_request(method: str, url: str, headers: Mapping[str, str], payload: object | None) -> None:
-    if not LOGGER.isEnabledFor(logging.DEBUG):
-        return
-
-    LOGGER.debug("HTTP %s %s", method.upper(), url)
-    LOGGER.debug("Request headers:\n%s", _format_debug_value(_redact_headers(headers)))
-    if payload is not None:
-        LOGGER.debug("Request payload:\n%s", _format_debug_value(payload))
-
-
-def _debug_log_response_metadata(response: httpx.Response, path: str) -> None:
-    if not LOGGER.isEnabledFor(logging.DEBUG):
-        return
-
-    LOGGER.debug("Response %s %s for %s", response.status_code, response.reason_phrase, path)
-    LOGGER.debug("Response headers:\n%s", _format_debug_value(dict(response.headers)))
-
-
-def _debug_log_response_payload(path: str, payload: object) -> None:
-    if not LOGGER.isEnabledFor(logging.DEBUG):
-        return
-
-    LOGGER.debug("Response payload from %s:\n%s", path, _format_debug_value(payload))
-
-
-def _redact_headers(headers: Mapping[str, str]) -> dict[str, str]:
-    redacted: dict[str, str] = {}
-    for key, value in headers.items():
-        if key.lower() == "authorization":
-            redacted[key] = "Bearer ***"
-            continue
-        redacted[key] = value
-    return redacted
-
-
-def _format_debug_value(value: object) -> str:
-    try:
-        return json.dumps(value, indent=2, sort_keys=True, default=str)
-    except TypeError:
-        return str(value)
 
 
 def _as_object_dict(value: object) -> dict[str, object] | None:

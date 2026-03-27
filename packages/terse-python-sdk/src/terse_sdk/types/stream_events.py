@@ -16,28 +16,38 @@ class SdkAgentStreamEventText(_CamelModel):
 
 
 class SdkAgentStreamEventFinalOutput(_CamelModel):
-    finalOutput: str
+    final_output: str
     type: Literal["final_output"]
 
 
 class SdkAgentStreamEventToolCallParams(_CamelModel):
-    toolCallParams: str
+    tool_call_params: str
     type: Literal["tool_call_params"]
 
 
 class SdkAgentStreamEventToolCallStarted(_CamelModel):
-    toolCallStarted: str
+    tool_call_started: str
     type: Literal["tool_call_started"]
 
 
 class SdkAgentStreamEventToolCallCompleted(_CamelModel):
-    toolCallCompleted: str
+    tool_call_completed: str
     type: Literal["tool_call_completed"]
 
 
 class SdkAgentStreamEventAction(_CamelModel):
     action: RunHistoryAction
     type: Literal["action"]
+
+
+class SdkAgentStreamEventRunStarted(_CamelModel):
+    run_started: str
+    type: Literal["run_started"]
+
+
+class SdkAgentStreamEventToolApprovalRequested(_CamelModel):
+    tool_approval_requested: str
+    type: Literal["tool_approval_requested"]
 
 
 class SdkAgentStreamEventError(_CamelModel):
@@ -57,6 +67,8 @@ class SdkAgentStreamEvent(
         | SdkAgentStreamEventToolCallStarted
         | SdkAgentStreamEventToolCallCompleted
         | SdkAgentStreamEventAction
+        | SdkAgentStreamEventRunStarted
+        | SdkAgentStreamEventToolApprovalRequested
         | SdkAgentStreamEventError
         | SdkAgentStreamEventDone
     ]
@@ -68,6 +80,8 @@ class SdkAgentStreamEvent(
         | SdkAgentStreamEventToolCallStarted
         | SdkAgentStreamEventToolCallCompleted
         | SdkAgentStreamEventAction
+        | SdkAgentStreamEventRunStarted
+        | SdkAgentStreamEventToolApprovalRequested
         | SdkAgentStreamEventError
         | SdkAgentStreamEventDone,
         Field(discriminator="type"),
@@ -80,7 +94,9 @@ __all__ = [
     "SdkAgentStreamEventDone",
     "SdkAgentStreamEventError",
     "SdkAgentStreamEventFinalOutput",
+    "SdkAgentStreamEventRunStarted",
     "SdkAgentStreamEventText",
+    "SdkAgentStreamEventToolApprovalRequested",
     "SdkAgentStreamEventToolCallCompleted",
     "SdkAgentStreamEventToolCallParams",
     "SdkAgentStreamEventToolCallStarted",

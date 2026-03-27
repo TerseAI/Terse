@@ -13,4 +13,4 @@ class TerseModel(BaseModel):
 
 
 class _CamelModel(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(alias_generator=to_camel, extra="forbid", populate_by_name=True)

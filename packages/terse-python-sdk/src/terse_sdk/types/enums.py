@@ -2,34 +2,38 @@
 
 from __future__ import annotations
 
+from enum import StrEnum
 from typing import Literal, TypeAlias
 
 ApprovalActionType: TypeAlias = Literal["open_run_history", "approve_action", "reject_action"]
 ApprovalRequestStatus: TypeAlias = Literal["pending", "in_progress", "completed"]
 ChangeEventType: TypeAlias = Literal["CREATED", "UPDATED", "ACTION_EXECUTED"]
-ConfigType: TypeAlias = Literal[
-    "gmail",
-    "gmail_output",
-    "gmail_draft_output",
-    "figma",
-    "slack",
-    "slack_output",
-    "notion",
-    "linear_input",
-    "linear_output",
-    "github",
-    "jira",
-    "confluence",
-    "POSTHOG",
-    "DATADOG",
-    "time_trigger",
-    "launchdarkly",
-    "terse",
-    "workos_input",
-    "workos_output",
-    "attio_output",
-    "snowflake_output",
-]
+
+
+class ConfigType(StrEnum):
+    GMAIL = "gmail"
+    GMAIL_OUTPUT = "gmail_output"
+    GMAIL_DRAFT_OUTPUT = "gmail_draft_output"
+    FIGMA = "figma"
+    SLACK = "slack"
+    SLACK_OUTPUT = "slack_output"
+    NOTION = "notion"
+    LINEAR_INPUT = "linear_input"
+    LINEAR_OUTPUT = "linear_output"
+    GITHUB = "github"
+    JIRA = "jira"
+    CONFLUENCE = "confluence"
+    POSTHOG = "posthog"
+    DATADOG = "datadog"
+    TIME_TRIGGER = "time_trigger"
+    LAUNCHDARKLY = "launchdarkly"
+    TERSE = "terse"
+    WORKOS_INPUT = "workos_input"
+    WORKOS_OUTPUT = "workos_output"
+    ATTIO_OUTPUT = "attio_output"
+    SNOWFLAKE_OUTPUT = "snowflake_output"
+
+
 EntityType: TypeAlias = Literal["ticket", "comment", "user", "action_event", "run_history_action"]
 FigmaEventType: TypeAlias = Literal["file_comment"]
 GitHubEventType: TypeAlias = Literal[
@@ -40,23 +44,22 @@ GitHubEventType: TypeAlias = Literal[
     "pull_request.synchronize",
 ]
 GmailEventType: TypeAlias = Literal["email.received"]
-IntegrationType: TypeAlias = Literal[
-    "github",
-    "gmail",
-    "linear",
-    "atlassian",
-    "slack",
-    "notion",
-    "figma",
-    "terse",
-    "posthog",
-    "datadog",
-    "cron_job",
-    "launchdarkly",
-    "workos",
-    "attio",
-    "snowflake",
-]
+class IntegrationType(StrEnum):
+    GITHUB = "github"
+    GMAIL = "gmail"
+    LINEAR = "linear"
+    ATLASSIAN = "atlassian"
+    SLACK = "slack"
+    NOTION = "notion"
+    FIGMA = "figma"
+    TERSE = "terse"
+    POSTHOG = "posthog"
+    DATADOG = "datadog"
+    CRON_JOB = "cron_job"
+    LAUNCHDARKLY = "launchdarkly"
+    WORKOS = "workos"
+    ATTIO = "attio"
+    SNOWFLAKE = "snowflake"
 JiraEventType: TypeAlias = Literal["issue.created", "issue.updated"]
 LinearEventType: TypeAlias = Literal["issue.created", "issue.updated", "comment.created"]
 NotificationDestinationType: TypeAlias = Literal["email", "slack"]

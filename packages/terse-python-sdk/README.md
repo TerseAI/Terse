@@ -23,8 +23,7 @@ The SDK provides:
 ## Quick Start
 
 ```python
-from terse_sdk import CronJobInputEvent, Terse
-from terse_sdk.types.stream_events import SdkAgentStreamEventFinalOutput
+from terse_sdk import CronJobInputEvent, SdkAgentStreamEventFinalOutput, Terse
 from terse_generated import Schedule, TerseAgent
 
 app = Terse()
@@ -41,7 +40,7 @@ def run_job(event: CronJobInputEvent, agent: TerseAgent) -> None:
     )
     for stream_event in agent.run(prompt, event):
         if isinstance(stream_event, SdkAgentStreamEventFinalOutput):
-            print(stream_event.finalOutput)
+            print(stream_event.final_output)
 ```
 
 Trigger and skill configs come from the generated helpers in `terse_generated.py`. Run `terse init` and `terse generate` to scaffold a project.

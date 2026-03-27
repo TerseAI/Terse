@@ -1,0 +1,108 @@
+{% from "macros/attio/list_objects_method.jinja2" import attio_list_objects_method %}
+{% from "macros/attio/query_records_method.jinja2" import attio_query_records_method %}
+{% from "macros/attio/upsert_record_method.jinja2" import attio_upsert_record_method %}
+
+{# _AttioTools, _SnowflakeTools, GeneratedTools, TerseAgent, create_tools,
+   attach_tools, and __all__. Always emitted. #}
+{% macro deterministic_tools_section(attio_tools, attio, snowflake_tools, snowflake, has_attio_tools, has_snowflake_tools, exported_names_repr) %}
+
+
+# === Deterministic tools ===
+
+{% if has_attio_tools %}
+
+def _json_string(value: object | None) -> str | None:
+    if value is None:
+        return None
+    if isinstance(value, str):
+        return value
+    return json.dumps(value, separators=(',', ':'), sort_keys=True)
+
+
+class _AttioTools:
+    def __init__(self, agent: _SdkTerseAgent) -> None:
+        self._agent = agent
+{% for tool in attio_tools %}
+{% if tool.name == "attio_list_objects" %}{{ attio_list_objects_method(tool, attio) }}{% elif tool.name == "attio_query_records" %}{{ attio_query_records_method(tool, attio) }}{% elif tool.name == "attio_upsert_record" %}{{ attio_upsert_record_method(tool, attio) }}{% endif %}
+{% endfor %}
+
+
+{% endif %}
+{% if has_snowflake_tools %}
+class _SnowflakeTools:
+    def __init__(self, agent: _SdkTerseAgent) -> None:
+        self._agent = agent
+{% for tool in snowflake_tools %}
+
+    def {{ tool.method_name }}(self, query: str) -> {{ tool.output_model }}:
+        return {{ tool.output_model }}.model_validate(
+            self._agent.execute_tool(
+                {{ tool.name_repr }},
+                {'integrationId': {{ snowflake.instance_id_repr }}, 'query': query},
+            )
+        )
+{% endfor %}
+
+
+{% endif %}
+{% if has_attio_tools or has_snowflake_tools %}
+class GeneratedTools:
+{% if has_attio_tools %}
+    attio: _AttioTools
+{% endif %}
+{% if has_snowflake_tools %}
+    snowflake: _SnowflakeTools
+{% endif %}
+
+    def __init__(
+        self,
+{% if has_attio_tools %}
+        attio: _AttioTools | None = None,
+{% endif %}
+{% if has_snowflake_tools %}
+        snowflake: _SnowflakeTools | None = None,
+{% endif %}
+    ) -> None:
+{% if has_attio_tools %}
+        if attio is not None:
+            self.attio = attio
+{% endif %}
+{% if has_snowflake_tools %}
+        if snowflake is not None:
+            self.snowflake = snowflake
+{% endif %}
+{% else %}
+class GeneratedTools:
+    pass
+{% endif %}
+
+
+class TerseAgent(_SdkTerseAgent):
+    tools: GeneratedTools
+
+
+def create_tools(agent: _SdkTerseAgent) -> GeneratedTools:
+    allowed = {skill.integration_type for skill in agent.skills}
+{% if has_attio_tools or has_snowflake_tools %}
+    return GeneratedTools(
+{% if has_attio_tools %}
+        attio=_AttioTools(agent) if 'attio' in allowed else None,
+{% endif %}
+{% if has_snowflake_tools %}
+        snowflake=_SnowflakeTools(agent) if 'snowflake' in allowed else None,
+{% endif %}
+    )
+{% else %}
+    _ = allowed
+    return GeneratedTools()
+{% endif %}
+
+
+def attach_tools(agent: _SdkTerseAgent) -> GeneratedTools:
+    tools = create_tools(agent)
+    agent.attach_tools(tools)
+    return tools
+
+
+__all__ = {{ exported_names_repr }}
+{% endmacro %}

@@ -2,14 +2,29 @@
 
 from __future__ import annotations
 
-import json
 import logging
+from enum import StrEnum
 from typing import Any, cast
 
 import httpx
 from terse_sdk import TerseSettings
 
+from ._debug import (
+    _debug_log_request,
+    _debug_log_response_metadata,
+    _debug_log_response_payload,
+    _read_error_detail,
+)
+
 LOGGER = logging.getLogger("terse.cli.http")
+
+
+class HttpMethod(StrEnum):
+    GET = "GET"
+    POST = "POST"
+    PUT = "PUT"
+    PATCH = "PATCH"
+    DELETE = "DELETE"
 
 
 class ApiRequestError(RuntimeError):
@@ -36,7 +51,7 @@ def request_json(
     path: str,
     api_key: str,
     *,
-    method: str = "GET",
+    method: HttpMethod = HttpMethod.GET,
     params: dict[str, object] | None = None,
 ) -> object:
     """Send an authenticated JSON request to the backend."""
@@ -46,25 +61,24 @@ def request_json(
         "Authorization": f"Bearer {api_key}",
         "Accept": "application/json",
     }
-    request_method = method.upper()
-    _debug_log_request(request_method, url, headers, params)
+    _debug_log_request(LOGGER, method, url, headers, params)
 
     try:
         with httpx.Client(timeout=20.0) as client:
-            if request_method == "GET":
+            if method == HttpMethod.GET:
                 query_params = _build_query_params(params)
                 response = client.request(
-                    request_method,
+                    method,
                     url,
                     headers=headers,
                     params=query_params,
                 )
             else:
-                response = client.request(request_method, url, headers=headers, json=params)
+                response = client.request(method, url, headers=headers, json=params)
     except httpx.RequestError as exc:
         raise ApiRequestError(f"Could not connect to {backend_url()} — is the backend running?\n  {exc}") from exc
 
-    _debug_log_response_metadata(response, path)
+    _debug_log_response_metadata(LOGGER, response, path)
 
     if response.status_code in {401, 403}:
         detail = _read_error_detail(response)
@@ -96,7 +110,7 @@ def request_json(
     except ValueError as exc:
         raise ApiRequestError(f"Received invalid JSON from {path}.") from exc
 
-    _debug_log_response_payload(path, payload)
+    _debug_log_response_payload(LOGGER, path, payload)
     return payload
 
 
@@ -106,19 +120,6 @@ def verify_api_key(api_key: str) -> str:
     payload = request_json("/sdk/me", api_key)
     data = cast(dict[str, Any], payload) if isinstance(payload, dict) else {}
     return str(data.get("firstName") or data.get("displayName") or data.get("email") or "there")
-
-
-def _read_error_detail(response: httpx.Response) -> str:
-    try:
-        parsed = response.json()
-    except ValueError:
-        return response.text.strip()
-
-    if isinstance(parsed, dict):
-        detail = parsed.get("error")
-        if detail is not None:
-            return str(detail)
-    return response.text.strip()
 
 
 def _build_query_params(
@@ -137,45 +138,3 @@ def _build_query_params(
             query_params[key] = str(value)
 
     return query_params or None
-
-
-def _debug_log_request(method: str, url: str, headers: dict[str, str], payload: object | None) -> None:
-    if not LOGGER.isEnabledFor(logging.DEBUG):
-        return
-
-    LOGGER.debug("HTTP %s %s", method, url)
-    LOGGER.debug("Request headers:\n%s", _format_debug_value(_redact_headers(headers)))
-    if payload is not None:
-        LOGGER.debug("Request payload:\n%s", _format_debug_value(payload))
-
-
-def _debug_log_response_metadata(response: httpx.Response, path: str) -> None:
-    if not LOGGER.isEnabledFor(logging.DEBUG):
-        return
-
-    LOGGER.debug("Response %s %s for %s", response.status_code, response.reason_phrase, path)
-    LOGGER.debug("Response headers:\n%s", _format_debug_value(dict(response.headers)))
-
-
-def _debug_log_response_payload(path: str, payload: object) -> None:
-    if not LOGGER.isEnabledFor(logging.DEBUG):
-        return
-
-    LOGGER.debug("Response payload from %s:\n%s", path, _format_debug_value(payload))
-
-
-def _redact_headers(headers: dict[str, str]) -> dict[str, str]:
-    redacted: dict[str, str] = {}
-    for key, value in headers.items():
-        if key.lower() == "authorization":
-            redacted[key] = "Bearer ***"
-            continue
-        redacted[key] = value
-    return redacted
-
-
-def _format_debug_value(value: object) -> str:
-    try:
-        return json.dumps(value, indent=2, sort_keys=True, default=str)
-    except TypeError:
-        return str(value)

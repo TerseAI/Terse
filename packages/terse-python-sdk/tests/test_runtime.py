@@ -23,6 +23,7 @@ from terse_sdk import (
     Terse,
     TerseAgent,
     TerseApiError,
+    TerseRuntimeError,
     clear_job_registry,
     deserialize_input_event,
     execute_registered_job,
@@ -233,7 +234,7 @@ def test_agent_tools_lazy_attach_from_generated_module() -> None:
 def test_agent_tools_raise_clear_error_when_generated_module_is_missing() -> None:
     with (
         patch("terse_sdk.runtime._resolve_generated_tools_factory", return_value=None),
-        pytest.raises(AttributeError),
+        pytest.raises(TerseRuntimeError),
     ):
         _ = TerseAgent().tools
 
@@ -245,9 +246,9 @@ def test_agent_run_streams_events_and_serializes_event_payload() -> None:
             SdkAgentStreamEventText(type="text", text="hello").model_dump_json(),
             SdkAgentStreamEventToolCallCompleted(
                 type="tool_call_completed",
-                toolCallCompleted=json.dumps({"tool": "demo_tool", "status": "completed"}),
+                tool_call_completed=json.dumps({"tool": "demo_tool", "status": "completed"}),
             ).model_dump_json(),
-            SdkAgentStreamEventFinalOutput(type="final_output", finalOutput="done").model_dump_json(),
+            SdkAgentStreamEventFinalOutput(type="final_output", final_output="done").model_dump_json(),
             SdkAgentStreamEventDone(type="done").model_dump_json(),
         ]
     )
@@ -280,7 +281,7 @@ def test_agent_run_streams_events_and_serializes_event_payload() -> None:
 
     assert len(events) == 3
     assert events[-1].type == EventType.FINAL_OUTPUT
-    assert events[-1].finalOutput == "done"
+    assert events[-1].final_output == "done"
     assert captured["method"] == "POST"
     assert captured["headers"]["Authorization"] == "Bearer terse_test_key"
     assert captured["json"]["event"]["integrationType"] == "cron_job"
@@ -292,7 +293,7 @@ def test_agent_run_raises_on_failed_tool_call() -> None:
         [
             SdkAgentStreamEventToolCallCompleted(
                 type="tool_call_completed",
-                toolCallCompleted=json.dumps({"tool": "demo_tool", "status": "failed"}),
+                tool_call_completed=json.dumps({"tool": "demo_tool", "status": "failed"}),
             ).model_dump_json(),
             SdkAgentStreamEventDone(type="done").model_dump_json(),
         ]
@@ -313,7 +314,7 @@ def test_agent_run_and_wait_returns_final_output() -> None:
         return_value=iter(
             [
                 SdkAgentStreamEventText(type="text", text="thinking"),
-                SdkAgentStreamEventFinalOutput(type="final_output", finalOutput="done"),
+                SdkAgentStreamEventFinalOutput(type="final_output", final_output="done"),
             ]
         ),
     ):

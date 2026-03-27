@@ -13,7 +13,7 @@ from terse_sdk import (
     TriggerConfig,
 )
 
-from .._http import ApiRequestError, AuthenticationError, request_json
+from .._http import ApiRequestError, AuthenticationError, HttpMethod, request_json
 from .._loader import NoJobsFoundError, ProjectImportError, load_job_registry
 from .._package import PackagingError, build_deploy_archive
 from .._project import ProjectRootError, assert_project_root, read_api_key
@@ -39,7 +39,7 @@ def deploy_command() -> None:
             payload = request_json(
                 "/sdk/deploy",
                 api_key,
-                method="POST",
+                method=HttpMethod.POST,
                 params=SdkDeployRequestBody(
                     jobs=[_serialize_job(job) for job in jobs],
                     sourceZipBase64=archive.source_zip_base64,
