@@ -1,12 +1,15 @@
 from terse_sdk import CronJobInputEvent, SdkAgentStreamEventFinalOutput, Terse
-from terse_generated import Schedule, TerseAgent
+from terse_generated import Attio, Schedule, Snowflake, TerseAgent
 
 app = Terse()
 
 @app.job(
     name="{{ PROJECT_NAME }}",
     triggers=[Schedule.cron("0 9 * * 1")],
-    skills=[],
+    skills=[
+        Attio.skill(),
+        Snowflake.skill(),
+    ],
 )
 def run_job(event: CronJobInputEvent, agent: TerseAgent) -> None:
     prompt = (

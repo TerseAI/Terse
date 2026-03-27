@@ -19,6 +19,7 @@ from terse_cli._generate import (
     write_generated_module,
 )
 from terse_cli._http import ApiRequestError, AuthenticationError
+from terse_cli._loader import load_job_registry
 from terse_cli._project import DependencyInstallResult
 from terse_cli.cli import cli
 
@@ -76,9 +77,11 @@ def test_init_new_project_scaffolds_files(runner: CliRunner) -> None:
         main_source = (project_dir / "src" / "main.py").read_text(encoding="utf-8")
         readme_source = (project_dir / "README.md").read_text(encoding="utf-8")
         assert "from terse_sdk import CronJobInputEvent, SdkAgentStreamEventFinalOutput, Terse" in main_source
-        assert "from terse_generated import Schedule, TerseAgent" in main_source
+        assert "from terse_generated import Attio, Schedule, Snowflake, TerseAgent" in main_source
         assert "app = Terse()" in main_source
         assert "@app.job(" in main_source
+        assert "Attio.skill()," in main_source
+        assert "Snowflake.skill()," in main_source
         assert "for stream_event in agent.run(prompt, event):" in main_source
         assert "if isinstance(stream_event, SdkAgentStreamEventFinalOutput):" in main_source
         assert "print(stream_event.final_output)" in main_source
@@ -86,7 +89,8 @@ def test_init_new_project_scaffolds_files(runner: CliRunner) -> None:
         assert "def main()" not in main_source
         assert '__name__ == "__main__"' not in main_source
         assert "JobDefinition" not in main_source
-        assert "If you connect Attio or Snowflake in Terse, rerun `terse generate`" in readme_source
+        assert "The starter scaffold registers `Attio.skill()` and `Snowflake.skill()` by default." in readme_source
+        assert "After you connect Attio or Snowflake in Terse, rerun `terse generate`" in readme_source
         assert 'agent.tools.snowflake.execute_query(query="select 1")' in readme_source
         assert "Hello, Ada! API key verified." in result.output
         assert "Run `terse test` to execute it locally" in result.output
@@ -165,9 +169,28 @@ def test_init_skip_api_key_writes_empty_env_and_fallback_helpers(
         project_dir = Path("demo-project")
         assert (project_dir / ".env").read_text(encoding="utf-8") == "TERSE_API_KEY=\n"
         generated = (project_dir / "src" / "terse_generated.py").read_text(encoding="utf-8")
+        assert "class Attio:" in generated
+        assert "integration_id='attio_placeholder'" in generated
+        assert "class Snowflake:" in generated
+        assert "integration_id='snowflake_placeholder'" in generated
         assert "class Schedule:" in generated
         assert "class Terse:" not in generated
         assert "Warning: Could not fetch integration helpers during init." in result.output
+
+
+def test_init_fallback_project_imports_and_registers_default_skills(runner: CliRunner) -> None:
+    with runner.isolated_filesystem():
+        with patch("terse_cli.commands.init.run_uv_sync", return_value=_successful_install()):
+            result = runner.invoke(cli, ["init", "demo-project"], input="\n")
+
+        assert result.exit_code == 0, result.output
+
+        _, registry = load_job_registry(Path("demo-project"))
+        job = registry["demo-project"]
+
+        assert [skill.integration_type for skill in job.skills] == ["attio", "snowflake"]
+        assert [skill.config_type for skill in job.skills] == ["attio_output", "snowflake_output"]
+        assert [skill.integration_id for skill in job.skills] == ["attio_placeholder", "snowflake_placeholder"]
 
 
 def test_init_warns_when_api_key_verification_fails(runner: CliRunner) -> None:
@@ -461,3 +484,15 @@ def test_render_generated_module_auto_fills_snowflake_integration_id() -> None:
     assert "'integrationId': 'snowflake_1'" in generated
     assert "'query': query" in generated
     assert "SnowflakeExecuteQueryToolOutput" in generated
+
+
+def test_render_generated_module_without_integrations_emits_placeholder_skills() -> None:
+    generated = render_generated_module(CodegenInput())
+
+    assert "class Attio:" in generated
+    assert "def skill(obj: object | None = None) -> SkillConfig[str]:" in generated
+    assert "integration_id='attio_placeholder'" in generated
+    assert "class Snowflake:" in generated
+    assert "def skill() -> SkillConfig[str]:" in generated
+    assert "integration_id='snowflake_placeholder'" in generated
+    assert "__all__ = ['Schedule', 'GeneratedTools', 'create_tools', 'attach_tools', 'TerseAgent', 'Attio', 'Snowflake']" in generated

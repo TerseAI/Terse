@@ -105,5 +105,21 @@ def _flatten_attio_record(obj_slug: str, raw: object) -> AttioTypedRecord[Any]:
         web_url=getattr(raw, 'web_url', None),
     )
 {% endif %}
+{% else %}
+
+
+# === Attio ===
+
+
+class Attio:
+    @staticmethod
+    def skill(obj: object | None = None) -> SkillConfig[str]:
+        object_slug = getattr(obj, 'api_slug', None) if obj is not None else None
+        return SkillConfig(
+            integration_id='attio_placeholder',
+            integration_type='attio',
+            config_type='attio_output',
+            config=_compact_dict(objectSlug=object_slug),
+        )
 {% endif %}
 {% endmacro %}

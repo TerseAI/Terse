@@ -35,8 +35,12 @@
 {% endif %}
 {% endfor %}
 {% endif %}
+{% else %}
+{% set ns.exported_names = ns.exported_names + ['Attio'] %}
 {% endif %}
 {% if snowflake %}
+{% set ns.exported_names = ns.exported_names + ['Snowflake'] %}
+{% else %}
 {% set ns.exported_names = ns.exported_names + ['Snowflake'] %}
 {% endif %}
 

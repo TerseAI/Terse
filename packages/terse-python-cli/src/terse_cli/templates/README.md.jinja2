@@ -14,7 +14,9 @@ Edit `src/main.py` to register jobs with `@app.job(...)`.
 
 ## Generated Helpers
 
-If you connect Attio or Snowflake in Terse, rerun `terse generate` to refresh `src/terse_generated.py`.
+The starter scaffold registers `Attio.skill()` and `Snowflake.skill()` by default.
+
+After you connect Attio or Snowflake in Terse, rerun `terse generate` to refresh `src/terse_generated.py` with the real integration IDs and deterministic tool wrappers.
 
 Import helpers like `Attio`, `AttioObject`, `Schedule`, `Snowflake`, and `TerseAgent` from `terse_generated`.
 
