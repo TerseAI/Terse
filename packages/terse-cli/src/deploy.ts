@@ -8,7 +8,8 @@ import { fetchWithAuth, readApiKey } from "./api.js"
 import { assertProjectRoot } from "./assertProjectRoot.js"
 import { loadJobRegistry } from "./loadJob.js"
 import { ApiRoutes } from "./shared/ApiRoutes.js"
-import type { SdkDeployResponseBody } from "./shared/types.js"
+import type { ConfigInstance } from "./shared/Configs.js"
+import type { AgentOutput, AgentTrigger, SdkDeployResponseBody } from "./shared/types.js"
 
 const EXCLUDED_DIRS = new Set(["node_modules", ".git", "dist", ".next", ".turbo"])
 const EXCLUDED_FILES = new Set([".env", ".DS_Store"])
@@ -36,7 +37,8 @@ export async function deploy() {
             {
                 jobs: jobs.map(job => ({
                     jobName: job.name,
-                    triggers: job.triggers.map(serializeTrigger),
+                    triggers: job.triggers.map(serializeConfig),
+                    outputs: job.skills?.map(serializeConfig),
                     toolApprovals: job.toolApprovals,
                     webhookURL: job.webhookURL
                 })),
@@ -95,19 +97,9 @@ function collectFiles(dir: string, baseDir: string): Record<string, Uint8Array> 
     return entries
 }
 
-function serializeTrigger(config: any): {
-    configType: string
-    integrationType: string
-    integrationId: string
-    config: Record<string, unknown>
-} {
-    const { isComplete, formatForAgent, configType, integrationType, integrationId, ...rest } = config
-    return {
-        configType,
-        integrationType,
-        integrationId,
-        config: rest
-    }
+function serializeConfig(config: ConfigInstance): AgentTrigger | AgentOutput {
+    const { isComplete, formatForAgent, ...rest } = config
+    return { id: "", config: rest as ConfigInstance }
 }
 
 function buildZipPayload(): { sourceZipBase64: string; fileCount: number; zipSizeBytes: number } {

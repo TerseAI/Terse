@@ -5,12 +5,12 @@ import logger from "../logger"
 import { db } from "../prismaClient"
 import { emitCacheInvalidationWithKey } from "../realtimeSocket"
 import { uploadSdkDeployZip } from "../services/FileStorageService"
-import { SdkDeployRequestBody, SdkDeployTrigger, User } from "../shared/types"
-import { AgentWithTriggerRelations } from "../types/prisma"
+import { AgentOutput, AgentTrigger, SdkDeployRequestBody, User } from "../shared/types"
+import { AgentWithTriggerRelations, PrismaTransaction } from "../types/prisma"
 import { getInputConfigInclude } from "../utility/prismaIncludes"
-import { convertConfigTypeToInputConfigType } from "../utility/typeConverters"
+import { convertConfigTypeToInputConfigType, convertConfigTypeToOutputConfigType } from "../utility/typeConverters"
 
-import { createTriggerConfig, persistToolApprovals, setupAgentTriggers, tearDownAgentTriggers, validateUserOwnsIntegration } from "./agents"
+import { createOutputConfig, createTriggerConfig, persistToolApprovals, setupAgentTriggers, tearDownAgentTriggers, validateUserOwnsIntegration } from "./agents"
 
 export async function handleSdkDeploy(req: Request, res: Response) {
     const user = req.session?.user as User | undefined
@@ -63,8 +63,8 @@ export async function handleSdkDeploy(req: Request, res: Response) {
 
             const isUpdate = !!existing
             const automationId = isUpdate
-                ? await updateExistingAutomation(prisma, existing, job.jobName, job.triggers, job.toolApprovals, organizationId, userId, gcsKey)
-                : await createNewAutomation(prisma, job.jobName, job.triggers, job.toolApprovals, organizationId, userId, gcsKey)
+                ? await updateExistingAutomation(prisma, existing, job.jobName, job.triggers, job.outputs ?? [], job.toolApprovals, organizationId, userId, gcsKey)
+                : await createNewAutomation(prisma, job.jobName, job.triggers, job.outputs ?? [], job.toolApprovals, organizationId, userId, gcsKey)
 
             await finalizeDeployment(prisma, automationId, organizationId)
 
@@ -97,7 +97,8 @@ async function updateExistingAutomation(
     prisma: ReturnType<typeof db>,
     existing: AgentWithTriggerRelations,
     jobName: string,
-    triggers: SdkDeployTrigger[],
+    triggers: AgentTrigger[],
+    outputs: AgentOutput[],
     toolApprovals: string[] | undefined,
     organizationId: string,
     userId: string,
@@ -109,6 +110,10 @@ async function updateExistingAutomation(
         await tearDownAgentTriggers(existing)
 
         await tx.automation_inputs.deleteMany({
+            where: { automation_id: automationId }
+        })
+
+        await tx.automation_outputs.deleteMany({
             where: { automation_id: automationId }
         })
 
@@ -133,6 +138,7 @@ async function updateExistingAutomation(
         await persistToolApprovals(tx, automationId, toolApprovals ?? [], { replaceExisting: true })
 
         await createTriggersForAutomation(tx, automationId, triggers, organizationId, userId)
+        await createOutputsForAutomation(tx, automationId, outputs, organizationId, userId)
     })
 
     return automationId
@@ -141,7 +147,8 @@ async function updateExistingAutomation(
 async function createNewAutomation(
     prisma: ReturnType<typeof db>,
     jobName: string,
-    triggers: SdkDeployTrigger[],
+    triggers: AgentTrigger[],
+    outputs: AgentOutput[],
     toolApprovals: string[] | undefined,
     organizationId: string,
     userId: string,
@@ -170,6 +177,7 @@ async function createNewAutomation(
         await persistToolApprovals(tx, newAgent.id, toolApprovals)
 
         await createTriggersForAutomation(tx, newAgent.id, triggers, organizationId, userId)
+        await createOutputsForAutomation(tx, newAgent.id, outputs, organizationId, userId)
 
         return newAgent
     })
@@ -177,36 +185,50 @@ async function createNewAutomation(
     return result.id
 }
 
-async function createTriggersForAutomation(tx: any, automationId: string, triggers: SdkDeployTrigger[], organizationId: string, userId: string) {
+async function createTriggersForAutomation(tx: PrismaTransaction, automationId: string, triggers: AgentTrigger[], organizationId: string, userId: string) {
     for (const trigger of triggers) {
-        const integrationId = trigger.integrationId || "system"
+        const integrationId = trigger.config.integrationId || "system"
 
-        if (!isSystemIntegration(trigger.integrationType as any)) {
-            const isOwner = await validateUserOwnsIntegration(organizationId, trigger.integrationType as any, integrationId)
+        if (!isSystemIntegration(trigger.config.integrationType)) {
+            const isOwner = await validateUserOwnsIntegration(organizationId, trigger.config.integrationType, integrationId)
             if (!isOwner) {
-                throw new Error(`Integration ${trigger.integrationType} not found or not owned by user`)
+                throw new Error(`Integration ${trigger.config.integrationType} not found or not owned by user`)
             }
         }
 
         const newTrigger = await tx.automation_inputs.create({
             data: {
                 automation_id: automationId,
-                config_type: convertConfigTypeToInputConfigType(trigger.configType as any),
+                config_type: convertConfigTypeToInputConfigType(trigger.config.configType),
                 integration_id: integrationId
             }
         })
 
-        const agentTrigger = {
-            id: newTrigger.id,
-            config: {
-                ...trigger.config,
-                configType: trigger.configType,
-                integrationType: trigger.integrationType,
-                integrationId: trigger.integrationId
-            }
+        await createTriggerConfig(tx, newTrigger.id, { ...trigger, id: newTrigger.id }, userId)
+    }
+}
+
+async function createOutputsForAutomation(tx: PrismaTransaction, automationId: string, outputs: AgentOutput[], organizationId: string, userId: string) {
+    for (const output of outputs) {
+        const integrationId = output.config.integrationId
+        if (!integrationId) {
+            throw new Error(`Integration ID is required for ${output.config.integrationType}`)
         }
 
-        await createTriggerConfig(tx, newTrigger.id, agentTrigger as any, userId)
+        const isOwner = await validateUserOwnsIntegration(organizationId, output.config.integrationType, integrationId)
+        if (!isOwner) {
+            throw new Error(`Integration ${output.config.integrationType} not found or not owned by user`)
+        }
+
+        const newOutput = await tx.automation_outputs.create({
+            data: {
+                automation_id: automationId,
+                config_type: convertConfigTypeToOutputConfigType(output.config.configType),
+                integration_id: integrationId
+            }
+        })
+
+        await createOutputConfig(tx, newOutput.id, output.config, userId)
     }
 }
 

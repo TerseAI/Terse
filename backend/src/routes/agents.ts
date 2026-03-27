@@ -36,7 +36,7 @@ export async function createTriggerConfig(tx: PrismaTransaction, triggerId: stri
     await trigger.addTriggerToAgent(tx, triggerId, config.config)
 }
 
-async function createOutputConfig(tx: PrismaTransaction, outputId: string, config: ConfigInstance, userId: string): Promise<void> {
+export async function createOutputConfig(tx: PrismaTransaction, outputId: string, config: ConfigInstance, userId: string): Promise<void> {
     const output = OutputFactory.OUTPUT_REGISTRY.get(convertConfigTypeToOutputConfigType(config.configType))
     if (!output) {
         throw new Error(`Output not found for integration type: ${config.configType}`)
