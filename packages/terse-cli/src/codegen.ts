@@ -174,8 +174,7 @@ function attioAttributeBaseType(attr: AttioAttributeData): string {
 function attioAttributeInputTsType(attr: AttioAttributeData): string {
     const baseType = attioAttributeBaseType(attr)
     if (!isProbablyAttioMultiValue(attr)) return baseType
-    const arrayType = baseType.includes("|") ? `(${baseType})[]` : `${baseType}[]`
-    return `${baseType} | ${arrayType}`
+    return baseType.includes("|") ? `(${baseType})[]` : `${baseType}[]`
 }
 
 function attioAttributeRecordTsType(attr: AttioAttributeData): string {
