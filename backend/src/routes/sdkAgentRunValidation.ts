@@ -63,7 +63,7 @@ export function validateAndNormalizeSdkAgentRunBody(body: SdkAgentRunRequestBody
         skills: data.skills ?? [],
         options: {
             maxTurns: data.options?.maxTurns ?? 50,
-            requireApproval: data.options?.requireApproval ?? false
+            requireApproval: data.options?.requireApproval ?? true
         }
     }
 

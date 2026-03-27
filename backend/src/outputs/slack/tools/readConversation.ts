@@ -13,17 +13,19 @@ import { toolOutput } from "../../../tools/toolOutput"
 import { formatError } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
 
-export const slackReadConversationTool = tool<z.ZodObject<any>, SessionWithTracking<Session>, ToolOutputByName["slack_read_conversation"]>({
+const slackReadConversationParameters = z.object({
+    integrationId: z.string().describe("The integration ID of the Slack workspace (user_slack_integrations id)."),
+    channelId: z.string().describe("The Slack channel ID to read (from slack_list_channels)."),
+    limit: z.number().min(1).max(200).nullable().optional().default(50).describe("Maximum number of messages to return."),
+    cursor: z.string().nullable().optional().describe("Pagination cursor from a previous response (nextCursor). Omit on first call.")
+})
+
+export const slackReadConversationTool = tool<typeof slackReadConversationParameters, SessionWithTracking<Session>, ToolOutputByName["slack_read_conversation"]>({
     name: ToolName.SLACK_READ_CONVERSATION,
     description: `Read message history from a Slack channel or DM.
 Use the channel ID from slack_list_channels. Supports public channels, private channels, and DMs.
 Supports pagination: if the response includes nextCursor and hasMore, pass nextCursor as the cursor parameter on the next call to fetch more messages.`,
-    parameters: z.object({
-        integrationId: z.string().describe("The integration ID of the Slack workspace (user_slack_integrations id)."),
-        channelId: z.string().describe("The Slack channel ID to read (from slack_list_channels)."),
-        limit: z.number().min(1).max(200).nullable().optional().default(50).describe("Maximum number of messages to return."),
-        cursor: z.string().nullable().optional().describe("Pagination cursor from a previous response (nextCursor). Omit on first call.")
-    }),
+    parameters: slackReadConversationParameters,
     execute: async ({ integrationId, channelId, limit = 50, cursor }, runContext?: RunContext<SessionWithTracking<Session>>) => {
         logger.debug("🛠️ Executing slack_read_conversation tool", { integrationId, channelId, limit })
 

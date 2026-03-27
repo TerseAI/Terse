@@ -245,7 +245,11 @@ export function sendChatMessage(runId: string | null, message: ModelRequest): vo
     socket.emit(SocketEvents.AGENT_CHAT_MESSAGE, { runId, message })
 }
 
-export function sendToolApprovalResponse(runId: string, stepId: string, approved: boolean): void {
+export type ToolApprovalResponseOptions = {
+    rejectionReason?: string
+}
+
+export function sendToolApprovalResponse(runId: string, stepId: string, approved: boolean, options?: ToolApprovalResponseOptions): void {
     if (!socket || !socket.connected) {
         console.warn("Socket not connected, cannot send approval response")
         return
@@ -255,7 +259,8 @@ export function sendToolApprovalResponse(runId: string, stepId: string, approved
         message: {
             type: "ToolApprovalResponse",
             step_id: stepId,
-            approved
+            approved,
+            rejection_reason: options?.rejectionReason
         }
     })
 }

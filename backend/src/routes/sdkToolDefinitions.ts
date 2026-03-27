@@ -25,6 +25,7 @@ export async function handleToolDefinitions(req: Request, res: Response) {
             description: string
             integration: string
             isReadOnly: boolean
+            supportsApproval: boolean
             parameters: Record<string, unknown>
         }> = []
 
@@ -44,6 +45,7 @@ export async function handleToolDefinitions(req: Request, res: Response) {
                     description: ft.description ?? "",
                     integration: entry.integration,
                     isReadOnly: entry.isReadOnly,
+                    supportsApproval: entry.supportsApproval ?? false,
                     parameters: ft.parameters as Record<string, unknown>
                 })
             }

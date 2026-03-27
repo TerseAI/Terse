@@ -796,12 +796,7 @@ export class SnowflakeOutputConfig implements ConfigInstance {
     integrationType: IntegrationType = IntegrationType.SNOWFLAKE
     configType: ConfigType = ConfigType.SNOWFLAKE_OUTPUT
 
-    constructor(
-        public integrationId: string,
-        public warehouse?: string,
-        public databaseName?: string,
-        public schemaName?: string
-    ) {}
+    constructor(public integrationId: string) {}
 
     isComplete(): boolean {
         return !!this.integrationId
@@ -809,15 +804,6 @@ export class SnowflakeOutputConfig implements ConfigInstance {
 
     formatForAgent(): string {
         const parts = [`Type: Snowflake Output`, `Integration ID: ${this.integrationId}`]
-        if (this.warehouse) {
-            parts.push(`Warehouse: ${this.warehouse}`)
-        }
-        if (this.databaseName) {
-            parts.push(`Database: ${this.databaseName}`)
-        }
-        if (this.schemaName) {
-            parts.push(`Schema: ${this.schemaName}`)
-        }
         return parts.join("\n")
     }
 }

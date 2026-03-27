@@ -41,7 +41,7 @@ import { reviewAllAgents } from "./routes/reviewAgents"
 import { getAllRunHistory, getChatHistory, getRunHistory, getRunHistoryActions } from "./routes/runHistory"
 import { handleSampleEvents } from "./routes/sampleEvents"
 import { handleManualTrigger, handleScheduleWebhook, handleTriggerWithEvent } from "./routes/schedule"
-import { handleSdkAgentRun } from "./routes/sdkAgentRun"
+import { handleSdkAgentRun, handleSdkApprovalDecision } from "./routes/sdkAgentRun"
 import { handleSdkDeploy } from "./routes/sdkDeploy"
 import { handleSessionEvents } from "./routes/sdkSession"
 import { handleToolDefinitions } from "./routes/sdkToolDefinitions"
@@ -202,6 +202,17 @@ app.use((err: Error & { type?: string; statusCode?: number }, req: Request, res:
     next(err)
 })
 app.use(cookieParser())
+
+// MARK: CRON JOBS (before apiTokenAuthMiddleware — these use their own auth via validateCloudSchedulerRequest)
+
+app.post(ApiRoutes.REFRESH_TOKENS, async (req, res) => {
+    refreshAllTokens(req, res)
+})
+
+app.post(ApiRoutes.REVIEW_AGENTS, async (req, res) => {
+    reviewAllAgents(req, res)
+})
+
 app.use(apiTokenAuthMiddleware)
 
 // MARK: AUTH
@@ -351,16 +362,6 @@ app.delete(ApiRoutes.GMAIL.DELETE_INTEGRATION, authMiddleware, async (req, res) 
 app.post(ApiRoutes.WEBHOOKS.GMAIL, async (req, res) => {
     handleGmailWebhook(req, res)
 })
-// MARK: REFRESH TOKENS
-
-app.post(ApiRoutes.REFRESH_TOKENS, async (req, res) => {
-    refreshAllTokens(req, res)
-})
-
-app.post(ApiRoutes.REVIEW_AGENTS, async (req, res) => {
-    reviewAllAgents(req, res)
-})
-
 // MARK: NOTION
 
 app.get(ApiRoutes.NOTION.INTEGRATIONS, authMiddleware, async (req, res) => {
@@ -706,6 +707,10 @@ app.get(ApiRoutes.SDK.TOOL_DEFINITIONS, authMiddleware, async (req, res) => {
 
 app.post(ApiRoutes.SDK.AGENT_RUN, authMiddleware, async (req, res) => {
     handleSdkAgentRun(req, res)
+})
+
+app.post(ApiRoutes.SDK.APPROVAL_DECISION, authMiddleware, async (req, res) => {
+    handleSdkApprovalDecision(req, res)
 })
 
 app.get(ApiRoutes.SDK.SESSION_EVENTS, authMiddleware, async (req, res) => {

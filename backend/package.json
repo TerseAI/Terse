@@ -11,7 +11,7 @@
         "dev:tunnel": "./scripts/dev-with-tunnel.sh",
         "prebuild": "node ../scripts/copy-shared.js",
         "build": "tsc && pnpm run postbuild",
-        "postbuild": "tsc-esm-fix dist && cp -r src/notifications/emails/templates dist/notifications/emails/templates && cp -r src/notifications/emails/assets dist/notifications/emails/assets",
+        "postbuild": "tsc-esm-fix dist && cp -r src/notifications/emails/templates dist/notifications/emails/templates && cp -r src/notifications/emails/assets dist/notifications/emails/assets && cp -r ../packages/terse-claude-plugin dist/terse-claude-plugin",
         "prestart": "node ../scripts/copy-shared.js",
         "start": "node dist/server.js",
         "test": "jest",
@@ -38,8 +38,8 @@
         "@linear/sdk": "^45.3.0",
         "@notionhq/client": "^5.4.0",
         "@octokit/rest": "^22.0.1",
-        "@openai/agents": "^0.3.9",
-        "@openai/agents-core": "^0.3.9",
+        "@openai/agents": "^0.7.2",
+        "@openai/agents-core": "^0.7.2",
         "@opentelemetry/api-logs": "^0.208.0",
         "@opentelemetry/exporter-logs-otlp-http": "^0.208.0",
         "@opentelemetry/resources": "^2.2.0",
@@ -87,7 +87,7 @@
         "tsx": "^4.20.3",
         "uuid": "^11.0.3",
         "ws": "^8.18.3",
-        "zod": "^3.25.76"
+        "zod": "^4.3.6"
     },
     "pnpm": {
         "overrides": {

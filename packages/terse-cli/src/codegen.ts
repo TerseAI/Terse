@@ -47,6 +47,7 @@ export interface ToolDefinition {
     description: string
     integration: string
     isReadOnly: boolean
+    supportsApproval: boolean
     parameters: JsonSchema
 }
 
@@ -205,6 +206,21 @@ function toolIntegrationToIntegrationType(toolIntegration: string): string {
     }
 }
 
+function renderStringLiteralUnion(values: string[]): string {
+    if (values.length === 0) return "never"
+    return values.map(value => `"${escapeString(value)}"`).join(" | ")
+}
+
+function buildSkillToolTypeForIntegration(tools: ToolDefinition[], integrationType: string): string {
+    const toolNames = tools
+        .filter(tool => toolIntegrationToIntegrationType(tool.integration.toLowerCase()) === integrationType)
+        .filter(tool => !tool.isReadOnly || tool.supportsApproval)
+        .map(tool => tool.name)
+        .sort()
+
+    return renderStringLiteralUnion(toolNames)
+}
+
 function generateResourceClass(
     className: string,
     fields: ResourceFieldMapping[],
@@ -241,13 +257,14 @@ function generateResourceClass(
 
 // ── GitHub ────────────────────────────────────────────────────────────
 
-function generateGitHubSection(instances: GitHubInstanceData[]): SectionResult {
+function generateGitHubSection(instances: GitHubInstanceData[], tools: ToolDefinition[]): SectionResult {
     if (instances.length === 0) return EMPTY_SECTION
 
     const inst = instances[0]
     const imports = new Set(["GitHubConfig"])
     const parts: string[] = [sectionHeader("GitHub"), ""]
     const id = inst.integration.id
+    const skillToolType = buildSkillToolTypeForIntegration(tools, "github")
 
     const toStaticName = (raw: string, fallback: string): string => {
         let name = toPascalCase(raw || fallback)
@@ -315,6 +332,7 @@ function generateGitHubSection(instances: GitHubInstanceData[]): SectionResult {
 
     imports.add("GitHubEventType")
     imports.add("TypedTrigger")
+    imports.add("TypedSkill")
     imports.add("GithubPRInputEvent")
     imports.add("GithubPushInputEvent")
     imports.add("GithubInputEvent")
@@ -346,8 +364,8 @@ function generateGitHubSection(instances: GitHubInstanceData[]): SectionResult {
     parts.push(`        return new GitHubConfig("${id}", opts.repos.map(r => r.repositoryId), opts.eventTypes) as TypedTrigger<GithubInputEvent>`)
     parts.push("    },")
     parts.push(`    /** Use in \`skills[]\` */`)
-    parts.push(`    skill(opts: { repos: Repos[] }): GitHubConfig {`)
-    parts.push(`        return new GitHubConfig("${id}", opts.repos.map(r => r.repositoryId))`)
+    parts.push(`    skill(opts: { repos: Repos[] }): TypedSkill<${skillToolType}> {`)
+    parts.push(`        return new GitHubConfig("${id}", opts.repos.map(r => r.repositoryId)) as TypedSkill<${skillToolType}>`)
     parts.push("    },")
     parts.push("}")
     parts.push("")
@@ -357,12 +375,13 @@ function generateGitHubSection(instances: GitHubInstanceData[]): SectionResult {
 
 // ── Gmail ─────────────────────────────────────────────────────────────
 
-function generateGmailSection(instances: IntegrationInstanceData[]): SectionResult {
+function generateGmailSection(instances: IntegrationInstanceData[], tools: ToolDefinition[]): SectionResult {
     if (instances.length === 0) return EMPTY_SECTION
 
-    const imports = new Set(["GmailConfig", "GmailOutputConfig", "GmailDraftOutputConfig"])
+    const imports = new Set(["GmailConfig", "GmailOutputConfig", "GmailDraftOutputConfig", "TypedSkill"])
     const parts: string[] = [sectionHeader("Gmail"), ""]
     const id = instances[0].id
+    const skillToolType = buildSkillToolTypeForIntegration(tools, "gmail")
 
     imports.add("GmailEventType")
 
@@ -377,12 +396,12 @@ function generateGmailSection(instances: IntegrationInstanceData[]): SectionResu
     parts.push("    },")
 
     parts.push(`    /** Use in \`skills[]\` */`)
-    parts.push(`    skill(): GmailOutputConfig {`)
-    parts.push(`        return new GmailOutputConfig("${id}")`)
+    parts.push(`    skill(): TypedSkill<${skillToolType}> {`)
+    parts.push(`        return new GmailOutputConfig("${id}") as TypedSkill<${skillToolType}>`)
     parts.push("    },")
     parts.push(`    /** Use in \`skills[]\` — creates draft emails */`)
-    parts.push(`    draftSkill(): GmailDraftOutputConfig {`)
-    parts.push(`        return new GmailDraftOutputConfig("${id}")`)
+    parts.push(`    draftSkill(): TypedSkill<${skillToolType}> {`)
+    parts.push(`        return new GmailDraftOutputConfig("${id}") as TypedSkill<${skillToolType}>`)
     parts.push("    },")
     parts.push("}")
     parts.push("")
@@ -392,13 +411,14 @@ function generateGmailSection(instances: IntegrationInstanceData[]): SectionResu
 
 // ── Slack ──────────────────────────────────────────────────────────────
 
-function generateSlackSection(instances: SlackInstanceData[]): SectionResult {
+function generateSlackSection(instances: SlackInstanceData[], tools: ToolDefinition[]): SectionResult {
     if (instances.length === 0) return EMPTY_SECTION
 
     const inst = instances[0]
-    const imports = new Set(["SlackConfig", "SlackOutputConfig"])
+    const imports = new Set(["SlackConfig", "SlackOutputConfig", "TypedSkill"])
     const parts: string[] = [sectionHeader("Slack"), ""]
     const id = inst.id
+    const skillToolType = buildSkillToolTypeForIntegration(tools, "slack")
 
     parts.push(generateResourceClass("SlackChannel", [
         { classField: "channelId", type: "string", sourceField: "id" },
@@ -423,8 +443,8 @@ function generateSlackSection(instances: SlackInstanceData[]): SectionResult {
     parts.push(`        return new SlackConfig("${id}", opts?.channel?.channelId, opts?.channel?.name, opts?.listenToUserDms, opts?.userIds, opts?.eventTypes)`)
     parts.push("    },")
     parts.push(`    /** Use in \`skills[]\` */`)
-    parts.push(`    skill(opts?: { channel?: SlackChannel; userIds?: string[]; userNames?: string[]; listenToUserDms?: boolean }): SlackOutputConfig {`)
-    parts.push(`        return new SlackOutputConfig("${id}", opts?.channel?.channelId, opts?.channel?.name, opts?.userIds, opts?.userNames, opts?.listenToUserDms)`)
+    parts.push(`    skill(opts?: { channel?: SlackChannel; userIds?: string[]; userNames?: string[]; listenToUserDms?: boolean }): TypedSkill<${skillToolType}> {`)
+    parts.push(`        return new SlackOutputConfig("${id}", opts?.channel?.channelId, opts?.channel?.name, opts?.userIds, opts?.userNames, opts?.listenToUserDms) as TypedSkill<${skillToolType}>`)
     parts.push("    },")
     parts.push("}")
     parts.push("")
@@ -460,13 +480,14 @@ function generateFigmaSection(instances: IntegrationInstanceData[]): SectionResu
 
 // ── Linear ────────────────────────────────────────────────────────────
 
-function generateLinearSection(instances: LinearInstanceData[]): SectionResult {
+function generateLinearSection(instances: LinearInstanceData[], tools: ToolDefinition[]): SectionResult {
     if (instances.length === 0) return EMPTY_SECTION
 
     const inst = instances[0]
-    const imports = new Set(["LinearInputConfig", "LinearOutputConfig"])
+    const imports = new Set(["LinearInputConfig", "LinearOutputConfig", "TypedSkill"])
     const parts: string[] = [sectionHeader("Linear"), ""]
     const id = inst.id
+    const skillToolType = buildSkillToolTypeForIntegration(tools, "linear")
 
     parts.push(generateResourceClass("LinearTeam", [
         { classField: "teamId", type: "string", sourceField: "id" },
@@ -495,8 +516,8 @@ function generateLinearSection(instances: LinearInstanceData[]): SectionResult {
     parts.push(`        return new LinearInputConfig("${id}", opts?.projectId, opts?.projectName, opts?.eventTypes)`)
     parts.push("    },")
     parts.push(`    /** Use in \`skills[]\` */`)
-    parts.push(`    skill(opts?: { team?: LinearTeam; projectId?: string; projectName?: string }): LinearOutputConfig {`)
-    parts.push(`        return new LinearOutputConfig("${id}", opts?.team?.teamId, opts?.team?.name, opts?.projectId, opts?.projectName)`)
+    parts.push(`    skill(opts?: { team?: LinearTeam; projectId?: string; projectName?: string }): TypedSkill<${skillToolType}> {`)
+    parts.push(`        return new LinearOutputConfig("${id}", opts?.team?.teamId, opts?.team?.name, opts?.projectId, opts?.projectName) as TypedSkill<${skillToolType}>`)
     parts.push("    },")
     parts.push("}")
     parts.push("")
@@ -506,13 +527,14 @@ function generateLinearSection(instances: LinearInstanceData[]): SectionResult {
 
 // ── Jira & Confluence (Atlassian) ─────────────────────────────────────
 
-function generateAtlassianSection(instances: AtlassianInstanceData[]): SectionResult {
+function generateAtlassianSection(instances: AtlassianInstanceData[], tools: ToolDefinition[]): SectionResult {
     if (instances.length === 0) return EMPTY_SECTION
 
     const inst = instances[0]
-    const imports = new Set(["JiraConfig", "ConfluenceConfig"])
+    const imports = new Set(["JiraConfig", "ConfluenceConfig", "TypedSkill"])
     const parts: string[] = [sectionHeader("Jira & Confluence"), ""]
     const id = inst.id
+    const atlassianSkillToolType = buildSkillToolTypeForIntegration(tools, "atlassian")
 
     parts.push(generateResourceClass("JiraProject", [
         { classField: "projectKey", type: "string", sourceField: "key" },
@@ -545,16 +567,16 @@ function generateAtlassianSection(instances: AtlassianInstanceData[]): SectionRe
     parts.push(`        return new JiraConfig("${id}", opts?.project?.projectKey, opts?.project?.projectId, opts?.eventTypes)`)
     parts.push("    },")
     parts.push(`    /** Use in \`skills[]\` */`)
-    parts.push(`    skill(opts?: { project?: JiraProject }): JiraConfig {`)
-    parts.push(`        return new JiraConfig("${id}", opts?.project?.projectKey, opts?.project?.projectId)`)
+    parts.push(`    skill(opts?: { project?: JiraProject }): TypedSkill<${atlassianSkillToolType}> {`)
+    parts.push(`        return new JiraConfig("${id}", opts?.project?.projectKey, opts?.project?.projectId) as TypedSkill<${atlassianSkillToolType}>`)
     parts.push("    },")
     parts.push("}")
     parts.push("")
 
     parts.push("export const Confluence = {")
     parts.push(`    /** Use in \`skills[]\` */`)
-    parts.push(`    skill(opts: { page: ConfluencePage }): ConfluenceConfig {`)
-    parts.push(`        return new ConfluenceConfig("${id}", opts.page.spaceName, opts.page.spaceId, opts.page.pageId, opts.page.title)`)
+    parts.push(`    skill(opts: { page: ConfluencePage }): TypedSkill<${atlassianSkillToolType}> {`)
+    parts.push(`        return new ConfluenceConfig("${id}", opts.page.spaceName, opts.page.spaceId, opts.page.pageId, opts.page.title) as TypedSkill<${atlassianSkillToolType}>`)
     parts.push("    },")
     parts.push("}")
     parts.push("")
@@ -564,13 +586,14 @@ function generateAtlassianSection(instances: AtlassianInstanceData[]): SectionRe
 
 // ── Notion ────────────────────────────────────────────────────────────
 
-function generateNotionSection(instances: NotionInstanceData[]): SectionResult {
+function generateNotionSection(instances: NotionInstanceData[], tools: ToolDefinition[]): SectionResult {
     if (instances.length === 0) return EMPTY_SECTION
 
     const inst = instances[0]
-    const imports = new Set(["NotionConfig"])
+    const imports = new Set(["NotionConfig", "TypedSkill"])
     const parts: string[] = [sectionHeader("Notion"), ""]
     const id = inst.id
+    const skillToolType = buildSkillToolTypeForIntegration(tools, "notion")
 
     parts.push(generateResourceClass("NotionDatabase", [
         { classField: "databaseId", type: "string", sourceField: "id" },
@@ -586,10 +609,10 @@ function generateNotionSection(instances: NotionInstanceData[]): SectionResult {
 
     parts.push("export const Notion = {")
     parts.push(`    /** Use in \`skills[]\` */`)
-    parts.push(`    skill(opts?: { databases?: NotionDatabase[]; pages?: NotionPage[] }): NotionConfig {`)
+    parts.push(`    skill(opts?: { databases?: NotionDatabase[]; pages?: NotionPage[] }): TypedSkill<${skillToolType}> {`)
     parts.push(`        return new NotionConfig("${id}",`)
     parts.push(`            opts?.databases?.map(d => d.databaseId), opts?.databases?.map(d => d.title),`)
-    parts.push(`            opts?.pages?.map(p => p.pageId), opts?.pages?.map(p => p.title))`)
+    parts.push(`            opts?.pages?.map(p => p.pageId), opts?.pages?.map(p => p.title)) as TypedSkill<${skillToolType}>`)
     parts.push("    },")
     parts.push("}")
     parts.push("")
@@ -599,13 +622,14 @@ function generateNotionSection(instances: NotionInstanceData[]): SectionResult {
 
 // ── PostHog ───────────────────────────────────────────────────────────
 
-function generatePosthogSection(instances: PosthogInstanceData[]): SectionResult {
+function generatePosthogSection(instances: PosthogInstanceData[], tools: ToolDefinition[]): SectionResult {
     if (instances.length === 0) return EMPTY_SECTION
 
     const inst = instances[0]
-    const imports = new Set(["PosthogConfig"])
+    const imports = new Set(["PosthogConfig", "TypedSkill"])
     const parts: string[] = [sectionHeader("PostHog"), ""]
     const id = inst.id
+    const skillToolType = buildSkillToolTypeForIntegration(tools, "posthog")
 
     parts.push(generateResourceClass("PosthogProject", [
         { classField: "projectId", type: "string", sourceField: "id" },
@@ -615,8 +639,8 @@ function generatePosthogSection(instances: PosthogInstanceData[]): SectionResult
 
     parts.push("export const Posthog = {")
     parts.push(`    /** Use in \`skills[]\` */`)
-    parts.push(`    skill(opts: { project: PosthogProject }): PosthogConfig {`)
-    parts.push(`        return new PosthogConfig("${id}", opts.project.projectId, opts.project.name)`)
+    parts.push(`    skill(opts: { project: PosthogProject }): TypedSkill<${skillToolType}> {`)
+    parts.push(`        return new PosthogConfig("${id}", opts.project.projectId, opts.project.name) as TypedSkill<${skillToolType}>`)
     parts.push("    },")
     parts.push("}")
     parts.push("")
@@ -626,13 +650,14 @@ function generatePosthogSection(instances: PosthogInstanceData[]): SectionResult
 
 // ── Datadog ───────────────────────────────────────────────────────────
 
-function generateDatadogSection(instances: DatadogInstanceData[]): SectionResult {
+function generateDatadogSection(instances: DatadogInstanceData[], tools: ToolDefinition[]): SectionResult {
     if (instances.length === 0) return EMPTY_SECTION
 
     const inst = instances[0]
-    const imports = new Set(["DatadogConfig"])
+    const imports = new Set(["DatadogConfig", "TypedSkill"])
     const parts: string[] = [sectionHeader("Datadog"), ""]
     const id = inst.id
+    const skillToolType = buildSkillToolTypeForIntegration(tools, "datadog")
 
     parts.push(generateResourceClass("DatadogIndex", [
         { classField: "name", type: "string", sourceField: "name" },
@@ -641,8 +666,8 @@ function generateDatadogSection(instances: DatadogInstanceData[]): SectionResult
 
     parts.push("export const Datadog = {")
     parts.push(`    /** Use in \`skills[]\` */`)
-    parts.push(`    skill(opts?: { indexes?: DatadogIndex[] }): DatadogConfig {`)
-    parts.push(`        return new DatadogConfig("${id}", opts?.indexes?.map(i => i.name))`)
+    parts.push(`    skill(opts?: { indexes?: DatadogIndex[] }): TypedSkill<${skillToolType}> {`)
+    parts.push(`        return new DatadogConfig("${id}", opts?.indexes?.map(i => i.name)) as TypedSkill<${skillToolType}>`)
     parts.push("    },")
     parts.push("}")
     parts.push("")
@@ -652,13 +677,14 @@ function generateDatadogSection(instances: DatadogInstanceData[]): SectionResult
 
 // ── LaunchDarkly ──────────────────────────────────────────────────────
 
-function generateLaunchDarklySection(instances: LaunchDarklyInstanceData[]): SectionResult {
+function generateLaunchDarklySection(instances: LaunchDarklyInstanceData[], tools: ToolDefinition[]): SectionResult {
     if (instances.length === 0) return EMPTY_SECTION
 
     const inst = instances[0]
-    const imports = new Set(["LaunchDarklyConfig"])
+    const imports = new Set(["LaunchDarklyConfig", "TypedSkill"])
     const parts: string[] = [sectionHeader("LaunchDarkly"), ""]
     const id = inst.id
+    const skillToolType = buildSkillToolTypeForIntegration(tools, "launchdarkly")
 
     parts.push(generateResourceClass("LaunchDarklyProject", [
         { classField: "projectKey", type: "string", sourceField: "key" },
@@ -668,8 +694,8 @@ function generateLaunchDarklySection(instances: LaunchDarklyInstanceData[]): Sec
 
     parts.push("export const LaunchDarkly = {")
     parts.push(`    /** Use in \`skills[]\` */`)
-    parts.push(`    skill(opts: { project: LaunchDarklyProject; environmentKeys: string[] }): LaunchDarklyConfig {`)
-    parts.push(`        return new LaunchDarklyConfig("${id}", opts.project.projectKey, opts.environmentKeys)`)
+    parts.push(`    skill(opts: { project: LaunchDarklyProject; environmentKeys: string[] }): TypedSkill<${skillToolType}> {`)
+    parts.push(`        return new LaunchDarklyConfig("${id}", opts.project.projectKey, opts.environmentKeys) as TypedSkill<${skillToolType}>`)
     parts.push("    },")
     parts.push("}")
     parts.push("")
@@ -679,12 +705,13 @@ function generateLaunchDarklySection(instances: LaunchDarklyInstanceData[]): Sec
 
 // ── WorkOS ────────────────────────────────────────────────────────────
 
-function generateWorkOSSection(instances: IntegrationInstanceData[]): SectionResult {
+function generateWorkOSSection(instances: IntegrationInstanceData[], tools: ToolDefinition[]): SectionResult {
     if (instances.length === 0) return EMPTY_SECTION
 
-    const imports = new Set(["WorkOSInputConfig", "WorkOSOutputConfig", "WorkOSEventType"])
+    const imports = new Set(["WorkOSInputConfig", "WorkOSOutputConfig", "WorkOSEventType", "TypedSkill"])
     const parts: string[] = [sectionHeader("WorkOS"), ""]
     const id = instances[0].id
+    const skillToolType = buildSkillToolTypeForIntegration(tools, "workos")
 
     imports.add("TypedTrigger")
     imports.add("WorkOSInputEvent")
@@ -739,8 +766,8 @@ function generateWorkOSSection(instances: IntegrationInstanceData[]): SectionRes
     parts.push(`        return new WorkOSInputConfig("${id}", opts?.eventTypes) as TypedTrigger<WorkOSInputEvent | WorkOSUserInputEvent | WorkOSMembershipInputEvent | WorkOSInvitationInputEvent | WorkOSOrganizationInputEvent>`)
     parts.push("    },")
     parts.push(`    /** Use in \`skills[]\` */`)
-    parts.push(`    skill(): WorkOSOutputConfig {`)
-    parts.push(`        return new WorkOSOutputConfig("${id}")`)
+    parts.push(`    skill(): TypedSkill<${skillToolType}> {`)
+    parts.push(`        return new WorkOSOutputConfig("${id}") as TypedSkill<${skillToolType}>`)
     parts.push("    },")
     parts.push("}")
     parts.push("")
@@ -750,13 +777,14 @@ function generateWorkOSSection(instances: IntegrationInstanceData[]): SectionRes
 
 // ── Attio ─────────────────────────────────────────────────────────────
 
-function generateAttioSection(instances: AttioInstanceData[]): SectionResult {
+function generateAttioSection(instances: AttioInstanceData[], tools: ToolDefinition[]): SectionResult {
     if (instances.length === 0) return EMPTY_SECTION
 
     const inst = instances[0]
-    const imports = new Set(["AttioOutputConfig"])
+    const imports = new Set(["AttioOutputConfig", "TypedSkill"])
     const parts: string[] = [sectionHeader("Attio"), ""]
     const id = inst.id
+    const skillToolType = buildSkillToolTypeForIntegration(tools, "attio")
 
     parts.push("export type AttioAttributeDefinition<TSlug extends string = string, TType extends string = string> = {")
     parts.push("    apiSlug: TSlug")
@@ -815,8 +843,8 @@ function generateAttioSection(instances: AttioInstanceData[]): SectionResult {
 
     parts.push("export const Attio = {")
     parts.push(`    /** Use in \`skills[]\` */`)
-    parts.push(`    skill(opts?: { object?: AttioObject<any> }): AttioOutputConfig {`)
-    parts.push(`        return new AttioOutputConfig("${id}", opts?.object?.apiSlug)`)
+    parts.push(`    skill(opts?: { object?: AttioObject<any> }): TypedSkill<${skillToolType}> {`)
+    parts.push(`        return new AttioOutputConfig("${id}", opts?.object?.apiSlug) as TypedSkill<${skillToolType}>`)
     parts.push("    },")
     parts.push("}")
     parts.push("")
@@ -826,18 +854,19 @@ function generateAttioSection(instances: AttioInstanceData[]): SectionResult {
 
 // ── Snowflake ─────────────────────────────────────────────────────────
 
-function generateSnowflakeSection(instances: SnowflakeInstanceData[]): SectionResult {
+function generateSnowflakeSection(instances: SnowflakeInstanceData[], tools: ToolDefinition[]): SectionResult {
     if (instances.length === 0) return EMPTY_SECTION
 
     const inst = instances[0]
-    const imports = new Set(["SnowflakeOutputConfig"])
+    const imports = new Set(["SnowflakeOutputConfig", "TypedSkill"])
     const parts: string[] = [sectionHeader("Snowflake"), ""]
     const id = inst.id
+    const skillToolType = buildSkillToolTypeForIntegration(tools, "snowflake")
 
     parts.push("export const Snowflake = {")
     parts.push(`    /** Use in \`skills[]\` */`)
-    parts.push(`    skill(opts?: { warehouse?: string; databaseName?: string; schemaName?: string }): SnowflakeOutputConfig {`)
-    parts.push(`        return new SnowflakeOutputConfig("${id}", opts?.warehouse, opts?.databaseName, opts?.schemaName)`)
+    parts.push(`    skill(): TypedSkill<${skillToolType}> {`)
+    parts.push(`        return new SnowflakeOutputConfig("${id}") as TypedSkill<${skillToolType}>`)
     parts.push("    },")
     parts.push("}")
     parts.push("")
@@ -1014,7 +1043,7 @@ function generateToolsSection(tools: ToolDefinition[], input: CodegenInput): Sec
         parts.push("type __AttioFilterShorthand<T> = T extends (infer U)[] ? U | T : T")
         parts.push('type __AttioFilterValue<T> = __AttioFilterShorthand<T> | { $eq?: __AttioFilterShorthand<T>; $contains?: string; $starts_with?: string; $ends_with?: string } | Record<string, unknown>')
         parts.push('type __AttioFilterExpression<TValues extends Record<string, unknown>> = Partial<{ [K in keyof TValues]: __AttioFilterValue<TValues[K]> }> & { $and?: Array<__AttioFilterExpression<TValues>>; $or?: Array<__AttioFilterExpression<TValues>> }')
-        parts.push('type __AttioRecordBase = NonNullable<ToolOutputByName["attio_upsert_record"]["record"]>')
+        parts.push('type __AttioRecordBase = NonNullable<NonNullable<ToolOutputByName["attio_upsert_record"]["records"]>[number]>')
         parts.push('type __AttioRecordWithValues<TValues extends Record<string, unknown>> = Omit<__AttioRecordBase, "values"> & TValues & { values: TValues; attributes: TValues }')
         parts.push("")
 
@@ -1068,10 +1097,10 @@ function generateToolsSection(tools: ToolDefinition[], input: CodegenInput): Sec
         parts.push('export type AttioFilterFor<TObject extends GeneratedAttioObject = GeneratedAttioObject> = __AttioFilterExpression<AttioRecordValuesFor<TObject>>')
         parts.push('export type AttioRecordFor<TObject extends GeneratedAttioObject = GeneratedAttioObject> = __AttioRecordWithValues<AttioRecordValuesFor<TObject>>')
         parts.push('export type AttioQueryRecordsParams<TObject extends GeneratedAttioObject = GeneratedAttioObject> = { object: TObject; filter?: AttioFilterFor<TObject> | null; limit?: number | null }')
-        parts.push('export type AttioUpsertRecordParams<TObject extends GeneratedAttioObject = GeneratedAttioObject> = { object: TObject; matchingAttribute: AttioAttributeSlug<TObject>; values: AttioValuesFor<TObject> }')
+        parts.push('export type AttioUpsertRecordParams<TObject extends GeneratedAttioObject = GeneratedAttioObject> = { object: TObject; matchingAttribute: AttioAttributeSlug<TObject>; records: AttioValuesFor<TObject>[] }')
         parts.push("export type AttioListObjectsParams = Record<string, never>")
         parts.push('export type AttioQueryRecordsResult<TObject extends GeneratedAttioObject = GeneratedAttioObject> = Omit<ToolOutputByName["attio_query_records"], "records"> & { records: Array<AttioRecordFor<TObject>> }')
-        parts.push('export type AttioUpsertRecordResult<TObject extends GeneratedAttioObject = GeneratedAttioObject> = Omit<ToolOutputByName["attio_upsert_record"], "record"> & { record?: AttioRecordFor<TObject> }')
+        parts.push('export type AttioUpsertRecordResult<TObject extends GeneratedAttioObject = GeneratedAttioObject> = Omit<ToolOutputByName["attio_upsert_record"], "records"> & { records?: Array<AttioRecordFor<TObject>> }')
         parts.push("")
         parts.push("const __attioMetadataKeys = new Set([")
         parts.push('    "active_from",')
@@ -1100,8 +1129,9 @@ function generateToolsSection(tools: ToolDefinition[], input: CodegenInput): Sec
         parts.push("    return JSON.stringify(filter)")
         parts.push("}")
         parts.push("")
-        parts.push("function __serializeAttioValues(values: unknown): string {")
-        parts.push("    return JSON.stringify(values ?? {})")
+        parts.push("function __serializeAttioRecords(records: unknown): string {")
+        parts.push("    if (!Array.isArray(records)) return JSON.stringify([])")
+        parts.push('    return JSON.stringify(records.filter((record): record is Record<string, unknown> => typeof record === "object" && record !== null && !Array.isArray(record)))')
         parts.push("}")
         parts.push("")
         parts.push("function __isAttioMultiValueAttribute(objectSlug: string, attributeSlug: string): boolean {")
@@ -1158,7 +1188,7 @@ function generateToolsSection(tools: ToolDefinition[], input: CodegenInput): Sec
         parts.push('function __enhanceAttioUpsertResult<TObject extends GeneratedAttioObject>(object: TObject, result: ToolOutputByName["attio_upsert_record"]): AttioUpsertRecordResult<TObject> {')
         parts.push("    return {")
         parts.push("        ...result,")
-        parts.push("        record: __enhanceAttioRecord(object, result.record),")
+        parts.push("        records: (result.records || []).map(record => __enhanceAttioRecord(object, record)).filter(Boolean) as Array<AttioRecordFor<TObject>>,")
         parts.push("    }")
         parts.push("}")
         parts.push("")
@@ -1294,7 +1324,7 @@ function generateToolsSection(tools: ToolDefinition[], input: CodegenInput): Sec
             } else if (group.integration === "attio" && tool.name === "attio_upsert_record" && group.integrationId) {
                 parts.push(`            ${methodName}: <TObject extends GeneratedAttioObject>(params: AttioUpsertRecordParams<TObject>) =>`)
                 parts.push(
-                    `                agent.executeTool<ToolOutputByName["${escapeString(tool.name)}"]>("${escapeString(tool.name)}", { objectSlug: __normalizeAttioObjectSlug(params.object), matchingAttribute: params.matchingAttribute, values: __serializeAttioValues(params.values), integrationId: "${escapeString(group.integrationId)}" }).then(result => __enhanceAttioUpsertResult(params.object, result)),`
+                    `                agent.executeTool<ToolOutputByName["${escapeString(tool.name)}"]>("${escapeString(tool.name)}", { objectSlug: __normalizeAttioObjectSlug(params.object), matchingAttribute: params.matchingAttribute, records: __serializeAttioRecords(params.records), integrationId: "${escapeString(group.integrationId)}" }).then(result => __enhanceAttioUpsertResult(params.object, result)),`
                 )
             } else if (group.integration === "attio" && tool.name === "attio_list_objects" && group.integrationId) {
                 parts.push(`            ${methodName}: (params: AttioListObjectsParams = {}) =>`)
@@ -1327,9 +1357,10 @@ function generateToolsSection(tools: ToolDefinition[], input: CodegenInput): Sec
 
 // ── System (always included) ──────────────────────────────────────────
 
-function generateSystemSection(): SectionResult {
-    const imports = new Set(["TimeTriggerConfig", "TerseConfig"])
+function generateSystemSection(tools: ToolDefinition[]): SectionResult {
+    const imports = new Set(["TimeTriggerConfig", "TerseConfig", "TypedSkill"])
     const parts: string[] = []
+    const skillToolType = buildSkillToolTypeForIntegration(tools, "terse")
 
     parts.push(sectionHeader("Schedule"))
     parts.push("")
@@ -1345,8 +1376,8 @@ function generateSystemSection(): SectionResult {
     parts.push("")
     parts.push("export const Terse = {")
     parts.push(`    /** Use in \`skills[]\` — built-in web search */`)
-    parts.push("    skill(): TerseConfig {")
-    parts.push("        return new TerseConfig()")
+    parts.push(`    skill(): TypedSkill<${skillToolType}> {`)
+    parts.push(`        return new TerseConfig() as TypedSkill<${skillToolType}>`)
     parts.push("    },")
     parts.push("}")
     parts.push("")
@@ -1361,21 +1392,21 @@ export function generateCode(input: CodegenInput): string {
     const sections: string[] = []
 
     const sectionGenerators: SectionResult[] = [
-        generateGitHubSection(input.github),
-        generateGmailSection(input.gmail),
-        generateSlackSection(input.slack),
+        generateGitHubSection(input.github, input.tools),
+        generateGmailSection(input.gmail, input.tools),
+        generateSlackSection(input.slack, input.tools),
         generateFigmaSection(input.figma),
-        generateLinearSection(input.linear),
-        generateAtlassianSection(input.atlassian),
-        generateNotionSection(input.notion),
-        generatePosthogSection(input.posthog),
-        generateDatadogSection(input.datadog),
-        generateLaunchDarklySection(input.launchdarkly),
-        generateWorkOSSection(input.workos),
-        generateAttioSection(input.attio),
-        generateSnowflakeSection(input.snowflake),
+        generateLinearSection(input.linear, input.tools),
+        generateAtlassianSection(input.atlassian, input.tools),
+        generateNotionSection(input.notion, input.tools),
+        generatePosthogSection(input.posthog, input.tools),
+        generateDatadogSection(input.datadog, input.tools),
+        generateLaunchDarklySection(input.launchdarkly, input.tools),
+        generateWorkOSSection(input.workos, input.tools),
+        generateAttioSection(input.attio, input.tools),
+        generateSnowflakeSection(input.snowflake, input.tools),
         generateToolsSection(input.tools, input),
-        generateSystemSection(),
+        generateSystemSection(input.tools),
     ]
 
     for (const section of sectionGenerators) {
