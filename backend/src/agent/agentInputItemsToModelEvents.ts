@@ -130,8 +130,7 @@ async function convertSingleItem(
                 timestamp: eventTimestamp,
                 step_id: toolApprovalSystemEvent.step_id,
                 approved: toolApprovalSystemEvent.approved,
-                rejection_reason: toolApprovalSystemEvent.rejection_reason || undefined,
-                edited_arguments: toolApprovalSystemEvent.edited_arguments || undefined
+                rejection_reason: toolApprovalSystemEvent.rejection_reason || undefined
             }
         ]
     }

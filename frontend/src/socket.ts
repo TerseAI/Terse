@@ -247,7 +247,6 @@ export function sendChatMessage(runId: string | null, message: ModelRequest): vo
 
 export type ToolApprovalResponseOptions = {
     rejectionReason?: string
-    editedArguments?: string
 }
 
 export function sendToolApprovalResponse(runId: string, stepId: string, approved: boolean, options?: ToolApprovalResponseOptions): void {
@@ -261,8 +260,7 @@ export function sendToolApprovalResponse(runId: string, stepId: string, approved
             type: "ToolApprovalResponse",
             step_id: stepId,
             approved,
-            ...(options?.rejectionReason ? { rejection_reason: options.rejectionReason } : {}),
-            ...(options?.editedArguments ? { edited_arguments: options.editedArguments } : {})
+            rejection_reason: options?.rejectionReason
         }
     })
 }

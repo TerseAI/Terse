@@ -1,192 +1,141 @@
-import { useEffect, useMemo, useState } from "react"
+import { useMemo } from "react"
 
-import { AlertTriangle, ArrowRight, RotateCcw } from "lucide-react"
+import { AlertTriangle, ArrowRight } from "lucide-react"
 
 import { useAttioObjects } from "@/hooks/api/useAttioObjects"
 
-import { EditableDataTable } from "../../ui/EditableDataTable"
 import { Badge } from "../../ui/badge"
-import { Button } from "../../ui/button"
+import { ScrollArea } from "../../ui/scroll-area"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../ui/table"
 
-import {
-    areRecordsEqual,
-    buildEditedArguments,
-    buildEditorColumns,
-    buildValidationNotices,
-    coerceEditedValue,
-    extractRecords,
-    safeParseParams,
-    valueToEditString
-} from "./attioUpsertRecordPreviewUtils"
+import { buildEditorColumns, buildValidationNotices, extractRecords, safeParseParams, valueToEditString } from "./attioUpsertRecordPreviewUtils"
 import type { ToolPreviewProps } from "./index"
 
-export default function AttioUpsertRecordPreview({ parameters, editedArguments, onEditedArgumentsChange }: ToolPreviewProps) {
-    const [workingRecords, setWorkingRecords] = useState<Array<Record<string, unknown>>>([])
-
+export default function AttioUpsertRecordPreview({ parameters }: ToolPreviewProps) {
     const parsedParameters = useMemo(() => safeParseParams(parameters), [parameters])
     const { integrationId, objectSlug, matchingAttribute } = parsedParameters ?? {}
     const { objects } = useAttioObjects(integrationId)
 
-    const originalRecords = useMemo(() => extractRecords(parsedParameters), [parsedParameters])
-    const draftRecords = useMemo(() => extractRecords(editedArguments ? safeParseParams(editedArguments) : null), [editedArguments])
-    const displayRecords = draftRecords.length > 0 ? draftRecords : originalRecords
+    const records = useMemo(() => extractRecords(parsedParameters), [parsedParameters])
     const objectDefinition = objects.find(object => object.api_slug === objectSlug)
-    const columns = buildEditorColumns(displayRecords, objectDefinition?.attributes, matchingAttribute)
-    const editableRows = workingRecords.map(record => Object.fromEntries(columns.map(column => [column.key, valueToEditString(record[column.key])])))
-    const validationNotices = buildValidationNotices(displayRecords, objectDefinition?.attributes, matchingAttribute)
-    const workingValidationNotices = buildValidationNotices(workingRecords, objectDefinition?.attributes, matchingAttribute)
-
-    useEffect(() => {
-        setWorkingRecords(structuredClone(displayRecords))
-    }, [displayRecords])
+    const columns = buildEditorColumns(records, objectDefinition?.attributes, matchingAttribute)
+    const validationNotices = buildValidationNotices(records, objectDefinition?.attributes, matchingAttribute)
 
     if (!parsedParameters) return null
 
     const requiredAttributes = (objectDefinition?.attributes ?? []).filter(attribute => attribute.is_required && attribute.api_slug)
-    const hasDraftEdits = areRecordsEqual(displayRecords, originalRecords) === false
-    const hasWorkingEdits = areRecordsEqual(workingRecords, originalRecords) === false
-
-    const syncEditedArguments = (records: Array<Record<string, unknown>>) => {
-        if (!parsedParameters) return
-
-        const nextArguments = buildEditedArguments(parsedParameters, records)
-        onEditedArgumentsChange?.(areRecordsEqual(records, originalRecords) ? undefined : nextArguments)
-    }
-
-    const handleCellUpdate = (recordIndex: number, key: string, newValue: string) => {
-        setWorkingRecords(prev => {
-            const updated = structuredClone(prev)
-            const originalValue = updated[recordIndex]?.[key] ?? originalRecords[recordIndex]?.[key]
-            updated[recordIndex] = updated[recordIndex] ?? {}
-            updated[recordIndex][key] = coerceEditedValue(originalValue, newValue)
-            syncEditedArguments(updated)
-            return updated
-        })
-    }
-
-    const handleAddRow = () => {
-        setWorkingRecords(prev => {
-            const updated = [...prev, Object.fromEntries(columns.map(column => [column.key, ""]))]
-            syncEditedArguments(updated)
-            return updated
-        })
-    }
-
-    const handleRemoveRow = (rowIndex: number) => {
-        setWorkingRecords(prev => {
-            const updated = prev.filter((_, index) => index !== rowIndex)
-            syncEditedArguments(updated)
-            return updated
-        })
-    }
-
-    const resetDraft = () => {
-        onEditedArgumentsChange?.(undefined)
-        setWorkingRecords(structuredClone(originalRecords))
-    }
 
     return (
-        <>
-            <div className="space-y-3">
-                <div className="flex items-center justify-between gap-3">
-                    <div className="min-w-0">
-                        <div className="flex items-center gap-2 text-sm">
-                            <span className="font-medium text-foreground capitalize">{objectSlug || "Record"}</span>
-                            <ArrowRight className="h-3 w-3 text-muted-foreground" />
-                            <span className="text-muted-foreground">Create or update</span>
-                        </div>
-                        {matchingAttribute && (
-                            <div className="mt-1 text-xs text-muted-foreground">
-                                Match on <span className="font-mono text-foreground">{matchingAttribute}</span>
-                            </div>
-                        )}
-                    </div>
-
-                    <div className="flex items-center gap-2">{hasDraftEdits && <Badge variant="outline">Draft ready</Badge>}</div>
+        <div className="space-y-3">
+            <div className="min-w-0">
+                <div className="flex items-center gap-2 text-sm">
+                    <span className="font-medium text-foreground capitalize">{objectSlug || "Record"}</span>
+                    <ArrowRight className="h-3 w-3 text-muted-foreground" />
+                    <span className="text-muted-foreground">Create or update</span>
                 </div>
-
-                <div className="flex flex-wrap gap-2">
-                    {requiredAttributes.length > 0 && (
-                        <Badge variant="outline">
-                            {requiredAttributes.length} required field{requiredAttributes.length === 1 ? "" : "s"}
-                        </Badge>
-                    )}
-                    {validationNotices.length > 0 && (
-                        <Badge variant="outline" className="gap-1 text-warning">
-                            <AlertTriangle className="h-3 w-3" />
-                            {validationNotices.length} warning{validationNotices.length === 1 ? "" : "s"}
-                        </Badge>
-                    )}
-                </div>
-
-                {displayRecords.length === 0 ? (
-                    <div className="text-xs text-muted-foreground">Unable to preview the record payload.</div>
-                ) : (
-                    <div className="overflow-hidden rounded-lg border border-border/70 bg-card">
-                        <div className="space-y-4 px-4 py-4">
-                            <div className="flex flex-wrap gap-2">
-                                {matchingAttribute && <Badge variant="outline">Match key: {matchingAttribute}</Badge>}
-                                {requiredAttributes.length > 0 && (
-                                    <Badge variant="outline">
-                                        Required:{" "}
-                                        {requiredAttributes
-                                            .map(attribute => attribute.api_slug)
-                                            .filter(Boolean)
-                                            .join(", ")}
-                                    </Badge>
-                                )}
-                            </div>
-
-                            {workingValidationNotices.length > 0 && (
-                                <div className="rounded-lg border border-warning/40 bg-warning/8 px-4 py-3">
-                                    <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-                                        <AlertTriangle className="h-4 w-4 text-warning" />
-                                        Review these warnings before approval
-                                    </div>
-                                    <div className="mt-2 space-y-1 text-xs text-muted-foreground">
-                                        {workingValidationNotices.slice(0, 4).map(notice => (
-                                            <div key={`${notice.rowIndex}-${notice.field}`}>
-                                                Row {notice.rowIndex + 1}: {notice.message}
-                                            </div>
-                                        ))}
-                                        {workingValidationNotices.length > 4 && <div>+{workingValidationNotices.length - 4} more warnings in the table</div>}
-                                    </div>
-                                </div>
-                            )}
-
-                            <div>
-                                <div className="flex items-center justify-between gap-3 border-b border-border/60 bg-muted px-4 py-2">
-                                    <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Spreadsheet editor</div>
-                                    <Badge variant="outline" className="text-[11px] text-muted-foreground">
-                                        Click cells to edit, add, or remove rows
-                                    </Badge>
-                                </div>
-                                <EditableDataTable
-                                    columns={columns}
-                                    rows={editableRows}
-                                    onCellChange={handleCellUpdate}
-                                    onAddRow={handleAddRow}
-                                    onRemoveRow={handleRemoveRow}
-                                    addRowLabel="Add record"
-                                />
-                            </div>
-
-                            <div className="flex items-center justify-between gap-3 pt-4">
-                                {hasWorkingEdits ? (
-                                    <Button type="button" variant="ghost" onClick={resetDraft}>
-                                        <RotateCcw className="mr-1 h-3.5 w-3.5" />
-                                        Reset Draft
-                                    </Button>
-                                ) : (
-                                    <div />
-                                )}
-
-                                <div />
-                            </div>
-                        </div>
+                {matchingAttribute && (
+                    <div className="mt-1 text-xs text-muted-foreground">
+                        Match on <span className="font-mono text-foreground">{matchingAttribute}</span>
                     </div>
                 )}
             </div>
-        </>
+
+            <div className="flex flex-wrap gap-2">
+                {requiredAttributes.length > 0 && (
+                    <Badge variant="outline">
+                        {requiredAttributes.length} required field{requiredAttributes.length === 1 ? "" : "s"}
+                    </Badge>
+                )}
+                {validationNotices.length > 0 && (
+                    <Badge variant="outline" className="gap-1 text-warning">
+                        <AlertTriangle className="h-3 w-3" />
+                        {validationNotices.length} warning{validationNotices.length === 1 ? "" : "s"}
+                    </Badge>
+                )}
+            </div>
+
+            {records.length === 0 ? (
+                <div className="text-xs text-muted-foreground">Unable to preview the record payload.</div>
+            ) : (
+                <div className="overflow-hidden rounded-lg border border-border/70 bg-card">
+                    <div className="space-y-4 px-4 py-4">
+                        <div className="flex flex-wrap gap-2">
+                            {matchingAttribute && <Badge variant="outline">Match key: {matchingAttribute}</Badge>}
+                            {requiredAttributes.length > 0 && (
+                                <Badge variant="outline">
+                                    Required:{" "}
+                                    {requiredAttributes
+                                        .map(attribute => attribute.api_slug)
+                                        .filter(Boolean)
+                                        .join(", ")}
+                                </Badge>
+                            )}
+                        </div>
+
+                        {validationNotices.length > 0 && (
+                            <div className="rounded-lg border border-warning/40 bg-warning/8 px-4 py-3">
+                                <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                                    <AlertTriangle className="h-4 w-4 text-warning" />
+                                    Review these warnings before approval
+                                </div>
+                                <div className="mt-2 space-y-1 text-xs text-muted-foreground">
+                                    {validationNotices.slice(0, 4).map(notice => (
+                                        <div key={`${notice.rowIndex}-${notice.field}`}>
+                                            Row {notice.rowIndex + 1}: {notice.message}
+                                        </div>
+                                    ))}
+                                    {validationNotices.length > 4 && <div>+{validationNotices.length - 4} more warnings</div>}
+                                </div>
+                            </div>
+                        )}
+
+                        <div>
+                            <div className="flex items-center justify-between gap-3 border-b border-border/60 bg-muted px-4 py-2">
+                                <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Preview</div>
+                                <Badge variant="outline" className="text-[11px] text-muted-foreground">
+                                    {records.length} record{records.length === 1 ? "" : "s"}
+                                </Badge>
+                            </div>
+                            <div className="overflow-hidden rounded-md">
+                                <ScrollArea className="max-h-[56vh] w-full bg-background">
+                                    <Table className="table-fixed">
+                                        <TableHeader className="sticky top-0 z-20 bg-muted">
+                                            <TableRow>
+                                                <TableHead className="sticky left-0 z-30 w-14 min-w-14 bg-muted text-center text-xs uppercase tracking-[0.16em] text-muted-foreground">#</TableHead>
+                                                {columns.map(column => (
+                                                    <TableHead
+                                                        key={column.key}
+                                                        className="bg-muted text-sm font-medium text-foreground"
+                                                        style={column.width ? { width: column.width, minWidth: column.width } : undefined}
+                                                    >
+                                                        {column.title}
+                                                    </TableHead>
+                                                ))}
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {records.map((record, rowIndex) => (
+                                                <TableRow key={rowIndex} className={rowIndex % 2 === 0 ? "bg-background" : "bg-muted"}>
+                                                    <TableCell className="sticky left-0 z-10 px-3 text-center text-xs font-medium text-muted-foreground">{rowIndex + 1}</TableCell>
+                                                    {columns.map(column => (
+                                                        <TableCell
+                                                            key={column.key}
+                                                            className="px-3 py-2 text-sm text-foreground"
+                                                            style={column.width ? { width: column.width, minWidth: column.width } : undefined}
+                                                        >
+                                                            <span className="whitespace-pre-wrap break-words select-text">{valueToEditString(record[column.key])}</span>
+                                                        </TableCell>
+                                                    ))}
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                </ScrollArea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
     )
 }

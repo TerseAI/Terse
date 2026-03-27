@@ -72,7 +72,7 @@ export async function handleSdkAgentRun(req: Request, res: Response) {
 
             const decision = await waitForApprovalDecision(runId, stepId)
             const resumeDecision = decision.approved ? ("approve" as const) : ("reject" as const)
-            result = await sdkRunner.resume(resumeDecision, stepId, JSON.stringify(result.loopResult.state), interruptions, decision.rejectionReason, decision.editedArguments)
+            result = await sdkRunner.resume(resumeDecision, stepId, JSON.stringify(result.loopResult.state), interruptions, decision.rejectionReason)
         }
 
         finishSseStream(res, send, result, sdkRunner)
@@ -101,7 +101,7 @@ export async function handleSdkApprovalDecision(req: Request, res: Response) {
         return res.status(400).json({ success: false, error: "Missing required fields: runId, stepId, approved" })
     }
 
-    resolveApprovalDecision(body.runId, body.stepId, { approved: body.approved, editedArguments: body.editedArguments })
+    resolveApprovalDecision(body.runId, body.stepId, { approved: body.approved })
 
     return res.status(200).json({ success: true })
 }

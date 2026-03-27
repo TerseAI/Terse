@@ -17,8 +17,7 @@ const toolApprovalResponseSystemEventPayloadSchema = z.object({
     id: z.string().trim().min(1).optional(),
     step_id: z.string().trim().min(1),
     approved: z.boolean(),
-    rejection_reason: z.string().trim().min(1).optional(),
-    edited_arguments: z.string().trim().min(1).optional()
+    rejection_reason: z.string().trim().min(1).optional()
 })
 
 const toolApprovalSystemEventPayloadSchema = z.union([toolApprovalRequestSystemEventPayloadSchema, toolApprovalResponseSystemEventPayloadSchema])
@@ -37,7 +36,6 @@ export type ToolApprovalResponseSystemEventInput = {
     step_id: string
     approved: boolean
     rejection_reason?: string
-    edited_arguments?: string
 }
 
 export type ParsedToolApprovalSystemEvent =
@@ -52,7 +50,6 @@ export type ParsedToolApprovalSystemEvent =
           step_id: string
           approved: boolean
           rejection_reason?: string
-          edited_arguments?: string
       }
 
 class ToolApprovalSystemEvent extends BaseSystemEvent<ToolApprovalSystemEventPayload, ParsedToolApprovalSystemEvent> {
@@ -74,8 +71,7 @@ class ToolApprovalSystemEvent extends BaseSystemEvent<ToolApprovalSystemEventPay
             type: "ToolApprovalResponse",
             step_id: payload.step_id,
             approved: payload.approved,
-            rejection_reason: payload.rejection_reason || undefined,
-            edited_arguments: payload.edited_arguments || undefined
+            rejection_reason: payload.rejection_reason || undefined
         }
     }
 }
@@ -106,8 +102,7 @@ function buildToolApprovalResponsePayload(input: ToolApprovalResponseSystemEvent
         id: buildToolApprovalResponseSystemEventId(input.step_id),
         step_id: input.step_id,
         approved: input.approved,
-        rejection_reason: input.rejection_reason || undefined,
-        edited_arguments: input.edited_arguments || undefined
+        rejection_reason: input.rejection_reason || undefined
     }
 }
 

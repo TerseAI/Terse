@@ -398,7 +398,6 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
                 stepId: message.step_id,
                 approved: message.approved,
                 rejectionReason: message.rejection_reason,
-                editedArguments: message.edited_arguments,
                 userId,
                 organizationId: organizationId ?? ""
             })

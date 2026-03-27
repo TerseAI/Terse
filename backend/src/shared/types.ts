@@ -718,7 +718,6 @@ export type SdkApprovalDecisionRequestBody = {
     runId: string
     stepId: string
     approved: boolean
-    editedArguments?: string
 }
 
 export type SdkDeployTrigger = {

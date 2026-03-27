@@ -98,7 +98,6 @@ export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSe
         stepId: string
         settings: RunExecutionSettings<TSession, TAgent>
         rejectionReason?: string
-        editedArguments?: string
         prepareResumeState?: (state: RunState<TSession, TAgent>) => Promise<void> | void
     }): Promise<AgentRunnerLoopResult<TSession, TAgent>> {
         await this.initializeLoopIfNeeded()
@@ -119,10 +118,7 @@ export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSe
         }
 
         if (params.decision === "approve") {
-            if (params.editedArguments) {
-                applyEditedArgumentsToInterruption(interruption, params.editedArguments)
-                applyEditedArgumentsToProcessedResponse(state, params.stepId, params.editedArguments)
-            }
+            // https://github.com/openai/openai-agents-js/pull/1098 Once this gets in, we should support it
             state.approve(interruption)
         } else {
             state.reject(interruption, { message: params.rejectionReason })
@@ -232,65 +228,6 @@ export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSe
             throw new Error("Agent not initialized. Call initializeAgent() before running the loop.")
         }
         return this.agent
-    }
-}
-
-// Util
-
-// This isn't super clean. May be worth opening an Issue in Agents SDK to make this better.
-function applyEditedArgumentsToInterruption(interruption: RunToolApprovalItem, editedArguments: string): void {
-    if (!interruption.rawItem || typeof interruption.rawItem !== "object") {
-        return
-    }
-
-    const rawItem = interruption.rawItem as Record<string, unknown>
-    const descriptor = Object.getOwnPropertyDescriptor(rawItem, "arguments")
-
-    // `RunToolApprovalItem.arguments` is a getter in newer @openai/agents versions,
-    // so edits need to be applied to the underlying raw item instead.
-    if (!descriptor || descriptor.writable || descriptor.set) {
-        rawItem.arguments = editedArguments
-        return
-    }
-
-    ;(interruption as { rawItem: Record<string, unknown> }).rawItem = {
-        ...rawItem,
-        arguments: editedArguments
-    }
-}
-
-function applyEditedArgumentsToProcessedResponse<TSession extends SessionWithTracking<AppSession>, TAgent extends Agent<TSession, AgentOutputType>>(
-    state: RunState<TSession, TAgent>,
-    stepId: string,
-    editedArguments: string
-): void {
-    const processedResponse = (
-        state as RunState<TSession, TAgent> & {
-            _lastProcessedResponse?: {
-                functions?: Array<{ toolCall?: Record<string, unknown> }>
-                shellActions?: Array<{ toolCall?: Record<string, unknown> }>
-                applyPatchActions?: Array<{ toolCall?: Record<string, unknown> }>
-                computerActions?: Array<{ toolCall?: Record<string, unknown> }>
-            }
-        }
-    )._lastProcessedResponse
-
-    const maybeUpdateToolCall = (toolCall?: Record<string, unknown>) => {
-        if (!toolCall || toolCall.callId !== stepId) return
-        toolCall.arguments = editedArguments
-    }
-
-    for (const fn of processedResponse?.functions ?? []) {
-        maybeUpdateToolCall(fn.toolCall)
-    }
-    for (const action of processedResponse?.shellActions ?? []) {
-        maybeUpdateToolCall(action.toolCall)
-    }
-    for (const action of processedResponse?.applyPatchActions ?? []) {
-        maybeUpdateToolCall(action.toolCall)
-    }
-    for (const action of processedResponse?.computerActions ?? []) {
-        maybeUpdateToolCall(action.toolCall)
     }
 }
 
