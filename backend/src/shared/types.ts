@@ -696,14 +696,29 @@ export type SdkAgentRunResponseBody = {
 }
 
 export type SdkAgentStreamEvent =
+    | { type: "run_started"; runId: string }
     | { type: "text"; text: string }
     | { type: "final_output"; finalOutput: string }
     | { type: "tool_call_params"; toolCallParams: string }
     | { type: "tool_call_started"; toolCallStarted: string }
     | { type: "tool_call_completed"; toolCallCompleted: string }
+    | {
+          type: "tool_approval_requested"
+          toolApprovalRequested: {
+              stepId: string
+              toolName: string
+              arguments: string
+          }
+      }
     | { type: "action"; action: RunHistoryAction }
     | { type: "error"; message: string }
     | { type: "done" }
+
+export type SdkApprovalDecisionRequestBody = {
+    runId: string
+    stepId: string
+    approved: boolean
+}
 
 export type SdkDeployTrigger = {
     configType: string
@@ -715,6 +730,7 @@ export type SdkDeployTrigger = {
 export type SdkDeployJob = {
     jobName: string
     triggers: SdkDeployTrigger[]
+    toolApprovals?: string[]
     webhookURL?: string
 }
 

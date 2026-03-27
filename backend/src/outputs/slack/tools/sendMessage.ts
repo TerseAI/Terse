@@ -20,22 +20,24 @@ import { isValidEpochTimestamp } from "../../../utility/strings"
  * Tool for sending messages to Slack channels or DMs.
  * Messages are sent as the bot or as the connected user depending on workspace token type.
  */
-export const slackSendMessageTool = tool<z.ZodObject<any>, SessionWithTracking<Session>, ToolOutputByName["slack_send_message"]>({
+const slackSendMessageParameters = z.object({
+    integrationId: z.string().describe("The integration ID of the Slack workspace to use."),
+    channelId: z.string().describe("Slack channel or DM channel ID from the configured output destinations."),
+    message: z.string().describe("Message content (mrkdwn). Used as fallback for Block Kit or main message."),
+    thread_ts: z
+        .string()
+        .nullable()
+        .optional()
+        .describe(
+            "Thread timestamp to reply to existing thread. If sending a message to a thread, this should be the timestamp of the thread to reply to. If sending an unthreaded message, this should be set to null."
+        ),
+    blocks: z.string().nullable().optional().describe("Block Kit JSON array string for interactive messages with buttons, structured layouts")
+})
+
+export const slackSendMessageTool = tool<typeof slackSendMessageParameters, SessionWithTracking<Session>, ToolOutputByName["slack_send_message"]>({
     name: ToolName.SLACK_SEND_MESSAGE,
     description: `Send message to a Slack channel or DM. Supports plain text (mrkdwn) or Block Kit (JSON blocks). Use a channel ID from the configured output destinations (channels and DM channel IDs for configured users).`,
-    parameters: z.object({
-        integrationId: z.string().describe("The integration ID of the Slack workspace to use."),
-        channelId: z.string().describe("Slack channel or DM channel ID from the configured output destinations."),
-        message: z.string().describe("Message content (mrkdwn). Used as fallback for Block Kit or main message."),
-        thread_ts: z
-            .string()
-            .nullable()
-            .optional()
-            .describe(
-                "Thread timestamp to reply to existing thread. If sending a message to a thread, this should be the timestamp of the thread to reply to. If sending an unthreaded message, this should be set to null."
-            ),
-        blocks: z.string().nullable().optional().describe("Block Kit JSON array string for interactive messages with buttons, structured layouts")
-    }),
+    parameters: slackSendMessageParameters,
     needsApproval: createNeedsApprovalFunction(ToolName.SLACK_SEND_MESSAGE),
     execute: async ({ integrationId, channelId, message, thread_ts, blocks: blocksJson }, runContext?: RunContext<SessionWithTracking<Session>>) => {
         if (!runContext?.context) {

@@ -15,7 +15,7 @@ import { Button } from "../ui/button"
 import { InputConfigSelectorProps } from "./types"
 
 function buildSnowflakeConfig(integration: SnowflakeIntegrationType): SnowflakeOutputConfig {
-    return new SnowflakeOutputConfig(integration.id, integration.warehouse, integration.databaseName ?? undefined, integration.schemaName ?? undefined)
+    return new SnowflakeOutputConfig(integration.id)
 }
 
 function formatSnowflakeLabel(integration: SnowflakeIntegrationType): string {

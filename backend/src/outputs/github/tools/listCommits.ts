@@ -14,7 +14,19 @@ import { createGitHubClient, getGitHubAccessToken, listCommits, parseRepoFullNam
 /**
  * Tool for listing commits in GitHub repositories within a time window.
  */
-export const listGitHubCommitsTool = tool<z.ZodObject<any>, SessionWithTracking<Session>, ToolOutputByName["listGitHubCommits"]>({
+const listGitHubCommitsParameters = z.object({
+    repository: z.string().describe('Repository in "owner/repo" format (e.g., "facebook/react"). Must be one of the configured repositories.'),
+    since: z
+        .union([z.string(), z.null()])
+        .describe('Start of time window (ISO date string, e.g., "2024-01-01" or "2024-01-15T00:00:00Z"). Only commits after this date are included. Use null for no start filter.'),
+    until: z.union([z.string(), z.null()]).describe("End of time window (ISO date string). Only commits before this date are included. Use null for no end filter."),
+    branch: z.union([z.string(), z.null()]).describe('Branch name to list commits from (e.g., "main", "develop"). Use null for the repository\'s default branch.'),
+    path: z.union([z.string(), z.null()]).describe('Only include commits that affect this file or directory path (e.g., "src/components" or "package.json"). Use null for all paths.'),
+    author: z.union([z.string(), z.null()]).describe("Filter commits by author (GitHub username or email). Use null for all authors."),
+    perPage: z.number().describe("Number of results to return (default: 30, max: 100)")
+})
+
+export const listGitHubCommitsTool = tool<typeof listGitHubCommitsParameters, SessionWithTracking<Session>, ToolOutputByName["listGitHubCommits"]>({
     name: ToolName.GITHUB_LIST_COMMITS,
     description: `List commits in GitHub repositories within a time window. Use this to:
 - Review recent changes and development activity
@@ -24,17 +36,8 @@ export const listGitHubCommitsTool = tool<z.ZodObject<any>, SessionWithTracking<
 - Understand the pace and nature of development
 
 The tool returns commit details including message, author, date, and SHA.`,
-    parameters: z.object({
-        repository: z.string().describe('Repository in "owner/repo" format (e.g., "facebook/react"). Must be one of the configured repositories.'),
-        since: z
-            .union([z.string(), z.null()])
-            .describe('Start of time window (ISO date string, e.g., "2024-01-01" or "2024-01-15T00:00:00Z"). Only commits after this date are included. Use null for no start filter.'),
-        until: z.union([z.string(), z.null()]).describe("End of time window (ISO date string). Only commits before this date are included. Use null for no end filter."),
-        branch: z.union([z.string(), z.null()]).describe('Branch name to list commits from (e.g., "main", "develop"). Use null for the repository\'s default branch.'),
-        path: z.union([z.string(), z.null()]).describe('Only include commits that affect this file or directory path (e.g., "src/components" or "package.json"). Use null for all paths.'),
-        author: z.union([z.string(), z.null()]).describe("Filter commits by author (GitHub username or email). Use null for all authors."),
-        perPage: z.number().describe("Number of results to return (default: 30, max: 100)")
-    }),
+    strict: true,
+    parameters: listGitHubCommitsParameters,
     execute: async ({ repository, since, until, branch, path, author, perPage = 30 }, runContext?: RunContext<SessionWithTracking<Session>>) => {
         if (!runContext?.context) {
             throw new Error("No context provided")

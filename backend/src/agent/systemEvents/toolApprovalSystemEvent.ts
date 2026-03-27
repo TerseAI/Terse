@@ -16,10 +16,11 @@ const toolApprovalResponseSystemEventPayloadSchema = z.object({
     kind: z.literal("tool_approval_response"),
     id: z.string().trim().min(1).optional(),
     step_id: z.string().trim().min(1),
-    approved: z.boolean()
+    approved: z.boolean(),
+    rejection_reason: z.string().trim().min(1).optional()
 })
 
-const toolApprovalSystemEventPayloadSchema = z.discriminatedUnion("kind", [toolApprovalRequestSystemEventPayloadSchema, toolApprovalResponseSystemEventPayloadSchema])
+const toolApprovalSystemEventPayloadSchema = z.union([toolApprovalRequestSystemEventPayloadSchema, toolApprovalResponseSystemEventPayloadSchema])
 
 type ToolApprovalRequestSystemEventPayload = z.infer<typeof toolApprovalRequestSystemEventPayloadSchema>
 type ToolApprovalResponseSystemEventPayload = z.infer<typeof toolApprovalResponseSystemEventPayloadSchema>
@@ -34,6 +35,7 @@ export type ToolApprovalRequestSystemEventInput = {
 export type ToolApprovalResponseSystemEventInput = {
     step_id: string
     approved: boolean
+    rejection_reason?: string
 }
 
 export type ParsedToolApprovalSystemEvent =
@@ -47,6 +49,7 @@ export type ParsedToolApprovalSystemEvent =
           type: "ToolApprovalResponse"
           step_id: string
           approved: boolean
+          rejection_reason?: string
       }
 
 class ToolApprovalSystemEvent extends BaseSystemEvent<ToolApprovalSystemEventPayload, ParsedToolApprovalSystemEvent> {
@@ -67,7 +70,8 @@ class ToolApprovalSystemEvent extends BaseSystemEvent<ToolApprovalSystemEventPay
         return {
             type: "ToolApprovalResponse",
             step_id: payload.step_id,
-            approved: payload.approved
+            approved: payload.approved,
+            rejection_reason: payload.rejection_reason || undefined
         }
     }
 }
@@ -97,7 +101,8 @@ function buildToolApprovalResponsePayload(input: ToolApprovalResponseSystemEvent
         kind: "tool_approval_response",
         id: buildToolApprovalResponseSystemEventId(input.step_id),
         step_id: input.step_id,
-        approved: input.approved
+        approved: input.approved,
+        rejection_reason: input.rejection_reason || undefined
     }
 }
 

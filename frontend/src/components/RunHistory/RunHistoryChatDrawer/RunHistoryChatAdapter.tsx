@@ -68,12 +68,12 @@ export default function RunHistoryChatAdapter({ runId, status, children }: RunHi
         sendChatMessage(runId, message)
     }
 
-    const handleApprove = (stepId: string) => {
-        sendToolApprovalResponse(runId, stepId, true)
+    const handleApprove = (stepId: string, options?: Parameters<typeof sendToolApprovalResponse>[3]) => {
+        sendToolApprovalResponse(runId, stepId, true, options)
     }
 
-    const handleReject = (stepId: string) => {
-        sendToolApprovalResponse(runId, stepId, false)
+    const handleReject = (stepId: string, options?: Parameters<typeof sendToolApprovalResponse>[3]) => {
+        sendToolApprovalResponse(runId, stepId, false, options)
     }
 
     const handleCancellation = () => {

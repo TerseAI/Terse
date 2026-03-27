@@ -15,7 +15,19 @@ import { createGitHubClient, getGitHubAccessToken, searchCode } from "../githubA
  * Tool for semantic code search in GitHub repositories.
  * Uses GitHub's Code Search API to find code by meaning, function names, classes, etc.
  */
-export const searchGitHubCodeTool = tool<z.ZodObject<any>, SessionWithTracking<Session>, ToolOutputByName["searchGitHubCode"]>({
+const searchGitHubCodeParameters = z.object({
+    repositoryNames: z.array(z.string()).describe("Array of repository full names (owner/repo format) to search in."),
+    query: z.string().describe('The search query. Use natural language or code-specific terms. Examples: "authentication middleware", "class UserRepository", "handleSubmit form validation"'),
+    language: z.union([z.string(), z.null()]).describe('Filter by programming language (e.g., "typescript", "python", "javascript"). Use null to search all languages.'),
+    filename: z.union([z.string(), z.null()]).describe('Filter by filename pattern (e.g., "*.test.ts" for test files, "*.config.*" for config files). Use null to search all files.'),
+    path: z.union([z.string(), z.null()]).describe('Filter by path (e.g., "src/components" to only search in that directory). Use null to search everywhere.'),
+    perPage: z.number().describe("Number of results to return (default: 10, max: 100)"),
+    page: z
+        .union([z.number().int().min(1), z.null()])
+        .describe("Page number for pagination (default: 1). Use this to fetch additional results if there are more than perPage results. Use null for page 1. Must be a positive integer >= 1.")
+})
+
+export const searchGitHubCodeTool = tool<typeof searchGitHubCodeParameters, SessionWithTracking<Session>, ToolOutputByName["searchGitHubCode"]>({
     name: ToolName.GITHUB_SEARCH_CODE,
     description: `Search GitHub repositories for code by SEMANTIC MEANING (conceptual search). Use this when you DON'T know the exact code text.
 
@@ -37,17 +49,8 @@ Tips:
 - Start with broad searches, then narrow down
 - Use natural language or domain terms
 - Combine multiple terms for more specific results`,
-    parameters: z.object({
-        repositoryNames: z.array(z.string()).describe("Array of repository full names (owner/repo format) to search in."),
-        query: z.string().describe('The search query. Use natural language or code-specific terms. Examples: "authentication middleware", "class UserRepository", "handleSubmit form validation"'),
-        language: z.union([z.string(), z.null()]).describe('Filter by programming language (e.g., "typescript", "python", "javascript"). Use null to search all languages.'),
-        filename: z.union([z.string(), z.null()]).describe('Filter by filename pattern (e.g., "*.test.ts" for test files, "*.config.*" for config files). Use null to search all files.'),
-        path: z.union([z.string(), z.null()]).describe('Filter by path (e.g., "src/components" to only search in that directory). Use null to search everywhere.'),
-        perPage: z.number().describe("Number of results to return (default: 10, max: 100)"),
-        page: z
-            .union([z.number().int().min(1), z.null()])
-            .describe("Page number for pagination (default: 1). Use this to fetch additional results if there are more than perPage results. Use null for page 1. Must be a positive integer >= 1.")
-    }),
+    strict: true,
+    parameters: searchGitHubCodeParameters,
     execute: async ({ repositoryNames, query, language, filename, path, perPage = 10, page }, runContext?: RunContext<SessionWithTracking<Session>>) => {
         if (!runContext?.context) {
             throw new Error("No context provided")

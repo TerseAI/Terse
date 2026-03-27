@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from "framer-motion"
 import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react"
 
 import { type ModelRequest } from "../../shared/ModelEvents"
+import type { ToolApprovalResponseOptions } from "../../socket"
 
 import { AwaitingResponseAnimation } from "./AwaitingResponseAnimation"
 import ChatInput, { type ChatInputHandle } from "./ChatInput"
@@ -35,8 +36,8 @@ interface ChatLayoutProps {
     setInput: (input: string) => void
     placeholders?: string[]
     EmptyContentPlaceholder?: React.ReactNode
-    onApprove?: (stepId: string) => void
-    onReject?: (stepId: string) => void
+    onApprove?: (stepId: string, options?: ToolApprovalResponseOptions) => void
+    onReject?: (stepId: string, options?: ToolApprovalResponseOptions) => void
     onMultipleChoiceAnswer?: (questionId: string, value: string) => void
     inputSize?: "small" | "medium" | "large"
     showPlaceholderChips?: boolean
@@ -154,6 +155,7 @@ export const ChatLayout = forwardRef<ChatLayoutHandle, ChatLayoutProps>(function
                             onAssistantTextDisplayComplete={() => setIsLatestTextComplete(true)}
                             onApprove={onApprove}
                             onReject={onReject}
+                            onSendMessage={onSendMessage}
                             onMultipleChoiceAnswer={onMultipleChoiceAnswer}
                         />
                     ))}

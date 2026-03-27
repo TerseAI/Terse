@@ -370,12 +370,7 @@ export const convertPrismaOutputConfigToConfigInstance = (channelOutput: AgentOu
     }
 
     if (channelOutput.snowflake_config) {
-        return new SnowflakeOutputConfig(
-            integrationId,
-            channelOutput.snowflake_config.warehouse || undefined,
-            channelOutput.snowflake_config.database_name || undefined,
-            channelOutput.snowflake_config.schema_name || undefined
-        )
+        return new SnowflakeOutputConfig(integrationId)
     }
 
     if (channelOutput.config_type === OutputConfigType.SNOWFLAKE) {
@@ -690,7 +685,7 @@ export const convertPlainObjectToConfigInstance = (config: any): ConfigInstance 
         case ConfigType.ATTIO_OUTPUT:
             return new AttioOutputConfig(config.integrationId, config.objectSlug)
         case ConfigType.SNOWFLAKE_OUTPUT:
-            return new SnowflakeOutputConfig(config.integrationId, config.warehouse, config.databaseName, config.schemaName)
+            return new SnowflakeOutputConfig(config.integrationId)
         default:
             throw new Error(`Unsupported config type: ${config.configType}`)
     }

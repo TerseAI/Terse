@@ -11,6 +11,7 @@ import { NotificationManager } from "../notifications/Notification"
 import { Output } from "../outputs/abstract/Output"
 import { OutputFactory } from "../outputs/abstract/OutputFactory"
 import { db } from "../prismaClient"
+import { resolveApprovalDecision } from "../routes/sdkApprovalGate"
 import { ConfigInstance } from "../shared/Configs"
 import { pendingApprovalsKey } from "../shared/InvalidationKeys"
 import { RunHistoryStatus } from "../shared/RunHistoryTypes"
@@ -256,7 +257,8 @@ export class ApprovalService {
             try {
                 await appendToolApprovalResponseSystemEvent(runId, {
                     step_id: stepId,
-                    approved
+                    approved,
+                    rejection_reason: rejectionReason?.trim() || undefined
                 })
             } catch (error) {
                 logger.warn("[ApprovalService] Failed to append tool approval response system event to raw history", { runId, stepId, error })
@@ -265,6 +267,27 @@ export class ApprovalService {
             emitCacheInvalidationWithWildcard(channel.organization_id, "runHistory", channel.id)
             emitCacheInvalidationWithKey(channel.organization_id, PENDING_APPROVALS_INVALIDATION_KEY)
             emitCacheInvalidationWithWildcard(channel.organization_id, "chatHistory", runId)
+
+            // SDK runs: resolve the in-memory approval gate instead of creating a new AgentRunner.
+            // The SSE handler (handleSdkAgentRun) is already waiting on waitForApprovalDecision() and will resume the agent.
+            if (channel.source === "SDK") {
+                const finalSlackStatus = approved
+                    ? SlackApprovalMessageStatus.APPROVED
+                    : hardReject
+                      ? SlackApprovalMessageStatus.REJECTED
+                      : rejectionReason
+                        ? SlackApprovalMessageStatus.CHANGES_REQUESTED
+                        : SlackApprovalMessageStatus.REJECTED
+
+                resolveApprovalDecision(runId, stepId, { approved: !hardReject && approved, rejectionReason })
+
+                await this.updateSlackNotification(runId, stepId, finalSlackStatus, user, channel.id)
+
+                logger.info("[ApprovalService] SDK approval decision resolved via in-memory gate", { runId, stepId, approved, hardReject })
+                return {
+                    status: ApprovalProcessingStatus.COMPLETED
+                }
+            }
 
             // Create agent runner and resume from pending approval
             const runContext = { runId }

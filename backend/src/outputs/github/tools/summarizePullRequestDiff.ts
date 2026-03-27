@@ -20,7 +20,20 @@ import { createGitHubClient, getGitHubAccessToken, getPullRequestDiff, parseRepo
  * launches a sub-agent with a compact model (gpt-4o-mini) that reads the diff
  * and provides a concise summary.
  */
-export const summarizeGitHubPullRequestDiffTool = tool<z.ZodObject<any>, SessionWithTracking<Session>, ToolOutputByName["summarizeGitHubPullRequestDiff"]>({
+const summarizeGitHubPullRequestDiffParameters = z.object({
+    repository: z.string().describe('The repository in "owner/repo" format (e.g., "facebook/react"). Must be one of the configured repositories.'),
+    pullNumber: z.number().describe("The pull request number (e.g., 123 for PR #123)"),
+    page: z
+        .union([z.number().int().min(1), z.null()])
+        .describe("Page number for pagination (default: 1). Use this to fetch additional files if a PR has more than 100 files. Use null for page 1. Must be a positive integer >= 1."),
+    context: z
+        .union([z.string(), z.null()])
+        .describe(
+            'Optional high-level context about what you\'re looking for in this PR. This helps the sub-agent focus its analysis. For example: "I need to understand the authentication changes" or "Focus on database migration changes". Use null if no specific context.'
+        )
+})
+
+export const summarizeGitHubPullRequestDiffTool = tool<typeof summarizeGitHubPullRequestDiffParameters, SessionWithTracking<Session>, ToolOutputByName["summarizeGitHubPullRequestDiff"]>({
     name: ToolName.GITHUB_SUMMARIZE_PULL_REQUEST_DIFF,
     description: `Summarize the diff of a pull request from a GitHub repository using an intelligent sub-agent. Use this to:
 - Understand what changes were made in a specific PR without loading the full diff into context
@@ -38,18 +51,8 @@ The tool launches a sub-agent that:
   - Impact assessment
 
 You can optionally provide high-level context about what you're looking for in the PR, which will help the sub-agent focus its analysis.`,
-    parameters: z.object({
-        repository: z.string().describe('The repository in "owner/repo" format (e.g., "facebook/react"). Must be one of the configured repositories.'),
-        pullNumber: z.number().describe("The pull request number (e.g., 123 for PR #123)"),
-        page: z
-            .union([z.number().int().min(1), z.null()])
-            .describe("Page number for pagination (default: 1). Use this to fetch additional files if a PR has more than 100 files. Use null for page 1. Must be a positive integer >= 1."),
-        context: z
-            .union([z.string(), z.null()])
-            .describe(
-                'Optional high-level context about what you\'re looking for in this PR. This helps the sub-agent focus its analysis. For example: "I need to understand the authentication changes" or "Focus on database migration changes". Use null if no specific context.'
-            )
-    }),
+    strict: true,
+    parameters: summarizeGitHubPullRequestDiffParameters,
     execute: async ({ repository, pullNumber, page, context }, runContext?: RunContext<SessionWithTracking<Session>>) => {
         const pageNumber = Math.max(1, page ?? 1)
         if (!runContext?.context) {
