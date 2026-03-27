@@ -1,7 +1,6 @@
 import { StrictMode } from "react"
 import { createRoot } from "react-dom/client"
 
-import "@glideapps/glide-data-grid/dist/index.css"
 import { PostHogProvider } from "posthog-js/react"
 
 import App from "./App.tsx"
