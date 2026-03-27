@@ -316,8 +316,9 @@ class TerseAgent:
         # Detect tool-level errors wrapped as successful responses.
         # This happens when the OpenAI SDK errorFunction handles the error
         # and returns a formatted string that gets parsed back into a dict.
-        if isinstance(result, dict) and result.get("success") is False:
-            error_text = result.get("text", "")
+        result_dict = _as_object_dict(result)
+        if result_dict is not None and result_dict.get("success") is False:
+            error_text = result_dict.get("text", "")
             if isinstance(error_text, str) and error_text.startswith("[TERSE ERROR]:"):
                 detail = error_text[len("[TERSE ERROR]:") :]
                 try:
