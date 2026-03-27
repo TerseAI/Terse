@@ -193,9 +193,7 @@ class TemplateContextBuilder:
         self._has_attio_tools = bool(self._input.attio and self._attio_tools)
         self._has_snowflake_tools = bool(self._input.snowflake and self._snowflake_tools)
 
-        self._attio_ctx = (
-            _build_attio_ctx(self._input.attio[0], self._attio_approvable) if self._input.attio else None
-        )
+        self._attio_ctx = _build_attio_ctx(self._input.attio[0], self._attio_approvable) if self._input.attio else None
         self._snowflake_ctx = (
             _build_snowflake_ctx(self._input.snowflake[0], self._snowflake_approvable)
             if self._input.snowflake
