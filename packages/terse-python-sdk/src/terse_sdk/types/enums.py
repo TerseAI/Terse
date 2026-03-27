@@ -44,6 +44,8 @@ GitHubEventType: TypeAlias = Literal[
     "pull_request.synchronize",
 ]
 GmailEventType: TypeAlias = Literal["email.received"]
+
+
 class IntegrationType(StrEnum):
     GITHUB = "github"
     GMAIL = "gmail"
@@ -60,6 +62,8 @@ class IntegrationType(StrEnum):
     WORKOS = "workos"
     ATTIO = "attio"
     SNOWFLAKE = "snowflake"
+
+
 JiraEventType: TypeAlias = Literal["issue.created", "issue.updated"]
 LinearEventType: TypeAlias = Literal["issue.created", "issue.updated", "comment.created"]
 NotificationDestinationType: TypeAlias = Literal["email", "slack"]

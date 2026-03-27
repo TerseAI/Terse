@@ -131,5 +131,3 @@ def _consume_session_events(iterator: Iterator[object], on_event: Callable[[obje
             on_event(event)
     except Exception as exc:
         LOGGER.debug("Session event consumer stopped unexpectedly: %s", exc)
-
-

@@ -11,20 +11,17 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Any, TypeVar, cast
 
+import httpx
+from httpx_sse import connect_sse
+from pydantic import ValidationError
+
 from ._http_utils import (
     _buffer_response_content,
     _debug_log_request,
     _debug_log_response_metadata,
     _debug_log_response_payload,
-    _format_debug_value,
     _read_response_detail,
-    _redact_headers,
 )
-
-import httpx
-from httpx_sse import connect_sse
-from pydantic import ValidationError
-
 from .types.config import TerseSettings
 from .types.events import (
     AnyInputEvent,
@@ -268,7 +265,10 @@ class TerseAgent:
             raise TerseApiError(f"Received invalid agent stream payload.\n  {exc}") from exc
 
     def run_and_wait(self, prompt: str, event: InputEvent | None = None) -> str | None:
-        """Run the agent to completion and return the final output, or ``None`` if no final_output event was received."""
+        """Run the agent to completion and return the final output.
+
+        Returns ``None`` if no final_output event was received.
+        """
 
         final_output: str | None = None
         for chunk in self.run(prompt, event):
