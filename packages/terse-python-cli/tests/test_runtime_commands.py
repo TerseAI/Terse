@@ -543,8 +543,8 @@ def test_deploy_builds_expected_payload_and_reports_results(runner: CliRunner) -
             assert isinstance(jobs, list)
             assert len(jobs) == 1
             assert jobs[0]["jobName"] == "demo-job"
-            assert jobs[0]["triggers"][0]["integrationType"] == "cron_job"
-            assert jobs[0]["triggers"][0]["configType"] == "time_trigger"
+            assert jobs[0]["triggers"][0]["config"]["integrationType"] == "cron_job"
+            assert jobs[0]["triggers"][0]["config"]["configType"] == "time_trigger"
             assert jobs[0]["toolApprovals"] == ["attio_upsert_record"]
 
             encoded = str(params["sourceZipBase64"])

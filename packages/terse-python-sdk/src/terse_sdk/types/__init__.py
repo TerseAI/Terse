@@ -145,7 +145,6 @@ from .sdk_types import (
     SdkDeployJob,
     SdkDeployRequestBody,
     SdkDeployResponseBody,
-    SdkDeployTrigger,
     SerializedEvent,
     TriggerPayload,
 )
