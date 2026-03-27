@@ -30,9 +30,9 @@ type EditableDataTableProps = {
 
 export function EditableDataTable({ columns, rows, onCellChange, className, viewportClassName, tableClassName, rowLabel, onAddRow, onRemoveRow, addRowLabel = "Add row" }: EditableDataTableProps) {
     return (
-        <div className={cn("overflow-hidden rounded-md border border-border/60", className)}>
+        <div className={cn("overflow-hidden rounded-md", className)}>
             <ScrollArea className={cn("max-h-[56vh] w-full bg-background", viewportClassName)}>
-                <Table className={cn("table-fixed border-collapse", tableClassName)}>
+                <Table className={cn("table-fixed", tableClassName)}>
                     <TableHeader className="sticky top-0 z-20 bg-muted">
                         <TableRow>
                             <TableHead className="sticky left-0 z-30 w-14 min-w-14 bg-muted text-center text-xs uppercase tracking-[0.16em] text-muted-foreground">#</TableHead>
@@ -48,9 +48,7 @@ export function EditableDataTable({ columns, rows, onCellChange, className, view
                     <TableBody>
                         {rows.map((row, rowIndex) => (
                             <TableRow key={rowIndex} className={cn(rowIndex % 2 === 0 ? "bg-background" : "bg-muted")}>
-                                <TableCell className={cn("sticky left-0 z-10 px-3 text-center text-xs font-medium text-muted-foreground", rowIndex % 2 === 0 ? "bg-background/95" : "bg-muted/95")}>
-                                    {rowLabel?.(rowIndex) ?? String(rowIndex + 1)}
-                                </TableCell>
+                                <TableCell className={cn("sticky left-0 z-10 px-3 text-center text-xs font-medium text-muted-foreground")}>{rowLabel?.(rowIndex) ?? String(rowIndex + 1)}</TableCell>
 
                                 {columns.map(column => {
                                     const value = row[column.key] ?? ""
@@ -62,7 +60,7 @@ export function EditableDataTable({ columns, rows, onCellChange, className, view
                                                 <Textarea
                                                     value={value}
                                                     onChange={event => onCellChange(rowIndex, column.key, event.target.value)}
-                                                    className="min-h-[88px] resize-y rounded-none border-0 !bg-transparent dark:!bg-transparent px-3 py-2 shadow-none focus-visible:!bg-accent/30 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/60"
+                                                    className="min-h-[88px] resize-y rounded-none border-0 bg-transparent dark:!bg-transparent px-3 py-2 shadow-none focus-visible:!bg-accent/30 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/60"
                                                 />
                                             ) : (
                                                 <Input
