@@ -101,6 +101,7 @@ def _serialize_trigger(trigger: TriggerConfig) -> AgentTrigger:
                 "configType": trigger.config_type or "",
                 "integrationType": trigger.integration_type,
                 "integrationId": trigger.integration_id,
+                **trigger.config,
             },
         }
     )
@@ -114,6 +115,7 @@ def _serialize_output(skill: SkillConfig[str]) -> AgentOutput:
                 "configType": skill.config_type,
                 "integrationType": skill.integration_type,
                 "integrationId": skill.integration_id,
+                **skill.config,
             },
         }
     )
