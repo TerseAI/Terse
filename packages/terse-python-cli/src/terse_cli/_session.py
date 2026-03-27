@@ -42,7 +42,7 @@ class SessionStream:
 
 def open_session_stream(
     api_key: str,
-    on_event: Callable[[object], None],
+    on_event: Callable[[object], None] | None = None,
 ) -> SessionStream:
     """Open ``/sdk/session-events`` and start streaming events in the background."""
 
@@ -118,7 +118,7 @@ def _read_session_id(iterator: Iterator[object]) -> str:
     raise SessionStreamError("Session stream ended before sending sessionId.")
 
 
-def _consume_session_events(iterator: Iterator[object], on_event: Callable[[object], None]) -> None:
+def _consume_session_events(iterator: Iterator[object], on_event: Callable[[object], None] | None) -> None:
     try:
         for sse in iterator:
             data = getattr(sse, "data", "")
@@ -128,6 +128,7 @@ def _consume_session_events(iterator: Iterator[object], on_event: Callable[[obje
                 event = SdkAgentStreamEvent.model_validate_json(data).root
             except ValidationError:
                 continue
-            on_event(event)
+            if on_event is not None:
+                on_event(event)
     except Exception as exc:
         LOGGER.debug("Session event consumer stopped unexpectedly: %s", exc)

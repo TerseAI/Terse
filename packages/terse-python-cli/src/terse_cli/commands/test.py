@@ -24,7 +24,14 @@ LOGGER = logging.getLogger("terse.cli.test")
 @click.command("test", help="Run a job locally against a synthetic cron event.")
 @click.argument("job_name", required=False)
 @click.option("--skip-type-check", is_flag=True, default=False, help="Skip ty type checking before running.")
-def test_command(job_name: str | None, skip_type_check: bool) -> None:
+@click.option(
+    "--verbose",
+    "-v",
+    is_flag=True,
+    default=False,
+    help="Show agent stream output (tool calls, actions, final output).",
+)
+def test_command(job_name: str | None, skip_type_check: bool, verbose: bool) -> None:
     session = None
 
     try:
@@ -56,7 +63,7 @@ def test_command(job_name: str | None, skip_type_check: bool) -> None:
     api_key = read_api_key(project_dir)
     if api_key:
         try:
-            session = open_session_stream(api_key, log_stream_event)
+            session = open_session_stream(api_key, log_stream_event if verbose else None)
         except SessionStreamError as exc:
             console.print(f"  [yellow]Warning:[/yellow] {exc}")
     else:

@@ -51,8 +51,9 @@ program
     .command("test")
     .description("Fetch sample events and run a job interactively")
     .argument("[job-name]", "Name of the job to test (auto-selects if only one exists)")
-    .action(async (jobName?: string) => {
-        await test(jobName)
+    .option("-v, --verbose", "Show agent stream output")
+    .action(async (jobName?: string, opts?: { verbose?: boolean }) => {
+        await test(jobName, opts?.verbose)
     })
 
 program

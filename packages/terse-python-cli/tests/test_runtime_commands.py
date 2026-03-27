@@ -13,6 +13,7 @@ from zipfile import ZipFile
 import httpx
 import pytest
 from click.testing import CliRunner
+from terse_cli.commands import test as test_command_module
 from terse_cli._generate import (
     CodegenInput,
     render_generated_module,
@@ -315,12 +316,31 @@ def test_test_command_uses_session_stream_when_api_key_exists(
         )
         session = _FakeSession("session_123")
 
-        with patch("terse_cli.commands.test.open_session_stream", return_value=session):
+        with patch("terse_cli.commands.test.open_session_stream", return_value=session) as open_session_stream:
             result = runner.invoke(cli, ["test"])
 
         assert result.exit_code == 0, result.output
         assert Path("session.txt").read_text(encoding="utf-8") == "session_123"
         assert session.closed
+        open_session_stream.assert_called_once_with("terse_test_key", None)
+
+
+def test_test_command_verbose_enables_session_stream_output(
+    runner: CliRunner,
+) -> None:
+    with runner.isolated_filesystem():
+        _write_runtime_project(
+            _runtime_main_source("Path('session.txt').write_text(str(agent.session_id), encoding='utf-8')")
+        )
+        session = _FakeSession("session_123")
+
+        with patch("terse_cli.commands.test.open_session_stream", return_value=session) as open_session_stream:
+            result = runner.invoke(cli, ["test", "--verbose"])
+
+        assert result.exit_code == 0, result.output
+        assert Path("session.txt").read_text(encoding="utf-8") == "session_123"
+        assert session.closed
+        open_session_stream.assert_called_once_with("terse_test_key", test_command_module.log_stream_event)
 
 
 def test_test_command_reports_missing_uv_before_running(runner: CliRunner) -> None:

@@ -143,89 +143,13 @@ export class SdkJobExecutionService {
                 await this.writeEventFile(sb, eventJson)
                 const result = await executor.execute(executorContext)
 
-                // Install unzip & extract
-                t = performance.now()
-                const unzipProc = await sb.exec(["sh", "-c", "apt-get update -qq && apt-get install -y -qq unzip > /dev/null 2>&1 && cd /tmp && unzip -o code.zip -d project > /dev/null"], {
-                    stdout: "pipe",
-                    stderr: "pipe"
-                })
-                await unzipProc.wait()
-                logger.info("SDK sandbox: unzipped code", { runId, agentId, duration: this.elapsed(t) })
-
-                // npm install
-                this.emitSandboxStatus(SandboxStage.INSTALLING_DEPENDENCIES, "started")
-                t = performance.now()
-                const installProc = await sb.exec(["sh", "-c", "cd /tmp/project && npm install --omit=dev 2>&1"], { stdout: "pipe", stderr: "pipe", env: sandboxEnv })
-                const installStdout = await installProc.stdout.readText()
-                const installExitCode = await installProc.wait()
-                logger.info("SDK sandbox: npm install", { runId, agentId, duration: this.elapsed(t), exitCode: installExitCode, output: installStdout.slice(0, 500) })
-
-                if (installExitCode !== 0) {
-                    const installStderr = await installProc.stderr.readText()
-                    this.emitSandboxStatus(SandboxStage.INSTALLING_DEPENDENCIES, "failed", { duration_ms: this.elapsedMs(t), detail: installStderr.slice(0, 500) })
-                    await markRunFailed(runId, `npm install failed (exit ${installExitCode}): ${installStderr.slice(0, 500)}`, "agent")
-                    emitCacheInvalidationWithWildcard(orgId, "runHistory", agentId)
-                    await sb.terminate()
-                    return
-                }
-                this.emitSandboxStatus(SandboxStage.INSTALLING_DEPENDENCIES, "completed", { duration_ms: this.elapsedMs(t) })
-
-                // npm install terse-cli
-                this.emitSandboxStatus(SandboxStage.INSTALLING_CLI, "started")
-                t = performance.now()
-                const installTerseProc = await sb.exec(["sh", "-c", "cd /tmp/project && npm install terse-cli@latest 2>&1"], { stdout: "pipe", stderr: "pipe", env: sandboxEnv })
-                const installTerseStdout = await installTerseProc.stdout.readText()
-                const installTerseExitCode = await installTerseProc.wait()
-                logger.info("SDK sandbox: npm install terse-cli", { runId, agentId, duration: this.elapsed(t), exitCode: installTerseExitCode, output: installTerseStdout.slice(0, 500) })
-
-                if (installTerseExitCode !== 0) {
-                    logger.error("SDK sandbox: npm install terse-cli failed", { runId, agentId, exitCode: installTerseExitCode, output: installTerseStdout.slice(0, 500) })
-                    const installTerseStderr = await installTerseProc.stderr.readText()
-                    this.emitSandboxStatus(SandboxStage.INSTALLING_CLI, "failed", { duration_ms: this.elapsedMs(t), detail: installTerseStderr.slice(0, 500) })
-                    await markRunFailed(runId, `npm install terse-cli failed (exit ${installTerseExitCode}): ${installTerseStderr.slice(0, 500)}`, "agent")
-                    emitCacheInvalidationWithWildcard(orgId, "runHistory", agentId)
-                    await sb.terminate()
-                    return
-                }
-                this.emitSandboxStatus(SandboxStage.INSTALLING_CLI, "completed", { duration_ms: this.elapsedMs(t) })
-
-                // Write event JSON to a file to avoid ARG_MAX limits
-                const eventHandle = await sb.open("/tmp/event.json", "w")
-                await eventHandle.write(new TextEncoder().encode(eventJson))
-                await eventHandle.close()
-
-                // terse run
-                this.emitSandboxStatus(SandboxStage.RUNNING, "started")
-                t = performance.now()
-                const escapedJobName = jobName.replace(/'/g, "'\\''")
-                const runProc = await sb.exec(["sh", "-c", `cd /tmp/project && npx terse run '${escapedJobName}' --event-file /tmp/event.json`], {
-                    stdout: "pipe",
-                    stderr: "pipe",
-                    env: sandboxEnv
-                })
-
-                const [stdout, stderr] = await Promise.all([runProc.stdout.readText(), runProc.stderr.readText()])
-                const exitCode = await runProc.wait()
-                const runDuration = this.elapsed(t)
-
-                logger.info("SDK sandbox: terse run", { runId, agentId, duration: runDuration, exitCode, stdout: stdout.slice(0, 2000), stderr: stderr.slice(0, 2000) })
-
-                if (stdout) {
-                    logger.info("SDK sandbox: terse run stdout", { runId, agentId, stdout: stdout.slice(0, 2000) })
-                }
-                if (stderr) {
-                    logger.warn("SDK sandbox: terse run stderr", { runId, agentId, stderr: stderr.slice(0, 2000) })
-                }
-
-                if (exitCode === 0) {
-                    this.emitSandboxStatus(SandboxStage.RUNNING, "completed", { duration_ms: this.elapsedMs(t) })
+                if (result.exitCode === 0) {
                     await finalizeRunStatus(runId, RunHistoryStatus.SUCCESS)
                     logger.info("SDK sandbox: terse run completed", { runId, agentId, runtime: executor.runtime })
                 } else {
-                    const errorMsg = stderr ? stderr.slice(0, 500) : `Process exited with code ${exitCode}`
-                    this.emitSandboxStatus(SandboxStage.RUNNING, "failed", { duration_ms: this.elapsedMs(t), detail: errorMsg })
+                    const errorMsg = result.stderr?.trim().slice(0, 500) || `Process exited with code ${result.exitCode}`
                     await markRunFailed(runId, errorMsg, "agent")
-                    logger.error("SDK sandbox: terse run failed", { runId, agentId, exitCode, duration: runDuration })
+                    logger.error("SDK sandbox: terse run failed", { runId, agentId, exitCode: result.exitCode })
                 }
 
                 emitCacheInvalidationWithWildcard(orgId, "runHistory", agentId)
@@ -292,7 +216,8 @@ export class SdkJobExecutionService {
             runSandboxCommand: async (label, command) => {
                 return this.runSandboxCommand(sb, label, command, sandboxEnv, runId, agentId)
             },
-            escapeShellArg: value => this.escapeShellArg(value)
+            escapeShellArg: value => this.escapeShellArg(value),
+            emitSandboxStatus: (stage, status, opts) => this.emitSandboxStatus(stage, status, opts)
         }
     }
 

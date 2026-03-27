@@ -1,5 +1,9 @@
 import type { Sandbox } from "modal"
 
+import { SandboxStage } from "../../shared/ModelEvents"
+
+export { SandboxStage }
+
 export type SdkProjectRuntime = "typescript" | "python"
 
 export interface SandboxCommandResult {
@@ -19,6 +23,7 @@ export interface SdkRuntimeExecutorContext {
     ensureSandboxCommand: (label: string, command: string) => Promise<void>
     runSandboxCommand: (label: string, command: string) => Promise<SandboxCommandResult>
     escapeShellArg: (value: string) => string
+    emitSandboxStatus: (stage: SandboxStage, status: "started" | "completed" | "failed", opts?: { duration_ms?: number; detail?: string }) => void
 }
 
 export interface SdkRuntimeExecutor {
