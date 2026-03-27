@@ -386,41 +386,45 @@ def test_generate_reports_auth_failure(runner: CliRunner) -> None:
 
 
 def test_template_context_builder_groups_content_by_integration() -> None:
-    context = TemplateContextBuilder(
-        CodegenInput(
-            attio=[
-                AttioInstanceData(
-                    id="attio_1",
-                    display_name="Terse CRM",
-                    objects=[
-                        AttioObjectData(
-                            api_slug="companies",
-                            singular_noun="Company",
-                            attributes=[AttioAttributeData(api_slug="name", title="Name", type="text")],
-                        )
-                    ],
-                )
-            ],
-            snowflake=[SnowflakeInstanceData(id="snowflake_1", display_name="acme-prod")],
-            tools=[
-                ToolDefinition(
-                    name="attio_upsert_record",
-                    display_name="Upsert record",
-                    description="Upsert Attio record.",
-                    integration="attio",
-                    is_read_only=False,
-                ),
-                ToolDefinition(
-                    name="snowflakeExecuteQuery",
-                    display_name="Execute query",
-                    description="Execute Snowflake query.",
-                    integration="snowflake",
-                    is_read_only=True,
-                    supports_approval=True,
-                ),
-            ],
+    context = (
+        TemplateContextBuilder(
+            CodegenInput(
+                attio=[
+                    AttioInstanceData(
+                        id="attio_1",
+                        display_name="Terse CRM",
+                        objects=[
+                            AttioObjectData(
+                                api_slug="companies",
+                                singular_noun="Company",
+                                attributes=[AttioAttributeData(api_slug="name", title="Name", type="text")],
+                            )
+                        ],
+                    )
+                ],
+                snowflake=[SnowflakeInstanceData(id="snowflake_1", display_name="acme-prod")],
+                tools=[
+                    ToolDefinition(
+                        name="attio_upsert_record",
+                        display_name="Upsert record",
+                        description="Upsert Attio record.",
+                        integration="attio",
+                        is_read_only=False,
+                    ),
+                    ToolDefinition(
+                        name="snowflakeExecuteQuery",
+                        display_name="Execute query",
+                        description="Execute Snowflake query.",
+                        integration="snowflake",
+                        is_read_only=True,
+                        supports_approval=True,
+                    ),
+                ],
+            )
         )
-    ).with_all().build()
+        .with_all()
+        .build()
+    )
 
     assert set(context) == {"attio", "snowflake"}
     assert "typing_names" not in context

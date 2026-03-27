@@ -85,9 +85,7 @@ _SUPPORTED_TOOL_SPECS: tuple[tuple[str, str, str], ...] = (
     ("snowflake", "snowflakeExplainQuery", "explain_query"),
 )
 _SUPPORTED_TOOL_NAMES = {tool_name for _, tool_name, _ in _SUPPORTED_TOOL_SPECS}
-_TOOL_METHOD_NAME_BY_TOOL = {
-    tool_name: method_name for _, tool_name, method_name in _SUPPORTED_TOOL_SPECS
-}
+_TOOL_METHOD_NAME_BY_TOOL = {tool_name: method_name for _, tool_name, method_name in _SUPPORTED_TOOL_SPECS}
 _TOOL_NAME_ALIASES = {
     "snowflake_execute_query": "snowflakeExecuteQuery",
     "snowflake_explain_query": "snowflakeExplainQuery",
@@ -161,16 +159,10 @@ def generate_project(project_dir: Path | None = None) -> GenerateResult:
         )
 
     active_types = request_json("/integrations/active", api_key)
-    active_set = (
-        {str(item).lower() for item in active_types}
-        if isinstance(active_types, list)
-        else set()
-    )
+    active_set = {str(item).lower() for item in active_types} if isinstance(active_types, list) else set()
 
     codegen_input = _build_codegen_input(active_set, api_key)
-    output_path = write_generated_module(
-        resolved_dir, render_generated_module(codegen_input)
-    )
+    output_path = write_generated_module(resolved_dir, render_generated_module(codegen_input))
 
     return GenerateResult(
         project_dir=resolved_dir,
@@ -188,19 +180,13 @@ class TemplateContextBuilder:
 
     def with_attio(self) -> Self:
         attio_tools = _select_supported_tools(self._input.tools, "attio")
-        self._context["attio"] = (
-            _build_attio_ctx(self._input.attio[0], attio_tools)
-            if self._input.attio
-            else None
-        )
+        self._context["attio"] = _build_attio_ctx(self._input.attio[0], attio_tools) if self._input.attio else None
         return self
 
     def with_snowflake(self) -> Self:
         snowflake_tools = _select_supported_tools(self._input.tools, "snowflake")
         self._context["snowflake"] = (
-            _build_snowflake_ctx(self._input.snowflake[0], snowflake_tools)
-            if self._input.snowflake
-            else None
+            _build_snowflake_ctx(self._input.snowflake[0], snowflake_tools) if self._input.snowflake else None
         )
         return self
 
@@ -225,9 +211,7 @@ def write_generated_module(project_dir: Path, content: str) -> Path:
     try:
         compile(content, "terse_generated.py", "exec")
     except SyntaxError as exc:
-        raise RuntimeError(
-            f"Generated module contains invalid Python syntax: {exc}"
-        ) from exc
+        raise RuntimeError(f"Generated module contains invalid Python syntax: {exc}") from exc
 
     output_path = project_dir / "src" / "terse_generated.py"
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -237,16 +221,8 @@ def write_generated_module(project_dir: Path, content: str) -> Path:
 
 def _build_codegen_input(active_set: set[str], api_key: str) -> CodegenInput:
     return CodegenInput(
-        attio=(
-            _safe_fetch(lambda: _fetch_attio_instances(api_key))
-            if "attio" in active_set
-            else []
-        ),
-        snowflake=(
-            _safe_fetch(lambda: _fetch_snowflake_instances(api_key))
-            if "snowflake" in active_set
-            else []
-        ),
+        attio=(_safe_fetch(lambda: _fetch_attio_instances(api_key)) if "attio" in active_set else []),
+        snowflake=(_safe_fetch(lambda: _fetch_snowflake_instances(api_key)) if "snowflake" in active_set else []),
         tools=_safe_fetch(lambda: _fetch_tool_definitions(api_key, active_set)),
     )
 
@@ -306,8 +282,7 @@ def _fetch_attio_instances(api_key: str) -> list[AttioInstanceData]:
                     is_unique=bool(attr_dict.get("is_unique")),
                 )
                 for raw_attr in _as_list(obj_data.get("attributes"))
-                if (attr_dict := _as_dict(raw_attr)) is not None
-                and str(attr_dict.get("api_slug", ""))
+                if (attr_dict := _as_dict(raw_attr)) is not None and str(attr_dict.get("api_slug", ""))
             ]
             objects.append(
                 AttioObjectData(
@@ -319,9 +294,7 @@ def _fetch_attio_instances(api_key: str) -> list[AttioInstanceData]:
         instances.append(
             AttioInstanceData(
                 id=integration_id,
-                display_name=str(
-                    integration_data.get("workspaceName") or integration_id
-                ),
+                display_name=str(integration_data.get("workspaceName") or integration_id),
                 objects=objects,
             )
         )
@@ -335,9 +308,7 @@ def _fetch_snowflake_instances(api_key: str) -> list[SnowflakeInstanceData]:
         SnowflakeInstanceData(
             id=str((_as_dict(integration) or {}).get("id", "")),
             display_name=str(
-                (_as_dict(integration) or {}).get("accountIdentifier")
-                or (_as_dict(integration) or {}).get("id")
-                or ""
+                (_as_dict(integration) or {}).get("accountIdentifier") or (_as_dict(integration) or {}).get("id") or ""
             ),
         )
         for integration in raw_instances
@@ -462,20 +433,13 @@ def _attio_filter_python_type(attr: AttioAttributeData) -> str:
 
 
 def _build_summary_lines(codegen_input: CodegenInput) -> list[str]:
-    lines = [
-        f"Attio ({instance.display_name}) — {len(instance.objects)} objects"
-        for instance in codegen_input.attio
-    ]
-    lines.extend(
-        f"Snowflake ({instance.display_name})" for instance in codegen_input.snowflake
-    )
+    lines = [f"Attio ({instance.display_name}) — {len(instance.objects)} objects" for instance in codegen_input.attio]
+    lines.extend(f"Snowflake ({instance.display_name})" for instance in codegen_input.snowflake)
     lines.append("Schedule trigger")
     return lines
 
 
-def _build_attio_object_ctx(
-    obj: AttioObjectData, used_names: set[str], has_attrs: bool
-) -> _AttioObjectCtx:
+def _build_attio_object_ctx(obj: AttioObjectData, used_names: set[str], has_attrs: bool) -> _AttioObjectCtx:
     pascal = _to_pascal_case(obj.singular_noun or obj.api_slug) or "Object"
     static_name = _unique_name(pascal, used_names)
     attrs = [
@@ -487,14 +451,8 @@ def _build_attio_object_ctx(
         )
         for attr in obj.attributes
     ]
-    multi_slugs = [
-        attr.api_slug for attr in obj.attributes if _is_attio_multi_value(attr)
-    ]
-    multi_frozenset = (
-        f"frozenset({{{', '.join(repr(s) for s in multi_slugs)}}})"
-        if multi_slugs
-        else ""
-    )
+    multi_slugs = [attr.api_slug for attr in obj.attributes if _is_attio_multi_value(attr)]
+    multi_frozenset = f"frozenset({{{', '.join(repr(s) for s in multi_slugs)}}})" if multi_slugs else ""
     return _AttioObjectCtx(
         api_slug=obj.api_slug,
         api_slug_repr=repr(obj.api_slug),
@@ -503,9 +461,7 @@ def _build_attio_object_ctx(
         pascal=pascal,
         static_name=static_name,
         attributes=attrs,
-        attr_slugs_literal=(
-            ", ".join(repr(a.api_slug) for a in attrs) if attrs else "''"
-        ),
+        attr_slugs_literal=(", ".join(repr(a.api_slug) for a in attrs) if attrs else "''"),
         multi_value_slugs=multi_slugs,
         multi_value_frozenset_repr=multi_frozenset,
         attribute_tuple_repr=_render_attribute_tuple(obj.attributes),
@@ -518,9 +474,7 @@ def _build_attio_ctx(
 ) -> _AttioCtx:
     has_attrs = any(obj.attributes for obj in instance.objects)
     used_names: set[str] = set()
-    objects = [
-        _build_attio_object_ctx(obj, used_names, has_attrs) for obj in instance.objects
-    ]
+    objects = [_build_attio_object_ctx(obj, used_names, has_attrs) for obj in instance.objects]
     return _AttioCtx(
         instance_id_repr=repr(instance.id),
         has_attrs=has_attrs,
@@ -581,9 +535,7 @@ def _render_attribute_tuple(attributes: list[AttioAttributeData]) -> str:
     return f"({', '.join(parts)},)"
 
 
-def _select_supported_tools(
-    tools: list[ToolDefinition], integration: str
-) -> list[ToolDefinition]:
+def _select_supported_tools(tools: list[ToolDefinition], integration: str) -> list[ToolDefinition]:
     ordered: list[ToolDefinition] = []
     available = {
         _canonical_tool_name(tool.name): ToolDefinition(
