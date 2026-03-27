@@ -3,6 +3,28 @@ import { z } from "zod"
 import { CONFIG_DETAILS, ConfigType } from "../shared/Configs"
 import { IntegrationType } from "../shared/Integrations"
 import { SdkAgentRunRequestBody, SdkAgentRunResponseBody } from "../shared/types"
+import {
+    AttioOutputConfigSchema,
+    ConfluenceConfigSchema,
+    DatadogConfigSchema,
+    FigmaConfigSchema,
+    GitHubConfigSchema,
+    GmailConfigSchema,
+    GmailDraftOutputConfigSchema,
+    GmailOutputConfigSchema,
+    JiraConfigSchema,
+    LaunchDarklyConfigSchema,
+    LinearInputConfigSchema,
+    LinearOutputConfigSchema,
+    NotionConfigSchema,
+    PosthogConfigSchema,
+    SlackConfigSchema,
+    SlackOutputConfigSchema,
+    SnowflakeOutputConfigSchema,
+    TimeTriggerConfigSchema,
+    WorkOSInputConfigSchema,
+    WorkOSOutputConfigSchema
+} from "../utility/configSchemas"
 
 type NormalizedSdkAgentRunRequest = NonNullable<SdkAgentRunResponseBody["normalizedRequest"]>
 
@@ -11,18 +33,65 @@ type ValidationResult = { ok: true; normalized: NormalizedSdkAgentRunRequest } |
 const integrationTypeValues = Object.values(IntegrationType) as [IntegrationType, ...IntegrationType[]]
 const configTypeValues = Object.values(ConfigType) as [ConfigType, ...ConfigType[]]
 
+const sdkTerseConfigSchema = z
+    .object({
+        configType: z.literal(ConfigType.TERSE),
+        integrationType: z.literal(IntegrationType.TERSE),
+        integrationId: z.literal("system")
+    })
+    .strict()
+
+const sdkSkillConfigSchema = z.union([
+    GmailConfigSchema,
+    GmailOutputConfigSchema,
+    GmailDraftOutputConfigSchema,
+    FigmaConfigSchema,
+    SlackConfigSchema,
+    SlackOutputConfigSchema,
+    NotionConfigSchema,
+    LinearInputConfigSchema,
+    LinearOutputConfigSchema,
+    GitHubConfigSchema,
+    JiraConfigSchema,
+    ConfluenceConfigSchema,
+    PosthogConfigSchema,
+    LaunchDarklyConfigSchema,
+    DatadogConfigSchema,
+    WorkOSInputConfigSchema,
+    WorkOSOutputConfigSchema,
+    TimeTriggerConfigSchema,
+    AttioOutputConfigSchema,
+    SnowflakeOutputConfigSchema,
+    sdkTerseConfigSchema
+])
+
+const normalizedSkillSchema = z.object({
+    configType: z.enum(configTypeValues, { message: "`skills[i].configType` must be a valid ConfigType" }),
+    config: sdkSkillConfigSchema
+})
+
+function normalizeSkillConfig(skill: { configType: ConfigType; config: Record<string, unknown> }) {
+    const integrationType = CONFIG_DETAILS[skill.configType].integrationType
+    const usesSystemIntegration = skill.configType === ConfigType.TIME_TRIGGER || skill.configType === ConfigType.TERSE
+
+    return {
+        ...skill.config,
+        integrationType,
+        configType: skill.configType,
+        ...(usesSystemIntegration ? { integrationId: "system" } : {})
+    }
+}
+
 const skillSchema = z
     .object({
         configType: z.enum(configTypeValues, { message: "`skills[i].configType` must be a valid ConfigType" }),
-        config: z.record(z.unknown())
+        config: z.record(z.string(), z.unknown())
     })
-    .transform(skill => {
-        const integrationType = CONFIG_DETAILS[skill.configType].integrationType
-        return {
-            configType: skill.configType,
-            config: { ...skill.config, integrationType, configType: skill.configType }
-        }
-    })
+    .transform(skill => ({
+        configType: skill.configType,
+        config: normalizeSkillConfig(skill)
+    }))
+    .pipe(normalizedSkillSchema)
 
 const sdkAgentRunSchema = z.object({
     prompt: z.string().min(1, "`prompt` is required and must be a non-empty string"),
@@ -48,7 +117,7 @@ export function validateAndNormalizeSdkAgentRunBody(body: SdkAgentRunRequestBody
     const result = sdkAgentRunSchema.safeParse(body)
 
     if (!result.success) {
-        return { ok: false, errors: result.error.errors.map(e => e.message) }
+        return { ok: false, errors: result.error.issues.map((issue): string => issue.message) }
     }
 
     const { data } = result
