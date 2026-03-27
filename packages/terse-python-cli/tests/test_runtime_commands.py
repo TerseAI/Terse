@@ -323,6 +323,28 @@ def test_test_command_uses_session_stream_when_api_key_exists(
         assert session.closed
 
 
+def test_test_command_reports_missing_uv_before_running(runner: CliRunner) -> None:
+    with runner.isolated_filesystem():
+        _write_runtime_project(
+            _runtime_main_source("Path('session.txt').write_text(str(agent.session_id), encoding='utf-8')"),
+            api_key=None,
+        )
+        ty_result = DependencyInstallResult(
+            succeeded=False,
+            command=("uv", "run", "ty", "check"),
+            details="[Errno 2] No such file or directory: 'uv'",
+        )
+
+        with patch("terse_cli.commands.test.run_ty_check", return_value=ty_result):
+            result = runner.invoke(cli, ["test"])
+            output = _plain_output(result.output)
+
+        assert result.exit_code != 0
+        assert "`uv` is not installed." in output
+        assert "then run `uv sync`." in output
+        assert "rerun `terse test`." in output
+
+
 def test_test_command_debug_logs_agent_run_request_details_on_backend_error(
     runner: CliRunner,
 ) -> None:

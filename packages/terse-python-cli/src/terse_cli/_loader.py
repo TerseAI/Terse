@@ -12,7 +12,7 @@ from types import ModuleType
 
 from terse_sdk import RegisteredJob, clear_job_registry, get_job_registry
 
-from ._project import assert_project_root, load_project_env
+from ._project import assert_project_root, format_uv_prerequisite_hint, load_project_env
 from ._ui import prompt_select
 
 
@@ -106,5 +106,11 @@ def _format_missing_module_message(error: ModuleNotFoundError) -> str:
     package = error.name or "unknown"
     message = f"Cannot find package '{package}' imported from src/main.py."
     if package == "terse_sdk":
-        return f"{message}\n\nMake sure terse-sdk is installed in your project:\n  uv sync"
-    return f"{message}\n\nInstall the missing package in your project:\n  uv add {package}"
+        return (
+            f"{message}\n\nMake sure terse-sdk is installed in your project:\n"
+            f"  {format_uv_prerequisite_hint(('uv', 'sync'))}"
+        )
+    return (
+        f"{message}\n\nInstall the missing package in your project:\n"
+        f"  {format_uv_prerequisite_hint(('uv', 'add', package))}"
+    )

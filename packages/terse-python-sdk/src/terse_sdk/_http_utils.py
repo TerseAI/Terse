@@ -38,9 +38,24 @@ def _read_response_detail(response: httpx.Response) -> str:
         return response.text.strip()
 
     if isinstance(payload, dict):
-        detail = payload.get("error")
-        if detail is not None:
-            return str(detail)
+        error = payload.get("error")
+        details = payload.get("details")
+
+        detail_parts: list[str] = []
+        if error is not None:
+            detail_parts.append(str(error))
+
+        if isinstance(details, list):
+            rendered = [str(item) for item in details if item is not None]
+            if rendered:
+                detail_parts.append("; ".join(rendered))
+        elif details is not None:
+            detail_parts.append(str(details))
+
+        if detail_parts:
+            if len(detail_parts) == 1:
+                return detail_parts[0]
+            return f"{detail_parts[0]} ({detail_parts[1]})"
     return response.text.strip()
 
 

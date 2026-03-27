@@ -21,6 +21,8 @@ _TEMPLATE_ENV = Environment(
     undefined=StrictUndefined,
 )
 
+UV_INSTALL_DOCS_URL = "https://docs.astral.sh/uv/getting-started/installation/"
+
 
 class ProjectRootError(RuntimeError):
     """Raised when a command is run outside a Terse Python project."""
@@ -159,6 +161,45 @@ def run_ty_check(project_dir: Path) -> DependencyInstallResult:
 
     details = "\n".join(part for part in (completed.stderr.strip(), completed.stdout.strip()) if part).strip()
     return DependencyInstallResult(succeeded=completed.returncode == 0, command=command, details=details)
+
+
+def format_command(command: tuple[str, ...]) -> str:
+    """Return a display string for a command tuple."""
+
+    return " ".join(command)
+
+
+def is_uv_missing_result(result: DependencyInstallResult) -> bool:
+    """Return whether a failed command was caused by a missing ``uv`` executable."""
+
+    if result.command[:1] != ("uv",):
+        return False
+
+    normalized = result.details.lower()
+    missing_patterns = (
+        "no such file or directory",
+        "not found",
+        "cannot find the file specified",
+        "executable file not found",
+        "failed to find executable",
+        "command not found",
+    )
+    return "uv" in normalized and any(pattern in normalized for pattern in missing_patterns)
+
+
+def format_missing_uv_install_message(command: tuple[str, ...]) -> str:
+    """Explain how to recover when ``uv`` is missing."""
+
+    return (
+        f"`uv` is not installed. Install it from {UV_INSTALL_DOCS_URL}, "
+        f"then run `{format_command(command)}`."
+    )
+
+
+def format_uv_prerequisite_hint(command: tuple[str, ...]) -> str:
+    """Explain that ``uv`` may need to be installed before using a command."""
+
+    return f"Install `uv` if it is not already available, then run `{format_command(command)}`."
 
 
 def _normalize_env_value(value: str) -> str:

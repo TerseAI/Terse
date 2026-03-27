@@ -9,12 +9,14 @@ import click
 from .._generate import MissingApiKeyError, generate_project
 from .._http import ApiRequestError, AuthenticationError
 from .._project import ProjectRootError
+from .._ui import console
 
 
 @click.command("generate", help="Generate types for your connected integrations.")
 def generate_command() -> None:
     try:
-        result = generate_project(Path.cwd())
+        with console.status("Fetching integrations...") as status:
+            result = generate_project(Path.cwd(), on_phase=status.update)
     except ProjectRootError as exc:
         raise click.ClickException(str(exc)) from exc
     except MissingApiKeyError as exc:
@@ -29,4 +31,6 @@ def generate_command() -> None:
     click.echo("")
     for line in result.summary_lines:
         click.echo(f"  + {line}")
-    click.secho(f"\nGenerated {result.output_path.relative_to(result.project_dir)}", fg="green")
+    click.secho(
+        f"\nGenerated {result.output_path.relative_to(result.project_dir)}", fg="green"
+    )

@@ -15,6 +15,10 @@ from .._generate import (
 )
 from .._http import ApiRequestError, AuthenticationError, frontend_url, verify_api_key
 from .._project import (
+    DependencyInstallResult,
+    format_command,
+    format_missing_uv_install_message,
+    is_uv_missing_result,
     load_template_text,
     render_template,
     run_uv_sync,
@@ -38,10 +42,10 @@ def init_command(project_name: str | None) -> None:
         target_dir.mkdir(parents=True, exist_ok=True)
 
     _scaffold_project(target_dir, resolved_name)
-    _install_dependencies(target_dir)
+    dependency_result = _install_dependencies(target_dir)
     _prompt_for_api_key(target_dir)
     _generate_helpers(target_dir)
-    _print_next_steps(target_dir, project_name)
+    _print_next_steps(target_dir, project_name, dependency_result)
 
 
 def _scaffold_project(target_dir: Path, project_name: str) -> None:
@@ -62,14 +66,17 @@ def _scaffold_project(target_dir: Path, project_name: str) -> None:
         click.secho(f"  + {output_name}", fg="green")
 
 
-def _install_dependencies(target_dir: Path) -> None:
+def _install_dependencies(target_dir: Path) -> DependencyInstallResult:
     result = run_uv_sync(target_dir)
-    command = " ".join(result.command)
+    command = format_command(result.command)
     if result.succeeded:
         click.echo(f"\n  Installed dependencies with {command}")
-        return
+        return result
 
     click.secho(f"\n  Warning: Failed to install dependencies with {command}.", fg="yellow")
+    if is_uv_missing_result(result):
+        click.echo(click.style(f"  {format_missing_uv_install_message(result.command)}", dim=True))
+        return result
     if result.details:
         detail_lines = [line.strip() for line in result.details.splitlines() if line.strip()]
         if detail_lines:
@@ -79,6 +86,7 @@ def _install_dependencies(target_dir: Path) -> None:
             )
             click.echo(click.style(f"  {preferred_line}", dim=True))
     click.echo(click.style(f"  Run `{command}` manually when you're ready.", dim=True))
+    return result
 
 
 def _prompt_for_api_key(target_dir: Path) -> None:
@@ -146,13 +154,21 @@ def _generate_helpers(target_dir: Path) -> None:
     )
 
 
-def _print_next_steps(target_dir: Path, project_name: str | None) -> None:
+def _print_next_steps(
+    target_dir: Path,
+    project_name: str | None,
+    dependency_result: DependencyInstallResult,
+) -> None:
     click.secho("\n  Done! Your Terse project is ready.\n", fg="green")
     click.echo("  Next steps:\n")
 
     step = 1
     if project_name:
         click.echo(f"  {step}. cd {project_name}")
+        step += 1
+
+    if not dependency_result.succeeded:
+        click.echo(f"  {step}. Run `uv sync` to install project dependencies")
         step += 1
 
     click.echo(f"  {step}. Edit src/main.py to register your job")

@@ -40,13 +40,19 @@ class SdkAgentStreamEventAction(_CamelModel):
     type: Literal["action"]
 
 
+class SdkAgentToolApprovalRequest(_CamelModel):
+    arguments: str
+    step_id: str
+    tool_name: str
+
+
 class SdkAgentStreamEventRunStarted(_CamelModel):
-    run_started: str
+    run_id: str
     type: Literal["run_started"]
 
 
 class SdkAgentStreamEventToolApprovalRequested(_CamelModel):
-    tool_approval_requested: str
+    tool_approval_requested: SdkAgentToolApprovalRequest
     type: Literal["tool_approval_requested"]
 
 
@@ -94,6 +100,7 @@ __all__ = [
     "SdkAgentStreamEventDone",
     "SdkAgentStreamEventError",
     "SdkAgentStreamEventFinalOutput",
+    "SdkAgentToolApprovalRequest",
     "SdkAgentStreamEventRunStarted",
     "SdkAgentStreamEventText",
     "SdkAgentStreamEventToolApprovalRequested",

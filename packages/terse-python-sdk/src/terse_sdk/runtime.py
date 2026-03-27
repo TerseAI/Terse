@@ -43,6 +43,7 @@ from .types.events import (
     TerseInputEvent,
     WorkOSInputEvent,
 )
+from .types.enums import ConfigType
 from .types.jobs import SkillConfig, TriggerConfig
 from .types.sdk_types import (
     SdkAgentRunRequestBody,
@@ -118,11 +119,13 @@ class TerseApiError(TerseRuntimeError):
 class EventType(StrEnum):
     """Stream event type constants for agent runs."""
 
+    RUN_STARTED = "run_started"
     TEXT = "text"
     FINAL_OUTPUT = "final_output"
     TOOL_CALL_PARAMS = "tool_call_params"
     TOOL_CALL_STARTED = "tool_call_started"
     TOOL_CALL_COMPLETED = "tool_call_completed"
+    TOOL_APPROVAL_REQUESTED = "tool_approval_requested"
     ACTION = "action"
 
 
@@ -368,6 +371,8 @@ def execute_registered_job(
 
 def _serialize_skill_config(skill: SkillConfig[Any]) -> SdkAgentSkillPayload:
     config = dict(skill.config)
+    if skill.config_type == ConfigType.ATTIO_OUTPUT and "objectSlug" not in config:
+        config["objectSlug"] = None
     config["integrationId"] = skill.integration_id
     config["integrationType"] = skill.integration_type
     config["configType"] = skill.config_type

@@ -11,14 +11,20 @@ from unittest.mock import patch
 import httpx
 import pytest
 import terse_sdk.runtime as runtime_module
+import terse_sdk.types as terse_types
 from terse_sdk import (
     CronJobInputEvent,
     EventType,
     MissingApiKeyError,
+    SkillConfig,
+    SdkAgentStreamEvent,
     SdkAgentStreamEventDone,
     SdkAgentStreamEventFinalOutput,
+    SdkAgentStreamEventRunStarted,
     SdkAgentStreamEventText,
+    SdkAgentStreamEventToolApprovalRequested,
     SdkAgentStreamEventToolCallCompleted,
+    SdkAgentToolApprovalRequest,
     SerializedEventInputEvent,
     Terse,
     TerseAgent,
@@ -239,17 +245,63 @@ def test_agent_tools_raise_clear_error_when_generated_module_is_missing() -> Non
         _ = TerseAgent().tools
 
 
-def test_agent_run_streams_events_and_serializes_event_payload() -> None:
+def test_stream_event_exports_include_sdk_run_events() -> None:
+    assert terse_types.SdkAgentStreamEventRunStarted is SdkAgentStreamEventRunStarted
+    assert terse_types.SdkAgentStreamEventToolApprovalRequested is SdkAgentStreamEventToolApprovalRequested
+    assert terse_types.SdkAgentToolApprovalRequest is SdkAgentToolApprovalRequest
+    assert EventType.RUN_STARTED == "run_started"
+    assert EventType.TOOL_APPROVAL_REQUESTED == "tool_approval_requested"
+
+
+def test_run_started_event_supports_backend_payload() -> None:
+    event = SdkAgentStreamEvent.model_validate({"type": "run_started", "runId": "run_123"}).root
+
+    assert isinstance(event, SdkAgentStreamEventRunStarted)
+    assert event.run_id == "run_123"
+
+
+def test_tool_approval_requested_event_supports_backend_payload() -> None:
+    event = SdkAgentStreamEvent.model_validate(
+        {
+            "type": "tool_approval_requested",
+            "toolApprovalRequested": {
+                "stepId": "step_123",
+                "toolName": "demo_tool",
+                "arguments": json.dumps({"value": 1}),
+            },
+        }
+    ).root
+
+    assert isinstance(event, SdkAgentStreamEventToolApprovalRequested)
+    assert event.tool_approval_requested.step_id == "step_123"
+    assert event.tool_approval_requested.tool_name == "demo_tool"
+    assert event.tool_approval_requested.arguments == json.dumps({"value": 1})
+
+
+def test_agent_run_streams_backend_events_and_serializes_event_payload() -> None:
     captured: dict[str, object] = {}
     stream = _FakeEventSource(
         [
-            SdkAgentStreamEventText(type="text", text="hello").model_dump_json(),
-            SdkAgentStreamEventToolCallCompleted(
-                type="tool_call_completed",
-                tool_call_completed=json.dumps({"tool": "demo_tool", "status": "completed"}),
-            ).model_dump_json(),
-            SdkAgentStreamEventFinalOutput(type="final_output", final_output="done").model_dump_json(),
-            SdkAgentStreamEventDone(type="done").model_dump_json(),
+            json.dumps({"type": "run_started", "runId": "run_123"}),
+            json.dumps({"type": "text", "text": "hello"}),
+            json.dumps(
+                {
+                    "type": "tool_approval_requested",
+                    "toolApprovalRequested": {
+                        "stepId": "step_123",
+                        "toolName": "demo_tool",
+                        "arguments": json.dumps({"value": 1}),
+                    },
+                }
+            ),
+            json.dumps(
+                {
+                    "type": "tool_call_completed",
+                    "toolCallCompleted": json.dumps({"tool": "demo_tool", "status": "completed"}),
+                }
+            ),
+            json.dumps({"type": "final_output", "finalOutput": "done"}),
+            json.dumps({"type": "done"}),
         ]
     )
 
@@ -279,13 +331,54 @@ def test_agent_run_streams_events_and_serializes_event_payload() -> None:
             )
         )
 
-    assert len(events) == 3
+    assert len(events) == 5
+    assert isinstance(events[0], SdkAgentStreamEventRunStarted)
+    assert events[0].type == EventType.RUN_STARTED
+    assert events[0].run_id == "run_123"
+    assert isinstance(events[2], SdkAgentStreamEventToolApprovalRequested)
+    assert events[2].type == EventType.TOOL_APPROVAL_REQUESTED
+    assert events[2].tool_approval_requested.tool_name == "demo_tool"
     assert events[-1].type == EventType.FINAL_OUTPUT
     assert events[-1].final_output == "done"
     assert captured["method"] == "POST"
     assert captured["headers"]["Authorization"] == "Bearer terse_test_key"
     assert captured["json"]["event"]["integrationType"] == "cron_job"
     assert captured["json"]["event"]["formattedContent"] == "Scheduled event"
+
+
+def test_agent_run_serializes_missing_attio_object_slug_as_null() -> None:
+    captured: dict[str, object] = {}
+    stream = _FakeEventSource([json.dumps({"type": "done"})])
+
+    def fake_connect_sse(
+        client: object,
+        method: str,
+        url: str,
+        *,
+        headers: dict[str, str],
+        json: dict[str, object],
+    ) -> _FakeEventSource:
+        captured.update({"method": method, "url": url, "headers": headers, "json": json})
+        return stream
+
+    with (
+        patch.dict(os.environ, {"TERSE_API_KEY": "terse_test_key"}, clear=False),
+        patch("terse_sdk.runtime.connect_sse", side_effect=fake_connect_sse),
+    ):
+        list(
+            TerseAgent(
+                skills=[
+                    SkillConfig(
+                        integration_id="cm_attio",
+                        integration_type="attio",
+                        config_type="attio_output",
+                        config={},
+                    )
+                ]
+            ).run("hello")
+        )
+
+    assert captured["json"]["skills"][0]["config"]["objectSlug"] is None
 
 
 def test_agent_run_raises_on_failed_tool_call() -> None:
@@ -359,6 +452,20 @@ def test_assert_sse_response_reads_streaming_error_detail_on_http_error() -> Non
         runtime_module._assert_sse_response(response, "/sdk/agent-run")
 
     assert "unauthorized" in str(exc_info.value)
+
+
+def test_assert_sse_response_reads_streaming_error_details_list_on_http_error() -> None:
+    response = _streaming_json_response(
+        400,
+        {"error": "Invalid request body", "details": ["`skills[0].config.objectSlug` is required"]},
+        path="/sdk/agent-run",
+    )
+
+    with pytest.raises(TerseApiError) as exc_info:
+        runtime_module._assert_sse_response(response, "/sdk/agent-run")
+
+    assert "Invalid request body" in str(exc_info.value)
+    assert "`skills[0].config.objectSlug` is required" in str(exc_info.value)
 
 
 def _json_response(

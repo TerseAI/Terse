@@ -1,6 +1,7 @@
 # ruff: noqa: E501
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
 from unittest.mock import patch
 
@@ -15,6 +16,7 @@ from terse_cli._generate import (
     SnowflakeInstanceData,
     TemplateContextBuilder,
     ToolDefinition,
+    generate_project,
     render_generated_module,
     write_generated_module,
 )
@@ -37,7 +39,18 @@ def _failed_install() -> DependencyInstallResult:
     return DependencyInstallResult(succeeded=False, command=("uv", "sync"), details="uv failed")
 
 
-def _fake_generate_project(project_dir: Path | None = None) -> GenerateResult:
+def _missing_uv_install() -> DependencyInstallResult:
+    return DependencyInstallResult(
+        succeeded=False,
+        command=("uv", "sync"),
+        details="[Errno 2] No such file or directory: 'uv'",
+    )
+
+
+def _fake_generate_project(
+    project_dir: Path | None = None,
+    on_phase: Callable[[str], None] | None = None,
+) -> GenerateResult:
     resolved_dir = (project_dir or Path.cwd()).resolve()
     output_path = write_generated_module(resolved_dir, render_generated_module(CodegenInput()))
     return GenerateResult(
@@ -92,6 +105,9 @@ def test_init_new_project_scaffolds_files(runner: CliRunner) -> None:
         assert "The starter scaffold registers `Attio.skill()` and `Snowflake.skill()` by default." in readme_source
         assert "After you connect Attio or Snowflake in Terse, rerun `terse generate`" in readme_source
         assert 'agent.tools.snowflake.execute_query(query="select 1")' in readme_source
+        assert "## Prerequisites" in readme_source
+        assert "https://docs.astral.sh/uv/getting-started/installation/" in readme_source
+        assert "If `terse init` did not install dependencies automatically" in readme_source
         assert "Hello, Ada! API key verified." in result.output
         assert "Run `terse test` to execute it locally" in result.output
 
@@ -191,6 +207,7 @@ def test_init_fallback_project_imports_and_registers_default_skills(runner: CliR
         assert [skill.integration_type for skill in job.skills] == ["attio", "snowflake"]
         assert [skill.config_type for skill in job.skills] == ["attio_output", "snowflake_output"]
         assert [skill.integration_id for skill in job.skills] == ["attio_placeholder", "snowflake_placeholder"]
+        assert job.skills[0].config == {"objectSlug": None}
 
 
 def test_init_warns_when_api_key_verification_fails(runner: CliRunner) -> None:
@@ -230,6 +247,27 @@ def test_init_warns_when_dependency_install_fails(runner: CliRunner) -> None:
 
         assert result.exit_code == 0, result.output
         assert "Warning: Failed to install dependencies with uv sync." in result.output
+        assert "Run `uv sync` manually when you're ready." in result.output
+        assert "Run `uv sync` to install project dependencies" in result.output
+
+
+def test_init_warns_when_uv_is_missing(runner: CliRunner) -> None:
+    with runner.isolated_filesystem():
+        with (
+            patch("terse_cli.commands.init.run_uv_sync", return_value=_missing_uv_install()),
+            patch("terse_cli.commands.init.verify_api_key", return_value="Ada"),
+            patch(
+                "terse_cli.commands.init.generate_project",
+                side_effect=_fake_generate_project,
+            ),
+        ):
+            result = runner.invoke(cli, ["init", "demo-project"], input="terse_test_key\n")
+
+        assert result.exit_code == 0, result.output
+        assert "Warning: Failed to install dependencies with uv sync." in result.output
+        assert "`uv` is not installed." in result.output
+        assert "then run `uv sync`." in result.output
+        assert "Run `uv sync` to install project dependencies" in result.output
 
 
 def test_init_warns_when_generate_fails(runner: CliRunner) -> None:
@@ -389,6 +427,48 @@ def test_generate_writes_integration_helpers(runner: CliRunner) -> None:
         assert "class Terse:" not in generated
         assert "Attio (Terse CRM) — 1 objects" in result.output
         assert "Snowflake (acme-prod)" in result.output
+
+
+def test_generate_reports_full_phase_progress(runner: CliRunner) -> None:
+    with runner.isolated_filesystem():
+        Path("src").mkdir()
+        Path("pyproject.toml").write_text("[project]\nname = 'demo'\nversion = '0.1.0'\n", encoding="utf-8")
+        Path("src/main.py").write_text("print('hello')\n", encoding="utf-8")
+        Path(".env").write_text("TERSE_API_KEY=terse_test_key\n", encoding="utf-8")
+
+        phases: list[str] = []
+
+        def fake_request_json(
+            path: str,
+            api_key: str,
+            *,
+            method: str = "GET",
+            params: dict[str, object] | None = None,
+        ) -> object:
+            assert api_key == "terse_test_key"
+            if path == "/integrations/active":
+                return ["attio", "snowflake"]
+            if path == "/sdk/tool-definitions":
+                return {"tools": []}
+            if path == "/attio/integrations":
+                return [{"id": "attio_1", "workspaceName": "Terse CRM"}]
+            if path == "/attio/integrations/attio_1/objects":
+                return []
+            if path == "/snowflake/integrations":
+                return [{"id": "snowflake_1", "accountIdentifier": "acme-prod"}]
+            raise AssertionError(f"Unexpected path: {path}")
+
+        with patch("terse_cli._generate.request_json", side_effect=fake_request_json):
+            result = generate_project(Path.cwd(), on_phase=phases.append)
+
+        assert result.output_path == Path("src/terse_generated.py").resolve()
+        assert phases == [
+            "Fetching integrations...",
+            "Fetching tool definitions...",
+            "Fetching integration details...",
+            "Generating code...",
+            "Writing output...",
+        ]
 
 
 def test_generate_reports_auth_failure(runner: CliRunner) -> None:

@@ -62,7 +62,7 @@ class AttioObjects:
 class Attio:
     @staticmethod
     def skill(obj: {{ "AttioObjectType[Any, Any, Any, Any]" if attio.has_attrs else "AttioObjectType" }} | None = None) -> SkillConfig[{% if attio_approvable_tools %}AttioToolNames{% else %}str{% endif %}]:
-        return SkillConfig(integration_id={{ attio.instance_id_repr }}, integration_type='attio', config_type='attio_output', config=_compact_dict(objectSlug=obj.api_slug if obj else None))
+        return SkillConfig(integration_id={{ attio.instance_id_repr }}, integration_type='attio', config_type='attio_output', config={"objectSlug": obj.api_slug if obj else None})
 {% if attio.has_attrs %}
 
 
@@ -119,7 +119,7 @@ class Attio:
             integration_id='attio_placeholder',
             integration_type='attio',
             config_type='attio_output',
-            config=_compact_dict(objectSlug=object_slug),
+            config={"objectSlug": object_slug},
         )
 {% endif %}
 {% endmacro %}

@@ -74,12 +74,20 @@ function normalizeSkillConfig(skill: { configType: ConfigType; config: Record<st
     const integrationType = CONFIG_DETAILS[skill.configType].integrationType
     const usesSystemIntegration = skill.configType === ConfigType.TIME_TRIGGER || skill.configType === ConfigType.TERSE
 
-    return {
+    const normalizedConfig: Record<string, unknown> = {
         ...skill.config,
         integrationType,
         configType: skill.configType,
         ...(usesSystemIntegration ? { integrationId: "system" } : {})
     }
+
+    // Older/generated Python clients omit objectSlug entirely when Attio.skill()
+    // is used without selecting an object. Normalize that legacy shape here.
+    if (skill.configType === ConfigType.ATTIO_OUTPUT && !("objectSlug" in normalizedConfig)) {
+        normalizedConfig.objectSlug = null
+    }
+
+    return normalizedConfig
 }
 
 const skillSchema = z

@@ -8,7 +8,13 @@ import click
 from terse_sdk import CronJobInputEvent, TerseAgent, TriggerConfig, execute_registered_job
 
 from .._loader import JobSelectionError, NoJobsFoundError, ProjectImportError, load_job_registry, resolve_job
-from .._project import ProjectRootError, read_api_key, run_ty_check
+from .._project import (
+    ProjectRootError,
+    format_missing_uv_install_message,
+    is_uv_missing_result,
+    read_api_key,
+    run_ty_check,
+)
 from .._session import SessionStreamError, open_session_stream
 from .._ui import PromptCancelledError, console, log_stream_event, prompt_select
 
@@ -37,6 +43,11 @@ def test_command(job_name: str | None, skip_type_check: bool) -> None:
         console.print("  [dim]Running ty check...[/dim]")
         ty_result = run_ty_check(project_dir)
         if not ty_result.succeeded:
+            if is_uv_missing_result(ty_result):
+                raise click.ClickException(
+                    f"{format_missing_uv_install_message(('uv', 'sync'))}\n"
+                    "Once dependencies are installed, rerun `terse test`."
+                )
             if ty_result.details:
                 console.print(ty_result.details)
             raise click.ClickException("Type check failed. Fix the errors above before running.")

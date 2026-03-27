@@ -77,6 +77,7 @@ class GenerateResult:
 
 
 T = TypeVar("T")
+PhaseReporter = Callable[[str], None]
 _SUPPORTED_TOOL_SPECS: tuple[tuple[str, str, str], ...] = (
     ("attio", "attio_list_objects", "list_objects"),
     ("attio", "attio_query_records", "query_records"),
@@ -148,7 +149,7 @@ class _ToolCtx:
     approvable: bool
 
 
-def generate_project(project_dir: Path | None = None) -> GenerateResult:
+def generate_project(project_dir: Path | None = None, on_phase: PhaseReporter | None = None) -> GenerateResult:
     """Generate Python helper bindings for the project's active integrations."""
 
     resolved_dir = assert_project_root(project_dir)
@@ -158,11 +159,26 @@ def generate_project(project_dir: Path | None = None) -> GenerateResult:
             "Missing TERSE_API_KEY in .env.\nCreate a project with `terse init` or add TERSE_API_KEY to your .env file."
         )
 
+    report_phase = on_phase or (lambda _: None)
+    report_phase("Fetching integrations...")
     active_types = request_json("/integrations/active", api_key)
     active_set = {str(item).lower() for item in active_types} if isinstance(active_types, list) else set()
 
-    codegen_input = _build_codegen_input(active_set, api_key)
-    output_path = write_generated_module(resolved_dir, render_generated_module(codegen_input))
+    report_phase("Fetching tool definitions...")
+    tools = _safe_fetch(lambda: _fetch_tool_definitions(api_key, active_set))
+
+    report_phase("Fetching integration details...")
+    codegen_input = CodegenInput(
+        attio=(_safe_fetch(lambda: _fetch_attio_instances(api_key)) if "attio" in active_set else []),
+        snowflake=(_safe_fetch(lambda: _fetch_snowflake_instances(api_key)) if "snowflake" in active_set else []),
+        tools=tools,
+    )
+
+    report_phase("Generating code...")
+    generated_module = render_generated_module(codegen_input)
+
+    report_phase("Writing output...")
+    output_path = write_generated_module(resolved_dir, generated_module)
 
     return GenerateResult(
         project_dir=resolved_dir,
@@ -217,15 +233,6 @@ def write_generated_module(project_dir: Path, content: str) -> Path:
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(content, encoding="utf-8")
     return output_path
-
-
-def _build_codegen_input(active_set: set[str], api_key: str) -> CodegenInput:
-    return CodegenInput(
-        attio=(_safe_fetch(lambda: _fetch_attio_instances(api_key)) if "attio" in active_set else []),
-        snowflake=(_safe_fetch(lambda: _fetch_snowflake_instances(api_key)) if "snowflake" in active_set else []),
-        tools=_safe_fetch(lambda: _fetch_tool_definitions(api_key, active_set)),
-    )
-
 
 def _safe_fetch(fetcher: Callable[[], list[T]]) -> list[T]:
     try:
