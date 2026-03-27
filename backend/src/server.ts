@@ -213,6 +213,46 @@ app.post(ApiRoutes.REVIEW_AGENTS, async (req, res) => {
     reviewAllAgents(req, res)
 })
 
+// MARK: WEBHOOKS (before apiTokenAuthMiddleware — these use their own auth via signatures/tokens)
+
+app.post(ApiRoutes.WEBHOOKS.GMAIL, async (req, res) => {
+    handleGmailWebhook(req, res)
+})
+
+app.post(ApiRoutes.WEBHOOKS.FIGMA, async (req, res) => {
+    handleFigmaWebhook(req, res)
+})
+
+// Linear webhook needs raw body for signature verification
+app.use(ApiRoutes.LINEAR.WEBHOOK, express.raw({ type: "application/json" }))
+
+app.post(ApiRoutes.LINEAR.WEBHOOK, async (req, res) => {
+    handleLinearWebhook(req, res)
+})
+
+// WorkOS webhook needs raw body for signature verification
+app.use(ApiRoutes.WEBHOOKS.WORKOS, express.raw({ type: "application/json" }))
+
+app.post(ApiRoutes.WEBHOOKS.WORKOS, async (req, res) => {
+    handleWorkOSWebhook(req, res)
+})
+
+// WorkOS Trigger webhook needs raw body for signature verification
+app.use(ApiRoutes.WEBHOOKS.WORKOS_TRIGGER_BY_INTEGRATION_ID.pattern, express.raw({ type: "application/json" }))
+
+app.post(ApiRoutes.WEBHOOKS.WORKOS_TRIGGER_BY_INTEGRATION_ID.pattern, async (req, res) => {
+    handleWorkOSTriggerWebhook(req, res)
+})
+
+app.post(ApiRoutes.WEBHOOKS.JIRA_BY_ACCOUNT_ID.pattern, async (req, res) => {
+    // Use the new webhook handler which verifies authenticity and processes the event
+    handleJiraWebhook(req, res)
+})
+
+app.post(ApiRoutes.WEBHOOKS.SCHEDULE_BY_INPUT_ID.pattern, async (req, res) => {
+    handleScheduleWebhook(req, res)
+})
+
 app.use(apiTokenAuthMiddleware)
 
 // MARK: AUTH
@@ -359,9 +399,6 @@ app.delete(ApiRoutes.GMAIL.DELETE_INTEGRATION, authMiddleware, async (req, res) 
     deleteGmailIntegration(req, res)
 })
 
-app.post(ApiRoutes.WEBHOOKS.GMAIL, async (req, res) => {
-    handleGmailWebhook(req, res)
-})
 // MARK: NOTION
 
 app.get(ApiRoutes.NOTION.INTEGRATIONS, authMiddleware, async (req, res) => {
@@ -402,35 +439,10 @@ app.get(ApiRoutes.FIGMA.OAUTH_CALLBACK, async (req, res) => {
     figmaOAuthCallback(req, res)
 })
 
-app.post(ApiRoutes.WEBHOOKS.FIGMA, async (req, res) => {
-    handleFigmaWebhook(req, res)
-})
-
 // MARK: LINEAR
 
 app.get(ApiRoutes.LINEAR.OAUTH_CALLBACK, async (req, res) => {
     linearOAuthCallback(req, res)
-})
-
-// Linear webhook needs raw body for signature verification
-app.use(ApiRoutes.LINEAR.WEBHOOK, express.raw({ type: "application/json" }))
-
-app.post(ApiRoutes.LINEAR.WEBHOOK, async (req, res) => {
-    handleLinearWebhook(req, res)
-})
-
-// WorkOS webhook needs raw body for signature verification
-app.use(ApiRoutes.WEBHOOKS.WORKOS, express.raw({ type: "application/json" }))
-
-app.post(ApiRoutes.WEBHOOKS.WORKOS, async (req, res) => {
-    handleWorkOSWebhook(req, res)
-})
-
-// WorkOS Trigger webhook needs raw body for signature verification
-app.use(ApiRoutes.WEBHOOKS.WORKOS_TRIGGER_BY_INTEGRATION_ID.pattern, express.raw({ type: "application/json" }))
-
-app.post(ApiRoutes.WEBHOOKS.WORKOS_TRIGGER_BY_INTEGRATION_ID.pattern, async (req, res) => {
-    handleWorkOSTriggerWebhook(req, res)
 })
 
 app.get(ApiRoutes.LINEAR.INTEGRATIONS, authMiddleware, async (req, res) => {
@@ -439,16 +451,6 @@ app.get(ApiRoutes.LINEAR.INTEGRATIONS, authMiddleware, async (req, res) => {
 
 app.get(ApiRoutes.LINEAR.TEAMS, authMiddleware, async (req, res) => {
     getLinearTeams(req, res)
-})
-
-app.post(ApiRoutes.WEBHOOKS.JIRA_BY_ACCOUNT_ID.pattern, async (req, res) => {
-    // Use the new webhook handler which verifies authenticity and processes the event
-    handleJiraWebhook(req, res)
-})
-
-// MARK: SCHEDULE (Cloud Scheduler)
-app.post(ApiRoutes.WEBHOOKS.SCHEDULE_BY_INPUT_ID.pattern, async (req, res) => {
-    handleScheduleWebhook(req, res)
 })
 
 // Manual trigger endpoint (authenticated)
