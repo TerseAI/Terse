@@ -13,7 +13,6 @@ from zipfile import ZipFile
 import httpx
 import pytest
 from click.testing import CliRunner
-from terse_cli.commands import test as test_command_module
 from terse_cli._generate import (
     CodegenInput,
     render_generated_module,
@@ -21,6 +20,7 @@ from terse_cli._generate import (
 from terse_cli._package import PackagingError
 from terse_cli._project import DependencyInstallResult
 from terse_cli.cli import cli
+from terse_cli.commands import test as test_command_module
 
 _ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-9;]*m")
 

@@ -17,7 +17,10 @@ export class PythonSdkRuntimeExecutor implements SdkRuntimeExecutor {
             await context.ensureSandboxCommand("uv sync", `cd ${context.projectDir} && uv sync`)
             context.emitSandboxStatus(SandboxStage.INSTALLING_DEPENDENCIES, "completed", { duration_ms: Math.round(performance.now() - depStart) })
         } catch (err) {
-            context.emitSandboxStatus(SandboxStage.INSTALLING_DEPENDENCIES, "failed", { duration_ms: Math.round(performance.now() - depStart), detail: err instanceof Error ? err.message : String(err) })
+            context.emitSandboxStatus(SandboxStage.INSTALLING_DEPENDENCIES, "failed", {
+                duration_ms: Math.round(performance.now() - depStart),
+                detail: err instanceof Error ? err.message : String(err)
+            })
             throw err
         }
 
