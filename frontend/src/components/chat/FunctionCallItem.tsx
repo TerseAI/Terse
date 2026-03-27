@@ -232,11 +232,11 @@ export default function FunctionCallItem({ call, isTurnFailure = false, onApprov
                             The bot wants to execute: <span className="font-medium text-foreground">{displayName}</span>
                         </div>
                     )}
-                    {editedArguments && <div className="mt-3 text-xs text-accent-primary">Draft edits will be applied when you approve this tool call.</div>}
+                    {editedArguments && <div className="mt-3 text-xs text-accent-primary">Your edits will be applied when you approve this tool call.</div>}
                     <div className="flex gap-2 mt-3">
                         <Button onClick={handleApprove} size="sm" variant="outline">
                             <Check className="w-4 h-4 text-success" />
-                            {editedArguments ? "Approve Edited" : "Approve"}
+                            {editedArguments ? "Approve with Edits" : "Approve"}
                         </Button>
                         <Button onClick={handleReject} size="sm" variant="outline">
                             <Ban className="w-4 h-4 text-danger" />

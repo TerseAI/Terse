@@ -46,19 +46,38 @@ export default function AttioUpsertRecordPreview({ parameters, editedArguments, 
     const hasDraftEdits = areRecordsEqual(displayRecords, originalRecords) === false
     const hasWorkingEdits = areRecordsEqual(workingRecords, originalRecords) === false
 
+    const syncEditedArguments = (records: Array<Record<string, unknown>>) => {
+        if (!parsedParameters) return
+
+        const nextArguments = buildEditedArguments(parsedParameters, records)
+        onEditedArgumentsChange?.(areRecordsEqual(records, originalRecords) ? undefined : nextArguments)
+    }
+
     const handleCellUpdate = (recordIndex: number, key: string, newValue: string) => {
         setWorkingRecords(prev => {
             const updated = structuredClone(prev)
             const originalValue = updated[recordIndex]?.[key] ?? originalRecords[recordIndex]?.[key]
             updated[recordIndex] = updated[recordIndex] ?? {}
             updated[recordIndex][key] = coerceEditedValue(originalValue, newValue)
+            syncEditedArguments(updated)
             return updated
         })
     }
 
-    const applyDraft = () => {
-        const nextArguments = buildEditedArguments(parsedParameters, workingRecords)
-        onEditedArgumentsChange?.(areRecordsEqual(workingRecords, originalRecords) ? undefined : nextArguments)
+    const handleAddRow = () => {
+        setWorkingRecords(prev => {
+            const updated = [...prev, Object.fromEntries(columns.map(column => [column.key, ""]))]
+            syncEditedArguments(updated)
+            return updated
+        })
+    }
+
+    const handleRemoveRow = (rowIndex: number) => {
+        setWorkingRecords(prev => {
+            const updated = prev.filter((_, index) => index !== rowIndex)
+            syncEditedArguments(updated)
+            return updated
+        })
     }
 
     const resetDraft = () => {
@@ -139,13 +158,20 @@ export default function AttioUpsertRecordPreview({ parameters, editedArguments, 
                                 <div className="flex items-center justify-between gap-3 border-b border-border/60 bg-muted px-4 py-2">
                                     <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Spreadsheet editor</div>
                                     <Badge variant="outline" className="text-[11px] text-muted-foreground">
-                                        Click any cell to edit
+                                        Click cells to edit, add, or remove rows
                                     </Badge>
                                 </div>
-                                <EditableDataTable columns={columns} rows={editableRows} onCellChange={handleCellUpdate} />
+                                <EditableDataTable
+                                    columns={columns}
+                                    rows={editableRows}
+                                    onCellChange={handleCellUpdate}
+                                    onAddRow={handleAddRow}
+                                    onRemoveRow={handleRemoveRow}
+                                    addRowLabel="Add record"
+                                />
                             </div>
 
-                            <div className="flex items-center justify-between gap-3 border-t border-border/70 pt-4">
+                            <div className="flex items-center justify-between gap-3 pt-4">
                                 {hasWorkingEdits ? (
                                     <Button type="button" variant="ghost" onClick={resetDraft}>
                                         <RotateCcw className="mr-1 h-3.5 w-3.5" />
@@ -155,11 +181,7 @@ export default function AttioUpsertRecordPreview({ parameters, editedArguments, 
                                     <div />
                                 )}
 
-                                <div className="flex items-center gap-2">
-                                    <Button type="button" onClick={applyDraft} disabled={!hasWorkingEdits}>
-                                        Apply Draft
-                                    </Button>
-                                </div>
+                                <div />
                             </div>
                         </div>
                     </div>
