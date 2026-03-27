@@ -35,7 +35,7 @@ Filter syntax uses shorthand or verbose form:
 - Combine with $and/$or: {"$and": [{"name": "John"}, {"email_addresses": "john@example.com"}]}`,
     parameters: attioQueryRecordsParams,
     execute: async ({ integrationId, objectSlug, filter, limit }, runContext?: RunContext<SessionWithTracking<Session>>) => {
-        logger.debug("Executing attio_query_records tool", { integrationId, objectSlug, limit: limit ?? 20, rawFilter: filter ?? null })
+        logger.debug("Executing attio_query_records tool", { integrationId, objectSlug })
 
         if (!runContext?.context) {
             throw new Error("No context provided")
@@ -55,36 +55,11 @@ Filter syntax uses shorthand or verbose form:
         try {
             const body: Record<string, unknown> = { limit: limit ?? 20 }
             if (filter) {
-                let parsedFilter: unknown
-                try {
-                    parsedFilter = JSON.parse(filter)
-                } catch (parseError) {
-                    logger.error("Failed to parse Attio query filter", {
-                        integrationId,
-                        objectSlug,
-                        rawFilter: filter,
-                        error: parseError instanceof Error ? parseError.message : parseError
-                    })
-                    throw parseError
-                }
-
-                logger.debug("Parsed Attio query filter", {
-                    integrationId,
-                    objectSlug,
-                    rawFilter: filter,
-                    parsedFilter
-                })
-
+                const parsedFilter = JSON.parse(filter)
                 if (parsedFilter && typeof parsedFilter === "object" && Object.keys(parsedFilter).length > 0) {
                     body.filter = parsedFilter
                 }
             }
-
-            logger.debug("Sending Attio query records request", {
-                integrationId,
-                objectSlug,
-                requestBody: body
-            })
 
             const response = await fetch(`https://api.attio.com/v2/objects/${encodeURIComponent(objectSlug)}/records/query`, {
                 method: "POST",
@@ -97,25 +72,12 @@ Filter syntax uses shorthand or verbose form:
 
             if (!response.ok) {
                 const errorText = await response.text()
-                logger.error("Attio query records failed", {
-                    integrationId,
-                    objectSlug,
-                    status: response.status,
-                    requestBody: body,
-                    error: errorText
-                })
+                logger.error("Attio query records failed", { status: response.status, error: errorText })
                 throw new Error(`Attio API error (${response.status}): ${errorText}`)
             }
 
             const data = (await response.json()) as { data?: AttioRecord[] }
             const records = data?.data || []
-
-            logger.debug("Attio query records succeeded", {
-                integrationId,
-                objectSlug,
-                requestBody: body,
-                recordCount: records.length
-            })
 
             const action = {
                 action: "Queried records",

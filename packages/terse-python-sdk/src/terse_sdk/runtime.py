@@ -319,7 +319,7 @@ class TerseAgent:
         if isinstance(result, dict) and result.get("success") is False:
             error_text = result.get("text", "")
             if isinstance(error_text, str) and error_text.startswith("[TERSE ERROR]:"):
-                detail = error_text[len("[TERSE ERROR]:"):]
+                detail = error_text[len("[TERSE ERROR]:") :]
                 try:
                     parsed = json.loads(detail)
                     detail = parsed.get("error", detail)
