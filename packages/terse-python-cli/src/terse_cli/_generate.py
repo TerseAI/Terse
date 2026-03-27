@@ -234,6 +234,7 @@ def write_generated_module(project_dir: Path, content: str) -> Path:
     output_path.write_text(content, encoding="utf-8")
     return output_path
 
+
 def _safe_fetch(fetcher: Callable[[], list[T]]) -> list[T]:
     try:
         return fetcher()

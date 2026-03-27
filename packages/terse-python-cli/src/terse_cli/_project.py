@@ -190,10 +190,7 @@ def is_uv_missing_result(result: DependencyInstallResult) -> bool:
 def format_missing_uv_install_message(command: tuple[str, ...]) -> str:
     """Explain how to recover when ``uv`` is missing."""
 
-    return (
-        f"`uv` is not installed. Install it from {UV_INSTALL_DOCS_URL}, "
-        f"then run `{format_command(command)}`."
-    )
+    return f"`uv` is not installed. Install it from {UV_INSTALL_DOCS_URL}, then run `{format_command(command)}`."
 
 
 def format_uv_prerequisite_hint(command: tuple[str, ...]) -> str:

@@ -23,6 +23,7 @@ from ._http_utils import (
     _read_response_detail,
 )
 from .types.config import TerseSettings
+from .types.enums import ConfigType
 from .types.events import (
     AnyInputEvent,
     AtlassianInputEvent,
@@ -43,7 +44,6 @@ from .types.events import (
     TerseInputEvent,
     WorkOSInputEvent,
 )
-from .types.enums import ConfigType
 from .types.jobs import SkillConfig, TriggerConfig
 from .types.sdk_types import (
     SdkAgentRunRequestBody,

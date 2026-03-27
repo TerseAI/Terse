@@ -31,6 +31,4 @@ def generate_command() -> None:
     click.echo("")
     for line in result.summary_lines:
         click.echo(f"  + {line}")
-    click.secho(
-        f"\nGenerated {result.output_path.relative_to(result.project_dir)}", fg="green"
-    )
+    click.secho(f"\nGenerated {result.output_path.relative_to(result.project_dir)}", fg="green")

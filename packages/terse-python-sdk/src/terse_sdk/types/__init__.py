@@ -156,13 +156,13 @@ from .stream_events import (
     SdkAgentStreamEventDone,
     SdkAgentStreamEventError,
     SdkAgentStreamEventFinalOutput,
-    SdkAgentToolApprovalRequest,
     SdkAgentStreamEventRunStarted,
     SdkAgentStreamEventText,
     SdkAgentStreamEventToolApprovalRequested,
     SdkAgentStreamEventToolCallCompleted,
     SdkAgentStreamEventToolCallParams,
     SdkAgentStreamEventToolCallStarted,
+    SdkAgentToolApprovalRequest,
 )
 from .stream_events import __all__ as _stream_events_all
 from .tools import (
