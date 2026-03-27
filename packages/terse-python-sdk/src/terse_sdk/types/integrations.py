@@ -2,12 +2,18 @@
 
 from __future__ import annotations
 
-from typing import Annotated, Literal, Union
+from typing import Annotated, Literal
 
 from pydantic import Discriminator, Field, Tag
 
 from ._base import _CamelModel
-from .enums import ConfigType, GitHubEventType, IntegrationType, RunHistoryActionType, WorkOSEventType
+from .enums import (
+    ConfigType,
+    GitHubEventType,
+    IntegrationType,
+    RunHistoryActionType,
+    WorkOSEventType,
+)
 
 
 class IntegrationDetails(_CamelModel):
@@ -157,29 +163,27 @@ class SnowflakeOutputConfigInstance(_BaseConfig):
 
 
 ConfigInstance = Annotated[
-    Union[
-        Annotated[GmailConfigInstance, Tag(ConfigType.GMAIL)],
-        Annotated[GmailOutputConfigInstance, Tag(ConfigType.GMAIL_OUTPUT)],
-        Annotated[GmailDraftOutputConfigInstance, Tag(ConfigType.GMAIL_DRAFT_OUTPUT)],
-        Annotated[FigmaConfigInstance, Tag(ConfigType.FIGMA)],
-        Annotated[SlackConfigInstance, Tag(ConfigType.SLACK)],
-        Annotated[SlackOutputConfigInstance, Tag(ConfigType.SLACK_OUTPUT)],
-        Annotated[NotionConfigInstance, Tag(ConfigType.NOTION)],
-        Annotated[LinearInputConfigInstance, Tag(ConfigType.LINEAR_INPUT)],
-        Annotated[LinearOutputConfigInstance, Tag(ConfigType.LINEAR_OUTPUT)],
-        Annotated[GitHubConfigInstance, Tag(ConfigType.GITHUB)],
-        Annotated[JiraConfigInstance, Tag(ConfigType.JIRA)],
-        Annotated[ConfluenceConfigInstance, Tag(ConfigType.CONFLUENCE)],
-        Annotated[PosthogConfigInstance, Tag(ConfigType.POSTHOG)],
-        Annotated[DatadogConfigInstance, Tag(ConfigType.DATADOG)],
-        Annotated[TimeTriggerConfigInstance, Tag(ConfigType.TIME_TRIGGER)],
-        Annotated[LaunchDarklyConfigInstance, Tag(ConfigType.LAUNCHDARKLY)],
-        Annotated[TerseConfigInstance, Tag(ConfigType.TERSE)],
-        Annotated[WorkOSInputConfigInstance, Tag(ConfigType.WORKOS_INPUT)],
-        Annotated[WorkOSOutputConfigInstance, Tag(ConfigType.WORKOS_OUTPUT)],
-        Annotated[AttioOutputConfigInstance, Tag(ConfigType.ATTIO_OUTPUT)],
-        Annotated[SnowflakeOutputConfigInstance, Tag(ConfigType.SNOWFLAKE_OUTPUT)],
-    ],
+    Annotated[GmailConfigInstance, Tag(ConfigType.GMAIL)]
+    | Annotated[GmailOutputConfigInstance, Tag(ConfigType.GMAIL_OUTPUT)]
+    | Annotated[GmailDraftOutputConfigInstance, Tag(ConfigType.GMAIL_DRAFT_OUTPUT)]
+    | Annotated[FigmaConfigInstance, Tag(ConfigType.FIGMA)]
+    | Annotated[SlackConfigInstance, Tag(ConfigType.SLACK)]
+    | Annotated[SlackOutputConfigInstance, Tag(ConfigType.SLACK_OUTPUT)]
+    | Annotated[NotionConfigInstance, Tag(ConfigType.NOTION)]
+    | Annotated[LinearInputConfigInstance, Tag(ConfigType.LINEAR_INPUT)]
+    | Annotated[LinearOutputConfigInstance, Tag(ConfigType.LINEAR_OUTPUT)]
+    | Annotated[GitHubConfigInstance, Tag(ConfigType.GITHUB)]
+    | Annotated[JiraConfigInstance, Tag(ConfigType.JIRA)]
+    | Annotated[ConfluenceConfigInstance, Tag(ConfigType.CONFLUENCE)]
+    | Annotated[PosthogConfigInstance, Tag(ConfigType.POSTHOG)]
+    | Annotated[DatadogConfigInstance, Tag(ConfigType.DATADOG)]
+    | Annotated[TimeTriggerConfigInstance, Tag(ConfigType.TIME_TRIGGER)]
+    | Annotated[LaunchDarklyConfigInstance, Tag(ConfigType.LAUNCHDARKLY)]
+    | Annotated[TerseConfigInstance, Tag(ConfigType.TERSE)]
+    | Annotated[WorkOSInputConfigInstance, Tag(ConfigType.WORKOS_INPUT)]
+    | Annotated[WorkOSOutputConfigInstance, Tag(ConfigType.WORKOS_OUTPUT)]
+    | Annotated[AttioOutputConfigInstance, Tag(ConfigType.ATTIO_OUTPUT)]
+    | Annotated[SnowflakeOutputConfigInstance, Tag(ConfigType.SNOWFLAKE_OUTPUT)],
     Discriminator(lambda v: v.get("configType") if isinstance(v, dict) else getattr(v, "configType", None)),
 ]
 
