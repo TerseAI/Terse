@@ -311,7 +311,34 @@ class TerseAgent:
             detail = payload_dict.get("error") if payload_dict is not None else None
             raise TerseApiError(str(detail or "Tool execution failed"))
 
-        return payload_dict.get("result")
+        result = payload_dict.get("result")
+
+        # Detect tool-level errors wrapped as successful responses.
+        # This happens when the OpenAI SDK errorFunction handles the error
+        # and returns a formatted string that gets parsed back into a dict.
+        result_dict = _as_object_dict(result)
+        if result_dict is not None and result_dict.get("success") is False:
+            error_text = result_dict.get("text", "")
+            if isinstance(error_text, str) and error_text.startswith("[TERSE ERROR]:"):
+                detail = error_text[len("[TERSE ERROR]:") :]
+                try:
+                    parsed = json.loads(detail)
+                    detail = parsed.get("error", detail)
+                except (json.JSONDecodeError, AttributeError):
+                    pass
+                # Pretty-format embedded JSON in the error string.
+                if isinstance(detail, str):
+                    brace = detail.find("{")
+                    if brace != -1:
+                        try:
+                            embedded = json.loads(detail[brace:])
+                            detail = detail[:brace].rstrip() + "\n" + json.dumps(embedded, indent=2)
+                        except (json.JSONDecodeError, ValueError):
+                            pass
+                raise TerseApiError(f"Tool execution failed: {detail}")
+            raise TerseApiError("Tool execution failed")
+
+        return result
 
 
 def clear_job_registry() -> None:

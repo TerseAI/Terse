@@ -49,12 +49,106 @@
 
 {% if has_attio_tools %}
 
-def _json_string(value: object | None) -> str | None:
+_ATTIO_FILTER_ATTRS_BY_OBJECT: dict[str, frozenset[str]] = {
+{% for obj in attio.objects %}
+{% if obj.attributes %}
+    {{ obj.api_slug_repr }}: {{ obj.attr_slugs_frozenset_repr }},
+{% endif %}
+{% endfor %}
+}
+
+
+def _attio_invalid_filter_error(obj_slug: str, attribute: str | None = None) -> ValueError:
+    message = f"Invalid Attio filter for object {obj_slug!r}"
+    if attribute is not None:
+        message += f" on attribute {attribute!r}"
+    message += ": list shorthand is not supported."
+    if attribute == 'domains':
+        message += ' Use scalar shorthand "useterse.ai" or explicit Attio syntax {"domain": {"$eq": "useterse.ai"}}.'
+    else:
+        message += " Use a scalar shorthand or explicit Attio operator/object syntax instead."
+    return ValueError(message)
+
+
+def _validate_attio_filter_node(
+    obj_slug: str,
+    value: object,
+    *,
+    attr_slugs: frozenset[str],
+    current_attribute: str | None = None,
+) -> None:
+    if isinstance(value, dict):
+        for raw_key, child in value.items():
+            if not isinstance(raw_key, str):
+                raise ValueError(f"Invalid Attio filter for object {obj_slug!r}: filter keys must be strings.")
+            key = raw_key
+            if key in ('$and', '$or'):
+                if not isinstance(child, list):
+                    raise ValueError(f"Invalid Attio filter for object {obj_slug!r}: {key} must be a list.")
+                for item in child:
+                    if not isinstance(item, dict):
+                        raise ValueError(f"Invalid Attio filter for object {obj_slug!r}: {key} entries must be objects.")
+                    _validate_attio_filter_node(obj_slug, item, attr_slugs=attr_slugs)
+                continue
+            if key == '$not':
+                if not isinstance(child, dict):
+                    raise ValueError(f"Invalid Attio filter for object {obj_slug!r}: $not must be an object.")
+                _validate_attio_filter_node(obj_slug, child, attr_slugs=attr_slugs)
+                continue
+            if key == '$in':
+                if not isinstance(child, list):
+                    raise ValueError(f"Invalid Attio filter for object {obj_slug!r}: $in must be a list.")
+                continue
+            if key == 'path':
+                if not isinstance(child, list):
+                    raise ValueError(f"Invalid Attio filter for object {obj_slug!r}: path must be a list.")
+                continue
+            if key == 'constraints':
+                if not isinstance(child, dict):
+                    raise ValueError(f"Invalid Attio filter for object {obj_slug!r}: constraints must be an object.")
+                _validate_attio_filter_node(
+                    obj_slug,
+                    child,
+                    attr_slugs=attr_slugs,
+                    current_attribute=current_attribute,
+                )
+                continue
+
+            attribute: str | None = key if key in attr_slugs else current_attribute
+            if isinstance(child, list):
+                raise _attio_invalid_filter_error(obj_slug, attribute)
+            _validate_attio_filter_node(
+                obj_slug,
+                child,
+                attr_slugs=attr_slugs,
+                current_attribute=attribute,
+            )
+
+
+def _serialize_attio_filter(obj_slug: str, value: object | None) -> str | None:
     if value is None:
         return None
+
+    parsed = value
     if isinstance(value, str):
-        return value
-    return json.dumps(value, separators=(',', ':'), sort_keys=True)
+        try:
+            parsed = json.loads(value)
+        except json.JSONDecodeError as exc:
+            raise ValueError(f"Attio filters for object {obj_slug!r} must be valid JSON objects.") from exc
+
+    if not isinstance(parsed, dict):
+        raise ValueError(f"Attio filters for object {obj_slug!r} must be objects.")
+
+    _validate_attio_filter_node(
+        obj_slug,
+        parsed,
+        attr_slugs=_ATTIO_FILTER_ATTRS_BY_OBJECT.get(obj_slug, frozenset()),
+    )
+    return json.dumps(parsed, separators=(',', ':'), sort_keys=True)
+
+
+def _serialize_attio_records(records: Sequence[object]) -> str:
+    return json.dumps(records, separators=(',', ':'), sort_keys=True)
 
 
 class _AttioTools:

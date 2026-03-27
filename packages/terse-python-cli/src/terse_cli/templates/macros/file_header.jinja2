@@ -17,7 +17,7 @@ Type checking:
 from __future__ import annotations
 {% if has_attio_attrs %}
 
-from typing import Any, Generic, Literal, TypeVar, TypedDict, cast
+from typing import Any, Generic, Literal, Sequence, TypeVar, TypedDict, cast
 {% endif %}
 {% if not has_attio_attrs and (attio_approvable_tools or snowflake_approvable_tools) %}
 

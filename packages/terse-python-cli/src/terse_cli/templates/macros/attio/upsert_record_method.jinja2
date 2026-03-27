@@ -15,7 +15,7 @@
                     'integrationId': {{ attio.instance_id_repr }},
                     'objectSlug': obj.api_slug,
                     'matchingAttribute': matching_attribute,
-                    'records': records,
+                    'records': _serialize_attio_records(records),
                 },
             )
         )
@@ -46,7 +46,7 @@
                     'integrationId': {{ attio.instance_id_repr }},
                     'objectSlug': obj.api_slug,
                     'matchingAttribute': matching_attribute,
-                    'records': records,
+                    'records': _serialize_attio_records(records),
                 },
             )
         )
