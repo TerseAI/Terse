@@ -50,4 +50,8 @@ for (const dest of esmTargets) {
   }
 }
 
-console.log('Copied shared folder to backend/src/shared, frontend/src/shared, packages/terse-sdk/src/shared, and packages/terse-cli/src/shared');
+
+
+console.log(
+  'Copied shared folder to backend/src/shared, frontend/src/shared, packages/terse-sdk/src/shared, packages/terse-cli/src/shared'
+);

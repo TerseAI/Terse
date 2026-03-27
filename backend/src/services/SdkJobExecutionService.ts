@@ -1,5 +1,6 @@
 import crypto from "crypto"
-import { ModalClient } from "modal"
+import { unzipSync } from "fflate"
+import { ModalClient, Sandbox } from "modal"
 
 import { StreamEventEmitter } from "../agent/AgentRunner/StreamProcessor"
 import { finalizeRunStatus, markRunFailed } from "../agent/AgentRunner/runHistory"
@@ -13,6 +14,8 @@ import { User } from "../shared/types"
 
 import { getSocketIO } from "./CacheInvalidationService"
 import { downloadSdkDeployZip } from "./FileStorageService"
+import { sdkRuntimeExecutorRegistry } from "./sdkRuntimeExecutors/SdkRuntimeExecutorRegistry"
+import { SDK_SANDBOX_CODE_ZIP_PATH, SDK_SANDBOX_EVENT_FILE_PATH, SDK_SANDBOX_PROJECT_DIR, type SandboxCommandResult, type SdkRuntimeExecutorContext } from "./sdkRuntimeExecutors/types"
 
 export interface SdkJobExecutionParams {
     gcsKey: string
@@ -88,6 +91,10 @@ export class SdkJobExecutionService {
             this.emitSandboxStatus(SandboxStage.DOWNLOADING_SOURCE, "completed", { duration_ms: this.elapsedMs(t) })
             logger.info("SDK sandbox: downloaded zip from GCS", { runId, agentId, duration: this.elapsed(t), sizeBytes: zipBuffer.length })
 
+            const archiveEntries = new Set(Object.keys(unzipSync(new Uint8Array(zipBuffer))))
+            const executor = sdkRuntimeExecutorRegistry.resolve(archiveEntries)
+            logger.info("SDK sandbox: detected project runtime", { runId, agentId, runtime: executor.runtime })
+
             // 2. Generate a temporary API key for the sandbox
             t = performance.now()
             const { rawToken, tokenId } = await this.createSandboxApiToken(userId, orgId)
@@ -111,10 +118,17 @@ export class SdkJobExecutionService {
 
             t = performance.now()
             const app = await modal.apps.fromName("terse-sdk-sandbox", { createIfMissing: true })
-            const image = modal.images.fromRegistry("node:22-slim")
+            const image = modal.images.fromRegistry(executor.sandboxImage)
             const sb = await modal.sandboxes.create(app, image, { timeoutMs: 30 * 60 * 1000 })
             this.emitSandboxStatus(SandboxStage.BOOTING, "completed", { duration_ms: this.elapsedMs(t) })
-            logger.info("SDK sandbox: created Modal sandbox", { runId, agentId, sandboxId: sb.sandboxId, duration: this.elapsed(t) })
+            logger.info("SDK sandbox: created Modal sandbox", {
+                runId,
+                agentId,
+                sandboxId: sb.sandboxId,
+                runtime: executor.runtime,
+                image: executor.sandboxImage,
+                duration: this.elapsed(t)
+            })
 
             const sandboxEnv = {
                 TERSE_API_KEY: sandboxApiKey,
@@ -123,102 +137,25 @@ export class SdkJobExecutionService {
             }
 
             try {
-                // Write zip buffer into sandbox filesystem
-                t = performance.now()
-                const writeHandle = await sb.open("/tmp/code.zip", "w")
-                await writeHandle.write(new Uint8Array(zipBuffer))
-                await writeHandle.close()
-                logger.info("SDK sandbox: uploaded zip to sandbox", { runId, agentId, duration: this.elapsed(t) })
+                const executorContext = this.createRuntimeExecutorContext(sb, sandboxEnv, runId, agentId, jobName)
+                await this.uploadZipToSandbox(sb, zipBuffer, runId, agentId)
+                await this.unzipProjectInSandbox(executorContext)
+                await this.writeEventFile(sb, eventJson)
+                const result = await executor.execute(executorContext)
 
-                // Install unzip & extract
-                t = performance.now()
-                const unzipProc = await sb.exec(["sh", "-c", "apt-get update -qq && apt-get install -y -qq unzip > /dev/null 2>&1 && cd /tmp && unzip -o code.zip -d project > /dev/null"], {
-                    stdout: "pipe",
-                    stderr: "pipe"
-                })
-                await unzipProc.wait()
-                logger.info("SDK sandbox: unzipped code", { runId, agentId, duration: this.elapsed(t) })
-
-                // npm install
-                this.emitSandboxStatus(SandboxStage.INSTALLING_DEPENDENCIES, "started")
-                t = performance.now()
-                const installProc = await sb.exec(["sh", "-c", "cd /tmp/project && npm install --omit=dev 2>&1"], { stdout: "pipe", stderr: "pipe", env: sandboxEnv })
-                const installStdout = await installProc.stdout.readText()
-                const installExitCode = await installProc.wait()
-                logger.info("SDK sandbox: npm install", { runId, agentId, duration: this.elapsed(t), exitCode: installExitCode, output: installStdout.slice(0, 500) })
-
-                if (installExitCode !== 0) {
-                    const installStderr = await installProc.stderr.readText()
-                    this.emitSandboxStatus(SandboxStage.INSTALLING_DEPENDENCIES, "failed", { duration_ms: this.elapsedMs(t), detail: installStderr.slice(0, 500) })
-                    await markRunFailed(runId, `npm install failed (exit ${installExitCode}): ${installStderr.slice(0, 500)}`, "agent")
-                    emitCacheInvalidationWithWildcard(orgId, "runHistory", agentId)
-                    await sb.terminate()
-                    return
-                }
-                this.emitSandboxStatus(SandboxStage.INSTALLING_DEPENDENCIES, "completed", { duration_ms: this.elapsedMs(t) })
-
-                // npm install terse-cli
-                this.emitSandboxStatus(SandboxStage.INSTALLING_CLI, "started")
-                t = performance.now()
-                const installTerseProc = await sb.exec(["sh", "-c", "cd /tmp/project && npm install terse-cli@latest 2>&1"], { stdout: "pipe", stderr: "pipe", env: sandboxEnv })
-                const installTerseStdout = await installTerseProc.stdout.readText()
-                const installTerseExitCode = await installTerseProc.wait()
-                logger.info("SDK sandbox: npm install terse-cli", { runId, agentId, duration: this.elapsed(t), exitCode: installTerseExitCode, output: installTerseStdout.slice(0, 500) })
-
-                if (installTerseExitCode !== 0) {
-                    logger.error("SDK sandbox: npm install terse-cli failed", { runId, agentId, exitCode: installTerseExitCode, output: installTerseStdout.slice(0, 500) })
-                    const installTerseStderr = await installTerseProc.stderr.readText()
-                    this.emitSandboxStatus(SandboxStage.INSTALLING_CLI, "failed", { duration_ms: this.elapsedMs(t), detail: installTerseStderr.slice(0, 500) })
-                    await markRunFailed(runId, `npm install terse-cli failed (exit ${installTerseExitCode}): ${installTerseStderr.slice(0, 500)}`, "agent")
-                    emitCacheInvalidationWithWildcard(orgId, "runHistory", agentId)
-                    await sb.terminate()
-                    return
-                }
-                this.emitSandboxStatus(SandboxStage.INSTALLING_CLI, "completed", { duration_ms: this.elapsedMs(t) })
-
-                // Write event JSON to a file to avoid ARG_MAX limits
-                const eventHandle = await sb.open("/tmp/event.json", "w")
-                await eventHandle.write(new TextEncoder().encode(eventJson))
-                await eventHandle.close()
-
-                // terse run
-                this.emitSandboxStatus(SandboxStage.RUNNING, "started")
-                t = performance.now()
-                const escapedJobName = jobName.replace(/'/g, "'\\''")
-                const runProc = await sb.exec(["sh", "-c", `cd /tmp/project && npx terse run '${escapedJobName}' --event-file /tmp/event.json`], {
-                    stdout: "pipe",
-                    stderr: "pipe",
-                    env: sandboxEnv
-                })
-
-                const [stdout, stderr] = await Promise.all([runProc.stdout.readText(), runProc.stderr.readText()])
-                const exitCode = await runProc.wait()
-                const runDuration = this.elapsed(t)
-
-                logger.info("SDK sandbox: terse run", { runId, agentId, duration: runDuration, exitCode, stdout: stdout.slice(0, 2000), stderr: stderr.slice(0, 2000) })
-
-                if (stdout) {
-                    logger.info("SDK sandbox: terse run stdout", { runId, agentId, stdout: stdout.slice(0, 2000) })
-                }
-                if (stderr) {
-                    logger.warn("SDK sandbox: terse run stderr", { runId, agentId, stderr: stderr.slice(0, 2000) })
-                }
-
-                if (exitCode === 0) {
-                    this.emitSandboxStatus(SandboxStage.RUNNING, "completed", { duration_ms: this.elapsedMs(t) })
+                if (result.exitCode === 0) {
                     await finalizeRunStatus(runId, RunHistoryStatus.SUCCESS)
-                    logger.info("SDK sandbox: terse run completed", { runId, agentId, duration: runDuration })
+                    logger.info("SDK sandbox: terse run completed", { runId, agentId, runtime: executor.runtime })
                 } else {
-                    const errorMsg = stderr ? stderr.slice(0, 500) : `Process exited with code ${exitCode}`
-                    this.emitSandboxStatus(SandboxStage.RUNNING, "failed", { duration_ms: this.elapsedMs(t), detail: errorMsg })
+                    const errorMsg = result.stderr?.trim().slice(0, 500) || `Process exited with code ${result.exitCode}`
                     await markRunFailed(runId, errorMsg, "agent")
-                    logger.error("SDK sandbox: terse run failed", { runId, agentId, exitCode, duration: runDuration })
+                    logger.error("SDK sandbox: terse run failed", { runId, agentId, exitCode: result.exitCode })
                 }
 
                 emitCacheInvalidationWithWildcard(orgId, "runHistory", agentId)
                 await sb.terminate()
 
-                logger.info("SDK sandbox: total execution finished", { runId, agentId, totalDuration: this.elapsed(executionStart) })
+                logger.info("SDK sandbox: total execution finished", { runId, agentId, runtime: executor.runtime, totalDuration: this.elapsed(executionStart) })
             } catch (sandboxError) {
                 await sb.terminate().catch(() => {})
                 throw sandboxError
@@ -241,6 +178,99 @@ export class SdkJobExecutionService {
                 })
             }
         }
+    }
+
+    private async uploadZipToSandbox(sb: Sandbox, zipBuffer: Buffer, runId: string, agentId: string): Promise<void> {
+        const t = performance.now()
+        const writeHandle = await sb.open(SDK_SANDBOX_CODE_ZIP_PATH, "w")
+        await writeHandle.write(new Uint8Array(zipBuffer))
+        await writeHandle.close()
+        logger.info("SDK sandbox: uploaded zip to sandbox", { runId, agentId, duration: this.elapsed(t) })
+    }
+
+    private async unzipProjectInSandbox(context: SdkRuntimeExecutorContext): Promise<void> {
+        await context.ensureSandboxCommand(
+            "install unzip and extract project",
+            `export DEBIAN_FRONTEND=noninteractive && apt-get update -qq && apt-get install -y -qq unzip && unzip -o ${SDK_SANDBOX_CODE_ZIP_PATH} -d ${SDK_SANDBOX_PROJECT_DIR}`
+        )
+    }
+
+    private async writeEventFile(sb: Sandbox, eventJson: string): Promise<void> {
+        const eventHandle = await sb.open(SDK_SANDBOX_EVENT_FILE_PATH, "w")
+        await eventHandle.write(new TextEncoder().encode(eventJson))
+        await eventHandle.close()
+    }
+
+    private createRuntimeExecutorContext(sb: Sandbox, sandboxEnv: Record<string, string>, runId: string, agentId: string, jobName: string): SdkRuntimeExecutorContext {
+        return {
+            sb,
+            sandboxEnv,
+            runId,
+            agentId,
+            jobName,
+            projectDir: SDK_SANDBOX_PROJECT_DIR,
+            eventFilePath: SDK_SANDBOX_EVENT_FILE_PATH,
+            ensureSandboxCommand: async (label, command) => {
+                await this.ensureSandboxCommand(sb, label, command, sandboxEnv, runId, agentId)
+            },
+            runSandboxCommand: async (label, command) => {
+                return this.runSandboxCommand(sb, label, command, sandboxEnv, runId, agentId)
+            },
+            escapeShellArg: value => this.escapeShellArg(value),
+            emitSandboxStatus: (stage, status, opts) => this.emitSandboxStatus(stage, status, opts)
+        }
+    }
+
+    private async ensureSandboxCommand(sb: Sandbox, label: string, command: string, sandboxEnv: Record<string, string>, runId: string, agentId: string): Promise<void> {
+        const result = await this.runSandboxCommand(sb, label, command, sandboxEnv, runId, agentId)
+        if (result.exitCode !== 0) {
+            throw new Error(this.buildFailureMessage(label, result))
+        }
+    }
+
+    private async runSandboxCommand(sb: Sandbox, label: string, command: string, sandboxEnv: Record<string, string>, runId: string, agentId: string): Promise<SandboxCommandResult> {
+        const t = performance.now()
+        logger.info("SDK sandbox: starting command", { runId, agentId, label, command })
+
+        const proc = await sb.exec(["sh", "-c", command], {
+            stdout: "pipe",
+            stderr: "pipe",
+            env: sandboxEnv
+        })
+        const [stdout, stderr] = await Promise.all([proc.stdout.readText(), proc.stderr.readText()])
+        const exitCode = await proc.wait()
+
+        logger.info("SDK sandbox: command finished", {
+            runId,
+            agentId,
+            label,
+            duration: this.elapsed(t),
+            exitCode,
+            stdout: this.clipOutput(stdout),
+            stderr: this.clipOutput(stderr)
+        })
+
+        return { exitCode, stdout, stderr }
+    }
+
+    private buildFailureMessage(label: string, result: SandboxCommandResult): string {
+        const detail = [result.stderr.trim(), result.stdout.trim()].find(part => part.length > 0)
+        if (!detail) {
+            return `${label} failed (exit ${result.exitCode})`
+        }
+        return `${label} failed (exit ${result.exitCode}): ${detail.slice(0, 500)}`
+    }
+
+    private clipOutput(value: string, limit = 8000): string | undefined {
+        const trimmed = value.trim()
+        if (!trimmed) {
+            return undefined
+        }
+        return trimmed.slice(0, limit)
+    }
+
+    private escapeShellArg(value: string): string {
+        return `'${value.replace(/'/g, "'\\''")}'`
     }
 
     private async createSandboxApiToken(userId: string, organizationId: string): Promise<{ rawToken: string; tokenId: string }> {

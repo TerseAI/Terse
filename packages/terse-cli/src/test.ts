@@ -10,7 +10,7 @@ import { loadJob } from "./loadJob.js"
 import { executeJob } from "./run.js"
 
 
-export async function test(jobName?: string): Promise<void> {
+export async function test(jobName?: string, verbose?: boolean): Promise<void> {
     assertProjectRoot()
 
     const { job } = await loadJob(jobName)
@@ -68,5 +68,5 @@ export async function test(jobName?: string): Promise<void> {
         })),
     })
 
-    await executeJob(job, events[choice], { verbose: true })
+    await executeJob(job, events[choice], { verbose: !!verbose })
 }

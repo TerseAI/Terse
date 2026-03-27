@@ -12,7 +12,12 @@ pnpm --prefix frontend run build
 
 cd backend && npx prisma format && cd ..
 
-# Install terse-sdk and terse-cli globally from the workspace
+echo "Installing workspace dependencies..."
 npm install
+
+echo "Running Python validation..."
+npm run python:check
+
+# Install terse-sdk and terse-cli globally from the workspace
 npm run install-global -w terse-sdk
 npm run install-global -w terse-cli
