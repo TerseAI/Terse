@@ -121,6 +121,7 @@ class _AttioObjectCtx:
     static_name: str
     attributes: list[_AttioAttrCtx]
     attr_slugs_literal: str
+    attr_slugs_frozenset_repr: str
     multi_value_slugs: list[str]
     multi_value_frozenset_repr: str
     attribute_tuple_repr: str
@@ -433,8 +434,8 @@ def _attio_input_python_type(attr: AttioAttributeData) -> str:
 
 
 def _attio_filter_python_type(attr: AttioAttributeData) -> str:
-    """Python type for filter values (input shorthand or operator dict)."""
-    value_type = _attio_input_python_type(attr)
+    """Python type for filter values (scalar shorthand or operator dict)."""
+    value_type = _attio_base_python_type(attr)
     if value_type in ("Any", "dict[str, Any]"):
         return "dict[str, Any]"
     return f"{value_type} | dict[str, Any]"
@@ -459,6 +460,8 @@ def _build_attio_object_ctx(obj: AttioObjectData, used_names: set[str], has_attr
         )
         for attr in obj.attributes
     ]
+    attr_slugs_literal = ", ".join(repr(a.api_slug) for a in attrs) if attrs else "''"
+    attr_slugs_frozenset = f"frozenset({{{attr_slugs_literal}}})" if attrs else "frozenset()"
     multi_slugs = [attr.api_slug for attr in obj.attributes if _is_attio_multi_value(attr)]
     multi_frozenset = f"frozenset({{{', '.join(repr(s) for s in multi_slugs)}}})" if multi_slugs else ""
     return _AttioObjectCtx(
@@ -469,7 +472,8 @@ def _build_attio_object_ctx(obj: AttioObjectData, used_names: set[str], has_attr
         pascal=pascal,
         static_name=static_name,
         attributes=attrs,
-        attr_slugs_literal=(", ".join(repr(a.api_slug) for a in attrs) if attrs else "''"),
+        attr_slugs_literal=attr_slugs_literal,
+        attr_slugs_frozenset_repr=attr_slugs_frozenset,
         multi_value_slugs=multi_slugs,
         multi_value_frozenset_repr=multi_frozenset,
         attribute_tuple_repr=_render_attribute_tuple(obj.attributes),
