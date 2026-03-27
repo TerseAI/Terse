@@ -47,12 +47,12 @@ def init_command(project_name: str | None) -> None:
 def _scaffold_project(target_dir: Path, project_name: str) -> None:
     replacements = scaffold_template_context(project_name)
     files = [
-        ("pyproject.toml.tmpl", "pyproject.toml"),
-        ("README.md.tmpl", "README.md"),
-        ("env.example.tmpl", ".env.example"),
-        ("gitignore.tmpl", ".gitignore"),
-        (".python-version.tmpl", ".python-version"),
-        ("src/main.py.tmpl", "src/main.py"),
+        ("pyproject.toml.jinja2", "pyproject.toml"),
+        ("README.md.jinja2", "README.md"),
+        ("env.example.jinja2", ".env.example"),
+        ("gitignore.jinja2", ".gitignore"),
+        (".python-version.jinja2", ".python-version"),
+        ("src/main.py.jinja2", "src/main.py"),
     ]
 
     for template_name, output_name in files:
