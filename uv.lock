@@ -564,7 +564,7 @@ requires-dist = [
 
 [[package]]
 name = "terse-sdk"
-version = "0.1.5"
+version = "0.1.6"
 source = { editable = "packages/terse-python-sdk" }
 dependencies = [
     { name = "httpx" },
