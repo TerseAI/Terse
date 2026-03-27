@@ -20,6 +20,9 @@ class {{ obj.pascal }}Filter(TypedDict, total=False):
 {% for attr in obj.attributes %}
     {{ attr.api_slug }}: {{ attr.filter_type }}
 {% endfor %}
+    path: list[tuple[str, str]]
+    constraints: dict[str, Any]
 {{ obj.pascal }}Filter.__annotations__['$and'] = list['{{ obj.pascal }}Filter']
 {{ obj.pascal }}Filter.__annotations__['$or'] = list['{{ obj.pascal }}Filter']
+{{ obj.pascal }}Filter.__annotations__['$not'] = '{{ obj.pascal }}Filter'
 {% endmacro %}

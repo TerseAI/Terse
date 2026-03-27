@@ -99,7 +99,7 @@ export const attioUpsertRecordTool = tool<typeof attioUpsertRecordParams, Sessio
                     target: `${objectSlug}/${recordId || "unknown"}`,
                     details: `Upserted ${objectSlug} record via matching attribute "${matchingAttribute}"`,
                     type: RunHistoryActionType.create,
-                    url: recordId ? `https://app.attio.com/objects/${objectSlug}/${recordId}` : undefined
+                    url: record?.web_url || (recordId ? `https://app.attio.com/objects/${objectSlug}/${recordId}` : undefined)
                 })
             }
 

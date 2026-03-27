@@ -14,7 +14,7 @@
                 _compact_dict(
                     integrationId={{ attio.instance_id_repr }},
                     objectSlug=obj.api_slug,
-                    filter=_json_string(filter),
+                    filter=_serialize_attio_filter(obj.api_slug, filter),
                     limit=limit,
                 ),
             )
@@ -39,7 +39,7 @@
                 _compact_dict(
                     integrationId={{ attio.instance_id_repr }},
                     objectSlug=obj.api_slug,
-                    filter=_json_string(filter),
+                    filter=_serialize_attio_filter(obj.api_slug, filter),
                     limit=limit,
                 ),
             )

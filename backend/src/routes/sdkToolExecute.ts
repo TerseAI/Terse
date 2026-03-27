@@ -4,24 +4,39 @@ import { z } from "zod"
 
 import { SessionWithTracking } from "../agent/AgentRunner/AgentRunner"
 import { emitSessionEvent } from "../agent/SessionEventBus"
+import {
+    type DeterministicToolCallRunContext,
+    extractRunHistoryActions,
+    persistDeterministicToolCallComplete,
+    persistDeterministicToolCallFailure,
+    persistDeterministicToolCallStart
+} from "../agent/toolCallHistory"
 import logger from "../logger"
 import { OutputFactory } from "../outputs/abstract/OutputFactory"
-import { RunHistoryAction } from "../shared/RunHistoryTypes"
+import { db } from "../prismaClient"
 import { User } from "../shared/types"
 import { Session } from "../types/session"
+import { randomString } from "../utility/strings"
 
 type SdkFunctionTool = FunctionTool<SessionWithTracking<Session>, z.ZodObject<any>, unknown>
+type SdkToolDescriptor = {
+    tool: SdkFunctionTool
+    isReadOnly: boolean
+}
 
 /**
  * Finds a tool by name across all registered Output toolboxes.
  * Iterates OutputFactory.OUTPUT_REGISTRY, instantiates each Output, and searches their toolboxes.
  */
-function findToolByName(toolName: string): SdkFunctionTool | null {
+function findToolByName(toolName: string): SdkToolDescriptor | null {
     for (const [, factory] of OutputFactory.OUTPUT_REGISTRY) {
         const output = factory()
         for (const entry of output.toolbox) {
             if (entry.tool.name === toolName) {
-                return entry.tool as SdkFunctionTool
+                return {
+                    tool: entry.tool as SdkFunctionTool,
+                    isReadOnly: entry.isReadOnly
+                }
             }
         }
     }
@@ -50,6 +65,46 @@ function normalizeInvokedToolResult(rawResult: unknown): unknown {
     return rawResult
 }
 
+async function resolvePersistedRunContext(runIdHeader: string | undefined, user: User): Promise<DeterministicToolCallRunContext | null> {
+    const runId = runIdHeader?.trim()
+    if (!runId || !user.organizationId) {
+        return null
+    }
+
+    const runRecord = await db().run_history_records.findFirst({
+        where: {
+            id: runId,
+            automation: {
+                organization_id: user.organizationId
+            }
+        },
+        select: {
+            id: true,
+            automation_id: true,
+            automation: {
+                select: {
+                    organization_id: true
+                }
+            }
+        }
+    })
+
+    if (!runRecord?.automation.organization_id) {
+        logger.warn("[sdk/tool-execute] Ignoring unresolvable run tracking header", {
+            requestedRunId: runId,
+            userId: user.id,
+            organizationId: user.organizationId
+        })
+        return null
+    }
+
+    return {
+        runId: runRecord.id,
+        agentId: runRecord.automation_id,
+        organizationId: runRecord.automation.organization_id
+    }
+}
+
 /**
  * POST /sdk/tool-execute
  *
@@ -73,14 +128,25 @@ export async function handleToolExecute(req: Request, res: Response) {
         return res.status(400).json({ success: false, error: "params must be a plain object" })
     }
 
-    const tool = findToolByName(toolName)
-    if (!tool) {
+    const toolDescriptor = findToolByName(toolName)
+    if (!toolDescriptor) {
         return res.status(404).json({ success: false, error: `Tool "${toolName}" not found` })
     }
 
     const sessionId = req.headers["x-terse-session-id"] as string | undefined
+    const persistedRunContext = await resolvePersistedRunContext(req.headers["x-terse-run-id"] as string | undefined, user)
+    const effectiveRunId = persistedRunContext?.runId ?? `sdk-tool-execute-${Date.now()}`
+    const effectiveAgentId = persistedRunContext?.agentId ?? "sdk-tool-execute"
+    const toolParams = params ?? {}
+    const callId = `sdk-tool-${randomString(15)}`
+
     if (sessionId) {
+        emitSessionEvent(sessionId, { type: "tool_call_params", toolCallParams: JSON.stringify(toolParams) })
         emitSessionEvent(sessionId, { type: "tool_call_started", toolCallStarted: toolName })
+    }
+
+    if (persistedRunContext) {
+        await persistDeterministicToolCallStart(persistedRunContext, toolName, toolParams, callId)
     }
 
     const runContextPayload = {
@@ -88,23 +154,27 @@ export async function handleToolExecute(req: Request, res: Response) {
             user,
             isUserInitiated: true,
             agent: { requireApproval: false, toolApprovals: [] },
-            runId: `sdk-tool-execute-${Date.now()}`,
-            agentId: "sdk-tool-execute"
+            runId: effectiveRunId,
+            agentId: effectiveAgentId
         } satisfies SessionWithTracking<Session>
     }
 
     try {
         const invokeContext = runContextPayload as unknown as RunContext<SessionWithTracking<Session>>
-        const rawResult = await tool.invoke(invokeContext, JSON.stringify(params ?? {}))
+        const rawResult = await toolDescriptor.tool.invoke(invokeContext, JSON.stringify(toolParams))
         const result = normalizeInvokedToolResult(rawResult)
+        const actions = extractRunHistoryActions(result)
+
+        if (persistedRunContext) {
+            await persistDeterministicToolCallComplete(persistedRunContext, toolDescriptor, toolName, result, callId)
+        }
 
         if (sessionId) {
             emitSessionEvent(sessionId, {
                 type: "tool_call_completed",
                 toolCallCompleted: JSON.stringify({ tool: toolName, status: "completed" })
             })
-            const actions = result && typeof result === "object" && "actions" in result ? ((result as { actions?: unknown }).actions as RunHistoryAction[] | undefined) : undefined
-            if (actions?.length) {
+            if (actions.length > 0) {
                 for (const action of actions) {
                     emitSessionEvent(sessionId, { type: "action", action })
                 }
@@ -115,6 +185,10 @@ export async function handleToolExecute(req: Request, res: Response) {
     } catch (err) {
         const message = err instanceof Error ? err.message : String(err)
         logger.error("[sdk/tool-execute] Tool execution failed", { toolName, error: message })
+
+        if (persistedRunContext) {
+            await persistDeterministicToolCallFailure(persistedRunContext, toolName, message, callId)
+        }
 
         if (sessionId) {
             emitSessionEvent(sessionId, {
