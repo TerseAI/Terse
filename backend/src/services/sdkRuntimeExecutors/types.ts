@@ -37,11 +37,7 @@ export interface SdkRuntimeExecutor {
  * Run a sandbox stage that should throw on failure (e.g. dependency/CLI install).
  * Emits started/completed/failed status and re-throws on error.
  */
-export async function runSandboxStage(
-    context: SdkRuntimeExecutorContext,
-    stage: SandboxStage,
-    fn: () => Promise<void>
-): Promise<void> {
+export async function runSandboxStage(context: SdkRuntimeExecutorContext, stage: SandboxStage, fn: () => Promise<void>): Promise<void> {
     context.emitSandboxStatus(stage, "started")
     const start = performance.now()
     try {
@@ -59,10 +55,7 @@ export async function runSandboxStage(
 /**
  * Run the final execution stage. Emits started/completed/failed based on exit code (does not throw).
  */
-export async function runSandboxExecStage(
-    context: SdkRuntimeExecutorContext,
-    fn: () => Promise<SandboxCommandResult>
-): Promise<SandboxCommandResult> {
+export async function runSandboxExecStage(context: SdkRuntimeExecutorContext, fn: () => Promise<SandboxCommandResult>): Promise<SandboxCommandResult> {
     context.emitSandboxStatus(SandboxStage.RUNNING, "started")
     const start = performance.now()
     const result = await fn()

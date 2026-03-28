@@ -1,5 +1,5 @@
 import type { SandboxCommandResult, SdkRuntimeExecutor, SdkRuntimeExecutorContext } from "./types"
-import { SandboxStage, runSandboxStage, runSandboxExecStage } from "./types"
+import { SandboxStage, runSandboxExecStage, runSandboxStage } from "./types"
 
 export class PythonSdkRuntimeExecutor implements SdkRuntimeExecutor {
     readonly runtime = "python" as const
