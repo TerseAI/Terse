@@ -46,7 +46,7 @@ function standardizeToolOutputToObject(rawOutput: unknown): object {
             try {
                 return JSON.parse(rawOutput.text)
             } catch (error) {
-                logger.warn(`Error parsing tool call output error:${error} output:${rawOutput}`)
+                logger.warn(`Error parsing tool call output`, { error, text: rawOutput.text })
             }
         }
     }

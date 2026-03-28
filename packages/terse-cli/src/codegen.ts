@@ -842,8 +842,8 @@ function generateAttioSection(instances: AttioInstanceData[], tools: ToolDefinit
 
     parts.push("export const Attio = {")
     parts.push(`    /** Use in \`skills[]\` */`)
-    parts.push(`    skill(opts?: { object?: AttioObject<any> }): TypedSkill<${skillToolType}> {`)
-    parts.push(`        return new AttioOutputConfig("${id}", opts?.object?.apiSlug) as TypedSkill<${skillToolType}>`)
+    parts.push(`    skill(opts: { object: AttioObject<any> }): TypedSkill<${skillToolType}> {`)
+    parts.push(`        return new AttioOutputConfig("${id}", opts.object.apiSlug) as TypedSkill<${skillToolType}>`)
     parts.push("    },")
     parts.push("}")
     parts.push("")

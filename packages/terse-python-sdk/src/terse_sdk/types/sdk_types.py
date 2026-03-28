@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any, Literal
 
 from ._base import _CamelModel
+from .agents import AgentOutput, AgentTrigger
 from .enums import ConfigType, IntegrationType
 
 
@@ -70,17 +71,11 @@ class TriggerPayload(_CamelModel):
     integrationType: IntegrationType
 
 
-class SdkDeployTrigger(_CamelModel):
-    config: dict[str, Any]
-    configType: str
-    integrationId: str
-    integrationType: str
-
-
 class SdkDeployJob(_CamelModel):
     jobName: str
-    triggers: list[SdkDeployTrigger]
-    toolApprovals: list[str] | None = None
+    triggers: list[AgentTrigger]
+    outputs: list[AgentOutput]
+    toolApprovals: list[str]
     webhookURL: str | None = None
 
 
@@ -144,7 +139,6 @@ __all__ = [
     "SdkDeployJob",
     "SdkDeployRequestBody",
     "SdkDeployResponseBody",
-    "SdkDeployTrigger",
     "SerializedEvent",
     "TriggerPayload",
 ]
