@@ -720,17 +720,11 @@ export type SdkApprovalDecisionRequestBody = {
     approved: boolean
 }
 
-export type SdkDeployTrigger = {
-    configType: string
-    integrationType: string
-    integrationId: string
-    config: Record<string, unknown>
-}
-
 export type SdkDeployJob = {
     jobName: string
-    triggers: SdkDeployTrigger[]
-    toolApprovals?: string[]
+    triggers: AgentTrigger[]
+    outputs: AgentOutput[]
+    toolApprovals: string[]
     webhookURL?: string
 }
 

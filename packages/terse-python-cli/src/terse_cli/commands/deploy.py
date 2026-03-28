@@ -5,11 +5,13 @@ from __future__ import annotations
 import click
 from pydantic import ValidationError
 from terse_sdk import (
+    AgentOutput,
+    AgentTrigger,
     RegisteredJob,
     SdkDeployJob,
     SdkDeployRequestBody,
     SdkDeployResponseBody,
-    SdkDeployTrigger,
+    SkillConfig,
     TriggerConfig,
 )
 
@@ -84,18 +86,36 @@ def _serialize_job(job: RegisteredJob) -> SdkDeployJob:
         {
             "jobName": job.name,
             "triggers": [_serialize_trigger(trigger).model_dump(exclude_none=True) for trigger in job.triggers],
-            "toolApprovals": job.tool_approvals,
+            "outputs": [_serialize_output(skill).model_dump(exclude_none=True) for skill in job.skills],
+            "toolApprovals": job.tool_approvals or [],
             "webhookURL": job.webhook_url,
         }
     )
 
 
-def _serialize_trigger(trigger: TriggerConfig) -> SdkDeployTrigger:
-    return SdkDeployTrigger.model_validate(
+def _serialize_trigger(trigger: TriggerConfig) -> AgentTrigger:
+    return AgentTrigger.model_validate(
         {
-            "configType": trigger.config_type or "",
-            "integrationType": trigger.integration_type,
-            "integrationId": trigger.integration_id,
-            "config": dict(trigger.config),
+            "id": "",
+            "config": {
+                "configType": trigger.config_type or "",
+                "integrationType": trigger.integration_type,
+                "integrationId": trigger.integration_id,
+                **trigger.config,
+            },
+        }
+    )
+
+
+def _serialize_output(skill: SkillConfig[str]) -> AgentOutput:
+    return AgentOutput.model_validate(
+        {
+            "id": "",
+            "config": {
+                "configType": skill.config_type,
+                "integrationType": skill.integration_type,
+                "integrationId": skill.integration_id,
+                **skill.config,
+            },
         }
     )
