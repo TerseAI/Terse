@@ -277,4 +277,3 @@ async function removeStaleAutomations(prisma: ReturnType<typeof db>, organizatio
 
     return stale.map(a => ({ id: a.id, name: a.name }))
 }
-
