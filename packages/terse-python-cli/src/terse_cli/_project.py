@@ -206,7 +206,7 @@ def _normalize_env_value(value: str) -> str:
 def build_sdk_dependency_requirement() -> str:
     """Return the published SDK requirement used in scaffolded projects."""
 
-    version = _installed_version("terse-sdk") or "0.1.7"
+    version = _installed_version("terse-sdk") or "0.1.8"
     normalized = _normalize_release_version(version)
     major, minor, patch = normalized
     return f"terse-sdk~={major}.{minor}.{patch}"
