@@ -9,9 +9,9 @@ import { ConfigType } from "../../../shared/Configs"
 import { IntegrationType } from "../../../shared/Integrations"
 import { ToolName } from "../../../tools/ToolNames"
 import { createNeedsApprovalFunction, formatError } from "../../../tools/toolUtils"
-import { extractErrorMessage } from "../../../utility/strings"
 import { Session } from "../../../types/session"
 import { describeBlocks, extractPageTitle, getBlockTypeName } from "../../../utility/notion"
+import { extractErrorMessage } from "../../../utility/strings"
 
 /**
  * Constructs a Notion deep link URL to a specific block.

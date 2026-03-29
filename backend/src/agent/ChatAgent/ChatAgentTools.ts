@@ -12,7 +12,6 @@ import { InputEvent } from "../../integrations/abstract/InputEvent"
 import { INTEGRATION_REGISTRY } from "../../integrations/abstract/IntegrationRegistry"
 import { fetchSampleEvents } from "../../integrations/abstract/sampleEvents"
 import logger from "../../logger"
-import { extractErrorMessage } from "../../utility/strings"
 import { webExtractTool } from "../../outputs/terse/tools/webExtractTool"
 import { webSearchTool } from "../../outputs/terse/tools/webSearchTool"
 import { db } from "../../prismaClient"
@@ -53,6 +52,7 @@ import {
     enforceNonSystemIntegrationId
 } from "../../utility/configSchemas"
 import { getInputConfigInclude, getOutputConfigInclude } from "../../utility/prismaIncludes"
+import { extractErrorMessage } from "../../utility/strings"
 import { randomString } from "../../utility/strings"
 
 import type { ChatAgentContext } from "./ChatAgentContext"

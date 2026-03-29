@@ -1,10 +1,10 @@
 import logger from "../logger"
-import { extractErrorMessage } from "../utility/strings"
 import { SnowflakePrivateKeyValidationError, normalizeSnowflakePrivateKey, validateSnowflakeCredentials } from "../outputs/snowflake/snowflakeClient"
 import { db } from "../prismaClient"
 import { SecretField, deleteSecretsBestEffort, storeSecret } from "../services/SecretService"
 import { IntegrationType, SnowflakeIntegration, SnowflakeIntegrationMetadata } from "../shared/Integrations"
 import { AgentTriggerWithConfigs } from "../types/prisma"
+import { extractErrorMessage } from "../utility/strings"
 
 import { FormFieldDefinition, FormIntegrationInstallation, FormSubmissionInput, FormSubmissionResult, Integration } from "./abstract/Integration"
 
