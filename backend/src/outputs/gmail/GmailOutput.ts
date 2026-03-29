@@ -12,7 +12,7 @@ import { gmailSendEmailTool } from "./tools/sendEmail"
 
 export class GmailOutput extends Output<GmailOutputConfig> {
     constructor() {
-        const toolbox: ToolboxEntry[] = [{ tool: gmailSendEmailTool as Tool, isReadOnly: false, integration: IntegrationType.GMAIL, displayName: "Send email" }]
+        const toolbox: ToolboxEntry[] = [{ tool: gmailSendEmailTool, isReadOnly: false, integration: IntegrationType.GMAIL, displayName: "Send email" }]
         super(OutputConfigType.GMAIL, toolbox)
     }
 

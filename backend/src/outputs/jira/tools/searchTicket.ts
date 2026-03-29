@@ -7,10 +7,25 @@ import { getAtlassianIntegrationContextForOrganization } from "../../../integrat
 import logger from "../../../logger"
 import { IntegrationType } from "../../../shared/Integrations"
 import { ToolName } from "../../../tools/ToolNames"
-import { formatError } from "../../../tools/toolUtils"
+import { SessionToolOptions, formatError } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
 
-export const jiraSearchTicketTool = tool({
+const parameters = z.object({
+    integrationId: z.string().describe("The integration ID of the Atlassian/Jira integration to use."),
+    jql: z.string().nullable().optional().describe("JQL (Jira Query Language) query to search for issues. If not provided, will search all issues."),
+    text: z.string().nullable().optional().describe('Text to search for in issue titles and descriptions. If provided, will be converted to JQL: text ~ "search term"'),
+    projectKey: z.string().nullable().optional().describe('Filter by Jira project key (e.g., "PROJ", "TEAM")'),
+    assigneeEmail: z.string().nullable().optional().describe("Filter by assignee email address"),
+    status: z.string().nullable().optional().describe('Filter by status name (e.g., "In Progress", "Done", "To Do")'),
+    limit: z.number().nullable().optional().describe("Maximum number of issues to return. Defaults to 50 if not provided."),
+    nextPageToken: z
+        .string()
+        .nullable()
+        .optional()
+        .describe("Token from a previous search response to retrieve the next page of results. Use the nextPageToken value from the previous response to paginate through all results.")
+})
+
+export const jiraSearchTicketTool: SessionToolOptions<typeof parameters> = {
     name: ToolName.JIRA_SEARCH_TICKET,
     description: `Search for Jira issues/tickets using JQL (Jira Query Language) or text search. Returns issues that match the search criteria.
 
@@ -25,20 +40,7 @@ JQL EXAMPLES:
 - By assignee: "assignee = user@example.com"
 - By status: "status = 'In Progress'"
 - Combined: "project = PROJ AND status = 'In Progress' AND text ~ 'bug'"`,
-    parameters: z.object({
-        integrationId: z.string().describe("The integration ID of the Atlassian/Jira integration to use."),
-        jql: z.string().nullable().optional().describe("JQL (Jira Query Language) query to search for issues. If not provided, will search all issues."),
-        text: z.string().nullable().optional().describe('Text to search for in issue titles and descriptions. If provided, will be converted to JQL: text ~ "search term"'),
-        projectKey: z.string().nullable().optional().describe('Filter by Jira project key (e.g., "PROJ", "TEAM")'),
-        assigneeEmail: z.string().nullable().optional().describe("Filter by assignee email address"),
-        status: z.string().nullable().optional().describe('Filter by status name (e.g., "In Progress", "Done", "To Do")'),
-        limit: z.number().nullable().optional().describe("Maximum number of issues to return. Defaults to 50 if not provided."),
-        nextPageToken: z
-            .string()
-            .nullable()
-            .optional()
-            .describe("Token from a previous search response to retrieve the next page of results. Use the nextPageToken value from the previous response to paginate through all results.")
-    }),
+    parameters: parameters,
     execute: async ({ integrationId, jql, text, projectKey, assigneeEmail, status, limit = 50, nextPageToken }, runContext?: RunContext<SessionWithTracking<Session>>) => {
         logger.debug("🛠️ Executing jira_search_ticket tool", {
             integrationId,
@@ -233,6 +235,5 @@ JQL EXAMPLES:
             const errorMessage = await formatError(runContext!, error)
             throw new Error(errorMessage)
         }
-    },
-    errorFunction: formatError
-})
+    }
+}

@@ -1,6 +1,6 @@
 import { Client } from "@notionhq/client"
 import { GetDataSourceResponse } from "@notionhq/client/build/src/api-endpoints"
-import { RunContext, tool } from "@openai/agents"
+import { RunContext } from "@openai/agents"
 import { z } from "zod"
 
 import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
@@ -8,7 +8,7 @@ import { getNotionAccessTokenForOrganization } from "../../../integrations/Notio
 import logger from "../../../logger"
 import { IntegrationType } from "../../../shared/Integrations"
 import { ToolName } from "../../../tools/ToolNames"
-import { formatError } from "../../../tools/toolUtils"
+import { SessionToolOptions, formatError } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
 
 // Helper function to extract readable values from Notion property objects
@@ -47,7 +47,148 @@ function extractPropertyValue(property: any): any {
     }
 }
 
-export const notionQueryDatabaseTool = tool({
+const parameters = z.object({
+    integrationId: z.string().describe("The integration ID of the Notion workspace to use."),
+    databaseId: z.string().describe("The Notion database ID (data source ID) to query."),
+    filter_properties: z
+        .array(z.string())
+        .nullable()
+        .optional()
+        .describe("Array of property names or IDs to include in results. Only these properties will be returned, improving performance. Use property names from the database schema."),
+    filter: z.string().nullable().optional()
+        .describe(`JSON string with filter object to query pages matching specific criteria. Supports complex filtering with AND/OR logic, property filters, and timestamp filters.
+
+BASIC STRUCTURE:
+- Property filter: { "property": "Property Name", "type": { "condition": value } }
+- Timestamp filter: { "timestamp": "created_time" | "last_edited_time", "created_time" | "last_edited_time": { "condition": value } }
+- Compound filter: { "and": [...] } or { "or": [...] } to combine multiple filters (nesting supported up to 2 levels)
+
+PROPERTY FILTER TYPES AND CONDITIONS:
+
+1. CHECKBOX: { "property": "Name", "checkbox": { "equals": true|false } | { "does_not_equal": true|false } }
+
+2. DATE: { "property": "Name", "date": { 
+"after": "2021-05-10" | "2021-05-10T12:00:00" | "2021-10-15T12:00:00-07:00",
+"before": "2021-05-10",
+"equals": "2021-05-10",
+"on_or_after": "2021-05-10",
+"on_or_before": "2021-05-10",
+"is_empty": true,
+"is_not_empty": true,
+"past_week": {},
+"past_month": {},
+"past_year": {},
+"next_week": {},
+"next_month": {},
+"next_year": {},
+"this_week": {}
+} }
+
+3. FILES: { "property": "Name", "files": { "is_empty": true } | { "is_not_empty": true } }
+
+4. FORMULA: { "property": "Name", "formula": { 
+"checkbox": { checkbox conditions },
+"date": { date conditions },
+"number": { number conditions },
+"string": { rich_text conditions }
+} }
+
+5. MULTI_SELECT: { "property": "Name", "multi_select": { 
+"contains": "Value",
+"does_not_contain": "Value",
+"is_empty": true,
+"is_not_empty": true
+} }
+
+6. NUMBER: { "property": "Name", "number": { 
+"equals": 42,
+"does_not_equal": 42,
+"greater_than": 42,
+"less_than": 42,
+"greater_than_or_equal_to": 42,
+"less_than_or_equal_to": 42,
+"is_empty": true,
+"is_not_empty": true
+} }
+
+7. PEOPLE (also for created_by, last_edited_by): { "property": "Name", "people": { 
+"contains": "uuid-v4",
+"does_not_contain": "uuid-v4",
+"is_empty": true,
+"is_not_empty": true
+} }
+
+8. RELATION: { "property": "Name", "relation": { 
+"contains": "uuid-v4",
+"does_not_contain": "uuid-v4",
+"is_empty": true,
+"is_not_empty": true
+} }
+
+9. RICH_TEXT (also title): { "property": "Name", "rich_text": { 
+"contains": "string",
+"does_not_contain": "string",
+"does_not_equal": "string",
+"ends_with": "string",
+"equals": "string",
+"is_empty": true,
+"is_not_empty": true,
+"starts_with": "string"
+} }
+
+10. ROLLUP: { "property": "Name", "rollup": { 
+"any": { filter condition },
+"every": { filter condition },
+"none": { filter condition },
+"date": { date conditions },
+"number": { number conditions }
+} }
+
+11. SELECT: { "property": "Name", "select": { 
+"equals": "Value",
+"does_not_equal": "Value",
+"is_empty": true,
+"is_not_empty": true
+} }
+
+12. STATUS: { "property": "Name", "status": { 
+"equals": "Value",
+"does_not_equal": "Value",
+"is_empty": true,
+"is_not_empty": true
+} }
+
+13. TIMESTAMP: { "timestamp": "created_time" | "last_edited_time", "created_time" | "last_edited_time": { 
+same conditions as DATE filter (after, before, equals, on_or_after, on_or_before, is_empty, is_not_empty, past_week, past_month, past_year, next_week, next_month, next_year, this_week)
+} }
+NOTE: Do NOT include "property" field for timestamp filters.
+
+14. VERIFICATION: { "property": "Name", "verification": { "status": "verified" | "expired" | "none" } }
+
+15. UNIQUE_ID: { "property": "Name", "unique_id": { 
+"equals": 42,
+"does_not_equal": 42,
+"greater_than": 42,
+"less_than": 42,
+"greater_than_or_equal_to": 42,
+"less_than_or_equal_to": 42
+} }
+
+COMPOUND FILTERS:
+- AND: { "and": [filter1, filter2, ...] } - all conditions must match
+- OR: { "or": [filter1, filter2, ...] } - any condition can match
+- Nesting: Can nest AND/OR up to 2 levels deep
+
+EXAMPLES:
+- Simple: "{\\"property\\": \\"Task completed\\", \\"checkbox\\": {\\"equals\\": true}}"
+- Compound: "{\\"and\\": [{\\"property\\": \\"Done\\", \\"checkbox\\": {\\"equals\\": true}}, {\\"or\\": [{\\"property\\": \\"Tags\\", \\"multi_select\\": {\\"contains\\": \\"A\\"}}, {\\"property\\": \\"Tags\\", \\"multi_select\\": {\\"contains\\": \\"B\\"}}]}]}"
+- Timestamp: "{\\"timestamp\\": \\"created_time\\", \\"created_time\\": {\\"on_or_after\\": \\"2023-02-08\\"}}"`),
+    page_size: z.number().int().min(1).max(100).nullable().optional().describe("Number of results per page (1-100). Default returns all results. Use pagination for large databases."),
+    start_cursor: z.string().nullable().optional().describe("Cursor from previous response to fetch next page. Use next_cursor from response when has_more is true."),
+    result_type: z.enum(["page", "data_source"]).nullable().optional().describe("Filter results to only pages or data sources. Only relevant for wiki databases.")
+})
+
+export const notionQueryDatabaseTool: SessionToolOptions<typeof parameters> = {
     name: ToolName.NOTION_QUERY_DATABASE,
     description: `Query a Notion data source (database) to retrieve pages that match specific criteria.
 
@@ -91,146 +232,7 @@ FILTER_PROPERTIES:
 - You can fetch additional properties later using Retrieve page property item API
 
 NOTE: This tool does NOT return the database schema. Use notion_get_schema if you need schema information.`,
-    parameters: z.object({
-        integrationId: z.string().describe("The integration ID of the Notion workspace to use."),
-        databaseId: z.string().describe("The Notion database ID (data source ID) to query."),
-        filter_properties: z
-            .array(z.string())
-            .nullable()
-            .optional()
-            .describe("Array of property names or IDs to include in results. Only these properties will be returned, improving performance. Use property names from the database schema."),
-        filter: z.string().nullable().optional()
-            .describe(`JSON string with filter object to query pages matching specific criteria. Supports complex filtering with AND/OR logic, property filters, and timestamp filters.
-
-BASIC STRUCTURE:
-- Property filter: { "property": "Property Name", "type": { "condition": value } }
-- Timestamp filter: { "timestamp": "created_time" | "last_edited_time", "created_time" | "last_edited_time": { "condition": value } }
-- Compound filter: { "and": [...] } or { "or": [...] } to combine multiple filters (nesting supported up to 2 levels)
-
-PROPERTY FILTER TYPES AND CONDITIONS:
-
-1. CHECKBOX: { "property": "Name", "checkbox": { "equals": true|false } | { "does_not_equal": true|false } }
-
-2. DATE: { "property": "Name", "date": { 
-  "after": "2021-05-10" | "2021-05-10T12:00:00" | "2021-10-15T12:00:00-07:00",
-  "before": "2021-05-10",
-  "equals": "2021-05-10",
-  "on_or_after": "2021-05-10",
-  "on_or_before": "2021-05-10",
-  "is_empty": true,
-  "is_not_empty": true,
-  "past_week": {},
-  "past_month": {},
-  "past_year": {},
-  "next_week": {},
-  "next_month": {},
-  "next_year": {},
-  "this_week": {}
-} }
-
-3. FILES: { "property": "Name", "files": { "is_empty": true } | { "is_not_empty": true } }
-
-4. FORMULA: { "property": "Name", "formula": { 
-  "checkbox": { checkbox conditions },
-  "date": { date conditions },
-  "number": { number conditions },
-  "string": { rich_text conditions }
-} }
-
-5. MULTI_SELECT: { "property": "Name", "multi_select": { 
-  "contains": "Value",
-  "does_not_contain": "Value",
-  "is_empty": true,
-  "is_not_empty": true
-} }
-
-6. NUMBER: { "property": "Name", "number": { 
-  "equals": 42,
-  "does_not_equal": 42,
-  "greater_than": 42,
-  "less_than": 42,
-  "greater_than_or_equal_to": 42,
-  "less_than_or_equal_to": 42,
-  "is_empty": true,
-  "is_not_empty": true
-} }
-
-7. PEOPLE (also for created_by, last_edited_by): { "property": "Name", "people": { 
-  "contains": "uuid-v4",
-  "does_not_contain": "uuid-v4",
-  "is_empty": true,
-  "is_not_empty": true
-} }
-
-8. RELATION: { "property": "Name", "relation": { 
-  "contains": "uuid-v4",
-  "does_not_contain": "uuid-v4",
-  "is_empty": true,
-  "is_not_empty": true
-} }
-
-9. RICH_TEXT (also title): { "property": "Name", "rich_text": { 
-  "contains": "string",
-  "does_not_contain": "string",
-  "does_not_equal": "string",
-  "ends_with": "string",
-  "equals": "string",
-  "is_empty": true,
-  "is_not_empty": true,
-  "starts_with": "string"
-} }
-
-10. ROLLUP: { "property": "Name", "rollup": { 
-  "any": { filter condition },
-  "every": { filter condition },
-  "none": { filter condition },
-  "date": { date conditions },
-  "number": { number conditions }
-} }
-
-11. SELECT: { "property": "Name", "select": { 
-  "equals": "Value",
-  "does_not_equal": "Value",
-  "is_empty": true,
-  "is_not_empty": true
-} }
-
-12. STATUS: { "property": "Name", "status": { 
-  "equals": "Value",
-  "does_not_equal": "Value",
-  "is_empty": true,
-  "is_not_empty": true
-} }
-
-13. TIMESTAMP: { "timestamp": "created_time" | "last_edited_time", "created_time" | "last_edited_time": { 
-  same conditions as DATE filter (after, before, equals, on_or_after, on_or_before, is_empty, is_not_empty, past_week, past_month, past_year, next_week, next_month, next_year, this_week)
-} }
-NOTE: Do NOT include "property" field for timestamp filters.
-
-14. VERIFICATION: { "property": "Name", "verification": { "status": "verified" | "expired" | "none" } }
-
-15. UNIQUE_ID: { "property": "Name", "unique_id": { 
-  "equals": 42,
-  "does_not_equal": 42,
-  "greater_than": 42,
-  "less_than": 42,
-  "greater_than_or_equal_to": 42,
-  "less_than_or_equal_to": 42
-} }
-
-COMPOUND FILTERS:
-- AND: { "and": [filter1, filter2, ...] } - all conditions must match
-- OR: { "or": [filter1, filter2, ...] } - any condition can match
-- Nesting: Can nest AND/OR up to 2 levels deep
-
-EXAMPLES:
-- Simple: "{\\"property\\": \\"Task completed\\", \\"checkbox\\": {\\"equals\\": true}}"
-- Compound: "{\\"and\\": [{\\"property\\": \\"Done\\", \\"checkbox\\": {\\"equals\\": true}}, {\\"or\\": [{\\"property\\": \\"Tags\\", \\"multi_select\\": {\\"contains\\": \\"A\\"}}, {\\"property\\": \\"Tags\\", \\"multi_select\\": {\\"contains\\": \\"B\\"}}]}]}"
-- Timestamp: "{\\"timestamp\\": \\"created_time\\", \\"created_time\\": {\\"on_or_after\\": \\"2023-02-08\\"}}"`),
-        page_size: z.number().int().min(1).max(100).nullable().optional().describe("Number of results per page (1-100). Default returns all results. Use pagination for large databases."),
-        start_cursor: z.string().nullable().optional().describe("Cursor from previous response to fetch next page. Use next_cursor from response when has_more is true."),
-        result_type: z.enum(["page", "data_source"]).nullable().optional().describe("Filter results to only pages or data sources. Only relevant for wiki databases.")
-    }),
+    parameters: parameters,
     execute: async ({ integrationId, databaseId, filter_properties, filter, page_size, start_cursor, result_type }, runContext?: RunContext<SessionWithTracking<Session>>) => {
         logger.debug("Executing notion_query_database tool with filters", { integrationId, databaseId, filter_properties, filter, page_size, start_cursor })
         if (!runContext?.context) {
@@ -337,6 +339,5 @@ EXAMPLES:
             has_more: response.has_more || false,
             next_cursor: response.next_cursor || null
         }
-    },
-    errorFunction: formatError
-})
+    }
+}

@@ -1,6 +1,6 @@
 import { Client } from "@notionhq/client"
 import { GetPageResponse, PageObjectResponse } from "@notionhq/client/build/src/api-endpoints"
-import { RunContext, tool } from "@openai/agents"
+import { RunContext } from "@openai/agents"
 import { z } from "zod"
 
 import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
@@ -8,7 +8,7 @@ import { getNotionAccessTokenForOrganization } from "../../../integrations/Notio
 import logger from "../../../logger"
 import { IntegrationType } from "../../../shared/Integrations"
 import { ToolName } from "../../../tools/ToolNames"
-import { formatError } from "../../../tools/toolUtils"
+import { SessionToolOptions, formatError } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
 
 // Helper function to extract readable values from Notion page property objects
@@ -230,15 +230,17 @@ async function fetchAllBlocks(notion: Client, blockId: string): Promise<any[]> {
     return allBlocks
 }
 
-export const notionQueryPageTool = tool({
+const parameters = z.object({
+    integrationId: z.string().describe("The integration ID of the Notion workspace to use."),
+    pageId: z.string().describe("The Notion page ID to query.")
+})
+
+export const notionQueryPageTool: SessionToolOptions<typeof parameters> = {
     name: ToolName.NOTION_QUERY_PAGE,
     description: `Call this tool ONCE at the beginning of your run to get the page state. After calling it once, remember and reuse the results - DO NOT call it multiple times in the same run.
 
 This tool returns the current state of the page including all properties, metadata, and content blocks.`,
-    parameters: z.object({
-        integrationId: z.string().describe("The integration ID of the Notion workspace to use."),
-        pageId: z.string().describe("The Notion page ID to query.")
-    }),
+    parameters: parameters,
     execute: async ({ integrationId, pageId }, runContext?: RunContext<SessionWithTracking<Session>>) => {
         logger.debug("Executing notion_query_page tool")
         if (!runContext?.context) {
@@ -336,6 +338,5 @@ This tool returns the current state of the page including all properties, metada
             blocks: blocks,
             blocks_count: blocks.length
         }
-    },
-    errorFunction: formatError
-})
+    }
+}

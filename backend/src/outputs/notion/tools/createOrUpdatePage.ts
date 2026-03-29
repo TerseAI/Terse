@@ -1,5 +1,5 @@
 import { Client } from "@notionhq/client"
-import { RunContext, tool } from "@openai/agents"
+import { RunContext } from "@openai/agents"
 import { z } from "zod"
 
 import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
@@ -7,7 +7,7 @@ import { getNotionAccessTokenForOrganization } from "../../../integrations/Notio
 import logger from "../../../logger"
 import { IntegrationType } from "../../../shared/Integrations"
 import { ToolName } from "../../../tools/ToolNames"
-import { createNeedsApprovalFunction, formatError } from "../../../tools/toolUtils"
+import { SessionToolOptions, createNeedsApprovalFunction, formatError } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
 
 const VALID_PAGE_ID_MIN_LENGTH = 30
@@ -16,23 +16,24 @@ function isValidPageId(pageId: string | null | undefined): pageId is string {
     return !!(pageId && pageId.length >= VALID_PAGE_ID_MIN_LENGTH && !pageId.includes("/") && pageId !== ".")
 }
 
-export const notionCreateOrUpdatePageTool = tool({
+const parameters = z.object({
+    integrationId: z.string().describe("The integration ID of the Notion workspace to use."),
+    page_id: z.string().nullable().optional().describe("ID of an existing page to update. Omit or null to create a new subpage under parentPageId."),
+    parentPageId: z
+        .string()
+        .optional()
+        .nullable()
+        .describe("Required for create: the allowed page ID under which to create the new subpage (from the Notion config list). Ignored when page_id is provided for update."),
+    title: z.string().describe("The page title (used for both create and update).")
+})
+
+export const notionCreateOrUpdatePageTool: SessionToolOptions<typeof parameters> = {
     name: ToolName.NOTION_CREATE_OR_UPDATE_PAGE,
     description: `Create or update a **standalone page**. Not for database entries — use notion_create_or_update_database_row for those.
 
 **Create**: Omit page_id (or pass null). Supply parentPageId (allowed page ID from config), title. Creates a new empty subpage under the parent. Use notion_modify_blocks on the returned page_id to add content.
 **Update**: Pass page_id of an existing page to update its title. parentPageId is ignored when updating. Use notion_modify_blocks to change page content.`,
-    parameters: z.object({
-        integrationId: z.string().describe("The integration ID of the Notion workspace to use."),
-        page_id: z.string().nullable().optional().describe("ID of an existing page to update. Omit or null to create a new subpage under parentPageId."),
-        parentPageId: z
-            .string()
-            .optional()
-            .nullable()
-            .describe("Required for create: the allowed page ID under which to create the new subpage (from the Notion config list). Ignored when page_id is provided for update."),
-        title: z.string().describe("The page title (used for both create and update).")
-    }),
-    needsApproval: createNeedsApprovalFunction(ToolName.NOTION_CREATE_OR_UPDATE_PAGE),
+    parameters: parameters,
     execute: async ({ integrationId, page_id, parentPageId, title }, runContext?: RunContext<SessionWithTracking<Session>>) => {
         if (!runContext?.context) {
             throw new Error("No context provided")
@@ -115,6 +116,5 @@ export const notionCreateOrUpdatePageTool = tool({
         } catch (error: any) {
             throw new Error(error.message || "Failed to create standalone page")
         }
-    },
-    errorFunction: formatError
-})
+    }
+}

@@ -1,4 +1,4 @@
-import { RunContext, tool } from "@openai/agents"
+import { RunContext } from "@openai/agents"
 import { RunHistoryActionType } from "@prisma/client"
 import { KnownBlock, WebClient } from "@slack/web-api"
 import { z } from "zod"
@@ -8,11 +8,10 @@ import logger from "../../../logger"
 import { db } from "../../../prismaClient"
 import { SecretField, getSecret } from "../../../services/SecretService"
 import { IntegrationType } from "../../../shared/Integrations"
-import type { ToolOutputByName } from "../../../shared/types"
 import { TERSE_AGENT_MESSAGE_EVENT_TYPE, TerseAgentMessageMetadata } from "../../../shared/types"
 import { ToolName } from "../../../tools/ToolNames"
 import { toolOutput } from "../../../tools/toolOutput"
-import { createNeedsApprovalFunction } from "../../../tools/toolUtils"
+import { SessionToolOptions, createNeedsApprovalFunction } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
 import { isValidEpochTimestamp } from "../../../utility/strings"
 
@@ -34,11 +33,10 @@ const slackSendMessageParameters = z.object({
     blocks: z.string().nullable().optional().describe("Block Kit JSON array string for interactive messages with buttons, structured layouts")
 })
 
-export const slackSendMessageTool = tool<typeof slackSendMessageParameters, SessionWithTracking<Session>, ToolOutputByName["slack_send_message"]>({
+export const slackSendMessageTool: SessionToolOptions<typeof slackSendMessageParameters> = {
     name: ToolName.SLACK_SEND_MESSAGE,
     description: `Send message to a Slack channel or DM. Supports plain text (mrkdwn) or Block Kit (JSON blocks). Use a channel ID from the configured output destinations (channels and DM channel IDs for configured users).`,
     parameters: slackSendMessageParameters,
-    needsApproval: createNeedsApprovalFunction(ToolName.SLACK_SEND_MESSAGE),
     execute: async ({ integrationId, channelId, message, thread_ts, blocks: blocksJson }, runContext?: RunContext<SessionWithTracking<Session>>) => {
         if (!runContext?.context) {
             throw new Error("No context provided")
@@ -219,4 +217,4 @@ export const slackSendMessageTool = tool<typeof slackSendMessageParameters, Sess
             throw new Error(`Failed to send Slack message: ${error.message || error}`)
         }
     }
-})
+}

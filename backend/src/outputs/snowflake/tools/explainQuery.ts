@@ -8,6 +8,7 @@ import { IntegrationType } from "../../../shared/Integrations"
 import { ToolOutputByName } from "../../../shared/types"
 import { ToolName } from "../../../tools/ToolNames"
 import { toolOutput } from "../../../tools/toolOutput"
+import { SessionToolOptions } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
 import { getSnowflakeCredentials, runSnowflakeQuery } from "../snowflakeClient"
 
@@ -16,7 +17,7 @@ const snowflakeExplainQueryParams = z.object({
     query: z.string().describe("The SQL query to explain.")
 })
 
-export const snowflakeExplainQueryTool = tool<typeof snowflakeExplainQueryParams, SessionWithTracking<Session>, ToolOutputByName["snowflake_explain_query"]>({
+export const snowflakeExplainQueryTool: SessionToolOptions<typeof snowflakeExplainQueryParams> = {
     name: ToolName.SNOWFLAKE_EXPLAIN_QUERY,
     description: "Get the query execution plan for a Snowflake SQL query using EXPLAIN. Use this to understand how Snowflake will execute a query before running it.",
     parameters: snowflakeExplainQueryParams,
@@ -56,4 +57,4 @@ export const snowflakeExplainQueryTool = tool<typeof snowflakeExplainQueryParams
             throw new Error(`Failed to explain Snowflake query: ${error.message}`)
         }
     }
-})
+}

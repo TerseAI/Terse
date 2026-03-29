@@ -1,8 +1,10 @@
-import { RunContext } from "@openai/agents"
+import { RunContext, ToolInputParameters, ToolOptions } from "@openai/agents"
 
 import { SessionWithTracking } from "../agent/AgentRunner/AgentRunner"
 import logger from "../logger"
 import { Session } from "../types/session"
+
+export type SessionToolOptions<T extends ToolInputParameters> = ToolOptions<T, SessionWithTracking<Session>>
 
 // MARK: - Error Handling
 
@@ -72,14 +74,4 @@ export function createNeedsApprovalFunction(toolName: string) {
         // Only used when toolApprovals is undefined (not set)
         return agent.requireApproval ?? false
     }
-}
-
-/**
- * Legacy function for backward compatibility.
- * @deprecated Use createNeedsApprovalFunction instead
- */
-export async function needsApproval(context?: RunContext<unknown>): Promise<boolean> {
-    // Type guard: safely access agent.requireApproval from SessionWithTracking
-    const sessionWithTracking = context?.context as SessionWithTracking<Session> | undefined
-    return sessionWithTracking?.agent?.requireApproval ?? false
 }

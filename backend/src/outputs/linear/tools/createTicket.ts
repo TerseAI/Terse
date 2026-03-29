@@ -1,6 +1,6 @@
 import { LinearClient } from "@linear/sdk"
 import { IssueCreateInput } from "@linear/sdk/dist/_generated_documents"
-import { RunContext, tool } from "@openai/agents"
+import { RunContext } from "@openai/agents"
 import { RunHistoryActionType } from "@prisma/client"
 import { z } from "zod"
 
@@ -9,7 +9,7 @@ import { getLinearAccessTokenForOrganization } from "../../../integrations/Linea
 import logger from "../../../logger"
 import { IntegrationType } from "../../../shared/Integrations"
 import { ToolName } from "../../../tools/ToolNames"
-import { createNeedsApprovalFunction, formatError } from "../../../tools/toolUtils"
+import { SessionToolOptions, createNeedsApprovalFunction, formatError } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
 
 const createTicketInputSchema = z.object({
@@ -23,14 +23,15 @@ const createTicketInputSchema = z.object({
     assigneeId: z.string().nullable().optional().describe("The ID of the user to assign the ticket to. Use linear_get_users to find available users and their IDs.")
 })
 
-export const linearCreateTicketTool = tool({
+const parameters = z.object({
+    integrationId: z.string().describe("The integration ID of the Linear workspace to use."),
+    ticket: createTicketInputSchema
+})
+
+export const linearCreateTicketTool: SessionToolOptions<typeof parameters> = {
     name: ToolName.LINEAR_CREATE_TICKET,
     description: `Create a new Linear issue/ticket.`,
-    parameters: z.object({
-        integrationId: z.string().describe("The integration ID of the Linear workspace to use."),
-        ticket: createTicketInputSchema
-    }),
-    needsApproval: createNeedsApprovalFunction(ToolName.LINEAR_CREATE_TICKET),
+    parameters: parameters,
     execute: async ({ integrationId, ticket }, runContext?: RunContext<SessionWithTracking<Session>>) => {
         logger.debug("🛠️ Executing linear_create_ticket tool", { integrationId })
 
@@ -91,6 +92,5 @@ export const linearCreateTicketTool = tool({
             logger.error("❌ Error creating Linear ticket", { error: errorMessage, integrationId })
             throw new Error(`${errorMessage}. Please check all inputs and try again.`)
         }
-    },
-    errorFunction: formatError
-})
+    }
+}

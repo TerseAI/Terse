@@ -1,5 +1,5 @@
 import { client, v2 } from "@datadog/datadog-api-client"
-import { RunContext, tool, user } from "@openai/agents"
+import { RunContext } from "@openai/agents"
 import { RunHistoryActionType } from "@prisma/client"
 import { z } from "zod"
 
@@ -8,8 +8,39 @@ import { getDatadogCredentialsForOrganization } from "../../../integrations/Data
 import logger from "../../../logger"
 import { IntegrationType } from "../../../shared/Integrations"
 import { ToolName } from "../../../tools/ToolNames"
+import { SessionToolOptions } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
 import { getDatadogRumDeepLink, getDatadogSite } from "../../../utility/datadog"
+
+const parameters = z.object({
+    query: z.union([z.string(), z.null()]).describe("Datadog RUM search query to filter events before aggregation (e.g., @type:view)"),
+    from: z.string().describe('Start time (ISO8601 or relative like "now-15m")'),
+    to: z.union([z.string(), z.null()]).describe('End time (ISO8601). Defaults to "now" if not provided.'),
+    compute: z
+        .array(
+            z.object({
+                aggregation: z.enum(["count", "pc90", "pc95", "pc99", "avg", "sum", "min", "max", "cardinality"]).describe("Aggregation: count, pc90/pc95/pc99, avg, sum, min, max, cardinality"),
+                metric: z.string().describe('Metric to compute (e.g., @view.loading_time, @duration). Use "*" for count of all events.'),
+                type: z.enum(["total", "timeseries"]).default("total").describe('Computation type: "total" (overall) or "timeseries" (time-bucketed)')
+            })
+        )
+        .describe("Array of metrics to compute. At least one required."),
+    groupBy: z
+        .union([
+            z.array(
+                z.object({
+                    facet: z.string().describe("Facet to group by (e.g., @view.name, @service, @browser.name)"),
+                    limit: z.number().default(10).describe("Maximum number of groups to return (default: 10)"),
+                    total: z.boolean().default(false).describe('Include "total" group with all events combined (default: false)')
+                })
+            ),
+            z.null()
+        ])
+        .describe("Facets to group results by"),
+    timezone: z.string().default("GMT").describe('Timezone for time-based queries (default: "GMT")'),
+    pageLimit: z.number().default(25).describe("Maximum number of buckets to return (default: 25)"),
+    integrationId: z.string().describe("The integration ID of the Datadog skill to use.")
+})
 
 /**
  * Tool for aggregating Datadog RUM events into computed metrics and timeseries.
@@ -17,38 +48,10 @@ import { getDatadogRumDeepLink, getDatadogSite } from "../../../utility/datadog"
  * averages, sums, etc. on RUM events. Use this to analyze performance trends, error rates,
  * user behavior patterns, or any aggregated metrics over RUM events.
  */
-export const aggregateRumEventsTool = tool({
+export const aggregateRumEventsTool: SessionToolOptions<typeof parameters> = {
     name: ToolName.DATADOG_AGGREGATE_RUM_EVENTS,
     description: "Aggregate Datadog RUM events into metrics. Compute percentiles, averages, sums, etc. Group by facets for breakdowns. Use for performance trends and error rates.",
-    parameters: z.object({
-        query: z.union([z.string(), z.null()]).describe("Datadog RUM search query to filter events before aggregation (e.g., @type:view)"),
-        from: z.string().describe('Start time (ISO8601 or relative like "now-15m")'),
-        to: z.union([z.string(), z.null()]).describe('End time (ISO8601). Defaults to "now" if not provided.'),
-        compute: z
-            .array(
-                z.object({
-                    aggregation: z.enum(["count", "pc90", "pc95", "pc99", "avg", "sum", "min", "max", "cardinality"]).describe("Aggregation: count, pc90/pc95/pc99, avg, sum, min, max, cardinality"),
-                    metric: z.string().describe('Metric to compute (e.g., @view.loading_time, @duration). Use "*" for count of all events.'),
-                    type: z.enum(["total", "timeseries"]).default("total").describe('Computation type: "total" (overall) or "timeseries" (time-bucketed)')
-                })
-            )
-            .describe("Array of metrics to compute. At least one required."),
-        groupBy: z
-            .union([
-                z.array(
-                    z.object({
-                        facet: z.string().describe("Facet to group by (e.g., @view.name, @service, @browser.name)"),
-                        limit: z.number().default(10).describe("Maximum number of groups to return (default: 10)"),
-                        total: z.boolean().default(false).describe('Include "total" group with all events combined (default: false)')
-                    })
-                ),
-                z.null()
-            ])
-            .describe("Facets to group results by"),
-        timezone: z.string().default("GMT").describe('Timezone for time-based queries (default: "GMT")'),
-        pageLimit: z.number().default(25).describe("Maximum number of buckets to return (default: 25)"),
-        integrationId: z.string().describe("The integration ID of the Datadog skill to use.")
-    }),
+    parameters: parameters,
     execute: async ({ integrationId, query, from, to, compute, groupBy, timezone, pageLimit }, runContext?: RunContext<SessionWithTracking<Session>>) => {
         if (!runContext?.context) {
             throw new Error("No context provided")
@@ -314,4 +317,4 @@ export const aggregateRumEventsTool = tool({
             throw new Error(`Failed to aggregate Datadog RUM events: ${error.message || "Unknown error"}`)
         }
     }
-})
+}

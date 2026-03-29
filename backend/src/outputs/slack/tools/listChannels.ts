@@ -8,7 +8,7 @@ import logger from "../../../logger"
 import { db } from "../../../prismaClient"
 import { IntegrationType } from "../../../shared/Integrations"
 import { ToolName } from "../../../tools/ToolNames"
-import { formatError } from "../../../tools/toolUtils"
+import { SessionToolOptions, formatError } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
 
 const SLACK_TYPES_MAP: Record<string, string> = {
@@ -34,21 +34,23 @@ function formatChannel(ch: { id?: string; name?: string; user?: string; is_chann
     }
 }
 
-export const slackListChannelsTool = tool({
+const parameters = z.object({
+    integrationId: z.string().describe("The integration ID of the Slack workspace (user_slack_integrations id)."),
+    types: z
+        .enum(["public", "private", "im", "mpim", "all"])
+        .nullable()
+        .optional()
+        .describe("Filter by type: public (public channels), private (private channels), im (DMs), mpim (group DMs), or all. Defaults to all."),
+    limit: z.number().min(1).max(500).nullable().optional().default(100).describe("Maximum number of conversations to return."),
+    cursor: z.string().nullable().optional().describe("Pagination cursor from a previous response (nextCursor). Omit on first call.")
+})
+
+export const slackListChannelsTool: SessionToolOptions<typeof parameters> = {
     name: ToolName.SLACK_LIST_CHANNELS,
     description: `List available Slack channels and conversations (public, private, DMs, multi-person DMs) that the integration can access.
 Use this to discover channel IDs before reading conversation history.
 Supports pagination: if the response includes nextCursor and hasMore, pass nextCursor as the cursor parameter on the next call to fetch more.`,
-    parameters: z.object({
-        integrationId: z.string().describe("The integration ID of the Slack workspace (user_slack_integrations id)."),
-        types: z
-            .enum(["public", "private", "im", "mpim", "all"])
-            .nullable()
-            .optional()
-            .describe("Filter by type: public (public channels), private (private channels), im (DMs), mpim (group DMs), or all. Defaults to all."),
-        limit: z.number().min(1).max(500).nullable().optional().default(100).describe("Maximum number of conversations to return."),
-        cursor: z.string().nullable().optional().describe("Pagination cursor from a previous response (nextCursor). Omit on first call.")
-    }),
+    parameters: parameters,
     execute: async ({ integrationId, types = "all", limit = 100, cursor }, runContext?: RunContext<SessionWithTracking<Session>>) => {
         logger.debug("🛠️ Executing slack_list_channels tool", { integrationId, types, limit })
 
@@ -132,6 +134,5 @@ Supports pagination: if the response includes nextCursor and hasMore, pass nextC
             logger.error("❌ Error listing Slack channels", { error: errorMessage, integrationId })
             throw new Error(`${errorMessage}. Check that the Slack integration is connected and has the required scopes (channels:read, groups:read, im:read, mpim:read).`)
         }
-    },
-    errorFunction: formatError
-})
+    }
+}

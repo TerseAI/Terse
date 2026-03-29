@@ -9,13 +9,13 @@ import { Output, ToolboxEntry } from "../abstract/Output"
 import { imageEditTool } from "./tools/editImage"
 import { webExtractTool } from "./tools/webExtractTool"
 import { webResearchTool } from "./tools/webResearchTool"
-import { webSearchTool } from "./tools/webSearchTool"
+import { runHistoryWebSearchTool } from "./tools/webSearchTool"
 
 export class TerseSkillsOutput extends Output<ConfigInstance> {
     constructor() {
         const toolbox: ToolboxEntry[] = [
             {
-                tool: webSearchTool,
+                tool: runHistoryWebSearchTool,
                 isReadOnly: true,
                 integration: IntegrationType.TERSE,
                 displayName: "Web Search"

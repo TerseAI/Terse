@@ -1,4 +1,4 @@
-import { RunContext, tool } from "@openai/agents"
+import { RunContext } from "@openai/agents"
 import { RunHistoryActionType } from "@prisma/client"
 import { z } from "zod"
 
@@ -9,14 +9,14 @@ import { IntegrationType } from "../../../shared/Integrations"
 import type { AttioAttribute, AttioObject, ToolOutputByName } from "../../../shared/types"
 import { ToolName } from "../../../tools/ToolNames"
 import { toolOutput } from "../../../tools/toolOutput"
-import { formatError } from "../../../tools/toolUtils"
+import { SessionToolOptions, formatError } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
 
 const attioListObjectsParams = z.object({
     integrationId: z.string().describe("The integration ID of the Attio workspace to use.")
 })
 
-export const attioListObjectsTool = tool<typeof attioListObjectsParams, SessionWithTracking<Session>, ToolOutputByName["attio_list_objects"]>({
+export const attioListObjectsTool: SessionToolOptions<typeof attioListObjectsParams> = {
     name: ToolName.ATTIO_LIST_OBJECTS,
     description: `List all available object types in the Attio workspace, including their attributes and field definitions. Use this to discover what object types (e.g. people, companies, deals) exist and what attributes are available before creating or updating records.`,
     parameters: attioListObjectsParams,
@@ -79,6 +79,5 @@ export const attioListObjectsTool = tool<typeof attioListObjectsParams, SessionW
             logger.error("Error listing Attio objects", { error: errorMessage, integrationId })
             throw new Error(errorMessage)
         }
-    },
-    errorFunction: formatError
-})
+    }
+}

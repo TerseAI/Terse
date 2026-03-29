@@ -1,4 +1,4 @@
-import { RunContext, tool } from "@openai/agents"
+import { RunContext } from "@openai/agents"
 import { RunHistoryActionType } from "@prisma/client"
 import { z } from "zod"
 
@@ -8,6 +8,7 @@ import { IntegrationType } from "../../../shared/Integrations"
 import type { ToolOutputByName } from "../../../shared/types"
 import { ToolName } from "../../../tools/ToolNames"
 import { toolOutput } from "../../../tools/toolOutput"
+import { SessionToolOptions } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
 import { createGitHubClient, getGitHubAccessToken, searchCode } from "../githubApiClient"
 
@@ -27,7 +28,7 @@ const searchGitHubCodeParameters = z.object({
         .describe("Page number for pagination (default: 1). Use this to fetch additional results if there are more than perPage results. Use null for page 1. Must be a positive integer >= 1.")
 })
 
-export const searchGitHubCodeTool = tool<typeof searchGitHubCodeParameters, SessionWithTracking<Session>, ToolOutputByName["searchGitHubCode"]>({
+export const searchGitHubCodeTool: SessionToolOptions<typeof searchGitHubCodeParameters> = {
     name: ToolName.GITHUB_SEARCH_CODE,
     description: `Search GitHub repositories for code by SEMANTIC MEANING (conceptual search). Use this when you DON'T know the exact code text.
 
@@ -188,4 +189,4 @@ Tips:
             throw new Error(`${errorMessage}. If the search query is too complex, try simplifying it. Use specific function names or class names.`)
         }
     }
-})
+}

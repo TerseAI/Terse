@@ -1,4 +1,4 @@
-import { FunctionTool, type RunContext } from "@openai/agents"
+import { FunctionTool, type RunContext, Tool, tool } from "@openai/agents"
 import { Request, Response } from "express"
 import { z } from "zod"
 
@@ -32,9 +32,10 @@ function findToolByName(toolName: string): SdkToolDescriptor | null {
     for (const [, factory] of OutputFactory.OUTPUT_REGISTRY) {
         const output = factory()
         for (const entry of output.toolbox) {
+            const toolEntry = tool(entry.tool) as Tool
             if (entry.tool.name === toolName) {
                 return {
-                    tool: entry.tool as SdkFunctionTool,
+                    tool: toolEntry as SdkFunctionTool,
                     isReadOnly: entry.isReadOnly
                 }
             }

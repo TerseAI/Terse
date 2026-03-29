@@ -1,5 +1,5 @@
 import { client, v2 } from "@datadog/datadog-api-client"
-import { RunContext, tool } from "@openai/agents"
+import { RunContext } from "@openai/agents"
 import { RunHistoryActionType } from "@prisma/client"
 import { z } from "zod"
 
@@ -8,27 +8,29 @@ import { getDatadogCredentialsForOrganization } from "../../../integrations/Data
 import logger from "../../../logger"
 import { IntegrationType } from "../../../shared/Integrations"
 import { ToolName } from "../../../tools/ToolNames"
+import { SessionToolOptions } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
 import { getDatadogRumDeepLink, getDatadogSite } from "../../../utility/datadog"
 
+const parameters = z.object({
+    integrationId: z.string().describe("The integration ID of the Datadog skill to use."),
+    query: z.union([z.string(), z.null()]).optional().describe("Datadog RUM search query (e.g., @type:error AND @error.source:network)"),
+    from: z.string().describe('Start time (ISO8601 or relative like "now-15m")'),
+    to: z.union([z.string(), z.null()]).optional().describe('End time (ISO8601). Defaults to "now" if not provided.'),
+    limit: z.number().default(25).describe("Maximum number of RUM events to return (default: 25, max: 1000)"),
+    pageCursor: z.union([z.string(), z.null()]).optional().describe("Pagination cursor from previous response"),
+    sort: z.enum(["timestamp", "-timestamp"]).default("timestamp").describe('Sort order: "timestamp" (ascending) or "-timestamp" (descending)'),
+    timezone: z.string().default("GMT").describe('Timezone for time-based queries (default: "GMT")')
+})
 /**
  * Tool for querying Datadog RUM events with flexible filtering options.
  * This tool queries the Datadog RUM API v2 to find RUM events (sessions, views, actions, errors, resources, long tasks).
  * Use this to investigate frontend issues, user behavior, performance problems, or errors in the browser/mobile app.
  */
-export const searchRumEventsTool = tool({
+export const searchRumEventsTool: SessionToolOptions<typeof parameters> = {
     name: ToolName.DATADOG_SEARCH_RUM_EVENTS,
     description: "Query Datadog RUM events. Filter by query string, time range. Returns sessions, views, actions, errors, resources, long tasks.",
-    parameters: z.object({
-        integrationId: z.string().describe("The integration ID of the Datadog skill to use."),
-        query: z.union([z.string(), z.null()]).optional().describe("Datadog RUM search query (e.g., @type:error AND @error.source:network)"),
-        from: z.string().describe('Start time (ISO8601 or relative like "now-15m")'),
-        to: z.union([z.string(), z.null()]).optional().describe('End time (ISO8601). Defaults to "now" if not provided.'),
-        limit: z.number().default(25).describe("Maximum number of RUM events to return (default: 25, max: 1000)"),
-        pageCursor: z.union([z.string(), z.null()]).optional().describe("Pagination cursor from previous response"),
-        sort: z.enum(["timestamp", "-timestamp"]).default("timestamp").describe('Sort order: "timestamp" (ascending) or "-timestamp" (descending)'),
-        timezone: z.string().default("GMT").describe('Timezone for time-based queries (default: "GMT")')
-    }),
+    parameters: parameters,
     execute: async ({ integrationId, query, from, to = "now", limit = 25, pageCursor, sort = "timestamp", timezone = "GMT" }, runContext?: RunContext<SessionWithTracking<Session>>) => {
         if (!runContext?.context) {
             throw new Error("No context provided")
@@ -302,4 +304,4 @@ export const searchRumEventsTool = tool({
             throw new Error(`Failed to query Datadog RUM events: ${error.message || "Unknown error"}`)
         }
     }
-})
+}

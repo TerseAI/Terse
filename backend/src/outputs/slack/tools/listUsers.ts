@@ -1,4 +1,4 @@
-import { RunContext, tool } from "@openai/agents"
+import { RunContext } from "@openai/agents"
 import { RunHistoryActionType } from "@prisma/client"
 import { z } from "zod"
 
@@ -6,10 +6,9 @@ import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
 import { fetchSlackUsersForIntegration } from "../../../integrations/SlackIntegration"
 import logger from "../../../logger"
 import { IntegrationType } from "../../../shared/Integrations"
-import type { ToolOutputByName } from "../../../shared/types"
 import { ToolName } from "../../../tools/ToolNames"
 import { toolOutput } from "../../../tools/toolOutput"
-import { formatError } from "../../../tools/toolUtils"
+import { SessionToolOptions, formatError } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
 
 const slackListUsersParameters = z.object({
@@ -17,7 +16,7 @@ const slackListUsersParameters = z.object({
     query: z.string().nullable().optional().describe("Optional search query to filter users by name. Case-insensitive partial match.")
 })
 
-export const slackListUsersTool = tool<typeof slackListUsersParameters, SessionWithTracking<Session>, ToolOutputByName["slack_list_users"]>({
+export const slackListUsersTool: SessionToolOptions<typeof slackListUsersParameters> = {
     name: ToolName.SLACK_LIST_USERS,
     description: `List Slack workspace users (id and name). Use this to resolve user IDs to names when needed.
 Returns non-bot members. Optionally filter by name with the query parameter.`,
@@ -63,6 +62,5 @@ Returns non-bot members. Optionally filter by name with the query parameter.`,
             logger.error("❌ Error listing Slack users", { error: errorMessage, integrationId })
             throw new Error(`${errorMessage}. Check that the Slack integration is connected and has the required scopes (users:read).`)
         }
-    },
-    errorFunction: formatError
-})
+    }
+}

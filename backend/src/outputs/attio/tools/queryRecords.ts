@@ -1,4 +1,4 @@
-import { RunContext, tool } from "@openai/agents"
+import { RunContext } from "@openai/agents"
 import { RunHistoryActionType } from "@prisma/client"
 import { z } from "zod"
 
@@ -9,7 +9,7 @@ import { IntegrationType } from "../../../shared/Integrations"
 import type { AttioRecord, ToolOutputByName } from "../../../shared/types"
 import { ToolName } from "../../../tools/ToolNames"
 import { toolOutput } from "../../../tools/toolOutput"
-import { formatError } from "../../../tools/toolUtils"
+import { SessionToolOptions, formatError } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
 
 const attioQueryRecordsParams = z.object({
@@ -22,7 +22,7 @@ const attioQueryRecordsParams = z.object({
     limit: z.number().nullable().describe("Maximum number of records to return. Pass null to use the default of 20.")
 })
 
-export const attioQueryRecordsTool = tool<typeof attioQueryRecordsParams, SessionWithTracking<Session>, ToolOutputByName["attio_query_records"]>({
+export const attioQueryRecordsTool: SessionToolOptions<typeof attioQueryRecordsParams> = {
     name: ToolName.ATTIO_QUERY_RECORDS,
     description: `Query records from an Attio object. Use this to search for existing records before creating or updating them. Supports optional filtering.
 
@@ -93,6 +93,5 @@ Filter syntax uses shorthand or verbose form:
             logger.error("Error querying Attio records", { error: errorMessage, integrationId })
             throw new Error(errorMessage)
         }
-    },
-    errorFunction: formatError
-})
+    }
+}

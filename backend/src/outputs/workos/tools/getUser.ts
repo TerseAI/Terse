@@ -6,16 +6,19 @@ import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
 import logger from "../../../logger"
 import { IntegrationType } from "../../../shared/Integrations"
 import { ToolName } from "../../../tools/ToolNames"
+import { SessionToolOptions } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
 import { getWorkOSApiKeyByIntegrationId, getWorkOSUser } from "../workosApiClient"
 
-export const getWorkOSUserTool = tool({
+const parameters = z.object({
+    integrationId: z.string().describe("The integration ID of the WorkOS skill to use."),
+    userId: z.string().describe("The WorkOS user ID to look up.")
+})
+
+export const getWorkOSUserTool: SessionToolOptions<typeof parameters> = {
     name: ToolName.WORKOS_GET_USER,
     description: "Get detailed information about a specific WorkOS user by their user ID. Returns profile data including email, name, verification status, and timestamps.",
-    parameters: z.object({
-        integrationId: z.string().describe("The integration ID of the WorkOS skill to use."),
-        userId: z.string().describe("The WorkOS user ID to look up.")
-    }),
+    parameters: parameters,
     execute: async ({ integrationId, userId }, runContext?: RunContext<SessionWithTracking<Session>>) => {
         if (!runContext?.context) {
             throw new Error("No context provided")
@@ -63,4 +66,4 @@ export const getWorkOSUserTool = tool({
             throw new Error(`Failed to get WorkOS user: ${error.message || "Unknown error"}`)
         }
     }
-})
+}

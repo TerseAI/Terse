@@ -13,7 +13,7 @@ import { INTEGRATION_REGISTRY } from "../../integrations/abstract/IntegrationReg
 import { fetchSampleEvents } from "../../integrations/abstract/sampleEvents"
 import logger from "../../logger"
 import { webExtractTool } from "../../outputs/terse/tools/webExtractTool"
-import { webSearchTool } from "../../outputs/terse/tools/webSearchTool"
+import { chatWebSearchTool, webSearchTool } from "../../outputs/terse/tools/webSearchTool"
 import { db } from "../../prismaClient"
 import { requireHydrator } from "../../rag/HydratorRegistry"
 import type { AgentDraft } from "../../routes/agents"
@@ -74,8 +74,8 @@ async function getDefaultNotificationSettings(userId: string): Promise<AgentNoti
 
 export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgentContext>[] {
     return [
-        webSearchTool,
-        webExtractTool,
+        tool({ ...chatWebSearchTool, errorFunction: formatError }),
+        tool({ ...webExtractTool, errorFunction: formatError }),
         tool({
             name: "applyAgent",
             description:

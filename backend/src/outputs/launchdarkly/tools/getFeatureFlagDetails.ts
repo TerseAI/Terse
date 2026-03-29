@@ -1,32 +1,35 @@
-import { RunContext, tool } from "@openai/agents"
+import { RunContext } from "@openai/agents"
 import { z } from "zod"
 
 import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
 import logger from "../../../logger"
 import { IntegrationType } from "../../../shared/Integrations"
 import { ToolName } from "../../../tools/ToolNames"
+import { SessionToolOptions } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
 import { getLaunchDarklyApiKeyByIntegrationId } from "../launchdarklyApiClient"
+
+const parameters = z.object({
+    integrationId: z.string().describe("The integration ID of the LaunchDarkly skill to use."),
+    projectKey: z.string().describe("The LaunchDarkly project key."),
+    environmentKeys: z.array(z.string()).describe("Array of environment keys to query."),
+    flagKey: z.string().describe("The flag key to retrieve."),
+    environmentKey: z.union([z.string(), z.null()]).optional().describe("Optional: Specific environment to get details for (if not provided, returns all configured environments)."),
+    includeHistory: z.boolean().default(false).describe("If true, includes change history for the flag over the specified time window."),
+    before: z.union([z.string(), z.null()]).optional().describe("Optional: ISO date - only return history entries before this date (only used if includeHistory is true)."),
+    after: z.union([z.string(), z.null()]).optional().describe("Optional: ISO date - only return history entries after this date (only used if includeHistory is true)."),
+    historyLimit: z.number().default(20).describe("Number of history entries to return if includeHistory is true (default: 20, max: 20).")
+})
 
 /**
  * Tool for getting detailed information about a specific LaunchDarkly feature flag.
  * Optionally includes change history over a time window.
  */
-export const getLaunchDarklyFlagDetailsTool = tool({
+export const getLaunchDarklyFlagDetailsTool: SessionToolOptions<typeof parameters> = {
     name: ToolName.LAUNCHDARKLY_GET_FEATURE_FLAG_DETAILS,
     description:
         "Get detailed information about a specific feature flag including targeting rules, rollout strategies, variations, and per-environment configuration. Optionally includes change history when includeHistory=true.",
-    parameters: z.object({
-        integrationId: z.string().describe("The integration ID of the LaunchDarkly skill to use."),
-        projectKey: z.string().describe("The LaunchDarkly project key."),
-        environmentKeys: z.array(z.string()).describe("Array of environment keys to query."),
-        flagKey: z.string().describe("The flag key to retrieve."),
-        environmentKey: z.union([z.string(), z.null()]).optional().describe("Optional: Specific environment to get details for (if not provided, returns all configured environments)."),
-        includeHistory: z.boolean().default(false).describe("If true, includes change history for the flag over the specified time window."),
-        before: z.union([z.string(), z.null()]).optional().describe("Optional: ISO date - only return history entries before this date (only used if includeHistory is true)."),
-        after: z.union([z.string(), z.null()]).optional().describe("Optional: ISO date - only return history entries after this date (only used if includeHistory is true)."),
-        historyLimit: z.number().default(20).describe("Number of history entries to return if includeHistory is true (default: 20, max: 20).")
-    }),
+    parameters: parameters,
     execute: async (
         { integrationId, projectKey, environmentKeys, flagKey, environmentKey, includeHistory = false, before, after, historyLimit = 20 },
         runContext?: RunContext<SessionWithTracking<Session>>
@@ -384,4 +387,4 @@ export const getLaunchDarklyFlagDetailsTool = tool({
             throw new Error(`Failed to get LaunchDarkly flag details: ${error.message || "Unknown error"}`)
         }
     }
-})
+}

@@ -6,20 +6,23 @@ import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
 import logger from "../../../logger"
 import { IntegrationType } from "../../../shared/Integrations"
 import { ToolName } from "../../../tools/ToolNames"
+import { SessionToolOptions } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
 import { getWorkOSApiKeyByIntegrationId, listWorkOSUsers } from "../workosApiClient"
 
-export const listWorkOSUsersTool = tool({
+const parameters = z.object({
+    integrationId: z.string().describe("The integration ID of the WorkOS skill to use."),
+    email: z.union([z.string(), z.null()]).describe("Filter by exact email address. Pass null to list all users."),
+    organizationId: z.union([z.string(), z.null()]).describe("Filter users by WorkOS organization ID. Pass null for all organizations."),
+    limit: z.number().default(20).describe("Maximum number of users to return (default: 20, max: 100)."),
+    after: z.union([z.string(), z.null()]).describe("Pagination cursor. Use the 'after' value from a previous response to get the next page. Pass null for the first page.")
+})
+
+export const listWorkOSUsersTool: SessionToolOptions<typeof parameters> = {
     name: ToolName.WORKOS_LIST_USERS,
     description:
         "List users from the customer's WorkOS account. Supports filtering by email and organization ID. Returns user profiles including email, name, and creation date. Use pagination (after cursor) for large user sets.",
-    parameters: z.object({
-        integrationId: z.string().describe("The integration ID of the WorkOS skill to use."),
-        email: z.union([z.string(), z.null()]).describe("Filter by exact email address. Pass null to list all users."),
-        organizationId: z.union([z.string(), z.null()]).describe("Filter users by WorkOS organization ID. Pass null for all organizations."),
-        limit: z.number().default(20).describe("Maximum number of users to return (default: 20, max: 100)."),
-        after: z.union([z.string(), z.null()]).describe("Pagination cursor. Use the 'after' value from a previous response to get the next page. Pass null for the first page.")
-    }),
+    parameters: parameters,
     execute: async ({ integrationId, email, organizationId, limit = 20, after }, runContext?: RunContext<SessionWithTracking<Session>>) => {
         if (!runContext?.context) {
             throw new Error("No context provided")
@@ -75,4 +78,4 @@ export const listWorkOSUsersTool = tool({
             throw new Error(`Failed to list WorkOS users: ${error.message || "Unknown error"}`)
         }
     }
-})
+}

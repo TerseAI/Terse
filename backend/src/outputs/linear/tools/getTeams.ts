@@ -1,4 +1,4 @@
-import { RunContext, tool } from "@openai/agents"
+import { RunContext } from "@openai/agents"
 import { RunHistoryActionType } from "@prisma/client"
 import { z } from "zod"
 
@@ -8,15 +8,17 @@ import logger from "../../../logger"
 import { IntegrationType } from "../../../shared/Integrations"
 import { LinearAdapter } from "../../../ticketing/linear"
 import { ToolName } from "../../../tools/ToolNames"
-import { formatError } from "../../../tools/toolUtils"
+import { SessionToolOptions, formatError } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
 
-export const linearGetTeamsTool = tool({
+const parameters = z.object({
+    integrationId: z.string().describe("The integration ID of the Linear integration to use.")
+})
+
+export const linearGetTeamsTool: SessionToolOptions<typeof parameters> = {
     name: ToolName.LINEAR_GET_TEAMS,
     description: `List teams in the Linear workspace. Use to pick teamId when creating tickets or when calling linear_get_states, linear_get_labels, or linear_get_projects for a specific team.`,
-    parameters: z.object({
-        integrationId: z.string().describe("The integration ID of the Linear integration to use.")
-    }),
+    parameters: parameters,
     execute: async ({ integrationId }, runContext?: RunContext<SessionWithTracking<Session>>) => {
         logger.debug("🛠️ Executing linear_get_teams tool", { integrationId })
 
@@ -48,6 +50,5 @@ export const linearGetTeamsTool = tool({
             logger.error("❌ Error listing Linear teams", { error: errorMessage, integrationId })
             throw new Error(`${errorMessage}. Check that the access token is valid and has the necessary permissions.`)
         }
-    },
-    errorFunction: formatError
-})
+    }
+}
