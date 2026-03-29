@@ -9,6 +9,7 @@ import type { ToolOutputByName } from "../../../shared/types"
 import { ToolName } from "../../../tools/ToolNames"
 import { toolOutput } from "../../../tools/toolOutput"
 import { Session } from "../../../types/session"
+import { extractErrorMessage } from "../../../utility/strings"
 import { createGitHubClient, getFileContents, getGitHubAccessToken, parseRepoFullName } from "../githubApiClient"
 
 /**
@@ -151,7 +152,7 @@ Note: This reads from the default branch (main/master). Large files may be trunc
                 actions: [action]
             })
         } catch (error: any) {
-            const errorMessage = error instanceof Error ? error.message : String(error)
+            const errorMessage = extractErrorMessage(error)
             logger.error("[GitHub KB] readGitHubFile - Failed", {
                 repository,
                 path,

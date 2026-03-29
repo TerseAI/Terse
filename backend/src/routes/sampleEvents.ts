@@ -6,6 +6,7 @@ import { ConfigType } from "../shared/Configs"
 import { IntegrationType } from "../shared/Integrations"
 import type { User } from "../shared/types"
 import type { SerializedEvent, TriggerPayload } from "../shared/types"
+import { extractErrorMessage } from "../utility/strings"
 
 /**
  * Wraps a plain config object into something that satisfies ConfigInstance
@@ -67,7 +68,7 @@ export async function handleSampleEvents(req: Request, res: Response) {
             // Skip integrations that don't support sample events or that error
             logger.warn("[sample-events] Skipping trigger due to error", {
                 integrationType,
-                error: err instanceof Error ? err.message : String(err)
+                error: extractErrorMessage(err)
             })
         }
     }

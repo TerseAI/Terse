@@ -12,6 +12,8 @@ import { ModelEvent, SANDBOX_STAGE_LABELS, SandboxStage, ToolCallExecutionStatus
 import { RunHistoryStatus } from "../shared/RunHistoryTypes"
 import { User } from "../shared/types"
 
+import { extractErrorMessage } from "../utility/strings"
+
 import { getSocketIO } from "./CacheInvalidationService"
 import { downloadSdkDeployZip } from "./FileStorageService"
 import { sdkRuntimeExecutorRegistry } from "./sdkRuntimeExecutors/SdkRuntimeExecutorRegistry"
@@ -161,7 +163,7 @@ export class SdkJobExecutionService {
                 throw sandboxError
             }
         } catch (error) {
-            const errorMessage = error instanceof Error ? error.message : String(error)
+            const errorMessage = extractErrorMessage(error)
             logger.error("SDK job execution failed", { error, runId, agentId, totalDuration: this.elapsed(executionStart) })
 
             try {

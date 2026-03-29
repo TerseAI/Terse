@@ -10,6 +10,7 @@ import { IntegrationType } from "../../../shared/Integrations"
 import { ToolName } from "../../../tools/ToolNames"
 import { formatError } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
+import { extractErrorMessage } from "../../../utility/strings"
 
 export const notionListUsersTool = tool({
     name: ToolName.NOTION_LIST_USERS,
@@ -76,7 +77,7 @@ Use the returned user IDs in people property format:
                 actions: [action]
             }
         } catch (error: unknown) {
-            const errorMessage = error instanceof Error ? error.message : String(error)
+            const errorMessage = extractErrorMessage(error)
             logger.error("Error listing Notion users", { error: errorMessage, integrationId })
             throw new Error(`${errorMessage}. Check that the Notion integration is connected and has access to the workspace.`)
         }

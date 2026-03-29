@@ -9,6 +9,7 @@ import type { ToolOutputByName } from "../../../shared/types"
 import { ToolName } from "../../../tools/ToolNames"
 import { toolOutput } from "../../../tools/toolOutput"
 import { Session } from "../../../types/session"
+import { extractErrorMessage } from "../../../utility/strings"
 import { createGitHubClient, getGitHubAccessToken, listCommits, parseRepoFullName } from "../githubApiClient"
 
 /**
@@ -150,7 +151,7 @@ The tool returns commit details including message, author, date, and SHA.`,
                 actions: [action]
             })
         } catch (error: any) {
-            const errorMessage = error instanceof Error ? error.message : String(error)
+            const errorMessage = extractErrorMessage(error)
             logger.error("[GitHub KB] listGitHubCommits - Failed", {
                 repository,
                 error: errorMessage,

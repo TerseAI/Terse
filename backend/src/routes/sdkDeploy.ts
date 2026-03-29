@@ -8,6 +8,7 @@ import { uploadSdkDeployZip } from "../services/FileStorageService"
 import { AgentOutput, AgentTrigger, SdkDeployRequestBody, User } from "../shared/types"
 import { AgentWithTriggerRelations, PrismaTransaction } from "../types/prisma"
 import { getInputConfigInclude } from "../utility/prismaIncludes"
+import { extractErrorMessage } from "../utility/strings"
 import { convertConfigTypeToInputConfigType, convertConfigTypeToOutputConfigType } from "../utility/typeConverters"
 
 import { createOutputConfig, createTriggerConfig, persistToolApprovals, setupAgentTriggers, tearDownAgentTriggers, validateUserOwnsIntegration } from "./agents"
@@ -94,7 +95,7 @@ export async function handleSdkDeploy(req: Request, res: Response) {
         return res.status(500).json({
             success: false,
             error: "Deploy failed",
-            details: (error as Error).message
+            details: extractErrorMessage(error)
         })
     }
 }

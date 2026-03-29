@@ -5,6 +5,7 @@ import logger from "../../logger"
 import { db } from "../../prismaClient"
 import { SecretField, getSecret } from "../../services/SecretService"
 import { IntegrationType } from "../../shared/Integrations"
+import { extractErrorMessage } from "../../utility/strings"
 
 snowflake.configure({ logLevel: "OFF" })
 
@@ -77,7 +78,7 @@ export function normalizeSnowflakePrivateKey(privateKey: string, passphrase?: st
             throw error
         }
 
-        const message = error instanceof Error ? error.message : String(error)
+        const message = extractErrorMessage(error)
 
         if (encryptedPrivateKey && looksLikeInvalidPassphraseError(message)) {
             throw new SnowflakePrivateKeyValidationError("The provided private key passphrase could not decrypt the PEM.", "invalid_passphrase")

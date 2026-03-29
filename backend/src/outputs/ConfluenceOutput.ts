@@ -12,6 +12,7 @@ import { ConfluenceConfig } from "../shared/Configs"
 import { IntegrationType } from "../shared/Integrations"
 import { ToolName } from "../tools/ToolNames"
 import { createNeedsApprovalFunction, formatError } from "../tools/toolUtils"
+import { extractErrorMessage } from "../utility/strings"
 import { PrismaTransaction } from "../types/prisma"
 import { Session } from "../types/session"
 import { convertOutputConfigTypeToConfigType } from "../utility/typeConverters"
@@ -150,7 +151,7 @@ This tool returns the current state of the Confluence page including all metadat
             }
         } catch (error) {
             logger.error("Error fetching Confluence page", { error, pageId })
-            throw new Error(`Failed to fetch Confluence page: ${error instanceof Error ? error.message : String(error)}`)
+            throw new Error(`Failed to fetch Confluence page: ${extractErrorMessage(error)}`)
         }
     },
     errorFunction: formatError
@@ -315,7 +316,7 @@ To find the correct position, first call confluence_query_page to see the page c
                 start_position,
                 end_position
             })
-            throw new Error(`Failed to add Confluence inline comment: ${error instanceof Error ? error.message : String(error)}`)
+            throw new Error(`Failed to add Confluence inline comment: ${extractErrorMessage(error)}`)
         }
     },
     errorFunction: formatError

@@ -9,6 +9,7 @@ import { ApiRoutes } from "../shared/ApiRoutes"
 import { Role, User } from "../shared/types"
 import { Session } from "../types/session"
 import { AccessTokenClaims, decodeAccessTokenClaims } from "../utility/accessTokenClaims"
+import { extractErrorMessage } from "../utility/strings"
 import { workos } from "../utility/workos"
 
 export const WORKOS_SESSION_COOKIE_NAME = "TERSE_WORKOS_SESSION"
@@ -179,7 +180,7 @@ export async function me(req: Request, res: Response) {
         })
         return res.send(refreshedUser)
     } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error)
+        const errorMessage = extractErrorMessage(error)
         const errorStack = error instanceof Error ? error.stack : undefined
         logger.warn("[/me] Failed to fetch fresh user from WorkOS, returning session user", {
             error: errorMessage,
@@ -405,7 +406,7 @@ export async function callback(req: Request, res: Response) {
         })
         return res.redirect(settings.urls.frontend)
     } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error)
+        const errorMessage = extractErrorMessage(error)
         const errorStack = error instanceof Error ? error.stack : undefined
         const errorName = error instanceof Error ? error.name : "Unknown"
 

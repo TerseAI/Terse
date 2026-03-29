@@ -12,6 +12,7 @@ import {
     persistDeterministicToolCallStart
 } from "../agent/toolCallHistory"
 import logger from "../logger"
+import { extractErrorMessage } from "../utility/strings"
 import { OutputFactory } from "../outputs/abstract/OutputFactory"
 import { db } from "../prismaClient"
 import { User } from "../shared/types"
@@ -183,7 +184,7 @@ export async function handleToolExecute(req: Request, res: Response) {
 
         return res.json({ success: true, result })
     } catch (err) {
-        const message = err instanceof Error ? err.message : String(err)
+        const message = extractErrorMessage(err)
         logger.error("[sdk/tool-execute] Tool execution failed", { toolName, error: message })
 
         if (persistedRunContext) {

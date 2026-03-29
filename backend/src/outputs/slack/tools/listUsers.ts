@@ -11,6 +11,7 @@ import { ToolName } from "../../../tools/ToolNames"
 import { toolOutput } from "../../../tools/toolOutput"
 import { formatError } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
+import { extractErrorMessage } from "../../../utility/strings"
 
 const slackListUsersParameters = z.object({
     integrationId: z.string().describe("The integration ID of the Slack workspace (user_slack_integrations id)."),
@@ -59,7 +60,7 @@ Returns non-bot members. Optionally filter by name with the query parameter.`,
                 actions: [action]
             })
         } catch (error: unknown) {
-            const errorMessage = error instanceof Error ? error.message : String(error)
+            const errorMessage = extractErrorMessage(error)
             logger.error("❌ Error listing Slack users", { error: errorMessage, integrationId })
             throw new Error(`${errorMessage}. Check that the Slack integration is connected and has the required scopes (users:read).`)
         }

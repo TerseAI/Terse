@@ -11,6 +11,7 @@ import { IntegrationType } from "../../../shared/Integrations"
 import { ToolName } from "../../../tools/ToolNames"
 import { formatError } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
+import { extractErrorMessage } from "../../../utility/strings"
 
 export const linearReadTicketTool = tool({
     name: ToolName.LINEAR_READ_TICKET,
@@ -105,7 +106,7 @@ Use the issue ID (UUID) or the issue identifier (e.g. "TEAM-123"). Use this afte
                 actions: [action]
             }
         } catch (error: unknown) {
-            const errorMessage = error instanceof Error ? error.message : String(error)
+            const errorMessage = extractErrorMessage(error)
             logger.error("❌ Error reading Linear issue", { error: errorMessage, issueId })
             throw new Error(`${errorMessage}. Check that the access token is valid and the issue ID or identifier is correct.`)
         }

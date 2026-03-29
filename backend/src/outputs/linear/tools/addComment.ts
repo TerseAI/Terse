@@ -10,6 +10,7 @@ import { IntegrationType } from "../../../shared/Integrations"
 import { ToolName } from "../../../tools/ToolNames"
 import { createNeedsApprovalFunction, formatError } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
+import { extractErrorMessage } from "../../../utility/strings"
 
 export const linearAddCommentTool = tool({
     name: ToolName.LINEAR_ADD_COMMENT,
@@ -57,7 +58,7 @@ export const linearAddCommentTool = tool({
                 actions: [action]
             }
         } catch (error: unknown) {
-            const errorMessage = error instanceof Error ? error.message : String(error)
+            const errorMessage = extractErrorMessage(error)
             logger.error("❌ Error adding Linear comment", { error: errorMessage, issueId })
             throw new Error(`${errorMessage}. Please check all inputs and try again.`)
         }

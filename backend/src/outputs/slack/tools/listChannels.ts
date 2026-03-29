@@ -10,6 +10,7 @@ import { IntegrationType } from "../../../shared/Integrations"
 import { ToolName } from "../../../tools/ToolNames"
 import { formatError } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
+import { extractErrorMessage } from "../../../utility/strings"
 
 const SLACK_TYPES_MAP: Record<string, string> = {
     public: "public_channel",
@@ -128,7 +129,7 @@ Supports pagination: if the response includes nextCursor and hasMore, pass nextC
                 ]
             }
         } catch (error: unknown) {
-            const errorMessage = error instanceof Error ? error.message : String(error)
+            const errorMessage = extractErrorMessage(error)
             logger.error("❌ Error listing Slack channels", { error: errorMessage, integrationId })
             throw new Error(`${errorMessage}. Check that the Slack integration is connected and has the required scopes (channels:read, groups:read, im:read, mpim:read).`)
         }

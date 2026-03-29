@@ -12,6 +12,7 @@ import { ToolName } from "../../../tools/ToolNames"
 import { toolOutput } from "../../../tools/toolOutput"
 import { formatError } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
+import { extractErrorMessage } from "../../../utility/strings"
 
 const slackReadConversationParameters = z.object({
     integrationId: z.string().describe("The integration ID of the Slack workspace (user_slack_integrations id)."),
@@ -128,7 +129,7 @@ Supports pagination: if the response includes nextCursor and hasMore, pass nextC
                 actions: [action]
             })
         } catch (error: unknown) {
-            const errorMessage = error instanceof Error ? error.message : String(error)
+            const errorMessage = extractErrorMessage(error)
             logger.error("❌ Error reading Slack conversation", { error: errorMessage, integrationId, channelId })
             const hint =
                 (error as { data?: { error?: string } })?.data?.error === "not_in_channel"

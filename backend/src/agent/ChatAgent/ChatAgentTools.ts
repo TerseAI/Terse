@@ -12,6 +12,7 @@ import { InputEvent } from "../../integrations/abstract/InputEvent"
 import { INTEGRATION_REGISTRY } from "../../integrations/abstract/IntegrationRegistry"
 import { fetchSampleEvents } from "../../integrations/abstract/sampleEvents"
 import logger from "../../logger"
+import { extractErrorMessage } from "../../utility/strings"
 import { webExtractTool } from "../../outputs/terse/tools/webExtractTool"
 import { webSearchTool } from "../../outputs/terse/tools/webSearchTool"
 import { db } from "../../prismaClient"
@@ -255,7 +256,7 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
                             generateEventSummary(integrationType, eventData, user).catch(err => {
                                 logger.warn("[getSampleEvents] Summary generation failed for event", {
                                     entityId: identifiable.entityId,
-                                    error: err instanceof Error ? err.message : String(err)
+                                    error: extractErrorMessage(err)
                                 })
                                 return { summary: `${integrationType} event` }
                             }),
@@ -263,7 +264,7 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
                                 ? filterEvent(event, agent, false, trackingParams).catch(err => {
                                       logger.warn("[getSampleEvents] Filter preview failed for event", {
                                           entityId: identifiable.entityId,
-                                          error: err instanceof Error ? err.message : String(err)
+                                          error: extractErrorMessage(err)
                                       })
                                       return null
                                   })

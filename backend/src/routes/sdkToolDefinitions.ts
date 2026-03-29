@@ -5,6 +5,7 @@ import logger from "../logger"
 import { OutputFactory } from "../outputs/abstract/OutputFactory"
 import { IntegrationType } from "../shared/Integrations"
 import { User } from "../shared/types"
+import { extractErrorMessage } from "../utility/strings"
 
 /**
  * GET /sdk/tool-definitions
@@ -53,7 +54,7 @@ export async function handleToolDefinitions(req: Request, res: Response) {
 
         return res.json({ tools })
     } catch (error) {
-        const message = error instanceof Error ? error.message : String(error)
+        const message = extractErrorMessage(error)
         logger.error("[sdk/tool-definitions] Failed to collect tool definitions", { error: message })
         return res.status(500).json({ error: "Failed to collect tool definitions" })
     }

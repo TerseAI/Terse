@@ -9,6 +9,7 @@ import { ConfigType } from "../../../shared/Configs"
 import { IntegrationType } from "../../../shared/Integrations"
 import { ToolName } from "../../../tools/ToolNames"
 import { createNeedsApprovalFunction, formatError } from "../../../tools/toolUtils"
+import { extractErrorMessage } from "../../../utility/strings"
 import { Session } from "../../../types/session"
 import { describeBlocks, extractPageTitle, getBlockTypeName } from "../../../utility/notion"
 
@@ -103,7 +104,7 @@ Append with after_block_id inserts after that block; omit for end of page/parent
             pageName = extractPageTitle(pageInfo)
             pageUrl = "url" in pageInfo ? pageInfo.url : undefined
         } catch (error) {
-            const msg = error instanceof Error ? error.message : String(error)
+            const msg = extractErrorMessage(error)
             throw new Error(`Failed to retrieve Notion page (invalid page ID, access denied, or network error): ${msg}`)
         }
 
@@ -272,7 +273,7 @@ Append with after_block_id inserts after that block; omit for end of page/parent
                 }
             } catch (error: any) {
                 failedAtIndex = i
-                const errorMessage = error instanceof Error ? error.message : String(error)
+                const errorMessage = extractErrorMessage(error)
                 return {
                     success: false,
                     failed_at_index: i,

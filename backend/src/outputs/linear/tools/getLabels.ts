@@ -10,6 +10,7 @@ import { LinearAdapter } from "../../../ticketing/linear"
 import { ToolName } from "../../../tools/ToolNames"
 import { formatError } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
+import { extractErrorMessage } from "../../../utility/strings"
 
 export const linearGetLabelsTool = tool({
     name: ToolName.LINEAR_GET_LABELS,
@@ -45,7 +46,7 @@ export const linearGetLabelsTool = tool({
                 actions: [action]
             }
         } catch (error: unknown) {
-            const errorMessage = error instanceof Error ? error.message : String(error)
+            const errorMessage = extractErrorMessage(error)
             logger.error("❌ Error listing Linear labels", { error: errorMessage, integrationId })
             throw new Error(`${errorMessage}. Check that the access token is valid and has the necessary permissions.`)
         }

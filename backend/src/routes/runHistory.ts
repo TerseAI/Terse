@@ -7,6 +7,7 @@ import logger from "../logger"
 import { PrismaClient, db } from "../prismaClient"
 import { type GetRunHistoryParams, type GetRunHistoryParamsRequest, type GetRunHistoryResponse, type RunHistoryRecord, RunHistoryStatus } from "../shared/RunHistoryTypes"
 import { parsePageParams } from "../utility/pagination"
+import { extractErrorMessage } from "../utility/strings"
 import { convertPrismaIntegrationTypeToIntegrationTypeFromRunHistory, convertPrismaRunHistoryStatusToShared } from "../utility/typeConverters"
 
 // Valid status values for validation
@@ -124,7 +125,7 @@ export async function getAllRunHistory(req: Request, res: Response) {
 
         res.json({ items, page, pageSize, total })
     } catch (err) {
-        logger.error("Failed to fetch all run history", { error: err instanceof Error ? err.message : String(err), stack: err instanceof Error ? err.stack : undefined })
+        logger.error("Failed to fetch all run history", { error: extractErrorMessage(err), stack: err instanceof Error ? err.stack : undefined })
         res.status(500).json({ error: "Failed to fetch run history" })
     }
 }
@@ -246,7 +247,7 @@ export async function getRunHistory(req: Request, res: Response) {
 
         res.json(response)
     } catch (err) {
-        logger.error("Failed to fetch run history", { error: err instanceof Error ? err.message : String(err), stack: err instanceof Error ? err.stack : undefined, agentId: req.params.agentId })
+        logger.error("Failed to fetch run history", { error: extractErrorMessage(err), stack: err instanceof Error ? err.stack : undefined, agentId: req.params.agentId })
         res.status(500).json({ error: "Failed to fetch run history" })
     }
 }
@@ -371,7 +372,7 @@ export async function getChatHistory(req: Request, res: Response) {
             status: runRecord.status
         })
     } catch (err) {
-        logger.error("Failed to fetch chat history", { error: err instanceof Error ? err.message : String(err), stack: err instanceof Error ? err.stack : undefined, runId: req.params.runId })
+        logger.error("Failed to fetch chat history", { error: extractErrorMessage(err), stack: err instanceof Error ? err.stack : undefined, runId: req.params.runId })
         res.status(500).json({ error: "Failed to fetch chat history" })
     }
 }
@@ -427,7 +428,7 @@ export async function getRunHistoryActions(req: Request, res: Response) {
 
         res.json(result)
     } catch (err) {
-        logger.error("Failed to fetch run history actions", { error: err instanceof Error ? err.message : String(err), stack: err instanceof Error ? err.stack : undefined, ids: req.query.ids })
+        logger.error("Failed to fetch run history actions", { error: extractErrorMessage(err), stack: err instanceof Error ? err.stack : undefined, ids: req.query.ids })
         res.status(500).json({ error: "Failed to fetch run history actions" })
     }
 }

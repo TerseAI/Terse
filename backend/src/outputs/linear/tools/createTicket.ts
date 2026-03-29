@@ -11,6 +11,7 @@ import { IntegrationType } from "../../../shared/Integrations"
 import { ToolName } from "../../../tools/ToolNames"
 import { createNeedsApprovalFunction, formatError } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
+import { extractErrorMessage } from "../../../utility/strings"
 
 const createTicketInputSchema = z.object({
     title: z.string().describe("The title of the ticket."),
@@ -87,7 +88,7 @@ export const linearCreateTicketTool = tool({
                 actions: [action]
             }
         } catch (error: unknown) {
-            const errorMessage = error instanceof Error ? error.message : String(error)
+            const errorMessage = extractErrorMessage(error)
             logger.error("❌ Error creating Linear ticket", { error: errorMessage, integrationId })
             throw new Error(`${errorMessage}. Please check all inputs and try again.`)
         }

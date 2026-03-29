@@ -9,6 +9,7 @@ import type { ToolOutputByName } from "../../../shared/types"
 import { ToolName } from "../../../tools/ToolNames"
 import { toolOutput } from "../../../tools/toolOutput"
 import { Session } from "../../../types/session"
+import { extractErrorMessage } from "../../../utility/strings"
 import { createGitHubClient, getBranch, getGitHubAccessToken, getRepositoryInfo, getTree, listDirectory, parseRepoFullName } from "../githubApiClient"
 
 /**
@@ -220,7 +221,7 @@ Start with the root directory (empty path) to see the top-level structure, then 
                 })
             }
         } catch (error: any) {
-            const errorMessage = error instanceof Error ? error.message : String(error)
+            const errorMessage = extractErrorMessage(error)
             logger.error("[GitHub KB] listGitHubDirectory - Failed", {
                 repository,
                 path: path || "(root)",

@@ -11,6 +11,7 @@ import { IntegrationType } from "../../../shared/Integrations"
 import { LinearStateName } from "../../../shared/TicketSystem"
 import { ToolName } from "../../../tools/ToolNames"
 import { formatError } from "../../../tools/toolUtils"
+import { extractErrorMessage } from "../../../utility/strings"
 import { Session } from "../../../types/session"
 
 const linearStateNameValues = Object.values(LinearStateName)
@@ -188,7 +189,7 @@ export const linearSearchTicketTool = tool({
                 }
             }
         } catch (error: unknown) {
-            const errorMessage = error instanceof Error ? error.message : String(error)
+            const errorMessage = extractErrorMessage(error)
             logger.error("❌ Error searching Linear issues", { error: errorMessage, searchTerm })
             throw new Error(`${errorMessage}. Check that the access token is valid and has the necessary permissions.`)
         }

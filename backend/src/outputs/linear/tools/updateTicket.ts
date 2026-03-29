@@ -11,6 +11,7 @@ import { IntegrationType } from "../../../shared/Integrations"
 import { ToolName } from "../../../tools/ToolNames"
 import { createNeedsApprovalFunction, formatError } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
+import { extractErrorMessage } from "../../../utility/strings"
 
 const updateTicketInputSchema = z.object({
     title: z.string().nullable().optional().describe("The updated title of the ticket."),
@@ -89,7 +90,7 @@ export const linearUpdateTicketTool = tool({
                 actions: [action]
             }
         } catch (error: unknown) {
-            const errorMessage = error instanceof Error ? error.message : String(error)
+            const errorMessage = extractErrorMessage(error)
             logger.error("❌ Error updating Linear ticket", { error: errorMessage, issueId })
             throw new Error(`${errorMessage}. Please check all inputs and try again.`)
         }

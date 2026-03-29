@@ -1,6 +1,7 @@
 import type { Sandbox } from "modal"
 
 import { SandboxStage } from "../../shared/ModelEvents"
+import { extractErrorMessage } from "../../utility/strings"
 
 export { SandboxStage }
 
@@ -46,7 +47,7 @@ export async function runSandboxStage(context: SdkRuntimeExecutorContext, stage:
     } catch (err) {
         context.emitSandboxStatus(stage, "failed", {
             duration_ms: Math.round(performance.now() - start),
-            detail: err instanceof Error ? err.message : String(err)
+            detail: extractErrorMessage(err)
         })
         throw err
     }

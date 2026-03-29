@@ -12,6 +12,7 @@ import type { ToolOutputByName } from "../../../shared/types"
 import { ToolName } from "../../../tools/ToolNames"
 import { toolOutput } from "../../../tools/toolOutput"
 import { Session } from "../../../types/session"
+import { extractErrorMessage } from "../../../utility/strings"
 import { createGitHubClient, getGitHubAccessToken, getPullRequestDiff, parseRepoFullName } from "../githubApiClient"
 
 /**
@@ -278,7 +279,7 @@ You can optionally provide high-level context about what you're looking for in t
                 actions: [action]
             })
         } catch (error: any) {
-            const errorMessage = error instanceof Error ? error.message : String(error)
+            const errorMessage = extractErrorMessage(error)
             logger.error("[GitHub KB] summarizeGitHubPullRequestDiff - Failed", {
                 repository,
                 pullNumber,
