@@ -1,5 +1,5 @@
 import { Request, Response } from "express"
-import { jwtVerify } from "jose"
+import { decodeJwt, jwtVerify } from "jose"
 
 import logger from "../logger"
 import { db } from "../prismaClient"
@@ -24,13 +24,39 @@ export async function deviceTokenExchange(req: Request, res: Response) {
     }
 
     try {
-        // Verify the WorkOS access token JWT via JWKS
+        // Decode the JWT without verification first to inspect it
+        const decoded = decodeJwt(accessToken)
+        logger.info("[device-token-exchange] Decoded JWT payload", {
+            sub: decoded.sub,
+            iss: decoded.iss,
+            aud: decoded.aud,
+            exp: decoded.exp,
+            iat: decoded.iat,
+            kid: decoded.kid,
+            allClaims: Object.keys(decoded)
+        })
+
+        // Also log the JWT header
+        const [headerB64] = accessToken.split(".")
+        const header = JSON.parse(Buffer.from(headerB64, "base64url").toString())
+        logger.info("[device-token-exchange] JWT header", { header })
+
+        // Fetch JWKS and log what keys are available
         const jwks = await workos.userManagement.getJWKS()
+        logger.info("[device-token-exchange] JWKS fetched", {
+            hasJwks: !!jwks,
+            type: typeof jwks,
+            keys: jwks ? Object.keys(jwks) : null
+        })
+
         if (!jwks) {
             return res.status(500).json({ error: "Could not fetch JWKS for token verification" })
         }
 
+        logger.info("[device-token-exchange] Attempting jwtVerify")
         const { payload } = await jwtVerify(accessToken, jwks)
+        logger.info("[device-token-exchange] jwtVerify succeeded", { sub: payload.sub })
+
         const workosUserId = payload.sub as string
         if (!workosUserId) {
             return res.status(401).json({ error: "Invalid access token: missing subject" })
