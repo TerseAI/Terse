@@ -27,33 +27,6 @@ import { emitCacheInvalidationWithKey, emitCacheInvalidationWithWildcard } from 
 
 const PENDING_APPROVALS_INVALIDATION_KEY = pendingApprovalsKey()[0]
 
-export type ApprovalRequest = {
-    runId: string
-    stepId: string
-    approved: boolean
-    userId: string
-    organizationId: string
-    rejectionReason?: string
-    /** When true, stops the run completely without resuming the agent */
-    hardReject?: boolean
-}
-
-export type ApprovalResult = {
-    // 'completed' means the run finished after applying this approval decision.
-    // 'awaiting_approval' means this approval decision was processed successfully, but the agent requested another approval (chained approvals).
-    status: ApprovalProcessingStatus
-    result?: {
-        finalOutput?: unknown
-    }
-    error?: string
-}
-
-export enum ApprovalProcessingStatus {
-    COMPLETED = "completed",
-    AWAITING_APPROVAL = "awaiting_approval",
-    FAILED = "failed"
-}
-
 export class ApprovalService {
     private static async validateUserAccess(
         runId: string,
@@ -440,4 +413,31 @@ function resolveSlackApprovalStatus(approved: boolean, hardReject?: boolean, rej
     if (hardReject) return SlackApprovalMessageStatus.REJECTED
     if (rejectionReason) return SlackApprovalMessageStatus.CHANGES_REQUESTED
     return SlackApprovalMessageStatus.REJECTED
+}
+
+export type ApprovalRequest = {
+    runId: string
+    stepId: string
+    approved: boolean
+    userId: string
+    organizationId: string
+    rejectionReason?: string
+    /** When true, stops the run completely without resuming the agent */
+    hardReject?: boolean
+}
+
+export type ApprovalResult = {
+    // 'completed' means the run finished after applying this approval decision.
+    // 'awaiting_approval' means this approval decision was processed successfully, but the agent requested another approval (chained approvals).
+    status: ApprovalProcessingStatus
+    result?: {
+        finalOutput?: unknown
+    }
+    error?: string
+}
+
+export enum ApprovalProcessingStatus {
+    COMPLETED = "completed",
+    AWAITING_APPROVAL = "awaiting_approval",
+    FAILED = "failed"
 }
