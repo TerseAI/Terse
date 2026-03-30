@@ -253,6 +253,10 @@ app.post(ApiRoutes.WEBHOOKS.SCHEDULE_BY_INPUT_ID.pattern, async (req, res) => {
     handleScheduleWebhook(req, res)
 })
 
+app.post(ApiRoutes.GITHUB.UNIFIED_EVENT, async (req, res) => {
+    await githubAppUnifiedEvent(req, res)
+})
+
 app.use(apiTokenAuthMiddleware)
 
 // MARK: AUTH
@@ -354,10 +358,6 @@ app.get(ApiRoutes.GITHUB.INSTALLATION_URL, authMiddleware, async (req, res) => {
 
 app.get(ApiRoutes.GITHUB.GET_REPOSITORIES_FOR_INTEGRATION, authMiddleware, async (req, res) => {
     getGithubRepositoriesForIntegration(req, res)
-})
-
-app.post(ApiRoutes.GITHUB.UNIFIED_EVENT, async (req, res) => {
-    await githubAppUnifiedEvent(req, res)
 })
 
 // MARK: JIRA
