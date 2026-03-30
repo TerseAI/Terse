@@ -272,7 +272,8 @@ export const ApiRoutes = {
         AGENT_RUN: "/sdk/agent-run",
         APPROVAL_DECISION: "/sdk/approval-decision",
         SESSION_EVENTS: "/sdk/session-events",
-        DEPLOY: "/sdk/deploy"
+        DEPLOY: "/sdk/deploy",
+        DEVICE_TOKEN_EXCHANGE: "/sdk/auth/device-token-exchange"
     },
 
     NOTIFICATION_SETTINGS: "/notification-settings",

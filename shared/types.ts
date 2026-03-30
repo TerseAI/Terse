@@ -409,6 +409,15 @@ export type ApiTokenCreateResponse = {
     rawToken: string
 }
 
+export type DeviceTokenExchangeResponse = {
+    apiKey: string
+    user: {
+        email: string
+        firstName: string | null
+        displayName: string | null
+    }
+}
+
 export type AgentTrigger = {
     id: string
     config: ConfigInstance

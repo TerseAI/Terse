@@ -22,6 +22,7 @@ import { githubAppCallbackIntegrate } from "./routes/auth/githubAuth"
 import { getBuilderChatHistory } from "./routes/builderChat"
 import { getConfluenceIntegrations, getConfluenceResources } from "./routes/confluence"
 import { createOrUpdateDatadogIntegration, getDatadogIndexes, getDatadogIntegrations } from "./routes/datadog"
+import { deviceTokenExchange } from "./routes/deviceTokenExchange"
 import { figmaOAuthCallback, getFigmaIntegrations, handleFigmaWebhook } from "./routes/figma"
 import { getGithubIntegrations, getGithubRepositoriesForIntegration, getInstallationUrl, githubAppUnifiedEvent } from "./routes/github"
 import { deleteGmailIntegration, getGmailIntegrations, gmailCallback, handleGmailWebhook } from "./routes/gmail"
@@ -255,6 +256,11 @@ app.post(ApiRoutes.WEBHOOKS.SCHEDULE_BY_INPUT_ID.pattern, async (req, res) => {
 
 app.post(ApiRoutes.GITHUB.UNIFIED_EVENT, async (req, res) => {
     await githubAppUnifiedEvent(req, res)
+})
+
+// MARK: DEVICE AUTH (before apiTokenAuthMiddleware — uses WorkOS JWT, not bearer token)
+app.post(ApiRoutes.SDK.DEVICE_TOKEN_EXCHANGE, async (req, res) => {
+    deviceTokenExchange(req, res)
 })
 
 app.use(apiTokenAuthMiddleware)

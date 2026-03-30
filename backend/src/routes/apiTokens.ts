@@ -1,11 +1,11 @@
-import crypto from "crypto"
 import { Request, Response } from "express"
 
 import logger from "../logger"
 import { db } from "../prismaClient"
 import { emitCacheInvalidationWithKey } from "../services/CacheInvalidationService"
 import { apiTokensKey } from "../shared/InvalidationKeys"
-import { ApiToken, ApiTokenCreateResponse } from "../shared/types"
+import { ApiToken } from "../shared/types"
+import { createApiToken as createToken, getApiTokensForUser } from "../utility/apiTokens"
 import { FeatureFlag, FeatureFlagService } from "../utility/featureFlags"
 
 const API_TOKENS_INVALIDATION_KEY = apiTokensKey()[0]
@@ -15,14 +15,6 @@ async function isSdkInterfaceEnabled(req: Request): Promise<boolean> {
     const user = req.session?.user
     if (!user) return false
     return featureFlagService.isFeatureFlagEnabled(FeatureFlag.SDK_INTERFACE, user.email, { email: user.email })
-}
-
-function hashToken(rawToken: string): string {
-    return crypto.createHash("sha256").update(rawToken).digest("hex")
-}
-
-function generateRawToken(): string {
-    return `terse_${crypto.randomBytes(32).toString("hex")}`
 }
 
 // GET /api-tokens
@@ -41,19 +33,7 @@ export async function getApiTokens(req: Request, res: Response) {
     const organizationId = req.session.user.organizationId
 
     try {
-        const tokens = await db().api_tokens.findMany({
-            where: { user_id: userId, organization_id: organizationId },
-            orderBy: { created_at: "desc" }
-        })
-
-        const response: ApiToken[] = tokens.map(t => ({
-            id: t.id,
-            name: t.name,
-            tokenPrefix: t.token_prefix,
-            createdAt: t.created_at.toISOString(),
-            lastUsedAt: t.last_used_at?.toISOString() ?? null
-        }))
-
+        const response = await getApiTokensForUser(userId, organizationId)
         res.status(200).json(response)
     } catch (error) {
         logger.error("Error fetching API tokens", { error, userId })
@@ -88,31 +68,7 @@ export async function createApiToken(req: Request, res: Response) {
     }
 
     try {
-        const rawToken = generateRawToken()
-        const tokenHash = hashToken(rawToken)
-        const tokenPrefix = rawToken.slice(0, 14)
-
-        const token = await db().api_tokens.create({
-            data: {
-                user_id: userId,
-                organization_id: organizationId,
-                name: name.trim(),
-                token_hash: tokenHash,
-                token_prefix: tokenPrefix
-            }
-        })
-
-        const response: ApiTokenCreateResponse = {
-            token: {
-                id: token.id,
-                name: token.name,
-                tokenPrefix: token.token_prefix,
-                createdAt: token.created_at.toISOString(),
-                lastUsedAt: null
-            },
-            rawToken
-        }
-
+        const response = await createToken(userId, organizationId, name)
         invalidateApiTokens(organizationId)
         res.status(201).json(response)
     } catch (error) {
