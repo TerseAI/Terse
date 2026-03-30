@@ -1,13 +1,11 @@
-import { RunContext, tool } from "@openai/agents"
+import { RunContext } from "@openai/agents"
 import { RunHistoryActionType } from "@prisma/client"
 import { z } from "zod"
 
 import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
 import logger from "../../../logger"
 import { IntegrationType } from "../../../shared/Integrations"
-import { ToolOutputByName } from "../../../shared/types"
 import { ToolName } from "../../../tools/ToolNames"
-import { toolOutput } from "../../../tools/toolOutput"
 import { SessionToolOptions } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
 import { getSnowflakeCredentials, runSnowflakeQuery } from "../snowflakeClient"
@@ -17,7 +15,7 @@ const snowflakeExplainQueryParams = z.object({
     query: z.string().describe("The SQL query to explain.")
 })
 
-export const snowflakeExplainQueryTool: SessionToolOptions<typeof snowflakeExplainQueryParams> = {
+export const snowflakeExplainQueryTool: SessionToolOptions<typeof snowflakeExplainQueryParams, typeof ToolName.SNOWFLAKE_EXPLAIN_QUERY> = {
     name: ToolName.SNOWFLAKE_EXPLAIN_QUERY,
     description: "Get the query execution plan for a Snowflake SQL query using EXPLAIN. Use this to understand how Snowflake will execute a query before running it.",
     parameters: snowflakeExplainQueryParams,
@@ -45,13 +43,13 @@ export const snowflakeExplainQueryTool: SessionToolOptions<typeof snowflakeExpla
                 isReadOnly: true
             }
 
-            return toolOutput(ToolName.SNOWFLAKE_EXPLAIN_QUERY, {
+            return {
                 success: true,
                 explainPlan: result.rows,
                 columns: result.columns,
                 rowCount: result.rowCount,
                 actions: [action]
-            })
+            }
         } catch (error: any) {
             logger.error("Snowflake EXPLAIN query failed", { error: error.message, integrationId })
             throw new Error(`Failed to explain Snowflake query: ${error.message}`)

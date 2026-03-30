@@ -91,7 +91,7 @@ const confluenceQueryPageParams = z.object({
     pageId: z.string().describe("The Confluence page ID to query.")
 })
 
-const confluenceQueryPageTool: SessionToolOptions<typeof confluenceQueryPageParams> = {
+const confluenceQueryPageTool: SessionToolOptions<typeof confluenceQueryPageParams, typeof ToolName.CONFLUENCE_QUERY_PAGE> = {
     name: ToolName.CONFLUENCE_QUERY_PAGE,
     description: `ALWAYS CALL THIS FIRST. DO NOT MODIFY ANYTHING WITHOUT CALLING THIS FIRST.
 
@@ -141,6 +141,7 @@ This tool returns the current state of the Confluence page including all metadat
             }
 
             return {
+                success: true,
                 ...metadata,
                 body: body,
                 actions: [action],
@@ -180,7 +181,7 @@ const confluenceAddCommentParams = z.object({
         .describe("Optional: The end character position (offset) in the page storage format where the comment should be attached. Required if text_to_comment_on is not provided.")
 })
 
-const confluenceAddCommentTool: SessionToolOptions<typeof confluenceAddCommentParams> = {
+const confluenceAddCommentTool: SessionToolOptions<typeof confluenceAddCommentParams, typeof ToolName.CONFLUENCE_ADD_COMMENT> = {
     name: ToolName.CONFLUENCE_ADD_COMMENT,
     description: `Add an inline comment to a specific location in the Confluence page.
 
@@ -294,7 +295,7 @@ To find the correct position, first call confluence_query_page to see the page c
                 integration: IntegrationType.ATLASSIAN,
                 target: pageNameDisplay,
                 details: commentPreview,
-                type: "create"
+                type: "create" as const
             }
 
             return {

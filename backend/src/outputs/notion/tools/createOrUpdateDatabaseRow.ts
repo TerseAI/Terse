@@ -22,7 +22,7 @@ const parameters = z.object({
         )
 })
 
-export const notionCreateOrUpdateDatabaseRowTool: SessionToolOptions<typeof parameters> = {
+export const notionCreateOrUpdateDatabaseRowTool: SessionToolOptions<typeof parameters, typeof ToolName.NOTION_CREATE_OR_UPDATE_DATABASE_ROW> = {
     name: ToolName.NOTION_CREATE_OR_UPDATE_DATABASE_ROW,
     description: `Create or update a **row** (entry) in a Notion database. Use with databaseId and properties_json. Not for standalone pages — use notion_create_or_update_page for those.
 

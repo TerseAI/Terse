@@ -8,14 +8,14 @@ import logger from "../../../logger"
 import { IntegrationType } from "../../../shared/Integrations"
 import { LinearAdapter } from "../../../ticketing/linear"
 import { ToolName } from "../../../tools/ToolNames"
-import { SessionToolOptions, formatError } from "../../../tools/toolUtils"
+import { SessionToolOptions } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
 
 const parameters = z.object({
     integrationId: z.string().describe("The integration ID of the Linear integration to use.")
 })
 
-export const linearGetUsersTool: SessionToolOptions<typeof parameters> = {
+export const linearGetUsersTool: SessionToolOptions<typeof parameters, typeof ToolName.LINEAR_GET_USERS> = {
     name: ToolName.LINEAR_GET_USERS,
     description: `List users in the Linear workspace. Use to pick assigneeId or subscriberIds when creating or updating issues.`,
     parameters: parameters,

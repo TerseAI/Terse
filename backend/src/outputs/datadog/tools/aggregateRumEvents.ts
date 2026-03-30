@@ -48,7 +48,7 @@ const parameters = z.object({
  * averages, sums, etc. on RUM events. Use this to analyze performance trends, error rates,
  * user behavior patterns, or any aggregated metrics over RUM events.
  */
-export const aggregateRumEventsTool: SessionToolOptions<typeof parameters> = {
+export const aggregateRumEventsTool: SessionToolOptions<typeof parameters, typeof ToolName.DATADOG_AGGREGATE_RUM_EVENTS> = {
     name: ToolName.DATADOG_AGGREGATE_RUM_EVENTS,
     description: "Aggregate Datadog RUM events into metrics. Compute percentiles, averages, sums, etc. Group by facets for breakdowns. Use for performance trends and error rates.",
     parameters: parameters,

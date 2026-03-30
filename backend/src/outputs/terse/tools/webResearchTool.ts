@@ -9,16 +9,20 @@ const parameters = z.object({
     model: z.enum(["mini", "pro", "auto"]).nullable().describe("'mini' for quick focused research, 'pro' for comprehensive multi-angle research, 'auto' picks automatically")
 })
 
-export const webResearchTool: SessionToolOptions<typeof parameters> = {
+export const webResearchTool: SessionToolOptions<typeof parameters, typeof ToolName.WEB_RESEARCH> = {
     name: ToolName.WEB_RESEARCH,
     description:
         "Conduct deep, multi-source research on a topic. Autonomously searches across many sources and returns a comprehensive report with citations. Best for complex questions requiring synthesis across multiple sources. Takes longer than a regular search (up to 2 minutes).",
     parameters: parameters,
     execute: async ({ input, model }) => {
         const service = getWebSearchService()
-        return service.research({
+        const result = await service.research({
             input,
             model: model ?? "auto"
         })
+        return {
+            success: true,
+            ...result
+        }
     }
 }

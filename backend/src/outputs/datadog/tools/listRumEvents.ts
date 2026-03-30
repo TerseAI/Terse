@@ -28,7 +28,7 @@ const parameters = z.object({
  * Use this to discover what RUM events exist, especially when it's ambiguous what you should be querying on.
  * Great for exploration before crafting specific search queries.
  */
-export const listRumEventsTool: SessionToolOptions<typeof parameters> = {
+export const listRumEventsTool: SessionToolOptions<typeof parameters, typeof ToolName.DATADOG_LIST_RUM_EVENTS> = {
     name: ToolName.DATADOG_LIST_RUM_EVENTS,
     description: "List recent Datadog RUM events. Use for discovery when unsure what to query. Returns sessions, views, actions, errors, resources, long tasks.",
     parameters: parameters,

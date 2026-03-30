@@ -99,7 +99,7 @@ const parameters = z.object({
     dueDate: z.string().nullable().optional().describe('The due date for the ticket in format "yyyy-MM-dd" (e.g., "2024-12-31"). Note: Jira requires the due date format to be yyyy-MM-dd.')
 })
 
-export const jiraCreateTicketTool: SessionToolOptions<typeof parameters> = {
+export const jiraCreateTicketTool: SessionToolOptions<typeof parameters, typeof ToolName.JIRA_CREATE_TICKET> = {
     name: ToolName.JIRA_CREATE_TICKET,
     description: `Create a new Jira issue/ticket. Use this tool to create new issues in Jira with a title, description, and optional metadata.
 

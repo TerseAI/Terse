@@ -66,7 +66,7 @@ const parameters = z.object({
     databaseId: z.string().describe("The Notion database ID (data source ID) to get the schema for.")
 })
 
-export const notionGetSchemaTool: SessionToolOptions<typeof parameters> = {
+export const notionGetSchemaTool: SessionToolOptions<typeof parameters, typeof ToolName.NOTION_GET_SCHEMA> = {
     name: ToolName.NOTION_GET_SCHEMA,
     description: `Gets the schema/structure of the Notion data source. This tool retrieves all property definitions including property names, types, valid options for select/status fields, and exact format examples for how to construct each property when writing to the database.
 
@@ -111,10 +111,11 @@ The schema information returned by this tool should be used to properly format p
             target: databaseName,
             details: `Retrieved schema with ${Object.keys(schema).length} properties`,
             url: dataSourceUrl,
-            type: "read"
+            type: "read" as const
         }
 
         return {
+            success: true,
             actions: [action],
             data_source_id: databaseId,
             database_name: databaseName,

@@ -24,7 +24,7 @@ const parameters = z.object({
 /**
  * Tool for listing LaunchDarkly feature flags with their enabled/disabled states per environment.
  */
-export const listLaunchDarklyFlagsTool: SessionToolOptions<typeof parameters> = {
+export const listLaunchDarklyFlagsTool: SessionToolOptions<typeof parameters, typeof ToolName.LAUNCHDARKLY_LIST_FEATURE_FLAGS> = {
     name: ToolName.LAUNCHDARKLY_LIST_FEATURE_FLAGS,
     description: "List all feature flags with enabled/disabled states per environment. Use summary=true for quick overview, summary=false for full details.",
     parameters: parameters,
@@ -225,7 +225,7 @@ export const listLaunchDarklyFlagsTool: SessionToolOptions<typeof parameters> = 
                 target: `Project: ${projectKey}`,
                 details: `Retrieved ${formattedFlags.length} flags${filter ? ` filtered by: ${filter}` : ""}`,
                 url: flagsLink,
-                type: "read",
+                type: "read" as const,
                 isReadOnly: true
             }
 

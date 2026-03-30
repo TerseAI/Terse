@@ -5,9 +5,7 @@ import { z } from "zod"
 import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
 import logger from "../../../logger"
 import { IntegrationType } from "../../../shared/Integrations"
-import type { ToolOutputByName } from "../../../shared/types"
 import { ToolName } from "../../../tools/ToolNames"
-import { toolOutput } from "../../../tools/toolOutput"
 import { SessionToolOptions } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
 import { createGitHubClient, getGitHubAccessToken, listCommits, parseRepoFullName } from "../githubApiClient"
@@ -27,7 +25,7 @@ const listGitHubCommitsParameters = z.object({
     perPage: z.number().describe("Number of results to return (default: 30, max: 100)")
 })
 
-export const listGitHubCommitsTool: SessionToolOptions<typeof listGitHubCommitsParameters> = {
+export const listGitHubCommitsTool: SessionToolOptions<typeof listGitHubCommitsParameters, typeof ToolName.GITHUB_LIST_COMMITS> = {
     name: ToolName.GITHUB_LIST_COMMITS,
     description: `List commits in GitHub repositories within a time window. Use this to:
 - Review recent changes and development activity
@@ -146,10 +144,10 @@ The tool returns commit details including message, author, date, and SHA.`,
                 isReadOnly: true
             }
 
-            return toolOutput("listGitHubCommits", {
+            return {
                 ...response,
                 actions: [action]
-            })
+            }
         } catch (error: any) {
             const errorMessage = error instanceof Error ? error.message : String(error)
             logger.error("[GitHub KB] listGitHubCommits - Failed", {

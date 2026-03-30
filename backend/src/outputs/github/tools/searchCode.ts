@@ -5,9 +5,7 @@ import { z } from "zod"
 import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
 import logger from "../../../logger"
 import { IntegrationType } from "../../../shared/Integrations"
-import type { ToolOutputByName } from "../../../shared/types"
 import { ToolName } from "../../../tools/ToolNames"
-import { toolOutput } from "../../../tools/toolOutput"
 import { SessionToolOptions } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
 import { createGitHubClient, getGitHubAccessToken, searchCode } from "../githubApiClient"
@@ -28,7 +26,7 @@ const searchGitHubCodeParameters = z.object({
         .describe("Page number for pagination (default: 1). Use this to fetch additional results if there are more than perPage results. Use null for page 1. Must be a positive integer >= 1.")
 })
 
-export const searchGitHubCodeTool: SessionToolOptions<typeof searchGitHubCodeParameters> = {
+export const searchGitHubCodeTool: SessionToolOptions<typeof searchGitHubCodeParameters, typeof ToolName.GITHUB_SEARCH_CODE> = {
     name: ToolName.GITHUB_SEARCH_CODE,
     description: `Search GitHub repositories for code by SEMANTIC MEANING (conceptual search). Use this when you DON'T know the exact code text.
 
@@ -175,10 +173,10 @@ Tips:
                 action
             })
 
-            return toolOutput("searchGitHubCode", {
+            return {
                 ...response,
                 actions: [action]
-            })
+            }
         } catch (error: any) {
             const errorMessage = error instanceof Error ? error.message : String(error)
             logger.error("[GitHub KB] searchGitHubCode - Failed", {

@@ -5,9 +5,7 @@ import { z } from "zod"
 import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
 import logger from "../../../logger"
 import { IntegrationType } from "../../../shared/Integrations"
-import type { ToolOutputByName } from "../../../shared/types"
 import { ToolName } from "../../../tools/ToolNames"
-import { toolOutput } from "../../../tools/toolOutput"
 import { SessionToolOptions } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
 import { createGitHubClient, getBranch, getGitHubAccessToken, getRepositoryInfo, getTree, listDirectory, parseRepoFullName } from "../githubApiClient"
@@ -22,7 +20,7 @@ const listGitHubDirectoryParameters = z.object({
     recursive: z.boolean().describe("If true, list all files recursively (can be large for big repos). Use false for single-level listing.")
 })
 
-export const listGitHubDirectoryTool: SessionToolOptions<typeof listGitHubDirectoryParameters> = {
+export const listGitHubDirectoryTool: SessionToolOptions<typeof listGitHubDirectoryParameters, typeof ToolName.GITHUB_LIST_DIRECTORY> = {
     name: ToolName.GITHUB_LIST_DIRECTORY,
     description: `List files and directories in a GitHub repository. Use this to:
 - Explore the repository structure
@@ -150,10 +148,10 @@ Start with the root directory (empty path) to see the top-level structure, then 
                     isReadOnly: true
                 }
 
-                return toolOutput("listGitHubDirectory", {
+                return {
                     ...response,
                     actions: [action]
-                })
+                }
             } else {
                 // Use Contents API for non-recursive listing
                 const entries = await listDirectory(client, owner, repo, path)
@@ -215,10 +213,10 @@ Start with the root directory (empty path) to see the top-level structure, then 
                     isReadOnly: true
                 }
 
-                return toolOutput("listGitHubDirectory", {
+                return {
                     ...response,
                     actions: [action]
-                })
+                }
             }
         } catch (error: any) {
             const errorMessage = error instanceof Error ? error.message : String(error)

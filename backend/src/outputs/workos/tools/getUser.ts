@@ -15,7 +15,7 @@ const parameters = z.object({
     userId: z.string().describe("The WorkOS user ID to look up.")
 })
 
-export const getWorkOSUserTool: SessionToolOptions<typeof parameters> = {
+export const getWorkOSUserTool: SessionToolOptions<typeof parameters, typeof ToolName.WORKOS_GET_USER> = {
     name: ToolName.WORKOS_GET_USER,
     description: "Get detailed information about a specific WorkOS user by their user ID. Returns profile data including email, name, verification status, and timestamps.",
     parameters: parameters,

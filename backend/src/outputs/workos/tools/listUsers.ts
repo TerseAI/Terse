@@ -18,7 +18,7 @@ const parameters = z.object({
     after: z.union([z.string(), z.null()]).describe("Pagination cursor. Use the 'after' value from a previous response to get the next page. Pass null for the first page.")
 })
 
-export const listWorkOSUsersTool: SessionToolOptions<typeof parameters> = {
+export const listWorkOSUsersTool: SessionToolOptions<typeof parameters, typeof ToolName.WORKOS_LIST_USERS> = {
     name: ToolName.WORKOS_LIST_USERS,
     description:
         "List users from the customer's WorkOS account. Supports filtering by email and organization ID. Returns user profiles including email, name, and creation date. Use pagination (after cursor) for large user sets.",

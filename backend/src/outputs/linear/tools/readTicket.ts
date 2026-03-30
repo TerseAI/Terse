@@ -9,7 +9,7 @@ import { getLinearAccessTokenForOrganization } from "../../../integrations/Linea
 import logger from "../../../logger"
 import { IntegrationType } from "../../../shared/Integrations"
 import { ToolName } from "../../../tools/ToolNames"
-import { SessionToolOptions, formatError } from "../../../tools/toolUtils"
+import { SessionToolOptions } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
 
 const parameters = z.object({
@@ -18,7 +18,7 @@ const parameters = z.object({
     includeComments: z.boolean().nullable().optional().describe("Whether to include comments. Defaults to true.")
 })
 
-export const linearReadTicketTool: SessionToolOptions<typeof parameters> = {
+export const linearReadTicketTool: SessionToolOptions<typeof parameters, typeof ToolName.LINEAR_READ_TICKET> = {
     name: ToolName.LINEAR_READ_TICKET,
     description: `Read detailed information about a Linear issue/ticket including title, description, state, assignee, and optionally all comments.
 Use the issue ID (UUID) or the issue identifier (e.g. "TEAM-123"). Use this after searching for tickets to get full details.`,

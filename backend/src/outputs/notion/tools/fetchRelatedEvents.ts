@@ -23,7 +23,7 @@ const parameters = z.object({
  * IMPORTANT: This tool should be called BEFORE modifying a block to understand
  * the context and avoid recency bias.
  */
-export const fetchRelatedEventsTool: SessionToolOptions<typeof parameters> = {
+export const fetchRelatedEventsTool: SessionToolOptions<typeof parameters, typeof ToolName.NOTION_FETCH_RELATED_EVENTS> = {
     name: ToolName.NOTION_FETCH_RELATED_EVENTS,
     description: `Fetch source events that are related to a specific Notion block. This provides important context about what caused the block to be created or modified.
 

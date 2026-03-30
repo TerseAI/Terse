@@ -34,7 +34,7 @@ const parameters = z.object({
  * Tool for querying Datadog logs with flexible filtering options.
  * This tool queries the Datadog Logs API v2 to find logs. You can filter by query string, indexes, time range, or combinations.
  */
-export const searchDatadogLogsTool: SessionToolOptions<typeof parameters> = {
+export const searchDatadogLogsTool: SessionToolOptions<typeof parameters, typeof ToolName.DATADOG_SEARCH_LOGS> = {
     name: ToolName.DATADOG_SEARCH_LOGS,
     description: "Query Datadog logs. Filter by query string, indexes, time range. Returns logs with timestamps, status, messages, hosts, services, tags.",
     parameters: parameters,

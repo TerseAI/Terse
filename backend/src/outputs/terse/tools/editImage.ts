@@ -13,7 +13,7 @@ const parameters = z.object({
     prompt: z.string().describe("Natural language instruction describing how to edit the image.")
 })
 
-export const imageEditTool: SessionToolOptions<typeof parameters> = {
+export const imageEditTool: SessionToolOptions<typeof parameters, typeof ToolName.IMAGE_EDIT> = {
     name: ToolName.IMAGE_EDIT,
     description:
         "Edit or transform an image from a URL using a natural language prompt. Supports crops, style changes, object removal/addition, color adjustments, and other visual edits. The edited image is automatically sent to the chat UI for the user to see.",

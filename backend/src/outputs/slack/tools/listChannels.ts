@@ -1,4 +1,4 @@
-import { RunContext, tool } from "@openai/agents"
+import { RunContext } from "@openai/agents"
 import { RunHistoryActionType } from "@prisma/client"
 import { z } from "zod"
 
@@ -8,7 +8,7 @@ import logger from "../../../logger"
 import { db } from "../../../prismaClient"
 import { IntegrationType } from "../../../shared/Integrations"
 import { ToolName } from "../../../tools/ToolNames"
-import { SessionToolOptions, formatError } from "../../../tools/toolUtils"
+import { SessionToolOptions } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
 
 const SLACK_TYPES_MAP: Record<string, string> = {
@@ -45,7 +45,7 @@ const parameters = z.object({
     cursor: z.string().nullable().optional().describe("Pagination cursor from a previous response (nextCursor). Omit on first call.")
 })
 
-export const slackListChannelsTool: SessionToolOptions<typeof parameters> = {
+export const slackListChannelsTool: SessionToolOptions<typeof parameters, typeof ToolName.SLACK_LIST_CHANNELS> = {
     name: ToolName.SLACK_LIST_CHANNELS,
     description: `List available Slack channels and conversations (public, private, DMs, multi-person DMs) that the integration can access.
 Use this to discover channel IDs before reading conversation history.

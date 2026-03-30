@@ -8,7 +8,7 @@ import { getLinearAccessTokenForOrganization } from "../../../integrations/Linea
 import logger from "../../../logger"
 import { IntegrationType } from "../../../shared/Integrations"
 import { ToolName } from "../../../tools/ToolNames"
-import { SessionToolOptions, createNeedsApprovalFunction, formatError } from "../../../tools/toolUtils"
+import { SessionToolOptions } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
 
 const parameters = z.object({
@@ -17,7 +17,7 @@ const parameters = z.object({
     body: z.string().describe("The comment text to add to the issue.")
 })
 
-export const linearAddCommentTool: SessionToolOptions<typeof parameters> = {
+export const linearAddCommentTool: SessionToolOptions<typeof parameters, typeof ToolName.LINEAR_ADD_COMMENT> = {
     name: ToolName.LINEAR_ADD_COMMENT,
     description: `Add a comment to an existing Linear issue. Use linear_search_ticket to find the issue ID.`,
     parameters: parameters,

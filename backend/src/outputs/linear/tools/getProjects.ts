@@ -8,7 +8,7 @@ import logger from "../../../logger"
 import { IntegrationType } from "../../../shared/Integrations"
 import { LinearAdapter } from "../../../ticketing/linear"
 import { ToolName } from "../../../tools/ToolNames"
-import { SessionToolOptions, formatError } from "../../../tools/toolUtils"
+import { SessionToolOptions } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
 
 const parameters = z.object({
@@ -16,7 +16,7 @@ const parameters = z.object({
     teamId: z.string().nullable().optional().describe("Optional team ID to limit results to that team's projects.")
 })
 
-export const linearGetProjectsTool: SessionToolOptions<typeof parameters> = {
+export const linearGetProjectsTool: SessionToolOptions<typeof parameters, typeof ToolName.LINEAR_GET_PROJECTS> = {
     name: ToolName.LINEAR_GET_PROJECTS,
     description: `List projects for the Linear workspace or a specific team. Use to pick projectId when creating or updating issues.`,
     parameters: parameters,

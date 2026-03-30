@@ -16,7 +16,7 @@ const parameters = z.object({
     query: z.string().nullable().optional().describe("Optional search query to filter users by name. Case-insensitive partial match.")
 })
 
-export const notionListUsersTool: SessionToolOptions<typeof parameters> = {
+export const notionListUsersTool: SessionToolOptions<typeof parameters, typeof ToolName.NOTION_LIST_USERS> = {
     name: ToolName.NOTION_LIST_USERS,
     description: `List users in the Notion workspace. Use this to resolve user names to Notion user IDs
 for populating People properties (e.g., Assignee, Owner) when creating or updating database pages.

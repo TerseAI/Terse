@@ -6,9 +6,8 @@ import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
 import { AttioIntegrationManager } from "../../../integrations/AttioIntegration"
 import logger from "../../../logger"
 import { IntegrationType } from "../../../shared/Integrations"
-import type { AttioAttribute, AttioObject, ToolOutputByName } from "../../../shared/types"
+import type { AttioAttribute, AttioObject } from "../../../shared/types"
 import { ToolName } from "../../../tools/ToolNames"
-import { toolOutput } from "../../../tools/toolOutput"
 import { SessionToolOptions, formatError } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
 
@@ -16,7 +15,7 @@ const attioListObjectsParams = z.object({
     integrationId: z.string().describe("The integration ID of the Attio workspace to use.")
 })
 
-export const attioListObjectsTool: SessionToolOptions<typeof attioListObjectsParams> = {
+export const attioListObjectsTool: SessionToolOptions<typeof attioListObjectsParams, typeof ToolName.ATTIO_LIST_OBJECTS> = {
     name: ToolName.ATTIO_LIST_OBJECTS,
     description: `List all available object types in the Attio workspace, including their attributes and field definitions. Use this to discover what object types (e.g. people, companies, deals) exist and what attributes are available before creating or updating records.`,
     parameters: attioListObjectsParams,
@@ -73,7 +72,7 @@ export const attioListObjectsTool: SessionToolOptions<typeof attioListObjectsPar
                 type: RunHistoryActionType.read
             }
 
-            return toolOutput("attio_list_objects", { success: true, objects: objectsWithAttributes, count: objectsWithAttributes.length, actions: [action] })
+            return { success: true, objects: objectsWithAttributes, count: objectsWithAttributes.length, actions: [action] }
         } catch (error: unknown) {
             const errorMessage = await formatError(runContext, error)
             logger.error("Error listing Attio objects", { error: errorMessage, integrationId })

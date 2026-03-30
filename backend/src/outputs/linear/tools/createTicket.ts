@@ -9,7 +9,7 @@ import { getLinearAccessTokenForOrganization } from "../../../integrations/Linea
 import logger from "../../../logger"
 import { IntegrationType } from "../../../shared/Integrations"
 import { ToolName } from "../../../tools/ToolNames"
-import { SessionToolOptions, createNeedsApprovalFunction, formatError } from "../../../tools/toolUtils"
+import { SessionToolOptions } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
 
 const createTicketInputSchema = z.object({
@@ -28,7 +28,7 @@ const parameters = z.object({
     ticket: createTicketInputSchema
 })
 
-export const linearCreateTicketTool: SessionToolOptions<typeof parameters> = {
+export const linearCreateTicketTool: SessionToolOptions<typeof parameters, typeof ToolName.LINEAR_CREATE_TICKET> = {
     name: ToolName.LINEAR_CREATE_TICKET,
     description: `Create a new Linear issue/ticket.`,
     parameters: parameters,

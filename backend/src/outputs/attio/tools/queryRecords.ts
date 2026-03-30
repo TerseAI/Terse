@@ -6,9 +6,8 @@ import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
 import { AttioIntegrationManager } from "../../../integrations/AttioIntegration"
 import logger from "../../../logger"
 import { IntegrationType } from "../../../shared/Integrations"
-import type { AttioRecord, ToolOutputByName } from "../../../shared/types"
+import type { AttioRecord } from "../../../shared/types"
 import { ToolName } from "../../../tools/ToolNames"
-import { toolOutput } from "../../../tools/toolOutput"
 import { SessionToolOptions, formatError } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
 
@@ -22,7 +21,7 @@ const attioQueryRecordsParams = z.object({
     limit: z.number().nullable().describe("Maximum number of records to return. Pass null to use the default of 20.")
 })
 
-export const attioQueryRecordsTool: SessionToolOptions<typeof attioQueryRecordsParams> = {
+export const attioQueryRecordsTool: SessionToolOptions<typeof attioQueryRecordsParams, typeof ToolName.ATTIO_QUERY_RECORDS> = {
     name: ToolName.ATTIO_QUERY_RECORDS,
     description: `Query records from an Attio object. Use this to search for existing records before creating or updating them. Supports optional filtering.
 
@@ -87,7 +86,7 @@ Filter syntax uses shorthand or verbose form:
                 type: RunHistoryActionType.read
             }
 
-            return toolOutput("attio_query_records", { success: true, records, count: records.length, actions: [action] })
+            return { success: true, records, count: records.length, actions: [action] }
         } catch (error: unknown) {
             const errorMessage = await formatError(runContext, error)
             logger.error("Error querying Attio records", { error: errorMessage, integrationId })

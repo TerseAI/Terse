@@ -9,7 +9,7 @@ import { getLinearAccessTokenForOrganization } from "../../../integrations/Linea
 import logger from "../../../logger"
 import { IntegrationType } from "../../../shared/Integrations"
 import { ToolName } from "../../../tools/ToolNames"
-import { SessionToolOptions, createNeedsApprovalFunction, formatError } from "../../../tools/toolUtils"
+import { SessionToolOptions } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
 
 const updateTicketInputSchema = z.object({
@@ -28,7 +28,7 @@ const parameters = z.object({
     updates: updateTicketInputSchema
 })
 
-export const linearUpdateTicketTool: SessionToolOptions<typeof parameters> = {
+export const linearUpdateTicketTool: SessionToolOptions<typeof parameters, typeof ToolName.LINEAR_UPDATE_TICKET> = {
     name: ToolName.LINEAR_UPDATE_TICKET,
     description: `Update an existing Linear issue/ticket. Use linear_search_ticket to find the issue ID, and linear_get_states, linear_get_users, linear_get_projects, linear_get_teams to find valid IDs for each field.`,
     parameters: parameters,

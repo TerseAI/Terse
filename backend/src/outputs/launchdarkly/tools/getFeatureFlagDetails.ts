@@ -25,7 +25,7 @@ const parameters = z.object({
  * Tool for getting detailed information about a specific LaunchDarkly feature flag.
  * Optionally includes change history over a time window.
  */
-export const getLaunchDarklyFlagDetailsTool: SessionToolOptions<typeof parameters> = {
+export const getLaunchDarklyFlagDetailsTool: SessionToolOptions<typeof parameters, typeof ToolName.LAUNCHDARKLY_GET_FEATURE_FLAG_DETAILS> = {
     name: ToolName.LAUNCHDARKLY_GET_FEATURE_FLAG_DETAILS,
     description:
         "Get detailed information about a specific feature flag including targeting rules, rollout strategies, variations, and per-environment configuration. Optionally includes change history when includeHistory=true.",
@@ -328,7 +328,7 @@ export const getLaunchDarklyFlagDetailsTool: SessionToolOptions<typeof parameter
                 target: flagKey,
                 details: actionDetails,
                 url: flagUrl_ui,
-                type: "read",
+                type: "read" as const,
                 isReadOnly: true
             }
 

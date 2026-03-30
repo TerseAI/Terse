@@ -8,14 +8,14 @@ import logger from "../../../logger"
 import { IntegrationType } from "../../../shared/Integrations"
 import { LinearAdapter } from "../../../ticketing/linear"
 import { ToolName } from "../../../tools/ToolNames"
-import { SessionToolOptions, formatError } from "../../../tools/toolUtils"
+import { SessionToolOptions } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
 
 const parameters = z.object({
     integrationId: z.string().describe("The integration ID of the Linear integration to use.")
 })
 
-export const linearGetTeamsTool: SessionToolOptions<typeof parameters> = {
+export const linearGetTeamsTool: SessionToolOptions<typeof parameters, typeof ToolName.LINEAR_GET_TEAMS> = {
     name: ToolName.LINEAR_GET_TEAMS,
     description: `List teams in the Linear workspace. Use to pick teamId when creating tickets or when calling linear_get_states, linear_get_labels, or linear_get_projects for a specific team.`,
     parameters: parameters,

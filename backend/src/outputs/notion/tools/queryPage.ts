@@ -235,7 +235,7 @@ const parameters = z.object({
     pageId: z.string().describe("The Notion page ID to query.")
 })
 
-export const notionQueryPageTool: SessionToolOptions<typeof parameters> = {
+export const notionQueryPageTool: SessionToolOptions<typeof parameters, typeof ToolName.NOTION_QUERY_PAGE> = {
     name: ToolName.NOTION_QUERY_PAGE,
     description: `Call this tool ONCE at the beginning of your run to get the page state. After calling it once, remember and reuse the results - DO NOT call it multiple times in the same run.
 
@@ -292,7 +292,7 @@ This tool returns the current state of the page including all properties, metada
             target: pageName,
             details: `Retrieved page with ${blocks.length} ${blocks.length === 1 ? "block" : "blocks"}`,
             url: isFullPage(pageInfo) && "url" in pageInfo ? pageInfo.url : undefined,
-            type: "read"
+            type: "read" as const
         }
 
         // Extract comprehensive metadata
@@ -331,6 +331,7 @@ This tool returns the current state of the page including all properties, metada
         }
 
         return {
+            success: true,
             ...metadata,
             properties: properties,
             actions: [action],

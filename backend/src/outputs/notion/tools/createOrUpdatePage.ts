@@ -27,7 +27,7 @@ const parameters = z.object({
     title: z.string().describe("The page title (used for both create and update).")
 })
 
-export const notionCreateOrUpdatePageTool: SessionToolOptions<typeof parameters> = {
+export const notionCreateOrUpdatePageTool: SessionToolOptions<typeof parameters, typeof ToolName.NOTION_CREATE_OR_UPDATE_PAGE> = {
     name: ToolName.NOTION_CREATE_OR_UPDATE_PAGE,
     description: `Create or update a **standalone page**. Not for database entries — use notion_create_or_update_database_row for those.
 

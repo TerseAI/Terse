@@ -1,10 +1,26 @@
-import { RunContext, ToolInputParameters, ToolOptions } from "@openai/agents"
+import { FunctionCallItem, RunConfig, RunContext, ToolExecuteArgument, ToolInputParameters, ToolOptions, UnknownContext } from "@openai/agents"
 
 import { SessionWithTracking } from "../agent/AgentRunner/AgentRunner"
 import logger from "../logger"
+import type { ToolOutputByName } from "../shared/types"
 import { Session } from "../types/session"
 
-export type SessionToolOptions<T extends ToolInputParameters> = ToolOptions<T, SessionWithTracking<Session>>
+export type ToolCallDetails = {
+    toolCall?: FunctionCallItem
+    resumeState?: string
+    signal?: AbortSignal
+    parentRunConfig?: Partial<RunConfig>
+}
+type ToolExecuteFunction<TParameters extends ToolInputParameters, Context = UnknownContext, TOutput = unknown> = (
+    input: ToolExecuteArgument<TParameters>,
+    context?: RunContext<Context>,
+    details?: ToolCallDetails
+) => Promise<TOutput> | TOutput
+
+export type SessionToolOptions<T extends ToolInputParameters, TName extends keyof ToolOutputByName> = Omit<ToolOptions<T, SessionWithTracking<Session>>, "execute" | "name"> & {
+    name: TName
+    execute: ToolExecuteFunction<T, SessionWithTracking<Session>, ToolOutputByName[TName]>
+}
 
 // MARK: - Error Handling
 

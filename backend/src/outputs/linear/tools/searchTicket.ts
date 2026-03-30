@@ -10,7 +10,7 @@ import logger from "../../../logger"
 import { IntegrationType } from "../../../shared/Integrations"
 import { LinearStateName } from "../../../shared/TicketSystem"
 import { ToolName } from "../../../tools/ToolNames"
-import { SessionToolOptions, formatError } from "../../../tools/toolUtils"
+import { SessionToolOptions } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
 
 const linearStateNameValues = Object.values(LinearStateName)
@@ -51,7 +51,7 @@ const parameters = z.object({
     after: z.string().nullable().optional().describe("Cursor for pagination. Use the endCursor from the previous response to fetch the next page of results.")
 })
 
-export const linearSearchTicketTool: SessionToolOptions<typeof parameters> = {
+export const linearSearchTicketTool: SessionToolOptions<typeof parameters, typeof ToolName.LINEAR_SEARCH_TICKET> = {
     name: ToolName.LINEAR_SEARCH_TICKET,
     description: `Searches Linear issues by keyword, state filter, and/or date range filters. Use this before reading individual tickets. Results are ordered by most recently updated first. Use 'after' cursor to paginate.`,
     parameters: parameters,

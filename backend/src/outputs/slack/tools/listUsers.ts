@@ -7,8 +7,7 @@ import { fetchSlackUsersForIntegration } from "../../../integrations/SlackIntegr
 import logger from "../../../logger"
 import { IntegrationType } from "../../../shared/Integrations"
 import { ToolName } from "../../../tools/ToolNames"
-import { toolOutput } from "../../../tools/toolOutput"
-import { SessionToolOptions, formatError } from "../../../tools/toolUtils"
+import { SessionToolOptions } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
 
 const slackListUsersParameters = z.object({
@@ -16,7 +15,7 @@ const slackListUsersParameters = z.object({
     query: z.string().nullable().optional().describe("Optional search query to filter users by name. Case-insensitive partial match.")
 })
 
-export const slackListUsersTool: SessionToolOptions<typeof slackListUsersParameters> = {
+export const slackListUsersTool: SessionToolOptions<typeof slackListUsersParameters, typeof ToolName.SLACK_LIST_USERS> = {
     name: ToolName.SLACK_LIST_USERS,
     description: `List Slack workspace users (id and name). Use this to resolve user IDs to names when needed.
 Returns non-bot members. Optionally filter by name with the query parameter.`,
@@ -51,12 +50,12 @@ Returns non-bot members. Optionally filter by name with the query parameter.`,
                 type: RunHistoryActionType.read
             }
 
-            return toolOutput("slack_list_users", {
+            return {
                 success: true,
                 users: users.map(u => ({ id: u.id, name: u.name })),
                 count: users.length,
                 actions: [action]
-            })
+            }
         } catch (error: unknown) {
             const errorMessage = error instanceof Error ? error.message : String(error)
             logger.error("❌ Error listing Slack users", { error: errorMessage, integrationId })

@@ -34,7 +34,7 @@ const parameters = z.object({
  * Tool for querying PostHog session recordings for a specific user.
  * This tool first finds the person by email, then retrieves their session recordings.
  */
-export const searchSessionsTool: SessionToolOptions<typeof parameters> = {
+export const searchSessionsTool: SessionToolOptions<typeof parameters, typeof ToolName.POSTHOG_SEARCH_SESSIONS> = {
     name: ToolName.POSTHOG_SEARCH_SESSIONS,
     description:
         "Query PostHog session recordings for a specific user by their email address. Returns session recordings data and links to view sessions in PostHog. Use this when you need to replay user sessions, investigate user behavior, or understand how users interact with the application. Returns the most recent session recordings first.",

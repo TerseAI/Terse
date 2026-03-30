@@ -188,7 +188,7 @@ EXAMPLES:
     result_type: z.enum(["page", "data_source"]).nullable().optional().describe("Filter results to only pages or data sources. Only relevant for wiki databases.")
 })
 
-export const notionQueryDatabaseTool: SessionToolOptions<typeof parameters> = {
+export const notionQueryDatabaseTool: SessionToolOptions<typeof parameters, typeof ToolName.NOTION_QUERY_DATABASE> = {
     name: ToolName.NOTION_QUERY_DATABASE,
     description: `Query a Notion data source (database) to retrieve pages that match specific criteria.
 
@@ -260,6 +260,7 @@ NOTE: This tool does NOT return the database schema. Use notion_get_schema if yo
                 parsedFilter = JSON.parse(filter)
             } catch (error) {
                 return {
+                    success: false,
                     pages: [],
                     total_returned: 0,
                     has_more: false,
@@ -323,7 +324,7 @@ NOTE: This tool does NOT return the database schema. Use notion_get_schema if yo
             target: databaseName,
             details: `Queried database ${filterDescription} and retrieved ${pages.length} ${pages.length === 1 ? "page" : "pages"}`,
             url: databaseUrl as string | undefined,
-            type: "read"
+            type: "read" as const
         }
 
         logger.debug("Notion query database tool response", {
@@ -333,6 +334,7 @@ NOTE: This tool does NOT return the database schema. Use notion_get_schema if yo
         })
 
         return {
+            success: true,
             pages: pages,
             total_returned: pages.length,
             actions: [action],

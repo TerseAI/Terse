@@ -57,7 +57,7 @@ const parameters = z.object({
  * Tool for querying PostHog analytics events.
  * This tool queries the PostHog Events API to find custom analytics events like pageviews, button clicks, and other tracked actions.
  */
-export const searchEventsTool: SessionToolOptions<typeof parameters> = {
+export const searchEventsTool: SessionToolOptions<typeof parameters, typeof ToolName.POSTHOG_SEARCH_EVENTS> = {
     name: ToolName.POSTHOG_SEARCH_EVENTS,
     description:
         "Query PostHog analytics events. Use countByEventNameOnly: true (default) to get counts per event name. Use customEventsOnly: true (default) to exclude PostHog built-in events (names starting with $) and return only the project's custom-tracked events. Works for any PostHog project.",

@@ -747,7 +747,29 @@ export type ToolOutputBase = {
 }
 
 export type ToolOutputByName = {
-    [toolName: string]: unknown
+    linear_create_ticket: ToolOutputBase
+    linear_update_ticket: ToolOutputBase
+    linear_add_comment: ToolOutputBase
+    linear_search_ticket: ToolOutputBase
+    linear_read_ticket: ToolOutputBase
+    linear_get_states: ToolOutputBase
+    linear_get_labels: ToolOutputBase
+    linear_get_projects: ToolOutputBase
+    linear_get_teams: ToolOutputBase
+    linear_get_users: ToolOutputBase
+    jira_create_ticket: ToolOutputBase
+    jira_update_ticket: ToolOutputBase
+    jira_search_ticket: ToolOutputBase
+    notion_create_or_update_page: ToolOutputBase
+    notion_create_or_update_database_row: ToolOutputBase
+    notion_modify_blocks: ToolOutputBase
+    notion_query_page: ToolOutputBase
+    notion_query_database: ToolOutputBase
+    notion_get_schema: ToolOutputBase
+    notion_fetch_related_events: ToolOutputBase
+    notion_list_users: ToolOutputBase
+    gmail_send_email: ToolOutputBase
+    gmail_create_draft: ToolOutputBase
     attio_list_objects: ToolOutputBase & {
         objects: AttioObjectWithAttributes[]
         count: number
@@ -793,6 +815,8 @@ export type ToolOutputByName = {
         hasMore: boolean
         nextCursor: string | null
     }
+    confluence_query_page: ToolOutputBase
+    confluence_add_comment: ToolOutputBase
     searchGitHubCode: ToolOutputBase & {
         totalCount: number
         resultsReturned: number
@@ -891,6 +915,18 @@ export type ToolOutputByName = {
         analysis: string
         message: string
     }
+    searchPosthogSessions: ToolOutputBase
+    searchPosthogLogs: ToolOutputBase
+    getPosthogSessionEvents: ToolOutputBase
+    searchPosthogEvents: ToolOutputBase
+    listLaunchDarklyFlags: ToolOutputBase
+    getLaunchDarklyFlagDetails: ToolOutputBase
+    searchDatadogLogs: ToolOutputBase
+    searchRumEvents: ToolOutputBase
+    listRumEvents: ToolOutputBase
+    aggregateRumEvents: ToolOutputBase
+    listWorkOSUsers: ToolOutputBase
+    getWorkOSUser: ToolOutputBase
     snowflakeExecuteQuery: ToolOutputBase & {
         rows: Record<string, unknown>[]
         columns: string[]
@@ -901,4 +937,8 @@ export type ToolOutputByName = {
         columns: string[]
         rowCount: number
     }
+    web_search: ToolOutputBase
+    web_extract: ToolOutputBase
+    web_research: ToolOutputBase
+    image_edit: ToolOutputBase
 }

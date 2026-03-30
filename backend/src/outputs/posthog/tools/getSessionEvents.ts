@@ -25,7 +25,7 @@ const parameters = z.object({
  * Returns summarized meaningful events (clicks, inputs, console logs, etc.)
  * that can be analyzed by the AI directly.
  */
-export const getSessionEventsTool: SessionToolOptions<typeof parameters> = {
+export const getSessionEventsTool: SessionToolOptions<typeof parameters, typeof ToolName.POSTHOG_GET_SESSION_EVENTS> = {
     name: ToolName.POSTHOG_GET_SESSION_EVENTS,
     description:
         "Fetch and decode session replay events from PostHog. Returns summarized meaningful events (clicks, inputs, scroll, console logs, network errors, navigation) within a specified time window. Use this to investigate what a user did during a session - what they clicked, what they typed, any errors that occurred, etc. The events are decoded and summarized for easy analysis.",

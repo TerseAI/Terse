@@ -132,7 +132,7 @@ const parameters = z.object({
         .describe('The due date for the ticket in format "yyyy-MM-dd" (e.g., "2024-12-31"). Note: Jira requires the due date format to be yyyy-MM-dd. Set to null to remove due date.')
 })
 
-export const jiraUpdateTicketTool: SessionToolOptions<typeof parameters> = {
+export const jiraUpdateTicketTool: SessionToolOptions<typeof parameters, typeof ToolName.JIRA_UPDATE_TICKET> = {
     name: ToolName.JIRA_UPDATE_TICKET,
     description: `Update an existing Jira issue/ticket. Use this tool to modify issue properties such as title, description, status, assignee, priority, labels, and due date.
 

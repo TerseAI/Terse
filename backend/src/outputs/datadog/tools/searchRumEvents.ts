@@ -27,7 +27,7 @@ const parameters = z.object({
  * This tool queries the Datadog RUM API v2 to find RUM events (sessions, views, actions, errors, resources, long tasks).
  * Use this to investigate frontend issues, user behavior, performance problems, or errors in the browser/mobile app.
  */
-export const searchRumEventsTool: SessionToolOptions<typeof parameters> = {
+export const searchRumEventsTool: SessionToolOptions<typeof parameters, typeof ToolName.DATADOG_SEARCH_RUM_EVENTS> = {
     name: ToolName.DATADOG_SEARCH_RUM_EVENTS,
     description: "Query Datadog RUM events. Filter by query string, time range. Returns sessions, views, actions, errors, resources, long tasks.",
     parameters: parameters,

@@ -25,7 +25,7 @@ const parameters = z.object({
         .describe("Token from a previous search response to retrieve the next page of results. Use the nextPageToken value from the previous response to paginate through all results.")
 })
 
-export const jiraSearchTicketTool: SessionToolOptions<typeof parameters> = {
+export const jiraSearchTicketTool: SessionToolOptions<typeof parameters, typeof ToolName.JIRA_SEARCH_TICKET> = {
     name: ToolName.JIRA_SEARCH_TICKET,
     description: `Search for Jira issues/tickets using JQL (Jira Query Language) or text search. Returns issues that match the search criteria.
 

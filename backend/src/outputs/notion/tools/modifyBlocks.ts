@@ -33,7 +33,7 @@ Each operation: operation ("append"|"update"|"delete"); for append: blocks (arra
 Append with after_block_id inserts after that block; omit for end of page/parent.`)
 })
 
-export const notionModifyBlocksTool: SessionToolOptions<typeof parameters> = {
+export const notionModifyBlocksTool: SessionToolOptions<typeof parameters, typeof ToolName.NOTION_MODIFY_BLOCKS> = {
     name: ToolName.NOTION_MODIFY_BLOCKS,
     description: `Add, update, or delete blocks in page content. Use this to modify page content (paragraphs, headings, lists, etc.).
 

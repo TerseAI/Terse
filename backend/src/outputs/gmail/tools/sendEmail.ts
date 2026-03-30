@@ -50,7 +50,7 @@ const parameters = z.object({
  * Tool for sending emails or replying to email threads via Gmail.
  * Supports both sending new emails and replying to existing threads.
  */
-export const gmailSendEmailTool: SessionToolOptions<typeof parameters> = {
+export const gmailSendEmailTool: SessionToolOptions<typeof parameters, typeof ToolName.GMAIL_SEND_EMAIL> = {
     name: ToolName.GMAIL_SEND_EMAIL,
     description: `Send email or reply to an existing email thread via Gmail. Use thread_id (the Gmail Thread ID, not the Message-ID) to reply to an existing thread, or omit it to send a new email. IMPORTANT: Never put image URLs directly in html_body — remote URLs expire and will result in broken images. Always use image_urls to embed images as base64-encoded inline MIME parts (CID attachments), then reference them in html_body with <img src="cid:image-1.png">. image_urls must be signed URLs from our internal GCS image bucket.`,
     parameters: parameters,
