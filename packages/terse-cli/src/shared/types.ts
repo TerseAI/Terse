@@ -746,8 +746,794 @@ export type ToolOutputBase = {
     actions?: RunHistoryAction[]
 }
 
+export type ToolOutputSuccessBase = Omit<ToolOutputBase, "success"> & {
+    success: true
+}
+
+export type ToolOutputFailureBase = Omit<ToolOutputBase, "success"> & {
+    success: false
+}
+
+export type AttioUpsertError = {
+    index: number
+    message: string
+}
+
+export type SlackChannelListItem = {
+    id?: string
+    name: string
+    isPrivate: boolean
+    isIm: boolean
+    isMpim: boolean
+}
+
+export type SlackConversationMessage = {
+    userId?: string
+    userName?: string
+    text: string
+    timestamp?: string
+    threadTs?: string
+}
+
+export type GitHubPagination = {
+    page: number
+    perPage: number
+    hasMore: boolean
+}
+
+export type GitHubCodeSearchResult = {
+    index: number
+    repository: string
+    path: string
+    url: string
+    snippets: string
+}
+
+export type GitHubCodeGrepResult = {
+    index: number
+    repository: string
+    file: string
+    url: string
+    matches: string
+}
+
+export type GitHubPullRequestSummary = {
+    number: number
+    title: string
+    description: string
+    author: string
+    state: string
+    merged: boolean
+    mergedAt?: string
+    createdAt: string
+    closedAt?: string
+    labels: string[]
+    baseBranch: string
+    headBranch: string
+    url: string
+}
+
+export type GitHubDirectoryEntry = {
+    name?: string
+    path?: string
+    type?: "directory"
+}
+
+export type GitHubFileEntry = {
+    name?: string
+    path: string
+    type?: "file"
+    size?: number
+}
+
+export type GitHubOtherEntry = {
+    name: string
+    type: string
+}
+
+export type GitHubCommitSummary = {
+    sha: string
+    fullSha: string
+    message: string
+    fullMessage: string
+    author: string
+    date: string
+    url: string
+}
+
+export type GitHubPullRequestRef = {
+    number: number
+    title: string
+    state: string
+    merged: boolean
+    baseBranch: string
+    headBranch: string
+    url: string
+}
+
+export type SnowflakeQueryRow = Record<string, unknown>
+
+export type LinearIssueAssignee = {
+    id: string
+    name: string
+    email?: string
+}
+
+export type LinearIssueTeam = {
+    id: string
+    name: string
+    key: string
+}
+
+export type LinearIssueProject = {
+    id: string
+    name: string
+}
+
+export type LinearIssueSummary = {
+    id: string
+    identifier: string
+    title: string
+    description?: string | null
+    state: string
+    priority?: number | null
+    assignee: LinearIssueAssignee | null
+    url: string
+    createdAt: string | Date
+    updatedAt: string | Date
+}
+
+export type LinearIssueDetail = LinearIssueSummary & {
+    team: LinearIssueTeam | null
+    project: LinearIssueProject | null
+    dueDate?: string | Date
+    estimate?: number | null
+}
+
+export type LinearIssueHandle = {
+    id: string
+    identifier: string
+    title: string
+    description?: string | null
+    url: string
+    createdAt?: string | Date
+    updatedAt?: string | Date
+}
+
+export type LinearCommentHandle = {
+    id: string
+    body?: string
+    createdAt?: string | Date
+    updatedAt?: string | Date
+}
+
+export type LinearStateSummary = {
+    id: string
+    name: string
+    type: string
+    color: string
+    teamId: string
+}
+
+export type LinearLabelSummary = {
+    id: string
+    name: string
+    color: string
+    teamId: string
+}
+
+export type LinearProjectSummary = {
+    id: string
+    name: string
+    description?: string
+    teamId: string
+}
+
+export type LinearUserSummary = {
+    id: string
+    name: string
+    email: string
+    avatarUrl?: string
+}
+
+export type LinearSearchPagination = {
+    hasNextPage: boolean
+    endCursor: string | null
+    limit: number | null
+}
+
+export type JiraIssueState = {
+    id: string
+    name: string
+}
+
+export type JiraIssueAssignee = {
+    id: string
+    name: string
+    email?: string
+}
+
+export type JiraIssueProjectRef = {
+    id: string
+    name: string
+    key: string
+}
+
+export type JiraIssueTypeRef = {
+    id: string
+    name: string
+}
+
+export type JiraRichDescription = string | Record<string, unknown>
+
+export type JiraIssueSummary = {
+    id?: string
+    key: string
+    identifier: string
+    title?: string
+    description?: JiraRichDescription
+    state?: JiraIssueState
+    priority?: number
+    assignee?: JiraIssueAssignee | null
+    labels?: string[]
+    dueDate?: string
+    project?: JiraIssueProjectRef
+    issueType?: JiraIssueTypeRef
+    url?: string
+    createdAt?: string
+    updatedAt?: string
+}
+
+export type GmailSendSummary = {
+    message_id: string
+    thread_id: string
+    to: string
+    subject: string
+    summary: string
+    is_reply: boolean
+}
+
+export type GmailDraftSummary = {
+    draft_id: string
+    message_id: string
+    thread_id: string
+    draft_url: string
+    to: string
+    subject: string
+    summary: string
+    is_reply: boolean
+}
+
+export type NotionUserReference = {
+    id: string
+    name?: string
+    object?: string
+}
+
+export type NotionFileReference = {
+    name: string
+    type: string
+    file?: string
+    external?: string
+}
+
+export type NotionDateReference = {
+    start?: string
+    end?: string | null
+    time_zone?: string | null
+}
+
+export type NotionReadablePropertyValue =
+    | string
+    | number
+    | boolean
+    | null
+    | string[]
+    | NotionDateReference
+    | NotionUserReference
+    | NotionUserReference[]
+    | NotionFileReference[]
+    | Record<string, unknown>
+
+export type NotionPageBlock = {
+    id: string
+    type: string
+    object: string
+    created_time?: string
+    last_edited_time?: string
+    created_by?: NotionUserReference
+    last_edited_by?: NotionUserReference
+    has_children?: boolean
+    archived?: boolean
+    content?: string
+    rich_text?: Record<string, unknown>[]
+    checked?: boolean
+    language?: string
+    icon?: Record<string, unknown>
+    table_width?: number
+    has_column_header?: boolean
+    has_row_header?: boolean
+    caption?: string
+    file?: string
+    external?: string
+    url?: string
+    page_id?: string
+    database_id?: string
+    children?: NotionPageBlock[]
+}
+
+export type NotionPageParent = Record<string, unknown>
+
+export type NotionPageQueryMetadata = {
+    page_id: string
+    object: string
+    url?: string
+    public_url?: string | null
+    created_time?: string
+    last_edited_time?: string
+    archived?: boolean
+    icon?: Record<string, unknown> | null
+    cover?: Record<string, unknown> | null
+    parent?: NotionPageParent
+    created_by?: NotionUserReference
+    last_edited_by?: NotionUserReference
+    in_trash?: boolean
+}
+
+export type NotionDatabaseRowMutationResult = ToolOutputSuccessBase & {
+    action: "created" | "updated"
+    page_id: string
+    url?: string
+}
+
+export type NotionSchemaProperty = {
+    type: string
+    id: string
+    options?: string[]
+    format_example?: string
+}
+
+export type NotionDatabaseQueryPage = {
+    page_id: string
+    properties: Record<string, NotionReadablePropertyValue>
+    url?: string
+    created_time?: string
+    last_edited_time?: string
+}
+
+export type NotionQueryDatabaseFailure = ToolOutputFailureBase & {
+    pages: []
+    total_returned: 0
+    has_more: false
+    next_cursor: null
+    error: string
+    hint: string
+}
+
+export type NotionQueryDatabaseSuccess = ToolOutputSuccessBase & {
+    pages: NotionDatabaseQueryPage[]
+    total_returned: number
+    has_more: boolean
+    next_cursor: string | null
+}
+
+export type NotionModifyBlocksAppendResult = {
+    operation: "append"
+    actions: RunHistoryAction[]
+    block_ids: string[]
+    blocks_count: number
+}
+
+export type NotionModifyBlocksUpdateResult = {
+    operation: "update"
+    actions: RunHistoryAction[]
+    block_id: string
+}
+
+export type NotionModifyBlocksDeleteResult = {
+    operation: "delete"
+    actions: RunHistoryAction[]
+    block_id: string
+}
+
+export type NotionModifyBlocksOperationResult = NotionModifyBlocksAppendResult | NotionModifyBlocksUpdateResult | NotionModifyBlocksDeleteResult
+
+export type NotionModifyBlocksSuccess =
+    | (ToolOutputSuccessBase & {
+          operation: "append"
+          block_ids: string[]
+          blocks_count: number
+      })
+    | (ToolOutputSuccessBase & {
+          operation: "update" | "delete"
+          block_id: string
+      })
+    | (ToolOutputSuccessBase & {
+          operations: NotionModifyBlocksOperationResult[]
+          block_ids: string[]
+          total_operations: number
+      })
+
+export type NotionModifyBlocksFailure = ToolOutputFailureBase & {
+    error: string
+    block_ids: string[]
+    operations?: NotionModifyBlocksOperationResult[]
+    failed_at_index?: number
+    total_operations?: number
+    hint?: string
+    retry_instructions?: string
+}
+
+export type NotionWorkspaceUser = {
+    id: string
+    name: string
+    email?: string
+}
+
+export type ConfluencePageSpace = {
+    id: string | number
+    key: string
+    name: string
+    type: string
+}
+
+export type ConfluencePageVersionAuthor = {
+    type: string
+    username?: string
+    userKey?: string
+    accountId?: string
+    displayName?: string
+}
+
+export type ConfluencePageVersion = {
+    number: number
+    when: string
+    message?: string
+    by?: ConfluencePageVersionAuthor
+}
+
+export type ConfluenceBodyRepresentation = {
+    value: string
+    representation: string
+}
+
+export type ConfluenceBodyContent = {
+    storage?: ConfluenceBodyRepresentation
+    view?: ConfluenceBodyRepresentation
+    export_view?: ConfluenceBodyRepresentation
+}
+
+export type ConfluencePageRelation = {
+    id: string
+    title: string
+    type: string
+}
+
+export type ConfluencePageQueryResult = {
+    page_id: string
+    title: string
+    type: string
+    status: string
+    space?: ConfluencePageSpace
+    version?: ConfluencePageVersion
+    created_date?: string
+    last_modified?: string
+    url?: string
+    body: ConfluenceBodyContent
+    body_text: string
+    ancestors: ConfluencePageRelation[]
+    descendants: ConfluencePageRelation[]
+    ancestors_count: number
+    descendants_count: number
+}
+
+export type ConfluenceCommentPosition = {
+    start: number
+    end: number
+}
+
+export type PosthogSessionSummary = {
+    id: string
+    startTime?: string
+    endTime?: string
+    duration?: number
+    eventsCount: number
+    sessionUrl: string
+    personId: string
+    distinctId: string
+}
+
+export type PosthogSearchSessionsPagination = {
+    limit: number
+    offset: number
+    hasNext: boolean
+    hasPrevious: boolean
+    nextOffset: number | null
+    previousOffset: number | null
+}
+
+export type PosthogSearchSessionsFound = ToolOutputBase & {
+    userEmail: string
+    projectId: string
+    personFound: true
+    personId: string
+    distinctId: string
+    totalSessions: number
+    sessions: PosthogSessionSummary[]
+    sessionsLink: string
+    pagination: PosthogSearchSessionsPagination
+    message: string
+}
+
+export type PosthogSearchSessionsNotFound = ToolOutputBase & {
+    userEmail: string
+    projectId: string
+    personFound: false
+    sessions: []
+    totalSessions: 0
+    message: string
+}
+
+export type PosthogLogEntry = {
+    id: string
+    timestamp?: string
+    level: string
+    message: string
+    service: string
+    attributes: Record<string, unknown>
+}
+
+export type PosthogOffsetPagination = {
+    limit: number
+    offset: number
+    hasMore: boolean
+    nextOffset: number | null
+    showing: string
+}
+
+export type PosthogEventCount = {
+    eventName: string
+    count: number
+}
+
+export type PosthogEventSummary = {
+    id: string
+    event: string
+    timestamp?: string
+    distinctId?: string
+    url?: string
+}
+
+export type PosthogSessionEvent = {
+    type: "click" | "input" | "scroll" | "console" | "network_error" | "navigation" | "custom" | "page_load" | "viewport_resize"
+    timestamp: number
+    relativeTime: number
+    data: Record<string, unknown>
+}
+
+export type PosthogSessionConsoleLog = {
+    timestamp: string
+    level: string
+    message: string
+}
+
+export type PosthogSessionEventsSummary = {
+    totalRawEvents: number
+    meaningfulEventsReturned: number
+    consoleLogsReturned: number
+}
+
+export type LaunchDarklyFlagSummary = {
+    key: string
+    name: string
+    description: string
+    environments: Record<string, boolean>
+    url: string
+    environmentUrls: Record<string, string>
+}
+
+export type LaunchDarklyFlagMetadata = {
+    key: string
+    name: string
+    description: string
+    kind: string
+    variations: Record<string, unknown>[]
+    tags: string[]
+    maintainerId: string | null
+}
+
+export type LaunchDarklyEnvironmentConfig = {
+    on: boolean
+    targets: Record<string, unknown>[]
+    contextTargets: Record<string, unknown>[]
+    rules: Record<string, unknown>[]
+    fallthrough: Record<string, unknown> | null
+    offVariation: number | null
+    prerequisites: Record<string, unknown>[]
+}
+
+export type LaunchDarklyHistoryEntry = {
+    id: string
+    timestamp: string
+    kind: string
+    key: string
+    name: string
+    description: string
+    member: Record<string, unknown> | null
+    changes: Record<string, unknown>[]
+}
+
+export type LaunchDarklyHistoryResult = {
+    entries: LaunchDarklyHistoryEntry[]
+    totalEntries: number
+    url: string
+}
+
+export type DatadogLogEntry = {
+    id: string
+    timestamp?: string
+    message?: string
+    host?: string
+    service?: string
+    status?: string
+    tags: string[]
+    customAttributes: Record<string, unknown>
+}
+
+export type DatadogCursorPagination = {
+    limit: number
+    cursor?: string | null
+    nextCursor: string | null
+    hasMore: boolean
+    showing: string
+}
+
+export type DatadogRumSessionDetails = {
+    id?: string
+    type?: string
+    hasReplay?: boolean
+    duration?: number
+}
+
+export type DatadogRumViewDetails = {
+    id?: string
+    name?: string
+    url?: string
+    loadTime?: number
+    timeSpent?: number
+}
+
+export type DatadogRumActionDetails = {
+    id?: string
+    type?: string
+    target?: string
+    loadingTime?: number
+}
+
+export type DatadogRumErrorDetails = {
+    id?: string
+    message?: string
+    source?: string
+    stack?: string
+    type?: string
+}
+
+export type DatadogRumResourceDetails = {
+    id?: string
+    type?: string
+    url?: string
+    method?: string
+    statusCode?: number
+    duration?: number
+}
+
+export type DatadogRumLongTaskDetails = {
+    id?: string
+    duration?: number
+}
+
+export type DatadogRumEvent = {
+    id: string
+    type: string
+    timestamp?: string
+    session?: DatadogRumSessionDetails
+    view?: DatadogRumViewDetails | Record<string, unknown>
+    action?: DatadogRumActionDetails
+    error?: DatadogRumErrorDetails
+    resource?: DatadogRumResourceDetails
+    longTask?: DatadogRumLongTaskDetails
+    service?: string
+    version?: string
+    environment?: string
+    device?: Record<string, unknown>
+    os?: Record<string, unknown>
+    browser?: Record<string, unknown>
+    user?: Record<string, unknown>
+    tags: string[]
+    customAttributes: Record<string, unknown>
+}
+
+export type DatadogAggregationBucketCompute = {
+    value: unknown
+    aggregation: string
+    metric: string
+}
+
+export type DatadogAggregationBucket = {
+    by: Record<string, unknown>
+    computes: Record<string, DatadogAggregationBucketCompute>
+}
+
+export type DatadogAggregationMeta = {
+    elapsed?: number
+    requestId?: string
+    status?: unknown
+}
+
+export type WorkOSUserSummary = {
+    id: string
+    email: string
+    emailVerified: boolean
+    firstName?: string | null
+    lastName?: string | null
+    profilePictureUrl?: string | null
+    createdAt: string
+    updatedAt: string
+}
+
+export type WorkOSPagination = {
+    hasMore: boolean
+    after?: string | null
+}
+
+export type WebSearchResultItem = {
+    title: string
+    url: string
+    content: string
+    score: number
+}
+
+export type WebSearchOutput = {
+    query: string
+    answer: string | undefined
+    results: WebSearchResultItem[]
+}
+
+export type WebExtractResultItem = {
+    url: string
+    raw_content: string
+}
+
+export type WebExtractOutput = {
+    results: WebExtractResultItem[]
+    failed_results: unknown
+}
+
+export type WebResearchSource = {
+    title: string
+    url: string
+}
+
+export type WebResearchOutput = ToolOutputBase & {
+    status: "completed"
+    request_id: string
+    content: string | undefined
+    sources: WebResearchSource[] | undefined
+}
+
+export type ImageEditSnippet = {
+    type: "image"
+    url: string
+}
+
+export type ImageEditOutput = ToolOutputBase & {
+    url: string
+    image_url: string
+    summary: string
+    snippets: ImageEditSnippet[]
+}
+
 export type ToolOutputByName = {
-    [toolName: string]: unknown
     attio_list_objects: ToolOutputBase & {
         objects: AttioObjectWithAttributes[]
         count: number
@@ -763,10 +1549,7 @@ export type ToolOutputByName = {
         successCount?: number
         failureCount?: number
         partial?: boolean
-        errors?: Array<{
-            index: number
-            message: string
-        }>
+        errors?: AttioUpsertError[]
     }
     slack_send_message: ToolOutputBase & {
         message_ts: string | undefined
@@ -776,19 +1559,19 @@ export type ToolOutputByName = {
         has_blocks: boolean
     }
     slack_list_channels: ToolOutputBase & {
-        channels: Array<{ id?: string; name: string; isPrivate: boolean; isIm: boolean; isMpim: boolean }>
+        channels: SlackChannelListItem[]
         count: number
         nextCursor: string | null
         hasMore: boolean
     }
     slack_list_users: ToolOutputBase & {
-        users: Array<{ id: string; name: string }>
+        users: SlackUserResponse[]
         count: number
     }
     slack_read_conversation: ToolOutputBase & {
         channelId: string
         channelName?: string
-        messages: Array<{ userId?: string; userName?: string; text: string; timestamp?: string; threadTs?: string }>
+        messages: SlackConversationMessage[]
         count: number
         hasMore: boolean
         nextCursor: string | null
@@ -798,8 +1581,8 @@ export type ToolOutputByName = {
         resultsReturned: number
         query: string
         repositories: string[]
-        pagination: { page: number; perPage: number; hasMore: boolean }
-        results: Array<{ index: number; repository: string; path: string; url: string; snippets: string }>
+        pagination: GitHubPagination
+        results: GitHubCodeSearchResult[]
         message: string
         tip: string
     }
@@ -817,22 +1600,8 @@ export type ToolOutputByName = {
         repository: string
         timeWindow: string
         summary: { total: number; merged: number; open: number; closed: number }
-        pagination: { page: number; perPage: number; hasMore: boolean }
-        pullRequests: Array<{
-            number: number
-            title: string
-            description: string
-            author: string
-            state: string
-            merged: boolean
-            mergedAt?: string
-            createdAt: string
-            closedAt?: string
-            labels: string[]
-            baseBranch: string
-            headBranch: string
-            url: string
-        }>
+        pagination: GitHubPagination
+        pullRequests: GitHubPullRequestSummary[]
         message: string
     }
     listGitHubDirectory: ToolOutputBase & {
@@ -840,27 +1609,19 @@ export type ToolOutputByName = {
         path: string
         recursive: boolean
         totalItems: number
-        directories: Array<{ name?: string; path?: string; type?: "directory" } | string>
-        files: Array<{ name?: string; path: string; type?: "file"; size?: number }>
+        directories: Array<GitHubDirectoryEntry | string>
+        files: GitHubFileEntry[]
         warning?: string
         tip?: string
         truncated?: boolean
-        other?: Array<{ name: string; type: string }>
+        other?: GitHubOtherEntry[]
     }
     listGitHubCommits: ToolOutputBase & {
         repository: string
         timeWindow: string
         filters: string
         summary: { total: number; byAuthor: Record<string, number> }
-        commits: Array<{
-            sha: string
-            fullSha: string
-            message: string
-            fullMessage: string
-            author: string
-            date: string
-            url: string
-        }>
+        commits: GitHubCommitSummary[]
         message: string
         tip: string
     }
@@ -870,35 +1631,235 @@ export type ToolOutputByName = {
         pattern: string
         query: string
         repositories: string[]
-        pagination: { page: number; perPage: number; hasMore: boolean }
-        results: Array<{ index: number; repository: string; file: string; url: string; matches: string }>
+        pagination: GitHubPagination
+        results: GitHubCodeGrepResult[]
         message: string
         tip: string
     }
     summarizeGitHubPullRequestDiff: ToolOutputBase & {
         repository: string
-        pullRequest: {
-            number: number
-            title: string
-            state: string
-            merged: boolean
-            baseBranch: string
-            headBranch: string
-            url: string
-        }
+        pullRequest: GitHubPullRequestRef
         summary: Record<string, unknown>
-        pagination: { page: number; perPage: number; hasMore: boolean }
+        pagination: GitHubPagination
         analysis: string
         message: string
     }
     snowflakeExecuteQuery: ToolOutputBase & {
-        rows: Record<string, unknown>[]
+        rows: SnowflakeQueryRow[]
         columns: string[]
         rowCount: number
     }
     snowflakeExplainQuery: ToolOutputBase & {
-        explainPlan: Record<string, unknown>[]
+        explainPlan: SnowflakeQueryRow[]
         columns: string[]
         rowCount: number
     }
+    linear_create_ticket: ToolOutputBase & {
+        issue: LinearIssueHandle
+    }
+    linear_update_ticket: ToolOutputBase & {
+        issue: LinearIssueHandle
+    }
+    linear_add_comment: ToolOutputBase & {
+        comment: LinearCommentHandle
+    }
+    linear_search_ticket: ToolOutputBase & {
+        issues: LinearIssueSummary[]
+        count: number
+        query: string
+        pagination: LinearSearchPagination
+    }
+    linear_read_ticket: ToolOutputBase & {
+        issue: LinearIssueDetail
+        comments?: Array<{
+            id: string
+            body: string
+            authorId: string
+            createdAt: string
+        }>
+    }
+    linear_get_states: ToolOutputBase & {
+        states: LinearStateSummary[]
+    }
+    linear_get_labels: ToolOutputBase & {
+        labels: LinearLabelSummary[]
+    }
+    linear_get_projects: ToolOutputBase & {
+        projects: LinearProjectSummary[]
+    }
+    linear_get_teams: ToolOutputBase & {
+        teams: LinearTeam[]
+    }
+    linear_get_users: ToolOutputBase & {
+        users: LinearUserSummary[]
+    }
+    jira_create_ticket: ToolOutputBase & {
+        issue: JiraIssueSummary
+    }
+    jira_update_ticket: ToolOutputBase & {
+        issue: JiraIssueSummary
+        updatedFields: string[]
+    }
+    jira_search_ticket: ToolOutputBase & {
+        issues: JiraIssueSummary[]
+        count: number
+        total: number
+        maxResults: number
+        isLast: boolean
+        nextPageToken?: string
+        jql: string
+    }
+    notion_create_or_update_page: NotionDatabaseRowMutationResult
+    notion_create_or_update_database_row: NotionDatabaseRowMutationResult
+    notion_modify_blocks: NotionModifyBlocksSuccess | NotionModifyBlocksFailure
+    notion_query_page: ToolOutputBase &
+        NotionPageQueryMetadata & {
+            properties: Record<string, NotionReadablePropertyValue>
+            properties_raw?: Record<string, unknown>
+            blocks: NotionPageBlock[]
+            blocks_count: number
+        }
+    notion_query_database: NotionQueryDatabaseSuccess | NotionQueryDatabaseFailure
+    notion_get_schema: ToolOutputBase & {
+        data_source_id: string
+        database_name: string
+        schema: Record<string, NotionSchemaProperty>
+        property_count: number
+    }
+    notion_fetch_related_events: ToolOutputBase & {
+        events_count: number
+        events?: string
+        message: string
+    }
+    notion_list_users: ToolOutputBase & {
+        users: NotionWorkspaceUser[]
+        count: number
+    }
+    gmail_send_email: ToolOutputBase & GmailSendSummary
+    gmail_create_draft: ToolOutputBase & GmailDraftSummary
+    confluence_query_page: ToolOutputBase & ConfluencePageQueryResult
+    confluence_add_comment: ToolOutputBase & {
+        comment_id: string
+        comment_text: string
+        position: ConfluenceCommentPosition
+        text_commented_on?: string
+        message: string
+    }
+    searchPosthogSessions: PosthogSearchSessionsFound | PosthogSearchSessionsNotFound
+    searchPosthogLogs: ToolOutputBase & {
+        userEmail: string | null
+        severityLevels: Array<"error" | "warn" | "info" | "debug"> | null
+        messageSearch: string | null
+        projectId: string
+        totalLogs: number
+        logs: PosthogLogEntry[]
+        logsLink: string
+        pagination: PosthogOffsetPagination
+        message: string
+    }
+    getPosthogSessionEvents: ToolOutputBase & {
+        sessionId: string
+        sessionUrl: string
+        startTime: string
+        duration?: number
+        timeWindow: {
+            startSeconds: number
+            endSeconds: number | null
+        }
+        summary: PosthogSessionEventsSummary
+        events: PosthogSessionEvent[]
+        consoleLogs: PosthogSessionConsoleLog[]
+        message: string
+    }
+    searchPosthogEvents:
+        | (ToolOutputBase & {
+              countByEventNameOnly: true
+              customEventsOnly: boolean
+              eventCounts: PosthogEventCount[]
+              totalEventTypes: number
+              eventsLink: string
+              message: string
+          })
+        | (ToolOutputBase & {
+              userEmail: string | null
+              eventName: string | null
+              projectId: string
+              totalEvents: number
+              events: PosthogEventSummary[]
+              eventsLink: string
+              pagination: PosthogOffsetPagination
+              message: string
+          })
+    listLaunchDarklyFlags: ToolOutputBase & {
+        projectKey: string
+        totalFlags: number
+        flags: LaunchDarklyFlagSummary[]
+        flagsLink: string
+        message: string
+    }
+    getLaunchDarklyFlagDetails: ToolOutputBase & {
+        projectKey: string
+        flag: LaunchDarklyFlagMetadata
+        environments: Record<string, LaunchDarklyEnvironmentConfig>
+        url: string
+        history?: LaunchDarklyHistoryResult
+        message: string
+    }
+    searchDatadogLogs: ToolOutputBase & {
+        query: string | null
+        indexes: string[]
+        totalLogs: number
+        logs: DatadogLogEntry[]
+        logsLink: string
+        pagination: DatadogCursorPagination
+        warnings: string | null
+        message: string
+    }
+    searchRumEvents: ToolOutputBase & {
+        query: string | null
+        totalEvents: number
+        events: DatadogRumEvent[]
+        eventsByType: Record<string, number>
+        rumLink: string
+        pagination: DatadogCursorPagination
+        warnings: string | null
+        message: string
+    }
+    listRumEvents: ToolOutputBase & {
+        query: string | null
+        totalEvents: number
+        events: DatadogRumEvent[]
+        eventsByType: Record<string, number>
+        rumLink: string
+        pagination: DatadogCursorPagination
+        warnings: string | null
+        message: string
+    }
+    aggregateRumEvents: ToolOutputBase & {
+        query: string | null
+        from: string
+        to: string | null
+        compute: string
+        groupBy: string
+        totalBuckets: number
+        buckets: DatadogAggregationBucket[]
+        rumLink: string
+        pagination: Omit<DatadogCursorPagination, "cursor">
+        warnings: string | null
+        meta: DatadogAggregationMeta
+        message: string
+    }
+    listWorkOSUsers: ToolOutputBase & {
+        users: WorkOSUserSummary[]
+        pagination: WorkOSPagination
+        message: string
+    }
+    getWorkOSUser: ToolOutputBase & {
+        user: WorkOSUserSummary
+        message: string
+    }
+    web_search: WebSearchOutput
+    web_extract: WebExtractOutput
+    web_research: WebResearchOutput
+    image_edit: ImageEditOutput
 }

@@ -82,7 +82,7 @@ export const searchSessionsTool: SessionToolOptions<typeof parameters, typeof To
                         success: true,
                         userEmail,
                         projectId,
-                        personFound: false,
+                        personFound: false as const,
                         sessions: [],
                         totalSessions: 0,
                         message: `No person found with email ${userEmail} in PostHog. This user may not have any tracked events yet.`
@@ -100,7 +100,7 @@ export const searchSessionsTool: SessionToolOptions<typeof parameters, typeof To
                     success: true,
                     userEmail,
                     projectId,
-                    personFound: false,
+                    personFound: false as const,
                     sessions: [],
                     totalSessions: 0,
                     message: `No person found with email ${userEmail} in PostHog. This user may not have any tracked events yet.`
@@ -222,7 +222,7 @@ export const searchSessionsTool: SessionToolOptions<typeof parameters, typeof To
                 success: true,
                 userEmail,
                 projectId,
-                personFound: true,
+                personFound: true as const,
                 personId,
                 distinctId,
                 totalSessions: totalCount,

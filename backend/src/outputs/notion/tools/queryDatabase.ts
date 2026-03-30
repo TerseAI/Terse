@@ -47,6 +47,14 @@ function extractPropertyValue(property: any): any {
     }
 }
 
+type QueryDatabasePageResult = {
+    page_id: string
+    properties: Record<string, any>
+    url: any
+    created_time: any
+    last_edited_time: any
+}
+
 const parameters = z.object({
     integrationId: z.string().describe("The integration ID of the Notion workspace to use."),
     databaseId: z.string().describe("The Notion database ID (data source ID) to query."),
@@ -297,7 +305,7 @@ NOTE: This tool does NOT return the database schema. Use notion_get_schema if yo
 
         // Convert to readable format
         const pages = response.results
-            .map((page: any) => {
+            .map((page: any): QueryDatabasePageResult | null => {
                 if (!page.properties) return null
 
                 // Extract all properties as simple key-value pairs
@@ -314,7 +322,7 @@ NOTE: This tool does NOT return the database schema. Use notion_get_schema if yo
                     last_edited_time: page.last_edited_time
                 }
             })
-            .filter(Boolean)
+            .filter((page): page is QueryDatabasePageResult => page !== null)
 
         // Return action as part of the result
         const filterDescription = filter ? "with filters" : "without filters"

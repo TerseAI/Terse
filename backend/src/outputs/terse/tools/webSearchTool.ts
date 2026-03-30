@@ -1,10 +1,10 @@
-import { ToolOptions } from "@openai/agents"
 import { z } from "zod"
 
 import { SessionWithTracking } from "../../../agent/AgentRunner/BaseAgentRunner"
 import { ChatAgentContext } from "../../../agent/ChatAgent/ChatAgentContext"
 import { getWebSearchService } from "../../../services/webSearch"
 import { ToolName } from "../../../tools/ToolNames"
+import { TypedToolOptions } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
 
 const parameters = z.object({
@@ -16,7 +16,7 @@ const parameters = z.object({
     time_range: z.enum(["day", "week", "month", "year"]).nullable().describe("Filter results by recency")
 })
 
-export const webSearchTool: ToolOptions<typeof parameters, any> = {
+export const webSearchTool: TypedToolOptions<typeof parameters, typeof ToolName.WEB_SEARCH> = {
     name: ToolName.WEB_SEARCH,
     description:
         "Search the web for up-to-date information. Returns ranked results with titles, URLs, and content snippets. Use for questions about current events, facts, or topics requiring web sources.",
@@ -34,6 +34,6 @@ export const webSearchTool: ToolOptions<typeof parameters, any> = {
     }
 }
 
-export const chatWebSearchTool: ToolOptions<typeof parameters, ChatAgentContext> = webSearchTool
+export const chatWebSearchTool: TypedToolOptions<typeof parameters, typeof ToolName.WEB_SEARCH, ChatAgentContext> = webSearchTool
 
-export const runHistoryWebSearchTool: ToolOptions<typeof parameters, SessionWithTracking<Session>> = webSearchTool
+export const runHistoryWebSearchTool: TypedToolOptions<typeof parameters, typeof ToolName.WEB_SEARCH, SessionWithTracking<Session>> = webSearchTool

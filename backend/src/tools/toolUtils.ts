@@ -22,6 +22,11 @@ export type SessionToolOptions<T extends ToolInputParameters, TName extends keyo
     execute: ToolExecuteFunction<T, SessionWithTracking<Session>, ToolOutputByName[TName]>
 }
 
+export type TypedToolOptions<T extends ToolInputParameters, TName extends keyof ToolOutputByName, Context = UnknownContext> = ToolOptions<T, Context> & {
+    name: TName
+    execute: ToolExecuteFunction<T, Context, ToolOutputByName[TName]>
+}
+
 // MARK: - Error Handling
 
 export async function formatError(context: RunContext, error: Error | unknown): Promise<string> {
