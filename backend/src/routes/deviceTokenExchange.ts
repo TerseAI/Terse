@@ -43,11 +43,26 @@ export async function deviceTokenExchange(req: Request, res: Response) {
 
         // Fetch JWKS and log what keys are available
         const jwks = await workos.userManagement.getJWKS()
+        // Access the internal JWKS data to see the actual key IDs
+        const jwksData = (jwks as any)?.jwks?.keys || (jwks as any)?.keys || []
+        const keyIds = Array.isArray(jwksData) ? jwksData.map((k: any) => ({ kid: k.kid, alg: k.alg, kty: k.kty })) : []
         logger.info("[device-token-exchange] JWKS fetched", {
             hasJwks: !!jwks,
             type: typeof jwks,
-            keys: jwks ? Object.keys(jwks) : null
+            internalKeys: Object.keys(jwks || {}),
+            keyIds,
+            jwtKid: header.kid
         })
+
+        // Also fetch the raw JWKS URL to compare
+        try {
+            const rawJwksRes = await fetch(`https://api.workos.com/sso/jwks/${process.env.WORKOS_CLIENT_ID}`)
+            const rawJwks = await rawJwksRes.json() as { keys?: Array<{ kid: string; alg: string }> }
+            const rawKeyIds = rawJwks.keys?.map(k => ({ kid: k.kid, alg: k.alg })) || []
+            logger.info("[device-token-exchange] Raw JWKS from WorkOS", { rawKeyIds })
+        } catch (e) {
+            logger.warn("[device-token-exchange] Failed to fetch raw JWKS", { error: e })
+        }
 
         if (!jwks) {
             return res.status(500).json({ error: "Could not fetch JWKS for token verification" })
@@ -109,10 +124,15 @@ export async function deviceTokenExchange(req: Request, res: Response) {
 
         return res.status(201).json(response)
     } catch (error: any) {
-        logger.error("[device-token-exchange] Failed to exchange token", { error })
+        logger.error("[device-token-exchange] Failed to exchange token", {
+            error,
+            errorName: error?.name,
+            errorCode: error?.code,
+            errorMessage: error?.message,
+            stack: error?.stack
+        })
 
-        // jose throws on invalid/expired JWTs
-        if (error?.code === "ERR_JWT_EXPIRED" || error?.code === "ERR_JWS_SIGNATURE_VERIFICATION_FAILED") {
+        if (error?.code === "ERR_JWT_EXPIRED" || error?.code === "ERR_JWS_SIGNATURE_VERIFICATION_FAILED" || error?.code === "ERR_JWKS_NO_MATCHING_KEY") {
             return res.status(401).json({ error: "Invalid or expired access token" })
         }
 
