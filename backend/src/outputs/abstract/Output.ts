@@ -1,10 +1,10 @@
+import { ToolOptions } from "@openai/agents"
 import { OutputConfigType } from "@prisma/client"
 
 import { ConfigInstance } from "../../shared/Configs"
 import { IntegrationType } from "../../shared/Integrations"
 import { SessionToolOptions } from "../../tools/toolUtils"
 import { PrismaTransaction } from "../../types/prisma"
-import { ToolOptions } from "@openai/agents"
 
 export interface ToolboxEntry {
     tool: SessionToolOptions<any, any> | ToolOptions<any, any>
