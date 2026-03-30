@@ -54,11 +54,7 @@ export async function deviceTokenExchange(req: Request, res: Response) {
         const workosUser = await workos.userManagement.getUser(workosUserId)
 
         // Check SDK feature flag
-        const isSdkEnabled = await featureFlagService.isFeatureFlagEnabled(
-            FeatureFlag.SDK_INTERFACE,
-            workosUser.email,
-            { email: workosUser.email }
-        )
+        const isSdkEnabled = await featureFlagService.isFeatureFlagEnabled(FeatureFlag.SDK_INTERFACE, workosUser.email, { email: workosUser.email })
         if (!isSdkEnabled) {
             return res.status(403).json({ error: "SDK interface is not enabled for your account" })
         }
