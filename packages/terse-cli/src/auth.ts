@@ -182,16 +182,20 @@ export async function loginAndWriteEnv(targetDir: string): Promise<boolean> {
     }
 
     const result = await login()
-    if (!result) return false
+    const apiKey = result?.apiKey ?? ""
 
     const envPath = path.resolve(targetDir, ".env")
     const envContent = fs.existsSync(envPath) ? fs.readFileSync(envPath, "utf-8") : ""
 
     if (envContent.includes("TERSE_API_KEY=")) {
-        const updated = envContent.replace(/^TERSE_API_KEY=.*$/m, `TERSE_API_KEY=${result.apiKey}`)
+        const updated = envContent.replace(/^TERSE_API_KEY=.*$/m, `TERSE_API_KEY=${apiKey}`)
         fs.writeFileSync(envPath, updated)
     } else {
-        fs.writeFileSync(envPath, envContent ? `${envContent.trimEnd()}\nTERSE_API_KEY=${result.apiKey}\n` : `TERSE_API_KEY=${result.apiKey}\n`)
+        fs.writeFileSync(envPath, envContent ? `${envContent.trimEnd()}\nTERSE_API_KEY=${apiKey}\n` : `TERSE_API_KEY=${apiKey}\n`)
+    }
+
+    if (!result) {
+        console.log(chalk.dim("  You can run `terse login` later to authenticate."))
     }
 
     return true
