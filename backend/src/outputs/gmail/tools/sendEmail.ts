@@ -15,6 +15,11 @@ import { Session } from "../../../types/session"
 
 import { buildEmailContentWithAttachments, downloadImageAttachments, encodeSubjectHeader, sanitizeCustomHeaders } from "./mime"
 
+const header = z.object({
+    key: z.string(),
+    value: z.string()
+})
+
 /**
  * Tool for sending emails or replying to email threads via Gmail.
  * Supports both sending new emails and replying to existing threads.
@@ -45,7 +50,7 @@ export const gmailSendEmailTool = tool({
                 'URLs of images to embed in the email. Must be signed URLs from our internal GCS image bucket. Each image is downloaded and base64-encoded as an inline MIME attachment with a Content-ID. Images are assigned sequential filenames: image-1.png, image-2.png, etc. (extension reflects actual MIME type). You MUST reference each one in html_body as <img src="cid:image-1.png">, <img src="cid:image-2.png">, etc. Do NOT put the raw URLs in html_body.'
             ),
         custom_headers: z
-            .record(z.string(), z.string())
+            .array(header)
             .nullable()
             .optional()
             .describe(
