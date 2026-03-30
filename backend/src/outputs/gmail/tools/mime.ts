@@ -129,9 +129,9 @@ const BLOCKED_CUSTOM_HEADERS = new Set([
  *    characters can be used to inject arbitrary extra headers into the raw
  *    MIME message.
  */
-export function sanitizeCustomHeaders(customHeaders: Record<string, string>): Record<string, string> {
+export function sanitizeCustomHeaders(customHeaders: Array<{ key: string; value: string }>): Record<string, string> {
     const sanitized: Record<string, string> = {}
-    for (const [key, value] of Object.entries(customHeaders)) {
+    for (const { key, value } of customHeaders) {
         if (/[\r\n]/.test(key) || /[\r\n]/.test(value)) {
             logger.warn("[gmail] Dropping custom header containing CRLF characters (header injection attempt)", { key })
             continue
