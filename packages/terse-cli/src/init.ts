@@ -63,8 +63,11 @@ export async function init(projectName?: string): Promise<void> {
     const pm = detectPackageManager()
     const spinner = ora(`Installing dependencies with ${pm}`).start()
 
+    // Rest of commands run in newly generated project directory
+    await changeDirectory(targetDir)
+
     try {
-        await execAsync(`${pm} install`, { cwd: targetDir })
+        await execAsync(`${pm} install`)
         spinner.succeed(`Dependencies installed with ${pm}`)
     } catch {
         spinner.warn(`Failed to install dependencies. Run ${chalk.cyan(`${pm} install`)} manually.`)
@@ -137,4 +140,15 @@ function detectPackageManager(): "pnpm" | "npm" {
     } catch {
         return "npm"
     }
+}
+
+function changeDirectory(targetDir: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+        try {
+            process.chdir(targetDir)
+            resolve()
+        } catch (err) {
+            reject(err)
+        }
+    })
 }
