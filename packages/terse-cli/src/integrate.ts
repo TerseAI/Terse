@@ -13,11 +13,31 @@ import {
     submitIntegrationForm
 } from "./integrationApi.js"
 import { INTEGRATION_METADATA, IntegrationType } from "./shared/Integrations.js"
+import { generate } from "./generate.js"
 
-/**
- * Check existing integrations and prompt to connect more.
- * Used by `terse init` to offer integration setup after login.
- */
+type IntegrationChangeResult = {
+    status: "added" | "modified" | "unchanged"
+    integrationType?: IntegrationType
+}
+
+export async function integrate(): Promise<void> {
+    const apiKey = readApiKeyOrBail()
+    let didChangeAnyIntegration = false
+
+    let continueLoop = true
+    while (continueLoop) {
+        const result = await connectOneIntegration(apiKey)
+        didChangeAnyIntegration = didChangeAnyIntegration || result.status !== "unchanged"
+
+        console.log("")
+        continueLoop = await confirm({ message: "Connect another integration?", default: false })
+    }
+
+    if (didChangeAnyIntegration) {
+        await generate()
+    }
+}
+
 export async function listAndPromptIntegrations(): Promise<void> {
     const apiKey = readApiKey()
     if (!apiKey) return
@@ -49,19 +69,7 @@ export async function listAndPromptIntegrations(): Promise<void> {
     }
 }
 
-export async function integrate(): Promise<void> {
-    const apiKey = readApiKeyOrBail()
-
-    let continueLoop = true
-    while (continueLoop) {
-        await connectOneIntegration(apiKey)
-
-        console.log("")
-        continueLoop = await confirm({ message: "Connect another integration?", default: false })
-    }
-}
-
-async function connectOneIntegration(apiKey: string): Promise<void> {
+async function connectOneIntegration(apiKey: string): Promise<IntegrationChangeResult> {
     const spinner = ora("Fetching integrations").start()
     let integrations
     try {
@@ -80,7 +88,7 @@ async function connectOneIntegration(apiKey: string): Promise<void> {
 
     if (userFacing.length === 0) {
         console.log(chalk.yellow("\n  No integrations available.\n"))
-        return
+        return { status: "unchanged" }
     }
 
     const selected = await select({
@@ -96,6 +104,7 @@ async function connectOneIntegration(apiKey: string): Promise<void> {
             }
         })
     })
+    const selectedIntegration = userFacing.find(i => i.integrationType === selected)
 
     // Fetch fields for the selected integration
     const fieldsSpinner = ora("Loading integration details").start()
@@ -110,17 +119,33 @@ async function connectOneIntegration(apiKey: string): Promise<void> {
     }
 
     if (fieldsResponse.installationType === "form") {
-        await handleFormIntegration(apiKey, selected, fieldsResponse.fields as FormFieldDefinition[])
+        const didUpdate = await handleFormIntegration(apiKey, selected, fieldsResponse.fields as FormFieldDefinition[])
+        return {
+            status: didUpdate
+                ? selectedIntegration?.isActive ? "modified" : "added"
+                : "unchanged",
+            integrationType: selected
+        }
     } else if (fieldsResponse.installationType === "oauth") {
-        await handleOAuthIntegration(apiKey, selected, fieldsResponse.fields as ConfigurationFieldDefinition[])
+        const didUpdate = await handleOAuthIntegration(apiKey, selected, fieldsResponse.fields as ConfigurationFieldDefinition[])
+        return {
+            status: didUpdate
+                ? selectedIntegration?.isActive ? "modified" : "added"
+                : "unchanged",
+            integrationType: selected
+        }
     } else {
         console.log(chalk.yellow(`\n  Integration '${selected}' has an unsupported installation type.\n`))
+        return {
+            status: "unchanged",
+            integrationType: selected
+        }
     }
 }
 
 // ─── Form-based integrations (Datadog, PostHog, Snowflake, etc.) ─────────────
 
-async function handleFormIntegration(apiKey: string, integrationType: string, fields: FormFieldDefinition[]): Promise<void> {
+async function handleFormIntegration(apiKey: string, integrationType: string, fields: FormFieldDefinition[]): Promise<boolean> {
     console.log("")
 
     const formValues: Record<string, string> = {}
@@ -146,18 +171,21 @@ async function handleFormIntegration(apiKey: string, integrationType: string, fi
         const result = await submitIntegrationForm(apiKey, integrationType, formValues)
         if (result.success) {
             spinner.succeed(chalk.green("Integration connected successfully"))
+            return true
         } else {
             spinner.fail(`Failed to connect: ${result.error || "Unknown error"}`)
+            return false
         }
     } catch (err: any) {
         spinner.fail("Failed to connect integration")
         console.error(chalk.red(`  ${err.message}`))
+        return false
     }
 }
 
 // ─── OAuth-based integrations (Slack, GitHub, Gmail, etc.) ───────────────────
 
-async function handleOAuthIntegration(apiKey: string, integrationType: string, configFields: ConfigurationFieldDefinition[]): Promise<void> {
+async function handleOAuthIntegration(apiKey: string, integrationType: string, configFields: ConfigurationFieldDefinition[]): Promise<boolean> {
     // Prompt for configuration fields if any (e.g. Slack's bot vs user choice)
     let options: Record<string, string> | undefined
     if (configFields.length > 0) {
@@ -180,7 +208,7 @@ async function handleOAuthIntegration(apiKey: string, integrationType: string, c
     } catch (err: any) {
         spinner.fail("Failed to get authorization URL")
         console.error(chalk.red(`  ${err.message}`))
-        return
+        return false
     }
 
     console.log(`\n  ${chalk.bold("Complete authorization in your browser:")}\n`)
@@ -192,8 +220,10 @@ async function handleOAuthIntegration(apiKey: string, integrationType: string, c
 
     if (connected) {
         pollSpinner.succeed(chalk.green("Integration connected successfully"))
+        return true
     } else {
         pollSpinner.fail("Authorization timed out — please try again")
+        return false
     }
 }
 
