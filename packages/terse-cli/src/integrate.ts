@@ -1,6 +1,6 @@
 import { spawn } from "node:child_process"
 import chalk from "chalk"
-import { input, password, select } from "@inquirer/prompts"
+import { confirm, input, password, select } from "@inquirer/prompts"
 import ora from "ora"
 import { readApiKey } from "./api.js"
 import {
@@ -21,6 +21,16 @@ export async function integrate(): Promise<void> {
         process.exit(1)
     }
 
+    let continueLoop = true
+    while (continueLoop) {
+        await connectOneIntegration(apiKey)
+
+        console.log("")
+        continueLoop = await confirm({ message: "Connect another integration?", default: false })
+    }
+}
+
+async function connectOneIntegration(apiKey: string): Promise<void> {
     const spinner = ora("Fetching integrations").start()
     let integrations
     try {
