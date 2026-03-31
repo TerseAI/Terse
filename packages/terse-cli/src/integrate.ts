@@ -14,6 +14,40 @@ import {
 } from "./integrationApi.js"
 import { INTEGRATION_METADATA, IntegrationType } from "./shared/Integrations.js"
 
+/**
+ * Check existing integrations and prompt to connect more.
+ * Used by `terse init` to offer integration setup after login.
+ */
+export async function listAndPromptIntegrations(): Promise<void> {
+    const apiKey = readApiKey()
+    if (!apiKey) return
+
+    let integrations
+    try {
+        integrations = await fetchIntegrations(apiKey)
+    } catch {
+        return
+    }
+
+    const active = integrations.filter(
+        i => i.isActive && i.integrationType !== IntegrationType.TERSE && i.integrationType !== IntegrationType.CRON_JOB
+    )
+
+    if (active.length > 0) {
+        console.log("\n  Connected integrations:\n")
+        for (const i of active) {
+            const meta = INTEGRATION_METADATA[i.integrationType]
+            console.log(`  ${chalk.green("✓")} ${meta?.name || i.integrationType}`)
+        }
+        console.log("")
+        const addMore = await confirm({ message: "Connect another integration?", default: false })
+        if (addMore) await integrate()
+    } else {
+        console.log(chalk.dim("\n  No integrated tools yet.\n"))
+        await integrate()
+    }
+}
+
 export async function integrate(): Promise<void> {
     const apiKey = readApiKey()
     if (!apiKey) {

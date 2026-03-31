@@ -5,8 +5,14 @@ import { promisify } from "node:util"
 import { fileURLToPath } from "node:url"
 import ora from "ora"
 import chalk from "chalk"
+import { confirm } from "@inquirer/prompts"
+import { readApiKey } from "./api.js"
 import { loginAndWriteEnv } from "./auth.js"
 import { generate } from "./generate.js"
+import { listAndPromptIntegrations } from "./integrate.js"
+import { integrate } from "./integrate.js"
+import { fetchIntegrations } from "./integrationApi.js"
+import { INTEGRATION_METADATA, IntegrationType } from "./shared/Integrations.js"
 
 const execAsync = promisify(exec)
 
@@ -68,6 +74,9 @@ export async function init(projectName?: string): Promise<void> {
     await loginAndWriteEnv(targetDir)
 
     const envExists = fs.existsSync(path.join(targetDir, ".env"))
+
+    // Connect integrations
+    await listAndPromptIntegrations()
 
     try {
         await generate()
