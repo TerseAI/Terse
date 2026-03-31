@@ -6,10 +6,13 @@ icon: "sparkles"
 
 Enrich every new deal with firmographic context before the owner acts.
 
-## Scaffold it
+## Start from a project scaffold
 
 ```bash
-terse init acme-revenue --template new-deal-enrichment
+terse init acme-revenue
+cd acme-revenue
+terse integrate
+terse generate
 ```
 
 ## What it does
@@ -27,7 +30,7 @@ import { Apollo, Attio, AttioList, Slack, SlackChannel } from "./terse.generated
 
 const client = new Terse()
 
-await client.createWorkflow({
+await client.createJob({
   name: "new-deal-enrichment",
   triggers: [Attio.onRecordCreated({ list: AttioList.Pipeline.NewDeals })],
   skills: [

@@ -6,10 +6,13 @@ icon: "calendar-range"
 
 Automate pipeline review prep with a weekly summary posted to Slack.
 
-## Scaffold it
+## Start from a project scaffold
 
 ```bash
-terse init acme-revenue --template weekly-pipeline-digest
+terse init acme-revenue
+cd acme-revenue
+terse integrate
+terse generate
 ```
 
 ## What it does
@@ -27,7 +30,7 @@ import { Attio, AttioList, Schedule, Slack, SlackChannel } from "./terse.generat
 
 const client = new Terse()
 
-await client.createWorkflow({
+await client.createJob({
   name: "weekly-pipeline-digest",
   triggers: [Schedule.cron({ expression: "0 9 * * 1" })],
   skills: [

@@ -1,5 +1,8 @@
 
     def list_objects(self) -> {{tool.outputModel}}:
         return AttioListObjectsToolOutput.model_validate(
-            self._agent.execute_tool({{{tool.nameRepr}}}, {'integrationId': {{{attio.instanceIdRepr}}}})
+            self._agent.execute_tool(
+                {{{tool.nameRepr}}},
+                {'integrationId': {{{attio.instanceIdRepr}}} },
+            )
         )

@@ -13,6 +13,7 @@ import { renderPythonGeneratedCode } from "./pythonTemplateEngine.js"
 
 const JOB_REGISTRY_MARKER = "__TERSE_JOB_REGISTRY__="
 const JOB_SKIPPED_MARKER = "__TERSE_SKIPPED__"
+const PYTHON_SDK_DEPENDENCY = "terse-sdk~=0.1.8"
 
 type PythonSerializedConfig = {
     integrationId: string
@@ -57,6 +58,20 @@ export class PythonProvider implements LanguageProvider {
             { template: "python/init/env.example.hbs", output: ".env.example" },
             { template: "python/init/gitignore.hbs", output: ".gitignore" },
             { template: "python/init/README.md.hbs", output: "README.md" },
+        ]
+    }
+
+    buildInitTemplateContext(projectName: string): Record<string, unknown> {
+        return {
+            projectName,
+            sdkDependency: PYTHON_SDK_DEPENDENCY,
+        }
+    }
+
+    getPostInitSteps(_packageManager: string): string[] {
+        return [
+            "uv run ty check  Type-check the project",
+            "terse test       Run a sample event locally",
         ]
     }
 

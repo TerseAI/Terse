@@ -42,6 +42,17 @@ export class TypeScriptProvider implements LanguageProvider {
         ]
     }
 
+    buildInitTemplateContext(projectName: string): Record<string, unknown> {
+        return { projectName }
+    }
+
+    getPostInitSteps(packageManager: string): string[] {
+        return [
+            `${packageManager} run build    Build the project`,
+            `${packageManager} run dev      Run in development mode`,
+        ]
+    }
+
     detectPackageManager(): string {
         try {
             execSync("pnpm --version", { stdio: "ignore" })

@@ -3,7 +3,7 @@ title: "GTM workflow templates"
 description: "Start from working GTM workflows instead of a blank file."
 ---
 
-Each template is a complete workflow you can scaffold, connect, and deploy. Swap in your own lists, owners, and channels.
+Each template is a complete workflow you can adapt after scaffolding a Terse project. The `terse` CLI can scaffold TypeScript or Python. The code examples in this section are TypeScript-first today because they use the broader generated helper surface.
 
 ## Templates
 
@@ -28,7 +28,12 @@ Each template is a complete workflow you can scaffold, connect, and deploy. Swap
   <Step title="Scaffold the starter">
 
 ```bash
-terse init acme-revenue --template weekly-pipeline-digest
+# TypeScript starter (default)
+terse init acme-revenue
+
+# Python starter
+terse init acme-revenue --language python
+
 cd acme-revenue
 ```
 

@@ -9,8 +9,6 @@ import { loginAndWriteEnv } from "./auth.js"
 import { generate } from "./generate.js"
 import { listAndPromptIntegrations } from "./integrate.js"
 
-const PYTHON_SDK_DEPENDENCY = "terse-sdk~=0.1.8"
-
 export async function init(
     projectName?: string,
     provider: LanguageProvider = resolveProvider({ command: "init", language: "ts" })
@@ -32,10 +30,7 @@ export async function init(
     // Create the source directory up front. Nested template paths create their own parents.
     fs.mkdirSync(path.join(targetDir, "src"), { recursive: true })
 
-    const templateContext = {
-        projectName: resolvedName,
-        sdkDependency: provider.language === "python" ? PYTHON_SDK_DEPENDENCY : undefined,
-    }
+    const templateContext = provider.buildInitTemplateContext(resolvedName)
 
     // Write files from templates
     for (const file of provider.scaffoldFiles()) {
@@ -89,15 +84,12 @@ export async function init(
     }
     console.log(`  ${step}. Edit ${provider.entryFile} to define your job`)
     step++
-    if (provider.language === "python") {
-        console.log(`  ${step}. uv run ty check  Type-check the project`)
+    const postInitSteps = provider.getPostInitSteps(pm)
+    for (const postInitStep of postInitSteps) {
+        console.log(`  ${step}. ${postInitStep}`)
         step++
-        console.log(`  ${step}. terse test       Run a sample event locally\n`)
-    } else {
-        console.log(`  ${step}. ${pm} run build    Build the project`)
-        step++
-        console.log(`  ${step}. ${pm} run dev      Run in development mode\n`)
     }
+    console.log("")
 }
 
 function changeDirectory(targetDir: string): Promise<void> {

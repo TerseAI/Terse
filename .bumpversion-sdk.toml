@@ -17,6 +17,6 @@ search = '__version__ = "{current_version}"'
 replace = '__version__ = "{new_version}"'
 
 [[tool.bumpversion.files]]
-filename = "packages/terse-cli/src/init.ts"
+filename = "packages/terse-cli/src/providers/python/PythonProvider.ts"
 search = 'const PYTHON_SDK_DEPENDENCY = "terse-sdk~={current_version}"'
 replace = 'const PYTHON_SDK_DEPENDENCY = "terse-sdk~={new_version}"'

@@ -26,11 +26,11 @@ pnpm install
 
 ## Python SDK Development
 
-The repo still contains a Python workspace for the runtime SDK:
+The repo contains a Python workspace for the runtime SDK:
 
 - `packages/terse-python-sdk`
 
-The CLI has been consolidated into the TypeScript package at `packages/terse-cli`. Python tooling in this repo is now only for the SDK package.
+CLI development lives in the TypeScript package at `packages/terse-cli`. Python tooling in this repo is for the SDK package.
 
 ### Prerequisites
 

@@ -17,6 +17,8 @@ export interface LanguageProvider {
     }
 
     scaffoldFiles(): Array<{ template: string; output: string }>
+    buildInitTemplateContext(projectName: string): Record<string, unknown>
+    getPostInitSteps(packageManager: string): string[]
     detectPackageManager(): string
     installDependencies(targetDir: string): Promise<void>
     renderGeneratedCode(input: CodegenInput): string
