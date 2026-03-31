@@ -26,7 +26,9 @@ export class TypescriptSdkRuntimeExecutor implements SdkRuntimeExecutor {
         context.emitSandboxStatus(SandboxStage.INSTALLING_CLI, "started")
         const cliStart = performance.now()
         try {
-            await context.ensureSandboxCommand("npm install terse-cli", `cd ${context.projectDir} && npm install terse-cli@latest`)
+            // Install both packages explicitly so the runtime CLI never depends on
+            // the user's project install having already pulled in terse-sdk.
+            await context.ensureSandboxCommand("npm install terse-cli", `cd ${context.projectDir} && npm install terse-sdk@latest terse-cli@latest`)
             context.emitSandboxStatus(SandboxStage.INSTALLING_CLI, "completed", { duration_ms: Math.round(performance.now() - cliStart) })
         } catch (err) {
             context.emitSandboxStatus(SandboxStage.INSTALLING_CLI, "failed", { duration_ms: Math.round(performance.now() - cliStart), detail: err instanceof Error ? err.message : String(err) })
