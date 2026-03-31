@@ -1,5 +1,6 @@
 import path from "node:path"
 import fs from "node:fs"
+import chalk from "chalk"
 import { BACKEND_URL } from "./config.js"
 
 
@@ -20,6 +21,23 @@ export function readApiKey(): string | null {
         }
     }
     return null
+}
+
+export function readApiKeyOrBail(options?: { title?: string; detail?: string }): string {
+    const apiKey = readApiKey()
+    if (apiKey) return apiKey
+
+    console.error(
+        options?.title
+            ? chalk.red(options.title)
+            : chalk.red("\n  Not authenticated. Run `terse login` first.\n")
+    )
+
+    if (options?.detail) {
+        console.error(chalk.dim(options.detail))
+    }
+
+    process.exit(1)
 }
 
 
