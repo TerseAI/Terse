@@ -1,4 +1,4 @@
-import { RunContext, tool } from "@openai/agents"
+import { RunContext, ToolOptions, tool } from "@openai/agents"
 import { RunHistoryActionType } from "@prisma/client"
 import { z } from "zod"
 
@@ -7,7 +7,7 @@ import { getAtlassianIntegrationContextForOrganization } from "../../../integrat
 import logger from "../../../logger"
 import { IntegrationType } from "../../../shared/Integrations"
 import { ToolName } from "../../../tools/ToolNames"
-import { createNeedsApprovalFunction, formatError } from "../../../tools/toolUtils"
+import { SessionToolOptions, createNeedsApprovalFunction, formatError } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
 
 // Atlassian Document Format (ADF) interfaces
@@ -76,7 +76,30 @@ async function findUserAccountId(cloudId: string, accessToken: string, email: st
     }
 }
 
-export const jiraCreateTicketTool = tool({
+const parameters = z.object({
+    integrationId: z.string().describe("The integration ID of the Atlassian/Jira integration to use."),
+    title: z.string().describe("The issue title/summary. This is required."),
+    description: z.string().nullable().optional().describe("The issue description in plain text or markdown format."),
+    projectKey: z.string().describe('The Jira project key (e.g., "PROJ", "TEAM"). This is required.'),
+    issueType: z.string().nullable().optional().describe('The Jira issue type (e.g., "Task", "Bug", "Story", "Epic", "Subtask", "Improvement", "New Feature")').default("Task"),
+    assignee: z
+        .union([
+            z.object({
+                email: z.string().describe("The assignee email")
+            }),
+            z.null()
+        ])
+        .optional()
+        .describe("The assignee of the ticket"),
+    priority: z.union([z.number(), z.null()]).optional().describe("The priority of the ticket (number, typically 1-5)"),
+    labels: z
+        .union([z.array(z.string()), z.null()])
+        .optional()
+        .describe("The labels for the ticket (array of label names)"),
+    dueDate: z.string().nullable().optional().describe('The due date for the ticket in format "yyyy-MM-dd" (e.g., "2024-12-31"). Note: Jira requires the due date format to be yyyy-MM-dd.')
+})
+
+export const jiraCreateTicketTool: SessionToolOptions<typeof parameters, typeof ToolName.JIRA_CREATE_TICKET> = {
     name: ToolName.JIRA_CREATE_TICKET,
     description: `Create a new Jira issue/ticket. Use this tool to create new issues in Jira with a title, description, and optional metadata.
 
@@ -94,29 +117,7 @@ OPTIONAL FIELDS:
 
 BEFORE USING THIS TOOL:
 - Ensure you have the correct projectKey for the project where you want to create the issue`,
-    parameters: z.object({
-        integrationId: z.string().describe("The integration ID of the Atlassian/Jira integration to use."),
-        title: z.string().describe("The issue title/summary. This is required."),
-        description: z.string().nullable().optional().describe("The issue description in plain text or markdown format."),
-        projectKey: z.string().describe('The Jira project key (e.g., "PROJ", "TEAM"). This is required.'),
-        issueType: z.string().nullable().optional().describe('The Jira issue type (e.g., "Task", "Bug", "Story", "Epic", "Subtask", "Improvement", "New Feature")').default("Task"),
-        assignee: z
-            .union([
-                z.object({
-                    email: z.string().describe("The assignee email")
-                }),
-                z.null()
-            ])
-            .optional()
-            .describe("The assignee of the ticket"),
-        priority: z.union([z.number(), z.null()]).optional().describe("The priority of the ticket (number, typically 1-5)"),
-        labels: z
-            .union([z.array(z.string()), z.null()])
-            .optional()
-            .describe("The labels for the ticket (array of label names)"),
-        dueDate: z.string().nullable().optional().describe('The due date for the ticket in format "yyyy-MM-dd" (e.g., "2024-12-31"). Note: Jira requires the due date format to be yyyy-MM-dd.')
-    }),
-    needsApproval: createNeedsApprovalFunction(ToolName.JIRA_CREATE_TICKET),
+    parameters: parameters,
     execute: async ({ integrationId, title, description, projectKey, issueType = "Task", assignee, priority, labels, dueDate }, runContext?: RunContext<SessionWithTracking<Session>>) => {
         logger.debug("🛠️ Executing jira_create_ticket tool", {
             title,
@@ -294,6 +295,5 @@ BEFORE USING THIS TOOL:
             const errorMessage = await formatError(runContext!, error)
             throw new Error(errorMessage)
         }
-    },
-    errorFunction: formatError
-})
+    }
+}

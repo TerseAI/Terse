@@ -23,14 +23,14 @@ import {
 export class NotionOutput extends Output<NotionConfig> {
     constructor() {
         const toolbox: ToolboxEntry[] = [
-            { tool: notionGetSchemaTool as Tool, isReadOnly: true, integration: IntegrationType.NOTION, displayName: "Get datasource schema" },
-            { tool: notionQueryDatabaseTool as Tool, isReadOnly: true, integration: IntegrationType.NOTION, displayName: "Query database" },
-            { tool: notionCreateOrUpdateDatabaseRowTool as Tool, isReadOnly: false, integration: IntegrationType.NOTION, displayName: "Create or update database row" },
-            { tool: notionCreateOrUpdatePageTool as Tool, isReadOnly: false, integration: IntegrationType.NOTION, displayName: "Create or update page (standalone)" },
-            { tool: notionQueryPageTool as Tool, isReadOnly: true, integration: IntegrationType.NOTION, displayName: "Query page" },
-            { tool: notionModifyBlocksTool as Tool, isReadOnly: false, integration: IntegrationType.NOTION, displayName: "Modify blocks" },
-            { tool: fetchRelatedEventsTool as Tool, isReadOnly: true, integration: IntegrationType.NOTION, displayName: "Fetch related events" },
-            { tool: notionListUsersTool as Tool, isReadOnly: true, integration: IntegrationType.NOTION, displayName: "List workspace users" }
+            { tool: notionGetSchemaTool, isReadOnly: true, integration: IntegrationType.NOTION, displayName: "Get datasource schema" },
+            { tool: notionQueryDatabaseTool, isReadOnly: true, integration: IntegrationType.NOTION, displayName: "Query database" },
+            { tool: notionCreateOrUpdateDatabaseRowTool, isReadOnly: false, integration: IntegrationType.NOTION, displayName: "Create or update database row" },
+            { tool: notionCreateOrUpdatePageTool, isReadOnly: false, integration: IntegrationType.NOTION, displayName: "Create or update page (standalone)" },
+            { tool: notionQueryPageTool, isReadOnly: true, integration: IntegrationType.NOTION, displayName: "Query page" },
+            { tool: notionModifyBlocksTool, isReadOnly: false, integration: IntegrationType.NOTION, displayName: "Modify blocks" },
+            { tool: fetchRelatedEventsTool, isReadOnly: true, integration: IntegrationType.NOTION, displayName: "Fetch related events" },
+            { tool: notionListUsersTool, isReadOnly: true, integration: IntegrationType.NOTION, displayName: "List workspace users" }
         ]
         super(OutputConfigType.NOTION, toolbox)
     }

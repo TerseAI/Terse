@@ -1,6 +1,6 @@
 import { LinearClient } from "@linear/sdk"
 import { IssueUpdateInput } from "@linear/sdk/dist/_generated_documents"
-import { RunContext, tool } from "@openai/agents"
+import { RunContext } from "@openai/agents"
 import { RunHistoryActionType } from "@prisma/client"
 import { z } from "zod"
 
@@ -9,7 +9,7 @@ import { getLinearAccessTokenForOrganization } from "../../../integrations/Linea
 import logger from "../../../logger"
 import { IntegrationType } from "../../../shared/Integrations"
 import { ToolName } from "../../../tools/ToolNames"
-import { createNeedsApprovalFunction, formatError } from "../../../tools/toolUtils"
+import { SessionToolOptions } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
 import { extractErrorMessage } from "../../../utility/strings"
 
@@ -23,15 +23,16 @@ const updateTicketInputSchema = z.object({
     assigneeId: z.string().nullable().optional().describe("The ID of the user to assign the ticket to. Use linear_get_users to find available users and their IDs.")
 })
 
-export const linearUpdateTicketTool = tool({
+const parameters = z.object({
+    integrationId: z.string().describe("The integration ID of the Linear workspace to use."),
+    issueId: z.string().describe("The ID of the Linear issue to update. Use linear_search_ticket to find the issue ID."),
+    updates: updateTicketInputSchema
+})
+
+export const linearUpdateTicketTool: SessionToolOptions<typeof parameters, typeof ToolName.LINEAR_UPDATE_TICKET> = {
     name: ToolName.LINEAR_UPDATE_TICKET,
     description: `Update an existing Linear issue/ticket. Use linear_search_ticket to find the issue ID, and linear_get_states, linear_get_users, linear_get_projects, linear_get_teams to find valid IDs for each field.`,
-    parameters: z.object({
-        integrationId: z.string().describe("The integration ID of the Linear workspace to use."),
-        issueId: z.string().describe("The ID of the Linear issue to update. Use linear_search_ticket to find the issue ID."),
-        updates: updateTicketInputSchema
-    }),
-    needsApproval: createNeedsApprovalFunction(ToolName.LINEAR_UPDATE_TICKET),
+    parameters: parameters,
     execute: async ({ integrationId, issueId, updates }, runContext?: RunContext<SessionWithTracking<Session>>) => {
         logger.debug("🛠️ Executing linear_update_ticket tool", { integrationId, issueId })
 
@@ -94,6 +95,5 @@ export const linearUpdateTicketTool = tool({
             logger.error("❌ Error updating Linear ticket", { error: errorMessage, issueId })
             throw new Error(`${errorMessage}. Please check all inputs and try again.`)
         }
-    },
-    errorFunction: formatError
-})
+    }
+}

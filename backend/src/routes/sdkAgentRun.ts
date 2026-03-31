@@ -1,4 +1,4 @@
-import { RunToolApprovalItem, Tool } from "@openai/agents"
+import { RunToolApprovalItem, Tool, ToolInputParameters, ToolOptions, tool } from "@openai/agents"
 import { Request, Response } from "express"
 
 import { SessionWithTracking } from "../agent/AgentRunner/AgentRunner"
@@ -11,6 +11,7 @@ import { CONFIG_DETAILS } from "../shared/Configs"
 import { IntegrationType } from "../shared/Integrations"
 import { RunHistoryAction } from "../shared/RunHistoryTypes"
 import { SdkAgentRunRequestBody, SdkAgentRunResponseBody, SdkAgentSkillPayload, SdkAgentStreamEvent, SdkApprovalDecisionRequestBody, User } from "../shared/types"
+import { createNeedsApprovalFunction, formatError } from "../tools/toolUtils"
 import { Session } from "../types/session"
 import { extractErrorMessage } from "../utility/strings"
 
@@ -193,10 +194,16 @@ function buildToolsForSkills(skillIntegrationTypes: IntegrationType[]): {
     for (const [, factory] of OutputFactory.OUTPUT_REGISTRY) {
         const output = factory()
         for (const entry of output.toolbox) {
+            const toolOptions = {
+                ...entry.tool,
+                needsApproval: createNeedsApprovalFunction(entry.tool.name ?? ""),
+                errorFunction: formatError
+            }
+            const toolEntry = tool(toolOptions as ToolOptions<ToolInputParameters, SessionWithTracking<Session>>)
             if (!allowed.has(entry.integration)) continue
-            if (toolByName.has(entry.tool.name)) continue
-            toolByName.set(entry.tool.name, entry.tool as Tool<SessionWithTracking<Session>>)
-            toolToIntegrationMap.set(entry.tool.name, entry.integration)
+            if (toolByName.has(toolEntry.name)) continue
+            toolByName.set(toolEntry.name, toolEntry)
+            toolToIntegrationMap.set(toolEntry.name, entry.integration)
         }
     }
 

@@ -12,7 +12,7 @@ import { gmailCreateDraftTool } from "./tools/createDraft"
 
 export class GmailDraftOutput extends Output<GmailDraftOutputConfig> {
     constructor() {
-        const toolbox: ToolboxEntry[] = [{ tool: gmailCreateDraftTool as Tool, isReadOnly: false, integration: IntegrationType.GMAIL, displayName: "Create draft" }]
+        const toolbox: ToolboxEntry[] = [{ tool: gmailCreateDraftTool, isReadOnly: false, integration: IntegrationType.GMAIL, displayName: "Create draft" }]
         super(OutputConfigType.GMAIL_DRAFT, toolbox)
     }
 

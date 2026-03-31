@@ -16,10 +16,10 @@ import { slackSendMessageTool } from "./tools/sendMessage"
 export class SlackOutput extends Output<SlackOutputConfig> {
     constructor() {
         const toolbox: ToolboxEntry[] = [
-            { tool: slackSendMessageTool as Tool, isReadOnly: false, integration: IntegrationType.SLACK, displayName: "Send message" },
-            { tool: slackListUsersTool as Tool, isReadOnly: true, integration: IntegrationType.SLACK, displayName: "List users" },
-            { tool: slackListChannelsTool as Tool, isReadOnly: true, integration: IntegrationType.SLACK, displayName: "List channels" },
-            { tool: slackReadConversationTool as Tool, isReadOnly: true, integration: IntegrationType.SLACK, displayName: "Read conversation" }
+            { tool: slackSendMessageTool, isReadOnly: false, integration: IntegrationType.SLACK, displayName: "Send message" },
+            { tool: slackListUsersTool, isReadOnly: true, integration: IntegrationType.SLACK, displayName: "List users" },
+            { tool: slackListChannelsTool, isReadOnly: true, integration: IntegrationType.SLACK, displayName: "List channels" },
+            { tool: slackReadConversationTool, isReadOnly: true, integration: IntegrationType.SLACK, displayName: "Read conversation" }
         ]
         super(OutputConfigType.SLACK_CHANNEL, toolbox)
     }

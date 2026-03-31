@@ -1,4 +1,4 @@
-import { FunctionTool } from "@openai/agents"
+import { FunctionTool, Tool, tool } from "@openai/agents"
 import { Request, Response } from "express"
 
 import logger from "../logger"
@@ -35,11 +35,12 @@ export async function handleToolDefinitions(req: Request, res: Response) {
         for (const [, factory] of OutputFactory.OUTPUT_REGISTRY) {
             const output = factory()
             for (const entry of output.toolbox) {
-                const name = entry.tool.name
+                const toolEntry = tool(entry.tool) as Tool
+                const name = toolEntry.name
                 if (seen.has(name)) continue
                 seen.add(name)
 
-                const ft = entry.tool as FunctionTool
+                const ft = toolEntry as FunctionTool
                 tools.push({
                     name,
                     displayName: entry.displayName,

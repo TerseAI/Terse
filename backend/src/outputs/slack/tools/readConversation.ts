@@ -1,4 +1,4 @@
-import { RunContext, tool } from "@openai/agents"
+import { RunContext } from "@openai/agents"
 import { RunHistoryActionType } from "@prisma/client"
 import { z } from "zod"
 
@@ -7,10 +7,8 @@ import { initializeSlackWebClient } from "../../../integrations/SlackClient"
 import logger from "../../../logger"
 import { db } from "../../../prismaClient"
 import { IntegrationType } from "../../../shared/Integrations"
-import type { ToolOutputByName } from "../../../shared/types"
 import { ToolName } from "../../../tools/ToolNames"
-import { toolOutput } from "../../../tools/toolOutput"
-import { formatError } from "../../../tools/toolUtils"
+import { SessionToolOptions } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
 import { extractErrorMessage } from "../../../utility/strings"
 
@@ -21,7 +19,7 @@ const slackReadConversationParameters = z.object({
     cursor: z.string().nullable().optional().describe("Pagination cursor from a previous response (nextCursor). Omit on first call.")
 })
 
-export const slackReadConversationTool = tool<typeof slackReadConversationParameters, SessionWithTracking<Session>, ToolOutputByName["slack_read_conversation"]>({
+export const slackReadConversationTool: SessionToolOptions<typeof slackReadConversationParameters, typeof ToolName.SLACK_READ_CONVERSATION> = {
     name: ToolName.SLACK_READ_CONVERSATION,
     description: `Read message history from a Slack channel or DM.
 Use the channel ID from slack_list_channels. Supports public channels, private channels, and DMs.
@@ -118,7 +116,7 @@ Supports pagination: if the response includes nextCursor and hasMore, pass nextC
 
             const hasMore = (result as { has_more?: boolean }).has_more ?? false
             const nextCursor = (result as { response_metadata?: { next_cursor?: string } }).response_metadata?.next_cursor ?? null
-            return toolOutput("slack_read_conversation", {
+            return {
                 success: true,
                 channelId,
                 channelName,
@@ -127,7 +125,7 @@ Supports pagination: if the response includes nextCursor and hasMore, pass nextC
                 hasMore,
                 nextCursor,
                 actions: [action]
-            })
+            }
         } catch (error: unknown) {
             const errorMessage = extractErrorMessage(error)
             logger.error("❌ Error reading Slack conversation", { error: errorMessage, integrationId, channelId })
@@ -137,6 +135,5 @@ Supports pagination: if the response includes nextCursor and hasMore, pass nextC
                     : "Check that the integration has channels:history, groups:history, im:history, mpim:history scopes and is in the channel."
             throw new Error(`${errorMessage}. ${hint}`)
         }
-    },
-    errorFunction: formatError
-})
+    }
+}

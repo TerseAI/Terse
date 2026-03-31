@@ -1,13 +1,12 @@
-import { RunContext, tool } from "@openai/agents"
+import { RunContext } from "@openai/agents"
 import { RunHistoryActionType } from "@prisma/client"
 import { z } from "zod"
 
 import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
 import logger from "../../../logger"
 import { IntegrationType } from "../../../shared/Integrations"
-import type { ToolOutputByName } from "../../../shared/types"
 import { ToolName } from "../../../tools/ToolNames"
-import { toolOutput } from "../../../tools/toolOutput"
+import { SessionToolOptions } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
 import { extractErrorMessage } from "../../../utility/strings"
 import { createGitHubClient, getFileContents, getGitHubAccessToken, parseRepoFullName } from "../githubApiClient"
@@ -23,7 +22,7 @@ const readGitHubFileParameters = z.object({
     endLine: z.union([z.number(), z.null()]).describe("Stop reading at this line number (1-indexed, inclusive). Use with startLine for partial file reads. Use null to read to end.")
 })
 
-export const readGitHubFileTool = tool<typeof readGitHubFileParameters, SessionWithTracking<Session>, ToolOutputByName["readGitHubFile"]>({
+export const readGitHubFileTool: SessionToolOptions<typeof readGitHubFileParameters, typeof ToolName.GITHUB_READ_FILE> = {
     name: ToolName.GITHUB_READ_FILE,
     description: `Read the full contents of a file from a GitHub repository. Use this after finding relevant files via search to:
 - Understand the complete implementation of a function or class
@@ -147,10 +146,10 @@ Note: This reads from the default branch (main/master). Large files may be trunc
                 isReadOnly: true
             }
 
-            return toolOutput("readGitHubFile", {
+            return {
                 ...response,
                 actions: [action]
-            })
+            }
         } catch (error: any) {
             const errorMessage = extractErrorMessage(error)
             logger.error("[GitHub KB] readGitHubFile - Failed", {
@@ -165,4 +164,4 @@ Note: This reads from the default branch (main/master). Large files may be trunc
             throw new Error(`${errorMessage}. ${tip}`)
         }
     }
-})
+}
