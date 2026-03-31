@@ -2,7 +2,7 @@ import { Request, Response } from "express"
 
 import { ConfigInstance } from "../../shared/Configs"
 import { AdditionalStateParams, InstallationOptionsFor, IntegrationDetails, IntegrationInstance, IntegrationType } from "../../shared/Integrations"
-import { OAuthInstallationDetails } from "../../shared/types"
+import { ConfigurationFieldDefinition, FormFieldDefinition, OAuthInstallationDetails } from "../../shared/types"
 import { AgentTriggerWithConfigs } from "../../types/prisma"
 
 import type { FetchResourcesOptions } from "./FetchResourcesOptions"
@@ -37,17 +37,6 @@ export interface Integration<T extends IntegrationInstance, W, M extends Integra
     ): Promise<InputEvent[]>
 }
 
-export type FormFieldType = "text" | "password" | "textarea"
-
-export interface FormFieldDefinition {
-    name: string
-    type: FormFieldType
-    label: string
-    placeholder?: string
-    required?: boolean
-    hint?: string
-}
-
 export interface FormSubmissionInput {
     userId: string
     organizationId: string
@@ -64,22 +53,6 @@ export interface FormSubmissionResult {
 export interface FormIntegrationInstallation<T extends IntegrationType> {
     getFormFields(): FormFieldDefinition[]
     processFormSubmission(input: FormSubmissionInput): Promise<FormSubmissionResult>
-}
-
-export type ConfigurationFieldType = "radio" | "select"
-
-export interface ConfigurationOption {
-    label: string
-    value: string
-}
-
-export interface ConfigurationFieldDefinition {
-    name: string
-    type: ConfigurationFieldType
-    label: string
-    options: ConfigurationOption[] // Required for radio and select fields
-    required?: boolean
-    hint?: string
 }
 
 export interface OAuthIntegrationInstallation<T extends IntegrationType> {
