@@ -7,13 +7,18 @@ import { assertProjectRoot } from "./assertProjectRoot.js"
 import { ApiRoutes } from "./shared/ApiRoutes.js"
 import type { SerializedEvent } from "./shared/types.js"
 import { loadJob } from "./loadJob.js"
-import { executeJob } from "./run.js"
+import type { LanguageProvider } from "./providers/LanguageProvider.js"
+import { resolveProvider } from "./providers/resolveProvider.js"
 
 
-export async function test(jobName?: string, verbose?: boolean): Promise<void> {
-    assertProjectRoot()
+export async function test(
+    jobName?: string,
+    verbose?: boolean,
+    provider: LanguageProvider = resolveProvider()
+): Promise<void> {
+    assertProjectRoot(provider)
 
-    const { job } = await loadJob(jobName)
+    const { job } = await loadJob(provider, jobName)
     console.log(chalk.cyan(`\n  Testing job: ${job.name}\n`))
 
     const apiKey = readApiKeyOrBail({
@@ -66,5 +71,5 @@ export async function test(jobName?: string, verbose?: boolean): Promise<void> {
         })),
     })
 
-    await executeJob(job, events[choice], { verbose: !!verbose })
+    await provider.executeJob(job, events[choice], { verbose: !!verbose })
 }

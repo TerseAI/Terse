@@ -1,0 +1,9 @@
+export class {{className}} {
+    constructor({{{constructorParams}}}) {}
+{{#if items.length}}
+
+{{#each items}}
+    static {{staticName}} = new {{../className}}({{{argsText}}})
+{{/each}}
+{{/if}}
+}

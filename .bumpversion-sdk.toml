@@ -17,16 +17,6 @@ search = '__version__ = "{current_version}"'
 replace = '__version__ = "{new_version}"'
 
 [[tool.bumpversion.files]]
-filename = "packages/terse-python-cli/pyproject.toml"
-search = '"terse-sdk~={current_version}"'
-replace = '"terse-sdk~={new_version}"'
-
-[[tool.bumpversion.files]]
-filename = "packages/terse-python-cli/tests/test_init_and_generate.py"
-search = '"SDK_DEPENDENCY": "terse-sdk~={current_version}"'
-replace = '"SDK_DEPENDENCY": "terse-sdk~={new_version}"'
-
-[[tool.bumpversion.files]]
-filename = "packages/terse-python-cli/src/terse_cli/_project.py"
-search = 'version = _installed_version("terse-sdk") or "{current_version}"'
-replace = 'version = _installed_version("terse-sdk") or "{new_version}"'
+filename = "packages/terse-cli/src/init.ts"
+search = 'const PYTHON_SDK_DEPENDENCY = "terse-sdk~={current_version}"'
+replace = 'const PYTHON_SDK_DEPENDENCY = "terse-sdk~={new_version}"'

@@ -18,6 +18,7 @@
     "chalk": "^5.0.0",
     "commander": "^13.0.0",
     "fflate": "^0.8.0",
+    "handlebars": "^4.7.9",
     "inquirer": "^13.3.0",
     "ora": "^8.0.0",
     "terse-sdk": "^0.1.2",

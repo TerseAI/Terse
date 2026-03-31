@@ -1,0 +1,9 @@
+
+
+# === Schedule ===
+
+
+class Schedule:
+    @staticmethod
+    def cron(expression: str) -> TriggerConfig:
+        return TriggerConfig(integration_id='system', integration_type='cron_job', config_type='time_trigger', config=_compact_dict(cronExpression=expression))

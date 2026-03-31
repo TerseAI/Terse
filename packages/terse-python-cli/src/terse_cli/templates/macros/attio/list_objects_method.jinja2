@@ -1,8 +1,0 @@
-{# list_objects: read-only fetch of all objects for an Attio workspace. #}
-{% macro attio_list_objects_method(tool, attio) %}
-
-    def list_objects(self) -> {{ tool.output_model }}:
-        return AttioListObjectsToolOutput.model_validate(
-            self._agent.execute_tool({{ tool.name_repr }}, {'integrationId': {{ attio.instance_id_repr }}})
-        )
-{% endmacro %}
