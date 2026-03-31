@@ -17,10 +17,10 @@ import { searchRumEventsTool } from "./tools/searchRumEvents"
 export class DatadogSkillOutput extends Output<DatadogConfig> {
     constructor() {
         const toolbox: ToolboxEntry[] = [
-            { tool: searchDatadogLogsTool as Tool, isReadOnly: true, integration: IntegrationType.DATADOG, displayName: "Search logs" },
-            { tool: listRumEventsTool as Tool, isReadOnly: true, integration: IntegrationType.DATADOG, displayName: "List events" },
-            { tool: searchRumEventsTool as Tool, isReadOnly: true, integration: IntegrationType.DATADOG, displayName: "Search RUM events" },
-            { tool: aggregateRumEventsTool as Tool, isReadOnly: true, integration: IntegrationType.DATADOG, displayName: "Aggregate RUM events" }
+            { tool: searchDatadogLogsTool, isReadOnly: true, integration: IntegrationType.DATADOG, displayName: "Search logs" },
+            { tool: listRumEventsTool, isReadOnly: true, integration: IntegrationType.DATADOG, displayName: "List events" },
+            { tool: searchRumEventsTool, isReadOnly: true, integration: IntegrationType.DATADOG, displayName: "Search RUM events" },
+            { tool: aggregateRumEventsTool, isReadOnly: true, integration: IntegrationType.DATADOG, displayName: "Aggregate RUM events" }
         ]
 
         super(OutputConfigType.DATADOG, toolbox)

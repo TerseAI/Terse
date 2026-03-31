@@ -1,5 +1,7 @@
 import { z } from "zod"
 
+import type { ToolOutputByName } from "../shared/types"
+
 /**
  * Centralized definition of all tool names used in the system.
  *
@@ -121,3 +123,11 @@ export const VALID_TOOL_NAMES_SET = new Set(ALL_TOOL_NAMES)
 export function isValidToolName(name: string): name is ToolName {
     return VALID_TOOL_NAMES_SET.has(name)
 }
+
+type AssertNever<T extends never> = T
+
+type MissingToolOutputNames = Exclude<ToolName, keyof ToolOutputByName>
+type ExtraToolOutputNames = Exclude<keyof ToolOutputByName, ToolName>
+
+type _ToolOutputByNameMustCoverAllToolNames = AssertNever<MissingToolOutputNames>
+type _ToolOutputByNameMustNotContainUnknownToolNames = AssertNever<ExtraToolOutputNames>

@@ -1,4 +1,4 @@
-import { Agent, AgentInputItem, AgentOutputType, RunContext, run, tool } from "@openai/agents"
+import { Agent, AgentInputItem, AgentOutputType, RunContext, run } from "@openai/agents"
 import { RunHistoryActionType } from "@prisma/client"
 import { z } from "zod"
 
@@ -8,9 +8,8 @@ import { buildUserMessage } from "../../../agent/userMessage"
 import { settings } from "../../../config/settings"
 import logger from "../../../logger"
 import { IntegrationType } from "../../../shared/Integrations"
-import type { ToolOutputByName } from "../../../shared/types"
 import { ToolName } from "../../../tools/ToolNames"
-import { toolOutput } from "../../../tools/toolOutput"
+import { SessionToolOptions } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
 import { extractErrorMessage } from "../../../utility/strings"
 import { createGitHubClient, getGitHubAccessToken, getPullRequestDiff, parseRepoFullName } from "../githubApiClient"
@@ -34,7 +33,7 @@ const summarizeGitHubPullRequestDiffParameters = z.object({
         )
 })
 
-export const summarizeGitHubPullRequestDiffTool = tool<typeof summarizeGitHubPullRequestDiffParameters, SessionWithTracking<Session>, ToolOutputByName["summarizeGitHubPullRequestDiff"]>({
+export const summarizeGitHubPullRequestDiffTool: SessionToolOptions<typeof summarizeGitHubPullRequestDiffParameters, typeof ToolName.GITHUB_SUMMARIZE_PULL_REQUEST_DIFF> = {
     name: ToolName.GITHUB_SUMMARIZE_PULL_REQUEST_DIFF,
     description: `Summarize the diff of a pull request from a GitHub repository using an intelligent sub-agent. Use this to:
 - Understand what changes were made in a specific PR without loading the full diff into context
@@ -274,10 +273,10 @@ You can optionally provide high-level context about what you're looking for in t
                 isReadOnly: true
             }
 
-            return toolOutput("summarizeGitHubPullRequestDiff", {
+            return {
                 ...response,
                 actions: [action]
-            })
+            }
         } catch (error: any) {
             const errorMessage = extractErrorMessage(error)
             logger.error("[GitHub KB] summarizeGitHubPullRequestDiff - Failed", {
@@ -292,7 +291,7 @@ You can optionally provide high-level context about what you're looking for in t
             throw new Error(`${errorMessage}. ${tip}`)
         }
     }
-})
+}
 
 function buildSummarizerSystemPrompt(context?: string): string {
     return `You are a code review assistant specialized in analyzing and summarizing pull request diffs.

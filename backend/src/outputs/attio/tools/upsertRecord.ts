@@ -1,4 +1,4 @@
-import { RunContext, tool } from "@openai/agents"
+import { RunContext } from "@openai/agents"
 import { RunHistoryActionType } from "@prisma/client"
 import { z } from "zod"
 
@@ -6,10 +6,9 @@ import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
 import { AttioIntegrationManager } from "../../../integrations/AttioIntegration"
 import logger from "../../../logger"
 import { IntegrationType } from "../../../shared/Integrations"
-import type { AttioAttribute, AttioRecord, ToolOutputByName } from "../../../shared/types"
+import type { AttioAttribute, AttioRecord } from "../../../shared/types"
 import { ToolName } from "../../../tools/ToolNames"
-import { toolOutput } from "../../../tools/toolOutput"
-import { createNeedsApprovalFunction, formatError } from "../../../tools/toolUtils"
+import { SessionToolOptions, createNeedsApprovalFunction, formatError } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
 
 const attioScalarValue = z.union([z.string(), z.number(), z.boolean(), z.null()])
@@ -27,11 +26,10 @@ const attioUpsertRecordParams = z.object({
         )
 })
 
-export const attioUpsertRecordTool = tool<typeof attioUpsertRecordParams, SessionWithTracking<Session>, ToolOutputByName["attio_upsert_record"]>({
+export const attioUpsertRecordTool: SessionToolOptions<typeof attioUpsertRecordParams, typeof ToolName.ATTIO_UPSERT_RECORD> = {
     name: ToolName.ATTIO_UPSERT_RECORD,
     description: `Create or update (upsert) one or more records in Attio. Uses a matching attribute to find existing records — if a match is found the record is updated, otherwise a new one is created. Use attio_list_objects first to discover available attributes for the object.`,
     parameters: attioUpsertRecordParams,
-    needsApproval: createNeedsApprovalFunction(ToolName.ATTIO_UPSERT_RECORD),
     execute: async ({ integrationId, objectSlug, matchingAttribute, records }, runContext?: RunContext<SessionWithTracking<Session>>) => {
         logger.debug("Executing attio_upsert_record tool", { integrationId, objectSlug, matchingAttribute, recordCount: records.length })
 
@@ -107,7 +105,7 @@ export const attioUpsertRecordTool = tool<typeof attioUpsertRecordParams, Sessio
             const failureCount = errors.length
             const partial = successCount > 0 && failureCount > 0
 
-            return toolOutput("attio_upsert_record", {
+            return {
                 success: successCount > 0 || failureCount === 0,
                 records: successfulRecords,
                 count: successCount,
@@ -117,14 +115,13 @@ export const attioUpsertRecordTool = tool<typeof attioUpsertRecordParams, Sessio
                 partial,
                 errors,
                 actions
-            })
+            }
         } catch (error: unknown) {
             logger.error("Error upserting Attio record", { error: error instanceof Error ? error.message : error, integrationId })
             throw error instanceof Error ? error : new Error(String(error))
         }
-    },
-    errorFunction: formatError
-})
+    }
+}
 
 type AttioApiError = {
     code?: string

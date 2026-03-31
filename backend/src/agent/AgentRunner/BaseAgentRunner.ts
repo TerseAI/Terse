@@ -1,4 +1,4 @@
-import { Agent, AgentInputItem, AgentOutputType, RunResult, RunState, RunToolApprovalItem, StreamedRunResult, Tool } from "@openai/agents"
+import { Agent, AgentInputItem, AgentOutputType, RunResult, RunState, RunToolApprovalItem, StreamedRunResult, Tool, tool } from "@openai/agents"
 import type { Session as AgentMemorySession, ModelSettings } from "@openai/agents-core"
 
 import logger from "../../logger"
@@ -39,7 +39,7 @@ export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSe
         const map = new Map<string, string>()
         for (const output of outputs) {
             for (const entry of output.toolbox) {
-                map.set(entry.tool.name, entry.integration)
+                map.set(entry.tool.name ?? "", entry.integration)
             }
         }
         return map

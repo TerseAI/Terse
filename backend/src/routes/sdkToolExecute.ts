@@ -1,4 +1,4 @@
-import { FunctionTool, type RunContext } from "@openai/agents"
+import { FunctionTool, type RunContext, Tool, tool } from "@openai/agents"
 import { Request, Response } from "express"
 import { z } from "zod"
 
@@ -33,9 +33,14 @@ function findToolByName(toolName: string): SdkToolDescriptor | null {
     for (const [, factory] of OutputFactory.OUTPUT_REGISTRY) {
         const output = factory()
         for (const entry of output.toolbox) {
+            // Important, we want to reraise error in case of tool call here,
+            // so error propagates through.
+            entry.tool.errorFunction = (_context: RunContext, error: Error | unknown) => {
+                throw new Error(error instanceof Error ? error.message : String(error))
+            }
             if (entry.tool.name === toolName) {
                 return {
-                    tool: entry.tool as SdkFunctionTool,
+                    tool: tool(entry.tool) as SdkFunctionTool,
                     isReadOnly: entry.isReadOnly
                 }
             }
@@ -119,7 +124,7 @@ export async function handleToolExecute(req: Request, res: Response) {
         return res.status(401).json({ success: false, error: "Unauthorized" })
     }
 
-    const { toolName, params } = req.body as { toolName?: string; params?: Record<string, unknown> }
+    const { toolName, params } = req.body
 
     if (!toolName || typeof toolName !== "string") {
         return res.status(400).json({ success: false, error: "toolName is required and must be a string" })

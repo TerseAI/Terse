@@ -1,4 +1,4 @@
-import { RunContext, tool } from "@openai/agents"
+import { RunContext } from "@openai/agents"
 import { RunHistoryActionType } from "@prisma/client"
 import { z } from "zod"
 
@@ -8,17 +8,19 @@ import logger from "../../../logger"
 import { IntegrationType } from "../../../shared/Integrations"
 import { LinearAdapter } from "../../../ticketing/linear"
 import { ToolName } from "../../../tools/ToolNames"
-import { formatError } from "../../../tools/toolUtils"
+import { SessionToolOptions } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
 import { extractErrorMessage } from "../../../utility/strings"
 
-export const linearGetStatesTool = tool({
+const parameters = z.object({
+    integrationId: z.string().describe("The integration ID of the Linear integration to use."),
+    teamId: z.string().nullable().optional().describe("Optional team ID to limit results to that team's states.")
+})
+
+export const linearGetStatesTool: SessionToolOptions<typeof parameters, typeof ToolName.LINEAR_GET_STATES> = {
     name: ToolName.LINEAR_GET_STATES,
     description: `List workflow states for the Linear workspace or a specific team. Use when creating or updating issues to pick a valid stateId (e.g. "Todo", "In Progress", "Done").`,
-    parameters: z.object({
-        integrationId: z.string().describe("The integration ID of the Linear integration to use."),
-        teamId: z.string().nullable().optional().describe("Optional team ID to limit results to that team's states.")
-    }),
+    parameters: parameters,
     execute: async ({ integrationId, teamId }, runContext?: RunContext<SessionWithTracking<Session>>) => {
         logger.debug("🛠️ Executing linear_get_states tool", { integrationId, teamId })
 
@@ -50,6 +52,5 @@ export const linearGetStatesTool = tool({
             logger.error("❌ Error listing Linear states", { error: errorMessage, integrationId })
             throw new Error(`${errorMessage}. Check that the access token is valid and has the necessary permissions.`)
         }
-    },
-    errorFunction: formatError
-})
+    }
+}

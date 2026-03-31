@@ -1,5 +1,5 @@
 import { LinearClient } from "@linear/sdk"
-import { RunContext, tool } from "@openai/agents"
+import { RunContext } from "@openai/agents"
 import { RunHistoryActionType } from "@prisma/client"
 import { z } from "zod"
 
@@ -8,19 +8,20 @@ import { getLinearAccessTokenForOrganization } from "../../../integrations/Linea
 import logger from "../../../logger"
 import { IntegrationType } from "../../../shared/Integrations"
 import { ToolName } from "../../../tools/ToolNames"
-import { createNeedsApprovalFunction, formatError } from "../../../tools/toolUtils"
+import { SessionToolOptions } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
 import { extractErrorMessage } from "../../../utility/strings"
 
-export const linearAddCommentTool = tool({
+const parameters = z.object({
+    integrationId: z.string().describe("The integration ID of the Linear workspace to use."),
+    issueId: z.string().describe("The ID of the Linear issue to add the comment to. Use linear_search_ticket to find the issue ID."),
+    body: z.string().describe("The comment text to add to the issue.")
+})
+
+export const linearAddCommentTool: SessionToolOptions<typeof parameters, typeof ToolName.LINEAR_ADD_COMMENT> = {
     name: ToolName.LINEAR_ADD_COMMENT,
     description: `Add a comment to an existing Linear issue. Use linear_search_ticket to find the issue ID.`,
-    parameters: z.object({
-        integrationId: z.string().describe("The integration ID of the Linear workspace to use."),
-        issueId: z.string().describe("The ID of the Linear issue to add the comment to. Use linear_search_ticket to find the issue ID."),
-        body: z.string().describe("The comment text to add to the issue.")
-    }),
-    needsApproval: createNeedsApprovalFunction(ToolName.LINEAR_ADD_COMMENT),
+    parameters: parameters,
     execute: async ({ integrationId, issueId, body }, runContext?: RunContext<SessionWithTracking<Session>>) => {
         logger.debug("🛠️ Executing linear_add_comment tool", { integrationId, issueId })
 
@@ -62,6 +63,5 @@ export const linearAddCommentTool = tool({
             logger.error("❌ Error adding Linear comment", { error: errorMessage, issueId })
             throw new Error(`${errorMessage}. Please check all inputs and try again.`)
         }
-    },
-    errorFunction: formatError
-})
+    }
+}

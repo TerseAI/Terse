@@ -1,8 +1,31 @@
-import { RunContext } from "@openai/agents"
+import { FunctionCallItem, RunConfig, RunContext, ToolExecuteArgument, ToolInputParameters, ToolOptions, UnknownContext } from "@openai/agents"
 
 import { SessionWithTracking } from "../agent/AgentRunner/AgentRunner"
 import logger from "../logger"
+import type { ToolOutputByName } from "../shared/types"
 import { Session } from "../types/session"
+
+export type ToolCallDetails = {
+    toolCall?: FunctionCallItem
+    resumeState?: string
+    signal?: AbortSignal
+    parentRunConfig?: Partial<RunConfig>
+}
+type ToolExecuteFunction<TParameters extends ToolInputParameters, Context = UnknownContext, TOutput = unknown> = (
+    input: ToolExecuteArgument<TParameters>,
+    context?: RunContext<Context>,
+    details?: ToolCallDetails
+) => Promise<TOutput> | TOutput
+
+export type SessionToolOptions<T extends ToolInputParameters, TName extends keyof ToolOutputByName> = Omit<ToolOptions<T, SessionWithTracking<Session>>, "execute" | "name"> & {
+    name: TName
+    execute: ToolExecuteFunction<T, SessionWithTracking<Session>, ToolOutputByName[TName]>
+}
+
+export type TypedToolOptions<T extends ToolInputParameters, TName extends keyof ToolOutputByName, Context = UnknownContext> = ToolOptions<T, Context> & {
+    name: TName
+    execute: ToolExecuteFunction<T, Context, ToolOutputByName[TName]>
+}
 
 // MARK: - Error Handling
 
@@ -72,14 +95,4 @@ export function createNeedsApprovalFunction(toolName: string) {
         // Only used when toolApprovals is undefined (not set)
         return agent.requireApproval ?? false
     }
-}
-
-/**
- * Legacy function for backward compatibility.
- * @deprecated Use createNeedsApprovalFunction instead
- */
-export async function needsApproval(context?: RunContext<unknown>): Promise<boolean> {
-    // Type guard: safely access agent.requireApproval from SessionWithTracking
-    const sessionWithTracking = context?.context as SessionWithTracking<Session> | undefined
-    return sessionWithTracking?.agent?.requireApproval ?? false
 }
