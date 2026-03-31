@@ -1,0 +1,54 @@
+---
+title: "GTM workflow templates"
+description: "Start from working GTM workflows instead of a blank file."
+---
+
+Each template is a complete workflow you can scaffold, connect, and deploy. Swap in your own lists, owners, and channels.
+
+## Templates
+
+<CardGroup cols={2}>
+  <Card title="New deal enrichment" icon="sparkles" href="/templates/new-deal-enrichment">
+    Enrich new deals with Apollo, score fit, and write back to Attio.
+  </Card>
+  <Card title="Weekly pipeline digest" icon="calendar-range" href="/templates/weekly-pipeline-digest">
+    Summarize open pipeline every Monday and post to Slack.
+  </Card>
+  <Card title="CRM Slack alerts" icon="bell" href="/templates/crm-slack-alerts">
+    Alert Slack when a deal hits a key stage.
+  </Card>
+  <Card title="Contact scoring" icon="gauge" href="/templates/contact-scoring">
+    Score new contacts with Apollo enrichment and write the score back to Attio.
+  </Card>
+</CardGroup>
+
+## How to use a template
+
+<Steps>
+  <Step title="Scaffold the starter">
+
+```bash
+terse init acme-revenue --template weekly-pipeline-digest
+cd acme-revenue
+```
+
+  </Step>
+  <Step title="Connect the required integrations">
+    Open the integrations page with `terse integrate` and connect the systems the template expects.
+  </Step>
+  <Step title="Generate helpers">
+
+```bash
+terse generate
+```
+
+  </Step>
+  <Step title="Test and deploy">
+
+```bash
+terse test --verbose
+terse deploy
+```
+
+  </Step>
+</Steps>

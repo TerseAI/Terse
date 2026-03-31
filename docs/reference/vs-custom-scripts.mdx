@@ -1,0 +1,35 @@
+---
+title: "Terse vs. custom scripts"
+description: "What you keep from raw scripts and what Terse handles for you."
+icon: "file-code"
+---
+
+## What you keep
+
+| With raw scripts | With Terse |
+| --- | --- |
+| TypeScript | TypeScript |
+| Git | Git |
+| Tests and code review | Tests and code review |
+| Full control over logic | Full control over logic |
+
+## What you stop owning
+
+| Custom scripts require | Terse handles |
+| --- | --- |
+| OAuth setup and token refresh | Integration connection flow |
+| Hardcoded list IDs and channel IDs | Generated typed helpers |
+| Event ingestion and replay | Triggers and local test flows |
+| Custom approval logic | Built-in approvals and notifications |
+| Operational dashboard | Workflow activity, stats, and controls |
+
+## Choose custom scripts when
+
+- the workflow needs infrastructure Terse does not support
+- your team already owns an internal platform for auth and operations
+
+## Choose Terse when
+
+- you want TypeScript workflows without building the surrounding platform
+- workspace context changes often and hardcoded IDs drift
+- GTM engineers need to ship workflows without owning infra

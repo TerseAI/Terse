@@ -1,0 +1,51 @@
+---
+title: "CRM Slack alerts"
+description: "A template that posts real-time Slack alerts when an important CRM event happens."
+icon: "bell"
+---
+
+Alert the team in Slack when a deal hits a key stage.
+
+## Scaffold it
+
+```bash
+terse init acme-revenue --template crm-slack-alerts
+```
+
+## What it does
+
+1. Triggers on a CRM stage change.
+2. Filters for a specific stage (e.g. `contract-sent`).
+3. Posts a formatted alert to Slack.
+
+## Core workflow
+
+```ts
+import { AttioRecordInputEvent, Terse, TerseAgent } from "terse-sdk";
+import { Attio, AttioList, Slack, SlackChannel } from "./terse.generated";
+
+const client = new Terse();
+
+await client.createWorkflow({
+  name: "crm-slack-alerts",
+  triggers: [Attio.onRecordUpdated({ list: AttioList.Pipeline.OpenDeals })],
+  skills: [
+    Attio.skill({ lists: [AttioList.Pipeline.OpenDeals] }),
+    Slack.skill({ channel: SlackChannel.DealDesk }),
+  ],
+  filter: (event: AttioRecordInputEvent) =>
+    event.record.values.stage === "contract-sent",
+  onTrigger: async (event: AttioRecordInputEvent, agent: TerseAgent) => {
+    await agent.tools.slack.sendMessage({
+      channelId: SlackChannel.DealDesk.channelId,
+      message: `Contract sent for ${event.record.values.company_name} by ${event.record.values.owner_name}.`,
+    });
+  },
+});
+```
+
+## Customize
+
+- Change the `filter` for the stage transition you care about.
+- Route by owner or segment if the whole team does not need every alert.
+- Add `agent.runAndWait()` if you want the workflow to include recommended next actions.

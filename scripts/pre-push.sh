@@ -1,6 +1,8 @@
 #!/usr/bin/env zsh
 set -e
 
+
+
 cd backend && pnpm run format && cd ..
 cd frontend && pnpm run format && cd ..
 
@@ -21,3 +23,13 @@ npm run python:check
 # Install terse-sdk and terse-cli globally from the workspace
 npm run install-global -w terse-sdk
 npm run install-global -w terse-cli
+
+if [[ -d docs ]]; then
+  if ! command -v mint >/dev/null 2>&1; then
+    echo "Mintlify CLI is required to validate docs before push. Install it with: npm i -g mint"
+    exit 1
+  fi
+
+  echo "Validating Mintlify docs..."
+  cd docs && mint validate && cd ..
+fi
