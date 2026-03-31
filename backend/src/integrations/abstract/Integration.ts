@@ -2,11 +2,14 @@ import { Request, Response } from "express"
 
 import { ConfigInstance } from "../../shared/Configs"
 import { AdditionalStateParams, InstallationOptionsFor, IntegrationDetails, IntegrationInstance, IntegrationType } from "../../shared/Integrations"
-import { ConfigurationFieldDefinition, FormFieldDefinition, OAuthInstallationDetails } from "../../shared/types"
+import type { ConfigurationFieldDefinition, ConfigurationFieldType, ConfigurationOption, FormFieldDefinition, FormFieldType } from "../../shared/types"
+import { OAuthInstallationDetails } from "../../shared/types"
 import { AgentTriggerWithConfigs } from "../../types/prisma"
 
 import type { FetchResourcesOptions } from "./FetchResourcesOptions"
 import type { InputEvent } from "./InputEvent"
+
+export type { FormFieldDefinition, ConfigurationFieldDefinition, ConfigurationOption, ConfigurationFieldType, FormFieldType } from "../../shared/types"
 
 export interface IntegrationWithResources<T extends IntegrationInstance, R> {
     integration: T
