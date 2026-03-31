@@ -1,0 +1,67 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "mint",
+  "name": "Terse",
+  "logo": {
+    "light": "/logo/terse.png",
+    "dark": "/logo/terse.png",
+    "size": 80
+  },
+  "colors": {
+    "primary": "#0F766E",
+    "light": "#14B8A6",
+    "dark": "#115E59"
+  },
+  "navigation": {
+    "groups": [
+      {
+        "group": "Getting started",
+        "pages": ["index", "quickstart", "context-as-code"]
+      },
+      {
+        "group": "Templates",
+        "root": "templates/index",
+        "pages": [
+          "templates/new-deal-enrichment",
+          "templates/weekly-pipeline-digest",
+          "templates/crm-slack-alerts",
+          "templates/contact-scoring"
+        ]
+      },
+      {
+        "group": "Reference",
+        "root": "reference/index",
+        "pages": ["reference/cli", "reference/typescript-sdk"]
+      },
+      {
+        "group": "Compare",
+        "root": "compare/index",
+        "pages": [
+          "reference/vs-zapier",
+          "reference/vs-custom-scripts",
+          "reference/vs-ai-agents"
+        ]
+      }
+    ]
+  },
+  "navbar": {
+    "links": [
+      {
+        "label": "Website",
+        "href": "https://useterse.ai"
+      }
+    ],
+    "primary": {
+      "type": "button",
+      "label": "Open app",
+      "href": "https://app.useterse.ai"
+    }
+  },
+  "redirects": [],
+  "contextual": {
+    "options": ["view", "chatgpt", "claude", "mcp", "cursor", "vscode"]
+  },
+  "icons": {
+    "library": "lucide"
+  }
+}

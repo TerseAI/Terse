@@ -1,0 +1,57 @@
+---
+title: "Terse vs. Zapier"
+description: "When to use Terse and when Zapier or Make is a better fit."
+icon: "scale"
+---
+
+## Comparison
+
+| | Zapier / Make | Terse |
+| --- | --- | --- |
+| Where logic lives | Visual steps | TypeScript in your repo |
+| Workspace context | IDs and step wiring | Generated typed helpers |
+| Branching | Visual paths | Normal code |
+| Reviews and versioning | Limited | Git |
+| AI + deterministic tools | Add-on | Native pattern |
+
+## Example: enrichment workflow
+
+A multi-step Zapier flow becomes a single TypeScript file:
+
+```ts
+import { AttioRecordInputEvent, Terse, TerseAgent } from "terse-sdk"
+import { Apollo, Attio, AttioList } from "./terse.generated"
+
+const client = new Terse()
+
+await client.createWorkflow({
+  name: "new-deal-enrichment",
+  triggers: [Attio.onRecordCreated({ list: AttioList.Pipeline.NewDeals })],
+  skills: [Attio.skill({ lists: [AttioList.Pipeline.NewDeals] }), Apollo.skill()],
+  onTrigger: async (event: AttioRecordInputEvent, agent: TerseAgent) => {
+    const company = await agent.tools.apollo.enrichCompany({
+      domain: event.record.values.company_domain,
+    })
+
+    const summary = await agent.runAndWait("Summarize fit and recommend a next step.", event)
+
+    await agent.tools.attio.updateRecord({
+      list: AttioList.Pipeline.NewDeals,
+      recordId: event.record.id,
+      fields: { fit_score: company.score, research_summary: summary },
+    })
+  },
+})
+```
+
+## Choose Zapier when
+
+- the workflow is linear with no branching
+- the team prefers a visual builder over code
+- versioning and code review are not required
+
+## Choose Terse when
+
+- the workflow needs branching, scoring, or typed context
+- you want source control and code review
+- you need deterministic writes around model judgment

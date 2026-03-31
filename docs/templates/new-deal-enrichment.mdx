@@ -1,0 +1,67 @@
+---
+title: "New deal enrichment"
+description: "A template that enriches new deals with Apollo, writes the result back to your CRM, and alerts Slack."
+icon: "sparkles"
+---
+
+Enrich every new deal with firmographic context before the owner acts.
+
+## Scaffold it
+
+```bash
+terse init acme-revenue --template new-deal-enrichment
+```
+
+## What it does
+
+1. Triggers on a new deal in Attio.
+2. Looks up company context via Apollo.
+3. Uses the model to summarize fit and recommend a next step.
+4. Writes the result back to Attio and posts a Slack alert.
+
+## Core workflow
+
+```ts
+import { AttioRecordInputEvent, Terse, TerseAgent } from "terse-sdk"
+import { Apollo, Attio, AttioList, Slack, SlackChannel } from "./terse.generated"
+
+const client = new Terse()
+
+await client.createWorkflow({
+  name: "new-deal-enrichment",
+  triggers: [Attio.onRecordCreated({ list: AttioList.Pipeline.NewDeals })],
+  skills: [
+    Attio.skill({ lists: [AttioList.Pipeline.NewDeals] }),
+    Apollo.skill(),
+    Slack.skill({ channel: SlackChannel.DealDesk }),
+  ],
+  onTrigger: async (event: AttioRecordInputEvent, agent: TerseAgent) => {
+    const company = await agent.tools.apollo.enrichCompany({
+      domain: event.record.values.company_domain,
+    })
+
+    const prompt = [
+      "Summarize ICP fit, timing, and a next step.",
+      `Company: ${event.record.values.company_name}`,
+      `Industry: ${company.industry}`,
+      `Employee count: ${company.employeeCount}`,
+      `Revenue: ${company.estimatedRevenue}`,
+      `Technologies: ${company.technologies.join(", ")}`,
+    ].join("\n")
+
+    const summary = await agent.runAndWait(prompt, event)
+
+    await agent.tools.attio.updateRecord({
+      list: AttioList.Pipeline.NewDeals,
+      recordId: event.record.id,
+      fields: { research_summary: summary, fit_score: company.score },
+    })
+  },
+})
+```
+
+## Customize
+
+- Change the source list from `AttioList.Pipeline.NewDeals` to your own intake stage.
+- Add owner routing if different teams should get different alerts.
+- Write back only the fields your CRM layout already uses.

@@ -1,0 +1,136 @@
+---
+title: "CLI reference"
+description: "Reference for the TypeScript terse CLI commands used to scaffold, generate, test, run, and deploy workflows end to end."
+icon: "terminal"
+---
+
+The TypeScript `terse` CLI expects you to run commands from the root of a generated Terse project, where `package.json` and `src/index.ts` live.
+
+## Command summary
+
+| Command                      | What it does                                                  |
+| ---------------------------- | ------------------------------------------------------------- |
+| `terse init [project-name]`  | Scaffold a new TypeScript workflow project                    |
+| `terse generate`             | Generate `src/terse.generated.ts` from connected integrations |
+| `terse integrate`            | Open the Terse integrations page in the browser               |
+| `terse test [workflow-name]` | Run a workflow locally against a selected sample event        |
+| `terse deploy`               | Sync all registered workflows to Terse                        |
+
+## Global options
+
+- `--help`, `-h`: Print usage information for any command.
+
+```bash
+terse --help
+terse test --help
+```
+
+## `terse init [project-name]`
+
+Scaffolds a new project and prompts you for an API token.
+
+```bash
+terse init acme-revenue --template weekly-pipeline-digest
+```
+
+The scaffold includes:
+
+- `src/index.ts`
+- `.env`
+- `package.json`
+- TypeScript build scripts
+
+Use `--template <slug>` when you want a working GTM starter instead of a blank project.
+
+Common template slugs:
+
+- `weekly-pipeline-digest`
+- `new-deal-enrichment`
+- `crm-slack-alerts`
+- `contact-scoring`
+
+## `terse generate`
+
+Fetches integration details and writes `src/terse.generated.ts`.
+
+```bash
+terse generate
+```
+
+Use it after:
+
+- connecting a new integration
+- changing available resources in a connected integration
+- updating the generated tool surface you want your workflows to use
+
+## `terse integrate`
+
+Opens the integrations page in the Terse web app.
+
+```bash
+terse integrate
+```
+
+Equivalent UI destination: `https://app.useterse.ai/app/integrations`
+
+## `terse test [workflow-name]`
+
+Runs a workflow locally against a selected sample event.
+
+```bash
+terse test
+terse test weekly-pipeline-digest --verbose
+```
+
+Options:
+
+- `--verbose`, `-v`: show model stream output during the run
+
+Options:
+
+- `--event <json>`: inline serialized event JSON
+- `--event-file <path>`: read serialized event JSON from a file
+
+## `terse deploy`
+
+Syncs every registered workflow in the project to Terse.
+
+```bash
+terse deploy
+```
+
+Behavior to remember:
+
+- new local workflows are created remotely
+- existing local workflows are updated remotely
+- workflows removed locally are removed remotely on the next deploy
+
+## Required environment variable
+
+- `TERSE_API_KEY`: required for `terse generate`, `terse test`, and `terse deploy`
+
+## Common workflows
+
+**Initial setup:**
+
+```bash
+npm install -g terse-cli
+terse init acme-revenue --template weekly-pipeline-digest
+cd acme-revenue
+terse generate
+```
+
+**Development loop:**
+
+```bash
+# edit src/index.ts
+terse test --verbose
+```
+
+**Deploy:**
+
+```bash
+terse generate
+terse test --verbose
+terse deploy
+```

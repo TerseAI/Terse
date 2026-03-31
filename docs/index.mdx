@@ -1,0 +1,82 @@
+---
+title: "Overview"
+description: "Terse is a code-first workflow platform that gives coding agents the context they need out of the box. Connect your systems, generate typed helpers from workspace context, and deploy end-to-end workflows."
+icon: "house"
+---
+
+<div className="mt-2 mb-2">
+  <a
+    href="/quickstart"
+    className="inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-semibold text-white no-underline transition-opacity hover:opacity-90"
+    style={{ backgroundColor: "#0F766E" }}
+  >
+    Quickstart
+  </a>
+</div>
+
+## How it works
+
+<div style={{ position: "relative", paddingBottom: "62.5%", height: 0 }}>
+  <iframe
+    src="https://www.loom.com/embed/447d269951604381b5a97b54bff07252"
+    title="How Terse workflows work"
+    frameBorder="0"
+    allowFullScreen
+    style={{
+      position: "absolute",
+      top: 0,
+      left: 0,
+      width: "100%",
+      height: "100%",
+    }}
+  />
+</div>
+
+## What you can build
+
+<CardGroup cols={2}>
+  <Card
+    title="CRM enrichment"
+    icon="sparkles"
+    href="/templates/new-deal-enrichment"
+  >
+    Enrich new deals with Apollo, score fit, and write the result back to Attio.
+  </Card>
+  <Card title="Deal Alerts" icon="bell" href="/templates/crm-slack-alerts">
+    Post Slack alerts when a deal hits a key stage.
+  </Card>
+  <Card
+    title="Weekly Pipeline Reporting"
+    icon="chart-column"
+    href="/templates/weekly-pipeline-digest"
+  >
+    Summarize open pipeline weekly and post the digest to Slack.
+  </Card>
+  <Card title="Additional Templates" icon="book-open" href="/templates">
+    Start from a working GTM workflow instead of a blank file.
+  </Card>
+</CardGroup>
+
+## Key concepts
+
+| Concept               | What it means                                                                                                                      |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| **Context as Code**   | `terse generate` compiles your connected integrations into TypeScript — no runtime discovery of IDs, channels, or lists            |
+| **Workflow**          | A TypeScript automation with triggers, skills, and an `onTrigger` handler, deployed via `terse deploy`                             |
+| **Trigger**           | The event (e.g. `Attio.onRecordCreated()`) or schedule (e.g. `Schedule.cron()`) that starts a workflow                             |
+| **Skill**             | An integration capability available to the workflow (e.g. `Apollo.skill()`, `Slack.skill()`)                                       |
+| **Generated helpers** | Typed exports in `src/terse.generated.ts` — resource constants, trigger builders, skill constructors, and `agent.tools.*` wrappers |
+
+## Where to start
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Get a weekly pipeline digest live in under 10 minutes.
+  </Card>
+  <Card title="Context as Code" icon="lightbulb" href="/context-as-code">
+    Understand how generated helpers make workflows more stable.
+  </Card>
+  <Card title="Compare approaches" icon="scale" href="/compare">
+    See where Terse fits relative to Zapier, custom scripts, and AI agents.
+  </Card>
+</CardGroup>

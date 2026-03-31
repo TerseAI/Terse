@@ -1,0 +1,127 @@
+---
+title: "Context as Code"
+description: "How Terse compiles your workspace context into TypeScript so workflows do not have to rediscover it at runtime."
+icon: "lightbulb"
+---
+
+Context as Code turns your connected systems into typed helpers so workflows reference real workspace resources instead of rediscovering IDs, channels, and lists at runtime.
+
+## The problem
+
+Suppose you have an AI agent setup using MCP. Each time the agent runs, it rediscovers context about your workspace:
+
+```ts
+// Runtime discovery on every execution
+const lists = await attio.lists.list();
+const deals = lists.find((list) => list.name === "New deals");
+
+const channels = await slack.conversations.list();
+const alertsChannel = channels.find((channel) => channel.name === "deal-desk");
+
+if (!deals || !alertsChannel) {
+  throw new Error("Workspace context drifted");
+}
+```
+
+This upfront context that the agent has to rebuild each time is unreliable, adds latency and is prone to failure.
+
+## The solution
+
+`terse generate` compiles that context into typed code once. It also encodes how your organization
+uses the tools so your coding agents can build automations quickly and with the right context.
+
+```ts
+import { AttioRecordInputEvent, Terse, TerseAgent } from "terse-sdk";
+import {
+  Apollo,
+  Attio,
+  AttioList,
+  Slack,
+  SlackChannel,
+} from "./terse.generated";
+
+const client = new Terse();
+
+await client.createWorkflow({
+  name: "new-deal-enrichment",
+  triggers: [Attio.onRecordCreated({ list: AttioList.Pipeline.NewDeals })],
+  skills: [
+    Attio.skill({ lists: [AttioList.Pipeline.NewDeals] }),
+    Apollo.skill(),
+    Slack.skill({ channel: SlackChannel.DealDesk }),
+  ],
+  onTrigger: async (event: AttioRecordInputEvent, agent: TerseAgent) => {
+    const enrichment = await agent.tools.apollo.enrichCompany({
+      domain: event.record.values.company_domain,
+    });
+
+    const prompt = [
+      "You are reviewing a new CRM deal.",
+      `Company: ${event.record.values.company_name}`,
+      `Domain: ${event.record.values.company_domain}`,
+      `Industry: ${enrichment.industry}`,
+      `Employee count: ${enrichment.employeeCount}`,
+      `Technologies: ${enrichment.technologies.join(", ")}`,
+      "Return 3 bullets and one recommended next step.",
+    ].join("\n");
+
+    const summary = await agent.runAndWait(prompt, event);
+
+    await agent.tools.attio.updateRecord({
+      list: AttioList.Pipeline.NewDeals,
+      recordId: event.record.id,
+      fields: {
+        research_summary: summary,
+      },
+    });
+  },
+});
+```
+
+## How it works
+
+<Steps>
+  <Step title="Connect integrations">
+    Connect your CRM, enrichment provider, and messaging tools in the Terse app,
+    or run `terse integrate`.
+  </Step>
+  <Step title="Run `terse generate`">
+    Terse reads your connected integrations and their resources: lists, records,
+    channels, owners, endpoints, and more.
+  </Step>
+  <Step title="The CLI writes `src/terse.generated.ts`">
+    The generated file contains typed exports for triggers, skills,
+    deterministic tools, and workspace constants specific to your account.
+  </Step>
+  <Step title="Your workflow imports those exports">
+    You build against the generated types instead of runtime discovery. No name
+    lookups. No hardcoded IDs. No drift.
+  </Step>
+</Steps>
+
+## Key terms
+
+| Term              | Meaning                                                                                                        |
+| ----------------- | -------------------------------------------------------------------------------------------------------------- |
+| Workflow          | A TypeScript automation with triggers, skills, and a handler that you deploy with the CLI                      |
+| Trigger           | The event (e.g. CRM record created) or schedule (e.g. cron) that starts the workflow                           |
+| Skill             | A capability the workflow can use after you connect an integration (e.g. `Attio.skill()`, `Apollo.skill()`)    |
+| Generated helpers | Typed exports in `src/terse.generated.ts` — triggers, skills, resource constants, and `agent.tools.*` wrappers |
+
+## Benefits
+
+- **Less runtime drift** — workspace structure is compiled into code.
+- **Lower latency** — no API calls to discover lists, channels, or owners.
+- **Type safety** — broken references fail at build time instead of in production.
+- **Better prompts** — workflows start with real context, not guesses.
+
+## Where to go next
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Get a workflow live fast.
+  </Card>
+  <Card title="Templates" icon="book-open" href="/templates">
+    Templates
+  </Card>
+</CardGroup>

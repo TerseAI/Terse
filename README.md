@@ -329,3 +329,9 @@ export TERSE_BACKEND_URL="http://localhost:3001"
 ```
 
 then run the terse commands right after
+
+## Documentation
+
+We use Mintlify. Look at Mintlify docs for usage instructions.
+
+To install mintlify, just run `pnpm i -g mint`
