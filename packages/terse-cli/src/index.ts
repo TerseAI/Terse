@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { Command } from "commander"
+import { loginAndWriteEnv } from "./auth.js"
 import { deploy } from "./deploy.js"
 import { generate } from "./generate.js"
 import { integrate } from "./integrate.js"
@@ -21,6 +22,14 @@ program
     .argument("[project-name]", "Name for the project directory")
     .action(async (projectName?: string) => {
         await init(projectName)
+    })
+
+program
+    .command("login")
+    .description("Authenticate with Terse via your browser")
+    .action(async () => {
+        const success = await loginAndWriteEnv(process.cwd())
+        if (!success) process.exit(1)
     })
 
 program

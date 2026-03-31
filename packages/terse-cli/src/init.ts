@@ -5,9 +5,8 @@ import { promisify } from "node:util"
 import { fileURLToPath } from "node:url"
 import ora from "ora"
 import chalk from "chalk"
-import { input } from "@inquirer/prompts"
+import { loginAndWriteEnv } from "./auth.js"
 import { generate } from "./generate.js"
-import { FRONTEND_URL, BACKEND_URL } from "./config.js"
 
 const execAsync = promisify(exec)
 
@@ -65,8 +64,8 @@ export async function init(projectName?: string): Promise<void> {
         spinner.warn(`Failed to install dependencies. Run ${chalk.cyan(`${pm} install`)} manually.`)
     }
 
-    // Prompt for API key and write .env
-    await promptForApiKey(targetDir)
+    // Authenticate via browser and write API key to .env
+    await loginAndWriteEnv(targetDir)
 
     const envExists = fs.existsSync(path.join(targetDir, ".env"))
 
@@ -86,7 +85,7 @@ export async function init(projectName?: string): Promise<void> {
         step++
     }
     if (!envExists) {
-        console.log(`  ${step}. Copy .env.example to .env and add your TERSE_API_KEY`)
+        console.log(`  ${step}. Run ${chalk.cyan("terse login")} to authenticate`)
         step++
     }
     console.log(`  ${step}. Edit src/index.ts to define your job`)
@@ -97,46 +96,6 @@ export async function init(projectName?: string): Promise<void> {
 }
 
 
-async function promptForApiKey(targetDir: string): Promise<void> {
-    console.log(`\n  Create an API key at: ${chalk.cyan(`${FRONTEND_URL}/app/profile?tab=api-tokens`)}\n`)
-
-    try {
-        const key = (await input({ message: "Paste your API key (or press Enter to skip):" })).trim()
-
-        if (!key) {
-            fs.writeFileSync(path.join(targetDir, ".env"), "TERSE_API_KEY=\n")
-            console.log(chalk.dim("  Skipped — you can add TERSE_API_KEY to .env later."))
-            return
-        }
-
-        // Validate the key against the backend
-        const spinner = ora("Verifying API key").start()
-
-        try {
-            const res = await fetch(`${BACKEND_URL}/sdk/me`, {
-                headers: { Authorization: `Bearer ${key}` },
-            })
-
-            if (res.ok) {
-                const data = await res.json() as { firstName?: string | null; displayName?: string | null; email?: string | null }
-                const name = data.firstName || data.displayName || data.email || "there"
-                spinner.succeed(`Hello, ${name}! API key verified.`)
-            } else {
-                spinner.warn("Could not verify API key (invalid or server error). Saving it anyway.")
-            }
-        } catch {
-            spinner.warn("Could not reach the server to verify your API key. Saving it anyway.")
-        }
-
-        fs.writeFileSync(path.join(targetDir, ".env"), `TERSE_API_KEY=${key}\n`)
-    } catch (error) {
-        if (error instanceof Error && error.name === "ExitPromptError") {
-            console.log("\n")
-            process.exit(0)
-        }
-        throw error
-    }
-}
 
 function getTemplatesDir(): string {
     // In dist/, templates are at ../templates relative to the compiled file
