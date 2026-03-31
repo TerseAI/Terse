@@ -3,6 +3,8 @@ import Handlebars from "handlebars"
 import path from "path"
 import { fileURLToPath } from "url"
 
+import { extractErrorMessage } from "../../utility/strings"
+
 const moduleDir = path.dirname(fileURLToPath(import.meta.url))
 const templatesDir = path.resolve(moduleDir, "templates")
 
@@ -15,6 +17,6 @@ export async function loadTemplate(pathToTemplate: string, data: any): Promise<s
         return template(data)
     } catch (error) {
         console.error(`Error loading template at ${templatePath}:`, error)
-        throw new Error(`Failed to load email template: ${error instanceof Error ? error.message : String(error)}`)
+        throw new Error(`Failed to load email template: ${extractErrorMessage(error)}`)
     }
 }

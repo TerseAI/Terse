@@ -8,6 +8,7 @@ import { uploadSdkDeployZip } from "../services/FileStorageService"
 import { AgentOutput, AgentTrigger, SdkDeployRequestBody, User } from "../shared/types"
 import { AgentWithTriggerRelations, PrismaTransaction } from "../types/prisma"
 import { getInputConfigInclude } from "../utility/prismaIncludes"
+import { extractErrorMessage } from "../utility/strings"
 import { convertConfigTypeToInputConfigType, convertConfigTypeToOutputConfigType } from "../utility/typeConverters"
 
 import { createOutputConfig, createTriggerConfig, persistToolApprovals, setupAgentTriggers, tearDownAgentTriggers, validateUserOwnsIntegration } from "./agents"
@@ -65,16 +66,16 @@ export async function handleSdkDeploy(req: Request, res: Response) {
             })
 
             const isUpdate = !!existing
-            const automationId = isUpdate
+            const agent = isUpdate
                 ? await updateExistingAutomation(prisma, existing, job.jobName, job.triggers, outputs, toolApprovals, organizationId, userId, gcsKey)
                 : await createNewAutomation(prisma, job.jobName, job.triggers, outputs, toolApprovals, organizationId, userId, gcsKey)
 
-            await finalizeDeployment(prisma, automationId, organizationId)
+            await setupAgentTriggers(agent)
 
-            results.push({ jobName: job.jobName, automationId, isUpdate })
+            results.push({ jobName: job.jobName, automationId: agent.id, isUpdate })
 
             logger.info(`SDK deploy ${isUpdate ? "updated" : "created"} automation`, {
-                automationId,
+                automationId: agent.id,
                 jobName: job.jobName,
                 organizationId,
                 triggerCount: job.triggers.length
@@ -85,13 +86,16 @@ export async function handleSdkDeploy(req: Request, res: Response) {
         const deployedNames = new Set(jobs.map(j => j.jobName))
         const removed = await removeStaleAutomations(prisma, organizationId, deployedNames)
 
+        emitCacheInvalidationWithKey(organizationId, "recentAgents")
+        emitCacheInvalidationWithKey(organizationId, "agents")
+
         return res.status(200).json({ success: true, results, removed })
     } catch (error) {
         logger.error("SDK deploy failed", { error, userId })
         return res.status(500).json({
             success: false,
             error: "Deploy failed",
-            details: (error as Error).message
+            details: extractErrorMessage(error)
         })
     }
 }
@@ -106,12 +110,12 @@ async function updateExistingAutomation(
     organizationId: string,
     userId: string,
     gcsKey: string
-): Promise<string> {
+): Promise<AgentWithTriggerRelations> {
     const automationId = existing.id
 
-    await prisma.$transaction(async tx => {
-        await tearDownAgentTriggers(existing)
+    await tearDownAgentTriggers(existing)
 
+    return prisma.$transaction(async tx => {
         await tx.automation_inputs.deleteMany({
             where: { automation_id: automationId }
         })
@@ -142,9 +146,12 @@ async function updateExistingAutomation(
 
         await createTriggersForAutomation(tx, automationId, triggers, organizationId, userId)
         await createOutputsForAutomation(tx, automationId, outputs, organizationId, userId)
-    })
 
-    return automationId
+        return tx.automations.findFirstOrThrow({
+            where: { id: automationId },
+            include: { inputs: { include: getInputConfigInclude() } }
+        })
+    })
 }
 
 async function createNewAutomation(
@@ -156,8 +163,8 @@ async function createNewAutomation(
     organizationId: string,
     userId: string,
     gcsKey: string
-): Promise<string> {
-    const result = await prisma.$transaction(async tx => {
+): Promise<AgentWithTriggerRelations> {
+    return prisma.$transaction(async tx => {
         const newAgent = await tx.automations.create({
             data: {
                 user_id: userId,
@@ -182,10 +189,11 @@ async function createNewAutomation(
         await createTriggersForAutomation(tx, newAgent.id, triggers, organizationId, userId)
         await createOutputsForAutomation(tx, newAgent.id, outputs, organizationId, userId)
 
-        return newAgent
+        return tx.automations.findFirstOrThrow({
+            where: { id: newAgent.id },
+            include: { inputs: { include: getInputConfigInclude() } }
+        })
     })
-
-    return result.id
 }
 
 async function createTriggersForAutomation(tx: PrismaTransaction, automationId: string, triggers: AgentTrigger[], organizationId: string, userId: string) {
@@ -236,18 +244,24 @@ async function createOutputsForAutomation(tx: PrismaTransaction, automationId: s
 }
 
 async function removeStaleAutomations(prisma: ReturnType<typeof db>, organizationId: string, deployedNames: Set<string>): Promise<{ id: string; name: string }[]> {
+    // Lightweight query to identify which automations are stale
     const sdkAutomations = await prisma.automations.findMany({
         where: { organization_id: organizationId, source: "SDK" },
-        include: { inputs: { include: getInputConfigInclude() } }
+        select: { id: true, name: true }
     })
 
     const stale = sdkAutomations.filter(a => !deployedNames.has(a.name))
+    if (stale.length === 0) return []
 
-    for (const automation of stale) {
+    // Only fetch full relations for the stale ones that need trigger teardown
+    const staleIds = stale.map(a => a.id)
+    const staleWithTriggers = await prisma.automations.findMany({
+        where: { id: { in: staleIds } },
+        include: { inputs: { include: getInputConfigInclude() } }
+    })
+
+    for (const automation of staleWithTriggers) {
         await tearDownAgentTriggers(automation)
-        await prisma.automations.deleteMany({
-            where: { id: automation.id, organization_id: organizationId }
-        })
         logger.info("SDK deploy removed stale automation", {
             automationId: automation.id,
             name: automation.name,
@@ -255,28 +269,12 @@ async function removeStaleAutomations(prisma: ReturnType<typeof db>, organizatio
         })
     }
 
-    if (stale.length > 0) {
-        emitCacheInvalidationWithKey(organizationId, "recentAgents")
-        emitCacheInvalidationWithKey(organizationId, "agents")
-    }
-
-    return stale.map(a => ({ id: a.id, name: a.name }))
-}
-
-async function finalizeDeployment(prisma: ReturnType<typeof db>, automationId: string, organizationId: string) {
-    const agentWithRelations = await prisma.automations.findFirst({
-        where: { id: automationId, organization_id: organizationId },
-        include: {
-            inputs: {
-                include: getInputConfigInclude()
-            }
-        }
+    await prisma.automations.deleteMany({
+        where: { id: { in: staleIds }, organization_id: organizationId }
     })
-
-    if (agentWithRelations) {
-        await setupAgentTriggers(agentWithRelations)
-    }
 
     emitCacheInvalidationWithKey(organizationId, "recentAgents")
     emitCacheInvalidationWithKey(organizationId, "agents")
+
+    return stale.map(a => ({ id: a.id, name: a.name }))
 }

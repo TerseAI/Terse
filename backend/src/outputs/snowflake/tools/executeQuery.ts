@@ -1,14 +1,12 @@
-import { RunContext, tool } from "@openai/agents"
+import { RunContext } from "@openai/agents"
 import { RunHistoryActionType } from "@prisma/client"
 import { z } from "zod"
 
 import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
 import logger from "../../../logger"
 import { IntegrationType } from "../../../shared/Integrations"
-import { ToolOutputByName } from "../../../shared/types"
 import { ToolName } from "../../../tools/ToolNames"
-import { toolOutput } from "../../../tools/toolOutput"
-import { createNeedsApprovalFunction } from "../../../tools/toolUtils"
+import { SessionToolOptions } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
 import { getSnowflakeCredentials, runSnowflakeQuery } from "../snowflakeClient"
 
@@ -17,12 +15,11 @@ const snowflakeExecuteQueryParams = z.object({
     query: z.string().describe("The SQL query to execute. Should be a read-only SELECT statement.")
 })
 
-export const snowflakeExecuteQueryTool = tool<typeof snowflakeExecuteQueryParams, SessionWithTracking<Session>, ToolOutputByName["snowflake_execute_query"]>({
+export const snowflakeExecuteQueryTool: SessionToolOptions<typeof snowflakeExecuteQueryParams, typeof ToolName.SNOWFLAKE_EXECUTE_QUERY> = {
     name: ToolName.SNOWFLAKE_EXECUTE_QUERY,
     description:
         "Execute a read-only SQL query against a Snowflake data warehouse. Returns rows and column metadata. SQL safety is enforced by the Snowflake role configured for the integration — use a read-only role.",
     parameters: snowflakeExecuteQueryParams,
-    needsApproval: createNeedsApprovalFunction(ToolName.SNOWFLAKE_EXECUTE_QUERY),
     execute: async ({ integrationId, query }, runContext?: RunContext<SessionWithTracking<Session>>) => {
         if (!runContext?.context) {
             throw new Error("No context provided")
@@ -45,16 +42,16 @@ export const snowflakeExecuteQueryTool = tool<typeof snowflakeExecuteQueryParams
                 isReadOnly: true
             }
 
-            return toolOutput(ToolName.SNOWFLAKE_EXECUTE_QUERY, {
+            return {
                 success: true,
                 rows: result.rows,
                 columns: result.columns,
                 rowCount: result.rowCount,
                 actions: [action]
-            })
+            }
         } catch (error: any) {
             logger.error("Snowflake query execution failed", { error: error.message, integrationId })
             throw new Error(`Failed to execute Snowflake query: ${error.message}`)
         }
     }
-})
+}

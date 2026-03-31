@@ -15,6 +15,7 @@ import { sentNotificationsKey } from "../shared/InvalidationKeys"
 import { User } from "../shared/types"
 import { validateCloudSchedulerRequest } from "../utility/cloudScheduler"
 import { FeatureFlag, FeatureFlagService } from "../utility/featureFlags"
+import { extractErrorMessage } from "../utility/strings"
 import { getUserForOrg } from "../utility/workos"
 
 type EligibleAutomation = {
@@ -130,7 +131,7 @@ export async function reviewAllAgents(req: Request, res: Response) {
 
                 eligible.push({ ...automation, user, runCount })
             } catch (error) {
-                const message = error instanceof Error ? error.message : String(error)
+                const message = extractErrorMessage(error)
                 failures.push({ automationId: automation.id, error: message })
                 logger.error("[ReviewAgents] Failed pre-check for automation", { automationId: automation.id, error })
             }
@@ -238,7 +239,7 @@ export async function reviewAllAgents(req: Request, res: Response) {
                 })
                 failures.push({
                     automationId: "email",
-                    error: `Failed to send email to ${group.emailAddress}: ${error instanceof Error ? error.message : String(error)}`
+                    error: `Failed to send email to ${group.emailAddress}: ${extractErrorMessage(error)}`
                 })
             }
 

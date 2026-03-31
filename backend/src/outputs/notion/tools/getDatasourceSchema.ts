@@ -1,6 +1,6 @@
 import { Client } from "@notionhq/client"
 import { GetDataSourceResponse } from "@notionhq/client/build/src/api-endpoints"
-import { RunContext, tool } from "@openai/agents"
+import { RunContext } from "@openai/agents"
 import { z } from "zod"
 
 import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
@@ -8,7 +8,7 @@ import { getNotionAccessTokenForOrganization } from "../../../integrations/Notio
 import logger from "../../../logger"
 import { IntegrationType } from "../../../shared/Integrations"
 import { ToolName } from "../../../tools/ToolNames"
-import { formatError } from "../../../tools/toolUtils"
+import { SessionToolOptions, formatError } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
 
 // Helper function to build property schema with format examples
@@ -61,7 +61,12 @@ function buildPropertySchema(propertyName: string, propertyConfig: any): any {
     return baseSchema
 }
 
-export const notionGetSchemaTool = tool({
+const parameters = z.object({
+    integrationId: z.string().describe("The integration ID of the Notion workspace to use."),
+    databaseId: z.string().describe("The Notion database ID (data source ID) to get the schema for.")
+})
+
+export const notionGetSchemaTool: SessionToolOptions<typeof parameters, typeof ToolName.NOTION_GET_SCHEMA> = {
     name: ToolName.NOTION_GET_SCHEMA,
     description: `Gets the schema/structure of the Notion data source. This tool retrieves all property definitions including property names, types, valid options for select/status fields, and exact format examples for how to construct each property when writing to the database.
 
@@ -73,10 +78,7 @@ Use this tool:
 - To determine how to write to the Notion database by understanding its structure
 
 The schema information returned by this tool should be used to properly format properties when calling notion_create_or_update_database_row to create or update rows in the database.`,
-    parameters: z.object({
-        integrationId: z.string().describe("The integration ID of the Notion workspace to use."),
-        databaseId: z.string().describe("The Notion database ID (data source ID) to get the schema for.")
-    }),
+    parameters: parameters,
     execute: async ({ integrationId, databaseId }, runContext?: RunContext<SessionWithTracking<Session>>) => {
         logger.debug("Executing notion_get_schema tool")
         if (!runContext?.context) {
@@ -109,16 +111,16 @@ The schema information returned by this tool should be used to properly format p
             target: databaseName,
             details: `Retrieved schema with ${Object.keys(schema).length} properties`,
             url: dataSourceUrl,
-            type: "read"
+            type: "read" as const
         }
 
         return {
+            success: true,
             actions: [action],
             data_source_id: databaseId,
             database_name: databaseName,
             schema: schema,
             property_count: Object.keys(schema).length
         }
-    },
-    errorFunction: formatError
-})
+    }
+}

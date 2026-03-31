@@ -27,33 +27,6 @@ import { emitCacheInvalidationWithKey, emitCacheInvalidationWithWildcard } from 
 
 const PENDING_APPROVALS_INVALIDATION_KEY = pendingApprovalsKey()[0]
 
-export type ApprovalRequest = {
-    runId: string
-    stepId: string
-    approved: boolean
-    userId: string
-    organizationId: string
-    rejectionReason?: string
-    /** When true, stops the run completely without resuming the agent */
-    hardReject?: boolean
-}
-
-export type ApprovalResult = {
-    // 'completed' means the run finished after applying this approval decision.
-    // 'awaiting_approval' means this approval decision was processed successfully, but the agent requested another approval (chained approvals).
-    status: ApprovalProcessingStatus
-    result?: {
-        finalOutput?: unknown
-    }
-    error?: string
-}
-
-export enum ApprovalProcessingStatus {
-    COMPLETED = "completed",
-    AWAITING_APPROVAL = "awaiting_approval",
-    FAILED = "failed"
-}
-
 export class ApprovalService {
     private static async validateUserAccess(
         runId: string,
@@ -270,15 +243,9 @@ export class ApprovalService {
 
             // SDK runs: resolve the in-memory approval gate instead of creating a new AgentRunner.
             // The SSE handler (handleSdkAgentRun) is already waiting on waitForApprovalDecision() and will resume the agent.
-            if (channel.source === "SDK") {
-                const finalSlackStatus = approved
-                    ? SlackApprovalMessageStatus.APPROVED
-                    : hardReject
-                      ? SlackApprovalMessageStatus.REJECTED
-                      : rejectionReason
-                        ? SlackApprovalMessageStatus.CHANGES_REQUESTED
-                        : SlackApprovalMessageStatus.REJECTED
+            const finalSlackStatus = resolveSlackApprovalStatus(approved, hardReject, rejectionReason)
 
+            if (channel.source === "SDK") {
                 resolveApprovalDecision(runId, stepId, { approved: !hardReject && approved, rejectionReason })
 
                 await this.updateSlackNotification(runId, stepId, finalSlackStatus, user, channel.id)
@@ -292,15 +259,6 @@ export class ApprovalService {
             // Create agent runner and resume from pending approval
             const runContext = { runId }
             const agentRunner = new AgentRunner(session, outputs, channel, runContext)
-
-            // Use 'changes_requested' for request changes flow (rejected with feedback), 'rejected' for hard reject
-            const finalSlackStatus = approved
-                ? SlackApprovalMessageStatus.APPROVED
-                : hardReject
-                  ? SlackApprovalMessageStatus.REJECTED
-                  : rejectionReason
-                    ? SlackApprovalMessageStatus.CHANGES_REQUESTED
-                    : SlackApprovalMessageStatus.REJECTED
 
             const decision = approved ? "approve" : "reject"
             const cancellationController = new AbortController()
@@ -448,4 +406,38 @@ export class ApprovalService {
             }
         }
     }
+}
+
+function resolveSlackApprovalStatus(approved: boolean, hardReject?: boolean, rejectionReason?: string): SlackApprovalMessageStatus {
+    if (approved) return SlackApprovalMessageStatus.APPROVED
+    if (hardReject) return SlackApprovalMessageStatus.REJECTED
+    if (rejectionReason) return SlackApprovalMessageStatus.CHANGES_REQUESTED
+    return SlackApprovalMessageStatus.REJECTED
+}
+
+export type ApprovalRequest = {
+    runId: string
+    stepId: string
+    approved: boolean
+    userId: string
+    organizationId: string
+    rejectionReason?: string
+    /** When true, stops the run completely without resuming the agent */
+    hardReject?: boolean
+}
+
+export type ApprovalResult = {
+    // 'completed' means the run finished after applying this approval decision.
+    // 'awaiting_approval' means this approval decision was processed successfully, but the agent requested another approval (chained approvals).
+    status: ApprovalProcessingStatus
+    result?: {
+        finalOutput?: unknown
+    }
+    error?: string
+}
+
+export enum ApprovalProcessingStatus {
+    COMPLETED = "completed",
+    AWAITING_APPROVAL = "awaiting_approval",
+    FAILED = "failed"
 }

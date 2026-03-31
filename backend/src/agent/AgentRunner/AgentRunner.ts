@@ -1,4 +1,4 @@
-import { Agent, AgentInputItem, AgentOutputType, RunResult, RunState, RunToolApprovalItem, Tool, protocol } from "@openai/agents"
+import { Agent, AgentInputItem, AgentOutputType, RunResult, RunState, RunToolApprovalItem, Tool, ToolInputParameters, ToolOptions, protocol, tool } from "@openai/agents"
 import { RunHistoryActionType } from "@prisma/client"
 
 import { settings } from "../../config/settings"
@@ -13,6 +13,7 @@ import { EntityType } from "../../shared/Entities"
 import { IntegrationType } from "../../shared/Integrations"
 import { ChangeEventType, ChangedItem, ModelEvent } from "../../shared/ModelEvents"
 import type { RunHistoryAction, TrackingParams } from "../../shared/RunHistoryTypes"
+import { createNeedsApprovalFunction, formatError } from "../../tools/toolUtils"
 import { AgentWithRelations } from "../../types/prisma"
 import { Session } from "../../types/session"
 import { UserFormatter } from "../../utility/UserFormatter"
@@ -62,7 +63,13 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance> exte
 
         outputs.forEach(output => {
             output.toolbox.forEach(entry => {
-                toolsMap.set(entry.tool.name, entry.tool)
+                const toolOptions = {
+                    ...entry.tool,
+                    needsApproval: createNeedsApprovalFunction(entry.tool.name ?? ""),
+                    errorFunction: formatError
+                }
+                const toolEntry = tool(toolOptions as ToolOptions<ToolInputParameters, SessionWithTracking<Session>>)
+                toolsMap.set(toolEntry.name, toolEntry)
             })
         })
 
@@ -268,7 +275,7 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance> exte
     private buildToolMetadataMap(): void {
         this.outputs.forEach(output => {
             output.toolbox.forEach(entry => {
-                this.toolMetadataMap.set(entry.tool.name, {
+                this.toolMetadataMap.set(entry.tool.name ?? "", {
                     integration: entry.integration,
                     isReadOnly: entry.isReadOnly
                 })

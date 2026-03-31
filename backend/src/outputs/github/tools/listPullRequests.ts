@@ -1,14 +1,14 @@
-import { RunContext, tool } from "@openai/agents"
+import { RunContext } from "@openai/agents"
 import { RunHistoryActionType } from "@prisma/client"
 import { z } from "zod"
 
 import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
 import logger from "../../../logger"
 import { IntegrationType } from "../../../shared/Integrations"
-import type { ToolOutputByName } from "../../../shared/types"
 import { ToolName } from "../../../tools/ToolNames"
-import { toolOutput } from "../../../tools/toolOutput"
+import { SessionToolOptions } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
+import { extractErrorMessage } from "../../../utility/strings"
 import { createGitHubClient, getGitHubAccessToken, listPullRequests, parseRepoFullName } from "../githubApiClient"
 
 // Helper functions
@@ -48,7 +48,7 @@ const listGitHubPullRequestsParameters = z.object({
         .describe("Page number for pagination (default: 1). Use this to fetch additional PRs if there are more than perPage results. Use null for page 1. Must be a positive integer >= 1.")
 })
 
-export const listGitHubPullRequestsTool = tool<typeof listGitHubPullRequestsParameters, SessionWithTracking<Session>, ToolOutputByName["listGitHubPullRequests"]>({
+export const listGitHubPullRequestsTool: SessionToolOptions<typeof listGitHubPullRequestsParameters, typeof ToolName.GITHUB_LIST_PULL_REQUESTS> = {
     name: ToolName.GITHUB_LIST_PULL_REQUESTS,
     description: `List pull requests in GitHub repositories within a time window. Use this to:
 - Find recently merged PRs to understand recent changes
@@ -168,12 +168,12 @@ Dates are specified in YYYY-MM-DD format (e.g., "2024-01-15"). The since date is
                 isReadOnly: true
             }
 
-            return toolOutput("listGitHubPullRequests", {
+            return {
                 ...response,
                 actions: [action]
-            })
+            }
         } catch (error: any) {
-            const errorMessage = error instanceof Error ? error.message : String(error)
+            const errorMessage = extractErrorMessage(error)
             logger.error("[GitHub KB] listGitHubPullRequests - Failed", {
                 repository,
                 error: errorMessage,
@@ -182,4 +182,4 @@ Dates are specified in YYYY-MM-DD format (e.g., "2024-01-15"). The since date is
             throw new Error(`${errorMessage}. If you're getting rate limit errors, try reducing perPage or narrowing the time window.`)
         }
     }
-})
+}

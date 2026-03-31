@@ -1,4 +1,4 @@
-import { RunContext, tool } from "@openai/agents"
+import { RunContext } from "@openai/agents"
 import { RunHistoryActionType } from "@prisma/client"
 import { z } from "zod"
 
@@ -8,15 +8,18 @@ import logger from "../../../logger"
 import { IntegrationType } from "../../../shared/Integrations"
 import { LinearAdapter } from "../../../ticketing/linear"
 import { ToolName } from "../../../tools/ToolNames"
-import { formatError } from "../../../tools/toolUtils"
+import { SessionToolOptions } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
+import { extractErrorMessage } from "../../../utility/strings"
 
-export const linearGetUsersTool = tool({
+const parameters = z.object({
+    integrationId: z.string().describe("The integration ID of the Linear integration to use.")
+})
+
+export const linearGetUsersTool: SessionToolOptions<typeof parameters, typeof ToolName.LINEAR_GET_USERS> = {
     name: ToolName.LINEAR_GET_USERS,
     description: `List users in the Linear workspace. Use to pick assigneeId or subscriberIds when creating or updating issues.`,
-    parameters: z.object({
-        integrationId: z.string().describe("The integration ID of the Linear integration to use.")
-    }),
+    parameters: parameters,
     execute: async ({ integrationId }, runContext?: RunContext<SessionWithTracking<Session>>) => {
         logger.debug("🛠️ Executing linear_get_users tool", { integrationId })
 
@@ -44,10 +47,9 @@ export const linearGetUsersTool = tool({
                 actions: [action]
             }
         } catch (error: unknown) {
-            const errorMessage = error instanceof Error ? error.message : String(error)
+            const errorMessage = extractErrorMessage(error)
             logger.error("❌ Error listing Linear users", { error: errorMessage, integrationId })
             throw new Error(`${errorMessage}. Check that the access token is valid and has the necessary permissions.`)
         }
-    },
-    errorFunction: formatError
-})
+    }
+}

@@ -15,9 +15,9 @@ import { attioUpsertRecordTool } from "./tools/upsertRecord"
 export class AttioOutput extends Output<AttioOutputConfig> {
     constructor() {
         const toolbox: ToolboxEntry[] = [
-            { tool: attioListObjectsTool as Tool, isReadOnly: true, integration: IntegrationType.ATTIO, displayName: "List objects" },
-            { tool: attioQueryRecordsTool as Tool, isReadOnly: true, integration: IntegrationType.ATTIO, displayName: "Query records" },
-            { tool: attioUpsertRecordTool as Tool, isReadOnly: false, integration: IntegrationType.ATTIO, displayName: "Upsert record" }
+            { tool: attioListObjectsTool, isReadOnly: true, integration: IntegrationType.ATTIO, displayName: "List objects" },
+            { tool: attioQueryRecordsTool, isReadOnly: true, integration: IntegrationType.ATTIO, displayName: "Query records" },
+            { tool: attioUpsertRecordTool, isReadOnly: false, integration: IntegrationType.ATTIO, displayName: "Upsert record" }
         ]
         super(OutputConfigType.ATTIO, toolbox)
     }

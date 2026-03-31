@@ -3,6 +3,7 @@ import { WebClient } from "@slack/web-api"
 
 import { ConfigurationFieldDefinition, FormFieldDefinition } from "../integrations/abstract/Integration"
 import logger from "../logger"
+import { extractErrorMessage } from "../utility/strings"
 
 import { SlackApprovalMessageStatus } from "./ApprovalStatus"
 
@@ -1235,7 +1236,7 @@ export async function removeEyesReaction(client: WebClient, messageEvent: AppMen
             name: "eyes"
         })
     } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : String(error)
+        const message = extractErrorMessage(error)
         if (message.includes("no_reaction")) {
             return
         }
