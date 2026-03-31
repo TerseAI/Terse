@@ -1,0 +1,312 @@
+---
+title: "TypeScript SDK reference"
+description: "Reference for the terse-sdk package and the generated helpers used in Terse workflows."
+icon: "braces"
+---
+
+Terse workflows combine two sources:
+
+- the public `terse-sdk` package
+- the generated helpers in `src/terse.generated.ts`
+
+## Core SDK imports
+
+Import these from `terse-sdk`:
+
+- `Terse` — the SDK client
+- `TerseAgent` — the runtime object inside `onTrigger`
+- `InputEvent` — the base event interface
+- Specific event types: `AttioRecordInputEvent`, `ScheduleCronInputEvent`, `ScheduleIntervalInputEvent`, `ManualInputEvent`
+
+## `Terse`
+
+The SDK client. Used to register workflows in `src/index.ts`.
+
+```ts
+const client = new Terse()
+```
+
+## `createWorkflow(...)`
+
+Defines the workflow contract.
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `name` | `string` | Unique workflow identifier. Used to match workflows across deploys. |
+| `triggers` | `Trigger[]` | One or more triggers that start the workflow. |
+| `skills` | `Skill[]` | Capabilities available to the agent during the run. |
+| `toolApprovals` | `string[]` | Tool names that require human approval before execution. See [tool approvals](#tool-approvals). |
+| `filter` | `(event) => boolean` | Optional function to skip the run for specific events. See [filtering events](#filtering-events). |
+| `onTrigger` | `(event, agent) => Promise<void>` | The workflow handler. Called once per trigger event. |
+| `webhookURL` | `string` | Optional URL to notify after each run completes. |
+
+```ts
+await client.createWorkflow({
+  name: "new-deal-enrichment",
+  triggers: [Attio.onRecordCreated({ list: AttioList.Pipeline.NewDeals })],
+  skills: [
+    Attio.skill({ lists: [AttioList.Pipeline.NewDeals] }),
+    Apollo.skill(),
+    Slack.skill({ channel: SlackChannel.DealDesk }),
+  ],
+  onTrigger: async (event: AttioRecordInputEvent, agent: TerseAgent) => {
+    // workflow logic
+  },
+})
+```
+
+## `TerseAgent`
+
+The runtime object you receive inside `onTrigger`.
+
+### `run(prompt, event?)`
+
+Streams the model run. Returns an async iterable of output chunks.
+
+```ts
+for await (const chunk of agent.run("Summarize pipeline risk.", event)) {
+  process.stdout.write(chunk)
+}
+```
+
+Use `run` when you want to stream output progressively.
+
+### `runAndWait(prompt, event?)`
+
+Waits for the model to complete and returns the final output as a string.
+
+```ts
+const output = await agent.runAndWait("Score the account and explain why.", event)
+```
+
+Use `runAndWait` for most workflows where you need the full output before proceeding.
+
+### `executeTool(toolName, params)`
+
+Calls a named tool directly, bypassing the LLM.
+
+```ts
+await agent.executeTool("attio.updateRecord", {
+  list: AttioList.Pipeline.NewDeals,
+  recordId: "rec_123",
+  fields: { fit_score: 92 },
+})
+```
+
+Use `executeTool` when you want guaranteed execution of a specific tool.
+
+## `agent.tools.*`
+
+Generated helpers attach deterministic wrappers under `agent.tools.*`. These call integration actions directly, not through the LLM.
+
+```ts
+const enrichment = await agent.tools.apollo.enrichCompany({
+  domain: "northstarlogistics.com",
+})
+
+await agent.tools.slack.sendMessage({
+  channelId: SlackChannel.DealDesk.channelId,
+  message: `Industry: ${enrichment.industry}, Employees: ${enrichment.employeeCount}`,
+})
+```
+
+Use `agent.tools.*` for guaranteed side effects. Contrast with `skills`, which give the model discretion over when to call an integration.
+
+## Structured output
+
+`runAndWait` returns a string. When you need typed data from the model, parse the output explicitly.
+
+### Simple extraction
+
+```ts
+const result = await agent.runAndWait(
+  [
+    "Score this company from 1-100 for ICP fit.",
+    "Respond with ONLY a JSON object: { \"score\": <number>, \"rationale\": \"<string>\" }",
+    `Company: ${event.record.values.company_name}`,
+    `Industry: ${company.industry}`,
+    `Employees: ${company.employeeCount}`,
+  ].join("\n"),
+  event,
+)
+
+const parsed = JSON.parse(result) as { score: number; rationale: string }
+
+await agent.tools.attio.updateRecord({
+  list: AttioList.Pipeline.NewDeals,
+  recordId: event.record.id,
+  fields: {
+    fit_score: parsed.score,
+    scoring_notes: parsed.rationale,
+  },
+})
+```
+
+### Tips for structured output
+
+- Tell the model the exact JSON shape you expect.
+- Use `JSON.parse()` and handle the failure case — the model may include markdown fencing or extra text.
+- For critical writes, validate the parsed result before passing it to `agent.tools.*`.
+
+```ts
+const raw = await agent.runAndWait(prompt, event)
+
+// Strip markdown code fences if present
+const cleaned = raw.replace(/```json?\n?/g, "").replace(/```/g, "").trim()
+const parsed = JSON.parse(cleaned) as { score: number; rationale: string }
+
+if (parsed.score < 0 || parsed.score > 100) {
+  throw new Error(`Invalid score: ${parsed.score}`)
+}
+```
+
+## Filtering events
+
+Use `filter` to skip runs for events that don't match your criteria. Return `true` to run, `false` to skip.
+
+```ts
+await client.createWorkflow({
+  name: "contract-alerts",
+  triggers: [Attio.onRecordUpdated({ list: AttioList.Pipeline.OpenDeals })],
+  skills: [
+    Attio.skill({ lists: [AttioList.Pipeline.OpenDeals] }),
+    Slack.skill({ channel: SlackChannel.DealDesk }),
+  ],
+  filter: (event: AttioRecordInputEvent) =>
+    event.record.values.stage === "contract-sent",
+  onTrigger: async (event: AttioRecordInputEvent, agent: TerseAgent) => {
+    await agent.tools.slack.sendMessage({
+      channelId: SlackChannel.DealDesk.channelId,
+      message: `Contract sent for ${event.record.values.company_name}.`,
+    })
+  },
+})
+```
+
+## Tool approvals
+
+List tool names in `toolApprovals` to require human approval before those tools execute. During local testing, the CLI prompts in the terminal. In production, approval requests surface in the Terse app under **Notifications**.
+
+```ts
+await client.createWorkflow({
+  name: "deal-enrichment-with-approval",
+  triggers: [Attio.onRecordCreated({ list: AttioList.Pipeline.NewDeals })],
+  skills: [
+    Attio.skill({ lists: [AttioList.Pipeline.NewDeals] }),
+    Apollo.skill(),
+    Slack.skill({ channel: SlackChannel.DealDesk }),
+  ],
+  toolApprovals: ["attio.updateRecord", "slack.sendMessage"],
+  onTrigger: async (event: AttioRecordInputEvent, agent: TerseAgent) => {
+    const company = await agent.tools.apollo.enrichCompany({
+      domain: event.record.values.company_domain,
+    })
+
+    const summary = await agent.runAndWait(
+      [
+        "Summarize this company for the account owner.",
+        `Company: ${event.record.values.company_name}`,
+        `Industry: ${company.industry}`,
+        `Employees: ${company.employeeCount}`,
+      ].join("\n"),
+      event,
+    )
+
+    // These two calls will pause and wait for human approval
+    await agent.tools.attio.updateRecord({
+      list: AttioList.Pipeline.NewDeals,
+      recordId: event.record.id,
+      fields: { research_summary: summary },
+    })
+
+    await agent.tools.slack.sendMessage({
+      channelId: SlackChannel.DealDesk.channelId,
+      message: `New deal enriched: ${event.record.values.company_name}\n\n${summary}`,
+    })
+  },
+})
+```
+
+Use `toolApprovals` for workflows that write to production systems during early development, or when compliance requires a human in the loop.
+
+## Events
+
+Event typing depends on the trigger.
+
+| Trigger source | Event type |
+| --- | --- |
+| Attio record events | `AttioRecordInputEvent` |
+| Slack actions | Typed Slack action payloads |
+| Scheduled cron triggers | `ScheduleCronInputEvent` |
+| Scheduled interval triggers | `ScheduleIntervalInputEvent` |
+| Manual trigger | `ManualInputEvent` |
+
+`InputEvent` is the common base interface. Use the most specific event type your trigger exposes.
+
+## Generated helpers
+
+`src/terse.generated.ts` is created by `terse generate`. Do not edit it by hand.
+
+It exports:
+
+- `Schedule` — cron and interval trigger builders
+- Integration namespaces — `Attio`, `Apollo`, `Slack`, `Http`
+- Workspace resource constants — `AttioList`, `SlackChannel`, `AttioOwner`
+- Deterministic tool wrappers exposed through `agent.tools.*`
+
+<Warning>
+  Re-run `terse generate` when your integration context changes.
+  Do not edit `src/terse.generated.ts` by hand.
+</Warning>
+
+## Bring your own API
+
+Use the `Http` skill to call any REST API that Terse does not have a native integration for. This is useful for enrichment providers, internal services, or any system with an HTTP API.
+
+```ts
+import { AttioRecordInputEvent, Terse, TerseAgent } from "terse-sdk"
+import { Attio, AttioList, Http } from "./terse.generated"
+
+const client = new Terse()
+
+await client.createWorkflow({
+  name: "custom-enrichment",
+  triggers: [Attio.onRecordCreated({ list: AttioList.Pipeline.NewDeals })],
+  skills: [
+    Attio.skill({ lists: [AttioList.Pipeline.NewDeals] }),
+    Http.skill(),
+  ],
+  onTrigger: async (event: AttioRecordInputEvent, agent: TerseAgent) => {
+    // Call any REST API directly
+    const response = await agent.tools.http.request({
+      method: "GET",
+      url: `https://api.example.com/companies?domain=${event.record.values.company_domain}`,
+      headers: {
+        Authorization: `Bearer ${process.env.EXAMPLE_API_KEY}`,
+      },
+    })
+
+    const company = JSON.parse(response.body)
+
+    const summary = await agent.runAndWait(
+      [
+        "Summarize this company for the account owner.",
+        `Data: ${JSON.stringify(company)}`,
+      ].join("\n"),
+      event,
+    )
+
+    await agent.tools.attio.updateRecord({
+      list: AttioList.Pipeline.NewDeals,
+      recordId: event.record.id,
+      fields: { research_summary: summary },
+    })
+  },
+})
+```
+
+The `Http` skill gives you full control over headers, method, body, and URL. Use it when:
+
+- You need an enrichment provider Terse does not have a native skill for
+- You want to call an internal API or microservice
+- You need to integrate with a webhook-based system

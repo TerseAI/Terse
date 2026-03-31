@@ -1,0 +1,59 @@
+---
+title: "Weekly pipeline digest"
+description: "A template that summarizes open pipeline every Monday and posts the digest to Slack."
+icon: "calendar-range"
+---
+
+Automate pipeline review prep with a weekly summary posted to Slack.
+
+## Scaffold it
+
+```bash
+terse init acme-revenue --template weekly-pipeline-digest
+```
+
+## What it does
+
+1. Runs every Monday at 9am.
+2. Reads open pipeline from Attio.
+3. Summarizes movement, risk, and next actions.
+4. Posts the digest to Slack.
+
+## Core workflow
+
+```ts
+import { ScheduleCronInputEvent, Terse, TerseAgent } from "terse-sdk"
+import { Attio, AttioList, Schedule, Slack, SlackChannel } from "./terse.generated"
+
+const client = new Terse()
+
+await client.createWorkflow({
+  name: "weekly-pipeline-digest",
+  triggers: [Schedule.cron({ expression: "0 9 * * 1" })],
+  skills: [
+    Attio.skill({ lists: [AttioList.Pipeline.OpenDeals] }),
+    Slack.skill({ channel: SlackChannel.RevenueTeam }),
+  ],
+  onTrigger: async (event: ScheduleCronInputEvent, agent: TerseAgent) => {
+    const prompt = [
+      `Summarize open pipeline for ${event.window.label}.`,
+      `Window start: ${event.window.startsAt}`,
+      `Window end: ${event.window.endsAt}`,
+      "Call out risk and recommend next actions.",
+    ].join("\n")
+
+    const digest = await agent.runAndWait(prompt, event)
+
+    await agent.tools.slack.sendMessage({
+      channelId: SlackChannel.RevenueTeam.channelId,
+      message: digest,
+    })
+  },
+})
+```
+
+## Customize
+
+- Change the cron expression for your reporting cadence.
+- Split by segment if your team reviews enterprise and SMB separately.
+- Post to a thread if you want replies to stay contained.
