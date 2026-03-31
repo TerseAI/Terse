@@ -2,11 +2,14 @@ import { Request, Response } from "express"
 
 import { ConfigInstance } from "../../shared/Configs"
 import { AdditionalStateParams, InstallationOptionsFor, IntegrationDetails, IntegrationInstance, IntegrationType } from "../../shared/Integrations"
+import type { ConfigurationFieldDefinition, ConfigurationFieldType, ConfigurationOption, FormFieldDefinition, FormFieldType } from "../../shared/types"
 import { OAuthInstallationDetails } from "../../shared/types"
 import { AgentTriggerWithConfigs } from "../../types/prisma"
 
 import type { FetchResourcesOptions } from "./FetchResourcesOptions"
 import type { InputEvent } from "./InputEvent"
+
+export type { FormFieldDefinition, ConfigurationFieldDefinition, ConfigurationOption, ConfigurationFieldType, FormFieldType } from "../../shared/types"
 
 export interface IntegrationWithResources<T extends IntegrationInstance, R> {
     integration: T
@@ -37,17 +40,6 @@ export interface Integration<T extends IntegrationInstance, W, M extends Integra
     ): Promise<InputEvent[]>
 }
 
-export type FormFieldType = "text" | "password" | "textarea"
-
-export interface FormFieldDefinition {
-    name: string
-    type: FormFieldType
-    label: string
-    placeholder?: string
-    required?: boolean
-    hint?: string
-}
-
 export interface FormSubmissionInput {
     userId: string
     organizationId: string
@@ -64,22 +56,6 @@ export interface FormSubmissionResult {
 export interface FormIntegrationInstallation<T extends IntegrationType> {
     getFormFields(): FormFieldDefinition[]
     processFormSubmission(input: FormSubmissionInput): Promise<FormSubmissionResult>
-}
-
-export type ConfigurationFieldType = "radio" | "select"
-
-export interface ConfigurationOption {
-    label: string
-    value: string
-}
-
-export interface ConfigurationFieldDefinition {
-    name: string
-    type: ConfigurationFieldType
-    label: string
-    options: ConfigurationOption[] // Required for radio and select fields
-    required?: boolean
-    hint?: string
 }
 
 export interface OAuthIntegrationInstallation<T extends IntegrationType> {

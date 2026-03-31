@@ -600,6 +600,40 @@ export type OAuthInstallationDetails = {
     oauthUrl: string
 }
 
+// ─── Integration field definitions ───────────────────────────────────────────
+
+export type FormFieldType = "text" | "password" | "textarea"
+
+export interface FormFieldDefinition {
+    name: string
+    type: FormFieldType
+    label: string
+    placeholder?: string
+    required?: boolean
+    hint?: string
+}
+
+export type ConfigurationFieldType = "radio" | "select"
+
+export interface ConfigurationOption {
+    label: string
+    value: string
+}
+
+export interface ConfigurationFieldDefinition {
+    name: string
+    type: ConfigurationFieldType
+    label: string
+    options: ConfigurationOption[]
+    required?: boolean
+    hint?: string
+}
+
+export interface IntegrationFieldsResponse {
+    installationType: "form" | "oauth"
+    fields: FormFieldDefinition[] | ConfigurationFieldDefinition[]
+}
+
 export type StatsInterval = "1h" | "24h" | "7d" | "1mo" | "3mo" | "1y"
 
 export interface DailyEventCount {

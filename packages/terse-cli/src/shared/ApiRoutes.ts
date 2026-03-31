@@ -273,7 +273,17 @@ export const ApiRoutes = {
         APPROVAL_DECISION: "/sdk/approval-decision",
         SESSION_EVENTS: "/sdk/session-events",
         DEPLOY: "/sdk/deploy",
-        DEVICE_TOKEN_EXCHANGE: "/sdk/auth/device-token-exchange"
+        DEVICE_TOKEN_EXCHANGE: "/sdk/auth/device-token-exchange",
+        INTEGRATION_FIELDS: {
+            pattern: "/sdk/integrations/:integrationType/fields",
+            build: (integrationType: string) => `/sdk/integrations/${encodeURIComponent(integrationType)}/fields`,
+            params: { integrationType: "string" } as const
+        },
+        INTEGRATION_FORM_SUBMIT: {
+            pattern: "/sdk/integrations/:integrationType/form-submit",
+            build: (integrationType: string) => `/sdk/integrations/${encodeURIComponent(integrationType)}/form-submit`,
+            params: { integrationType: "string" } as const
+        }
     },
 
     NOTIFICATION_SETTINGS: "/notification-settings",

@@ -2,7 +2,7 @@ import chalk from "chalk"
 import ora from "ora"
 import { select } from "@inquirer/prompts"
 import { ConfigInstance, IntegrationType } from "terse-sdk"
-import { fetchWithAuth, readApiKey } from "./api.js"
+import { fetchWithAuth, readApiKeyOrBail } from "./api.js"
 import { assertProjectRoot } from "./assertProjectRoot.js"
 import { ApiRoutes } from "./shared/ApiRoutes.js"
 import type { SerializedEvent } from "./shared/types.js"
@@ -16,11 +16,9 @@ export async function test(jobName?: string, verbose?: boolean): Promise<void> {
     const { job } = await loadJob(jobName)
     console.log(chalk.cyan(`\n  Testing job: ${job.name}\n`))
 
-    const apiKey = readApiKey()
-    if (!apiKey) {
-        console.error(chalk.red("Error: No API key found. Unable to fetch sample events. Add a TERSE_API_KEY to your .env file."))
-        process.exit(1)
-    }
+    const apiKey = readApiKeyOrBail({
+        title: "Error: No API key found. Unable to fetch sample events. Add a TERSE_API_KEY to your .env file."
+    })
 
     // Split triggers into time-based and integration-based
     const timeTriggers = job.triggers.filter((t: ConfigInstance) => t.integrationType === IntegrationType.CRON_JOB)

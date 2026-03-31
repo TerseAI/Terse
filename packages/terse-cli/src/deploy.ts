@@ -4,7 +4,7 @@ import chalk from "chalk"
 import ora from "ora"
 import { zipSync } from "fflate"
 
-import { fetchWithAuth, readApiKey } from "./api.js"
+import { fetchWithAuth, readApiKeyOrBail } from "./api.js"
 import { assertProjectRoot } from "./assertProjectRoot.js"
 import { loadJobRegistry } from "./loadJob.js"
 import { ApiRoutes } from "./shared/ApiRoutes.js"
@@ -17,12 +17,10 @@ const EXCLUDED_FILES = new Set([".env", ".DS_Store"])
 export async function deploy() {
     assertProjectRoot()
 
-    const apiKey = readApiKey()
-    if (!apiKey) {
-        console.error(chalk.red("Error: No TERSE_API_KEY found in .env"))
-        console.error(chalk.dim("Run `terse init` to set up your project, or add TERSE_API_KEY to your .env file."))
-        process.exit(1)
-    }
+    const apiKey = readApiKeyOrBail({
+        title: "Error: No TERSE_API_KEY found in .env",
+        detail: "Run `terse init` to set up your project, or add TERSE_API_KEY to your .env file."
+    })
 
     const registry = await loadJobRegistry()
     const jobs = [...registry.values()]

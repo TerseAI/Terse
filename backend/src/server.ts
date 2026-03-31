@@ -44,6 +44,7 @@ import { handleSampleEvents } from "./routes/sampleEvents"
 import { handleManualTrigger, handleScheduleWebhook, handleTriggerWithEvent } from "./routes/schedule"
 import { handleSdkAgentRun, handleSdkApprovalDecision } from "./routes/sdkAgentRun"
 import { handleSdkDeploy } from "./routes/sdkDeploy"
+import { handleSdkIntegrationFields, handleSdkIntegrationFormSubmit } from "./routes/sdkIntegrations"
 import { handleSessionEvents } from "./routes/sdkSession"
 import { handleToolDefinitions } from "./routes/sdkToolDefinitions"
 import { handleToolExecute } from "./routes/sdkToolExecute"
@@ -727,6 +728,14 @@ app.get(ApiRoutes.SDK.SESSION_EVENTS, authMiddleware, async (req, res) => {
 
 app.post(ApiRoutes.SDK.DEPLOY, authMiddleware, async (req, res) => {
     handleSdkDeploy(req, res)
+})
+
+app.get(ApiRoutes.SDK.INTEGRATION_FIELDS.pattern, authMiddleware, async (req, res) => {
+    handleSdkIntegrationFields(req, res)
+})
+
+app.post(ApiRoutes.SDK.INTEGRATION_FORM_SUBMIT.pattern, authMiddleware, async (req, res) => {
+    handleSdkIntegrationFormSubmit(req, res)
 })
 
 app.get(ApiRoutes.SENT_NOTIFICATIONS.LIST, authMiddleware, async (req, res) => {
