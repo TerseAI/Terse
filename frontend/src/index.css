@@ -28,178 +28,206 @@
 
 /* React Markdown styling - simple, no prose wrapper needed */
 .react-markdown {
-  overflow-wrap: break-word;
-  word-wrap: break-word;
-  word-break: break-word;
+    overflow-wrap: break-word;
+    word-wrap: break-word;
+    word-break: break-word;
 }
 
 .react-markdown p {
-  margin: 1em 0;
+    margin: 1em 0;
 }
 
-.react-markdown h1 { font-size: 2em; font-weight: 700; margin: 0.67em 0; }
-.react-markdown h2 { font-size: 1.5em; font-weight: 600; margin: 0.75em 0; }
-.react-markdown h3 { font-size: 1.25em; font-weight: 600; margin: 0.83em 0; }
-.react-markdown h4 { font-size: 1em; font-weight: 600; margin: 1em 0; }
+.react-markdown h1 {
+    font-size: 2em;
+    font-weight: 700;
+    margin: 0.67em 0;
+}
+.react-markdown h2 {
+    font-size: 1.5em;
+    font-weight: 600;
+    margin: 0.75em 0;
+}
+.react-markdown h3 {
+    font-size: 1.25em;
+    font-weight: 600;
+    margin: 0.83em 0;
+}
+.react-markdown h4 {
+    font-size: 1em;
+    font-weight: 600;
+    margin: 1em 0;
+}
 
-.react-markdown ul, .react-markdown ol {
-  margin: 1em 0;
-  padding-left: 1.5em;
-  list-style-position: outside;
+.react-markdown ul,
+.react-markdown ol {
+    margin: 1em 0;
+    padding-left: 1.5em;
+    list-style-position: outside;
 }
 
 .react-markdown ul {
-  list-style-type: disc;
+    list-style-type: disc;
 }
 
 .react-markdown ol {
-  list-style-type: decimal;
+    list-style-type: decimal;
 }
 
 .react-markdown li {
-  margin: 0.25em 0;
-  display: list-item;
-  padding-left: 0.25em;
+    margin: 0.25em 0;
+    display: list-item;
+    padding-left: 0.25em;
 }
 
-.react-markdown ul ul, .react-markdown ol ol, .react-markdown ul ol, .react-markdown ol ul {
-  margin: 0.5em 0;
+.react-markdown ul ul,
+.react-markdown ol ol,
+.react-markdown ul ol,
+.react-markdown ol ul {
+    margin: 0.5em 0;
 }
 
 .react-markdown ul ul {
-  list-style-type: circle;
+    list-style-type: circle;
 }
 
 .react-markdown ul ul ul {
-  list-style-type: square;
+    list-style-type: square;
 }
 
 .react-markdown code {
-  background-color: var(--muted);
-  padding: 0.125rem 0.25rem;
-  border-radius: 0.25rem;
-  font-size: 0.875em;
-  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
-  word-break: break-all;
+    background-color: var(--muted);
+    padding: 0.125rem 0.25rem;
+    border-radius: 0.25rem;
+    font-size: 0.875em;
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+    word-break: break-all;
 }
 
 .react-markdown pre {
-  background-color: var(--muted);
-  padding: 1rem;
-  border-radius: 0.5rem;
-  overflow-x: auto;
-  margin: 1em 0;
+    background-color: var(--muted);
+    padding: 1rem;
+    border-radius: 0.5rem;
+    overflow-x: auto;
+    margin: 1em 0;
 }
 
 .react-markdown pre code {
-  background-color: transparent;
-  padding: 0;
-  word-break: normal;
+    background-color: transparent;
+    padding: 0;
+    word-break: normal;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  * {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-  }
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
 }
 
-.react-markdown strong { font-weight: 600; }
-.react-markdown em { font-style: italic; }
-.react-markdown a { color: var(--primary); text-decoration: underline; }
+.react-markdown strong {
+    font-weight: 600;
+}
+.react-markdown em {
+    font-style: italic;
+}
+.react-markdown a {
+    color: var(--primary);
+    text-decoration: underline;
+}
 .react-markdown blockquote {
-  border-left: 4px solid var(--border);
-  padding-left: 1em;
-  margin: 1em 0;
-  font-style: italic;
+    border-left: 4px solid var(--border);
+    padding-left: 1em;
+    margin: 1em 0;
+    font-style: italic;
 }
 .react-markdown hr {
-  border-top: 1px solid var(--border);
-  margin: 2em 0;
+    border-top: 1px solid var(--border);
+    margin: 2em 0;
 }
 .react-markdown table {
-  width: 100%;
-  border-collapse: collapse;
-  margin: 1em 0;
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1em 0;
 }
-.react-markdown th, .react-markdown td {
-  border: 1px solid var(--border);
-  padding: 0.5em;
+.react-markdown th,
+.react-markdown td {
+    border: 1px solid var(--border);
+    padding: 0.5em;
 }
 .react-markdown th {
-  font-weight: 600;
-  background-color: var(--muted);
+    font-weight: 600;
+    background-color: var(--muted);
 }
 
 /* react-diff-view: unified diff viewer */
 .diff-viewer table {
-  width: 100%;
-  border-collapse: collapse;
-  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
-  font-size: 12px;
-  line-height: 1.5;
-  table-layout: fixed;
+    width: 100%;
+    border-collapse: collapse;
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+    font-size: 12px;
+    line-height: 1.5;
+    table-layout: fixed;
 }
 
 .diff-viewer .diff-hunk {
-  border: none;
+    border: none;
 }
 
 .diff-viewer .diff-hunk-header {
-  display: none;
+    display: none;
 }
 
 .diff-viewer .diff-line {
-  border: none;
+    border: none;
 }
 
 .diff-viewer .diff-code {
-  padding: 1px 12px;
-  white-space: pre-wrap;
-  word-break: break-all;
-  color: hsl(0, 0%, 15%);
-  background: hsl(0, 0%, 98%);
+    padding: 1px 12px;
+    white-space: pre-wrap;
+    word-break: break-all;
+    color: hsl(0, 0%, 15%);
+    background: hsl(0, 0%, 98%);
 }
 
 .diff-viewer .diff-code-insert,
 .diff-viewer .diff-line-new-only .diff-code {
-  background: hsla(130, 60%, 50%, 0.12);
-  color: hsl(130, 40%, 20%);
+    background: hsla(130, 60%, 50%, 0.12);
+    color: hsl(130, 40%, 20%);
 }
 
 .diff-viewer .diff-code-delete,
 .diff-viewer .diff-line-old-only .diff-code {
-  background: hsla(0, 70%, 55%, 0.12);
-  color: hsl(0, 40%, 25%);
+    background: hsla(0, 70%, 55%, 0.12);
+    color: hsl(0, 40%, 25%);
 }
 
 .diff-viewer .diff-gutter {
-  display: none;
+    display: none;
 }
 
 .diff-viewer .diff-code-edit {
-  background: hsla(45, 80%, 55%, 0.15);
+    background: hsla(45, 80%, 55%, 0.15);
 }
 
 /* Dark mode */
 .dark .diff-viewer .diff-code {
-  color: hsl(0, 0%, 82%);
-  background: hsl(220, 10%, 10%);
+    color: hsl(0, 0%, 82%);
+    background: hsl(220, 10%, 10%);
 }
 
 .dark .diff-viewer .diff-code-insert,
 .dark .diff-viewer .diff-line-new-only .diff-code {
-  background: hsla(140, 70%, 28%, 0.3);
-  color: hsl(135, 55%, 75%);
+    background: hsla(140, 70%, 28%, 0.3);
+    color: hsl(135, 55%, 75%);
 }
 
 .dark .diff-viewer .diff-code-delete,
 .dark .diff-viewer .diff-line-old-only .diff-code {
-  background: hsla(0, 70%, 38%, 0.3);
-  color: hsl(0, 55%, 78%);
+    background: hsla(0, 70%, 38%, 0.3);
+    color: hsl(0, 55%, 78%);
 }
 
 .dark .diff-viewer .diff-code-edit {
-  background: hsla(40, 60%, 35%, 0.25);
+    background: hsla(40, 60%, 35%, 0.25);
 }
