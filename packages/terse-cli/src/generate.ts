@@ -36,7 +36,7 @@ import type {
 } from "./shared/Integrations.js"
 import { IntegrationType } from "./shared/Integrations.js"
 import { ApiRoutes } from "./shared/ApiRoutes.js"
-import { fetchWithAuth, readApiKey } from "./api.js"
+import { fetchWithAuth, readApiKeyOrBail } from "./api.js"
 
 // ── Main ──────────────────────────────────────────────────────────────
 
@@ -46,14 +46,10 @@ export async function generate(): Promise<void> {
     const totalStart = performance.now()
 
     // 1. Read API key
-    const apiKey = readApiKey()
-    if (!apiKey) {
-        console.error(
-            chalk.red("\n  Missing TERSE_API_KEY in .env\n") +
-            chalk.dim("  Create a project with `terse init` or add TERSE_API_KEY to your .env file.\n")
-        )
-        process.exit(1)
-    }
+    const apiKey = readApiKeyOrBail({
+        title: "\n  Missing TERSE_API_KEY in .env\n",
+        detail: "  Create a project with `terse init` or add TERSE_API_KEY to your .env file.\n"
+    })
 
     // 2. Fetch active integrations
     const spinner = ora("Fetching integrations...").start()

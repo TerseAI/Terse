@@ -2,7 +2,7 @@ import { spawn } from "node:child_process"
 import chalk from "chalk"
 import { confirm, input, password, select } from "@inquirer/prompts"
 import ora from "ora"
-import { readApiKey } from "./api.js"
+import { readApiKey, readApiKeyOrBail } from "./api.js"
 import {
     ConfigurationFieldDefinition,
     FormFieldDefinition,
@@ -26,7 +26,8 @@ export async function listAndPromptIntegrations(): Promise<void> {
     try {
         integrations = await fetchIntegrations(apiKey)
     } catch {
-        return
+        console.error(chalk.red("Failed to fetch integrations"))
+        return 
     }
 
     const active = integrations.filter(
@@ -49,11 +50,7 @@ export async function listAndPromptIntegrations(): Promise<void> {
 }
 
 export async function integrate(): Promise<void> {
-    const apiKey = readApiKey()
-    if (!apiKey) {
-        console.log(chalk.red("\n  Not authenticated. Run `terse login` first.\n"))
-        process.exit(1)
-    }
+    const apiKey = readApiKeyOrBail()
 
     let continueLoop = true
     while (continueLoop) {
