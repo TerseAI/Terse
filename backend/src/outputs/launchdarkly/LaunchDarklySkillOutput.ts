@@ -15,8 +15,8 @@ import { listLaunchDarklyFlagsTool } from "./tools/listFeatureFlags"
 export class LaunchDarklySkillOutput extends Output<LaunchDarklyConfig> {
     constructor() {
         const toolbox: ToolboxEntry[] = [
-            { tool: listLaunchDarklyFlagsTool as Tool, isReadOnly: true, integration: IntegrationType.LAUNCHDARKLY, displayName: "List feature flags" },
-            { tool: getLaunchDarklyFlagDetailsTool as Tool, isReadOnly: true, integration: IntegrationType.LAUNCHDARKLY, displayName: "Get flag details" }
+            { tool: listLaunchDarklyFlagsTool, isReadOnly: true, integration: IntegrationType.LAUNCHDARKLY, displayName: "List feature flags" },
+            { tool: getLaunchDarklyFlagDetailsTool, isReadOnly: true, integration: IntegrationType.LAUNCHDARKLY, displayName: "Get flag details" }
         ]
 
         super(OutputConfigType.LAUNCHDARKLY, toolbox)

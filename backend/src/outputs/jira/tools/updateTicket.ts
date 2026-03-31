@@ -7,7 +7,7 @@ import { getAtlassianIntegrationContextForOrganization } from "../../../integrat
 import logger from "../../../logger"
 import { IntegrationType } from "../../../shared/Integrations"
 import { ToolName } from "../../../tools/ToolNames"
-import { createNeedsApprovalFunction, formatError } from "../../../tools/toolUtils"
+import { SessionToolOptions, createNeedsApprovalFunction, formatError } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
 
 // Atlassian Document Format (ADF) interfaces
@@ -105,7 +105,34 @@ async function getAvailableTransitions(cloudId: string, accessToken: string, iss
     }
 }
 
-export const jiraUpdateTicketTool = tool({
+const parameters = z.object({
+    integrationId: z.string().describe("The integration ID of the Atlassian/Jira integration to use."),
+    issueKey: z.string().describe('The key of the Jira issue to update (e.g., "PROJ-123"). This is required.'),
+    title: z.string().nullable().optional().describe("The issue title/summary."),
+    description: z.string().nullable().optional().describe("The issue description in plain text or markdown format."),
+    status: z.string().nullable().optional().describe('The status name to transition to (e.g., "In Progress", "Done", "To Do").'),
+    assignee: z
+        .union([
+            z.object({
+                email: z.string().describe("The assignee email")
+            }),
+            z.null()
+        ])
+        .optional()
+        .describe("The assignee of the ticket. Set to null to unassign."),
+    priority: z.union([z.number(), z.null()]).optional().describe("The priority of the ticket (number, typically 1-5)."),
+    labels: z
+        .union([z.array(z.string()), z.null()])
+        .optional()
+        .describe("The labels for the ticket (array of label names). This replaces all existing labels."),
+    dueDate: z
+        .string()
+        .nullable()
+        .optional()
+        .describe('The due date for the ticket in format "yyyy-MM-dd" (e.g., "2024-12-31"). Note: Jira requires the due date format to be yyyy-MM-dd. Set to null to remove due date.')
+})
+
+export const jiraUpdateTicketTool: SessionToolOptions<typeof parameters, typeof ToolName.JIRA_UPDATE_TICKET> = {
     name: ToolName.JIRA_UPDATE_TICKET,
     description: `Update an existing Jira issue/ticket. Use this tool to modify issue properties such as title, description, status, assignee, priority, labels, and due date.
 
@@ -120,33 +147,7 @@ COMMON UPDATE OPERATIONS:
 - Add/remove labels: Set labels to replace all labels, or use the labels array
 - Set due date: Use dueDate in format "yyyy-MM-dd" (e.g., "2024-12-31"). Note: Jira requires the due date format to be yyyy-MM-dd.
 - Update description: Set description (supports plain text or markdown format)`,
-    parameters: z.object({
-        integrationId: z.string().describe("The integration ID of the Atlassian/Jira integration to use."),
-        issueKey: z.string().describe('The key of the Jira issue to update (e.g., "PROJ-123"). This is required.'),
-        title: z.string().nullable().optional().describe("The issue title/summary."),
-        description: z.string().nullable().optional().describe("The issue description in plain text or markdown format."),
-        status: z.string().nullable().optional().describe('The status name to transition to (e.g., "In Progress", "Done", "To Do").'),
-        assignee: z
-            .union([
-                z.object({
-                    email: z.string().describe("The assignee email")
-                }),
-                z.null()
-            ])
-            .optional()
-            .describe("The assignee of the ticket. Set to null to unassign."),
-        priority: z.union([z.number(), z.null()]).optional().describe("The priority of the ticket (number, typically 1-5)."),
-        labels: z
-            .union([z.array(z.string()), z.null()])
-            .optional()
-            .describe("The labels for the ticket (array of label names). This replaces all existing labels."),
-        dueDate: z
-            .string()
-            .nullable()
-            .optional()
-            .describe('The due date for the ticket in format "yyyy-MM-dd" (e.g., "2024-12-31"). Note: Jira requires the due date format to be yyyy-MM-dd. Set to null to remove due date.')
-    }),
-    needsApproval: createNeedsApprovalFunction(ToolName.JIRA_UPDATE_TICKET),
+    parameters: parameters,
     execute: async ({ integrationId, issueKey, title, description, status, assignee, priority, labels, dueDate }, runContext?: RunContext<SessionWithTracking<Session>>) => {
         logger.debug("🛠️ Executing jira_update_ticket tool", {
             integrationId,
@@ -378,6 +379,5 @@ COMMON UPDATE OPERATIONS:
             const errorMessage = await formatError(runContext!, error)
             throw new Error(errorMessage)
         }
-    },
-    errorFunction: formatError
-})
+    }
+}

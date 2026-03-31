@@ -4,6 +4,7 @@ import { Request, Response } from "express"
 import { type TimestampedAgentInputItem, convertAgentInputItemsToModelEvents } from "../agent/agentInputItemsToModelEvents"
 import logger from "../logger"
 import { PrismaClient, db } from "../prismaClient"
+import { extractErrorMessage } from "../utility/strings"
 
 /**
  * Get chat history for a builder chat session
@@ -72,7 +73,7 @@ export async function getBuilderChatHistory(req: Request, res: Response) {
         })
     } catch (err) {
         logger.error("Failed to fetch builder chat history", {
-            error: err instanceof Error ? err.message : String(err),
+            error: extractErrorMessage(err),
             stack: err instanceof Error ? err.stack : undefined,
             sessionId: req.params.sessionId
         })

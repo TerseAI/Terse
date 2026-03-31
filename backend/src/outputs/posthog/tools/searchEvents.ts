@@ -1,4 +1,4 @@
-import { RunContext, tool } from "@openai/agents"
+import { RunContext } from "@openai/agents"
 import { RunHistoryActionType } from "@prisma/client"
 import { z } from "zod"
 
@@ -6,61 +6,62 @@ import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
 import logger from "../../../logger"
 import { IntegrationType } from "../../../shared/Integrations"
 import { ToolName } from "../../../tools/ToolNames"
+import { SessionToolOptions } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
 import { getPosthogApiKeyByIntegrationId } from "../posthogApiClient"
+
+const parameters = z.object({
+    integrationId: z.string().describe("The integration ID of the PostHog skill to use."),
+    projectId: z.string().describe("The PostHog project ID."),
+    countByEventNameOnly: z.boolean().default(true).describe("If true (default), returns only event names and their counts. If false, returns full event list (larger response)."),
+    customEventsOnly: z
+        .boolean()
+        .default(true)
+        .describe(
+            "If true (default), only include custom events (exclude PostHog built-in events whose names start with $, e.g. $pageview, $autocapture). If false, include all events. Use true to get counts for events the project actually tracks (works for any user's project)."
+        ),
+    userEmail: z.union([z.string(), z.null()]).optional().describe('Optional: User email to filter events by (e.g., "user@example.com").'),
+    eventName: z.union([z.string(), z.null()]).optional().describe('Optional: Specific event name to filter by (e.g., "$pageview", "button_clicked", "form_submitted").'),
+    propertyFilters: z
+        .union([
+            z.array(
+                z.object({
+                    key: z.string().describe("Property key to filter on"),
+                    value: z.union([z.string(), z.number(), z.boolean()]).describe("Property value to match"),
+                    operator: z.enum(["exact", "is_not", "icontains", "not_icontains", "gt", "lt", "gte", "lte"]).default("exact").describe("Comparison operator")
+                })
+            ),
+            z.null()
+        ])
+        .optional()
+        .describe("Optional: Array of property filters to apply. Each filter has a key, value, and operator."),
+    limit: z.number().default(50).describe("Maximum number of events to return when countByEventNameOnly is false (default: 50, max: 100). Ignored when countByEventNameOnly is true."),
+    offset: z.number().default(0).describe("Offset for pagination when countByEventNameOnly is false (default: 0). Ignored when countByEventNameOnly is true."),
+    last7Days: z
+        .boolean()
+        .default(false)
+        .describe("If true and dateFrom is not provided, filters events from the last 7 days only (default: false). If false, no date restriction is applied unless dateFrom is explicitly provided."),
+    dateFrom: z
+        .union([z.string(), z.null()])
+        .describe(
+            'Start date for filtering. MUST be formatted as "YYYY-MM-DD HH:mm:ss" in UTC (e.g. "2026-02-06 14:00:00"). Do NOT use ISO format with T/Z (e.g. 2026-02-07T22:52:34Z) and do NOT use relative strings like "-7d". If not provided and last7Days is true, defaults to 7 days ago. If not provided and last7Days is false, no date restriction is applied.'
+        ),
+    dateTo: z
+        .union([z.string(), z.null()])
+        .describe(
+            'End date for filtering. MUST be formatted as "YYYY-MM-DD HH:mm:ss" in UTC (e.g. "2026-02-07 14:00:00"). Do NOT use ISO format with T/Z and do NOT use relative strings like "now". If not provided, defaults to now.'
+        )
+})
 
 /**
  * Tool for querying PostHog analytics events.
  * This tool queries the PostHog Events API to find custom analytics events like pageviews, button clicks, and other tracked actions.
  */
-export const searchEventsTool = tool({
+export const searchEventsTool: SessionToolOptions<typeof parameters, typeof ToolName.POSTHOG_SEARCH_EVENTS> = {
     name: ToolName.POSTHOG_SEARCH_EVENTS,
     description:
         "Query PostHog analytics events. Use countByEventNameOnly: true (default) to get counts per event name. Use customEventsOnly: true (default) to exclude PostHog built-in events (names starting with $) and return only the project's custom-tracked events. Works for any PostHog project.",
-    parameters: z.object({
-        integrationId: z.string().describe("The integration ID of the PostHog skill to use."),
-        projectId: z.string().describe("The PostHog project ID."),
-        countByEventNameOnly: z.boolean().default(true).describe("If true (default), returns only event names and their counts. If false, returns full event list (larger response)."),
-        customEventsOnly: z
-            .boolean()
-            .default(true)
-            .describe(
-                "If true (default), only include custom events (exclude PostHog built-in events whose names start with $, e.g. $pageview, $autocapture). If false, include all events. Use true to get counts for events the project actually tracks (works for any user's project)."
-            ),
-        userEmail: z.union([z.string(), z.null()]).optional().describe('Optional: User email to filter events by (e.g., "user@example.com").'),
-        eventName: z.union([z.string(), z.null()]).optional().describe('Optional: Specific event name to filter by (e.g., "$pageview", "button_clicked", "form_submitted").'),
-        propertyFilters: z
-            .union([
-                z.array(
-                    z.object({
-                        key: z.string().describe("Property key to filter on"),
-                        value: z.union([z.string(), z.number(), z.boolean()]).describe("Property value to match"),
-                        operator: z.enum(["exact", "is_not", "icontains", "not_icontains", "gt", "lt", "gte", "lte"]).default("exact").describe("Comparison operator")
-                    })
-                ),
-                z.null()
-            ])
-            .optional()
-            .describe("Optional: Array of property filters to apply. Each filter has a key, value, and operator."),
-        limit: z.number().default(50).describe("Maximum number of events to return when countByEventNameOnly is false (default: 50, max: 100). Ignored when countByEventNameOnly is true."),
-        offset: z.number().default(0).describe("Offset for pagination when countByEventNameOnly is false (default: 0). Ignored when countByEventNameOnly is true."),
-        last7Days: z
-            .boolean()
-            .default(false)
-            .describe(
-                "If true and dateFrom is not provided, filters events from the last 7 days only (default: false). If false, no date restriction is applied unless dateFrom is explicitly provided."
-            ),
-        dateFrom: z
-            .union([z.string(), z.null()])
-            .describe(
-                'Start date for filtering. MUST be formatted as "YYYY-MM-DD HH:mm:ss" in UTC (e.g. "2026-02-06 14:00:00"). Do NOT use ISO format with T/Z (e.g. 2026-02-07T22:52:34Z) and do NOT use relative strings like "-7d". If not provided and last7Days is true, defaults to 7 days ago. If not provided and last7Days is false, no date restriction is applied.'
-            ),
-        dateTo: z
-            .union([z.string(), z.null()])
-            .describe(
-                'End date for filtering. MUST be formatted as "YYYY-MM-DD HH:mm:ss" in UTC (e.g. "2026-02-07 14:00:00"). Do NOT use ISO format with T/Z and do NOT use relative strings like "now". If not provided, defaults to now.'
-            )
-    }),
+    parameters: parameters,
     execute: async (
         { integrationId, projectId, countByEventNameOnly = true, customEventsOnly = true, userEmail, eventName, propertyFilters, limit = 50, offset = 0, last7Days = false, dateFrom, dateTo },
         runContext?: RunContext<SessionWithTracking<Session>>
@@ -368,7 +369,7 @@ export const searchEventsTool = tool({
             throw new Error(`Failed to query PostHog events: ${error.message || "Unknown error"}`)
         }
     }
-})
+}
 
 /**
  * Format a Date as "YYYY-MM-DD HH:mm:ss" in UTC — the only timestamp format PostHog reliably accepts.

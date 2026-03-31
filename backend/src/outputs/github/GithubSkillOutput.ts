@@ -21,13 +21,13 @@ import { summarizeGitHubPullRequestDiffTool } from "./tools/summarizePullRequest
 export class GithubSkillOutput extends Output<GitHubConfig> {
     constructor() {
         const toolbox: ToolboxEntry[] = [
-            { tool: searchGitHubCodeTool as Tool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: "Search code" },
-            { tool: grepGitHubCodeTool as Tool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: "Grep code" },
-            { tool: readGitHubFileTool as Tool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: "Read file" },
-            { tool: listGitHubDirectoryTool as Tool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: "List directory" },
-            { tool: listGitHubPullRequestsTool as Tool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: "List pull requests" },
-            { tool: listGitHubCommitsTool as Tool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: "List commits" },
-            { tool: summarizeGitHubPullRequestDiffTool as Tool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: "Summarize PR diff" }
+            { tool: searchGitHubCodeTool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: "Search code" },
+            { tool: grepGitHubCodeTool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: "Grep code" },
+            { tool: readGitHubFileTool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: "Read file" },
+            { tool: listGitHubDirectoryTool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: "List directory" },
+            { tool: listGitHubPullRequestsTool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: "List pull requests" },
+            { tool: listGitHubCommitsTool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: "List commits" },
+            { tool: summarizeGitHubPullRequestDiffTool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: "Summarize PR diff" }
         ]
 
         super(OutputConfigType.GITHUB, toolbox)

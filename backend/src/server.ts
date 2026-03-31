@@ -61,7 +61,6 @@ import { registerSocketGetter } from "./services/CacheInvalidationService"
 import { ApiRoutes } from "./shared/ApiRoutes"
 import { User } from "./shared/types"
 import { setupSlackBolt } from "./slack/boltApp"
-import { runStartupValidations } from "./tools/validateToolNames"
 import { analytics } from "./utility/analytics"
 import { workos } from "./utility/workos"
 
@@ -779,13 +778,6 @@ process.on("unhandledRejection", (reason: unknown, promise: Promise<unknown>) =>
     })
     // Log but don't crash - this is a safety net for promises we might have missed
 })
-
-try {
-    runStartupValidations()
-} catch (error) {
-    logger.error("❌ Startup validation failed", { error })
-    process.exit(1)
-}
 
 server.listen(3001, () => {
     logger.info("🚀 Express backend running on http://localhost:3001")

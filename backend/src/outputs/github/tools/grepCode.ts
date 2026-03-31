@@ -1,14 +1,14 @@
-import { RunContext, tool } from "@openai/agents"
+import { RunContext } from "@openai/agents"
 import { RunHistoryActionType } from "@prisma/client"
 import { z } from "zod"
 
 import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
 import logger from "../../../logger"
 import { IntegrationType } from "../../../shared/Integrations"
-import type { ToolOutputByName } from "../../../shared/types"
 import { ToolName } from "../../../tools/ToolNames"
-import { toolOutput } from "../../../tools/toolOutput"
+import { SessionToolOptions } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
+import { extractErrorMessage } from "../../../utility/strings"
 import { createGitHubClient, getGitHubAccessToken, searchCode } from "../githubApiClient"
 
 /**
@@ -26,7 +26,7 @@ const grepGitHubCodeParameters = z.object({
         .describe("Page number for pagination (default: 1). Use this to fetch additional results if there are more than perPage results. Use null for page 1. Must be a positive integer >= 1.")
 })
 
-export const grepGitHubCodeTool = tool<typeof grepGitHubCodeParameters, SessionWithTracking<Session>, ToolOutputByName["grepGitHubCode"]>({
+export const grepGitHubCodeTool: SessionToolOptions<typeof grepGitHubCodeParameters, typeof ToolName.GITHUB_GREP_CODE> = {
     name: ToolName.GITHUB_GREP_CODE,
     description: `Search GitHub repositories for EXACT TEXT MATCHES (like grep). Use this when you KNOW the exact string you're looking for.
 
@@ -172,12 +172,12 @@ This is more precise than semantic search - use it when you know exactly what te
                 isReadOnly: true
             }
 
-            return toolOutput("grepGitHubCode", {
+            return {
                 ...response,
                 actions: [action]
-            })
+            }
         } catch (error: any) {
-            const errorMessage = error instanceof Error ? error.message : String(error)
+            const errorMessage = extractErrorMessage(error)
             logger.error("[GitHub KB] grepGitHubCode - Failed", {
                 pattern,
                 query,
@@ -187,4 +187,4 @@ This is more precise than semantic search - use it when you know exactly what te
             throw new Error(`${errorMessage}. If searching for special characters, they may need to be escaped. Try simplifying the pattern.`)
         }
     }
-})
+}

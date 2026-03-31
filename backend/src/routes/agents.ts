@@ -15,6 +15,7 @@ import { AgentWithNotificationSettingsRelations, AgentWithRelations, AgentWithTr
 import { trackAgentCreated } from "../utility/analytics"
 import { parsePageParams } from "../utility/pagination"
 import { getInputConfigInclude, getOutputConfigInclude } from "../utility/prismaIncludes"
+import { extractErrorMessage } from "../utility/strings"
 import { convertConfigTypeToInputConfigType, convertConfigTypeToOutputConfigType, convertPrismaConfigToConfigInstance, convertPrismaOutputConfigToConfigInstance } from "../utility/typeConverters"
 
 export type AgentDraft = Omit<Agent, "id"> & { id?: string }
@@ -662,7 +663,7 @@ export async function createAgent(req: Request, res: Response) {
         res.status(201).json({ success: true, id })
     } catch (error) {
         logger.error("Error creating agent", { error, userId })
-        const details = (error as Error).message
+        const details = extractErrorMessage(error)
         if (details === "Invalid request: missing required fields") {
             res.status(400).json({ error: details })
             return
@@ -690,7 +691,7 @@ export async function updateAgent(req: Request, res: Response) {
         logger.error("Error updating agent", { error, userId, agentId })
         res.status(500).json({
             error: "Failed to update agent",
-            details: (error as Error).message
+            details: extractErrorMessage(error)
         })
     }
 }
@@ -756,7 +757,7 @@ export async function deleteAgent(req: Request, res: Response) {
         logger.error("Error deleting agent", { error, userId, agentId })
         res.status(500).json({
             error: "Failed to delete agent",
-            details: (error as Error).message
+            details: extractErrorMessage(error)
         })
     }
 }

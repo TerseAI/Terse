@@ -8,6 +8,7 @@ import chalk from "chalk"
 
 import { settings } from "./config/settings"
 import { User } from "./shared/types"
+import { extractErrorMessage } from "./utility/strings"
 
 const config: LoggerConfig = {
     isDevelopment: settings.nodeEnv === "development",
@@ -258,7 +259,7 @@ class Logger {
                 }
             } else {
                 // Process the error object
-                processed.error = error instanceof Error ? error.message : String(error)
+                processed.error = extractErrorMessage(error)
                 processed.stack = error instanceof Error ? error.stack : undefined
             }
         }

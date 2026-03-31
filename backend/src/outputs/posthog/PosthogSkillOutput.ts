@@ -17,10 +17,10 @@ import { searchSessionsTool } from "./tools/searchSessions"
 export class PosthogSkillOutput extends Output<PosthogConfig> {
     constructor() {
         const toolbox: ToolboxEntry[] = [
-            { tool: searchLogsTool as Tool, isReadOnly: true, integration: IntegrationType.POSTHOG, displayName: "Search logs" },
-            { tool: searchSessionsTool as Tool, isReadOnly: true, integration: IntegrationType.POSTHOG, displayName: "Search sessions" },
-            { tool: getSessionEventsTool as Tool, isReadOnly: true, integration: IntegrationType.POSTHOG, displayName: "Get session events" },
-            { tool: searchEventsTool as Tool, isReadOnly: true, integration: IntegrationType.POSTHOG, displayName: "Search events" }
+            { tool: searchLogsTool, isReadOnly: true, integration: IntegrationType.POSTHOG, displayName: "Search logs" },
+            { tool: searchSessionsTool, isReadOnly: true, integration: IntegrationType.POSTHOG, displayName: "Search sessions" },
+            { tool: getSessionEventsTool, isReadOnly: true, integration: IntegrationType.POSTHOG, displayName: "Get session events" },
+            { tool: searchEventsTool, isReadOnly: true, integration: IntegrationType.POSTHOG, displayName: "Search events" }
         ]
 
         super(OutputConfigType.POSTHOG, toolbox)

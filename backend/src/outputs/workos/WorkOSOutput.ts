@@ -1,8 +1,7 @@
-import { Tool } from "@openai/agents"
 import { OutputConfigType } from "@prisma/client"
 
 import { Output, ToolboxEntry } from "../../outputs/abstract/Output"
-import { ConfigType, WorkOSOutputConfig } from "../../shared/Configs"
+import { WorkOSOutputConfig } from "../../shared/Configs"
 import { IntegrationType } from "../../shared/Integrations"
 import { PrismaTransaction } from "../../types/prisma"
 import { WorkOSOutputConfigSchema, stripConfigForValidation } from "../../utility/configSchemas"
@@ -13,8 +12,8 @@ import { listWorkOSUsersTool } from "./tools/listUsers"
 export class WorkOSOutput extends Output<WorkOSOutputConfig> {
     constructor() {
         const toolbox: ToolboxEntry[] = [
-            { tool: listWorkOSUsersTool as Tool, isReadOnly: true, integration: IntegrationType.WORKOS, displayName: "List users" },
-            { tool: getWorkOSUserTool as Tool, isReadOnly: true, integration: IntegrationType.WORKOS, displayName: "Get user" }
+            { tool: listWorkOSUsersTool, isReadOnly: true, integration: IntegrationType.WORKOS, displayName: "List users" },
+            { tool: getWorkOSUserTool, isReadOnly: true, integration: IntegrationType.WORKOS, displayName: "Get user" }
         ]
 
         super(OutputConfigType.WORKOS, toolbox)

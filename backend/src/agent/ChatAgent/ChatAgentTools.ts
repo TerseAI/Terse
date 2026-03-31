@@ -13,7 +13,7 @@ import { INTEGRATION_REGISTRY } from "../../integrations/abstract/IntegrationReg
 import { fetchSampleEvents } from "../../integrations/abstract/sampleEvents"
 import logger from "../../logger"
 import { webExtractTool } from "../../outputs/terse/tools/webExtractTool"
-import { webSearchTool } from "../../outputs/terse/tools/webSearchTool"
+import { chatWebSearchTool, webSearchTool } from "../../outputs/terse/tools/webSearchTool"
 import { db } from "../../prismaClient"
 import { requireHydrator } from "../../rag/HydratorRegistry"
 import type { AgentDraft } from "../../routes/agents"
@@ -52,6 +52,7 @@ import {
     enforceNonSystemIntegrationId
 } from "../../utility/configSchemas"
 import { getInputConfigInclude, getOutputConfigInclude } from "../../utility/prismaIncludes"
+import { extractErrorMessage } from "../../utility/strings"
 import { randomString } from "../../utility/strings"
 
 import type { ChatAgentContext } from "./ChatAgentContext"
@@ -74,8 +75,8 @@ async function getDefaultNotificationSettings(userId: string): Promise<AgentNoti
 
 export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgentContext>[] {
     return [
-        webSearchTool,
-        webExtractTool,
+        tool({ ...chatWebSearchTool, errorFunction: formatError }),
+        tool({ ...webExtractTool, errorFunction: formatError }),
         tool({
             name: "applyAgent",
             description:
@@ -255,7 +256,7 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
                             generateEventSummary(integrationType, eventData, user).catch(err => {
                                 logger.warn("[getSampleEvents] Summary generation failed for event", {
                                     entityId: identifiable.entityId,
-                                    error: err instanceof Error ? err.message : String(err)
+                                    error: extractErrorMessage(err)
                                 })
                                 return { summary: `${integrationType} event` }
                             }),
@@ -263,7 +264,7 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
                                 ? filterEvent(event, agent, false, trackingParams).catch(err => {
                                       logger.warn("[getSampleEvents] Filter preview failed for event", {
                                           entityId: identifiable.entityId,
-                                          error: err instanceof Error ? err.message : String(err)
+                                          error: extractErrorMessage(err)
                                       })
                                       return null
                                   })

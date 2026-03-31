@@ -1,12 +1,9 @@
-import { Tool } from "@openai/agents"
 import { OutputConfigType } from "@prisma/client"
 
 import { validateJiraProjectExists } from "../../integrations/AtlassianIntegration"
 import { JiraConfig } from "../../shared/Configs"
 import { IntegrationType } from "../../shared/Integrations"
 import { PrismaTransaction } from "../../types/prisma"
-import { JiraConfigSchema, stripConfigForValidation } from "../../utility/configSchemas"
-import { convertOutputConfigTypeToConfigType } from "../../utility/typeConverters"
 import { Output, ToolboxEntry } from "../abstract/Output"
 
 import { jiraCreateTicketTool } from "./tools/createTicket"
@@ -16,9 +13,9 @@ import { jiraUpdateTicketTool } from "./tools/updateTicket"
 export class JiraTicketOutput extends Output<JiraConfig> {
     constructor() {
         const toolbox: ToolboxEntry[] = [
-            { tool: jiraSearchTicketTool as Tool, isReadOnly: true, integration: IntegrationType.ATLASSIAN, displayName: "Search tickets" },
-            { tool: jiraCreateTicketTool as Tool, isReadOnly: false, integration: IntegrationType.ATLASSIAN, displayName: "Create ticket" },
-            { tool: jiraUpdateTicketTool as Tool, isReadOnly: false, integration: IntegrationType.ATLASSIAN, displayName: "Update ticket" }
+            { tool: jiraSearchTicketTool, isReadOnly: true, integration: IntegrationType.ATLASSIAN, displayName: "Search tickets" },
+            { tool: jiraCreateTicketTool, isReadOnly: false, integration: IntegrationType.ATLASSIAN, displayName: "Create ticket" },
+            { tool: jiraUpdateTicketTool, isReadOnly: false, integration: IntegrationType.ATLASSIAN, displayName: "Update ticket" }
         ]
         super(OutputConfigType.JIRA_TICKET, toolbox)
     }

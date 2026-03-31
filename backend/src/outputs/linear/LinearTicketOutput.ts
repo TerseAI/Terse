@@ -23,16 +23,16 @@ import { linearUpdateTicketTool } from "./tools/updateTicket"
 export class LinearTicketOutput extends Output<LinearOutputConfig> {
     constructor() {
         const toolbox: ToolboxEntry[] = [
-            { tool: linearSearchTicketTool as Tool, isReadOnly: true, integration: IntegrationType.LINEAR, displayName: "Search tickets" },
-            { tool: linearGetTeamsTool as Tool, isReadOnly: true, integration: IntegrationType.LINEAR, displayName: "Get teams" },
-            { tool: linearGetStatesTool as Tool, isReadOnly: true, integration: IntegrationType.LINEAR, displayName: "Get states" },
-            { tool: linearGetLabelsTool as Tool, isReadOnly: true, integration: IntegrationType.LINEAR, displayName: "Get labels" },
-            { tool: linearGetProjectsTool as Tool, isReadOnly: true, integration: IntegrationType.LINEAR, displayName: "Get projects" },
-            { tool: linearGetUsersTool as Tool, isReadOnly: true, integration: IntegrationType.LINEAR, displayName: "Get users" },
-            { tool: linearCreateTicketTool as Tool, isReadOnly: false, integration: IntegrationType.LINEAR, displayName: "Create ticket" },
-            { tool: linearUpdateTicketTool as Tool, isReadOnly: false, integration: IntegrationType.LINEAR, displayName: "Update ticket" },
-            { tool: linearAddCommentTool as Tool, isReadOnly: false, integration: IntegrationType.LINEAR, displayName: "Add comment" },
-            { tool: linearReadTicketTool as Tool, isReadOnly: true, integration: IntegrationType.LINEAR, displayName: "Read ticket" }
+            { tool: linearSearchTicketTool, isReadOnly: true, integration: IntegrationType.LINEAR, displayName: "Search tickets" },
+            { tool: linearGetTeamsTool, isReadOnly: true, integration: IntegrationType.LINEAR, displayName: "Get teams" },
+            { tool: linearGetStatesTool, isReadOnly: true, integration: IntegrationType.LINEAR, displayName: "Get states" },
+            { tool: linearGetLabelsTool, isReadOnly: true, integration: IntegrationType.LINEAR, displayName: "Get labels" },
+            { tool: linearGetProjectsTool, isReadOnly: true, integration: IntegrationType.LINEAR, displayName: "Get projects" },
+            { tool: linearGetUsersTool, isReadOnly: true, integration: IntegrationType.LINEAR, displayName: "Get users" },
+            { tool: linearCreateTicketTool, isReadOnly: false, integration: IntegrationType.LINEAR, displayName: "Create ticket" },
+            { tool: linearUpdateTicketTool, isReadOnly: false, integration: IntegrationType.LINEAR, displayName: "Update ticket" },
+            { tool: linearAddCommentTool, isReadOnly: false, integration: IntegrationType.LINEAR, displayName: "Add comment" },
+            { tool: linearReadTicketTool, isReadOnly: true, integration: IntegrationType.LINEAR, displayName: "Read ticket" }
         ]
         super(OutputConfigType.LINEAR_TICKET, toolbox)
     }

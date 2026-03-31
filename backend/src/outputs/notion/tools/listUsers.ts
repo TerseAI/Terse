@@ -1,5 +1,5 @@
 import { Client } from "@notionhq/client"
-import { RunContext, tool } from "@openai/agents"
+import { RunContext } from "@openai/agents"
 import { RunHistoryActionType } from "@prisma/client"
 import { z } from "zod"
 
@@ -8,10 +8,16 @@ import { getNotionAccessTokenForOrganization } from "../../../integrations/Notio
 import logger from "../../../logger"
 import { IntegrationType } from "../../../shared/Integrations"
 import { ToolName } from "../../../tools/ToolNames"
-import { formatError } from "../../../tools/toolUtils"
+import { SessionToolOptions, formatError } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
+import { extractErrorMessage } from "../../../utility/strings"
 
-export const notionListUsersTool = tool({
+const parameters = z.object({
+    integrationId: z.string().describe("The integration ID of the Notion workspace to use."),
+    query: z.string().nullable().optional().describe("Optional search query to filter users by name. Case-insensitive partial match.")
+})
+
+export const notionListUsersTool: SessionToolOptions<typeof parameters, typeof ToolName.NOTION_LIST_USERS> = {
     name: ToolName.NOTION_LIST_USERS,
     description: `List users in the Notion workspace. Use this to resolve user names to Notion user IDs
 for populating People properties (e.g., Assignee, Owner) when creating or updating database pages.
@@ -20,10 +26,7 @@ Returns workspace members (not bots). Optionally filter by name with the query p
 
 Use the returned user IDs in people property format:
 {"Assignee": {"people": [{"object": "user", "id": "<user_id>"}]}}`,
-    parameters: z.object({
-        integrationId: z.string().describe("The integration ID of the Notion workspace to use."),
-        query: z.string().nullable().optional().describe("Optional search query to filter users by name. Case-insensitive partial match.")
-    }),
+    parameters: parameters,
     execute: async ({ integrationId, query }, runContext?: RunContext<SessionWithTracking<Session>>) => {
         logger.debug("Executing notion_list_users tool", { integrationId, query })
 
@@ -76,10 +79,9 @@ Use the returned user IDs in people property format:
                 actions: [action]
             }
         } catch (error: unknown) {
-            const errorMessage = error instanceof Error ? error.message : String(error)
+            const errorMessage = extractErrorMessage(error)
             logger.error("Error listing Notion users", { error: errorMessage, integrationId })
             throw new Error(`${errorMessage}. Check that the Notion integration is connected and has access to the workspace.`)
         }
-    },
-    errorFunction: formatError
-})
+    }
+}

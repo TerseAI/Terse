@@ -6,40 +6,41 @@ import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
 import logger from "../../../logger"
 import { IntegrationType } from "../../../shared/Integrations"
 import { ToolName } from "../../../tools/ToolNames"
+import { SessionToolOptions } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
 import { getPosthogApiKeyByIntegrationId } from "../posthogApiClient"
+
+const parameters = z.object({
+    integrationId: z.string().describe("The integration ID of the PostHog skill to use."),
+    projectId: z.string().describe("The PostHog project ID."),
+    userEmail: z.union([z.string(), z.null()]).optional().describe('Optional: User email to filter logs by (e.g., "user@example.com").'),
+    severityLevels: z
+        .union([z.array(z.enum(["error", "warn", "info", "debug"])), z.null()])
+        .describe('Optional: Array of log severity levels to filter by (e.g., ["error", "warn"]). If not provided, all severity levels are included.'),
+    messageSearch: z.union([z.string(), z.null()]).describe("Optional: Text to search for within log messages. Searches are case-insensitive and match partial text."),
+    limit: z.number().default(50).describe("Maximum number of log entries to return (default: 50, max: 250)"),
+    offset: z.number().default(0).describe("Offset for pagination (default: 0). Use with limit to page through results. For example, offset=0 gets logs 1-50, offset=50 gets logs 51-100, etc."),
+    last7Days: z
+        .boolean()
+        .default(false)
+        .describe("If true and dateFrom is not provided, filters logs from the last 7 days only (default: false). If false, no date restriction is applied unless dateFrom is explicitly provided."),
+    dateFrom: z
+        .union([z.string(), z.null()])
+        .describe(
+            'Start date for filtering (ISO format or relative like "-7d"). If not provided and last7Days is true, defaults to 7 days ago. If not provided and last7Days is false, no date restriction is applied.'
+        ),
+    dateTo: z.union([z.string(), z.null()]).describe('End date for filtering (ISO format or relative like "now"). If not provided, defaults to now.')
+})
 
 /**
  * Tool for querying PostHog logs with flexible filtering options.
  * This tool queries the PostHog Logs product API to find logs. You can filter by user, log level, message content, or combinations thereof.
  */
-export const searchLogsTool = tool({
+export const searchLogsTool: SessionToolOptions<typeof parameters, typeof ToolName.POSTHOG_SEARCH_LOGS> = {
     name: ToolName.POSTHOG_SEARCH_LOGS,
     description:
         "Query PostHog logs with flexible filtering. Returns logs data and a link to view logs in PostHog. You can filter by user email, log severity levels (error, warn, info, debug), message text search, or combinations. At least one filter (user email, severity levels, or message search) should be provided to avoid overly broad queries. Use this when you need to investigate user activity, errors, or events in PostHog logs.",
-    parameters: z.object({
-        integrationId: z.string().describe("The integration ID of the PostHog skill to use."),
-        projectId: z.string().describe("The PostHog project ID."),
-        userEmail: z.union([z.string(), z.null()]).optional().describe('Optional: User email to filter logs by (e.g., "user@example.com").'),
-        severityLevels: z
-            .union([z.array(z.enum(["error", "warn", "info", "debug"])), z.null()])
-            .describe('Optional: Array of log severity levels to filter by (e.g., ["error", "warn"]). If not provided, all severity levels are included.'),
-        messageSearch: z.union([z.string(), z.null()]).describe("Optional: Text to search for within log messages. Searches are case-insensitive and match partial text."),
-        limit: z.number().default(50).describe("Maximum number of log entries to return (default: 50, max: 250)"),
-        offset: z.number().default(0).describe("Offset for pagination (default: 0). Use with limit to page through results. For example, offset=0 gets logs 1-50, offset=50 gets logs 51-100, etc."),
-        last7Days: z
-            .boolean()
-            .default(false)
-            .describe(
-                "If true and dateFrom is not provided, filters logs from the last 7 days only (default: false). If false, no date restriction is applied unless dateFrom is explicitly provided."
-            ),
-        dateFrom: z
-            .union([z.string(), z.null()])
-            .describe(
-                'Start date for filtering (ISO format or relative like "-7d"). If not provided and last7Days is true, defaults to 7 days ago. If not provided and last7Days is false, no date restriction is applied.'
-            ),
-        dateTo: z.union([z.string(), z.null()]).describe('End date for filtering (ISO format or relative like "now"). If not provided, defaults to now.')
-    }),
+    parameters: parameters,
     execute: async (
         { integrationId, projectId, userEmail, severityLevels, messageSearch, limit = 50, offset = 0, last7Days = false, dateFrom, dateTo },
         runContext?: RunContext<SessionWithTracking<Session>>
@@ -250,4 +251,4 @@ export const searchLogsTool = tool({
             throw new Error(`Failed to query PostHog logs: ${error.message || "Unknown error"}`)
         }
     }
-})
+}

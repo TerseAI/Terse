@@ -1,3 +1,5 @@
+import { Tool, tool } from "@openai/agents-core"
+
 import type { ToolboxEntry } from "../outputs/abstract/Output"
 import { OutputFactory } from "../outputs/abstract/OutputFactory"
 import { CONFIG_DETAILS, ConfigType } from "../shared/Configs"
@@ -32,7 +34,8 @@ export function getToolsThatRequireApprovals(skills: ConfigType[]): TerseTool[] 
             throw new Error(`Output for config type ${configType} is not supported.`)
         }
         output.toolbox.forEach(entry => {
-            const name = entry.tool.name
+            const toolEntry = tool(entry.tool) as Tool
+            const name = toolEntry.name
             if (!map.has(name)) {
                 map.set(name, { entry, source: "skill" as TerseToolSource, configType })
             }

@@ -4,6 +4,7 @@ import { db } from "../prismaClient"
 import { SecretField, deleteSecretsBestEffort, storeSecret } from "../services/SecretService"
 import { IntegrationType, SnowflakeIntegration, SnowflakeIntegrationMetadata } from "../shared/Integrations"
 import { AgentTriggerWithConfigs } from "../types/prisma"
+import { extractErrorMessage } from "../utility/strings"
 
 import { FormFieldDefinition, FormIntegrationInstallation, FormSubmissionInput, FormSubmissionResult, Integration } from "./abstract/Integration"
 
@@ -168,7 +169,7 @@ export class SnowflakeIntegrationManager implements Integration<SnowflakeIntegra
                 }
             }
 
-            const message = err instanceof Error ? err.message : String(err)
+            const message = extractErrorMessage(err)
             logger.warn("Snowflake private key validation failed", { error: message })
 
             return {
@@ -187,7 +188,7 @@ export class SnowflakeIntegrationManager implements Integration<SnowflakeIntegra
                 warehouse: normalizedWarehouse
             })
         } catch (err) {
-            const message = err instanceof Error ? err.message : String(err)
+            const message = extractErrorMessage(err)
             logger.warn("Snowflake connection validation failed", {
                 error: message,
                 accountIdentifier: normalizedAccountIdentifier,

@@ -4,6 +4,10 @@ export const randomString = (length: number) => {
         .substring(2, 2 + length)
 }
 
+export function extractErrorMessage(error: unknown): string {
+    return error instanceof Error ? error.message : String(error)
+}
+
 export const isValidEpochTimestamp = (str: string): boolean => {
     const num = Number(str)
     if (isNaN(num) || num < 0) {

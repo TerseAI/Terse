@@ -1,6 +1,7 @@
 import type { Sandbox } from "modal"
 
 import { SandboxStage } from "../../shared/ModelEvents"
+import { extractErrorMessage } from "../../utility/strings"
 
 export { SandboxStage }
 
@@ -31,6 +32,41 @@ export interface SdkRuntimeExecutor {
     sandboxImage: string
     matchesArchive(entries: Set<string>): boolean
     execute(context: SdkRuntimeExecutorContext): Promise<SandboxCommandResult>
+}
+
+/**
+ * Run a sandbox stage that should throw on failure (e.g. dependency/CLI install).
+ * Emits started/completed/failed status and re-throws on error.
+ */
+export async function runSandboxStage(context: SdkRuntimeExecutorContext, stage: SandboxStage, fn: () => Promise<void>): Promise<void> {
+    context.emitSandboxStatus(stage, "started")
+    const start = performance.now()
+    try {
+        await fn()
+        context.emitSandboxStatus(stage, "completed", { duration_ms: Math.round(performance.now() - start) })
+    } catch (err) {
+        context.emitSandboxStatus(stage, "failed", {
+            duration_ms: Math.round(performance.now() - start),
+            detail: extractErrorMessage(err)
+        })
+        throw err
+    }
+}
+
+/**
+ * Run the final execution stage. Emits started/completed/failed based on exit code (does not throw).
+ */
+export async function runSandboxExecStage(context: SdkRuntimeExecutorContext, fn: () => Promise<SandboxCommandResult>): Promise<SandboxCommandResult> {
+    context.emitSandboxStatus(SandboxStage.RUNNING, "started")
+    const start = performance.now()
+    const result = await fn()
+    if (result.exitCode === 0) {
+        context.emitSandboxStatus(SandboxStage.RUNNING, "completed", { duration_ms: Math.round(performance.now() - start) })
+    } else {
+        const detail = result.stderr?.trim() || `Process exited with code ${result.exitCode}`
+        context.emitSandboxStatus(SandboxStage.RUNNING, "failed", { duration_ms: Math.round(performance.now() - start), detail: detail.slice(0, 500) })
+    }
+    return result
 }
 
 export const SDK_SANDBOX_CODE_ZIP_PATH = "/tmp/code.zip"
