@@ -15,7 +15,6 @@ import { RunContext, SystemPromptBuilder, SystemPromptBuilderDependencies } from
 
 export type SessionWithTracking<T extends AppSession> = T & {
     agent: {
-        requireApproval: boolean
         toolApprovals?: string[]
     }
     runId: string

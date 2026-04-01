@@ -717,6 +717,7 @@ export type SdkAgentRunRequestBody = {
     event?: Partial<SdkAgentRunEventPayload>
     skills?: SdkAgentSkillPayload[]
     options?: SdkAgentRunOptionsPayload
+    toolApprovals?: string[]
 }
 
 export type SdkAgentRunResponseBody = {
@@ -731,6 +732,7 @@ export type SdkAgentRunResponseBody = {
         prompt: string
         event: SdkAgentRunEventPayload
         skills: SdkAgentSkillPayload[]
+        toolApprovals: string[]
         options: {
             maxTurns: number
             requireApproval: boolean

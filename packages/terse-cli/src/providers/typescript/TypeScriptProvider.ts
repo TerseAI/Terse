@@ -131,7 +131,7 @@ export class TypeScriptProvider implements LanguageProvider {
             closeSession = session.close
         }
 
-        const agent = new TerseAgent(job.skills, BACKEND_URL, sessionId)
+        const agent = new TerseAgent(job.skills, BACKEND_URL, sessionId, job.toolApprovals)
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const createTools = (globalThis as any).__terse_createTools as ((agent: TerseAgent) => unknown) | undefined
         if (createTools) {

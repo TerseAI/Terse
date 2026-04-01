@@ -150,6 +150,7 @@ export type ApprovalRequestInfo = {
 
 export class TerseAgent {
     readonly skills: readonly ConfigInstance[]
+    readonly toolApprovals: string[]
     private readonly apiBaseUrl: string
     private readonly sessionId?: string
 
@@ -161,10 +162,11 @@ export class TerseAgent {
      */
     onApprovalRequired?: (info: ApprovalRequestInfo) => Promise<boolean>
 
-    constructor(skills: readonly ConfigInstance[] = [], apiBaseUrl: string = "http://localhost:3001", sessionId?: string) {
+    constructor(skills: readonly ConfigInstance[] = [], apiBaseUrl: string = "http://localhost:3001", sessionId?: string, toolApprovals: string[] = []) {
         this.skills = skills
         this.apiBaseUrl = apiBaseUrl
         this.sessionId = sessionId
+        this.toolApprovals = toolApprovals
     }
 
     async *run(prompt: string, event?: InputEvent): AsyncGenerator<TerseAgentResult> {
@@ -172,12 +174,13 @@ export class TerseAgent {
 
         const requestBody: SdkAgentRunRequestBody = {
             prompt,
+            toolApprovals: this.toolApprovals,
             event: {
                 integrationType: resolvedEvent.integrationType,
                 formattedContent: resolvedEvent.formatForAgentRunner(),
                 debugLog: resolvedEvent.debugLog()
             },
-            skills: this.serializeSkills()
+            skills: this.serializeSkills(),
         }
 
         const res = await fetch(`${this.apiBaseUrl}${ApiRoutes.SDK.AGENT_RUN}`, {
