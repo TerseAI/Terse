@@ -14,8 +14,6 @@ await client.createJob({
     const message = await Agent.tools.slack.sendMessage({
       channelId: SlackChannel.AllTerseInc.channelId,
       message: "New PR from " + event.sender.login + "!",
-      thread_ts: "",
-      blocks: "",
     });
 
     const prompt =

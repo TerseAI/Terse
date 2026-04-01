@@ -393,7 +393,8 @@ export function jsonSchemaToTs(schema: JsonSchema, indent: number): string {
             const pad = " ".repeat(indent)
             const innerPad = " ".repeat(indent + 4)
             const entries = Object.entries(schema.properties).map(([key, prop]) => {
-                const optional = requiredSet.has(key) ? "" : "?"
+                const isNullableAnyOf = Array.isArray(prop.anyOf) && prop.anyOf.some(child => child.type === "null")
+                const optional = requiredSet.has(key) && !isNullableAnyOf ? "" : "?"
                 const tsType = jsonSchemaToTs(prop, indent + 4)
                 const desc = prop.description ? ` /** ${prop.description} */\n${innerPad}` : ""
                 return `${desc}${key}${optional}: ${tsType}`
