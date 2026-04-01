@@ -31,7 +31,7 @@
       {
         "group": "Reference",
         "root": "reference/index",
-        "pages": ["reference/cli", "reference/typescript-sdk"]
+        "pages": ["reference/cli", "reference/typescript-sdk", "reference/python-sdk"]
       },
       {
         "group": "Compare",

@@ -1,6 +1,6 @@
 ---
 title: "Context as Code"
-description: "How Terse compiles your workspace context into TypeScript so workflows do not have to rediscover it at runtime."
+description: "How Terse compiles your workspace context so workflows do not have to rediscover it at runtime."
 icon: "lightbulb"
 ---
 
@@ -42,7 +42,7 @@ import {
 
 const client = new Terse();
 
-await client.createWorkflow({
+await client.createJob({
   name: "new-deal-enrichment",
   triggers: [Attio.onRecordCreated({ list: AttioList.Pipeline.NewDeals })],
   skills: [
@@ -103,7 +103,7 @@ await client.createWorkflow({
 
 | Term              | Meaning                                                                                                        |
 | ----------------- | -------------------------------------------------------------------------------------------------------------- |
-| Workflow          | A TypeScript automation with triggers, skills, and a handler that you deploy with the CLI                      |
+| Workflow          | Am automation with triggers, skills, and a handler that you deploy with the CLI                      |
 | Trigger           | The event (e.g. CRM record created) or schedule (e.g. cron) that starts the workflow                           |
 | Skill             | A capability the workflow can use after you connect an integration (e.g. `Attio.skill()`, `Apollo.skill()`)    |
 | Generated helpers | Typed exports in `src/terse.generated.ts` — triggers, skills, resource constants, and `agent.tools.*` wrappers |

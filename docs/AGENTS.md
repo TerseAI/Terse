@@ -14,12 +14,12 @@
 ## Terminology
 
 - Use "workflow" for code-defined automations deployed with the CLI.
-- The SDK method is `createWorkflow()`. Use this name consistently in code and prose.
+- The TypeScript SDK method is `createJob()`. In prose, prefer "workflow" for the product concept and show the real SDK method name in code samples.
 - Use "agent" for UI-created automations, or when the product UI itself uses the word "Agents".
 - Use "integration" for a connected external system such as Attio, Apollo, Slack, Outreach, or Snowflake.
 - Use "skill" for the capabilities a workflow can use after you connect an integration and run code generation.
 - Use "trigger" for the event or schedule that starts a workflow.
-- Use "generated helpers" for the typed exports written to `src/terse.generated.ts`.
+- Use "generated helpers" for the typed exports written to `src/terse.generated.ts` or `src/terse_generated.py`, depending on project language.
 - Use "deploy" for syncing local code to Terse. Do not say "publish" unless the product UI does.
 - Use "API token" when referring to the token users create in the UI. Use `TERSE_API_KEY` when referring to the environment variable.
 
@@ -32,22 +32,23 @@
 - Bold for UI elements: Click **Settings**
 - Code formatting for file names, commands, paths, and code references
 - Lead with the workflow, then explain why it matters
-- Prefer TypeScript examples unless the page explicitly covers another SDK
+- Prefer TypeScript examples when a page is language-neutral and the example needs integrations not yet surfaced in Python. When a page covers the shared CLI or project structure, document both languages.
 - Default to GTM examples: CRM enrichment, routing, alerts, pipeline reporting, and handoff workflows
 - Use Attio as the primary CRM in examples unless a page needs CRM-agnostic language
 - Use Apollo as the primary enrichment provider in examples unless a page needs provider-agnostic language
 - State prerequisites before commands that depend on integrations, sample events, or an API token
-- Call out generated files clearly. Do not imply that users should hand-edit `src/terse.generated.ts`
+- Call out generated files clearly. Do not imply that users should hand-edit `src/terse.generated.ts` or `src/terse_generated.py`
 - When the UI and CLI overlap, explain which source of truth owns the configuration
 - Use the live UI label for buttons, tabs, and sidebar items. If the SDK still says "job" in code, explain that once and then keep using "workflow" in prose.
 
 ## Content boundaries
 
-- Prioritize external developer docs for TypeScript workflows, CLI workflows, templates, and the parts of the web UI needed to operate them.
+- Prioritize external developer docs for TypeScript workflows, Python workflows where supported, CLI workflows, templates, and the parts of the web UI needed to operate them.
 - Document the user-visible app areas that matter for code workflows: Home, Workflows, Integrations, Activity, Stats, Notifications, and Profile.
 - Mention UI agents only when users need orientation or migration context.
 - Treat templates and comparison pages as first-class product docs, not side content.
 - Frame planned GTM integrations as waitlist or coming soon. Keep the current path clear.
 - Do not document internal admin tools, internal-only templates, implementation details of backend services, or unreleased product behavior.
-- Keep Python CLI and Python SDK details out of the first-draft product docs unless a page explicitly calls them out as a secondary path.
+- Document the shared `terse` CLI as the primary path for both TypeScript and Python projects.
+- Keep Python-specific SDK and generated-surface details scoped to pages that need them.
 - Avoid internal implementation detail. Optimize for the clearest product story users can act on.

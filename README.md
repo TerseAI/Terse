@@ -24,14 +24,13 @@ pnpm install
 pnpm install
 ```
 
-## Python CLI and SDK Development
+## Python SDK Development
 
-The repo now also contains a Python workspace for the in-progress Python CLI and Python SDK:
+The repo contains a Python workspace for the runtime SDK:
 
-- `packages/terse-python-cli`
 - `packages/terse-python-sdk`
 
-These Python packages are managed with **uv** and use Astral tooling for linting and type checking.
+CLI development lives in the TypeScript package at `packages/terse-cli`. Python tooling in this repo is for the SDK package.
 
 ### Prerequisites
 
@@ -62,40 +61,13 @@ This will:
 - install shared dev tools like `ruff` and `ty`
 - generate/update `uv.lock` when dependencies change
 
-### Manual CLI Runs
+### CLI Development
 
-From the repo root, run the Python CLI through uv:
+For CLI work, use the TypeScript package directly:
 
-```bash
-uv run --package terse-cli terse --help
-uv run --package terse-cli terse --version
-uv run --package terse-cli terse init --help
-uv run --package terse-cli terse run --help
-```
-
-The CLI is still a skeleton right now, so end-to-end manual testing means verifying:
-
-- the `terse` console entrypoint resolves correctly
-- all commands show up in help
-- options and arguments are wired correctly
-- stub commands execute and print `Not yet implemented`
-
-Example manual invocations:
-
-```bash
-uv run --package terse-cli terse init demo-project
-uv run --package terse-cli terse generate
-uv run --package terse-cli terse integrate
-uv run --package terse-cli terse test demo-job
-uv run --package terse-cli terse deploy
-uv run --package terse-cli terse run demo-job --event '{"integrationType":"terse","eventType":"manual","formattedContent":"Manual trigger","debugLog":"Manual trigger"}'
-```
-
-If you want to bypass `uv run` and use the synced environment directly, you can also invoke the installed binary:
-
-```bash
-./.venv/bin/terse --help
-```
+- `packages/terse-cli` for the CLI implementation
+- `npm run build:packages` from the repo root to build `terse-sdk` and `terse-cli`
+- `npm run link:cli` if you want a globally linked `terse` binary during development
 
 ### Astral Tooling
 
@@ -108,7 +80,6 @@ npm run python:setup
 npm run python:check
 npm run python:test
 npm run python:dist:check
-npm run python:smoke
 npm run python:build
 ```
 
@@ -128,27 +99,27 @@ uv sync --all-packages
 Lint:
 
 ```bash
-uv run ruff check packages/terse-python-cli/src packages/terse-python-sdk/src
-uv run ruff check --fix packages/terse-python-cli/src packages/terse-python-sdk/src
+uv run ruff check packages/terse-python-sdk/src
+uv run ruff check --fix packages/terse-python-sdk/src
 ```
 
 Format:
 
 ```bash
-uv run ruff format packages/terse-python-cli/src packages/terse-python-sdk/src
-uv run ruff format --check packages/terse-python-cli/src packages/terse-python-sdk/src
+uv run ruff format packages/terse-python-sdk/src
+uv run ruff format --check packages/terse-python-sdk/src
 ```
 
 Type check:
 
 ```bash
-uv run ty check packages/terse-python-cli/src packages/terse-python-sdk/src
+uv run ty check packages/terse-python-sdk/src
 ```
 
 Run Python tests:
 
 ```bash
-uv run pytest packages/terse-python-cli/tests packages/terse-python-sdk/tests
+uv run pytest packages/terse-python-sdk/tests
 ```
 
 Build packages:
@@ -162,7 +133,6 @@ Inspect resolved dependencies:
 
 ```bash
 uv tree
-uv tree --package terse-cli
 uv tree --package terse-sdk
 ```
 
@@ -176,7 +146,7 @@ npm run sync:shared
 
 The Python SDK request/response models are maintained by hand under `packages/terse-python-sdk/src/terse_sdk/types/`.
 
-If you only need to sync the repo-level shared TypeScript definitions for the JavaScript/TypeScript packages and the Python CLI helper generator, run:
+If you only need to sync the repo-level shared TypeScript definitions for the JavaScript/TypeScript packages and the Python SDK models, run:
 
 ```bash
 npm run sync:shared
@@ -187,12 +157,11 @@ npm run sync:shared
 For day-to-day Python development:
 
 1. Run `npm run python:setup` the first time.
-2. Make changes in `packages/terse-python-cli` and/or `packages/terse-python-sdk`.
+2. Make changes in `packages/terse-python-sdk`.
 3. Run `npm run python:check`.
-4. Manually exercise the CLI with `uv run --package terse-cli terse ...` or `npm run python:smoke`.
-5. Build the package artifacts with `npm run python:build` before publishing or release work.
+4. Build the package artifacts with `npm run python:build` before publishing or release work.
 
-### Publishing Python Packages
+### Publishing the Python SDK
 
 Start from a clean working tree:
 
@@ -208,24 +177,14 @@ Prepare the next SDK release version from the repo root:
 npm run python:release:prep:sdk -- patch
 ```
 
-Then prepare the CLI release version:
-
-```bash
-npm run python:release:prep:cli -- patch
-```
-
-Both commands call `bump-my-version` directly with separate configs, so the SDK and CLI stay on separate version lines. The SDK bump updates the SDK package version, SDK `__version__`, the CLI's published `terse-sdk~=...` dependency, the scaffolded SDK dependency fixture, and the CLI fallback SDK version string.
-
 You can also choose a different bump type or set an explicit version:
 
 ```bash
 npm run python:release:prep:sdk -- minor
-npm run python:release:prep:cli -- major
 npm run python:release:prep:sdk -- --new-version 0.2.0
-npm run python:release:prep:cli -- --new-version 0.2.0
 ```
 
-After both bumps, refresh the workspace lockfile:
+After the bump, refresh the workspace lockfile:
 
 ```bash
 uv lock
@@ -237,7 +196,7 @@ Before publishing, build and validate the distributions from the repo root:
 npm run python:dist:check
 ```
 
-If you want to publish locally with a PyPI API token instead of using GitHub Actions:
+If you want to publish locally with a PyPI API token:
 
 ```bash
 export TWINE_USERNAME=__token__
@@ -245,9 +204,7 @@ export TWINE_PASSWORD=pypi-...
 npm run python:publish
 ```
 
-The `python:publish` script first runs `npm run python:dist:check` and then uploads both packages from `dist/` with `twine`.
-
-There is also a manual GitHub Actions workflow at [`.github/workflows/publish-python.yml`](/Users/olimorissette/Desktop/projects/Terse/.github/workflows/publish-python.yml) for PyPI Trusted Publishing. Before using it, configure both PyPI projects to trust this repository and workflow.
+The `python:publish` script first runs `npm run python:dist:check` and then uploads `dist/terse_sdk-*` with `twine`.
 
 ## Code Formatting
 

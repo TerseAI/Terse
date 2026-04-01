@@ -1,0 +1,15 @@
+{{#if hasAnyToolNameTypes}}
+
+
+# === Tool name types ===
+
+{{#if attioToolNamesLiteral}}
+AttioToolNames = Literal[{{{attioToolNamesLiteral}}}]
+{{/if}}
+{{#if snowflakeToolNamesLiteral}}
+SnowflakeToolNames = Literal[{{{snowflakeToolNamesLiteral}}}]
+{{/if}}
+{{#if allToolNamesLiteral}}
+AllToolNames = Literal[{{{allToolNamesLiteral}}}]
+{{/if}}
+{{/if}}

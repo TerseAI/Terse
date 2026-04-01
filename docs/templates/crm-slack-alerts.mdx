@@ -6,10 +6,13 @@ icon: "bell"
 
 Alert the team in Slack when a deal hits a key stage.
 
-## Scaffold it
+## Start from a project scaffold
 
 ```bash
-terse init acme-revenue --template crm-slack-alerts
+terse init acme-revenue
+cd acme-revenue
+terse integrate
+terse generate
 ```
 
 ## What it does
@@ -26,7 +29,7 @@ import { Attio, AttioList, Slack, SlackChannel } from "./terse.generated";
 
 const client = new Terse();
 
-await client.createWorkflow({
+await client.createJob({
   name: "crm-slack-alerts",
   triggers: [Attio.onRecordUpdated({ list: AttioList.Pipeline.OpenDeals })],
   skills: [

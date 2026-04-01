@@ -1,0 +1,23 @@
+{{sectionHeader "Slack"}}
+
+{{> resource-class channelClass}}
+
+export const Slack = {
+    /** Trigger on any message in a channel */
+    onMessage(opts: { channel: SlackChannel; userIds?: string[] }): SlackConfig {
+        return new SlackConfig("{{escape id}}", opts.channel.channelId, opts.channel.name, false, opts.userIds, [SlackEventType.MESSAGE])
+    },
+    /** Trigger on direct messages to the bot */
+    onDm(opts?: { userIds?: string[] }): SlackConfig {
+        return new SlackConfig("{{escape id}}", undefined, undefined, true, opts?.userIds, [SlackEventType.MESSAGE])
+    },
+    /** Trigger on all Slack events (messages + DMs) for a channel */
+    trigger(opts?: { channel?: SlackChannel; listenToUserDms?: boolean; userIds?: string[]; eventTypes?: SlackEventType[] }): SlackConfig {
+        return new SlackConfig("{{escape id}}", opts?.channel?.channelId, opts?.channel?.name, opts?.listenToUserDms, opts?.userIds, opts?.eventTypes)
+    },
+    /** Use in `skills[]` */
+    skill(opts?: { channel?: SlackChannel; userIds?: string[]; userNames?: string[]; listenToUserDms?: boolean }): TypedSkill<{{{skillToolType}}}> {
+        return new SlackOutputConfig("{{escape id}}", opts?.channel?.channelId, opts?.channel?.name, opts?.userIds, opts?.userNames, opts?.listenToUserDms) as TypedSkill<{{{skillToolType}}}>
+    },
+}
+

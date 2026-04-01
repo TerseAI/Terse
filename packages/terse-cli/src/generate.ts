@@ -5,7 +5,6 @@ import ora from "ora"
 
 import { assertProjectRoot } from "./assertProjectRoot.js"
 import {
-    generateCode,
     type CodegenInput,
     type GitHubInstanceData,
     type SlackInstanceData,
@@ -18,7 +17,9 @@ import {
     type AttioInstanceData,
     type AttioAttributeData,
     type ToolDefinition,
-} from "./codegen.js"
+} from "./providers/codegenTypes.js"
+import type { LanguageProvider } from "./providers/LanguageProvider.js"
+import { resolveProvider } from "./providers/resolveProvider.js"
 import type {
     GithubIntegration,
     SlackIntegration,
@@ -40,8 +41,8 @@ import { fetchWithAuth, readApiKeyOrBail } from "./api.js"
 
 // ── Main ──────────────────────────────────────────────────────────────
 
-export async function generate(): Promise<void> {
-    assertProjectRoot()
+export async function generate(provider: LanguageProvider = resolveProvider()): Promise<void> {
+    assertProjectRoot(provider)
 
     const totalStart = performance.now()
 
@@ -292,11 +293,11 @@ export async function generate(): Promise<void> {
 
     // 5. Generate code
     const codegenStart = performance.now()
-    const code = generateCode(input)
+    const code = provider.renderGeneratedCode(input)
     const codegenMs = performance.now() - codegenStart
 
     // 6. Write output
-    writeOutput(code)
+    writeOutput(code, provider)
 
     // 7. Summary
     const totalMs = performance.now() - totalStart
@@ -309,7 +310,7 @@ export async function generate(): Promise<void> {
     console.log(`  ${chalk.green("+")} Schedule trigger`)
     console.log(`  ${chalk.green("+")} Terse skills (web search)`)
     console.log("")
-    console.log(`  ${chalk.green.bold("Generated")} src/terse.generated.ts`)
+    console.log(`  ${chalk.green.bold("Generated")} ${provider.generatedCodePath}`)
     console.log(`  ${chalk.dim(`Codegen: ${codegenMs.toFixed(0)}ms | Total: ${totalMs.toFixed(0)}ms`)}`)
     console.log("")
 }
@@ -320,12 +321,13 @@ async function safely(fn: () => Promise<void>): Promise<void> {
     try { await fn() } catch { /* skip failed integrations */ }
 }
 
-function writeOutput(code: string): void {
-    const srcDir = path.resolve(process.cwd(), "src")
-    if (!fs.existsSync(srcDir)) {
-        fs.mkdirSync(srcDir, { recursive: true })
+function writeOutput(code: string, provider: LanguageProvider): void {
+    const outputPath = path.resolve(process.cwd(), provider.generatedCodePath)
+    const outputDir = path.dirname(outputPath)
+    if (!fs.existsSync(outputDir)) {
+        fs.mkdirSync(outputDir, { recursive: true })
     }
-    fs.writeFileSync(path.join(srcDir, "terse.generated.ts"), code)
+    fs.writeFileSync(outputPath, code)
 }
 
 function printSummary(input: CodegenInput): void {

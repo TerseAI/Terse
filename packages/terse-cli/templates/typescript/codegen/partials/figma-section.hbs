@@ -1,0 +1,13 @@
+{{sectionHeader "Figma"}}
+
+export const Figma = {
+    /** Trigger when a comment is added to a Figma file */
+    onComment(opts: { fileKey: string; fileName: string; teamId: string }): FigmaConfig {
+        return new FigmaConfig("{{escape id}}", opts.fileKey, opts.fileName, opts.teamId, [FigmaEventType.FILE_COMMENT])
+    },
+    /** Trigger on all Figma events */
+    trigger(opts: { fileKey: string; fileName: string; teamId: string; eventTypes?: FigmaEventType[] }): FigmaConfig {
+        return new FigmaConfig("{{escape id}}", opts.fileKey, opts.fileName, opts.teamId, opts.eventTypes)
+    },
+}
+

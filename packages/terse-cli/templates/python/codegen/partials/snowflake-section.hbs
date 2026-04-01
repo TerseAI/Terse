@@ -1,0 +1,26 @@
+{{#if snowflake}}
+
+
+# === Snowflake ===
+
+
+class Snowflake:
+    @staticmethod
+    def skill() -> SkillConfig[{{snowflake.skillToolType}}]:
+        return SkillConfig(integration_id={{{snowflake.instanceIdRepr}}}, integration_type='snowflake', config_type='snowflake_output', config=_compact_dict())
+{{else}}
+
+
+# === Snowflake ===
+
+
+class Snowflake:
+    @staticmethod
+    def skill() -> SkillConfig[str]:
+        return SkillConfig(
+            integration_id='snowflake_placeholder',
+            integration_type='snowflake',
+            config_type='snowflake_output',
+            config=_compact_dict(),
+        )
+{{/if}}

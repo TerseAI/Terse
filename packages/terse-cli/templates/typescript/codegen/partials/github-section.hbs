@@ -1,0 +1,62 @@
+{{sectionHeader "GitHub"}}
+
+export class GithubOwner {
+    constructor(public readonly name: string) {}
+{{#if owners.length}}
+
+{{#each owners}}
+    static {{staticName}} = new GithubOwner("{{escape name}}")
+{{/each}}
+{{/if}}
+}
+
+export class Repos {
+    constructor(
+        public readonly repositoryId: number,
+        public readonly name: string,
+        public readonly owner: GithubOwner,
+        public readonly fullName: string
+    ) {}
+{{#if repoGroups.length}}
+
+{{#each repoGroups}}
+    static {{ownerStaticName}} = {
+{{#each repos}}
+        {{staticName}}: new Repos({{id}}, "{{escape name}}", GithubOwner.{{../ownerStaticName}}, "{{escape fullName}}"),
+{{/each}}
+    } as const
+{{/each}}
+{{/if}}
+}
+
+export const GitHub = {
+    /** Trigger on push to a repository */
+    onPush(opts: { repo: Repos }): TypedTrigger<GithubPushInputEvent> {
+        return new GitHubConfig("{{escape id}}", [opts.repo.repositoryId], [GitHubEventType.PUSH]) as TypedTrigger<GithubPushInputEvent>
+    },
+    /** Trigger when a pull request is opened */
+    onPROpened(opts: { repo: Repos }): TypedTrigger<GithubPRInputEvent> {
+        return new GitHubConfig("{{escape id}}", [opts.repo.repositoryId], [GitHubEventType.PR_OPENED]) as TypedTrigger<GithubPRInputEvent>
+    },
+    /** Trigger when a pull request is merged */
+    onPRMerged(opts: { repo: Repos }): TypedTrigger<GithubPRInputEvent> {
+        return new GitHubConfig("{{escape id}}", [opts.repo.repositoryId], [GitHubEventType.PR_MERGED]) as TypedTrigger<GithubPRInputEvent>
+    },
+    /** Trigger when a pull request is closed */
+    onPRClosed(opts: { repo: Repos }): TypedTrigger<GithubPRInputEvent> {
+        return new GitHubConfig("{{escape id}}", [opts.repo.repositoryId], [GitHubEventType.PR_CLOSED]) as TypedTrigger<GithubPRInputEvent>
+    },
+    /** Trigger on any pull request event */
+    onPR(opts: { repo: Repos }): TypedTrigger<GithubPRInputEvent> {
+        return new GitHubConfig("{{escape id}}", [opts.repo.repositoryId], [GitHubEventType.PR_OPENED, GitHubEventType.PR_MERGED, GitHubEventType.PR_CLOSED, GitHubEventType.PR_SYNCHRONIZE]) as TypedTrigger<GithubPRInputEvent>
+    },
+    /** Trigger on specific GitHub events for the given repositories */
+    trigger(opts: { repos: Repos[]; eventTypes?: GitHubEventType[] }): TypedTrigger<GithubInputEvent> {
+        return new GitHubConfig("{{escape id}}", opts.repos.map(r => r.repositoryId), opts.eventTypes) as TypedTrigger<GithubInputEvent>
+    },
+    /** Use in `skills[]` */
+    skill(opts: { repos: Repos[] }): TypedSkill<{{{skillToolType}}}> {
+        return new GitHubConfig("{{escape id}}", opts.repos.map(r => r.repositoryId)) as TypedSkill<{{{skillToolType}}}>
+    },
+}
+

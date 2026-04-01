@@ -1,0 +1,51 @@
+{{#if attio.hasAttrs}}
+
+    def upsert_record(
+        self,
+        obj: AttioObjectType[_TSlug, _TRecordValues, _TInputValues, Any],
+        matching_attribute: _TSlug,
+        records: list[_TInputValues],
+    ) -> AttioTypedUpsertResult[_TRecordValues]:
+        raw = AttioUpsertRecordToolOutput.model_validate(
+            self._agent.execute_tool(
+                {{{tool.nameRepr}}},
+                {
+                    'integrationId': {{{attio.instanceIdRepr}}},
+                    'objectSlug': obj.api_slug,
+                    'matchingAttribute': matching_attribute,
+                    'records': _serialize_attio_records(records),
+                },
+            )
+        )
+        return AttioTypedUpsertResult(
+            success=raw.success,
+            records=[cast(AttioTypedRecord[_TRecordValues],
+            _flatten_attio_record(obj.api_slug, r))
+            for r in (raw.records or [])],
+            count=int(raw.count or 0),
+            requested_count=int(raw.requestedCount or 0),
+            success_count=int(raw.successCount or 0),
+            failure_count=int(raw.failureCount or 0),
+            partial=raw.partial or False,
+            errors=raw.errors or [],
+        )
+{{else}}
+
+    def upsert_record(
+        self,
+        obj: AttioObjectType,
+        matching_attribute: str,
+        records: list[object],
+    ) -> {{tool.outputModel}}:
+        return AttioUpsertRecordToolOutput.model_validate(
+            self._agent.execute_tool(
+                {{{tool.nameRepr}}},
+                {
+                    'integrationId': {{{attio.instanceIdRepr}}},
+                    'objectSlug': obj.api_slug,
+                    'matchingAttribute': matching_attribute,
+                    'records': _serialize_attio_records(records),
+                },
+            )
+        )
+{{/if}}

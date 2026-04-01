@@ -12,11 +12,20 @@ For complete SDK reference (triggers, skills, events, TerseAgent API), see [sdk-
 
 ## Steps
 
-### 1. Find the job
+### 1. Detect the project language and find the job
 
-Open `src/index.ts` and find the `createJob()` call matching the requested job name. Read the full implementation — triggers, skills, filter, and `onTrigger` handler.
+Use project markers to detect the language:
 
-Also read `src/terse.generated.ts` to understand what integrations and resources are available.
+- TypeScript: `package.json` and `src/index.ts`
+- Python: `pyproject.toml` and `src/main.py`
+
+Then open the right files:
+
+- TypeScript: `src/index.ts` and `src/terse.generated.ts`
+- Python: `src/main.py` and `src/terse_generated.py`
+
+Find the job matching the requested name and read the full implementation — triggers, skills, filter, and handler.
+If the generated file is missing or stale for the requested integration, rerun `terse generate` instead of guessing at missing helpers.
 
 ### 2. Analyze for improvements
 
@@ -25,7 +34,9 @@ Evaluate each area below. Not every area will need changes — focus on the ones
 #### Prompt Quality
 
 - **Specificity**: Does the prompt tell the agent exactly what to do? Vague prompts like "handle this event" waste tokens and produce inconsistent results. Be specific: "Summarize the PR changes in 3 bullet points and post to Slack."
-- **Event context**: Does it include `event.formatForAgentRunner()`? This gives the agent the full event payload. Always include it.
+- **Event context**: Does it include the full event payload?
+TypeScript: `event.formatForAgentRunner()`
+Python: `event.formatted_content`
 - **Edge cases**: Does the prompt explain what to do when things are ambiguous? E.g., "If the PR has no description, summarize from the diff only."
 - **Format instructions**: Does it specify the output format? "Format as Block Kit JSON" vs leaving it open.
 - **Length**: Is the prompt too long? Split multi-step instructions into separate agent runs or use deterministic tool calls for the predictable parts.
@@ -37,15 +48,17 @@ Evaluate each area below. Not every area will need changes — focus on the ones
 - **Specific sources**: Should events from certain users, repos, or channels be filtered?
 - **Cost**: Every unfiltered event triggers an agent run. Filters save real money.
 
-#### Type Safety
+#### Type Safety and language fit
 
-- **Event type**: Is the event typed with the correct class? Use `GithubPRInputEvent` not generic `InputEvent`.
+- **Event type**: Is the event typed with the correct class for the language? Use `GithubPRInputEvent` in TypeScript, or the matching `terse_sdk` event class in Python.
 - **Type guards**: When handling events from multiple trigger types, use `isGithubPREvent()`, `isGithubPushEvent()`, etc.
-- **Imports**: Are trigger and skill types imported from `./terse.generated`?
+- **Imports**: Are trigger and skill types imported from the correct generated file?
+- **Method names**: Does the code use the right runtime API for the language? TypeScript uses `runAndWait()` / `executeTool()`. Python uses `run_and_wait()` / `execute_tool()`.
+- **Python generated surface**: If the project is Python, are you only using helpers that actually exist in `src/terse_generated.py`?
 
 #### Tool Usage
 
-- **Deterministic vs AI**: For actions with known parameters (send a specific message, create a specific issue), use `Agent.tools.*` or `Agent.executeTool()` instead of an agent run. It's faster, cheaper, and more reliable.
+- **Deterministic vs AI**: For actions with known parameters, prefer generated deterministic wrappers over an agent run. Use `Agent.tools.*` / `Agent.executeTool()` in TypeScript, or `agent.tools.*` / `agent.execute_tool()` in Python when the helper exists.
 - **Multi-step**: Could a two-step approach work better? E.g., send a Slack message first with `Agent.tools.slack.sendMessage()`, then use `Agent.runAndWait()` to post an AI-generated summary as a thread reply.
 - **Tool results**: When using `Agent.tools.*`, capture the return value if subsequent steps need it (e.g., `message.message_ts` for threading).
 
@@ -63,13 +76,15 @@ Evaluate each area below. Not every area will need changes — focus on the ones
 
 ### 3. Implement improvements
 
-Edit `src/index.ts` directly. Make the changes.
+Edit the language-specific entry file directly. Make the changes. Never edit the generated file by hand; rerun `terse generate` if the helper surface needs to change.
 
 ### 4. Explain changes
 
 After implementing, summarize what you changed and why.
 
 ## Common Improvement Patterns
+
+The examples below are in TypeScript. Apply the same reasoning in Python projects using `src/main.py`, `terse_sdk`, `terse_generated`, snake_case method names, and `event.formatted_content`. Only use helpers that actually exist in `src/terse_generated.py`.
 
 ### Add bot filtering
 ```typescript

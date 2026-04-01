@@ -1,20 +1,34 @@
 ---
 title: "CLI reference"
-description: "Reference for the TypeScript terse CLI commands used to scaffold, generate, test, run, and deploy workflows end to end."
+description: "Reference for the terse CLI across TypeScript and Python projects."
 icon: "terminal"
 ---
 
-The TypeScript `terse` CLI expects you to run commands from the root of a generated Terse project, where `package.json` and `src/index.ts` live.
+The `terse` CLI scaffolds, generates, tests, runs, and deploys Terse projects in both TypeScript and Python.
+
+Use `terse init --language <ts|python>` to choose the project language. All other commands auto-detect the language from the current directory.
+
+Python projects use [`uv`](https://docs.astral.sh/uv/getting-started/installation/) for dependency installation and local execution. Install it before scaffolding or running Python projects.
+
+## Supported languages
+
+| Language | Project markers | Entry file | Generated file |
+| -------- | --------------- | ---------- | -------------- |
+| TypeScript | `package.json`, `src/index.ts` | `src/index.ts` | `src/terse.generated.ts` |
+| Python | `pyproject.toml`, `src/main.py` | `src/main.py` | `src/terse_generated.py` |
 
 ## Command summary
 
-| Command                      | What it does                                                  |
-| ---------------------------- | ------------------------------------------------------------- |
-| `terse init [project-name]`  | Scaffold a new TypeScript workflow project                    |
-| `terse generate`             | Generate `src/terse.generated.ts` from connected integrations |
-| `terse integrate`            | Open the Terse integrations page in the browser               |
-| `terse test [workflow-name]` | Run a workflow locally against a selected sample event        |
-| `terse deploy`               | Sync all registered workflows to Terse                        |
+| Command | What it does |
+| ------- | ------------ |
+| `terse init [project-name]` | Scaffold a new Terse project |
+| `terse login` | Authenticate with Terse via your browser |
+| `terse generate` | Generate language-specific helpers from connected integrations |
+| `terse integrate` | Open the Terse integrations page in the browser |
+| `terse run [job-name] --event <json>` | Run a job with serialized event JSON |
+| `terse run [job-name] --event-file <path>` | Run a job with serialized event JSON from a file |
+| `terse test [job-name]` | Run a job locally against a selected sample event |
+| `terse deploy` | Sync all registered jobs to Terse |
 
 ## Global options
 
@@ -30,38 +44,56 @@ terse test --help
 Scaffolds a new project and prompts you for an API token.
 
 ```bash
-terse init acme-revenue --template weekly-pipeline-digest
+terse init acme-revenue
+terse init acme-revenue --language python
 ```
 
-The scaffold includes:
+Options:
+
+- `--language <ts|typescript|py|python>`: choose the project language. Defaults to `ts`.
+
+TypeScript scaffolds:
 
 - `src/index.ts`
-- `.env`
+- `src/terse.generated.ts` after `terse generate`
 - `package.json`
-- TypeScript build scripts
+- `tsconfig.json`
 
-Use `--template <slug>` when you want a working GTM starter instead of a blank project.
+Python scaffolds:
 
-Common template slugs:
-
-- `weekly-pipeline-digest`
-- `new-deal-enrichment`
-- `crm-slack-alerts`
-- `contact-scoring`
+- `src/main.py`
+- `src/terse_generated.py` after `terse generate`
+- `pyproject.toml`
+- `.python-version`
 
 ## `terse generate`
 
-Fetches integration details and writes `src/terse.generated.ts`.
+Fetches integration details and writes the generated helper file for the current project language.
 
 ```bash
 terse generate
 ```
+
+Outputs:
+
+- TypeScript: `src/terse.generated.ts`
+- Python: `src/terse_generated.py`
 
 Use it after:
 
 - connecting a new integration
 - changing available resources in a connected integration
 - updating the generated tool surface you want your workflows to use
+
+Current Python code generation focuses on `Schedule`, `Attio`, `Snowflake`, and deterministic wrappers for supported Attio and Snowflake tools. `terse run`, `terse test`, and `terse deploy` still work for Python projects through the same CLI.
+
+## `terse login`
+
+Authenticates with Terse and writes `TERSE_API_KEY` into your project `.env`.
+
+```bash
+terse login
+```
 
 ## `terse integrate`
 
@@ -73,9 +105,23 @@ terse integrate
 
 Equivalent UI destination: `https://app.useterse.ai/app/integrations`
 
-## `terse test [workflow-name]`
+## `terse run [job-name]`
 
-Runs a workflow locally against a selected sample event.
+Runs a job locally with an explicit serialized event payload.
+
+```bash
+terse run --event '{"integrationType":"cron_job","formattedContent":"Manual trigger","debugLog":"Manual trigger"}'
+terse run weekly-pipeline-digest --event-file ./event.json
+```
+
+Options:
+
+- `--event <json>`: inline serialized event JSON
+- `--event-file <path>`: read serialized event JSON from a file
+
+## `terse test [job-name]`
+
+Fetches sample events for the selected job and runs it locally.
 
 ```bash
 terse test
@@ -86,14 +132,9 @@ Options:
 
 - `--verbose`, `-v`: show model stream output during the run
 
-Options:
-
-- `--event <json>`: inline serialized event JSON
-- `--event-file <path>`: read serialized event JSON from a file
-
 ## `terse deploy`
 
-Syncs every registered workflow in the project to Terse.
+Syncs every registered job in the project to Terse.
 
 ```bash
 terse deploy
@@ -107,29 +148,29 @@ Behavior to remember:
 
 ## Required environment variable
 
-- `TERSE_API_KEY`: required for `terse generate`, `terse test`, and `terse deploy`
+- `TERSE_API_KEY`: required for `terse generate`, `terse test`, `terse deploy`, and any `terse run` invocation that needs agent or tool access
 
 ## Common workflows
 
-**Initial setup:**
+**TypeScript:**
 
 ```bash
 npm install -g terse-cli
-terse init acme-revenue --template weekly-pipeline-digest
+terse init acme-revenue
 cd acme-revenue
+terse integrate
 terse generate
-```
-
-**Development loop:**
-
-```bash
-# edit src/index.ts
 terse test --verbose
+terse deploy
 ```
 
-**Deploy:**
+**Python:**
 
 ```bash
+npm install -g terse-cli
+terse init acme-revenue --language python
+cd acme-revenue
+terse integrate
 terse generate
 terse test --verbose
 terse deploy

@@ -1,0 +1,194 @@
+
+
+# === Deterministic tools ===
+
+{{#if hasAttioTools}}
+_ATTIO_FILTER_ATTRS_BY_OBJECT: dict[str, frozenset[str]] = {
+{{#each attio.objects}}
+{{#if hasAttributes}}
+    {{{apiSlugRepr}}}: {{{attrSlugsFrozensetRepr}}},
+{{/if}}
+{{/each}}
+}
+
+
+def _attio_invalid_filter_error(obj_slug: str, attribute: str | None = None) -> ValueError:
+    message = f"Invalid Attio filter for object {obj_slug!r}"
+    if attribute is not None:
+        message += f" on attribute {attribute!r}"
+    message += ": list shorthand is not supported."
+    if attribute == 'domains':
+        message += ' Use scalar shorthand "useterse.ai" or explicit Attio syntax {"domain": {"$eq": "useterse.ai"}}.'
+    else:
+        message += " Use a scalar shorthand or explicit Attio operator/object syntax instead."
+    return ValueError(message)
+
+
+def _validate_attio_filter_node(
+    obj_slug: str,
+    value: object,
+    *,
+    attr_slugs: frozenset[str],
+    current_attribute: str | None = None,
+) -> None:
+    if isinstance(value, dict):
+        for raw_key, child in value.items():
+            if not isinstance(raw_key, str):
+                raise ValueError(f"Invalid Attio filter for object {obj_slug!r}: filter keys must be strings.")
+            key = raw_key
+            if key in ('$and', '$or'):
+                if not isinstance(child, list):
+                    raise ValueError(f"Invalid Attio filter for object {obj_slug!r}: {key} must be a list.")
+                for item in child:
+                    if not isinstance(item, dict):
+                        raise ValueError(f"Invalid Attio filter for object {obj_slug!r}: {key} entries must be objects.")
+                    _validate_attio_filter_node(obj_slug, item, attr_slugs=attr_slugs)
+                continue
+            if key == '$not':
+                if not isinstance(child, dict):
+                    raise ValueError(f"Invalid Attio filter for object {obj_slug!r}: $not must be an object.")
+                _validate_attio_filter_node(obj_slug, child, attr_slugs=attr_slugs)
+                continue
+            if key == '$in':
+                if not isinstance(child, list):
+                    raise ValueError(f"Invalid Attio filter for object {obj_slug!r}: $in must be a list.")
+                continue
+            if key == 'path':
+                if not isinstance(child, list):
+                    raise ValueError(f"Invalid Attio filter for object {obj_slug!r}: path must be a list.")
+                continue
+            if key == 'constraints':
+                if not isinstance(child, dict):
+                    raise ValueError(f"Invalid Attio filter for object {obj_slug!r}: constraints must be an object.")
+                _validate_attio_filter_node(
+                    obj_slug,
+                    child,
+                    attr_slugs=attr_slugs,
+                    current_attribute=current_attribute,
+                )
+                continue
+
+            attribute: str | None = key if key in attr_slugs else current_attribute
+            if isinstance(child, list):
+                raise _attio_invalid_filter_error(obj_slug, attribute)
+            _validate_attio_filter_node(
+                obj_slug,
+                child,
+                attr_slugs=attr_slugs,
+                current_attribute=attribute,
+            )
+
+
+def _serialize_attio_filter(obj_slug: str, value: object | None) -> str | None:
+    if value is None:
+        return None
+
+    parsed = value
+    if isinstance(value, str):
+        try:
+            parsed = json.loads(value)
+        except json.JSONDecodeError as exc:
+            raise ValueError(f"Attio filters for object {obj_slug!r} must be valid JSON objects.") from exc
+
+    if not isinstance(parsed, dict):
+        raise ValueError(f"Attio filters for object {obj_slug!r} must be objects.")
+
+    _validate_attio_filter_node(
+        obj_slug,
+        parsed,
+        attr_slugs=_ATTIO_FILTER_ATTRS_BY_OBJECT.get(obj_slug, frozenset()),
+    )
+    return json.dumps(parsed, separators=(',', ':'), sort_keys=True)
+
+
+def _serialize_attio_records(records: Sequence[object]) -> str:
+    return json.dumps(records, separators=(',', ':'), sort_keys=True)
+
+
+class _AttioTools:
+    def __init__(self, agent: _SdkTerseAgent) -> None:
+        self._agent = agent
+{{#each attio.tools}}
+{{#if (eq name "attio_list_objects")}}{{> attio-list-objects-method tool=this attio=../attio}}{{/if}}
+{{#if (eq name "attio_query_records")}}{{> attio-query-records-method tool=this attio=../attio}}{{/if}}
+{{#if (eq name "attio_upsert_record")}}{{> attio-upsert-record-method tool=this attio=../attio}}{{/if}}
+{{/each}}
+{{/if}}
+{{#if hasSnowflakeTools}}
+
+class _SnowflakeTools:
+    def __init__(self, agent: _SdkTerseAgent) -> None:
+        self._agent = agent
+{{#each snowflake.tools}}
+
+    def {{methodName}}(self, query: str) -> {{outputModel}}:
+        return {{outputModel}}.model_validate(
+            self._agent.execute_tool(
+                {{{nameRepr}}},
+                {'integrationId': {{{../snowflake.instanceIdRepr}}}, 'query': query},
+            )
+        )
+{{/each}}
+{{/if}}
+{{#if hasAnyDeterministicTools}}
+
+class GeneratedTools:
+{{#if hasAttioTools}}
+    attio: _AttioTools
+{{/if}}
+{{#if hasSnowflakeTools}}
+    snowflake: _SnowflakeTools
+{{/if}}
+
+    def __init__(
+        self,
+{{#if hasAttioTools}}
+        attio: _AttioTools | None = None,
+{{/if}}
+{{#if hasSnowflakeTools}}
+        snowflake: _SnowflakeTools | None = None,
+{{/if}}
+    ) -> None:
+{{#if hasAttioTools}}
+        if attio is not None:
+            self.attio = attio
+{{/if}}
+{{#if hasSnowflakeTools}}
+        if snowflake is not None:
+            self.snowflake = snowflake
+{{/if}}
+{{else}}
+
+class GeneratedTools:
+    pass
+{{/if}}
+
+
+class TerseAgent(_SdkTerseAgent):
+    tools: GeneratedTools
+
+
+def create_tools(agent: _SdkTerseAgent) -> GeneratedTools:
+    allowed = {skill.integration_type for skill in agent.skills}
+{{#if hasAnyDeterministicTools}}
+    return GeneratedTools(
+{{#if hasAttioTools}}
+        attio=_AttioTools(agent) if 'attio' in allowed else None,
+{{/if}}
+{{#if hasSnowflakeTools}}
+        snowflake=_SnowflakeTools(agent) if 'snowflake' in allowed else None,
+{{/if}}
+    )
+{{else}}
+    _ = allowed
+    return GeneratedTools()
+{{/if}}
+
+
+def attach_tools(agent: _SdkTerseAgent) -> GeneratedTools:
+    tools = create_tools(agent)
+    agent.attach_tools(tools)
+    return tools
+
+
+__all__ = {{{exportedNamesRepr}}}

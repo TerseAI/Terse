@@ -1,0 +1,32 @@
+{{sectionHeader "Jira & Confluence"}}
+
+{{> resource-class jiraProjectClass}}
+
+{{> resource-class confluencePageClass}}
+
+export const Jira = {
+    /** Trigger when a Jira issue is created */
+    onIssueCreated(opts?: { project?: JiraProject }): JiraConfig {
+        return new JiraConfig("{{escape id}}", opts?.project?.projectKey, opts?.project?.projectId, [JiraEventType.ISSUE_CREATED])
+    },
+    /** Trigger when a Jira issue is updated */
+    onIssueUpdated(opts?: { project?: JiraProject }): JiraConfig {
+        return new JiraConfig("{{escape id}}", opts?.project?.projectKey, opts?.project?.projectId, [JiraEventType.ISSUE_UPDATED])
+    },
+    /** Trigger on all Jira events */
+    trigger(opts?: { project?: JiraProject; eventTypes?: JiraEventType[] }): JiraConfig {
+        return new JiraConfig("{{escape id}}", opts?.project?.projectKey, opts?.project?.projectId, opts?.eventTypes)
+    },
+    /** Use in `skills[]` */
+    skill(opts?: { project?: JiraProject }): TypedSkill<{{{skillToolType}}}> {
+        return new JiraConfig("{{escape id}}", opts?.project?.projectKey, opts?.project?.projectId) as TypedSkill<{{{skillToolType}}}>
+    },
+}
+
+export const Confluence = {
+    /** Use in `skills[]` */
+    skill(opts: { page: ConfluencePage }): TypedSkill<{{{skillToolType}}}> {
+        return new ConfluenceConfig("{{escape id}}", opts.page.spaceName, opts.page.spaceId, opts.page.pageId, opts.page.title) as TypedSkill<{{{skillToolType}}}>
+    },
+}
+

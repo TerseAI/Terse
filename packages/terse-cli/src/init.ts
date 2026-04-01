@@ -1,25 +1,18 @@
 import fs from "node:fs"
 import path from "node:path"
-import { exec, execSync } from "node:child_process"
-import { promisify } from "node:util"
-import { fileURLToPath } from "node:url"
 import ora from "ora"
 import chalk from "chalk"
-import { confirm } from "@inquirer/prompts"
-import { readApiKey } from "./api.js"
+import type { LanguageProvider } from "./providers/LanguageProvider.js"
+import { resolveProvider } from "./providers/resolveProvider.js"
+import { renderTemplate } from "./providers/templateUtils.js"
 import { loginAndWriteEnv } from "./auth.js"
 import { generate } from "./generate.js"
 import { listAndPromptIntegrations } from "./integrate.js"
-import { integrate } from "./integrate.js"
-import { fetchIntegrations } from "./integrationApi.js"
-import { INTEGRATION_METADATA, IntegrationType } from "./shared/Integrations.js"
 
-const execAsync = promisify(exec)
-
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
-
-export async function init(projectName?: string): Promise<void> {
+export async function init(
+    projectName?: string,
+    provider: LanguageProvider = resolveProvider({ command: "init", language: "ts" })
+): Promise<void> {
     const targetDir = projectName ? path.resolve(process.cwd(), projectName) : process.cwd()
     const resolvedName = projectName ?? path.basename(process.cwd())
 
@@ -34,40 +27,29 @@ export async function init(projectName?: string): Promise<void> {
         fs.mkdirSync(targetDir, { recursive: true })
     }
 
-    // Create src and .claude directories
+    // Create the source directory up front. Nested template paths create their own parents.
     fs.mkdirSync(path.join(targetDir, "src"), { recursive: true })
-    fs.mkdirSync(path.join(targetDir, ".claude"), { recursive: true })
 
-    const templatesDir = getTemplatesDir()
-    const replacements = { PROJECT_NAME: resolvedName }
+    const templateContext = provider.buildInitTemplateContext(resolvedName)
 
     // Write files from templates
-    const files: Array<{ template: string; output: string }> = [
-        { template: "package.json.tmpl", output: "package.json" },
-        { template: "tsconfig.json.tmpl", output: "tsconfig.json" },
-        { template: "src/index.ts.tmpl", output: "src/index.ts" },
-        { template: "env.example.tmpl", output: ".env.example" },
-        { template: "gitignore.tmpl", output: ".gitignore" },
-        { template: ".claude/settings.json.tmpl", output: ".claude/settings.json" },
-    ]
-
-    for (const file of files) {
-        const content = readTemplate(templatesDir, file.template)
-        const rendered = applyReplacements(content, replacements)
+    for (const file of provider.scaffoldFiles()) {
+        const rendered = renderTemplate(file.template, templateContext)
         const outputPath = path.join(targetDir, file.output)
+        fs.mkdirSync(path.dirname(outputPath), { recursive: true })
         fs.writeFileSync(outputPath, rendered)
         console.log(`  ${chalk.green("+")} ${file.output}`)
     }
 
     // Install dependencies
-    const pm = detectPackageManager()
+    const pm = provider.detectPackageManager()
     const spinner = ora(`Installing dependencies with ${pm}`).start()
 
     // Rest of commands run in newly generated project directory
     await changeDirectory(targetDir)
 
     try {
-        await execAsync(`${pm} install`)
+        await provider.installDependencies(targetDir)
         spinner.succeed(`Dependencies installed with ${pm}`)
     } catch {
         spinner.warn(`Failed to install dependencies. Run ${chalk.cyan(`${pm} install`)} manually.`)
@@ -82,7 +64,7 @@ export async function init(projectName?: string): Promise<void> {
     await listAndPromptIntegrations()
 
     try {
-        await generate()
+        await generate(provider)
         spinner.succeed(`Generated code`)
     } catch {
         spinner.warn(`Failed to generate code. Run ${chalk.cyan(`$terse generate`)} manually.`)
@@ -100,46 +82,14 @@ export async function init(projectName?: string): Promise<void> {
         console.log(`  ${step}. Run ${chalk.cyan("terse login")} to authenticate`)
         step++
     }
-    console.log(`  ${step}. Edit src/index.ts to define your job`)
+    console.log(`  ${step}. Edit ${provider.entryFile} to define your job`)
     step++
-    console.log(`  ${step}. ${pm} run build    Build the project`)
-    step++
-    console.log(`  ${step}. ${pm} run dev      Run in development mode\n`)
-}
-
-
-
-function getTemplatesDir(): string {
-    // In dist/, templates are at ../templates relative to the compiled file
-    const fromDist = path.resolve(__dirname, "..", "templates")
-    if (fs.existsSync(fromDist)) return fromDist
-
-    // Fallback for development
-    const fromSrc = path.resolve(__dirname, "..", "..", "templates")
-    if (fs.existsSync(fromSrc)) return fromSrc
-
-    throw new Error("Could not find templates directory")
-}
-
-function readTemplate(templatesDir: string, templatePath: string): string {
-    return fs.readFileSync(path.join(templatesDir, templatePath), "utf-8")
-}
-
-function applyReplacements(content: string, replacements: Record<string, string>): string {
-    let result = content
-    for (const [token, value] of Object.entries(replacements)) {
-        result = result.replaceAll(`{{${token}}}`, value)
+    const postInitSteps = provider.getPostInitSteps(pm)
+    for (const postInitStep of postInitSteps) {
+        console.log(`  ${step}. ${postInitStep}`)
+        step++
     }
-    return result
-}
-
-function detectPackageManager(): "pnpm" | "npm" {
-    try {
-        execSync("pnpm --version", { stdio: "ignore" })
-        return "pnpm"
-    } catch {
-        return "npm"
-    }
+    console.log("")
 }
 
 function changeDirectory(targetDir: string): Promise<void> {

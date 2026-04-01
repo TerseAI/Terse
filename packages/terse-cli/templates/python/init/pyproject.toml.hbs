@@ -1,0 +1,16 @@
+[project]
+name = "{{projectName}}"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+    "{{sdkDependency}}",
+]
+
+[tool.uv]
+package = false
+
+[dependency-groups]
+dev = ["ty"]
+
+[tool.ty.environment]
+python = ".venv"
