@@ -1,6 +1,6 @@
 ---
 title: "Overview"
-description: "Terse is a code-first workflow platform that gives coding agents the context they need out of the box. Connect your systems, generate typed helpers from workspace context, and deploy end-to-end workflows."
+description: "Terse is a code-first workflow platform that gives coding agents the context they need out of the box. Connect your systems, generate helpers from workspace context, and deploy end-to-end workflows in TypeScript or Python."
 icon: "house"
 ---
 
@@ -61,11 +61,11 @@ icon: "house"
 
 | Concept               | What it means                                                                                                                      |
 | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| **Context as Code**   | `terse generate` compiles your connected integrations into TypeScript — no runtime discovery of IDs, channels, or lists            |
-| **Workflow**          | A TypeScript automation with triggers, skills, and an `onTrigger` handler, deployed via `terse deploy`                             |
+| **Context as Code**   | `terse generate` compiles your connected integrations into generated helpers — no runtime discovery of IDs, channels, or lists      |
+| **Workflow**          | A TypeScript or Python automation with triggers, skills, and a handler, deployed via `terse deploy`                                |
 | **Trigger**           | The event (e.g. `Attio.onRecordCreated()`) or schedule (e.g. `Schedule.cron()`) that starts a workflow                             |
 | **Skill**             | An integration capability available to the workflow (e.g. `Apollo.skill()`, `Slack.skill()`)                                       |
-| **Generated helpers** | Typed exports in `src/terse.generated.ts` — resource constants, trigger builders, skill constructors, and `agent.tools.*` wrappers |
+| **Generated helpers** | Resource constants, trigger builders, skill constructors, and deterministic wrappers |
 
 ## Where to start
 

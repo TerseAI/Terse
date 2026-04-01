@@ -24,7 +24,7 @@ import { Apollo, Attio, AttioList } from "./terse.generated"
 
 const client = new Terse()
 
-await client.createWorkflow({
+await client.createJob({
   name: "new-deal-enrichment",
   triggers: [Attio.onRecordCreated({ list: AttioList.Pipeline.NewDeals })],
   skills: [Attio.skill({ lists: [AttioList.Pipeline.NewDeals] }), Apollo.skill()],

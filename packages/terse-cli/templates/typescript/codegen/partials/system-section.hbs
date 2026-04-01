@@ -1,0 +1,18 @@
+{{sectionHeader "Schedule"}}
+
+export const Schedule = {
+    /** Use in `triggers[]` — run on a cron schedule */
+    cron(opts: { expression: string }): TimeTriggerConfig {
+        return new TimeTriggerConfig(opts.expression)
+    },
+}
+
+{{sectionHeader "Terse"}}
+
+export const Terse = {
+    /** Use in `skills[]` — built-in web search */
+    skill(): TypedSkill<{{{skillToolType}}}> {
+        return new TerseConfig() as TypedSkill<{{{skillToolType}}}>
+    },
+}
+

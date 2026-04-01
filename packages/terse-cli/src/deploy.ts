@@ -7,24 +7,23 @@ import { zipSync } from "fflate"
 import { fetchWithAuth, readApiKeyOrBail } from "./api.js"
 import { assertProjectRoot } from "./assertProjectRoot.js"
 import { loadJobRegistry } from "./loadJob.js"
+import type { LanguageProvider } from "./providers/LanguageProvider.js"
+import { resolveProvider } from "./providers/resolveProvider.js"
 import { ApiRoutes } from "./shared/ApiRoutes.js"
 import type { ConfigInstance } from "./shared/Configs.js"
 import type { AgentOutput, AgentTrigger, SdkDeployResponseBody } from "./shared/types.js"
 
-const EXCLUDED_DIRS = new Set(["node_modules", ".git", "dist", ".next", ".turbo"])
-const EXCLUDED_FILES = new Set([".env", ".DS_Store"])
-
-export async function deploy() {
-    assertProjectRoot()
+export async function deploy(provider: LanguageProvider = resolveProvider()) {
+    assertProjectRoot(provider)
 
     const apiKey = readApiKeyOrBail({
         title: "Error: No TERSE_API_KEY found in .env",
         detail: "Run `terse init` to set up your project, or add TERSE_API_KEY to your .env file."
     })
 
-    const registry = await loadJobRegistry()
+    const registry = await loadJobRegistry(provider)
     const jobs = [...registry.values()]
-    const { sourceZipBase64, fileCount, zipSizeBytes } = buildZipPayload()
+    const { sourceZipBase64, fileCount, zipSizeBytes } = buildZipPayload(provider)
 
     const spinner = ora(`Deploying ${jobs.length} job${jobs.length === 1 ? "" : "s"}...`).start()
 
@@ -75,18 +74,22 @@ export async function deploy() {
     }
 }
 
-function collectFiles(dir: string, baseDir: string): Record<string, Uint8Array> {
+function collectFiles(
+    dir: string,
+    baseDir: string,
+    provider: LanguageProvider
+): Record<string, Uint8Array> {
     const entries: Record<string, Uint8Array> = {}
 
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-        if (EXCLUDED_DIRS.has(entry.name)) continue
-        if (EXCLUDED_FILES.has(entry.name)) continue
+        if (provider.deployExclusions.dirs.has(entry.name)) continue
+        if (provider.deployExclusions.files.has(entry.name)) continue
 
         const fullPath = path.join(dir, entry.name)
         const relativePath = path.relative(baseDir, fullPath)
 
         if (entry.isDirectory()) {
-            Object.assign(entries, collectFiles(fullPath, baseDir))
+            Object.assign(entries, collectFiles(fullPath, baseDir, provider))
         } else if (entry.isFile()) {
             entries[relativePath] = new Uint8Array(fs.readFileSync(fullPath))
         }
@@ -100,9 +103,11 @@ function serializeConfig(config: ConfigInstance): AgentTrigger | AgentOutput {
     return { id: "", config: rest as ConfigInstance }
 }
 
-function buildZipPayload(): { sourceZipBase64: string; fileCount: number; zipSizeBytes: number } {
+function buildZipPayload(
+    provider: LanguageProvider
+): { sourceZipBase64: string; fileCount: number; zipSizeBytes: number } {
     const cwd = process.cwd()
-    const files = collectFiles(cwd, cwd)
+    const files = collectFiles(cwd, cwd, provider)
     const fileCount = Object.keys(files).length
 
     if (fileCount === 0) {

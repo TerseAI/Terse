@@ -6,10 +6,13 @@ icon: "gauge"
 
 Score inbound and outbound contacts automatically when volume is too high for manual review.
 
-## Scaffold it
+## Start from a project scaffold
 
 ```bash
-terse init acme-revenue --template contact-scoring
+terse init acme-revenue
+cd acme-revenue
+terse integrate
+terse generate
 ```
 
 ## What it does
@@ -27,7 +30,7 @@ import { Apollo, Attio, AttioList } from "./terse.generated"
 
 const client = new Terse()
 
-await client.createWorkflow({
+await client.createJob({
   name: "contact-scoring",
   triggers: [Attio.onRecordCreated({ list: AttioList.Contacts.NewContacts })],
   skills: [

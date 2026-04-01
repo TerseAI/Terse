@@ -1,100 +1,19 @@
 import fs from "fs"
 import chalk from "chalk"
-import { confirm } from "@inquirer/prompts"
-import { CreateJobParameters, TerseAgent, ApprovalRequestInfo } from "terse-sdk"
 import { readApiKey } from "./api.js"
 import { assertProjectRoot } from "./assertProjectRoot.js"
 import { loadJob } from "./loadJob.js"
-import { ApiRoutes } from "./shared/ApiRoutes.js"
+import type { LanguageProvider } from "./providers/LanguageProvider.js"
+import { resolveProvider } from "./providers/resolveProvider.js"
 import type { SerializedEvent } from "./shared/types.js"
-import { convertSerializedEventToInputEvent } from "./util.js"
-import { BACKEND_URL } from "./config.js"
-
-/**
- * Create a TerseAgent scoped to a job's skills and execute onTrigger.
- * Tools are registered from the codegen factory on globalThis (needed because
- * tsx may load a separate module instance of terse-sdk).
- */
-export async function executeJob(job: CreateJobParameters, event: SerializedEvent, options?: { verbose?: boolean }): Promise<void> {
-    const inputEvent = convertSerializedEventToInputEvent(event)
-    const isVerbose = options?.verbose ?? false
-
-    const apiKey = process.env.TERSE_API_KEY ?? null
-    let sessionId: string | undefined
-    let closeSession: (() => void) | undefined
-
-    if (isVerbose && apiKey) {
-        const session = await openSessionStream(apiKey)
-        sessionId = session.sessionId
-        closeSession = session.close
-    }
-
-    const agent = new TerseAgent(job.skills, BACKEND_URL, sessionId)
-    const createTools = (globalThis as any).__terse_createTools as ((agent: TerseAgent) => unknown) | undefined
-    if (createTools) {
-        Object.defineProperty(agent, "tools", { value: createTools(agent) })
-    }
-
-    const isSandbox = !!process.env.TERSE_RUN_ID
-    if (!isSandbox) agent.onApprovalRequired = async (info: ApprovalRequestInfo) => {
-        sessionPaused = true
-        try {
-            console.log("")
-            console.log(chalk.yellow.bold(`  Approval required: ${info.toolName}`))
-            if (info.arguments) {
-                try {
-                    const parsed = JSON.parse(info.arguments)
-                    const formatted = JSON.stringify(parsed, null, 2)
-                        .split("\n")
-                        .map(line => `    ${chalk.dim(line)}`)
-                        .join("\n")
-                    console.log(formatted)
-                } catch {
-                    console.log(`    ${chalk.dim(info.arguments)}`)
-                }
-            }
-            console.log("")
-
-            const approved = await confirm({
-                message: `Approve ${info.toolName}?`,
-                default: true
-            })
-
-            console.log(approved
-                ? chalk.green(`  Approved. Resuming...\n`)
-                : chalk.red(`  Rejected.\n`))
-
-            return approved
-        } finally {
-            sessionPaused = false
-        }
-    }
-
-    try {
-        if (job.filter) {
-            const shouldRun = await job.filter(inputEvent)
-            if (!shouldRun) {
-                console.log(chalk.dim(`\n  Job "${job.name}" skipped (filter returned false).\n`))
-                return
-            }
-        }
-
-        if (isVerbose) {
-            console.log(chalk.cyan(`  Job "${job.name}" started`))
-        }
-        await job.onTrigger(inputEvent, agent)
-        console.log(chalk.green(`\n  Job "${job.name}" completed successfully.\n`))
-    } catch (err) {
-        console.error(chalk.red(`\n  Job "${job.name}" threw an error:\n`))
-        console.error(err)
-        process.exit(1)
-    } finally {
-        closeSession?.()
-    }
-}
-
-export async function run(jobName?: string, eventJson?: string, eventFile?: string): Promise<void> {
-    assertProjectRoot()
+ 
+export async function run(
+    jobName?: string,
+    eventJson?: string,
+    eventFile?: string,
+    provider: LanguageProvider = resolveProvider()
+): Promise<void> {
+    assertProjectRoot(provider)
 
     if (eventFile && !eventJson) {
         try {
@@ -115,7 +34,7 @@ export async function run(jobName?: string, eventJson?: string, eventFile?: stri
     }
 
     readApiKey()
-    const { job } = await loadJob(jobName)
+    const { job } = await loadJob(provider, jobName)
     console.log(chalk.cyan(`\n  Running job: ${job.name}\n`))
 
     let parsed: SerializedEvent
@@ -126,128 +45,5 @@ export async function run(jobName?: string, eventJson?: string, eventFile?: stri
         process.exit(1)
     }
 
-    await executeJob(job, parsed)
-}
-
-// -- Session SSE lifecycle --------------------------------------------------
-
-let sessionPaused = false
-
-type SessionHandle = { sessionId: string; close: () => void }
-
-async function openSessionStream(apiKey: string): Promise<SessionHandle> {
-    const res = await fetch(`${BACKEND_URL}${ApiRoutes.SDK.SESSION_EVENTS}`, {
-        headers: { Authorization: `Bearer ${apiKey}`, Accept: "text/event-stream" }
-    })
-
-    if (!res.ok || !res.body) {
-        throw new Error(`Failed to open session event stream (HTTP ${res.status})`)
-    }
-
-    const reader = res.body.getReader()
-    const decoder = new TextDecoder()
-    let buffer = ""
-
-    const sessionId = await readSessionId(reader, decoder, buffer)
-    buffer = sessionId._remainingBuffer
-
-    startEventConsumer(reader, decoder, buffer)
-
-    return {
-        sessionId: sessionId.value,
-        close: () => reader.cancel().catch(() => {})
-    }
-}
-
-async function readSessionId(
-    reader: ReadableStreamDefaultReader<Uint8Array>,
-    decoder: TextDecoder,
-    buffer: string
-): Promise<{ value: string; _remainingBuffer: string }> {
-    while (true) {
-        const { done, value } = await reader.read()
-        if (done) throw new Error("Session stream ended before sending sessionId")
-        buffer += decoder.decode(value, { stream: true })
-
-        const lines = buffer.split("\n")
-        buffer = lines.pop() ?? ""
-
-        for (const line of lines) {
-            if (!line.startsWith("data: ")) continue
-            const event = safeParseJson(line.slice(6))
-            if (event?.type === "session_started" && typeof event.sessionId === "string") {
-                return { value: event.sessionId, _remainingBuffer: buffer }
-            }
-        }
-    }
-}
-
-function startEventConsumer(
-    reader: ReadableStreamDefaultReader<Uint8Array>,
-    decoder: TextDecoder,
-    initialBuffer: string
-): void {
-    let buffer = initialBuffer;
-    (async () => {
-        try {
-            while (true) {
-                const { done, value } = await reader.read()
-                if (done) break
-                buffer += decoder.decode(value, { stream: true })
-
-                const lines = buffer.split("\n")
-                buffer = lines.pop() ?? ""
-
-                for (const line of lines) {
-                    if (!line.startsWith("data: ")) continue
-                    const event = safeParseJson(line.slice(6))
-                    if (event) logSessionEvent(event)
-                }
-            }
-        } catch {
-            // Stream cancelled by close() — expected
-        }
-    })()
-}
-
-function logSessionEvent(event: Record<string, unknown>): void {
-    // Skip session logging while an approval prompt is active
-    if (sessionPaused) return
-    // tool_approval_requested is handled by the SDK's onApprovalRequired callback
-    if (event.type === "tool_approval_requested") return
-
-    switch (event.type) {
-        case "tool_call_started":
-            console.log(chalk.blue(`  [tool:start] ${event.toolCallStarted}`))
-            break
-        case "tool_call_completed": {
-            const parsed = safeParseJson(event.toolCallCompleted as string)
-            const toolName = parsed?.tool || "unknown_tool"
-            const status = parsed?.status || "unknown"
-            const symbol = status === "completed" ? chalk.green("ok") : chalk.red("failed")
-            console.log(`  [tool:done] ${toolName} (${symbol})`)
-            break
-        }
-        case "action": {
-            const action = event.action as Record<string, unknown> | undefined
-            const actionName = (action?.action as string) || "action"
-            const target = action?.target ? ` -> ${action.target}` : ""
-            console.log(chalk.magenta(`  [action] ${actionName}${target}`))
-            break
-        }
-        case "final_output":
-            console.log(chalk.green(`\n  [final_output] ${event.finalOutput}\n`))
-            break
-        case "error":
-            console.log(chalk.red(`  [error] ${event.message}`))
-            break
-    }
-}
-
-function safeParseJson(value: string): Record<string, any> | null {
-    try {
-        return JSON.parse(value) as Record<string, any>
-    } catch {
-        return null
-    }
+    await provider.executeJob(job, parsed)
 }

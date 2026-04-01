@@ -1,10 +1,10 @@
 ---
 title: "Quickstart"
-description: "Deploy your first Terse workflow"
+description: "Create, test, and deploy your first Terse project"
 icon: "rocket"
 ---
 
-Create a weekly digest of your pipeline in Attio and send it to Slack.
+Create your first Terse project, generate helpers from your connected integrations, and deploy it.
 
 ## Tutorial
 
@@ -16,13 +16,17 @@ npm install -g terse-cli
 ```
 
   </Step>
-  <Step title="Scaffold a workflow project">
+  <Step title="Scaffold a project">
 
 ```bash
-terse init acme-revenue --template weekly-pipeline-digest
+# TypeScript (default)
+terse init acme-revenue
+
+# Python
+terse init acme-revenue --language python
+
 cd acme-revenue
 ```
-
   </Step>
   <Step title="Test locally">
 
@@ -46,9 +50,9 @@ Navigate to the link provided to monitor your workflow.
 
 <CardGroup cols={2}>
   <Card title="Context as Code" icon="lightbulb" href="/context-as-code">
-    Understand what `terse generate` produces and why it matters.
+    Understand what `terse generate` produces in each language and why it matters.
   </Card>
   <Card title="Templates" icon="book-open" href="/templates">
-    Start from more GTM workflow starters.
+    See examples of what to build with your generated helpers.
   </Card>
 </CardGroup>

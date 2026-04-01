@@ -1,0 +1,38 @@
+# {{projectName}}
+
+Project scaffolded by `terse-cli`.
+
+## Prerequisites
+
+- Python `>=3.11`
+- [`uv`](https://docs.astral.sh/uv/getting-started/installation/) for dependency management and local commands
+
+If `terse init` did not install dependencies automatically, install `uv` and run:
+
+```bash
+uv sync
+```
+
+## Quick Start
+
+```bash
+uv sync
+terse test
+terse deploy
+```
+
+Edit `src/main.py` to register jobs with `@app.job(...)`.
+
+## Generated Helpers
+
+The starter scaffold registers `Attio.skill()` and `Snowflake.skill()` by default.
+
+After you connect Attio or Snowflake in Terse, rerun `terse generate` to refresh `src/terse_generated.py` with the real integration IDs and deterministic tool wrappers.
+
+Import helpers like `Attio`, `AttioObject`, `Schedule`, `Snowflake`, and `TerseAgent` from `terse_generated`.
+
+If a job registers `skills=[Snowflake.skill()]`, it can call deterministic wrappers like:
+
+```python
+agent.tools.snowflake.execute_query(query="select 1")
+```

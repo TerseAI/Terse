@@ -1,6 +1,5 @@
 [tool.uv.workspace]
 members = [
-    "packages/terse-python-cli",
     "packages/terse-python-sdk",
 ]
 
@@ -29,6 +28,5 @@ extra-paths = ["packages/terse-python-sdk/src"]
 [tool.pytest.ini_options]
 addopts = "-ra"
 testpaths = [
-    "packages/terse-python-cli/tests",
     "packages/terse-python-sdk/tests",
 ]

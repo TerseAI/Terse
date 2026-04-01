@@ -26,7 +26,7 @@ The SDK client. Used to register workflows in `src/index.ts`.
 const client = new Terse()
 ```
 
-## `createWorkflow(...)`
+## `createJob(...)`
 
 Defines the workflow contract.
 
@@ -41,7 +41,7 @@ Defines the workflow contract.
 | `webhookURL` | `string` | Optional URL to notify after each run completes. |
 
 ```ts
-await client.createWorkflow({
+await client.createJob({
   name: "new-deal-enrichment",
   triggers: [Attio.onRecordCreated({ list: AttioList.Pipeline.NewDeals })],
   skills: [
@@ -165,7 +165,7 @@ if (parsed.score < 0 || parsed.score > 100) {
 Use `filter` to skip runs for events that don't match your criteria. Return `true` to run, `false` to skip.
 
 ```ts
-await client.createWorkflow({
+await client.createJob({
   name: "contract-alerts",
   triggers: [Attio.onRecordUpdated({ list: AttioList.Pipeline.OpenDeals })],
   skills: [
@@ -188,7 +188,7 @@ await client.createWorkflow({
 List tool names in `toolApprovals` to require human approval before those tools execute. During local testing, the CLI prompts in the terminal. In production, approval requests surface in the Terse app under **Notifications**.
 
 ```ts
-await client.createWorkflow({
+await client.createJob({
   name: "deal-enrichment-with-approval",
   triggers: [Attio.onRecordCreated({ list: AttioList.Pipeline.NewDeals })],
   skills: [
@@ -269,7 +269,7 @@ import { Attio, AttioList, Http } from "./terse.generated"
 
 const client = new Terse()
 
-await client.createWorkflow({
+await client.createJob({
   name: "custom-enrichment",
   triggers: [Attio.onRecordCreated({ list: AttioList.Pipeline.NewDeals })],
   skills: [

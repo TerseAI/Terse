@@ -1,0 +1,68 @@
+{{sectionHeader "Typed Tools"}}
+
+{{#each attioPreludeLines}}
+{{{this}}}
+{{/each}}
+{{#each paramTypes}}
+{{#if description}}/** {{description}} */
+{{/if}}export type {{typeName}} = {{{tsType}}}
+
+{{/each}}
+{{#if githubRepoMappings.length}}
+const __githubRepoNameToFullName = new Map<string, string>([
+{{#each githubRepoMappings}}
+    ["{{escape name}}", "{{escape fullName}}"],
+{{/each}}
+])
+
+function __normalizeGitHubRepos(repo: unknown): string {
+    if (repo && typeof repo === "object" && "fullName" in (repo as Record<string, unknown>)) {
+        const fullName = (repo as { fullName?: unknown }).fullName
+        if (typeof fullName === "string" && fullName.length > 0) return fullName
+    }
+    if (typeof repo === "string") {
+        if (repo.includes("/")) return repo
+        return __githubRepoNameToFullName.get(repo) ?? repo
+    }
+    return String(repo ?? "")
+}
+
+function __normalizeGitHubReposNames(repositories: unknown): string[] {
+    if (!Array.isArray(repositories)) return []
+    return repositories.map(repo => __normalizeGitHubRepos(repo))
+}
+
+{{/if}}
+export type GeneratedTools = {
+{{#each groups}}
+    {{key}}: {
+{{#each methods}}
+{{#if description}}        /** {{description}} */
+{{/if}}        {{{generatedSignature}}}
+{{/each}}
+    }
+{{/each}}
+}
+
+declare module "terse-sdk" {
+    interface TerseAgent {
+        readonly tools: GeneratedTools
+    }
+}
+
+function createTools(agent: TerseAgent): GeneratedTools {
+    const allowed: Set<string> = new Set(agent.skills.map(s => s.integrationType))
+    return {
+{{#each groups}}
+        ...(allowed.has("{{escape integrationType}}") ? { {{key}}: {
+{{#each methods}}
+{{#each runtimeLines}}
+            {{{this}}}
+{{/each}}
+{{/each}}
+        } } : {}),
+{{/each}}
+    } as GeneratedTools
+}
+
+;(globalThis as any).__terse_createTools = createTools

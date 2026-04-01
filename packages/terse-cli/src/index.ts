@@ -6,6 +6,7 @@ import { deploy } from "./deploy.js"
 import { generate } from "./generate.js"
 import { integrate } from "./integrate.js"
 import { init } from "./init.js"
+import { resolveProvider } from "./providers/resolveProvider.js"
 import { run } from "./run.js"
 import { test } from "./test.js"
 
@@ -20,8 +21,10 @@ program
     .command("init")
     .description("Scaffold a new Terse project")
     .argument("[project-name]", "Name for the project directory")
-    .action(async (projectName?: string) => {
-        await init(projectName)
+    .option("-l, --language <language>", "Project language (ts|typescript|py|python)", "ts")
+    .action(async (projectName?: string, options?: { language?: string }) => {
+        const provider = resolveProvider({ command: "init", language: options?.language })
+        await init(projectName, provider)
     })
 
 program
@@ -36,7 +39,7 @@ program
     .command("generate")
     .description("Generate TypeScript types for your connected integrations")
     .action(async () => {
-        await generate()
+        await generate(resolveProvider())
     })
 
 program
@@ -53,7 +56,7 @@ program
     .option("--event <json>", "Serialized event JSON string")
     .option("--event-file <path>", "Path to a JSON file containing the serialized event")
     .action(async (jobName?: string, opts?: { event?: string; eventFile?: string }) => {
-        await run(jobName, opts?.event, opts?.eventFile)
+        await run(jobName, opts?.event, opts?.eventFile, resolveProvider())
     })
 
 program
@@ -62,14 +65,14 @@ program
     .argument("[job-name]", "Name of the job to test (auto-selects if only one exists)")
     .option("-v, --verbose", "Show agent stream output")
     .action(async (jobName?: string, opts?: { verbose?: boolean }) => {
-        await test(jobName, opts?.verbose)
+        await test(jobName, opts?.verbose, resolveProvider())
     })
 
 program
     .command("deploy")
         .description("Deploy all jobs to Terse (syncs with server — removed jobs are deleted)")
     .action(async () => {
-        await deploy()
+        await deploy(resolveProvider())
     })
 
 await program.parseAsync()
