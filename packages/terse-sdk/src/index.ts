@@ -28,6 +28,7 @@ export {
     isWorkOSMembershipEvent,
     isWorkOSInvitationEvent,
     isWorkOSOrganizationEvent,
+    SlackMessageEvent,
     deserializeInputEvent
 } from "./types.js"
 export type {

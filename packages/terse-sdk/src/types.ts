@@ -2,6 +2,7 @@ import { IntegrationType } from "./shared/Integrations.js"
 import type { ConfigInstance } from "./shared/Configs.js"
 import type { SerializedEvent } from "./shared/types.js"
 import type { WorkOSEventType } from "./shared/Configs.js"
+import type { KnownBlock } from "@slack/types"
 
 /**
  * Lightweight interface for input events.
@@ -334,6 +335,134 @@ export function isWorkOSOrganizationEvent(event: InputEvent): event is WorkOSOrg
     return event instanceof WorkOSOrganizationInputEvent
 }
 
+
+// ---------------------------------------------------------------------------
+// Slack event data interfaces
+// ---------------------------------------------------------------------------
+
+
+export enum SlackChannelType {
+    CHANNEL = "channel",
+    GROUP = "group",
+    MPIM = "mpim",
+    IM = "im"
+}
+
+export interface SlackAttachment {
+    fallback?: string
+    color?: string
+    pretext?: string
+    author_name?: string
+    author_link?: string
+    author_icon?: string
+    title?: string
+    title_link?: string
+    text?: string
+    fields?: Array<{
+        title: string
+        value: string
+        short: boolean
+    }>
+    image_url?: string
+    thumb_url?: string
+    footer?: string
+    footer_icon?: string
+    ts?: number
+}
+
+export interface SlackFile {
+    id: string
+    name?: string
+    title?: string
+    mimetype?: string
+    filetype?: string
+    // Various URL formats for accessing the file
+    url_private?: string
+    url_private_download?: string
+    thumb_64?: string
+    thumb_80?: string
+    thumb_160?: string
+    thumb_360?: string
+    thumb_480?: string
+    thumb_720?: string
+    thumb_800?: string
+    thumb_960?: string
+    thumb_1024?: string
+    // For images
+    original_w?: number
+    original_h?: number
+}
+
+
+
+export class SlackMessageEvent implements InputEvent {
+    readonly eventType: string
+    readonly integrationType = IntegrationType.SLACK
+    readonly channelId: string
+    readonly channelName?: string
+    readonly userId: string
+    readonly userName?: string
+    readonly text: string
+    readonly timestamp: string
+    readonly threadTs?: string
+    readonly teamId: string
+    readonly permalink?: string
+    readonly channelType?: SlackChannelType
+    readonly blocks?: KnownBlock[]
+    readonly attachments?: SlackAttachment[]
+    readonly files?: SlackFile[]
+    private readonly _formattedContent: string
+    private readonly _debugLog: string
+
+    constructor(opts: {
+    eventType: string
+    channelId: string
+    channelName?: string
+    userId: string
+    userName?: string
+    text: string
+    timestamp: string
+    threadTs?: string
+    teamId: string
+    permalink?: string
+    channelType?: SlackChannelType
+    blocks?: KnownBlock[]
+    attachments?: SlackAttachment[]
+    files?: SlackFile[]
+     formattedContent: string
+        debugLog: string
+    }) {
+        this.eventType = opts.eventType
+        this.channelId = opts.channelId
+        this.channelName = opts.channelName
+        this.userId = opts.userId
+        this.userName = opts.userName
+        this.text = opts.text
+        this.timestamp = opts.timestamp
+        this.threadTs = opts.threadTs
+        this.teamId = opts.teamId
+        this.permalink = opts.permalink
+        this.channelType = opts.channelType
+        this.attachments = opts.attachments
+        this.files = opts.files
+        this._formattedContent = opts.formattedContent
+        this._debugLog = opts.debugLog
+    }
+
+    formatForAgentRunner(): string {
+        return this._formattedContent
+    }
+
+    debugLog(): string {
+        return this._debugLog
+    }
+
+    get threadTimestamp(): string | undefined {
+        return this.threadTs
+    }
+}
+
+
 // ---------------------------------------------------------------------------
 // Generic fallback for non-typed serialized events
 // ---------------------------------------------------------------------------
@@ -423,6 +552,43 @@ export function deserializeInputEvent(se: SerializedEvent): InputEvent {
             return new WorkOSOrganizationInputEvent({ ...base, organization: meta.organization })
         }
         return new WorkOSInputEvent(base)
+    }
+
+    if (se.integrationType === IntegrationType.SLACK && se.metadata) {
+        const meta = se.metadata as {
+            channelId?: string
+            channelName?: string
+            userId?: string
+            userName?: string
+            text?: string
+            timestamp?: string
+            threadTs?: string
+            teamId?: string
+            permalink?: string
+            channelType?: SlackChannelType
+            blocks?: KnownBlock[]
+            attachments?: SlackAttachment[]
+            files?: SlackFile[]
+        }
+
+        return new SlackMessageEvent({
+            eventType: se.eventType ?? "unknown",
+            channelId: meta.channelId ?? "",
+            channelName: meta.channelName,
+            userId: meta.userId ?? "",
+            userName: meta.userName,
+            text: meta.text ?? "",
+            timestamp: meta.timestamp ?? "",
+            threadTs: meta.threadTs,
+            teamId: meta.teamId ?? "",
+            permalink: meta.permalink,
+            channelType: meta.channelType,
+            blocks: meta.blocks,
+            attachments: meta.attachments,
+            files: meta.files,
+            formattedContent: se.formattedContent,
+            debugLog: se.debugLog
+        })
     }
 
     return new SerializedEventInputEvent(se)
