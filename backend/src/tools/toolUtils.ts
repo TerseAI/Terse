@@ -93,6 +93,6 @@ export function createNeedsApprovalFunction(toolName: string) {
 
         // Fallback to legacy boolean (backward compatibility)
         // Only used when toolApprovals is undefined (not set)
-        return agent.requireApproval ?? false
+        return false
     }
 }

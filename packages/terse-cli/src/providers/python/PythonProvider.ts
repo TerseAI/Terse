@@ -276,7 +276,7 @@ job_name = os.environ["TERSE_JOB_NAME"]
 event = deserialize_input_event(json.loads(os.environ["TERSE_EVENT_JSON"]))
 session_id = os.environ.get("TERSE_SESSION_ID")
 job = registry[job_name]
-agent = TerseAgent(job.skills, session_id=session_id)
+agent = TerseAgent(job.skills, session_id=session_id, tool_approvals=job.tool_approvals)
 skipped = execute_registered_job(job, event, agent=agent)
 if skipped:
     print(${JSON.stringify(JOB_SKIPPED_MARKER)})

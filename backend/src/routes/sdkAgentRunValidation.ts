@@ -113,6 +113,7 @@ const sdkAgentRunSchema = z.object({
         })
         .optional(),
     skills: z.array(skillSchema).optional(),
+    toolApprovals: z.array(z.string()).optional(),
     options: z
         .object({
             maxTurns: z.number().int().min(1, "`options.maxTurns` must be an integer >= 1 when provided").optional(),
@@ -138,6 +139,7 @@ export function validateAndNormalizeSdkAgentRunBody(body: SdkAgentRunRequestBody
             debugLog: data.event?.debugLog ?? "[MockInputEvent] Manual trigger via SDK"
         },
         skills: data.skills ?? [],
+        toolApprovals: data.toolApprovals ?? [],
         options: {
             maxTurns: data.options?.maxTurns ?? 50,
             requireApproval: data.options?.requireApproval ?? true

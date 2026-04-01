@@ -366,7 +366,6 @@ export function buildJudgeAgentTools(user: User): Tool[] {
                 const context: SessionWithTracking<Session> = {
                     ...session,
                     agent: {
-                        requireApproval: automation.require_approval ?? false,
                         toolApprovals
                     },
                     runId: runRecord.id,
