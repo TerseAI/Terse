@@ -303,7 +303,6 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance> exte
         return {
             ...this.session,
             agent: {
-                requireApproval: this.agentConfig.require_approval ?? false,
                 toolApprovals: toolApprovals
             },
             runId: this.runContext.runId,

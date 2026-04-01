@@ -159,7 +159,7 @@ export async function handleToolExecute(req: Request, res: Response) {
         context: {
             user,
             isUserInitiated: true,
-            agent: { requireApproval: false, toolApprovals: [] },
+            agent: { toolApprovals: [] }, // pass through tool approvals here so we can support this if we want
             runId: effectiveRunId,
             agentId: effectiveAgentId
         } satisfies SessionWithTracking<Session>

@@ -19,7 +19,6 @@ import { convertConfigTypeToOutputConfigType, convertPlainObjectToConfigInstance
 import { RunHistoryChatMemorySession, recentHistoryCallback } from "../CustomMemorySession"
 import { AgentType, runnerFactory } from "../runner"
 import { appendToolApprovalRequestSystemEvent } from "../systemEvents/toolApprovalSystemEvent"
-import { buildUserMessage } from "../userMessage"
 
 import { AgentRunnerLoopResult, BaseAgentRunner, PendingApprovalState, SessionWithTracking } from "./BaseAgentRunner"
 import { StreamEventEmitter } from "./StreamProcessor"
@@ -34,6 +33,7 @@ type SdkAgentRunnerParams = {
     prompt: string
     skills: SdkAgentSkillPayload[]
     tools: Tool<SdkRunnerSession>[]
+    toolApprovals: string[]
     toolToIntegrationMap: Map<string, string>
     maxTurns: number
     requireApproval: boolean
@@ -87,7 +87,7 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
     private readonly outputs: Output<ConfigInstance>[]
     private readonly tools: Tool<SdkRunnerSession>[]
     private readonly maxTurns: number
-    private readonly requireApproval: boolean
+    private readonly toolApprovals: string[]
     private readonly send: (event: SdkAgentStreamEvent) => void
     private readonly memorySession: AgentMemorySession
     private readonly isProductionRun: boolean
@@ -107,7 +107,7 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
         this.outputs = this.buildOutputsFromConfigs(skillConfigs)
         this.tools = params.tools
         this.maxTurns = params.maxTurns
-        this.requireApproval = params.requireApproval
+        this.toolApprovals = params.toolApprovals
         this.send = params.send
         this.isProductionRun = !!params.isProductionRun
         this.memorySession = params.isProductionRun ? new RunHistoryChatMemorySession({ sessionId: params.runId }) : new InMemoryAgentSession(params.runId)
@@ -336,7 +336,7 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
             user: this.user,
             isUserInitiated: true,
             agent: {
-                requireApproval: this.requireApproval
+                toolApprovals: this.toolApprovals
             },
             runId: this.sdkRunId,
             agentId: SDK_AGENT_ID

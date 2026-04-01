@@ -52,6 +52,7 @@ export async function handleSdkAgentRun(req: Request, res: Response) {
             user,
             prompt: normalized.prompt,
             skills: normalized.skills,
+            toolApprovals: normalized.toolApprovals,
             send,
             sandboxRunId,
             options: normalized.options
@@ -163,6 +164,7 @@ function createSdkRunner(params: {
     user: User
     prompt: string
     skills: SdkAgentSkillPayload[]
+    toolApprovals: string[]
     send: (event: SdkAgentStreamEvent) => void
     sandboxRunId: string | undefined
     options?: { maxTurns?: number; requireApproval?: boolean }
@@ -174,6 +176,7 @@ function createSdkRunner(params: {
         user: params.user,
         prompt: params.prompt,
         skills: params.skills,
+        toolApprovals: params.toolApprovals,
         tools,
         toolToIntegrationMap,
         maxTurns: params.options?.maxTurns ?? 50,
