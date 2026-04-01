@@ -105,6 +105,7 @@ class SdkAgentRunRequestBody(_CamelModel):
     options: SdkAgentRunOptionsPayload | None = None
     prompt: str | None = None
     skills: list[SdkAgentSkillPayload] | None = None
+    toolApprovals: list[str] | None = None
 
 
 class NormalizedRequest(_CamelModel):
