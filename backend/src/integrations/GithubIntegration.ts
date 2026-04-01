@@ -621,7 +621,8 @@ export class GithubEvent extends InputEvent implements Identifiable {
             return false
         }
 
-        return true
+        // Check if the eventType is included in the eventTypes configured for the channel
+        return githubConfig.event_types.includes(this.data.eventType)
     }
 
     createTriggerMetadata(): RunHistoryTrigger {
