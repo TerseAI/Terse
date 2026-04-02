@@ -1,9 +1,9 @@
 import { Tool } from "@openai/agents"
 import { OutputConfigType } from "@prisma/client"
+import { LinearOutputConfig } from "terse-types"
+import { IntegrationType } from "terse-types"
 
 import { validateLinearProjectExists, validateLinearTeamExists } from "../../integrations/LinearIntegration"
-import { LinearOutputConfig } from "../../shared/Configs"
-import { IntegrationType } from "../../shared/Integrations"
 import { PrismaTransaction } from "../../types/prisma"
 import { LinearOutputConfigSchema, stripConfigForValidation } from "../../utility/configSchemas"
 import { convertOutputConfigTypeToConfigType } from "../../utility/typeConverters"

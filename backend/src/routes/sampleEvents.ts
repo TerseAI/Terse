@@ -1,11 +1,11 @@
 import { Request, Response } from "express"
+import { ConfigType } from "terse-types/Configs"
+import { IntegrationType } from "terse-types/Integrations"
+import type { User } from "terse-types/types"
+import type { SerializedEvent, TriggerPayload } from "terse-types/types"
 
 import { fetchSampleEvents } from "../integrations/abstract/sampleEvents"
 import logger from "../logger"
-import { ConfigType } from "../shared/Configs"
-import { IntegrationType } from "../shared/Integrations"
-import type { User } from "../shared/types"
-import type { SerializedEvent, TriggerPayload } from "../shared/types"
 import { extractErrorMessage } from "../utility/strings"
 
 /**

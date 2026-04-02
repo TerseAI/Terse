@@ -1,9 +1,9 @@
 import { Tool } from "@openai/agents"
 import { OutputConfigType } from "@prisma/client"
+import { PosthogConfig } from "terse-types"
+import { IntegrationType } from "terse-types"
 
 import { validatePosthogProjectExists } from "../../integrations/PosthogIntegration"
-import { PosthogConfig } from "../../shared/Configs"
-import { IntegrationType } from "../../shared/Integrations"
 import { PrismaTransaction } from "../../types/prisma"
 import { PosthogConfigSchema, stripConfigForValidation } from "../../utility/configSchemas"
 import { convertOutputConfigTypeToConfigType } from "../../utility/typeConverters"

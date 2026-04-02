@@ -1,8 +1,8 @@
 import { OutputConfigType } from "@prisma/client"
+import { JiraConfig } from "terse-types"
+import { IntegrationType } from "terse-types"
 
 import { validateJiraProjectExists } from "../../integrations/AtlassianIntegration"
-import { JiraConfig } from "../../shared/Configs"
-import { IntegrationType } from "../../shared/Integrations"
 import { PrismaTransaction } from "../../types/prisma"
 import { Output, ToolboxEntry } from "../abstract/Output"
 

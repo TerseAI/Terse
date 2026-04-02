@@ -23,7 +23,7 @@ import {
     WorkOSEventType,
     WorkOSInputConfig,
     WorkOSOutputConfig
-} from "@/shared/Configs"
+} from "terse-types/Configs"
 
 /**
  * Converts a plain JSON config object (from backend) back into a ConfigInstance class.

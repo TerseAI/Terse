@@ -12,7 +12,7 @@ import {
     pollForConnection,
     submitIntegrationForm
 } from "./integrationApi.js"
-import { INTEGRATION_METADATA, IntegrationType } from "./shared/Integrations.js"
+import { INTEGRATION_METADATA, IntegrationType } from "terse-types"
 import { generate } from "./generate.js"
 
 type IntegrationChangeResult = {

@@ -1,5 +1,6 @@
+import { ConfigType, GmailConfig } from "terse-types/Configs"
+
 import { GmailIntegrationManager } from "../integrations/GmailIntegration"
-import { ConfigType, GmailConfig } from "../shared/Configs"
 import { PrismaTransaction } from "../types/prisma"
 import { GmailConfigSchema, stripConfigForValidation } from "../utility/configSchemas"
 

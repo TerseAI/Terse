@@ -1,12 +1,12 @@
 import { Api } from "confluence.js"
 import { ApiRoutes, buildApiRoute } from "terse-types"
+import { AtlassianIntegration, IntegrationType } from "terse-types/Integrations"
+import type { ConfluencePage, User } from "terse-types/types"
 
 import { settings, urls } from "../config/settings"
 import logger from "../logger"
 import { db } from "../prismaClient"
 import { SecretField, deleteSecretsBestEffort, getSecret, storeSecret } from "../services/SecretService"
-import { AtlassianIntegration, IntegrationType } from "../shared/Integrations"
-import type { ConfluencePage, User } from "../shared/types"
 import { generateWebhookSecret } from "../utility/webhookSecrets"
 
 import { FetchResourcesOptions } from "./abstract/FetchResourcesOptions"

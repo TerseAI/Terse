@@ -1,8 +1,8 @@
 import useSWR from "swr"
+import { notificationSettingsKey } from "terse-types"
+import { NotificationSettings } from "terse-types"
 
 import { BackendProvider } from "../../services/backend"
-import { notificationSettingsKey } from "../../shared/InvalidationKeys"
-import { NotificationSettings } from "../../shared/Notifications"
 
 export function useNotificationSettings() {
     const key = notificationSettingsKey()

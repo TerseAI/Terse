@@ -51,15 +51,6 @@ pnpm run build
 
 Always run `pnpm run build` after making changes to verify nothing is broken.
 
-### Shared Types
-
-Types shared between frontend and backend are defined in the `/shared` folder. After modifying shared types:
-
-```bash
-# From root
-node scripts/copy-shared.js
-```
-
 This copies types to both `frontend/src/shared/` and `backend/src/shared/`.
 
 Key shared files:
@@ -169,7 +160,6 @@ Execute these steps **in order**, running builds after each major section:
 - [ ] Update `CONFIG_DETAILS` map
 - [ ] Create `{Integration}Config` class extending `ConfigInstance`
 - [ ] Update `CONFIG_METADATA` map
-- [ ] **Run `node scripts/copy-shared.js` from root** (CRITICAL - don't skip!)
 
 #### 3. Backend Integration Manager (`backend/src/integrations/`)
 
@@ -258,25 +248,6 @@ Execute these steps **in order**, running builds after each major section:
 - [ ] Add case to `IconForConfigType` switch
 - [ ] Add case to `IconForIntegration` switch
 
-### Verification Steps
-
-After completing all steps, **always run these verification commands**:
-
-```bash
-# 1. Copy shared types (if you modified shared/)
-node scripts/copy-shared.js
-
-# 2. Generate Prisma client (if you modified schema)
-cd backend && pnpm exec prisma generate
-
-# 3. Build backend
-cd backend && pnpm run build
-
-# 4. Build frontend
-cd frontend && pnpm run build
-```
-
-**Do not skip the build steps!** They catch type errors that would otherwise cause runtime failures.
 
 ### Common Mistakes to Avoid
 

@@ -1,12 +1,12 @@
 import { useNavigate } from "react-router-dom"
 
 import { ExternalLink, MessageSquare, Zap } from "lucide-react"
+import { FrontendRoutes } from "terse-types/FrontendRoutes"
+import { RunHistoryRecordWithAgent } from "terse-types/RunHistoryTypes"
 
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { IconForIntegration } from "@/pages/Agents/components/Integration"
-import { FrontendRoutes } from "@/shared/FrontendRoutes"
-import { RunHistoryRecordWithAgent } from "@/shared/RunHistoryTypes"
 import { formatTimestamp } from "@/utility/timeUtils"
 
 import RunHistoryStatusBadge from "./RunHistoryStatusBadge"

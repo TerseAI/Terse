@@ -1,7 +1,6 @@
 import type { AgentInputItem, AssistantMessageItem, FunctionCallItem, FunctionCallResultItem, HostedToolCallItem, ReasoningItem, UserMessageItem } from "@openai/agents-core"
-
-import { IntegrationType } from "../shared/Integrations"
-import { ModelEvent, ToolCallExecutionStatus } from "../shared/ModelEvents"
+import { IntegrationType } from "terse-types/Integrations"
+import { ModelEvent, ToolCallExecutionStatus } from "terse-types/ModelEvents"
 
 import { isScaffoldedRunContextUserMessage } from "./AgentRunner/formatContext"
 import { parseCancelledSystemEventItem } from "./systemEvents/cancelledSystemEvent"

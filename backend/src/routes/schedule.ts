@@ -1,4 +1,7 @@
 import { Request, Response } from "express"
+import { IntegrationType } from "terse-types/Integrations"
+import { RunHistoryTrigger } from "terse-types/RunHistoryTypes"
+import { SerializedEvent } from "terse-types/types"
 
 import { EventProcessor } from "../agent/AgentRunner/EventProcessor"
 import { cloudScheduler } from "../config/settings"
@@ -6,9 +9,6 @@ import { CronJobIntegrationManager } from "../integrations/CronJobIntegration"
 import { InputEvent } from "../integrations/abstract/InputEvent"
 import logger, { runWithUserContext } from "../logger"
 import { db } from "../prismaClient"
-import { IntegrationType } from "../shared/Integrations"
-import { RunHistoryTrigger } from "../shared/RunHistoryTypes"
-import { SerializedEvent } from "../shared/types"
 import { AgentTriggerWithConfigs } from "../types/prisma"
 import { getUserForOrg } from "../utility/workos"
 

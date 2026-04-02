@@ -2,6 +2,7 @@ import { useEffect } from "react"
 import { Navigate, Outlet, Route, BrowserRouter as Router, Routes, useNavigate } from "react-router-dom"
 
 import { AnimatePresence } from "framer-motion"
+import { FrontendRoutes } from "terse-types/FrontendRoutes"
 
 import BreadCrumb from "./components/BreadCrumb"
 import { AppSidebar } from "./components/Sidebar/Sidebar"
@@ -25,7 +26,6 @@ import StatsPage from "./pages/Stats"
 import { ModelContextProvider } from "./services/ModelContextProvider"
 import { RunHistoryChatDrawerProvider } from "./services/RunHistoryChatDrawerContext"
 import { AuthProvider, useAuth } from "./services/auth"
-import { FrontendRoutes } from "./shared/FrontendRoutes"
 import { disconnectSocket, initializeSocket } from "./socket"
 
 function App() {

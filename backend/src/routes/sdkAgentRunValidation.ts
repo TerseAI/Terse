@@ -1,8 +1,8 @@
+import { CONFIG_DETAILS, ConfigType } from "terse-types/Configs"
+import { IntegrationType } from "terse-types/Integrations"
+import { SdkAgentRunRequestBody, SdkAgentRunResponseBody } from "terse-types/types"
 import { z } from "zod"
 
-import { CONFIG_DETAILS, ConfigType } from "../shared/Configs"
-import { IntegrationType } from "../shared/Integrations"
-import { SdkAgentRunRequestBody, SdkAgentRunResponseBody } from "../shared/types"
 import {
     AttioOutputConfigSchema,
     ConfluenceConfigSchema,

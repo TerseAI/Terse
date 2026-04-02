@@ -1,5 +1,4 @@
 import { InputConfigType, OutputConfigType, IntegrationType as PrismaIntegrationType, RunHistoryStatus as PrismaRunHistoryStatus } from "@prisma/client"
-
 import {
     AttioOutputConfig,
     ConfigInstance,
@@ -26,9 +25,10 @@ import {
     WorkOSEventType,
     WorkOSInputConfig,
     WorkOSOutputConfig
-} from "../shared/Configs"
-import { IntegrationType } from "../shared/Integrations"
-import { RunHistoryStatus as SharedRunHistoryStatus } from "../shared/RunHistoryTypes"
+} from "terse-types/Configs"
+import { IntegrationType } from "terse-types/Integrations"
+import { RunHistoryStatus as SharedRunHistoryStatus } from "terse-types/RunHistoryTypes"
+
 import { AgentOutputWithConfigs, AgentTriggerWithConfigs } from "../types/prisma"
 
 export const convertIntegrationTypeToPrismaIntegrationType = (integrationType: IntegrationType): PrismaIntegrationType => {

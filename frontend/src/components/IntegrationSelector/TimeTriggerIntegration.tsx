@@ -1,7 +1,7 @@
 import { AlertTriangleIcon } from "lucide-react"
+import { TimeTriggerConfig } from "terse-types/Configs"
 
 import { CalendarClockIcon } from "@/components/icons/IntegrationIcons"
-import { TimeTriggerConfig } from "@/shared/Configs"
 
 import { ScheduleEditor, getCronDescription } from "../ScheduleEditor"
 

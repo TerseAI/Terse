@@ -1,4 +1,5 @@
-import { ConfigType, WorkOSInputConfig } from "../shared/Configs"
+import { ConfigType, WorkOSInputConfig } from "terse-types/Configs"
+
 import { PrismaTransaction } from "../types/prisma"
 
 import { Trigger } from "./Trigger"

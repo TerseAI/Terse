@@ -5,7 +5,7 @@ import { assertProjectRoot } from "./assertProjectRoot.js"
 import { loadJob } from "./loadJob.js"
 import type { LanguageProvider } from "./providers/LanguageProvider.js"
 import { resolveProvider } from "./providers/resolveProvider.js"
-import type { SerializedEvent } from "./shared/types.js"
+import type { SerializedEvent } from "terse-types"
  
 export async function run(
     jobName?: string,

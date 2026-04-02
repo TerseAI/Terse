@@ -1,9 +1,9 @@
 import { Tool } from "@openai/agents"
 import { OutputConfigType } from "@prisma/client"
+import { DatadogConfig } from "terse-types"
+import { IntegrationType } from "terse-types"
 
 import { validateDatadogIndexesExist } from "../../integrations/DatadogIntegration"
-import { DatadogConfig } from "../../shared/Configs"
-import { IntegrationType } from "../../shared/Integrations"
 import { PrismaTransaction } from "../../types/prisma"
 import { DatadogConfigSchema, stripConfigForValidation } from "../../utility/configSchemas"
 import { convertOutputConfigTypeToConfigType } from "../../utility/typeConverters"

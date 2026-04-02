@@ -1,10 +1,10 @@
 import { RunHistoryStatus as PrismaRunHistoryStatus } from "@prisma/client"
 import { Request, Response } from "express"
 import { DateTime } from "luxon"
+import { RunHistoryRecordWithAgent } from "terse-types/RunHistoryTypes"
+import { AgentActivityItem, CountByString, RecentAction, StatsInterval, StatsResponse } from "terse-types/types"
 
 import { db } from "../prismaClient"
-import { RunHistoryRecordWithAgent } from "../shared/RunHistoryTypes"
-import { AgentActivityItem, CountByString, RecentAction, StatsInterval, StatsResponse } from "../shared/types"
 import { convertPrismaIntegrationTypeToIntegrationTypeFromRunHistory, convertPrismaRunHistoryStatusToShared } from "../utility/typeConverters"
 
 // Stats configuration constants

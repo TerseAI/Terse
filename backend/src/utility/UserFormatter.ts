@@ -1,4 +1,4 @@
-import { User } from "../shared/types"
+import { User } from "terse-types/types"
 
 export class UserFormatter {
     static formatForAgent(user: User): string {

@@ -1,6 +1,6 @@
 import type { CreateJobParameters } from "terse-sdk"
-import type { CodegenInput } from "./codegenTypes.js"
-import type { SerializedEvent } from "../shared/types.js"
+import type { CodegenInput } from "./codegenTypes"
+import type { SerializedEvent } from "terse-types"
 
 export interface LanguageProvider {
     readonly language: "typescript" | "python"

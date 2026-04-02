@@ -1,11 +1,11 @@
 import { LinearClient } from "@linear/sdk"
+import { IntegrationType } from "terse-types"
 
 import { LinearEvent } from "../../integrations/LinearIntegration"
 import { isOAuthIntegrationInstallation } from "../../integrations/abstract/Integration"
 import { INTEGRATION_REGISTRY } from "../../integrations/abstract/IntegrationRegistry"
 import logger from "../../logger"
 import { db } from "../../prismaClient"
-import { IntegrationType } from "../../shared/Integrations"
 import { HydratorType } from "../../types/rag"
 import { LinearWebhookPayload } from "../../utility/LinearWebhookPayload"
 import { HydrationContext, Hydrator, Identifiable } from "../Hydrator"

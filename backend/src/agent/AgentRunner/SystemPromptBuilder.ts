@@ -1,5 +1,7 @@
 import type { AgentInputItem } from "@openai/agents-core"
 import { RunHistoryStatus } from "@prisma/client"
+import { ConfigInstance } from "terse-types"
+import { FrontendRoutes } from "terse-types"
 
 import { settings } from "../../config/settings"
 import { InputEvent } from "../../integrations/abstract/InputEvent"
@@ -8,8 +10,6 @@ import { Output } from "../../outputs/abstract/Output"
 import { db } from "../../prismaClient"
 import { extractConversationContent } from "../../rag/runHistoryRag/conversationExtractor"
 import { RunHistoryMemory } from "../../rag/runHistoryRag/indexer"
-import { ConfigInstance } from "../../shared/Configs"
-import { FrontendRoutes } from "../../shared/FrontendRoutes"
 import { Session } from "../../types/session"
 
 export interface RunContext {

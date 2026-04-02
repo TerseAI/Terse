@@ -1,6 +1,5 @@
-import { TransientAgentTrigger } from "@/shared/types"
-
-import { ConfigInstance } from "../../shared/Configs"
+import { ConfigInstance } from "terse-types"
+import { TransientAgentTrigger } from "terse-types/types"
 
 export interface InputConfigSelectorProps {
     input: TransientAgentTrigger

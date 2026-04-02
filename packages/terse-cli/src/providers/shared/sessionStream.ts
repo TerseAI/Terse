@@ -2,7 +2,7 @@ import chalk from "chalk"
 import { confirm } from "@inquirer/prompts"
 import { BACKEND_URL } from "../../config.js"
 import { ApiRoutes } from "terse-types"
-import type { SdkApprovalDecisionRequestBody, SdkAgentStreamEvent } from "../../shared/types.js"
+import type { SdkApprovalDecisionRequestBody, SdkAgentStreamEvent } from "terse-types"
 
 type SessionStartedEvent = {
     type: "session_started"

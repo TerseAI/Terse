@@ -1,4 +1,5 @@
-import { getToolDisplayFromCall } from "../../shared/ToolDisplayUtils"
+import { getToolDisplayFromCall } from "terse-types"
+
 import type { ToolApprovalResponseOptions } from "../../socket"
 import ShinyText from "../ShinyText"
 

@@ -1,8 +1,9 @@
+import { DatadogIntegration, DatadogIntegrationMetadata, IntegrationType } from "terse-types/Integrations"
+
 import logger from "../logger"
 import { getDatadogCredentialsByIntegrationId } from "../outputs/datadog/datadogApiClient"
 import { db } from "../prismaClient"
 import { SecretField, storeSecret } from "../services/SecretService"
-import { DatadogIntegration, DatadogIntegrationMetadata, IntegrationType } from "../shared/Integrations"
 import { AgentTriggerWithConfigs } from "../types/prisma"
 import { getDatadogApiUrl } from "../utility/datadog"
 

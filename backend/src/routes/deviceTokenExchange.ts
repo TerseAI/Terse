@@ -1,9 +1,9 @@
 import { Request, Response } from "express"
 import { jwtVerify } from "jose"
+import { DeviceTokenExchangeResponse } from "terse-types/types"
 
 import logger from "../logger"
 import { db } from "../prismaClient"
-import { DeviceTokenExchangeResponse } from "../shared/types"
 import { createApiToken } from "../utility/apiTokens"
 import { FeatureFlag, FeatureFlagService } from "../utility/featureFlags"
 import { workos } from "../utility/workos"

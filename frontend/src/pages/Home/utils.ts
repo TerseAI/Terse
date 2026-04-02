@@ -1,6 +1,5 @@
 import { Activity, Hash, Zap } from "lucide-react"
-
-import { StatsResponse } from "../../shared/types"
+import { StatsResponse } from "terse-types"
 
 export interface MetricData {
     label: string

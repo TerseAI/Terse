@@ -1,11 +1,11 @@
 import { Request, Response } from "express"
+import { AgentOutput, AgentTrigger, SdkDeployRequestBody, User } from "terse-types/types"
 
 import { isSystemIntegration } from "../integrations/abstract/IntegrationRegistry"
 import logger from "../logger"
 import { db } from "../prismaClient"
 import { emitCacheInvalidationWithKey } from "../realtimeSocket"
 import { uploadSdkDeployZip } from "../services/FileStorageService"
-import { AgentOutput, AgentTrigger, SdkDeployRequestBody, User } from "../shared/types"
 import { AgentWithTriggerRelations, PrismaTransaction } from "../types/prisma"
 import { getInputConfigInclude } from "../utility/prismaIncludes"
 import { extractErrorMessage } from "../utility/strings"

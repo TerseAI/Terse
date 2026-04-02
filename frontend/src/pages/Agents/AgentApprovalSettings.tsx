@@ -1,7 +1,6 @@
 import { Loader2 } from "lucide-react"
-
-import { TerseTool } from "@/shared/ToolsTypes"
-import { TransientAgentOutput } from "@/shared/types"
+import { TerseTool } from "terse-types/ToolsTypes"
+import { TransientAgentOutput } from "terse-types/types"
 
 import { MultiSelect, type MultiSelectOption } from "../../components/MultiSelect"
 import { Badge } from "../../components/ui/badge"

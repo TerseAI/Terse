@@ -1,8 +1,9 @@
 import { Link, useLocation } from "react-router-dom"
 
+import { FrontendRoutes } from "terse-types/FrontendRoutes"
+import { Agent } from "terse-types/types"
+
 import { SidebarMenuSubButton, SidebarMenuSubItem } from "@/components/ui/sidebar"
-import { FrontendRoutes } from "@/shared/FrontendRoutes"
-import { Agent } from "@/shared/types"
 
 interface SdkJobListItemProps {
     agent: Agent

@@ -1,6 +1,7 @@
+import { DonatedState } from "terse-types/DonatedState"
+import { AgentPrompt, TransientAgentOutput, TransientAgentTrigger } from "terse-types/types"
+
 import { SetupSection } from "../pages/Agents/tabs/AgentSetupTab"
-import { DonatedState } from "../shared/DonatedState"
-import { AgentPrompt, TransientAgentOutput, TransientAgentTrigger } from "../shared/types"
 
 export class AgentSetUpPageContext extends DonatedState {
     readonly stateType = "Agent Set Up Page Context"

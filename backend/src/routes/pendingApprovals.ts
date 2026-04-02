@@ -1,9 +1,9 @@
 import { IntegrationType as PrismaIntegrationType, RunHistoryStatus as PrismaRunHistoryStatus } from "@prisma/client"
 import { Request, Response } from "express"
+import { ApprovalRequest, ApprovalRequestFilter, ApprovalRequestStatus, GetPendingApprovalsResponse, encodeDeepLink } from "terse-types/ApprovalTypes"
 
 import logger from "../logger"
 import { db } from "../prismaClient"
-import { ApprovalRequest, ApprovalRequestFilter, ApprovalRequestStatus, GetPendingApprovalsResponse, encodeDeepLink } from "../shared/ApprovalTypes"
 import { convertPrismaIntegrationTypeToIntegrationTypeFromRunHistory } from "../utility/typeConverters"
 
 const MAX_APPROVALS = 100

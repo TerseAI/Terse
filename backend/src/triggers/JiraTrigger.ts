@@ -1,6 +1,7 @@
+import { ConfigType, JiraConfig } from "terse-types/Configs"
+
 import { AtlassianClient } from "../integrations/AtlassianClient"
 import { validateJiraProjectExists } from "../integrations/AtlassianIntegration"
-import { ConfigType, JiraConfig } from "../shared/Configs"
 import { PrismaTransaction } from "../types/prisma"
 
 import { Trigger } from "./Trigger"

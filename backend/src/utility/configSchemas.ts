@@ -1,8 +1,8 @@
+import { ConfigType, GitHubEventType } from "terse-types/Configs"
+import { IntegrationType } from "terse-types/Integrations"
 import { z } from "zod"
 
 import { WORKOS_SUPPORTED_EVENT_NAMES } from "../integrations/WorkOSIntegration"
-import { ConfigType, GitHubEventType } from "../shared/Configs"
-import { IntegrationType } from "../shared/Integrations"
 
 /**
  * Removes ConfigInstance runtime-only keys (isComplete, formatForAgent) so Zod

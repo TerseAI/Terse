@@ -1,9 +1,9 @@
 import { Palette } from "lucide-react"
+import { FigmaIntegration, IntegrationType } from "terse-types/Integrations"
 
 import { useFigmaIntegrations } from "@/hooks/api/useFigmaIntegrations"
 import { useOAuthConnection } from "@/hooks/useOAuthConnection"
 import { cn } from "@/lib/utils"
-import { FigmaIntegration, IntegrationType } from "@/shared/Integrations"
 
 import { Card, CardContent } from "../ui/card"
 import { Skeleton } from "../ui/skeleton"

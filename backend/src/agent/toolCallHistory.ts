@@ -1,7 +1,7 @@
 import type { AgentInputItem } from "@openai/agents-core"
+import { RunHistoryAction } from "terse-types/RunHistoryTypes"
 
 import { emitCacheInvalidationWithWildcard } from "../services/CacheInvalidationService"
-import { RunHistoryAction } from "../shared/RunHistoryTypes"
 
 import { appendRunAction } from "./AgentRunner/runHistory"
 import { appendRunHistoryItems } from "./systemEvents/systemEventSessions"

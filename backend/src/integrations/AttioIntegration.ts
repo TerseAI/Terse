@@ -1,13 +1,13 @@
 import { Request, Response } from "express"
 import jwt from "jsonwebtoken"
+import { FrontendRoutes } from "terse-types/FrontendRoutes"
+import { AdditionalStateParams, AttioIntegration, AttioIntegrationMetadata, InstallationOptionsFor, IntegrationType } from "terse-types/Integrations"
+import { AttioObject, OAuthInstallationDetails } from "terse-types/types"
 
 import { attio as attioConfig, jwt as jwtSettings, urls } from "../config/settings"
 import logger from "../logger"
 import { db } from "../prismaClient"
 import { SecretField, getSecret, storeSecret } from "../services/SecretService"
-import { FrontendRoutes } from "../shared/FrontendRoutes"
-import { AdditionalStateParams, AttioIntegration, AttioIntegrationMetadata, InstallationOptionsFor, IntegrationType } from "../shared/Integrations"
-import { AttioObject, OAuthInstallationDetails } from "../shared/types"
 import { AgentTriggerWithConfigs } from "../types/prisma"
 import { createOAuthStateToken } from "../utility/oauth"
 

@@ -161,7 +161,7 @@ importers:
       tailwind-merge:
         specifier: ^3.3.1
         version: 3.3.1
-      terse-types:
+     "terse-types"
         specifier: link:../shared
         version: link:../shared
       uuid:

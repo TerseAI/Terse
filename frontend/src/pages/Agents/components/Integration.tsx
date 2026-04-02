@@ -1,3 +1,6 @@
+import { ConfigType } from "terse-types/Configs"
+import { IntegrationType } from "terse-types/Integrations"
+
 import {
     AttioIcon,
     CalendarClockIcon,
@@ -17,8 +20,6 @@ import {
     TerseIcon,
     WorkOSIcon
 } from "@/components/icons/IntegrationIcons"
-import { ConfigType } from "@/shared/Configs"
-import { IntegrationType } from "@/shared/Integrations"
 
 export function IconForConfigType({ type }: { type: ConfigType }) {
     switch (type) {

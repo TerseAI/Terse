@@ -1,6 +1,7 @@
+import { IntegrationType } from "terse-types/Integrations"
+
 import { gcp } from "../config/settings"
 import logger from "../logger"
-import { IntegrationType } from "../shared/Integrations"
 import { SecretManagerClient, getSecretManagerClient, isSecretManagerNotFoundError } from "../utility/secretManagerClient"
 
 /** System integrations that do not store secrets in GCP Secret Manager. */

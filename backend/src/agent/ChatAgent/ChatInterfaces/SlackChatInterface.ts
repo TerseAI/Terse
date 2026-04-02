@@ -1,13 +1,13 @@
 import { RunStreamEvent } from "@openai/agents"
 import { Block, ChatPostMessageArguments, ChatUpdateArguments, KnownBlock, WebClient } from "@slack/web-api"
+import { ConfigType } from "terse-types"
+import { IntegrationType } from "terse-types"
+import type { MultipleChoiceQuestion } from "terse-types"
 import { uuidv4 } from "zod/v4"
 
 import { OAuthIntegrationInstallation, isFormIntegrationInstallation, isOAuthIntegrationInstallation } from "../../../integrations/abstract/Integration"
 import { INTEGRATION_REGISTRY } from "../../../integrations/abstract/IntegrationRegistry"
 import logger from "../../../logger"
-import { ConfigType } from "../../../shared/Configs"
-import { IntegrationType } from "../../../shared/Integrations"
-import type { MultipleChoiceQuestion } from "../../../shared/Survey"
 import { createActionBlock, createButton, createIntegrationConnectionMessage, createSurveyQuestionBlocks } from "../../../slack/blockKitHelpers"
 import { createOAuthStateToken } from "../../../utility/oauth"
 

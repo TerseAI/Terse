@@ -2,6 +2,8 @@ import { useState } from "react"
 
 import { AlertTriangleIcon, Eye, EyeOff, Info, Plus } from "lucide-react"
 import useSWR from "swr"
+import { LaunchDarklyConfig } from "terse-types/Configs"
+import { LaunchDarklyEnvironment, LaunchDarklyProject } from "terse-types/types"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -11,8 +13,6 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { useLaunchdarklyIntegrations } from "@/hooks/api/useLaunchdarklyIntegrations"
 import { BackendProvider } from "@/services/backend"
-import { LaunchDarklyConfig } from "@/shared/Configs"
-import { LaunchDarklyEnvironment, LaunchDarklyProject } from "@/shared/types"
 
 import { InputConfigSelectorProps } from "./types"
 

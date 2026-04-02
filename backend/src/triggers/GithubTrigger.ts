@@ -1,6 +1,7 @@
+import { ConfigType, GitHubConfig } from "terse-types/Configs"
+
 import { validateGithubRepositoryIds } from "../integrations/GithubIntegration"
 import { SlackIntegrationManager } from "../integrations/SlackIntegration"
-import { ConfigType, GitHubConfig } from "../shared/Configs"
 import { PrismaTransaction } from "../types/prisma"
 import { GitHubConfigSchema, stripConfigForValidation } from "../utility/configSchemas"
 

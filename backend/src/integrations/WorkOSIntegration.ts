@@ -1,4 +1,7 @@
 import { InputConfigType } from "@prisma/client"
+import { ConfigInstance, ConfigType, WorkOSEventType, WorkOSInputConfig } from "terse-types/Configs"
+import { IntegrationType, WorkOSIntegration, WorkOSIntegrationMetadata } from "terse-types/Integrations"
+import { RunHistoryTrigger } from "terse-types/RunHistoryTypes"
 
 import { EventProcessor } from "../agent/AgentRunner/EventProcessor"
 import { urls } from "../config/settings"
@@ -7,9 +10,6 @@ import { WorkOSUserResponse, getWorkOSUser } from "../outputs/workos/workosApiCl
 import { db } from "../prismaClient"
 import { Identifiable } from "../rag/Hydrator"
 import { SecretField, deleteSecretsBestEffort, getSecret, storeSecret } from "../services/SecretService"
-import { ConfigInstance, ConfigType, WorkOSEventType, WorkOSInputConfig } from "../shared/Configs"
-import { IntegrationType, WorkOSIntegration, WorkOSIntegrationMetadata } from "../shared/Integrations"
-import { RunHistoryTrigger } from "../shared/RunHistoryTypes"
 import { AgentTriggerWithConfigs } from "../types/prisma"
 import { HydratorType } from "../types/rag"
 import { getUserForOrg } from "../utility/workos"

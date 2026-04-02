@@ -1,8 +1,8 @@
 import { Request, Response } from "express"
+import type { AttioAttribute, AttioObject, AttioObjectWithAttributes } from "terse-types/types"
 
 import { AttioIntegrationManager } from "../integrations/AttioIntegration"
 import logger from "../logger"
-import type { AttioAttribute, AttioObject, AttioObjectWithAttributes } from "../shared/types"
 
 export async function getAttioIntegrations(req: Request, res: Response) {
     if (!req.session?.user) {

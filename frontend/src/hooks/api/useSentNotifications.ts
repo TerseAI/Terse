@@ -1,8 +1,8 @@
 import useSWR from "swr"
+import { sentNotificationsKey } from "terse-types/InvalidationKeys"
+import type { GetSentNotificationsResponse } from "terse-types/SentNotifications"
 
 import { BackendProvider } from "@/services/backend"
-import { sentNotificationsKey } from "@/shared/InvalidationKeys"
-import type { GetSentNotificationsResponse } from "@/shared/SentNotifications"
 
 type UseSentNotificationsParams = {
     page?: number

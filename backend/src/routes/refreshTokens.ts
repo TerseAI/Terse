@@ -1,9 +1,9 @@
 import { Request, Response } from "express"
+import { IntegrationType } from "terse-types/Integrations"
 
 import { isOAuthIntegrationInstallation } from "../integrations/abstract/Integration"
 import { INTEGRATION_REGISTRY } from "../integrations/abstract/IntegrationRegistry"
 import logger from "../logger"
-import { IntegrationType } from "../shared/Integrations"
 import { validateCloudSchedulerRequest } from "../utility/cloudScheduler"
 
 /**

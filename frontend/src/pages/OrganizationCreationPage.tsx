@@ -1,8 +1,9 @@
 import { Navigate } from "react-router-dom"
 
+import { FrontendRoutes } from "terse-types/FrontendRoutes"
+
 import OrganizationCreationForm from "../components/UserManagement/OrganizationCreationForm"
 import { useAuth } from "../services/auth"
-import { FrontendRoutes } from "../shared/FrontendRoutes"
 
 export default function OrganizationCreationPage() {
     const { user, isLoading } = useAuth()

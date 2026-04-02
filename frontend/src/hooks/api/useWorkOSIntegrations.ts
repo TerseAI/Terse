@@ -1,9 +1,9 @@
 import useSWR, { type KeyedMutator } from "swr"
+import type { WorkOSIntegration } from "terse-types/Integrations"
+import { workosIntegrationsKey } from "terse-types/InvalidationKeys"
 
 import { useOAuthSuccessListener } from "@/hooks/useOAuthSuccessListener"
 import { BackendProvider } from "@/services/backend"
-import type { WorkOSIntegration } from "@/shared/Integrations"
-import { workosIntegrationsKey } from "@/shared/InvalidationKeys"
 
 type UseWorkOSIntegrationsReturn = {
     integrations: WorkOSIntegration[]

@@ -1,5 +1,4 @@
 import { OutputConfigType } from "@prisma/client"
-
 import {
     AttioOutputConfig,
     ConfigInstance,
@@ -17,7 +16,8 @@ import {
     SnowflakeOutputConfig,
     TerseConfig,
     WorkOSOutputConfig
-} from "../../shared/Configs"
+} from "terse-types"
+
 import { AgentOutputWithConfigs, AgentWithRelations } from "../../types/prisma"
 import { convertPrismaOutputConfigToConfigInstance } from "../../utility/typeConverters"
 import { ConfluenceOutput } from "../ConfluenceOutput"

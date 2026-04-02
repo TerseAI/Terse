@@ -1,17 +1,17 @@
 import { NotificationDestinationType } from "@prisma/client"
 import { Request, Response } from "express"
-
-import { initializeSlackWebClient } from "../integrations/SlackClient"
-import logger from "../logger"
-import { db } from "../prismaClient"
-import { emitCacheInvalidationWithKey } from "../services/CacheInvalidationService"
-import { notificationDestinationsKey } from "../shared/InvalidationKeys"
+import { notificationDestinationsKey } from "terse-types/InvalidationKeys"
 import {
     CreateNotificationDestinationRequest,
     EmailNotificationDestination,
     NotificationDestinationType as SharedNotificationDestinationType,
     SlackNotificationDestination
-} from "../shared/Notifications"
+} from "terse-types/Notifications"
+
+import { initializeSlackWebClient } from "../integrations/SlackClient"
+import logger from "../logger"
+import { db } from "../prismaClient"
+import { emitCacheInvalidationWithKey } from "../services/CacheInvalidationService"
 import { UserNotificationDestination, UserSlackIntegrationWithUser } from "../types/prisma"
 
 const EXACTLY_ONE_SLACK_TARGET_ERROR = "Exactly one Slack destination must be selected: either a channel or a user."

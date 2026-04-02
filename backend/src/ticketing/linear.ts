@@ -2,10 +2,10 @@ import { Issue, IssuePayload, LinearClient, Project as LinearProject, User as Li
 import { IssueFilter, IssuesQueryVariables } from "@linear/sdk/dist/_generated_documents"
 import chalk from "chalk"
 import { ApiRoutes, buildApiRoute } from "terse-types"
+import { CommitAssociation, CreateTicketInput, Organization, Project, Team, Ticket, TicketSystemType, UpdateTicketInput, User, UserContext } from "terse-types/TicketSystem"
 
 import { urls } from "../config/settings"
 import { SearchItem } from "../search/SearchItem"
-import { CommitAssociation, CreateTicketInput, Organization, Project, Team, Ticket, TicketSystemType, UpdateTicketInput, User, UserContext } from "../shared/TicketSystem"
 import { generateWebhookSecret } from "../utility/webhookSecrets"
 
 import { StructuredSearchOptions } from "./StructuredSearchOptions"

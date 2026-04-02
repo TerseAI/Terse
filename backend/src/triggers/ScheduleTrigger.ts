@@ -1,4 +1,5 @@
-import { ConfigType, TimeTriggerConfig } from "../shared/Configs"
+import { ConfigType, TimeTriggerConfig } from "terse-types/Configs"
+
 import { PrismaTransaction } from "../types/prisma"
 import { TimeTriggerConfigSchema, stripConfigForValidation } from "../utility/configSchemas"
 

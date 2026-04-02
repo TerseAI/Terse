@@ -1,8 +1,8 @@
 import { Tool } from "@openai/agents"
 import { OutputConfigType } from "@prisma/client"
+import { ConfigInstance, TerseConfig } from "terse-types"
+import { IntegrationType } from "terse-types"
 
-import { ConfigInstance, TerseConfig } from "../../shared/Configs"
-import { IntegrationType } from "../../shared/Integrations"
 import { PrismaTransaction } from "../../types/prisma"
 import { Output, ToolboxEntry } from "../abstract/Output"
 

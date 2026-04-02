@@ -10,8 +10,8 @@ import { loadJobRegistry } from "./loadJob.js"
 import type { LanguageProvider } from "./providers/LanguageProvider.js"
 import { resolveProvider } from "./providers/resolveProvider.js"
 import { ApiRoutes } from "terse-types"
-import type { ConfigInstance } from "./shared/Configs.js"
-import type { AgentOutput, AgentTrigger, SdkDeployResponseBody } from "./shared/types.js"
+import type { ConfigInstance } from "terse-types"
+import type { AgentOutput, AgentTrigger, SdkDeployResponseBody } from "terse-types"
 
 export async function deploy(provider: LanguageProvider = resolveProvider()) {
     assertProjectRoot(provider)

@@ -1,11 +1,11 @@
 import { KnownBlock, LogLevel, WebClient } from "@slack/web-api"
+import { FrontendRoutes } from "terse-types/FrontendRoutes"
+import { RunHistoryAction } from "terse-types/RunHistoryTypes"
 
 import { settings } from "../config/settings"
 import { initializeSlackWebClient, resolveSlackAccessToken } from "../integrations/SlackClient"
 import logger from "../logger"
 import { db } from "../prismaClient"
-import { FrontendRoutes } from "../shared/FrontendRoutes"
-import { RunHistoryAction } from "../shared/RunHistoryTypes"
 import { SlackApprovalMessageStatus } from "../slack/ApprovalStatus"
 import { createApprovalMessage, createNotificationMessage, createRunFailureNotificationMessage, createUpdatedApprovalMessage } from "../slack/blockKitHelpers"
 

@@ -2,16 +2,16 @@ import { useMemo } from "react"
 import { Link } from "react-router-dom"
 
 import { Mail } from "lucide-react"
+import { FrontendRoutes } from "terse-types"
+import { NotificationDestinationType, SlackNotificationDestination } from "terse-types"
+import { RunHistoryActionType } from "terse-types"
+import { AgentNotificationSettings as AgentNotificationSettingsType, User } from "terse-types"
 
 import { MultiSelect } from "../../components/MultiSelect"
 import { SlackIcon } from "../../components/icons/IntegrationIcons"
 import { Label } from "../../components/ui/label"
 import { NOTIFICATION_ACTION_OPTIONS } from "../../constants/notificationActions"
 import { useNotificationDestinations } from "../../hooks/api/useNotificationDestinations"
-import { FrontendRoutes } from "../../shared/FrontendRoutes"
-import { NotificationDestinationType, SlackNotificationDestination } from "../../shared/Notifications"
-import { RunHistoryActionType } from "../../shared/RunHistoryTypes"
-import { AgentNotificationSettings as AgentNotificationSettingsType, User } from "../../shared/types"
 
 export type AgentNotificationSettingsProps = {
     settings: AgentNotificationSettingsType

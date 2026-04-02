@@ -1,14 +1,14 @@
 import { RunStreamEvent } from "@openai/agents-core"
 import { randomUUID } from "crypto"
 import { Socket } from "socket.io"
+import { ConfigType } from "terse-types"
+import { IntegrationType } from "terse-types"
+import { ModelEvent } from "terse-types"
+import { SocketEvents } from "terse-types"
+import type { MultipleChoiceQuestion } from "terse-types"
 
 import { INTEGRATION_REGISTRY } from "../../../integrations/abstract/IntegrationRegistry"
 import logger from "../../../logger"
-import { ConfigType } from "../../../shared/Configs"
-import { IntegrationType } from "../../../shared/Integrations"
-import { ModelEvent } from "../../../shared/ModelEvents"
-import { SocketEvents } from "../../../shared/SocketEvents"
-import type { MultipleChoiceQuestion } from "../../../shared/Survey"
 import { createOAuthStateToken } from "../../../utility/oauth"
 import {
     createNaturalStopEvent,

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 
-import { ConfigInstance, ConfigType } from "@/shared/Configs"
+import { ConfigInstance, ConfigType } from "terse-types/Configs"
 
 /**
  * Hook to manage integration ID state when switching between different integration types.

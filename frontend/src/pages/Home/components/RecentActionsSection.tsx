@@ -1,9 +1,9 @@
 import { PlayCircle } from "lucide-react"
+import { RunHistoryAction } from "terse-types"
 
 import { Card, CardContent, CardHeader, CardTitle } from "../../../components/ui/card"
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "../../../components/ui/empty"
 import { ScrollArea } from "../../../components/ui/scroll-area"
-import { RunHistoryAction } from "../../../shared/RunHistoryTypes"
 
 import { ActionItem } from "./ActionItem"
 

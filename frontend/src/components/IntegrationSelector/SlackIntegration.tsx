@@ -1,14 +1,14 @@
 import { useState } from "react"
 
 import { AlertTriangleIcon, Plus } from "lucide-react"
+import { SlackConfig } from "terse-types"
+import { ConfigType } from "terse-types"
+import { IntegrationType, SlackIntegration as SlackIntegrationType } from "terse-types/Integrations"
 
 import { useSlackIntegrations } from "@/hooks/api/useSlackIntegrations"
 import { useIntegrationId } from "@/hooks/useIntegrationId"
 import { useOAuthConnection } from "@/hooks/useOAuthConnection"
-import { IntegrationType, SlackIntegration as SlackIntegrationType } from "@/shared/Integrations"
 
-import { SlackConfig } from "../../shared/Configs"
-import { ConfigType } from "../../shared/Configs"
 import { SlackConnectionOptions } from "../Integrations/helpers/SlackConnectionOptions"
 import { SlackConfigurationSelector } from "../SlackChannelSelector"
 import DropdownSelect from "../ui/DropdownSelect"

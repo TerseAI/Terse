@@ -1,12 +1,12 @@
 import { Request, Response } from "express"
+import { notificationSettingsKey } from "terse-types/InvalidationKeys"
+import { NotificationSettings, UpdateNotificationSettingsRequest } from "terse-types/Notifications"
+import { RUN_HISTORY_ACTION_TYPES, RunHistoryActionType } from "terse-types/RunHistoryTypes"
 import { z } from "zod"
 
 import logger from "../logger"
 import { db } from "../prismaClient"
 import { emitCacheInvalidationWithKey, emitCacheInvalidationWithWildcard } from "../services/CacheInvalidationService"
-import { notificationSettingsKey } from "../shared/InvalidationKeys"
-import { NotificationSettings, UpdateNotificationSettingsRequest } from "../shared/Notifications"
-import { RUN_HISTORY_ACTION_TYPES, RunHistoryActionType } from "../shared/RunHistoryTypes"
 import { UserNotificationSettings } from "../types/prisma"
 
 const NOTIFICATION_SETTINGS_INVALIDATION_KEY = notificationSettingsKey()[0]

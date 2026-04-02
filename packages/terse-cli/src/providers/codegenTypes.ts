@@ -1,4 +1,4 @@
-import type { GithubIntegration } from "../shared/Integrations.js"
+import type { GithubIntegration } from "terse-types"
 
 export interface GitHubRepo {
     id: number

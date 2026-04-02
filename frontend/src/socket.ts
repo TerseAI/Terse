@@ -1,12 +1,12 @@
 import { Socket, io } from "socket.io-client"
 import { mutate } from "swr"
+import { currentUserKey, userOrganizationsKey, widgetTokenKey } from "terse-types"
+import { ModelEvent, ModelRequest } from "terse-types"
+import type { RunHistoryModelSocketEvent } from "terse-types"
+import { SocketEvents } from "terse-types"
 
 import { emitAuthEvent } from "./lib/authEvents"
 import { BackendProvider } from "./services/backend"
-import { currentUserKey, userOrganizationsKey, widgetTokenKey } from "./shared/InvalidationKeys"
-import { ModelEvent, ModelRequest } from "./shared/ModelEvents"
-import type { RunHistoryModelSocketEvent } from "./shared/RunHistoryTypes"
-import { SocketEvents } from "./shared/SocketEvents"
 
 let socket: Socket | null = null
 

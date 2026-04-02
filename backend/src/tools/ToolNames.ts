@@ -1,6 +1,5 @@
+import type { ToolOutputByName } from "terse-types/types"
 import { z } from "zod"
-
-import type { ToolOutputByName } from "../shared/types"
 
 /**
  * Centralized definition of all tool names used in the system.

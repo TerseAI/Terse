@@ -1,11 +1,11 @@
 import { RunContext, ToolOptions, tool } from "@openai/agents"
 import { RunHistoryActionType } from "@prisma/client"
+import { IntegrationType } from "terse-types"
 import { z } from "zod"
 
 import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
 import { getAtlassianIntegrationContextForOrganization } from "../../../integrations/AtlassianClient"
 import logger from "../../../logger"
-import { IntegrationType } from "../../../shared/Integrations"
 import { ToolName } from "../../../tools/ToolNames"
 import { SessionToolOptions, createNeedsApprovalFunction, formatError } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"

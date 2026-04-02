@@ -1,10 +1,10 @@
 import { LogLevel, WebClient } from "@slack/web-api"
 import { Request, Response } from "express"
+import { User } from "terse-types/types"
 
 import { SlackIntegrationManager, fetchSlackChannelsForIntegration, fetchSlackUsersForIntegration } from "../integrations/SlackIntegration"
 import logger from "../logger"
 import { db } from "../prismaClient"
-import { User } from "../shared/types"
 import { UserSlackIntegrationWithUser } from "../types/prisma"
 
 // MARK: - Route Handlers

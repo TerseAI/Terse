@@ -1,7 +1,7 @@
 import useSWR from "swr"
+import type { DatadogIndexesResponse } from "terse-types/types"
 
 import { BackendProvider } from "@/services/backend"
-import type { DatadogIndexesResponse } from "@/shared/types"
 
 type UseDatadogIndexesReturn = {
     indexes: DatadogIndexesResponse["indexes"]

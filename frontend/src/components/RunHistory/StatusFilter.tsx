@@ -1,6 +1,6 @@
 import { Ban, CheckCircle2, ChevronDown, Clock, Filter as FilterIcon, Loader2, XCircle } from "lucide-react"
+import { RunHistoryStatus } from "terse-types"
 
-import { RunHistoryStatus } from "../../shared/RunHistoryTypes"
 import StatusBadge from "../StatusBadge"
 import { Button } from "../ui/button"
 import { Checkbox } from "../ui/checkbox"

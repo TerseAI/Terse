@@ -1,8 +1,8 @@
 import { BadgeCheckIcon } from "lucide-react"
+import { IntegrationType } from "terse-types/Integrations"
 
 import { cn } from "@/lib/utils"
 import { IntegrationTitle } from "@/pages/Agents/components/IntegrationTitle"
-import { IntegrationType } from "@/shared/Integrations"
 
 import { Badge } from "../../ui/badge"
 import { CardHeader, CardTitle } from "../../ui/card"

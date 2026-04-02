@@ -1,7 +1,7 @@
 import { LogLevel, WebClient } from "@slack/web-api"
+import { IntegrationType } from "terse-types/Integrations"
 
 import { SecretField, getSecret } from "../services/SecretService"
-import { IntegrationType } from "../shared/Integrations"
 
 type SlackTokenSource = {
     id: string

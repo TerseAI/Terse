@@ -1,6 +1,6 @@
 import { Navigate } from "react-router-dom"
 
-import { FrontendRoutes } from "@/shared/FrontendRoutes"
+import { FrontendRoutes } from "terse-types/FrontendRoutes"
 
 // Agent tables have been removed. The sidebar now shows the list of agents.
 // This page redirects to the agent setup page.

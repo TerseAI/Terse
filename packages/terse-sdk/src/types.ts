@@ -1,7 +1,7 @@
-import { IntegrationType } from "./shared/Integrations.js"
-import type { ConfigInstance } from "./shared/Configs.js"
-import type { SerializedEvent } from "./shared/types.js"
-import type { WorkOSEventType } from "./shared/Configs.js"
+import { IntegrationType } from "terse-types"
+import type { ConfigInstance } from "terse-types"
+import type { SerializedEvent } from "terse-types"
+import type { WorkOSEventType } from "terse-types"
 import type { KnownBlock } from "@slack/types"
 
 /**

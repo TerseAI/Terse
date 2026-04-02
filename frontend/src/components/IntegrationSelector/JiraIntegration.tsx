@@ -1,16 +1,16 @@
 import { useEffect } from "react"
 
 import { AlertTriangleIcon, Plus } from "lucide-react"
+import { JiraConfig } from "terse-types"
+import { ConfigType } from "terse-types"
+import { AtlassianIntegration, IntegrationType } from "terse-types/Integrations"
 
 import { useJiraIntegrations } from "@/hooks/api/useJiraIntegrations"
 import { useJiraResources } from "@/hooks/api/useJiraResources"
 import { useIntegrationId } from "@/hooks/useIntegrationId"
 import { useOAuthConnection } from "@/hooks/useOAuthConnection"
-import { AtlassianIntegration, IntegrationType } from "@/shared/Integrations"
 
 import { IconForConfigType } from "../../pages/Agents/components/Integration"
-import { JiraConfig } from "../../shared/Configs"
-import { ConfigType } from "../../shared/Configs"
 import DropdownSelect from "../ui/DropdownSelect"
 import { StatusOption } from "../ui/DropdownSelect"
 import { Button } from "../ui/button"

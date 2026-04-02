@@ -1,6 +1,8 @@
 import { RunContext, Tool, tool } from "@openai/agents"
 import { OutputConfigType, RunHistoryActionType } from "@prisma/client"
 import chalk from "chalk"
+import { ConfluenceConfig } from "terse-types/Configs"
+import { IntegrationType } from "terse-types/Integrations"
 import { z } from "zod"
 
 import { SessionWithTracking } from "../agent/AgentRunner/AgentRunner"
@@ -8,8 +10,6 @@ import { getAtlassianIntegrationContextForOrganization } from "../integrations/A
 import { validateConfluencePageExists } from "../integrations/AtlassianIntegration"
 import logger from "../logger"
 import { db } from "../prismaClient"
-import { ConfluenceConfig } from "../shared/Configs"
-import { IntegrationType } from "../shared/Integrations"
 import { ToolName } from "../tools/ToolNames"
 import { SessionToolOptions, createNeedsApprovalFunction, formatError } from "../tools/toolUtils"
 import { PrismaTransaction } from "../types/prisma"

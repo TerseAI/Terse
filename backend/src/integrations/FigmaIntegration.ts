@@ -2,18 +2,10 @@ import { InputConfigType, figma_integrations } from "@prisma/client"
 import { Request, Response } from "express"
 import jwt from "jsonwebtoken"
 import { ApiRoutes } from "terse-types"
-
-import { EventProcessor } from "../agent/AgentRunner/EventProcessor"
-import { OAUTH_TOKEN_REFRESH_THRESHOLD_MS, figma as figmaConfig, jwt as jwtConfig, nodeEnv, urls } from "../config/settings"
-import logger, { runWithUserContext } from "../logger"
-import { db } from "../prismaClient"
-import { Identifiable } from "../rag/Hydrator"
-import { FileCategory, StoredFile } from "../services/FileStorageService"
-import { SecretField, getSecret, storeSecret } from "../services/SecretService"
-import { ConfigInstance, ConfigType, FigmaConfig as FigmaConfigClass, FigmaEventType } from "../shared/Configs"
-import { FrontendRoutes } from "../shared/FrontendRoutes"
-import { AdditionalStateParams, FigmaIntegration, FigmaIntegrationMetadata, InstallationOptionsFor, IntegrationType } from "../shared/Integrations"
-import { RunHistoryTrigger } from "../shared/RunHistoryTypes"
+import { ConfigInstance, ConfigType, FigmaConfig as FigmaConfigClass, FigmaEventType } from "terse-types/Configs"
+import { FrontendRoutes } from "terse-types/FrontendRoutes"
+import { AdditionalStateParams, FigmaIntegration, FigmaIntegrationMetadata, InstallationOptionsFor, IntegrationType } from "terse-types/Integrations"
+import { RunHistoryTrigger } from "terse-types/RunHistoryTypes"
 import {
     FigmaApiComment,
     FigmaCommentEventData,
@@ -24,7 +16,15 @@ import {
     FigmaWebhookUser,
     OAuthInstallationDetails,
     User as SessionUser
-} from "../shared/types"
+} from "terse-types/types"
+
+import { EventProcessor } from "../agent/AgentRunner/EventProcessor"
+import { OAUTH_TOKEN_REFRESH_THRESHOLD_MS, figma as figmaConfig, jwt as jwtConfig, nodeEnv, urls } from "../config/settings"
+import logger, { runWithUserContext } from "../logger"
+import { db } from "../prismaClient"
+import { Identifiable } from "../rag/Hydrator"
+import { FileCategory, StoredFile } from "../services/FileStorageService"
+import { SecretField, getSecret, storeSecret } from "../services/SecretService"
 import { AgentTriggerWithConfigs } from "../types/prisma"
 import { HydratorType } from "../types/rag"
 import { createOAuthStateToken } from "../utility/oauth"

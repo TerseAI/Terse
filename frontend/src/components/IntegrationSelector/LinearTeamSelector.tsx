@@ -1,10 +1,10 @@
 import { useState } from "react"
 
 import { Check, ChevronsUpDown, Users } from "lucide-react"
+import { LinearTeam } from "terse-types/types"
 
 import { useLinearTeams } from "@/hooks/api/useLinearTeams"
 import { cn } from "@/lib/utils"
-import { LinearTeam } from "@/shared/types"
 
 import { RefreshButton } from "../RefreshButton"
 import { Button } from "../ui/button"

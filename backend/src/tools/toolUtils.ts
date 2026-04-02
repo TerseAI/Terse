@@ -1,8 +1,8 @@
 import { FunctionCallItem, RunConfig, RunContext, ToolExecuteArgument, ToolInputParameters, ToolOptions, UnknownContext } from "@openai/agents"
+import type { ToolOutputByName } from "terse-types/types"
 
 import { SessionWithTracking } from "../agent/AgentRunner/AgentRunner"
 import logger from "../logger"
-import type { ToolOutputByName } from "../shared/types"
 import { Session } from "../types/session"
 
 export type ToolCallDetails = {

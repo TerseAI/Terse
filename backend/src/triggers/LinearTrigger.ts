@@ -1,5 +1,6 @@
+import { ConfigType, LinearInputConfig } from "terse-types/Configs"
+
 import { LinearIntegrationManager, validateLinearProjectExists } from "../integrations/LinearIntegration"
-import { ConfigType, LinearInputConfig } from "../shared/Configs"
 import { PrismaTransaction } from "../types/prisma"
 
 import { Trigger } from "./Trigger"

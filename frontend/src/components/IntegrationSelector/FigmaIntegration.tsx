@@ -1,12 +1,12 @@
 import { AlertTriangleIcon, Plus } from "lucide-react"
+import { FigmaConfig } from "terse-types"
+import { ConfigType } from "terse-types"
+import { FigmaIntegration as FigmaIntegrationType, IntegrationType } from "terse-types/Integrations"
 
 import { useFigmaIntegrations } from "@/hooks/api/useFigmaIntegrations"
 import { useIntegrationId } from "@/hooks/useIntegrationId"
 import { useOAuthConnection } from "@/hooks/useOAuthConnection"
-import { FigmaIntegration as FigmaIntegrationType, IntegrationType } from "@/shared/Integrations"
 
-import { FigmaConfig } from "../../shared/Configs"
-import { ConfigType } from "../../shared/Configs"
 import { FigmaFileSelector } from "../FigmaFileSelector"
 import DropdownSelect from "../ui/DropdownSelect"
 import { StatusOption } from "../ui/DropdownSelect"

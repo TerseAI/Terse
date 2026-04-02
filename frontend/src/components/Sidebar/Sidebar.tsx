@@ -3,6 +3,8 @@ import { Link, useLocation, useNavigate } from "react-router-dom"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@radix-ui/react-collapsible"
 import type { LucideIcon } from "lucide-react"
 import { Activity, BarChart3, Bell, ChevronRight, Home, Plug, Plus, Terminal, Zap } from "lucide-react"
+import { FrontendRoutes } from "terse-types/FrontendRoutes"
+import { Agent } from "terse-types/types"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -21,8 +23,6 @@ import {
 } from "@/components/ui/sidebar"
 import { useAgents } from "@/hooks/api/useAgents"
 import { usePendingApprovals } from "@/hooks/api/usePendingApprovals"
-import { FrontendRoutes } from "@/shared/FrontendRoutes"
-import { Agent } from "@/shared/types"
 
 import { SdkJobsList } from "./SdkJobsList"
 import { AppSidebarFooter } from "./SidebarFooter"

@@ -14,7 +14,7 @@ import {
     type ToolCall,
     type ToolCallComplete,
     type ToolCallGenerating
-} from "../../../shared/ModelEvents"
+} from "terse-types"
 
 export type ChatEventPayload = {
     runHistoryModelEvent: ModelEvent

@@ -1,5 +1,6 @@
+import { ConfigType, FigmaConfig } from "terse-types/Configs"
+
 import { FigmaIntegrationManager, validateFigmaFileExists } from "../integrations/FigmaIntegration"
-import { ConfigType, FigmaConfig } from "../shared/Configs"
 import { PrismaTransaction } from "../types/prisma"
 import { FigmaConfigSchema, stripConfigForValidation } from "../utility/configSchemas"
 

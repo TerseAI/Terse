@@ -1,4 +1,5 @@
 import { Request, Response } from "express"
+import { IntegrationType } from "terse-types/Integrations"
 
 import { WorkOSIntegrationManager } from "../integrations/WorkOSIntegration"
 import { parseFormSubmissionFromRequest } from "../integrations/abstract/Integration"
@@ -6,7 +7,6 @@ import { emitIntegrationFormCompletedTaskIfNeeded } from "../integrations/helper
 import logger from "../logger"
 import { db } from "../prismaClient"
 import { SecretField, getSecret, storeSecret } from "../services/SecretService"
-import { IntegrationType } from "../shared/Integrations"
 import { workos } from "../utility/workos"
 
 export async function getWorkOSIntegrations(req: Request, res: Response) {

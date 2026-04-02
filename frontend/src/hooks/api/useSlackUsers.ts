@@ -1,8 +1,8 @@
 import useSWR, { type KeyedMutator } from "swr"
+import { slackUsersKey } from "terse-types/InvalidationKeys"
+import type { SlackUserResponse, SlackUsersResponse } from "terse-types/types"
 
 import { BackendProvider } from "@/services/backend"
-import { slackUsersKey } from "@/shared/InvalidationKeys"
-import type { SlackUserResponse, SlackUsersResponse } from "@/shared/types"
 
 type UseSlackUsersReturn = {
     users: SlackUserResponse[]

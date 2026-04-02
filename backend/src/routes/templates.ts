@@ -1,7 +1,7 @@
 import { Request, Response } from "express"
+import { AgentTemplate } from "terse-types/types"
 
 import logger from "../logger"
-import { AgentTemplate } from "../shared/types"
 import { validateTemplates } from "../templates/AgentTemplateSchema"
 import templates from "../templates/templates.json" with { type: "json" }
 

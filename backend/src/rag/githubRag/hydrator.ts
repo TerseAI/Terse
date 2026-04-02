@@ -1,4 +1,5 @@
 import { Octokit } from "@octokit/rest"
+import { IntegrationType } from "terse-types"
 
 import { getAppInstallationsForUser } from "../../integrations/GithubIntegration"
 import { GithubEvent } from "../../integrations/GithubIntegration"
@@ -8,7 +9,6 @@ import { db } from "../../prismaClient"
 import type { GithubAppUnifiedEventRequest } from "../../routes/GithubTypes"
 import { StoredFile } from "../../services/FileStorageService"
 import { SecretField, getSecret } from "../../services/SecretService"
-import { IntegrationType } from "../../shared/Integrations"
 import { HydratorType } from "../../types/rag"
 import { HydrationContext, Hydrator, Identifiable } from "../Hydrator"
 

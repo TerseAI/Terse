@@ -1,4 +1,6 @@
 import { Socket } from "socket.io"
+import { SendModelRequest } from "terse-types/ModelEvents"
+import { SocketEvents } from "terse-types/SocketEvents"
 
 import ChatAgent from "../agent/ChatAgent/ChatAgent"
 import WebChatInterface from "../agent/ChatAgent/ChatInterfaces/WebChatInterface"
@@ -11,8 +13,6 @@ import { appendBuilderChatCancelledSystemEvent } from "../agent/systemEvents/can
 import { appendBuilderChatErrorSystemEvent } from "../agent/systemEvents/runErrorSystemEvent"
 import { appendBuilderChatTemplatePromptSystemEvent } from "../agent/systemEvents/templatePromptSystemEvent"
 import logger from "../logger"
-import { SendModelRequest } from "../shared/ModelEvents"
-import { SocketEvents } from "../shared/SocketEvents"
 import { findTemplateById } from "../templates/templateLookup"
 import { getUserForOrg } from "../utility/workos"
 

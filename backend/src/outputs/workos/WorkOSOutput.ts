@@ -1,8 +1,8 @@
 import { OutputConfigType } from "@prisma/client"
+import { WorkOSOutputConfig } from "terse-types"
+import { IntegrationType } from "terse-types"
 
 import { Output, ToolboxEntry } from "../../outputs/abstract/Output"
-import { WorkOSOutputConfig } from "../../shared/Configs"
-import { IntegrationType } from "../../shared/Integrations"
 import { PrismaTransaction } from "../../types/prisma"
 import { WorkOSOutputConfigSchema, stripConfigForValidation } from "../../utility/configSchemas"
 

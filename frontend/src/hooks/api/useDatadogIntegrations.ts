@@ -1,9 +1,9 @@
 import useSWR, { type KeyedMutator } from "swr"
+import type { DatadogIntegration } from "terse-types/Integrations"
+import { datadogIntegrationsKey } from "terse-types/InvalidationKeys"
 
 import { useOAuthSuccessListener } from "@/hooks/useOAuthSuccessListener"
 import { BackendProvider } from "@/services/backend"
-import type { DatadogIntegration } from "@/shared/Integrations"
-import { datadogIntegrationsKey } from "@/shared/InvalidationKeys"
 
 type UseDatadogIntegrationsReturn = {
     integrations: DatadogIntegration[]

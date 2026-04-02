@@ -1,10 +1,10 @@
 import { FunctionTool, Tool, tool } from "@openai/agents"
 import { Request, Response } from "express"
+import { IntegrationType } from "terse-types/Integrations"
+import { User } from "terse-types/types"
 
 import logger from "../logger"
 import { OutputFactory } from "../outputs/abstract/OutputFactory"
-import { IntegrationType } from "../shared/Integrations"
-import { User } from "../shared/types"
 import { extractErrorMessage } from "../utility/strings"
 
 /**

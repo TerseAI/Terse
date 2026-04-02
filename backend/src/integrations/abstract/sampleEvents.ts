@@ -1,7 +1,8 @@
+import type { ConfigInstance } from "terse-types"
+import { IntegrationType } from "terse-types"
+
 import logger from "../../logger"
 import { validateUserOwnsIntegration } from "../../routes/agents"
-import type { ConfigInstance } from "../../shared/Configs"
-import { IntegrationType } from "../../shared/Integrations"
 
 import type { InputEvent } from "./InputEvent"
 import { INTEGRATION_REGISTRY } from "./IntegrationRegistry"

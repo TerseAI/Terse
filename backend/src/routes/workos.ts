@@ -1,10 +1,10 @@
 import { Request, Response } from "express"
+import { SocketEvents, SocketRooms } from "terse-types/SocketEvents"
 
 import { settings } from "../config/settings"
 import logger from "../logger"
 import { db } from "../prismaClient"
 import { getRealtimeSocket } from "../realtimeSocket"
-import { SocketEvents, SocketRooms } from "../shared/SocketEvents"
 import { workos } from "../utility/workos"
 
 /**

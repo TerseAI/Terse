@@ -1,8 +1,9 @@
+import { ConfigInstance } from "terse-types"
+import { User } from "terse-types"
+
 import { Output } from "../../outputs/abstract/Output"
 import { OutputFactory } from "../../outputs/abstract/OutputFactory"
 import { db } from "../../prismaClient"
-import { ConfigInstance } from "../../shared/Configs"
-import { User } from "../../shared/types"
 import { AgentWithRelations } from "../../types/prisma"
 import { Session } from "../../types/session"
 import { getAgentHydrationInclude } from "../../utility/prismaIncludes"

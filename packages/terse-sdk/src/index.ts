@@ -1,12 +1,12 @@
 declare const process: { env: Record<string, string | undefined> }
 
 import type { InputEvent, TypedTrigger, TypedSkill, InferEvents, InferToolApprovals } from "./types.js"
-import { CONFIG_DETAILS } from "./shared/Configs.js"
-import type { ConfigInstance } from "./shared/Configs.js"
-import type { RunHistoryAction } from "./shared/RunHistoryTypes.js"
-import type { SdkAgentRunRequestBody, SdkAgentRunResponseBody, SdkApprovalDecisionRequestBody, SdkAgentSkillPayload, SdkAgentStreamEvent } from "./shared/types.js"
+import { CONFIG_DETAILS } from "terse-types"
+import type { ConfigInstance } from "terse-types"
+import type { RunHistoryAction } from "terse-types"
+import type { SdkAgentRunRequestBody, SdkAgentRunResponseBody, SdkApprovalDecisionRequestBody, SdkAgentSkillPayload, SdkAgentStreamEvent } from "terse-types"
 
-import { IntegrationType } from "./shared/Integrations.js"
+import { IntegrationType } from "terse-types"
 import { ApiRoutes } from "terse-types"
 // Re-export SDK-specific types
 export type { InputEvent, ToolboxEntry, TypedTrigger, TypedSkill, InferEvent, InferEvents, InferToolApproval, InferToolApprovals } from "./types.js"
@@ -89,7 +89,7 @@ export {
     FigmaEventType,
     GmailEventType,
     WorkOSEventType
-} from "./shared/Configs.js"
+} from "terse-types"
 
 export type {
     SdkAgentRunEventPayload,
@@ -99,9 +99,8 @@ export type {
     SdkAgentRunResponseBody,
     SdkAgentStreamEvent,
     ToolOutputByName
-} from "./shared/types.js"
-
-export { IntegrationType } from "./shared/Integrations.js"
+} from "terse-types"
+export { IntegrationType } from "terse-types"
 
 export {
     RunHistoryAction,
@@ -109,7 +108,7 @@ export {
     RunHistoryTrigger,
     RunHistoryDecision,
     RunHistoryRecord
-} from "./shared/RunHistoryTypes.js"
+} from "terse-types"
 
 // SDK types
 

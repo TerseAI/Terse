@@ -1,10 +1,10 @@
 import chalk from "chalk"
+import { RunHistoryAction } from "terse-types"
 
 import logger from "../../logger"
 import { db } from "../../prismaClient"
 import { Identifiable } from "../../rag/Hydrator"
 import { IdentifiableStore } from "../../rag/IdentifiableStore"
-import { RunHistoryAction } from "../../shared/RunHistoryTypes"
 import { convertConfigTypeToOutputConfigType } from "../../utility/typeConverters"
 
 export async function persistOutputAttributions(automationId: string, sourceItemRef: Identifiable, action: RunHistoryAction): Promise<void> {

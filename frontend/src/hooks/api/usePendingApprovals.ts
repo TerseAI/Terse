@@ -1,8 +1,8 @@
 import useSWR from "swr"
+import { ApprovalRequestFilter, GetPendingApprovalsResponse } from "terse-types/ApprovalTypes"
+import { pendingApprovalsKey } from "terse-types/InvalidationKeys"
 
 import { BackendProvider } from "@/services/backend"
-import { ApprovalRequestFilter, GetPendingApprovalsResponse } from "@/shared/ApprovalTypes"
-import { pendingApprovalsKey } from "@/shared/InvalidationKeys"
 
 type UsePendingApprovalsParams = {
     status?: ApprovalRequestFilter

@@ -1,8 +1,9 @@
+import { IntegrationType } from "terse-types"
+
 import { WORKOS_SUPPORTED_EVENT_NAMES, WorkOSEvent, WorkOSWebhookPayload, enrichWorkOSEventPayload } from "../../integrations/WorkOSIntegration"
 import logger from "../../logger"
 import { db } from "../../prismaClient"
 import { SecretField, getSecret } from "../../services/SecretService"
-import { IntegrationType } from "../../shared/Integrations"
 import { HydratorType } from "../../types/rag"
 import { HydrationContext, Hydrator, Identifiable } from "../Hydrator"
 

@@ -2,10 +2,10 @@ import { useState } from "react"
 
 import { Check, Copy, Key, Pencil, Plus, Trash2 } from "lucide-react"
 import { toast } from "sonner"
+import { ApiToken } from "terse-types/types"
 
 import { useApiTokens } from "@/hooks/api/useApiTokens"
 import { BackendProvider } from "@/services/backend"
-import { ApiToken } from "@/shared/types"
 
 import { Button } from "../ui/button"
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../ui/dialog"

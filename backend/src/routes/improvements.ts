@@ -1,10 +1,10 @@
 import { AgentImprovementStatus } from "@prisma/client"
 import { Request, Response } from "express"
+import { AgentImprovement, AgentReview, ApplyImprovementResponse, DismissImprovementResponse, GetAgentImprovementsResponse, ToggleImprovementsEnabledResponse } from "terse-types/types"
 
 import logger from "../logger"
 import { db } from "../prismaClient"
 import { emitCacheInvalidationWithKey } from "../services/CacheInvalidationService"
-import { AgentImprovement, AgentReview, ApplyImprovementResponse, DismissImprovementResponse, GetAgentImprovementsResponse, ToggleImprovementsEnabledResponse } from "../shared/types"
 
 const AGENT_IMPROVEMENTS_INVALIDATION_KEY = "agentImprovements"
 

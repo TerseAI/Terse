@@ -1,12 +1,12 @@
 import { RunContext } from "@openai/agents"
 import { RunHistoryActionType } from "@prisma/client"
+import { IntegrationType } from "terse-types"
 import { z } from "zod"
 
 import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
 import { initializeSlackWebClient } from "../../../integrations/SlackClient"
 import logger from "../../../logger"
 import { db } from "../../../prismaClient"
-import { IntegrationType } from "../../../shared/Integrations"
 import { ToolName } from "../../../tools/ToolNames"
 import { SessionToolOptions } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"

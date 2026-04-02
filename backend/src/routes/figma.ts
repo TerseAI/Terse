@@ -1,8 +1,8 @@
 import { Request, Response } from "express"
+import { FigmaEventTypes } from "terse-types/types"
 
 import { FigmaIntegrationManager, FigmaWebhookEvent } from "../integrations/FigmaIntegration"
 import logger from "../logger"
-import { FigmaEventTypes } from "../shared/types"
 
 // MARK: - Route Handlers
 

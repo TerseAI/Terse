@@ -1,5 +1,6 @@
 import { FunctionTool, type RunContext, Tool, tool } from "@openai/agents"
 import { Request, Response } from "express"
+import { User } from "terse-types/types"
 import { z } from "zod"
 
 import { SessionWithTracking } from "../agent/AgentRunner/AgentRunner"
@@ -14,7 +15,6 @@ import {
 import logger from "../logger"
 import { OutputFactory } from "../outputs/abstract/OutputFactory"
 import { db } from "../prismaClient"
-import { User } from "../shared/types"
 import { Session } from "../types/session"
 import { extractErrorMessage } from "../utility/strings"
 import { randomString } from "../utility/strings"

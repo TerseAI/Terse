@@ -2,8 +2,8 @@ import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "re
 
 import { AnimatePresence, motion } from "framer-motion"
 import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react"
+import { type ModelRequest } from "terse-types"
 
-import { type ModelRequest } from "../../shared/ModelEvents"
 import type { ToolApprovalResponseOptions } from "../../socket"
 
 import { AwaitingResponseAnimation } from "./AwaitingResponseAnimation"

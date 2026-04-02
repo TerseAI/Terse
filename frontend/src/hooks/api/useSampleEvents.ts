@@ -1,10 +1,10 @@
 import { useCallback, useState } from "react"
 
 import { toast } from "sonner"
+import { IntegrationType } from "terse-types"
+import type { AgentTrigger, SerializedEvent } from "terse-types"
 
 import { BackendProvider } from "../../services/backend"
-import { IntegrationType } from "../../shared/Integrations"
-import type { AgentTrigger, SerializedEvent } from "../../shared/types"
 
 export function useSampleEvents(triggers: AgentTrigger[], automationId?: string) {
     const [isFetching, setIsFetching] = useState(false)

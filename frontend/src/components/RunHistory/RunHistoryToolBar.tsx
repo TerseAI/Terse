@@ -1,8 +1,8 @@
 import { useState } from "react"
 
 import { PlayIcon } from "lucide-react"
+import type { RunHistoryStatus } from "terse-types"
 
-import type { RunHistoryStatus } from "../../shared/RunHistoryTypes"
 import { Button } from "../ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select"
 

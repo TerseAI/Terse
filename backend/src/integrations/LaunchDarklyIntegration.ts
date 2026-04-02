@@ -1,9 +1,10 @@
+import { IntegrationType, LaunchDarklyIntegration, LaunchDarklyIntegrationMetadata } from "terse-types/Integrations"
+import { LaunchDarklyProject } from "terse-types/types"
+
 import logger from "../logger"
 import { db } from "../prismaClient"
 import { fetchLaunchDarklyEnvironments, fetchLaunchDarklyProjects } from "../routes/launchdarkly"
 import { SecretField, getSecret, storeSecret } from "../services/SecretService"
-import { IntegrationType, LaunchDarklyIntegration, LaunchDarklyIntegrationMetadata } from "../shared/Integrations"
-import { LaunchDarklyProject } from "../shared/types"
 import { AgentTriggerWithConfigs } from "../types/prisma"
 
 import { FetchResourcesOptions } from "./abstract/FetchResourcesOptions"

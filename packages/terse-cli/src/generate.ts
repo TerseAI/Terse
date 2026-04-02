@@ -34,8 +34,8 @@ import type {
     WorkOSIntegration,
     AttioIntegration,
     SnowflakeIntegration,
-} from "./shared/Integrations.js"
-import { IntegrationType } from "./shared/Integrations.js"
+} from "terse-types"
+import { IntegrationType } from "terse-types"
 import { ApiRoutes, buildApiRoute } from "terse-types"
 import { fetchWithAuth, readApiKeyOrBail } from "./api.js"
 

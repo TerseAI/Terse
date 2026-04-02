@@ -1,8 +1,9 @@
 import { useState } from "react"
 import ReactMarkdown from "react-markdown"
 
+import { AgentPrompt } from "terse-types/types"
+
 import { Textarea } from "@/components/ui/textarea"
-import { AgentPrompt } from "@/shared/types"
 
 const instructionsPlaceholder = `Describe what you want the AI to do with incoming events from your sources.
 

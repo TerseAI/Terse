@@ -1,4 +1,6 @@
 import { Request, Response } from "express"
+import { IntegrationType } from "terse-types/Integrations"
+import { GetGithubRepositoriesForIntegrationResponse, GithubAppInstallationCallbackRequest, Repository, User as RuntimeUser } from "terse-types/types"
 
 import { githubApp } from "../config/settings"
 import { GithubIntegrationManager, getAppInstallationRepositories, getAppInstallationsForUser } from "../integrations/GithubIntegration"
@@ -7,8 +9,6 @@ import { db } from "../prismaClient"
 import { GithubAppInstallationDeletedRequest, GithubAppInstallationRepository, GithubAppUnifiedEventRequest } from "../routes/GithubTypes"
 import { emitCacheInvalidationWithKey } from "../services/CacheInvalidationService"
 import { SecretField, getSecret } from "../services/SecretService"
-import { IntegrationType } from "../shared/Integrations"
-import { GetGithubRepositoriesForIntegrationResponse, GithubAppInstallationCallbackRequest, Repository, User as RuntimeUser } from "../shared/types"
 import { GithubRepository } from "../types/prisma"
 import { getUserForOrg } from "../utility/workos"
 

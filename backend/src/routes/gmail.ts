@@ -1,12 +1,12 @@
 import { InputConfigType, OutputConfigType } from "@prisma/client"
 import { Request, Response } from "express"
 import { google } from "googleapis"
+import { IntegrationType } from "terse-types/Integrations"
 
 import { GmailIntegrationManager, GmailWebhookEvent, getOAuth2Client } from "../integrations/GmailIntegration"
 import logger from "../logger"
 import { db } from "../prismaClient"
 import { SecretField, getSecret } from "../services/SecretService"
-import { IntegrationType } from "../shared/Integrations"
 
 export async function getGmailIntegrations(req: Request, res: Response) {
     if (!req.session?.user) {

@@ -1,4 +1,4 @@
-import { ConfigType } from "@/shared/Configs"
+import { ConfigType } from "terse-types/Configs"
 
 import { AttioOutputIntegration } from "./AttioOutputIntegration"
 import { ConfluenceIntegration } from "./ConfluenceIntegration"

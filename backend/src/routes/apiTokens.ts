@@ -1,10 +1,10 @@
 import { Request, Response } from "express"
+import { apiTokensKey } from "terse-types/InvalidationKeys"
+import { ApiToken } from "terse-types/types"
 
 import logger from "../logger"
 import { db } from "../prismaClient"
 import { emitCacheInvalidationWithKey } from "../services/CacheInvalidationService"
-import { apiTokensKey } from "../shared/InvalidationKeys"
-import { ApiToken } from "../shared/types"
 import { createApiToken as createToken, getApiTokensForUser } from "../utility/apiTokens"
 import { FeatureFlag, FeatureFlagService } from "../utility/featureFlags"
 

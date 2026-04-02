@@ -1,4 +1,4 @@
-import { AgentTemplate } from "../shared/types"
+import { AgentTemplate } from "terse-types/types"
 
 import { validateTemplates } from "./AgentTemplateSchema"
 import templates from "./templates.json" with { type: "json" }

@@ -1,15 +1,15 @@
-# terse-types
+#"terse-types"
 
 Shared Terse TypeScript types, enums, constants, and helpers packaged for reuse across repositories.
 
 ## Install
 
 ```bash
-npm install terse-types
+npm install"terse-types"
 ```
 
 ```bash
-pnpm add terse-types
+pnpm add"terse-types"
 ```
 
 ## Usage
@@ -23,8 +23,8 @@ import { IntegrationType, type User } from "terse-types"
 Import by subpath when you want a specific module:
 
 ```ts
-import { ApiRoutes } from "terse-types/ApiRoutes"
-import type { RunHistoryStatus } from "terse-types/RunHistoryTypes"
+import { ApiRoutes } from "terse-types"
+import type { RunHistoryStatus } from "terse-types"
 ```
 
 ## Local Development

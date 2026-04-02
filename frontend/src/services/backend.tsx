@@ -1,8 +1,6 @@
 import axios from "axios"
 import { ApiRoutes, buildApiRoute } from "terse-types"
-
-import { POST_LOGIN_REDIRECT_KEY, isSafeRedirectPath } from "../constants/storageKeys"
-import { ApprovalRequestFilter, GetPendingApprovalsResponse } from "../shared/ApprovalTypes"
+import { ApprovalRequestFilter, GetPendingApprovalsResponse } from "terse-types/ApprovalTypes"
 import {
     AtlassianIntegration,
     AttioIntegration,
@@ -20,12 +18,12 @@ import {
     SlackIntegration,
     SnowflakeIntegration,
     WorkOSIntegration
-} from "../shared/Integrations"
-import { CreateNotificationDestinationRequest, NotificationDestination, NotificationSettings, UpdateNotificationSettingsRequest } from "../shared/Notifications"
-import type { RunHistoryActionType, RunHistoryActionWithId, RunHistoryModelEvent } from "../shared/RunHistoryTypes"
-import { GetAllRunHistoryResponse, GetRunHistoryParams, GetRunHistoryResponse, RunHistoryStatus } from "../shared/RunHistoryTypes"
-import { GetSentNotificationsResponse } from "../shared/SentNotifications"
-import { GetToolsThatRequireApprovalsRequest, GetToolsThatRequireApprovalsResponse } from "../shared/ToolsTypes"
+} from "terse-types/Integrations"
+import { CreateNotificationDestinationRequest, NotificationDestination, NotificationSettings, UpdateNotificationSettingsRequest } from "terse-types/Notifications"
+import type { RunHistoryActionType, RunHistoryActionWithId, RunHistoryModelEvent } from "terse-types/RunHistoryTypes"
+import { GetAllRunHistoryResponse, GetRunHistoryParams, GetRunHistoryResponse, RunHistoryStatus } from "terse-types/RunHistoryTypes"
+import { GetSentNotificationsResponse } from "terse-types/SentNotifications"
+import { GetToolsThatRequireApprovalsRequest, GetToolsThatRequireApprovalsResponse } from "terse-types/ToolsTypes"
 import {
     Agent,
     AgentTemplate,
@@ -56,7 +54,9 @@ import {
     StatsResponse,
     ToggleImprovementsEnabledResponse,
     TriggerPayload
-} from "../shared/types"
+} from "terse-types/types"
+
+import { POST_LOGIN_REDIRECT_KEY, isSafeRedirectPath } from "../constants/storageKeys"
 import { User } from "../types/User"
 import { deserializeConfig } from "../utility/ConfigUtils"
 

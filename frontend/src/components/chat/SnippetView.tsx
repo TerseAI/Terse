@@ -2,9 +2,9 @@ import { useEffect, useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
 
 import { ExternalLink, ImageOff, SquareArrowOutUpRight } from "lucide-react"
+import { IntegrationType } from "terse-types"
+import { type ChatSnippet } from "terse-types"
 
-import { IntegrationType } from "../../shared/Integrations"
-import { type ChatSnippet } from "../../shared/ModelEvents"
 import IntegrationCard from "../Integrations/IntegrationCard"
 import { Button } from "../ui/button"
 

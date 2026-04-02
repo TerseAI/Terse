@@ -1,8 +1,8 @@
 import useSWR, { type KeyedMutator, mutate } from "swr"
+import { type AgentListArgs, agentDetailKey, agentListKey } from "terse-types/InvalidationKeys"
+import type { Agent, AgentUpdate, AgentsResponse } from "terse-types/types"
 
 import { BackendProvider } from "@/services/backend"
-import { type AgentListArgs, agentDetailKey, agentListKey } from "@/shared/InvalidationKeys"
-import type { Agent, AgentUpdate, AgentsResponse } from "@/shared/types"
 import { deserializeConfig } from "@/utility/ConfigUtils"
 
 type UpdateAgentArgs = {

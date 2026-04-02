@@ -1,5 +1,6 @@
+import { IntegrationInstance, IntegrationType } from "terse-types"
+
 import logger from "../../logger"
-import { IntegrationInstance, IntegrationType } from "../../shared/Integrations"
 import { OAuthStatePayload, decodeOAuthStateToken } from "../../utility/oauth"
 import { IntegrationFormCompletedTask } from "../IntegrationFormCompletedTask"
 import { integrationFormTaskQueue } from "../IntegrationTaskQueues"

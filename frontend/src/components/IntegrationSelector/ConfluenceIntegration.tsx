@@ -1,12 +1,12 @@
 import { AlertTriangleIcon, Plus } from "lucide-react"
+import { ConfigType, ConfluenceConfig } from "terse-types"
+import { AtlassianIntegration, IntegrationType } from "terse-types/Integrations"
 
 import { useAtlassianIntegrations } from "@/hooks/api/useAtlassianIntegrations"
 import { useIntegrationId } from "@/hooks/useIntegrationId"
 import { useOAuthConnection } from "@/hooks/useOAuthConnection"
-import { AtlassianIntegration, IntegrationType } from "@/shared/Integrations"
 
 import { IconForConfigType } from "../../pages/Agents/components/Integration"
-import { ConfigType, ConfluenceConfig } from "../../shared/Configs"
 import { ConfluenceResourceSelector } from "../ConfluenceResourceSelector"
 import DropdownSelect from "../ui/DropdownSelect"
 import { StatusOption } from "../ui/DropdownSelect"

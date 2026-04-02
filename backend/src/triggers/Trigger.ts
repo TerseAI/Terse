@@ -1,4 +1,5 @@
-import { ConfigInstance, ConfigType } from "../shared/Configs"
+import { ConfigInstance, ConfigType } from "terse-types/Configs"
+
 import { PrismaTransaction } from "../types/prisma"
 
 export interface Trigger<TConfig extends ConfigInstance> {

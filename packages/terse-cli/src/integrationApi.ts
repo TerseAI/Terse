@@ -1,6 +1,6 @@
 import { fetchWithAuth } from "./api.js"
-import { IntegrationWithStatus } from "./shared/Integrations.js"
-import { ConfigurationFieldDefinition, FormFieldDefinition, IntegrationFieldsResponse, OAuthInstallationDetails } from "./shared/types.js"
+import { IntegrationWithStatus } from "terse-types"
+import { ConfigurationFieldDefinition, FormFieldDefinition, IntegrationFieldsResponse, OAuthInstallationDetails } from "terse-types"
 
 export type { IntegrationFieldsResponse, FormFieldDefinition, ConfigurationFieldDefinition }
 

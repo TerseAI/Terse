@@ -1,8 +1,8 @@
 import useSWR, { type KeyedMutator } from "swr"
+import { attioObjectsKey } from "terse-types/InvalidationKeys"
+import type { AttioObjectWithAttributes } from "terse-types/types"
 
 import { BackendProvider } from "@/services/backend"
-import { attioObjectsKey } from "@/shared/InvalidationKeys"
-import type { AttioObjectWithAttributes } from "@/shared/types"
 
 type UseAttioObjectsReturn = {
     objects: AttioObjectWithAttributes[]

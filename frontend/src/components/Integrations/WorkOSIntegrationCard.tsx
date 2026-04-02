@@ -1,11 +1,11 @@
 import { useState } from "react"
 
 import { CheckIcon, CopyIcon, ExternalLinkIcon, Eye, EyeOff, Shield } from "lucide-react"
+import { INTEGRATION_METADATA, IntegrationType, WorkOSIntegration } from "terse-types/Integrations"
 
 import { useWorkOSIntegrations } from "@/hooks/api/useWorkOSIntegrations"
 import { cn } from "@/lib/utils"
 import { BackendProvider } from "@/services/backend"
-import { INTEGRATION_METADATA, IntegrationType, WorkOSIntegration } from "@/shared/Integrations"
 
 import { Button } from "../ui/button"
 import { Card, CardContent, CardFooter } from "../ui/card"

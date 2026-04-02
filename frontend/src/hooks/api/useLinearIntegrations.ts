@@ -1,9 +1,9 @@
 import useSWR, { type KeyedMutator } from "swr"
+import type { LinearIntegration } from "terse-types/Integrations"
+import { linearIntegrationsKey } from "terse-types/InvalidationKeys"
 
 import { useOAuthSuccessListener } from "@/hooks/useOAuthSuccessListener"
 import { BackendProvider } from "@/services/backend"
-import type { LinearIntegration } from "@/shared/Integrations"
-import { linearIntegrationsKey } from "@/shared/InvalidationKeys"
 
 type UseLinearIntegrationsReturn = {
     integrations: LinearIntegration[]
