@@ -27,7 +27,7 @@ const parameters = z.object({
         .describe(
             'Start date for filtering (ISO format or relative like "-7d"). If not provided and last7Days is true, defaults to 7 days ago. If not provided and last7Days is false, no date restriction is applied.'
         ),
-    dateTo: z.union([z.string(), z.null()]).describe('End date for filtering (ISO format or relative like "now"). If not provided, defaults to now.')
+    dateTo: z.string().nullable().optional().describe('End date for filtering (ISO format or relative like "now"). If not provided, defaults to now.')
 })
 
 /**

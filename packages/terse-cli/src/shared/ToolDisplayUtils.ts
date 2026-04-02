@@ -910,6 +910,17 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
             return "Users loaded"
         }
     },
+    listWorkOSOrganizations: {
+        preparing: "Loading organizations",
+        executing: () => "Loading organizations",
+        complete: (_params, result) => {
+            const parsed = safeParseResult(result)
+            const organizations = parsed?.organizations as unknown[] | undefined
+            const count = Array.isArray(organizations) ? organizations.length : undefined
+            if (count !== undefined) return `Found ${count} organization${count !== 1 ? "s" : ""}`
+            return "Organizations loaded"
+        }
+    },
     getWorkOSUser: {
         preparing: "Loading user details",
         executing: () => "Loading user details",

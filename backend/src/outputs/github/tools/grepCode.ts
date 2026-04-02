@@ -18,8 +18,8 @@ import { createGitHubClient, getGitHubAccessToken, searchCode } from "../githubA
 const grepGitHubCodeParameters = z.object({
     repositoryNames: z.array(z.string()).describe("Array of repository full names (owner/repo format) to search in."),
     pattern: z.string().describe('The exact text pattern to search for. For function calls, include the opening parenthesis (e.g., "fetchUser("). For strings, include quotes if needed.'),
-    fileExtension: z.union([z.string(), z.null()]).describe('Filter by file extension (e.g., "ts", "js", "py"). Do not include the dot. Use null to search all file types.'),
-    path: z.union([z.string(), z.null()]).describe('Filter by directory path (e.g., "src/services" to only search in that directory). Use null to search everywhere.'),
+    fileExtension: z.string().nullable().optional().describe('Filter by file extension (e.g., "ts", "js", "py"). Do not include the dot. Use null to search all file types.'),
+    path: z.string().nullable().optional().describe('Filter by directory path (e.g., "src/services" to only search in that directory). Use null to search everywhere.'),
     perPage: z.number().describe("Number of results to return (default: 20, max: 100)"),
     page: z
         .union([z.number().int().min(1), z.null()])

@@ -14,10 +14,10 @@ const parameters = z.object({
     projectKey: z.string().describe("The LaunchDarkly project key."),
     environmentKeys: z.array(z.string()).describe("Array of environment keys to query."),
     flagKey: z.string().describe("The flag key to retrieve."),
-    environmentKey: z.union([z.string(), z.null()]).optional().describe("Optional: Specific environment to get details for (if not provided, returns all configured environments)."),
+    environmentKey: z.string().nullable().optional().optional().describe("Optional: Specific environment to get details for (if not provided, returns all configured environments)."),
     includeHistory: z.boolean().default(false).describe("If true, includes change history for the flag over the specified time window."),
-    before: z.union([z.string(), z.null()]).optional().describe("Optional: ISO date - only return history entries before this date (only used if includeHistory is true)."),
-    after: z.union([z.string(), z.null()]).optional().describe("Optional: ISO date - only return history entries after this date (only used if includeHistory is true)."),
+    before: z.string().nullable().optional().optional().describe("Optional: ISO date - only return history entries before this date (only used if includeHistory is true)."),
+    after: z.string().nullable().optional().optional().describe("Optional: ISO date - only return history entries after this date (only used if includeHistory is true)."),
     historyLimit: z.number().default(20).describe("Number of history entries to return if includeHistory is true (default: 20, max: 20).")
 })
 

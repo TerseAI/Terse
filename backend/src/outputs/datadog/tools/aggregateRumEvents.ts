@@ -13,9 +13,9 @@ import { Session } from "../../../types/session"
 import { getDatadogRumDeepLink, getDatadogSite } from "../../../utility/datadog"
 
 const parameters = z.object({
-    query: z.union([z.string(), z.null()]).describe("Datadog RUM search query to filter events before aggregation (e.g., @type:view)"),
+    query: z.string().nullable().optional().describe("Datadog RUM search query to filter events before aggregation (e.g., @type:view)"),
     from: z.string().describe('Start time (ISO8601 or relative like "now-15m")'),
-    to: z.union([z.string(), z.null()]).describe('End time (ISO8601). Defaults to "now" if not provided.'),
+    to: z.string().nullable().optional().describe('End time (ISO8601). Defaults to "now" if not provided.'),
     compute: z
         .array(
             z.object({
@@ -104,13 +104,16 @@ export const aggregateRumEventsTool: SessionToolOptions<typeof parameters, typeo
                 total: gb.total || false
             }))
 
+            const requestTo = to ?? "now"
+            const responseTo = to ?? null
+
             // Build request body for RUM events aggregation
             const requestBody: v2.RUMAggregateRequest = {
                 compute: computeArray,
                 filter: {
                     from: from,
                     query: query ?? undefined,
-                    to: to ?? "now"
+                    to: requestTo
                 },
                 groupBy: groupByArray,
                 options: {
@@ -124,7 +127,7 @@ export const aggregateRumEventsTool: SessionToolOptions<typeof parameters, typeo
             logger.info("Aggregating Datadog RUM events", {
                 query,
                 from,
-                to,
+                to: requestTo,
                 computeCount: compute.length,
                 groupByCount: groupBy?.length || 0,
                 region
@@ -138,7 +141,7 @@ export const aggregateRumEventsTool: SessionToolOptions<typeof parameters, typeo
                 requestParams: {
                     query: query || null,
                     from,
-                    to: to || "now",
+                    to: requestTo,
                     compute: compute.map(c => ({
                         aggregation: c.aggregation,
                         metric: c.metric,
@@ -200,8 +203,8 @@ export const aggregateRumEventsTool: SessionToolOptions<typeof parameters, typeo
                 filterDescriptions.push(`query="${query}"`)
             }
             filterDescriptions.push(`from: ${from}`)
-            if (to && to !== "now") {
-                filterDescriptions.push(`to: ${to}`)
+            if (responseTo && responseTo !== "now") {
+                filterDescriptions.push(`to: ${responseTo}`)
             }
             const filterDescription = filterDescriptions.join(", ")
 
@@ -267,7 +270,7 @@ export const aggregateRumEventsTool: SessionToolOptions<typeof parameters, typeo
                 actions: [action],
                 query: query || null,
                 from,
-                to,
+                to: responseTo,
                 compute: computeDescriptions,
                 groupBy: groupByDescription,
                 totalBuckets: bucketCount,

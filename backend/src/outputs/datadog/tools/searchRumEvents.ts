@@ -14,11 +14,11 @@ import { getDatadogRumDeepLink, getDatadogSite } from "../../../utility/datadog"
 
 const parameters = z.object({
     integrationId: z.string().describe("The integration ID of the Datadog skill to use."),
-    query: z.union([z.string(), z.null()]).optional().describe("Datadog RUM search query (e.g., @type:error AND @error.source:network)"),
+    query: z.string().nullable().optional().optional().describe("Datadog RUM search query (e.g., @type:error AND @error.source:network)"),
     from: z.string().describe('Start time (ISO8601 or relative like "now-15m")'),
-    to: z.union([z.string(), z.null()]).optional().describe('End time (ISO8601). Defaults to "now" if not provided.'),
+    to: z.string().nullable().optional().optional().describe('End time (ISO8601). Defaults to "now" if not provided.'),
     limit: z.number().default(25).describe("Maximum number of RUM events to return (default: 25, max: 1000)"),
-    pageCursor: z.union([z.string(), z.null()]).optional().describe("Pagination cursor from previous response"),
+    pageCursor: z.string().nullable().optional().optional().describe("Pagination cursor from previous response"),
     sort: z.enum(["timestamp", "-timestamp"]).default("timestamp").describe('Sort order: "timestamp" (ascending) or "-timestamp" (descending)'),
     timezone: z.string().default("GMT").describe('Timezone for time-based queries (default: "GMT")')
 })

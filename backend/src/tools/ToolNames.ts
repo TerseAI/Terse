@@ -84,6 +84,7 @@ export const ToolName = {
 
     // WorkOS Tools
     WORKOS_LIST_USERS: "listWorkOSUsers",
+    WORKOS_LIST_ORGANIZATIONS: "listWorkOSOrganizations",
     WORKOS_GET_USER: "getWorkOSUser",
 
     // Snowflake Tools

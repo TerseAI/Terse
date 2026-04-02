@@ -7,12 +7,14 @@ import { PrismaTransaction } from "../../types/prisma"
 import { WorkOSOutputConfigSchema, stripConfigForValidation } from "../../utility/configSchemas"
 
 import { getWorkOSUserTool } from "./tools/getUser"
+import { listWorkOSOrganizationsTool } from "./tools/listOrganizations"
 import { listWorkOSUsersTool } from "./tools/listUsers"
 
 export class WorkOSOutput extends Output<WorkOSOutputConfig> {
     constructor() {
         const toolbox: ToolboxEntry[] = [
             { tool: listWorkOSUsersTool, isReadOnly: true, integration: IntegrationType.WORKOS, displayName: "List users" },
+            { tool: listWorkOSOrganizationsTool, isReadOnly: true, integration: IntegrationType.WORKOS, displayName: "List organizations" },
             { tool: getWorkOSUserTool, isReadOnly: true, integration: IntegrationType.WORKOS, displayName: "Get user" }
         ]
 

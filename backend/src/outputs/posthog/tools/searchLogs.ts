@@ -13,11 +13,11 @@ import { getPosthogApiKeyByIntegrationId } from "../posthogApiClient"
 const parameters = z.object({
     integrationId: z.string().describe("The integration ID of the PostHog skill to use."),
     projectId: z.string().describe("The PostHog project ID."),
-    userEmail: z.union([z.string(), z.null()]).optional().describe('Optional: User email to filter logs by (e.g., "user@example.com").'),
+    userEmail: z.string().nullable().optional().optional().describe('Optional: User email to filter logs by (e.g., "user@example.com").'),
     severityLevels: z
         .union([z.array(z.enum(["error", "warn", "info", "debug"])), z.null()])
         .describe('Optional: Array of log severity levels to filter by (e.g., ["error", "warn"]). If not provided, all severity levels are included.'),
-    messageSearch: z.union([z.string(), z.null()]).describe("Optional: Text to search for within log messages. Searches are case-insensitive and match partial text."),
+    messageSearch: z.string().nullable().optional().describe("Optional: Text to search for within log messages. Searches are case-insensitive and match partial text."),
     limit: z.number().default(50).describe("Maximum number of log entries to return (default: 50, max: 250)"),
     offset: z.number().default(0).describe("Offset for pagination (default: 0). Use with limit to page through results. For example, offset=0 gets logs 1-50, offset=50 gets logs 51-100, etc."),
     last7Days: z
@@ -29,7 +29,7 @@ const parameters = z.object({
         .describe(
             'Start date for filtering (ISO format or relative like "-7d"). If not provided and last7Days is true, defaults to 7 days ago. If not provided and last7Days is false, no date restriction is applied.'
         ),
-    dateTo: z.union([z.string(), z.null()]).describe('End date for filtering (ISO format or relative like "now"). If not provided, defaults to now.')
+    dateTo: z.string().nullable().optional().describe('End date for filtering (ISO format or relative like "now"). If not provided, defaults to now.')
 })
 
 /**
