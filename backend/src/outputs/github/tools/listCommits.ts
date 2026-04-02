@@ -19,10 +19,10 @@ const listGitHubCommitsParameters = z.object({
     since: z
         .union([z.string(), z.null()])
         .describe('Start of time window (ISO date string, e.g., "2024-01-01" or "2024-01-15T00:00:00Z"). Only commits after this date are included. Use null for no start filter.'),
-    until: z.union([z.string(), z.null()]).describe("End of time window (ISO date string). Only commits before this date are included. Use null for no end filter."),
-    branch: z.union([z.string(), z.null()]).describe('Branch name to list commits from (e.g., "main", "develop"). Use null for the repository\'s default branch.'),
-    path: z.union([z.string(), z.null()]).describe('Only include commits that affect this file or directory path (e.g., "src/components" or "package.json"). Use null for all paths.'),
-    author: z.union([z.string(), z.null()]).describe("Filter commits by author (GitHub username or email). Use null for all authors."),
+    until: z.string().nullable().optional().describe("End of time window (ISO date string). Only commits before this date are included. Use null for no end filter."),
+    branch: z.string().nullable().optional().describe('Branch name to list commits from (e.g., "main", "develop"). Use null for the repository\'s default branch.'),
+    path: z.string().nullable().optional().describe('Only include commits that affect this file or directory path (e.g., "src/components" or "package.json"). Use null for all paths.'),
+    author: z.string().nullable().optional().describe("Filter commits by author (GitHub username or email). Use null for all authors."),
     perPage: z.number().describe("Number of results to return (default: 30, max: 100)")
 })
 

@@ -14,7 +14,7 @@ const parameters = z.object({
     projectKey: z.string().describe("The LaunchDarkly project key."),
     environmentKeys: z.array(z.string()).describe("Array of environment keys to query."),
     summary: z.boolean().default(true).describe("If true, return only flag key, name, and on/off state per environment. If false, return full flag details."),
-    filter: z.union([z.string(), z.null()]).optional().describe("Optional: Filter flags by name/key containing this text."),
+    filter: z.string().nullable().optional().optional().describe("Optional: Filter flags by name/key containing this text."),
     tags: z
         .union([z.array(z.string()), z.null()])
         .optional()

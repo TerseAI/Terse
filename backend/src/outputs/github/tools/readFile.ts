@@ -18,8 +18,8 @@ import { createGitHubClient, getFileContents, getGitHubAccessToken, parseRepoFul
 const readGitHubFileParameters = z.object({
     repository: z.string().describe('The repository in "owner/repo" format (e.g., "facebook/react"). Must be one of the configured repositories.'),
     path: z.string().describe('The file path within the repository (e.g., "src/components/Button.tsx" or "README.md")'),
-    startLine: z.union([z.number(), z.null()]).describe("Start reading from this line number (1-indexed). Use with endLine for partial file reads. Use null to start from beginning."),
-    endLine: z.union([z.number(), z.null()]).describe("Stop reading at this line number (1-indexed, inclusive). Use with startLine for partial file reads. Use null to read to end.")
+    startLine: z.number().nullable().optional().describe("Start reading from this line number (1-indexed). Use with endLine for partial file reads. Use null to start from beginning."),
+    endLine: z.number().nullable().optional().describe("Stop reading at this line number (1-indexed, inclusive). Use with startLine for partial file reads. Use null to read to end.")
 })
 
 export const readGitHubFileTool: SessionToolOptions<typeof readGitHubFileParameters, typeof ToolName.GITHUB_READ_FILE> = {

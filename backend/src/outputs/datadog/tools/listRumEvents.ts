@@ -14,11 +14,11 @@ import { getDatadogRumDeepLink, getDatadogSite, parseDatadogTimeString } from ".
 
 const parameters = z.object({
     integrationId: z.string().describe("The integration ID of the Datadog skill to use."),
-    query: z.union([z.string(), z.null()]).optional().describe("Datadog RUM search query to filter events (e.g., @type:view)"),
-    from: z.union([z.string(), z.null()]).optional().describe('Minimum timestamp (ISO8601 only, e.g., "2020-09-17T11:48:36+01:00")'),
-    to: z.union([z.string(), z.null()]).optional().describe("Maximum timestamp (ISO8601 only). Defaults to now if not provided."),
+    query: z.string().nullable().optional().optional().describe("Datadog RUM search query to filter events (e.g., @type:view)"),
+    from: z.string().nullable().optional().optional().describe('Minimum timestamp (ISO8601 only, e.g., "2020-09-17T11:48:36+01:00")'),
+    to: z.string().nullable().optional().optional().describe("Maximum timestamp (ISO8601 only). Defaults to now if not provided."),
     limit: z.number().default(25).describe("Maximum number of RUM events to return (default: 25, max: 1000)"),
-    pageCursor: z.union([z.string(), z.null()]).optional().describe("Pagination cursor from previous response"),
+    pageCursor: z.string().nullable().optional().optional().describe("Pagination cursor from previous response"),
     sort: z.enum(["timestamp", "-timestamp"]).default("timestamp").describe('Sort order: "timestamp" (ascending) or "-timestamp" (descending)')
 })
 
