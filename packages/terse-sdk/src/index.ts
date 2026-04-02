@@ -151,6 +151,7 @@ export type ApprovalRequestInfo = {
 
 export class TerseAgent {
     readonly skills: readonly ConfigInstance[]
+    manualToolConfigs?: readonly ConfigInstance[]
     readonly toolApprovals: string[]
     private readonly apiBaseUrl: string
     private readonly sessionId?: string

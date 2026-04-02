@@ -13,8 +13,10 @@ import pytest
 import terse_sdk.runtime as runtime_module
 import terse_sdk.types as terse_types
 from terse_sdk import (
+    ConfigType,
     CronJobInputEvent,
     EventType,
+    IntegrationType,
     MissingApiKeyError,
     SdkAgentStreamEvent,
     SdkAgentStreamEventDone,
@@ -30,6 +32,7 @@ from terse_sdk import (
     TerseAgent,
     TerseApiError,
     TerseRuntimeError,
+    TriggerConfig,
     clear_job_registry,
     deserialize_input_event,
     execute_registered_job,
@@ -237,6 +240,47 @@ def test_agent_tools_lazy_attach_from_generated_module() -> None:
     assert created_agents == [agent]
 
 
+def test_execute_registered_job_uses_trigger_configs_for_manual_tools() -> None:
+    seen_tools: list[object] = []
+    seen_manual_tool_configs: list[object] = []
+    generated_module = ModuleType("terse_generated")
+
+    def create_tools(agent: TerseAgent) -> object:
+        seen_manual_tool_configs.extend(agent.manual_tool_configs or [])
+        return SimpleNamespace(slack="slack-tools")
+
+    generated_module.create_tools = create_tools  # type: ignore[attr-defined]
+
+    job = runtime_module.RegisteredJob(
+        name="trigger-only-manual-tools",
+        handler=lambda event, agent: seen_tools.append(agent.tools.slack),
+        triggers=[
+            TriggerConfig(
+                integration_id="slack_integration",
+                integration_type=IntegrationType.SLACK,
+                event_type="message",
+                config_type=ConfigType.SLACK,
+                config={"channelId": "C123"},
+            )
+        ],
+        skills=[],
+    )
+
+    with patch.dict(sys.modules, {"terse_generated": generated_module}, clear=False):
+        execute_registered_job(
+            job,
+            CronJobInputEvent(
+                event_type="manual",
+                formatted_content="manual trigger",
+                debug_log="manual",
+            ),
+            agent=TerseAgent(),
+        )
+
+    assert seen_tools == ["slack-tools"]
+    assert [config.integration_type for config in seen_manual_tool_configs] == [IntegrationType.SLACK]
+
+
 def test_agent_tools_raise_clear_error_when_generated_module_is_missing() -> None:
     with (
         patch("terse_sdk.runtime._resolve_generated_tools_factory", return_value=None),
@@ -379,6 +423,43 @@ def test_agent_run_serializes_missing_attio_object_slug_as_null() -> None:
         )
 
     assert captured["json"]["skills"][0]["config"]["objectSlug"] is None
+
+
+def test_agent_run_does_not_promote_manual_tool_configs_to_skills() -> None:
+    captured: dict[str, object] = {}
+    stream = _FakeEventSource([json.dumps({"type": "done"})])
+
+    def fake_connect_sse(
+        client: object,
+        method: str,
+        url: str,
+        *,
+        headers: dict[str, str],
+        json: dict[str, object],
+    ) -> _FakeEventSource:
+        captured.update({"method": method, "url": url, "headers": headers, "json": json})
+        return stream
+
+    with (
+        patch.dict(os.environ, {"TERSE_API_KEY": "terse_test_key"}, clear=False),
+        patch("terse_sdk.runtime.connect_sse", side_effect=fake_connect_sse),
+    ):
+        list(
+            TerseAgent(
+                skills=[],
+                manual_tool_configs=[
+                    TriggerConfig(
+                        integration_id="slack_integration",
+                        integration_type=IntegrationType.SLACK,
+                        event_type="message",
+                        config_type=ConfigType.SLACK,
+                        config={"channelId": "C123"},
+                    )
+                ],
+            ).run("hello")
+        )
+
+    assert captured["json"]["skills"] == []
 
 
 def test_agent_run_raises_on_failed_tool_call() -> None:

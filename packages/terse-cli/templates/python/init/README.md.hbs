@@ -31,7 +31,7 @@ After you connect Attio or Snowflake in Terse, rerun `terse generate` to refresh
 
 Import helpers like `Attio`, `AttioObject`, `Schedule`, `Snowflake`, and `TerseAgent` from `terse_generated`.
 
-If a job registers `skills=[Snowflake.skill()]`, it can call deterministic wrappers like:
+If a job includes the integration in `triggers=` or `skills=`, it can call deterministic wrappers like:
 
 ```python
 agent.tools.snowflake.execute_query(query="select 1")

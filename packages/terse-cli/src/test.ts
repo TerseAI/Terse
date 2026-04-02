@@ -11,6 +11,19 @@ import type { LanguageProvider } from "./providers/LanguageProvider.js"
 import { resolveProvider } from "./providers/resolveProvider.js"
 
 
+function printFetchedSampleEvents(events: SerializedEvent[]): void {
+    if (events.length === 0) return
+
+    const indexedEvents = events.map((event, index) => ({
+        index,
+        ...event
+    }))
+
+    console.log(chalk.dim("\n  Sample events returned by the server:\n"))
+    console.log(JSON.stringify(indexedEvents, null, 2))
+    console.log()
+}
+
 export async function test(
     jobName?: string,
     verbose?: boolean,
@@ -44,6 +57,7 @@ export async function test(
             }, "POST")
             events = result.events
             spinner.succeed(`Sample events fetched. Found ${events.length} events.`)
+            printFetchedSampleEvents(events)
         } catch (err) {
             spinner.fail(err instanceof Error ? err.message : "Failed to fetch sample events.")
         }

@@ -443,6 +443,7 @@ export class SlackMessageEvent implements InputEvent {
         this.teamId = opts.teamId
         this.permalink = opts.permalink
         this.channelType = opts.channelType
+        this.blocks = opts.blocks
         this.attachments = opts.attachments
         this.files = opts.files
         this._formattedContent = opts.formattedContent

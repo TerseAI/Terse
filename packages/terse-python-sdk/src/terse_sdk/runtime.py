@@ -179,10 +179,12 @@ class TerseAgent:
         skills: Sequence[SkillConfig[Any]] | None = None,
         backend_url: str | None = None,
         session_id: str | None = None,
+        manual_tool_configs: Sequence[TriggerConfig | SkillConfig[Any]] | None = None,
         tool_approvals: list[str] | None = None,
     ) -> None:
         settings = TerseSettings()
         self.skills = list(skills or [])
+        self.manual_tool_configs = list(manual_tool_configs) if manual_tool_configs is not None else None
         self.backend_url = (backend_url or settings.backend_url).rstrip("/")
         self.session_id = session_id
         self._tools: object | None = None
@@ -387,7 +389,14 @@ def execute_registered_job(
 ) -> bool:
     """Execute a registered job and return ``True`` when it was skipped by the filter."""
 
-    runtime_agent = agent or TerseAgent(job.skills, tool_approvals=job.tool_approvals)
+    manual_tool_configs = [*job.skills, *job.triggers]
+    runtime_agent = agent or TerseAgent(
+        job.skills,
+        manual_tool_configs=manual_tool_configs,
+        tool_approvals=job.tool_approvals,
+    )
+    if runtime_agent.manual_tool_configs is None:
+        runtime_agent.manual_tool_configs = manual_tool_configs
     runtime_agent.ensure_generated_tools()
 
     if job.filter is not None:

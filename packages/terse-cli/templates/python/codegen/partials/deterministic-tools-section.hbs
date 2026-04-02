@@ -169,7 +169,8 @@ class TerseAgent(_SdkTerseAgent):
 
 
 def create_tools(agent: _SdkTerseAgent) -> GeneratedTools:
-    allowed = {skill.integration_type for skill in agent.skills}
+    manual_tool_configs = getattr(agent, "manual_tool_configs", None) or agent.skills
+    allowed = {config.integration_type for config in manual_tool_configs}
 {{#if hasAnyDeterministicTools}}
     return GeneratedTools(
 {{#if hasAttioTools}}

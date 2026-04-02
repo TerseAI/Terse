@@ -62,7 +62,7 @@ Registers a workflow in the Python runtime.
 | --- | --- | --- |
 | `name` | `str` | Unique workflow identifier. Used to match workflows across deploys. |
 | `triggers` | `list[TriggerConfig]` | One or more triggers that start the workflow. |
-| `skills` | `list[SkillConfig]` | Capabilities available to the agent during the run. |
+| `skills` | `list[SkillConfig]` | Capabilities available to the model during `run` and `run_and_wait`. |
 | `tool_approvals` | `list[str]` | Tool names that require human approval before execution. |
 | `filter` | `Callable[[event], bool]` | Optional function to skip the run for specific events. |
 | `webhook_url` | `str` | Optional URL to notify after each run completes. |
@@ -143,7 +143,7 @@ result = agent.tools.snowflake.execute_query(
 )
 ```
 
-Use `agent.tools.*` when a generated wrapper exists. It is usually clearer and safer than calling `execute_tool(...)` by raw name.
+Use `agent.tools.*` when a generated wrapper exists. These wrappers are available when the integration is present in the workflow's triggers or declared skills. By contrast, `skills` control which integrations the model can use during `run` and `run_and_wait`.
 
 ## Event context
 

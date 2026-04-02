@@ -34,7 +34,7 @@ Defines the workflow contract.
 | --- | --- | --- |
 | `name` | `string` | Unique workflow identifier. Used to match workflows across deploys. |
 | `triggers` | `Trigger[]` | One or more triggers that start the workflow. |
-| `skills` | `Skill[]` | Capabilities available to the agent during the run. |
+| `skills` | `Skill[]` | Capabilities available to the model during `run` and `runAndWait`. |
 | `toolApprovals` | `string[]` | Tool names that require human approval before execution. See [tool approvals](#tool-approvals). |
 | `filter` | `(event) => boolean` | Optional function to skip the run for specific events. See [filtering events](#filtering-events). |
 | `onTrigger` | `(event, agent) => Promise<void>` | The workflow handler. Called once per trigger event. |
@@ -110,7 +110,7 @@ await agent.tools.slack.sendMessage({
 })
 ```
 
-Use `agent.tools.*` for guaranteed side effects. Contrast with `skills`, which give the model discretion over when to call an integration.
+Use `agent.tools.*` for guaranteed side effects. These wrappers are available when the integration is present in the workflow's triggers or declared skills. By contrast, `skills` control which integrations the model can use during `run` and `runAndWait`.
 
 ## Structured output
 
