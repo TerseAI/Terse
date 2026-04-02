@@ -1526,6 +1526,15 @@ export type WorkOSUserSummary = {
     updatedAt: string
 }
 
+export type WorkOSOrganizationSummary = {
+    id: string
+    name: string
+    externalId?: string | null
+    domains: string[]
+    createdAt: string
+    updatedAt: string
+}
+
 export type WorkOSPagination = {
     hasMore: boolean
     after?: string | null
@@ -1896,6 +1905,11 @@ export type ToolOutputByName = {
     }
     listWorkOSUsers: ToolOutputBase & {
         users: WorkOSUserSummary[]
+        pagination: WorkOSPagination
+        message: string
+    }
+    listWorkOSOrganizations: ToolOutputBase & {
+        organizations: WorkOSOrganizationSummary[]
         pagination: WorkOSPagination
         message: string
     }

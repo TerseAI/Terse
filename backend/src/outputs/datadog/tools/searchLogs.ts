@@ -18,15 +18,15 @@ const parameters = z.object({
         .union([z.array(z.string()), z.null()])
         .optional()
         .describe('Default log indexes to search (e.g., ["main"]). Falls back to ["main"] if not provided.'),
-    query: z.union([z.string(), z.null()]).optional().describe("Datadog log search query (e.g., service:web AND @status:error)"),
+    query: z.string().nullable().optional().optional().describe("Datadog log search query (e.g., service:web AND @status:error)"),
     indexes: z
         .union([z.array(z.string()), z.null()])
         .optional()
         .describe('Log indexes to search (e.g., ["main"]). Defaults to defaultIndexes if not provided.'),
-    from: z.union([z.string(), z.null()]).optional().describe('Start time (ISO8601 or relative like "now-1h")'),
-    to: z.union([z.string(), z.null()]).optional().describe("End time (ISO8601). Defaults to now if not provided."),
+    from: z.string().nullable().optional().optional().describe('Start time (ISO8601 or relative like "now-1h")'),
+    to: z.string().nullable().optional().optional().describe("End time (ISO8601). Defaults to now if not provided."),
     limit: z.number().default(50).describe("Maximum number of log entries to return (default: 50)"),
-    cursor: z.union([z.string(), z.null()]).optional().describe("Pagination cursor from previous response"),
+    cursor: z.string().nullable().optional().optional().describe("Pagination cursor from previous response"),
     sort: z.enum(["timestamp", "-timestamp"]).default("timestamp").describe('Sort order: "timestamp" (ascending) or "-timestamp" (descending)')
 })
 

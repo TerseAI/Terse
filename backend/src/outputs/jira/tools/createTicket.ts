@@ -91,7 +91,7 @@ const parameters = z.object({
         ])
         .optional()
         .describe("The assignee of the ticket"),
-    priority: z.union([z.number(), z.null()]).optional().describe("The priority of the ticket (number, typically 1-5)"),
+    priority: z.number().nullable().optional().optional().describe("The priority of the ticket (number, typically 1-5)"),
     labels: z
         .union([z.array(z.string()), z.null()])
         .optional()

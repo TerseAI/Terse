@@ -20,8 +20,8 @@ const parameters = z.object({
         .describe(
             "If true (default), only include custom events (exclude PostHog built-in events whose names start with $, e.g. $pageview, $autocapture). If false, include all events. Use true to get counts for events the project actually tracks (works for any user's project)."
         ),
-    userEmail: z.union([z.string(), z.null()]).optional().describe('Optional: User email to filter events by (e.g., "user@example.com").'),
-    eventName: z.union([z.string(), z.null()]).optional().describe('Optional: Specific event name to filter by (e.g., "$pageview", "button_clicked", "form_submitted").'),
+    userEmail: z.string().nullable().optional().optional().describe('Optional: User email to filter events by (e.g., "user@example.com").'),
+    eventName: z.string().nullable().optional().optional().describe('Optional: Specific event name to filter by (e.g., "$pageview", "button_clicked", "form_submitted").'),
     propertyFilters: z
         .union([
             z.array(

@@ -16,8 +16,8 @@ const parameters = z.object({
     integrationId: z.string().describe("The integration ID of the PostHog skill to use."),
     projectId: z.string().describe("The PostHog project ID."),
     sessionId: z.string().uuid().describe("The PostHog session ID (UUID format) to fetch events for. You can get this from searchPosthogSessions."),
-    startSeconds: z.union([z.number().min(0), z.null()]).describe("Optional: Start time in seconds from the beginning of the session. If not provided, starts from the beginning."),
-    endSeconds: z.union([z.number().min(0), z.null()]).describe("Optional: End time in seconds from the beginning of the session. If not provided, goes until the end.")
+    startSeconds: z.number().nullable().optional().describe("Optional: Start time in seconds from the beginning of the session. If not provided, starts from the beginning."),
+    endSeconds: z.number().nullable().optional().describe("Optional: End time in seconds from the beginning of the session. If not provided, goes until the end.")
 })
 
 /**
