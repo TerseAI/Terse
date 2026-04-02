@@ -5,8 +5,8 @@
     "main": "index.js",
     "type": "module",
     "scripts": {
-        "format": "prettier --config ../.prettierrc --write \"src/**/*.ts\" \"../shared/**/*.ts\"",
-        "format:check": "prettier --config ../.prettierrc --check \"src/**/*.ts\" \"../shared/**/*.ts\"",
+        "format": "prettier --config ../.prettierrc --write \"src/**/*.ts\" ",
+        "format:check": "prettier --config ../.prettierrc --check \"src/**/*.ts\"",
         "dev": "tsx watch src/server.ts",
         "dev:tunnel": "./scripts/dev-with-tunnel.sh",
         "build": "tsc && pnpm run postbuild",
