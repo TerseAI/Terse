@@ -12,10 +12,10 @@ import { getWorkOSApiKeyByIntegrationId, listWorkOSUsers } from "../workosApiCli
 
 const parameters = z.object({
     integrationId: z.string().describe("The integration ID of the WorkOS skill to use."),
-    email: z.union([z.string(), z.null()]).describe("Filter by exact email address. Pass null to list all users."),
-    organizationId: z.union([z.string(), z.null()]).describe("Filter users by WorkOS organization ID. Pass null for all organizations."),
+    email: z.string().nullable().optional().describe("Optional exact email address filter. Omit or pass null to list all users."),
+    organizationId: z.string().nullable().optional().describe("Optional WorkOS organization ID filter. Omit or pass null for all organizations."),
     limit: z.number().default(20).describe("Maximum number of users to return (default: 20, max: 100)."),
-    after: z.union([z.string(), z.null()]).describe("Pagination cursor. Use the 'after' value from a previous response to get the next page. Pass null for the first page.")
+    after: z.string().nullable().optional().describe("Optional pagination cursor. Use the 'after' value from a previous response to get the next page.")
 })
 
 export const listWorkOSUsersTool: SessionToolOptions<typeof parameters, typeof ToolName.WORKOS_LIST_USERS> = {
