@@ -94,6 +94,7 @@ class SlackChannelType(StrEnum):
     MPIM = "mpim"
     IM = "im"
 
+
 __all__ = [
     "ApprovalActionType",
     "ApprovalRequestStatus",
